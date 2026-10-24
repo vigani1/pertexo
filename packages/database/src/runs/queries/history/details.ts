@@ -5,7 +5,7 @@ import {
   RUN_DETAILS_RETENTION_SQL,
 } from '../../data-policy.js';
 import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
-import { variableSetSnapshotSql } from '../../../variables/values.js';
+import { variableSetSnapshotSql } from '../../../variables/values.queries.js';
 import {
   workspaceVariableSnapshotSchema,
   type WorkspaceVariableSnapshot,

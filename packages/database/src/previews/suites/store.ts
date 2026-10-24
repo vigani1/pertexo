@@ -10,7 +10,7 @@ import {
 import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
 import { databaseSchema } from '../../schema.js';
 import { parseWorkspaceId } from '../../tenant-access/transactions.js';
-import { captureWorkspaceVariableRevision } from '../../variables/read.js';
+import { captureWorkspaceVariableRevision } from '../../variables/settings.queries.js';
 import { lockInputCaseQuota } from '../../authoring/input-cases/store.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';

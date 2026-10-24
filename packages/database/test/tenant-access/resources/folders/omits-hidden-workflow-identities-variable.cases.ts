@@ -5,7 +5,7 @@ import { readFolderScope } from '../../../../src/tenant-access/resources/facts.j
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { requireWorkflowCallTargets } from '../../../../src/tenant-access/resources/bindings.js';
-import { createWorkspaceVariablesStore } from '../../../../src/variables/store.js';
+import { createWorkspaceVariablesStore } from '../../../../src/variables/settings.repository.js';
 import {
   createConnectionDatabase,
   CONNECTION_AUTH_TYPE,

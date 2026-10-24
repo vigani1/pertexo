@@ -7,8 +7,8 @@ import {
   randomUUID,
   queryAsOwner,
 } from '../support/workflow-authoring.js';
-import { createWorkspaceVariablesStore } from '../../src/variables/store.js';
-import { readVariableSetValues } from '../../src/variables/values.js';
+import { createWorkspaceVariablesStore } from '../../src/variables/settings.repository.js';
+import { readVariableSetValues } from '../../src/variables/values.queries.js';
 import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
 import { Pool } from 'pg';
 import { workspaceVariablesRequestSchema } from '@pertexo/contracts';

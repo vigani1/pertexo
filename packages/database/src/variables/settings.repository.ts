@@ -15,9 +15,9 @@ import {
   readWorkspaceAuthority,
 } from '../tenant-access/workspaces/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
-import { readWorkspaceVariables } from './read.js';
-import { replaceWorkspaceVariables } from './replace.js';
-import { readVariableUsage } from './usage.js';
+import { readWorkspaceVariables } from './settings.queries.js';
+import { replaceWorkspaceVariables } from './sets.repository.js';
+import { readVariableUsage } from './usage.queries.js';
 import type { WorkspaceVariablesStore } from './contract.js';
 export function createWorkspaceVariablesStore(
   config: DatabaseConfig,
