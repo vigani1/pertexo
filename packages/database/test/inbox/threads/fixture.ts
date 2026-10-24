@@ -1,3 +1,4 @@
+import { createTestUser } from '../../support/user.js';
 import type { Role } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
@@ -80,12 +81,7 @@ export async function asAdmin<Row extends Record<string, unknown>>(
 }
 
 async function user(name: string): Promise<string> {
-  return (
-    await identity.createUser({
-      email: `${randomUUID()}@example.test`,
-      displayName: name,
-    })
-  ).id;
+  return (await createTestUser(identity, name)).id;
 }
 
 export async function workflow(workspaceId: string, createdBy: string) {

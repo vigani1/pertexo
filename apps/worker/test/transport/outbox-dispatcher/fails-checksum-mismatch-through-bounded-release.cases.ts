@@ -1,3 +1,4 @@
+import { transportMetrics } from '../../support/transport/metrics.js';
 import type {
   LeasedOutboxEvent,
   ReleaseOutboxResult,
@@ -12,7 +13,6 @@ import {
   LEASE_TOKEN,
   event,
   boundaries,
-  transportMetrics,
   createDispatcher,
 } from './fixture.js';
 

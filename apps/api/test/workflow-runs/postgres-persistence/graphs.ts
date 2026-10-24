@@ -1,3 +1,5 @@
+import type { WorkflowNode } from '@pertexo/workflow-model';
+import { workflowNode } from '../../support/workflow-node.js';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
@@ -11,26 +13,13 @@ export function executable() {
     graph: {
       settings: { maxRunDurationMs: 60_000 },
       nodes: [
-        {
-          id: 'manual',
-          definition: { key: 'core.manual', version: 1 },
-          position: { x: 0, y: 0 },
-          configVersion: 1,
-          config: {},
-          inputMappings: {},
-          connectionRefs: {},
-        },
-        {
-          id: 'terminate',
-          definition: { key: 'core.terminate', version: 1 },
+        workflowNode('manual', 'core.manual'),
+        workflowNode('terminate', 'core.terminate', {
           position: { x: 10, y: 0 },
-          configVersion: 1,
-          config: {},
           inputMappings: {
             result: { kind: 'node_output', nodeId: 'manual', path: '$' },
           },
-          connectionRefs: {},
-        },
+        }),
       ],
       edges: [
         {
@@ -45,15 +34,8 @@ export function executable() {
 
 export function forEachExecutable() {
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
-  const setNode = (id: string, inputMappings: Record<string, unknown>) => ({
-    id,
-    definition: { key: 'core.set', version: 1 },
-    position: { x: 0, y: 0 },
-    configVersion: 1,
-    config: {},
-    inputMappings,
-    connectionRefs: {},
-  });
+  const setNode = (id: string, inputMappings: WorkflowNode['inputMappings']) =>
+    workflowNode(id, 'core.set', { inputMappings });
   return {
     catalog,
     compiled: buildWorkflowExecutable({
@@ -61,23 +43,10 @@ export function forEachExecutable() {
       graph: {
         settings: { maxRunDurationMs: 60_000 },
         nodes: [
-          {
-            id: 'manual',
-            definition: { key: 'core.manual', version: 1 },
-            position: { x: 0, y: 0 },
-            configVersion: 1,
-            config: {},
-            inputMappings: {},
-            connectionRefs: {},
-          },
-          {
-            id: 'loop',
-            definition: { key: 'core.foreach', version: 1 },
+          workflowNode('manual', 'core.manual'),
+          workflowNode('loop', 'core.foreach', {
             position: { x: 10, y: 0 },
-            configVersion: 1,
-            config: {},
             inputMappings: { items: { kind: 'literal', value: [1, 2] } },
-            connectionRefs: {},
             structured: {
               kind: 'for_each',
               maxIterations: 2,
@@ -111,18 +80,13 @@ export function forEachExecutable() {
                 ],
               },
             },
-          },
-          {
-            id: 'terminate',
-            definition: { key: 'core.terminate', version: 1 },
+          }),
+          workflowNode('terminate', 'core.terminate', {
             position: { x: 20, y: 0 },
-            configVersion: 1,
-            config: {},
             inputMappings: {
               result: { kind: 'node_output', nodeId: 'loop', path: '$' },
             },
-            connectionRefs: {},
-          },
+          }),
         ],
         edges: [
           {
@@ -143,15 +107,11 @@ export function forEachExecutable() {
 
 export function parallelExecutable() {
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
-  const ordinaryNode = (id: string) => ({
-    id,
-    definition: { key: 'core.set', version: 1 },
-    position: { x: 20, y: 0 },
-    configVersion: 1,
-    config: {},
-    inputMappings: { value: { kind: 'literal' as const, value: id } },
-    connectionRefs: {},
-  });
+  const ordinaryNode = (id: string) =>
+    workflowNode(id, 'core.set', {
+      position: { x: 20, y: 0 },
+      inputMappings: { value: { kind: 'literal', value: id } },
+    });
   return {
     catalog,
     compiled: buildWorkflowExecutable({
@@ -159,27 +119,14 @@ export function parallelExecutable() {
       graph: {
         settings: { maxRunDurationMs: 60_000 },
         nodes: [
-          {
-            id: 'manual',
-            definition: { key: 'core.manual', version: 1 },
-            position: { x: 0, y: 0 },
-            configVersion: 1,
-            config: {},
-            inputMappings: {},
-            connectionRefs: {},
-          },
-          {
-            id: 'parallel',
-            definition: { key: 'core.parallel', version: 1 },
+          workflowNode('manual', 'core.manual'),
+          workflowNode('parallel', 'core.parallel', {
             position: { x: 10, y: 0 },
-            configVersion: 1,
             config: {
               branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
               maxConcurrency: 1,
             },
-            inputMappings: {},
-            connectionRefs: {},
-          },
+          }),
           ordinaryNode('left'),
           ordinaryNode('right'),
           {
@@ -192,12 +139,8 @@ export function parallelExecutable() {
             },
             inputMappings: {},
           },
-          {
-            id: 'terminate',
-            definition: { key: 'core.terminate', version: 1 },
+          workflowNode('terminate', 'core.terminate', {
             position: { x: 40, y: 0 },
-            configVersion: 1,
-            config: {},
             inputMappings: {
               result: {
                 kind: 'node_output',
@@ -205,8 +148,7 @@ export function parallelExecutable() {
                 path: '$',
               },
             },
-            connectionRefs: {},
-          },
+          }),
         ],
         edges: [
           {

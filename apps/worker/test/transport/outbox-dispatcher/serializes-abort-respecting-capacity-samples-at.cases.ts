@@ -1,3 +1,4 @@
+import { transportMetrics } from '../../support/transport/metrics.js';
 import { JOB_NAME } from '@pertexo/queue';
 import { expect, it, vi } from 'vitest';
 
@@ -9,7 +10,6 @@ import {
   checksum,
   event,
   boundaries,
-  transportMetrics,
   createDispatcher,
 } from './fixture.js';
 

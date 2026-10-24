@@ -1,3 +1,4 @@
+import { workflowNode } from '../support/workflow-node.js';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -19,26 +20,7 @@ describe('workflow authoring validation seam', () => {
 
   it('reports cycles and dangling edges', () => {
     const graph = parseWorkflowGraphDraft({
-      nodes: [
-        {
-          id: 'a',
-          definition: { key: 'manual', version: 1 },
-          position: { x: 0, y: 0 },
-          configVersion: 1,
-          config: {},
-          inputMappings: {},
-          connectionRefs: {},
-        },
-        {
-          id: 'b',
-          definition: { key: 'manual', version: 1 },
-          position: { x: 0, y: 0 },
-          configVersion: 1,
-          config: {},
-          inputMappings: {},
-          connectionRefs: {},
-        },
-      ],
+      nodes: [workflowNode('a', 'manual'), workflowNode('b', 'manual')],
       edges: [
         {
           id: 'ab',

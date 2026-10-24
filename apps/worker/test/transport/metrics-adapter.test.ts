@@ -1,4 +1,4 @@
-import type { TransportMetrics } from '@pertexo/observability';
+import { transportMetrics } from '../support/transport/metrics.js';
 import { JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -6,27 +6,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createQueueMetricsObserver } from '../../src/transport/metrics-adapter.js';
 
-function metrics(): TransportMetrics {
-  return {
-    addActiveConcurrency: vi.fn(),
-    observeArtifacts: vi.fn(),
-    observeExecutionStorage: vi.fn(),
-    observeOutbox: vi.fn(),
-    observeQueue: vi.fn(),
-    recordHandlerFinished: vi.fn(),
-    recordConsumerLifecycle: vi.fn(),
-    recordOutboxClaim: vi.fn(),
-    recordOutboxLeaseEvent: vi.fn(),
-    recordOutboxPublish: vi.fn(),
-    recordOutboxDispatchLatency: vi.fn(),
-    recordQueueStall: vi.fn(),
-    recordWorkerProcessStart: vi.fn(),
-  };
-}
-
 describe('queue transport metrics adapter', () => {
   it('pairs active concurrency and records successful handler latency', () => {
-    const selected = metrics();
+    const selected = transportMetrics();
     const observer = createQueueMetricsObserver(selected);
     const job = {
       jobName: JOB_NAME.advanceWorkflowRun,
@@ -63,7 +45,7 @@ describe('queue transport metrics adapter', () => {
   ] as const)(
     'maps %s failures to the bounded %s error class',
     (failureClass, errorClass) => {
-      const selected = metrics();
+      const selected = transportMetrics();
       const observer = createQueueMetricsObserver(selected);
 
       observer.handlerStarted({
@@ -89,7 +71,7 @@ describe('queue transport metrics adapter', () => {
   );
 
   it('decrements concurrency even when completion recording fails', () => {
-    const selected = metrics();
+    const selected = transportMetrics();
     vi.mocked(selected.recordHandlerFinished).mockImplementation(() => {
       throw new Error('meter rejected observation');
     });
@@ -114,7 +96,7 @@ describe('queue transport metrics adapter', () => {
   });
 
   it('maps consumer stalls and lifecycle without dynamic identifiers', () => {
-    const selected = metrics();
+    const selected = transportMetrics();
     const observer = createQueueMetricsObserver(selected);
 
     observer.jobStalled?.({ queueName: QUEUE_NAME.nodeAttempts });
@@ -133,7 +115,7 @@ describe('queue transport metrics adapter', () => {
   });
 
   it('rejects a queue/job mismatch before recording any metric', () => {
-    const selected = metrics();
+    const selected = transportMetrics();
     const observer = createQueueMetricsObserver(selected);
 
     expect(() => {

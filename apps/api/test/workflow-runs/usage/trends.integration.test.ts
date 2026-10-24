@@ -1,3 +1,8 @@
+import {
+  signedInAccount,
+  workspaceFor,
+  workflowFor,
+} from '../../support/better-auth/builders.js';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { usageTrendsResponseSchema } from '@pertexo/contracts';
@@ -12,31 +17,15 @@ describe.runIf(betterAuthIntegrationEnabled)(
   () => {
     const api = useBetterAuthRealApi('usage-trends');
     it('serves bounded ordinary summaries with private caching and denies outsiders', async () => {
-      const email = `${randomUUID()}@example.test`;
-      await api.signUp(email, '/login?verified=true');
-      const owner = await api.signIn(email);
-      const created = await api.send('POST', '/v1/workspaces', {
-        browser: owner,
-        headers: { 'idempotency-key': randomUUID() },
-        payload: {
-          name: 'Trend proof',
-          slug: `trends-${randomUUID().slice(0, 8)}`,
-        },
+      const { email, owner } = await signedInAccount(api);
+      const workspaceId = await workspaceFor(api, owner, {
+        name: 'Trend proof',
+        slugPrefix: 'trends',
       });
-      expect(created.statusCode, created.payload).toBe(201);
-      const workspaceId = created.json<{ id: string }>().id;
-      const workflow = await api.send(
-        'POST',
-        `/v1/workspaces/${workspaceId}/workflows`,
-        {
-          browser: owner,
-          headers: { 'idempotency-key': randomUUID() },
-          payload: { name: 'Orders' },
-        },
-      );
-      expect(workflow.statusCode, workflow.payload).toBe(201);
-      const workflowId = workflow.json<{ workflow: { id: string } }>().workflow
-        .id;
+      const workflowId = await workflowFor(api, owner, {
+        workspaceId,
+        name: 'Orders',
+      });
       const route = `/v1/workspaces/${workspaceId}/usage-trends`;
       expectProblem(await api.send('GET', route), 401, 'auth.unauthenticated');
       expectProblem(

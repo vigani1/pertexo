@@ -1,3 +1,4 @@
+import { node, literal } from '../../support/coordinator/workflows/graph.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createWorkflowRunDatabase } from '@pertexo/database/runs';
 import {
@@ -12,7 +13,6 @@ import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import {
   validateWorkflowGraph,
   type WorkflowGraph,
-  type WorkflowNode,
 } from '@pertexo/workflow-model';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
@@ -21,24 +21,7 @@ import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
-const node = (
-  id: string,
-  key: string,
-  inputMappings: WorkflowNode['inputMappings'] = {},
-  config: WorkflowNode['config'] = {},
-): WorkflowNode => ({
-  id,
-  definition: { key, version: 1 },
-  configVersion: 1,
-  config,
-  inputMappings,
-  connectionRefs: {},
-  position: { x: 0, y: 0 },
-});
-const literal = (value: unknown) => ({
-  kind: 'literal' as const,
-  value: value as WorkflowNode['config'][string],
-});
+
 const qualified = fixture.enabled ? describe : describe.skip;
 qualified('business values through the real worker', () => {
   beforeAll(fixture.setup, 60_000);
