@@ -92,17 +92,13 @@ export function ConnectionSlot({
         ]}
         onChange={choose}
       />
-      {optional && selectedId === undefined ? (
-        <FieldDescription>
-          Leave it empty for an API that needs no key, or choose one to send its
-          headers.
-        </FieldDescription>
-      ) : matching.length === 0 ? (
-        <FieldDescription>
-          There’s no active {label} in this workspace yet.
-          {addScope === null ? ' Admins and owners can add one.' : ''}
-        </FieldDescription>
-      ) : null}
+      <ConnectionGuidance
+        optional={optional}
+        selectedId={selectedId}
+        matchingCount={matching.length}
+        label={label}
+        canManage={addScope !== null}
+      />
       {missingId === undefined ? null : (
         <FieldDescription className="text-warning">
           The chosen connection was revoked or needs reauthorizing. Choose
@@ -155,4 +151,34 @@ function usableConnections(
     isUsableConnection(created, requirement) &&
     !connections.some((connection) => connection.id === created.id);
   return fresh ? [...usable, created] : usable;
+}
+
+function ConnectionGuidance({
+  optional,
+  selectedId,
+  matchingCount,
+  label,
+  canManage,
+}: Readonly<{
+  optional: boolean;
+  selectedId: string | undefined;
+  matchingCount: number;
+  label: string;
+  canManage: boolean;
+}>) {
+  if (optional && selectedId === undefined)
+    return (
+      <FieldDescription>
+        Leave it empty for an API that needs no key, or choose one to send its
+        headers.
+      </FieldDescription>
+    );
+  if (matchingCount === 0)
+    return (
+      <FieldDescription>
+        There’s no active {label} in this workspace yet.
+        {canManage ? '' : ' Admins and owners can add one.'}
+      </FieldDescription>
+    );
+  return null;
 }

@@ -100,11 +100,7 @@ export function WorkflowFilterChoices({
       >
         {(['active', 'archived', 'all'] as const).map((view) => (
           <ToggleGroupItem key={view} value={view}>
-            {view === 'active'
-              ? 'Active'
-              : view === 'archived'
-                ? 'Archived'
-                : 'All'}
+            {VIEW_LABELS[view]}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
@@ -237,13 +233,25 @@ export function OrganizationVocabularyReadFailure({
         </Button>
       }
     >
-      {denied
-        ? 'Access changed. Cached folders and tags were forgotten. Retry to read current authorized metadata.'
-        : showing
-          ? 'Folders or tags couldn’t be refreshed. Showing the last authorized vocabulary; it may be stale.'
-          : 'Folders or tags couldn’t be read.'}{' '}
-      Existing filters remain in the URL; missing metadata is not an empty
-      vocabulary.
+      {vocabularyFailure({ denied, showing })} Existing filters remain in the
+      URL; missing metadata is not an empty vocabulary.
     </Notice>
   );
+}
+
+const VIEW_LABELS = {
+  active: 'Active',
+  archived: 'Archived',
+  all: 'All',
+} as const;
+
+function vocabularyFailure({
+  denied,
+  showing,
+}: Readonly<{ denied: boolean; showing: boolean }>): string {
+  if (denied)
+    return 'Access changed. Cached folders and tags were forgotten. Retry to read current authorized metadata.';
+  return showing
+    ? 'Folders or tags couldn’t be refreshed. Showing the last authorized vocabulary; it may be stale.'
+    : 'Folders or tags couldn’t be read.';
 }

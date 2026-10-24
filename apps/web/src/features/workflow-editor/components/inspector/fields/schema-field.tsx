@@ -249,14 +249,7 @@ function ConfigNumberField(props: LiveFieldProps) {
                 ? 'numeric'
                 : undefined
             }
-            className={cn(
-              'font-mono',
-              unit === undefined
-                ? undefined
-                : unit.symbol === 's'
-                  ? 'pr-7'
-                  : 'pr-14',
-            )}
+            className={cn('font-mono', unitPadding(unit))}
             value={live.text}
             disabled={!form.editable}
             aria-invalid={live.error !== undefined}
@@ -327,4 +320,11 @@ function unitHint(
   if (field.maximum !== undefined)
     parts.push(`Up to ${describeAmount(field.maximum, field.unit)}.`);
   return parts.length === 0 ? undefined : parts.join(' ');
+}
+
+function unitPadding(
+  unit: ReturnType<typeof unitDisplay> | undefined,
+): string | undefined {
+  if (unit === undefined) return undefined;
+  return unit.symbol === 's' ? 'pr-7' : 'pr-14';
 }

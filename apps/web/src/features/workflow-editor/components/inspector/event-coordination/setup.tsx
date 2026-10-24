@@ -245,14 +245,10 @@ function CoordinationFields({
         </>
       )}
       <Notice>
-        {policy.mode === 'deduplicate'
-          ? 'Only the first event with this key starts a run within the fixed window. Duplicates do not extend it.'
-          : policy.mode === 'debounce'
-            ? 'After a quiet period, run with the latest event. Earlier pending inputs are replaced.'
-            : 'A fixed window limits run admissions per key. Delayed events keep their arrival order.'}{' '}
-        Pending events wait at most 24 hours; a full run queue may defer
-        admission for up to 15 minutes. Changing the published version cancels
-        pending events. Deferred webhooks acknowledge with 202 immediately.
+        {POLICY_DESCRIPTION[policy.mode]} Pending events wait at most 24 hours;
+        a full run queue may defer admission for up to 15 minutes. Changing the
+        published version cancels pending events. Deferred webhooks acknowledge
+        with 202 immediately.
       </Notice>
     </>
   );
@@ -316,3 +312,14 @@ function NumberSetting({
     </Field>
   );
 }
+
+const POLICY_DESCRIPTION: Readonly<
+  Record<EventCoordinationPolicy['mode'], string>
+> = {
+  deduplicate:
+    'Only the first event with this key starts a run within the fixed window. Duplicates do not extend it.',
+  debounce:
+    'After a quiet period, run with the latest event. Earlier pending inputs are replaced.',
+  throttle:
+    'A fixed window limits run admissions per key. Delayed events keep their arrival order.',
+};
