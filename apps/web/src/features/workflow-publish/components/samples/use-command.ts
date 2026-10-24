@@ -1,3 +1,4 @@
+import { commandIsLive } from '../../model/testing/ownership';
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { StepSampleMetadata, StepSampleSource } from '@pertexo/contracts';
@@ -49,7 +50,7 @@ export function useSampleCommand(
     },
     async () => {
       await client.invalidateQueries({ queryKey: stepSamplesKey(scope) });
-      if (lifetime.current?.signal.aborted === false) onSuccess?.();
+      if (commandIsLive(lifetime.current)) onSuccess?.();
     },
     { action: 'saving the pinned sample' },
   );
