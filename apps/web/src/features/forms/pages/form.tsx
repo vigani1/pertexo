@@ -162,30 +162,36 @@ function PublishedForm({
       {command.error === undefined ? null : (
         <Notice
           tone={command.uncertain ? 'warning' : 'destructive'}
-          action={
-            command.uncertain ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={command.pending || command.expired}
-                onClick={command.retry}
-              >
-                Retry same response
-              </Button>
-            ) : changed ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void reload()}
-              >
-                Reload form
-              </Button>
-            ) : undefined
-          }
+          action={formRecoveryAction(command, changed, reload)}
         >
           {command.error}
         </Notice>
       )}
     </div>
   );
+}
+
+function formRecoveryAction(
+  command: SubmissionCommand,
+  changed: boolean,
+  reload: () => Promise<void>,
+) {
+  if (command.uncertain)
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        disabled={command.pending || command.expired}
+        onClick={command.retry}
+      >
+        Retry same response
+      </Button>
+    );
+  if (changed)
+    return (
+      <Button type="button" variant="outline" onClick={() => void reload()}>
+        Reload form
+      </Button>
+    );
+  return undefined;
 }

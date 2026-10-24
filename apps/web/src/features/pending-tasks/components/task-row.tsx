@@ -76,23 +76,7 @@ export function TaskRow({
       </div>
       {/* Below the request on a phone, beside it on wider screens. */}
       <div className="relative z-10 col-start-2 flex flex-col items-start gap-2 sm:col-start-3 sm:row-start-1 sm:items-end">
-        {yours ? (
-          task.kind === 'approval' ? (
-            <QuickDecision scope={scope} task={task} />
-          ) : (
-            <Link
-              to="/w/$workspaceId/requests/$taskId"
-              params={{ workspaceId: task.workspaceId, taskId: task.id }}
-              className={buttonVariants({ size: 'sm' })}
-            >
-              Respond
-            </Link>
-          )
-        ) : blocked === undefined ? null : (
-          <p className="text-xs text-subtle-foreground sm:text-right">
-            {blocked}
-          </p>
-        )}
+        <TaskAction scope={scope} task={task} yours={yours} blocked={blocked} />
         <time
           dateTime={when}
           title={formatDateTime(when)}
@@ -104,5 +88,35 @@ export function TaskRow({
         </time>
       </div>
     </li>
+  );
+}
+
+function TaskAction({
+  scope,
+  task,
+  yours,
+  blocked,
+}: Readonly<{
+  scope: TaskScope;
+  task: PendingTaskSummary;
+  yours: boolean;
+  blocked: string | undefined;
+}>) {
+  if (!yours) {
+    if (blocked === undefined) return null;
+    return (
+      <p className="text-xs text-subtle-foreground sm:text-right">{blocked}</p>
+    );
+  }
+  if (task.kind === 'approval')
+    return <QuickDecision scope={scope} task={task} />;
+  return (
+    <Link
+      to="/w/$workspaceId/requests/$taskId"
+      params={{ workspaceId: task.workspaceId, taskId: task.id }}
+      className={buttonVariants({ size: 'sm' })}
+    >
+      Respond
+    </Link>
   );
 }

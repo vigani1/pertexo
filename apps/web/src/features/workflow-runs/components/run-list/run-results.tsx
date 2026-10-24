@@ -61,6 +61,16 @@ export function RunResults({
 }>) {
   const visible = filterRunsByTrigger(runs, search.trigger);
   const refreshing = query.isRefetching && !query.isFetchingNextPage;
+  const empty = hasRunFilters(search) ? (
+    <NoMatchingRuns
+      partial={search.trigger !== undefined && query.hasNextPage}
+      onClearFilters={() => {
+        onSearchChange(clearedRunSearch(search));
+      }}
+    />
+  ) : (
+    noRuns
+  );
   return (
     <QueryView
       query={query}
@@ -80,24 +90,15 @@ export function RunResults({
           {refreshing ? (
             <SkeletonThread className="absolute inset-x-0 -top-3" />
           ) : null}
-          {visible.length === 0 ? (
-            hasRunFilters(search) ? (
-              <NoMatchingRuns
-                partial={search.trigger !== undefined && query.hasNextPage}
-                onClearFilters={() => {
-                  onSearchChange(clearedRunSearch(search));
-                }}
-              />
-            ) : (
-              noRuns
-            )
-          ) : search.view === 'loom' ? (
+          {visible.length === 0 ? empty : null}
+          {visible.length > 0 && search.view === 'loom' ? (
             <RunsLoomView
               runs={visible}
               search={search}
               workspaceId={workspace.id}
             />
-          ) : (
+          ) : null}
+          {visible.length > 0 && search.view !== 'loom' ? (
             <RunList
               apiClient={apiClient}
               userId={userId}
@@ -105,7 +106,7 @@ export function RunResults({
               runs={visible}
               variant={variant}
             />
-          )}
+          ) : null}
           <LoadMore
             subject="runs"
             hasNextPage={query.hasNextPage}

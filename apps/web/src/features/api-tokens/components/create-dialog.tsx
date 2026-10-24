@@ -91,7 +91,8 @@ export function CreateTokenDialog({
             name={view.name}
             onDone={onClose}
           />
-        ) : view.kind === 'unconfirmed' ? (
+        ) : null}
+        {view.kind === 'unconfirmed' ? (
           <>
             <DialogTitle>Check your tokens</DialogTitle>
             <DialogDescription>
@@ -114,7 +115,8 @@ export function CreateTokenDialog({
               Close and check tokens
             </Button>
           </>
-        ) : (
+        ) : null}
+        {view.kind === 'form' ? (
           <>
             <DialogTitle>Create API token</DialogTitle>
             <DialogDescription>
@@ -159,7 +161,7 @@ export function CreateTokenDialog({
               Cancel
             </Button>
           </>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );
