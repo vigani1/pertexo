@@ -1,3 +1,4 @@
+import { getRequestUrl } from '../../support/request';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { act, renderHook } from '@testing-library/react';
@@ -180,12 +181,7 @@ describe('connection command response fences', () => {
     const apiClient = createApiClient({
       readCsrfToken: () => 'connection-command-csrf-123456789012345678901234',
       fetch: (input, init) => {
-        const path =
-          typeof input === 'string'
-            ? input
-            : input instanceof URL
-              ? input.href
-              : input.url;
+        const path = getRequestUrl(input);
         if (path.endsWith('/test')) return Promise.resolve(tested());
         if (init?.signal == null) throw new Error('Read must be abortable');
         dispatched.resolve(init.signal);

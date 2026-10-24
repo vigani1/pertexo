@@ -1,3 +1,4 @@
+import { getRequestUrl } from '../../support/request';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
@@ -36,12 +37,7 @@ it('keeps typed text and an open member picker across background refreshes, and 
   const fetch = vi
     .fn<typeof globalThis.fetch>()
     .mockImplementation((input, init) => {
-      const path =
-        typeof input === 'string'
-          ? input
-          : input instanceof URL
-            ? input.href
-            : input.url;
+      const path = getRequestUrl(input);
       if (init?.method === 'POST') {
         writes.push({
           body: JSON.parse(
@@ -234,12 +230,7 @@ it('mentions someone by typing @ and their name, as Slack does', async () => {
   const fetch = vi
     .fn<typeof globalThis.fetch>()
     .mockImplementation((input, init) => {
-      const path =
-        typeof input === 'string'
-          ? input
-          : input instanceof URL
-            ? input.href
-            : input.url;
+      const path = getRequestUrl(input);
       if (init?.method === 'POST') {
         writes.push(
           JSON.parse(typeof init.body === 'string' ? init.body : 'null'),

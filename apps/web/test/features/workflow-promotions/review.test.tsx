@@ -1,3 +1,4 @@
+import { getRequestUrl } from '../../support/request';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
@@ -55,12 +56,7 @@ it('keeps the exact reviewed command through a lost response and preserves targe
   const fetch = vi
     .fn<typeof globalThis.fetch>()
     .mockImplementation((input, init) => {
-      const path =
-        typeof input === 'string'
-          ? input
-          : input instanceof URL
-            ? input.href
-            : input.url;
+      const path = getRequestUrl(input);
       if (path.includes('/promotions/settings'))
         return json({
           revision: 1,
@@ -168,12 +164,7 @@ it('keeps the exact reviewed command through a lost response and preserves targe
 
 it('clears the protected review when apply loses workspace access', async () => {
   const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation((input) => {
-    const path =
-      typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.href
-          : input.url;
+    const path = getRequestUrl(input);
     if (path.includes('/promotions/settings'))
       return json({
         revision: 1,
