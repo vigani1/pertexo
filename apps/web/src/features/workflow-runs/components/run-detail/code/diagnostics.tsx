@@ -7,7 +7,7 @@ import {
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { nodeRunDiagnosticsQueryOptions } from '../../../data/stored-values.queries';
 import type { RunTimelineRow } from '../../../model/timeline/runs';
-import type { RunDataScope } from '../data/outputs';
+import type { RunDataScope } from '../data/value';
 
 export function StepCodeDiagnostics({
   row,
