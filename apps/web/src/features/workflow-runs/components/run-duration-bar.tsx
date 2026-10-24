@@ -79,6 +79,12 @@ function RunDurationBarEnd({ tone }: Readonly<{ tone: StatusTone }>) {
           )}
         </svg>
       );
+    case 'attention':
+    case 'canceled':
+    case 'neutral':
+    case 'queued':
+    case 'skipped':
+    case 'waiting':
     default:
       return null;
   }

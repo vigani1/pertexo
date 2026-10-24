@@ -125,6 +125,7 @@ export function useShellCrumbs(
   const sources = useMatches({
     select: (matches) =>
       matches.flatMap((match): CrumbSource[] => {
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- Special crumbs need route-specific data; remaining routes use declarative metadata.
         switch (match.routeId) {
           case `${SHELL}/runs/$runId`:
             return [{ kind: 'run', run: match.loaderData?.run }];

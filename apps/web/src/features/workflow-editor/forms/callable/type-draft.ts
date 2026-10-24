@@ -59,6 +59,10 @@ export function emptyType(type: TypeDraft['type']): TypeDraft {
       return { type, properties: [] };
     case 'array':
       return { type, maxItems: '10', items: { type: 'string' } };
+    case 'boolean':
+    case 'null':
+    case 'number':
+    case 'string':
     default:
       return { type };
   }

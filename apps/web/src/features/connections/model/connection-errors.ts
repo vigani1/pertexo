@@ -1,3 +1,4 @@
+import type { ApiProblemCode } from '@pertexo/contracts';
 import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError, isForbidden } from '@/lib/api/error-copy';
@@ -30,6 +31,23 @@ const FORBIDDEN: Readonly<Record<ConnectionCommand, string>> = {
   test: 'Your role can’t test connections.',
 };
 
+const SPECIFIC_PROBLEMS: Readonly<
+  Partial<
+    Record<ApiProblemCode, (command: ConnectionCommand, name: string) => string>
+  >
+> = {
+  'connection.revoked': (_command, name) =>
+    `${name} was revoked, so it can’t be used or changed.`,
+  'connection.reauthorization_required': (_command, name) =>
+    `${name} needs a new credential. Replace it, then test again.`,
+  'connection.conflict': (command, name) =>
+    command === 'rotate'
+      ? 'Someone replaced this credential meanwhile. Close this and start again from the latest version.'
+      : `${name} changed meanwhile. Reload and try again.`,
+  'request.idempotency_conflict': () =>
+    'This request was already used with different details. Start again.',
+};
+
 /** One sentence for a failed connection command, naming what to do next. */
 export function connectionCommandError(
   error: unknown,
@@ -39,20 +57,10 @@ export function connectionCommandError(
   if (isUnconfirmedCommand(error)) return UNCERTAIN[command](name);
   if (isForbidden(error)) return FORBIDDEN[command];
   if (isApiError(error)) {
-    switch (error.problem?.code) {
-      case 'connection.revoked':
-        return `${name} was revoked, so it can’t be used or changed.`;
-      case 'connection.reauthorization_required':
-        return `${name} needs a new credential. Replace it, then test again.`;
-      case 'connection.conflict':
-        return command === 'rotate'
-          ? 'Someone replaced this credential meanwhile. Close this and start again from the latest version.'
-          : `${name} changed meanwhile. Reload and try again.`;
-      case 'request.idempotency_conflict':
-        return 'This request was already used with different details. Start again.';
-      default:
-        break;
-    }
+    const code = error.problem?.code;
+    const describe = code === undefined ? undefined : SPECIFIC_PROBLEMS[code];
+    if (describe !== undefined) return describe(command, name);
   }
+
   return describeCommandError(error, ACTIONS[command]);
 }

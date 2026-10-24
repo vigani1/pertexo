@@ -81,6 +81,10 @@ export function paginationDescription(value: NodeConfig): string {
       return `Increases the page number until an empty page, ${bound}.`;
     case 'offset':
       return `Moves the offset forward until an empty page, ${bound}.`;
+    case false:
+    case null:
+    case true:
+    case undefined:
     default:
       return 'Fetches one response.';
   }

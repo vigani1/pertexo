@@ -198,6 +198,10 @@ function JourneyContent({
           onDiscover={onDiscover}
         />
       );
+    case 'expired':
+    case 'revoked':
+    case 'superseded':
+    case 'unavailable':
     default:
       return isDeadEnd(journey.state) ? (
         <DeadEndJourney

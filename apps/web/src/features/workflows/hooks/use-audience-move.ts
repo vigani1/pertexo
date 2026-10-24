@@ -34,6 +34,14 @@ function requestFor(
             destinationFolderId: attempt.body.folderId,
           }
         : undefined;
+    case 'create-folder':
+    case 'create-tag':
+    case 'delete-folder':
+    case 'delete-tag':
+    case 'rename-folder':
+    case 'rename-tag':
+    case 'replace-tags':
+    case 'tag-cleanup':
     default:
       return undefined;
   }

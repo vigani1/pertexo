@@ -231,6 +231,7 @@ function TableDialogs({
           }}
         />
       );
+    case undefined:
     default:
       return null;
   }

@@ -65,19 +65,40 @@ function EnrollmentKey({ uri }: Readonly<{ uri: string }>) {
   );
 }
 
+const ACTION_COPY: Readonly<
+  Record<TwoFactorAction, Readonly<{ title: string; description: string }>>
+> = {
+  enable: {
+    title: 'Turn on two-factor sign-in',
+    description:
+      'Use an authenticator app to protect email and password sign-in. Your SSO or social provider manages its own verification.',
+  },
+  disable: {
+    title: 'Turn off two-factor sign-in',
+    description:
+      'Your password will be the only check for email sign-in. Other devices stay signed in.',
+  },
+  regenerate: {
+    title: 'Get new recovery codes',
+    description: 'These replace all previous recovery codes.',
+  },
+};
+
+type TwoFactorSetupProps = Readonly<{
+  apiClient: ApiClient;
+  action: TwoFactorAction;
+  onClose: () => void;
+  closing: boolean;
+  onComplete: () => void;
+}>;
+
 export function TwoFactorSetupDialog({
   apiClient,
   action,
   onClose,
   closing,
   onComplete,
-}: Readonly<{
-  apiClient: ApiClient;
-  action: TwoFactorAction;
-  onClose: () => void;
-  closing: boolean;
-  onComplete: () => void;
-}>) {
+}: TwoFactorSetupProps) {
   const [stage, setStage] = useState<Stage>({ kind: 'password' });
   const [failure, setFailure] = useState<unknown>();
   const requests = useLatestRequest();
@@ -95,12 +116,7 @@ export function TwoFactorSetupDialog({
     { password: currentPasswordProblem },
     { password: '' },
   );
-  const title =
-    action === 'enable'
-      ? 'Turn on two-factor sign-in'
-      : action === 'disable'
-        ? 'Turn off two-factor sign-in'
-        : 'Get new recovery codes';
+  const { title, description } = ACTION_COPY[action];
   async function submit() {
     if (busy) return;
     const values = fields.validate();
@@ -150,13 +166,7 @@ export function TwoFactorSetupDialog({
         <DialogTitle>
           {stage.kind === 'codes' ? 'Save your recovery codes' : title}
         </DialogTitle>
-        <DialogDescription>
-          {action === 'disable'
-            ? 'Your password will be the only check for email sign-in. Other devices stay signed in.'
-            : action === 'regenerate'
-              ? 'These replace all previous recovery codes.'
-              : 'Use an authenticator app to protect email and password sign-in. Your SSO or social provider manages its own verification.'}
-        </DialogDescription>
+        <DialogDescription>{description}</DialogDescription>
         {stage.kind === 'password' ? (
           <form
             noValidate

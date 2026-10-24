@@ -141,6 +141,11 @@ function summarySegment(
       };
     case 'running':
       return { kind: 'attempt', tone, startMs, endMs: null };
+    case 'canceled':
+    case 'failed':
+    case 'outcome_unknown':
+    case 'succeeded':
+    case 'timed_out':
     default: {
       const end = statusFinishes[summary.status]?.end;
       return {

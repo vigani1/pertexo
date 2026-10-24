@@ -64,6 +64,7 @@ export function describeScheduleHold(
       return 'The latest run time is being held back because too many runs are waiting in this workspace. Pertexo retries it on its own.';
     case 'schedule.scan_failed':
       return 'Pertexo couldn’t start the latest run time. It will try again on its own.';
+    case null:
     default:
       return undefined;
   }
