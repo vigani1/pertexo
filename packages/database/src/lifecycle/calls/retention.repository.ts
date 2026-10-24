@@ -1,45 +1,151 @@
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { workflowCalls } from '../../schema/runs/calls.js';
+import { workflowRunActiveAdmissions } from '../../schema/runs/capacity/admission.js';
+import {
+  and,
+  asc,
+  eq,
+  exists,
+  getTableName,
+  isNotNull,
+  isNull,
+  notExists,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
+import { alias, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
 import {
   RUN_DETAILS_RETENTION_SQL,
   RUN_SUMMARY_RETENTION_SQL,
 } from '../../runs/data-policy.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+
+type CallWorkColumns = Readonly<{
+  slotLent: AnyPgColumn<{ data: boolean }>;
+  status: AnyPgColumn<{ data: string }>;
+  cancelRequestedAt: AnyPgColumn<{ data: Date | string }>;
+  cancelAppliedAt: AnyPgColumn<{ data: Date | string }>;
+}>;
+
+/** No slot, admission or cancellation work still uses this call. */
+export function callHasNoPendingWork(call: CallWorkColumns): SQL<boolean> {
+  return sql`${and(eq(call.slotLent, false), notInArray(call.status, ['pending', 'accepted']), or(isNull(call.cancelRequestedAt), isNotNull(call.cancelAppliedAt)))}`;
+}
+
 /** Call payloads follow their parent's detail window; identity follows its summary. */
 export const CALL_DETAILS_RETENTION_RULE = {
   name: 'call_details',
-  statement: `
-    with page as (
-      select call.id from app.workflow_calls call
-      join app.workflow_runs parent
-        on parent.workspace_id = call.workspace_id and parent.id = call.parent_run_id
-      where call.details_purged_at is null and call.consumed_at is not null
-        and not call.slot_lent and call.status not in ('pending','accepted')
-        and (call.cancel_requested_at is null or call.cancel_applied_at is not null)
-        and parent.completed_at <= clock_timestamp() - ${bindResourcePredicate(RUN_DETAILS_RETENTION_SQL.inlineParams(), [])}
-      order by parent.completed_at, call.id limit $1 for update of call skip locked
-    )
-    update app.workflow_calls call
-    set input_ref = null, result_ref = null, details_purged_at = clock_timestamp()
-    from page where call.id = page.id`,
+  async run(client: PoolClient, pageSize: number): Promise<number> {
+    const db = drizzle(client),
+      parent = alias(workflowRuns, 'parent');
+    const page = db.$with('page').as(
+      db
+        .select({ id: workflowCalls.id })
+        .from(workflowCalls)
+        .innerJoin(
+          parent,
+          and(
+            eq(parent.workspaceId, workflowCalls.workspaceId),
+            eq(parent.id, workflowCalls.parentRunId),
+          ),
+        )
+        .where(
+          and(
+            isNull(workflowCalls.detailsPurgedAt),
+            isNotNull(workflowCalls.consumedAt),
+            callHasNoPendingWork(workflowCalls),
+            sql`${parent.completedAt}<=clock_timestamp()-${RUN_DETAILS_RETENTION_SQL}`,
+          ),
+        )
+        .orderBy(asc(parent.completedAt), asc(workflowCalls.id))
+        .limit(pageSize)
+        .for('update', {
+          of: alias(workflowCalls, getTableName(workflowCalls)),
+          skipLocked: true,
+        }),
+    );
+    return (
+      await db
+        .with(page)
+        .update(workflowCalls)
+        .set({
+          inputRef: null,
+          resultRef: null,
+          detailsPurgedAt: sql`clock_timestamp()`,
+        })
+        .from(page)
+        .where(eq(workflowCalls.id, page.id))
+        .returning({ one: sql`1` })
+        .catch(rethrowQueryFailure)
+    ).length;
+  },
 } as const;
 
 /** Detach an expired child's live FK while preserving its immutable outcome ID. */
 export const CALL_CHILD_REFERENCES_RETENTION_RULE = {
   name: 'call_child_references',
-  statement: `
-    with page as (
-      select child.workspace_id, child.id from app.workflow_runs child
-      where child.completed_at <= clock_timestamp() - ${bindResourcePredicate(RUN_SUMMARY_RETENTION_SQL.inlineParams(), [])}
-        and child.details_purged_at is not null
-        and exists (select 1 from app.workflow_calls call
-          where call.workspace_id = child.workspace_id and call.live_child_run_id = child.id
-            and not call.slot_lent and call.status not in ('pending','accepted')
-            and (call.cancel_requested_at is null or call.cancel_applied_at is not null))
-        and not exists (select 1 from app.workflow_run_active_admissions admission
-          where admission.workspace_id = child.workspace_id and admission.workflow_run_id = child.id)
-      order by child.completed_at, child.id limit $1 for update of child skip locked
-    )
-    update app.workflow_calls call set live_child_run_id = null
-    from page where call.workspace_id = page.workspace_id and call.live_child_run_id = page.id
-      and not call.slot_lent and call.status not in ('pending','accepted')
-      and (call.cancel_requested_at is null or call.cancel_applied_at is not null)`,
+  async run(client: PoolClient, pageSize: number): Promise<number> {
+    const db = drizzle(client),
+      child = alias(workflowRuns, 'child');
+    const page = db.$with('page').as(
+      db
+        .select({ workspaceId: child.workspaceId, id: child.id })
+        .from(child)
+        .where(
+          and(
+            sql`${child.completedAt}<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL}`,
+            isNotNull(child.detailsPurgedAt),
+            exists(
+              db
+                .select({ one: sql`1` })
+                .from(workflowCalls)
+                .where(
+                  and(
+                    eq(workflowCalls.workspaceId, child.workspaceId),
+                    eq(workflowCalls.liveChildRunId, child.id),
+                    callHasNoPendingWork(workflowCalls),
+                  ),
+                ),
+            ),
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(workflowRunActiveAdmissions)
+                .where(
+                  and(
+                    eq(
+                      workflowRunActiveAdmissions.workspaceId,
+                      child.workspaceId,
+                    ),
+                    eq(workflowRunActiveAdmissions.workflowRunId, child.id),
+                  ),
+                ),
+            ),
+          ),
+        )
+        .orderBy(asc(child.completedAt), asc(child.id))
+        .limit(pageSize)
+        .for('update', { of: child, skipLocked: true }),
+    );
+    return (
+      await db
+        .with(page)
+        .update(workflowCalls)
+        .set({ liveChildRunId: null })
+        .from(page)
+        .where(
+          and(
+            eq(workflowCalls.workspaceId, page.workspaceId),
+            eq(workflowCalls.liveChildRunId, page.id),
+            callHasNoPendingWork(workflowCalls),
+          ),
+        )
+        .returning({ one: sql`1` })
+        .catch(rethrowQueryFailure)
+    ).length;
+  },
 } as const;

@@ -1,4 +1,4 @@
-import { Client } from 'pg';
+import { Client, Pool, type QueryConfig } from 'pg';
 import { expect, it } from 'vitest';
 import { RETENTION_RULES } from '../../../src/lifecycle/retention/rules.js';
 import {
@@ -30,12 +30,12 @@ export function registerSkipsLockedExpiredAuditRows(): void {
     const rule = RETENTION_RULES.find(
       (candidate) => candidate.name === 'audit_events',
     );
-    if (rule === undefined || !('statement' in rule))
+    if (rule === undefined || !('run' in rule))
       throw new Error('Missing audit rule');
     const blocker = new Client({ connectionString: withDatabase(adminUrl) });
-    const cleaner = new Client({ connectionString: maintenanceUrl });
+    const cleanerPool = new Pool({ connectionString: maintenanceUrl, max: 1 });
     await blocker.connect();
-    await cleaner.connect();
+    const cleaner = await cleanerPool.connect();
     try {
       await blocker.query('begin');
       await blocker.query(
@@ -44,8 +44,8 @@ export function registerSkipsLockedExpiredAuditRows(): void {
       );
       await cleaner.query('begin');
       await cleaner.query("set local statement_timeout='1s'");
-      expect((await cleaner.query(rule.statement, [1])).rowCount).toBe(1);
-      expect((await cleaner.query(rule.statement, [1])).rowCount).toBe(0);
+      expect(await rule.run(cleaner, 1)).toBe(1);
+      expect(await rule.run(cleaner, 1)).toBe(0);
       expect(
         (
           await admin.query(
@@ -62,7 +62,7 @@ export function registerSkipsLockedExpiredAuditRows(): void {
       );
       await cleaner.query('commit');
       await blocker.query('commit');
-      expect((await cleaner.query(rule.statement, [1])).rowCount).toBe(1);
+      expect(await rule.run(cleaner, 1)).toBe(1);
       expect(
         (
           await admin.query(
@@ -75,7 +75,8 @@ export function registerSkipsLockedExpiredAuditRows(): void {
       await admin.query('reset statement_timeout');
       await cleaner.query('rollback');
       await blocker.query('rollback');
-      await cleaner.end();
+      cleaner.release();
+      await cleanerPool.end();
       await blocker.end();
     }
   });
@@ -106,19 +107,34 @@ export function registerSkipsLockedExpiredAuditRows(): void {
     const rule = RETENTION_RULES.find(
       (candidate) => candidate.name === 'audit_events',
     );
-    if (rule === undefined || !('statement' in rule))
+    if (rule === undefined || !('run' in rule))
       throw new Error('Missing audit rule');
-    const cleaner = new Client({ connectionString: maintenanceUrl });
-    await cleaner.connect();
+    const cleanerPool = new Pool({ connectionString: maintenanceUrl, max: 1 });
+    const cleaner = await cleanerPool.connect();
     try {
-      const plan = await cleaner.query(
-        `explain (format json) ${rule.statement}`,
-        [100],
-      );
-      expect(JSON.stringify(plan.rows)).toContain(
-        'audit_events_workspace_time_idx',
-      );
-      expect((await cleaner.query(rule.statement, [100])).rowCount).toBe(1);
+      let plan: unknown;
+      const explained = new Proxy(cleaner, {
+        get(target, property) {
+          if (property !== 'query') {
+            const value: unknown = Reflect.get(target, property);
+            return value;
+          }
+          return async (
+            statement: QueryConfig<unknown[]>,
+            values?: unknown[],
+          ) => {
+            const result = await target.query(
+              { ...statement, text: `explain (format json) ${statement.text}` },
+              values,
+            );
+            plan = result.rows;
+            return result;
+          };
+        },
+      });
+      await rule.run(explained, 100);
+      expect(JSON.stringify(plan)).toContain('audit_events_workspace_time_idx');
+      expect(await rule.run(cleaner, 100)).toBe(1);
       expect(
         (
           await admin.query(
@@ -136,7 +152,8 @@ export function registerSkipsLockedExpiredAuditRows(): void {
         ).rows,
       ).toEqual([{ count: 20000 }]);
     } finally {
-      await cleaner.end();
+      cleaner.release();
+      await cleanerPool.end();
     }
   });
 

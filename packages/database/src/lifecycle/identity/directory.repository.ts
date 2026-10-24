@@ -1,81 +1,127 @@
+import {
+  authOrganizationWorkspaces,
+  authOrganizations,
+} from '../../schema/identity/federation/organizations.js';
+import { workspaces } from '../../schema/foundation.js';
+import { authDirectoryMemberships } from '../../schema/identity/federation/directory/sources.js';
+import { and, asc, eq, inArray, lte, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { detachDirectoryMemberships } from '../../identity/federation/provisioning/management/detach.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 
 async function linkedWorkspaceIds(
   client: PoolClient,
   workspaceId: string,
 ): Promise<string[]> {
+  const db = drizzle(client),
+    source = alias(authOrganizationWorkspaces, 'source');
+  const organizations = db
+    .select({ organizationId: source.organizationId })
+    .from(source)
+    .where(eq(source.workspaceId, workspaceId));
+  const rows = await db
+    .select({ workspaceId: authOrganizationWorkspaces.workspaceId })
+    .from(authOrganizationWorkspaces)
+    .where(inArray(authOrganizationWorkspaces.organizationId, organizations))
+    .catch(rethrowQueryFailure);
   return [
-    ...new Set([
-      workspaceId,
-      ...(
-        await client.query<{ workspace_id: string }>(
-          `select workspace_id from app.auth_organization_workspaces where organization_id in
-     (select organization_id from app.auth_organization_workspaces where workspace_id=$1)`,
-          [workspaceId],
-        )
-      ).rows.map((row) => row.workspace_id),
-    ]),
+    ...new Set([workspaceId, ...rows.map((row) => row.workspaceId)]),
   ].sort();
 }
+function purgeIsDue() {
+  return or(
+    and(
+      eq(workspaces.status, 'pending_deletion'),
+      lte(workspaces.purgeAfter, sql`clock_timestamp()`),
+    ),
+    eq(workspaces.status, 'purging'),
+  );
+}
 
-/** Directory fan-out needs the same sorted workspace-first lock plan as sign-in. */
+/** Directory fan-out keeps the same sorted workspace-first lock plan as sign-in. */
 export async function claimPurgeWorkspace(
   client: PoolClient,
-): Promise<Readonly<{ id: string; status: string }> | undefined> {
-  const candidates = (
-    await client.query<{ id: string }>(
-      `select id from app.workspaces where (status='pending_deletion' and purge_after<=clock_timestamp()) or status='purging' order by purge_after,id limit 10`,
-    )
-  ).rows;
+): Promise<
+  Readonly<{ id: string; status: 'pending_deletion' | 'purging' }> | undefined
+> {
+  const db = drizzle(client);
+  const candidates = await db
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(purgeIsDue())
+    .orderBy(asc(workspaces.purgeAfter), asc(workspaces.id))
+    .limit(10)
+    .catch(rethrowQueryFailure);
   for (const candidate of candidates) {
     const plan = await linkedWorkspaceIds(client, candidate.id);
-    const locked = await client.query(
-      'select id from app.workspaces where id=any($1::uuid[]) order by id for update skip locked',
-      [plan],
-    );
-    if (locked.rowCount !== plan.length) continue;
+    const locked = await db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(inArray(workspaces.id, plan))
+      .orderBy(asc(workspaces.id))
+      .for('update', { skipLocked: true })
+      .catch(rethrowQueryFailure);
+    if (locked.length !== plan.length) continue;
     const current = await linkedWorkspaceIds(client, candidate.id);
-    if (
-      current.length !== plan.length ||
-      current.some((id, index) => id !== plan[index])
-    )
-      continue;
-    const row = (
-      await client.query<{ id: string; status: string }>(
-        `select id,status from app.workspaces where id=$1 and ((status='pending_deletion' and purge_after<=clock_timestamp()) or status='purging')`,
-        [candidate.id],
-      )
-    ).rows[0];
+    const samePlan =
+      current.length === plan.length &&
+      current.every((id, index) => id === plan[index]);
+    if (!samePlan) continue;
+    const [row] = await db
+      .select({
+        id: workspaces.id,
+        status: sql<'pending_deletion' | 'purging'>`${workspaces.status}`,
+      })
+      .from(workspaces)
+      .where(and(eq(workspaces.id, candidate.id), purgeIsDue()))
+      .catch(rethrowQueryFailure);
     if (row !== undefined) return row;
   }
   return undefined;
 }
 
-/** One source page, including other workspaces if the control organization is being purged. */
+/** One source page may include other workspaces when their control organization is purged. */
 export async function purgeDirectoryMemberships(
   client: PoolClient,
   workspaceId: string,
   limit: number,
 ): Promise<number> {
-  const source = (
-    await client.query<{ organization_id: string; workspace_id: string }>(
-      `select source.organization_id,source.workspace_id from app.auth_directory_memberships source
-     join app.auth_organizations organization on organization.id=source.organization_id
-     where source.workspace_id=$1 or organization.control_workspace_id=$1
-     order by source.workspace_id,source.user_id limit 1`,
-      [workspaceId],
+  const db = drizzle(client);
+  const [source] = await db
+    .select({
+      organizationId: authDirectoryMemberships.organizationId,
+      workspaceId: authDirectoryMemberships.workspaceId,
+    })
+    .from(authDirectoryMemberships)
+    .innerJoin(
+      authOrganizations,
+      eq(authOrganizations.id, authDirectoryMemberships.organizationId),
     )
-  ).rows[0];
+    .where(
+      or(
+        eq(authDirectoryMemberships.workspaceId, workspaceId),
+        eq(authOrganizations.controlWorkspaceId, workspaceId),
+      ),
+    )
+    .orderBy(
+      asc(authDirectoryMemberships.workspaceId),
+      asc(authDirectoryMemberships.userId),
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
   if (source === undefined) return 0;
-  await client.query("select set_config('app.workspace_id','',true)");
+  await db
+    .execute(sql`select set_config('app.workspace_id','',true)`)
+    .catch(rethrowQueryFailure);
   const changed = await detachDirectoryMemberships(
     client,
-    source.organization_id,
-    { workspaceId: source.workspace_id, limit },
+    source.organizationId,
+    { workspaceId: source.workspaceId, limit },
   );
-  await client.query("select set_config('app.workspace_id',$1,true)", [
-    workspaceId,
-  ]);
+  await db
+    .execute(sql`select set_config('app.workspace_id',${workspaceId},true)`)
+    .catch(rethrowQueryFailure);
   return changed;
 }

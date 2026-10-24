@@ -28,17 +28,15 @@ export interface WorkspacePurgeCoordinator {
   processNext(signal?: AbortSignal): Promise<WorkspacePurgeProcessResult>;
 }
 
-export /** One bounded change to a purging workspace's rows: `$1` workspace, `$2` limit. */
-type PurgeStep =
-  | Readonly<{ name: string; statement: string }>
-  | Readonly<{
-      name: string;
-      run(
-        client: PoolClient,
-        workspaceId: string,
-        pageSize: number,
-      ): Promise<number>;
-    }>;
+export /** One bounded change to a purging workspace's rows. */
+type PurgeStep = Readonly<{
+  name: string;
+  run(
+    client: PoolClient,
+    workspaceId: string,
+    pageSize: number,
+  ): Promise<number>;
+}>;
 
 export const optionsSchema = z
   .object({
@@ -56,8 +54,3 @@ export const optionsSchema = z
   .strict();
 
 export type WorkspacePurgeOptions = z.input<typeof optionsSchema>;
-
-export const candidateSchema = z.object({
-  id: z.uuid(),
-  status: z.enum(['pending_deletion', 'purging']),
-});

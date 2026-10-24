@@ -1,3 +1,7 @@
+import { and, asc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaces } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { z } from 'zod';
 import { claimPurgeWorkspace } from '../identity/directory.repository.js';
 
@@ -13,7 +17,6 @@ import {
   type WorkspacePurgeCoordinator,
   optionsSchema,
   type WorkspacePurgeOptions,
-  candidateSchema,
 } from './contract.js';
 import { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.repository.js';
 
@@ -29,23 +32,32 @@ async function assertNothingLeft(
   client: PoolClient,
   workspaceId: string,
 ): Promise<void> {
-  const tables = await client.query<{ name: string }>(
-    `select distinct table_class.relname as name
-     from pg_attribute attribute
-     join pg_class table_class on table_class.oid = attribute.attrelid
-     join pg_namespace namespace on namespace.oid = table_class.relnamespace
-     where namespace.nspname = 'app' and table_class.relkind = 'r'
-       and attribute.attname = 'workspace_id' and not attribute.attisdropped
-       and not table_class.relname = any($1::text[])
-     order by 1`,
-    [PURGE_PRESERVED_TABLES],
-  );
-  for (const { name } of tables.rows) {
-    const left = await client.query(
-      `select 1 from app.${name} where workspace_id = $1 limit 1`,
-      [workspaceId],
-    );
-    if (left.rowCount !== 0)
+  const db = drizzle(client);
+  const tables = await db
+    .selectDistinct({ name: sql<string>`table_class.relname`.as('name') })
+    .from(sql`pg_catalog.pg_attribute attribute`)
+    .innerJoin(
+      sql`pg_catalog.pg_class table_class`,
+      sql`table_class.oid=attribute.attrelid`,
+    )
+    .innerJoin(
+      sql`pg_catalog.pg_namespace namespace`,
+      sql`namespace.oid=table_class.relnamespace`,
+    )
+    .where(
+      sql`namespace.nspname='app' and table_class.relkind='r' and attribute.attname='workspace_id' and not attribute.attisdropped and not table_class.relname=any(${sql.param(PURGE_PRESERVED_TABLES)}::text[])`,
+    )
+    .orderBy(asc(sql`table_class.relname`))
+    .catch(rethrowQueryFailure);
+  for (const { name } of tables) {
+    // Discover every live relation so an unlisted table can never pass completion.
+    const left = await db
+      .select({ one: sql`1` })
+      .from(sql`${sql.identifier('app')}.${sql.identifier(name)}`)
+      .where(sql`${sql.identifier('workspace_id')}=${workspaceId}::uuid`)
+      .limit(1)
+      .catch(rethrowQueryFailure);
+    if (left.length !== 0)
       throw new Error(`Workspace purge left rows in ${name}`);
   }
 }
@@ -103,28 +115,20 @@ async function purgeRows(
   return inRetentionTransaction(pool, options, signal, async (client) => {
     const candidate = await claimPurgeWorkspace(client);
     if (candidate === undefined) return { status: 'idle' as const };
-    const workspace = candidateSchema.parse(candidate);
+    const workspace = candidate;
     if (workspace.status === 'pending_deletion') {
-      await client.query(
-        `update app.workspaces set status = 'purging', updated_at = clock_timestamp()
-           where id = $1`,
-        [workspace.id],
-      );
+      await drizzle(client)
+        .update(workspaces)
+        .set({ status: 'purging', updatedAt: sql`clock_timestamp()` })
+        .where(eq(workspaces.id, workspace.id))
+        .catch(rethrowQueryFailure);
       return { status: 'started' as const, workspaceId: workspace.id };
     }
-    await client.query("select set_config('app.workspace_id', $1, true)", [
-      workspace.id,
-    ]);
+    await drizzle(client)
+      .execute(sql`select set_config('app.workspace_id',${workspace.id},true)`)
+      .catch(rethrowQueryFailure);
     for (const step of PURGE_STEPS) {
-      const changed =
-        'run' in step
-          ? await step.run(client, workspace.id, options.pageSize)
-          : ((
-              await client.query(step.statement, [
-                workspace.id,
-                options.pageSize,
-              ])
-            ).rowCount ?? 0);
+      const changed = await step.run(client, workspace.id, options.pageSize);
       if (changed > 0)
         return {
           status: 'progressed' as const,
@@ -141,23 +145,30 @@ async function finishPurge(
   signal: AbortSignal | undefined,
 ): Promise<WorkspacePurgeProcessResult> {
   return inRetentionTransaction(pool, options, signal, async (client) => {
-    const locked = await client.query(
-      `select 1 from app.workspaces where id = $1 and status = 'purging'
-         for update skip locked`,
-      [workspaceId],
-    );
-    // Another worker is on it, or already finished it.
-    if (locked.rowCount !== 1) return { status: 'idle' as const };
+    const locked = await drizzle(client)
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(
+        and(eq(workspaces.id, workspaceId), eq(workspaces.status, 'purging')),
+      )
+      .for('update', { skipLocked: true })
+      .catch(rethrowQueryFailure);
+    // Another worker owns it, or has finished it.
+    if (locked.length !== 1) return { status: 'idle' as const };
     await assertNothingLeft(client, workspaceId);
-    await client.query(
-      `update app.workspaces
-         set status = 'deleted', name = 'Deleted workspace',
-             slug = 'deleted-' || id::text, created_by = null,
-             deletion_requested_by = null, deletion_reason = 'purged',
-             updated_at = clock_timestamp()
-         where id = $1`,
-      [workspaceId],
-    );
+    await drizzle(client)
+      .update(workspaces)
+      .set({
+        status: 'deleted',
+        name: 'Deleted workspace',
+        slug: sql`'deleted-'||${workspaces.id}::text`,
+        createdBy: null,
+        deletionRequestedBy: null,
+        deletionReason: 'purged',
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(eq(workspaces.id, workspaceId))
+      .catch(rethrowQueryFailure);
     return { status: 'completed' as const, workspaceId };
   });
 }
