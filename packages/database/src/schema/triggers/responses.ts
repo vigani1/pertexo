@@ -20,7 +20,9 @@ export const webhookRunResponses = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     waitSeconds: integer('wait_seconds').notNull(),
     statusCode: integer('status_code'),
-    contentType: varchar('content_type', { length: 64 }),
+    contentType: varchar('content_type', { length: 64 }).$type<
+      NodeWebhookResponse['contentType']
+    >(),
     headers: jsonb('headers').$type<NodeWebhookResponse['headers']>(),
     body: text('body'),
     nodeRunId: uuid('node_run_id'),

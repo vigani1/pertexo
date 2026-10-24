@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { lockEventCoordination } from '../coordination/keys.repository.js';
@@ -19,7 +21,11 @@ import {
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { FormUnavailableError, type FormStore } from './contract.js';
 import { authorizeForm, readFormVersion } from './records.queries.js';
-import { capabilityHash, readFormAccess, changeFormAccess } from './access.repository.js';
+import {
+  capabilityHash,
+  readFormAccess,
+  changeFormAccess,
+} from './access.repository.js';
 import { submitForm } from './submit.repository.js';
 export function createFormStore(
   config: DatabaseConfig,
@@ -49,14 +55,15 @@ async function discoverPublicForm(
   pool: Pool,
   input: Parameters<FormStore['discover']>[0],
 ): ReturnType<FormStore['discover']> {
-  const result = await pool.query<{
-    workspaceId: string;
-    workflowId: string;
-    nodeId: string;
-  }>(
-    `select workspace_id "workspaceId",workflow_id "workflowId",node_id "nodeId" from app.lookup_public_form($1,$2)`,
-    [input.publicId, capabilityHash(input.capability)],
-  );
+  const result = await drizzle(pool)
+    .execute<{
+      workspaceId: string;
+      workflowId: string;
+      nodeId: string;
+    }>(
+      sql`select workspace_id "workspaceId",workflow_id "workflowId",node_id "nodeId" from app.lookup_public_form(${input.publicId},${capabilityHash(input.capability)})`,
+    )
+    .catch(rethrowQueryFailure);
   const row = result.rows[0];
   if (row === undefined) throw new FormUnavailableError();
   return {
@@ -120,9 +127,11 @@ async function submitFormEvent(
       ...(input.actorId === undefined ? {} : { actorId: input.actorId }),
     },
     async (client) => {
-      await client.query('select app.lock_workspace_run_admission($1)', [
-        input.workspaceId,
-      ]);
+      await drizzle(client)
+        .execute(
+          sql`select app.lock_workspace_run_admission(${input.workspaceId})`,
+        )
+        .catch(rethrowQueryFailure);
       const coordinatesEvent =
         prepared !== undefined &&
         !('error' in prepared) &&

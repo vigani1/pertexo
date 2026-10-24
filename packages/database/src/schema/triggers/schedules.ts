@@ -1,3 +1,5 @@
+import type { RecordedScheduleOccurrence } from '../../triggers/schedules/pause.queries.js';
+import type { ScheduleTriggerRecord } from '../../triggers/schedules/management/contract.js';
 import { workflowTriggers } from '../authoring/workflows.js';
 import { workflowRuns } from '../runs/execution.js';
 import {
@@ -19,11 +21,15 @@ export const triggerSchedules = appSchema.table(
   {
     triggerId: uuid('trigger_id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    recurrenceKind: varchar('recurrence_kind', { length: 16 }).notNull(),
+    recurrenceKind: varchar('recurrence_kind', { length: 16 })
+      .$type<'cron' | 'interval'>()
+      .notNull(),
     cronExpression: varchar('cron_expression', { length: 256 }),
     timezone: varchar('timezone', { length: 128 }),
     intervalMinutes: integer('interval_minutes'),
-    misfirePolicy: varchar('misfire_policy', { length: 32 }).notNull(),
+    misfirePolicy: varchar('misfire_policy', { length: 32 })
+      .$type<ScheduleTriggerRecord['misfirePolicy']>()
+      .notNull(),
     configFingerprint: varchar('config_fingerprint', { length: 79 }).notNull(),
     anchorAt: timestamp('anchor_at', {
       withTimezone: true,
@@ -35,9 +41,11 @@ export const triggerSchedules = appSchema.table(
     }).notNull(),
     lastFireAt: timestamp('last_fire_at', { withTimezone: true, mode: 'date' }),
     status: varchar('status', { length: 16 })
+      .$type<'enabled' | 'disabled'>()
       .notNull()
       .default(sql`'enabled'::character varying`),
     healthStatus: varchar('health_status', { length: 32 })
+      .$type<ScheduleTriggerRecord['healthStatus']>()
       .notNull()
       .default(sql`'healthy'::character varying`),
     lastErrorCode: varchar('last_error_code', { length: 128 }),
@@ -122,8 +130,12 @@ export const triggerScheduleOccurrences = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }).notNull(),
-    disposition: varchar('disposition', { length: 16 }).notNull(),
-    skipReason: varchar('skip_reason', { length: 32 }),
+    disposition: varchar('disposition', { length: 16 })
+      .$type<RecordedScheduleOccurrence>()
+      .notNull(),
+    skipReason: varchar('skip_reason', {
+      length: 32,
+    }).$type<'concurrency_limit'>(),
     workflowRunId: uuid('workflow_run_id'),
     createdAt: timestamp('created_at', {
       withTimezone: true,

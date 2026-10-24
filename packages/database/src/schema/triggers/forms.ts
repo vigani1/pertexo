@@ -1,3 +1,4 @@
+import type { FormAccess } from '@pertexo/contracts';
 import { sql } from 'drizzle-orm';
 import {
   char,
@@ -20,7 +21,10 @@ export const workflowForms = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     publicId: uuid('public_id').notNull(),
     nodeId: varchar('node_id', { length: 128 }).notNull(),
-    access: varchar({ length: 16 }).notNull().default('members'),
+    access: varchar({ length: 16 })
+      .$type<FormAccess['access']>()
+      .notNull()
+      .default('members'),
     capabilityHash: char('capability_hash', { length: 64 }),
     revision: integer().notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })

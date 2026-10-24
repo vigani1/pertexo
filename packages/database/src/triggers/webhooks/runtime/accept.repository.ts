@@ -1,3 +1,5 @@
+import { webhookTriggerReplayRecords as replays } from '../../../schema/triggers/deliveries.js';
+import { workflowTriggers } from '../../../schema/authoring/workflows.js';
 import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
 import { lockEventCoordination } from '../../coordination/keys.repository.js';
 import { coordinateVerifiedWebhook } from '../coordinate.repository.js';
@@ -11,7 +13,7 @@ import {
 } from '../responses/admission.repository.js';
 
 import { createHash } from 'node:crypto';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 
 import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
@@ -63,17 +65,38 @@ export async function acceptVerifiedWebhookDelivery(
       verification.workspaceId,
       async (transaction) => {
         if (checkReplay) {
-          const replay = await transaction.db.execute(
-            sql`select 1 from app.webhook_trigger_replay_records where workspace_id=${transaction.workspaceId} and endpoint_id=${replayIdentity.endpointId} and dedupe_kind=${dedupeKind} and dedupe_key_hash=${dedupeKeyHash} and expires_at>clock_timestamp()`,
-          );
-          if (replay.rows.length > 0) return { replay: true as const };
+          const replay = await transaction.db
+            .select({ one: sql`1` })
+            .from(replays)
+            .where(
+              and(
+                eq(replays.workspaceId, transaction.workspaceId),
+                eq(replays.endpointId, replayIdentity.endpointId),
+                eq(replays.dedupeKind, dedupeKind),
+                eq(replays.dedupeKeyHash, dedupeKeyHash),
+                sql`${replays.expiresAt}>clock_timestamp()`,
+              ),
+            );
+          if (replay.length > 0) return { replay: true as const };
         }
         const row = (
-          await transaction.db.execute<{ desired_config: WebhookConfig }>(
-            sql`select desired_config from app.workflow_triggers where workspace_id=${transaction.workspaceId} and id=${verification.triggerId} and workflow_version_id=${verification.workflowVersionId}`,
-          )
-        ).rows[0];
-        const config = row?.desired_config;
+          await transaction.db
+            .select({
+              config: sql<WebhookConfig>`${workflowTriggers.desiredConfig}`,
+            })
+            .from(workflowTriggers)
+            .where(
+              and(
+                eq(workflowTriggers.workspaceId, transaction.workspaceId),
+                eq(workflowTriggers.id, verification.triggerId),
+                eq(
+                  workflowTriggers.workflowVersionId,
+                  verification.workflowVersionId,
+                ),
+              ),
+            )
+        )[0];
+        const config = row?.config;
         return {
           replay: false as const,
           policy: config?.coordination,
@@ -199,15 +222,19 @@ async function acceptNewWebhookDelivery(
   const verification = input.verification;
   const { dedupeKind, dedupeKeyHash } = replayIdentity;
   const deliveryId = generatePersistedId();
-  await transaction.db.execute(sql`
-            insert into app.webhook_trigger_replay_records
-              (workspace_id,endpoint_id,dedupe_kind,dedupe_key_hash,
-               request_fingerprint,delivery_id,expires_at)
-            values(${transaction.workspaceId},${verification.endpointId},${dedupeKind},
-              ${dedupeKeyHash},${requestFingerprint},${deliveryId},
-              clock_timestamp()+case when ${dedupeKind}='keyed'
-                then interval '24 hours' else interval '5 minutes' end)
-          `);
+  const retention =
+    dedupeKind === 'keyed'
+      ? sql`interval '24 hours'`
+      : sql`interval '5 minutes'`;
+  await transaction.db.insert(replays).values({
+    workspaceId: transaction.workspaceId,
+    endpointId: verification.endpointId,
+    dedupeKind,
+    dedupeKeyHash,
+    requestFingerprint,
+    deliveryId,
+    expiresAt: sql`clock_timestamp()+${retention}`,
+  });
   const projection = await executableProjection(
     transaction,
     verification.workflowVersionId,
@@ -255,9 +282,15 @@ async function acceptNewWebhookDelivery(
       bodyBytes: input.bodyBytes,
       dedupeKind,
     });
-    await transaction.db.execute(
-      sql`update app.webhook_trigger_replay_records set skip_reason='concurrency_limit' where workspace_id=${transaction.workspaceId} and delivery_id=${deliveryId}`,
-    );
+    await transaction.db
+      .update(replays)
+      .set({ skipReason: 'concurrency_limit' })
+      .where(
+        and(
+          eq(replays.workspaceId, transaction.workspaceId),
+          eq(replays.deliveryId, deliveryId),
+        ),
+      );
     await recordWorkflowTriggerSkip(
       transaction,
       verification.workflowId,
@@ -278,10 +311,15 @@ async function acceptNewWebhookDelivery(
     runId: accepted.runId,
     dedupeKind,
   });
-  await transaction.db.execute(sql`
-            update app.webhook_trigger_replay_records set workflow_run_id=${accepted.runId}
-             where workspace_id=${transaction.workspaceId} and delivery_id=${deliveryId}
-          `);
+  await transaction.db
+    .update(replays)
+    .set({ workflowRunId: accepted.runId })
+    .where(
+      and(
+        eq(replays.workspaceId, transaction.workspaceId),
+        eq(replays.deliveryId, deliveryId),
+      ),
+    );
   const seconds = await openWebhookResponse(
     transaction,
     verification.triggerId,

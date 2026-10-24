@@ -1,3 +1,7 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { triggerSchedules } from '../../schema/triggers/schedules.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 
@@ -18,8 +22,7 @@ import {
   type ScheduleTriggerDatabase,
 } from './management/contract.js';
 import {
-  mapScheduleTrigger,
-  scheduleProjection,
+  readSchedules,
   readScheduleCommandTarget,
   scheduleHealthTransition,
 } from './management/state.queries.js';
@@ -59,16 +62,7 @@ export function createScheduleTriggerDatabase(
             input.actorId,
             workflowId,
           );
-          const result = await client.query<Record<string, unknown>>(
-            `${scheduleProjection}
-              where schedule.workspace_id=$1 and trigger.workflow_id=$2
-                and trigger.kind='schedule'
-                and trigger.workflow_version_id=(select published_version_id
-                  from app.workflows where workspace_id=$1 and id=$2)
-              order by trigger.node_id,trigger.id limit 1000`,
-            [input.workspaceId, workflowId],
-          );
-          return Object.freeze(result.rows.map(mapScheduleTrigger));
+          return readSchedules(client, input.workspaceId, workflowId);
         },
       ),
     setEnabled: async (
@@ -108,7 +102,11 @@ export function createScheduleTriggerDatabase(
         },
       ),
     checkReadiness: async () => {
-      await pool.query('select 1 from app.trigger_schedules limit 0');
+      await drizzle(pool)
+        .select({ one: sql`1` })
+        .from(triggerSchedules)
+        .limit(0)
+        .catch(rethrowQueryFailure);
     },
     close: () => lease.close(),
   });

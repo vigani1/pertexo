@@ -1,4 +1,9 @@
-import { sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import {
+  triggerEventWindows as windows,
+  triggerCoordinatedEvents as events,
+} from '../../schema/event-coordination/records.js';
+import { and, eq, exists, or, sql } from 'drizzle-orm';
 import {
   EVENT_COORDINATION_LIMITS,
   type EventCoordinationPolicy,
@@ -7,12 +12,32 @@ import {
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { CoordinateEventInput } from './contract.js';
-export type EventWindowRow = Readonly<{
-  id: string;
-  window_started_at: Date;
-  used_count: number;
-  expires_at: Date;
-}>;
+function readEventWindow(
+  transaction: WorkspaceTransaction,
+  input: CoordinateEventInput,
+) {
+  return transaction.db
+    .select({
+      id: windows.id,
+      window_started_at: windows.windowStartedAt,
+      used_count: windows.usedCount,
+      expires_at: windows.expiresAt,
+    })
+    .from(windows)
+    .where(
+      and(
+        eq(windows.workspaceId, transaction.workspaceId),
+        eq(windows.workflowId, input.workflowId),
+        eq(windows.nodeId, input.nodeId),
+        eq(windows.policyHash, input.prepared.policyHash),
+        eq(windows.keyHash, sql`${input.prepared.keyHash}`),
+      ),
+    )
+    .for('update');
+}
+export type EventWindowRow = Awaited<
+  ReturnType<typeof readEventWindow>
+>[number];
 export async function eventDatabaseTime(
   transaction: WorkspaceTransaction,
 ): Promise<Date> {
@@ -28,49 +53,65 @@ export async function loadEventWindow(
   input: CoordinateEventInput,
   now: Date,
 ): Promise<EventWindowRow | undefined> {
-  const row = (
-    await transaction.db.execute<
-      Omit<EventWindowRow, 'window_started_at' | 'expires_at'> & {
-        window_started_at: string;
-        expires_at: string;
-      }
-    >(sql`
-    select id,window_started_at,used_count,expires_at from app.trigger_event_windows where workspace_id=${transaction.workspaceId} and workflow_id=${input.workflowId} and node_id=${input.nodeId} and policy_hash=${input.prepared.policyHash} and key_hash=${input.prepared.keyHash} for update
-  `)
-  ).rows[0];
-  const found =
-    row === undefined
-      ? undefined
-      : {
-          ...row,
-          window_started_at: new Date(row.window_started_at),
-          expires_at: new Date(row.expires_at),
-        };
+  const found = (await readEventWindow(transaction, input))[0];
   const pending =
     found === undefined
       ? false
       : (
-          await transaction.db.execute(
-            sql`select 1 from app.trigger_coordinated_events where workspace_id=${transaction.workspaceId} and key_id=${found.id} and status='pending' limit 1`,
-          )
-        ).rows.length > 0;
+          await transaction.db
+            .select({ one: sql`1` })
+            .from(events)
+            .where(
+              and(
+                eq(events.workspaceId, transaction.workspaceId),
+                eq(events.keyId, found.id),
+                eq(events.status, 'pending'),
+              ),
+            )
+            .limit(1)
+        ).length > 0;
   const hasLiveKey = found !== undefined && (found.expires_at > now || pending);
   if (hasLiveKey) return found;
+  const state = alias(windows, 'state');
+  const pendingEvent = transaction.db
+    .select({ one: sql`1` })
+    .from(events)
+    .where(
+      and(
+        eq(events.workspaceId, state.workspaceId),
+        eq(events.keyId, state.id),
+        eq(events.status, 'pending'),
+      ),
+    );
   const count =
     (
-      await transaction.db.execute<{ count: number }>(sql`
-    select count(*)::integer count from app.trigger_event_windows state where workspace_id=${transaction.workspaceId} and (expires_at>${now} or exists(select 1 from app.trigger_coordinated_events event where event.workspace_id=state.workspace_id and event.key_id=state.id and event.status='pending'))
-  `)
-    ).rows[0]?.count ?? 0;
+      await transaction.db
+        .select({ count: sql<number>`count(*)::integer` })
+        .from(state)
+        .where(
+          and(
+            eq(state.workspaceId, transaction.workspaceId),
+            or(sql`${state.expiresAt}>${now}`, exists(pendingEvent)),
+          ),
+        )
+    )[0]?.count ?? 0;
   if (count >= EVENT_COORDINATION_LIMITS.activeKeys) return undefined;
   if (found !== undefined) return found;
   const id = generatePersistedId();
   const policy = input.prepared.policy;
   const seconds =
     policy.mode === 'debounce' ? policy.quietSeconds : policy.windowSeconds;
-  await transaction.db.execute(
-    sql`insert into app.trigger_event_windows(id,workspace_id,workflow_id,node_id,policy_hash,key_hash,window_started_at,used_count,expires_at) values(${id},${transaction.workspaceId},${input.workflowId},${input.nodeId},${input.prepared.policyHash},${input.prepared.keyHash},${now},0,${new Date(now.getTime() + seconds * 1_000)})`,
-  );
+  await transaction.db.insert(windows).values({
+    id,
+    workspaceId: transaction.workspaceId,
+    workflowId: input.workflowId,
+    nodeId: input.nodeId,
+    policyHash: input.prepared.policyHash,
+    keyHash: sql`${input.prepared.keyHash}`,
+    windowStartedAt: now,
+    usedCount: 0,
+    expiresAt: new Date(now.getTime() + seconds * 1_000),
+  });
   return {
     id,
     window_started_at: now,
@@ -86,9 +127,19 @@ export async function chargeEventWindow(
 ): Promise<void> {
   const seconds =
     policy.mode === 'debounce' ? policy.quietSeconds : policy.windowSeconds;
-  await transaction.db.execute(
-    sql`update app.trigger_event_windows set window_started_at=${new Date(window.startedAt)},used_count=${window.used + 1},expires_at=${new Date(window.startedAt + seconds * 1_000)} where workspace_id=${transaction.workspaceId} and id=${keyId}`,
-  );
+  await transaction.db
+    .update(windows)
+    .set({
+      windowStartedAt: new Date(window.startedAt),
+      usedCount: window.used + 1,
+      expiresAt: new Date(window.startedAt + seconds * 1_000),
+    })
+    .where(
+      and(
+        eq(windows.workspaceId, transaction.workspaceId),
+        eq(windows.id, keyId),
+      ),
+    );
 }
 
 /** Serialize first-key creation and workspace budgets before any workflow/state locks. */

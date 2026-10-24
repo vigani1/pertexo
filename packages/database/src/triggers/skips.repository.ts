@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { usageEvents } from '../schema/foundation.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 
@@ -9,8 +9,14 @@ export async function recordWorkflowTriggerSkip(
   triggerType: 'webhook' | 'schedule' | 'form' | 'workflow_error',
 ): Promise<void> {
   const id = generatePersistedId();
-  await transaction.db.execute(sql`
-    insert into app.usage_events(id,workspace_id,category,quantity,resource_type,resource_id,idempotency_key,metadata)
-    values(${id},${transaction.workspaceId},'trigger.skipped',1,'workflow',${workflowId},${`trigger-skip:${id}`},${JSON.stringify({ triggerType, reason: 'concurrency_limit' })}::jsonb)
-  `);
+  await transaction.db.insert(usageEvents).values({
+    id,
+    workspaceId: transaction.workspaceId,
+    category: 'trigger.skipped',
+    quantity: 1,
+    resourceType: 'workflow',
+    resourceId: workflowId,
+    idempotencyKey: `trigger-skip:${id}`,
+    metadata: { triggerType, reason: 'concurrency_limit' },
+  });
 }

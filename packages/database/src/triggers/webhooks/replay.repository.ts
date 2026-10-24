@@ -1,24 +1,20 @@
+import { alias } from 'drizzle-orm/pg-core';
+import { webhookTriggerReplayRecords } from '../../schema/triggers/deliveries.js';
+import { triggerCoordinatedEvents as events } from '../../schema/event-coordination/records.js';
 import type {
   EventCoordinationReceipt,
   EventCoordinationReason,
 } from '@pertexo/workflow-model';
 import { coordinatedReceipt } from '../coordination/events.repository.js';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { WebhookDeliveryReplayMismatchError } from './errors.js';
 
 /** Endpoint-scoped deduplication records for ADR 026 webhook replay. */
-export type WebhookReplayRecord = Readonly<{
-  request_fingerprint: string;
-  workflow_run_id: string | null;
-  active: boolean;
-  skip_reason: 'concurrency_limit' | null;
-  coordination_event_id: string | null;
-  initial_outcome: EventCoordinationReceipt['outcome'] | null;
-  initial_status: EventCoordinationReceipt['status'] | null;
-  coordination_reason: EventCoordinationReason | null;
-}>;
+export type WebhookReplayRecord = NonNullable<
+  Awaited<ReturnType<typeof readLockedReplay>>
+>;
 export type WebhookReplayIdentity = Readonly<{
   endpointId: string;
   dedupeKind: 'fingerprint' | 'keyed';
@@ -36,19 +32,42 @@ export async function lockEndpointDedupeKey(
 export async function readLockedReplay(
   transaction: WorkspaceTransaction,
   identity: WebhookReplayIdentity,
-): Promise<WebhookReplayRecord | undefined> {
-  const result = await transaction.db.execute<WebhookReplayRecord>(sql`
-    select replay.request_fingerprint,replay.workflow_run_id,replay.skip_reason,replay.coordination_event_id,
-           replay.expires_at>clock_timestamp() active,event.initial_outcome,event.initial_status,event.reason coordination_reason
-      from app.webhook_trigger_replay_records replay
-      left join app.trigger_coordinated_events event on event.workspace_id=replay.workspace_id and event.id=replay.coordination_event_id
-     where replay.workspace_id=${transaction.workspaceId}
-       and replay.endpoint_id=${identity.endpointId}
-       and replay.dedupe_kind=${identity.dedupeKind}
-       and replay.dedupe_key_hash=${identity.dedupeKeyHash}
-     for update of replay
-  `);
-  return result.rows[0];
+) {
+  const replay = alias(webhookTriggerReplayRecords, 'replay');
+  const result = await transaction.db
+    .select({
+      request_fingerprint: replay.requestFingerprint,
+      workflow_run_id: replay.workflowRunId,
+      skip_reason: replay.skipReason,
+      coordination_event_id: replay.coordinationEventId,
+      active: sql<boolean>`${replay.expiresAt}>clock_timestamp()`,
+      // The no-run receipt branch is written only with coordination receipt outcomes/statuses.
+      initial_outcome: sql<
+        EventCoordinationReceipt['outcome'] | null
+      >`${events.initialOutcome}`,
+      initial_status: sql<
+        EventCoordinationReceipt['status'] | null
+      >`${events.initialStatus}`,
+      coordination_reason: sql<EventCoordinationReason | null>`${events.reason}`,
+    })
+    .from(replay)
+    .leftJoin(
+      events,
+      and(
+        eq(events.workspaceId, replay.workspaceId),
+        eq(events.id, replay.coordinationEventId),
+      ),
+    )
+    .where(
+      and(
+        eq(replay.workspaceId, transaction.workspaceId),
+        eq(replay.endpointId, identity.endpointId),
+        eq(replay.dedupeKind, identity.dedupeKind),
+        eq(replay.dedupeKeyHash, identity.dedupeKeyHash),
+      ),
+    )
+    .for('update', { of: replay });
+  return result[0];
 }
 export function resolveExactReplay(
   replay: WebhookReplayRecord,
@@ -61,31 +80,41 @@ export function resolveExactReplay(
     throw new WebhookDeliveryReplayMismatchError();
   if (replay.skip_reason === 'concurrency_limit')
     return Object.freeze({ skipped: true, reason: 'concurrency_limit' });
+  const {
+    coordination_event_id,
+    workflow_run_id,
+    initial_outcome,
+    initial_status,
+    coordination_reason,
+  } = replay;
   const coordinatedWithoutRun =
-    replay.coordination_event_id !== null &&
-    replay.workflow_run_id === null &&
-    replay.initial_outcome !== null &&
-    replay.initial_status !== null;
+    coordination_event_id !== null &&
+    workflow_run_id === null &&
+    initial_outcome !== null &&
+    initial_status !== null;
   if (coordinatedWithoutRun)
     return coordinatedReceipt(
-      replay.coordination_event_id,
-      replay.initial_outcome,
-      replay.initial_status,
-      replay.initial_status === 'pending' ? null : replay.coordination_reason,
+      coordination_event_id,
+      initial_outcome,
+      initial_status,
+      initial_status === 'pending' ? null : coordination_reason,
     );
-  if (replay.workflow_run_id === null)
+  if (workflow_run_id === null)
     throw new Error('Webhook replay record is incomplete');
-  return Object.freeze({ runId: replay.workflow_run_id, replayed: true });
+  return Object.freeze({ runId: workflow_run_id, replayed: true });
 }
 export async function deleteExpiredReplay(
   transaction: WorkspaceTransaction,
   identity: WebhookReplayIdentity,
 ): Promise<void> {
-  await transaction.db.execute(sql`
-    delete from app.webhook_trigger_replay_records
-     where workspace_id=${transaction.workspaceId}
-       and endpoint_id=${identity.endpointId}
-       and dedupe_kind=${identity.dedupeKind}
-       and dedupe_key_hash=${identity.dedupeKeyHash}
-  `);
+  await transaction.db
+    .delete(webhookTriggerReplayRecords)
+    .where(
+      and(
+        eq(webhookTriggerReplayRecords.workspaceId, transaction.workspaceId),
+        eq(webhookTriggerReplayRecords.endpointId, identity.endpointId),
+        eq(webhookTriggerReplayRecords.dedupeKind, identity.dedupeKind),
+        eq(webhookTriggerReplayRecords.dedupeKeyHash, identity.dedupeKeyHash),
+      ),
+    );
 }

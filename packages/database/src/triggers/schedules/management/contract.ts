@@ -1,3 +1,4 @@
+import type { readScheduleCommandTarget } from './state.queries.js';
 import { z } from 'zod';
 
 import type { ScheduleTriggerReads } from '../reads.queries.js';
@@ -87,19 +88,9 @@ export type ScheduleCommandIdentity = Readonly<{
   workflowId: string;
 }>;
 
-export type ScheduleCommandTarget = Readonly<{
-  workflow_id: string;
-  status: 'disabled' | 'enabled';
-  recurrence_kind: 'cron' | 'interval';
-  cron_expression: string | null;
-  timezone: string | null;
-  interval_minutes: number | null;
-  misfire_policy: 'catch_up_once' | 'skip';
-  anchor_at: Date;
-  next_fire_at: Date;
-  admission_deferred_until: Date | null;
-  observed_at: Date;
-}>;
+export type ScheduleCommandTarget = Awaited<
+  ReturnType<typeof readScheduleCommandTarget>
+>;
 
 export type ScheduleHealthTransition = Readonly<{
   healthStatus: 'degraded' | 'disabled' | 'healthy';

@@ -1,3 +1,6 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { findCommandResult } from '../../platform/idempotency/repository.js';
 import { formSubmissionIdentity } from './submit.repository.js';
 import type { Pool } from 'pg';
@@ -57,7 +60,9 @@ export async function prepareFormEvent(
         throw error;
       }
       const at = (
-        await client.query<{ now: Date }>('select clock_timestamp() now')
+        await drizzle(client)
+          .execute<{ now: string }>(sql`select clock_timestamp() now`)
+          .catch(rethrowQueryFailure)
       ).rows[0]?.now;
       if (at === undefined) throw new Error('Form admission clock missing');
       return {
@@ -66,7 +71,7 @@ export async function prepareFormEvent(
         input: {
           values,
           submittedBy: input.actorId ?? null,
-          submittedAt: at.toISOString(),
+          submittedAt: new Date(at).toISOString(),
         },
       };
     },

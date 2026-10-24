@@ -1,19 +1,20 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { webhookTriggerEndpoints as endpoints } from '../../../schema/triggers/endpoints.js';
+import { workflowTriggers } from '../../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { WebhookAuthentication } from '@pertexo/contracts';
 
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
-import { z } from 'zod';
 import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
 
 import { WebhookIngressRateLimitExceededError } from '../errors.js';
 import { withWorkspaceReadTransaction } from '../../../tenant-access/transactions.js';
-import {
-  uuidSchema,
-  type WebhookConfig,
-  type WebhookTriggerDatabase,
+import type {
+  WebhookConfig,
+  WebhookTriggerDatabase,
+  SealedWebhookTriggerSecret,
 } from './contract.js';
-
-import { mapSecret } from './state.queries.js';
 
 export async function resolveWebhookVerification(
   pool: Pool,
@@ -22,51 +23,76 @@ export async function resolveWebhookVerification(
   >[0],
 ): ReturnType<WebhookTriggerDatabase['resolveVerification']> {
   const endpointKeyHash = digestSchema.parse(endpointKeyHashInput);
-  const result = await pool.query<
-    Record<string, unknown> & { authentication: WebhookAuthentication }
-  >('select * from app.resolve_public_webhook_endpoint($1::char(64))', [
-    endpointKeyHash,
-  ]);
-  const row = result.rows[0];
+  const result = await drizzle(pool)
+    .select({
+      endpointId: sql<string>`resolution.endpoint_id`,
+      workspaceId: sql<string>`resolution.workspace_id`,
+      triggerId: sql<string>`resolution.trigger_id`,
+      workflowId: sql<string>`resolution.workflow_id`,
+      workflowVersionId: sql<string>`resolution.workflow_version_id`,
+      nodeId: sql<string>`resolution.node_id`,
+      databaseTime: sql<Date>`resolution.database_time`.mapWith(
+        workflowTriggers.createdAt,
+      ),
+      authentication: sql<WebhookAuthentication>`resolution.authentication`,
+      currentSecret: sql<SealedWebhookTriggerSecret>`jsonb_build_object('id',resolution.current_secret_version_id,
+      'kmsKeyReference',resolution.current_kms_key_reference,'encryptedDataKey',resolution.current_encrypted_data_key,
+      'ciphertext',resolution.current_ciphertext,'nonce',resolution.current_nonce,'authTag',resolution.current_auth_tag)`,
+      previousSecret: sql<SealedWebhookTriggerSecret | null>`case when resolution.previous_secret_version_id is null then null
+      else jsonb_build_object('id',resolution.previous_secret_version_id,'kmsKeyReference',resolution.previous_kms_key_reference,
+        'encryptedDataKey',resolution.previous_encrypted_data_key,'ciphertext',resolution.previous_ciphertext,
+        'nonce',resolution.previous_nonce,'authTag',resolution.previous_auth_tag) end`,
+      previousSecretValidUntil:
+        sql<Date>`resolution.previous_secret_valid_until`.mapWith(
+          endpoints.previousSecretValidUntil,
+        ),
+    })
+    .from(
+      sql`app.resolve_public_webhook_endpoint(${endpointKeyHash}::char(64)) as resolution`,
+    )
+    .catch(rethrowQueryFailure);
+  const row = result[0];
   if (row === undefined) return null;
-  const currentSecret = mapSecret(row, 'current');
-  if (currentSecret === undefined) return null;
-  const previousSecret = mapSecret(row, 'previous');
-  const workspaceId = uuidSchema.parse(row.workspace_id);
-  const triggerId = uuidSchema.parse(row.trigger_id);
-  const workflowVersionId = uuidSchema.parse(row.workflow_version_id);
+  const { workspaceId, triggerId, workflowVersionId } = row;
   const config = await withWorkspaceReadTransaction(
     pool,
     workspaceId,
     async (transaction) => {
-      const result = await transaction.db.execute<{
-        desired_config: WebhookConfig;
-      }>(
-        sql`select desired_config from app.workflow_triggers where workspace_id=${transaction.workspaceId} and id=${triggerId} and workflow_version_id=${workflowVersionId}`,
-      );
-      return result.rows[0]?.desired_config;
+      const result = await transaction.db
+        .select({
+          desiredConfig: sql<WebhookConfig>`${workflowTriggers.desiredConfig}`,
+        })
+        .from(workflowTriggers)
+        .where(
+          and(
+            eq(workflowTriggers.workspaceId, workspaceId),
+            eq(workflowTriggers.id, triggerId),
+            eq(workflowTriggers.workflowVersionId, workflowVersionId),
+          ),
+        );
+      return result[0]?.desiredConfig;
     },
   );
   return Object.freeze({
-    endpointId: uuidSchema.parse(row.endpoint_id),
+    endpointId: row.endpointId,
     endpointKeyHash,
-    workspaceId: uuidSchema.parse(row.workspace_id),
-    triggerId: uuidSchema.parse(row.trigger_id),
-    workflowId: uuidSchema.parse(row.workflow_id),
-    workflowVersionId: uuidSchema.parse(row.workflow_version_id),
-    nodeId: z.string().parse(row.node_id),
-    databaseTime: z.date().parse(row.database_time),
+    workspaceId,
+    triggerId,
+    workflowId: row.workflowId,
+    workflowVersionId,
+    nodeId: row.nodeId,
+    databaseTime: row.databaseTime,
     authentication: row.authentication,
     ...(config?.runInput === undefined
       ? {}
       : { runInputMode: config.runInput }),
-    currentSecret,
-    ...(previousSecret === undefined
+    currentSecret: Object.freeze(row.currentSecret),
+    ...(row.previousSecret === null
       ? {}
       : {
           previousSecret: Object.freeze({
-            ...previousSecret,
-            validUntil: z.date().parse(row.previous_secret_valid_until),
+            ...row.previousSecret,
+            validUntil: row.previousSecretValidUntil,
           }),
         }),
   });
@@ -78,15 +104,16 @@ export async function consumeWebhookIngressLimit(
     WebhookTriggerDatabase['consumeIngressLimit']
   >[0],
 ): ReturnType<WebhookTriggerDatabase['consumeIngressLimit']> {
-  const result = await pool.query<{
-    allowed: boolean;
-    retry_after_seconds: number;
-  }>('select * from app.consume_webhook_ingress_limit($1::char(64))', [
-    digestSchema.parse(endpointKeyHashInput),
-  ]);
+  const result = await drizzle(pool)
+    .execute<{ allowed: boolean; retry_after_seconds: number }>(
+      sql`select * from app.consume_webhook_ingress_limit(${digestSchema.parse(endpointKeyHashInput)}::char(64))`,
+    )
+    .catch(rethrowQueryFailure);
   const decision = result.rows[0];
-  if (!(decision?.allowed ?? false))
+  if (decision === undefined)
+    throw new Error('Webhook ingress decision is unavailable');
+  if (!decision.allowed)
     throw new WebhookIngressRateLimitExceededError(
-      z.number().int().min(1).max(60).parse(decision?.retry_after_seconds),
+      decision.retry_after_seconds,
     );
 }

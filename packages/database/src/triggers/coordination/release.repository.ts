@@ -1,10 +1,20 @@
+import { triggerCoordinatedEvents as events } from '../../schema/event-coordination/records.js';
+import {
+  findPendingEvent,
+  readPendingWorkflow,
+  lockPendingEvent,
+  readOlderPendingEvent,
+  readPendingEventWindow,
+  readPendingEventVersion,
+  readPendingEndpoint,
+  type PendingEvent,
+} from './pending.queries.js';
 import { openWebhookResponse } from '../webhooks/responses/admission.repository.js';
 import { createHash } from 'node:crypto';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   decideEventCoordination,
   EVENT_COORDINATION_LIMITS,
-  type EventCoordinationPolicy,
   type EventCoordinationReason,
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
@@ -15,7 +25,6 @@ import {
 } from '../../runs/commands/acceptance.js';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
-import { parsePublishedWorkflowRow } from '../../runs/queries/execution/published.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { recordWorkflowTriggerSkip } from '../skips.repository.js';
 import { finishCoordinatedEvent } from './events.repository.js';
@@ -25,21 +34,6 @@ import {
   lockEventCoordination,
 } from './keys.repository.js';
 
-type PendingEvent = Readonly<{
-  id: string;
-  workflow_id: string;
-  node_id: string;
-  source: 'webhook' | 'form';
-  workflow_version_id: string;
-  endpoint_id: string | null;
-  key_id: string;
-  policy: EventCoordinationPolicy;
-  input_ref: unknown;
-  started_by: string | null;
-  due_at: Date;
-  deadline_at: Date;
-  capacity_wait_started_at: Date | null;
-}>;
 export async function releaseCoordinatedEvent(
   transaction: WorkspaceTransaction,
   id: string,
@@ -71,24 +65,15 @@ export async function releaseCoordinatedEvent(
   )
     return refuseCoordinatedEvent(transaction, id, 'queue_full');
   if (event.due_at > now) return 'pending';
-  const older = await transaction.db.execute(
-    sql`select 1 from app.trigger_coordinated_events where workspace_id=${transaction.workspaceId} and key_id=${event.key_id} and status='pending' and (received_at,id)<(select received_at,id from app.trigger_coordinated_events where workspace_id=${transaction.workspaceId} and id=${id}) limit 1`,
-  );
-  if (older.rows.length > 0) return 'pending';
-  const key = (
-    await transaction.db.execute<{
-      window_started_at: string;
-      used_count: number;
-    }>(
-      sql`select window_started_at,used_count from app.trigger_event_windows where workspace_id=${transaction.workspaceId} and id=${event.key_id} for update`,
-    )
-  ).rows[0];
+  const older = await readOlderPendingEvent(transaction, id, event.key_id);
+  if (older.length > 0) return 'pending';
+  const key = (await readPendingEventWindow(transaction, event.key_id))[0];
   if (key === undefined) throw new Error('Pending event window is unavailable');
   const decision = decideEventCoordination({
     policy: event.policy,
     now: now.getTime(),
     window: {
-      startedAt: new Date(key.window_started_at).getTime(),
+      startedAt: key.window_started_at.getTime(),
       used: key.used_count,
     },
     hasPending: false,
@@ -96,9 +81,23 @@ export async function releaseCoordinatedEvent(
   if (event.policy.mode === 'throttle' && decision.action !== 'start') {
     if (decision.dueAt === undefined)
       return refuseCoordinatedEvent(transaction, id, 'throttle_limit');
-    await transaction.db.execute(
-      sql`update app.trigger_coordinated_events set due_at=${new Date(Math.min(decision.dueAt, event.deadline_at.getTime(), event.capacity_wait_started_at === null ? Infinity : event.capacity_wait_started_at.getTime() + EVENT_COORDINATION_LIMITS.capacityWaitMillis))} where workspace_id=${transaction.workspaceId} and id=${id}`,
-    );
+    await transaction.db
+      .update(events)
+      .set({
+        dueAt: new Date(
+          Math.min(
+            decision.dueAt,
+            event.deadline_at.getTime(),
+            event.capacity_wait_started_at === null
+              ? Infinity
+              : event.capacity_wait_started_at.getTime() +
+                  EVENT_COORDINATION_LIMITS.capacityWaitMillis,
+          ),
+        ),
+      })
+      .where(
+        and(eq(events.workspaceId, transaction.workspaceId), eq(events.id, id)),
+      );
     return 'pending';
   }
   return startPendingCoordinatedRun(transaction, id, {
@@ -121,46 +120,13 @@ async function lockCoordinatedEvent(
     )
   ).rows[0];
   await lockEventCoordination(transaction.workspaceId, transaction.db);
-  const identity = (
-    await transaction.db.execute<{ workflow_id: string }>(
-      sql`select workflow_id from app.trigger_coordinated_events where workspace_id=${transaction.workspaceId} and id=${id} and status='pending'`,
-    )
-  ).rows[0];
+  const identity = (await findPendingEvent(transaction, id))[0];
   if (identity === undefined) return undefined;
   const workflow = (
-    await transaction.db.execute<{
-      published_version_id: string | null;
-      lifecycle_status: string;
-      trigger_pause_state: string;
-    }>(
-      sql`select published_version_id,lifecycle_status,trigger_pause_state from app.workflows where workspace_id=${transaction.workspaceId} and id=${identity.workflow_id} for share`,
-    )
-  ).rows[0];
-  const row = (
-    await transaction.db.execute<
-      Omit<
-        PendingEvent,
-        'due_at' | 'deadline_at' | 'capacity_wait_started_at'
-      > & {
-        due_at: string;
-        deadline_at: string;
-        capacity_wait_started_at: string | null;
-      }
-    >(
-      sql`select * from app.trigger_coordinated_events where workspace_id=${transaction.workspaceId} and id=${id} and status='pending' for update skip locked`,
-    )
-  ).rows[0];
-  if (row === undefined) return undefined;
-  const event: PendingEvent = {
-    ...row,
-    due_at: new Date(row.due_at),
-    deadline_at: new Date(row.deadline_at),
-    capacity_wait_started_at:
-      row.capacity_wait_started_at === null
-        ? null
-        : new Date(row.capacity_wait_started_at),
-  };
-
+    await readPendingWorkflow(transaction, identity.workflow_id)
+  )[0];
+  const event = (await lockPendingEvent(transaction, id))[0];
+  if (event === undefined) return undefined;
   return { workspace, workflow, event };
 }
 async function refuseCoordinatedEvent(
@@ -192,13 +158,11 @@ async function startPendingCoordinatedRun(
   }>,
 ): Promise<'started' | 'pending' | 'refused'> {
   const version = (
-    await transaction.db.execute(
-      sql`select id,workspace_id,workflow_id,version_number,checksum,executable_json from app.workflow_versions where workspace_id=${transaction.workspaceId} and id=${event.workflow_version_id}`,
-    )
-  ).rows[0];
-  const projection = parsePublishedWorkflowRow(version);
-  if (projection === null)
+    await readPendingEventVersion(transaction, event.workflow_version_id)
+  )[0];
+  if (version === undefined)
     return refuseCoordinatedEvent(transaction, id, 'publication_changed');
+  const projection = Object.freeze(version);
   const initial = checkpointFactory(projection);
   const stored = parseStoredExecutionValue(event.input_ref);
   if (stored.kind !== 'inline')
@@ -266,9 +230,23 @@ async function startPendingCoordinatedRun(
     if (error instanceof WorkspaceRunAdmissionDeniedError)
       return refuseCoordinatedEvent(transaction, id, 'workflow_unavailable');
     const waitStartedAt = event.capacity_wait_started_at ?? now;
-    await transaction.db.execute(
-      sql`update app.trigger_coordinated_events set reason='queue_full',due_at=${new Date(Math.min(now.getTime() + Math.min(5, error.retryAfterSeconds) * 1_000, event.deadline_at.getTime(), waitStartedAt.getTime() + EVENT_COORDINATION_LIMITS.capacityWaitMillis))},capacity_wait_started_at=${waitStartedAt} where workspace_id=${transaction.workspaceId} and id=${id}`,
-    );
+    await transaction.db
+      .update(events)
+      .set({
+        reason: 'queue_full',
+        dueAt: new Date(
+          Math.min(
+            now.getTime() + Math.min(5, error.retryAfterSeconds) * 1_000,
+            event.deadline_at.getTime(),
+            waitStartedAt.getTime() +
+              EVENT_COORDINATION_LIMITS.capacityWaitMillis,
+          ),
+        ),
+        capacityWaitStartedAt: waitStartedAt,
+      })
+      .where(
+        and(eq(events.workspaceId, transaction.workspaceId), eq(events.id, id)),
+      );
     return 'pending';
   }
 }
@@ -279,11 +257,9 @@ async function checkPendingEventEndpoint(
 ) {
   let webhookTriggerId: string | undefined;
   if (event.endpoint_id !== null) {
-    const eligible = await transaction.db.execute<{ trigger_id: string }>(
-      sql`select trigger.id trigger_id from app.webhook_trigger_endpoints endpoint join app.workflow_triggers trigger on trigger.workspace_id=endpoint.workspace_id and trigger.id=endpoint.trigger_id where endpoint.workspace_id=${transaction.workspaceId} and endpoint.id=${event.endpoint_id} and endpoint.status='active' and trigger.status='active' and trigger.workflow_version_id=${event.workflow_version_id} for share of endpoint,trigger`,
-    );
-    if (eligible.rows.length !== 1) return { kind: 'refused' } as const;
-    webhookTriggerId = eligible.rows[0]?.trigger_id;
+    const eligible = await readPendingEndpoint(transaction, event);
+    if (eligible.length !== 1) return { kind: 'refused' } as const;
+    webhookTriggerId = eligible[0]?.trigger_id;
   }
 
   return { kind: 'eligible', webhookTriggerId } as const;

@@ -229,7 +229,7 @@ export function registerAdmitsMemberFormOnceTrusted(): void {
     const initial = await store.setAccess(firstCommand);
     expect(initial).toEqual({
       access: 'public',
-      publicId: expect.any(String),
+      publicId: expect.any(String) as unknown,
       revision: 1,
     });
     const disabled = await store.setAccess({

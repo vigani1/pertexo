@@ -1,3 +1,6 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { webhookTriggerSecretVersions as secrets } from '../../../schema/triggers/endpoints.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 
 import type { PoolClient } from 'pg';
@@ -65,22 +68,20 @@ export async function insertSecret(
   secretInput: SealedWebhookTriggerSecret,
 ): Promise<z.output<typeof sealedSchema>> {
   const secret = sealedSchema.parse(secretInput);
-  await client.query(
-    `insert into app.webhook_trigger_secret_versions
-      (id,workspace_id,trigger_id,purpose,kms_key_reference,
-       encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
-     values($1,$2,$3,'webhook_hmac_sha256',$4,$5,$6,$7,$8,$9)`,
-    [
-      secret.id,
-      input.workspaceId,
-      input.triggerId,
-      secret.kmsKeyReference,
-      secret.encryptedDataKey,
-      secret.ciphertext,
-      secret.nonce,
-      secret.authTag,
-      input.actorId,
-    ],
-  );
+  await drizzle(client)
+    .insert(secrets)
+    .values({
+      id: secret.id,
+      workspaceId: input.workspaceId,
+      triggerId: input.triggerId,
+      purpose: 'webhook_hmac_sha256',
+      kmsKeyReference: secret.kmsKeyReference,
+      encryptedDataKey: secret.encryptedDataKey,
+      ciphertext: secret.ciphertext,
+      nonce: secret.nonce,
+      authTag: secret.authTag,
+      createdBy: input.actorId,
+    })
+    .catch(rethrowQueryFailure);
   return secret;
 }

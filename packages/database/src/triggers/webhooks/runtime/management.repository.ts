@@ -1,4 +1,8 @@
-import type { WebhookAuthentication } from '@pertexo/contracts';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { webhookTriggerEndpoints as endpoints } from '../../../schema/triggers/endpoints.js';
+import { workflowTriggers } from '../../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 
 import { createHash } from 'node:crypto';
 
@@ -34,14 +38,20 @@ export function configureWebhookAuthentication(
         replayed: true,
         rotated: false,
       };
-    const result = await client.query<{
-      authentication: WebhookAuthentication;
-    }>(
-      `select authentication from app.webhook_trigger_endpoints
-            where workspace_id=$1 and trigger_id=$2 and status='active' for update`,
-      [input.workspaceId, input.triggerId],
-    );
-    const current = result.rows[0]?.authentication;
+    const db = drizzle(client);
+    const result = await db
+      .select({ authentication: endpoints.authentication })
+      .from(endpoints)
+      .where(
+        and(
+          eq(endpoints.workspaceId, input.workspaceId),
+          eq(endpoints.triggerId, input.triggerId),
+          eq(endpoints.status, 'active'),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
+    const current = result[0]?.authentication;
     if (current === undefined) throw new WebhookTriggerNotFoundError();
     const next = input.authentication;
     const rotated =
@@ -51,25 +61,34 @@ export function configureWebhookAuthentication(
         current.headerName !== next.headerName);
     if (rotated) {
       const secret = await insertSecret(client, input, input.secret);
-      await client.query(
-        `update app.webhook_trigger_endpoints
-            set authentication=$3,endpoint_key_hash=$4,current_secret_version_id=$5,
-                previous_secret_version_id=null,previous_secret_valid_until=null,updated_at=clock_timestamp()
-            where workspace_id=$1 and trigger_id=$2`,
-        [
-          input.workspaceId,
-          input.triggerId,
-          JSON.stringify(next),
-          input.endpointKeyHash,
-          secret.id,
-        ],
-      );
+      await db
+        .update(endpoints)
+        .set({
+          authentication: next,
+          endpointKeyHash: input.endpointKeyHash,
+          currentSecretVersionId: secret.id,
+          previousSecretVersionId: null,
+          previousSecretValidUntil: null,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(endpoints.workspaceId, input.workspaceId),
+            eq(endpoints.triggerId, input.triggerId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
     } else {
-      await client.query(
-        `update app.webhook_trigger_endpoints set authentication=$3,updated_at=clock_timestamp()
-            where workspace_id=$1 and trigger_id=$2`,
-        [input.workspaceId, input.triggerId, JSON.stringify(next)],
-      );
+      await db
+        .update(endpoints)
+        .set({ authentication: next, updatedAt: sql`clock_timestamp()` })
+        .where(
+          and(
+            eq(endpoints.workspaceId, input.workspaceId),
+            eq(endpoints.triggerId, input.triggerId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
     }
     await completeWebhookCommand(client, input, operation);
     return {
@@ -88,15 +107,23 @@ export function provisionWebhook(
     const operation = 'webhook.trigger.provision';
     if (await claimWebhookCommand(client, input, operation))
       return oneHealth(client, input.workspaceId, input.triggerId);
-    const trigger = await client.query<{
-      workflow_id: string;
-      status: string;
-    }>(
-      `select workflow_id,status from app.workflow_triggers where workspace_id=$1 and id=$2
-             and kind='webhook' for update`,
-      [input.workspaceId, uuidSchema.parse(input.triggerId)],
-    );
-    const row = trigger.rows[0];
+    const db = drizzle(client);
+    const trigger = await db
+      .select({
+        workflow_id: workflowTriggers.workflowId,
+        status: workflowTriggers.status,
+      })
+      .from(workflowTriggers)
+      .where(
+        and(
+          eq(workflowTriggers.workspaceId, input.workspaceId),
+          eq(workflowTriggers.id, uuidSchema.parse(input.triggerId)),
+          eq(workflowTriggers.kind, 'webhook'),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
+    const row = trigger[0];
     if (row === undefined) throw new WebhookTriggerNotFoundError();
     const status = row.status;
     if (status === 'desired' || status === 'pending')
@@ -106,24 +133,31 @@ export function provisionWebhook(
     if (status !== 'configuration_required')
       throw new WebhookTriggerStateError('unavailable');
     const secret = await insertSecret(client, input, input.secret);
-    await client.query(
-      `insert into app.webhook_trigger_endpoints
-            (id,workspace_id,trigger_id,endpoint_key_hash,current_secret_version_id)
-           values($1,$2,$3,$4,$5)`,
-      [
-        uuidSchema.parse(input.endpointId),
-        input.workspaceId,
-        input.triggerId,
-        digestSchema.parse(input.endpointKeyHash),
-        secret.id,
-      ],
-    );
-    await client.query(
-      `update app.workflow_triggers set status='active',health_status='healthy',
-             reconciled_at=clock_timestamp(),updated_at=clock_timestamp()
-           where workspace_id=$1 and id=$2`,
-      [input.workspaceId, input.triggerId],
-    );
+    await db
+      .insert(endpoints)
+      .values({
+        id: uuidSchema.parse(input.endpointId),
+        workspaceId: input.workspaceId,
+        triggerId: input.triggerId,
+        endpointKeyHash: digestSchema.parse(input.endpointKeyHash),
+        currentSecretVersionId: secret.id,
+      })
+      .catch(rethrowQueryFailure);
+    await db
+      .update(workflowTriggers)
+      .set({
+        status: 'active',
+        healthStatus: 'healthy',
+        reconciledAt: sql`clock_timestamp()`,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(workflowTriggers.workspaceId, input.workspaceId),
+          eq(workflowTriggers.id, input.triggerId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     await refreshWorkflowActivation(client, input.workspaceId, row.workflow_id);
     await completeWebhookCommand(client, input, operation);
     return oneHealth(client, input.workspaceId, input.triggerId);
@@ -138,16 +172,22 @@ export function rotateWebhookEndpoint(
     const operation = 'webhook.trigger.endpoint.rotate';
     if (await claimWebhookCommand(client, input, operation))
       return oneHealth(client, input.workspaceId, input.triggerId);
-    const result = await client.query(
-      `update app.webhook_trigger_endpoints set endpoint_key_hash=$3,updated_at=clock_timestamp()
-            where workspace_id=$1 and trigger_id=$2 and status='active'`,
-      [
-        input.workspaceId,
-        input.triggerId,
-        digestSchema.parse(input.endpointKeyHash),
-      ],
-    );
-    if (result.rowCount !== 1) throw new WebhookTriggerNotFoundError();
+    const result = await drizzle(client)
+      .update(endpoints)
+      .set({
+        endpointKeyHash: digestSchema.parse(input.endpointKeyHash),
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(endpoints.workspaceId, input.workspaceId),
+          eq(endpoints.triggerId, input.triggerId),
+          eq(endpoints.status, 'active'),
+        ),
+      )
+      .returning({ id: endpoints.id })
+      .catch(rethrowQueryFailure);
+    if (result.length !== 1) throw new WebhookTriggerNotFoundError();
     await completeWebhookCommand(client, input, operation);
     return oneHealth(client, input.workspaceId, input.triggerId);
   });
@@ -167,31 +207,46 @@ export function rotateWebhookSecret(
     };
     if (await claimWebhookCommand(client, keyedCommand, operation))
       return oneHealth(client, input.workspaceId, input.triggerId);
-    const endpoint = await client.query<{
-      current_secret_version_id: string;
-      authentication: WebhookAuthentication;
-    }>(
-      `select current_secret_version_id,authentication from app.webhook_trigger_endpoints
-             where workspace_id=$1 and trigger_id=$2 and endpoint_key_hash=$3
-               and status='active' for update`,
-      [
-        input.workspaceId,
-        input.triggerId,
-        digestSchema.parse(input.endpointKeyHash),
-      ],
-    );
-    const row = endpoint.rows[0];
+    const db = drizzle(client);
+    const endpoint = await db
+      .select({
+        current_secret_version_id: endpoints.currentSecretVersionId,
+        authentication: endpoints.authentication,
+      })
+      .from(endpoints)
+      .where(
+        and(
+          eq(endpoints.workspaceId, input.workspaceId),
+          eq(endpoints.triggerId, input.triggerId),
+          eq(
+            endpoints.endpointKeyHash,
+            digestSchema.parse(input.endpointKeyHash),
+          ),
+          eq(endpoints.status, 'active'),
+        ),
+      )
+      .for('update')
+      .catch(rethrowQueryFailure);
+    const row = endpoint[0];
     if (row === undefined || row.authentication.mode === 'secret_url')
       throw new WebhookTriggerNotFoundError();
     const current = row.current_secret_version_id;
     const secret = await insertSecret(client, input, input.secret);
-    await client.query(
-      `update app.webhook_trigger_endpoints set current_secret_version_id=$3,
-             previous_secret_version_id=$4,
-             previous_secret_valid_until=clock_timestamp()+interval '5 minutes',
-             updated_at=clock_timestamp() where workspace_id=$1 and trigger_id=$2`,
-      [input.workspaceId, input.triggerId, secret.id, current],
-    );
+    await db
+      .update(endpoints)
+      .set({
+        currentSecretVersionId: secret.id,
+        previousSecretVersionId: current,
+        previousSecretValidUntil: sql`clock_timestamp()+interval '5 minutes'`,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(endpoints.workspaceId, input.workspaceId),
+          eq(endpoints.triggerId, input.triggerId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     await completeWebhookCommand(client, keyedCommand, operation);
     return oneHealth(client, input.workspaceId, input.triggerId);
   });

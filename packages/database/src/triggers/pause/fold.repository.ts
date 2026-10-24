@@ -1,3 +1,6 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -31,15 +34,6 @@ export interface WorkflowTriggerPauseFoldStore {
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
 const limitSchema = z.number().int().min(1).max(1_000);
-const decisionRowSchema = z
-  .object({
-    workspace_id: z.uuid(),
-    workflow_id: z.uuid(),
-    consecutive_failures: z.number().int().positive(),
-    paused: z.boolean(),
-  })
-  .strict();
-
 /** ADR 056: the worker's streak fold, run across workspaces. */
 export function createWorkflowTriggerPauseFoldStore(
   config: DatabaseConfig,
@@ -57,22 +51,14 @@ export function createWorkflowTriggerPauseFoldStore(
       return withPlatformTransaction(
         pool,
         async (client) => {
-          // The function's second argument is the former observe-only switch.
-          const result = await client.query(
-            `select workspace_id,workflow_id,consecutive_failures,paused
-               from app.fold_workflow_trigger_outcomes($1)`,
-            [bounded],
-          );
-          return Object.freeze(
-            result.rows.map((value) => {
-              const row = decisionRowSchema.parse(value);
-              return Object.freeze({
-                workspaceId: row.workspace_id,
-                workflowId: row.workflow_id,
-                consecutiveFailures: row.consecutive_failures,
-              });
-            }),
-          );
+          const result = await drizzle(client)
+            .execute<WorkflowTriggerPauseDecision>(
+              sql`
+            select workspace_id "workspaceId",workflow_id "workflowId",consecutive_failures "consecutiveFailures"
+            from app.fold_workflow_trigger_outcomes(${bounded})`,
+            )
+            .catch(rethrowQueryFailure);
+          return Object.freeze(result.rows.map((row) => Object.freeze(row)));
         },
         {
           ...(signal === undefined ? {} : { signal }),

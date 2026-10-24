@@ -1,3 +1,6 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { workflowVersions } from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { FormSubmissionResponse } from '@pertexo/contracts';
 import { coordinateEvent } from '../coordination/accept.repository.js';
 import type { PreparedFormEvent } from './prepare.repository.js';
@@ -69,13 +72,20 @@ export async function submitForm(
     let acceptedForm = form;
     // The confirmed request hash binds the original version after republication.
     if (version.id !== input.versionId) {
-      const original = await client.query<{ graph_json: unknown }>(
-        'select graph_json from app.workflow_versions where workspace_id=$1 and workflow_id=$2 and id=$3',
-        [input.workspaceId, input.workflowId, input.versionId],
-      );
-      const row = original.rows[0];
+      const original = await transaction.db
+        .select({ graphJson: workflowVersions.graphJson })
+        .from(workflowVersions)
+        .where(
+          and(
+            eq(workflowVersions.workspaceId, input.workspaceId),
+            eq(workflowVersions.workflowId, input.workflowId),
+            eq(workflowVersions.id, input.versionId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      const row = original[0];
       if (row === undefined) throw new FormUnavailableError();
-      acceptedForm = readFormDefinition(row.graph_json).form;
+      acceptedForm = readFormDefinition(row.graphJson).form;
     }
     const receipt = submissionReceipt(
       acceptedForm,
@@ -124,13 +134,19 @@ export async function submitForm(
     return receipt;
   }
   let accepted;
-  await client.query('savepoint form_run_admission');
+  await transaction.db
+    .execute(sql`savepoint form_run_admission`)
+    .catch(rethrowQueryFailure);
   try {
     accepted = await startRun();
   } catch (error) {
     if (!(error instanceof WorkflowAlreadyRunningError)) throw error;
-    await client.query('rollback to savepoint form_run_admission');
-    await client.query('release savepoint form_run_admission');
+    await transaction.db
+      .execute(sql`rollback to savepoint form_run_admission`)
+      .catch(rethrowQueryFailure);
+    await transaction.db
+      .execute(sql`release savepoint form_run_admission`)
+      .catch(rethrowQueryFailure);
     await recordWorkflowTriggerSkip(transaction, input.workflowId, 'form');
     const receipt = {
       accepted: false as const,
@@ -141,7 +157,9 @@ export async function submitForm(
     await completeCommand(client, command, receipt);
     return receipt;
   }
-  await client.query('release savepoint form_run_admission');
+  await transaction.db
+    .execute(sql`release savepoint form_run_admission`)
+    .catch(rethrowQueryFailure);
   const receipt = submissionReceipt(
     form,
     { runId: accepted.runId, replayed: accepted.duplicate },

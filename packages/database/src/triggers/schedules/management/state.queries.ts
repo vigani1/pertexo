@@ -1,3 +1,12 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workflowTriggers,
+  workflows,
+} from '../../../schema/authoring/workflows.js';
+import { triggerSchedules } from '../../../schema/triggers/schedules.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -16,32 +25,46 @@ import {
   type ScheduleHealthTransition,
 } from './contract.js';
 
-export function mapScheduleTrigger(
-  row: Record<string, unknown>,
-): ScheduleTriggerRecord {
-  const kind = z.enum(['cron', 'interval']).parse(row.recurrence_kind);
-  return scheduleTriggerSchema.parse({
-    id: row.id,
-    workflowId: row.workflow_id,
-    workflowVersionId: row.workflow_version_id,
-    nodeId: row.node_id,
-    kind: 'schedule',
-    status: row.status,
-    healthStatus: row.health_status,
-    lastErrorCode: row.last_error_code,
-    reconciledAt: row.reconciled_at,
-    recurrence: parsePersistedScheduleRecurrence({
-      recurrence_kind: kind,
-      cron_expression: z.string().nullable().parse(row.cron_expression),
-      timezone: z.string().nullable().parse(row.timezone),
-      interval_minutes: z.number().int().nullable().parse(row.interval_minutes),
-    }),
-    misfirePolicy: row.misfire_policy,
-    nextFireAt: row.next_fire_at,
-    lastFireAt: row.last_fire_at,
-  });
+function scheduleQuery(client: PoolClient) {
+  return drizzle(client)
+    .select({
+      id: workflowTriggers.id,
+      workflowId: workflowTriggers.workflowId,
+      workflowVersionId: workflowTriggers.workflowVersionId,
+      nodeId: workflowTriggers.nodeId,
+      kind: sql<'schedule'>`'schedule'`,
+      status: workflowTriggers.status,
+      healthStatus: triggerSchedules.healthStatus,
+      lastErrorCode: triggerSchedules.lastErrorCode,
+      reconciledAt: workflowTriggers.reconciledAt,
+      recurrenceFields: {
+        recurrence_kind: triggerSchedules.recurrenceKind,
+        cron_expression: triggerSchedules.cronExpression,
+        timezone: triggerSchedules.timezone,
+        interval_minutes: triggerSchedules.intervalMinutes,
+      },
+      misfirePolicy: triggerSchedules.misfirePolicy,
+      nextFireAt: triggerSchedules.nextFireAt,
+      lastFireAt: triggerSchedules.lastFireAt,
+    })
+    .from(triggerSchedules)
+    .innerJoin(
+      workflowTriggers,
+      and(
+        eq(workflowTriggers.workspaceId, triggerSchedules.workspaceId),
+        eq(workflowTriggers.id, triggerSchedules.triggerId),
+      ),
+    );
 }
-
+function scheduleRecord({
+  recurrenceFields,
+  ...row
+}: Awaited<ReturnType<typeof scheduleQuery>>[number]): ScheduleTriggerRecord {
+  return {
+    ...row,
+    recurrence: parsePersistedScheduleRecurrence(recurrenceFields),
+  };
+}
 export function parseStoredScheduleTrigger(
   value: unknown,
 ): ScheduleTriggerRecord {
@@ -60,14 +83,31 @@ export function parseStoredScheduleTrigger(
   });
 }
 
-export const scheduleProjection = `select trigger.id,trigger.workflow_id,trigger.workflow_version_id,
-       trigger.node_id,trigger.status,schedule.health_status,schedule.last_error_code,
-       trigger.reconciled_at,schedule.recurrence_kind,schedule.cron_expression,
-       schedule.timezone,schedule.interval_minutes,schedule.misfire_policy,
-       schedule.next_fire_at,schedule.last_fire_at
-  from app.trigger_schedules schedule
-  join app.workflow_triggers trigger on trigger.workspace_id=schedule.workspace_id
-   and trigger.id=schedule.trigger_id`;
+export async function readSchedules(
+  client: PoolClient,
+  workspaceId: string,
+  workflowId: string,
+) {
+  const published = drizzle(client)
+    .select({ id: workflows.publishedVersionId })
+    .from(workflows)
+    .where(
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
+    );
+  const rows = await scheduleQuery(client)
+    .where(
+      and(
+        eq(triggerSchedules.workspaceId, workspaceId),
+        eq(workflowTriggers.workflowId, workflowId),
+        eq(workflowTriggers.kind, 'schedule'),
+        eq(workflowTriggers.workflowVersionId, published),
+      ),
+    )
+    .orderBy(workflowTriggers.nodeId, workflowTriggers.id)
+    .limit(1000)
+    .catch(rethrowQueryFailure);
+  return Object.freeze(rows.map(scheduleRecord));
+}
 
 export async function readSchedule(
   client: PoolClient,
@@ -75,37 +115,66 @@ export async function readSchedule(
   workflowId: string,
   triggerId: string,
 ): Promise<ScheduleTriggerRecord> {
-  const result = await client.query<Record<string, unknown>>(
-    `${scheduleProjection}
-      where schedule.workspace_id=$1 and trigger.workflow_id=$2 and trigger.id=$3
-        and trigger.kind='schedule'`,
-    [workspaceId, workflowId, triggerId],
-  );
-  const row = result.rows[0];
+  const result = await scheduleQuery(client)
+    .where(
+      and(
+        eq(triggerSchedules.workspaceId, workspaceId),
+        eq(workflowTriggers.workflowId, workflowId),
+        eq(workflowTriggers.id, triggerId),
+        eq(workflowTriggers.kind, 'schedule'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const row = result[0];
   if (row === undefined) throw new ScheduleTriggerError('not_found');
-  return mapScheduleTrigger(row);
+  return scheduleRecord(row);
 }
 
 export async function readScheduleCommandTarget(
   client: PoolClient,
   input: SetEnabledInput,
   identity: ScheduleCommandIdentity,
-): Promise<ScheduleCommandTarget> {
-  const result = await client.query<ScheduleCommandTarget>(
-    `select trigger.workflow_id,schedule.status,schedule.recurrence_kind,
-            schedule.cron_expression,schedule.timezone,schedule.interval_minutes,
-            schedule.misfire_policy,schedule.anchor_at,schedule.next_fire_at,
-            schedule.admission_deferred_until,clock_timestamp() observed_at
-       from app.trigger_schedules schedule
-       join app.workflow_triggers trigger on trigger.id=schedule.trigger_id
-       where schedule.workspace_id=$1 and schedule.trigger_id=$2
-         and trigger.workflow_id=$3
-         and trigger.workflow_version_id=(select published_version_id
-           from app.workflows where workspace_id=$1 and id=$3)
-         and trigger.kind='schedule' for update of schedule,trigger`,
-    [input.workspaceId, identity.triggerId, identity.workflowId],
-  );
-  const row = result.rows[0];
+) {
+  const db = drizzle(client);
+  const schedule = alias(triggerSchedules, 'schedule');
+  const trigger = alias(workflowTriggers, 'trigger');
+  const published = db
+    .select({ id: workflows.publishedVersionId })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, identity.workflowId),
+      ),
+    );
+  const result = await db
+    .select({
+      workflow_id: trigger.workflowId,
+      status: schedule.status,
+      recurrence_kind: schedule.recurrenceKind,
+      cron_expression: schedule.cronExpression,
+      timezone: schedule.timezone,
+      interval_minutes: schedule.intervalMinutes,
+      misfire_policy: schedule.misfirePolicy,
+      anchor_at: schedule.anchorAt,
+      next_fire_at: schedule.nextFireAt,
+      admission_deferred_until: schedule.admissionDeferredUntil,
+      observed_at: sql<Date>`clock_timestamp()`.mapWith(schedule.createdAt),
+    })
+    .from(schedule)
+    .innerJoin(trigger, eq(trigger.id, schedule.triggerId))
+    .where(
+      and(
+        eq(schedule.workspaceId, input.workspaceId),
+        eq(schedule.triggerId, identity.triggerId),
+        eq(trigger.workflowId, identity.workflowId),
+        eq(trigger.workflowVersionId, published),
+        eq(trigger.kind, 'schedule'),
+      ),
+    )
+    .for('update', { of: [schedule, trigger] })
+    .catch(rethrowQueryFailure);
+  const row = result[0];
   if (row === undefined) throw new ScheduleTriggerError('not_found');
   return row;
 }

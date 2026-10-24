@@ -1,3 +1,6 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowTriggerOutcomes } from '../../schema/trigger-pause.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -40,18 +43,16 @@ export async function persistWorkflowTriggerOutcome(
     ({ name }) => name === `run.${status}`,
   );
   if (terminalEvent === undefined) return;
-  await client.query(
-    `insert into app.workflow_trigger_outcomes (
-       id,workspace_id,workflow_id,run_id,counts_as_failure,ended_at
-     ) values ($1,$2,$3,$4,$5,$6::timestamptz)
-     on conflict do nothing`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.workflowId,
-      input.runId,
-      failureStatuses.has(status),
-      terminalEvent.occurredAt,
-    ],
-  );
+  await drizzle(client)
+    .insert(workflowTriggerOutcomes)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      workflowId: input.workflowId,
+      runId: input.runId,
+      countsAsFailure: failureStatuses.has(status),
+      endedAt: terminalEvent.occurredAt,
+    })
+    .onConflictDoNothing()
+    .catch(rethrowQueryFailure);
 }

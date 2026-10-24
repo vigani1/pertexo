@@ -1,5 +1,6 @@
+import { webhookTriggerReplayRecords as replays } from '../../schema/triggers/deliveries.js';
 import { createHash } from 'node:crypto';
-import { sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type { PublishedWorkflow } from '../../runs/queries/execution/published.js';
 import { acceptWorkflowRun } from '../../runs/commands/acceptance.js';
@@ -68,9 +69,19 @@ export async function coordinateVerifiedWebhook(
     coordinationEventId: deliveryId,
     ...(runId === undefined ? {} : { runId }),
   });
-  await transaction.db.execute(
-    sql`update app.webhook_trigger_replay_records set coordination_event_id=${deliveryId},workflow_run_id=${runId ?? null},skip_reason=${'skipped' in result ? 'concurrency_limit' : null} where workspace_id=${transaction.workspaceId} and delivery_id=${deliveryId}`,
-  );
+  await transaction.db
+    .update(replays)
+    .set({
+      coordinationEventId: deliveryId,
+      workflowRunId: runId ?? null,
+      skipReason: 'skipped' in result ? 'concurrency_limit' : null,
+    })
+    .where(
+      and(
+        eq(replays.workspaceId, transaction.workspaceId),
+        eq(replays.deliveryId, deliveryId),
+      ),
+    );
   if (runId === undefined) return result;
   const seconds = await openWebhookResponse(
     transaction,

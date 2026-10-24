@@ -1,5 +1,6 @@
+import { triggerCoordinatedEvents as events } from '../../schema/event-coordination/records.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   decideEventCoordination,
   EVENT_COORDINATION_LIMITS,
@@ -42,14 +43,24 @@ export async function coordinateEvent(
   const key = await loadEventWindow(transaction, input, now);
   if (key === undefined) return refuse('coordination_full');
   const pending = (
-    await transaction.db.execute<{
-      id: string;
-      input_bytes: number;
-      deadline_at: string;
-    }>(sql`
-    select id,input_bytes,deadline_at from app.trigger_coordinated_events where workspace_id=${transaction.workspaceId} and key_id=${key.id} and status='pending' order by received_at,id limit 1 for update
-  `)
-  ).rows[0];
+    await transaction.db
+      .select({
+        id: events.id,
+        input_bytes: events.inputBytes,
+        deadline_at: events.deadlineAt,
+      })
+      .from(events)
+      .where(
+        and(
+          eq(events.workspaceId, transaction.workspaceId),
+          eq(events.keyId, key.id),
+          eq(events.status, 'pending'),
+        ),
+      )
+      .orderBy(events.receivedAt, events.id)
+      .limit(1)
+      .for('update')
+  )[0];
   const policy = input.prepared.policy;
   const decision = decideEventCoordination({
     policy,
@@ -80,10 +91,19 @@ export async function coordinateEvent(
   }
   const bytes = utf8ByteLength(input.prepared.inputJson);
   const budget = (
-    await transaction.db.execute<{ count: number; bytes: number }>(sql`
-    select count(*)::integer count,coalesce(sum(input_bytes),0)::integer bytes from app.trigger_coordinated_events where workspace_id=${transaction.workspaceId} and status='pending'
-  `)
-  ).rows[0];
+    await transaction.db
+      .select({
+        count: sql<number>`count(*)::integer`,
+        bytes: sql<number>`coalesce(sum(${events.inputBytes}),0)::integer`,
+      })
+      .from(events)
+      .where(
+        and(
+          eq(events.workspaceId, transaction.workspaceId),
+          eq(events.status, 'pending'),
+        ),
+      )
+  )[0];
   const replaced = policy.mode === 'debounce' ? pending : undefined;
 
   if (pendingEventQuotaExceeded(budget, replaced, bytes))
@@ -94,7 +114,7 @@ export async function coordinateEvent(
       reason: 'newer_event',
     });
   const deadline =
-    (replaced === undefined ? undefined : new Date(replaced.deadline_at)) ??
+    replaced?.deadline_at ??
     new Date(now.getTime() + EVENT_COORDINATION_LIMITS.pendingMillis);
   const outcome = decision.action === 'debounced' ? 'debounced' : 'throttled';
   await recordCoordinatedEvent(transaction, input, {

@@ -1,3 +1,6 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import {
   withPlatformTransaction,
@@ -38,10 +41,11 @@ export function createTriggerEventScanner(
       const due = await withPlatformTransaction(
         lease.pool,
         (client) =>
-          client.query<{ workspace_id: string; event_id: string }>(
-            'select * from app.discover_due_coordinated_events($1)',
-            [input.limit],
-          ),
+          drizzle(client)
+            .execute<{ workspace_id: string; event_id: string }>(
+              sql`select * from app.discover_due_coordinated_events(${input.limit})`,
+            )
+            .catch(rethrowQueryFailure),
         input.signal === undefined ? {} : { signal: input.signal },
       );
       const result = {

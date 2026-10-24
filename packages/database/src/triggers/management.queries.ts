@@ -1,3 +1,7 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowTriggers } from '../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { authorizeWorkflowResource } from '../tenant-access/resources/authority.js';
@@ -17,12 +21,18 @@ export async function canManageWorkflowTrigger(
   const actorId = z.uuid().parse(input.actorId);
   const triggerId = z.uuid().parse(input.triggerId);
   const workflowId = z.uuid().optional().parse(input.workflowId);
-  const trigger = await client.query<{ workflow_id: string }>(
-    `select workflow_id from app.workflow_triggers where workspace_id=$1 and id=$2
-      and ($3::uuid is null or workflow_id=$3)`,
-    [workspaceId, triggerId, workflowId ?? null],
-  );
-  const target = trigger.rows[0]?.workflow_id;
+  const trigger = await drizzle(client)
+    .select({ workflowId: workflowTriggers.workflowId })
+    .from(workflowTriggers)
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, workspaceId),
+        eq(workflowTriggers.id, triggerId),
+        sql`(${workflowId ?? null}::uuid is null or ${workflowTriggers.workflowId}=${workflowId ?? null})`,
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const target = trigger[0]?.workflowId;
   if (
     target === undefined ||
     !(await authorizeWorkflowResource(
