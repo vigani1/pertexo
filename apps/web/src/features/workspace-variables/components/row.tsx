@@ -159,12 +159,7 @@ function VariableForm({
                   onChange({
                     ...row,
                     type,
-                    value:
-                      type === 'number'
-                        ? '0'
-                        : type === 'boolean'
-                          ? 'false'
-                          : '',
+                    value: EMPTY_VALUES[type],
                   });
               }}
             >
@@ -176,34 +171,40 @@ function VariableForm({
         </LabelledField>
       </div>
       <LabelledField id={`${prefix}-value`} label="Value">
-        {(control) =>
-          row.type === 'boolean' ? (
-            <select
-              {...control}
-              name={`${prefix}.value`}
-              className={selectClass}
-              value={row.value}
-              onChange={(event) => {
-                onChange({ ...row, value: event.currentTarget.value });
-              }}
-            >
-              <option value="true">True</option>
-              <option value="false">False</option>
-            </select>
-          ) : row.type === 'text' ? (
-            <Textarea
-              {...control}
-              name={`${prefix}.value`}
-              rows={1}
-              // Grows with its text where the browser supports it.
-              className="max-h-48 min-h-9 [field-sizing:content]"
-              value={row.value}
-              maxLength={4096}
-              onChange={(event) => {
-                onChange({ ...row, value: event.currentTarget.value });
-              }}
-            />
-          ) : (
+        {(control) => {
+          if (row.type === 'boolean') {
+            return (
+              <select
+                {...control}
+                name={`${prefix}.value`}
+                className={selectClass}
+                value={row.value}
+                onChange={(event) => {
+                  onChange({ ...row, value: event.currentTarget.value });
+                }}
+              >
+                <option value="true">True</option>
+                <option value="false">False</option>
+              </select>
+            );
+          }
+          if (row.type === 'text') {
+            return (
+              <Textarea
+                {...control}
+                name={`${prefix}.value`}
+                rows={1}
+                // Grows with its text where the browser supports it.
+                className="max-h-48 min-h-9 [field-sizing:content]"
+                value={row.value}
+                maxLength={4096}
+                onChange={(event) => {
+                  onChange({ ...row, value: event.currentTarget.value });
+                }}
+              />
+            );
+          }
+          return (
             <Input
               {...control}
               name={`${prefix}.value`}
@@ -214,8 +215,8 @@ function VariableForm({
                 onChange({ ...row, value: event.currentTarget.value });
               }}
             />
-          )
-        }
+          );
+        }}
       </LabelledField>
       <LabelledField
         id={`${prefix}-description`}
@@ -255,3 +256,9 @@ function VariableForm({
     </div>
   );
 }
+
+const EMPTY_VALUES: Readonly<Record<Row['type'], string>> = {
+  text: '',
+  number: '0',
+  boolean: 'false',
+};

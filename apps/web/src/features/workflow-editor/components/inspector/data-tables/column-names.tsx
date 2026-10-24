@@ -90,11 +90,7 @@ export function TableColumnNames({
       <ul className="grid gap-1 text-xs">
         {names.fields.map(({ alias, name }) => (
           <li key={alias} className="min-w-0 break-words">
-            {name === undefined
-              ? `${alias} (removed column)`
-              : alias === name
-                ? alias
-                : `${alias} (now called ${name})`}
+            {columnNameLabel(alias, name)}
           </li>
         ))}
       </ul>
@@ -150,34 +146,7 @@ export function TableColumnNames({
             <h3 className="mt-4 text-sm font-semibold">
               Later references to review
             </h3>
-            {review.references.length === 0 ? (
-              <p className="mt-2 text-sm text-muted-foreground">
-                No later references were found in this draft.
-              </p>
-            ) : (
-              <ul
-                className="mt-2 grid gap-3 text-sm"
-                aria-label="Later references"
-              >
-                {review.references.map((reference) => (
-                  <li
-                    key={JSON.stringify([
-                      reference.nodeId,
-                      reference.input,
-                      reference.detail,
-                    ])}
-                    className="min-w-0 break-words"
-                  >
-                    <p className="font-medium">
-                      {reference.step} → {reference.input}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {reference.detail}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ReviewReferences references={review.references} />
             {open && stale ? (
               <Notice tone="warning">
                 The draft or table changed during this review. Close and review
@@ -202,5 +171,38 @@ export function TableColumnNames({
         )}
       </Dialog>
     </>
+  );
+}
+
+function columnNameLabel(alias: string, name: string | undefined): string {
+  if (name === undefined) return `${alias} (removed column)`;
+  return alias === name ? alias : `${alias} (now called ${name})`;
+}
+
+function ReviewReferences({
+  references,
+}: Readonly<{ references: Review['references'] }>) {
+  return references.length === 0 ? (
+    <p className="mt-2 text-sm text-muted-foreground">
+      No later references were found in this draft.
+    </p>
+  ) : (
+    <ul className="mt-2 grid gap-3 text-sm" aria-label="Later references">
+      {references.map((reference) => (
+        <li
+          key={JSON.stringify([
+            reference.nodeId,
+            reference.input,
+            reference.detail,
+          ])}
+          className="min-w-0 break-words"
+        >
+          <p className="font-medium">
+            {reference.step} → {reference.input}
+          </p>
+          <p className="text-xs text-muted-foreground">{reference.detail}</p>
+        </li>
+      ))}
+    </ul>
   );
 }

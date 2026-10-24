@@ -64,14 +64,7 @@ export function DeclarationForm({
         let candidate: unknown = ordinaryGraph;
         if (form.enabled) {
           try {
-            candidate = {
-              ...graph,
-              callable: {
-                input: declaredType(form.input),
-                resultType: declaredType(form.resultType),
-                result: declaredResult(form.result),
-              },
-            };
+            candidate = declaredGraph(graph, form);
           } catch {
             const message = 'Result JSON must be valid JSON.';
             setError(message);
@@ -81,17 +74,10 @@ export function DeclarationForm({
         }
         const parsed = safeParseWorkflowGraphDraft(candidate);
         if (!parsed.success) {
-          const fields: Record<string, string> = {};
-          if ('issues' in parsed.error) {
-            for (const issue of parsed.error.issues) {
-              const path = issue.path.map(String).join('.');
-              fields[path] = path.endsWith('.name')
-                ? 'Fill in the property name.'
-                : path.endsWith('.maxItems')
-                  ? 'Enter a whole-number array limit from 0 to 10,000.'
-                  : issue.message;
-            }
-          }
+          const fields =
+            'issues' in parsed.error
+              ? contractFieldErrors(parsed.error.issues)
+              : {};
           setError('Check the highlighted contract fields before applying.');
           validation.submit(fields);
           return;
@@ -179,20 +165,76 @@ export function DeclarationForm({
           {error}
         </Notice>
       )}
-      <div className="flex shrink-0 flex-wrap justify-end gap-2 px-6 pb-6">
-        <Button type="button" variant="ghost" onClick={onClose}>
-          {editable ? 'Cancel' : 'Close'}
-        </Button>
-        {editable ? (
-          <Button
-            type="submit"
-            variant="primary"
-            aria-describedby={error === undefined ? undefined : `${id}-error`}
-          >
-            Apply contract
-          </Button>
-        ) : null}
-      </div>
+      <ContractActions
+        editable={editable}
+        error={error}
+        id={id}
+        onClose={onClose}
+      />
     </form>
   );
+}
+
+function contractFieldErrors(
+  issues: readonly Readonly<{
+    path: readonly PropertyKey[];
+    message: string;
+  }>[],
+): Record<string, string> {
+  const fields: Record<string, string> = {};
+  for (const issue of issues) {
+    const path = issue.path.map(String).join('.');
+    fields[path] = contractFieldError(path, issue.message);
+  }
+  return fields;
+}
+
+function contractFieldError(path: string, fallback: string): string {
+  if (path.endsWith('.name')) return 'Fill in the property name.';
+  if (path.endsWith('.maxItems'))
+    return 'Enter a whole-number array limit from 0 to 10,000.';
+  return fallback;
+}
+
+function ContractActions({
+  editable,
+  error,
+  id,
+  onClose,
+}: Readonly<{
+  editable: boolean;
+  error: string | undefined;
+  id: string;
+  onClose: () => void;
+}>) {
+  return (
+    <div className="flex shrink-0 flex-wrap justify-end gap-2 px-6 pb-6">
+      <Button type="button" variant="ghost" onClick={onClose}>
+        {editable ? 'Cancel' : 'Close'}
+      </Button>
+      {editable ? (
+        <Button
+          type="submit"
+          variant="primary"
+          aria-describedby={error === undefined ? undefined : `${id}-error`}
+        >
+          Apply contract
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function declaredGraph(
+  graph: WorkflowGraphContract,
+  form: ReturnType<typeof initialForm>,
+) {
+  return {
+    ...graph,
+    callable: {
+      input: declaredType(form.input),
+      resultType: declaredType(form.resultType),
+      result: declaredResult(form.result),
+    },
+  };
 }
