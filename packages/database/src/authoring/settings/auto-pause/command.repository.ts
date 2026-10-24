@@ -1,3 +1,6 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { auditEvents } from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import type { Role } from '@pertexo/workflow-model';
@@ -72,23 +75,20 @@ export function command<T>(
       });
     const { settings, audit } = await options.apply(client, workspace);
     if (audit !== undefined)
-      await client.query(
-        `insert into app.audit_events
-             (id, workspace_id, actor_user_id, action, target_type, target_id,
-              request_id, trace_id, metadata)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)`,
-        [
-          generatePersistedId(),
+      await drizzle(client)
+        .insert(auditEvents)
+        .values({
+          id: generatePersistedId(),
           workspaceId,
-          actorId,
-          audit.action,
-          audit.targetType,
-          options.resourceId,
-          input.requestId ?? null,
-          input.traceId ?? null,
-          JSON.stringify({ settings }),
-        ],
-      );
+          actorUserId: actorId,
+          action: audit.action,
+          targetType: audit.targetType,
+          targetId: options.resourceId,
+          requestId: input.requestId ?? null,
+          traceId: input.traceId ?? null,
+          metadata: { settings },
+        })
+        .catch(rethrowQueryFailure);
     await completeCommand(client, identity, settings);
     return Object.freeze({ settings, replayed: false });
   });
