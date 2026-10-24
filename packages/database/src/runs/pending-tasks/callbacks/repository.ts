@@ -1,4 +1,11 @@
-import type { QueryResult } from 'pg';
+import type { PoolClient } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, sql } from 'drizzle-orm';
+import { workspaces } from '../../../schema/foundation.js';
+import { workflowRuns } from '../../../schema/runs/execution.js';
+import { pendingRunTasks } from '../../../schema/runs/pending-task.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { resolveCallback, callbackKeysInUse } from './records.queries.js';
 import { callbackWaitConfigSchema } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '../../../config.js';
 import {
@@ -16,16 +23,7 @@ import {
   type PreparedCallback,
 } from './contract.js';
 
-type Row = Readonly<{
-  id: string;
-  workspace_id: string;
-  run_id: string;
-  callback_node_id: string;
-  callback_scope_hash: string;
-  callback_token_hash: string;
-  callback_key_version: string;
-  config: unknown;
-}>;
+type Row = Awaited<ReturnType<typeof resolveCallback>>[number];
 function project(row: Row): PreparedCallback {
   return {
     id: row.id,
@@ -54,38 +52,24 @@ export function createCallbackStore(
       ),
     resolve: async (tokenHash, signal) => {
       signal.throwIfAborted();
-      const result = await lease.pool.query<Row & { database_time: Date }>(
-        'select * from app.resolve_public_pending_callback($1::char(64))',
-        [tokenHash],
-      );
+      const result = await resolveCallback(lease.pool, tokenHash);
       signal.throwIfAborted();
-      return result.rows[0] === undefined
+      return result[0] === undefined
         ? null
         : {
-            ...project(result.rows[0]),
-            databaseTime: result.rows[0].database_time,
+            ...project(result[0]),
+            databaseTime: result[0].database_time,
           };
     },
     keysInUse: async function* (signal) {
       let after: string | null = null;
       do {
         signal.throwIfAborted();
-        const page: QueryResult<{
-          id: string;
-          callback_token_hash: string;
-          callback_key_version: string;
-        }> = await lease.pool.query(
-          'select * from app.pending_callback_key_inventory($1::text)',
-          [after],
-        );
-        if (page.rows.length === 0) return;
-        for (const row of page.rows)
-          yield {
-            id: row.id,
-            keyVersion: row.callback_key_version,
-            tokenHash: row.callback_token_hash,
-          };
-        after = page.rows.at(-1)?.callback_key_version ?? null;
+        const page: Awaited<ReturnType<typeof callbackKeysInUse>> =
+          await callbackKeysInUse(lease.pool, after);
+        if (page.length === 0) return;
+        for (const row of page) yield row;
+        after = page.at(-1)?.keyVersion ?? null;
       } while (after !== null);
     },
     respond: (input) =>
@@ -93,65 +77,92 @@ export function createCallbackStore(
         lease.pool,
         input.callback.workspaceId,
         input.signal,
-        async (client) => {
-          const identity = input.callback;
-          const workspace = await client.query<{ status: string }>(
-            'select status from app.workspaces where id=$1 for share',
-            [identity.workspaceId],
-          );
-          const run = await client.query<{ status: string; closed: boolean }>(
-            `select status,(cancel_requested_at is not null or (deadline_at is not null and deadline_at<=clock_timestamp())) closed from app.workflow_runs where workspace_id=$1 and id=$2 for no key update`,
-            [identity.workspaceId, identity.runId],
-          );
-          const found = await client.query<{
-            status: string;
-            expired: boolean;
-            node_run_id: string | null;
-            invocation_key: string;
-            consumed_at: Date | null;
-          }>(
-            `select status,(expires_at is not null and expires_at<=clock_timestamp()) expired,node_run_id,invocation_key,consumed_at from app.pending_run_tasks where workspace_id=$1 and run_id=$2 and id=$3 and kind='callback' and callback_token_hash=$4 for update`,
-            [
-              identity.workspaceId,
-              identity.runId,
-              identity.id,
-              identity.tokenHash,
-            ],
-          );
-          const task = found.rows[0],
-            owner = run.rows[0];
-          const callbackUnavailable =
-            workspace.rows[0]?.status !== 'active' ||
-            owner === undefined ||
-            owner.closed ||
-            !['queued', 'running', 'waiting'].includes(owner.status) ||
-            task === undefined ||
-            task.expired ||
-            task.consumed_at !== null ||
-            ['expired', 'refused', 'canceled'].includes(task.status);
-          if (callbackUnavailable) throw new CallbackResponseError('closed');
-          if (task.status === 'submitted')
-            throw new CallbackResponseError('resolved');
-          // Normalize escapes and enforce the value bounds before credential redaction.
-          const output = input.redactOutput(
-            serializeStoredExecutionValue({
-              kind: 'inline',
-              value: input.output,
-            }),
-          );
-          await client.query(
-            `update app.pending_run_tasks set status='submitted',output_ref=$4::json,completed_at=clock_timestamp() where workspace_id=$1 and run_id=$2 and id=$3`,
-            [identity.workspaceId, identity.runId, identity.id, output],
-          );
-          if (task.node_run_id !== null) {
-            await wakeWorkflowRun(client, identity.workspaceId, identity.runId);
-            await wakeTaskAncestors(
-              client,
-              identity.workspaceId,
-              identity.runId,
-            );
-          }
-        },
+        (client) => respondCallback(client, input),
       ),
   };
+}
+
+async function respondCallback(
+  client: PoolClient,
+  input: Parameters<CallbackStore['respond']>[0],
+) {
+  const identity = input.callback;
+  const db = drizzle(client),
+    w = workspaces,
+    r = workflowRuns,
+    t = pendingRunTasks;
+  const [workspace] = await db
+    .select({ status: w.status })
+    .from(w)
+    .where(eq(w.id, identity.workspaceId))
+    .for('share')
+    .catch(rethrowQueryFailure);
+  const [owner] = await db
+    .select({
+      status: r.status,
+      closed: sql<boolean>`${r.cancelRequestedAt} is not null or (${r.deadlineAt} is not null and ${r.deadlineAt}<=clock_timestamp())`,
+    })
+    .from(r)
+    .where(
+      and(eq(r.workspaceId, identity.workspaceId), eq(r.id, identity.runId)),
+    )
+    .for('no key update')
+    .catch(rethrowQueryFailure);
+  const [task] = await db
+    .select({
+      status: t.status,
+      expired: sql<boolean>`${t.expiresAt} is not null and ${t.expiresAt}<=clock_timestamp()`,
+      node_run_id: t.nodeRunId,
+      invocation_key: t.invocationKey,
+      consumed_at: t.consumedAt,
+    })
+    .from(t)
+    .where(
+      and(
+        eq(t.workspaceId, identity.workspaceId),
+        eq(t.runId, identity.runId),
+        eq(t.id, identity.id),
+        eq(t.kind, 'callback'),
+        eq(t.callbackTokenHash, identity.tokenHash),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  const callbackUnavailable =
+    workspace?.status !== 'active' ||
+    owner === undefined ||
+    owner.closed ||
+    !['queued', 'running', 'waiting'].includes(owner.status) ||
+    task === undefined ||
+    task.expired ||
+    task.consumed_at !== null ||
+    ['expired', 'refused', 'canceled'].includes(task.status);
+  if (callbackUnavailable) throw new CallbackResponseError('closed');
+  if (task.status === 'submitted') throw new CallbackResponseError('resolved');
+  // Normalize escapes and enforce the value bounds before credential redaction.
+  const output = input.redactOutput(
+    serializeStoredExecutionValue({
+      kind: 'inline',
+      value: input.output,
+    }),
+  );
+  await db
+    .update(t)
+    .set({
+      status: 'submitted',
+      outputRef: sql`${output}::json`,
+      completedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(t.workspaceId, identity.workspaceId),
+        eq(t.runId, identity.runId),
+        eq(t.id, identity.id),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (task.node_run_id !== null) {
+    await wakeWorkflowRun(client, identity.workspaceId, identity.runId);
+    await wakeTaskAncestors(client, identity.workspaceId, identity.runId);
+  }
 }

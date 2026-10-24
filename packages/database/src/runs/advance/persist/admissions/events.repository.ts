@@ -1,3 +1,7 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { nodeRuns, runEvents } from '../../../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../contract.js';
 import type { PendingCoordinatorFailure } from '../../load/state.queries.js';
@@ -26,20 +30,25 @@ export async function loadEventExecutionIdentities(
     ),
   ];
   if (missingInvocationKeys.length === 0) return;
-  const existingNodes = await client.query<{
-    id: string;
-    invocation_key: string;
-    current_attempt_id: string | null;
-    current_attempt_number: number | null;
-  }>(
-    `select id, invocation_key, current_attempt_id,current_attempt_number
-       from app.node_runs
-       where workspace_id=$1 and workflow_run_id=$2
-         and invocation_key=any($3::varchar[])
-       for update`,
-    [workspaceId, runId, missingInvocationKeys],
-  );
-  for (const node of existingNodes.rows)
+  const n = nodeRuns;
+  const existingNodes = await drizzle(client)
+    .select({
+      id: n.id,
+      invocation_key: n.invocationKey,
+      current_attempt_id: n.currentAttemptId,
+      current_attempt_number: n.currentAttemptNumber,
+    })
+    .from(n)
+    .where(
+      and(
+        eq(n.workspaceId, workspaceId),
+        eq(n.workflowRunId, runId),
+        inArray(n.invocationKey, missingInvocationKeys),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  for (const node of existingNodes)
     physical.set(node.invocation_key, {
       nodeRunId: node.id,
       ...(node.current_attempt_id === null
@@ -94,21 +103,19 @@ export async function persistRunEvents(
         : {}),
     };
     return {
+      workspaceId,
+      workflowRunId: runId,
       sequence: event.sequence,
       type: event.name,
-      payload: serializeStoredExecutionJsonValue(payload),
-      created_at: event.occurredAt,
+      payload: sql`${serializeStoredExecutionJsonValue(payload)}::jsonb`,
+      createdAt: sql`${event.occurredAt}::timestamptz`,
     };
   });
   if (persistedEvents.length > 0) {
-    const inserted = await client.query(
-      `insert into app.run_events (
-         workspace_id,workflow_run_id,sequence,type,payload,created_at)
-       select $1,$2,item.sequence,item.type,item.payload::jsonb,item.created_at
-       from jsonb_to_recordset($3::jsonb) as item(
-         sequence integer,type varchar(64),payload text,created_at timestamptz)`,
-      [workspaceId, runId, JSON.stringify(persistedEvents)],
-    );
+    const inserted = await drizzle(client)
+      .insert(runEvents)
+      .values(persistedEvents)
+      .catch(rethrowQueryFailure);
     if (inserted.rowCount !== persistedEvents.length)
       throw new CoordinatorRunStateCorruptError();
   }
@@ -120,23 +127,29 @@ export async function persistRunEvents(
       !pendingFailureInvocations.has(event.invocationKey) &&
       !input.rejectedForEachDeclarations.has(event.invocationKey);
     if (settlesInvocation) {
-      const updatedNode = await client.query(
-        `update app.node_runs
-           set status=$1, completed_at=clock_timestamp(),
-               safe_error_code=$2, resume_at=null, retry_due_at=null,
-               due_wakeup_at=null, control_kind=null, wait_kind=null,
-               updated_at=clock_timestamp()
-           where workspace_id=$3 and workflow_run_id=$4
-             and invocation_key=$5
-             and status in ('pending','ready','waiting')`,
-        [
-          terminalNodeStatus,
-          event.reasonCode ?? null,
-          workspaceId,
-          runId,
-          event.invocationKey,
-        ],
-      );
+      const n = nodeRuns;
+      const updatedNode = await drizzle(client)
+        .update(n)
+        .set({
+          status: terminalNodeStatus,
+          completedAt: sql`clock_timestamp()`,
+          safeErrorCode: event.reasonCode ?? null,
+          resumeAt: null,
+          retryDueAt: null,
+          dueWakeupAt: null,
+          controlKind: null,
+          waitKind: null,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(n.workspaceId, workspaceId),
+            eq(n.workflowRunId, runId),
+            eq(n.invocationKey, event.invocationKey),
+            inArray(n.status, ['pending', 'ready', 'waiting']),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       if (updatedNode.rowCount !== 1)
         throw new CoordinatorRunStateCorruptError();
     }

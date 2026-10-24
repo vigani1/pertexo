@@ -1,3 +1,6 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { sql } from 'drizzle-orm';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
 
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
@@ -18,14 +21,16 @@ export function withCoordinatorWriteClient<T>(
     pool,
     { workspaceId },
     async (client) => {
-      await client.query(
-        "select set_config('app.workflow_concurrency_protocol','1',true)",
-      );
+      await drizzle(client)
+        .execute(
+          sql`select set_config('app.workflow_concurrency_protocol','1',true)`,
+        )
+        .catch(rethrowQueryFailure);
       // Lifecycle/purge holds workspace before run rows. Acquire the shared
       // workspace lock before any coordinator run/checkpoint lock or FK write.
-      await client.query('select app.lock_workspace_run_admission($1)', [
-        workspaceId,
-      ]);
+      await drizzle(client)
+        .execute(sql`select app.lock_workspace_run_admission(${workspaceId})`)
+        .catch(rethrowQueryFailure);
       return operation(client);
     },
     { signal },

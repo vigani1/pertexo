@@ -1,3 +1,4 @@
+import type { nodeRuns } from '../../../schema/runs/execution.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { artifacts } from '../../../schema/transport.js';
@@ -19,16 +20,17 @@ import {
 
 export type EventRow = CoordinatorEventRow;
 
-export function terminalStatus(type: string): string | undefined {
-  return (
-    {
-      'node.succeeded': 'succeeded',
-      'node.failed': 'failed',
-      'node.canceled': 'canceled',
-      'node.timed_out': 'timed_out',
-      'node.outcome_unknown': 'outcome_unknown',
-    } as Readonly<Record<string, string>>
-  )[type];
+const terminalStatuses: Readonly<
+  Record<string, typeof nodeRuns.$inferSelect.status | undefined>
+> = {
+  'node.succeeded': 'succeeded',
+  'node.failed': 'failed',
+  'node.canceled': 'canceled',
+  'node.timed_out': 'timed_out',
+  'node.outcome_unknown': 'outcome_unknown',
+};
+export function terminalStatus(type: string) {
+  return terminalStatuses[type];
 }
 
 function attemptFact(

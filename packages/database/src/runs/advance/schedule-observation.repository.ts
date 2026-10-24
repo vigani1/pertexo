@@ -1,3 +1,5 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { sql } from 'drizzle-orm';
 import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { Pool, PoolClient } from 'pg';
 
@@ -82,9 +84,15 @@ export async function observeScheduleToStartSeconds(
 
     let query: Promise<Readonly<{ rows: readonly { observed_at: Date }[] }>>;
     try {
-      query = client.query<{ observed_at: Date }>(
-        'select clock_timestamp() observed_at',
-      );
+      query = drizzle(client)
+        .execute<{ observed_at: string }>(
+          sql`select clock_timestamp() observed_at`,
+        )
+        .then((result) => ({
+          rows: result.rows.map((row) => ({
+            observed_at: new Date(row.observed_at),
+          })),
+        }));
     } catch (error: unknown) {
       destroyClient(client, asError(error));
       return undefined;
