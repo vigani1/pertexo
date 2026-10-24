@@ -1,3 +1,11 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias, unionAll } from 'drizzle-orm/pg-core';
+import {
+  workflowFolders,
+  workflowOrganizationState,
+} from '../../../../schema/authoring/organization.js';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import { requireMoveAudienceReview } from '../../sharing/audience.queries.js';
 
 import { FOLDER_LIMIT, FOLDER_DEPTH_LIMIT } from '../../limits.js';
@@ -15,7 +23,7 @@ import {
   nameKey,
 } from '../contract.js';
 import {
-  type FolderRow,
+  folderProjection,
   readFolder,
   folderDepth,
   requireFreeName,
@@ -43,24 +51,30 @@ export async function createFolder(
         folderName: request.name,
         folderId: null,
       });
-      const count = await client.query<{ count: number }>(
-        'select count(*)::int count from app.workflow_folders where workspace_id = $1',
-        [workspaceId],
-      );
-      if ((count.rows[0]?.count ?? 0) >= FOLDER_LIMIT)
+      const db = drizzle(client);
+      const [count] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(workflowFolders)
+        .where(eq(workflowFolders.workspaceId, workspaceId))
+        .catch(rethrowQueryFailure);
+      if ((count?.count ?? 0) >= FOLDER_LIMIT)
         throw new WorkflowFolderConflictError('limit');
       if (
         (await folderDepth(client, workspaceId, request.parentId)) + 1 >
         FOLDER_DEPTH_LIMIT
       )
         throw new WorkflowFolderConflictError('hierarchy');
-      const created = await client.query<FolderRow>(
-        `insert into app.workflow_folders (workspace_id, id, parent_id, name, name_key)
-             values ($1, uuidv7(), $2, $3, $4)
-             returning id, name, parent_id, revision, access_mode`,
-        [workspaceId, request.parentId, request.name, nameKey(request.name)],
-      );
-      const row = created.rows[0];
+      const [row] = await db
+        .insert(workflowFolders)
+        .values({
+          workspaceId,
+          id: sql`uuidv7()`,
+          parentId: request.parentId,
+          name: request.name,
+          nameKey: nameKey(request.name),
+        })
+        .returning(folderProjection)
+        .catch(rethrowQueryFailure);
       if (row === undefined) throw new Error('Folder was not created');
       return row;
     },
@@ -84,18 +98,26 @@ export async function renameFolder(
       const current = await readFolder(client, workspaceId, folderId);
       requireRevision(current, request.expectedFolderRevision);
       await requireFreeName(client, workspaceId, {
-        parentId: current.parent_id,
+        parentId: current.parentId,
         folderName: request.name,
         folderId,
       });
-      const renamed = await client.query<FolderRow>(
-        `update app.workflow_folders
-             set name = $3, name_key = $4, revision = revision + 1
-             where workspace_id = $1 and id = $2
-             returning id, name, parent_id, revision, access_mode`,
-        [workspaceId, folderId, request.name, nameKey(request.name)],
-      );
-      return renamed.rows[0] ?? current;
+      const [renamed] = await drizzle(client)
+        .update(workflowFolders)
+        .set({
+          name: request.name,
+          nameKey: nameKey(request.name),
+          revision: sql`${workflowFolders.revision}+1`,
+        })
+        .where(
+          and(
+            eq(workflowFolders.workspaceId, workspaceId),
+            eq(workflowFolders.id, folderId),
+          ),
+        )
+        .returning(folderProjection)
+        .catch(rethrowQueryFailure);
+      return renamed ?? current;
     },
   });
 }
@@ -136,24 +158,22 @@ export async function moveFolder(
       });
       // The moved folder and everything under it must stay within the
       // depth limit, and it cannot move under itself.
-      const subtree = await client.query<{
-        height: number;
-        cycle: boolean;
-      }>(
-        `with recursive descendants as (
-               select id, 1 height from app.workflow_folders
-               where workspace_id = $1 and id = $2
-               union all
-               select folder.id, descendants.height + 1 from descendants
-               join app.workflow_folders folder
-                 on folder.workspace_id = $1 and folder.parent_id = descendants.id
-               where descendants.height <= $4
-             )
-             select max(height)::int height,
-                    coalesce(bool_or(id = $3::uuid), false) cycle
-             from descendants`,
-        [workspaceId, folderId, request.parentId, FOLDER_DEPTH_LIMIT],
-      );
+      const folder = alias(workflowFolders, 'folder');
+      const subtree = await drizzle(client)
+        .execute<{ height: number; cycle: boolean }>(
+          sql`
+        with recursive descendants as (
+          select ${workflowFolders.id} id,1 height from ${workflowFolders}
+          where ${workflowFolders.workspaceId}=${workspaceId} and ${workflowFolders.id}=${folderId}
+          union all
+          select ${folder.id},descendants.height+1 from descendants
+          join ${workflowFolders} ${sql.identifier('folder')}
+            on ${folder.workspaceId}=${workspaceId} and ${folder.parentId}=descendants.id
+          where descendants.height<=${FOLDER_DEPTH_LIMIT}
+        ) select max(height)::int height,coalesce(bool_or(id=${request.parentId}::uuid),false) cycle from descendants
+      `,
+        )
+        .catch(rethrowQueryFailure);
       const { height = 1, cycle = false } = subtree.rows[0] ?? {};
       if (
         cycle ||
@@ -161,14 +181,21 @@ export async function moveFolder(
           FOLDER_DEPTH_LIMIT
       )
         throw new WorkflowFolderConflictError('hierarchy');
-      const moved = await client.query<FolderRow>(
-        `update app.workflow_folders
-             set parent_id = $3, revision = revision + 1
-             where workspace_id = $1 and id = $2
-             returning id, name, parent_id, revision, access_mode`,
-        [workspaceId, folderId, request.parentId],
-      );
-      return moved.rows[0] ?? current;
+      const [moved] = await drizzle(client)
+        .update(workflowFolders)
+        .set({
+          parentId: request.parentId,
+          revision: sql`${workflowFolders.revision}+1`,
+        })
+        .where(
+          and(
+            eq(workflowFolders.workspaceId, workspaceId),
+            eq(workflowFolders.id, folderId),
+          ),
+        )
+        .returning(folderProjection)
+        .catch(rethrowQueryFailure);
+      return moved ?? current;
     },
   });
 }
@@ -191,20 +218,40 @@ export async function deleteFolder(
       apply: async () => {
         const current = await readFolder(client, scope.workspaceId, folderId);
         requireRevision(current, request.expectedFolderRevision);
-        const used = await client.query(
-          `select 1 from app.workflow_folders where workspace_id = $1 and parent_id = $2
-                 union all
-                 select 1 from app.workflow_organization_state
-                 where workspace_id = $1 and folder_id = $2
-                 limit 1`,
-          [scope.workspaceId, folderId],
-        );
-        if (used.rowCount !== 0)
+        const db = drizzle(client);
+        const used = await unionAll(
+          db
+            .select({ id: workflowFolders.id })
+            .from(workflowFolders)
+            .where(
+              and(
+                eq(workflowFolders.workspaceId, scope.workspaceId),
+                eq(workflowFolders.parentId, folderId),
+              ),
+            ),
+          db
+            .select({ id: workflowOrganizationState.workflowId })
+            .from(workflowOrganizationState)
+            .where(
+              and(
+                eq(workflowOrganizationState.workspaceId, scope.workspaceId),
+                eq(workflowOrganizationState.folderId, folderId),
+              ),
+            ),
+        )
+          .limit(1)
+          .catch(rethrowQueryFailure);
+        if (used.length !== 0)
           throw new WorkflowFolderConflictError('not_empty');
-        await client.query(
-          'delete from app.workflow_folders where workspace_id = $1 and id = $2',
-          [scope.workspaceId, folderId],
-        );
+        await db
+          .delete(workflowFolders)
+          .where(
+            and(
+              eq(workflowFolders.workspaceId, scope.workspaceId),
+              eq(workflowFolders.id, folderId),
+            ),
+          )
+          .catch(rethrowQueryFailure);
         return {
           result: { folderId, deleted: true },
           audit: { action: 'workflow.folder.delete', targetId: folderId },
