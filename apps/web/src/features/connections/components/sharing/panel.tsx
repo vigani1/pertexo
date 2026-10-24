@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { XIcon } from 'lucide-react';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
 import type { useConnectionSharingEditor } from '../../hooks/use-sharing-editor';
@@ -71,78 +72,11 @@ export function ConnectionSharingPanel({
         }}
       />
       {snapshot.mode === 'restricted' ? (
-        <>
-          <ul
-            aria-label="People with access"
-            className="flex flex-col divide-y divide-border"
-          >
-            <SharingAdministratorsEntry />
-            {snapshot.members.map((member) => (
-              <SharingEntry
-                key={member.userId}
-                kind="member"
-                label={member.label}
-                detail={
-                  member.active ? undefined : 'No longer active — remove them'
-                }
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={editor.locked}
-                  aria-label={`Remove ${member.label}`}
-                  onClick={() => {
-                    editor.update((value) => ({
-                      ...value,
-                      members: value.members.filter(
-                        (item) => item.userId !== member.userId,
-                      ),
-                    }));
-                  }}
-                >
-                  <XIcon aria-hidden="true" />
-                </Button>
-              </SharingEntry>
-            ))}
-          </ul>
-          <SharingPrincipalPicker
-            apiClient={scope.apiClient}
-            userId={scope.userId}
-            workspaceId={scope.workspaceId}
-            kinds={['member']}
-            roleNames={ROLE_NAMES}
-            selected={snapshot.members.map((member) => member.userId)}
-            full={snapshot.members.length >= MAX_MEMBERS}
-            disabled={editor.locked}
-            unavailable={(principal) =>
-              principal.kind === 'member' && principal.role === 'viewer'
-                ? 'Viewers can’t use connections'
-                : undefined
-            }
-            onAdd={(principal) => {
-              if (principal.kind !== 'member') return;
-              editor.update((value) =>
-                value.members.length >= MAX_MEMBERS ||
-                value.members.some(
-                  (member) => member.userId === principal.userId,
-                )
-                  ? value
-                  : {
-                      ...value,
-                      members: [
-                        ...value.members,
-                        {
-                          userId: principal.userId,
-                          label: principal.label,
-                          active: true,
-                        },
-                      ],
-                    },
-              );
-            }}
-          />
-        </>
+        <RestrictedConnectionMembers
+          scope={scope}
+          editor={editor}
+          snapshot={snapshot}
+        />
       ) : null}
       {editor.stale ? (
         <Notice
@@ -217,30 +151,116 @@ export function ConnectionSharingPanel({
 }
 
 function SharingReadState({ editor }: Readonly<{ editor: Editor }>) {
-  if (editor.reader.isError)
-    return (
-      <Notice
-        tone="warning"
-        action={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={editor.reader.isFetching}
-            onClick={() => {
-              void editor.reader.refetch();
-            }}
-          >
-            Try again
-          </Button>
-        }
-      >
-        {describeReadError(editor.reader.error, 'Connection sharing')}
-      </Notice>
-    );
   return (
-    <p role="status" className="text-sm text-muted-foreground">
-      Loading who can use it…
-    </p>
+    <QueryView
+      query={editor.reader}
+      resource="Connection sharing"
+      loading={
+        <p role="status" className="text-sm text-muted-foreground">
+          Loading who can use it…
+        </p>
+      }
+      error={({ error, retrying, retry }) => (
+        <Notice
+          tone="warning"
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={retrying}
+              onClick={retry}
+            >
+              Try again
+            </Button>
+          }
+        >
+          {describeReadError(error, 'Connection sharing')}
+        </Notice>
+      )}
+    />
+  );
+}
+
+function RestrictedConnectionMembers({
+  scope,
+  editor,
+  snapshot,
+}: Readonly<{
+  scope: ConnectionMutationScope;
+  editor: Editor;
+  snapshot: NonNullable<Editor['snapshot']>;
+}>) {
+  return (
+    <>
+      <ul
+        aria-label="People with access"
+        className="flex flex-col divide-y divide-border"
+      >
+        <SharingAdministratorsEntry />
+        {snapshot.members.map((member) => (
+          <SharingEntry
+            key={member.userId}
+            kind="member"
+            label={member.label}
+            detail={
+              member.active ? undefined : 'No longer active — remove them'
+            }
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              disabled={editor.locked}
+              aria-label={`Remove ${member.label}`}
+              onClick={() => {
+                editor.update((value) => ({
+                  ...value,
+                  members: value.members.filter(
+                    (item) => item.userId !== member.userId,
+                  ),
+                }));
+              }}
+            >
+              <XIcon aria-hidden="true" />
+            </Button>
+          </SharingEntry>
+        ))}
+      </ul>
+      <SharingPrincipalPicker
+        apiClient={scope.apiClient}
+        userId={scope.userId}
+        workspaceId={scope.workspaceId}
+        kinds={['member']}
+        roleNames={ROLE_NAMES}
+        selected={snapshot.members.map((member) => member.userId)}
+        full={snapshot.members.length >= MAX_MEMBERS}
+        disabled={editor.locked}
+        unavailable={(principal) =>
+          principal.kind === 'member' && principal.role === 'viewer'
+            ? 'Viewers can’t use connections'
+            : undefined
+        }
+        onAdd={(principal) => {
+          if (principal.kind !== 'member') return;
+          editor.update((value) =>
+            value.members.length >= MAX_MEMBERS ||
+            value.members.some((member) => member.userId === principal.userId)
+              ? value
+              : {
+                  ...value,
+                  members: [
+                    ...value.members,
+                    {
+                      userId: principal.userId,
+                      label: principal.label,
+                      active: true,
+                    },
+                  ],
+                },
+          );
+        }}
+      />
+    </>
   );
 }
