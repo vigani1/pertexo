@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import type { DelegatedRole } from '@pertexo/workflow-model';
 import { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -172,11 +173,11 @@ export function OrganizationWorkspaces({
           >
             Save linked workspace
           </ProgressButton>
-          {choices.isError ? (
-            <Notice tone="warning">
-              Workspace choices could not be loaded.
-            </Notice>
-          ) : null}
+          <QueryView
+            query={choices}
+            resource="Workspace choices"
+            loading={null}
+          />
           <CommandFeedback command={command} />
         </form>
       ) : null}

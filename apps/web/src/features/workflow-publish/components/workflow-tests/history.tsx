@@ -1,4 +1,5 @@
 import { TestSuiteHistory } from '../test-suites/history';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { TestSuiteDialog } from '../test-suites/dialog';
 import { XIcon } from 'lucide-react';
 import { WorkflowTestResults } from './results';
@@ -76,33 +77,21 @@ export function WorkflowTestHistory({
               ) : null}
             </Notice>
           )}
-          {tests.history.isError ? (
-            <p role="alert">
-              Test history couldn’t be loaded.{' '}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => void tests.history.refetch()}
-              >
-                Retry
-              </Button>
-            </p>
-          ) : null}
-          {tests.progress.isError || tests.snapshot.isError ? (
-            <p role="alert">
-              This test couldn’t be read.{' '}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  void tests.progress.refetch();
-                  void tests.snapshot.refetch();
-                }}
-              >
-                Retry
-              </Button>
-            </p>
-          ) : null}
+          <QueryView
+            query={tests.history}
+            resource="Test history"
+            loading={null}
+          />
+          <QueryView
+            query={tests.progress}
+            resource="This test"
+            loading={null}
+          />
+          <QueryView
+            query={tests.snapshot}
+            resource="This test"
+            loading={null}
+          />
           {expanded ? (
             <div className="mt-3 flex flex-col gap-3">
               {tests.history.data?.items.length === 0 ? (

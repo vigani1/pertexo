@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Notice } from '@/components/ui/notice';
+import type { WorkflowRunVariablesResponse } from '@pertexo/contracts';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Disclosure } from '@/components/ui/disclosure';
@@ -28,7 +29,6 @@ export function RunVariables({ scope }: Readonly<{ scope: Scope }>) {
   );
 }
 function CapturedVariables({ scope }: Readonly<{ scope: Scope }>) {
-  const [showAll, setShowAll] = useState(false);
   const query = useQuery(
     workflowRunVariablesQueryOptions(
       scope.apiClient,
@@ -37,26 +37,22 @@ function CapturedVariables({ scope }: Readonly<{ scope: Scope }>) {
       scope.runId,
     ),
   );
-  if (query.isPending)
-    return <SkeletonLines label="Loading captured values" lines={2} />;
-  if (query.isError)
-    return (
-      <Notice
-        action={
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => void query.refetch()}
-          >
-            Try again
-          </Button>
-        }
-      >
-        This run’s variables could not be loaded.
-      </Notice>
-    );
-  const snapshot = query.data.snapshot;
+  return (
+    <QueryView
+      query={query}
+      resource="This run’s variables"
+      loading={<SkeletonLines label="Loading captured values" lines={2} />}
+    >
+      {(data) => <VariableTiles captured={data} />}
+    </QueryView>
+  );
+}
+
+function VariableTiles({
+  captured,
+}: Readonly<{ captured: WorkflowRunVariablesResponse }>) {
+  const [showAll, setShowAll] = useState(false);
+  const snapshot = captured.snapshot;
   if (snapshot === null)
     return (
       <p className="text-sm text-muted-foreground">

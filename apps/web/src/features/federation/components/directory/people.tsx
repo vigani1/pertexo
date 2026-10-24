@@ -1,3 +1,5 @@
+import { QueryView } from '@/components/patterns/states/query-view';
+import { LoadMore } from '@/components/patterns/lists/load-more';
 import { useDeferredValue, useId, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type {
@@ -19,6 +21,19 @@ import {
 import { directoryPeopleQueryOptions } from '../../data/directory.queries';
 import type { FederationScope } from '../../data/settings.api';
 import { DirectoryAdoptionDialog } from './adoption-dialog';
+
+function personStatus(
+  person: Readonly<{
+    deleted: boolean;
+    active: boolean;
+    boundUserId: string | null;
+  }>,
+): string {
+  if (person.deleted) return 'Deleted by directory';
+  if (!person.active) return 'Inactive';
+  if (person.boundUserId === null) return 'Awaiting first SSO';
+  return 'Active';
+}
 
 export function DirectoryPeople({
   scope,
@@ -90,83 +105,69 @@ export function DirectoryPeople({
           </LabelledField>
         ) : null}
       </div>
-      {people.isPending ? <p role="status">Loading directory people…</p> : null}
-      {people.isError ? (
-        <Notice
-          tone="warning"
-          action={
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void people.refetch()}
-            >
-              Retry people
-            </Button>
-          }
-        >
-          Directory people could not be loaded.
-        </Notice>
-      ) : null}
       {people.isFetching && !people.isPending ? (
         <p role="status" className="text-xs text-muted-foreground">
           Updating people…
         </p>
       ) : null}
-      <ul className="divide-y divide-border" aria-label="Directory people">
-        {rows.map((person) => (
-          <li
-            key={person.id}
-            className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
-          >
-            <div className="min-w-0">
-              <p className="break-words font-medium">{person.userName}</p>
-              <p className="break-all text-xs text-muted-foreground">
-                {person.email}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {person.deleted
-                  ? 'Deleted by directory'
-                  : !person.active
-                    ? 'Inactive'
-                    : person.boundUserId === null
-                      ? 'Awaiting first SSO'
-                      : 'Active'}
-              </p>
-            </div>
-            {editable &&
-            person.active &&
-            !person.deleted &&
-            person.boundUserId !== null ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setReview({ directoryUserId: person.id, targetWorkspaceId });
-                }}
+      <QueryView
+        query={people}
+        resource="Directory people"
+        isEmpty={() => rows.length === 0}
+        empty={
+          <p className="text-sm text-muted-foreground">
+            {search.length === 0
+              ? 'No directory people yet. Connect your identity provider to start provisioning.'
+              : 'No directory people match this search.'}
+          </p>
+        }
+      >
+        {() => (
+          <ul className="divide-y divide-border" aria-label="Directory people">
+            {rows.map((person) => (
+              <li
+                key={person.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
               >
-                Review membership for {person.userName}
-              </Button>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      {!people.isPending && !people.isError && rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {search.length === 0
-            ? 'No directory people yet. Connect your identity provider to start provisioning.'
-            : 'No directory people match this search.'}
-        </p>
-      ) : null}
-      {people.hasNextPage ? (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={people.isFetchingNextPage}
-          onClick={() => void people.fetchNextPage()}
-        >
-          {people.isFetchingNextPage ? 'Loading more…' : 'Load more people'}
-        </Button>
-      ) : null}
+                <div className="min-w-0">
+                  <p className="break-words font-medium">{person.userName}</p>
+                  <p className="break-all text-xs text-muted-foreground">
+                    {person.email}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {personStatus(person)}
+                  </p>
+                </div>
+                {editable &&
+                person.active &&
+                !person.deleted &&
+                person.boundUserId !== null ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setReview({
+                        directoryUserId: person.id,
+                        targetWorkspaceId,
+                      });
+                    }}
+                  >
+                    Review membership for {person.userName}
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </QueryView>
+      <LoadMore
+        subject="people"
+        label="Load more people"
+        hasNextPage={people.hasNextPage}
+        loading={people.isFetchingNextPage}
+        failed={people.isFetchNextPageError}
+        onLoadMore={() => void people.fetchNextPage()}
+      />
       {review === undefined ? null : (
         <DirectoryAdoptionDialog
           scope={scope}

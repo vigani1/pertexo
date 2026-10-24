@@ -1,6 +1,6 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { StepSampleResponse } from '@pertexo/contracts';
-import { Button } from '@/components/ui/button';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Notice } from '@/components/ui/notice';
@@ -20,36 +20,25 @@ export function SampleContent({
   onTextChange: (text: string) => void;
   locked: boolean;
 }>) {
-  if (query.isError)
-    return (
-      <Notice tone="destructive">
-        The sample couldn’t be loaded.{' '}
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={query.isFetching}
-          onClick={() => void query.refetch()}
-        >
-          Try again
-        </Button>
-      </Notice>
-    );
-  if (query.data === undefined) return <p role="status">Loading sample…</p>;
   return (
-    <>
-      <SampleOutputEditor
-        data={query.data}
-        source={source}
-        text={text}
-        onTextChange={onTextChange}
-        locked={locked}
-      />
-      {query.data.sample === null || source === 'view' ? null : (
-        <p className="text-xs text-muted-foreground">
-          This replaces the existing sample.
-        </p>
+    <QueryView query={query} resource="The sample">
+      {(data) => (
+        <>
+          <SampleOutputEditor
+            data={data}
+            source={source}
+            text={text}
+            onTextChange={onTextChange}
+            locked={locked}
+          />
+          {data.sample === null || source === 'view' ? null : (
+            <p className="text-xs text-muted-foreground">
+              This replaces the existing sample.
+            </p>
+          )}
+        </>
       )}
-    </>
+    </QueryView>
   );
 }
 function SampleOutputEditor({

@@ -1,6 +1,6 @@
 import { Notice } from '@/components/ui/notice';
 import { isApiError } from '@/lib/api/error';
-import { settingsReadIsUnavailable } from '../model/settings-query';
+import { isAccessLost } from '@/lib/api/error-copy';
 
 /**
  * The settings reads' own failures, for `QueryView`'s `failure`: an
@@ -14,7 +14,7 @@ export function settingsReadFailure(error: unknown) {
         webhook secret encryption.
       </Notice>
     );
-  if (settingsReadIsUnavailable(error))
+  if (isAccessLost(error))
     return (
       <p className="text-sm text-muted-foreground">
         This isn’t available to you. The workflow may have been removed, or your

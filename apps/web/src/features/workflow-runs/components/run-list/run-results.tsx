@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/lists/load-more';
-import { StaleLine } from '@/components/patterns/states/stale-line';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { isApiError } from '@/lib/api/error';
 import { readFailureReason } from '@/lib/api/error-copy';
@@ -33,6 +33,13 @@ const HOUR_MS = 3_600_000;
  * Loading, failure, empty, stale and loaded states for a run list, shared by
  * the workspace Runs page and a workflow's Runs tab.
  */
+/** A 404 means the runs aren't there for this person, not a failed read. */
+function runsUnavailable(error: unknown) {
+  return isApiError(error) && error.status === 404 ? (
+    <RunsUnavailable />
+  ) : undefined;
+}
+
 export function RunResults({
   apiClient,
   userId,
@@ -55,66 +62,67 @@ export function RunResults({
   /** What to say, and where to go, before anything has run here. */
   noRuns: ReactNode;
 }>) {
-  if (query.isError && isApiError(query.error) && query.error.status === 404)
-    return <RunsUnavailable />;
-  if (query.isPending) return <RunListSkeleton />;
-  if (runs.length === 0 && query.isError)
-    return (
-      <RunsLoadError
-        description={readFailureReason(query.error)}
-        retrying={query.isRefetching}
-        onRetry={() => void query.refetch()}
-      />
-    );
   const visible = filterRunsByTrigger(runs, search.trigger);
   const refreshing = query.isRefetching && !query.isFetchingNextPage;
   return (
-    <div className="relative flex flex-col gap-4" aria-busy={query.isFetching}>
-      {/* Laid over the top edge, so a refresh never moves the list. */}
-      {refreshing ? (
-        <SkeletonThread className="absolute inset-x-0 -top-3" />
-      ) : null}
-      {query.isError && !query.isFetchNextPageError ? (
-        <StaleLine
-          updatedAt={query.dataUpdatedAt}
-          retrying={query.isRefetching}
-          onRetry={() => void query.refetch()}
-        />
-      ) : null}
-      {visible.length === 0 ? (
-        hasRunFilters(search) ? (
-          <NoMatchingRuns
-            partial={search.trigger !== undefined && query.hasNextPage}
-            onClearFilters={() => {
-              onSearchChange(clearedRunSearch(search));
-            }}
-          />
-        ) : (
-          noRuns
-        )
-      ) : search.view === 'loom' ? (
-        <RunsLoomView
-          runs={visible}
-          search={search}
-          workspaceId={workspace.id}
-        />
-      ) : (
-        <RunList
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
-          runs={visible}
-          variant={variant}
+    <QueryView
+      query={query}
+      resource="Runs"
+      loading={<RunListSkeleton />}
+      failure={runsUnavailable}
+      error={({ error, retrying, retry }) => (
+        <RunsLoadError
+          description={readFailureReason(error)}
+          retrying={retrying}
+          onRetry={retry}
         />
       )}
-      <LoadMore
-        subject="runs"
-        hasNextPage={query.hasNextPage}
-        loading={query.isFetchingNextPage}
-        failed={query.isFetchNextPageError}
-        onLoadMore={() => void query.fetchNextPage()}
-      />
-    </div>
+    >
+      {() => (
+        <div
+          className="relative flex flex-col gap-4"
+          aria-busy={query.isFetching}
+        >
+          {/* Laid over the top edge, so a refresh never moves the list. */}
+          {refreshing ? (
+            <SkeletonThread className="absolute inset-x-0 -top-3" />
+          ) : null}
+          {visible.length === 0 ? (
+            hasRunFilters(search) ? (
+              <NoMatchingRuns
+                partial={search.trigger !== undefined && query.hasNextPage}
+                onClearFilters={() => {
+                  onSearchChange(clearedRunSearch(search));
+                }}
+              />
+            ) : (
+              noRuns
+            )
+          ) : search.view === 'loom' ? (
+            <RunsLoomView
+              runs={visible}
+              search={search}
+              workspaceId={workspace.id}
+            />
+          ) : (
+            <RunList
+              apiClient={apiClient}
+              userId={userId}
+              workspace={workspace}
+              runs={visible}
+              variant={variant}
+            />
+          )}
+          <LoadMore
+            subject="runs"
+            hasNextPage={query.hasNextPage}
+            loading={query.isFetchingNextPage}
+            failed={query.isFetchNextPageError}
+            onLoadMore={() => void query.fetchNextPage()}
+          />
+        </div>
+      )}
+    </QueryView>
   );
 }
 

@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { publicationAction } from '../../model/publication/action';
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -185,9 +186,14 @@ export function PublicationControls({
         mode={action.mode}
         unavailable={action.unavailable}
         policyNotice={
-          <PublishingPolicyNotice
-            status={policy.status}
-            onRetry={() => void policy.refetch()}
+          <QueryView
+            query={policy}
+            resource="Publishing policy"
+            loading={
+              <p role="status" className="text-sm text-muted-foreground">
+                Checking publishing policy…
+              </p>
+            }
           />
         }
         summary={summary}
@@ -211,29 +217,4 @@ export function PublicationControls({
       />
     </>
   );
-}
-function PublishingPolicyNotice({
-  status,
-  onRetry,
-}: Readonly<{ status: 'pending' | 'error' | 'success'; onRetry: () => void }>) {
-  if (status === 'pending')
-    return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Checking publishing policy…
-      </p>
-    );
-  if (status === 'error')
-    return (
-      <Notice
-        tone="warning"
-        action={
-          <Button type="button" variant="outline" onClick={onRetry}>
-            Retry publishing policy
-          </Button>
-        }
-      >
-        Publishing policy could not be loaded. Check it before publishing.
-      </Notice>
-    );
-  return null;
 }

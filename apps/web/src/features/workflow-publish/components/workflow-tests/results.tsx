@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
 import { Disclosure } from '@/components/ui/disclosure';
 import { Status } from '@/components/ui/status';
@@ -111,19 +112,21 @@ function TestOutputValue({
       { nodeRunId, status },
     ),
   );
-  if (output.isError) return <p role="alert">Output couldn’t be loaded.</p>;
-  if (output.data?.kind === 'inline')
-    return (
-      <JsonTree
-        value={output.data.value}
-        label="Test step output"
-        className="max-h-56"
-      />
-    );
-  if (output.isPending) return <p>Loading output…</p>;
   return (
-    <p className="text-sm text-muted-foreground">
-      This output is stored as a file or is no longer available.
-    </p>
+    <QueryView query={output} resource="Test step output">
+      {(data) =>
+        data.kind === 'inline' ? (
+          <JsonTree
+            value={data.value}
+            label="Test step output"
+            className="max-h-56"
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            This output is stored as a file or is no longer available.
+          </p>
+        )
+      }
+    </QueryView>
   );
 }

@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { useEffect, useEffectEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
@@ -61,18 +62,7 @@ export function CuratedTemplateChoice({
       aria-label="Curated workflow examples"
       className="flex flex-col gap-2"
     >
-      {catalog.isError ? (
-        <p className="flex items-center gap-2 text-sm text-warning">
-          Couldn’t check which steps are available.
-          <Button
-            variant="link"
-            size="sm"
-            onClick={() => void catalog.refetch()}
-          >
-            Retry current catalog
-          </Button>
-        </p>
-      ) : null}
+      <QueryView query={catalog} resource="The step catalog" loading={null} />
       {CURATED_WORKFLOW_TEMPLATES.map((template) => {
         const reasons = templateUnavailableReasons(
           template,

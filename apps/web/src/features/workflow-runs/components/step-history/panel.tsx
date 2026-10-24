@@ -1,12 +1,15 @@
 import type {
   AccessibleWorkspace,
   WorkflowStepHealth,
+  WorkflowStepHealthResponse,
   WorkflowStepRun,
+  WorkflowStepRunsResponse,
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { InfoHint } from '@/components/patterns/guidance/info-hint';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { StatusGlyph } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
@@ -197,16 +200,48 @@ export function StepHistoryPanel({
         Your role can’t see runs, so this step’s history is hidden.
       </p>
     );
-  if (health.isError || runs.isError)
-    return (
-      <p className="text-sm text-muted-foreground">
-        This step’s runs couldn’t be loaded. Try again in a moment.
-      </p>
-    );
-  if (health.data === undefined || runs.data === undefined)
-    return <SkeletonRows label="Loading this step’s runs" />;
-  const { runsConsidered, oldestRunAt } = health.data;
-  const stepHealth = health.data.items.find((item) => item.nodeId === nodeId);
+  const loading = <SkeletonRows label="Loading this step’s runs" />;
+  return (
+    <QueryView query={health} resource="This step’s record" loading={loading}>
+      {(healthData) => (
+        <QueryView query={runs} resource="This step’s runs" loading={loading}>
+          {(runsData) => (
+            <StepRecord
+              health={healthData}
+              runs={runsData}
+              scope={{ apiClient, userId, workspace }}
+              nodeId={nodeId}
+              stepLabel={stepLabel}
+              renderActions={renderActions}
+            />
+          )}
+        </QueryView>
+      )}
+    </QueryView>
+  );
+}
+
+function StepRecord({
+  health,
+  runs,
+  scope: { apiClient, userId, workspace },
+  nodeId,
+  stepLabel,
+  renderActions,
+}: Readonly<{
+  health: WorkflowStepHealthResponse;
+  runs: WorkflowStepRunsResponse;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+  }>;
+  nodeId: string;
+  stepLabel: string;
+  renderActions: ((run: WorkflowStepRun) => ReactNode) | undefined;
+}>) {
+  const { runsConsidered, oldestRunAt } = health;
+  const stepHealth = health.items.find((item) => item.nodeId === nodeId);
   if (runsConsidered === 0)
     return (
       <p className="text-sm text-muted-foreground">
@@ -221,7 +256,7 @@ export function StepHistoryPanel({
         runs. A step added since the last publish runs once you publish again.
       </p>
     );
-  const lastResult = runs.data.items.find((run) => run.status === 'succeeded');
+  const lastResult = runs.items.find((run) => run.status === 'succeeded');
   return (
     <div className="flex flex-col gap-6">
       <Section
@@ -264,7 +299,7 @@ export function StepHistoryPanel({
       )}
       <Section title="Recent runs">
         <ul className="-mx-2 flex flex-col">
-          {runs.data.items.map((run) => (
+          {runs.items.map((run) => (
             <RecentRun
               key={run.nodeRunId}
               run={run}

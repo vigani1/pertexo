@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { workflowTagAssignmentsInfiniteQueryOptions } from '../../../data/organization/queries';
@@ -74,11 +75,7 @@ export function WorkflowTagCleanup({
         check them.
       </p>
       <OrganizationCommandFeedback command={command} names={names} />
-      {assignments.isError ? (
-        <Notice tone="destructive">
-          Assignments could not be loaded. Reload before choosing workflows.
-        </Notice>
-      ) : null}
+      <QueryView query={assignments} resource="Assignments" />
       <fieldset disabled={disabled} className="flex flex-col gap-4">
         <legend className="text-sm">
           Workflows with this tag ({selection.length}/50 selected)
