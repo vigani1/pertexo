@@ -41,11 +41,7 @@ export function RetainedActivity({
   };
   const statuses = Object.keys(snapshot.window.byStatus) as RunStatus[];
   const total = snapshot.window.total;
-  const workflows = snapshot.workflows?.items ?? [];
-  const busiest = Math.max(1, ...workflows.map((workflow) => workflow.total));
-  const shownWorkflows = showAll
-    ? workflows
-    : workflows.slice(0, FIRST_WORKFLOWS);
+
   return (
     <div className="flex flex-col gap-6">
       {/* The count is its own sentence; the link sits beside it. */}
@@ -142,67 +138,16 @@ export function RetainedActivity({
         </p>
       )}
       {snapshot.workflows === null ? null : (
-        <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold">Busiest workflows</h3>
-          {workflows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No workflow runs in this window.
-            </p>
-          ) : (
-            <ul aria-label="Activity by workflow" className="flex flex-col">
-              {shownWorkflows.map((workflow) => (
-                <li key={workflow.workflowId}>
-                  <Link
-                    to="/w/$workspaceId/runs"
-                    params={{ workspaceId }}
-                    search={{ ...search, workflowId: workflow.workflowId }}
-                    className="focus-ring group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-surface-ink/[0.035] motion-reduce:transition-none sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_3.5rem]"
-                  >
-                    <span className="min-w-0 truncate group-hover:text-accent-foreground">
-                      {(canReadWorkflowNames ? workflow.workflowName : null) ??
-                        `Workflow ${shortRunId(workflow.workflowId)}`}
-                    </span>
-                    {/* How busy, next to the busiest one in the window. */}
-                    <span
-                      aria-hidden="true"
-                      className="col-span-2 row-start-2 h-1.5 rounded-full bg-surface-ink/[0.05] sm:col-span-1 sm:row-start-auto"
-                    >
-                      <span
-                        className="block h-full rounded-full bg-action/60 group-hover:bg-action/80"
-                        style={{
-                          width: `${String(Math.max(2, (workflow.total / busiest) * 100))}%`,
-                        }}
-                      />
-                    </span>
-                    <span className="col-start-2 row-start-1 text-right font-mono sm:col-start-3">
-                      {workflow.total.toLocaleString(FORMAT_LOCALE)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-          {workflows.length > FIRST_WORKFLOWS ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-fit"
-              onClick={() => {
-                setShowAll(!showAll);
-              }}
-            >
-              {showAll ? 'Show fewer' : `Show all ${String(workflows.length)}`}
-            </Button>
-          ) : null}
-          {snapshot.workflows.truncated ? (
-            <p className="text-xs text-subtle-foreground">
-              Showing {workflows.length}{' '}
-              {workflows.length === 1 ? 'workflow' : 'workflows'}. The total
-              above includes the rest.
-            </p>
-          ) : null}
-        </div>
+        <BusiestWorkflows
+          snapshot={snapshot.workflows}
+          workspaceId={workspaceId}
+          search={search}
+          canReadWorkflowNames={canReadWorkflowNames}
+          showAll={showAll}
+          onToggle={() => {
+            setShowAll(!showAll);
+          }}
+        />
       )}
       <p className="text-xs text-subtle-foreground">
         Runs started from{' '}
@@ -216,6 +161,93 @@ export function RetainedActivity({
         , counted once each by their current status. A replay counts as a new
         run; retries stay in the same run.
       </p>
+    </div>
+  );
+}
+
+function BusiestWorkflows({
+  snapshot,
+  workspaceId,
+  search,
+  canReadWorkflowNames,
+  showAll,
+  onToggle,
+}: Readonly<{
+  snapshot: NonNullable<WorkflowRunStatisticsResponse['workflows']>;
+  workspaceId: string;
+  search: Readonly<{
+    createdAtFrom: string;
+    createdAtBefore: string;
+    range: 'custom';
+  }>;
+  canReadWorkflowNames: boolean;
+  showAll: boolean;
+  onToggle: () => void;
+}>) {
+  const workflows = snapshot.items;
+  const busiest = Math.max(1, ...workflows.map((workflow) => workflow.total));
+  const shownWorkflows = showAll
+    ? workflows
+    : workflows.slice(0, FIRST_WORKFLOWS);
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold">Busiest workflows</h3>
+      {workflows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No workflow runs in this window.
+        </p>
+      ) : (
+        <ul aria-label="Activity by workflow" className="flex flex-col">
+          {shownWorkflows.map((workflow) => (
+            <li key={workflow.workflowId}>
+              <Link
+                to="/w/$workspaceId/runs"
+                params={{ workspaceId }}
+                search={{ ...search, workflowId: workflow.workflowId }}
+                className="focus-ring group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-surface-ink/[0.035] motion-reduce:transition-none sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_3.5rem]"
+              >
+                <span className="min-w-0 truncate group-hover:text-accent-foreground">
+                  {(canReadWorkflowNames ? workflow.workflowName : null) ??
+                    `Workflow ${shortRunId(workflow.workflowId)}`}
+                </span>
+                {/* How busy, next to the busiest one in the window. */}
+                <span
+                  aria-hidden="true"
+                  className="col-span-2 row-start-2 h-1.5 rounded-full bg-surface-ink/[0.05] sm:col-span-1 sm:row-start-auto"
+                >
+                  <span
+                    className="block h-full rounded-full bg-action/60 group-hover:bg-action/80"
+                    style={{
+                      width: `${String(Math.max(2, (workflow.total / busiest) * 100))}%`,
+                    }}
+                  />
+                </span>
+                <span className="col-start-2 row-start-1 text-right font-mono sm:col-start-3">
+                  {workflow.total.toLocaleString(FORMAT_LOCALE)}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      {workflows.length > FIRST_WORKFLOWS ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="w-fit"
+          onClick={onToggle}
+        >
+          {showAll ? 'Show fewer' : `Show all ${String(workflows.length)}`}
+        </Button>
+      ) : null}
+      {snapshot.truncated ? (
+        <p className="text-xs text-subtle-foreground">
+          Showing {workflows.length}{' '}
+          {workflows.length === 1 ? 'workflow' : 'workflows'}. The total above
+          includes the rest.
+        </p>
+      ) : null}
     </div>
   );
 }

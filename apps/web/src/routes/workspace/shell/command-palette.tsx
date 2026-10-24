@@ -65,7 +65,128 @@ export function WorkspaceCommandPalette({
     enabled: open && can('workflow:read') && typed !== '',
   });
 
-  const places: CommandItem[] = [
+  const places = workspacePlaces({ can, navigate, workspaceId });
+
+  const shown =
+    typed === ''
+      ? (workflows.data?.pages ?? []).flatMap((page) => page.items)
+      : (found.data?.pages ?? []).flatMap((page) =>
+          page.items.map((item) => ('workflow' in item ? item.workflow : item)),
+        );
+  const workflowItems: CommandItem[] = shown.map((workflow) => ({
+    id: `workflow-${workflow.id}`,
+    label: workflow.name,
+    icon: <WorkflowIcon />,
+    ...(workflow.lifecycleStatus === 'archived' ? { hint: 'Archived' } : {}),
+    onSelect: () =>
+      void navigate({
+        to: '/w/$workspaceId/workflows/$workflowId',
+        params: { workspaceId, workflowId: workflow.id },
+      }),
+  }));
+
+  const accountItems: CommandItem[] = [
+    {
+      id: 'switch-theme',
+      label: 'Switch theme',
+      keywords: 'appearance system light dark',
+      icon: <SunMoonIcon />,
+      onSelect: () => {
+        setThemeOpen(true);
+      },
+    },
+    ...workspaces
+      .filter((candidate) => candidate.id !== workspaceId)
+      .map((candidate) => ({
+        id: `workspace-${candidate.id}`,
+        label: `Switch to ${candidate.name}`,
+        icon: <LayoutGridIcon />,
+        onSelect: () =>
+          void navigate({
+            to: '/w/$workspaceId',
+            params: { workspaceId: candidate.id },
+          }),
+      })),
+    {
+      id: 'account',
+      label: 'Account & security',
+      keywords: 'password sessions sign-in methods email',
+      icon: <ShieldCheckIcon />,
+      onSelect: () =>
+        void navigate({
+          to: '/w/$workspaceId/account',
+          params: { workspaceId },
+        }),
+    },
+    {
+      id: 'sign-out',
+      label: 'Sign out',
+      icon: <LogOutIcon />,
+      onSelect: onLogout,
+    },
+  ];
+
+  const groups: CommandGroup[] = [
+    { label: 'Go to', items: places },
+    ...(workflowItems.length === 0
+      ? []
+      : [{ label: 'Workflows', items: workflowItems }]),
+    { label: 'Account', items: accountItems },
+  ];
+
+  return (
+    <>
+      <CommandPalette
+        open={open}
+        onOpenChange={onOpenChange}
+        groups={groups}
+        onQueryChange={setTyped}
+        resolveQuery={(query) => {
+          if (!can('run:read')) return undefined;
+          const runId = workflowRunIdentifierSchema.safeParse(query);
+          if (!runId.success) return undefined;
+          return {
+            label: 'Run',
+            items: [
+              {
+                id: `run-${runId.data}`,
+                label: `Open run ${runId.data.slice(0, 8)}…`,
+                keywords: runId.data,
+                icon: <WavesIcon />,
+                onSelect: () =>
+                  void navigate({
+                    to: '/w/$workspaceId/runs/$runId',
+                    params: { workspaceId, runId: runId.data },
+                  }),
+              },
+            ],
+          };
+        }}
+      />
+      <Dialog open={themeOpen} onOpenChange={setThemeOpen}>
+        <DialogContent>
+          <DialogTitle>Switch theme</DialogTitle>
+          <DialogDescription>
+            Saved for this browser, across workspaces. System follows your
+            device’s appearance.
+          </DialogDescription>
+          <AppearanceChoice />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function workspacePlaces({
+  can,
+  navigate,
+  workspaceId,
+}: Readonly<{
+  can: (capability: AccessibleWorkspace['capabilities'][number]) => boolean;
+  navigate: ReturnType<typeof useNavigate>;
+  workspaceId: string;
+}>): CommandItem[] {
+  return [
     ...(can('run:read')
       ? [
           {
@@ -179,113 +300,4 @@ export function WorkspaceCommandPalette({
         }),
     },
   ];
-
-  const shown =
-    typed === ''
-      ? (workflows.data?.pages ?? []).flatMap((page) => page.items)
-      : (found.data?.pages ?? []).flatMap((page) =>
-          page.items.map((item) => ('workflow' in item ? item.workflow : item)),
-        );
-  const workflowItems: CommandItem[] = shown.map((workflow) => ({
-    id: `workflow-${workflow.id}`,
-    label: workflow.name,
-    icon: <WorkflowIcon />,
-    ...(workflow.lifecycleStatus === 'archived' ? { hint: 'Archived' } : {}),
-    onSelect: () =>
-      void navigate({
-        to: '/w/$workspaceId/workflows/$workflowId',
-        params: { workspaceId, workflowId: workflow.id },
-      }),
-  }));
-
-  const accountItems: CommandItem[] = [
-    {
-      id: 'switch-theme',
-      label: 'Switch theme',
-      keywords: 'appearance system light dark',
-      icon: <SunMoonIcon />,
-      onSelect: () => {
-        setThemeOpen(true);
-      },
-    },
-    ...workspaces
-      .filter((candidate) => candidate.id !== workspaceId)
-      .map((candidate) => ({
-        id: `workspace-${candidate.id}`,
-        label: `Switch to ${candidate.name}`,
-        icon: <LayoutGridIcon />,
-        onSelect: () =>
-          void navigate({
-            to: '/w/$workspaceId',
-            params: { workspaceId: candidate.id },
-          }),
-      })),
-    {
-      id: 'account',
-      label: 'Account & security',
-      keywords: 'password sessions sign-in methods email',
-      icon: <ShieldCheckIcon />,
-      onSelect: () =>
-        void navigate({
-          to: '/w/$workspaceId/account',
-          params: { workspaceId },
-        }),
-    },
-    {
-      id: 'sign-out',
-      label: 'Sign out',
-      icon: <LogOutIcon />,
-      onSelect: onLogout,
-    },
-  ];
-
-  const groups: CommandGroup[] = [
-    { label: 'Go to', items: places },
-    ...(workflowItems.length === 0
-      ? []
-      : [{ label: 'Workflows', items: workflowItems }]),
-    { label: 'Account', items: accountItems },
-  ];
-
-  return (
-    <>
-      <CommandPalette
-        open={open}
-        onOpenChange={onOpenChange}
-        groups={groups}
-        onQueryChange={setTyped}
-        resolveQuery={(query) => {
-          if (!can('run:read')) return undefined;
-          const runId = workflowRunIdentifierSchema.safeParse(query);
-          if (!runId.success) return undefined;
-          return {
-            label: 'Run',
-            items: [
-              {
-                id: `run-${runId.data}`,
-                label: `Open run ${runId.data.slice(0, 8)}…`,
-                keywords: runId.data,
-                icon: <WavesIcon />,
-                onSelect: () =>
-                  void navigate({
-                    to: '/w/$workspaceId/runs/$runId',
-                    params: { workspaceId, runId: runId.data },
-                  }),
-              },
-            ],
-          };
-        }}
-      />
-      <Dialog open={themeOpen} onOpenChange={setThemeOpen}>
-        <DialogContent>
-          <DialogTitle>Switch theme</DialogTitle>
-          <DialogDescription>
-            Saved for this browser, across workspaces. System follows your
-            device’s appearance.
-          </DialogDescription>
-          <AppearanceChoice />
-        </DialogContent>
-      </Dialog>
-    </>
-  );
 }
