@@ -99,6 +99,21 @@ export function registerLetsOperatorRecordCommandsReplays(): void {
         fence_token: String(lease.fenceToken),
         status: 'running',
       });
+      const record = await operator.getCommand({
+        actorRef: command.actorRef,
+        commandId,
+        reason: 'inspect durable command projection',
+        workspaceId: workspaceA,
+      });
+      expect(record).toMatchObject({
+        commandId,
+        commandType: 'attempt.reconcile',
+        status: 'completed',
+        outcome: 'fence_conflict',
+      });
+      expect(record?.createdAt).toBeInstanceOf(Date);
+      expect(record?.completedAt).toBeInstanceOf(Date);
+      expect(Object.isFrozen(record)).toBe(true);
     } finally {
       await operator.close();
     }
