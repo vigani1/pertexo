@@ -1,3 +1,13 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  users,
+  workspaces,
+  workspaceMemberships,
+  auditEvents,
+} from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -14,7 +24,7 @@ import type {
   WorkspaceRenameResult,
 } from '../contract.js';
 import { WorkspaceRenameCommandConflictError } from '../errors.js';
-import { mapWorkspace } from '../rows.js';
+import { workspaceRecord, workspaceSelection } from './projection.js';
 import { parseIdentityUuid } from '../support.js';
 import { withTenantScopedClient } from '../transactions.js';
 
@@ -85,41 +95,47 @@ export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
         pool,
         { workspaceId, actorId: actorUserId },
         async (client): Promise<WorkspaceRenameResult> => {
-          const workspace = await client.query(
-            `select id,name,slug,status,revision,created_by,
-                    deletion_requested_at,deletion_requested_by,deletion_reason,
-                    purge_after,created_at,updated_at
-             from app.workspaces where id=$1 for update`,
-            [workspaceId],
-          );
-          const current = workspace.rows[0] as
-            Record<string, unknown> | undefined;
+          const db = drizzle(client);
+          const workspace = await db
+            .select(workspaceSelection)
+            .from(workspaces)
+            .where(eq(workspaces.id, workspaceId))
+            .for('update')
+            .catch(rethrowQueryFailure);
+          const current = workspace[0];
           if (current?.status !== 'active')
             throw new WorkspaceRenameCommandConflictError(
               'workspace_inactive',
               'Only active workspaces can be renamed',
             );
-          await client.query(
-            'select id from app.users where id=$1 for update',
-            [actorUserId],
-          );
-          const access = await client.query<{
-            role: string;
-            membership_status: string;
-            user_status: string;
-          }>(
-            `select membership.role,membership.status membership_status,
-                    actor.status user_status
-             from app.workspace_memberships membership
-             join app.users actor on actor.id=membership.user_id
-             where membership.workspace_id=$1 and membership.user_id=$2
-             for update of membership,actor`,
-            [workspaceId, actorUserId],
-          );
-          const actor = access.rows[0];
+          await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.id, actorUserId))
+            .for('update')
+            .catch(rethrowQueryFailure);
+          const membership = alias(workspaceMemberships, 'membership');
+          const actorTable = alias(users, 'actor');
+          const access = await db
+            .select({
+              role: membership.role,
+              membershipStatus: membership.status,
+              userStatus: actorTable.status,
+            })
+            .from(membership)
+            .innerJoin(actorTable, eq(actorTable.id, membership.userId))
+            .where(
+              and(
+                eq(membership.workspaceId, workspaceId),
+                eq(membership.userId, actorUserId),
+              ),
+            )
+            .for('update', { of: [membership, actorTable] })
+            .catch(rethrowQueryFailure);
+          const actor = access[0];
           const managerUnavailable =
-            actor?.membership_status !== 'active' ||
-            actor.user_status !== 'active' ||
+            actor?.membershipStatus !== 'active' ||
+            actor.userStatus !== 'active' ||
             (actor.role !== 'owner' && actor.role !== 'admin');
           if (managerUnavailable)
             throw new WorkspaceRenameCommandConflictError(
@@ -132,7 +148,7 @@ export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
             resourceId: workspaceId,
           });
           if (stored !== null) return replayedResult(stored);
-          const currentWorkspace = mapWorkspace(current);
+          const currentWorkspace = workspaceRecord(current);
           if (currentWorkspace.revision !== expectedRevision)
             throw new WorkspaceRenameCommandConflictError(
               'revision_conflict',
@@ -141,35 +157,34 @@ export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
           const changed = currentWorkspace.name !== name;
           let renamed = currentWorkspace;
           if (changed) {
-            const updated = await client.query(
-              `update app.workspaces
-               set name=$2,revision=revision+1,updated_at=clock_timestamp()
-               where id=$1
-               returning id,name,slug,status,revision,created_by,
-                         deletion_requested_at,deletion_requested_by,deletion_reason,
-                         purge_after,created_at,updated_at`,
-              [workspaceId, name],
-            );
-            renamed = mapWorkspace(updated.rows[0] as Record<string, unknown>);
-            await client.query(
-              `insert into app.audit_events
-                 (id,workspace_id,actor_user_id,action,target_type,target_id,
-                  request_id,trace_id,metadata)
-               values($1,$2,$3,'workspace.renamed','workspace',$2,$4,$5,$6::jsonb)`,
-              [
-                generatePersistedId(),
+            const updated = await db
+              .update(workspaces)
+              .set({
+                name,
+                revision: sql`${workspaces.revision}+1`,
+                updatedAt: sql`clock_timestamp()`,
+              })
+              .where(eq(workspaces.id, workspaceId))
+              .returning(workspaceSelection)
+              .catch(rethrowQueryFailure);
+            const changedWorkspace = updated[0];
+            if (changedWorkspace === undefined)
+              throw new Error('Workspace rename returned no record');
+            renamed = workspaceRecord(changedWorkspace);
+            await db
+              .insert(auditEvents)
+              .values({
+                id: generatePersistedId(),
                 workspaceId,
                 actorUserId,
-                raw.requestId ?? null,
-                raw.traceId ?? null,
-                JSON.stringify({
-                  fromName: currentWorkspace.name,
-                  toName: renamed.name,
-                  fromRevision: currentWorkspace.revision,
-                  toRevision: renamed.revision,
-                }),
-              ],
-            );
+                action: 'workspace.renamed',
+                targetType: 'workspace',
+                targetId: workspaceId,
+                requestId: raw.requestId ?? null,
+                traceId: raw.traceId ?? null,
+                metadata: sql`${JSON.stringify({ fromName: currentWorkspace.name, toName: renamed.name, fromRevision: currentWorkspace.revision, toRevision: renamed.revision })}::jsonb`,
+              })
+              .catch(rethrowQueryFailure);
           }
           const result = Object.freeze({
             workspace: renamed,

@@ -1,8 +1,11 @@
 import { RETAINED_RESOURCE_WORKSPACE_STATUSES } from './policy.js';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { workflowScopeSql } from './scope.queries.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { databaseSchema } from '../../schema.js';
 import {
   parseWorkspaceId,
@@ -85,18 +88,22 @@ function withResourceOwnerRead<T>(
   read: (transaction: ResourceTransaction) => Promise<T>,
 ): Promise<T | undefined> {
   return withRetainedResourceRead(pool, input, async (transaction) => {
-    const source =
-      owner.kind === 'run'
-        ? sql`app.workflow_runs resource_owner`
-        : sql`app.workflows resource_owner`;
+    const source = owner.kind === 'run' ? workflowRuns : workflows;
     const workflowId =
-      owner.kind === 'run'
-        ? sql`resource_owner.workflow_id`
-        : sql`resource_owner.id`;
-    const visible = await transaction.db.execute(sql`select 1 from ${source}
-      where resource_owner.workspace_id=${transaction.workspaceId} and resource_owner.id=${owner.id}
-      and ${workflowScopeSql(transaction.resources, workflowId)} limit 1`);
-    if (visible.rows.length === 0) return undefined;
+      owner.kind === 'run' ? workflowRuns.workflowId : workflows.id;
+    const visible = await transaction.db
+      .select({ one: sql`1` })
+      .from(source)
+      .where(
+        and(
+          eq(source.workspaceId, transaction.workspaceId),
+          eq(source.id, owner.id),
+          workflowScopeSql(transaction.resources, sql`${workflowId}`),
+        ),
+      )
+      .limit(1)
+      .catch(rethrowQueryFailure);
+    if (visible.length === 0) return undefined;
     return read(transaction);
   });
 }

@@ -1,5 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { sql } from 'drizzle-orm';
+import { and, sql } from 'drizzle-orm';
+import { connections } from '../../../schema/connections.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import {
   canonicalJson,
@@ -73,15 +75,23 @@ export async function connectionUseIssues(
 ) {
   if (references.length === 0) return [];
   const ids = connectionReferenceIds(references);
+  const query = transaction.db
+    .select({ id: connections.id })
+    .from(connections)
+    .where(
+      and(
+        sql`${connections.id}=any(${sql.param(ids)}::uuid[])`,
+        connectionScopeSql(scope, connections),
+      ),
+    )
+    .orderBy(connections.id);
   const allowed =
     ids.length === 0
-      ? { rows: [] }
-      : await transaction.db.execute<{ id: string }>(sql`
-    select connection.id::text from app.connections connection
-    where connection.id=any(${sql.param(ids)}::uuid[]) and ${connectionScopeSql(scope)}
-    order by connection.id ${sql.raw(locking === 'share' ? 'for share' : '')}
-  `);
-  const permitted = new Set(allowed.rows.map((row) => row.id));
+      ? []
+      : await (locking === 'share' ? query.for('share') : query).catch(
+          rethrowQueryFailure,
+        );
+  const permitted = new Set(allowed.map((row) => row.id));
   const issues = references
     .filter((reference) => !permitted.has(reference.id.toLowerCase()))
     .map((reference) => ({

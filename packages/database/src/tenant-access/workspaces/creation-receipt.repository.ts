@@ -1,3 +1,7 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaceCreationIdempotencyRecords as records } from '../../schema/runs/support.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash, randomUUID } from 'node:crypto';
 
@@ -111,30 +115,43 @@ export async function claimWorkspaceCreationCommand(
   requestHash: string,
 ): Promise<CommandClaim> {
   const operation = 'workspace.create';
-  const inserted = await client.query<{ id: string }>(
-    `insert into app.workspace_creation_idempotency_records
-       (id, actor_user_id, operation, key_hash, request_hash, status)
-     values ($1, $2, $3, $4, $5, 'in_progress')
-     on conflict (actor_user_id, operation, key_hash) do nothing
-     returning id`,
-    [generatePersistedId(), actorUserId, operation, keyHash, requestHash],
-  );
-  const insertedId = inserted.rows[0]?.id;
+  const db = drizzle(client);
+  const inserted = await db
+    .insert(records)
+    .values({
+      id: generatePersistedId(),
+      actorUserId,
+      operation,
+      keyHash,
+      requestHash,
+      status: 'in_progress',
+    })
+    .onConflictDoNothing({
+      target: [records.actorUserId, records.operation, records.keyHash],
+    })
+    .returning({ id: records.id })
+    .catch(rethrowQueryFailure);
+  const insertedId = inserted[0]?.id;
   if (insertedId !== undefined) return { claimed: true, id: insertedId };
 
-  const existing = await client.query<{
-    request_hash: string;
-    result_ref: unknown;
-    status: string;
-  }>(
-    `select request_hash, status, result_ref
-     from app.workspace_creation_idempotency_records
-     where actor_user_id = $1 and operation = $2 and key_hash = $3`,
-    [actorUserId, operation, keyHash],
-  );
-  const row = existing.rows[0];
+  const existing = await db
+    .select({
+      requestHash: records.requestHash,
+      resultRef: records.resultRef,
+      status: records.status,
+    })
+    .from(records)
+    .where(
+      and(
+        eq(records.actorUserId, actorUserId),
+        eq(records.operation, operation),
+        eq(records.keyHash, keyHash),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const row = existing[0];
   if (row === undefined) throw new IdempotencyRecordCorruptError();
-  if (row.request_hash !== requestHash) {
+  if (row.requestHash !== requestHash) {
     throw new IdempotencyRequestConflictError();
   }
   if (row.status !== IDEMPOTENCY_STATUS.completed) {
@@ -142,7 +159,7 @@ export async function claimWorkspaceCreationCommand(
   }
   return {
     claimed: false,
-    result: parseDurableWorkspaceResult(row.result_ref),
+    result: parseDurableWorkspaceResult(row.resultRef),
   };
 }
 
@@ -151,16 +168,16 @@ export async function completeWorkspaceCreationCommand(
   claimId: string,
   result: WorkspaceCreationResult,
 ): Promise<void> {
-  const completed = await client.query(
-    `update app.workspace_creation_idempotency_records
-     set status = 'completed', resource_id = $2, result_ref = $3::jsonb,
-         updated_at = clock_timestamp()
-     where id = $1 and status = 'in_progress'`,
-    [
-      claimId,
-      result.workspace.id,
-      JSON.stringify(durableWorkspaceResult(result.workspace)),
-    ],
-  );
-  if (completed.rowCount !== 1) throw new IdempotencyRecordCorruptError();
+  const completed = await drizzle(client)
+    .update(records)
+    .set({
+      status: 'completed',
+      resourceId: result.workspace.id,
+      resultRef: durableWorkspaceResult(result.workspace),
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(and(eq(records.id, claimId), eq(records.status, 'in_progress')))
+    .returning({ id: records.id })
+    .catch(rethrowQueryFailure);
+  if (completed.length !== 1) throw new IdempotencyRecordCorruptError();
 }

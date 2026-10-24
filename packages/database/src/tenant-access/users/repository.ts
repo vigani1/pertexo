@@ -1,9 +1,13 @@
+import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { users } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { mapUser } from '../rows.js';
+import { userRecord, userSelection } from './projection.js';
 import {
   parseIdentityUuid,
   throwIdentityDatabaseConflict,
@@ -35,13 +39,19 @@ async function createUser(
   const fields = parseUserIdentityFields(input);
   if (fields.email !== input.email) throw new Error('Invalid user email');
   try {
-    const result = await pool.query(
-      `insert into app.users (id, email, display_name, status)
-       values ($1, $2, $3, 'active')
-       returning id, email, display_name, status, profile_revision, created_at, updated_at`,
-      [id, fields.email, fields.displayName],
-    );
-    return mapUser(result.rows[0] as Record<string, unknown>);
+    const result = await drizzle(pool)
+      .insert(users)
+      .values({
+        id,
+        email: fields.email,
+        displayName: fields.displayName,
+        status: 'active',
+      })
+      .returning(userSelection)
+      .catch(rethrowQueryFailure);
+    const row = result[0];
+    if (row === undefined) throw new Error('User insertion returned no record');
+    return userRecord(row);
   } catch (error: unknown) {
     throwIdentityDatabaseConflict(
       error,
@@ -54,13 +64,13 @@ async function findUserById(
   pool: Pool,
   userId: string,
 ): Promise<UserRecord | null> {
-  const result = await pool.query(
-    `select id, email, display_name, status, profile_revision, created_at, updated_at
-     from app.users where id = $1`,
-    [parseIdentityUuid(userId)],
-  );
-  const row = result.rows[0] as Record<string, unknown> | undefined;
-  return row === undefined ? null : mapUser(row);
+  const result = await drizzle(pool)
+    .select(userSelection)
+    .from(users)
+    .where(eq(users.id, parseIdentityUuid(userId)))
+    .catch(rethrowQueryFailure);
+  const row = result[0];
+  return row === undefined ? null : userRecord(row);
 }
 
 /** Pertexo's user records; Better Auth owns credentials and sessions. */

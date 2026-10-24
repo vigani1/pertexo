@@ -1,5 +1,8 @@
+import { and, asc, eq, gt, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { users, workspaceMemberships } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import type { Role } from '@pertexo/workflow-model';
 
 /** Names-only directory; the caller owns its workspace and capability fence. */
 export async function readWorkspacePeople(
@@ -10,18 +13,35 @@ export async function readWorkspacePeople(
     q: string;
   }>,
 ) {
-  const rows = await client.query<{
-    userId: string;
-    displayName: string;
-    role: Role;
-  }>(
-    `select member.user_id "userId",actor.display_name "displayName",member.role from app.workspace_memberships member join app.users actor on actor.id=member.user_id and actor.status='active'
-        where member.workspace_id=$1 and member.status='active' and ($2::uuid is null or member.user_id>$2) and position(lower($3) in lower(actor.display_name))>0 order by member.user_id limit 51`,
-    [input.workspaceId, input.after ?? null, input.q],
-  );
-  const page = rows.rows.slice(0, 50);
+  const after = input.after ?? null;
+  const rows = await drizzle(client)
+    .select({
+      userId: workspaceMemberships.userId,
+      displayName: users.displayName,
+      role: workspaceMemberships.role,
+    })
+    .from(workspaceMemberships)
+    .innerJoin(
+      users,
+      and(
+        eq(users.id, workspaceMemberships.userId),
+        eq(users.status, 'active'),
+      ),
+    )
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, input.workspaceId),
+        eq(workspaceMemberships.status, 'active'),
+        after === null ? undefined : gt(workspaceMemberships.userId, after),
+        sql`position(lower(${input.q}) in lower(${users.displayName}))>0`,
+      ),
+    )
+    .orderBy(asc(workspaceMemberships.userId))
+    .limit(51)
+    .catch(rethrowQueryFailure);
+  const page = rows.slice(0, 50);
   return {
     items: page,
-    nextCursor: rows.rows.length > 50 ? (page.at(-1)?.userId ?? null) : null,
+    nextCursor: rows.length > 50 ? (page.at(-1)?.userId ?? null) : null,
   };
 }

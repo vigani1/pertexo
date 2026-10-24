@@ -1,4 +1,13 @@
-import type { Role } from '@pertexo/workflow-model';
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaceInvitationAcceptanceIntents as intents,
+  workspaceInvitations as invitations,
+  workspaces,
+  users,
+  workspaceMemberships,
+} from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
@@ -28,47 +37,39 @@ import {
   withPlatformTransaction,
   withWorkspaceScope,
 } from '../../transactions.js';
-import { key, delegatedRole } from './contract.js';
+import { key } from './contract.js';
 import { selectIntent } from './state.queries.js';
 
 export async function completeAcceptance(
   pool: Pool,
   raw: CompleteInvitationAcceptanceInput,
 ): Promise<InvitationAcceptanceResult> {
-  const workspaceId = parseIdentityUuid(raw.workspaceId);
-  const intentId = parseIdentityUuid(raw.intentId);
-  const actorUserId = parseIdentityUuid(raw.actorUserId);
-  const invitationRevision = z
-    .number()
-    .int()
-    .positive()
-    .parse(raw.invitationRevision);
-  const command: CommandIdentity = {
-    workspaceId,
-    operation: 'workspace.invitation.accept',
-    scope: actorUserId,
-    idempotencyKey: key.parse(raw.idempotencyKey),
-  };
-  const identity = { workspaceId, intentId, actorUserId, invitationRevision };
+  const { identity, command } = prepareAcceptance(raw);
+  const { workspaceId, intentId, actorUserId, invitationRevision } = identity;
   return withPlatformTransaction(pool, async (client) => {
     const preview = await withWorkspaceScope(
       client,
       { workspaceId, actorId: actorUserId },
-      (scoped) => selectIntent(scoped, 'intent.id=$1', [intentId]),
+      (scoped) => selectIntent(scoped, eq(intents.id, intentId)),
     );
     if (preview === null)
       throw new InvitationAcceptanceConflictError(
         'unavailable',
         'The invitation journey is unavailable',
       );
-    const workspace = await client.query<{ status: string }>(
-      'select status from app.workspaces where id=$1 for update',
-      [workspaceId],
-    );
-    const user = await client.query<{ status: string }>(
-      'select status from app.users where id=$1 for update',
-      [actorUserId],
-    );
+    const db = drizzle(client);
+    const workspace = await db
+      .select({ status: workspaces.status })
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .for('update')
+      .catch(rethrowQueryFailure);
+    const user = await db
+      .select({ status: users.status })
+      .from(users)
+      .where(eq(users.id, actorUserId))
+      .for('update')
+      .catch(rethrowQueryFailure);
     const sourceSession =
       preview.verifiedSessionId === null
         ? undefined
@@ -106,10 +107,10 @@ export async function completeAcceptance(
             ...state,
             preview,
             sourceSession,
-            userStatus: user.rows[0]?.status,
-            workspaceStatus: workspace.rows[0]?.status,
+            userStatus: user[0]?.status,
+            workspaceStatus: workspace[0]?.status,
           });
-        const existing = membership.rows[0];
+        const existing = membership[0];
         // ADR 042: a removal ends the membership, so a later invitation starts
         // a new one at the invited role. Suspension stays a conflict.
         const rejoining = existing?.status === 'removed';
@@ -121,9 +122,7 @@ export async function completeAcceptance(
             'Inactive membership cannot be restored by invitation',
           );
         const membershipCreated = existing === undefined || rejoining;
-        const assignedRole = membershipCreated
-          ? delegatedRole.parse(current.role)
-          : existing.role;
+        const assignedRole = membershipCreated ? current.role : existing.role;
         if (membershipCreated) {
           if (existing === undefined)
             await createMemberships(
@@ -200,27 +199,40 @@ async function readScopedAcceptance(
       preview: NonNullable<Awaited<ReturnType<typeof selectIntent>>>;
     }>,
 ) {
-  const membership = await client.query<{
-    role: Role;
-    status: string;
-    role_revision: number;
-  }>(
-    `select role,status,role_revision from app.workspace_memberships
-          where workspace_id=$1 and user_id=$2 for update`,
-    [workspaceId, actorUserId],
-  );
-  const invitation = await client.query<{
-    status: string;
-    revision: number;
-    role: string;
-    normalized_email: string;
-    expires_at: Date;
-  }>(
-    `select status,revision,role,normalized_email,expires_at
-           from app.workspace_invitations where workspace_id=$1 and id=$2 for update`,
-    [workspaceId, preview.invitationId],
-  );
-  const intent = await selectIntent(client, 'intent.id=$1', [intentId], {
+  const db = drizzle(client);
+  const membership = await db
+    .select({
+      role: workspaceMemberships.role,
+      status: workspaceMemberships.status,
+      role_revision: workspaceMemberships.roleRevision,
+    })
+    .from(workspaceMemberships)
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, actorUserId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  const invitation = await db
+    .select({
+      status: invitations.status,
+      revision: invitations.revision,
+      role: invitations.role,
+      normalized_email: invitations.normalizedEmail,
+      expires_at: invitations.expiresAt,
+    })
+    .from(invitations)
+    .where(
+      and(
+        eq(invitations.workspaceId, workspaceId),
+        eq(invitations.id, preview.invitationId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  const intent = await selectIntent(client, eq(intents.id, intentId), {
     lock: true,
   });
   if (intent === null)
@@ -288,7 +300,7 @@ function requireAcceptanceProof(
       'workspace_inactive',
       'The workspace is not active',
     );
-  const current = invitation.rows[0];
+  const current = invitation[0];
   const invitationUnavailable =
     current?.status !== 'pending' ||
     current.expires_at.getTime() <= now.getTime() ||
@@ -305,4 +317,25 @@ function requireAcceptanceProof(
     );
 
   return { current, sourceSession };
+}
+
+function prepareAcceptance(raw: CompleteInvitationAcceptanceInput) {
+  const workspaceId = parseIdentityUuid(raw.workspaceId);
+  const intentId = parseIdentityUuid(raw.intentId);
+  const actorUserId = parseIdentityUuid(raw.actorUserId);
+  const invitationRevision = z
+    .number()
+    .int()
+    .positive()
+    .parse(raw.invitationRevision);
+  const command: CommandIdentity = {
+    workspaceId,
+    operation: 'workspace.invitation.accept',
+    scope: actorUserId,
+    idempotencyKey: key.parse(raw.idempotencyKey),
+  };
+  return {
+    identity: { workspaceId, intentId, actorUserId, invitationRevision },
+    command,
+  };
 }

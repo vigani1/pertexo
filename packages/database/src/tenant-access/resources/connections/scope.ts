@@ -1,4 +1,14 @@
-import { sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  exists,
+  or,
+  sql,
+  type SQL,
+  type SQLWrapper,
+} from 'drizzle-orm';
+import { alias, QueryBuilder } from 'drizzle-orm/pg-core';
+import { connections, connectionShares } from '../../../schema/connections.js';
 import type { PoolClient } from 'pg';
 import {
   hasCapability,
@@ -55,11 +65,16 @@ export async function readConnectionScope(
 /** Filter discovery before paging, and admission before saving a new binding. */
 export function connectionScopeSql(
   scope: ConnectionScope,
-  connection: SQL = sql`connection`,
+  connection: Readonly<{
+    id: SQLWrapper;
+    workspaceId: SQLWrapper;
+    accessMode: SQLWrapper;
+    createdBy: SQLWrapper;
+  }> = alias(connections, 'connection'),
 ): SQL {
   if (!scope.workspaceShared) return sql`false`;
   const audience = connectionAudienceSql(scope, connection);
-  return sql`(${connection}.workspace_id=${scope.workspaceId} and ${audience})`;
+  return sql`${and(eq(connection.workspaceId, scope.workspaceId), audience)}`;
 }
 
 function restrictedConnectionAudience(
@@ -74,16 +89,35 @@ function restrictedConnectionAudience(
   return 'none';
 }
 
-function connectionAudienceSql(scope: ConnectionScope, connection: SQL): SQL {
+function connectionAudienceSql(
+  scope: ConnectionScope,
+  connection: Readonly<{
+    id: SQLWrapper;
+    accessMode: SQLWrapper;
+    createdBy: SQLWrapper;
+  }>,
+): SQL {
   if (scope.restricted === 'all') {
     return sql`true`;
   }
   if (scope.restricted === 'none') {
-    return sql`${connection}.access_mode='workspace'`;
+    return sql`${eq(connection.accessMode, 'workspace')}`;
   }
-  return sql`(${connection}.access_mode='workspace' or
-      (${connection}.access_mode='restricted' and (${connection}.created_by=${scope.actorId} or exists (
-        select 1 from app.connection_shares permission
-        where permission.workspace_id=${scope.workspaceId} and permission.connection_id=${connection}.id
-          and permission.user_id=${scope.actorId}))))`;
+  const shared = new QueryBuilder()
+    .select({ one: sql`1` })
+    .from(connectionShares)
+    .where(
+      and(
+        eq(connectionShares.workspaceId, scope.workspaceId),
+        eq(connectionShares.connectionId, connection.id),
+        eq(connectionShares.userId, scope.actorId),
+      ),
+    );
+  return sql`${or(
+    eq(connection.accessMode, 'workspace'),
+    and(
+      eq(connection.accessMode, 'restricted'),
+      or(eq(connection.createdBy, scope.actorId), exists(shared)),
+    ),
+  )}`;
 }

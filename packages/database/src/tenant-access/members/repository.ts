@@ -1,5 +1,15 @@
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  users,
+  workspaces,
+  workspaceMemberships,
+} from '../../schema/foundation.js';
+import { authDirectoryMemberships } from '../../schema/identity/federation/directory/sources.js';
+import { authDirectoryUsers } from '../../schema/identity/federation/directory/users.js';
+import { authOrganizations } from '../../schema/identity/federation/organizations.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { isIntegerInRange } from '../../platform/persisted-primitives.js';
-import type { Role } from '@pertexo/workflow-model';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -42,47 +52,50 @@ async function listAccessibleWorkspaces(
   if (invalidLimit)
     throw new RangeError('Accessible workspace page limit is invalid');
   return withActorScopedClient(pool, actorId, async (client) => {
-    const result = await client.query<{
-      id: string;
-      name: string;
-      slug: string;
-      status: Extract<
-        WorkspaceStatus,
-        'active' | 'suspended' | 'pending_deletion'
-      >;
-      role: Role;
-      revision: number;
-      created_at: Date;
-      updated_at: Date;
-    }>(
-      `select w.id, w.name, w.slug, w.status, w.revision, m.role,
-              w.created_at, w.updated_at
-       from app.workspace_memberships m
-       join app.workspaces w on w.id = m.workspace_id
-       join app.users u on u.id = m.user_id and u.status = 'active'
-       where m.user_id = $1 and m.status = 'active'
-         and w.status in ('active', 'suspended', 'pending_deletion')
-         and ($2::uuid is null or w.id > $2::uuid)
-       order by w.id asc
-       limit $3`,
-      [actorId, after ?? null, limit + 1],
-    );
-    const hasNext = result.rows.length > limit;
-    const rows = hasNext ? result.rows.slice(0, limit) : result.rows;
-    const items = Object.freeze(
-      rows.map((row) =>
-        Object.freeze({
-          id: row.id,
-          name: row.name,
-          slug: row.slug,
-          status: row.status,
-          revision: row.revision,
-          role: row.role,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        }),
-      ),
-    );
+    const rowsFound = await drizzle(client)
+      .select({
+        id: workspaces.id,
+        name: workspaces.name,
+        slug: workspaces.slug,
+        // The status predicate excludes purging/deleted workspaces from this page.
+        status: sql<
+          Extract<WorkspaceStatus, 'active' | 'suspended' | 'pending_deletion'>
+        >`${workspaces.status}`,
+        revision: workspaces.revision,
+        role: workspaceMemberships.role,
+        createdAt: workspaces.createdAt,
+        updatedAt: workspaces.updatedAt,
+      })
+      .from(workspaceMemberships)
+      .innerJoin(
+        workspaces,
+        eq(workspaces.id, workspaceMemberships.workspaceId),
+      )
+      .innerJoin(
+        users,
+        and(
+          eq(users.id, workspaceMemberships.userId),
+          eq(users.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(workspaceMemberships.userId, actorId),
+          eq(workspaceMemberships.status, 'active'),
+          inArray(workspaces.status, [
+            'active',
+            'suspended',
+            'pending_deletion',
+          ]),
+          sql`(${after ?? null}::uuid is null or ${workspaces.id}>${after ?? null}::uuid)`,
+        ),
+      )
+      .orderBy(workspaces.id)
+      .limit(limit + 1)
+      .catch(rethrowQueryFailure);
+    const hasNext = rowsFound.length > limit;
+    const rows = hasNext ? rowsFound.slice(0, limit) : rowsFound;
+    const items = Object.freeze(rows.map((row) => Object.freeze(row)));
     const last = rows.at(-1);
     return Object.freeze({
       items,
@@ -103,33 +116,35 @@ async function findWorkspaceAccess(
     pool,
     { workspaceId },
     async (client) => {
-      const result = await client.query<{
-        actor_id: string;
-        workspace_id: string;
-        role: Role;
-        role_revision: number;
-        membership_status: 'active' | 'suspended' | 'removed';
-        workspace_status: WorkspaceStatus;
-      }>(
-        `select m.user_id as actor_id, m.workspace_id,
-              m.role, m.status as membership_status,
-              w.status as workspace_status
-       from app.workspace_memberships m
-       join app.workspaces w on w.id = m.workspace_id
-       join app.users u on u.id = m.user_id and u.status = 'active'
-       where m.workspace_id = $1 and m.user_id = $2`,
-        [workspaceId, actorId],
-      );
-      const row = result.rows[0];
-      return row === undefined
-        ? null
-        : Object.freeze({
-            actorId: row.actor_id,
-            workspaceId: row.workspace_id,
-            role: row.role,
-            membershipStatus: row.membership_status,
-            workspaceStatus: row.workspace_status,
-          });
+      const result = await drizzle(client)
+        .select({
+          actorId: workspaceMemberships.userId,
+          workspaceId: workspaceMemberships.workspaceId,
+          role: workspaceMemberships.role,
+          membershipStatus: workspaceMemberships.status,
+          workspaceStatus: workspaces.status,
+        })
+        .from(workspaceMemberships)
+        .innerJoin(
+          workspaces,
+          eq(workspaces.id, workspaceMemberships.workspaceId),
+        )
+        .innerJoin(
+          users,
+          and(
+            eq(users.id, workspaceMemberships.userId),
+            eq(users.status, 'active'),
+          ),
+        )
+        .where(
+          and(
+            eq(workspaceMemberships.workspaceId, workspaceId),
+            eq(workspaceMemberships.userId, actorId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      const row = result[0];
+      return row === undefined ? null : Object.freeze(row);
     },
     options,
   );
@@ -168,76 +183,80 @@ async function listWorkspaceMembers(
         actorId,
         rolesForCapability('member:read'),
       );
-      const result = await client.query<
-        (
-          | {
-              directory_user_id: null;
-              directory_organization_id: null;
-              directory_revision: null;
-              directory_control_workspace_id: null;
-            }
-          | {
-              directory_user_id: string;
-              directory_organization_id: string;
-              directory_revision: number;
-              directory_control_workspace_id: string;
-            }
-        ) & {
-          user_id: string;
-          email: string;
-          display_name: string;
-          role: Role;
-          role_revision: number;
-          membership_status: 'active' | 'suspended';
-          created_at: Date;
-          updated_at: Date;
-          created_at_cursor: string;
-        }
-      >(
-        `select m.user_id, u.email, u.display_name,
-                source.directory_user_id,source.organization_id directory_organization_id,
-                directory.revision directory_revision,organization.control_workspace_id directory_control_workspace_id,
-                m.role, m.role_revision, m.status as membership_status,
-                m.created_at, m.updated_at,
-                to_char(m.created_at at time zone 'UTC',
-                  'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at_cursor
-         from app.workspace_memberships m
-         join app.users u on u.id = m.user_id and u.status = 'active'
-         left join app.auth_directory_memberships source on source.workspace_id=m.workspace_id and source.user_id=m.user_id
-         left join app.auth_directory_users directory on directory.id=source.directory_user_id
-         left join app.auth_organizations organization on organization.id=source.organization_id
-         where m.workspace_id = $1
-           and m.status in ('active', 'suspended')
-           and ($2::timestamptz is null
-             or (m.created_at, m.user_id) > ($2::timestamptz, $3::uuid))
-         order by m.created_at asc, m.user_id asc
-         limit $4`,
-        [workspaceId, afterCreatedAt ?? null, afterUserId ?? null, limit + 1],
-      );
-      const hasNext = result.rows.length > limit;
-      const rows = hasNext ? result.rows.slice(0, limit) : result.rows;
-      const last = rows[rows.length - 1];
+      const db = drizzle(client);
+      const directory = db
+        .select({
+          workspaceId: authDirectoryMemberships.workspaceId,
+          userId: authDirectoryMemberships.userId,
+          directoryUserId: authDirectoryMemberships.directoryUserId,
+          organizationId: authDirectoryMemberships.organizationId,
+          directoryRevision: authDirectoryUsers.revision,
+          controlWorkspaceId: authOrganizations.controlWorkspaceId,
+        })
+        .from(authDirectoryMemberships)
+        .innerJoin(
+          authDirectoryUsers,
+          eq(authDirectoryUsers.id, authDirectoryMemberships.directoryUserId),
+        )
+        .innerJoin(
+          authOrganizations,
+          eq(authOrganizations.id, authDirectoryMemberships.organizationId),
+        )
+        .as('directory_source');
+      const found = await db
+        .select({
+          userId: workspaceMemberships.userId,
+          email: users.email,
+          displayName: users.displayName,
+          role: workspaceMemberships.role,
+          roleRevision: workspaceMemberships.roleRevision,
+          // The page includes only present active/suspended memberships.
+          membershipStatus: sql<
+            'active' | 'suspended'
+          >`${workspaceMemberships.status}`,
+          directorySource: {
+            directoryUserId: directory.directoryUserId,
+            organizationId: directory.organizationId,
+            directoryRevision: directory.directoryRevision,
+            controlWorkspaceId: directory.controlWorkspaceId,
+          },
+          createdAt: workspaceMemberships.createdAt,
+          updatedAt: workspaceMemberships.updatedAt,
+          cursor: sql<string>`to_char(${workspaceMemberships.createdAt} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+        })
+        .from(workspaceMemberships)
+        .innerJoin(
+          users,
+          and(
+            eq(users.id, workspaceMemberships.userId),
+            eq(users.status, 'active'),
+          ),
+        )
+        .leftJoin(
+          directory,
+          and(
+            eq(directory.workspaceId, workspaceMemberships.workspaceId),
+            eq(directory.userId, workspaceMemberships.userId),
+          ),
+        )
+        .where(
+          and(
+            eq(workspaceMemberships.workspaceId, workspaceId),
+            inArray(workspaceMemberships.status, ['active', 'suspended']),
+            sql`(${afterCreatedAt ?? null}::timestamptz is null or (${workspaceMemberships.createdAt}, ${workspaceMemberships.userId})>(${afterCreatedAt ?? null}::timestamptz, ${afterUserId ?? null}::uuid))`,
+          ),
+        )
+        .orderBy(workspaceMemberships.createdAt, workspaceMemberships.userId)
+        .limit(limit + 1)
+        .catch(rethrowQueryFailure);
+      const hasNext = found.length > limit;
+      const rows = hasNext ? found.slice(0, limit) : found;
+      const last = rows.at(-1);
       const items = Object.freeze(
-        rows.map((row) =>
+        rows.map(({ directorySource, cursor: _cursor, ...row }) =>
           Object.freeze({
-            userId: row.user_id,
-            email: row.email,
-            displayName: row.display_name,
-            role: row.role,
-            roleRevision: row.role_revision,
-            membershipStatus: row.membership_status,
-            ...(row.directory_user_id === null
-              ? {}
-              : {
-                  directorySource: {
-                    directoryUserId: row.directory_user_id,
-                    organizationId: row.directory_organization_id,
-                    directoryRevision: row.directory_revision,
-                    controlWorkspaceId: row.directory_control_workspace_id,
-                  },
-                }),
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
+            ...row,
+            ...(directorySource === null ? {} : { directorySource }),
           }),
         ),
       );
@@ -247,8 +266,8 @@ async function listWorkspaceMembers(
       return Object.freeze({
         items,
         nextCursor: Object.freeze({
-          createdAt: last.created_at_cursor,
-          userId: last.user_id,
+          createdAt: last.cursor,
+          userId: last.userId,
         }),
       });
     },

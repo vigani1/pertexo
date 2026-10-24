@@ -145,7 +145,7 @@ export function createConnectionUsagePersistence(
                     role,
                     'connection:read',
                   ),
-                  sql`${connections}`,
+                  connections,
                 ),
               ),
             )

@@ -1,20 +1,21 @@
+import { and, eq, getTableColumns, isNull, or, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { apiTokens } from '../../schema/identity/api-tokens.js';
+import {
+  users,
+  workspaces,
+  workspaceMemberships,
+} from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import { withTenantScopedClient } from '../transactions.js';
 import {
   matchesApiTokenDigest,
   type ParsedApiTokenCredential,
 } from './credential.js';
-import { apiTokenStatus, type ApiTokenRow } from './metadata.js';
+import { apiTokenStatus } from './metadata.js';
 import type { VerifiedApiToken } from './contract.js';
 
-type CredentialRow = ApiTokenRow &
-  Readonly<{
-    owner_status: string;
-    member_status: string;
-    workspace_status: string;
-    current_revision: number;
-    observed_at: Date;
-  }>;
 export function authenticateApiToken(
   pool: Pool,
   input: ParsedApiTokenCredential,
@@ -24,35 +25,61 @@ export function authenticateApiToken(
     pool,
     { workspaceId: input.workspaceId },
     async (client) => {
-      const rows = await client.query<CredentialRow>(
-        `select token.*, owner_record.status owner_status, member.status member_status,
-      workspace.status workspace_status, member.role_revision current_revision, clock_timestamp() observed_at
-      from app.api_tokens token
-      join app.users owner_record on owner_record.id=token.owner_user_id
-      join app.workspace_memberships member on member.workspace_id=token.workspace_id and member.user_id=token.owner_user_id
-      join app.workspaces workspace on workspace.id=token.workspace_id
-      where token.workspace_id=$1 and token.id=$2`,
-        [input.workspaceId, input.tokenId],
-      );
-      const row = rows.rows[0];
+      const db = drizzle(client);
+      const rows = await db
+        .select({
+          ...getTableColumns(apiTokens),
+          ownerStatus: users.status,
+          memberStatus: workspaceMemberships.status,
+          workspaceStatus: workspaces.status,
+          currentRevision: workspaceMemberships.roleRevision,
+          observedAt: sql<Date>`clock_timestamp()`.mapWith(apiTokens.createdAt),
+        })
+        .from(apiTokens)
+        .innerJoin(users, eq(users.id, apiTokens.ownerUserId))
+        .innerJoin(
+          workspaceMemberships,
+          and(
+            eq(workspaceMemberships.workspaceId, apiTokens.workspaceId),
+            eq(workspaceMemberships.userId, apiTokens.ownerUserId),
+          ),
+        )
+        .innerJoin(workspaces, eq(workspaces.id, apiTokens.workspaceId))
+        .where(
+          and(
+            eq(apiTokens.workspaceId, input.workspaceId),
+            eq(apiTokens.id, input.tokenId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      const row = rows[0];
       const tokenUnavailable =
         row === undefined ||
-        !matchesApiTokenDigest(input.digest, row.secret_digest) ||
-        apiTokenStatus(row, row.current_revision, row.observed_at) !==
-          'active' ||
-        row.owner_status !== 'active' ||
-        row.member_status !== 'active' ||
-        row.workspace_status !== 'active';
+        !matchesApiTokenDigest(input.digest, row.secretDigest) ||
+        apiTokenStatus(row, row.currentRevision, row.observedAt) !== 'active' ||
+        row.ownerStatus !== 'active' ||
+        row.memberStatus !== 'active' ||
+        row.workspaceStatus !== 'active';
       if (tokenUnavailable) return undefined;
       // Verification is already complete; revocation doesn't cancel admitted work.
-      await client.query(
-        `update app.api_tokens set last_used_at=$3 where workspace_id=$1 and id=$2
-      and revoked_at is null and (last_used_at is null or last_used_at <= $3::timestamptz - interval '1 minute')`,
-        [input.workspaceId, input.tokenId, row.observed_at],
-      );
+      await db
+        .update(apiTokens)
+        .set({ lastUsedAt: row.observedAt })
+        .where(
+          and(
+            eq(apiTokens.workspaceId, input.workspaceId),
+            eq(apiTokens.id, input.tokenId),
+            isNull(apiTokens.revokedAt),
+            or(
+              isNull(apiTokens.lastUsedAt),
+              sql`${apiTokens.lastUsedAt}<=${row.observedAt}::timestamptz-interval '1 minute'`,
+            ),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       return Object.freeze({
-        workspaceId: row.workspace_id,
-        ownerUserId: row.owner_user_id,
+        workspaceId: row.workspaceId,
+        ownerUserId: row.ownerUserId,
         tokenId: row.id,
         scopes: Object.freeze([...row.scopes]),
       });

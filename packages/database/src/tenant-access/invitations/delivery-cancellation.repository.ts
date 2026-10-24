@@ -1,3 +1,7 @@
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaceInvitationDeliveryAttempts as attempts } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
 /**
@@ -11,13 +15,22 @@ export async function cancelOpenInvitationDeliveries(
   workspaceId: string,
   invitationId: string,
 ): Promise<void> {
-  await client.query(
-    `update app.workspace_invitation_delivery_attempts
-        set status=case when status in ('queued','failed') then 'canceled' else status end,
-            token_ciphertext=null,token_nonce=null,token_tag=null,
-            token_key_version=null,updated_at=clock_timestamp()
-      where workspace_id=$1 and invitation_id=$2
-        and status in ('queued','failed','unknown')`,
-    [workspaceId, invitationId],
-  );
+  await drizzle(client)
+    .update(attempts)
+    .set({
+      status: sql`case when ${attempts.status} in ('queued','failed') then 'canceled' else ${attempts.status} end`,
+      tokenCiphertext: null,
+      tokenNonce: null,
+      tokenTag: null,
+      tokenKeyVersion: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(attempts.workspaceId, workspaceId),
+        eq(attempts.invitationId, invitationId),
+        inArray(attempts.status, ['queued', 'failed', 'unknown']),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }

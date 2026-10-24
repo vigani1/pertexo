@@ -1,3 +1,12 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaceInvitations as invitations,
+  workspaceInvitationDeliveryAttempts as attempts,
+  workspaceInvitationAcceptanceIntents as intents,
+  auditEvents,
+} from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { ROLES } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -47,46 +56,73 @@ export async function recordAcceptedInvitation(
   }>,
 ): Promise<void> {
   const { receipt, actorUserId, invitationId } = input;
-  const receiptJson = JSON.stringify(receipt);
-  await client.query(
-    `update app.workspace_invitations
-        set status='accepted',accepted_by=$3,accepted_at=clock_timestamp(),
-            delivery_status='canceled',updated_at=clock_timestamp()
-      where workspace_id=$1 and id=$2`,
-    [receipt.workspaceId, invitationId, actorUserId],
-  );
-  await client.query(
-    `update app.workspace_invitation_delivery_attempts
-        set token_ciphertext=null,token_nonce=null,token_tag=null,token_key_version=null,
-            status=case when status='queued' then 'canceled' else status end,
-            updated_at=clock_timestamp()
-      where workspace_id=$1 and invitation_id=$2`,
-    [receipt.workspaceId, invitationId],
-  );
-  await client.query(
-    `update app.workspace_invitation_acceptance_intents
-        set status='completed',accepted_user_id=$3,receipt=$4::jsonb,
-            completed_at=clock_timestamp(),updated_at=clock_timestamp()
-      where workspace_id=$1 and id=$2`,
-    [receipt.workspaceId, receipt.intentId, actorUserId, receiptJson],
-  );
-  await client.query(
-    `insert into app.audit_events
-       (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-     values($1,$2,$3,'workspace.invitation_accepted','workspace_invitation',$4,$5,$6,$7::jsonb)`,
-    [
-      generatePersistedId(),
-      receipt.workspaceId,
+  const db = drizzle(client);
+  await db
+    .update(invitations)
+    .set({
+      status: 'accepted',
+      acceptedBy: actorUserId,
+      acceptedAt: sql`clock_timestamp()`,
+      deliveryStatus: 'canceled',
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(invitations.workspaceId, receipt.workspaceId),
+        eq(invitations.id, invitationId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .update(attempts)
+    .set({
+      tokenCiphertext: null,
+      tokenNonce: null,
+      tokenTag: null,
+      tokenKeyVersion: null,
+      status: sql`case when ${attempts.status}='queued' then 'canceled' else ${attempts.status} end`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(attempts.workspaceId, receipt.workspaceId),
+        eq(attempts.invitationId, invitationId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .update(intents)
+    .set({
+      status: 'completed',
+      acceptedUserId: actorUserId,
+      receipt,
+      completedAt: sql`clock_timestamp()`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(intents.workspaceId, receipt.workspaceId),
+        eq(intents.id, receipt.intentId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: receipt.workspaceId,
       actorUserId,
-      invitationId,
-      input.requestId,
-      input.traceId,
-      JSON.stringify({
+      action: 'workspace.invitation_accepted',
+      targetType: 'workspace_invitation',
+      targetId: invitationId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      metadata: {
         invitationRevision: input.invitationRevision,
         membershipCreated: receipt.membershipCreated,
         role: receipt.role,
-      }),
-    ],
-  );
+      },
+    })
+    .catch(rethrowQueryFailure);
   await completeCommand(client, input.command, receipt);
 }

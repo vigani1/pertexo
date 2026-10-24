@@ -7,7 +7,7 @@ import {
   connectionScope,
   connectionScopeSql,
 } from '../tenant-access/resources/connections/scope.js';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { connections } from '../schema/connections.js';
 import { ConnectionNotFoundError } from './contract.js';
@@ -76,7 +76,7 @@ export async function requireConnectionUser(
         eq(connections.id, connectionId),
         connectionScopeSql(
           connectionScope({ workspaceId, actorId }, role, 'connection:use'),
-          sql`${connections}`,
+          connections,
         ),
       ),
     )

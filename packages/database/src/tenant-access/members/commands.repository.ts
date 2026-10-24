@@ -1,5 +1,15 @@
+import { authDirectoryMemberships } from '../../schema/identity/federation/directory/sources.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  users,
+  workspaces,
+  workspaceMemberships,
+  auditEvents,
+} from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { isAdministrativeRole } from '@pertexo/workflow-model';
-import type { Role } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
 
@@ -30,13 +40,37 @@ type MemberCommandOperation =
   | 'workspace.member.suspension'
   | 'workspace.ownership.transfer';
 
-export type LockedMember = Readonly<{
-  user_id: string;
-  role: Role;
-  status: string;
-  role_revision: number;
-  user_status: string;
-}>;
+const membership = alias(workspaceMemberships, 'membership');
+const userRecord = alias(users, 'user_record');
+const memberSelection = {
+  user_id: membership.userId,
+  role: membership.role,
+  status: membership.status,
+  role_revision: membership.roleRevision,
+  user_status: userRecord.status,
+};
+export type LockedMember = Awaited<
+  ReturnType<typeof readLockedMembers>
+>[number];
+function readLockedMembers(
+  client: PoolClient,
+  workspaceId: string,
+  userIds: readonly string[],
+) {
+  return drizzle(client)
+    .select(memberSelection)
+    .from(membership)
+    .innerJoin(userRecord, eq(userRecord.id, membership.userId))
+    .where(
+      and(
+        eq(membership.workspaceId, workspaceId),
+        sql`${membership.userId}=any(${sql.param(userIds)}::uuid[])`,
+      ),
+    )
+    .orderBy(membership.userId)
+    .for('update', { of: [membership, userRecord] })
+    .catch(rethrowQueryFailure);
+}
 
 /**
  * Locks the workspace, then both users and memberships in identifier order,
@@ -54,28 +88,26 @@ async function lockMemberCommandParticipants(
     target: LockedMember | undefined;
   }>
 > {
-  const workspace = await client.query<{ status: string }>(
-    `select status from app.workspaces where id=$1 for update`,
-    [workspaceId],
-  );
+  const db = drizzle(client);
+  const workspace = await db
+    .select({ status: workspaces.status })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .for('update')
+    .catch(rethrowQueryFailure);
   const userIds = [actorUserId, targetUserId].sort();
-  await client.query(
-    `select id from app.users where id=any($1::uuid[]) order by id for update`,
-    [userIds],
-  );
-  const memberships = await client.query<LockedMember>(
-    `select membership.user_id,membership.role,membership.status,
-            membership.role_revision,user_record.status user_status
-     from app.workspace_memberships membership
-     join app.users user_record on user_record.id=membership.user_id
-     where membership.workspace_id=$1 and membership.user_id=any($2::uuid[])
-     order by membership.user_id for update of membership,user_record`,
-    [workspaceId, userIds],
-  );
+  await db
+    .select({ id: users.id })
+    .from(users)
+    .where(sql`${users.id}=any(${sql.param(userIds)}::uuid[])`)
+    .orderBy(users.id)
+    .for('update')
+    .catch(rethrowQueryFailure);
+  const memberships = await readLockedMembers(client, workspaceId, userIds);
   return Object.freeze({
-    workspaceActive: workspace.rows[0]?.status === 'active',
-    actor: memberships.rows.find((item) => item.user_id === actorUserId),
-    target: memberships.rows.find((item) => item.user_id === targetUserId),
+    workspaceActive: workspace[0]?.status === 'active',
+    actor: memberships.find((item) => item.user_id === actorUserId),
+    target: memberships.find((item) => item.user_id === targetUserId),
   });
 }
 
@@ -109,22 +141,20 @@ export async function recordMemberCommandAudit(
     metadata: Readonly<Record<string, string | number>>;
   }>,
 ): Promise<void> {
-  await client.query(
-    `insert into app.audit_events
-       (id,workspace_id,actor_user_id,action,target_type,target_id,
-        request_id,trace_id,metadata)
-     values($1,$2,$3,$4,'workspace_member',$5,$6,$7,$8::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorUserId,
-      input.action,
-      input.targetUserId,
-      input.requestId ?? null,
-      input.traceId ?? null,
-      JSON.stringify(input.metadata),
-    ],
-  );
+  await drizzle(client)
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorUserId,
+      action: input.action,
+      targetType: 'workspace_member',
+      targetId: input.targetUserId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: input.metadata,
+    })
+    .catch(rethrowQueryFailure);
 }
 
 /** The participants a command was admitted with, as locked. */
@@ -208,14 +238,17 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
           ...command.result.parse(stored),
           replayed: true,
         });
-      if (
-        (
-          await client.query(
-            'select 1 from app.auth_directory_memberships where workspace_id=$1 and user_id=$2',
-            [scope.workspaceId, scope.targetUserId],
-          )
-        ).rowCount !== 0
-      )
+      const directoryMembership = await drizzle(client)
+        .select({ one: sql`1` })
+        .from(authDirectoryMemberships)
+        .where(
+          and(
+            eq(authDirectoryMemberships.workspaceId, scope.workspaceId),
+            eq(authDirectoryMemberships.userId, scope.targetUserId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if (directoryMembership.length !== 0)
         throw new DirectoryManagedMembershipError();
       const result = command.result.parse(
         await command.apply(client, admitted, scope),

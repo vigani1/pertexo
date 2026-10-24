@@ -82,25 +82,42 @@ describe('failure notification destination decoding', () => {
       .current_config_version;
     delete (replay as { created_at?: unknown }).created_at;
     delete (replay as { updated_at?: unknown }).updated_at;
-    const query = vi.fn((statement: string | { text: string }) => {
-      const text = (
-        typeof statement === 'string' ? statement : statement.text
-      ).replaceAll('"', '');
-      if (text.includes('workspace_memberships'))
-        return Promise.resolve(result([{ role: 'owner' }]));
-      if (
-        text.includes('from app.workspaces') ||
-        text.includes('from app.users')
-      )
-        return Promise.resolve(result([{}]));
-      if (text.includes('insert into app.idempotency_records'))
-        return Promise.resolve(result([], 1));
-      if (text.includes('from app.idempotency_records'))
-        return Promise.resolve(
-          result([['a'.repeat(64), 'completed', { result: replay }]]),
-        );
-      throw new Error(`Unexpected query: ${text}`);
-    });
+    const query = vi.fn(
+      (statement: string | { text: string; rowMode?: 'array' }) => {
+        const text = (
+          typeof statement === 'string' ? statement : statement.text
+        ).replaceAll('"', '');
+        if (
+          typeof statement !== 'string' &&
+          statement.rowMode === 'array' &&
+          /from app\.(workspaces|users|workspace_memberships|workflow_folders)\b/u.test(
+            text,
+          )
+        ) {
+          return Promise.resolve(
+            result(
+              text.includes('workflow_folders')
+                ? []
+                : [text.includes('workspace_memberships') ? ['owner'] : [1]],
+            ),
+          );
+        }
+        if (text.includes('workspace_memberships'))
+          return Promise.resolve(result([{ role: 'owner' }]));
+        if (
+          text.includes('from app.workspaces') ||
+          text.includes('from app.users')
+        )
+          return Promise.resolve(result([{}]));
+        if (text.includes('insert into app.idempotency_records'))
+          return Promise.resolve(result([], 1));
+        if (text.includes('from app.idempotency_records'))
+          return Promise.resolve(
+            result([['a'.repeat(64), 'completed', { result: replay }]]),
+          );
+        throw new Error(`Unexpected query: ${text}`);
+      },
+    );
     tenantState.client = { query } as unknown as PoolClient;
     const database = createFailureNotificationDestinationDatabase({
       connectionString: 'postgres://unused',
