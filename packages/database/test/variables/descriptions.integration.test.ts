@@ -8,6 +8,9 @@ import {
   queryAsOwner,
 } from '../support/workflow-authoring.js';
 import { createWorkspaceVariablesStore } from '../../src/variables/store.js';
+import { readVariableSetValues } from '../../src/variables/values.js';
+import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
+import { Pool } from 'pg';
 import { workspaceVariablesRequestSchema } from '@pertexo/contracts';
 import { IdempotencyConflictError } from '../../src/platform/idempotency.js';
 let store: ReturnType<typeof createWorkspaceVariablesStore>;
@@ -140,4 +143,24 @@ it('versions descriptions with values, preserves omitted metadata and audits nam
   );
   expect(JSON.stringify(audits)).not.toContain('description');
   expect(JSON.stringify(audits)).not.toContain('metadata, same value');
+});
+
+it('distinguishes the fixed empty snapshot from a missing historical revision', async () => {
+  const pool = new Pool({ connectionString: apiUrl, max: 1 });
+  try {
+    await withTenantScopedClient(
+      pool,
+      { workspaceId, actorId },
+      async (client) => {
+        expect(await readVariableSetValues(client, workspaceId, null)).toEqual(
+          {},
+        );
+        await expect(
+          readVariableSetValues(client, workspaceId, 999_999),
+        ).rejects.toThrow();
+      },
+    );
+  } finally {
+    await pool.end();
+  }
 });
