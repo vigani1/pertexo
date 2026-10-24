@@ -1,9 +1,7 @@
+import { storedAttemptCheckpoint } from '../../support/attempts/handler.js';
 import type { NodeAttemptRunStore } from '@pertexo/database/testing';
 
-import {
-  WorkflowEngineError,
-  createCheckpoint,
-} from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { vi } from 'vitest';
 import { createNodeAttemptHandler } from '../../../src/testing.js';
 import {
@@ -11,11 +9,9 @@ import {
   registryPreparedAttempt,
 } from '../../support/attempts/handler.js';
 
-export const STORED_CHECKPOINT = createCheckpoint({
-  workflowVersionId: '33333333-3333-4333-8333-333333333333',
-  iterationBudget: 0,
-  nextEventSequence: 2,
-});
+export const STORED_CHECKPOINT = storedAttemptCheckpoint(
+  '33333333-3333-4333-8333-333333333333',
+);
 
 export function heartbeatCancellationHandler(
   runStore: NodeAttemptRunStore,
