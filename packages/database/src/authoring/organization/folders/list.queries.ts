@@ -1,13 +1,16 @@
+import { asc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowFolders } from '../../../schema/authoring/organization.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { folderProjection, type FolderRow } from './hierarchy.queries.js';
 import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
 import { FOLDER_LIMIT } from '../limits.js';
-
-import { z } from 'zod';
 
 import { ROLES } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 
 import type { createOrganizationSession } from '../session.js';
-import { type WorkflowFolderDatabase, folder } from './contract.js';
+import type { WorkflowFolderDatabase } from './contract.js';
 
 export function listFolders(
   session: ReturnType<typeof createOrganizationSession>,
@@ -20,20 +23,30 @@ export function listFolders(
     });
     // One statement derives the whole hierarchy. Count parity fails
     // closed for missing roots, cycles or excessive depth.
-    const result = await client.query<{ items: unknown; total: number }>(
-      `with recursive bounded as materialized (
-          select id,name,parent_id,revision,access_mode from app.workflow_folders where workspace_id=$1 order by id limit 257
-        ), tree as (
-          select *,1 depth,array[id] path from bounded where parent_id is null
-          union all select f.*,t.depth+1,t.path||f.id from bounded f join tree t on f.parent_id=t.id
-            where t.depth<5 and not f.id=any(t.path)
-        ) select (select count(*)::int from bounded) total,
-          coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'parentId',parent_id,'revision',revision,'depth',depth,'accessMode',access_mode) order by id),'[]'::jsonb) items from tree`,
-      [scope.workspaceId],
-    );
+    const db = drizzle(client);
+    const bounded = db
+      .select(folderProjection)
+      .from(workflowFolders)
+      .where(eq(workflowFolders.workspaceId, scope.workspaceId))
+      .orderBy(asc(workflowFolders.id))
+      .limit(FOLDER_LIMIT + 1);
+    const result = await db
+      .execute<{ items: (FolderRow & { depth: number })[]; total: number }>(
+        sql`
+      with recursive bounded as materialized (${bounded}),tree as (
+        select *,1 depth,array[id] path from bounded where parent_id is null
+        union all select f.*,t.depth+1,t.path||f.id from bounded f join tree t on f.parent_id=t.id
+          where t.depth<5 and not f.id=any(t.path)
+      ) select (select count(*)::int from bounded) total,
+        coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'parentId',parent_id,'revision',revision,'depth',depth,'accessMode',access_mode) order by id),'[]'::jsonb) items from tree
+    `,
+      )
+      .catch(rethrowQueryFailure);
     const row = result.rows[0];
     const access = await readFolderScope(client, scope);
-    const items = z.array(folder).max(FOLDER_LIMIT).parse(row?.items);
+    const items = row?.items ?? [];
+    if (items.length > FOLDER_LIMIT)
+      throw new Error('Workflow folder hierarchy is incompatible');
     if (row?.total !== items.length)
       throw new Error('Workflow folder hierarchy is incompatible');
     return Object.freeze({
