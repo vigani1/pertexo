@@ -13,18 +13,19 @@ import { z } from 'zod';
 import { ROLES, type Role } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 
+import type { WorkflowAutoPauseDatabase, Transact } from './contract.js';
 import {
-  type WorkflowAutoPauseDatabase,
   WorkflowPauseRevisionConflictError,
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
+} from './errors.js';
+import {
   revision,
   pauseRevision,
   threshold,
   workflowSettings,
   workspaceSettings,
-  type Transact,
-} from './contract.js';
+} from './input.js';
 import {
   lockWorkspace,
   workflowProjection,
@@ -33,15 +34,6 @@ import {
   workflowSettingsOf,
 } from './state.queries.js';
 
-export {
-  type WorkflowAutoPauseSettings,
-  type WorkspaceAutoPauseSettings,
-  type AutoPauseCommandResult,
-  type WorkflowAutoPauseDatabase,
-  WorkflowPauseRevisionConflictError,
-  WorkflowAutoPauseSettingsRevisionConflictError,
-  WorkspaceAutoPauseSettingsRevisionConflictError,
-} from './contract.js';
 const EDITORS: readonly Role[] = WORKFLOW_EDITOR_ROLES;
 
 const OWNERS: readonly Role[] = ['owner'];

@@ -25,7 +25,7 @@ import type {
   PortableIssue,
   WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
-import type { WorkflowAutoPauseDatabase } from '../settings/auto-pause/repository.js';
+import type { WorkflowAutoPauseDatabase } from '../settings/auto-pause/contract.js';
 import type { WorkflowConcurrencyDatabase } from '../settings/concurrency.repository.js';
 import type {
   WorkflowTemplateOriginRequest,

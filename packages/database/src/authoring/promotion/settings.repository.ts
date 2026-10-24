@@ -12,11 +12,8 @@ import {
 } from '../../platform/idempotency/repository.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import {
-  WorkflowPromotionError,
-  type PromotionContext,
-  type WorkflowPromotionStore,
-} from './contract.js';
+import { WorkflowPromotionError } from './errors.js';
+import type { PromotionContext, WorkflowPromotionStore } from './contract.js';
 import {
   lockPromotionWorkspaces,
   readPromotionLink,

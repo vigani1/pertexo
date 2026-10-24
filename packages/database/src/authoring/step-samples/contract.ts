@@ -9,7 +9,9 @@ export type SampleScope = Readonly<{
   workflowId: string;
   signal?: AbortSignal;
 }>;
+
 export type SampleNodeScope = SampleScope & Readonly<{ nodeId: string }>;
+
 export type SampleCommand = SampleNodeScope &
   Readonly<{
     expectedDraftRevision: number;
@@ -18,7 +20,9 @@ export type SampleCommand = SampleNodeScope &
     requestId?: string;
     traceId?: string;
   }>;
+
 export type SampleSource = StepSampleSource;
+
 export type SampleRow = Readonly<
   Pick<
     typeof workflowStepSamples.$inferSelect,
@@ -35,7 +39,9 @@ export type SampleRow = Readonly<
     | 'expiresAt'
   >
 >;
+
 export type SampleState = 'pinned' | 'stale' | 'expired';
+
 export type SampleMetadata = Readonly<{
   id: string;
   nodeId: string;
@@ -50,16 +56,19 @@ export type SampleMetadata = Readonly<{
   createdAt: Date;
   expiresAt: Date;
 }>;
+
 export type SampleRead = Readonly<{
   sample: SampleMetadata | null;
   output: StoredExecutionValue | null;
   draftRevision: number;
 }>;
+
 export type SampleResult = Readonly<{
   sampleId: string;
   removed: boolean;
   replayed: boolean;
 }>;
+
 export interface WorkflowStepSampleStore {
   list(
     input: SampleScope,
@@ -70,6 +79,7 @@ export interface WorkflowStepSampleStore {
     input: SampleCommand & { expectedSampleId: string },
   ): Promise<SampleResult>;
 }
+
 export type SampleTransaction = <T>(
   input: SampleScope,
   options: Readonly<{
@@ -77,24 +87,5 @@ export type SampleTransaction = <T>(
     work: (client: PoolClient) => Promise<T>;
   }>,
 ) => Promise<T>;
-export class WorkflowStepSampleError extends Error {
-  override readonly name = 'WorkflowStepSampleError';
-  constructor(
-    readonly reason:
-      | 'changed'
-      | 'draft_changed'
-      | 'expired'
-      | 'stale'
-      | 'source_unavailable'
-      | 'file_output'
-      | 'value_invalid'
-      | 'limit_reached'
-      | 'step_unavailable',
-  ) {
-    super(`workflow.sample_${reason}`);
-  }
-}
-export const SAMPLE_RETENTION_SECONDS = 30 * 24 * 60 * 60;
-export const SAMPLE_RETAINED_BYTES = 16 * 1024 * 1024;
 
 export type SampleMetadataRow = Omit<SampleRow, 'outputRef' | 'retainedBytes'>;

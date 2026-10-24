@@ -13,7 +13,8 @@ import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 
 import type { createOrganizationSession } from '../session.js';
-import { type WorkflowTagDatabase, uuid } from './contract.js';
+import type { WorkflowTagDatabase } from './contract.js';
+import { uuid } from './input.js';
 import { page, pagination, tagProjection } from './state.queries.js';
 import { ADMINISTRATORS } from './commands/receipts.js';
 

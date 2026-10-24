@@ -6,11 +6,8 @@ import type {
 } from '@pertexo/contracts';
 import type { WorkspaceScopeRunner } from '../../tenant-access/transactions.js';
 import { linkedPromotionTarget } from './authority.queries.js';
-import {
-  WorkflowPromotionError,
-  type PromotionContext,
-  type PromotionScope,
-} from './contract.js';
+import { WorkflowPromotionError } from './errors.js';
+import type { PromotionContext, PromotionScope } from './contract.js';
 import { PromotionGraphBudget, promotionDigest } from './preparation/graph.js';
 import { readPromotionSources } from './preparation/source.queries.js';
 import { preparePromotionTarget } from './preparation/target.queries.js';

@@ -13,15 +13,13 @@ import {
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { sampleProjection, sampleDraft } from './records.repository.js';
 import { captureSampleSource } from './source.queries.js';
-import {
-  SAMPLE_RETAINED_BYTES,
-  SAMPLE_RETENTION_SECONDS,
-  WorkflowStepSampleError,
-  type SampleCommand,
-  type SampleResult,
-  type SampleRow,
-  type SampleSource,
-  type SampleTransaction,
+import { WorkflowStepSampleError } from './errors.js';
+import type {
+  SampleCommand,
+  SampleResult,
+  SampleRow,
+  SampleSource,
+  SampleTransaction,
 } from './contract.js';
 
 const resultSchema = z
@@ -222,3 +220,7 @@ async function persistCapturedSample(
     })
     .catch(rethrowQueryFailure);
 }
+
+const SAMPLE_RETENTION_SECONDS = 30 * 24 * 60 * 60;
+
+const SAMPLE_RETAINED_BYTES = 16 * 1024 * 1024;

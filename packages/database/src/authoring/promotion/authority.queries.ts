@@ -10,7 +10,8 @@ import {
   type AuthorizationCapability,
 } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { WorkflowPromotionError, type PromotionScope } from './contract.js';
+import { WorkflowPromotionError } from './errors.js';
+import type { PromotionScope } from './contract.js';
 
 export type PromotionLink = Readonly<{
   revision: number;

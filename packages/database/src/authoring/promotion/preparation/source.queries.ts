@@ -25,7 +25,7 @@ import { readTablesByNames } from '../../../data-tables/definitions.queries.js';
 import type { DataTableDefinition } from '../../../data-tables/contract.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { promotionNodes, type PromotionGraphBudget } from './graph.js';
-import { WorkflowPromotionError } from '../contract.js';
+import { WorkflowPromotionError } from '../errors.js';
 
 export const promotionConnection = alias(storedConnections, 'connection');
 export const promotionConnectionProjection = {

@@ -23,12 +23,10 @@ import {
 } from './trigger-reconciliation.repository.js';
 import { persistPublicationCalls } from './calls.repository.js';
 
-import {
-  uuidSchema,
-  providerKeySchema,
-  operationKeySchema,
-  type PublicationCandidateInput,
-  type CompiledPublication,
+import { uuidSchema, providerKeySchema, operationKeySchema } from './input.js';
+import type {
+  PublicationCandidateInput,
+  CompiledPublication,
 } from './contract.js';
 
 export async function persistPublicationProjections(

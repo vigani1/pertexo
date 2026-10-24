@@ -4,7 +4,7 @@ import {
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
 
-import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/repository.js';
+import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/contract.js';
 
 export const emptyGraph = {
   edges: [],

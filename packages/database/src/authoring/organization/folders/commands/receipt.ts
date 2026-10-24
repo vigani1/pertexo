@@ -8,11 +8,8 @@ import type { PoolClient } from 'pg';
 import { runOrganizationCommand } from '../../commands.repository.js';
 
 import type { createOrganizationSession } from '../../session.js';
-import {
-  type Command,
-  type WorkflowFolderCommandResult,
-  folderResult,
-} from '../contract.js';
+import type { Command, WorkflowFolderCommandResult } from '../contract.js';
+import { folderResult } from '../input.js';
 import { type FolderRow, folderRecord } from '../hierarchy.queries.js';
 
 export const ADMINISTRATORS = ADMINISTRATIVE_ROLES;

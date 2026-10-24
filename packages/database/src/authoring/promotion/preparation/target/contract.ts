@@ -14,8 +14,6 @@ import type { PromotionSourceSet } from '../source.queries.js';
 
 export type ReviewedWorkflow = WorkflowPromotionPreview['workflows'][number];
 
-export type { Origin, TargetWorkflowRow } from './records.queries.js';
-
 export type TargetReviewState = Readonly<{
   input: PromotionScope;
   sourceWorkspaceId: string;

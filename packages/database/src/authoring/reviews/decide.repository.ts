@@ -13,11 +13,8 @@ import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { publishWorkflowCandidate } from '../publication/publisher.repository.js';
-import {
-  PublicationReviewError,
-  type PublicationReviewStore,
-  type ReviewDependencies,
-} from './contract.js';
+import { PublicationReviewError } from './errors.js';
+import type { PublicationReviewStore, ReviewDependencies } from './contract.js';
 import {
   readReviewDraft,
   readReviewRow,

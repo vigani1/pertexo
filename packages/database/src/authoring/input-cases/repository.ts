@@ -10,11 +10,8 @@ import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 
-import {
-  type Scope,
-  type WorkflowInputCaseDatabase,
-  scopeSchema,
-} from './contract.js';
+import type { Scope, WorkflowInputCaseDatabase } from './contract.js';
+import { scopeSchema } from './input.js';
 
 import {
   createInputCase,
@@ -22,14 +19,6 @@ import {
   deleteInputCase,
 } from './commands/mutations.repository.js';
 import { listInputCases, getInputCase } from './read.queries.js';
-export {
-  type WorkflowInputCaseMetadata,
-  type WorkflowInputCaseResult,
-  type WorkflowInputCaseDatabase,
-  WorkflowInputCaseRevisionConflictError,
-  WorkflowInputCaseLimitError,
-} from './contract.js';
-export { lockInputCaseQuota } from './metadata.queries.js';
 
 /** Durable bounded authoring commands; no caller manages locks or quota counters. */
 export function createWorkflowInputCaseDatabase(

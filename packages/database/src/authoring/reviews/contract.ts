@@ -4,13 +4,14 @@ import type {
   PublicationReviewDetail,
   PublicationReviewDecision,
 } from '@pertexo/contracts';
-import type { WorkflowPublicationDependencies } from '../publication/publisher.repository.js';
+import type { WorkflowPublicationDependencies } from '../publication/contract.js';
 
 export type ReviewScope = Readonly<{
   workspaceId: string;
   actorId: string;
   signal?: AbortSignal;
 }>;
+
 export type ReviewCommand = ReviewScope &
   Readonly<{
     idempotencyKey: string;
@@ -18,6 +19,7 @@ export type ReviewCommand = ReviewScope &
     traceId?: string;
     traceparent?: string;
   }>;
+
 export interface PublicationReviewStore {
   overview(
     input: ReviewScope & { workflowId: string },
@@ -36,14 +38,5 @@ export interface PublicationReviewStore {
     input: ReviewCommand & PublicationReviewDecision & { reviewId: string },
   ): Promise<PublicationReview>;
 }
+
 export type ReviewDependencies = WorkflowPublicationDependencies;
-export class PublicationReviewError extends Error {
-  override readonly name = 'PublicationReviewError';
-  constructor(
-    readonly reason:
-      'required' | 'disabled' | 'stale' | 'self' | 'decided' | 'limit',
-    message: string,
-  ) {
-    super(message);
-  }
-}

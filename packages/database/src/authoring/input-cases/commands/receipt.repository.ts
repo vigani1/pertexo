@@ -9,12 +9,12 @@ import {
 } from '../../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
-import {
-  type WorkflowInputCaseResult,
-  type Command,
-  resultSchema,
-  type CaseTransaction,
+import type {
+  WorkflowInputCaseResult,
+  Command,
+  CaseTransaction,
 } from '../contract.js';
+import { resultSchema } from '../input.js';
 import { workflow, lockInputCaseQuota } from '../metadata.queries.js';
 
 export async function mutate(
