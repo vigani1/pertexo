@@ -1,3 +1,4 @@
+import type { RunStatus as EngineRunStatus } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 
 import type { RunInputValidator } from '../initial-checkpoint.js';
@@ -86,8 +87,6 @@ export const IDEMPOTENCY_STATUS_VALUES = Object.values(IDEMPOTENCY_STATUS) as [
   ...IdempotencyStatus[],
 ];
 
-export const workflowRunStatusSchema = z.enum(RUN_STATUS_VALUES);
-
 export type AcceptWorkflowRunInput = Readonly<
   z.input<typeof acceptWorkflowRunInputSchema>
 >;
@@ -97,7 +96,7 @@ export type AcceptedWorkflowRun = Readonly<{
   duplicate: boolean;
   outboxEventId: string;
   runId: string;
-  status: z.output<typeof workflowRunStatusSchema>;
+  status: EngineRunStatus;
 }>;
 
 export class IdempotencyRequestConflictError extends Error {
