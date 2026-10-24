@@ -1,17 +1,25 @@
+import { and, asc, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowStepSamples } from '../../schema/authoring/step-samples.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  sampleMetadataProjection,
+  sampleProjection,
+} from './records.repository.js';
 import type { Pool } from 'pg';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
-import { sampleDatabaseTime, sampleDraft, sampleMetadata } from './records.repository.js';
-import { mutateStepSample } from './commands.repository.js';
 import {
-  SAMPLE_COLUMNS,
-  SAMPLE_METADATA_COLUMNS,
-  type SampleMetadataRow,
-  type SampleRow,
-  type SampleTransaction,
-  type WorkflowStepSampleStore,
+  sampleDatabaseTime,
+  sampleDraft,
+  sampleMetadata,
+} from './records.repository.js';
+import { mutateStepSample } from './commands.repository.js';
+import type {
+  SampleTransaction,
+  WorkflowStepSampleStore,
 } from './contract.js';
 
 export function createWorkflowStepSampleStore(
@@ -47,14 +55,22 @@ export function createWorkflowStepSampleStore(
         write: false,
         work: async (client) => {
           const draft = await sampleDraft(client, input, { write: false });
-          const rows = await client.query<SampleMetadataRow>(
-            `select ${SAMPLE_METADATA_COLUMNS} from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 order by node_id limit 200`,
-            [input.workspaceId, input.workflowId],
-          );
+          const rows = await drizzle(client)
+            .select(sampleMetadataProjection)
+            .from(workflowStepSamples)
+            .where(
+              and(
+                eq(workflowStepSamples.workspaceId, input.workspaceId),
+                eq(workflowStepSamples.workflowId, input.workflowId),
+              ),
+            )
+            .orderBy(asc(workflowStepSamples.nodeId))
+            .limit(200)
+            .catch(rethrowQueryFailure);
           const now = await sampleDatabaseTime(client);
           return {
-            items: rows.rows.map((row) =>
-              sampleMetadata(row, draft.bindings.get(row.node_id), now),
+            items: rows.map((row) =>
+              sampleMetadata(row, draft.bindings.get(row.nodeId), now),
             ),
             draftRevision: draft.revision,
           };
@@ -65,22 +81,28 @@ export function createWorkflowStepSampleStore(
         write: false,
         work: async (client) => {
           const draft = await sampleDraft(client, input, { write: false });
-          const rows = await client.query<SampleRow>(
-            `select ${SAMPLE_COLUMNS} from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 and node_id=$3`,
-            [input.workspaceId, input.workflowId, input.nodeId],
-          );
-          const row = rows.rows[0];
+          const [row] = await drizzle(client)
+            .select(sampleProjection)
+            .from(workflowStepSamples)
+            .where(
+              and(
+                eq(workflowStepSamples.workspaceId, input.workspaceId),
+                eq(workflowStepSamples.workflowId, input.workflowId),
+                eq(workflowStepSamples.nodeId, input.nodeId),
+              ),
+            )
+            .catch(rethrowQueryFailure);
           const now = await sampleDatabaseTime(client);
           const sample =
             row === undefined
               ? null
-              : sampleMetadata(row, draft.bindings.get(row.node_id), now);
+              : sampleMetadata(row, draft.bindings.get(row.nodeId), now);
           return {
             sample,
             output:
               row === undefined || sample?.state === 'expired'
                 ? null
-                : parseStoredExecutionValue(row.output_ref),
+                : parseStoredExecutionValue(row.outputRef),
             draftRevision: draft.revision,
           };
         },
