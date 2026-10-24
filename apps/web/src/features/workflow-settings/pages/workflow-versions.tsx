@@ -108,23 +108,23 @@ function VersionList({
   archived,
   canRestore,
   promotionWorkspaceId,
-  onCompare,
-  onPreview,
-  onRestore,
-  onDuplicate,
-  onExport,
+  actions,
 }: Readonly<{
   items: readonly Version[];
   liveVersionId: string | null;
   archived: boolean;
   canRestore: boolean;
   promotionWorkspaceId: string | undefined;
-  onCompare: () => void;
-  onPreview: (version: Version) => void;
-  onRestore: (version: Version) => void;
-  onDuplicate: ((version: Version) => void) | undefined;
-  onExport: ((version: Version) => void) | undefined;
+  actions: Readonly<{
+    onCompare: () => void;
+    onPreview: (version: Version) => void;
+    onRestore: (version: Version) => void;
+    onDuplicate: ((version: Version) => void) | undefined;
+    onExport: ((version: Version) => void) | undefined;
+  }>;
 }>) {
+  const { onCompare, onPreview, onRestore, onDuplicate, onExport } = actions;
+
   return (
     <>
       {items.length < 2 ? null : (
@@ -147,10 +147,7 @@ function VersionList({
         {...(promotionWorkspaceId === undefined
           ? {}
           : { promotionWorkspaceId })}
-        onPreview={onPreview}
-        onRestore={onRestore}
-        onDuplicate={onDuplicate}
-        onExport={onExport}
+        actions={{ onPreview, onRestore, onDuplicate, onExport }}
       />
     </>
   );
@@ -213,30 +210,29 @@ export function WorkflowVersionsPage({
               archived={archived}
               canRestore={canRestore}
               promotionWorkspaceId={canRestore ? workspace.id : undefined}
-              onCompare={() => {
-                setOverlay({ kind: 'compare' });
-              }}
-              onPreview={(version) => {
-                setOverlay({ kind: 'preview', version });
-              }}
-              onRestore={(version) => {
-                setOverlay({ kind: 'restore', version });
-              }}
-              onExport={
-                workspace.capabilities.includes('workflow:read')
+              actions={{
+                onCompare: () => {
+                  setOverlay({ kind: 'compare' });
+                },
+                onPreview: (version) => {
+                  setOverlay({ kind: 'preview', version });
+                },
+                onRestore: (version) => {
+                  setOverlay({ kind: 'restore', version });
+                },
+                onExport: workspace.capabilities.includes('workflow:read')
                   ? (version) => {
                       setOverlay({ kind: 'export', version });
                     }
-                  : undefined
-              }
-              onDuplicate={
-                workflow !== undefined &&
-                canDuplicateWorkflow(workspace, workflow)
-                  ? (version) => {
-                      setOverlay({ kind: 'duplicate', version });
-                    }
-                  : undefined
-              }
+                  : undefined,
+                onDuplicate:
+                  workflow !== undefined &&
+                  canDuplicateWorkflow(workspace, workflow)
+                    ? (version) => {
+                        setOverlay({ kind: 'duplicate', version });
+                      }
+                    : undefined,
+              }}
             />
           )}
         </QueryView>

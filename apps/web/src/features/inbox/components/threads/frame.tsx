@@ -18,26 +18,26 @@ import { cn } from '@/lib/utils';
  */
 export function NoticeFrame({
   unread,
-  tone,
   title,
-  word,
   occurredAt,
   nowMs,
   summary,
   aside,
   actions,
+  status,
 }: Readonly<{
   unread: boolean;
-  tone: StatusTone;
   /** The link that opens the notice. */
   title: ReactNode;
-  word: string;
   occurredAt: string;
   nowMs: number;
   summary?: ReactNode;
   aside?: ReactNode;
   actions?: ReactNode;
+  status: Readonly<{ tone: StatusTone; word: string }>;
 }>) {
+  const { tone, word } = status;
+
   return (
     <li
       data-slot="inbox-thread"

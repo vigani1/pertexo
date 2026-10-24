@@ -36,20 +36,22 @@ it('pages maximum-size histories and follows a newly inspected step without losi
       ]) as AccessibleWorkspace,
       runId: fixtureIds.firstRun,
     },
-    canReplay: false,
-    onReplay: vi.fn(),
-    view: { startMs: 0, endMs: 1_000, rows, ticks: [] },
-    nowMs: 1_000,
-    active: false,
-    selectedKey: undefined,
-    onSelectStep: vi.fn(),
-    graph: undefined,
-    graphState: 'forbidden',
-    events: [],
-    truncatedCount: 0,
-    recoveryMessage: undefined,
-    stepLabel: () => undefined,
-    runStartMs: 0,
+    replay: { canReplay: false, onReplay: vi.fn() },
+    thread: {
+      view: { startMs: 0, endMs: 1_000, rows, ticks: [] },
+      nowMs: 1_000,
+      active: false,
+      selectedKey: undefined,
+      onSelectStep: vi.fn(),
+    },
+    graphSource: { graph: undefined, graphState: 'forbidden' },
+    eventStream: {
+      events: [],
+      truncatedCount: 0,
+      recoveryMessage: undefined,
+      stepLabel: () => undefined,
+      runStartMs: 0,
+    },
     compact: true,
   };
   const result = render(<RunDetailTabs {...props} />);
@@ -61,7 +63,12 @@ it('pages maximum-size histories and follows a newly inspected step without losi
   ).toBeDisabled();
   await user.click(within(pager).getByRole('button', { name: 'Next' }));
   expect(pager).toHaveTextContent('51–100 of 5,000');
-  result.rerender(<RunDetailTabs {...props} selectedKey="4999" />);
+  result.rerender(
+    <RunDetailTabs
+      {...props}
+      thread={{ ...props.thread, selectedKey: '4999' }}
+    />,
+  );
   expect(pager).toHaveTextContent('4,951–5,000 of 5,000');
   expect(
     screen.getByRole('button', { name: 'Item 5000: Succeeded' }),
@@ -69,14 +76,20 @@ it('pages maximum-size histories and follows a newly inspected step without losi
   expect(within(pager).getByRole('button', { name: 'Next' })).toBeDisabled();
   await user.click(within(pager).getByRole('button', { name: 'Previous' }));
   result.rerender(
-    <RunDetailTabs {...props} selectedKey="4999" nowMs={2_000} />,
+    <RunDetailTabs
+      {...props}
+      thread={{ ...props.thread, selectedKey: '4999', nowMs: 2_000 }}
+    />,
   );
   expect(pager).toHaveTextContent('4,901–4,950 of 5,000');
   result.rerender(
     <RunDetailTabs
       {...props}
-      selectedKey="4999"
-      view={{ ...props.view, rows: rows.slice(0, 60) }}
+      thread={{
+        ...props.thread,
+        selectedKey: '4999',
+        view: { ...props.thread.view, rows: rows.slice(0, 60) },
+      }}
     />,
   );
   expect(pager).toHaveTextContent('51–60 of 60');

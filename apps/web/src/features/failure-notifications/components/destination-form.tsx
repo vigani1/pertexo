@@ -210,7 +210,6 @@ export function DestinationForm(props: DestinationFormProps) {
           <DestinationFields
             id={model.id}
             workspaceId={model.scope.workspaceId}
-            values={model.values}
             editing={model.editing}
             disabled={model.mutation.isPending}
             connections={model.connections}
@@ -219,12 +218,15 @@ export function DestinationForm(props: DestinationFormProps) {
               model.values,
               model.channelNames,
             )}
-            validation={model.validation}
-            errorsFor={model.errorsFor}
-            onChange={(next) => {
-              model.setValues(next);
-              if (model.mutation.isError && !model.conflict)
-                model.mutation.reset();
+            form={{
+              values: model.values,
+              validation: model.validation,
+              errorsFor: model.errorsFor,
+              onChange: (next) => {
+                model.setValues(next);
+                if (model.mutation.isError && !model.conflict)
+                  model.mutation.reset();
+              },
             }}
           />
         </FieldGroup>

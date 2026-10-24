@@ -95,7 +95,8 @@ function UploadSession({
   onUse,
   useLabel = 'Use file',
   onClose,
-}: Props & Readonly<{ onClose: () => void }>) {
+}: Pick<Props, 'scope' | 'description' | 'children' | 'onUse' | 'useLabel'> &
+  Readonly<{ onClose: () => void }>) {
   const attachment = useLatestRequest();
   const upload = useUpload(scope.apiClient, scope.workspaceId);
   const [attachmentError, setAttachmentError] = useState<string>();

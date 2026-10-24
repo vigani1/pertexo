@@ -21,14 +21,16 @@ type WebhookCardProps = Readonly<{
   stepName: string;
   editable: boolean;
   blocked: boolean;
-  pendingCommand: WebhookCommand | undefined;
-  unresolved: UncertainWebhookCommand | undefined;
-  onCommand: (command: WebhookCommand) => void;
-  onRetryUnresolved: () => void;
-  /** Why the last command on this webhook failed, shown by its buttons. */
-  failure?: string | undefined;
   /** The recent delivery log, composed by the section that can read it. */
   deliveries?: ReactNode;
+  command: Readonly<{
+    pendingCommand: WebhookCommand | undefined;
+    unresolved: UncertainWebhookCommand | undefined;
+    onCommand: (command: WebhookCommand) => void;
+    onRetryUnresolved: () => void;
+    /** Why the last command on this webhook failed, shown by its buttons. */
+    failure?: string | undefined;
+  }>;
 }>;
 
 export function WebhookCard({
@@ -36,13 +38,12 @@ export function WebhookCard({
   stepName,
   editable,
   blocked,
-  pendingCommand,
-  unresolved,
-  onCommand,
-  onRetryUnresolved,
-  failure,
   deliveries,
+  command,
 }: WebhookCardProps) {
+  const { pendingCommand, unresolved, onCommand, onRetryUnresolved, failure } =
+    command;
+
   const state = describeTriggerState(trigger);
   return (
     <article

@@ -157,9 +157,6 @@ export function RunHistoryPage({
             }
           />
           <RunResults
-            apiClient={apiClient}
-            userId={user.id}
-            workspace={workspace}
             search={search}
             onSearchChange={onSearchChange}
             query={query}
@@ -173,6 +170,7 @@ export function RunHistoryPage({
                 )}
               />
             }
+            scope={{ apiClient, userId: user.id, workspace }}
           />
         </>
       ) : (

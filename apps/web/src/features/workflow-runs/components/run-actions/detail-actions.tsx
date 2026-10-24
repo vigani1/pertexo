@@ -11,25 +11,25 @@ import { buttonVariants } from '@/components/ui/button-variants';
  */
 export function RunDetailActions({
   compact,
-  workspaceId,
-  workflowId,
   canReplay,
   canCancel,
   canOpenWorkflow,
   recoveryAction,
   onReplay,
   onCancel,
+  scope,
 }: Readonly<{
   compact: boolean;
   recoveryAction?: ReactNode;
-  workspaceId: string;
-  workflowId: string;
   canReplay: boolean;
   canCancel: boolean;
   canOpenWorkflow: boolean;
   onReplay: () => void;
   onCancel: () => void;
+  scope: Readonly<{ workspaceId: string; workflowId: string }>;
 }>) {
+  const { workspaceId, workflowId } = scope;
+
   // The actions share a phone's width: each takes its own width and the
   // rest is shared.
   const grow = compact ? 'flex-auto px-3' : undefined;

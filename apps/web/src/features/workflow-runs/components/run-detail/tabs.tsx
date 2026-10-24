@@ -54,40 +54,44 @@ function GraphPlaceholder({
 /** Thread (default), Graph, Events and Input & output for one run. */
 export function RunDetailTabs({
   scope,
-  canReplay,
-  onReplay,
-  view,
-  nowMs,
-  active,
-  selectedKey,
-  onSelectStep,
-  graph,
-  graphState,
-  events,
-  truncatedCount,
-  recoveryMessage,
-  stepLabel,
-  runStartMs,
   compact,
+  thread,
+  graphSource,
+  eventStream,
+  replay,
 }: Readonly<{
   scope: RunDataScope;
-  canReplay: boolean;
-  onReplay: () => void;
-  view: RunTimelineModel;
-  nowMs: number;
-  active: boolean;
-  selectedKey: string | undefined;
-  onSelectStep: (key: string) => void;
-  graph: WorkflowGraphContract | undefined;
-  graphState: keyof typeof graphMessages;
-  events: readonly WorkflowRunEvent[];
-  truncatedCount: number;
-  recoveryMessage: string | undefined;
-  stepLabel: (event: WorkflowRunEvent) => string | undefined;
-  runStartMs: number;
   /** Phones read the thread as a list of steps. */
   compact: boolean;
+  thread: Readonly<{
+    view: RunTimelineModel;
+    nowMs: number;
+    active: boolean;
+    selectedKey: string | undefined;
+    onSelectStep: (key: string) => void;
+  }>;
+  graphSource: Readonly<{
+    graph: WorkflowGraphContract | undefined;
+    graphState: keyof typeof graphMessages;
+  }>;
+  eventStream: Readonly<{
+    events: readonly WorkflowRunEvent[];
+    truncatedCount: number;
+    recoveryMessage: string | undefined;
+    stepLabel: (event: WorkflowRunEvent) => string | undefined;
+    runStartMs: number;
+  }>;
+  replay: Readonly<{ canReplay: boolean; onReplay: () => void }>;
 }>) {
+  const { view, nowMs, active, selectedKey, onSelectStep } = thread;
+
+  const { graph, graphState } = graphSource;
+
+  const { events, truncatedCount, recoveryMessage, stepLabel, runStartMs } =
+    eventStream;
+
+  const { canReplay, onReplay } = replay;
+
   const [tab, setTab] = useState<RunTab>('thread');
   const history = useHistoryPage(
     view.rows,
