@@ -50,6 +50,10 @@ export default tseslint.config(
   ...rootConfig,
   // Root globs do not match paths relative to this local configuration.
   { files: ['src/**/*.{ts,tsx}'], rules: readabilityRules },
+  {
+    files: ['test/**/*.{ts,tsx}', 'e2e/**/*.ts', 'e2e-live/**/*.ts'],
+    rules: { 'max-params': ['error', 4] },
+  },
   { ignores: ['playwright-report/**', 'test-results/**'] },
   {
     files: ['**/*.{ts,tsx}'],
