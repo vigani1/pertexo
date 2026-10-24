@@ -4,7 +4,7 @@ import { runEvents } from '../../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
-import { CoordinatorRunStateCorruptError } from '../contract.js';
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 
 import {
   attachPhysicalAttempts,
@@ -13,14 +13,6 @@ import {
 } from './attempts.queries.js';
 import { canonicalEventPayload, eventIdentity } from './fact-admission.js';
 import type { EventRow } from './event-facts.queries.js';
-
-export { canonicalTimestamp } from './fact-admission.js';
-export {
-  terminalStatus,
-  mapEvent,
-  completedInlineOutput,
-  assertAvailableArtifacts,
-} from './event-facts.queries.js';
 export const maximumPersistedFacts = WORKFLOW_OBSERVATION_WINDOW_LIMITS.facts;
 
 const maximumCanonicalPersistedFactBytes =

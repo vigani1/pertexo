@@ -9,14 +9,14 @@ import type { PoolClient } from 'pg';
 import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
 import { projectExecutionSource } from '../../queries/execution/source.queries.js';
-import {
-  CoordinatorRunStateCorruptError,
-  type RunAdvanceState,
-} from '../contract.js';
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
+import type { RunAdvanceState } from '../contract.js';
 import {
   assertAvailableArtifacts,
   completedInlineOutput,
   mapEvent,
+} from './event-facts.queries.js';
+import {
   maximumPersistedFacts,
   persistedFactCapacity,
   readPersistedFacts,

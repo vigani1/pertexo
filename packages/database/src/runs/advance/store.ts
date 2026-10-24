@@ -9,11 +9,13 @@ import { saveRunTransition } from './persist/commit.js';
 import {
   coordinatorDeliverySchema,
   coordinatorIdentitySchema,
-  type RunAdvanceDecision,
-  type RunAdvanceInput,
-  type RunAdvanceResult,
-  type RunAdvanceState,
-  type RunAdvanceStore,
+} from './input.js';
+import type {
+  RunAdvanceDecision,
+  RunAdvanceInput,
+  RunAdvanceResult,
+  RunAdvanceState,
+  RunAdvanceStore,
 } from './contract.js';
 import {
   auditCoordinatorDeliveryMismatch,

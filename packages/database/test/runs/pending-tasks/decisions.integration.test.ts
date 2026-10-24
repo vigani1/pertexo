@@ -8,11 +8,11 @@ import { readPendingTaskFacts } from '../../../src/runs/pending-tasks/lifecycle/
 import { describe, it, expect } from 'vitest';
 import { pendingTaskDetailSchema } from '@pertexo/contracts';
 import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
+import { createPendingTaskStore } from '../../../src/runs/pending-tasks/responses/repository.js';
 import {
-  createPendingTaskStore,
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
-} from '../../../src/runs/pending-tasks/responses/repository.js';
+} from '../../../src/runs/pending-tasks/responses/errors.js';
 import { admin, store, taskFixture, userId, pool } from './fixtures.js';
 
 describe('current authority and atomic human decisions', () => {

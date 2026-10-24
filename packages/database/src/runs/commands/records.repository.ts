@@ -16,10 +16,8 @@ import { and, eq, sql } from 'drizzle-orm';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import {
-  acceptWorkflowRun,
-  type AcceptWorkflowRunInput,
-} from './acceptance.repository.js';
+import { acceptWorkflowRun } from './acceptance.repository.js';
+import type { AcceptWorkflowRunInput } from './acceptance/contract.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
 
 export type WorkflowRunRecord = Readonly<WorkflowRunRow>;

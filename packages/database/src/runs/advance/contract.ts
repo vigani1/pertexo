@@ -1,22 +1,14 @@
+import type { coordinatorDeliverySchema } from './input.js';
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type {
   WorkflowCallOutcome,
   PendingTaskOutcome,
   WorkflowCheckpoint,
 } from '@pertexo/workflow-engine';
-import { z } from 'zod';
-import { sha256HexSchema } from '../../platform/persisted-primitives.js';
-import type { WorkflowExecutionProjection } from '../queries/execution/source.queries.js';
+import type { z } from 'zod';
+import type { WorkflowExecutionProjection } from '../queries/execution/contract.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { RunTransitionPlan } from './plan.js';
-
-export const coordinatorIdentitySchema = z.uuid();
-export const coordinatorDeliverySchema = z
-  .object({
-    outboxEventId: z.uuid(),
-    payloadChecksum: sha256HexSchema,
-  })
-  .strict();
 
 export type CoordinatorAdvanceDelivery = Readonly<
   z.input<typeof coordinatorDeliverySchema>
@@ -95,18 +87,4 @@ export interface RunAdvanceStore {
     decide: (state: RunAdvanceState) => Promise<RunAdvanceDecision>,
   ): Promise<RunAdvanceResult>;
   close(): Promise<void>;
-}
-
-export class CoordinatorRunStateCorruptError extends Error {
-  public override readonly name = 'CoordinatorRunStateCorruptError';
-  public constructor() {
-    super('Persisted coordinator run state is invalid');
-  }
-}
-
-export class CoordinatorDeliveryMismatchError extends Error {
-  public override readonly name = 'CoordinatorDeliveryMismatchError';
-  public constructor() {
-    super('Coordinator delivery does not match its durable outbox identity');
-  }
 }

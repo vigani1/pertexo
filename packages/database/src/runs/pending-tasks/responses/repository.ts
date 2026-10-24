@@ -18,12 +18,6 @@ import { respondToTask } from './respond.repository.js';
 import { inspectAudience } from './inspect-audience.queries.js';
 import { listTasks, projectTask, readTaskRow } from './records.repository.js';
 import type { PendingTaskStore } from './contract.js';
-
-export {
-  PendingTaskDecisionError,
-  PendingTaskNotFoundError,
-  type PendingTaskStore,
-} from './contract.js';
 export function createPendingTaskStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

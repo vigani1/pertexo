@@ -17,7 +17,7 @@ import {
   prepareStoredExecutionValue,
   STORED_EXECUTION_VALUE_LIMITS,
 } from '../../platform/stored-execution-value.js';
-import { CoordinatorRunStateCorruptError } from '../advance/contract.js';
+import { CoordinatorRunStateCorruptError } from '../state-errors.js';
 import {
   terminalRunStatuses,
   type RunTransitionPlan,

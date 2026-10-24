@@ -5,18 +5,18 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 import { prepareStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { nodeRuns, runEvents } from '../../schema/runs/execution.js';
 import { readRecoveryMetadata, readRecoveryValues } from './records.queries.js';
-import { WorkflowRecoveryUnavailableError } from './contract.js';
+import { WorkflowRecoveryUnavailableError } from './errors.js';
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
-  readWorkflowRunAcceptanceReplay,
 } from '../commands/acceptance.repository.js';
+import { readWorkflowRunAcceptanceReplay } from '../commands/acceptance/replay.repository.js';
 import {
   insertWorkflowRunAudit,
   requireWorkflowRunRecord,
 } from '../commands/records.repository.js';
 import { lockRunAcceptanceCommand } from '../commands/lock-acceptance.repository.js';
-import type { RecoverPublishedWorkflowRunInput } from '../runs.repository.js';
+import type { RecoverPublishedWorkflowRunInput } from '../commands/contract.js';
 
 export type RecoverWorkflowRunInput = RecoverPublishedWorkflowRunInput;
 

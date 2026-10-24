@@ -8,7 +8,7 @@ import type {
   RecoveryRefused,
   RecoveryValues,
 } from '@pertexo/workflow-engine';
-import type { PublishedWorkflow } from '../queries/execution/published.queries.js';
+import type { PublishedWorkflow } from '../queries/execution/contract.js';
 import type { WorkflowRunRecord } from '../commands/records.repository.js';
 
 export type WorkflowRecoverySummary = Readonly<{
@@ -18,13 +18,6 @@ export type WorkflowRecoverySummary = Readonly<{
   effectRisk: WorkflowRecoveryEffectRisk;
   effectsAcknowledged: boolean;
 }>;
-
-export class WorkflowRecoveryUnavailableError extends Error {
-  public override readonly name = 'WorkflowRecoveryUnavailableError';
-  public constructor(public readonly reason: RecoveryRefused['reason']) {
-    super('run.recovery_unavailable');
-  }
-}
 
 export type WorkflowRecoveryPreview =
   | RecoveryRefused

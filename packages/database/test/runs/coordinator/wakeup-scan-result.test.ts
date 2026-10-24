@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CoordinatorRunStateCorruptError } from '../../../src/runs/advance/contract.js';
+import { CoordinatorRunStateCorruptError } from '../../../src/runs/state-errors.js';
 import { parseClaimedWakeups } from '../../../src/runs/wakeups/scan-result.js';
 
 describe('coordinator wakeup scan result', () => {

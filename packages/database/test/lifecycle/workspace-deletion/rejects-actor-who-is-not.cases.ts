@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { IdempotencyRequestConflictError } from '../../../src/runs/commands/acceptance.repository.js';
+import { IdempotencyRequestConflictError } from '../../../src/runs/commands/acceptance/errors.js';
 import { WorkspaceLifecycleConflictError } from '../../../src/tenant-access/errors.js';
 
 import {

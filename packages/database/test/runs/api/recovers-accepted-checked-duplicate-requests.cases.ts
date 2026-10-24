@@ -1,7 +1,7 @@
 import { Pool, type QueryResult } from 'pg';
 import { expect, it, vi } from 'vitest';
 
-import { WorkflowPublishedVersionConflictError } from '../../../src/runs/runs.repository.js';
+import { WorkflowPublishedVersionConflictError } from '../../../src/runs/errors.js';
 
 import { enforceRetention } from '../../support/retention.js';
 import {

@@ -1,7 +1,7 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-import { IdempotencyRequestConflictError } from '../runs/commands/acceptance.repository.js';
+import { IdempotencyRequestConflictError } from '../runs/commands/acceptance/errors.js';
 import {
   IdentityConflictError,
   WorkspaceLifecycleConflictError,

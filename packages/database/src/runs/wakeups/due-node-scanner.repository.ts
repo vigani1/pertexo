@@ -1,3 +1,4 @@
+import type { DueNodeWakeupScanner } from './contract.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
@@ -8,11 +9,6 @@ import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import type { DatabaseConfig } from '../../config.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { parseClaimedWakeups } from './scan-result.js';
-
-export interface DueNodeWakeupScanner {
-  claimDueWakeups(limit: number, signal?: AbortSignal): Promise<number>;
-  close(): Promise<void>;
-}
 
 export function createDueNodeWakeupScanner(
   config: DatabaseConfig,

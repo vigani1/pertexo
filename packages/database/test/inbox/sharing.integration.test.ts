@@ -2,10 +2,8 @@ import { createConnectionDatabase } from '../../src/connections/repository.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { createWorkflowFolderDatabase } from '../../src/authoring/organization/folders/commands.repository.js';
-import {
-  createPendingTaskStore,
-  PendingTaskNotFoundError,
-} from '../../src/runs/pending-tasks/responses/repository.js';
+import { createPendingTaskStore } from '../../src/runs/pending-tasks/responses/repository.js';
+import { PendingTaskNotFoundError } from '../../src/runs/pending-tasks/responses/errors.js';
 import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
 import {
   own,

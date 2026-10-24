@@ -22,7 +22,8 @@ import {
 } from '@pertexo/workflow-model';
 import { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import type { Role } from '@pertexo/workflow-model';
-import { PendingTaskNotFoundError, type PendingTaskScope } from './contract.js';
+import { PendingTaskNotFoundError } from './errors.js';
+import type { PendingTaskScope } from './contract.js';
 
 import {
   task,

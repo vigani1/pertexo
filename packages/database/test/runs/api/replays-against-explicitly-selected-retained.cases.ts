@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 
-import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance.repository.js';
+import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/errors.js';
 
-import { WorkflowRunNotFoundError } from '../../../src/runs/runs.repository.js';
+import { WorkflowRunNotFoundError } from '../../../src/runs/errors.js';
 
 import {
   workspaceId,

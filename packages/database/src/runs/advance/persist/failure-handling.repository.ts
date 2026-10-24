@@ -3,7 +3,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { nodeRuns } from '../../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import { CoordinatorRunStateCorruptError } from '../contract.js';
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import type { RunTransitionPlan } from '../plan.js';
 import { serializeStoredExecutionJsonValue } from '../../../platform/stored-execution-value.js';
 

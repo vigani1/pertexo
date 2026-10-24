@@ -12,9 +12,9 @@ import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacit
 import { persistErrorWorkflowIntent } from '../../error-workflows/produce.repository.js';
 import type { PoolClient } from 'pg';
 
-import { CoordinatorRunStateCorruptError } from '../contract.js';
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import type { CoordinatorCommitRow } from '../load/state.queries.js';
-import { canonicalTimestamp } from '../load/facts.queries.js';
+import { canonicalTimestamp } from '../load/fact-admission.js';
 import {
   scheduleRunInputSchema,
   terminalRunStatuses,

@@ -27,8 +27,8 @@ import type { Role } from '@pertexo/workflow-model';
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
-  type PendingTaskStore,
-} from './contract.js';
+} from './errors.js';
+import type { PendingTaskStore } from './contract.js';
 import { projectTask, readTaskRow } from './records.repository.js';
 
 export async function respondToTask(

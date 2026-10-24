@@ -4,7 +4,7 @@ import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
 import { lockArtifactReferences } from '../../artifacts/references/repository.js';
 import type { Pool, PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { cancelInTransaction } from '../../runs/runs.repository.js';
+import { cancelInTransaction } from '../../runs/commands/cancel-active.repository.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { databaseSchema } from '../../schema.js';
 import { parseWorkspaceId } from '../../tenant-access/transactions.js';

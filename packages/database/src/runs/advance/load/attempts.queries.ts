@@ -1,11 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray } from 'drizzle-orm';
-import type {
-  runEvents} from '../../../schema/runs/execution.js';
-import {
-  nodeAttempts,
-  nodeRuns
-} from '../../../schema/runs/execution.js';
+import type { runEvents } from '../../../schema/runs/execution.js';
+import { nodeAttempts, nodeRuns } from '../../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 

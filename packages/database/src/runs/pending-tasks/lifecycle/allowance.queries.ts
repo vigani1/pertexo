@@ -7,7 +7,7 @@ import {
 } from '../../../schema/runs/capacity/entitlements.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import { CoordinatorRunStateCorruptError } from '../../advance/contract.js';
+import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 export type PendingTaskAllowance = Readonly<{ count: number; limit: number }>;
 /** Caller holds the workspace execution counter lock across admission. */
 export async function readPendingTaskAllowance(

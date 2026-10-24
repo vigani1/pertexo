@@ -2,8 +2,8 @@ import { workflowRuns } from '../../schema/runs/execution.js';
 import { isTestRun } from '../data-policy.js';
 import { and, eq, sql } from 'drizzle-orm';
 
-import { readWorkflowRunAcceptanceReplay } from './acceptance.repository.js';
-import type { PublishedWorkflow } from '../queries/execution/published.queries.js';
+import { readWorkflowRunAcceptanceReplay } from './acceptance/replay.repository.js';
+import type { PublishedWorkflow } from '../queries/execution/contract.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
@@ -14,7 +14,7 @@ import {
   acceptWorkflowRunWithAudit,
   requireWorkflowRunRecord,
 } from './records.repository.js';
-import type { ReplayPublishedWorkflowRunInput } from '../runs.repository.js';
+import type { ReplayPublishedWorkflowRunInput } from './contract.js';
 import type { WorkflowRunRecord } from './records.repository.js';
 
 export async function replayWorkflowRunInTransaction(

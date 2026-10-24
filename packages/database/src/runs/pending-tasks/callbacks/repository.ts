@@ -17,11 +17,8 @@ import { serializeStoredExecutionValue } from '../../../platform/stored-executio
 import { wakeWorkflowRun } from '../../calls/wakeup.repository.js';
 import { wakeTaskAncestors } from '../responses/respond.repository.js';
 import { prepareCallbacks } from './prepare.repository.js';
-import {
-  CallbackResponseError,
-  type CallbackStore,
-  type PreparedCallback,
-} from './contract.js';
+import { CallbackResponseError } from './errors.js';
+import type { CallbackStore, PreparedCallback } from './contract.js';
 
 type Row = Awaited<ReturnType<typeof resolveCallback>>[number];
 function project(row: Row): PreparedCallback {

@@ -1,9 +1,9 @@
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { IdempotencyRequestConflictError } from '../../../src/runs/commands/acceptance.repository.js';
+import { IdempotencyRequestConflictError } from '../../../src/runs/commands/acceptance/errors.js';
 
-import { WorkflowPublishedVersionConflictError } from '../../../src/runs/runs.repository.js';
+import { WorkflowPublishedVersionConflictError } from '../../../src/runs/errors.js';
 
 import {
   explainDocument,

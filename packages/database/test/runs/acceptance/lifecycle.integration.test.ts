@@ -3,10 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
-import {
-  acceptWorkflowRun,
-  WorkspaceRunAdmissionDeniedError,
-} from '../../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
+import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/errors.js';
 import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/repository.js';
 import { runEvents } from '../../../src/schema.js';
 import {

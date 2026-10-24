@@ -5,7 +5,7 @@ import type { WorkspaceTransaction } from '../../../tenant-access/transactions.j
 import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from './contract.js';
+} from './errors.js';
 
 type AdmissionSqlState = 'PTA01' | 'PTA02';
 

@@ -11,7 +11,7 @@ import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 
-import type { PublishedWorkflow } from '../../../runs/queries/execution/published.queries.js';
+import type { PublishedWorkflow } from '../../../runs/queries/execution/contract.js';
 import { readHealth } from '../../reconciliation/health.repository.js';
 import type { WorkflowTriggerHealth } from '../../reconciliation/contract.js';
 

@@ -4,9 +4,9 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { nodeRuns, runEvents } from '../../../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import { CoordinatorRunStateCorruptError } from '../../contract.js';
+import { CoordinatorRunStateCorruptError } from '../../../state-errors.js';
 import type { PendingCoordinatorFailure } from '../../load/state.queries.js';
-import { terminalStatus } from '../../load/facts.queries.js';
+import { terminalStatus } from '../../load/event-facts.queries.js';
 import type { RunTransitionPlan } from '../../plan.js';
 
 import { serializeStoredExecutionJsonValue } from '../../../../platform/stored-execution-value.js';

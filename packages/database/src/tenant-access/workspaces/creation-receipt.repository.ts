@@ -9,11 +9,11 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
+import { IDEMPOTENCY_STATUS } from '../../runs/commands/acceptance/vocabulary.js';
 import {
-  IDEMPOTENCY_STATUS,
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
-} from '../../runs/commands/acceptance.repository.js';
+} from '../../runs/commands/acceptance/errors.js';
 
 import { WORKSPACE_STATUS } from '../state.js';
 import type {

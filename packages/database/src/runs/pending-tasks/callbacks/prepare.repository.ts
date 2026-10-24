@@ -15,11 +15,8 @@ import {
   assertCapabilityExecution,
 } from '../../../attempts/dispatch/fence.repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
-import {
-  CallbackCapacityError,
-  type CallbackStore,
-  type PreparedCallback,
-} from './contract.js';
+import { CallbackCapacityError } from './errors.js';
+import type { CallbackStore, PreparedCallback } from './contract.js';
 export async function prepareCallbacks(
   client: PoolClient,
   input: Parameters<CallbackStore['prepare']>[0],

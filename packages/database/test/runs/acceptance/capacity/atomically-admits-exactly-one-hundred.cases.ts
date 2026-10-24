@@ -2,10 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import {
-  acceptWorkflowRun,
-  WorkspaceRunQuotaExceededError,
-} from '../../../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.repository.js';
+import { WorkspaceRunQuotaExceededError } from '../../../../src/runs/commands/acceptance/errors.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

@@ -1,9 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { workflowManualStartRejections } from '../../schema/runs/manual-start.js';
-import { IdempotencyRequestConflictError } from './acceptance.repository.js';
-
-export { lockRunAcceptanceCommand } from './lock-acceptance.repository.js';
+import { IdempotencyRequestConflictError } from './acceptance/errors.js';
 
 export type ManualStartIdentity = Readonly<{
   workflowId: string;

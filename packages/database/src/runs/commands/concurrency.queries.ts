@@ -1,14 +1,8 @@
+import { WorkflowAlreadyRunningError } from './acceptance/errors.js';
 import { workflowConcurrencyPolicies } from '../../schema/authoring/concurrency.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { isTestRun } from '../data-policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-
-export class WorkflowAlreadyRunningError extends Error {
-  override readonly name = 'WorkflowAlreadyRunningError';
-  constructor() {
-    super('This workflow is already running. Try again shortly.');
-  }
-}
 
 /** Serialize immediately before insertion, after claims and artifact-reference locks. */
 export async function requireWorkflowConcurrency(

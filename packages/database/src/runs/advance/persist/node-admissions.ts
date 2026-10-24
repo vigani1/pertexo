@@ -14,8 +14,6 @@ import {
   loadEventExecutionIdentities,
   persistRunEvents,
 } from './admissions/events.repository.js';
-
-export { type CoordinatorExecutionIdentity } from './admissions/contract.js';
 export async function persistCoordinatorExecutionTransitions(
   client: PoolClient,
   input: Readonly<{
