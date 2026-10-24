@@ -23,7 +23,9 @@ export const workflowStepSamples = appSchema.table(
     binding: text('binding').notNull(),
     outputRef: text('output_ref').notNull(),
     retainedBytes: integer('retained_bytes').notNull(),
-    sourceKind: varchar('source_kind', { length: 16 }).notNull(),
+    sourceKind: varchar('source_kind', { length: 16 })
+      .$type<'json' | 'run' | 'preview' | 'webhook_test'>()
+      .notNull(),
     sourceRunId: uuid('source_run_id'),
     sourceNodeRunId: uuid('source_node_run_id'),
     sourcePreviewId: uuid('source_preview_id'),

@@ -1,3 +1,4 @@
+import type { workflowStepSamples } from '../../schema/authoring/step-samples.js';
 import type { PoolClient } from 'pg';
 import type { StepSampleSource } from '@pertexo/workflow-model';
 import type { StoredExecutionValue } from '../../platform/stored-execution-value.js';
@@ -18,19 +19,22 @@ export type SampleCommand = SampleNodeScope &
     traceId?: string;
   }>;
 export type SampleSource = StepSampleSource;
-export type SampleRow = Readonly<{
-  id: string;
-  node_id: string;
-  binding: string;
-  output_ref: string;
-  retained_bytes: number;
-  source_kind: 'json' | 'run' | 'preview' | 'webhook_test';
-  source_run_id: string | null;
-  source_node_run_id: string | null;
-  source_preview_id: string | null;
-  created_at: Date;
-  expires_at: Date;
-}>;
+export type SampleRow = Readonly<
+  Pick<
+    typeof workflowStepSamples.$inferSelect,
+    | 'id'
+    | 'nodeId'
+    | 'binding'
+    | 'outputRef'
+    | 'retainedBytes'
+    | 'sourceKind'
+    | 'sourceRunId'
+    | 'sourceNodeRunId'
+    | 'sourcePreviewId'
+    | 'createdAt'
+    | 'expiresAt'
+  >
+>;
 export type SampleState = 'pinned' | 'stale' | 'expired';
 export type SampleMetadata = Readonly<{
   id: string;
@@ -90,14 +94,7 @@ export class WorkflowStepSampleError extends Error {
     super(`workflow.sample_${reason}`);
   }
 }
-export const SAMPLE_COLUMNS =
-  'id,node_id,binding,output_ref,retained_bytes,source_kind,source_run_id,source_node_run_id,source_preview_id,created_at,expires_at';
 export const SAMPLE_RETENTION_SECONDS = 30 * 24 * 60 * 60;
 export const SAMPLE_RETAINED_BYTES = 16 * 1024 * 1024;
 
-export type SampleMetadataRow = Omit<
-  SampleRow,
-  'output_ref' | 'retained_bytes'
->;
-export const SAMPLE_METADATA_COLUMNS =
-  'id,node_id,binding,source_kind,source_run_id,source_node_run_id,source_preview_id,created_at,expires_at';
+export type SampleMetadataRow = Omit<SampleRow, 'outputRef' | 'retainedBytes'>;
