@@ -1,5 +1,14 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
+import { and, eq, ne, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaces,
+  workspaceMemberships,
+  users,
+} from '../../schema/foundation.js';
+import { workflowPublicationRequests } from '../../schema/authoring/publication-requests.js';
 import type { GovernanceSettings } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { appendAuditFact } from '../audit/events.repository.js';
@@ -9,31 +18,27 @@ export async function readGovernanceSettings(
   client: PoolClient,
   workspaceId: string,
 ): Promise<GovernanceSettings> {
-  const row = (
-    await client.query<{
-      governance_revision: number;
-      audit_retention_days: number;
-      require_publish_approval: boolean;
-    }>(
-      'select governance_revision,audit_retention_days,require_publish_approval from app.workspaces where id=$1',
-      [workspaceId],
-    )
-  ).rows[0];
+  const [row] = await drizzle(client)
+    .select({
+      revision: workspaces.governanceRevision,
+      auditRetentionDays: workspaces.auditRetentionDays,
+      requirePublishApproval: workspaces.requirePublishApproval,
+    })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new GovernanceError(
       'conflict',
       'Workspace settings are unavailable.',
     );
-  return {
-    revision: row.governance_revision,
-    auditRetentionDays: row.audit_retention_days,
-    requirePublishApproval: row.require_publish_approval,
-  };
+  return row;
 }
 export async function configureGovernance(
   client: PoolClient,
   input: Parameters<GovernanceStore['configure']>[0],
 ): Promise<GovernanceSettings> {
+  const db = drizzle(client);
   const identity = {
     workspaceId: input.workspaceId,
     scope: input.actorId,
@@ -56,49 +61,67 @@ export async function configureGovernance(
     !previous.requirePublishApproval &&
     (input.requirePublishApproval ?? false);
   if (enablesPublishApproval) {
-    const reviewer = await client.query(
-      `select member.user_id from app.workspace_memberships member
-       join app.users account on account.id=member.user_id
-       where member.workspace_id=$1 and member.user_id<>$2 and member.status='active'
-         and account.status='active' and member.role=any($3::text[]) limit 1`,
-      [
-        input.workspaceId,
-        input.actorId,
-        rolesForCapability('governance:manage'),
-      ],
-    );
-    if (reviewer.rowCount === 0)
+    const reviewers = await db
+      .select({ id: workspaceMemberships.userId })
+      .from(workspaceMemberships)
+      .innerJoin(users, eq(users.id, workspaceMemberships.userId))
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, input.workspaceId),
+          ne(workspaceMemberships.userId, input.actorId),
+          eq(workspaceMemberships.status, 'active'),
+          eq(users.status, 'active'),
+          inArray(workspaceMemberships.role, [
+            ...rolesForCapability('governance:manage'),
+          ]),
+        ),
+      )
+      .limit(1)
+      .catch(rethrowQueryFailure);
+    if (reviewers.length === 0)
       throw new GovernanceError(
         'invalid',
         'Add another active owner or admin before requiring approval to publish.',
       );
   }
-  const saved = await client.query<{ governance_revision: number }>(
-    'update app.workspaces set audit_retention_days=coalesce($3,audit_retention_days),require_publish_approval=coalesce($4,require_publish_approval),governance_revision=governance_revision+1,updated_at=clock_timestamp() where id=$1 and governance_revision=$2 returning governance_revision',
-    [
-      input.workspaceId,
-      input.expectedRevision,
-      input.auditRetentionDays ?? null,
-      input.requirePublishApproval ?? null,
-    ],
-  );
-  const row = saved.rows[0];
+  const [row] = await db
+    .update(workspaces)
+    .set({
+      auditRetentionDays: input.auditRetentionDays,
+      requirePublishApproval: input.requirePublishApproval,
+      governanceRevision: sql`${workspaces.governanceRevision}+1`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workspaces.id, input.workspaceId),
+        eq(workspaces.governanceRevision, input.expectedRevision),
+      ),
+    )
+    .returning({ revision: workspaces.governanceRevision })
+    .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new GovernanceError(
       'conflict',
       'Governance settings changed. Reload before saving.',
     );
   const result = {
-    revision: row.governance_revision,
+    revision: row.revision,
     auditRetentionDays: input.auditRetentionDays ?? previous.auditRetentionDays,
     requirePublishApproval:
       input.requirePublishApproval ?? previous.requirePublishApproval,
   };
   if (result.requirePublishApproval !== previous.requirePublishApproval)
-    await client.query(
-      "update app.workflow_publication_requests set status='stale' where workspace_id=$1 and status='pending'",
-      [input.workspaceId],
-    );
+    await db
+      .update(workflowPublicationRequests)
+      .set({ status: 'stale' })
+      .where(
+        and(
+          eq(workflowPublicationRequests.workspaceId, input.workspaceId),
+          eq(workflowPublicationRequests.status, 'pending'),
+        ),
+      )
+      .catch(rethrowQueryFailure);
   await appendAuditFact(client, {
     workspaceId: input.workspaceId,
     actorId: input.actorId,

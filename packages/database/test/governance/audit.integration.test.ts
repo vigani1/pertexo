@@ -384,12 +384,10 @@ it('keeps microsecond audit filter boundaries and literal person search', async 
   const targetId = await insert();
   const list = (query: { from?: string; until?: string; person?: string }) =>
     store.list({ ...scope(), query: { ...query, targetId, limit: 10 } });
-  expect((await list({ from: '2026-10-16T10:00:00.123457Z' })).items).toEqual(
-    [],
-  );
-  expect((await list({ until: '2026-10-16T10:00:00.123456Z' })).items).toEqual(
-    [],
-  );
+  const after = await list({ from: '2026-10-16T10:00:00.123457Z' });
+  const before = await list({ until: '2026-10-16T10:00:00.123456Z' });
+  expect(after.items).toEqual([]);
+  expect(before.items).toEqual([]);
   expect(
     (
       await list({

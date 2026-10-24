@@ -30,7 +30,7 @@ export async function prepareAuditExport(
       upper:
         first === undefined
           ? undefined
-          : { time: first.cursor_time, id: first.id },
+          : { time: first.cursorTime, id: first.id },
     };
   });
   async function* csv(): AsyncGenerator<string> {
@@ -69,7 +69,7 @@ export async function prepareAuditExport(
         ]
           .map(escapeCsvValue)
           .join(',') + '\r\n';
-        after = { time: row.cursor_time, id: row.id };
+        after = { time: row.cursorTime, id: row.id };
       }
     }
   }
