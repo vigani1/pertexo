@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { isAdministrativeRole } from '@pertexo/workflow-model';
 import { useState } from 'react';
 import { ArrowLeftIcon } from 'lucide-react';
@@ -86,23 +87,7 @@ export function DataTablesPage({
           <TableCapacity quotas={quotas} />
         </>
       ) : null}
-      {query.isPending ? <p role="status">Loading data tables…</p> : null}
-      {query.isError ? (
-        <Notice
-          tone="warning"
-          action={
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void query.refetch()}
-            >
-              Refresh tables
-            </Button>
-          }
-        >
-          Data tables could not be loaded.
-        </Notice>
-      ) : null}
+      <QueryView query={query} resource="Data tables" />
       {tableId === undefined ? (
         <TableCollection
           tables={query.data?.tables}

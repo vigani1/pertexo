@@ -4,10 +4,12 @@ import type {
 } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { LoadMore } from '@/components/patterns/lists/load-more';
-import { QueryView } from '@/components/patterns/states/query-view';
+import {
+  FailedReadState,
+  QueryView,
+} from '@/components/patterns/states/query-view';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { isApiError } from '@/lib/api/error';
-import { readFailureReason } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { filterRunsByTrigger } from '../../model/list/runs';
 import {
@@ -19,12 +21,7 @@ import type { RunHistoryQuery } from '../../hooks/use-run-history';
 import { useNow } from '@/lib/hooks/use-now';
 import { RunLoom } from '../loom/view';
 import { RunList } from './list';
-import {
-  NoMatchingRuns,
-  RunListSkeleton,
-  RunsLoadError,
-  RunsUnavailable,
-} from './states';
+import { NoMatchingRuns, RunListSkeleton, RunsUnavailable } from './states';
 import type { RunListVariant } from './run-row-layout';
 
 const HOUR_MS = 3_600_000;
@@ -70,12 +67,8 @@ export function RunResults({
       resource="Runs"
       loading={<RunListSkeleton />}
       failure={runsUnavailable}
-      error={({ error, retrying, retry }) => (
-        <RunsLoadError
-          description={readFailureReason(error)}
-          retrying={retrying}
-          onRetry={retry}
-        />
+      error={(failed) => (
+        <FailedReadState title="Runs couldn’t be loaded" {...failed} />
       )}
     >
       {() => (

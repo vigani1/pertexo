@@ -8,7 +8,6 @@ import type {
 } from '@pertexo/contracts';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { Notice } from '@/components/ui/notice';
-import { Button } from '@/components/ui/button';
 import { federationSettingsQueryOptions } from '../data/settings.queries';
 import type { FederationScope } from '../data/settings.api';
 import { CreateOrganization } from '../components/organization/create';

@@ -8,7 +8,6 @@ import { Link } from '@tanstack/react-router';
 import { tablesQuery } from '@/features/data-tables/picker.public';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { FieldLabel as Label } from '@/components/ui/field';
-import { Notice } from '@/components/ui/notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { ChoiceSelect } from '../fields/choice-select';
 import type { NodeFormApi } from '../../../model/inspector/node-form';

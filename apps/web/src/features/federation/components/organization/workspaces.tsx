@@ -17,7 +17,6 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { Notice } from '@/components/ui/notice';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { FederationScope } from '../../data/settings.api';
 import { useFederationCommand } from '../../data/use-command';

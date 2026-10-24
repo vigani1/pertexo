@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronRightIcon } from 'lucide-react';
@@ -6,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
-import { readFailureReason } from '@/lib/api/error-copy';
 import { ROLE_NAMES } from '../../model/workspace-roles';
 import { accessibleWorkspacesQueryOptions } from '../../data/workspaces.queries';
 import { WorkspaceMark } from '../shell/workspace-mark';
@@ -26,62 +26,63 @@ export function AccountWorkspacesSection({
   currentWorkspaceId?: string;
 }>) {
   const query = useQuery(accessibleWorkspacesQueryOptions(apiClient, userId));
-  const workspaces = query.data ?? [];
   return (
     <SettingsSection
       title="Your workspaces"
       description="Where you’re a member, and your role in each. Roles are set by each workspace’s admins."
     >
-      {query.isPending ? (
-        <SkeletonRows label="Loading your workspaces" rows={2} />
-      ) : query.isError && query.data === undefined ? (
-        <p className="text-sm text-muted-foreground">
-          {readFailureReason(query.error)}
-        </p>
-      ) : workspaces.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          You aren’t a member of any workspace yet.
-        </p>
-      ) : (
-        <ul className="flex flex-col">
-          {workspaces.map((workspace) => (
-            <li key={workspace.id} className="row-divider">
-              <Link
-                to="/w/$workspaceId"
-                params={{ workspaceId: workspace.id }}
-                className="group flex min-h-14 items-center gap-3 rounded-md px-1 py-2 outline-none transition-colors hover:bg-surface-ink/[0.03] focus-ring"
-              >
-                <WorkspaceMark
-                  name={workspace.name}
-                  className="size-9 rounded-lg text-[0.7rem]"
-                />
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate text-sm font-semibold">
-                      {workspace.name}
+      <QueryView
+        query={query}
+        resource="Your workspaces"
+        loading={<SkeletonRows label="Loading your workspaces" rows={2} />}
+        isEmpty={(workspaces) => workspaces.length === 0}
+        empty={
+          <p className="text-sm text-muted-foreground">
+            You aren’t a member of any workspace yet.
+          </p>
+        }
+      >
+        {(workspaces) => (
+          <ul className="flex flex-col">
+            {workspaces.map((workspace) => (
+              <li key={workspace.id} className="row-divider">
+                <Link
+                  to="/w/$workspaceId"
+                  params={{ workspaceId: workspace.id }}
+                  className="group flex min-h-14 items-center gap-3 rounded-md px-1 py-2 outline-none transition-colors hover:bg-surface-ink/[0.03] focus-ring"
+                >
+                  <WorkspaceMark
+                    name={workspace.name}
+                    className="size-9 rounded-lg text-[0.7rem]"
+                  />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-sm font-semibold">
+                        {workspace.name}
+                      </span>
+                      {workspace.id === currentWorkspaceId ? (
+                        <Badge variant="muted">Open now</Badge>
+                      ) : null}
                     </span>
-                    {workspace.id === currentWorkspaceId ? (
-                      <Badge variant="muted">Open now</Badge>
-                    ) : null}
+                    <span className="truncate text-xs text-muted-foreground">
+                      {ROLE_NAMES[workspace.role]}
+                    </span>
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {ROLE_NAMES[workspace.role]}
-                  </span>
-                </span>
-                {workspace.status === 'pending_deletion' ? (
-                  <Status tone="attention" className="text-xs font-normal">
-                    Deletion pending
-                  </Status>
-                ) : null}
-                <ChevronRightIcon
-                  aria-hidden="true"
-                  className="size-4 text-subtle-foreground transition-transform group-hover:translate-x-0.5"
-                />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+                  {workspace.status === 'pending_deletion' ? (
+                    <Status tone="attention" className="text-xs font-normal">
+                      Deletion pending
+                    </Status>
+                  ) : null}
+                  <ChevronRightIcon
+                    aria-hidden="true"
+                    className="size-4 text-subtle-foreground transition-transform group-hover:translate-x-0.5"
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </QueryView>
     </SettingsSection>
   );
 }

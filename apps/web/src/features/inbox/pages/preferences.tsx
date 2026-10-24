@@ -4,7 +4,6 @@ import { useId, type ReactNode } from 'react';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { Notice } from '@/components/ui/notice';
-import { Button } from '@/components/ui/button';
 import { notificationPreferencesQueryOptions } from '../data/preferences.queries';
 import { NotificationScheduleEditor } from '../components/preferences/schedule-editor';
 import { NotificationRoute } from '../components/preferences/route';

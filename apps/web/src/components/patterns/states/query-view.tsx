@@ -2,9 +2,17 @@ import type { ReactNode } from 'react';
 import { RotateCcwIcon } from 'lucide-react';
 import { StaleLine } from '@/components/patterns/states/stale-line';
 import { Button } from '@/components/ui/button';
+import {
+  Empty,
+  EmptyActions,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { Notice } from '@/components/ui/notice';
 import { SkeletonLines } from '@/components/ui/skeleton';
-import { describeReadError } from '@/lib/api/error-copy';
+import { StatusGlyph } from '@/components/ui/status';
+import { describeReadError, readFailureReason } from '@/lib/api/error-copy';
 
 /** The part of a TanStack query result that decides what a read shows. */
 export type ReadQuery<Data> = Readonly<{
@@ -113,5 +121,42 @@ export function QueryView<Data>({
       />
       {content}
     </>
+  );
+}
+
+/**
+ * A list page's own failed first read, for `QueryView`'s `error`: the
+ * title says what didn't load, the sentence why, and one Try again.
+ */
+export function FailedReadState({
+  title,
+  error,
+  retrying,
+  retry,
+}: Readonly<{
+  /** "Members couldn’t be loaded". */
+  title: string;
+  error: unknown;
+  retrying: boolean;
+  retry: () => void;
+}>) {
+  return (
+    <Empty>
+      <EmptyMedia>
+        <StatusGlyph tone="failure" className="size-6" />
+      </EmptyMedia>
+      <EmptyTitle>{title}</EmptyTitle>
+      <EmptyDescription>{readFailureReason(error)}</EmptyDescription>
+      <EmptyActions>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={retrying}
+          onClick={retry}
+        >
+          {retrying ? 'Trying again…' : 'Try again'}
+        </Button>
+      </EmptyActions>
+    </Empty>
   );
 }
