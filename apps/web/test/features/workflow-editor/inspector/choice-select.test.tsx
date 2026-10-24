@@ -2,6 +2,7 @@ import { createRef, useState, type Ref } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { MappingSourceEditor } from '@/features/workflow-editor/components/inspector/input-mappings/mapping-source-editor';
 import { ChoiceSelect } from '@/features/workflow-editor/components/inspector/fields/choice-select';
 
 function ChoiceHarness({
@@ -94,5 +95,53 @@ describe('inspector choice control', () => {
     expect(control).toBeDisabled();
     await user.click(control);
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
+  it('associates an unavailable source step with its error', () => {
+    render(
+      <MappingSourceEditor
+        nodeId="target"
+        row={{
+          id: 'source',
+          destinationKey: 'customer',
+          kind: 'node_output',
+          nodeId: 'missing',
+          path: '',
+        }}
+        type={undefined}
+        predecessors={[]}
+        loopPorts={[]}
+        error="Link the source step first."
+        disabled={false}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole('combobox', { name: 'Source step' }),
+    ).toHaveAccessibleDescription('Link the source step first.');
+  });
+
+  it('associates an unavailable loop input with its error', () => {
+    render(
+      <MappingSourceEditor
+        nodeId="target"
+        row={{
+          id: 'source',
+          destinationKey: 'customer',
+          kind: 'structured_input',
+          port: 'old',
+          path: '',
+        }}
+        type={undefined}
+        predecessors={[]}
+        loopPorts={[]}
+        error="Choose an input from this loop."
+        disabled={false}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole('combobox', { name: 'Read' }),
+    ).toHaveAccessibleDescription('Choose an input from this loop.');
   });
 });
