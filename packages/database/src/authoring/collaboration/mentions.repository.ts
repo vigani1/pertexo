@@ -1,5 +1,11 @@
+import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import { workspaceMemberships, users } from '../../schema/foundation.js';
+import { workflowCommentMentions } from '../../schema/authoring/collaboration/mentions.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import { hasCapability, type Role } from '@pertexo/workflow-model';
+import { hasCapability } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   WorkflowCollaborationError,
@@ -12,28 +18,57 @@ export async function syncCommentMentions(
   userIds: readonly string[],
 ) {
   if (userIds.length > 0) {
-    const members = await client.query<{ user_id: string; role: Role }>(
-      `select member.user_id,member.role from app.workspace_memberships member join app.users actor on actor.id=member.user_id where member.workspace_id=$1 and member.user_id=any($2::uuid[]) and member.status='active' and actor.status='active' for share of member,actor`,
-      [input.workspaceId, userIds],
-    );
-    if (
-      members.rows.length !== userIds.length ||
-      members.rows.some(
-        (member) => !hasCapability(member.role, 'workflow:read'),
+    const member = alias(workspaceMemberships, 'member'),
+      actor = alias(users, 'actor');
+    const members = await drizzle(client)
+      .select({ userId: member.userId, role: member.role })
+      .from(member)
+      .innerJoin(actor, eq(actor.id, member.userId))
+      .where(
+        and(
+          eq(member.workspaceId, input.workspaceId),
+          inArray(member.userId, userIds),
+          eq(member.status, 'active'),
+          eq(actor.status, 'active'),
+        ),
       )
+      .for('share', { of: [member, actor] })
+      .catch(rethrowQueryFailure);
+    if (
+      members.length !== userIds.length ||
+      members.some((member) => !hasCapability(member.role, 'workflow:read'))
     )
       throw new WorkflowCollaborationError(
         'conflict',
         'A mentioned person no longer has access. Remove them and review the comment before trying again.',
       );
   }
-  await client.query(
-    'delete from app.workflow_comment_mentions where workspace_id=$1 and comment_id=$2 and not(user_id=any($3::uuid[]))',
-    [input.workspaceId, commentId, userIds],
-  );
+  const db = drizzle(client);
+  await db
+    .delete(workflowCommentMentions)
+    .where(
+      and(
+        eq(workflowCommentMentions.workspaceId, input.workspaceId),
+        eq(workflowCommentMentions.commentId, commentId),
+        notInArray(workflowCommentMentions.userId, [...userIds]),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   for (const userId of userIds)
-    await client.query(
-      'insert into app.workflow_comment_mentions(workspace_id,id,comment_id,user_id) values($1,$2,$3,$4) on conflict(workspace_id,comment_id,user_id) do nothing',
-      [input.workspaceId, generatePersistedId(), commentId, userId],
-    );
+    await db
+      .insert(workflowCommentMentions)
+      .values({
+        workspaceId: input.workspaceId,
+        id: generatePersistedId(),
+        commentId,
+        userId,
+      })
+      .onConflictDoNothing({
+        target: [
+          workflowCommentMentions.workspaceId,
+          workflowCommentMentions.commentId,
+          workflowCommentMentions.userId,
+        ],
+      })
+      .catch(rethrowQueryFailure);
 }

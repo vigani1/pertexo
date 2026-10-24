@@ -20,7 +20,10 @@ export const workflowCommentThreads = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     stepId: varchar('step_id', { length: 128 }),
     stepLabel: varchar('step_label', { length: 256 }),
-    status: varchar('status', { length: 16 }).notNull().default('open'),
+    status: varchar('status', { length: 16 })
+      .$type<'open' | 'resolved'>()
+      .notNull()
+      .default('open'),
     revision: integer('revision').notNull().default(1),
     createdBy: uuid('created_by'),
     commentCount: integer('comment_count').notNull().default(0),
