@@ -13,7 +13,7 @@ import { authTwoFactors } from '../../schema/authentication.js';
 import { users } from '../../schema/foundation.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { recordIdentitySecurityFact } from '../security-facts.js';
-import { rethrowIdentityQueryFailure } from '../query-errors.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 
 type RecoveryUser = Readonly<{ email: string; displayName: string }>;
 export type TwoFactorRecoveryResult = Readonly<{
@@ -73,7 +73,7 @@ export function createTwoFactorRecoveryStore(
           if (notice !== undefined) await insertSystemMail(client, notice);
           return { status: 'disabled', email: user.email };
         },
-      ).catch(rethrowIdentityQueryFailure),
+      ).catch(rethrowQueryFailure),
     close: () => lease.close(),
   });
 }

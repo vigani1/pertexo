@@ -17,7 +17,7 @@ import {
 } from '../schema/authentication.js';
 import { users } from '../schema/foundation.js';
 import { withPlatformTransaction } from '../tenant-access/transactions.js';
-import { identityQueryFailure } from './query-errors.js';
+import { queryFailure } from '../platform/query-errors.js';
 import { recordIdentitySecurityFact } from './security-facts.js';
 
 type ProviderName = 'google' | 'github' | 'microsoft' | 'apple';
@@ -207,7 +207,7 @@ export class AccountLinkingCommands {
     ).catch((error: unknown) => {
       // Drizzle wraps PostgreSQL failures; the constraint remains the arbiter
       // when two users finish a proof for the same provider account.
-      const cause = identityQueryFailure(error);
+      const cause = queryFailure(error);
       const uniqueConstraintFailure = isUniqueConstraintFailure(cause);
       if (uniqueConstraintFailure) return { kind: 'failed' };
       throw error instanceof Error
