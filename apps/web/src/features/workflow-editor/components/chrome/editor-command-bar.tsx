@@ -1,4 +1,3 @@
-import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { useRef, type ReactNode } from 'react';
 import { BracesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,8 +5,8 @@ import { DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { WorkflowHubBar } from '@/features/workflows/hub.public';
 import { PatternGlyph } from '@/features/workflows/shape.public';
-import type { ApiClient } from '@/lib/api/client';
-import { useEditorStore } from '../../model/state/context';
+
+import { useEditorStore, useEditorSession } from '../../model/state/context';
 import { HistoryMenuItems, HistoryControls } from './history-controls';
 import { LiveVersion } from './live-version';
 import { SaveState } from './save-state';
@@ -21,13 +20,7 @@ import { DeclarationDialog } from '../callable/declaration-dialog';
  * undo, redo and shortcuts fold into ⋯ so Run and Publish always fit.
  */
 export function EditorCommandBar({
-  apiClient,
-  userId,
-  workspace,
-  workflowId,
-  workflow,
-  shortcutsOpen,
-  onShortcutsOpenChange,
+  shortcuts,
   testMenuItems,
   onRetrySave,
   onReviewConflict,
@@ -35,16 +28,8 @@ export function EditorCommandBar({
   onRedo,
   commands,
   presence,
-  paused,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
-  workflowId: string;
-  workflow: WorkflowSummary | undefined;
-  shortcutsOpen: boolean;
-  onShortcutsOpenChange: (open: boolean) => void;
-  /** Test actions, for the ⋯ menu on phones where the split button hides. */
+  shortcuts: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>;
   testMenuItems: ReactNode;
   onRetrySave: () => void;
   onReviewConflict: () => void;
@@ -52,8 +37,12 @@ export function EditorCommandBar({
   onRedo: () => void;
   commands: ReactNode;
   presence?: ReactNode;
-  paused: boolean;
 }>) {
+  const { scope, editing } = useEditorSession();
+  const { apiClient, userId, workspace, workflowId } = scope;
+  const { workflow, paused } = editing;
+  const { open: shortcutsOpen, onOpenChange: onShortcutsOpenChange } =
+    shortcuts;
   const graph = useEditorStore((state) => state.graph);
   const duplicateBlocked = useEditorStore(
     (state) =>

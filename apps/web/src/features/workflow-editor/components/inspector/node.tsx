@@ -1,17 +1,16 @@
-import type { CodeSettings } from '@pertexo/node-sdk';
-import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
-import type { CallTargetScope } from '../../data/call-targets.queries';
-import type {
-  NodeDefinitionCatalogItem,
-  ConnectionResponse,
-} from '@pertexo/contracts';
+import { findDefinition } from '../../model/graph/adapter';
+
 import type { Connection } from '@xyflow/react';
 import { CheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
+import {
+  useEditorStore,
+  useEditorStoreApi,
+  useEditorSession,
+} from '../../model/state/context';
 import type { EditorFocusTarget } from '../../hooks/use-editor-actions';
 import type { InspectorTab } from '../../hooks/use-inspector-navigation';
 import { updateWorkflowNode } from '../../model/graph/commands';
@@ -32,10 +31,7 @@ import {
   type NodeFormApi,
 } from '../../model/inspector/node-form';
 import { SetupTab } from './tabs/setup';
-import {
-  SlackChannelField,
-  type ChannelLookupScope,
-} from './fields/slack-channel-field';
+import { SlackChannelField } from './fields/slack-channel-field';
 import { shortcut } from '@/lib/shortcut-keys';
 
 export type NodeInspectorActions = StepMenuActions &
@@ -55,28 +51,24 @@ export type NodeInspectorActions = StepMenuActions &
  * step inside a For each body sees only its body: its siblings to link
  * and map from, and the item the body runs for.
  */
-type NodeInspectorProps = Readonly<{
-  node: WorkflowNode;
-  /** The level the step is on: the workflow, or the body it's in. */
-  graph: GraphLevel;
-  /** The body's inputs when the step is inside a For each; else empty. */
-  loopPorts: readonly string[];
-  definition: NodeDefinitionCatalogItem | undefined;
-  definitions: readonly NodeDefinitionCatalogItem[];
-  codeSettings?: CodeSettings | undefined;
-  connections: readonly ConnectionResponse[];
-  channelLookup: ChannelLookupScope;
-  callScope?: CallTargetScope;
-  workspaceScope?: WorkspaceApiScope;
+export type NodeInspectorView = Readonly<{
   editable: boolean;
   tab: InspectorTab;
   onTabChange: (tab: InspectorTab) => void;
   focusTarget:
     (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined;
-  testPanel: ReactNode;
-  /** The step's record in real runs; absent where there's none to show. */
-  runsPanel?: ReactNode;
-  failureSetup?: ReactNode;
+}>;
+
+type NodeInspectorProps = Readonly<{
+  node: WorkflowNode;
+  graph: GraphLevel;
+  loopPorts: readonly string[];
+  view: NodeInspectorView;
+  panels: Readonly<{
+    testPanel: ReactNode;
+    runsPanel?: ReactNode;
+    failureSetup?: ReactNode;
+  }>;
   actions: NodeInspectorActions;
 }>;
 
@@ -84,22 +76,21 @@ export function NodeInspector({
   node,
   graph,
   loopPorts,
-  definition,
-  definitions,
-  codeSettings,
-  connections,
-  channelLookup,
-  callScope,
-  workspaceScope,
-  editable,
-  tab,
-  onTabChange,
-  focusTarget,
-  testPanel,
-  runsPanel,
-  failureSetup,
+  view,
+  panels,
   actions,
 }: NodeInspectorProps) {
+  const { editable, tab, onTabChange, focusTarget } = view;
+  const { testPanel, runsPanel, failureSetup } = panels;
+  const {
+    definitions,
+    codeSettings,
+    connections,
+    channelLookup,
+    callScope,
+    workspaceScope,
+  } = useInspectorSession();
+  const definition = findDefinition(definitions, node);
   const store = useEditorStoreApi();
   const scratch = useEditorStore((state) => state.inspectorScratch);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -173,7 +164,7 @@ export function NodeInspector({
                 definitions={definitions}
                 codeSettings={codeSettings}
                 node={node}
-                {...(callScope === undefined ? {} : { callScope })}
+                callScope={callScope}
                 definition={definition}
                 connections={connections}
                 form={form}
@@ -194,7 +185,7 @@ export function NodeInspector({
           </TabsContent>
           <TabsContent value="inputs" keepMounted>
             <InputsTab
-              {...(workspaceScope === undefined ? {} : { workspaceScope })}
+              workspaceScope={workspaceScope}
               node={node}
               graph={graph}
               loopPorts={loopPorts}
@@ -287,7 +278,7 @@ function pulse(element: Element | null | undefined) {
 
 function focusInspectorField(
   panel: HTMLDivElement | null,
-  focusTarget: NonNullable<NodeInspectorProps['focusTarget']>,
+  focusTarget: NonNullable<NodeInspectorView['focusTarget']>,
 ) {
   if (focusTarget.testOutput ?? false) {
     panel?.querySelector<HTMLElement>('[data-slot="test-result"]')?.focus();
@@ -299,7 +290,7 @@ function focusInspectorField(
 }
 function inspectorField(
   panel: HTMLDivElement | null,
-  target: NonNullable<NodeInspectorProps['focusTarget']>,
+  target: NonNullable<NodeInspectorView['focusTarget']>,
 ) {
   if (target.mappingKey !== undefined)
     return [
@@ -311,4 +302,25 @@ function inspectorField(
       ? `node-label-${target.nodeId}`
       : fieldControlId(target.nodeId, target.fieldKey);
   return document.getElementById(id);
+}
+
+function useInspectorSession() {
+  const { scope, catalog } = useEditorSession();
+  const { apiClient, userId, workspace, workflowId } = scope;
+  const enabled =
+    catalog.connectionsAvailable &&
+    workspace.capabilities.includes('connection:use');
+  const workspaceScope = useMemo(
+    () => ({ apiClient, userId, workspaceId: workspace.id }),
+    [apiClient, userId, workspace.id],
+  );
+  const callScope = useMemo(
+    () => ({ ...workspaceScope, workflowId }),
+    [workspaceScope, workflowId],
+  );
+  const channelLookup = useMemo(
+    () => ({ ...workspaceScope, enabled }),
+    [workspaceScope, enabled],
+  );
+  return { ...catalog, workspaceScope, callScope, channelLookup };
 }

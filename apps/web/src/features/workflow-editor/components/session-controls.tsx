@@ -1,13 +1,10 @@
+import { useEditorSession } from '../model/state/context';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { ReactNode } from 'react';
-import type {
-  AccessibleWorkspace,
-  WorkflowSummary,
-  WorkflowGraphContract,
-} from '@pertexo/contracts';
-import type { ApiClient } from '@/lib/api/client';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
+
 import {
   WorkflowCommandActions,
   type useWorkflowCommandSession,
@@ -22,22 +19,11 @@ import { ConflictCompareDialog } from './chrome/conflict-compare-dialog';
 import { UnfinishedEditDialog } from './chrome/editor-dialogs';
 import type { EditorChrome } from './editor-workspace';
 import type { useEditorActions } from '../hooks/use-editor-actions';
-import type { useIssuesView } from '../hooks/use-issues-view';
-import type { useCanvasEffects } from '../hooks/use-canvas-effects';
+
 import type { EditorStore } from '../model/state/store';
 
 type SessionCommandBarProps = Readonly<{
-  scope: Readonly<{
-    apiClient: ApiClient;
-    userId: string;
-    workspace: AccessibleWorkspace;
-    workflowId: string;
-    workflow: WorkflowSummary | undefined;
-  }>;
-  editing: Readonly<{
-    paused: boolean;
-    actions: ReturnType<typeof useEditorActions>;
-    flushSave: () => Promise<void>;
+  header: Readonly<{
     onReviewConflict: () => void;
     headerPresence: ReactNode;
   }>;
@@ -48,21 +34,19 @@ type SessionCommandBarProps = Readonly<{
     revision: number;
     saveStatus: ReturnType<EditorStore['getState']>['saveStatus'];
     inspectorScratch: boolean;
-    issues: ReturnType<typeof useIssuesView>;
     triggersAvailable: boolean;
-    effects: ReturnType<typeof useCanvasEffects>;
   }>;
   chrome: EditorChrome;
 }>;
 export function SessionCommandBar({
-  scope,
-  editing,
+  header,
   publication,
   chrome,
 }: SessionCommandBarProps) {
-  const { apiClient, userId, workspace, workflowId, workflow } = scope;
-  const { paused, actions, flushSave, onReviewConflict, headerPresence } =
-    editing;
+  const { scope, editing } = useEditorSession();
+  const { apiClient, userId, workspace, workflowId } = scope;
+  const { workflow, paused, actions, flushSave, issues, effects } = editing;
+  const { onReviewConflict, headerPresence } = header;
   const {
     commandSession,
     graph,
@@ -70,21 +54,12 @@ export function SessionCommandBar({
     revision,
     saveStatus,
     inspectorScratch,
-    issues,
     triggersAvailable,
-    effects,
   } = publication;
   return (
     <EditorCommandBar
       presence={headerPresence}
-      paused={paused}
-      apiClient={apiClient}
-      userId={userId}
-      workspace={workspace}
-      workflowId={workflowId}
-      workflow={workflow}
-      shortcutsOpen={chrome.shortcutsOpen}
-      onShortcutsOpenChange={chrome.onShortcutsOpenChange}
+
       testMenuItems={chrome.workflowTestMenuItems}
       onRetrySave={() => void flushSave()}
       onReviewConflict={onReviewConflict}
@@ -119,6 +94,10 @@ export function SessionCommandBar({
           />
         )
       }
+      shortcuts={{
+        open: chrome.shortcutsOpen,
+        onOpenChange: chrome.onShortcutsOpenChange,
+      }}
     />
   );
 }

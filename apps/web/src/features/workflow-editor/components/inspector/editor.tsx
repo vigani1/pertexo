@@ -1,17 +1,13 @@
 import { WebhookTestListener } from '@/features/workflow-publish/webhook-tests.public';
 import { useNavigate } from '@tanstack/react-router';
-import type { CodeSettings } from '@pertexo/node-sdk';
+
 import {
   stepSampleIdentity,
   WORKFLOW_FAILURE_PORT,
 } from '@pertexo/workflow-model';
 import { FailureSetup } from '../failure-routing/setup';
 import type { ReactNode } from 'react';
-import type {
-  NodeDefinitionCatalogItem,
-  ConnectionResponse,
-  WorkflowGraphContract,
-} from '@pertexo/contracts';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
 import { useMemo, useState, type Ref } from 'react';
 import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';
@@ -20,19 +16,23 @@ import {
   type NodeTestHandle,
 } from '@/features/workflow-publish/public';
 import { SchedulePreviewScope } from '@/features/workflow-publish/schedule-preview.public';
-import type { ApiClient } from '@/lib/api/client';
+
 import {
   AddConnectionContext,
   type AddConnectionScope,
 } from '../../model/add-connection-context';
-import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
+import {
+  useEditorStore,
+  useEditorStoreApi,
+  useEditorSession,
+} from '../../model/state/context';
 import { stepTitle } from '../../model/graph/adapter';
 import { linkWorkflowNodes } from '../../model/graph/commands';
 import { findStep, levelOf } from '../../model/graph/scopes';
 import { inlineOutputBytes } from '../../model/step-card';
 import type { useEditorActions } from '../../hooks/use-editor-actions';
 import { InspectorPanel } from './panel';
-import type { ChannelLookupScope } from './fields/slack-channel-field';
+
 import type { InspectorTab } from '../../hooks/use-inspector-navigation';
 import type { NodeInspectorActions } from './node';
 import type { FinishedTest } from '../../hooks/use-last-test';
@@ -45,76 +45,58 @@ type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
  * next step can reuse its output.
  */
 type EditorInspectorProps = Readonly<{
-  apiClient: ApiClient;
-  workspaceId: string;
-  workspaceName: string;
-  workflowId: string;
-  definitions: readonly NodeDefinitionCatalogItem[];
-  codeSettings?: CodeSettings | undefined;
-  connections: readonly ConnectionResponse[];
-  userId: string;
-  /** A step's record in real runs, for the Runs tab. */
-  renderStepRuns?: (nodeId: string, stepLabel: string) => ReactNode;
-  /** Slack channel names are looked up for people who can use connections. */
-  lookUpChannels: boolean;
-  /** People who manage connections can add one from a step's slot. */
-  addConnections: boolean;
   editable: boolean;
-  tab: InspectorTab;
-  onTabChange: (tab: InspectorTab) => void;
-  actions: ReturnType<typeof useEditorActions>;
-  ensureSaved: () => Promise<Readonly<{ revision: number }>>;
-  testRef: Ref<NodeTestHandle>;
-  /** The test that finished last, shown again on its step's Test tab. */
-  rememberedTest: FinishedTest | undefined;
-  onTestFinished: (test: FinishedTest) => void;
-  onTestPassed: (nodeId: string, outputBytes: number | undefined) => void;
-  onClose: () => void;
-  onAddStepAfter: (nodeId: string, returnFocus: HTMLElement | null) => void;
-  onAddFailureHandler: (nodeId: string, opener: HTMLElement) => void;
-  onAddToBody: (loopId: string, returnFocus: HTMLElement) => void;
-  onDuplicateSelection: () => void;
-  onRemoveEdge: (edgeId: string) => void;
+  renderStepRuns?: (nodeId: string, stepLabel: string) => ReactNode;
+  navigation: Readonly<{
+    tab: InspectorTab;
+    onTabChange: (tab: InspectorTab) => void;
+    onClose: () => void;
+    onAddStepAfter: (nodeId: string, returnFocus: HTMLElement | null) => void;
+    onAddFailureHandler: (nodeId: string, opener: HTMLElement) => void;
+    onAddToBody: (loopId: string, returnFocus: HTMLElement) => void;
+    onDuplicateSelection: () => void;
+    onRemoveEdge: (edgeId: string) => void;
+  }>;
+  testing: Readonly<{
+    testRef: Ref<NodeTestHandle>;
+    rememberedTest: FinishedTest | undefined;
+    onTestFinished: (test: FinishedTest) => void;
+    onTestPassed: (nodeId: string, outputBytes: number | undefined) => void;
+  }>;
 }>;
 
 export function EditorInspector({
-  apiClient,
-  workspaceId,
-  workspaceName,
-  workflowId,
-  definitions,
-  codeSettings,
-  connections,
-  userId,
-  lookUpChannels,
-  addConnections,
   editable,
-  tab,
-  onTabChange,
-  actions,
-  ensureSaved,
-  testRef,
-  rememberedTest,
-  onTestFinished,
-  onTestPassed,
-  onClose,
-  onAddStepAfter,
-  onAddFailureHandler,
-  onAddToBody,
-  onDuplicateSelection,
-  onRemoveEdge,
+  navigation,
+  testing,
   renderStepRuns,
 }: EditorInspectorProps) {
+  const { scope, catalog, editing } = useEditorSession();
+  const { apiClient, userId, workspace, workflowId } = scope;
+  const workspaceId = workspace.id;
+  const workspaceName = workspace.name;
+  const { definitions, connectionsAvailable } = catalog;
+  const addConnections =
+    connectionsAvailable &&
+    workspace.capabilities.includes('connection:manage');
+  const { actions, ensureSaved } = editing;
+  const {
+    tab,
+    onTabChange,
+    onClose,
+    onAddStepAfter,
+    onAddFailureHandler,
+    onAddToBody,
+    onDuplicateSelection,
+    onRemoveEdge,
+  } = navigation;
+  const { testRef, rememberedTest, onTestFinished, onTestPassed } = testing;
   const store = useEditorStoreApi();
   const navigate = useNavigate();
   const copy = useCopyToClipboard();
   const graph = useEditorStore((state) => state.graph);
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
   const [passedTest, setPassedTest] = useState<PassedTest>();
-  const channelLookup = useMemo<ChannelLookupScope>(
-    () => ({ apiClient, userId, workspaceId, enabled: lookUpChannels }),
-    [apiClient, lookUpChannels, userId, workspaceId],
-  );
   const previewScope = useMemo(
     () => ({ apiClient, workspaceId, workflowId }),
     [apiClient, workspaceId, workflowId],
@@ -136,17 +118,6 @@ export function EditorInspector({
 
   const panel = (
     <InspectorPanel
-      definitions={definitions}
-      codeSettings={codeSettings}
-      connections={connections}
-      channelLookup={channelLookup}
-      callScope={{ apiClient, userId, workspaceId, workflowId }}
-      workspaceScope={{ apiClient, userId, workspaceId }}
-      editable={editable}
-      scratchVersion={actions.scratchVersion}
-      tab={tab}
-      onTabChange={onTabChange}
-      focusTarget={actions.focusTarget}
       renderFailureSetup={(node) => (
         <FailureSetup
           node={node}
@@ -215,6 +186,13 @@ export function EditorInspector({
           ) : null}
         </NodeTestPanel>
       )}
+      view={{
+        editable: editable,
+        scratchVersion: actions.scratchVersion,
+        tab: tab,
+        onTabChange: onTabChange,
+        focusTarget: actions.focusTarget,
+      }}
     />
   );
   // The Schedule step's builder previews its rule against this workflow, and
@@ -281,16 +259,17 @@ function inspectorActions({
   onAddToBody,
 }: Readonly<
   Pick<
-    EditorInspectorProps,
-    | 'workspaceId'
-    | 'workflowId'
-    | 'actions'
+    EditorInspectorProps['navigation'],
     | 'onAddStepAfter'
     | 'onDuplicateSelection'
     | 'onClose'
     | 'onRemoveEdge'
     | 'onAddToBody'
   > & {
+    workspaceId: string;
+    workflowId: string;
+    actions: ReturnType<typeof useEditorActions>;
+  } & {
     store: ReturnType<typeof useEditorStoreApi>;
     navigate: ReturnType<typeof useNavigate>;
     selectedNodeId: string | null;

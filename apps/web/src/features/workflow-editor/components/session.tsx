@@ -1,14 +1,11 @@
+import { EditorSessionProvider } from '../model/state/provider';
+import type { EditorSession } from '../model/state/session';
 import { Notice } from '@/components/ui/notice';
 import type { EditorPresenceSource } from '../model/state/presence';
-import type { CodeSettings } from '@pertexo/node-sdk';
-import type {
-  NodeDefinitionCatalogItem,
-  ConnectionResponse,
-  AccessibleWorkspace,
-} from '@pertexo/contracts';
+
 import { useState, type ReactNode } from 'react';
 import { IssuesLens } from '@/features/workflow-publish/public';
-import type { ApiClient } from '@/lib/api/client';
+
 import { ConflictBar } from './chrome/conflict-bar';
 import { LeaveEditorDialog } from './chrome/editor-dialogs';
 import { EditorPaused } from './chrome/editor-paused';
@@ -27,14 +24,8 @@ import { useEditorActions } from '../hooks/use-editor-actions';
  * editing surfaces live in `EditorWorkspace`.
  */
 type WorkflowEditorSessionProps = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
-  workflowId: string;
-  definitions: readonly NodeDefinitionCatalogItem[];
-  codeSettings?: CodeSettings | undefined;
-  connections: readonly ConnectionResponse[];
-  connectionsAvailable: boolean;
+  scope: EditorSession['scope'];
+  catalog: EditorSession['catalog'];
   onRunAccepted: (runId: string) => void;
   onPublished?: () => void;
   triggerNotice?: ReactNode;
@@ -43,20 +34,16 @@ type WorkflowEditorSessionProps = Readonly<{
 }>;
 
 export function WorkflowEditorSession({
-  apiClient,
-  userId,
-  workspace,
-  workflowId,
-  definitions,
-  codeSettings,
-  connections,
-  connectionsAvailable,
+  scope,
+  catalog,
   onRunAccepted,
   onPublished,
   triggerNotice,
   headerPresence,
   renderEditingPresence,
 }: WorkflowEditorSessionProps) {
+  const { apiClient, userId, workspace, workflowId } = scope;
+  const { definitions, connections, connectionsAvailable } = catalog;
   const store = useEditorStoreApi();
   const { workflow, access, verification, presenceSource, save, guard } =
     useEditorOwnership({ apiClient, userId, workspace, workflowId });
@@ -81,7 +68,22 @@ export function WorkflowEditorSession({
   const [compareOpen, setCompareOpen] = useState(false);
 
   return (
-    <>
+    <EditorSessionProvider
+      scope={{ apiClient, userId, workspace: scopedWorkspace, workflowId }}
+      catalog={catalog}
+      editing={{
+        workflow: workflow.data,
+        verifyIdentity: verification.verifyOwner,
+        canUpdate,
+        paused,
+        issues,
+        checking: publication.validationPending,
+        actions,
+        ensureSaved,
+        flushSave,
+        effects,
+      }}
+    >
       {renderEditingPresence?.(presenceSource)}
       {pauseReason === undefined ? null : (
         <EditorPaused
@@ -93,37 +95,9 @@ export function WorkflowEditorSession({
       )}
       <div hidden={paused} inert={paused}>
         <EditorWorkspace
-          apiClient={apiClient}
-          userId={userId}
-          workspace={scopedWorkspace}
-          workflowId={workflowId}
-          definitions={definitions}
-          codeSettings={codeSettings}
-          connections={connections}
-          connectionsAvailable={connectionsAvailable}
-          canUpdate={canUpdate}
-          paused={paused}
-          issues={issues}
-          checking={publication.validationPending}
-          actions={actions}
-          ensureSaved={ensureSaved}
-          flushSave={flushSave}
-          effects={effects}
-          workflow={workflow.data}
-          verifyIdentity={verification.verifyOwner}
           bar={(chrome) => (
             <SessionCommandBar
-              scope={{
-                apiClient,
-                userId,
-                workspace: scopedWorkspace,
-                workflowId,
-                workflow: workflow.data,
-              }}
-              editing={{
-                paused,
-                actions,
-                flushSave,
+              header={{
                 onReviewConflict: () => {
                   setCompareOpen(true);
                 },
@@ -136,9 +110,7 @@ export function WorkflowEditorSession({
                 revision,
                 saveStatus,
                 inspectorScratch,
-                issues,
                 triggersAvailable,
-                effects,
               }}
               chrome={chrome}
             />
@@ -185,6 +157,6 @@ export function WorkflowEditorSession({
         saving={guard.saving}
         onSaveAndLeave={() => void guard.saveAndLeave()}
       />
-    </>
+    </EditorSessionProvider>
   );
 }

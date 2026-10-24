@@ -84,7 +84,7 @@ function setup(editable = true) {
     );
   }
   const view = (definition: DataTableDefinition) => (
-    <EditorStoreContext value={store}>
+    <EditorStoreContext value={{ store }}>
       <Harness definition={definition} />
     </EditorStoreContext>
   );

@@ -20,10 +20,7 @@ const NO_CONNECTIONS: readonly ConnectionResponse[] = [];
 const NO_DISCUSSIONS: ReadonlyMap<string, number> = new Map();
 
 export function WorkflowEditorPage({
-  apiClient,
-  user,
-  workspace,
-  workflowId,
+  scope,
   onRunAccepted,
   onPublished,
   triggerNotice,
@@ -31,10 +28,12 @@ export function WorkflowEditorPage({
   renderEditingPresence,
   stepDiscussions,
 }: Readonly<{
-  apiClient: ApiClient;
-  user: UserProfileResponse;
-  workspace: AccessibleWorkspace;
-  workflowId: string;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    user: UserProfileResponse;
+    workspace: AccessibleWorkspace;
+    workflowId: string;
+  }>;
   /** Open discussions about each step, shown on its card. */
   stepDiscussions?: ReadonlyMap<string, number>;
   onRunAccepted: (runId: string) => void;
@@ -44,6 +43,7 @@ export function WorkflowEditorPage({
   headerPresence?: ReactNode;
   renderEditingPresence?: (source: EditorPresenceSource) => ReactNode;
 }>) {
+  const { apiClient, user, workspace, workflowId } = scope;
   const draft = useSuspenseQuery(
     workflowDraftQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
@@ -66,14 +66,6 @@ export function WorkflowEditorPage({
       <ReactFlowProvider>
         <StepDiscussionsContext value={stepDiscussions ?? NO_DISCUSSIONS}>
           <WorkflowEditorSession
-            apiClient={apiClient}
-            userId={user.id}
-            workspace={workspace}
-            workflowId={workflowId}
-            definitions={catalog.data.definitions.items}
-            codeSettings={catalog.data.definitions.codeSettings}
-            connections={connections.data?.items ?? NO_CONNECTIONS}
-            connectionsAvailable={connections.data !== null}
             onRunAccepted={onRunAccepted}
             triggerNotice={triggerNotice}
             headerPresence={headerPresence}
@@ -81,6 +73,18 @@ export function WorkflowEditorPage({
               ? {}
               : { renderEditingPresence })}
             {...(onPublished === undefined ? {} : { onPublished })}
+            catalog={{
+              definitions: catalog.data.definitions.items,
+              codeSettings: catalog.data.definitions.codeSettings,
+              connections: connections.data?.items ?? NO_CONNECTIONS,
+              connectionsAvailable: connections.data !== null,
+            }}
+            scope={{
+              apiClient: apiClient,
+              userId: user.id,
+              workspace: workspace,
+              workflowId: workflowId,
+            }}
           />
         </StepDiscussionsContext>
       </ReactFlowProvider>

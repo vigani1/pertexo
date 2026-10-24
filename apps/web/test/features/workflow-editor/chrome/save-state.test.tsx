@@ -12,7 +12,7 @@ it('announces save outcomes and keeps recovery actions with their owner', async 
   const review = vi.fn();
   const user = userEvent.setup();
   render(
-    <EditorStoreContext value={store}>
+    <EditorStoreContext value={{ store }}>
       <SaveState onRetry={retry} onReview={review} />
     </EditorStoreContext>,
   );
@@ -57,7 +57,7 @@ it('says unsaved work waits for the connection while offline', () => {
   const store = createEditorStore({ graph, etag: 'draft-1', revision: 1 });
   const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
   render(
-    <EditorStoreContext value={store}>
+    <EditorStoreContext value={{ store }}>
       <SaveState onRetry={vi.fn()} onReview={vi.fn()} />
     </EditorStoreContext>,
   );

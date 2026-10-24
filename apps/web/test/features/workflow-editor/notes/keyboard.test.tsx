@@ -39,7 +39,7 @@ function renderNote(editable = true) {
   };
   render(
     <Toast.Provider>
-      <EditorStoreContext value={store}>
+      <EditorStoreContext value={{ store }}>
         <CanvasNote {...props} />
       </EditorStoreContext>
     </Toast.Provider>,
