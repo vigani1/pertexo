@@ -38,7 +38,7 @@ import { useRunEvents } from '../hooks/use-run-events';
 import {
   workflowRunQueryOptions,
   workflowRunVersionQueryOptions,
-} from '../data/workflow-runs.queries';
+} from '../data/history.queries';
 
 // From a tablet up the step lens is on the page: beside the run on a wide
 // screen, under the tabs below that. Only phones open it as a sheet.

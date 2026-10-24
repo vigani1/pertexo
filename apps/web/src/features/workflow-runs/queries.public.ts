@@ -12,7 +12,7 @@ export {
   workflowRunVersionQueryOptions,
   workflowRunsInfiniteQueryOptions,
   type RunStatistics,
-} from './data/workflow-runs.queries';
+} from './data/history.queries';
 export {
   filtersFromSearch,
   sanitizeRunSearch,

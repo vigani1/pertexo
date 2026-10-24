@@ -5,7 +5,7 @@ import { createApiClient } from '@/lib/api/client';
 import {
   workflowRunQueryOptions,
   workflowRunsInfiniteQueryOptions,
-} from '@/features/workflow-runs/data/workflow-runs.queries';
+} from '@/features/workflow-runs/data/history.queries';
 import { mockServer } from '../../../support/mock-server';
 import { testFetch } from '../../../support/render-app';
 import { apiBase, fixtureIds, fixtureRun } from '../../../support/fixtures/run';

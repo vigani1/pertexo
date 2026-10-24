@@ -21,7 +21,7 @@ import { loopItemOf } from '../../model/timeline/runs';
 import {
   stepHealthQueryOptions,
   stepRunsQueryOptions,
-} from '../../data/workflow-runs.queries';
+} from '../../data/history.queries';
 import { StepRunOutput } from '../run-detail/data';
 
 const RECENT_RUNS = 10;
