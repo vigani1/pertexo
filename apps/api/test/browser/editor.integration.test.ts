@@ -166,7 +166,35 @@ const webDirectory = new URL('../../../web/', import.meta.url);
 const webRequire = createRequire(new URL('package.json', webDirectory));
 const browserChildren: ChildProcess[] = [];
 const openBrowserInstances = new Set<string>();
-let browserWasOpened = false;
+const fixtureState: EditorBrowserFixtureState = {
+  browserWasOpened: false,
+  collectionEvidence: undefined,
+  dateEvidence: undefined,
+  apiTokensEvidence: undefined,
+  failureRoutingEvidence: undefined,
+  httpControl: undefined,
+  httpEffects: undefined,
+  curatedEffects: undefined,
+  curatedFixture: undefined,
+  curatedEvidence: undefined,
+  evidence: undefined,
+  duplicationEvidence: undefined,
+  portabilityFixture: undefined,
+  portabilityEvidence: undefined,
+  inputCasesEvidence: undefined,
+  callsEvidence: undefined,
+  callableEvidence: undefined,
+  receiptEvidence: undefined,
+  runRecoveryEvidence: undefined,
+  expressionEvidence: undefined,
+  readonlyFixture: undefined,
+  readonlyEvidence: undefined,
+  readonlySetupPending: false,
+  scheduleEvidence: undefined,
+  scheduleRestart: undefined,
+  scheduleRestartUsed: false,
+};
+
 const processOwners = new WeakMap<
   ChildProcess,
   ReturnType<typeof ownEditorBrowserProcess>
@@ -180,48 +208,30 @@ function ownChild<T extends ChildProcess>(
     child,
     ownEditorBrowserProcess(child, kind, {
       browserDisposed: () =>
-        browserWasOpened && openBrowserInstances.size === 0,
+        fixtureState.browserWasOpened && openBrowserInstances.size === 0,
     }),
   );
   return owner.acquire(name, child, closeChild);
 }
-let collectionEvidence: z.infer<typeof collectionEvidenceSchema> | undefined;
-let dateEvidence: z.infer<typeof dateEvidenceSchema> | undefined;
-let apiTokensEvidence: z.infer<typeof apiTokensEvidenceSchema> | undefined;
+
 const noticeMailKey =
   scenario === 'notifications' ? randomBytes(32).toString('base64') : undefined;
 const noticeMessages: string[] = [];
-let worker: ChildProcess;
+
 const controlledHttpScenario =
   scenario === 'webhook-controlled-http' ||
   scenario === 'failure-routing' ||
   scenario === 'artifact-inputs' ||
   scenario === 'http-pagination';
-let failureRoutingEvidence:
-  z.infer<typeof failureRoutingEvidenceSchema> | undefined;
+
 const httpMaster =
   controlledHttpScenario ||
   scenario === 'curated-templates' ||
   scenario === 'webhook-responses'
     ? randomBytes(32)
     : undefined;
-let httpAuthorization;
-if (controlledHttpScenario) {
-  if (scenario === 'artifact-inputs') {
-    httpAuthorization = 'Bearer owned-artifact-destination';
-  } else {
-    httpAuthorization = `Bearer ${randomUUID()}`;
-  }
-} else {
-  httpAuthorization = undefined;
-}
-let httpControl: ReturnType<typeof createEditorHttpControl> | undefined;
-let httpEffects: z.infer<typeof httpEffectsSchema> | undefined;
-let curatedEffects: z.infer<typeof curatedTemplateEffectsSchema> | undefined;
-let curatedFixture:
-  Awaited<ReturnType<typeof prepareCuratedTemplateBrowserFixture>> | undefined;
-let curatedEvidence:
-  z.infer<typeof curatedTemplateBrowserEvidenceSchema> | undefined;
+const httpAuthorization = editorHttpAuthorization();
+
 function assertHttpDependenciesDisposable(child: ChildProcess | undefined) {
   if (child === undefined) return;
   if (processOwners.get(child)?.diagnostics().stage !== 'disposed')
@@ -240,36 +250,7 @@ const browserEvidenceSchema = z.strictObject({
   conflictRevision: z.number().int().positive(),
   finalDraftRevision: z.number().int().positive(),
 });
-let evidence: z.infer<typeof browserEvidenceSchema> | undefined;
-let duplicationEvidence:
-  z.infer<typeof workflowDuplicationEvidenceSchema> | undefined;
-let portabilityFixture:
-  | Awaited<ReturnType<typeof prepareWorkflowPortabilityBrowserFixture>>
-  | undefined;
-let portabilityEvidence:
-  z.infer<typeof workflowPortabilityBrowserEvidenceSchema> | undefined;
-let inputCasesEvidence:
-  z.infer<typeof workflowInputCasesEvidenceSchema> | undefined;
-let callsEvidence: z.infer<typeof callsEvidenceSchema> | undefined;
-let callableEvidence: z.infer<typeof callableEvidenceSchema> | undefined;
-let receiptEvidence: z.infer<typeof receiptRecoveryEvidenceSchema> | undefined;
-let runRecoveryEvidence: z.infer<typeof runRecoveryEvidenceSchema> | undefined;
-let expressionEvidence:
-  z.infer<typeof expressionAdmissionEvidenceSchema> | undefined;
-let readonlyFixture:
-  Awaited<ReturnType<typeof prepareReadonlyEvidence>> | undefined;
-let readonlyEvidence: z.infer<typeof readonlyEvidenceSchema> | undefined;
-let readonlySetupPending = false;
-let scheduleEvidence: z.infer<typeof scheduleEvidenceSchema> | undefined;
-let scheduleRestart:
-  | {
-      scope: z.infer<typeof scheduleScopeSchema>;
-      triggerId: string;
-      nextFireAt: string;
-      requestId: string;
-    }
-  | undefined;
-let scheduleRestartUsed = false;
+
 const restartScope = new AbortController();
 function assertRestartScopeActive() {
   if (restartScope.signal.aborted) throw new Error('Schedule fixture disposed');
@@ -346,6 +327,8 @@ async function closeChild(child: ChildProcess): Promise<void> {
 }
 
 describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
+  let worker: ChildProcess;
+
   // Refuse fallback/default database URLs and verify exact owned services before
   // acquiring Redis or allowing the ordinary migrated UUID database fixture.
   beforeAll(async () => {
@@ -362,7 +345,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         assertHttpDependenciesDisposable(worker);
         key.fill(0);
       });
-      httpControl = owner.acquire(
+      fixtureState.httpControl = owner.acquire(
         'HTTP sender control',
         createEditorHttpControl(
           () => api.database(),
@@ -426,12 +409,12 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       }
       const curatedObservation = curatedTemplateEffectsSchema.safeParse(value);
       if (curatedObservation.success) {
-        curatedEffects = curatedObservation.data;
+        fixtureState.curatedEffects = curatedObservation.data;
         return;
       }
       const observation = httpEffectsSchema.safeParse(value);
       if (observation.success) {
-        httpEffects = observation.data;
+        fixtureState.httpEffects = observation.data;
         return;
       }
       if (
@@ -737,17 +720,15 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     }
     const apiOrigin = await api.listen();
     if (scenario === 'portability')
-      portabilityFixture = await prepareWorkflowPortabilityBrowserFixture(
-        api,
-        webOrigin,
-      );
+      fixtureState.portabilityFixture =
+        await prepareWorkflowPortabilityBrowserFixture(api, webOrigin);
     if (scenario === 'curated-templates')
-      curatedFixture = await prepareCuratedTemplateBrowserFixture(
+      fixtureState.curatedFixture = await prepareCuratedTemplateBrowserFixture(
         api,
         webOrigin,
         recheckOwnership,
       );
-    httpControl?.setApiOrigin(apiOrigin);
+    fixtureState.httpControl?.setApiOrigin(apiOrigin);
     const readiness = await fetch(`${apiOrigin}/health/ready`);
     expect(readiness.status).toBe(200);
 
@@ -759,7 +740,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         identityProvider.handle(request, response)
       )
         return;
-      if (httpControl?.handle(request, response) === true) return;
+      if (fixtureState.httpControl?.handle(request, response) === true) return;
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
       if (
         scenario === 'approvals' &&
@@ -823,29 +804,29 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         request.method === 'GET' &&
         url.pathname === '/curated-template-seed' &&
         scenario === 'curated-templates' &&
-        curatedFixture !== undefined
+        fixtureState.curatedFixture !== undefined
       ) {
         response.setHeader('content-type', 'application/json');
-        response.end(JSON.stringify(curatedFixture.scope));
+        response.end(JSON.stringify(fixtureState.curatedFixture.scope));
         return;
       }
       if (
         request.method === 'GET' &&
         url.pathname === '/workflow-portability-seed' &&
         scenario === 'portability' &&
-        portabilityFixture !== undefined
+        fixtureState.portabilityFixture !== undefined
       ) {
         response.setHeader('content-type', 'application/json');
-        response.end(JSON.stringify(portabilityFixture.scope));
+        response.end(JSON.stringify(fixtureState.portabilityFixture.scope));
         return;
       }
       if (
         request.method === 'POST' &&
         url.pathname === '/workflow-portability-deny' &&
         scenario === 'portability' &&
-        portabilityFixture !== undefined
+        fixtureState.portabilityFixture !== undefined
       ) {
-        void portabilityFixture.deny().then(
+        void fixtureState.portabilityFixture.deny().then(
           () => response.writeHead(204).end(),
           () => response.writeHead(400).end(),
         );
@@ -873,7 +854,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
             )
               throw new Error('Invalid browser receipt');
             if (url.pathname === '/browser-opened') {
-              browserWasOpened = true;
+              fixtureState.browserWasOpened = true;
               openBrowserInstances.add(value.instanceId);
             } else if (!openBrowserInstances.delete(value.instanceId))
               throw new Error('Unknown browser receipt');
@@ -902,13 +883,13 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           !['readonly', 'approvals', 'governance', 'collaboration'].includes(
             scenario,
           ) ||
-          readonlyFixture !== undefined ||
-          readonlySetupPending
+          fixtureState.readonlyFixture !== undefined ||
+          fixtureState.readonlySetupPending
         ) {
           response.writeHead(409).end();
           return;
         }
-        readonlySetupPending = true;
+        fixtureState.readonlySetupPending = true;
         let body = '';
         request.on('data', (chunk: Buffer) => {
           body += chunk.toString();
@@ -917,16 +898,16 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         request.on('end', () => {
           void (async () => {
             try {
-              readonlyFixture = await prepareReadonlyEvidence(
+              fixtureState.readonlyFixture = await prepareReadonlyEvidence(
                 api.database(),
                 readonlySetupSchema.parse(JSON.parse(body)),
               );
               response.setHeader('content-type', 'application/json');
-              response.end(JSON.stringify(readonlyFixture.scope));
+              response.end(JSON.stringify(fixtureState.readonlyFixture.scope));
             } catch {
               response.writeHead(400).end();
             } finally {
-              readonlySetupPending = false;
+              fixtureState.readonlySetupPending = false;
             }
           })();
         });
@@ -935,13 +916,13 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       if (request.method === 'POST' && url.pathname === '/schedule-restart') {
         if (
           scenario !== 'schedule' ||
-          scheduleRestartUsed ||
+          fixtureState.scheduleRestartUsed ||
           restartScope.signal.aborted
         ) {
           response.writeHead(409).end();
           return;
         }
-        scheduleRestartUsed = true;
+        fixtureState.scheduleRestartUsed = true;
         let body = '';
         request.on('data', (chunk: Buffer) => {
           body += chunk.toString();
@@ -970,7 +951,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
               expect({ ...after, observedAt: before.observedAt }).toEqual(
                 before,
               );
-              scheduleRestart = {
+              fixtureState.scheduleRestart = {
                 scope,
                 triggerId: before.triggerId,
                 nextFireAt: before.nextFireAt,
@@ -979,7 +960,7 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
               response.setHeader('content-type', 'application/json');
               response.end(
                 JSON.stringify({
-                  ...scheduleRestart,
+                  ...fixtureState.scheduleRestart,
                   beforeObservedAt: before.observedAt,
                   afterObservedAt: after.observedAt,
                 }),
@@ -1022,88 +1003,95 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
               url.pathname === '/evidence/api-tokens' &&
               scenario === 'api-tokens'
             )
-              apiTokensEvidence = apiTokensEvidenceSchema.parse(value);
+              fixtureState.apiTokensEvidence =
+                apiTokensEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/transforms' &&
               scenario === 'transforms'
             )
-              collectionEvidence = collectionEvidenceSchema.parse(value);
+              fixtureState.collectionEvidence =
+                collectionEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/transform-date' &&
               scenario === 'transforms'
             )
-              dateEvidence = dateEvidenceSchema.parse(value);
+              fixtureState.dateEvidence = dateEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/callable' &&
               scenario === 'callable'
             )
-              callableEvidence = callableEvidenceSchema.parse(value);
+              fixtureState.callableEvidence =
+                callableEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/calls' &&
               scenario === 'callable'
             )
-              callsEvidence = callsEvidenceSchema.parse(value);
+              fixtureState.callsEvidence = callsEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/curated-templates' &&
               scenario === 'curated-templates'
             )
-              curatedEvidence =
+              fixtureState.curatedEvidence =
                 curatedTemplateBrowserEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/portability' &&
               scenario === 'portability'
             )
-              portabilityEvidence =
+              fixtureState.portabilityEvidence =
                 workflowPortabilityBrowserEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence' &&
               scenario === 'nested-conflict'
             )
-              evidence = browserEvidenceSchema.parse(value);
+              fixtureState.evidence = browserEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/receipts' &&
               scenario === 'receipts'
             )
-              receiptEvidence = receiptRecoveryEvidenceSchema.parse(value);
+              fixtureState.receiptEvidence =
+                receiptRecoveryEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/failure-routing' &&
               scenario === 'failure-routing'
             )
-              failureRoutingEvidence =
+              fixtureState.failureRoutingEvidence =
                 failureRoutingEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/run-recovery' &&
               scenario === 'run-recovery'
             )
-              runRecoveryEvidence = runRecoveryEvidenceSchema.parse(value);
+              fixtureState.runRecoveryEvidence =
+                runRecoveryEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/expression-admission' &&
               scenario === 'expression-admission'
             )
-              expressionEvidence =
+              fixtureState.expressionEvidence =
                 expressionAdmissionEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/duplication' &&
               scenario === 'duplication'
             )
-              duplicationEvidence =
+              fixtureState.duplicationEvidence =
                 workflowDuplicationEvidenceSchema.parse(value);
             else if (
               url.pathname === '/input-cases-evidence' &&
               scenario === 'input-cases'
             )
-              inputCasesEvidence =
+              fixtureState.inputCasesEvidence =
                 workflowInputCasesEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/readonly' &&
               scenario === 'readonly'
             )
-              readonlyEvidence = readonlyEvidenceSchema.parse(value);
+              fixtureState.readonlyEvidence =
+                readonlyEvidenceSchema.parse(value);
             else if (
               url.pathname === '/evidence/schedule' &&
               scenario === 'schedule'
             )
-              scheduleEvidence = scheduleEvidenceSchema.parse(value);
+              fixtureState.scheduleEvidence =
+                scheduleEvidenceSchema.parse(value);
             else
               throw new Error('Evidence does not match the selected scenario');
             response.writeHead(204).end();
@@ -1343,39 +1331,52 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       return;
     }
     if (scenario === 'api-tokens') {
-      if (apiTokensEvidence === undefined)
+      if (fixtureState.apiTokensEvidence === undefined)
         throw new Error('API token browser evidence missing');
-      await verifyApiTokensEvidence(api.database(), apiTokensEvidence);
+      await verifyApiTokensEvidence(
+        api.database(),
+        fixtureState.apiTokensEvidence,
+      );
       return;
     }
     if (scenario === 'callable') {
-      if (callableEvidence === undefined)
+      if (fixtureState.callableEvidence === undefined)
         throw new Error('Callable browser evidence missing');
-      await verifyCallableEvidence(api.database(), callableEvidence);
-      if (callsEvidence === undefined)
+      await verifyCallableEvidence(
+        api.database(),
+        fixtureState.callableEvidence,
+      );
+      if (fixtureState.callsEvidence === undefined)
         throw new Error('Workflow Call browser evidence missing');
-      await verifyCallsEvidence(api.database(), callsEvidence);
+      await verifyCallsEvidence(api.database(), fixtureState.callsEvidence);
       process.stdout.write(
-        `Live browser callable verified identities ${JSON.stringify(callableEvidence)}\n`,
+        `Live browser callable verified identities ${JSON.stringify(fixtureState.callableEvidence)}\n`,
       );
       return;
     }
     if (scenario === 'curated-templates') {
-      if (curatedFixture === undefined || curatedEvidence === undefined)
+      if (
+        fixtureState.curatedFixture === undefined ||
+        fixtureState.curatedEvidence === undefined
+      )
         throw new Error('Curated template browser evidence missing');
-      await curatedFixture.verifyEvidence(curatedEvidence);
+      await fixtureState.curatedFixture.verifyEvidence(
+        fixtureState.curatedEvidence,
+      );
       await recheckOwnership();
-      const runs = await curatedFixture.executeGraphs(curatedEvidence);
+      const runs = await fixtureState.curatedFixture.executeGraphs(
+        fixtureState.curatedEvidence,
+      );
       await recheckOwnership();
-      const triggerRuns = await curatedFixture.executeTriggers(
-        curatedEvidence,
+      const triggerRuns = await fixtureState.curatedFixture.executeTriggers(
+        fixtureState.curatedEvidence,
         apiOrigin,
       );
       await closeChild(worker);
-      if (curatedEffects === undefined)
+      if (fixtureState.curatedEffects === undefined)
         throw new Error('Controlled curated worker effects missing');
       expect(
-        curatedEffects.observations.map(({ kind, status }) => ({
+        fixtureState.curatedEffects.observations.map(({ kind, status }) => ({
           kind,
           status,
         })),
@@ -1385,191 +1386,228 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
         { kind: 'http', status: 204 },
         { kind: 'http', status: 500 },
       ]);
-      expect(curatedEffects.pendingHttpResponses).toBe(0);
+      expect(fixtureState.curatedEffects.pendingHttpResponses).toBe(0);
       process.stdout.write(
-        `Live browser curated template verified identities ${JSON.stringify({ ...curatedEvidence, runs, triggerRuns, effects: curatedEffects })}\n`,
+        `Live browser curated template verified identities ${JSON.stringify({ ...fixtureState.curatedEvidence, runs, triggerRuns, effects: fixtureState.curatedEffects })}\n`,
       );
       return;
     }
     if (scenario === 'portability') {
-      if (portabilityFixture === undefined || portabilityEvidence === undefined)
+      if (
+        fixtureState.portabilityFixture === undefined ||
+        fixtureState.portabilityEvidence === undefined
+      )
         throw new Error('Workflow portability evidence missing');
       await verifyWorkflowPortabilityBrowserEvidence(
         api.database(),
-        portabilityFixture.scope,
-        portabilityEvidence,
+        fixtureState.portabilityFixture.scope,
+        fixtureState.portabilityEvidence,
       );
       process.stdout.write(
-        `Live browser workflow portability evidence ${JSON.stringify(portabilityEvidence)}\n`,
+        `Live browser workflow portability evidence ${JSON.stringify(fixtureState.portabilityEvidence)}\n`,
       );
       return;
     }
     if (scenario === 'input-cases') {
-      if (inputCasesEvidence === undefined)
+      if (fixtureState.inputCasesEvidence === undefined)
         throw new Error('Workflow input cases evidence missing');
       await verifyWorkflowInputCasesEvidence(
         api.database(),
-        inputCasesEvidence,
+        fixtureState.inputCasesEvidence,
       );
       process.stdout.write(
-        `Live browser workflow input cases verified identities ${JSON.stringify(inputCasesEvidence)}\n`,
+        `Live browser workflow input cases verified identities ${JSON.stringify(fixtureState.inputCasesEvidence)}\n`,
       );
       return;
     }
     if (scenario === 'duplication') {
-      if (duplicationEvidence === undefined)
+      if (fixtureState.duplicationEvidence === undefined)
         throw new Error('Workflow duplication evidence missing');
       await verifyWorkflowDuplicationEvidence(
         api.database(),
-        duplicationEvidence,
+        fixtureState.duplicationEvidence,
       );
       process.stdout.write(
-        `Live browser workflow duplication evidence ${JSON.stringify(duplicationEvidence)}\n`,
+        `Live browser workflow duplication evidence ${JSON.stringify(fixtureState.duplicationEvidence)}\n`,
       );
       return;
     }
     if (scenario === 'transforms') {
-      if (collectionEvidence === undefined || dateEvidence === undefined)
+      if (
+        fixtureState.collectionEvidence === undefined ||
+        fixtureState.dateEvidence === undefined
+      )
         throw new Error('Transform browser evidence missing');
       await verifyTransformEvidence(
         api.database(),
-        collectionEvidence,
-        dateEvidence,
+        fixtureState.collectionEvidence,
+        fixtureState.dateEvidence,
       );
       return;
     }
     if (scenario === 'failure-routing') {
-      if (failureRoutingEvidence === undefined || httpEffects === undefined)
+      if (
+        fixtureState.failureRoutingEvidence === undefined ||
+        fixtureState.httpEffects === undefined
+      )
         throw new Error('Failure routing browser evidence missing');
       await verifyFailureRoutingEvidence(
         api.database(),
-        failureRoutingEvidence,
-        httpEffects,
+        fixtureState.failureRoutingEvidence,
+        fixtureState.httpEffects,
       );
       return;
     }
     if (scenario === 'artifact-inputs') {
-      if (httpEffects === undefined)
+      if (fixtureState.httpEffects === undefined)
         throw new Error('Owned artifact HTTP effects missing');
       if (process.env.F45_RELEASE_QUALIFICATION === 'true') {
-        expect(httpEffects.requests).toBe(0);
-        expect(httpEffects.effects).toBe(0);
+        expect(fixtureState.httpEffects.requests).toBe(0);
+        expect(fixtureState.httpEffects.effects).toBe(0);
         return;
       }
-      expect(httpEffects.requests).toBe(7);
-      expect(httpEffects.effects).toBe(7);
+      expect(fixtureState.httpEffects.requests).toBe(7);
+      expect(fixtureState.httpEffects.effects).toBe(7);
       const binary = Buffer.alloc(1048576);
       for (let index = 0; index < binary.length; index++)
         binary[index] = index % 256;
       const hash = (value: Buffer | string) =>
         createHash('sha256').update(value).digest('hex');
-      expect(httpEffects.bodyHashes.slice(0, 5)).toEqual([
+      expect(fixtureState.httpEffects.bodyHashes.slice(0, 5)).toEqual([
         hash(binary),
         hash('{}'),
         hash(''),
         hash('{}'),
         hash('multipart response source'),
       ]);
-      expect(httpEffects.bodyHashes[6]).toBe(hash('one earlier effect'));
+      expect(fixtureState.httpEffects.bodyHashes[6]).toBe(
+        hash('one earlier effect'),
+      );
       process.stdout.write(
-        `Live artifact input destination hashes ${JSON.stringify(httpEffects.bodyHashes)}\n`,
+        `Live artifact input destination hashes ${JSON.stringify(fixtureState.httpEffects.bodyHashes)}\n`,
       );
       return;
     }
     if (scenario === 'webhook-controlled-http') {
-      if (httpControl === undefined || httpEffects === undefined)
+      if (
+        fixtureState.httpControl === undefined ||
+        fixtureState.httpEffects === undefined
+      )
         throw new Error('Owned HTTP control/effect evidence missing');
-      const submitted = httpControl.readEvidence();
+      const submitted = fixtureState.httpControl.readEvidence();
       process.stdout.write(
         `Live browser controlled HTTP submitted/unverified identities ${JSON.stringify(submittedHttpEvidenceIds(submitted))}\n`,
       );
-      await verifyHttpEvidence(api.database(), submitted, httpEffects);
+      await verifyHttpEvidence(
+        api.database(),
+        submitted,
+        fixtureState.httpEffects,
+      );
       process.stdout.write(
-        `Live browser controlled HTTP verified evidence ${JSON.stringify({ ...submitted, effects: httpEffects })}\n`,
+        `Live browser controlled HTTP verified evidence ${JSON.stringify({ ...submitted, effects: fixtureState.httpEffects })}\n`,
       );
       return;
     }
     if (scenario === 'schedule') {
-      if (scheduleEvidence === undefined || scheduleRestart === undefined)
+      if (
+        fixtureState.scheduleEvidence === undefined ||
+        fixtureState.scheduleRestart === undefined
+      )
         throw new Error('Schedule restart/evidence missing');
-      expect(scheduleRestart.scope).toEqual({
-        workspaceId: scheduleEvidence.workspaceId,
-        workflowId: scheduleEvidence.workflowId,
-        workflowVersionId: scheduleEvidence.workflowVersionId,
+      expect(fixtureState.scheduleRestart.scope).toEqual({
+        workspaceId: fixtureState.scheduleEvidence.workspaceId,
+        workflowId: fixtureState.scheduleEvidence.workflowId,
+        workflowVersionId: fixtureState.scheduleEvidence.workflowVersionId,
       });
-      expect(scheduleEvidence.triggerId).toBe(scheduleRestart.triggerId);
-      expect(scheduleEvidence.firstDueAt).toBe(scheduleRestart.nextFireAt);
+      expect(fixtureState.scheduleEvidence.triggerId).toBe(
+        fixtureState.scheduleRestart.triggerId,
+      );
+      expect(fixtureState.scheduleEvidence.firstDueAt).toBe(
+        fixtureState.scheduleRestart.nextFireAt,
+      );
       process.stdout.write(
         `Live browser schedule submitted/unverified ${JSON.stringify({
-          workspaceId: scheduleEvidence.workspaceId,
-          workflowId: scheduleEvidence.workflowId,
-          workflowVersionId: scheduleEvidence.workflowVersionId,
-          triggerId: scheduleEvidence.triggerId,
-          runId: scheduleEvidence.runId,
-          occurrenceId: scheduleEvidence.occurrenceId,
-          restartRequestId: scheduleRestart.requestId,
-          firstDueAt: scheduleEvidence.firstDueAt,
-          scheduledAt: scheduleEvidence.scheduledAt,
+          workspaceId: fixtureState.scheduleEvidence.workspaceId,
+          workflowId: fixtureState.scheduleEvidence.workflowId,
+          workflowVersionId: fixtureState.scheduleEvidence.workflowVersionId,
+          triggerId: fixtureState.scheduleEvidence.triggerId,
+          runId: fixtureState.scheduleEvidence.runId,
+          occurrenceId: fixtureState.scheduleEvidence.occurrenceId,
+          restartRequestId: fixtureState.scheduleRestart.requestId,
+          firstDueAt: fixtureState.scheduleEvidence.firstDueAt,
+          scheduledAt: fixtureState.scheduleEvidence.scheduledAt,
         })}\n`,
       );
-      await verifyScheduleEvidence(api.database(), scheduleEvidence);
+      await verifyScheduleEvidence(
+        api.database(),
+        fixtureState.scheduleEvidence,
+      );
       process.stdout.write(
-        `Live browser schedule evidence ${JSON.stringify({ ...scheduleEvidence, restartRequestId: scheduleRestart.requestId })}\n`,
+        `Live browser schedule evidence ${JSON.stringify({ ...fixtureState.scheduleEvidence, restartRequestId: fixtureState.scheduleRestart.requestId })}\n`,
       );
       return;
     }
     if (scenario === 'readonly') {
-      if (readonlyFixture === undefined || readonlyEvidence === undefined)
+      if (
+        fixtureState.readonlyFixture === undefined ||
+        fixtureState.readonlyEvidence === undefined
+      )
         throw new Error('Readonly editor evidence missing');
-      await readonlyFixture.verify(readonlyEvidence);
+      await fixtureState.readonlyFixture.verify(fixtureState.readonlyEvidence);
       process.stdout.write(
-        `Live browser readonly evidence ${JSON.stringify(readonlyEvidence)}\n`,
+        `Live browser readonly evidence ${JSON.stringify(fixtureState.readonlyEvidence)}\n`,
       );
       return;
     }
     if (scenario === 'expression-admission') {
-      if (expressionEvidence === undefined)
+      if (fixtureState.expressionEvidence === undefined)
         throw new Error('Expression admission evidence missing');
       await verifyExpressionAdmissionEvidence(
         api.database(),
-        expressionEvidence,
+        fixtureState.expressionEvidence,
       );
       process.stdout.write(
-        `Live browser expression admission ${JSON.stringify(expressionEvidence)}\n`,
+        `Live browser expression admission ${JSON.stringify(fixtureState.expressionEvidence)}\n`,
       );
       return;
     }
     if (scenario === 'receipts') {
-      if (receiptEvidence === undefined)
+      if (fixtureState.receiptEvidence === undefined)
         throw new Error('Receipt recovery evidence missing');
-      await verifyReceiptRecoveryEvidence(api.database(), receiptEvidence);
+      await verifyReceiptRecoveryEvidence(
+        api.database(),
+        fixtureState.receiptEvidence,
+      );
       process.stdout.write(
-        `Live browser receipt recovery ${JSON.stringify(receiptEvidence)}\n`,
+        `Live browser receipt recovery ${JSON.stringify(fixtureState.receiptEvidence)}\n`,
       );
       return;
     }
     if (scenario === 'run-recovery') {
-      if (runRecoveryEvidence === undefined)
+      if (fixtureState.runRecoveryEvidence === undefined)
         throw new Error('Run recovery evidence missing');
-      await verifyRunRecoveryEvidence(api.database(), runRecoveryEvidence);
+      await verifyRunRecoveryEvidence(
+        api.database(),
+        fixtureState.runRecoveryEvidence,
+      );
       process.stdout.write(
-        `Live browser run recovery ${JSON.stringify(runRecoveryEvidence)}\n`,
+        `Live browser run recovery ${JSON.stringify(fixtureState.runRecoveryEvidence)}\n`,
       );
       return;
     }
-    expect(evidence).toBeDefined();
+    expect(fixtureState.evidence).toBeDefined();
     const persisted = await api.database().query<{
       status: string;
       workflow_id: string;
       workspace_id: string;
       workflow_version_id: string;
-    }>('select status, workflow_id, workspace_id, workflow_version_id from app.workflow_runs where id=$1', [evidence?.runId]);
+    }>('select status, workflow_id, workspace_id, workflow_version_id from app.workflow_runs where id=$1', [fixtureState.evidence?.runId]);
     expect(persisted.rows).toEqual([
       {
         status: 'succeeded',
-        workflow_id: evidence?.workflowId,
-        workspace_id: evidence?.workspaceId,
-        workflow_version_id: evidence?.workflowVersionId,
+        workflow_id: fixtureState.evidence?.workflowId,
+        workspace_id: fixtureState.evidence?.workspaceId,
+        workflow_version_id: fixtureState.evidence?.workflowVersionId,
       },
     ]);
     const nodes = await api.database().query<{
@@ -1580,12 +1618,12 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
     }>(
       `select node_id,status,invocation_key,branch_context from app.node_runs
        where workflow_run_id=$1 and workspace_id=$2`,
-      [evidence?.runId, evidence?.workspaceId],
+      [fixtureState.evidence?.runId, fixtureState.evidence?.workspaceId],
     );
     expect(nodes.rows).toHaveLength(8);
     expect(nodes.rows.every((node) => node.status === 'succeeded')).toBe(true);
     const leaves = nodes.rows.filter(
-      (node) => node.node_id === evidence?.leafId,
+      (node) => node.node_id === fixtureState.evidence?.leafId,
     );
     expect(leaves).toHaveLength(4);
     expect(new Set(leaves.map((node) => node.invocation_key)).size).toBe(4);
@@ -1595,30 +1633,34 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
           [0, 1].map((inner) => ({
             branchPath: [],
             iterationPath: [
-              { loopNodeId: evidence?.outerId, ordinal: outer },
-              { loopNodeId: evidence?.innerId, ordinal: inner },
+              { loopNodeId: fixtureState.evidence?.outerId, ordinal: outer },
+              { loopNodeId: fixtureState.evidence?.innerId, ordinal: inner },
             ],
           })),
         ),
       ),
     );
     expect(
-      nodes.rows.filter((node) => node.node_id === evidence?.innerId),
+      nodes.rows.filter(
+        (node) => node.node_id === fixtureState.evidence?.innerId,
+      ),
     ).toHaveLength(2);
     const draft = await api
       .database()
       .query<{ revision: number; graph_json: unknown }>(
         'select revision,graph_json from app.workflow_drafts where workflow_id=$1 and workspace_id=$2',
-        [evidence?.workflowId, evidence?.workspaceId],
+        [fixtureState.evidence?.workflowId, fixtureState.evidence?.workspaceId],
       );
     expect(draft.rows).toHaveLength(1);
-    expect(draft.rows[0]?.revision).toBe(evidence?.finalDraftRevision);
-    expect(evidence?.finalDraftRevision).toBeGreaterThan(
-      evidence?.conflictRevision ?? 0,
+    expect(draft.rows[0]?.revision).toBe(
+      fixtureState.evidence?.finalDraftRevision,
+    );
+    expect(fixtureState.evidence?.finalDraftRevision).toBeGreaterThan(
+      fixtureState.evidence?.conflictRevision ?? 0,
     );
     const draftRoot = workflowGraphSchema
       .parse(draft.rows[0]?.graph_json)
-      .nodes.find((node) => node.id === evidence?.rootId);
+      .nodes.find((node) => node.id === fixtureState.evidence?.rootId);
     expect(draftRoot).toMatchObject({
       label: 'Local source choice',
       inputMappings: {
@@ -1629,14 +1671,14 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       .database()
       .query<{ id: string; graph_json: unknown }>(
         'select id,graph_json from app.workflow_versions where workflow_id=$1 and workspace_id=$2',
-        [evidence?.workflowId, evidence?.workspaceId],
+        [fixtureState.evidence?.workflowId, fixtureState.evidence?.workspaceId],
       );
     expect(versions.rows).toHaveLength(1);
-    expect(versions.rows[0]?.id).toBe(evidence?.workflowVersionId);
+    expect(versions.rows[0]?.id).toBe(fixtureState.evidence?.workflowVersionId);
     expect(
       workflowGraphSchema
         .parse(versions.rows[0]?.graph_json)
-        .nodes.find((node) => node.id === evidence?.rootId),
+        .nodes.find((node) => node.id === fixtureState.evidence?.rootId),
     ).toMatchObject({
       label: 'Mapping source',
       inputMappings: {
@@ -1647,11 +1689,11 @@ describe.skipIf(!enabled)('real browser, API and pure-node worker', () => {
       .database()
       .query<{ count: number }>(
         'select count(*)::int as count from app.workflow_runs where workflow_id=$1 and workspace_id=$2',
-        [evidence?.workflowId, evidence?.workspaceId],
+        [fixtureState.evidence?.workflowId, fixtureState.evidence?.workspaceId],
       );
     expect(counts.rows).toEqual([{ count: 1 }]);
     process.stdout.write(
-      `Live browser durable evidence ${JSON.stringify(evidence)}\n`,
+      `Live browser durable evidence ${JSON.stringify(fixtureState.evidence)}\n`,
     );
   }, 180_000);
 });
@@ -1696,3 +1738,57 @@ const EDITOR_JOURNEY_PATHS = {
   transforms: 'editor/transforms.spec.ts',
   'webhook-controlled-http': 'editor/webhook-controlled-http.spec.ts',
 } satisfies Record<Exclude<typeof scenario, 'artifact-inputs'>, string>;
+
+interface EditorBrowserFixtureState {
+  browserWasOpened: boolean;
+  collectionEvidence: z.infer<typeof collectionEvidenceSchema> | undefined;
+  dateEvidence: z.infer<typeof dateEvidenceSchema> | undefined;
+  apiTokensEvidence: z.infer<typeof apiTokensEvidenceSchema> | undefined;
+  failureRoutingEvidence:
+    z.infer<typeof failureRoutingEvidenceSchema> | undefined;
+  httpControl: ReturnType<typeof createEditorHttpControl> | undefined;
+  httpEffects: z.infer<typeof httpEffectsSchema> | undefined;
+  curatedEffects: z.infer<typeof curatedTemplateEffectsSchema> | undefined;
+  curatedFixture:
+    | Awaited<ReturnType<typeof prepareCuratedTemplateBrowserFixture>>
+    | undefined;
+  curatedEvidence:
+    z.infer<typeof curatedTemplateBrowserEvidenceSchema> | undefined;
+  evidence: z.infer<typeof browserEvidenceSchema> | undefined;
+  duplicationEvidence:
+    z.infer<typeof workflowDuplicationEvidenceSchema> | undefined;
+  portabilityFixture:
+    | Awaited<ReturnType<typeof prepareWorkflowPortabilityBrowserFixture>>
+    | undefined;
+  portabilityEvidence:
+    z.infer<typeof workflowPortabilityBrowserEvidenceSchema> | undefined;
+  inputCasesEvidence:
+    z.infer<typeof workflowInputCasesEvidenceSchema> | undefined;
+  callsEvidence: z.infer<typeof callsEvidenceSchema> | undefined;
+  callableEvidence: z.infer<typeof callableEvidenceSchema> | undefined;
+  receiptEvidence: z.infer<typeof receiptRecoveryEvidenceSchema> | undefined;
+  runRecoveryEvidence: z.infer<typeof runRecoveryEvidenceSchema> | undefined;
+  expressionEvidence:
+    z.infer<typeof expressionAdmissionEvidenceSchema> | undefined;
+  readonlyFixture:
+    Awaited<ReturnType<typeof prepareReadonlyEvidence>> | undefined;
+  readonlyEvidence: z.infer<typeof readonlyEvidenceSchema> | undefined;
+  readonlySetupPending: boolean;
+  scheduleEvidence: z.infer<typeof scheduleEvidenceSchema> | undefined;
+  scheduleRestart:
+    | {
+        scope: z.infer<typeof scheduleScopeSchema>;
+        triggerId: string;
+        nextFireAt: string;
+        requestId: string;
+      }
+    | undefined;
+  scheduleRestartUsed: boolean;
+}
+
+function editorHttpAuthorization() {
+  if (!controlledHttpScenario) return undefined;
+  if (scenario === 'artifact-inputs')
+    return 'Bearer owned-artifact-destination';
+  return `Bearer ${randomUUID()}`;
+}
