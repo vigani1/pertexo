@@ -94,7 +94,8 @@ export function PinSampleDialog({
             >
               Retry the same pin
             </Button>
-          ) : source === 'view' ? null : (
+          ) : null}
+          {!command.uncertain && source !== 'view' ? (
             <ProgressButton
               pending={command.pending}
               pendingLabel="Pinning…"
@@ -103,7 +104,7 @@ export function PinSampleDialog({
             >
               Pin output
             </ProgressButton>
-          )}
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>

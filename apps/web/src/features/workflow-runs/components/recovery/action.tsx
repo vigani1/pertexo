@@ -1,3 +1,4 @@
+import type { WorkflowRecoveryPreview } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { CornerDownRightIcon } from 'lucide-react';
@@ -82,7 +83,8 @@ export function RunRecoveryAction({
             run history before leaving or reloading.
           </p>
         </ConfirmDialog>
-      ) : preview.data?.kind === 'eligible' ? (
+      ) : null}
+      {!command.unconfirmed && preview.data?.kind === 'eligible' ? (
         <RecoveryConfirmation
           preview={preview.data}
           command={command}
@@ -91,18 +93,13 @@ export function RunRecoveryAction({
             if (!command.pending) setOpen(next);
           }}
         />
-      ) : (
+      ) : null}
+      {!command.unconfirmed && preview.data?.kind !== 'eligible' ? (
         <ConfirmDialog
           open={open}
           onOpenChange={setOpen}
           title="Retry from this step"
-          description={
-            preview.data?.kind === 'refused'
-              ? recoveryRefusal(preview.data.reason)
-              : preview.error === null
-                ? 'Checking the saved execution results…'
-                : describeReadError(preview.error, 'recovery availability')
-          }
+          description={recoveryDescription(preview.data, preview.error)}
           confirmLabel={unavailable ? 'Use full replay…' : 'Check again'}
           pending={preview.isFetching}
           confirmDisabled={preview.isFetching}
@@ -113,7 +110,16 @@ export function RunRecoveryAction({
             } else void preview.refetch();
           }}
         />
-      )}
+      ) : null}
     </>
   );
+}
+
+function recoveryDescription(
+  preview: WorkflowRecoveryPreview | undefined,
+  error: unknown,
+) {
+  if (preview?.kind === 'refused') return recoveryRefusal(preview.reason);
+  if (error === null) return 'Checking the saved execution results…';
+  return describeReadError(error, 'recovery availability');
 }
