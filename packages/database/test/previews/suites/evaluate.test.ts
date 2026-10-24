@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
-import { evaluateSuiteCase } from '../../../src/previews/suites/evaluate.js';
+import { evaluateSuiteCase } from '../../../src/previews/suites/evaluate.queries.js';
 import type { SuiteCaseRow } from '../../../src/previews/suites/contract.js';
 const entry: SuiteCaseRow = {
   workspace_id: randomUUID(),

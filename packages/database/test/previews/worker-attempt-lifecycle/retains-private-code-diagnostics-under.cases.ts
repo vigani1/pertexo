@@ -1,5 +1,5 @@
 import { withWorkspaceTransaction } from '../../../src/tenant-access/transactions.js';
-import { readPreviewRun } from '../../../src/previews/runs/read.js';
+import { readPreviewRun } from '../../../src/previews/runs/records.queries.js';
 
 import { expect, it } from 'vitest';
 import {

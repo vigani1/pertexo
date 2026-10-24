@@ -5,7 +5,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { advanceSuite } from './advance.js';
+import { advanceSuite } from './advance.repository.js';
 import type { WorkflowTestSuiteScanner } from './contract.js';
 /** Global discovery uses maintenance; all progress and admission are tenant scoped. */
 export async function createWorkflowTestSuiteScanner(

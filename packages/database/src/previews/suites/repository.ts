@@ -23,16 +23,19 @@ import { generatePersistedId } from '../../platform/persisted-id.js';
 import { cancelInTransaction } from '../../runs/runs.repository.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
 import { WorkflowTestError } from '../workflows/contract.js';
-import { withTestAuthority, withTestRead } from '../workflows/authority.js';
+import {
+  withTestAuthority,
+  withTestRead,
+} from '../workflows/authority.queries.js';
 import {
   requireNoActiveSuite,
   requireNoActiveTest,
-} from '../workflows/admit.js';
+} from '../workflows/admit.repository.js';
 import {
   loadTestSnapshot,
   saveTestSnapshot,
   sameTestSamples,
-} from '../workflows/snapshot.js';
+} from '../workflows/snapshot.repository.js';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import type {
@@ -40,9 +43,9 @@ import type {
   SuiteRow,
   SuiteCaseRow,
 } from './contract.js';
-import { readSuiteCurrent } from './current.js';
-import { listSuites, readSuite, readCaseReport } from './read.js';
-import { admitSuiteCase } from './admit.js';
+import { readSuiteCurrent } from './current.queries.js';
+import { listSuites, readSuite, readCaseReport } from './records.queries.js';
+import { admitSuiteCase } from './admit.repository.js';
 
 export function createWorkflowTestSuiteStore(
   pool: Pool,

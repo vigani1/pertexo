@@ -4,7 +4,10 @@ import type { Pool, PoolClient } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 
-import { PREVIEW_STATUS, type PreviewStatus } from '../runs/acceptance.js';
+import {
+  PREVIEW_STATUS,
+  type PreviewStatus,
+} from '../runs/acceptance.repository.js';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 import {
   PreviewAttemptStateError,
@@ -21,7 +24,7 @@ import {
   completePreviewReceipt,
   readPreviewReceipt,
   validatePreviewDelivery,
-} from './delivery.js';
+} from './deliveries.repository.js';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,

@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { appendPreviewTerminalFacts } from './completion.js';
+import { appendPreviewTerminalFacts } from './completion.repository.js';
 import {
   TERMINAL_PREVIEW_STATUSES,
   PreviewAttemptStateError,
@@ -17,7 +17,7 @@ import {
   completePreviewReceipt,
   insertPreviewOutboxDelivery,
   validatePreviewDelivery,
-} from './delivery.js';
+} from './deliveries.repository.js';
 
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import {

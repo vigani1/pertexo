@@ -4,10 +4,10 @@ import {
 } from '../../platform/pool/runtime.js';
 import type { DatabaseConfig } from '../../config.js';
 import { z } from 'zod';
-import { claimPreviewDelivery } from './claim.js';
-import { completePreviewAttempt } from './completion.js';
-import { markPreviewDispatched } from './dispatch.js';
-import { heartbeatPreviewLease } from './heartbeat.js';
+import { claimPreviewDelivery } from './claim.repository.js';
+import { completePreviewAttempt } from './completion.repository.js';
+import { markPreviewDispatched } from './dispatch.repository.js';
+import { heartbeatPreviewLease } from './heartbeat.repository.js';
 
 const leaseScopeSchema = z.object({
   attemptFenceToken: z.number().int().nonnegative(),

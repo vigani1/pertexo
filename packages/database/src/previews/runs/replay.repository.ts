@@ -10,7 +10,7 @@ import {
   PreviewAcceptanceCorruptError,
   readExistingAcceptance,
   type PreviewStatus,
-} from './acceptance.js';
+} from './acceptance.repository.js';
 import { previewRuns, previewAttempts } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { sha256HexSchema } from '../../platform/persisted-primitives.js';

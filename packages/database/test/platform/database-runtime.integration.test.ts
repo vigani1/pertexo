@@ -6,8 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../../src/config.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
-import { createDatabasePreviewAttemptRunStore } from '../../src/previews/attempts/store.js';
-import { createDatabasePreviewReconciliationStore } from '../../src/previews/reconciliation/store.js';
+import { createDatabasePreviewAttemptRunStore } from '../../src/previews/attempts/repository.js';
+import { createDatabasePreviewReconciliationStore } from '../../src/previews/reconciliation/repository.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import {
   acquireDatabasePool,
