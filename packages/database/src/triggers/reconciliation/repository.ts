@@ -7,19 +7,19 @@ import { sha256HexSchema as digestSchema } from '../../platform/persisted-primit
 
 import type { DatabaseConfig } from '../../config.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
-import { reconcileActiveWorkflowTriggers } from './materialization.js';
+import { reconcileActiveWorkflowTriggers } from './materialization.repository.js';
 import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
 } from './errors.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { deactivateArchivedWorkflowTriggers } from './activation.js';
+import { deactivateArchivedWorkflowTriggers } from './activation.repository.js';
 import {
   readHealth,
   refreshWorkflowActivation,
   type WorkflowTriggerHealth,
-} from './health.js';
-export type { WorkflowTriggerHealth } from './health.js';
+} from './health.repository.js';
+export type { WorkflowTriggerHealth } from './health.repository.js';
 
 const uuidSchema = z.uuid();
 const reconciliationPayloadSchema = z

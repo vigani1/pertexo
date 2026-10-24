@@ -1,5 +1,5 @@
 import { webhookRunInput } from '@pertexo/nodes-core';
-import { createTriggerEventScanner } from '../../../../src/triggers/coordination/scanner.js';
+import { createTriggerEventScanner } from '../../../../src/triggers/coordination/scanner.repository.js';
 import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';

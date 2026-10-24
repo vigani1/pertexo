@@ -1,6 +1,6 @@
 import type { FormSubmissionResponse } from '@pertexo/contracts';
-import { coordinateEvent } from '../coordination/accept.js';
-import type { PreparedFormEvent } from './prepare.js';
+import { coordinateEvent } from '../coordination/accept.repository.js';
+import type { PreparedFormEvent } from './prepare.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import {
@@ -8,7 +8,7 @@ import {
   completeCommand,
 } from '../../platform/idempotency/repository.js';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
-import { recordWorkflowTriggerSkip } from '../skips.js';
+import { recordWorkflowTriggerSkip } from '../skips.repository.js';
 import { readFormDefinition } from './definition.js';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -30,7 +30,7 @@ import {
   FormUnavailableError,
   type FormStore,
 } from './contract.js';
-import type { readFormVersion } from './read.js';
+import type { readFormVersion } from './records.queries.js';
 
 export async function submitForm(
   client: PoolClient,

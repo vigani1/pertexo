@@ -1,5 +1,5 @@
 import { WorkflowAlreadyRunningError } from '../commands/concurrency.js';
-import { recordWorkflowTriggerSkip } from '../../triggers/skips.js';
+import { recordWorkflowTriggerSkip } from '../../triggers/skips.repository.js';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

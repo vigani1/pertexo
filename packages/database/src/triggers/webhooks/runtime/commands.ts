@@ -1,6 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 
-import { canManageWorkflowTrigger } from '../../management-access.js';
+import { canManageWorkflowTrigger } from '../../management.queries.js';
 
 import { WebhookTriggerNotFoundError } from '../errors.js';
 import { withTenantScopedClient } from '../../../tenant-access/transactions.js';

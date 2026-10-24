@@ -2,7 +2,7 @@ import type {
   EventCoordinationReceipt,
   EventCoordinationReason,
 } from '@pertexo/workflow-model';
-import { coordinatedReceipt } from '../coordination/events.js';
+import { coordinatedReceipt } from '../coordination/events.repository.js';
 import { sql } from 'drizzle-orm';
 
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';

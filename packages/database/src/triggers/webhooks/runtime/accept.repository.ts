@@ -1,14 +1,14 @@
 import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
-import { lockEventCoordination } from '../../coordination/keys.js';
-import { coordinateVerifiedWebhook } from '../coordinate.js';
+import { lockEventCoordination } from '../../coordination/keys.repository.js';
+import { coordinateVerifiedWebhook } from '../coordinate.repository.js';
 import type { createEventCoordinationPreparation } from '../../coordination/prepare.js';
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/concurrency.js';
-import { recordWorkflowTriggerSkip } from '../../skips.js';
+import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
 
 import {
   openWebhookResponse,
   webhookReplayWait,
-} from '../responses/admission.js';
+} from '../responses/admission.repository.js';
 
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
@@ -19,14 +19,14 @@ import { sha256HexSchema as digestSchema } from '../../../platform/persisted-pri
 import { acceptWorkflowRun } from '../../../runs/commands/acceptance.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
-import { insertWebhookDelivery } from '../deliveries.js';
+import { insertWebhookDelivery } from '../deliveries.repository.js';
 import {
   deleteExpiredReplay,
   lockEndpointDedupeKey,
   readLockedReplay,
   resolveExactReplay,
   type WebhookReplayIdentity,
-} from '../replay.js';
+} from '../replay.repository.js';
 
 import {
   withWorkspaceTransaction,

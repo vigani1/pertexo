@@ -1,4 +1,4 @@
-import { revokeRemovedFormAccess } from '../../triggers/forms/publication.js';
+import { revokeRemovedFormAccess } from '../../triggers/forms/publication.repository.js';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
 

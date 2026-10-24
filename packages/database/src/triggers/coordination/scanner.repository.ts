@@ -8,7 +8,7 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import type { DatabaseConfig } from '../../config.js';
-import { releaseCoordinatedEvent } from './release.js';
+import { releaseCoordinatedEvent } from './release.repository.js';
 export interface TriggerEventScanner {
   scanDue(
     input: Readonly<{

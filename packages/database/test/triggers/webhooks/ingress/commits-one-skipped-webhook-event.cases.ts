@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
 
-import { WebhookDeliveryReplayMismatchError } from '../../../../src/triggers/webhooks/database.js';
+import { WebhookDeliveryReplayMismatchError } from '../../../../src/triggers/webhooks/repository.js';
 
 import {
   actorId,

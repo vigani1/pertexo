@@ -12,8 +12,8 @@ import {
   type EventCoordinationPolicy,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import { createFormStore } from '../../../src/triggers/forms/store.js';
-import { createTriggerEventScanner } from '../../../src/triggers/coordination/scanner.js';
+import { createFormStore } from '../../../src/triggers/forms/repository.js';
+import { createTriggerEventScanner } from '../../../src/triggers/coordination/scanner.repository.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import {
   identity,

@@ -6,17 +6,17 @@ import {
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
-import { recordWorkflowTriggerSkip } from '../skips.js';
+import { recordWorkflowTriggerSkip } from '../skips.repository.js';
 import {
   recordCoordinatedEvent,
   finishCoordinatedEvent,
   coordinatedReceipt,
-} from './events.js';
+} from './events.repository.js';
 import {
   eventDatabaseTime,
   loadEventWindow,
   chargeEventWindow,
-} from './keys.js';
+} from './keys.repository.js';
 import type {
   CoordinateEventInput,
   CoordinateEventResult,

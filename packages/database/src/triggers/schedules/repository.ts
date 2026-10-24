@@ -9,9 +9,9 @@ import { ScheduleTriggerError } from './errors.js';
 import {
   authorizeScheduleReader,
   createScheduleTriggerReads,
-} from './reads.js';
-import { refreshWorkflowActivation } from '../reconciliation/database.js';
-import { canManageWorkflowTrigger } from '../management-access.js';
+} from './reads.queries.js';
+import { refreshWorkflowActivation } from '../reconciliation/repository.js';
+import { canManageWorkflowTrigger } from '../management.queries.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import {
   uuidSchema,
@@ -29,7 +29,7 @@ import {
   applyScheduleHealthTransition,
   recordScheduleCommandAudit,
   completeScheduleCommand,
-} from './management/receipts.js';
+} from './management/receipts.repository.js';
 export { ScheduleTriggerError } from './errors.js';
 export {
   type ScheduleTriggerRecord,

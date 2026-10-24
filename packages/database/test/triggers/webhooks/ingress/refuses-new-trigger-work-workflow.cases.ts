@@ -7,7 +7,7 @@ import { expect, it } from 'vitest';
 import {
   WebhookDeliveryIneligibleError,
   WebhookWorkflowPausedError,
-} from '../../../../src/triggers/webhooks/database.js';
+} from '../../../../src/triggers/webhooks/repository.js';
 
 import {
   actorId,

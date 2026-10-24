@@ -6,7 +6,7 @@ import type { Pool } from 'pg';
 
 import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
 
-import { refreshWorkflowActivation } from '../../reconciliation/database.js';
+import { refreshWorkflowActivation } from '../../reconciliation/repository.js';
 
 import {
   WebhookTriggerNotFoundError,
@@ -18,7 +18,7 @@ import {
   claimWebhookCommand,
   completeWebhookCommand,
   insertSecret,
-} from './receipts.js';
+} from './receipts.repository.js';
 import { oneHealth } from './state.queries.js';
 import { command } from './commands.js';
 
