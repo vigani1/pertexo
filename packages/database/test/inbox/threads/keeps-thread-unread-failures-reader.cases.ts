@@ -143,6 +143,45 @@ export function registerKeepsThreadUnreadFailuresReader(): void {
     });
   });
 
+  it('keeps microsecond timestamp ties stable across one-thread pages', async () => {
+    const { workspaceId, first, second, members } = await seed();
+    const third = await workflow(workspaceId, members.owner);
+    for (const workflowId of [first, second, third])
+      await fail(workspaceId, workflowId);
+    await drain();
+    await asAdmin(
+      `update app.workspace_inbox_threads
+       set first_occurred_at=date_trunc('second',statement_timestamp())+interval '0.123456 seconds',
+           latest_occurred_at=date_trunc('second',statement_timestamp())+interval '0.123456 seconds'
+       where workspace_id=$1 and notice_kind='workflow_failure'`,
+      [workspaceId],
+    );
+    const input = {
+      ...reader(workspaceId, members.owner),
+      filter: 'all' as const,
+      noticeKind: 'workflow_failure' as const,
+      limit: 1,
+    };
+    const firstPage = await inbox.listThreads(input);
+    expect(firstPage.next?.latestOccurredAt).toMatch(/\.123456Z$/u);
+    if (firstPage.next === null) throw new Error('Expected a second page');
+    const secondPage = await inbox.listThreads({
+      ...input,
+      after: firstPage.next,
+    });
+    if (secondPage.next === null) throw new Error('Expected a third page');
+    const thirdPage = await inbox.listThreads({
+      ...input,
+      after: secondPage.next,
+    });
+    expect(thirdPage.next).toBeNull();
+    expect(
+      [...firstPage.items, ...secondPage.items, ...thirdPage.items]
+        .map((item) => item.workflowId)
+        .sort(),
+    ).toEqual([first, second, third].sort());
+  });
+
   it('returns retained UTC failure days and excludes old or foreign runs', async () => {
     const { workspaceId, first, members } = await seed();
     const current = await fail(workspaceId, first);
