@@ -104,6 +104,24 @@ export async function lockReplayVersion(
   workflowId: string,
   workflowVersionId: string,
 ): Promise<PublishedWorkflow> {
+  const version = await findLockedReplayVersion(
+    transaction,
+    workflowId,
+    workflowVersionId,
+  );
+  if (
+    version?.workflowId !== workflowId ||
+    version.workspaceId !== transaction.workspaceId
+  )
+    throw new WorkflowRunNotFoundError();
+  return version;
+}
+
+export async function findLockedReplayVersion(
+  transaction: WorkspaceTransaction,
+  workflowId: string,
+  workflowVersionId: string,
+): Promise<PublishedWorkflow | null> {
   // The app cannot update immutable version rows; this retained guard owns their share lock.
   const [row] = await transaction.db
     .select({
@@ -117,11 +135,5 @@ export async function lockReplayVersion(
     .from(
       sql`app.lock_workflow_run_replay_version(${transaction.workspaceId},${workflowId},${workflowVersionId}) as version`,
     );
-  const version = row === undefined ? null : Object.freeze(row);
-  if (
-    version?.workflowId !== workflowId ||
-    version.workspaceId !== transaction.workspaceId
-  )
-    throw new WorkflowRunNotFoundError();
-  return version;
+  return row === undefined ? null : Object.freeze(row);
 }

@@ -1,3 +1,8 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
+import { pendingRunTasks } from '../../../schema/runs/pending-task.js';
+import { nodeRuns, workflowRuns } from '../../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
   readPendingTaskAllowance,
   hasPendingTaskCapacity,
@@ -22,9 +27,9 @@ export async function persistTaskIntents(
 ): Promise<void> {
   const { workspaceId, runId, plan } = input;
   if ((plan.taskIntents?.length ?? 0) === 0) return;
-  await client.query('select app.lock_workspace_execution_counter($1)', [
-    workspaceId,
-  ]);
+  await drizzle(client)
+    .execute(sql`select app.lock_workspace_execution_counter(${workspaceId})`)
+    .catch(rethrowQueryFailure);
   for (const intent of plan.taskIntents ?? []) {
     let status: 'canceled' | 'pending' | 'refused';
     if (terminalRunStatuses.has(plan.checkpoint.runStatus)) status = 'canceled';
@@ -35,42 +40,43 @@ export async function persistTaskIntents(
       )
         ? 'pending'
         : 'refused';
-    const inserted =
+    const row =
       intent.kind === 'callback'
-        ? {
-            rows: [
-              await bindCallbackTask(client, workspaceId, {
-                runId,
-                intent,
-                closed: terminalRunStatuses.has(plan.checkpoint.runStatus),
-              }),
-            ],
-          }
-        : await client.query<{ id: string; expires_at: Date; status: string }>(
-            `insert into app.pending_run_tasks(id,workspace_id,run_id,workflow_version_id,node_run_id,invocation_key,kind,config,status,created_at,expires_at,completed_at,context)
-      select $1,$2,$3,run.workflow_version_id,node.id,$4::varchar,$8::varchar,$5::jsonb,$6::varchar,observed.time,observed.time+make_interval(secs=>$7),case when $6::varchar='pending' then null else observed.time end,$9::jsonb
-      from app.workflow_runs run join app.node_runs node on node.workspace_id=run.workspace_id and node.workflow_run_id=run.id
-      cross join (select clock_timestamp() time) observed
-      where run.workspace_id=$2 and run.id=$3 and node.invocation_key=$4::varchar and node.status='succeeded'
-      returning id,expires_at,status`,
-            [
-              generatePersistedId(),
-              workspaceId,
-              runId,
-              intent.invocationKey,
-              JSON.stringify(intent.config),
-              status,
-              intent.config.expiresAfterSeconds,
-              intent.kind,
-              JSON.stringify(intent.context ?? {}),
-            ],
-          );
-    const row = inserted.rows[0];
+        ? await bindCallbackTask(client, workspaceId, {
+            runId,
+            intent,
+            closed: terminalRunStatuses.has(plan.checkpoint.runStatus),
+          })
+        : await insertDeclaredTask(client, {
+            workspaceId,
+            runId,
+            intent,
+            status,
+          });
     if (row === undefined) throw new CoordinatorRunStateCorruptError();
-    const wait = await client.query(
-      `update app.node_runs set status='waiting',control_kind='human_task',output_ref=null,completed_at=null,resume_at=$4,retry_due_at=null,due_wakeup_at=null,wait_kind=null,updated_at=clock_timestamp() where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3 and status='succeeded'`,
-      [workspaceId, runId, intent.invocationKey, row.expires_at],
-    );
+    const n = nodeRuns;
+    const wait = await drizzle(client)
+      .update(n)
+      .set({
+        status: 'waiting',
+        controlKind: 'human_task',
+        outputRef: null,
+        completedAt: null,
+        resumeAt: row.expires_at,
+        retryDueAt: null,
+        dueWakeupAt: null,
+        waitKind: null,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(n.workspaceId, workspaceId),
+          eq(n.workflowRunId, runId),
+          eq(n.invocationKey, intent.invocationKey),
+          eq(n.status, 'succeeded'),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (wait.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
     if (status === 'refused' || row.status === 'submitted')
       await wakeWorkflowRun(client, workspaceId, runId);
@@ -97,17 +103,32 @@ export async function persistConsumedTasks(
   ]) {
     if (node.output?.kind !== 'task' || !completed.has(node.invocationKey))
       continue;
-    const updated = await client.query(
-      `update app.node_runs node set output_ref=task.output_ref from app.pending_run_tasks task where task.workspace_id=$1 and task.run_id=$2 and task.id=$3 and task.invocation_key=$4 and task.status in ('approved','rejected','submitted') and task.output_ref is not null and node.workspace_id=task.workspace_id and node.id=task.node_run_id and node.workflow_run_id=task.run_id and node.invocation_key=task.invocation_key and node.status='succeeded'`,
-      [workspaceId, runId, node.output.taskId, node.invocationKey],
-    );
+    const n = nodeRuns,
+      t = pendingRunTasks;
+    const updated = await drizzle(client)
+      .update(n)
+      .set({ outputRef: t.outputRef })
+      .from(t)
+      .where(
+        and(
+          eq(t.workspaceId, workspaceId),
+          eq(t.runId, runId),
+          eq(t.id, node.output.taskId),
+          eq(t.invocationKey, node.invocationKey),
+          inArray(t.status, ['approved', 'rejected', 'submitted']),
+          sql`${t.outputRef} is not null`,
+          eq(n.workspaceId, t.workspaceId),
+          eq(n.id, t.nodeRunId),
+          eq(n.workflowRunId, t.runId),
+          eq(n.invocationKey, t.invocationKey),
+          eq(n.status, 'succeeded'),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (updated.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
   }
   if (terminalRunStatuses.has(plan.checkpoint.runStatus)) {
-    await client.query(
-      `update app.pending_run_tasks set status=case when status='prepared' then 'canceled' else status end,completed_at=coalesce(completed_at,clock_timestamp()),consumed_at=clock_timestamp() where workspace_id=$1 and run_id=$2 and kind='callback' and node_run_id is null and consumed_at is null`,
-      [workspaceId, runId],
-    );
+    await closeUnboundCallbacks(client, { workspaceId, runId });
   } else {
     const closed = [
       ...plan.checkpoint.invocations,
@@ -122,41 +143,171 @@ export async function persistConsumedTasks(
       ].includes(node.status),
     );
     if (closed.length > 0) {
-      const prepared = await client.query<{
-        id: string;
-        callback_node_id: string;
-        callback_scope_hash: string;
-      }>(
-        `select id,callback_node_id,callback_scope_hash from app.pending_run_tasks where workspace_id=$1 and run_id=$2 and kind='callback' and node_run_id is null and consumed_at is null`,
-        [workspaceId, runId],
-      );
-      if (prepared.rows.length > 0) {
+      const t = pendingRunTasks;
+      // The callback-kind CHECK requires both immutable scope-identity fields.
+      const prepared = await drizzle(client)
+        .select({
+          id: t.id,
+          callback_node_id: sql<string>`${t.callbackNodeId}`,
+          callback_scope_hash: sql<string>`${t.callbackScopeHash}`,
+        })
+        .from(t)
+        .where(
+          and(
+            eq(t.workspaceId, workspaceId),
+            eq(t.runId, runId),
+            eq(t.kind, 'callback'),
+            isNull(t.nodeRunId),
+            isNull(t.consumedAt),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if (prepared.length > 0) {
         const scopes = new Set(
           closed.map(
             (node) =>
               `${node.nodeId}:${callbackScopeHash(node.iterationPath ?? [])}`,
           ),
         );
-        const ids = prepared.rows
+        const ids = prepared
           .filter((task) =>
             scopes.has(`${task.callback_node_id}:${task.callback_scope_hash}`),
           )
           .map((task) => task.id);
         if (ids.length > 0)
-          await client.query(
-            `update app.pending_run_tasks set status=case when status='prepared' then 'canceled' else status end,completed_at=coalesce(completed_at,clock_timestamp()),consumed_at=clock_timestamp() where workspace_id=$1 and run_id=$2 and id=any($3::uuid[]) and node_run_id is null and consumed_at is null`,
-            [workspaceId, runId, ids],
-          );
+          await closeUnboundCallbacks(client, { workspaceId, runId, ids });
       }
     }
   }
-  await client.query(
-    `update app.pending_run_tasks task set
-    status=case when task.status='pending' then 'canceled' else task.status end,
-    completed_at=coalesce(task.completed_at,clock_timestamp()),consumed_at=coalesce(task.consumed_at,clock_timestamp())
-    from app.node_runs node where task.workspace_id=$1 and task.run_id=$2
-      and node.workspace_id=task.workspace_id and node.id=task.node_run_id and node.workflow_run_id=task.run_id
-      and node.status not in ('pending','ready','running','waiting') and task.consumed_at is null`,
-    [workspaceId, runId],
-  );
+  const t = pendingRunTasks,
+    n = nodeRuns;
+  await drizzle(client)
+    .update(t)
+    .set({
+      status: sql`case when ${t.status}='pending' then 'canceled' else ${t.status} end`,
+      completedAt: sql`coalesce(${t.completedAt},clock_timestamp())`,
+      consumedAt: sql`coalesce(${t.consumedAt},clock_timestamp())`,
+    })
+    .from(n)
+    .where(
+      and(
+        eq(t.workspaceId, workspaceId),
+        eq(t.runId, runId),
+        eq(n.workspaceId, t.workspaceId),
+        eq(n.id, t.nodeRunId),
+        eq(n.workflowRunId, t.runId),
+        notInArray(n.status, ['pending', 'ready', 'running', 'waiting']),
+        isNull(t.consumedAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+}
+
+function closeUnboundCallbacks(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    runId: string;
+    ids?: readonly string[];
+  }>,
+) {
+  const t = pendingRunTasks;
+  return drizzle(client)
+    .update(t)
+    .set({
+      status: sql`case when ${t.status}='prepared' then 'canceled' else ${t.status} end`,
+      completedAt: sql`coalesce(${t.completedAt},clock_timestamp())`,
+      consumedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(t.workspaceId, input.workspaceId),
+        eq(t.runId, input.runId),
+        input.ids === undefined
+          ? eq(t.kind, 'callback')
+          : inArray(t.id, [...input.ids]),
+        isNull(t.nodeRunId),
+        isNull(t.consumedAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+}
+async function insertDeclaredTask(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    runId: string;
+    intent: Exclude<
+      NonNullable<RunTransitionPlan['taskIntents']>[number],
+      { kind: 'callback' }
+    >;
+    status: 'canceled' | 'pending' | 'refused';
+  }>,
+) {
+  const { workspaceId, runId, intent, status } = input;
+  const db = drizzle(client),
+    n = nodeRuns,
+    r = workflowRuns;
+  const declaration = db
+    .select({
+      id: sql<string>`${generatePersistedId()}::uuid`.as('id'),
+      workspaceId: sql<string>`${workspaceId}::uuid`.as('workspace_id'),
+      runId: sql<string>`${runId}::uuid`.as('run_id'),
+      workflowVersionId: r.workflowVersionId,
+      nodeRunId: n.id,
+      callbackNodeId: sql`null`.as('callback_node_id'),
+      callbackScope: sql`null`.as('callback_scope'),
+      callbackScopeHash: sql`null`.as('callback_scope_hash'),
+      callbackTokenHash: sql`null`.as('callback_token_hash'),
+      callbackKeyVersion: sql`null`.as('callback_key_version'),
+      openedAt: sql`null`.as('opened_at'),
+      invocationKey: sql<string>`${intent.invocationKey}::varchar`.as(
+        'invocation_key',
+      ),
+      kind: sql<string>`${intent.kind}::varchar`.as('kind'),
+      config: sql`${JSON.stringify(intent.config)}::jsonb`.as('config'),
+      context: sql`${JSON.stringify(intent.context ?? {})}::jsonb`.as(
+        'context',
+      ),
+      status: sql<string>`${status}::varchar`.as('status'),
+      outputRef: sql`null`.as('output_ref'),
+      decidedBy: sql`null`.as('decided_by'),
+      createdAt: sql<Date>`observed.time`.as('created_at'),
+      expiresAt:
+        sql<Date>`observed.time+make_interval(secs=>${intent.config.expiresAfterSeconds})`.as(
+          'expires_at',
+        ),
+      completedAt:
+        sql<Date | null>`case when ${status}::varchar='pending' then null else observed.time end`.as(
+          'completed_at',
+        ),
+      consumedAt: sql`null`.as('consumed_at'),
+    })
+    .from(r)
+    .innerJoin(
+      n,
+      and(eq(n.workspaceId, r.workspaceId), eq(n.workflowRunId, r.id)),
+    )
+    .crossJoin(sql`(select clock_timestamp() time) observed`)
+    .where(
+      and(
+        eq(r.workspaceId, workspaceId),
+        eq(r.id, runId),
+        eq(n.invocationKey, intent.invocationKey),
+        eq(n.status, 'succeeded'),
+      ),
+    );
+  // A successful declaration initializes the expiry in this statement.
+  const [row] = await db
+    .insert(pendingRunTasks)
+    .select(declaration)
+    .returning({
+      id: pendingRunTasks.id,
+      expires_at: sql<Date>`${pendingRunTasks.expiresAt}`.mapWith(
+        pendingRunTasks.expiresAt,
+      ),
+      status: pendingRunTasks.status,
+    })
+    .catch(rethrowQueryFailure);
+  return row;
 }

@@ -1,3 +1,7 @@
+import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { workflowCalls } from '../../schema/runs/calls.js';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { databaseSchema } from '../../schema.js';
@@ -13,21 +17,28 @@ export async function applyIncomingCallCancellation(
   runId: string,
   traceparent?: string,
 ): Promise<boolean> {
-  const incoming = await client.query<{ id: string }>(
-    `select id from app.workflow_calls where workspace_id=$1 and child_run_id=$2
-       and cancel_requested_at is not null and cancel_applied_at is null`,
-    [workspaceId, runId],
-  );
-  const call = incoming.rows[0];
+  const db = drizzle(client),
+    c = workflowCalls,
+    r = workflowRuns;
+  const [call] = await db
+    .select({ id: c.id })
+    .from(c)
+    .where(
+      and(
+        eq(c.workspaceId, workspaceId),
+        eq(c.childRunId, runId),
+        isNotNull(c.cancelRequestedAt),
+        isNull(c.cancelAppliedAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (call === undefined) return false;
-  const run = await client.query<{
-    status: string;
-    cancel_requested_at: Date | null;
-  }>(
-    'select status,cancel_requested_at from app.workflow_runs where workspace_id=$1 and id=$2 for no key update',
-    [workspaceId, runId],
-  );
-  const row = run.rows[0];
+  const [row] = await db
+    .select({ status: r.status, cancel_requested_at: r.cancelRequestedAt })
+    .from(r)
+    .where(and(eq(r.workspaceId, workspaceId), eq(r.id, runId)))
+    .for('no key update')
+    .catch(rethrowQueryFailure);
   if (row === undefined) return false;
   if (
     !terminalRunStatuses.has(row.status) &&
@@ -42,9 +53,16 @@ export async function applyIncomingCallCancellation(
     );
     await wakeWorkflowRun(client, workspaceId, runId, traceparent);
   }
-  await client.query(
-    'update app.workflow_calls set cancel_applied_at=clock_timestamp() where workspace_id=$1 and id=$2 and cancel_applied_at is null',
-    [workspaceId, call.id],
-  );
+  await db
+    .update(c)
+    .set({ cancelAppliedAt: sql`clock_timestamp()` })
+    .where(
+      and(
+        eq(c.workspaceId, workspaceId),
+        eq(c.id, call.id),
+        isNull(c.cancelAppliedAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   return true;
 }
