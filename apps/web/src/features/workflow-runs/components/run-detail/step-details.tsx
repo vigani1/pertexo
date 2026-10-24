@@ -8,7 +8,9 @@ import type { RunTimelineRow } from '../../model/timeline/runs';
 import { shortRunId } from '../../model/list/runs';
 import { CopyButton } from '@/components/ui/copy-button';
 import { InfoHint } from '@/components/patterns/guidance/info-hint';
-import { StepInputData, StepOutputData, type RunDataScope } from './data/outputs';
+import { StepInputData } from './data/inputs';
+import { StepOutputData } from './data/outputs';
+import type { RunDataScope } from './data/value';
 import { Disclosure } from '@/components/ui/disclosure';
 
 function StepDetailsSection({
