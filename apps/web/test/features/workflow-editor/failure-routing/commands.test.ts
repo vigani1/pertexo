@@ -6,8 +6,8 @@ import { canOwnFailureLink } from '@/features/workflow-editor/model/failure-rout
 import {
   removeWorkflowElements,
   restoreWorkflowElements,
-  linkWorkflowNodes,
-} from '@/features/workflow-editor/model/graph/commands';
+} from '@/features/workflow-editor/model/graph/removal';
+import { linkWorkflowNodes } from '@/features/workflow-editor/model/graph/commands';
 import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
 import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/adapter';
 import { createEditorStore } from '@/features/workflow-editor/model/state/store';

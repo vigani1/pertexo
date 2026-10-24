@@ -8,9 +8,9 @@ import {
   addDefinitionNode,
   linkWorkflowNodes,
   moveWorkflowNode,
-  removeWorkflowNode,
   updateWorkflowNode,
 } from '@/features/workflow-editor/model/graph/commands';
+import { removeWorkflowNode } from '@/features/workflow-editor/model/graph/removal';
 import {
   parseNumberField,
   schemaFields,

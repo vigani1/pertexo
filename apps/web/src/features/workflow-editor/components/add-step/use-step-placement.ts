@@ -9,13 +9,7 @@ import {
   STEP_CARD,
 } from '../../model/graph/for-each-body-layout';
 import type { EditorStore } from '../../model/state/store';
-import {
-  addBodyStep,
-  addDefinitionNode,
-  addStepAfter,
-  freePosition,
-  positionAfter,
-} from '../../model/graph/commands';
+import { addBodyStep, addDefinitionNode, addStepAfter, freePosition, positionAfter } from '../../model/graph/commands';
 import { loopOf, scopeOf, type ScopePath } from '../../model/graph/scopes';
 import { findDefinition } from '../../model/graph/adapter';
 import { openOutputPort } from '../../model/quick-add';

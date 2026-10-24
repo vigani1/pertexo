@@ -18,10 +18,12 @@ import {
   addStepAfter,
   linkWorkflowNodes,
   moveWorkflowNodes,
-  removeWorkflowElements,
-  restoreWorkflowElements,
   updateWorkflowNode,
 } from '@/features/workflow-editor/model/graph/commands';
+import {
+  removeWorkflowElements,
+  restoreWorkflowElements,
+} from '@/features/workflow-editor/model/graph/removal';
 import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
 import {
   canLinkSteps,

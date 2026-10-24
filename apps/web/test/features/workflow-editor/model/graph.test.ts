@@ -11,10 +11,12 @@ import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/ada
 import {
   freePosition,
   moveWorkflowNodes,
-  removeWorkflowElements,
-  restoreWorkflowElements,
   updateWorkflowNode,
 } from '@/features/workflow-editor/model/graph/commands';
+import {
+  removeWorkflowElements,
+  restoreWorkflowElements,
+} from '@/features/workflow-editor/model/graph/removal';
 import {
   adoptStepFrom,
   duplicateWorkflowNodes,
