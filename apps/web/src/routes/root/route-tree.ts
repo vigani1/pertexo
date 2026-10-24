@@ -33,7 +33,6 @@ import {
   dataTablesRoute,
   dataTableDetailRoute,
   connectionsRoute,
-  homeRoute,
   inboxRoute,
   runDetailRoute,
   runsRoute,
@@ -44,6 +43,7 @@ import {
   workspaceScopeRoute,
   workspaceShellRoute,
 } from '../workspace/routes';
+import { homeRoute } from '../workspace/home/route';
 import {
   alertsRoute,
   settingsHubRoute,
