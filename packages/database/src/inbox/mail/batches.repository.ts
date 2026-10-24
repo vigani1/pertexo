@@ -2,7 +2,7 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { noticeMailBatches, noticeMailItems } from '../../schema/inbox/mail.js';
 import type { PoolClient } from 'pg';
-import { insertSystemMail } from '../../platform/mail/repository.js';
+import {insertSystemMail} from '../../platform/mail/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { PreferenceRow } from '../preferences/settings.queries.js';
 import { mailItem } from './subjects.queries.js';

@@ -1,4 +1,4 @@
-import type { SealedSystemMailPayload } from '../../platform/mail/repository.js';
+import type { SealedSystemMailPayload } from '../../platform/mail/contract.js';
 import type { WorkspaceNoticeKind } from '@pertexo/contracts';
 type NoticeMailBase = Readonly<{
   id: string;

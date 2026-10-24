@@ -3,11 +3,8 @@ import type { Role } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
 
-import {
-  claimCommand,
-  completeCommand,
-  type CommandIdentity,
-} from '../../platform/idempotency/repository.js';
+import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
+import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { commandKeySchema } from '../command-keys.js';
 

@@ -1,9 +1,6 @@
 import type { PoolClient } from 'pg';
 
-import {
-  claimCommand,
-  completeCommand,
-} from '../../../platform/idempotency/repository.js';
+import {claimCommand, completeCommand} from '../../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import {

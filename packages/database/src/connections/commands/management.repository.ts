@@ -32,11 +32,7 @@ import { connectionFields, selectConnection } from '../records.queries.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
 import { requireConnectionManager } from '../authority.queries.js';
 import { revokeConnectionHealth } from '../health/transitions.repository.js';
-import {
-  claimCommand,
-  completeCommand,
-  findCommandResult,
-} from '../../platform/idempotency/repository.js';
+import {claimCommand, completeCommand, findCommandResult} from '../../platform/idempotency/repository.js';
 import type { ConnectionDatabase } from '../contract.js';
 
 /** Owns atomic creation/idempotency, reads, and revocation transactions. */

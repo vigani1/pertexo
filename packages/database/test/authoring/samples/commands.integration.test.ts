@@ -1,7 +1,7 @@
 import { fixture, save, paste, testIntent } from './support.js';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { IdempotencyConflictError } from '../../../src/platform/idempotency/repository.js';
+import {IdempotencyConflictError} from '../../../src/platform/idempotency/repository.js';
 import {
   authoring,
   actorId,

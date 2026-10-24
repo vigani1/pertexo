@@ -1,4 +1,4 @@
-import type { SystemMailPurpose } from '../../platform/mail/repository.js';
+import type { SystemMailPurpose } from '../../platform/mail/contract.js';
 import {
   type PgTableExtraConfigValue,
   bigint,

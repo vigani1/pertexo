@@ -32,11 +32,7 @@ import { withConnectionTransaction } from '../transactions.repository.js';
 import { selectConnection } from '../records.queries.js';
 import { requireConnectionManager } from '../authority.queries.js';
 import { rotateConnectionHealth } from '../health/transitions.repository.js';
-import {
-  claimCommand,
-  completeCommand,
-  findCommandResult,
-} from '../../platform/idempotency/repository.js';
+import {claimCommand, completeCommand, findCommandResult} from '../../platform/idempotency/repository.js';
 import type { ConnectionDatabase } from '../contract.js';
 
 /** Owns secret rotation idempotency and current-version fencing. */
