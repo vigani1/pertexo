@@ -1,29 +1,25 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  useInfiniteQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query';
-import type { WorkflowInputCase } from '@pertexo/contracts';
-import type { ApiClient } from '@/lib/api/client';
+import { useCaseOwner } from "./use-case-owner";
+import { isUnconfirmedCommand } from "@/lib/api/commands/contract";
+import { useCallback, useState } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import type { WorkflowInputCase } from "@pertexo/contracts";
+import type { ApiClient } from "@/lib/api/client";
 import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
-} from '@/features/auth/session/session-identity.public';
-import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
-import { isApiError } from '@/lib/api/error';
-import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
-import { describeCommandError } from '@/lib/api/error-copy';
+} from "@/features/auth/session/session-identity.public";
+import { getAllAccessibleWorkspaces } from "@/features/workspaces/queries.public";
+import { isApiError } from "@/lib/api/error";
+import { describeCommandError } from "@/lib/api/error-copy";
 import {
   getInputCase,
   sendInputCaseCommand,
   type InputCaseCommand,
-} from '../data/input-cases/api';
+} from "../data/input-cases/api";
 import {
   inputCasesKey,
   inputCasesQueryOptions,
-} from '../data/input-cases/queries';
+} from "../data/input-cases/queries";
 
 function denied(cause: unknown) {
   return (
@@ -34,107 +30,13 @@ function denied(cause: unknown) {
 
 function caseCommandError(cause: unknown) {
   const code = isApiError(cause) ? cause.problem?.code : undefined;
-  if (code === 'workflow.input_case_revision_conflict')
-    return 'This case changed elsewhere. Your edits are still here. Read the current case and review before confirming a new change.';
-  if (code === 'workflow.input_case_limit_exceeded')
-    return 'This workspace or workflow has reached its input-case limit. Remove an unneeded case and try again.';
+  if (code === "workflow.input_case_revision_conflict")
+    return "This case changed elsewhere. Your edits are still here. Read the current case and review before confirming a new change.";
+  if (code === "workflow.input_case_limit_exceeded")
+    return "This workspace or workflow has reached its input-case limit. Remove an unneeded case and try again.";
   if (isUnconfirmedCommand(cause))
-    return 'We couldn’t confirm this change. Retry the exact change within 24 hours; other changes are blocked until it is resolved.';
-  return describeCommandError(cause, 'changing this input case');
-}
-
-function evictCases(cache: QueryClient, key: ReturnType<typeof inputCasesKey>) {
-  void cache.cancelQueries({ queryKey: key });
-  cache.removeQueries({ queryKey: key });
-}
-
-function useCaseOwner({
-  api,
-  cache,
-  userId,
-  workspaceId,
-  workflowId,
-  canWrite,
-  enabled,
-  onClose,
-  onRetire,
-}: Readonly<{
-  api: ApiClient;
-  cache: QueryClient;
-  userId: string;
-  workspaceId: string;
-  workflowId: string;
-  canWrite: boolean;
-  enabled: boolean;
-  onClose: () => void;
-  onRetire: () => void;
-}>) {
-  const ownerRef = useRef<symbol | undefined>(undefined);
-  const controllerRef = useRef<AbortController | undefined>(undefined);
-  const retainedRef = useRef<
-    Readonly<{ command: InputCaseCommand; until: number }> | undefined
-  >(undefined);
-  const previousWrite = useRef(canWrite);
-  const retire = useCallback(() => {
-    ownerRef.current = undefined;
-    controllerRef.current?.abort();
-    controllerRef.current = undefined;
-    retainedRef.current = undefined;
-    onRetire();
-    evictCases(cache, inputCasesKey(userId, workspaceId, workflowId));
-  }, [cache, userId, workspaceId, workflowId, onRetire]);
-  useEffect(() => {
-    if (!enabled) {
-      onClose();
-      previousWrite.current = canWrite;
-      return;
-    }
-    const token = Symbol('input-cases');
-    ownerRef.current = token;
-    const key = inputCasesKey(userId, workspaceId, workflowId);
-    function disposeRequest() {
-      controllerRef.current?.abort();
-      controllerRef.current = undefined;
-      retainedRef.current = undefined;
-    }
-    if (previousWrite.current && !canWrite) retire();
-    previousWrite.current = canWrite;
-    // Missing optional projections and other workflows do not revoke this
-    // case browser. Session/workspace loss and its own authoritative reads do.
-    const unsubscribe = watchWorkspaceReadDenial({
-      queryClient: cache,
-      userId,
-      workspaceId,
-      counts: ({ key: read, error }) =>
-        ownerRef.current === token &&
-        (error.status === 401 ||
-          read.length === 0 ||
-          (read[0] === 'workflows' &&
-            read[1] === 'detail' &&
-            read[2] === workflowId &&
-            (error.status === 403 ||
-              read.length === 3 ||
-              read[3] === 'input-cases'))),
-      denied: retire,
-    });
-    return () => {
-      unsubscribe();
-      if (ownerRef.current === token) ownerRef.current = undefined;
-      disposeRequest();
-      evictCases(cache, key);
-    };
-  }, [
-    api,
-    userId,
-    workspaceId,
-    workflowId,
-    cache,
-    canWrite,
-    enabled,
-    onClose,
-    retire,
-  ]);
-  return { ownerRef, controllerRef, retainedRef, retire };
+    return "We couldn’t confirm this change. Retry the exact change within 24 hours; other changes are blocked until it is resolved.";
+  return describeCommandError(cause, "changing this input case");
 }
 
 /** Metadata in Query, opened payload and exact command only in this owner. */
@@ -214,7 +116,7 @@ export function useInputCases({
       return result;
     } catch (cause) {
       if (ownerRef.current === token)
-        setError(describeCommandError(cause, 'opening the input case'));
+        setError(describeCommandError(cause, "opening the input case"));
       if (denied(cause) && ownerRef.current === token) {
         retire();
       }
@@ -245,7 +147,7 @@ export function useInputCases({
     if (attempt === undefined) return false;
     if (Date.now() >= attempt.until) {
       setError(
-        'The 24-hour recovery window has ended. Inspect current cases before making another change; this retry can no longer guarantee the original result.',
+        "The 24-hour recovery window has ended. Inspect current cases before making another change; this retry can no longer guarantee the original result.",
       );
       return false;
     }
@@ -261,8 +163,8 @@ export function useInputCases({
       ).find((item) => item.id === workspaceId);
       if (ownerRef.current !== token) return false;
       if (
-        workspace?.status !== 'active' ||
-        !workspace.capabilities.includes('workflow:update')
+        workspace?.status !== "active" ||
+        !workspace.capabilities.includes("workflow:update")
       ) {
         retire();
         return false;
@@ -290,7 +192,7 @@ export function useInputCases({
         retire();
       }
       const code = isApiError(cause) ? cause.problem?.code : undefined;
-      setConflict(code === 'workflow.input_case_revision_conflict');
+      setConflict(code === "workflow.input_case_revision_conflict");
       setError(caseCommandError(cause));
       return false;
     } finally {
