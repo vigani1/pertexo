@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useId, useRef, useState, type RefObject } from 'react';
 import {
   API_TOKEN_DEFAULT_LIFETIME_DAYS,
   API_TOKEN_MAX_LIFETIME_DAYS,
@@ -94,64 +94,22 @@ export function CreateTokenForm({
             />
           )}
         </LabelledField>
-        <fieldset
-          ref={scopeGroup}
-          tabIndex={-1}
-          aria-describedby={`${id}-scopes-description${errors.scopes === undefined ? '' : ` ${id}-scopes-error`}`}
-          aria-invalid={errors.scopes !== undefined}
+        <ScopePicker
+          id={id}
+          groupRef={scopeGroup}
+          availableScopes={availableScopes}
+          selectedScopes={selectedScopes}
           disabled={pending}
-          className="flex min-w-0 flex-col gap-3 rounded-sm outline-none focus-ring"
-        >
-          <legend className="mb-2 text-sm font-semibold">Scopes</legend>
-          <p
-            id={`${id}-scopes-description`}
-            className="text-xs leading-relaxed text-muted-foreground"
-          >
-            Choose only what this script needs. Scopes are independent and
-            cannot exceed your current access.
-          </p>
-          {availableScopes.map((scope) => (
-            <label
-              key={scope}
-              className="flex cursor-pointer items-start gap-3 py-1 text-sm"
-            >
-              <Checkbox
-                aria-labelledby={`${id}-${scope.replace(':', '-')}-label`}
-                disabled={pending}
-                checked={selectedScopes.has(scope)}
-                onCheckedChange={(checked) => {
-                  setScopes((previous) =>
-                    checked
-                      ? [...previous, scope]
-                      : previous.filter((value) => value !== scope),
-                  );
-                  setErrors((previous) => ({ ...previous, scopes: undefined }));
-                }}
-                aria-describedby={`${id}-${scope.replace(':', '-')}-hint`}
-              />
-              <span className="flex min-w-0 flex-col gap-1">
-                <span id={`${id}-${scope.replace(':', '-')}-label`}>
-                  {SCOPE_COPY[scope].label}
-                </span>
-                <span
-                  id={`${id}-${scope.replace(':', '-')}-hint`}
-                  className="text-xs leading-relaxed text-muted-foreground"
-                >
-                  {SCOPE_COPY[scope].description}
-                </span>
-              </span>
-            </label>
-          ))}
-          {errors.scopes === undefined ? null : (
-            <p
-              id={`${id}-scopes-error`}
-              role="alert"
-              className="text-xs text-destructive"
-            >
-              {errors.scopes}
-            </p>
-          )}
-        </fieldset>
+          error={errors.scopes}
+          onToggle={({ scope, checked }) => {
+            setScopes((previous) =>
+              checked
+                ? [...previous, scope]
+                : previous.filter((value) => value !== scope),
+            );
+            setErrors((previous) => ({ ...previous, scopes: undefined }));
+          }}
+        />
         <LabelledField
           id={`${id}-expiry`}
           label="Expires in (days)"
@@ -188,5 +146,81 @@ export function CreateTokenForm({
         Create token
       </ProgressButton>
     </form>
+  );
+}
+
+function ScopePicker({
+  id,
+  groupRef,
+  availableScopes,
+  selectedScopes,
+  disabled,
+  error,
+  onToggle,
+}: Readonly<{
+  id: string;
+  groupRef: RefObject<HTMLFieldSetElement | null>;
+  availableScopes: readonly ApiTokenScope[];
+  selectedScopes: ReadonlySet<ApiTokenScope>;
+  disabled: boolean;
+  error: string | undefined;
+  onToggle: (
+    change: Readonly<{ scope: ApiTokenScope; checked: boolean }>,
+  ) => void;
+}>) {
+  return (
+    <fieldset
+      ref={groupRef}
+      tabIndex={-1}
+      aria-describedby={`${id}-scopes-description${error === undefined ? '' : ` ${id}-scopes-error`}`}
+      aria-invalid={error !== undefined}
+      disabled={disabled}
+      className="flex min-w-0 flex-col gap-3 rounded-sm outline-none focus-ring"
+    >
+      <legend className="mb-2 text-sm font-semibold">Scopes</legend>
+      <p
+        id={`${id}-scopes-description`}
+        className="text-xs leading-relaxed text-muted-foreground"
+      >
+        Choose only what this script needs. Scopes are independent and cannot
+        exceed your current access.
+      </p>
+      {availableScopes.map((scope) => (
+        <label
+          key={scope}
+          className="flex cursor-pointer items-start gap-3 py-1 text-sm"
+        >
+          <Checkbox
+            aria-labelledby={`${id}-${scope.replace(':', '-')}-label`}
+            disabled={disabled}
+            checked={selectedScopes.has(scope)}
+            onCheckedChange={(checked) => {
+              onToggle({ scope, checked });
+            }}
+            aria-describedby={`${id}-${scope.replace(':', '-')}-hint`}
+          />
+          <span className="flex min-w-0 flex-col gap-1">
+            <span id={`${id}-${scope.replace(':', '-')}-label`}>
+              {SCOPE_COPY[scope].label}
+            </span>
+            <span
+              id={`${id}-${scope.replace(':', '-')}-hint`}
+              className="text-xs leading-relaxed text-muted-foreground"
+            >
+              {SCOPE_COPY[scope].description}
+            </span>
+          </span>
+        </label>
+      ))}
+      {error === undefined ? null : (
+        <p
+          id={`${id}-scopes-error`}
+          role="alert"
+          className="text-xs text-destructive"
+        >
+          {error}
+        </p>
+      )}
+    </fieldset>
   );
 }

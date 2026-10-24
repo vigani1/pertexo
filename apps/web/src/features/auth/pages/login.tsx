@@ -69,19 +69,6 @@ export function LoginPage({
     </AuthLensFooter>
   );
 
-  const unavailableLens = ({
-    retrying,
-    retry,
-  }: Readonly<{ retrying: boolean; retry: () => void }>) => (
-    <LensUnavailable
-      id="login-unavailable"
-      title="Sign in to continue"
-      retrying={retrying}
-      onRetry={retry}
-    >
-      Sign-in isn’t available right now. Try again in a moment.
-    </LensUnavailable>
-  );
   switch (view.kind) {
     case 'two-factor':
       return (
@@ -161,15 +148,17 @@ export function LoginPage({
               label="Checking how you can sign in…"
             />
           }
-          error={({ retrying, retry }) => unavailableLens({ retrying, retry })}
+          error={({ retrying, retry }) => (
+            <LoginUnavailable retrying={retrying} retry={retry} />
+          )}
         >
           {(options) =>
             !options.password.enabled &&
             options.socialProviders.length === 0 ? (
-              unavailableLens({
-                retrying: capabilities.isFetching,
-                retry: () => void capabilities.refetch(),
-              })
+              <LoginUnavailable
+                retrying={capabilities.isFetching}
+                retry={() => void capabilities.refetch()}
+              />
             ) : (
               <SignInLens
                 apiClient={apiClient}
@@ -196,4 +185,20 @@ export function LoginPage({
         </QueryView>
       );
   }
+}
+
+function LoginUnavailable({
+  retrying,
+  retry,
+}: Readonly<{ retrying: boolean; retry: () => void }>) {
+  return (
+    <LensUnavailable
+      id="login-unavailable"
+      title="Sign in to continue"
+      retrying={retrying}
+      onRetry={retry}
+    >
+      Sign-in isn’t available right now. Try again in a moment.
+    </LensUnavailable>
+  );
 }

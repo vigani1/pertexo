@@ -123,73 +123,14 @@ export function SignInLens({
           />
         </div>
       )}
-      {passwordEnabled ? (
-        <>
-          {providers.length === 0 ? (
-            <div className="mt-6" />
-          ) : (
-            <OrDivider>or with email</OrDivider>
-          )}
-          <AuthForm
-            failure={signIn.failure}
-            failureAction={
-              signIn.mismatch ? (
-                <Link to="/forgot-password" className="inline-link">
-                  Reset your password
-                </Link>
-              ) : undefined
-            }
-            pending={signIn.pending}
-            pendingLabel="Signing in…"
-            submitLabel="Sign in"
-            waitSeconds={signIn.waitSeconds}
-            onSubmit={() => void submit()}
-          >
-            <LabelledField
-              id="login-email"
-              label="Email"
-              {...fields.field('email')}
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  type="email"
-                  autoComplete="email"
-                  disabled={signIn.pending}
-                  {...fields.control('email')}
-                />
-              )}
-            </LabelledField>
-            <PasswordField
-              id="login-password"
-              label="Password"
-              autoComplete="current-password"
-              disabled={signIn.pending}
-              {...fields.field('password')}
-              labelAction={
-                <Link
-                  to="/forgot-password"
-                  aria-label="Forgot your password?"
-                  className="inline-link"
-                >
-                  Forgot?
-                </Link>
-              }
-              {...fields.control('password')}
-            />
-          </AuthForm>
-          <AuthLensFooter>
-            New to Pertexo?{' '}
-            <Link to="/sign-up" search={returnToSearch(returnTo)}>
-              Create an account
-            </Link>
-          </AuthLensFooter>
-        </>
-      ) : signIn.failure === undefined ? null : (
-        <Notice tone="destructive" className="mt-4">
-          {signIn.failure}
-        </Notice>
-      )}
+      <PasswordSignIn
+        enabled={passwordEnabled}
+        hasProviders={providers.length > 0}
+        signIn={signIn}
+        fields={fields}
+        returnTo={returnTo}
+        onSubmit={() => void submit()}
+      />
       {onOrganizationSignIn === undefined ? null : (
         <AuthLensFooter>
           <Button
@@ -205,5 +146,91 @@ export function SignInLens({
         </AuthLensFooter>
       )}
     </AuthLens>
+  );
+}
+
+function PasswordSignIn({
+  enabled,
+  hasProviders,
+  signIn,
+  fields,
+  returnTo,
+  onSubmit,
+}: Readonly<{
+  enabled: boolean;
+  hasProviders: boolean;
+  signIn: ReturnType<typeof useSignIn>;
+  fields: ReturnType<typeof useFieldValues<'email' | 'password'>>;
+  returnTo: string | undefined;
+  onSubmit: () => void;
+}>) {
+  if (!enabled)
+    return signIn.failure === undefined ? null : (
+      <Notice tone="destructive" className="mt-4">
+        {signIn.failure}
+      </Notice>
+    );
+  return (
+    <>
+      {!hasProviders ? (
+        <div className="mt-6" />
+      ) : (
+        <OrDivider>or with email</OrDivider>
+      )}
+      <AuthForm
+        failure={signIn.failure}
+        failureAction={
+          signIn.mismatch ? (
+            <Link to="/forgot-password" className="inline-link">
+              Reset your password
+            </Link>
+          ) : undefined
+        }
+        pending={signIn.pending}
+        pendingLabel="Signing in…"
+        submitLabel="Sign in"
+        waitSeconds={signIn.waitSeconds}
+        onSubmit={onSubmit}
+      >
+        <LabelledField
+          id="login-email"
+          label="Email"
+          {...fields.field('email')}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              type="email"
+              autoComplete="email"
+              disabled={signIn.pending}
+              {...fields.control('email')}
+            />
+          )}
+        </LabelledField>
+        <PasswordField
+          id="login-password"
+          label="Password"
+          autoComplete="current-password"
+          disabled={signIn.pending}
+          {...fields.field('password')}
+          labelAction={
+            <Link
+              to="/forgot-password"
+              aria-label="Forgot your password?"
+              className="inline-link"
+            >
+              Forgot?
+            </Link>
+          }
+          {...fields.control('password')}
+        />
+      </AuthForm>
+      <AuthLensFooter>
+        New to Pertexo?{' '}
+        <Link to="/sign-up" search={returnToSearch(returnTo)}>
+          Create an account
+        </Link>
+      </AuthLensFooter>
+    </>
   );
 }
