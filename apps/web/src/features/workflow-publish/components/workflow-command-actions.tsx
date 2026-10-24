@@ -97,25 +97,7 @@ function EditedSinceNote({
  * follows a successful publish. The issues lens is the editor's to place, so
  * whether it's open comes from the editor.
  */
-export function WorkflowCommandActions({
-  renderFeedback,
-  apiClient,
-  userId,
-  workspace,
-  workflowId,
-  workflow,
-  graph,
-  draft,
-  commandSession,
-  issues,
-  issuesOpen,
-  triggersAvailable,
-  onIssuesOpenChange,
-  onFix,
-  onPublished,
-  testAction,
-  savedDraftCurrent = false,
-}: Readonly<{
+type WorkflowCommandActionsProps = Readonly<{
   testAction?: ReactNode;
   savedDraftCurrent?: boolean;
   renderFeedback: (feedback: ReactNode) => ReactNode;
@@ -135,7 +117,151 @@ export function WorkflowCommandActions({
   onIssuesOpenChange: (open: boolean) => void;
   onFix: (target: WorkflowValidationTarget) => void;
   onPublished: (receipt: PublicationReceipt) => void;
-}>) {
+}>;
+
+export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
+  const model = useWorkflowCommandActions(props);
+  const stamp = model.stamp;
+  return (
+    <>
+      <div className="flex min-w-0 items-center gap-1.5 max-sm:flex-1">
+        <IssuesChip
+          state={model.issues}
+          emptyHint={model.emptyHint}
+          open={model.issuesOpen}
+          onOpenChange={model.onIssuesOpenChange}
+        />
+        {model.testAction}
+        <PublishedRunAction
+          form={model.liveIsForm}
+          canRun={model.canRun}
+          workspaceId={model.workspace.id}
+          workflowId={model.workflowId}
+          submission={model.runSubmission}
+          published={model.workflow === undefined || model.everPublished}
+          loading={model.liveVersion.isFetching}
+          onRunNow={() => {
+            void model.runNow();
+          }}
+          onRunWithInput={() => {
+            model.setRunOpen(true);
+          }}
+        />
+        {model.receipt === undefined ? null : (
+          <EditedSinceNote receipt={model.receipt} draft={model.draft} />
+        )}
+        {model.canPublish ? (
+          <PublicationControls
+            scope={{
+              apiClient: model.apiClient,
+              userId: model.userId,
+              workspaceId: model.workspace.id,
+            }}
+            workflowId={model.workflowId}
+            workflow={model.workflow}
+            graph={model.graph}
+            revision={model.draft.revision}
+            publication={model.publication}
+            isSavedDraftCurrent={model.commandSession.isSavedDraftCurrent}
+            issues={model.issues}
+            emptyHint={model.emptyHint}
+            savedDraftCurrent={model.savedDraftCurrent}
+            capabilities={model.workspace.capabilities}
+            onFix={model.onFix}
+            onPublished={(nextReceipt, hasTriggers) => {
+              model.setStamp({
+                receipt: nextReceipt,
+                hasTriggers,
+                liveAgain:
+                  model.workflow?.publishedVersionId != null &&
+                  model.workflow.publishedVersionId !== nextReceipt.versionId,
+              });
+              model.onPublished(nextReceipt);
+            }}
+          />
+        ) : null}
+      </div>
+      <RunInputDialog
+        key={`${model.userId}:${model.workspace.id}:${model.workflowId}`}
+        open={model.runOpen}
+        pending={model.runSubmission.pending}
+        error={model.runSubmission.error}
+        retryAvailable={model.runSubmission.retryAvailable}
+        recoveryIntent={model.runSubmission.recoveryIntent}
+        publicationConflict={model.runSubmission.publicationConflict}
+        onReviewPublication={async () => {
+          const reviewed = await model.queryClient.query({
+            ...workflowSummaryQueryOptions(
+              model.apiClient,
+              model.userId,
+              model.workspace.id,
+              model.workflowId,
+            ),
+            staleTime: 0,
+          });
+          if (reviewed.publishedVersionId === null)
+            throw new Error('No published version is available to review.');
+          model.runSubmission.clearPublicationConflict();
+          return reviewed.publishedVersionId;
+        }}
+        onOpenChange={model.setRunOpen}
+        onRetry={model.runSubmission.retry}
+        onStartNew={model.runSubmission.startNew}
+        {...(model.workflow === undefined
+          ? {}
+          : {
+              caseScope: {
+                apiClient: model.apiClient,
+                userId: model.userId,
+                workspace: model.workspace,
+                workflow: model.workflow,
+              },
+            })}
+      />
+      {stamp === undefined
+        ? null
+        : model.renderFeedback(
+            <PublishedStamp
+              key={stamp.receipt.versionId}
+              workspaceId={model.workspace.id}
+              workflowId={model.workflowId}
+              versionNumber={stamp.receipt.versionNumber}
+              reused={stamp.receipt.reused}
+              liveAgain={stamp.liveAgain}
+              hasTriggers={stamp.hasTriggers}
+              canRun={model.canRun}
+              onRunNow={() => {
+                model.setStamp(undefined);
+                void model.runNow(stamp.receipt.versionId);
+              }}
+              onDismiss={() => {
+                model.setStamp(undefined);
+              }}
+            />,
+          )}
+    </>
+  );
+}
+
+function useWorkflowCommandActions({
+  renderFeedback,
+  apiClient,
+  userId,
+  workspace,
+  workflowId,
+  workflow,
+  graph,
+  draft,
+  commandSession,
+  issues,
+  issuesOpen,
+  triggersAvailable,
+  onIssuesOpenChange,
+  onFix,
+  onPublished,
+  testAction,
+  savedDraftCurrent = false,
+}: WorkflowCommandActionsProps) {
   const [runOpen, setRunOpen] = useState(false);
   const [stamp, setStamp] = useState<
     Readonly<{
@@ -178,112 +304,37 @@ export function WorkflowCommandActions({
     if (!started) setRunOpen(true);
   }
 
-  return (
-    <>
-      <div className="flex min-w-0 items-center gap-1.5 max-sm:flex-1">
-        <IssuesChip
-          state={issues}
-          emptyHint={emptyHint}
-          open={issuesOpen}
-          onOpenChange={onIssuesOpenChange}
-        />
-        {testAction}
-        <PublishedRunAction
-          form={liveIsForm}
-          canRun={canRun}
-          workspaceId={workspace.id}
-          workflowId={workflowId}
-          submission={runSubmission}
-          published={workflow === undefined || everPublished}
-          loading={liveVersion.isFetching}
-          onRunNow={() => {
-            void runNow();
-          }}
-          onRunWithInput={() => {
-            setRunOpen(true);
-          }}
-        />
-        {receipt === undefined ? null : (
-          <EditedSinceNote receipt={receipt} draft={draft} />
-        )}
-        {canPublish ? (
-          <PublicationControls
-            scope={{ apiClient, userId, workspaceId: workspace.id }}
-            workflowId={workflowId}
-            workflow={workflow}
-            graph={graph}
-            revision={draft.revision}
-            publication={publication}
-            isSavedDraftCurrent={commandSession.isSavedDraftCurrent}
-            issues={issues}
-            emptyHint={emptyHint}
-            savedDraftCurrent={savedDraftCurrent}
-            capabilities={workspace.capabilities}
-            onFix={onFix}
-            onPublished={(nextReceipt, hasTriggers) => {
-              setStamp({
-                receipt: nextReceipt,
-                hasTriggers,
-                liveAgain:
-                  workflow?.publishedVersionId != null &&
-                  workflow.publishedVersionId !== nextReceipt.versionId,
-              });
-              onPublished(nextReceipt);
-            }}
-          />
-        ) : null}
-      </div>
-      <RunInputDialog
-        key={`${userId}:${workspace.id}:${workflowId}`}
-        open={runOpen}
-        pending={runSubmission.pending}
-        error={runSubmission.error}
-        retryAvailable={runSubmission.retryAvailable}
-        recoveryIntent={runSubmission.recoveryIntent}
-        publicationConflict={runSubmission.publicationConflict}
-        onReviewPublication={async () => {
-          const reviewed = await queryClient.query({
-            ...workflowSummaryQueryOptions(
-              apiClient,
-              userId,
-              workspace.id,
-              workflowId,
-            ),
-            staleTime: 0,
-          });
-          if (reviewed.publishedVersionId === null)
-            throw new Error('No published version is available to review.');
-          runSubmission.clearPublicationConflict();
-          return reviewed.publishedVersionId;
-        }}
-        onOpenChange={setRunOpen}
-        onRetry={runSubmission.retry}
-        onStartNew={runSubmission.startNew}
-        {...(workflow === undefined
-          ? {}
-          : { caseScope: { apiClient, userId, workspace, workflow } })}
-      />
-      {stamp === undefined
-        ? null
-        : renderFeedback(
-            <PublishedStamp
-              key={stamp.receipt.versionId}
-              workspaceId={workspace.id}
-              workflowId={workflowId}
-              versionNumber={stamp.receipt.versionNumber}
-              reused={stamp.receipt.reused}
-              liveAgain={stamp.liveAgain}
-              hasTriggers={stamp.hasTriggers}
-              canRun={canRun}
-              onRunNow={() => {
-                setStamp(undefined);
-                void runNow(stamp.receipt.versionId);
-              }}
-              onDismiss={() => {
-                setStamp(undefined);
-              }}
-            />,
-          )}
-    </>
-  );
+  return {
+    issues,
+    emptyHint,
+    issuesOpen,
+    onIssuesOpenChange,
+    testAction,
+    liveIsForm,
+    canRun,
+    workspace,
+    workflowId,
+    runSubmission,
+    workflow,
+    everPublished,
+    liveVersion,
+    runNow,
+    setRunOpen,
+    receipt,
+    draft,
+    canPublish,
+    graph,
+    publication,
+    commandSession,
+    savedDraftCurrent,
+    onFix,
+    setStamp,
+    onPublished,
+    userId,
+    runOpen,
+    queryClient,
+    apiClient,
+    stamp,
+    renderFeedback,
+  } as const;
 }

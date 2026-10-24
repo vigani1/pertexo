@@ -8,6 +8,7 @@ import {
   useReactFlow,
   type EdgeChange,
   type NodeChange,
+  type NodeMouseHandler,
 } from '@xyflow/react';
 import {
   useCallback,
@@ -59,20 +60,7 @@ const DOUBLE_TAP_MS = 350;
  * steps are the container's children, and links never cross a body's
  * edge.
  */
-export function WorkflowCanvas({
-  definitions,
-  editable,
-  overlays,
-  samples,
-  containerRef,
-  onSelectNodes,
-  onRemoveEdge,
-  onDropStep,
-  onPortDrop,
-  onAddToBody,
-  onOpenStep,
-  children,
-}: Readonly<{
+type WorkflowCanvasProps = Readonly<{
   definitions: readonly NodeDefinitionCatalogItem[];
   editable: boolean;
   overlays: CanvasOverlays;
@@ -87,7 +75,111 @@ export function WorkflowCanvas({
   /** A step was double-clicked or double-tapped: show it in its panel. */
   onOpenStep: (nodeId: string) => void;
   children?: ReactNode;
-}>) {
+}>;
+
+export function WorkflowCanvas(props: WorkflowCanvasProps) {
+  const {
+    onNodeClick,
+    containerRef,
+    editable,
+    onDrop,
+    actions,
+    theme,
+    canvasNodes,
+    projection,
+    onCanvasNodesChange,
+    onEdgesChange,
+    linkGestures,
+    fit,
+    children,
+  } = useCanvasInteraction(props);
+  return (
+    <div
+      ref={containerRef}
+      data-workflow-canvas
+      tabIndex={0}
+      aria-label="Workflow canvas"
+      role="region"
+      className="weave absolute inset-0 overflow-hidden -outline-offset-2"
+      onKeyDown={(event) => {
+        // React Flow blurs a step on Escape, which would leave focus on the
+        // page; keep it on the canvas, as a click on empty canvas does.
+        if (
+          event.key === 'Escape' &&
+          event.target instanceof Element &&
+          event.target.classList.contains('react-flow__node')
+        )
+          event.currentTarget.focus();
+      }}
+      onDragOver={(event) => {
+        if (!editable || !event.dataTransfer.types.includes(STEP_DRAG_TYPE))
+          return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+      }}
+      onDrop={onDrop}
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_55%_40%,transparent_30%,color-mix(in_srgb,var(--background)_85%,transparent)_90%)]"
+      />
+      <CanvasActionsContext value={actions}>
+        <ReactFlow<CanvasFlowNode, WorkflowFlowEdge>
+          colorMode={theme}
+          nodes={canvasNodes}
+          edges={projection.edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onCanvasNodesChange}
+          onEdgesChange={onEdgesChange}
+          isValidConnection={linkGestures.isValidConnection}
+          onConnect={linkGestures.onConnect}
+          onConnectEnd={linkGestures.onConnectEnd}
+          onNodeClick={onNodeClick}
+          onPaneClick={(event) => {
+            event.currentTarget
+              .closest<HTMLElement>('[data-workflow-canvas]')
+              ?.focus();
+          }}
+          minZoom={0.2}
+          maxZoom={1.8}
+          deleteKeyCode={null}
+          multiSelectionKeyCode={multiSelectionKeys}
+          selectionKeyCode="Shift"
+          nodesDraggable={editable}
+          nodesConnectable={editable}
+          proOptions={{ hideAttribution: true }}
+          // React Flow's own stylesheet sets the *-default variables and
+          // isn't layered, so it outranks utilities; the plain variables it
+          // reads first are ours to set.
+          className="!bg-transparent [--xy-edge-stroke:color-mix(in_srgb,var(--muted-foreground)_35%,transparent)] [--xy-connectionline-stroke:var(--primary)] [--xy-selection-background-color:color-mix(in_srgb,var(--primary)_8%,transparent)] [--xy-selection-border:1px_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]"
+        >
+          <CanvasZoomLens
+            onFit={() => {
+              fit({ animate: true });
+            }}
+          />
+        </ReactFlow>
+      </CanvasActionsContext>
+      {children}
+    </div>
+  );
+}
+
+function useCanvasInteraction({
+  definitions,
+  editable,
+  overlays,
+  samples,
+  containerRef,
+  onSelectNodes,
+  onRemoveEdge,
+  onDropStep,
+  onPortDrop,
+  onAddToBody,
+  onOpenStep,
+  children,
+}: WorkflowCanvasProps) {
   // Timed by hand: a phone's double tap doesn't reliably fire dblclick.
   const { theme } = useAppearance();
   const lastTap = useRef<Readonly<{ id: string; at: number }>>(undefined);
@@ -159,84 +251,29 @@ export function WorkflowCanvas({
     );
   }
 
-  return (
-    <div
-      ref={containerRef}
-      data-workflow-canvas
-      tabIndex={0}
-      aria-label="Workflow canvas"
-      role="region"
-      className="weave absolute inset-0 overflow-hidden -outline-offset-2"
-      onKeyDown={(event) => {
-        // React Flow blurs a step on Escape, which would leave focus on the
-        // page; keep it on the canvas, as a click on empty canvas does.
-        if (
-          event.key === 'Escape' &&
-          event.target instanceof Element &&
-          event.target.classList.contains('react-flow__node')
-        )
-          event.currentTarget.focus();
-      }}
-      onDragOver={(event) => {
-        if (!editable || !event.dataTransfer.types.includes(STEP_DRAG_TYPE))
-          return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'copy';
-      }}
-      onDrop={onDrop}
-    >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_55%_40%,transparent_30%,color-mix(in_srgb,var(--background)_85%,transparent)_90%)]"
-      />
-      <CanvasActionsContext value={actions}>
-        <ReactFlow<CanvasFlowNode, WorkflowFlowEdge>
-          colorMode={theme}
-          nodes={canvasNodes}
-          edges={projection.edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={onCanvasNodesChange}
-          onEdgesChange={onEdgesChange}
-          isValidConnection={linkGestures.isValidConnection}
-          onConnect={linkGestures.onConnect}
-          onConnectEnd={linkGestures.onConnectEnd}
-          onNodeClick={(event, node) => {
-            if (node.type === 'note') return;
-            const previous = lastTap.current;
-            const now = event.timeStamp;
-            lastTap.current = { id: node.id, at: now };
-            if (previous?.id === node.id && now - previous.at < DOUBLE_TAP_MS) {
-              lastTap.current = undefined;
-              onOpenStep(node.id);
-            }
-          }}
-          onPaneClick={(event) => {
-            event.currentTarget
-              .closest<HTMLElement>('[data-workflow-canvas]')
-              ?.focus();
-          }}
-          minZoom={0.2}
-          maxZoom={1.8}
-          deleteKeyCode={null}
-          multiSelectionKeyCode={multiSelectionKeys}
-          selectionKeyCode="Shift"
-          nodesDraggable={editable}
-          nodesConnectable={editable}
-          proOptions={{ hideAttribution: true }}
-          // React Flow's own stylesheet sets the *-default variables and
-          // isn't layered, so it outranks utilities; the plain variables it
-          // reads first are ours to set.
-          className="!bg-transparent [--xy-edge-stroke:color-mix(in_srgb,var(--muted-foreground)_35%,transparent)] [--xy-connectionline-stroke:var(--primary)] [--xy-selection-background-color:color-mix(in_srgb,var(--primary)_8%,transparent)] [--xy-selection-border:1px_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]"
-        >
-          <CanvasZoomLens
-            onFit={() => {
-              fit({ animate: true });
-            }}
-          />
-        </ReactFlow>
-      </CanvasActionsContext>
-      {children}
-    </div>
-  );
+  const onNodeClick: NodeMouseHandler<CanvasFlowNode> = (event, node) => {
+    if (node.type === 'note') return;
+    const previous = lastTap.current;
+    const now = event.timeStamp;
+    lastTap.current = { id: node.id, at: now };
+    if (previous?.id === node.id && now - previous.at < DOUBLE_TAP_MS) {
+      lastTap.current = undefined;
+      onOpenStep(node.id);
+    }
+  };
+  return {
+    onNodeClick,
+    containerRef,
+    editable,
+    onDrop,
+    actions,
+    theme,
+    canvasNodes,
+    projection,
+    onCanvasNodesChange,
+    onEdgesChange,
+    linkGestures,
+    fit,
+    children,
+  } as const;
 }

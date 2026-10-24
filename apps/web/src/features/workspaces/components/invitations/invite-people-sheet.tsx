@@ -25,17 +25,144 @@ import { useInviteBatch } from './use-invite-batch';
  * Invite several people at once, as chips, with the role they start with.
  * Each address gets its own result as the invitations go out.
  */
-export function InvitePeopleSheet({
-  open,
-  roles,
-  command,
-  onClose,
-}: Readonly<{
+type InvitePeopleSheetProps = Readonly<{
   open: boolean;
   roles: readonly ManagedRole[];
   command: InvitationCommand;
   onClose: () => void;
-}>) {
+}>;
+
+export function InvitePeopleSheet(props: InvitePeopleSheetProps) {
+  const model = useInvitationForm(props);
+  return (
+    <Sheet
+      open={model.open}
+      onOpenChange={(next) => {
+        if (!next) model.close();
+      }}
+    >
+      <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
+        <form
+          noValidate
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(event) => {
+            event.preventDefault();
+            model.submit();
+          }}
+        >
+          <SheetHeader>
+            <SheetTitle>Invite people</SheetTitle>
+            <SheetDescription>
+              Each person gets an email with their own link, and signs in with
+              the address you enter here.
+            </SheetDescription>
+          </SheetHeader>
+          <SheetBody className="flex flex-col gap-5">
+            {model.batch.rows === undefined ? (
+              <FieldGroup>
+                <EmailChipsField
+                  id={`${model.id}-emails`}
+                  emails={model.emails}
+                  draft={model.draft}
+                  disabled={model.command.locked}
+                  error={model.validation.error('emails')}
+                  inputRef={model.validation.register('emails')}
+                  onDraftChange={(next) => {
+                    model.setDraft(next);
+                    if (model.validation.error('emails') !== undefined)
+                      model.validation.change('emails', undefined);
+                  }}
+                  onCommit={model.commit}
+                  onRemove={(email) => {
+                    model.setEmails(
+                      model.emails.filter((candidate) => candidate !== email),
+                    );
+                  }}
+                />
+                <LabelledField
+                  id={`${model.id}-role`}
+                  label="Role"
+                  description="You can change it later from the Members tab."
+                >
+                  {(control) => (
+                    <RoleSelectWithSummaries
+                      value={model.role}
+                      roles={model.roles}
+                      disabled={model.command.locked}
+                      onChange={model.setRole}
+                      triggerProps={control}
+                    />
+                  )}
+                </LabelledField>
+              </FieldGroup>
+            ) : (
+              <InviteResults
+                rows={model.batch.rows}
+                busy={model.batch.sending || model.command.pending}
+                onRetry={() => void model.batch.retryPaused()}
+                onSkip={model.batch.skipPaused}
+              />
+            )}
+          </SheetBody>
+          <SheetFooter>
+            {model.batch.rows === undefined ? (
+              <>
+                <Button type="button" variant="ghost" onClick={model.close}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={model.command.locked}
+                >
+                  {model.pendingCount > 1
+                    ? `Send ${String(model.pendingCount)} invitations`
+                    : 'Send invitation'}
+                </Button>
+              </>
+            ) : (
+              <>
+                {/* Addresses that weren't sent go back into the form. */}
+                {model.failedEmails.length > 0 && !model.batch.sending ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={model.command.locked}
+                    onClick={() => {
+                      model.setEmails(model.failedEmails);
+                      model.setDraft('');
+                      model.batch.reset();
+                      model.validation.reset();
+                    }}
+                  >
+                    Back to edit
+                  </Button>
+                ) : null}
+                <ProgressButton
+                  type="button"
+                  variant="primary"
+                  pending={model.batch.sending}
+                  pendingLabel="Sending…"
+                  disabled={model.command.locked}
+                  onClick={model.close}
+                >
+                  Done
+                </ProgressButton>
+              </>
+            )}
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function useInvitationForm({
+  open,
+  roles,
+  command,
+  onClose,
+}: InvitePeopleSheetProps) {
   const id = useId();
   const notifications = useNotifications();
   const [emails, setEmails] = useState<readonly string[]>([]);
@@ -91,125 +218,23 @@ export function InvitePeopleSheet({
       batch.start(absorbed.emails, role);
   }
 
-  return (
-    <Sheet
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) close();
-      }}
-    >
-      <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
-        <form
-          noValidate
-          className="flex min-h-0 flex-1 flex-col"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <SheetHeader>
-            <SheetTitle>Invite people</SheetTitle>
-            <SheetDescription>
-              Each person gets an email with their own link, and signs in with
-              the address you enter here.
-            </SheetDescription>
-          </SheetHeader>
-          <SheetBody className="flex flex-col gap-5">
-            {batch.rows === undefined ? (
-              <FieldGroup>
-                <EmailChipsField
-                  id={`${id}-emails`}
-                  emails={emails}
-                  draft={draft}
-                  disabled={command.locked}
-                  error={validation.error('emails')}
-                  inputRef={validation.register('emails')}
-                  onDraftChange={(next) => {
-                    setDraft(next);
-                    if (validation.error('emails') !== undefined)
-                      validation.change('emails', undefined);
-                  }}
-                  onCommit={commit}
-                  onRemove={(email) => {
-                    setEmails(
-                      emails.filter((candidate) => candidate !== email),
-                    );
-                  }}
-                />
-                <LabelledField
-                  id={`${id}-role`}
-                  label="Role"
-                  description="You can change it later from the Members tab."
-                >
-                  {(control) => (
-                    <RoleSelectWithSummaries
-                      value={role}
-                      roles={roles}
-                      disabled={command.locked}
-                      onChange={setRole}
-                      triggerProps={control}
-                    />
-                  )}
-                </LabelledField>
-              </FieldGroup>
-            ) : (
-              <InviteResults
-                rows={batch.rows}
-                busy={batch.sending || command.pending}
-                onRetry={() => void batch.retryPaused()}
-                onSkip={batch.skipPaused}
-              />
-            )}
-          </SheetBody>
-          <SheetFooter>
-            {batch.rows === undefined ? (
-              <>
-                <Button type="button" variant="ghost" onClick={close}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={command.locked}
-                >
-                  {pendingCount > 1
-                    ? `Send ${String(pendingCount)} invitations`
-                    : 'Send invitation'}
-                </Button>
-              </>
-            ) : (
-              <>
-                {/* Addresses that weren't sent go back into the form. */}
-                {failedEmails.length > 0 && !batch.sending ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={command.locked}
-                    onClick={() => {
-                      setEmails(failedEmails);
-                      setDraft('');
-                      batch.reset();
-                      validation.reset();
-                    }}
-                  >
-                    Back to edit
-                  </Button>
-                ) : null}
-                <ProgressButton
-                  type="button"
-                  variant="primary"
-                  pending={batch.sending}
-                  pendingLabel="Sending…"
-                  disabled={command.locked}
-                  onClick={close}
-                >
-                  Done
-                </ProgressButton>
-              </>
-            )}
-          </SheetFooter>
-        </form>
-      </SheetContent>
-    </Sheet>
-  );
+  return {
+    open,
+    close,
+    submit,
+    batch,
+    id,
+    emails,
+    draft,
+    command,
+    validation,
+    setDraft,
+    commit,
+    setEmails,
+    role,
+    roles,
+    setRole,
+    pendingCount,
+    failedEmails,
+  } as const;
 }
