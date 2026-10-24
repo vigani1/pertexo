@@ -1,5 +1,5 @@
 import { createApiClient } from './client';
-import { readBrowserCsrfToken } from './csrf';
+import { readBrowserCsrfToken } from './transport/csrf';
 
 export function createBrowserApiClient() {
   return createApiClient({

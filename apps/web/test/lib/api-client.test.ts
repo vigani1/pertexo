@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isApiError, type ApiError } from '../../src/lib/api/error';
 import { createApiClient } from '../../src/lib/api/client';
-import { readBrowserCsrfToken } from '../../src/lib/api/csrf';
+import { readBrowserCsrfToken } from '../../src/lib/api/transport/csrf';
 
 const csrfToken = 'csrf-token-1234567890';
 const requestId = 'request-123';
