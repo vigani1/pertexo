@@ -2,7 +2,10 @@ import {
   connectionScopeSql,
   type ConnectionScope,
 } from '../../../tenant-access/resources/connections/scope.js';
-import { bindResourcePredicate } from '../../../tenant-access/resources/scope.queries.js';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { promotionConnection } from './source.queries.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
@@ -69,17 +72,25 @@ export async function inspectPromotionRequirements(
     ),
   ].sort();
   if (ids.length > 0) {
-    const parameters: unknown[] = [workspaceId, ids];
-    const visible = bindResourcePredicate(
-      connectionScopeSql(scope),
-      parameters,
-    );
-    const rows = (
-      await client.query<{ id: string; name: string | null; status: string }>(
-        `select id,case when ${visible} then name else null end name,status from app.connections connection where workspace_id=$1 and id=any($2::uuid[]) order by id for share`,
-        parameters,
+    const visible = connectionScopeSql(scope, sql`${promotionConnection}`);
+    const rows = await drizzle(client)
+      .select({
+        id: promotionConnection.id,
+        name: sql<
+          string | null
+        >`case when ${visible} then ${promotionConnection.name} else null end`,
+        status: promotionConnection.status,
+      })
+      .from(promotionConnection)
+      .where(
+        and(
+          eq(promotionConnection.workspaceId, workspaceId),
+          inArray(promotionConnection.id, ids),
+        ),
       )
-    ).rows;
+      .orderBy(asc(promotionConnection.id))
+      .for('share')
+      .catch(rethrowQueryFailure);
     for (const id of ids) {
       const connection = rows.find((row) => row.id === id);
       report.push({
