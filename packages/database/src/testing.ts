@@ -196,7 +196,7 @@ export {
   NodeAttemptOutputInvalidError,
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
-} from './attempts/store.js';
+} from './attempts/repository.js';
 export type {
   CompleteNodeAttemptResult,
   NodeAttemptCompletion,
@@ -205,7 +205,7 @@ export type {
   NodeAttemptStoredInputs,
   NodeAttemptLease,
   NodeAttemptRunStore,
-} from './attempts/store.js';
+} from './attempts/repository.js';
 export {
   createWorkflowRunDatabase,
   WorkflowRunNotExecutableError,

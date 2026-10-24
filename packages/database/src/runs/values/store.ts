@@ -5,11 +5,11 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { withWorkspaceWriteClient } from '../../attempts/transactions.js';
+import { withWorkspaceWriteClient } from '../../attempts/transactions.repository.js';
 import {
   lockCapabilityExecution,
   assertCapabilityExecution,
-} from '../../attempts/dispatch/fence.js';
+} from '../../attempts/dispatch/fence.repository.js';
 import { RunValuesLimitError, type RunValuesStore } from './records.js';
 
 export function createRunValuesStore(

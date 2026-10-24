@@ -17,7 +17,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../platform/pool/runtime.js';
-import { withWorkspaceWriteClient } from '../attempts/transactions.js';
+import { withWorkspaceWriteClient } from '../attempts/transactions.repository.js';
 import type { WorkerDataTablesStore } from './contract.js';
 import { readQuotas, requireTable } from './definitions.queries.js';
 import { findRows } from './rows.queries.js';
@@ -26,7 +26,7 @@ import {
   lockCapabilityExecution,
   assertCapabilityExecution,
   ExecutionCapabilityExpiredError,
-} from '../attempts/dispatch/fence.js';
+} from '../attempts/dispatch/fence.repository.js';
 export function createWorkerDataTablesStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

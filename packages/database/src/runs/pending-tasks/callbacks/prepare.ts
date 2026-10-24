@@ -8,7 +8,7 @@ import type { PoolClient } from 'pg';
 import {
   lockCapabilityExecution,
   assertCapabilityExecution,
-} from '../../../attempts/dispatch/fence.js';
+} from '../../../attempts/dispatch/fence.repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import {
   CallbackCapacityError,

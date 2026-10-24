@@ -13,7 +13,7 @@ import {
   type claimDeliverySchema,
   type NodeAttemptDelivery,
 } from '../contract.js';
-import { withWorkspaceWriteClient } from '../transactions.js';
+import { withWorkspaceWriteClient } from '../transactions.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 
 export const nodeAttemptConsumerName = 'node-attempt-worker';

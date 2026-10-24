@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 
 import { recordInputSchema, type NodeAttemptRunStore } from '../contract.js';
-import { withWorkspaceWriteClient } from '../transactions.js';
+import { withWorkspaceWriteClient } from '../transactions.repository.js';
 import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 
 type RecordInputRequest = Parameters<

@@ -7,7 +7,10 @@ import {
   NodeAttemptStateCorruptError,
   type NodeAttemptRunStore,
 } from '../contract.js';
-import { assertNotAborted, withWorkspaceWriteClient } from '../transactions.js';
+import {
+  assertNotAborted,
+  withWorkspaceWriteClient,
+} from '../transactions.repository.js';
 
 export async function heartbeatNodeAttempt(
   pool: Pool,

@@ -7,10 +7,10 @@ import {
   NodeAttemptStateCorruptError,
 } from '../contract.js';
 import type { CompleteNodeAttemptResult } from '../contract.js';
-import { completeReceipt } from './receipts.js';
+import { completeReceipt } from './receipts.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
-import { persistConnectionHealthObservation } from './connection-health.js';
+import { persistConnectionHealthObservation } from './connection-health.repository.js';
 import type {
   CompletionInput,
   SuspendedOutcome,
