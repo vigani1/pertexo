@@ -578,12 +578,12 @@ deleting it) and asks before leaving the editor. No effect copies keystrokes
 between stores.
 
 The Inputs tab lists each mapping as a compact `field ← source` row
-(`input-mappings/mapping-summary.tsx`, words from
-`model/inspector/mapping-summary.ts`): the field, the source as a chip (a step ›
-path, the run input, the loop item, a fixed value or an expression with its code
-under it) and the value type. The row is the disclosure button for its editor,
-which opens in place; rows that need attention and rows made there start open,
-and Fix opens the row it names before focusing its field.
+(`input-mappings/summary.tsx`, words from `model/inspector/mapping-summary.ts`):
+the field, the source as a chip (a step › path, the run input, the loop item, a
+fixed value or an expression with its code under it) and the value type. The row
+is the disclosure button for its editor, which opens in place; rows that need
+attention and rows made there start open, and Fix opens the row it names before
+focusing its field.
 
 Catalog config/input/output schemas arrive as **JSON Schema documents**, not
 executable Zod schemas. Do not cast them to Zod or import server registrations.
