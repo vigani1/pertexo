@@ -447,13 +447,18 @@ describe('workflow tags dialog', () => {
         ({ request }) => {
           const after = new URL(request.url).searchParams.get('after');
           reads();
-          const start = after === null ? 0 : after === cursor ? 25 : 50;
+          let start = 50;
+          if (after === null) start = 0;
+          else if (after === cursor) start = 25;
           return HttpResponse.json({
             items: ids
               .slice(start, start + 25)
               .map((id) => ({ workflowId: id, organizationRevision: 1 })),
             nextCursor:
-              start === 0 ? cursor : start === 25 ? 'opaque-page2' : null,
+              new Map([
+                [0, cursor],
+                [25, 'opaque-page2'],
+              ]).get(start) ?? null,
           });
         },
       ),

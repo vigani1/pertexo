@@ -87,17 +87,10 @@ async function installRoutes(page: Page) {
     const query = new URL(route.request().url()).searchParams;
     runQueries.push(query);
     const status = query.get('status');
-    await route.fulfill({
-      json: {
-        items:
-          status === 'failed'
-            ? [run(failedRunId, 'failed')]
-            : status === null
-              ? [run(runId, 'succeeded')]
-              : [],
-        nextCursor: null,
-      },
-    });
+    const items = [];
+    if (status === 'failed') items.push(run(failedRunId, 'failed'));
+    else if (status === null) items.push(run(runId, 'succeeded'));
+    await route.fulfill({ json: { items, nextCursor: null } });
   });
   for (const [id, status] of [
     [runId, 'succeeded'],

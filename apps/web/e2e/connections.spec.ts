@@ -276,6 +276,10 @@ test('recovers run-rejected health, pages published usage, rotates to unknown an
   let status: 'active' | 'revoked' | 'reauthorization_required' =
     'reauthorization_required';
   let lastTestedAt: string | null = null;
+  function lastHealthTransitionSource() {
+    if (currentSecretVersionId !== secretVersionId) return 'rotation';
+    return lastTestedAt === null ? 'run' : 'test';
+  }
   const currentConnection = () => ({
     id: connectionId,
     workspaceId,
@@ -293,12 +297,7 @@ test('recovers run-rejected health, pages published usage, rotates to unknown an
           : null,
       lastRunObservedAt: timestamp,
       lastHealthTransitionAt: timestamp,
-      lastHealthTransitionSource:
-        currentSecretVersionId !== secretVersionId
-          ? 'rotation'
-          : lastTestedAt === null
-            ? 'run'
-            : 'test',
+      lastHealthTransitionSource: lastHealthTransitionSource(),
     },
     createdAt: timestamp,
     updatedAt: timestamp,

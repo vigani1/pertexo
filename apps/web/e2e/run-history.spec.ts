@@ -118,21 +118,25 @@ async function installRoutes(page: Page, workflowName?: string) {
     const query = new URL(route.request().url()).searchParams;
     const filtered = query.get('status') === 'succeeded';
     const after = query.get('after');
+    if (filtered)
+      return route.fulfill({
+        json: {
+          items: [run(firstRunId, 'succeeded', workflowName)],
+          nextCursor: null,
+        },
+      });
+    if (after === null)
+      return route.fulfill({
+        json: {
+          items: [run(firstRunId, 'succeeded', workflowName)],
+          nextCursor: 'next',
+        },
+      });
     return route.fulfill({
-      json: filtered
-        ? {
-            items: [run(firstRunId, 'succeeded', workflowName)],
-            nextCursor: null,
-          }
-        : after === null
-          ? {
-              items: [run(firstRunId, 'succeeded', workflowName)],
-              nextCursor: 'next',
-            }
-          : {
-              items: [run(secondRunId, 'failed', workflowName)],
-              nextCursor: null,
-            },
+      json: {
+        items: [run(secondRunId, 'failed', workflowName)],
+        nextCursor: null,
+      },
     });
   });
   await page.route(

@@ -332,13 +332,10 @@ describe('workspace home', () => {
         ({ request }) => {
           // The first page holds recent workflows; a name query searches all.
           const query = new URL(request.url).searchParams.get('query');
+          if (query === null)
+            return HttpResponse.json({ items: [workflow()], nextCursor: null });
           return HttpResponse.json({
-            items:
-              query === null
-                ? [workflow()]
-                : query.toLowerCase() === 'customers 0517'
-                  ? [older]
-                  : [],
+            items: query.toLowerCase() === 'customers 0517' ? [older] : [],
             nextCursor: null,
           });
         },

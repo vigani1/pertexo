@@ -68,11 +68,12 @@ describe('the editor issues chip’s credential readiness', () => {
       await event.click(await screen.findByRole('button', { name: '1 issue' }));
       const fix = await screen.findByRole('button', { name: /^Fix:/u });
       expect(fix).toHaveAccessibleName(
-        status === 'missing'
-          ? 'Fix: Choose a Slack connection for this step.'
-          : status === 'revoked'
-            ? 'Fix: Ops bot was revoked. Choose another Slack connection.'
-            : 'Fix: Ops bot needs reauthorizing. Reconnect it or choose another Slack connection.',
+        {
+          missing: 'Fix: Choose a Slack connection for this step.',
+          revoked: 'Fix: Ops bot was revoked. Choose another Slack connection.',
+          reauthorization_required:
+            'Fix: Ops bot needs reauthorizing. Reconnect it or choose another Slack connection.',
+        }[status],
       );
       await event.click(fix);
       const picker = await screen.findByLabelText('Slack connection');

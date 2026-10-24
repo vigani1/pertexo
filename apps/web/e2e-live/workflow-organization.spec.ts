@@ -174,17 +174,28 @@ async function command({
   } catch (error) {
     const matches = await button.count().catch(() => 0);
     failedControl = {
-      action:
-        suffix === '/favorite'
-          ? 'favorite'
-          : suffix === '/invitations'
-            ? 'invitation'
-            : 'other',
+      action: actionForSuffix(suffix),
       matches,
       enabled:
         matches === 1 ? await button.isEnabled().catch(() => null) : null,
     };
     throw error;
+  }
+}
+function actionForSuffix(suffix: string) {
+  if (suffix === '/favorite') return 'favorite';
+  if (suffix === '/invitations') return 'invitation';
+  return 'other';
+}
+function ownedRole() {
+  const role = process.env.PERTEXO_ORGANIZATION_ROLE;
+  switch (role) {
+    case 'viewer':
+    case 'builder':
+    case 'admin':
+      return role;
+    default:
+      throw new Error('Explicit owned role case required');
   }
 }
 async function openFilters(page: Page) {
@@ -1060,15 +1071,6 @@ test('ordinary owner persists shared organization, exact recovery and private di
     beta,
     folderId: child.id,
     phase,
-    role:
-      process.env.PERTEXO_ORGANIZATION_ROLE === 'viewer'
-        ? 'viewer'
-        : process.env.PERTEXO_ORGANIZATION_ROLE === 'builder'
-          ? 'builder'
-          : process.env.PERTEXO_ORGANIZATION_ROLE === 'admin'
-            ? 'admin'
-            : (() => {
-                throw new Error('Explicit owned role case required');
-              })(),
+    role: ownedRole(),
   });
 });

@@ -147,29 +147,39 @@ for (const [category, after, label] of changes) {
           },
         ],
       };
-      renderInRouter(
-        context === 'publish' ? (
-          <PublishChanges
-            summary={summarizePublish(after, version(base))}
-            state="ready"
-          />
-        ) : context === 'approval' ? (
-          <ReviewCandidate graph={after} liveGraph={base} />
-        ) : context === 'conflict' ? (
-          <EditorStoreContext value={store}>
-            <ConflictCompareDialog open onOpenChange={() => undefined} />
-          </EditorStoreContext>
-        ) : context === 'promotion' ? (
-          <PromotionReview
-            review={review}
-            acknowledged={[]}
-            locked={false}
-            onAcknowledge={() => undefined}
-          />
-        ) : (
-          <VersionDiffSummary from={version(base)} to={version(after)} />
-        ),
-      );
+      function reviewContent() {
+        switch (context) {
+          case 'publish':
+            return (
+              <PublishChanges
+                summary={summarizePublish(after, version(base))}
+                state="ready"
+              />
+            );
+          case 'approval':
+            return <ReviewCandidate graph={after} liveGraph={base} />;
+          case 'conflict':
+            return (
+              <EditorStoreContext value={store}>
+                <ConflictCompareDialog open onOpenChange={() => undefined} />
+              </EditorStoreContext>
+            );
+          case 'promotion':
+            return (
+              <PromotionReview
+                review={review}
+                acknowledged={[]}
+                locked={false}
+                onAcknowledge={() => undefined}
+              />
+            );
+          case 'versions':
+            return (
+              <VersionDiffSummary from={version(base)} to={version(after)} />
+            );
+        }
+      }
+      renderInRouter(reviewContent());
       expect(
         (await screen.findAllByText(label)).some(
           (element) => element.closest('pre, textarea') === null,

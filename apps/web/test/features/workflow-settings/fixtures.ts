@@ -25,6 +25,12 @@ export const connectionId = '44444444-4444-4444-8444-444444444444';
 export const etag = `"draft.${'a'.repeat(43)}"`;
 export const etagB = `"draft.${'b'.repeat(43)}"`;
 export const etagC = `"draft.${'c'.repeat(43)}"`;
+function draftRevision(currentEtag: string) {
+  if (currentEtag === etag) return 3;
+  if (currentEtag === etagB) return 4;
+  return 5;
+}
+
 export const workflowApi = `${api}/workflows/${workflowId}`;
 
 /** Beyond reading the workspace and its workflows. */
@@ -165,7 +171,7 @@ export function draftResponse(currentGraph: unknown, currentEtag: string) {
   return HttpResponse.json(
     {
       workflowId,
-      revision: currentEtag === etag ? 3 : currentEtag === etagB ? 4 : 5,
+      revision: draftRevision(currentEtag),
       graph: currentGraph,
       compatibility,
       updatedAt: '2026-09-14T10:01:00.000Z',

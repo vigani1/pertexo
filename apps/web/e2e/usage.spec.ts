@@ -67,45 +67,45 @@ async function install(
           nextCursor: null,
         },
       });
-    if (url.pathname.endsWith('/usage-capacity'))
-      return capacityStatus === 0
-        ? route.abort('failed')
-        : capacityStatus !== 200
-          ? route.fulfill({
-              status: capacityStatus,
-              contentType: 'application/problem+json',
-              json: {
-                type: 'about:blank',
-                title: 'Forbidden',
-                status: capacityStatus,
-                code: 'identity.forbidden',
-                requestId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-              },
-            })
-          : route.fulfill({
-              json: {
-                asOf: timestamp,
-                execution: {
-                  activeRuns: 1,
-                  reservedActiveSlots: 1,
-                  activeCapacityConsumed: 2,
-                  queuedRuns: 1,
-                  policy: {
-                    state: options.policy ?? 'active',
-                    version: 1,
-                    activeRunLimit: 5,
-                    queuedRunLimit: 100,
-                  },
-                },
-                artifacts: {
-                  chargedBytes: capacityBytes,
-                  byteLimit: '0',
-                  chargedCount: 1,
-                  artifactCountLimit: 0,
-                  source: 'stored',
-                },
-              },
-            });
+    if (url.pathname.endsWith('/usage-capacity')) {
+      if (capacityStatus === 0) return route.abort('failed');
+      if (capacityStatus !== 200)
+        return route.fulfill({
+          status: capacityStatus,
+          contentType: 'application/problem+json',
+          json: {
+            type: 'about:blank',
+            title: 'Forbidden',
+            status: capacityStatus,
+            code: 'identity.forbidden',
+            requestId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+          },
+        });
+      return route.fulfill({
+        json: {
+          asOf: timestamp,
+          execution: {
+            activeRuns: 1,
+            reservedActiveSlots: 1,
+            activeCapacityConsumed: 2,
+            queuedRuns: 1,
+            policy: {
+              state: options.policy ?? 'active',
+              version: 1,
+              activeRunLimit: 5,
+              queuedRunLimit: 100,
+            },
+          },
+          artifacts: {
+            chargedBytes: capacityBytes,
+            byteLimit: '0',
+            chargedCount: 1,
+            artifactCountLimit: 0,
+            source: 'stored',
+          },
+        },
+      });
+    }
     if (url.pathname.endsWith('/run-statistics')) {
       if (
         url.searchParams.get('breakdown') === 'workflow' &&

@@ -1,3 +1,4 @@
+import { getRequestUrl } from '../../support/request';
 import { QueryClient } from '@tanstack/react-query';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
@@ -116,12 +117,7 @@ describe('connection access fences', () => {
       const api = createApiClient({
         readCsrfToken: () => undefined,
         fetch: async (url, init) => {
-          const path =
-            typeof url === 'string'
-              ? url
-              : url instanceof URL
-                ? url.href
-                : url.url;
+          const path = getRequestUrl(url);
           if (path.includes(`/connections/${connectionId}`)) {
             if (init?.signal == null) throw new Error('Read must be abortable');
             dispatched.resolve(init.signal);
