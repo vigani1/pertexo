@@ -122,8 +122,8 @@ export async function captureSampleSource(
               eq(node.status, 'succeeded'),
               isNotNull(node.outputRef),
               isNull(run.detailsPurgedAt),
-              sql.raw(retainedTestRunSql('run', 'clock_timestamp()')),
-              sql`(${run.completedAt} is null or ${run.completedAt}>clock_timestamp()-${sql.raw(runRetentionIntervalSql('run'))})`,
+              retainedTestRunSql('run', 'clock_timestamp()'),
+              sql`(${run.completedAt} is null or ${run.completedAt}>clock_timestamp()-${runRetentionIntervalSql('run')})`,
             ),
           )
           .catch(rethrowQueryFailure);

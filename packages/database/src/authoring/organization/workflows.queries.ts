@@ -23,7 +23,7 @@ import { workflows } from '../../schema/authoring/workflows.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
-import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import type { DatabaseConfig } from '../../config.js';

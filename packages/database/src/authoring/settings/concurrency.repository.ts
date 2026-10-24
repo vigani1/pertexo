@@ -228,7 +228,7 @@ async function readConcurrencySettings(
             eq(usageEvents.category, 'trigger.skipped'),
             gt(
               usageEvents.occurredAt,
-              sql`statement_timestamp()-${sql.raw(RUN_SUMMARY_RETENTION_SQL)}`,
+              sql`statement_timestamp()-${RUN_SUMMARY_RETENTION_SQL}`,
             ),
           ),
         )

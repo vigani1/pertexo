@@ -67,7 +67,7 @@ export async function rebindPromotionConnections(
             and(
               eq(promotionConnection.workspaceId, workspaceId),
               inArray(sql`lower(${promotionConnection.name})`, names),
-              connectionScopeSql(scope, sql`${promotionConnection}`),
+              connectionScopeSql(scope, promotionConnection),
             ),
           )
           .orderBy(asc(promotionConnection.id))

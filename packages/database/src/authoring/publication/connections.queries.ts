@@ -31,7 +31,7 @@ export async function connectionReferenceIssues(
   const connection = alias(connections, 'connection');
   const permitted = connectionScopeSql(
     await readConnectionScope(client, actor, 'connection:use'),
-    sql`${connection}`,
+    connection,
   );
   const rows =
     ids.length === 0

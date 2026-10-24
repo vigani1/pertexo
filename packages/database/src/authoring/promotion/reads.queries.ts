@@ -8,7 +8,7 @@ import {
 import { auditEvents, users } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
-import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 
 import { requirePromotionAuthority } from './authority.queries.js';
 import type { PromotionContext, WorkflowPromotionStore } from './contract.js';

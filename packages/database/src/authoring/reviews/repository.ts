@@ -1,5 +1,5 @@
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
-import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workspaces } from '../../schema/foundation.js';
