@@ -1,13 +1,10 @@
+import { FakeIdentityModule } from '../support/identity-module.js';
 import { WebhookPreflightController } from '../../src/webhooks/authentication/preflight.controller.js';
 import type { WebhookIngressDependencies } from '../../src/webhooks/ingress/register.js';
-import { Module } from '@nestjs/common';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
-import { SESSION_AUTHORITY } from '../../src/workspaces/index.js';
-import { RequestContextStore } from '../../src/platform/http/index.js';
 import { WebhookManagementController } from '../../src/webhooks/management/controllers.js';
 import {
   WebhookReadGuard,
@@ -16,33 +13,6 @@ import {
 import { WebhookModule } from '../../src/webhooks/module.js';
 import { WebhookManagementService } from '../../src/webhooks/management/service.js';
 import { WEBHOOK_AUTHORIZATION } from '../../src/webhooks/tokens.js';
-
-// Nest dynamic modules require a class token.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
-class FakeIdentityModule {}
-const sessions = {
-  authenticate: () =>
-    Promise.resolve({
-      userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      expiresAt: new Date('2030-01-01T00:00:00.000Z'),
-      clientMetadata: {},
-    }),
-};
-Module({
-  providers: [
-    {
-      provide: RequestContextStore,
-      useValue: { setActor: () => undefined, setWorkspace: () => undefined },
-    },
-    { provide: SESSION_AUTHORITY, useValue: sessions },
-    {
-      provide: DoubleSubmitCsrfPolicy,
-      useValue: { assertMutationAllowed: () => undefined },
-    },
-  ],
-  exports: [RequestContextStore, SESSION_AUTHORITY, DoubleSubmitCsrfPolicy],
-})(FakeIdentityModule);
 
 const webhookOperations = {
   list: vi.fn(),

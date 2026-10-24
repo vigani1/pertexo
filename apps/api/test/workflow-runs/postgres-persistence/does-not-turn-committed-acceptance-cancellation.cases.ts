@@ -1,3 +1,4 @@
+import { workflowNode } from '../../support/workflow-node.js';
 import { problemResult } from '../../support/problem.js';
 import { runFailure } from '../../../src/problems/context/normalize.js';
 import {
@@ -168,32 +169,15 @@ export function registerDoesNotTurnCommittedAcceptanceCancellation(): void {
       graph: {
         settings: { maxRunDurationMs: 60_000 },
         nodes: [
-          {
-            id: 'manual',
-            definition: { key: 'core.manual', version: 1 },
-            position: { x: 0, y: 0 },
-            configVersion: 1,
-            config: {},
-            inputMappings: {},
-            connectionRefs: {},
-          },
-          {
-            id: 'condition',
-            definition: { key: 'core.condition', version: 1 },
+          workflowNode('manual', 'core.manual'),
+          workflowNode('condition', 'core.condition', {
             position: { x: 10, y: 0 },
-            configVersion: 1,
-            config: {},
             inputMappings: {
               condition: { kind: 'literal', value: true },
             },
-            connectionRefs: {},
-          },
-          {
-            id: 'terminate',
-            definition: { key: 'core.terminate', version: 1 },
+          }),
+          workflowNode('terminate', 'core.terminate', {
             position: { x: 20, y: 0 },
-            configVersion: 1,
-            config: {},
             inputMappings: {
               result: {
                 kind: 'node_output',
@@ -201,8 +185,7 @@ export function registerDoesNotTurnCommittedAcceptanceCancellation(): void {
                 path: '$',
               },
             },
-            connectionRefs: {},
-          },
+          }),
         ],
         edges: [
           {

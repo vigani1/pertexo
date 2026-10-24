@@ -1,3 +1,8 @@
+import {
+  signedInAccount,
+  workspaceFor,
+  workflowFor,
+} from '../../support/better-auth/builders.js';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
@@ -18,34 +23,18 @@ describe.runIf(betterAuthIntegrationEnabled)(
   () => {
     const api = useBetterAuthRealApi('workflow_input_cases');
     async function fixture() {
-      const email = `${randomUUID()}@example.test`;
-      await api.signUp(email, '/login?verified=true');
-      const owner = await api.signIn(email);
+      const { owner } = await signedInAccount(api);
       const actorId = (
         await api.send('GET', '/v1/users/me', { browser: owner })
       ).json<{ id: string }>().id;
-      const created = await api.send('POST', '/v1/workspaces', {
-        browser: owner,
-        headers: { 'idempotency-key': randomUUID() },
-        payload: {
-          name: 'Input case proof',
-          slug: `cases-${randomUUID().slice(0, 8)}`,
-        },
+      const workspaceId = await workspaceFor(api, owner, {
+        name: 'Input case proof',
+        slugPrefix: 'cases',
       });
-      expect(created.statusCode, created.payload).toBe(201);
-      const workspaceId = created.json<{ id: string }>().id;
-      const workflow = await api.send(
-        'POST',
-        `/v1/workspaces/${workspaceId}/workflows`,
-        {
-          browser: owner,
-          headers: { 'idempotency-key': randomUUID() },
-          payload: { name: 'Synthetic input workflow' },
-        },
-      );
-      expect(workflow.statusCode, workflow.payload).toBe(201);
-      const workflowId = workflow.json<{ workflow: { id: string } }>().workflow
-        .id;
+      const workflowId = await workflowFor(api, owner, {
+        workspaceId,
+        name: 'Synthetic input workflow',
+      });
       const versionId = randomUUID();
       const graph = {
         nodes: [],

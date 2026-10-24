@@ -1,5 +1,5 @@
+import { transportMetrics } from '../support/transport/metrics.js';
 import type { OutboxDispatcherDatabase } from '@pertexo/database/testing';
-import type { TransportMetrics } from '@pertexo/observability';
 import {
   JOB_NAME,
   type QueueConsumer,
@@ -43,21 +43,7 @@ function producer(close: () => Promise<void> | void): QueueProducer {
   } as unknown as QueueProducer;
 }
 
-const metrics = {
-  addActiveConcurrency: vi.fn(),
-  observeArtifacts: vi.fn(),
-  observeExecutionStorage: vi.fn(),
-  observeOutbox: vi.fn(),
-  observeQueue: vi.fn(),
-  recordConsumerLifecycle: vi.fn(),
-  recordHandlerFinished: vi.fn(),
-  recordOutboxClaim: vi.fn(),
-  recordOutboxDispatchLatency: vi.fn(),
-  recordOutboxLeaseEvent: vi.fn(),
-  recordOutboxPublish: vi.fn(),
-  recordQueueStall: vi.fn(),
-  recordWorkerProcessStart: vi.fn(),
-} satisfies TransportMetrics;
+const metrics = transportMetrics();
 
 const consumer: QueueConsumer = {
   close: () => Promise.resolve({ abortedJobs: 0, forced: false }),

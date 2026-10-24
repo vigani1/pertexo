@@ -1,3 +1,4 @@
+import { createTestUser } from '../support/user.js';
 import type { Role } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 
@@ -124,10 +125,7 @@ export function useIdentityCommandDatabase(
       values: unknown[] = [],
     ) => (await required(owner).query<Row>(text, values)).rows,
     user: async (displayName: string) => {
-      const created = await required(identity).createUser({
-        email: `${randomUUID()}@example.test`,
-        displayName,
-      });
+      const created = await createTestUser(required(identity), displayName);
       return { id: created.id, email: created.email };
     },
     workspace: async (ownerUserId: string) =>

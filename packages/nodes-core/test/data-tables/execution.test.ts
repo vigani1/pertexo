@@ -1,18 +1,9 @@
+import { executionRuntime } from '../support/execution-runtime.js';
 import { it, expect, vi } from 'vitest';
 import { createCoreNodeRegistry } from '../../src/server.js';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { DataTableError } from '@pertexo/node-sdk';
-const scope = {
-  workspaceId: 'workspace',
-  runId: 'run',
-  nodeRunId: 'node-run',
-  attemptId: 'attempt',
-  attemptNumber: 1,
-  nodeId: 'node',
-  invocationKey: 'invocation',
-  sideEffectClass: 'idempotent_with_key' as const,
-  beforeDispatch: () => Promise.resolve(),
-};
+const scope = executionRuntime({ sideEffectClass: 'idempotent_with_key' });
 it('passes mapped row values and filters to the scoped capability without embedding identities in portable config', async () => {
   const execute = vi
     .fn<NonNullable<NodeExecutionRuntime['dataTables']>['execute']>()

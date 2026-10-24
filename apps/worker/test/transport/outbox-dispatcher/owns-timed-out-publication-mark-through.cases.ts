@@ -1,3 +1,4 @@
+import { transportMetrics } from '../../support/transport/metrics.js';
 import type { LeasedOutboxEvent } from '@pertexo/database/testing';
 
 import { expect, it, vi } from 'vitest';
@@ -10,7 +11,6 @@ import {
   indexedEvent,
   event,
   boundaries,
-  transportMetrics,
   createDispatcher,
 } from './fixture.js';
 

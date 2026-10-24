@@ -1,3 +1,8 @@
+import {
+  signedInAccount,
+  workspaceFor,
+  workflowFor,
+} from '../../support/better-auth/builders.js';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
@@ -17,31 +22,15 @@ describe.runIf(betterAuthIntegrationEnabled)(
   () => {
     const api = useBetterAuthRealApi('workflow-concurrency');
     async function fixture() {
-      const email = `${randomUUID()}@example.test`;
-      await api.signUp(email, '/login?verified=true');
-      const owner = await api.signIn(email);
-      const created = await api.send('POST', '/v1/workspaces', {
-        browser: owner,
-        headers: { 'idempotency-key': randomUUID() },
-        payload: {
-          name: 'Concurrency proof',
-          slug: `concurrency-${randomUUID().slice(0, 8)}`,
-        },
+      const { email, owner } = await signedInAccount(api);
+      const workspaceId = await workspaceFor(api, owner, {
+        name: 'Concurrency proof',
+        slugPrefix: 'concurrency',
       });
-      expect(created.statusCode, created.payload).toBe(201);
-      const workspaceId = created.json<{ id: string }>().id;
-      const workflow = await api.send(
-        'POST',
-        `/v1/workspaces/${workspaceId}/workflows`,
-        {
-          browser: owner,
-          headers: { 'idempotency-key': randomUUID() },
-          payload: { name: 'Concurrency workflow' },
-        },
-      );
-      expect(workflow.statusCode, workflow.payload).toBe(201);
-      const workflowId = workflow.json<{ workflow: { id: string } }>().workflow
-        .id;
+      const workflowId = await workflowFor(api, owner, {
+        workspaceId,
+        name: 'Concurrency workflow',
+      });
       return {
         email,
         owner,
