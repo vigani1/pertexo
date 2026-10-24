@@ -6,7 +6,7 @@ import { serializeBoundedPlainJson } from '../outbox/events.repository.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
-import { checkDatabaseReadiness } from '../platform/readiness.queries.js';
+import {checkDatabaseReadiness} from '../platform/readiness.queries.js';
 import { auditEvents } from '../schema/foundation.js';
 import { operatorCommands } from '../schema/runs/operator.js';
 import {

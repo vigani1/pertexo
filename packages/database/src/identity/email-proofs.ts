@@ -8,10 +8,8 @@ import type { Pool, PoolClient } from 'pg';
 import { authEmailProofs, authSessions } from '../schema/authentication.js';
 import { users } from '../schema/foundation.js';
 import { withPlatformTransaction } from '../tenant-access/transactions.js';
-import {
-  insertSystemMail,
-  type SystemMailInput,
-} from '../platform/mail/repository.js';
+import {insertSystemMail} from '../platform/mail/repository.js';
+import type { SystemMailInput } from '../platform/mail/contract.js';
 import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { recordIdentitySecurityFact } from './security-facts.js';
 

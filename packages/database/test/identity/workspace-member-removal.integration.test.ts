@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { IdempotencyConflictError } from '../../src/platform/idempotency/repository.js';
+import {IdempotencyConflictError} from '../../src/platform/idempotency/repository.js';
 import { WorkspaceMemberRemovalCommandConflictError } from '../../src/testing.js';
 import { useIdentityCommandDatabase } from './command.support.js';
 

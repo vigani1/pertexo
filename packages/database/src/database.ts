@@ -2,8 +2,8 @@ import { acquireDatabasePool } from './platform/pool/runtime.js';
 import type { DatabaseRuntime } from './platform/pool/runtime.js';
 
 import type { DatabaseConfig } from './config.js';
-import { checkDatabaseReadiness } from './platform/readiness.queries.js';
-import type { DatabaseReadiness } from './platform/readiness.queries.js';
+import {checkDatabaseReadiness} from './platform/readiness.queries.js';
+import type { DatabaseReadiness } from './platform/contract.js';
 import { withWorkspaceTransaction } from './tenant-access/transactions.js';
 import type {
   WorkspaceTransaction,

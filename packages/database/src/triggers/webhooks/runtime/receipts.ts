@@ -4,10 +4,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
 
-import {
-  claimCommand,
-  completeCommand,
-} from '../../../platform/idempotency/repository.js';
+import {claimCommand, completeCommand} from '../../../platform/idempotency/repository.js';
 
 import { WebhookTriggerIdempotencyConflictError } from '../errors.js';
 

@@ -6,12 +6,8 @@ import { lockWorkspaceVariableNames } from '../../variables/settings.queries.js'
 
 import { validateApprovalAudience } from './pending-tasks.js';
 import { lockArtifactReferences } from '../../artifacts/references/repository.js';
-import {
-  claimCommand,
-  credentialCommandScope,
-  completeCommand,
-  type CommandIdentity,
-} from '../../platform/idempotency/repository.js';
+import {claimCommand, credentialCommandScope, completeCommand} from '../../platform/idempotency/repository.js';
+import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   sameWorkflowNotes,

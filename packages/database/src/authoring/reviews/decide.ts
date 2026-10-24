@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { claimCommand, completeCommand } from '../../platform/idempotency/repository.js';
+import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { rolesForCapability } from '@pertexo/workflow-model';

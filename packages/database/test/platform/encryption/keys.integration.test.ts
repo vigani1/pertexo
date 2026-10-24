@@ -6,7 +6,7 @@ import { Pool } from 'pg';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { migrateDatabase } from '../../../src/migrations.js';
-import { createEncryptionKeyRepository } from '../../../src/platform/encryption/keys.repository.js';
+import {createEncryptionKeyRepository} from '../../../src/platform/encryption/keys.repository.js';
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 
 const adminUrl =

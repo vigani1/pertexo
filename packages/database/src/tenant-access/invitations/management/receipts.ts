@@ -2,11 +2,8 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
-import {
-  claimCommand,
-  completeCommand,
-  type CommandIdentity,
-} from '../../../platform/idempotency/repository.js';
+import {claimCommand, completeCommand} from '../../../platform/idempotency/repository.js';
+import type { CommandIdentity } from '../../../platform/idempotency/contract.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import type {
   WorkspaceInvitationCommandResult,

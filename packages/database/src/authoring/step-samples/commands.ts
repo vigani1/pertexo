@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
-import { claimCommand, completeCommand } from '../../platform/idempotency/repository.js';
+import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { sampleDraft } from './records.js';
 import { captureSampleSource } from './source.js';

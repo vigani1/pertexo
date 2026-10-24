@@ -2,7 +2,7 @@ import type { z } from 'zod';
 
 import type { ArtifactRecord } from '../contract.js';
 
-import type { DatabaseReadiness } from '../../platform/readiness.queries.js';
+import type {DatabaseReadiness} from '../../platform/contract.js';
 
 import type {
   actorInputSchema,

@@ -11,11 +11,8 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
-import {
-  claimCommand,
-  completeCommand,
-  type CommandIdentity,
-} from '../../platform/idempotency/repository.js';
+import {claimCommand, completeCommand} from '../../platform/idempotency/repository.js';
+import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { withTenantScopedClient } from '../transactions.js';
 import { hasCapability } from '@pertexo/workflow-model';

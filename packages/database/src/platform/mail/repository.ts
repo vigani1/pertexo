@@ -1,3 +1,10 @@
+import type {
+  SystemMailEnqueueStore,
+  SystemMailDeliveryClaim,
+  SystemMailDeliveryStore,
+  SystemMailInput,
+} from './contract.js';
+import { purpose, sealedPayload } from './input.js';
 import {
   and,
   asc,
@@ -20,67 +27,6 @@ import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool, type DatabaseRuntime } from '../pool/runtime.js';
-
-const purpose = z.enum([
-  'workspace_notice',
-  'two_factor_disabled',
-  'recovery_code_sign_in',
-  'verification',
-  'password_reset',
-  'email_change_confirmation',
-]);
-const sealedPayload = z
-  .object({
-    ciphertext: z.string().min(1).max(32_768),
-    nonce: z.string().min(1).max(128),
-    tag: z.string().min(1).max(256),
-    keyVersion: z.string().min(1).max(64),
-  })
-  .strict();
-
-export type SystemMailPurpose = z.infer<typeof purpose>;
-export type SealedSystemMailPayload = z.infer<typeof sealedPayload>;
-
-export interface SystemMailEnqueueStore {
-  enqueue(input: SystemMailInput): Promise<void>;
-  close(): Promise<void>;
-}
-
-export type SystemMailDeliveryClaim = Readonly<{
-  id: string;
-  purpose: SystemMailPurpose;
-  expiresAt: Date;
-  attemptCount: number;
-  recoveredUnknown: boolean;
-  leaseGeneration: number;
-  leaseToken: string;
-  sealedPayload: SealedSystemMailPayload;
-}>;
-
-export interface SystemMailDeliveryStore {
-  claim(
-    input: Readonly<{ workerId: string; limit: number }>,
-  ): Promise<readonly SystemMailDeliveryClaim[]>;
-  settle(
-    input: Readonly<{
-      id: string;
-      leaseToken: string;
-      leaseGeneration: number;
-      outcome: 'submitted' | 'failed' | 'retry' | 'reconciliation_required';
-      providerReference?: string;
-      failureCode?: string;
-      retryAt?: Date;
-    }>,
-  ): Promise<boolean>;
-  close(): Promise<void>;
-}
-
-export type SystemMailInput = Readonly<{
-  id: string;
-  purpose: SystemMailPurpose;
-  expiresAt: Date;
-  sealedPayload: SealedSystemMailPayload;
-}>;
 
 /** Queues one sealed system mail in the caller's transaction. */
 export async function insertSystemMail(

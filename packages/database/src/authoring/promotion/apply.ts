@@ -12,11 +12,7 @@ import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
-import {
-  claimCommand,
-  completeCommand,
-  findCommandResult,
-} from '../../platform/idempotency/repository.js';
+import {claimCommand, completeCommand, findCommandResult} from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { pruneStepSamples } from '../step-samples/records.js';

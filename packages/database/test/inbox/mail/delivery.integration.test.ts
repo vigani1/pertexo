@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { createSystemMailDeliveryStore } from '../../../src/platform/mail/repository.js';
+import {createSystemMailDeliveryStore} from '../../../src/platform/mail/repository.js';
 import type { NoticeMailToSeal } from '../../../src/inbox/mail/contract.js';
 import { purgeTestWorkspace } from '../../support/workflow-authoring.js';
 import {

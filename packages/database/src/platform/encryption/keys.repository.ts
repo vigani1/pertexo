@@ -1,3 +1,7 @@
+import type {
+  StoredEncryptionKey,
+  EncryptionKeyRepository,
+} from './contract.js';
 import { and, asc, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { webhookTestEvents } from '../../schema/triggers/test-events.js';
@@ -8,20 +12,7 @@ import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool, type DatabaseRuntime } from '../pool/runtime.js';
 import { acquireAbortablePoolClient } from '../pool/abortable-checkout.js';
 import { destroyCanceledPoolClient } from '../pool/client-disposal.js';
-import { checkDatabaseReadiness } from '../readiness.queries.js';
-
-export type StoredEncryptionKey = Readonly<{
-  kind: 'connection' | 'webhook';
-  workspaceId: string;
-  resourceId: string;
-  secretVersionId: string;
-  keyReference: string;
-  encryptedDataKey: string;
-}>;
-export type EncryptionKeyRepository = Readonly<{
-  read(signal: AbortSignal): AsyncIterable<StoredEncryptionKey>;
-  close(): Promise<void>;
-}>;
+import {checkDatabaseReadiness} from '../readiness.queries.js';
 const inventories = [
   {
     kind: 'webhook',

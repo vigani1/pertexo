@@ -1,15 +1,10 @@
+import type { DatabaseReadiness } from './contract.js';
 import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
 export const EXPECTED_MIGRATION_HEAD = '0053_remove_artifact_lookup.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
-
-export type DatabaseReadiness = Readonly<{
-  migrationHead: string;
-  postgresMajor: number;
-  role: string;
-}>;
 
 /**
  * The database is reachable, new enough, and migrated to exactly the version

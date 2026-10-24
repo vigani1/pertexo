@@ -1,3 +1,4 @@
+import type { CommandIdentity } from './contract.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { idempotencyRecords } from '../../schema/runs/support.js';
@@ -16,16 +17,6 @@ export class IdempotencyConflictError extends Error {
     super('Idempotency key was used for a different request');
   }
 }
-
-/** One command under one idempotency key. */
-export type CommandIdentity = Readonly<{
-  workspaceId: string;
-  /** What the command does, e.g. `folder.create`. */
-  operation: string;
-  /** Who and what the key belongs to, e.g. the actor and the target. */
-  scope: string;
-  idempotencyKey: string;
-}>;
 
 /**
  * The request the key was used for: hashed here, or the digest a caller
