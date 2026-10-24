@@ -1,3 +1,7 @@
+import {
+  signedInAccount,
+  workspaceFor,
+} from '../../support/better-auth/builders.js';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { testExecutableCompiler } from '@pertexo/database/testing';
@@ -16,21 +20,12 @@ describe.runIf(betterAuthIntegrationEnabled)(
   () => {
     const api = useBetterAuthRealApi('promotion');
     it('uses session and CSRF authority, validates selectors once, and applies only the reviewed draft', async () => {
-      const email = `${randomUUID()}@example.test`;
-      await api.signUp(email, '/login?verified=true');
-      const owner = await api.signIn(email);
+      const { owner } = await signedInAccount(api);
       const user = (
         await api.send('GET', '/v1/users/me', { browser: owner })
       ).json<{ id: string }>();
-      const workspace = async (name: string) => {
-        const response = await api.send('POST', '/v1/workspaces', {
-          browser: owner,
-          headers: { 'idempotency-key': randomUUID() },
-          payload: { name, slug: `promotion-${randomUUID().slice(0, 8)}` },
-        });
-        expect(response.statusCode, response.payload).toBe(201);
-        return response.json<{ id: string }>().id;
-      };
+      const workspace = (name: string) =>
+        workspaceFor(api, owner, { name, slugPrefix: 'promotion' });
       const sourceId = await workspace('Development'),
         targetId = await workspace('Production');
       const route = `/v1/workspaces/${sourceId}/promotions`;

@@ -1,3 +1,4 @@
+import { transportMetrics as createTransportMetrics } from '../support/transport/metrics.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type {
   OutboxDispatcherDatabase,
@@ -7,7 +8,6 @@ import type { QueueConsumer, QueueProducer } from '@pertexo/queue';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-  TransportMetrics,
 } from '@pertexo/observability';
 import { vi } from 'vitest';
 import { createWorkerApplication as constructWorkerApplication } from '../../src/app.js';
@@ -150,29 +150,6 @@ export const logger = {
   warn: vi.fn<NonNullable<StructuredLogger['warn']>>(),
 } satisfies StructuredLogger;
 
-function transportMetrics(): {
-  metrics: TransportMetrics;
-  recordWorkerProcessStart: ReturnType<typeof vi.fn>;
-} {
-  const recordWorkerProcessStart = vi.fn();
-  const metrics = {
-    addActiveConcurrency: vi.fn(),
-    observeArtifacts: vi.fn(),
-    observeExecutionStorage: vi.fn(),
-    observeOutbox: vi.fn(),
-    observeQueue: vi.fn(),
-    recordConsumerLifecycle: vi.fn(),
-    recordHandlerFinished: vi.fn(),
-    recordOutboxClaim: vi.fn(),
-    recordOutboxDispatchLatency: vi.fn(),
-    recordOutboxLeaseEvent: vi.fn(),
-    recordOutboxPublish: vi.fn(),
-    recordQueueStall: vi.fn(),
-    recordWorkerProcessStart,
-  } satisfies TransportMetrics;
-  return { metrics, recordWorkerProcessStart };
-}
-
 function idleConsumer() {
   return {
     close: vi
@@ -286,7 +263,7 @@ export function dependencies(
       .fn<NonNullable<QueueProducer['waitUntilReady']>>()
       .mockResolvedValue(undefined),
   } satisfies QueueProducer;
-  const metrics = transportMetrics();
+  const metrics = createTransportMetrics();
   const workspaceInboxRuntime = {
     start: vi.fn(),
     checkReadiness: vi.fn().mockResolvedValue(undefined),
@@ -304,7 +281,7 @@ export function dependencies(
     queueClose,
     readinessMarker: { setReady: vi.fn().mockResolvedValue(undefined) },
     telemetry,
-    transportMetrics: metrics.metrics,
+    transportMetrics: metrics,
     workerProcessStart: metrics.recordWorkerProcessStart,
     workspaceInboxRuntime,
   };

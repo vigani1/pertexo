@@ -1,3 +1,4 @@
+import { workflowNode } from '../../support/workflow-node.js';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
@@ -37,33 +38,15 @@ export function registerInitializesCheckpointVerifiedSwitchExecutable(): void {
       graph: {
         settings: { maxRunDurationMs: 60_000 },
         nodes: [
-          {
-            id: 'manual',
-            definition: { key: 'core.manual', version: 1 },
-            position: { x: 0, y: 0 },
-            configVersion: 1,
-            config: {},
-            inputMappings: {},
-            connectionRefs: {},
-          },
-          {
-            id: 'switch',
-            definition: { key: 'core.switch', version: 1 },
+          workflowNode('manual', 'core.manual'),
+          workflowNode('switch', 'core.switch', {
             position: { x: 10, y: 0 },
-            configVersion: 1,
             config: { cases: [{ id: 'case-01', equals: true }] },
             inputMappings: { value: { kind: 'literal', value: true } },
-            connectionRefs: {},
-          },
-          {
-            id: 'terminate',
-            definition: { key: 'core.terminate', version: 1 },
+          }),
+          workflowNode('terminate', 'core.terminate', {
             position: { x: 20, y: 0 },
-            configVersion: 1,
-            config: {},
-            inputMappings: {},
-            connectionRefs: {},
-          },
+          }),
         ],
         edges: [
           {

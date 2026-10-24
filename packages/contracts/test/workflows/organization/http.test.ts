@@ -1,3 +1,8 @@
+import {
+  workflowProjectionId,
+  workflowProjection,
+  organizationProjection,
+} from '../../support/workflow-projections.js';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
 import {
@@ -11,26 +16,9 @@ import {
   workflowAuthoringOpenApiDocument,
 } from '../../../src/server.js';
 
-const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const workflow = {
-  id,
-  workspaceId: id,
-  name: 'Visible workflow',
-  nameRevision: 1,
-  lifecycleStatus: 'active',
-  lifecycleRevision: 1,
-  activationStatus: 'inactive',
-  webhookSetupRequired: false,
-  publishedVersionId: null,
-  createdAt: '2026-10-02T00:00:00.000Z',
-  updatedAt: '2026-10-02T00:00:00.000Z',
-};
-const organization = {
-  tags: [],
-  organizationRevision: 1,
-  folderId: null,
-  isFavorite: false,
-};
+const id = workflowProjectionId;
+const workflow = workflowProjection('Visible workflow');
+const organization = organizationProjection();
 type OperationShape = Readonly<{
   security: unknown;
   parameters: readonly Readonly<{

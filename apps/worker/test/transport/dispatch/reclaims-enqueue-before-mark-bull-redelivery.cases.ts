@@ -1,3 +1,4 @@
+import { transportMetrics } from '../../support/transport/metrics.js';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import {
@@ -39,7 +40,6 @@ import {
   redisUrl,
   workerDatabase,
   workspaceId,
-  capturingTransportMetrics,
   claimEventAcrossFairRounds,
   waitForRemovableJob,
   waitForBalancedConsumerMetrics,
@@ -92,7 +92,7 @@ export function registerReclaimsEnqueueBeforeMarkBullRedelivery(): void {
       const providerCompleted = deferred('provider completion');
       let coordinatorDeliveries = 0;
       let providerDeliveries = 0;
-      const consumerMetrics = capturingTransportMetrics();
+      const consumerMetrics = transportMetrics();
       const consumerObserver = createQueueMetricsObserver(consumerMetrics);
       const otelTraceRunner = createQueueTraceRunner();
       const activatedTraceparents: string[] = [];

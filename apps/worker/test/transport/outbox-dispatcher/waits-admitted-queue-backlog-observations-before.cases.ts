@@ -1,3 +1,4 @@
+import { transportMetrics } from '../../support/transport/metrics.js';
 import { JOB_NAME, type QueueProducer } from '@pertexo/queue';
 import { expect, it, vi } from 'vitest';
 
@@ -7,7 +8,6 @@ import {
   indexedEvent,
   event,
   boundaries,
-  transportMetrics,
   createDispatcher,
 } from './fixture.js';
 

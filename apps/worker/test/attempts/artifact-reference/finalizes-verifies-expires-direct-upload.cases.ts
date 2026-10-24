@@ -1,3 +1,4 @@
+import { transportMetrics } from '../../support/transport/metrics.js';
 import { createArtifactDatabaseEnvironment } from '../artifacts/database.js';
 
 import { randomUUID } from 'node:crypto';
@@ -15,7 +16,6 @@ import {
   createWorkspaceDatabase,
   finalizeArtifactUpload,
 } from '@pertexo/database/testing';
-import type { TransportMetrics } from '@pertexo/observability';
 
 import { eq } from 'drizzle-orm';
 import { expect, it, vi } from 'vitest';
@@ -182,22 +182,8 @@ export function registerFinalizesVerifiesExpiresDirectUpload(): void {
         expect(removed.status).toBe('deleted');
         await expect(store.head(expiredMetadata)).resolves.toBeNull();
 
-        const observeArtifacts = vi.fn<TransportMetrics['observeArtifacts']>();
-        const metrics = {
-          addActiveConcurrency: vi.fn(),
-          observeArtifacts,
-          observeExecutionStorage: vi.fn(),
-          observeOutbox: vi.fn(),
-          observeQueue: vi.fn(),
-          recordConsumerLifecycle: vi.fn(),
-          recordHandlerFinished: vi.fn(),
-          recordOutboxClaim: vi.fn(),
-          recordOutboxDispatchLatency: vi.fn(),
-          recordOutboxLeaseEvent: vi.fn(),
-          recordOutboxPublish: vi.fn(),
-          recordQueueStall: vi.fn(),
-          recordWorkerProcessStart: vi.fn(),
-        } satisfies TransportMetrics;
+        const metrics = transportMetrics();
+        const { observeArtifacts } = metrics;
         await expect(
           observeWorkspaceArtifactCapacity(
             database,

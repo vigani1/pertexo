@@ -1,17 +1,8 @@
+import { executionRuntime } from '../support/execution-runtime.js';
 import { it, expect, vi } from 'vitest';
 import { createCoreNodeRegistry } from '../../src/server.js';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
-const scope = {
-  workspaceId: 'workspace',
-  runId: 'run',
-  nodeRunId: 'node-run',
-  attemptId: 'attempt',
-  attemptNumber: 1,
-  nodeId: 'node',
-  invocationKey: 'invocation',
-  sideEffectClass: 'safe' as const,
-  beforeDispatch: () => Promise.resolve(),
-};
+const scope = executionRuntime();
 it('saves mapped business pairs through the execution capability and returns sanitized values', async () => {
   const save = vi
     .fn<NonNullable<NodeExecutionRuntime['runValues']>['save']>()

@@ -1,18 +1,10 @@
-import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
+import { node } from '../../../support/coordinator/workflows/graph.js';
+import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { describe } from 'vitest';
 
 import { coordinatorFixture as fixture } from '../../../support/coordinator/consumer.js';
 
 export function graph(): WorkflowGraph {
-  const node = (id: string, key: string): WorkflowNode => ({
-    id,
-    definition: { key, version: 1 },
-    config: {},
-    configVersion: 1,
-    position: { x: 0, y: 0 },
-    inputMappings: {},
-    connectionRefs: {},
-  });
   return {
     settings: { maxRunDurationMs: 60_000 },
     callable: {
