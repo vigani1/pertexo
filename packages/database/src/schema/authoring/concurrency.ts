@@ -17,7 +17,10 @@ export const workflowConcurrencyPolicies = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     activeRunLimit: integer('active_run_limit'),
-    overflow: varchar('overflow', { length: 8 }).notNull().default('queue'),
+    overflow: varchar('overflow', { length: 8 })
+      .$type<'queue' | 'skip'>()
+      .notNull()
+      .default('queue'),
     revision: integer('revision').notNull().default(1),
   },
   (table): PgTableExtraConfigValue[] => [

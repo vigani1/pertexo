@@ -1,4 +1,17 @@
-import { bindResourcePredicate } from '../../tenant-access/resources/scope.queries.js';
+import { and, asc, eq, gt, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { workflowConcurrencyPolicies } from '../../schema/authoring/concurrency.js';
+import {
+  workspaceExecutionEntitlements,
+  workspaceExecutionEntitlementVersions,
+} from '../../schema/runs/capacity/entitlements.js';
+import {
+  workspaces,
+  auditEvents,
+  usageEvents,
+} from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import type { WorkflowConcurrencySettings as ConcurrencySettings } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
@@ -68,33 +81,32 @@ const EDITORS: readonly Role[] = WORKFLOW_EDITOR_ROLES;
 
 /** The workspace's current execution entitlement, as the settings show it. */
 async function readEntitlement(client: PoolClient, workspaceId: string) {
-  const result = await client.query<{
-    as_of: string;
-    state: WorkflowConcurrencySettings['workspacePolicyState'];
-    active_run_limit: number | null;
-  }>(
-    `select to_char(clock_timestamp() at time zone 'UTC',
-                    'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as_of,
-            case when version.version is null then 'unavailable'
-                 when version.status = 'suspended' then 'suspended'
-                 when version.effective_at > clock_timestamp() then 'not_yet_effective'
-                 when version.expires_at <= clock_timestamp() then 'expired'
-                 else 'active' end state,
-            version.active_run_limit
-     from (select 1) now
-     left join app.workspace_execution_entitlements current
-       on current.workspace_id = $1
-     left join app.workspace_execution_entitlement_versions version
-       on version.workspace_id = current.workspace_id
-      and version.version = current.current_version`,
-    [workspaceId],
-  );
-  const row = result.rows[0];
+  const current = workspaceExecutionEntitlements,
+    version = workspaceExecutionEntitlementVersions;
+  const [row] = await drizzle(client)
+    .select({
+      asOf: sql<string>`to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+      state: sql<
+        WorkflowConcurrencySettings['workspacePolicyState']
+      >`case when ${version.version} is null then 'unavailable' when ${version.status}='suspended' then 'suspended' when ${version.effectiveAt}>clock_timestamp() then 'not_yet_effective' when ${version.expiresAt}<=clock_timestamp() then 'expired' else 'active' end`,
+      maximum: version.activeRunLimit,
+    })
+    .from(workspaces)
+    .leftJoin(current, eq(current.workspaceId, workspaces.id))
+    .leftJoin(
+      version,
+      and(
+        eq(version.workspaceId, current.workspaceId),
+        eq(version.version, current.currentVersion),
+      ),
+    )
+    .where(eq(workspaces.id, workspaceId))
+    .catch(rethrowQueryFailure);
   if (row === undefined) throw new Error('Entitlement read returned no row');
   return {
-    asOf: row.as_of,
+    asOf: row.asOf,
     state: row.state,
-    maximum: row.state === 'active' ? row.active_run_limit : null,
+    maximum: row.state === 'active' ? row.maximum : null,
   };
 }
 
@@ -103,19 +115,23 @@ async function readPolicy(
   workspaceId: string,
   workflowId: string,
 ) {
-  const result = await client.query<{
-    active_run_limit: number | null;
-    revision: number;
-    overflow: 'queue' | 'skip';
-  }>(
-    `select active_run_limit, revision, overflow from app.workflow_concurrency_policies
-     where workspace_id = $1 and workflow_id = $2`,
-    [workspaceId, workflowId],
-  );
-  const row = result.rows[0];
+  const [row] = await drizzle(client)
+    .select({
+      limit: workflowConcurrencyPolicies.activeRunLimit,
+      revision: workflowConcurrencyPolicies.revision,
+      overflow: workflowConcurrencyPolicies.overflow,
+    })
+    .from(workflowConcurrencyPolicies)
+    .where(
+      and(
+        eq(workflowConcurrencyPolicies.workspaceId, workspaceId),
+        eq(workflowConcurrencyPolicies.workflowId, workflowId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   // A workflow without a policy has no limit, at revision 1.
   return {
-    limit: row?.active_run_limit ?? null,
+    limit: row?.limit ?? null,
     revision: row?.revision ?? 1,
     overflow: row?.overflow ?? 'queue',
   };
@@ -126,11 +142,15 @@ async function requireWorkflow(
   workspaceId: string,
   workflowId: string,
 ) {
-  const workflow = await client.query(
-    'select 1 from app.workflows where workspace_id = $1 and id = $2 for share',
-    [workspaceId, workflowId],
-  );
-  if (workflow.rowCount !== 1)
+  const workflow = await drizzle(client)
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  if (workflow.length !== 1)
     throw new WorkflowNotFoundError('Concurrency settings are not visible');
 }
 
@@ -184,32 +204,41 @@ async function readConcurrencySettings(
         await readPolicy(client, workspaceId, workflowId),
         await readEntitlement(client, workspaceId),
       );
-      const history = await client.query<{
-        id: string;
-        at: string;
-        trigger_type: NonNullable<
-          WorkflowConcurrencySettings['recentSkips']
-        >[number]['triggerType'];
-        reason: NonNullable<
-          WorkflowConcurrencySettings['recentSkips']
-        >[number]['reason'];
-      }>(
-        `select id,to_char(occurred_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') at,
-                    metadata->>'triggerType' trigger_type,metadata->>'reason' reason
-             from app.usage_events where workspace_id=$1 and resource_type='workflow' and resource_id=$2
-               and category='trigger.skipped' and occurred_at>statement_timestamp()-${bindResourcePredicate(RUN_SUMMARY_RETENTION_SQL.inlineParams(), [])}
-             order by occurred_at desc nulls last,id limit 20`,
-        [workspaceId, workflowId],
-      );
-      return {
-        ...policy,
-        recentSkips: history.rows.map((row) => ({
-          id: row.id,
-          at: row.at,
-          triggerType: row.trigger_type,
-          reason: row.reason,
-        })),
-      };
+      const recentSkips = await drizzle(client)
+        .select({
+          id: usageEvents.id,
+          at: sql<string>`to_char(${usageEvents.occurredAt} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+          triggerType: sql<
+            NonNullable<
+              WorkflowConcurrencySettings['recentSkips']
+            >[number]['triggerType']
+          >`${usageEvents.metadata}->>'triggerType'`,
+          reason: sql<
+            NonNullable<
+              WorkflowConcurrencySettings['recentSkips']
+            >[number]['reason']
+          >`${usageEvents.metadata}->>'reason'`,
+        })
+        .from(usageEvents)
+        .where(
+          and(
+            eq(usageEvents.workspaceId, workspaceId),
+            eq(usageEvents.resourceType, 'workflow'),
+            eq(usageEvents.resourceId, workflowId),
+            eq(usageEvents.category, 'trigger.skipped'),
+            gt(
+              usageEvents.occurredAt,
+              sql`statement_timestamp()-${sql.raw(RUN_SUMMARY_RETENTION_SQL)}`,
+            ),
+          ),
+        )
+        .orderBy(
+          sql`${usageEvents.occurredAt} desc nulls last`,
+          asc(usageEvents.id),
+        )
+        .limit(20)
+        .catch(rethrowQueryFailure);
+      return { ...policy, recentSkips };
     },
     input.signal,
   );
@@ -256,9 +285,9 @@ async function updateConcurrencySettings(
           replayed: true,
         });
       // Run grants read the limit under the workspace's admission counter.
-      await client.query('select app.lock_workspace_admission($1)', [
-        workspaceId,
-      ]);
+      await drizzle(client)
+        .execute(sql`select app.lock_workspace_admission(${workspaceId})`)
+        .catch(rethrowQueryFailure);
       const entitlement = await readEntitlement(client, workspaceId);
       const policy = await readPolicy(client, workspaceId, workflowId);
       if (policy.revision !== request.expectedRevision)
@@ -277,41 +306,46 @@ async function updateConcurrencySettings(
           revision: policy.revision + 1,
           overflow,
         };
-        await client.query(
-          `insert into app.workflow_concurrency_policies
-                 (workspace_id, workflow_id, active_run_limit, revision, overflow)
-               values ($1, $2, $3, $4, $5)
-               on conflict (workspace_id, workflow_id) do update
-               set active_run_limit = excluded.active_run_limit,
-                   revision = excluded.revision, overflow = excluded.overflow`,
-          [
+        const db = drizzle(client);
+        await db
+          .insert(workflowConcurrencyPolicies)
+          .values({
             workspaceId,
             workflowId,
-            current.limit,
-            current.revision,
-            current.overflow,
-          ],
-        );
-        await client.query(
-          `insert into app.audit_events
-                 (id, workspace_id, actor_user_id, action, target_type, target_id,
-                  request_id, trace_id, metadata)
-               values ($1, $2, $3, 'workflow.concurrency_settings_changed', 'workflow',
-                       $4, $5, $6, $7::jsonb)`,
-          [
-            generatePersistedId(),
+            activeRunLimit: current.limit,
+            revision: current.revision,
+            overflow: current.overflow,
+          })
+          .onConflictDoUpdate({
+            target: [
+              workflowConcurrencyPolicies.workspaceId,
+              workflowConcurrencyPolicies.workflowId,
+            ],
+            set: {
+              activeRunLimit: sql`excluded.active_run_limit`,
+              revision: sql`excluded.revision`,
+              overflow: sql`excluded.overflow`,
+            },
+          })
+          .catch(rethrowQueryFailure);
+        await db
+          .insert(auditEvents)
+          .values({
+            id: generatePersistedId(),
             workspaceId,
-            actorId,
-            workflowId,
-            input.requestId ?? null,
-            input.traceId ?? null,
-            JSON.stringify({
+            actorUserId: actorId,
+            action: 'workflow.concurrency_settings_changed',
+            targetType: 'workflow',
+            targetId: workflowId,
+            requestId: input.requestId ?? null,
+            traceId: input.traceId ?? null,
+            metadata: {
               limit: current.limit,
               revision: current.revision,
               overflow: current.overflow,
-            }),
-          ],
-        );
+            },
+          })
+          .catch(rethrowQueryFailure);
       }
       const result = settingsOf(current, entitlement);
       await completeCommand(client, identity, result);
