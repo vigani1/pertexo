@@ -45,6 +45,9 @@ export function registerClaimsBoundedDisjointBatchesChanges(): void {
     expect(new Set(claimed.map((event) => event.id)).size).toBe(4);
     const event = claimed[0];
     if (event === undefined) throw new Error('Expected a claimed outbox event');
+    expect(event.availableAt).toBeInstanceOf(Date);
+    expect(event.leaseExpiresAt).toBeInstanceOf(Date);
+    expect(Object.isFrozen(event)).toBe(true);
     await expect(
       dispatcher.markPublished(event.id, randomUUID()),
     ).resolves.toBe(false);
@@ -119,6 +122,45 @@ export function registerClaimsBoundedDisjointBatchesChanges(): void {
       limit: 1,
       maxAttempts: 3,
     });
+    await expect(
+      dispatcher.observeBacklog({ enabledJobNames }),
+    ).resolves.toEqual({ backlog: 0 });
+  });
+  it('schedules a retry only for the current lease and hides it until due', async () => {
+    const id = randomUUID();
+    await apiDatabase.withWorkspace(workspaceA, async (transaction) => {
+      await insertOutboxEvent(transaction, {
+        ...outboxInput(id),
+        availableAt: new Date(0),
+      });
+    });
+    const claimed = await dispatcher.claimBatch({
+      enabledJobNames,
+      leaseDurationMillis: 30_000,
+      leaseOwner: 'retry-proof',
+      leaseToken: randomUUID(),
+      limit: 1,
+      maxAttempts: 3,
+    });
+    const event = claimed.events.find((candidate) => candidate.id === id);
+    if (event === undefined) throw new Error('Expected retry fixture claim');
+    const retry = {
+      id,
+      leaseToken: event.leaseToken,
+      maxAttempts: 3,
+      retryAt: new Date(Date.now() + 60_000),
+      errorCode: 'queue.unavailable',
+    };
+    await expect(
+      dispatcher.releaseOrFail({ ...retry, leaseToken: randomUUID() }),
+    ).resolves.toBe('not_leased');
+    await expect(dispatcher.releaseOrFail(retry)).resolves.toBe(
+      'retry_scheduled',
+    );
+    await expect(dispatcher.releaseOrFail(retry)).resolves.toBe('not_leased');
+    await expect(dispatcher.markPublished(id, event.leaseToken)).resolves.toBe(
+      false,
+    );
     await expect(
       dispatcher.observeBacklog({ enabledJobNames }),
     ).resolves.toEqual({ backlog: 0 });
