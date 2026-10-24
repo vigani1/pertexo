@@ -136,18 +136,18 @@ export function WorkspaceShellFrame({
 
   return (
     <WorkspaceShell
-      user={user}
-      workspace={workspace}
-      workspaces={workspaces.data ?? [workspace]}
       liveRunCount={canReadRuns ? liveRunCount.data : undefined}
       unreadNoticeCount={
         canReadInbox ? inboxSummary.data?.unreadCount : undefined
       }
       inboxRefs={inboxAnchors.refs}
       crumbs={crumbs ?? routeCrumbs}
-      logoutPending={logout.pending}
-      onLogout={logout.requestLogout}
       onOpenSearch={openSearch}
+      session={{
+        logoutPending: logout.pending,
+        onLogout: logout.requestLogout,
+      }}
+      scope={{ user, workspace, workspaces: workspaces.data ?? [workspace] }}
     >
       <CommandPaletteContext value={openSearch}>
         {children}

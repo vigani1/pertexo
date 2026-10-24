@@ -35,10 +35,6 @@ export function PasswordRecoveryPage({
           sentTo === undefined ? (
             <EmailRequestLens
               id="recovery"
-              title="Reset your password"
-              description="Enter the email you sign in with. We’ll send a link to choose a new password."
-              submitLabel="Send reset link"
-              pendingLabel="Sending link…"
               send={(email, signal) =>
                 requestPasswordReset(apiClient, email, signal)
               }
@@ -48,6 +44,13 @@ export function PasswordRecoveryPage({
                 setSentTo(email);
               }}
               footer={backToSignIn}
+              copy={{
+                title: 'Reset your password',
+                description:
+                  'Enter the email you sign in with. We’ll send a link to choose a new password.',
+                submitLabel: 'Send reset link',
+                pendingLabel: 'Sending link…',
+              }}
             />
           ) : (
             <InboxLens

@@ -18,10 +18,6 @@ export function WorkspaceSelectionRoute() {
       apiClient={apiClient}
       user={user}
       workspaces={workspaces}
-      logoutPending={logoutState.pending}
-      {...(logoutState.error === undefined
-        ? {}
-        : { logoutError: logoutState.error })}
       onSelect={(workspace) => {
         void navigate({
           to:
@@ -37,10 +33,16 @@ export function WorkspaceSelectionRoute() {
           params: { workspaceId: workspace.id },
         });
       }}
-      onSessionInvalidated={() => {
-        void router.invalidate();
+      session={{
+        ...(logoutState.error === undefined
+          ? {}
+          : { logoutError: logoutState.error }),
+        logoutPending: logoutState.pending,
+        onSessionInvalidated: () => {
+          void router.invalidate();
+        },
+        onLogout: logoutState.requestLogout,
       }}
-      onLogout={logoutState.requestLogout}
     />
   );
 }
