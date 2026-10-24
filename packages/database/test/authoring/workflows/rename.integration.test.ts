@@ -1,3 +1,4 @@
+import { registerUnicodeRenameCase } from './rename/unicode.cases.js';
 import { insertTestMember } from '../../support/user.js';
 import { describe, expect, it } from 'vitest';
 
@@ -206,34 +207,7 @@ describe('workflow rename command persistence (ADR 041)', () => {
     });
   });
 
-  it('preserves Unicode code points through no-op receipts and later renames', async () => {
-    const decomposed = 'レポート e\u0301 🚀';
-    const composed = 'レポート é 🚀';
-    const workflowId = await createNamed(`  ${decomposed}  `);
-    const accepted = await rename(workflowId, { name: `\t${decomposed}\n` });
-    expect(accepted.workflow.name).toBe(decomposed);
-    expect(Object.isFrozen(accepted.workflow)).toBe(true);
-    expect(await nameFacts(workflowId)).toMatchObject({
-      name: decomposed,
-      nameRevision: 1,
-      receipts: 1,
-      audits: 0,
-    });
-    await rename(workflowId, {
-      idempotencyKey: `rename-composed-${workflowId}`,
-      name: composed,
-    });
-    expect(await nameFacts(workflowId)).toMatchObject({
-      name: composed,
-      nameRevision: 2,
-      receipts: 2,
-      audits: 1,
-    });
-    await expect(rename(workflowId, { name: decomposed })).resolves.toEqual({
-      replayed: true,
-      workflow: accepted.workflow,
-    });
-  });
+  registerUnicodeRenameCase({ createNamed, rename, nameFacts });
 
   it('keeps the name revision independent of drafts and lifecycle', async () => {
     const workflowId = await createNamed('Leads');
