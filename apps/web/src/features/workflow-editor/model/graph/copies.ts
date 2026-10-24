@@ -2,7 +2,7 @@ import jsonata from 'jsonata';
 import { remapCallbackReferences } from '@pertexo/workflow-model';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { cardSize, overlaps, settleBodyLayout } from './for-each-body-layout';
-import { removeWorkflowElements } from './commands';
+import { removeWorkflowElements } from './removal';
 import {
   groupByScope,
   mapLevel,
