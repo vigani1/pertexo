@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
 import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.js';
 import { readPendingTaskFacts } from '../../pending-tasks/lifecycle/facts.js';
 import type { PoolClient } from 'pg';
@@ -289,7 +291,7 @@ async function lockRunForAdvance(
          on checkpoint.workspace_id = run.workspace_id
         and checkpoint.workflow_run_id = run.id
         and checkpoint.workflow_version_id = run.workflow_version_id
-       left join (${EXECUTION_SOURCE_SQL}) version
+       left join ${bindResourcePredicate(sql`${EXECUTION_SOURCE_SQL}`, [])}
          on version.workspace_id = run.workspace_id
         and version.id = run.workflow_version_id
        where run.workspace_id = $1 and run.id = $2

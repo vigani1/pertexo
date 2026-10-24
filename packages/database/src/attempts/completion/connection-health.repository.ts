@@ -1,3 +1,11 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  connectionHealthObservations,
+  nodeAttemptConnectionDispatches,
+} from '../../schema/connections.js';
+import { outboxEvents } from '../../schema/transport.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 
@@ -16,21 +24,27 @@ export async function assertConnectionHealthReplay(
   client: PoolClient,
   input: CompletionInput,
 ): Promise<void> {
-  const result = await client.query<{
-    kind: string;
-    reason_code: string | null;
-  }>(
-    'select kind,reason_code from app.connection_health_observations where workspace_id=$1 and attempt_id=$2',
-    [input.lease.workspaceId, input.lease.attemptId],
-  );
-  const actual = result.rows[0];
+  const result = await drizzle(client)
+    .select({
+      kind: connectionHealthObservations.kind,
+      reasonCode: connectionHealthObservations.reasonCode,
+    })
+    .from(connectionHealthObservations)
+    .where(
+      and(
+        eq(connectionHealthObservations.workspaceId, input.lease.workspaceId),
+        eq(connectionHealthObservations.attemptId, input.lease.attemptId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const actual = result[0];
   const expected = input.connectionHealthObservation;
   if (actual === undefined && expected === undefined) return;
   if (actual === undefined || expected === undefined)
     throw new NodeAttemptStateCorruptError();
   if (
     actual.kind !== expected.kind ||
-    actual.reason_code !==
+    actual.reasonCode !==
       (expected.kind === 'healthy' ? null : expected.reasonCode)
   )
     throw new NodeAttemptStateCorruptError();
@@ -46,25 +60,39 @@ export async function persistConnectionHealthObservation(
   const observationId = generatePersistedId();
   const outboxEventId = generatePersistedId();
   // Only an attempt that dispatched with a recorded connection can report on it.
-  const recorded = await client.query(
-    `insert into app.connection_health_observations
-       (id, workspace_id, attempt_id, kind, reason_code, outbox_event_id)
-     select $1, $2, $3, $4, $5, $6
-     where exists (select 1 from app.node_attempt_connection_dispatches dispatch
-       where dispatch.workspace_id=$2 and dispatch.attempt_id=$3
-         and dispatch.worker_id=$7 and dispatch.fence_token=$8)`,
-    [
-      observationId,
-      input.lease.workspaceId,
-      input.lease.attemptId,
-      observation.kind,
-      observation.kind === 'healthy' ? null : observation.reasonCode,
-      outboxEventId,
-      input.lease.workerId,
-      input.lease.fenceToken,
-    ],
-  );
-  if (recorded.rowCount !== 1) throw new NodeAttemptStateCorruptError();
+  const db = drizzle(client);
+  const dispatch = nodeAttemptConnectionDispatches;
+  const recorded = await db
+    .insert(connectionHealthObservations)
+    .select(
+      db
+        .select({
+          id: sql<string>`${observationId}`.as('id'),
+          workspaceId: dispatch.workspaceId,
+          attemptId: dispatch.attemptId,
+          kind: sql<string>`${observation.kind}`.as('kind'),
+          reasonCode: sql<
+            string | null
+          >`${observation.kind === 'healthy' ? null : observation.reasonCode}`.as(
+            'reason_code',
+          ),
+          outboxEventId: sql<string>`${outboxEventId}`.as('outbox_event_id'),
+          observedAt: sql<string>`clock_timestamp()`.as('observed_at'),
+          appliedAt: sql<null>`null`.as('applied_at'),
+        })
+        .from(dispatch)
+        .where(
+          and(
+            eq(dispatch.workspaceId, input.lease.workspaceId),
+            eq(dispatch.attemptId, input.lease.attemptId),
+            eq(dispatch.workerId, input.lease.workerId),
+            eq(dispatch.fenceToken, input.lease.fenceToken),
+          ),
+        ),
+    )
+    .returning({ id: connectionHealthObservations.id })
+    .catch(rethrowQueryFailure);
+  if (recorded.length !== 1) throw new NodeAttemptStateCorruptError();
   const payload = {
     workspaceId: input.lease.workspaceId,
     outboxEventId,
@@ -73,15 +101,16 @@ export async function persistConnectionHealthObservation(
       ? {}
       : { traceparent: input.traceparent }),
   };
-  await client.query(
-    `insert into app.outbox_events(id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum)
-    values($1,$2,'apply-connection-health-observation','connection-health-observation',$3,$4::jsonb,$5)`,
-    [
-      outboxEventId,
-      input.lease.workspaceId,
-      observationId,
-      serializeStoredExecutionJsonValue(payload),
-      canonicalOutboxPayloadChecksum(payload),
-    ],
-  );
+  await db
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId: input.lease.workspaceId,
+      jobName: 'apply-connection-health-observation',
+      aggregateType: 'connection-health-observation',
+      aggregateId: observationId,
+      payload: sql`${serializeStoredExecutionJsonValue(payload)}::jsonb`,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+    })
+    .catch(rethrowQueryFailure);
 }

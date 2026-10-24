@@ -37,32 +37,32 @@ export async function duplicateCompletion(
       'canceled',
       'timed_out',
       'outcome_unknown',
-    ].includes(row.attempt_status)
+    ].includes(row.attemptStatus)
   ) {
     return undefined;
   }
   await assertConnectionHealthReplay(client, input);
   const persistedOutput =
-    row.output_ref === null
+    row.outputRef === null
       ? null
-      : serializeStoredExecutionValue(row.output_ref);
+      : serializeStoredExecutionValue(row.outputRef);
   const executorMismatch = executorCompletionMismatch(row, fields);
   const completionMismatch =
-    row.attempt_status !== fields.durableStatus ||
+    row.attemptStatus !== fields.durableStatus ||
     (fields.executorOutcome === undefined &&
       input.outcome.status !== 'suspended' &&
-      row.node_status !== fields.durableStatus) ||
-    (input.outcome.status === 'suspended' && !row.suspension_recorded) ||
+      row.nodeStatus !== fields.durableStatus) ||
+    (input.outcome.status === 'suspended' && !row.suspensionRecorded) ||
     persistedOutput !== serializedOutput ||
-    row.safe_error_code !== fields.safeErrorCode ||
-    row.error_summary !== fields.errorSummary ||
-    canonicalJson(row.code_diagnostics) !==
+    row.safeErrorCode !== fields.safeErrorCode ||
+    row.errorSummary !== fields.errorSummary ||
+    canonicalJson(row.codeDiagnostics) !==
       canonicalJson(input.codeDiagnostics ?? null) ||
     executorMismatch;
   if (completionMismatch) {
     throw new NodeAttemptStateCorruptError();
   }
-  if (receipt.completed_at === null) {
+  if (receipt.completedAt === null) {
     await completeReceipt(
       client,
       input.lease.workspaceId,
@@ -78,12 +78,12 @@ function executorCompletionMismatch(
 ): boolean {
   return (
     fields.executorOutcome !== undefined &&
-    (row.executor_failure_kind !== fields.executorOutcome.failureKind ||
-      row.executor_error_kind !== fields.executorOutcome.errorKind ||
-      row.executor_possibly_dispatched !==
+    (row.executorFailureKind !== fields.executorOutcome.failureKind ||
+      row.executorErrorKind !== fields.executorOutcome.errorKind ||
+      row.executorPossiblyDispatched !==
         fields.executorOutcome.possiblyDispatched ||
-      row.executor_retry_after_millis !==
+      row.executorRetryAfterMillis !==
         (fields.executorOutcome.minimumRetryDelayMillis ?? null) ||
-      row.retry_decision === null)
+      row.retryDecision === null)
   );
 }

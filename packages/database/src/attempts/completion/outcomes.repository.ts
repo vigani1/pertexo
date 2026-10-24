@@ -1,3 +1,9 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { nodeRuns, nodeAttempts } from '../../schema/runs/execution.js';
+import { outboxEvents } from '../../schema/transport.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { appendAttemptEvent } from '../events.repository.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { PoolClient } from 'pg';
@@ -67,14 +73,14 @@ function assertActiveLease(
   receipt: CompletionReceiptRow,
 ): void {
   const staleAttemptLease =
-    row.attempt_status !== 'running' ||
-    !row.current_attempt ||
-    row.node_status !== 'running' ||
-    row.lease_owner !== input.lease.workerId ||
-    Number(row.fence_token) !== input.lease.fenceToken ||
-    row.lease_expires_at === null ||
-    !row.lease_valid ||
-    receipt.completed_at !== null;
+    row.attemptStatus !== 'running' ||
+    !row.currentAttempt ||
+    row.nodeStatus !== 'running' ||
+    row.leaseOwner !== input.lease.workerId ||
+    row.fenceToken !== input.lease.fenceToken ||
+    row.leaseExpiresAt === null ||
+    !row.leaseValid ||
+    receipt.completedAt !== null;
   if (staleAttemptLease) {
     throw new NodeAttemptReconciliationRequiredError();
   }
@@ -86,31 +92,36 @@ async function updateAttempt(
   serializedOutput: string | null,
   fields: CompletionFields,
 ): Promise<void> {
-  await client.query(
-    `update app.node_attempts
-      set status=$3,lease_owner=null,lease_expires_at=null,
-          output_ref=$4::json,safe_error_code=$5,error_summary=$6,
-          executor_failure_kind=$7,executor_error_kind=$8,
-          executor_possibly_dispatched=$9,retry_decision=$10,code_diagnostics=$11::jsonb,executor_retry_after_millis=$12,
-          completed_at=clock_timestamp(),updated_at=clock_timestamp()
-      where workspace_id=$1 and id=$2`,
-    [
-      input.lease.workspaceId,
-      input.lease.attemptId,
-      fields.durableStatus,
-      serializedOutput,
-      fields.safeErrorCode,
-      fields.errorSummary,
-      fields.executorOutcome?.failureKind ?? null,
-      fields.executorOutcome?.errorKind ?? null,
-      fields.executorOutcome?.possiblyDispatched ?? null,
-      fields.executorOutcome === undefined ? null : 'pending',
-      input.codeDiagnostics === undefined
-        ? null
-        : canonicalJson(input.codeDiagnostics),
-      fields.executorOutcome?.minimumRetryDelayMillis ?? null,
-    ],
-  );
+  await drizzle(client)
+    .update(nodeAttempts)
+    .set({
+      status: fields.durableStatus,
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      outputRef: sql`${serializedOutput}::json`,
+      safeErrorCode: fields.safeErrorCode,
+      errorSummary: fields.errorSummary,
+      executorFailureKind: fields.executorOutcome?.failureKind ?? null,
+      executorErrorKind: fields.executorOutcome?.errorKind ?? null,
+      executorPossiblyDispatched:
+        fields.executorOutcome?.possiblyDispatched ?? null,
+      retryDecision: fields.executorOutcome === undefined ? null : 'pending',
+      codeDiagnostics:
+        input.codeDiagnostics === undefined
+          ? null
+          : sql`${canonicalJson(input.codeDiagnostics)}::jsonb`,
+      executorRetryAfterMillis:
+        fields.executorOutcome?.minimumRetryDelayMillis ?? null,
+      completedAt: sql`clock_timestamp()`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(nodeAttempts.workspaceId, input.lease.workspaceId),
+        eq(nodeAttempts.id, input.lease.attemptId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
 
 async function enqueueAdvance(
@@ -126,19 +137,18 @@ async function enqueueAdvance(
       ? {}
       : { traceparent: input.traceparent }),
   } as const;
-  await client.query(
-    `insert into app.outbox_events (
-       id,workspace_id,job_name,aggregate_type,
-       aggregate_id,payload,payload_checksum
-     ) values ($1,$2,'advance-workflow-run','workflow-run',$3,$4::jsonb,$5)`,
-    [
-      outboxEventId,
-      input.lease.workspaceId,
-      input.lease.runId,
-      serializeStoredExecutionJsonValue(payload),
-      canonicalOutboxPayloadChecksum(payload),
-    ],
-  );
+  await drizzle(client)
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId: input.lease.workspaceId,
+      jobName: 'advance-workflow-run',
+      aggregateType: 'workflow-run',
+      aggregateId: input.lease.runId,
+      payload: sql`${serializeStoredExecutionJsonValue(payload)}::jsonb`,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+    })
+    .catch(rethrowQueryFailure);
   return outboxEventId;
 }
 
@@ -157,51 +167,47 @@ async function commitSuspension(
   outcome: SuspendedOutcome,
   serializedOutput: string | null,
 ): Promise<CompleteNodeAttemptResult> {
-  const suspended = await client.query<{ resume_at: Date }>(
-    `update app.node_runs
-     set status='waiting',output_ref=$3::json,wait_kind='node_wait',
-         resume_at=clock_timestamp()+make_interval(secs=>$4),
-         retry_due_at=null,due_wakeup_at=null,safe_error_code=null,
-         completed_at=null,updated_at=clock_timestamp()
-     where workspace_id=$1 and id=$2 and current_attempt_id=$5
-       and status='running'
-     returning resume_at`,
-    [
-      input.lease.workspaceId,
-      input.lease.nodeRunId,
-      serializedOutput,
-      outcome.durationSeconds,
-      input.lease.attemptId,
-    ],
-  );
-  const resumeAt = suspended.rows[0]?.resume_at;
+  const suspended = await drizzle(client)
+    .update(nodeRuns)
+    .set({
+      status: 'waiting',
+      outputRef: sql`${serializedOutput}::json`,
+      waitKind: 'node_wait',
+      resumeAt: sql`clock_timestamp()+make_interval(secs=>${outcome.durationSeconds})`,
+      retryDueAt: null,
+      dueWakeupAt: null,
+      safeErrorCode: null,
+      completedAt: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(nodeRuns.workspaceId, input.lease.workspaceId),
+        eq(nodeRuns.id, input.lease.nodeRunId),
+        eq(nodeRuns.currentAttemptId, input.lease.attemptId),
+        eq(nodeRuns.status, 'running'),
+      ),
+    )
+    .returning({
+      resumeAt: sql<Date>`${nodeRuns.resumeAt}`.mapWith(nodeRuns.resumeAt),
+    })
+    .catch(rethrowQueryFailure);
+  const resumeAt = suspended[0]?.resumeAt;
   if (resumeAt === undefined) throw new NodeAttemptStateCorruptError();
-  const sequenceResult = await client.query<{ sequence: number }>(
-    `select coalesce(max(sequence),0)::int+1 sequence
-     from app.run_events where workspace_id=$1 and workflow_run_id=$2`,
-    [input.lease.workspaceId, input.lease.runId],
-  );
-  const sequence = sequenceResult.rows[0]?.sequence;
-  if (sequence === undefined) throw new NodeAttemptStateCorruptError();
-  await client.query(
-    `insert into app.run_events (
-       workspace_id,workflow_run_id,sequence,type,payload
-     ) values ($1,$2,$3,'node.waiting',$4::jsonb)`,
-    [
-      input.lease.workspaceId,
-      input.lease.runId,
-      sequence,
-      serializeStoredExecutionJsonValue({
-        nodeRunId: input.lease.nodeRunId,
-        attemptId: input.lease.attemptId,
-        invocationKey: input.lease.invocationKey,
-        nodeId: input.lease.nodeId,
-        attemptNumber: input.lease.attemptNumber,
-        dueAt: new Date(resumeAt).toISOString(),
-        waitKind: 'node_wait',
-      }),
-    ],
-  );
+  await appendAttemptEvent(client, {
+    workspaceId: input.lease.workspaceId,
+    runId: input.lease.runId,
+    type: 'node.waiting',
+    payload: {
+      nodeRunId: input.lease.nodeRunId,
+      attemptId: input.lease.attemptId,
+      invocationKey: input.lease.invocationKey,
+      nodeId: input.lease.nodeId,
+      attemptNumber: input.lease.attemptNumber,
+      dueAt: resumeAt.toISOString(),
+      waitKind: 'node_wait',
+    },
+  });
   return commitAndReceipt(client, input);
 }
 
@@ -211,49 +217,40 @@ async function commitTerminal(
   serializedOutput: string | null,
   fields: CompletionFields,
 ): Promise<CompleteNodeAttemptResult> {
-  const node = await client.query(
-    `update app.node_runs
-     set status=$3,output_ref=$4::json,safe_error_code=$5,
-         completed_at=clock_timestamp(),updated_at=clock_timestamp()
-     where workspace_id=$1 and id=$2 and current_attempt_id=$6`,
-    [
-      input.lease.workspaceId,
-      input.lease.nodeRunId,
-      fields.durableStatus,
-      serializedOutput,
-      fields.safeErrorCode,
-      input.lease.attemptId,
-    ],
-  );
-  if (node.rowCount !== 1) throw new NodeAttemptStateCorruptError();
-  const eventSequence = await client.query<{ sequence: number }>(
-    `select coalesce(max(sequence),0)::int+1 sequence
-     from app.run_events where workspace_id=$1 and workflow_run_id=$2`,
-    [input.lease.workspaceId, input.lease.runId],
-  );
-  const sequence = eventSequence.rows[0]?.sequence;
-  if (sequence === undefined) throw new NodeAttemptStateCorruptError();
-  await client.query(
-    `insert into app.run_events (
-       workspace_id,workflow_run_id,sequence,type,payload
-     ) values ($1,$2,$3,$4,$5::jsonb)`,
-    [
-      input.lease.workspaceId,
-      input.lease.runId,
-      sequence,
-      `node.${input.outcome.status}`,
-      serializeStoredExecutionJsonValue({
-        nodeRunId: input.lease.nodeRunId,
-        attemptId: input.lease.attemptId,
-        invocationKey: input.lease.invocationKey,
-        nodeId: input.lease.nodeId,
-        attemptNumber: input.lease.attemptNumber,
-        ...(fields.safeErrorCode === null
-          ? {}
-          : { safeErrorCode: fields.safeErrorCode }),
-      }),
-    ],
-  );
+  const node = await drizzle(client)
+    .update(nodeRuns)
+    .set({
+      status: fields.durableStatus,
+      outputRef: sql`${serializedOutput}::json`,
+      safeErrorCode: fields.safeErrorCode,
+      completedAt: sql`clock_timestamp()`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(nodeRuns.workspaceId, input.lease.workspaceId),
+        eq(nodeRuns.id, input.lease.nodeRunId),
+        eq(nodeRuns.currentAttemptId, input.lease.attemptId),
+      ),
+    )
+    .returning({ id: nodeRuns.id })
+    .catch(rethrowQueryFailure);
+  if (node.length !== 1) throw new NodeAttemptStateCorruptError();
+  await appendAttemptEvent(client, {
+    workspaceId: input.lease.workspaceId,
+    runId: input.lease.runId,
+    type: `node.${input.outcome.status}`,
+    payload: {
+      nodeRunId: input.lease.nodeRunId,
+      attemptId: input.lease.attemptId,
+      invocationKey: input.lease.invocationKey,
+      nodeId: input.lease.nodeId,
+      attemptNumber: input.lease.attemptNumber,
+      ...(fields.safeErrorCode === null
+        ? {}
+        : { safeErrorCode: fields.safeErrorCode }),
+    },
+  });
   return commitAndReceipt(client, input);
 }
 

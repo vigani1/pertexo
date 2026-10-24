@@ -94,25 +94,18 @@ function lease(
 function mockPool(input: {
   workspaceId: string;
   checkpoint: unknown;
-  outputs?: readonly {
-    invocation_key: string;
-    node_id: string;
-    node_output_ref: unknown;
-    attempt_output_ref: unknown;
-  }[];
-  declaration?: {
-    attempt_id: string;
-    attempt_output_ref: unknown;
-    node_output_ref: unknown;
-    node_id: string;
-  };
+  outputs?: readonly (readonly unknown[])[];
 }) {
   let applicationQueries = 0;
   let clientsAcquired = 0;
   let contextActive = false;
   let releases = 0;
   const client = {
-    query(sql: string) {
+    query(query: string | { text: string }) {
+      const sql = (typeof query === 'string' ? query : query.text).replaceAll(
+        '"',
+        '',
+      );
       if (
         sql.includes("current_setting('app.workspace_id'") &&
         sql.includes('pg_settings')
@@ -148,30 +141,15 @@ function mockPool(input: {
         contextActive = false;
         return { rows: [] };
       }
-      if (sql.includes('from app.workflow_runs run')) {
+      if (sql.includes('from app.workflow_runs')) {
         applicationQueries += 1;
         return {
-          rows: [
-            {
-              abort_reason: null,
-              abort_requested: false,
-              deadline_at: null,
-              input_ref: inline(null),
-              variable_set_revision: null,
-              scheduler_state: input.checkpoint,
-            },
-          ],
+          rows: [[inline(null), null, null, input.checkpoint, false, null]],
         };
       }
-      if (sql.includes('invocation_key=any')) {
+      if (sql.includes('from app.node_runs')) {
         applicationQueries += 1;
         return { rows: input.outputs ?? [] };
-      }
-      if (sql.includes('node.current_attempt_id as attempt_id')) {
-        applicationQueries += 1;
-        return {
-          rows: input.declaration === undefined ? [] : [input.declaration],
-        };
       }
       throw new Error(`Unexpected Q9 probe query: ${sql}`);
     },
@@ -213,19 +191,19 @@ describe('Q9 bounded-work probes', () => {
       const rows = upstreamNodeOutputs.map(
         ({ nodeId, invocationKey }, index) => {
           const stored = inline({ index });
-          return {
-            invocation_key: invocationKey,
-            node_id: nodeId,
-            node_run_id: randomUUID(),
-            current_attempt_id: randomUUID(),
-            current_attempt_number: 1,
-            reused_source_run_id: null,
-            reused_source_node_run_id: null,
-            reused_source_completed_at: null,
-            attempt_status: 'succeeded',
-            node_output_ref: stored,
-            attempt_output_ref: stored,
-          };
+          // PostgreSQL's array row mode follows the selected field order.
+          return [
+            randomUUID(),
+            1,
+            null,
+            null,
+            null,
+            'succeeded',
+            invocationKey,
+            nodeId,
+            stored,
+            stored,
+          ];
         },
       );
       const harness = mockPool({

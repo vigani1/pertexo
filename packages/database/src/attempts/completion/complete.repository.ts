@@ -1,3 +1,11 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  lockCompletionReceipt,
+  lockCompletionRun,
+  lockCompletionAttempt,
+} from './records.repository.js';
 import type { Pool } from 'pg';
 import type { z } from 'zod';
 
@@ -9,13 +17,9 @@ import {
   type CompleteNodeAttemptResult,
   type NodeAttemptRunStore,
 } from '../contract.js';
-import {
-  auditMismatch,
-  nodeAttemptConsumerName as consumerName,
-  validateDelivery,
-} from './receipts.repository.js';
+import { auditMismatch, validateDelivery } from './receipts.repository.js';
 import { applyNodeAttemptCompletion } from './outcomes.repository.js';
-import type { CompletionReceiptRow, LockedAttemptRow } from './contract.js';
+
 import {
   assertNotAborted,
   withWorkspaceWriteClient,
@@ -53,9 +57,11 @@ export async function completeNodeAttempt(
       input.lease.workspaceId,
       input.signal,
       async (client) => {
-        await client.query('select app.lock_workspace_run_admission($1)', [
-          input.lease.workspaceId,
-        ]);
+        await drizzle(client)
+          .execute(
+            sql`select app.lock_workspace_run_admission(${input.lease.workspaceId})`,
+          )
+          .catch(rethrowQueryFailure);
         await validateDelivery(client, {
           workspaceId: input.lease.workspaceId,
           runId: input.lease.runId,
@@ -66,83 +72,23 @@ export async function completeNodeAttempt(
           workerId: input.lease.workerId,
           signal: input.signal,
         });
-        const receipt = await client.query<CompletionReceiptRow>(
-          `select completed_at,payload_checksum
-           from app.inbox_receipts
-           where consumer_name=$1 and message_id=$2 and workspace_id=$3
-           for update`,
-          [
-            consumerName,
-            input.lease.delivery.outboxEventId,
-            input.lease.workspaceId,
-          ],
-        );
-        const receiptRow = receipt.rows[0];
+        const receipt = await lockCompletionReceipt(client, input);
+        const receiptRow = receipt[0];
         if (
-          receiptRow?.payload_checksum !== input.lease.delivery.payloadChecksum
+          receiptRow?.payloadChecksum !== input.lease.delivery.payloadChecksum
         )
           throw new NodeAttemptStateCorruptError();
 
-        const run = await client.query<{
-          abort_requested: boolean;
-        }>(
-          `select (
-             cancel_requested_at is not null or
-             (deadline_at is not null and deadline_at <= clock_timestamp())
-           ) abort_requested
-           from app.workflow_runs
-           where workspace_id=$1 and id=$2 and workflow_version_id=$3
-           for update`,
-          [
-            input.lease.workspaceId,
-            input.lease.runId,
-            input.lease.workflowVersionId,
-          ],
-        );
-        if (run.rowCount !== 1) throw new NodeAttemptStateCorruptError();
-        const locked = await client.query<LockedAttemptRow>(
-          `select attempt.status attempt_status,attempt.fence_token,
-                  attempt.lease_owner,attempt.lease_expires_at,
-                  (attempt.lease_expires_at > clock_timestamp()) lease_valid,
-                  attempt.output_ref,attempt.safe_error_code,
-                   attempt.error_summary,attempt.code_diagnostics,attempt.executor_failure_kind,attempt.executor_retry_after_millis,
-                   attempt.executor_error_kind,
-                   attempt.executor_possibly_dispatched,
-                    attempt.retry_decision,node.status node_status,node.wait_kind,
-                    (node.current_attempt_id=attempt.id) current_attempt,
-                    exists (
-                      select 1 from app.run_events event
-                       where event.workspace_id=attempt.workspace_id
-                         and event.workflow_run_id=node.workflow_run_id
-                         and event.type='node.waiting'
-                         and event.payload->>'attemptId'=attempt.id::text
-                    ) suspension_recorded
-           from app.node_attempts attempt
-           join app.node_runs node
-             on node.workspace_id=attempt.workspace_id
-            and node.id=attempt.node_run_id
-           where attempt.workspace_id=$1 and attempt.id=$2
-             and attempt.node_run_id=$3 and attempt.attempt_number=$4
-             and node.workflow_run_id=$5 and node.node_id=$6
-             and node.invocation_key=$7
-           for update of node,attempt`,
-          [
-            input.lease.workspaceId,
-            input.lease.attemptId,
-            input.lease.nodeRunId,
-            input.lease.attemptNumber,
-            input.lease.runId,
-            input.lease.nodeId,
-            input.lease.invocationKey,
-          ],
-        );
-        const row = locked.rows[0];
+        const run = await lockCompletionRun(client, input);
+        if (run.length !== 1) throw new NodeAttemptStateCorruptError();
+        const locked = await lockCompletionAttempt(client, input);
+        const row = locked[0];
         if (row === undefined) throw new NodeAttemptStateCorruptError();
         return applyNodeAttemptCompletion(client, input, {
           row,
           receipt: receiptRow,
           serializedOutput,
-          controlActive: run.rows[0]?.abort_requested ?? false,
+          controlActive: run[0]?.abortRequested ?? false,
         });
       },
     );

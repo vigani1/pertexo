@@ -1,4 +1,10 @@
-import type { Pool, PoolClient } from 'pg';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { nodeRuns, nodeAttempts } from '../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { appendAttemptEvent } from '../events.repository.js';
+import { lockClaimCandidate } from './candidates.repository.js';
+import type { Pool } from 'pg';
 import type { z } from 'zod';
 
 import {
@@ -22,41 +28,6 @@ import {
   assertNotAborted,
   withWorkspaceWriteClient,
 } from '../transactions.repository.js';
-import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
-
-async function appendStartedEvent(
-  client: PoolClient,
-  input: Readonly<{
-    workspaceId: string;
-    runId: string;
-    nodeRunId: string;
-    attemptId: string;
-    invocationKey: string;
-    nodeId: string;
-    attemptNumber: number;
-  }>,
-): Promise<void> {
-  const sequence = await client.query<{ sequence: number }>(
-    `select coalesce(max(sequence),0)::int + 1 as sequence
-     from app.run_events where workspace_id=$1 and workflow_run_id=$2`,
-    [input.workspaceId, input.runId],
-  );
-  const next = sequence.rows[0]?.sequence;
-  if (next === undefined) throw new NodeAttemptStateCorruptError();
-  const payload = serializeStoredExecutionJsonValue({
-    nodeRunId: input.nodeRunId,
-    attemptId: input.attemptId,
-    invocationKey: input.invocationKey,
-    nodeId: input.nodeId,
-    attemptNumber: input.attemptNumber,
-  });
-  await client.query(
-    `insert into app.run_events (
-       workspace_id,workflow_run_id,sequence,type,payload
-     ) values ($1,$2,$3,'node.started',$4::jsonb)`,
-    [input.workspaceId, input.runId, next, payload],
-  );
-}
 
 export async function claimNodeAttemptDelivery(
   pool: Pool,
@@ -92,78 +63,85 @@ export async function claimNodeAttemptDelivery(
             'canceled',
             'timed_out',
             'outcome_unknown',
-          ].includes(row.attempt_status)
+          ].includes(row.attemptStatus)
         ) {
           await completeReceipt(client, input.workspaceId, input.delivery);
           return Object.freeze({ kind: 'duplicate' as const });
         }
-        if (row.attempt_status === 'running') {
-          if (row.lease_expires_at !== null && row.lease_valid)
+        if (row.attemptStatus === 'running') {
+          if (row.leaseExpiresAt !== null && row.leaseValid)
             return Object.freeze({ kind: 'duplicate' as const });
           throw new NodeAttemptReconciliationRequiredError();
         }
-        if (row.attempt_status !== 'ready' || row.node_status !== 'ready')
+        if (row.attemptStatus !== 'ready' || row.nodeStatus !== 'ready')
           throw new NodeAttemptStateCorruptError();
 
         // Already-admitted work needs a lease to commit its control outcome.
         // The handler reads durable cancellation/deadline state before execution.
-        const sideEffectClass = row.side_effect_class;
-        const invalidEffectClass =
-          sideEffectClass !== 'safe' &&
-          sideEffectClass !== 'idempotent_with_key' &&
-          sideEffectClass !== 'unsafe';
-        if (invalidEffectClass) throw new NodeAttemptStateCorruptError();
         const branchContext =
-          row.branch_context === null
+          row.branchContext === null
             ? undefined
-            : branchContextSchema.safeParse(row.branch_context);
+            : branchContextSchema.safeParse(row.branchContext);
         if (branchContext !== undefined && !branchContext.success)
           throw new NodeAttemptStateCorruptError();
         const scope = branchContext?.data ?? {};
 
-        const claimed = await client.query<{
-          fence_token: string;
-          lease_expires_at: Date;
-        }>(
-          `update app.node_attempts
-               set status='running',lease_owner=$3,
-                   lease_expires_at=clock_timestamp()+make_interval(secs=>$4),
-                   fence_token=fence_token+1,
-                   started_at=coalesce(started_at,clock_timestamp()),
-                   updated_at=clock_timestamp()
-               where workspace_id=$1 and id=$2
-               returning fence_token,lease_expires_at`,
-          [
-            input.workspaceId,
-            input.attemptId,
-            input.workerId,
-            input.leaseDurationSeconds,
-          ],
-        );
-        const claim = claimed.rows[0];
+        const claimed = await drizzle(client)
+          .update(nodeAttempts)
+          .set({
+            status: 'running',
+            leaseOwner: input.workerId,
+            leaseExpiresAt: sql`clock_timestamp()+make_interval(secs=>${input.leaseDurationSeconds})`,
+            fenceToken: sql`${nodeAttempts.fenceToken}+1`,
+            startedAt: sql`coalesce(${nodeAttempts.startedAt},clock_timestamp())`,
+            updatedAt: sql`clock_timestamp()`,
+          })
+          .where(
+            and(
+              eq(nodeAttempts.workspaceId, input.workspaceId),
+              eq(nodeAttempts.id, input.attemptId),
+            ),
+          )
+          .returning({
+            fenceToken: nodeAttempts.fenceToken,
+            leaseExpiresAt: sql<Date>`${nodeAttempts.leaseExpiresAt}`.mapWith(
+              nodeAttempts.leaseExpiresAt,
+            ),
+          })
+          .catch(rethrowQueryFailure);
+        const claim = claimed[0];
         if (claim === undefined) throw new NodeAttemptStateCorruptError();
-        await client.query(
-          `update app.node_runs
-               set status='running',started_at=coalesce(started_at,clock_timestamp()),
-                   updated_at=clock_timestamp()
-               where workspace_id=$1 and id=$2`,
-          [input.workspaceId, input.nodeRunId],
-        );
-        await appendStartedEvent(client, {
+        await drizzle(client)
+          .update(nodeRuns)
+          .set({
+            status: 'running',
+            startedAt: sql`coalesce(${nodeRuns.startedAt},clock_timestamp())`,
+            updatedAt: sql`clock_timestamp()`,
+          })
+          .where(
+            and(
+              eq(nodeRuns.workspaceId, input.workspaceId),
+              eq(nodeRuns.id, input.nodeRunId),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+        await appendAttemptEvent(client, {
           workspaceId: input.workspaceId,
           runId: input.runId,
-          nodeRunId: input.nodeRunId,
-          attemptId: input.attemptId,
-          invocationKey: row.invocation_key,
-          nodeId: row.node_id,
-          attemptNumber: row.attempt_number,
+          type: 'node.started',
+          payload: {
+            nodeRunId: input.nodeRunId,
+            attemptId: input.attemptId,
+            invocationKey: row.invocationKey,
+            nodeId: row.nodeId,
+            attemptNumber: row.attemptNumber,
+          },
         });
         const lease = claimedAttemptLease(input, {
           row,
           runRow,
           scope,
           claim,
-          sideEffectClass,
         });
         return Object.freeze({ kind: 'claimed' as const, lease });
       },
@@ -180,79 +158,6 @@ export async function claimNodeAttemptDelivery(
   }
 }
 
-async function lockClaimCandidate(
-  client: PoolClient,
-  input: z.output<typeof claimDeliverySchema>,
-) {
-  const candidate = await client.query<{ run_id: string }>(
-    `select node.workflow_run_id as run_id
-               from app.node_attempts attempt
-               join app.node_runs node
-                 on node.workspace_id=attempt.workspace_id
-                and node.id=attempt.node_run_id
-               where attempt.workspace_id=$1 and attempt.id=$2`,
-    [input.workspaceId, input.attemptId],
-  );
-  if (candidate.rows[0]?.run_id !== input.runId)
-    throw new NodeAttemptStateCorruptError();
-  const run = await client.query<{ workflow_version_id: string }>(
-    `select workflow_version_id from app.workflow_runs
-               where workspace_id=$1 and id=$2 for update`,
-    [input.workspaceId, input.runId],
-  );
-  const runRow = run.rows[0];
-  if (runRow === undefined) throw new NodeAttemptStateCorruptError();
-  const locked = await client.query<{
-    admission_kind: 'execute' | 'retry' | 'wait_resume';
-    attempt_number: number;
-    attempt_status: string;
-    dispatch_marked_at: Date | null;
-    fence_token: string;
-    branch_context: unknown;
-    invocation_key: string;
-    lease_valid: boolean;
-    lease_expires_at: Date | null;
-    node_id: string;
-    node_status: string;
-    provider_idempotency_key: string | null;
-    provider_dispatch_binding: string | null;
-    provider_dispatch_unresolved: boolean;
-    side_effect_class: string;
-  }>(
-    `select attempt.attempt_number,attempt.admission_kind,
-                      attempt.status as attempt_status,
-                      attempt.dispatch_marked_at,attempt.fence_token,
-                      attempt.lease_expires_at,
-                      (attempt.lease_expires_at > clock_timestamp()) lease_valid,
-                       node.invocation_key,node.node_id,node.branch_context,
-                      node.status as node_status,attempt.side_effect_class,
-                       attempt.provider_idempotency_key,
-                       node.provider_dispatch_binding,
-                       (attempt.dispatch_marked_at is not null or exists (
-                         select 1 from app.node_attempts prior
-                         where prior.workspace_id=attempt.workspace_id
-                           and prior.node_run_id=attempt.node_run_id
-                           and prior.attempt_number < attempt.attempt_number
-                           and prior.executor_possibly_dispatched is true
-                           and prior.retry_decision='retry'
-                       )) provider_dispatch_unresolved
-               from app.node_attempts attempt
-               join app.node_runs node
-                 on node.workspace_id=attempt.workspace_id
-                and node.id=attempt.node_run_id
-               where attempt.workspace_id=$1 and attempt.id=$2
-                 and attempt.node_run_id=$3 and node.workflow_run_id=$4
-                 and node.current_attempt_id=attempt.id
-                 and node.current_attempt_number=attempt.attempt_number
-               for update of node,attempt`,
-    [input.workspaceId, input.attemptId, input.nodeRunId, input.runId],
-  );
-  const row = locked.rows[0];
-  if (row === undefined) throw new NodeAttemptStateCorruptError();
-
-  return { row, runRow };
-}
-
 function claimedAttemptLease(
   input: z.output<typeof claimDeliverySchema>,
   {
@@ -260,45 +165,43 @@ function claimedAttemptLease(
     runRow,
     scope,
     claim,
-    sideEffectClass,
   }: Readonly<{
     row: Awaited<ReturnType<typeof lockClaimCandidate>>['row'];
     runRow: Awaited<ReturnType<typeof lockClaimCandidate>>['runRow'];
     scope: z.output<typeof branchContextSchema>;
-    claim: Readonly<{ fence_token: string; lease_expires_at: Date }>;
-    sideEffectClass: NodeAttemptLease['sideEffectClass'];
+    claim: Pick<NodeAttemptLease, 'fenceToken' | 'leaseExpiresAt'>;
   }>,
 ): NodeAttemptLease {
   const { branchPath, iterationPath } = scope;
   const lease: NodeAttemptLease = Object.freeze({
     workspaceId: input.workspaceId,
     runId: input.runId,
-    workflowVersionId: runRow.workflow_version_id,
+    workflowVersionId: runRow.workflowVersionId,
     nodeRunId: input.nodeRunId,
     attemptId: input.attemptId,
-    attemptNumber: row.attempt_number,
-    admissionKind: row.admission_kind,
-    invocationKey: row.invocation_key,
-    nodeId: row.node_id,
+    attemptNumber: row.attemptNumber,
+    admissionKind: row.admissionKind,
+    invocationKey: row.invocationKey,
+    nodeId: row.nodeId,
     ...(branchPath === undefined || branchPath.length === 0
       ? {}
       : { branchPath }),
     ...(iterationPath === undefined || iterationPath.length === 0
       ? {}
       : { iterationPath }),
-    sideEffectClass,
-    ...(row.provider_idempotency_key === null
+    sideEffectClass: row.sideEffectClass,
+    ...(row.providerIdempotencyKey === null
       ? {}
-      : { providerIdempotencyKey: row.provider_idempotency_key }),
-    ...(row.provider_dispatch_binding === null
+      : { providerIdempotencyKey: row.providerIdempotencyKey }),
+    ...(row.providerDispatchBinding === null
       ? {}
-      : { providerDispatchBinding: row.provider_dispatch_binding }),
-    ...(row.provider_dispatch_unresolved
+      : { providerDispatchBinding: row.providerDispatchBinding }),
+    ...(row.providerDispatchUnresolved
       ? { providerDispatchUnresolved: true as const }
       : {}),
     workerId: input.workerId,
-    fenceToken: Number(claim.fence_token),
-    leaseExpiresAt: new Date(claim.lease_expires_at),
+    fenceToken: claim.fenceToken,
+    leaseExpiresAt: new Date(claim.leaseExpiresAt),
     delivery: Object.freeze(input.delivery),
   });
   if (!Number.isSafeInteger(lease.fenceToken) || lease.fenceToken <= 0)
