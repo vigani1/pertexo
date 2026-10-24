@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  normalizeBeginInput,
-  normalizeFinalizeInput,
-  normalizeIdentity,
-} from '../../src/artifacts/uploads/contract.js';
+import {normalizeBeginInput, normalizeFinalizeInput, normalizeIdentity} from '../../src/artifacts/uploads/input.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

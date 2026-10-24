@@ -2,47 +2,28 @@ import { and, asc, eq, lte, sql } from 'drizzle-orm';
 import type { z } from 'zod';
 import { artifactLinks, artifacts, previewRuns } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { artifactMetadataMatches } from './metadata/contract.js';
+import { artifactMetadataMatches } from './metadata/validation.js';
 import {
   ARTIFACT_STATUS,
-  type ArtifactRecord,
   pendingArtifactSchema,
   pendingPreviewArtifactSchema,
   finalizeArtifactSchema,
   claimInputSchema,
   claimOneInputSchema,
   removalInputSchema,
-  type CreatePendingArtifactInput,
-  type CreatePendingPreviewArtifactInput,
-  type FinalizeArtifactInput,
-  type ClaimDueUnfinalizedArtifactsInput,
-  type ClaimDueUnfinalizedArtifactInput,
-  type CompleteArtifactRemovalInput,
   ArtifactFinalizeConflictError,
   ArtifactLifecycleConflictError,
   ArtifactMetadataNotFoundError,
+} from './input.js';
+import type {
+  ArtifactRecord,
+  CreatePendingArtifactInput,
+  CreatePendingPreviewArtifactInput,
+  FinalizeArtifactInput,
+  ClaimDueUnfinalizedArtifactsInput,
+  ClaimDueUnfinalizedArtifactInput,
+  CompleteArtifactRemovalInput,
 } from './contract.js';
-
-export {
-  ARTIFACT_STATUS,
-  type ArtifactStatus,
-  type ArtifactRecord,
-  type CreatePendingArtifactInput,
-  type CreatePendingPreviewArtifactInput,
-  type FinalizeArtifactInput,
-  type ClaimDueUnfinalizedArtifactsInput,
-  type ClaimDueUnfinalizedArtifactInput,
-  type CompleteArtifactRemovalInput,
-  ArtifactFinalizeConflictError,
-  ArtifactLifecycleConflictError,
-  ArtifactMetadataNotFoundError,
-} from './contract.js';
-export {
-  type ArtifactCapacityObservation,
-  type ExecutionStorageObservation,
-  readArtifactCapacity,
-  readExecutionStorageCapacity,
-} from './capacity.queries.js';
 export function artifactStorageKey(
   workspaceId: string,
   artifactId: string,

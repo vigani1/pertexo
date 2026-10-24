@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  artifactStorageKey,
-  createPendingArtifact,
-  readArtifactCapacity,
-  readExecutionStorageCapacity,
-} from '../../src/artifacts/repository.js';
+import {artifactStorageKey, createPendingArtifact} from '../../src/artifacts/repository.js';
+import {readArtifactCapacity, readExecutionStorageCapacity} from '../../src/artifacts/capacity.queries.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const artifactId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

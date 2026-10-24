@@ -3,7 +3,8 @@ import { sql } from 'drizzle-orm';
 import { artifacts, runCheckpoints, runEvents } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 
-import { ARTIFACT_STATUS, type ArtifactStatus } from './contract.js';
+import { ARTIFACT_STATUS } from './input.js';
+import type { ArtifactStatus } from './contract.js';
 
 export type ArtifactCapacityObservation = Readonly<{
   bytes: number;

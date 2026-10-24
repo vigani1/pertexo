@@ -1,9 +1,6 @@
 import { expect, it } from 'vitest';
 
-import {
-  ArtifactQuotaExceededError,
-  ArtifactUploadIdempotencyConflictError,
-} from '../../../src/artifacts/uploads/repository.js';
+import {ArtifactQuotaExceededError, ArtifactUploadIdempotencyConflictError} from '../../../src/artifacts/uploads/input.js';
 
 import {
   database,
