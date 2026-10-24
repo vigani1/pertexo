@@ -6,6 +6,15 @@ import {
 import { boundedNotePosition } from '../../../model/notes/commands';
 import type { useNoteActions } from './use-actions';
 
+const arrowDeltas: Readonly<
+  Record<string, { x: number; y: number } | undefined>
+> = {
+  ArrowLeft: { x: -10, y: 0 },
+  ArrowRight: { x: 10, y: 0 },
+  ArrowUp: { x: 0, y: -10 },
+  ArrowDown: { x: 0, y: 10 },
+};
+
 export function noteKeyDown(
   {
     note,
@@ -27,7 +36,9 @@ export function noteKeyDown(
     actions.remove(note);
     return;
   }
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd') {
+  const duplicateRequested =
+    (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'd';
+  if (duplicateRequested) {
     event.preventDefault();
     event.stopPropagation();
     actions.add({
@@ -53,17 +64,8 @@ export function noteKeyDown(
     event.currentTarget.closest<HTMLElement>('[data-workflow-canvas]')?.focus();
     return;
   }
-  const delta =
-    event.key === 'ArrowLeft'
-      ? { x: -10, y: 0 }
-      : event.key === 'ArrowRight'
-        ? { x: 10, y: 0 }
-        : event.key === 'ArrowUp'
-          ? { x: 0, y: -10 }
-          : event.key === 'ArrowDown'
-            ? { x: 0, y: 10 }
-            : null;
-  if (delta === null) return;
+  const delta = arrowDeltas[event.key];
+  if (delta === undefined) return;
   event.preventDefault();
   event.stopPropagation();
   if (event.shiftKey)
