@@ -314,11 +314,15 @@ function isAborted(signal: AbortSignal | undefined): boolean {
   return signal?.aborted === true;
 }
 
-function throwTransportFailure(
-  error: unknown,
-  timedOut: boolean,
-  requestSignal: AbortSignal | undefined,
-): never {
+function throwTransportFailure({
+  error,
+  timedOut,
+  requestSignal,
+}: Readonly<{
+  error: unknown;
+  timedOut: boolean;
+  requestSignal: AbortSignal | undefined;
+}>): never {
   if (isApiError(error)) throw error;
   if (timedOut)
     throw new ApiError({
@@ -406,7 +410,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         response,
       );
     } catch (error) {
-      throwTransportFailure(error, call.timedOut(), request.signal);
+      throwTransportFailure({
+        error,
+        timedOut: call.timedOut(),
+        requestSignal: request.signal,
+      });
     } finally {
       call.dispose();
     }
@@ -463,7 +471,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       });
     } catch (error) {
       call.dispose();
-      throwTransportFailure(error, call.timedOut(), request.signal);
+      throwTransportFailure({
+        error,
+        timedOut: call.timedOut(),
+        requestSignal: request.signal,
+      });
     }
   }
 

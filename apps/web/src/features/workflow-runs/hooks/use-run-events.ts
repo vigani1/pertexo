@@ -164,7 +164,7 @@ export function useRunEvents(
           );
         } catch (error) {
           if (!isCurrent()) return;
-          if (streamWasHealthy(delivered, openedAt)) failures = 0;
+          if (streamWasHealthy({ delivered, openedAt })) failures = 0;
           const recovery = classifyStreamFailure(error, failures + 1);
           if (recovery.kind === 'stop') {
             setRecovery(recovery.status, recovery.message);
@@ -236,10 +236,10 @@ const HEALTHY_STREAM_MS = 30_000;
  * A stream that delivered events, or stayed open a while, was healthy: its
  * drop starts a fresh count rather than adding to the drops before it.
  */
-function streamWasHealthy(
-  delivered: boolean,
-  openedAt: number | undefined,
-): boolean {
+function streamWasHealthy({
+  delivered,
+  openedAt,
+}: Readonly<{ delivered: boolean; openedAt: number | undefined }>): boolean {
   return (
     delivered ||
     (openedAt !== undefined && Date.now() - openedAt >= HEALTHY_STREAM_MS)

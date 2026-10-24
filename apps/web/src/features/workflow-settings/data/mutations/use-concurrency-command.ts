@@ -13,7 +13,10 @@ import { putWorkflowConcurrency } from '../concurrency.api';
 import { concurrencyKey } from '../concurrency.queries';
 import { settingsCommandError } from './settings-command';
 
-function commandProblem(error: unknown, revisionConflict: boolean): string {
+function commandProblem({
+  error,
+  revisionConflict,
+}: Readonly<{ error: unknown; revisionConflict: boolean }>): string {
   if (revisionConflict)
     return 'This changed in another session. Your edits are kept. Review the refreshed limit, then save again.';
   if (isUnconfirmedCommand(error))
@@ -96,7 +99,7 @@ export function useConcurrencyCommand(
       if (!uncertain) attempt.current = undefined;
       setUnconfirmed(uncertain);
       setConflict(revisionConflict);
-      setProblem(commandProblem(error, revisionConflict));
+      setProblem(commandProblem({ error, revisionConflict }));
       return false;
     } finally {
       // An idempotent receipt is not proof of current settings or authority.

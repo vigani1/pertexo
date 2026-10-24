@@ -232,13 +232,14 @@ function projectLevel(
       ? bodyFrame(body, draggedInBody(body, projection.decorations))
       : undefined;
     projection.nodes.push(
-      projectNode(
+      projectNode({
         node,
         level,
-        { parent, frame },
-        node.id === result,
+        parent,
+        frame,
+        bodyResult: node.id === result,
         projection,
-      ),
+      }),
     );
     if (frame !== undefined && body !== undefined)
       projectLevel(body, { id: node.id, frame }, projection);
@@ -260,19 +261,21 @@ function draggedInBody(
   return moving;
 }
 
-function projectNode(
-  node: WorkflowNode,
-  level: GraphLevel,
-  {
-    parent,
-    frame,
-  }: Readonly<{
-    parent: Parent | undefined;
-    frame: BodyFrame | undefined;
-  }>,
-  bodyResult: boolean,
-  projection: Projection,
-): WorkflowFlowNode {
+function projectNode({
+  node,
+  level,
+  parent,
+  frame,
+  bodyResult,
+  projection,
+}: Readonly<{
+  node: WorkflowNode;
+  level: GraphLevel;
+  parent: Parent | undefined;
+  frame: BodyFrame | undefined;
+  bodyResult: boolean;
+  projection: Projection;
+}>): WorkflowFlowNode {
   const { decorations, labels } = projection;
   const definition = projection.definitions.get(
     definitionIdentity(node.definition.key, node.definition.version),

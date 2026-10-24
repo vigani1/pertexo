@@ -113,7 +113,10 @@ function savedChannelHint(
   return note ?? `Posts to ${target}.`;
 }
 
-function submitLabel(uncertain: boolean, editing: boolean): string {
+function submitLabel({
+  uncertain,
+  editing,
+}: Readonly<{ uncertain: boolean; editing: boolean }>): string {
   if (uncertain) return 'Try again';
   return editing ? 'Save changes' : 'Add destination';
 }
@@ -335,7 +338,7 @@ export function DestinationForm({
             !editing && usableConnections(connections, values.kind).length === 0
           }
         >
-          {submitLabel(uncertain, editing)}
+          {submitLabel({ uncertain, editing })}
         </ProgressButton>
       </SheetFooter>
     </form>

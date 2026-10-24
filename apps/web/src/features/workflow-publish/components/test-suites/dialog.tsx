@@ -101,7 +101,9 @@ function SuiteStartActions({
               preparation.cases.length === 0 ||
               (preparation.effectfulSteps.length > 0 && !acknowledged)
             }
-            onClick={() => void suites.submit(acknowledged)}
+            onClick={() =>
+              void suites.submit({ acknowledgeSideEffects: acknowledged })
+            }
           >
             {suites.start.pending ? 'Starting…' : 'Start suite'}
           </Button>

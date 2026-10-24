@@ -5,16 +5,27 @@ import type { SocialProvider } from '../model/social-provider';
 import { socialSignInStartedSchema } from '@pertexo/contracts';
 
 export class NativeAuthenticationError extends Error {
+  public readonly status: number | undefined;
+  public readonly code: string | undefined;
+  public readonly kind: ApiError['kind'] | undefined;
+  /** Bounded Retry-After from a rate-limited response. */
+  public readonly retryAfterMs: number | undefined;
+
   public constructor(
     message: string,
-    public readonly status?: number,
-    public readonly code?: string,
-    public readonly kind?: ApiError['kind'],
-    /** Bounded Retry-After from a rate-limited response. */
-    public readonly retryAfterMs?: number,
+    options: Readonly<{
+      status?: number | undefined;
+      code?: string | undefined;
+      kind?: ApiError['kind'] | undefined;
+      retryAfterMs?: number | undefined;
+    }> = {},
   ) {
     super(message);
     this.name = 'NativeAuthenticationError';
+    this.status = options.status;
+    this.code = options.code;
+    this.kind = options.kind;
+    this.retryAfterMs = options.retryAfterMs;
   }
 }
 
@@ -40,18 +51,15 @@ async function postAuthentication<Value>(
   } catch (error) {
     if (input.signal?.aborted === true) throw error;
     if (isApiError(error))
-      throw new NativeAuthenticationError(
-        error.message,
-        error.status,
-        error.problem?.code,
-        error.kind,
-        error.retryAfterMs,
-      );
+      throw new NativeAuthenticationError(error.message, {
+        status: error.status,
+        code: error.problem?.code,
+        kind: error.kind,
+        retryAfterMs: error.retryAfterMs,
+      });
     throw new NativeAuthenticationError(
       'The authentication service could not be reached.',
-      undefined,
-      undefined,
-      'network',
+      { kind: 'network' },
     );
   }
 }

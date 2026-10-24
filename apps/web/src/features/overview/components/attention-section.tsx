@@ -57,10 +57,10 @@ export function AttentionSection({
     ...workflowAttentionItems(
       workflows.data?.pages.flatMap((page) => page.items) ?? [],
     ),
-    ...connectionAttentionItems(
-      connections.data?.items ?? [],
-      can('connection:manage'),
-    ),
+    ...connectionAttentionItems({
+      connections: connections.data?.items ?? [],
+      canManage: can('connection:manage'),
+    }),
     ...destinationAttentionItems(destinations.data?.items ?? []),
   ];
   const failures = useRunFailures({

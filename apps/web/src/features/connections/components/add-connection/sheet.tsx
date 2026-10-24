@@ -108,7 +108,9 @@ export function AddConnectionSheet({
   function close() {
     if (create.isPending) return;
     if (created !== undefined) {
-      notifications.success(savedMessage(created.name, test.phase === 'ok'));
+      notifications.success(
+        savedMessage({ name: created.name, passed: test.phase === 'ok' }),
+      );
       onCreated?.(test.result?.connection ?? created);
     }
     attempt.current = undefined;
@@ -346,7 +348,10 @@ function StepBody({
   );
 }
 
-function savedMessage(name: string, passed: boolean) {
+function savedMessage({
+  name,
+  passed,
+}: Readonly<{ name: string; passed: boolean }>) {
   return passed
     ? { title: `Connected ${name}` }
     : { title: `Saved ${name}`, description: 'It hasn’t passed a test yet.' };

@@ -44,7 +44,7 @@ export function InputCasesPanel({
     workspace.capabilities.includes('workflow:update');
   const [localEditing, setLocalEditing] = useState(false);
   const editing = controlledEditing ?? localEditing;
-  function changeEditing(next: boolean) {
+  function changeEditing({ next }: Readonly<{ next: boolean }>) {
     if (controlledEditing === undefined) setLocalEditing(next);
     onEditingChange?.(next);
   }
@@ -65,7 +65,7 @@ export function InputCasesPanel({
 
   function edit(record?: WorkflowInputCase) {
     if (record === undefined) cases.clearSelection();
-    changeEditing(true);
+    changeEditing({ next: true });
   }
 
   function load(record: WorkflowInputCase) {
@@ -111,7 +111,7 @@ export function InputCasesPanel({
           locked={locked}
           writable={writable}
           onClose={() => {
-            changeEditing(false);
+            changeEditing({ next: false });
           }}
         />
       ) : null}

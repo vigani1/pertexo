@@ -15,7 +15,10 @@ import { variableUsageQueryOptions } from '../data/variables.queries';
 import type { VariablesScope } from '../data/variables.api';
 type UsageRow = WorkspaceVariableUsageResponse['items'][number];
 
-function emptySentence(checkedAll: boolean, incomplete: boolean): string {
+function emptySentence({
+  checkedAll,
+  incomplete,
+}: Readonly<{ checkedAll: boolean; incomplete: boolean }>): string {
   if (!checkedAll)
     return 'No matches in the workflows checked so far. Continue the check.';
   if (incomplete) return 'No parsed reference found; the check is incomplete.';
@@ -42,7 +45,7 @@ function UsageRows({
         </Notice>
       ) : null}
       {rows.length === 0 ? (
-        <p className="text-sm">{emptySentence(checkedAll, incomplete)}</p>
+        <p className="text-sm">{emptySentence({ checkedAll, incomplete })}</p>
       ) : (
         <ul className="flex flex-col divide-y divide-border">
           {rows.map((row) => (

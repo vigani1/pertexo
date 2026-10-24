@@ -92,7 +92,10 @@ function graphLabels(
 ): ReadonlyMap<string, GraphLabel> {
   const labels = new Map<string, GraphLabel>();
   let order = 0;
-  const visit = (current: WorkflowGraphContract, root: boolean) => {
+  const visit = ({
+    current,
+    root,
+  }: Readonly<{ current: WorkflowGraphContract; root: boolean }>) => {
     for (const node of current.nodes) {
       // The catalog's name for the step type, the same words Build uses.
       const kind = describeStep(node.definition.key).name;
@@ -112,10 +115,10 @@ function graphLabels(
         root,
       });
       if (node.structured?.kind === 'for_each')
-        visit(node.structured.body, false);
+        visit({ current: node.structured.body, root: false });
     }
   };
-  if (graph !== undefined) visit(graph, true);
+  if (graph !== undefined) visit({ current: graph, root: true });
   return labels;
 }
 

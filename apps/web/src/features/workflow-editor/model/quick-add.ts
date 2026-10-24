@@ -14,10 +14,13 @@ type Point = Readonly<{ x: number; y: number }>;
  * canvas. Drags that start from an input, or end on or near a step, are
  * ordinary link attempts and give null.
  */
-export function portDropSource(
-  state: FinalConnectionState,
-  endedOverStep: boolean,
-): PortRef | null {
+export function portDropSource({
+  state,
+  endedOverStep,
+}: Readonly<{
+  state: FinalConnectionState;
+  endedOverStep: boolean;
+}>): PortRef | null {
   const handle = state.fromHandle;
   if (handle?.type !== 'source' || state.toNode !== null || endedOverStep)
     return null;

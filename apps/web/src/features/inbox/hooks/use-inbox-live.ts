@@ -69,12 +69,17 @@ function wait(durationMs: number, signal: AbortSignal): Promise<void> {
  * to the tab, refetches the inbox; hints carry no content, so a missed one
  * only delays a refresh. Stops when the person loses access.
  */
-export function useInboxLive(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  enabled: boolean,
-): InboxLiveStatus {
+export function useInboxLive({
+  apiClient,
+  userId,
+  workspaceId,
+  enabled,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  enabled: boolean;
+}>): InboxLiveStatus {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<InboxLiveStatus>('connecting');
 

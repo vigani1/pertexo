@@ -62,17 +62,18 @@ function usePublishPreview({
       summary === undefined
         ? undefined
         : `v${String(summary.nextVersionNumber)}`,
-    summaryState: summaryState(
-      summary !== undefined,
-      everPublished && latest.isPending,
-    ),
+    summaryState: summaryState({
+      ready: summary !== undefined,
+      loading: everPublished && latest.isPending,
+    }),
   } as const;
 }
 
-function summaryState(
-  ready: boolean,
-  loading: boolean,
-): 'ready' | 'loading' | 'error' {
+function summaryState({
+  ready,
+  loading,
+}: Readonly<{ ready: boolean; loading: boolean }>):
+  'ready' | 'loading' | 'error' {
   if (ready) return 'ready';
   return loading ? 'loading' : 'error';
 }

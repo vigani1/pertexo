@@ -87,7 +87,7 @@ function RunLiveIndicator({
   active: boolean;
   onReconnect: () => void;
 }>) {
-  const look = describeLiveUpdates(status, active);
+  const look = describeLiveUpdates({ status, runActive: active });
   if (look === undefined) return null;
   return (
     <span className="inline-flex items-center gap-1.5" role="status">

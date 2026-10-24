@@ -414,16 +414,21 @@ describe('workflow issues', () => {
 
 describe('publish readiness', () => {
   it('asks an empty draft for a first step, and leaves the rest to the server', () => {
-    expect(emptyDraftHint(graph([]), true)?.label).toBe(
-      'Add a trigger to start',
-    );
-    expect(emptyDraftHint(graph([]), false)).toMatchObject({
+    expect(
+      emptyDraftHint({ graph: graph([]), triggersAvailable: true })?.label,
+    ).toBe('Add a trigger to start');
+    expect(
+      emptyDraftHint({ graph: graph([]), triggersAvailable: false }),
+    ).toMatchObject({
       label: 'Add a step to start',
       detail: expect.stringMatching(/No triggers are enabled/u) as unknown,
     });
-    expect(emptyDraftHint(graph([node('a', 'core.set')]), true)).toBe(
-      undefined,
-    );
+    expect(
+      emptyDraftHint({
+        graph: graph([node('a', 'core.set')]),
+        triggersAvailable: true,
+      }),
+    ).toBe(undefined);
   });
 });
 

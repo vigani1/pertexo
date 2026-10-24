@@ -61,7 +61,11 @@ export function useEditorSavePipeline({
     }),
     [apiClient, verifyOwner, workflowId, workspaceId],
   );
-  const flushSave = useSaveCoordinator(store, transport, canUpdate && !paused);
+  const flushSave = useSaveCoordinator({
+    store,
+    transport,
+    enabled: canUpdate && !paused,
+  });
 
   const ensureSaved = useCallback(async (): Promise<SavedDraftIdentity> => {
     if (paused)

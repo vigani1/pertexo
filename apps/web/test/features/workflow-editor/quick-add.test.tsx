@@ -168,19 +168,34 @@ describe('quick add graph commands', () => {
 describe('quick add port drop', () => {
   it('opens only for an output dropped on empty canvas', () => {
     expect(
-      portDropSource(dropState({ id: 'out', type: 'source' }), false),
+      portDropSource({
+        state: dropState({ id: 'out', type: 'source' }),
+        endedOverStep: false,
+      }),
     ).toEqual({ nodeId: 'target', port: 'out' });
     expect(
-      portDropSource(dropState({ id: 'out', type: 'source' }, 'step'), false),
+      portDropSource({
+        state: dropState({ id: 'out', type: 'source' }, 'step'),
+        endedOverStep: false,
+      }),
     ).toBeNull();
     expect(
-      portDropSource(dropState({ id: 'out', type: 'source' }), true),
+      portDropSource({
+        state: dropState({ id: 'out', type: 'source' }),
+        endedOverStep: true,
+      }),
     ).toBeNull();
     expect(
-      portDropSource(dropState({ id: 'in', type: 'target' }), false),
+      portDropSource({
+        state: dropState({ id: 'in', type: 'target' }),
+        endedOverStep: false,
+      }),
     ).toBeNull();
     expect(
-      portDropSource(dropState({ id: null, type: 'source' }), false),
+      portDropSource({
+        state: dropState({ id: null, type: 'source' }),
+        endedOverStep: false,
+      }),
     ).toBeNull();
   });
 

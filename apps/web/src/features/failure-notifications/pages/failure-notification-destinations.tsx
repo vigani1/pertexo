@@ -69,7 +69,7 @@ const HOW_ALERTS_WORK: readonly HowItWorksStep[] = [
  * is a new session, so the form starts from the destination as it is now;
  * it can't be closed while a save is in flight.
  */
-function useDestinationLens(saving: boolean) {
+function useDestinationLens({ saving }: Readonly<{ saving: boolean }>) {
   const [lens, setLens] = useState<Lens>({
     open: false,
     destinationId: undefined,
@@ -212,7 +212,7 @@ export function FailureNotificationDestinationsPage({
     channels: destinationChannels(destinations.data?.items ?? []),
     enabled: canRead && can('connection:use'),
   });
-  const lens = useDestinationLens(saving);
+  const lens = useDestinationLens({ saving });
 
   if (!canRead)
     return (

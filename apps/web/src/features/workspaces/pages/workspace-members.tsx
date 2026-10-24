@@ -38,11 +38,15 @@ import {
 type AccessLoss = 'authentication' | 'permission';
 
 /** Why the page can't show the team, if it can't. */
-function blockedCopy(
-  role: WorkspaceRole,
-  canRead: boolean,
-  losses: readonly (AccessLoss | undefined)[],
-): Readonly<{ title: string; description: string }> | undefined {
+function blockedCopy({
+  role,
+  canRead,
+  losses,
+}: Readonly<{
+  role: WorkspaceRole;
+  canRead: boolean;
+  losses: readonly (AccessLoss | undefined)[];
+}>): Readonly<{ title: string; description: string }> | undefined {
   if (!canRead)
     return {
       title: 'Workspace members are unavailable',
@@ -65,10 +69,10 @@ function blockedCopy(
   return undefined;
 }
 
-function describeInvitationAvailability(
-  available: boolean | undefined,
-  failed: boolean,
-) {
+function describeInvitationAvailability({
+  available,
+  failed,
+}: Readonly<{ available: boolean | undefined; failed: boolean }>) {
   const message =
     available === true
       ? undefined
@@ -144,10 +148,11 @@ function TeamHeader({
   );
 }
 
-function lossOf(
-  error: unknown,
-  notFoundIsLoss: boolean,
-): AccessLoss | undefined {
+function lossOf({
+  error,
+  notFoundIsLoss,
+}: Readonly<{ error: unknown; notFoundIsLoss: boolean }>):
+  AccessLoss | undefined {
   if (isUnauthenticated(error)) return 'authentication';
   if (!isApiError(error)) return undefined;
   if (error.status === 403 || (notFoundIsLoss && error.status === 404))
@@ -202,20 +207,24 @@ export function WorkspaceMembersPage({
   const invitationItems =
     invitations.data?.pages.flatMap((page) => page.items) ?? [];
   const issuanceAvailable = invitations.data?.pages[0]?.issuanceAvailable;
-  const invitationAvailability = describeInvitationAvailability(
-    issuanceAvailable,
-    invitations.isError,
-  );
+  const invitationAvailability = describeInvitationAvailability({
+    available: issuanceAvailable,
+    failed: invitations.isError,
+  });
   const pendingInvitations = invitationItems.filter(
     (item) => item.status === 'pending',
   ).length;
   const losses = [
     commandLoss,
-    members.isError ? lossOf(members.error, false) : undefined,
-    invitations.isError ? lossOf(invitations.error, true) : undefined,
+    members.isError
+      ? lossOf({ error: members.error, notFoundIsLoss: false })
+      : undefined,
+    invitations.isError
+      ? lossOf({ error: invitations.error, notFoundIsLoss: true })
+      : undefined,
   ];
 
-  const blocked = blockedCopy(workspace.role, canRead, losses);
+  const blocked = blockedCopy({ role: workspace.role, canRead, losses });
   if (blocked !== undefined)
     return <UnavailablePage heading="Team" {...blocked} />;
 

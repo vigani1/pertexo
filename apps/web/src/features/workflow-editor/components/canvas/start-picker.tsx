@@ -31,7 +31,11 @@ export function StartPicker({
     triggers.length > 0
       ? []
       : placeable.filter((definition) => definition.family !== 'trigger');
-  const copy = startCopy(editable, triggers.length > 0, steps.length > 0);
+  const copy = startCopy({
+    editable,
+    hasTriggers: triggers.length > 0,
+    hasSteps: steps.length > 0,
+  });
   return (
     // Centred on the canvas you can see: under the bar and between the
     // side lenses, not on the whole window. The capped column lets the card
@@ -62,11 +66,15 @@ export function StartPicker({
   );
 }
 
-function startCopy(
-  editable: boolean,
-  hasTriggers: boolean,
-  hasSteps: boolean,
-): Readonly<{ title: string; body: string }> {
+function startCopy({
+  editable,
+  hasTriggers,
+  hasSteps,
+}: Readonly<{
+  editable: boolean;
+  hasTriggers: boolean;
+  hasSteps: boolean;
+}>): Readonly<{ title: string; body: string }> {
   if (!editable)
     return {
       title: 'No steps yet',

@@ -64,11 +64,12 @@ function refreshingInBackground(
 }
 
 /** Which of the list's four states is on screen. */
-function listState(
-  pending: boolean,
-  loaded: boolean,
-  empty: boolean,
-): 'loading' | 'failed' | 'empty' | 'results' {
+function listState({
+  pending,
+  loaded,
+  empty,
+}: Readonly<{ pending: boolean; loaded: boolean; empty: boolean }>):
+  'loading' | 'failed' | 'empty' | 'results' {
   if (pending) return 'loading';
   if (!loaded) return 'failed';
   return empty ? 'empty' : 'results';
@@ -101,7 +102,11 @@ function useWorkflowList(
     workflows,
     items,
     empty,
-    shown: listState(workflows.isPending, workflows.data !== undefined, empty),
+    shown: listState({
+      pending: workflows.isPending,
+      loaded: workflows.data !== undefined,
+      empty,
+    }),
     organizations:
       workflows.data?.pages.flatMap((page) => page.organizations) ?? [],
   } as const;

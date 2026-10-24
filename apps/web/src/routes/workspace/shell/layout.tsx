@@ -100,7 +100,12 @@ export function WorkspaceShellFrame({
     enabled: canReadInbox,
   });
   // One live inbox stream per tab keeps the badge and the inbox current.
-  useInboxLive(apiClient, user.id, workspace.id, canReadInbox);
+  useInboxLive({
+    apiClient,
+    userId: user.id,
+    workspaceId: workspace.id,
+    enabled: canReadInbox,
+  });
   const inboxAnchors = useInboxAnchors();
   const matchRoute = useMatchRoute();
   const onInboxPage =

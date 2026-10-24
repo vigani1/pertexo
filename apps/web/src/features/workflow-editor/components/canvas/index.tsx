@@ -127,8 +127,9 @@ export function WorkflowCanvas({
     onSelectNodes,
   });
 
-  const { nodes: noteNodes, onChanges: onNoteChanges } =
-    useNoteProjection(editable);
+  const { nodes: noteNodes, onChanges: onNoteChanges } = useNoteProjection({
+    editable,
+  });
   const canvasNodes = useMemo(
     () => [...noteNodes, ...projection.nodes],
     [noteNodes, projection.nodes],
@@ -166,7 +167,7 @@ export function WorkflowCanvas({
     [store],
   );
 
-  const linkGestures = useLinkGestures(store, editable, onPortDrop);
+  const linkGestures = useLinkGestures({ store, editable, onPortDrop });
 
   const actions = useMemo(
     () => ({ editable, removeEdge: onRemoveEdge, addToBody: onAddToBody }),
@@ -394,11 +395,15 @@ function useCanvasProjection({
  * body's steps link only to each other), added as one change, and a
  * link dropped on empty canvas opens quick add there.
  */
-function useLinkGestures(
-  store: ReturnType<typeof useEditorStoreApi>,
-  editable: boolean,
-  onPortDrop: (from: PortRef, point: Position) => void,
-) {
+function useLinkGestures({
+  store,
+  editable,
+  onPortDrop,
+}: Readonly<{
+  store: ReturnType<typeof useEditorStoreApi>;
+  editable: boolean;
+  onPortDrop: (from: PortRef, point: Position) => void;
+}>) {
   const isValidConnection = useCallback(
     (link: Connection | Edge) => {
       const graph = store.getState().graph;
@@ -427,7 +432,7 @@ function useLinkGestures(
     (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
       const point = gestureEndPoint(event);
       if (!editable || point === null) return;
-      const from = portDropSource(state, isOverStep(point));
+      const from = portDropSource({ state, endedOverStep: isOverStep(point) });
       if (from !== null) onPortDrop(from, point);
     },
     [editable, onPortDrop],

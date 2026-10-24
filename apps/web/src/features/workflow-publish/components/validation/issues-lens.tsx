@@ -43,7 +43,7 @@ export function IssuesLens({
   const hint =
     count !== undefined && count > 0
       ? undefined
-      : emptyDraftHint(graph, triggersAvailable);
+      : emptyDraftHint({ graph, triggersAvailable });
   function close() {
     onOpenChange(false);
     document.getElementById(ISSUES_CHIP_ID)?.focus();

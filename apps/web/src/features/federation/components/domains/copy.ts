@@ -8,10 +8,10 @@ export function domainStatus(
     label: domain.requireSso ? 'SSO required' : 'Verified',
   } as const;
 }
-export function domainConfirmationCopy(
-  action: 'enforce' | 'remove' | undefined,
-  required: boolean,
-) {
+export function domainConfirmationCopy({
+  action,
+  required,
+}: Readonly<{ action: 'enforce' | 'remove' | undefined; required: boolean }>) {
   if (action === 'remove')
     return {
       title: 'Remove this domain?',

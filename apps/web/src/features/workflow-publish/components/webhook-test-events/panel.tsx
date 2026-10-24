@@ -43,7 +43,11 @@ export function WebhookTestEventPanel({
       heading.current?.scrollIntoView({ block: 'start' });
     }
   }, [listenerId]);
-  const { now, expiresAt } = useListenerClock(listener, query.data, active);
+  const { now, expiresAt } = useListenerClock({
+    listener,
+    snapshot: query.data,
+    active,
+  });
   const state = webhookListenerState({
     expiresAt: listener?.expiresAt,
     snapshot: query.data,

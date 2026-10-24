@@ -37,7 +37,7 @@ export function useEditorShortcuts(
       return;
     }
     if (isEditableTarget(event.target) || isInsideDialog(event.target)) return;
-    const action = commandFor(event, command, key);
+    const action = commandFor({ event, command, key });
     if (action === undefined) return;
     event.preventDefault();
     handlers[action]();
@@ -53,11 +53,12 @@ export function useEditorShortcuts(
   }, []);
 }
 
-function commandFor(
-  event: KeyboardEvent,
-  command: boolean,
-  key: string,
-): keyof EditorShortcutHandlers | undefined {
+function commandFor({
+  event,
+  command,
+  key,
+}: Readonly<{ event: KeyboardEvent; command: boolean; key: string }>):
+  keyof EditorShortcutHandlers | undefined {
   if (command && key === 'z') return event.shiftKey ? 'redo' : 'undo';
   if (command && key === 'y') return 'redo';
   if (command && key === 'd') return 'duplicateSelection';

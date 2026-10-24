@@ -11,10 +11,10 @@ export type EditorPresenceSource = Readonly<{
   ) => () => void;
 }>;
 /** A metadata-only subscription; the draft and scratch never leave their owner. */
-export function editorPresenceSource(
-  store: EditorStore,
-  editing: boolean,
-): EditorPresenceSource {
+export function editorPresenceSource({
+  store,
+  editing,
+}: Readonly<{ store: EditorStore; editing: boolean }>): EditorPresenceSource {
   return {
     subscribe(listener) {
       const report = (state: EditorState) => {

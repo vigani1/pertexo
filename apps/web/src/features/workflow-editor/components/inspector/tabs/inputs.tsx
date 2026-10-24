@@ -134,7 +134,10 @@ function MappedInputsTab({
       </div>
     );
 
-  function openRow(rowId: string, focusKey: boolean) {
+  function openRow({
+    rowId,
+    focusKey,
+  }: Readonly<{ rowId: string; focusKey: boolean }>) {
     activeRowId.current = rowId;
     rowsShown.openRow(rowId, focusKey);
   }
@@ -158,7 +161,7 @@ function MappedInputsTab({
     const id = mappings.addRow((rowId) =>
       withSource({ id: rowId, destinationKey: key }),
     );
-    openRow(id, key === '');
+    openRow({ rowId: id, focusKey: key === '' });
   }
 
   return (
@@ -259,7 +262,7 @@ function MappedInputsTab({
               size="sm"
               variant="outline"
               onClick={() => {
-                openRow(mappings.addRow(), true);
+                openRow({ rowId: mappings.addRow(), focusKey: true });
               }}
             >
               <PlusIcon data-icon="inline-start" />
