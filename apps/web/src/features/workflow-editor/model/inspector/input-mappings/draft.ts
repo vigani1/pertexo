@@ -237,8 +237,17 @@ function rowSource(
     case 'node_failure':
     case 'node_output':
     case 'structured_input':
-      break;
+      return pathSource(row, check);
   }
+}
+
+function pathSource(
+  row: Extract<
+    InputMappingDraftRow,
+    { kind: 'run_input' | 'node_failure' | 'node_output' | 'structured_input' }
+  >,
+  check: SourceCheck,
+): Readonly<{ mapping?: InputMapping; error?: string }> {
   if (parseJsonPath(row.path) === undefined)
     return {
       error: 'Use $, dot properties, array indexes, or quoted properties.',
