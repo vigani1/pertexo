@@ -5,8 +5,8 @@ import {
   csrfTokenSchema,
 } from '@pertexo/contracts';
 import { ApiError, isApiError } from './error';
-import { submitNativeDownload } from './download';
-import { requestController } from './request-controller';
+import { submitNativeDownload } from './transport/download';
+import { requestController } from './transport/request-controller';
 
 type ApiPath = `/v1${string}`;
 type ApiMethod = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
