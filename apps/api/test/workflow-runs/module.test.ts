@@ -1,3 +1,4 @@
+import { runPorts } from '../support/run-ports.js';
 import { UsageTrendsController } from '../../src/workflow-runs/usage/trends-controller.js';
 import { RunRecoveryController } from '../../src/workflow-runs/recovery/controller.js';
 import { describe, expect, it } from 'vitest';
@@ -9,39 +10,9 @@ import {
   UsageCapacityController,
   WorkflowRunsController,
   WorkflowRunsModule,
-  type WorkflowRunsDependencies,
 } from '../../src/workflow-runs/index.js';
 
-const dependencies = {
-  persistence: {
-    canRead: () => Promise.resolve(true),
-    start: () => Promise.reject(new Error('not exercised')),
-    recovery: () => Promise.reject(new Error('not exercised')),
-    recover: () => Promise.reject(new Error('not exercised')),
-    replay: () => Promise.reject(new Error('not exercised')),
-    get: () => Promise.resolve(undefined),
-    list: () => Promise.resolve({ items: [] }),
-    readVariables: () => Promise.resolve({ revision: 0, values: {} }),
-    readInput: () => Promise.resolve(undefined),
-    readNodeRunDiagnostics: () => Promise.resolve(undefined),
-    readNodeRunOutput: () => Promise.resolve(undefined),
-    readNodeRunInput: () => Promise.resolve(undefined),
-    stepHealth: () => Promise.resolve(undefined),
-    stepRuns: () => Promise.resolve(undefined),
-    statistics: () => Promise.reject(new Error('not exercised')),
-    usageTrends: () => Promise.reject(new Error('not exercised')),
-    usageCapacity: () => Promise.reject(new Error('not exercised')),
-    cancel: () => Promise.reject(new Error('not exercised')),
-  },
-  authorization: { findAccess: () => Promise.resolve(undefined) },
-  streamer: {
-    stream: () => ({
-      [Symbol.asyncIterator]: () => ({
-        next: () => Promise.resolve({ done: true as const, value: undefined }),
-      }),
-    }),
-  },
-} satisfies WorkflowRunsDependencies;
+const dependencies = runPorts();
 
 // Nest dynamic modules require a class token.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
