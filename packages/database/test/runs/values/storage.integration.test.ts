@@ -134,7 +134,12 @@ it('retains ordinary values for thirty days and tests for seven, then removes a 
   await terminal(test.runId, '8 days');
   expect(await read(retained.runId)).toEqual({ orderId: retained.runId });
   expect(await read(test.runId)).toEqual({});
-  await dispatcherPool.query(RUN_VALUES_RETENTION_RULE.statement, [100]);
+  const cleaner = await dispatcherPool.connect();
+  try {
+    await RUN_VALUES_RETENTION_RULE.run(cleaner, 100);
+  } finally {
+    cleaner.release();
+  }
   const rows = await queryAsOwner<{ workflow_run_id: string }>(
     'select workflow_run_id from app.workflow_run_values where workflow_run_id=any($1::uuid[])',
     [[retained.runId, expired.runId, test.runId]],

@@ -1,3 +1,23 @@
+import { previewAttempts, previewRuns } from '../../schema/runs/execution.js';
+import {
+  idempotencyRecords,
+  artifactLinks,
+} from '../../schema/runs/support.js';
+import {
+  and,
+  asc,
+  eq,
+  exists,
+  getTableName,
+  lte,
+  ne,
+  notExists,
+  sql,
+} from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { artifacts as artifactRecords } from '../../schema/transport.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -63,56 +83,70 @@ const optionsSchema = z
   })
   .strict();
 
-const previewSchema = z.object({ id: z.uuid(), workspace_id: z.uuid() });
-const artifactSchema = z.object({
-  id: z.uuid(),
-  status: z.enum(['pending', 'available', 'deleting']),
-  quiet: z.boolean(),
-});
-
-/** A finished preview past its expiry that no later preview builds on. */
-const DUE_PREVIEW = `
-  select preview.id, preview.workspace_id
-  from app.preview_runs preview
-  where preview.expires_at <= clock_timestamp()
-    and preview.status in ('succeeded', 'failed', 'canceled', 'timed_out', 'outcome_unknown')
-    and not exists (select 1 from app.preview_runs child
-      where child.workspace_id = preview.workspace_id
-        and child.prior_preview_run_id = preview.id)
-  order by preview.expires_at, preview.id
-  limit 1 for update skip locked`;
-
 /** Deletes a preview whose artifacts are all gone, with its attempts. */
 async function removePreview(
   client: PoolClient,
   workspaceId: string,
   previewRunId: string,
 ): Promise<void> {
-  await client.query(
-    `with links as (
-       delete from app.artifact_links
-       where workspace_id = $1 and owner_kind = 'preview_run' and owner_id = $2
-       returning artifact_id
-     )
-     delete from app.artifacts artifact using links
-     where artifact.workspace_id = $1 and artifact.id = links.artifact_id
-       and artifact.status = 'deleted'`,
-    [workspaceId, previewRunId],
+  const db = drizzle(client);
+  const links = db.$with('links').as(
+    db
+      .delete(artifactLinks)
+      .where(
+        and(
+          eq(artifactLinks.workspaceId, workspaceId),
+          eq(artifactLinks.ownerKind, 'preview_run'),
+          eq(artifactLinks.ownerId, previewRunId),
+        ),
+      )
+      .returning({ artifactId: artifactLinks.artifactId }),
   );
-  await client.query(
-    'delete from app.preview_attempts where workspace_id = $1 and preview_run_id = $2',
-    [workspaceId, previewRunId],
-  );
-  await client.query(
-    `delete from app.idempotency_records
-     where workspace_id = $1 and operation = 'preview.execute'
-       and resource_id = $2 and expires_at <= clock_timestamp()`,
-    [workspaceId, previewRunId],
-  );
-  await client.query(
-    'delete from app.preview_runs where workspace_id = $1 and id = $2',
-    [workspaceId, previewRunId],
-  );
+  await db
+    .with(links)
+    .delete(artifactRecords)
+    .where(
+      and(
+        eq(artifactRecords.workspaceId, workspaceId),
+        eq(artifactRecords.status, 'deleted'),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(links)
+            .where(eq(links.artifactId, artifactRecords.id)),
+        ),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .delete(previewAttempts)
+    .where(
+      and(
+        eq(previewAttempts.workspaceId, workspaceId),
+        eq(previewAttempts.previewRunId, previewRunId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .delete(idempotencyRecords)
+    .where(
+      and(
+        eq(idempotencyRecords.workspaceId, workspaceId),
+        eq(idempotencyRecords.operation, 'preview.execute'),
+        eq(idempotencyRecords.resourceId, previewRunId),
+        lte(idempotencyRecords.expiresAt, sql`clock_timestamp()`),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .delete(previewRuns)
+    .where(
+      and(
+        eq(previewRuns.workspaceId, workspaceId),
+        eq(previewRuns.id, previewRunId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
 
 /**
@@ -174,9 +208,9 @@ async function inWorkspace(
   workspaceId: string,
 ): Promise<void> {
   // Artifact capacity is charged in the artifact's own workspace.
-  await client.query("select set_config('app.workspace_id', $1, true)", [
-    workspaceId,
-  ]);
+  await drizzle(client)
+    .execute(sql`select set_config('app.workspace_id',${workspaceId},true)`)
+    .catch(rethrowQueryFailure);
 }
 
 async function preparePreview(
@@ -184,36 +218,76 @@ async function preparePreview(
   signal: AbortSignal | undefined,
 ) {
   return inRetentionTransaction(pool, options, signal, async (client) => {
-    const due = await client.query(DUE_PREVIEW);
-    if (due.rows[0] === undefined) return undefined;
-    const preview = previewSchema.parse(due.rows[0]);
+    const db = drizzle(client),
+      child = alias(previewRuns, 'child');
+    const [preview] = await db
+      .select({ id: previewRuns.id, workspaceId: previewRuns.workspaceId })
+      .from(previewRuns)
+      .where(
+        and(
+          lte(previewRuns.expiresAt, sql`clock_timestamp()`),
+          sql`${previewRuns.status} in ('succeeded','failed','canceled','timed_out','outcome_unknown')`,
+          notExists(
+            db
+              .select({ one: sql`1` })
+              .from(child)
+              .where(
+                and(
+                  eq(child.workspaceId, previewRuns.workspaceId),
+                  eq(child.priorPreviewRunId, previewRuns.id),
+                ),
+              ),
+          ),
+        ),
+      )
+      .orderBy(asc(previewRuns.expiresAt), asc(previewRuns.id))
+      .limit(1)
+      .for('update', { skipLocked: true })
+      .catch(rethrowQueryFailure);
+    if (preview === undefined) return undefined;
     const result = {
       previewRunId: preview.id,
-      workspaceId: preview.workspace_id,
+      workspaceId: preview.workspaceId,
     };
-    await inWorkspace(client, preview.workspace_id);
-    const linked = await client.query(
-      `select artifact.id, artifact.status,
-             artifact.updated_at <= clock_timestamp() - make_interval(secs => $3) quiet
-           from app.artifact_links link
-           join app.artifacts artifact
-             on artifact.workspace_id = link.workspace_id and artifact.id = link.artifact_id
-           where link.workspace_id = $1 and link.owner_kind = 'preview_run'
-             and link.owner_id = $2 and artifact.status <> 'deleted'
-           order by artifact.id limit 1 for update of artifact`,
-      [preview.workspace_id, preview.id, options.artifactQuiescenceSeconds],
-    );
-    if (linked.rows[0] === undefined) {
-      await removePreview(client, preview.workspace_id, preview.id);
+    await inWorkspace(client, preview.workspaceId);
+    const [artifact] = await db
+      .select({
+        id: artifactRecords.id,
+        status: artifactRecords.status,
+        quiet: sql<boolean>`${artifactRecords.updatedAt}<=clock_timestamp()-make_interval(secs=>${options.artifactQuiescenceSeconds})`,
+      })
+      .from(artifactLinks)
+      .innerJoin(
+        artifactRecords,
+        and(
+          eq(artifactRecords.workspaceId, artifactLinks.workspaceId),
+          eq(artifactRecords.id, artifactLinks.artifactId),
+        ),
+      )
+      .where(
+        and(
+          eq(artifactLinks.workspaceId, preview.workspaceId),
+          eq(artifactLinks.ownerKind, 'preview_run'),
+          eq(artifactLinks.ownerId, preview.id),
+          ne(artifactRecords.status, 'deleted'),
+        ),
+      )
+      .orderBy(asc(artifactRecords.id))
+      .limit(1)
+      .for('update', {
+        of: alias(artifactRecords, getTableName(artifactRecords)),
+      })
+      .catch(rethrowQueryFailure);
+    if (artifact === undefined) {
+      await removePreview(client, preview.workspaceId, preview.id);
       return { ...result, status: 'completed' as const };
     }
-    const artifact = artifactSchema.parse(linked.rows[0]);
     if (artifact.status !== 'deleting') {
-      await client.query(
-        `update app.artifacts set status = 'deleting', updated_at = clock_timestamp()
-             where id = $1`,
-        [artifact.id],
-      );
+      await db
+        .update(artifactRecords)
+        .set({ status: 'deleting', updatedAt: sql`clock_timestamp()` })
+        .where(eq(artifactRecords.id, artifact.id))
+        .catch(rethrowQueryFailure);
       return {
         ...result,
         artifactId: artifact.id,
@@ -243,22 +317,42 @@ async function finishPreview(
   const { artifactId, previewRunId, workspaceId } = step;
   return inRetentionTransaction(pool, options, signal, async (client) => {
     await inWorkspace(client, workspaceId);
-    await client.query(
-      `update app.artifacts
-           set status = 'deleted', deleted_at = clock_timestamp(), updated_at = clock_timestamp()
-           where id = $1 and status = 'deleting'`,
-      [artifactId],
-    );
-    const remaining = await client.query(
-      `select 1 from app.artifact_links link
-           join app.artifacts artifact
-             on artifact.workspace_id = link.workspace_id and artifact.id = link.artifact_id
-           where link.workspace_id = $1 and link.owner_kind = 'preview_run'
-             and link.owner_id = $2 and artifact.status <> 'deleted'
-           limit 1`,
-      [workspaceId, previewRunId],
-    );
-    if (remaining.rowCount !== 0) return false;
+    const db = drizzle(client);
+    await db
+      .update(artifactRecords)
+      .set({
+        status: 'deleted',
+        deletedAt: sql`clock_timestamp()`,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(artifactRecords.id, artifactId),
+          eq(artifactRecords.status, 'deleting'),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    const remaining = await db
+      .select({ one: sql`1` })
+      .from(artifactLinks)
+      .innerJoin(
+        artifactRecords,
+        and(
+          eq(artifactRecords.workspaceId, artifactLinks.workspaceId),
+          eq(artifactRecords.id, artifactLinks.artifactId),
+        ),
+      )
+      .where(
+        and(
+          eq(artifactLinks.workspaceId, workspaceId),
+          eq(artifactLinks.ownerKind, 'preview_run'),
+          eq(artifactLinks.ownerId, previewRunId),
+          ne(artifactRecords.status, 'deleted'),
+        ),
+      )
+      .limit(1)
+      .catch(rethrowQueryFailure);
+    if (remaining.length !== 0) return false;
     await removePreview(client, workspaceId, previewRunId);
     return true;
   });

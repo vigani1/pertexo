@@ -1,3 +1,6 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -64,15 +67,13 @@ export function createRetentionDatabase(
           options,
           signal,
           async (client) => {
-            const lock = await client.query<{ locked: boolean }>(
-              'select pg_try_advisory_xact_lock($1, $2) locked',
-              [RETENTION_LOCK_CLASS, index],
-            );
+            const lock = await drizzle(client)
+              .execute<{ locked: boolean }>(
+                sql`select pg_try_advisory_xact_lock(${RETENTION_LOCK_CLASS}::integer,${index}::integer) locked`,
+              )
+              .catch(rethrowQueryFailure);
             if (!(lock.rows[0]?.locked ?? false)) return 0;
-            return 'run' in rule
-              ? rule.run(client, options.pageSize)
-              : ((await client.query(rule.statement, [options.pageSize]))
-                  .rowCount ?? 0);
+            return rule.run(client, options.pageSize);
           },
         );
       return Object.freeze({

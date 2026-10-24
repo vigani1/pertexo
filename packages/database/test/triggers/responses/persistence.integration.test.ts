@@ -240,11 +240,15 @@ describe('durable webhook responses', () => {
       ).toEqual({ state: 'finished' });
       const rule = RETENTION_RULES.find((r) => r.name === 'webhook_responses');
       if (rule === undefined) throw new Error('Response retention missing');
-      await asAdmin((client) =>
-        client
-          .query('set role pertexo_maintenance')
-          .then(() => client.query(rule.statement, [100])),
-      );
+      await asAdmin(async (pool) => {
+        const client = await pool.connect();
+        try {
+          await client.query('set role pertexo_maintenance');
+          await rule.run(client, 100);
+        } finally {
+          client.release();
+        }
+      });
       expect(
         (
           await asOwner(workspaceA, (client) =>

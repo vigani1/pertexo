@@ -1,3 +1,4 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, asc, eq, gt, notInArray, notExists, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -194,10 +195,11 @@ export async function reapInvitationReplacementClaims(
       ),
     ].sort();
     if (digests.length === 0) continue;
-    await client.query(
-      'select pg_advisory_xact_lock(hashtextextended(binding_digest,0)) from unnest($1::text[]) binding_digest order by binding_digest',
-      [digests],
-    );
+    await db
+      .execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(binding_digest,0)) from unnest(${sql.param(digests)}::text[]) binding_digest order by binding_digest`,
+      )
+      .catch(rethrowQueryFailure);
     // Re-read after locking: a live replacement may have won the lock first.
     const after = await readLineages(client, candidates);
     const live = await liveSuccessors(client, after);

@@ -1,8 +1,8 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull, lte, notExists, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { artifacts as artifactRecords } from '../../schema/transport.js';
-import { sql } from 'drizzle-orm';
+import { artifactLinks } from '../../schema/runs/support.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { artifactReferenceOwnersSql } from '../../artifacts/references/owners.queries.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -62,39 +62,19 @@ const optionsSchema = z
   })
   .strict();
 
-const candidateSchema = z.object({ id: z.uuid(), workspace_id: z.uuid() });
-
-/**
- * An expired upload or artifact is due unless something still refers to it.
- * A `deleting` artifact waits for its retry time, which also keeps a second
- * worker away while the first erases its bytes.
- */
-const DUE_ARTIFACT = `
-  select artifact.id, artifact.workspace_id
-  from app.artifacts artifact
-  where ((artifact.status = 'pending' and artifact.purpose = 'user-upload'
-          and artifact.expires_at <= clock_timestamp())
-      or (artifact.status = 'available' and artifact.expires_at <= clock_timestamp())
-      or artifact.status = 'deleting')
-    and (artifact.retention_retry_at is null
-      or artifact.retention_retry_at <= clock_timestamp())
-    and not exists (select 1 from app.artifact_links link
-      where link.workspace_id = artifact.workspace_id and link.artifact_id = artifact.id)
-  order by artifact.expires_at, artifact.id
-  limit 1 for update skip locked`;
-
 async function retryLater(
   client: PoolClient,
   artifactId: string,
   delay: string,
 ): Promise<void> {
-  await client.query(
-    `update app.artifacts
-     set retention_retry_at = clock_timestamp() + $2::interval,
-         updated_at = clock_timestamp()
-     where id = $1`,
-    [artifactId, delay],
-  );
+  await drizzle(client)
+    .update(artifactRecords)
+    .set({
+      retentionRetryAt: sql`clock_timestamp()+${delay}::interval`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(eq(artifactRecords.id, artifactId))
+    .catch(rethrowQueryFailure);
 }
 
 /**
@@ -119,9 +99,11 @@ export function createRunArtifactRetentionCoordinator(
     inRetentionTransaction(pool, options, signal, async (client) => {
       // Artifact capacity is charged in the artifact's own workspace.
       if (workspaceId !== undefined)
-        await client.query("select set_config('app.workspace_id', $1, true)", [
-          workspaceId,
-        ]);
+        await drizzle(client)
+          .execute(
+            sql`select set_config('app.workspace_id',${workspaceId},true)`,
+          )
+          .catch(rethrowQueryFailure);
       return work(client);
     });
 
@@ -131,43 +113,87 @@ export function createRunArtifactRetentionCoordinator(
       signal?: AbortSignal,
     ): Promise<RunArtifactRetentionProcessResult> => {
       const prepared = await transaction(signal, undefined, async (client) => {
-        const due = await client.query(DUE_ARTIFACT);
-        if (due.rows[0] === undefined) return undefined;
-        const artifact = candidateSchema.parse(due.rows[0]);
-        await client.query("select set_config('app.workspace_id', $1, true)", [
-          artifact.workspace_id,
-        ]);
-        const [referenced] = await drizzle(client)
+        const db = drizzle(client);
+        const [artifact] = await db
           .select({
-            referenced: artifactReferenceOwnersSql(
-              sql`${artifact.workspace_id}`,
-              sql`${artifact.id}`,
-            ),
+            id: artifactRecords.id,
+            workspaceId: artifactRecords.workspaceId,
           })
           .from(artifactRecords)
           .where(
             and(
-              eq(artifactRecords.workspaceId, artifact.workspace_id),
+              or(
+                and(
+                  eq(artifactRecords.status, 'pending'),
+                  eq(artifactRecords.purpose, 'user-upload'),
+                  lte(artifactRecords.expiresAt, sql`clock_timestamp()`),
+                ),
+                and(
+                  eq(artifactRecords.status, 'available'),
+                  lte(artifactRecords.expiresAt, sql`clock_timestamp()`),
+                ),
+                eq(artifactRecords.status, 'deleting'),
+              ),
+              or(
+                isNull(artifactRecords.retentionRetryAt),
+                lte(artifactRecords.retentionRetryAt, sql`clock_timestamp()`),
+              ),
+              notExists(
+                db
+                  .select({ one: sql`1` })
+                  .from(artifactLinks)
+                  .where(
+                    and(
+                      eq(
+                        artifactLinks.workspaceId,
+                        artifactRecords.workspaceId,
+                      ),
+                      eq(artifactLinks.artifactId, artifactRecords.id),
+                    ),
+                  ),
+              ),
+            ),
+          )
+          .orderBy(asc(artifactRecords.expiresAt), asc(artifactRecords.id))
+          .limit(1)
+          .for('update', { skipLocked: true })
+          .catch(rethrowQueryFailure);
+        if (artifact === undefined) return undefined;
+        await db
+          .execute(
+            sql`select set_config('app.workspace_id',${artifact.workspaceId},true)`,
+          )
+          .catch(rethrowQueryFailure);
+        const [reference] = await db
+          .select({
+            referenced: sql<boolean>`(${artifactReferenceOwnersSql(sql`${artifact.workspaceId}`, sql`${artifact.id}`)})`,
+          })
+          .from(artifactRecords)
+          .where(
+            and(
+              eq(artifactRecords.workspaceId, artifact.workspaceId),
               eq(artifactRecords.id, artifact.id),
             ),
           )
           .catch(rethrowQueryFailure);
-        if (referenced?.referenced ?? false) {
+        if (reference?.referenced ?? false) {
           await retryLater(client, artifact.id, '1 day');
           return { ...artifact, referenced: true };
         }
-        await client.query(
-          `update app.artifacts
-           set status = 'deleting', retention_retry_at = clock_timestamp() + interval '1 minute',
-               updated_at = clock_timestamp()
-           where id = $1`,
-          [artifact.id],
-        );
+        await db
+          .update(artifactRecords)
+          .set({
+            status: 'deleting',
+            retentionRetryAt: sql`clock_timestamp()+interval '1 minute'`,
+            updatedAt: sql`clock_timestamp()`,
+          })
+          .where(eq(artifactRecords.id, artifact.id))
+          .catch(rethrowQueryFailure);
         return { ...artifact, referenced: false };
       });
       if (prepared === undefined) return Object.freeze({ status: 'idle' });
       const artifactId = prepared.id;
-      const workspaceId = prepared.workspace_id;
+      const workspaceId = prepared.workspaceId;
       if (prepared.referenced)
         return Object.freeze({ artifactId, status: 'referenced', workspaceId });
 
@@ -187,10 +213,15 @@ export function createRunArtifactRetentionCoordinator(
         return Object.freeze({ artifactId, status: 'waiting', workspaceId });
 
       await transaction(signal, workspaceId, (client) =>
-        client.query(
-          `delete from app.artifacts where id = $1 and status = 'deleting'`,
-          [artifactId],
-        ),
+        drizzle(client)
+          .delete(artifactRecords)
+          .where(
+            and(
+              eq(artifactRecords.id, artifactId),
+              eq(artifactRecords.status, 'deleting'),
+            ),
+          )
+          .catch(rethrowQueryFailure),
       );
       return Object.freeze({ artifactId, status: 'completed', workspaceId });
     },

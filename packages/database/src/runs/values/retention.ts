@@ -1,12 +1,53 @@
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { workflowRunValues } from '../../schema/runs/values.js';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { and, asc, eq, exists, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
 import { expiredRunSql } from '../data-policy.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 
-export const RUN_VALUES_RETENTION_RULE = Object.freeze({
+export const RUN_VALUES_RETENTION_RULE = {
   name: 'workflow_run_values',
-  statement: `with page as (
-    select value.workspace_id,value.id from app.workflow_run_values value
-    join app.workflow_runs run on run.workspace_id=value.workspace_id and run.id=value.workflow_run_id
-    where ${bindResourcePredicate(expiredRunSql('run').inlineParams(), [])}
-    order by value.id limit $1 for update of value skip locked
-  ) delete from app.workflow_run_values value using page where value.workspace_id=page.workspace_id and value.id=page.id`,
-});
+  async run(client: PoolClient, pageSize: number): Promise<number> {
+    const db = drizzle(client),
+      value = alias(workflowRunValues, 'value'),
+      owner = alias(workflowRuns, 'run');
+    const page = db.$with('page').as(
+      db
+        .select({ workspaceId: value.workspaceId, id: value.id })
+        .from(value)
+        .innerJoin(
+          owner,
+          and(
+            eq(owner.workspaceId, value.workspaceId),
+            eq(owner.id, value.workflowRunId),
+          ),
+        )
+        .where(expiredRunSql('run'))
+        .orderBy(asc(value.id))
+        .limit(pageSize)
+        .for('update', { of: value, skipLocked: true }),
+    );
+    return (
+      await db
+        .with(page)
+        .delete(workflowRunValues)
+        .where(
+          exists(
+            db
+              .select({ one: sql`1` })
+              .from(page)
+              .where(
+                and(
+                  eq(page.workspaceId, workflowRunValues.workspaceId),
+                  eq(page.id, workflowRunValues.id),
+                ),
+              ),
+          ),
+        )
+        .returning({ one: sql`1` })
+        .catch(rethrowQueryFailure)
+    ).length;
+  },
+} as const;

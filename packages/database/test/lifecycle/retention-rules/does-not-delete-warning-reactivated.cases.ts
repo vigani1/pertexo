@@ -35,10 +35,12 @@ export function registerDoesNotDeleteWarningReactivated(): void {
       throw new Error('Missing inbox retention rule');
     const applicationName = `retention-warning-${randomUUID()}`;
     const blocker = new Client({ connectionString: withDatabase(adminUrl) });
-    const cleaner = new Pool({
+    const cleanerPool = new Pool({
       connectionString: withApplicationName(maintenanceUrl, applicationName),
+      max: 1,
     });
     await blocker.connect();
+    const cleaner = await cleanerPool.connect();
     let outcome: Promise<unknown> | undefined;
     try {
       await blocker.query('begin');
@@ -46,10 +48,7 @@ export function registerDoesNotDeleteWarningReactivated(): void {
         'update app.workspace_inbox_threads set active=true,latest_occurred_at=clock_timestamp() where id=$1',
         [id],
       );
-      const client = await cleaner.connect();
-      const pending = rule.run(client, 1000).finally(() => {
-        client.release();
-      });
+      const pending = rule.run(cleaner, 1000);
       outcome = pending.catch((error: unknown) => error);
       await waitForPostgresLock(applicationName);
       await blocker.query('commit');
@@ -65,7 +64,8 @@ export function registerDoesNotDeleteWarningReactivated(): void {
     } finally {
       await blocker.query('rollback');
       await outcome;
-      await cleaner.end();
+      cleaner.release();
+      await cleanerPool.end();
       await blocker.end();
     }
   });

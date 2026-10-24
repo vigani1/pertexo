@@ -1,3 +1,6 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { Pool, PoolClient } from 'pg';
 
@@ -27,9 +30,11 @@ export async function inRetentionTransaction<T>(
     return await withPlatformTransaction(
       pool,
       async (client) => {
-        await client.query("select set_config('lock_timeout', $1, true)", [
-          `${String(options.lockTimeoutMs)}ms`,
-        ]);
+        await drizzle(client)
+          .execute(
+            sql`select set_config('lock_timeout',${`${String(options.lockTimeoutMs)}ms`},true)`,
+          )
+          .catch(rethrowQueryFailure);
         const result = await work(client);
         signal?.throwIfAborted();
         return result;

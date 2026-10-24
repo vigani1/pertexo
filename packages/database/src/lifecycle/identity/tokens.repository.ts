@@ -1,16 +1,57 @@
+import { apiTokens } from '../../schema/identity/api-tokens.js';
+import { workspaceMemberships } from '../../schema/foundation.js';
+import { and, asc, eq, exists, lte, ne, or, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+
 /** Membership revisions never return to an older grant, so its metadata can expire. */
-export const API_TOKEN_RETENTION_RULE = Object.freeze({
+export const API_TOKEN_RETENTION_RULE = {
   name: 'api_tokens',
-  statement: `
-    with page as (
-      select token.id from app.api_tokens token
-      join app.workspace_memberships member
-        on member.workspace_id = token.workspace_id and member.user_id = token.owner_user_id
-      where token.expires_at <= clock_timestamp() - interval '30 days'
-        or token.revoked_at <= clock_timestamp() - interval '30 days'
-        or (token.membership_revision <> member.role_revision
-          and member.updated_at <= clock_timestamp() - interval '30 days')
-      order by token.id limit $1
-    )
-    delete from app.api_tokens token using page where token.id = page.id`,
-});
+  async run(client: PoolClient, pageSize: number): Promise<number> {
+    const db = drizzle(client),
+      cutoff = sql`clock_timestamp()-interval '30 days'`;
+    const page = db.$with('page').as(
+      db
+        .select({ id: apiTokens.id })
+        .from(apiTokens)
+        .innerJoin(
+          workspaceMemberships,
+          and(
+            eq(workspaceMemberships.workspaceId, apiTokens.workspaceId),
+            eq(workspaceMemberships.userId, apiTokens.ownerUserId),
+          ),
+        )
+        .where(
+          or(
+            lte(apiTokens.expiresAt, cutoff),
+            lte(apiTokens.revokedAt, cutoff),
+            and(
+              ne(
+                apiTokens.membershipRevision,
+                workspaceMemberships.roleRevision,
+              ),
+              lte(workspaceMemberships.updatedAt, cutoff),
+            ),
+          ),
+        )
+        .orderBy(asc(apiTokens.id))
+        .limit(pageSize),
+    );
+    return (
+      await db
+        .with(page)
+        .delete(apiTokens)
+        .where(
+          exists(
+            db
+              .select({ one: sql`1` })
+              .from(page)
+              .where(eq(page.id, apiTokens.id)),
+          ),
+        )
+        .returning({ one: sql`1` })
+        .catch(rethrowQueryFailure)
+    ).length;
+  },
+} as const;
