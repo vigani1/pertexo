@@ -83,7 +83,7 @@ export function readRecoveryAttempts(
     .limit(1001);
   return mode === 'locked' ? query.for('share') : query;
 }
-function outputQuery(
+export function recoveryOutputs(
   { db, workspaceId }: WorkspaceTransaction,
   runId: string,
   nodeIds: readonly string[],
@@ -111,13 +111,6 @@ function outputQuery(
       ),
     );
 }
-export function recoveryOutputs(
-  transaction: WorkspaceTransaction,
-  runId: string,
-  nodeIds: readonly string[],
-) {
-  return outputQuery(transaction, runId, nodeIds);
-}
 export function recoverySize(
   transaction: WorkspaceTransaction,
   runId: string,
@@ -134,7 +127,7 @@ export function recoverySize(
         eq(workflowRuns.id, runId),
       ),
     );
-  const outputs = outputQuery(transaction, runId, nodeIds).as(
+  const outputs = recoveryOutputs(transaction, runId, nodeIds).as(
     'recovery_outputs',
   );
   return transaction.db
