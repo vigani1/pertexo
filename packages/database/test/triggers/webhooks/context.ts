@@ -1,3 +1,4 @@
+import { queuedCheckpoint } from '../../support/checkpoint.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { WebhookRequest } from '@pertexo/nodes-core';
 
@@ -92,23 +93,8 @@ export const triggerCatalog = Object.freeze({
   ]),
 });
 
-export const checkpointFactory = (projection?: { id: string }) => ({
-  checkpoint: {
-    workflowVersionId: projection?.id ?? versionId,
-    revision: 0,
-    runStatus: 'queued',
-    nextEventSequence: 2,
-    readySet: [],
-    admittedInvocationKeys: [],
-    invocations: [],
-    joins: [],
-    loops: [],
-    remainingIterationBudget: 0,
-    cancelRequested: false,
-    deadlineExpired: false,
-    branchSelections: [],
-  },
-});
+export const checkpointFactory = (projection?: { id: string }) =>
+  queuedCheckpoint(projection?.id ?? versionId);
 
 export function triggerGraph(intervalMinutes = 15, graphDisabled = false) {
   return {

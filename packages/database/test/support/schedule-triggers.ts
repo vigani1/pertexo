@@ -1,3 +1,4 @@
+import { queuedCheckpoint } from './checkpoint.js';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { Pool, type QueryResultRow } from 'pg';
@@ -132,23 +133,8 @@ export function createScheduleTriggerTestEnvironment(
     }
   }
 
-  const checkpointFactory = (projection?: { id: string }) => ({
-    checkpoint: {
-      workflowVersionId: projection?.id ?? versionId,
-      revision: 0,
-      runStatus: 'queued',
-      nextEventSequence: 2,
-      readySet: [],
-      admittedInvocationKeys: [],
-      invocations: [],
-      joins: [],
-      loops: [],
-      remainingIterationBudget: 0,
-      cancelRequested: false,
-      deadlineExpired: false,
-      branchSelections: [],
-    },
-  });
+  const checkpointFactory = (projection?: { id: string }) =>
+    queuedCheckpoint(projection?.id ?? versionId);
   let replayStore: ReturnType<typeof createOperatorRunReplayStore> | undefined;
   let sourceRunDatabase: ReturnType<typeof createWorkspaceDatabase> | undefined;
 
