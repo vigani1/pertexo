@@ -13,7 +13,9 @@ import {
   readConnectionScope,
   connectionScopeSql,
 } from '../../../src/tenant-access/resources/connections/scope.js';
-import { bindResourcePredicate } from '../../../src/tenant-access/resources/scope.queries.js';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import { connections as storedConnections } from '../../../src/schema/connections.js';
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 
 it('keeps populated connections workspace-shared and forces isolation on shares after upgrading', async () => {
@@ -139,18 +141,12 @@ it('keeps populated connections workspace-shared and forces isolation on shares 
             { workspaceId, actorId },
             'connection:use',
           );
-          const parameters: unknown[] = [];
-          const permitted = bindResourcePredicate(
-            connectionScopeSql(scope),
-            parameters,
-          );
+          const connection = alias(storedConnections, 'connection');
           expect(
-            (
-              await client.query(
-                `select connection.id from app.connections connection where ${permitted}`,
-                parameters,
-              )
-            ).rows,
+            await drizzle(client)
+              .select({ id: connection.id })
+              .from(connection)
+              .where(connectionScopeSql(scope, connection)),
           ).toEqual([{ id: connections[index] }]);
         },
       );
