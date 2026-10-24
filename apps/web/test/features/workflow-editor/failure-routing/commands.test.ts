@@ -1,3 +1,7 @@
+import {
+  createWorkflowNodeFixture,
+  createWorkflowEdgeFixture,
+} from '../../../support/fixtures/graph';
 import { describe, expect, it } from 'vitest';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { inspectWorkflowFailureRoutes } from '@pertexo/workflow-model';
@@ -16,32 +20,22 @@ import {
   inputMappingRowsFor,
   validateInputMappingRows,
 } from '@/features/workflow-editor/model/inspector/input-mappings/draft';
-const node = (
-  id: string,
-  key = 'core.set',
-): WorkflowGraphContract['nodes'][number] => ({
-  id,
-  definition: { key, version: 1 },
-  position: { x: 0, y: 0 },
-  configVersion: 1,
-  config: {},
-  inputMappings: {},
-  connectionRefs: {},
-});
-const edge = (id: string, source: string, target: string, port = 'out') => ({
-  id,
-  source: { nodeId: source, port },
-  target: { nodeId: target, port: 'in' },
-});
+
 function graph(): WorkflowGraphContract {
   return {
     settings: {},
     nodes: [
-      node('manual', 'core.manual'),
-      node('source'),
-      node('stop', 'core.terminate'),
+      createWorkflowNodeFixture({
+        id: 'manual',
+        definition: { key: 'core.manual', version: 1 },
+      }),
+      createWorkflowNodeFixture({ id: 'source' }),
+      createWorkflowNodeFixture({
+        id: 'stop',
+        definition: { key: 'core.terminate', version: 1 },
+      }),
       {
-        ...node('handler'),
+        ...createWorkflowNodeFixture({ id: 'handler' }),
         inputMappings: {
           reason: {
             kind: 'node_failure',
@@ -50,13 +44,33 @@ function graph(): WorkflowGraphContract {
           },
         },
       },
-      node('handler-stop', 'core.terminate'),
+      createWorkflowNodeFixture({
+        id: 'handler-stop',
+        definition: { key: 'core.terminate', version: 1 },
+      }),
     ],
     edges: [
-      edge('start', 'manual', 'source'),
-      edge('normal', 'source', 'stop'),
-      edge('failure', 'source', 'handler', '__failure'),
-      edge('handler-end', 'handler', 'handler-stop'),
+      createWorkflowEdgeFixture({
+        id: 'start',
+        source: 'manual',
+        target: 'source',
+      }),
+      createWorkflowEdgeFixture({
+        id: 'normal',
+        source: 'source',
+        target: 'stop',
+      }),
+      createWorkflowEdgeFixture({
+        id: 'failure',
+        source: 'source',
+        target: 'handler',
+        sourcePort: '__failure',
+      }),
+      createWorkflowEdgeFixture({
+        id: 'handler-end',
+        source: 'handler',
+        target: 'handler-stop',
+      }),
     ],
   };
 }
@@ -111,7 +125,14 @@ describe('failure path graph commands', () => {
   it('does not guess ownership in a convergent invalid draft', () => {
     const invalid = {
       ...graph(),
-      edges: [...graph().edges, edge('convergence', 'manual', 'handler')],
+      edges: [
+        ...graph().edges,
+        createWorkflowEdgeFixture({
+          id: 'convergence',
+          source: 'manual',
+          target: 'handler',
+        }),
+      ],
     };
     expect(
       failureRemoval(invalid, { nodeIds: [], edgeIds: ['failure'] }),

@@ -1,3 +1,4 @@
+import { createWorkflowNodeFixture } from '../../../test/support/fixtures/graph';
 import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -11,15 +12,6 @@ import {
 } from '../../support/ordinary-editor-session';
 import { createEditorWorkflow } from '../../support/authoring/single-step';
 
-const step = (id: string, key: string, x: number) => ({
-  id,
-  definition: { key, version: 1 },
-  configVersion: 1,
-  config: {},
-  inputMappings: {},
-  connectionRefs: {},
-  position: { x, y: 0 },
-});
 test('a builder requests an exact draft on a phone, an owner reviews it, and an edit makes the next request stale', async ({
   page,
   browser,
@@ -101,9 +93,17 @@ test('a builder requests an exact draft on a phone, an owner reviews it, and an 
     const graph = {
       settings: {},
       nodes: [
-        step('manual', 'core.manual', 0),
+        createWorkflowNodeFixture({
+          id: 'manual',
+          definition: { key: 'core.manual', version: 1 },
+          position: { x: 0, y: 0 },
+        }),
         {
-          ...step('done', 'core.terminate', 260),
+          ...createWorkflowNodeFixture({
+            id: 'done',
+            definition: { key: 'core.terminate', version: 1 },
+            position: { x: 260, y: 0 },
+          }),
           config: {},
         },
       ],

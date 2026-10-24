@@ -1,3 +1,4 @@
+import { addRunInputMapping } from '../../test/support/browser/steps';
 import { randomUUID } from 'node:crypto';
 import { expect, type Locator } from '@playwright/test';
 import {
@@ -88,16 +89,7 @@ test('ordinary verified viewer can inspect the real editor at four widths but ca
     /Set fields/u,
     'Viewer source',
   );
-  await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
-  await page.getByRole('button', { name: 'Add input', exact: true }).click();
-  const row = page
-    .getByRole('region', { name: 'Inputs', exact: true })
-    .locator('ol > li')
-    .last();
-  await row.getByLabel('Field', { exact: true }).fill('proof');
-  await row.getByRole('button', { name: 'Run input', exact: true }).click();
-  await row.getByLabel('Run input path', { exact: true }).fill('$.proof');
-  await page.keyboard.press('Tab');
+  await addRunInputMapping(page, { field: 'proof', path: '$.proof' });
   await expect
     .poll(
       async () =>

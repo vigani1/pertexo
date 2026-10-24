@@ -1,3 +1,4 @@
+import { createWorkflowNodeFixture } from '../../test/support/fixtures/graph';
 import {
   createUserFixture,
   createWorkspaceFixture,
@@ -363,16 +364,12 @@ export function editorNode(
   value: string,
   x: number,
 ) {
-  return {
+  return createWorkflowNodeFixture({
     id,
     label,
-    definition: { key: 'core.set', version: 1 },
-    position: { x, y: 80 },
-    configVersion: 1,
     config: { value },
-    inputMappings: {},
-    connectionRefs: {},
-  };
+    position: { x, y: 80 },
+  });
 }
 
 export function mappingGraph(): Graph {

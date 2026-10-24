@@ -1,3 +1,4 @@
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { ownedAutomationFailure } from './credential-action';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
@@ -28,15 +29,11 @@ import { automationCli } from './cli';
 export async function qualifyAutomationCli(page: Page, workspaceId: string) {
   let phase = 'workflow-create';
   try {
-    const csrf = (await page.context().cookies()).find(
-      (cookie) => cookie.name === 'pertexo_csrf',
-    );
-    if (csrf === undefined)
-      throw new Error('Ordinary browser CSRF proof missing');
+    const csrf = await readCsrfToken(page);
     const base = `/v1/workspaces/${workspaceId}`;
     const created = await page.request.post(`${base}/workflows`, {
       headers: {
-        'x-csrf-token': decodeURIComponent(csrf.value),
+        'x-csrf-token': csrf,
         'Idempotency-Key': randomUUID(),
       },
       data: { name: 'CLI immutable source' },
@@ -65,7 +62,7 @@ export async function qualifyAutomationCli(page: Page, workspaceId: string) {
       `${base}/workflows/${sourceWorkflowId}/draft`,
       {
         headers: {
-          'x-csrf-token': decodeURIComponent(csrf.value),
+          'x-csrf-token': csrf,
           'If-Match': strongEtagSchema.parse(created.headers().etag),
         },
         data: { graph },

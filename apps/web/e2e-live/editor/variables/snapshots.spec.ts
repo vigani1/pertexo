@@ -1,3 +1,7 @@
+import {
+  createWorkflowNodeFixture,
+  createWorkflowEdgeFixture,
+} from '../../../test/support/fixtures/graph';
 import { readCsrfToken } from '../../../test/support/browser/csrf';
 import '../data-tables/effects.case';
 import '../data-tables/table.case';
@@ -22,20 +26,6 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 
-const node = (id: string, key: string, x: number) => ({
-  id,
-  definition: { key, version: 1 },
-  configVersion: 1,
-  config: {},
-  inputMappings: {},
-  connectionRefs: {},
-  position: { x, y: 0 },
-});
-const edge = (source: string, target: string) => ({
-  id: `${source}-${target}`,
-  source: { nodeId: source, port: 'out' },
-  target: { nodeId: target, port: 'in' },
-});
 test('real variables save once after a lost acknowledgement and retain old run values after edits', async ({
   page,
   request,
@@ -102,19 +92,34 @@ test('real variables save once after a lost acknowledgement and retain old run v
   const graph = {
     settings: { maxRunDurationMs: 60000 },
     nodes: [
-      node('manual', 'core.manual', 0),
+      createWorkflowNodeFixture({
+        id: 'manual',
+        definition: { key: 'core.manual', version: 1 },
+        position: { x: 0, y: 0 },
+      }),
       {
-        ...node('input', 'core.request_input', 260),
+        ...createWorkflowNodeFixture({
+          id: 'input',
+          definition: { key: 'core.request_input', version: 1 },
+          position: { x: 260, y: 0 },
+        }),
         config: inputRequestConfigSchema.parse({
           title: 'Continue captured rate',
         }),
       },
       {
-        ...node('finish', 'core.terminate', 520),
+        ...createWorkflowNodeFixture({
+          id: 'finish',
+          definition: { key: 'core.terminate', version: 1 },
+          position: { x: 520, y: 0 },
+        }),
         inputMappings: { result: { kind: 'workspace_variable', name: 'RATE' } },
       },
     ],
-    edges: [edge('manual', 'input'), edge('input', 'finish')],
+    edges: [
+      createWorkflowEdgeFixture({ source: 'manual', target: 'input' }),
+      createWorkflowEdgeFixture({ source: 'input', target: 'finish' }),
+    ],
   };
   const draft = await page.request.get(`${workflowPath}/draft`);
   const saved = await page.request.put(`${workflowPath}/draft`, {

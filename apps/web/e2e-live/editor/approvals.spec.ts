@@ -1,3 +1,4 @@
+import { createWorkflowNodeFixture } from '../../test/support/fixtures/graph';
 import { readCsrfToken } from '../../test/support/browser/csrf';
 import './callbacks/journey.case';
 import { mkdir } from 'node:fs/promises';
@@ -22,15 +23,6 @@ import {
   readEditorDraft,
 } from '../support/authoring/single-step';
 
-const node = (id: string, key: string, x: number) => ({
-  id,
-  definition: { key, version: 1 },
-  configVersion: 1,
-  config: {},
-  inputMappings: {},
-  connectionRefs: {},
-  position: { x, y: 0 },
-});
 test('a starter cannot decide; a named viewer approves and rejects real runs through inbox and mobile decisions', async ({
   page,
   browser,
@@ -76,9 +68,17 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
     const graph = {
       settings: { maxRunDurationMs: 60_000 },
       nodes: [
-        node('manual', 'core.manual', 0),
+        createWorkflowNodeFixture({
+          id: 'manual',
+          definition: { key: 'core.manual', version: 1 },
+          position: { x: 0, y: 0 },
+        }),
         {
-          ...node('approval', 'core.approval', 260),
+          ...createWorkflowNodeFixture({
+            id: 'approval',
+            definition: { key: 'core.approval', version: 1 },
+            position: { x: 260, y: 0 },
+          }),
           config: approvalConfigSchema.parse({
             title: 'Review the request',
             instructions: 'Confirm the request is ready.',
@@ -92,8 +92,16 @@ test('a starter cannot decide; a named viewer approves and rejects real runs thr
             },
           },
         },
-        node('approved', 'core.terminate', 520),
-        node('rejected', 'core.terminate', 520),
+        createWorkflowNodeFixture({
+          id: 'approved',
+          definition: { key: 'core.terminate', version: 1 },
+          position: { x: 520, y: 0 },
+        }),
+        createWorkflowNodeFixture({
+          id: 'rejected',
+          definition: { key: 'core.terminate', version: 1 },
+          position: { x: 520, y: 0 },
+        }),
       ],
       edges: [
         {

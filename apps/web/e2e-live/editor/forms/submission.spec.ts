@@ -1,3 +1,7 @@
+import {
+  createWorkflowNodeFixture,
+  createWorkflowEdgeFixture,
+} from '../../../test/support/fixtures/graph';
 import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -19,20 +23,6 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 
-const node = (id: string, key: string, x: number) => ({
-  id,
-  definition: { key, version: 1 },
-  configVersion: 1,
-  config: {},
-  inputMappings: {},
-  connectionRefs: {},
-  position: { x, y: 0 },
-});
-const edge = (source: string, target: string) => ({
-  id: `${source}-${target}`,
-  source: { nodeId: source, port: 'out' },
-  target: { nodeId: target, port: 'in' },
-});
 test('published member and public forms start real runs; captured member input continues once, with revocable links', async ({
   page,
   browser,
@@ -68,9 +58,20 @@ test('published member and public forms start real runs; captured member input c
   const graph = {
     settings: { maxRunDurationMs: 60000 },
     nodes: [
-      { ...node('form', 'core.form', 0), config: form },
       {
-        ...node('input', 'core.request_input', 260),
+        ...createWorkflowNodeFixture({
+          id: 'form',
+          definition: { key: 'core.form', version: 1 },
+          position: { x: 0, y: 0 },
+        }),
+        config: form,
+      },
+      {
+        ...createWorkflowNodeFixture({
+          id: 'input',
+          definition: { key: 'core.request_input', version: 1 },
+          position: { x: 260, y: 0 },
+        }),
         config: inputRequestConfigSchema.parse({
           title: 'Complete the request',
           fields: [
@@ -101,7 +102,11 @@ test('published member and public forms start real runs; captured member input c
         },
       },
       {
-        ...node('finish', 'core.terminate', 520),
+        ...createWorkflowNodeFixture({
+          id: 'finish',
+          definition: { key: 'core.terminate', version: 1 },
+          position: { x: 520, y: 0 },
+        }),
         inputMappings: {
           result: {
             kind: 'node_output',
@@ -116,7 +121,10 @@ test('published member and public forms start real runs; captured member input c
         },
       },
     ],
-    edges: [edge('form', 'input'), edge('input', 'finish')],
+    edges: [
+      createWorkflowEdgeFixture({ source: 'form', target: 'input' }),
+      createWorkflowEdgeFixture({ source: 'input', target: 'finish' }),
+    ],
   };
   const draft = await page.request.get(`${workflowPath}/draft`);
   const saved = await page.request.put(`${workflowPath}/draft`, {
