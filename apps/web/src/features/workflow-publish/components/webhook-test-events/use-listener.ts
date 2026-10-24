@@ -117,21 +117,22 @@ export function useWebhookListener({
     ...webhookTestQuery(scope, nodeId, listener?.id ?? ''),
     enabled: active && listener !== undefined && !changed,
   });
+  function errorMessage(): string | undefined {
+    if (start.error !== null) return listenerError(start.error);
+    if (stop.error !== null)
+      return describeCommandError(
+        stop.error,
+        'stopping the webhook test listener',
+      );
+    return undefined;
+  }
   return {
     listener,
     start,
     stop,
     query,
     changed,
-    error:
-      start.error !== null
-        ? listenerError(start.error)
-        : stop.error !== null
-          ? describeCommandError(
-              stop.error,
-              'stopping the webhook test listener',
-            )
-          : undefined,
+    error: errorMessage(),
   };
 }
 
