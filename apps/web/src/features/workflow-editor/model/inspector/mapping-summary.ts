@@ -74,11 +74,7 @@ export function describeMappingSource(
 function pathLabel(owner: string, path: string): string {
   const trimmed = path.trim();
   if (trimmed === '' || trimmed === '$') return owner;
-  const part = trimmed.startsWith('$.')
-    ? trimmed.slice(2)
-    : trimmed.startsWith('$')
-      ? trimmed.slice(1)
-      : trimmed;
+  const part = trimmed.replace(/^\$\.?/u, '');
   return `${owner} › ${part}`;
 }
 

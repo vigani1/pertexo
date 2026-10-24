@@ -132,15 +132,7 @@ function copyStep(
     inputMappings: Object.fromEntries(
       Object.entries(node.inputMappings).map(([key, source]) => [
         key,
-        (source.kind === 'node_output' || source.kind === 'node_failure') &&
-        idMap.has(source.nodeId)
-          ? { ...source, nodeId: idMap.get(source.nodeId) ?? source.nodeId }
-          : source.kind === 'expression'
-            ? {
-                ...source,
-                expression: copyCallbackBindings(source.expression, idMap),
-              }
-            : source,
+        copiedSource(source, idMap),
       ]),
     ),
   };
@@ -224,4 +216,21 @@ function copyCallbackBindings(
   } catch {
     return expression;
   }
+}
+
+function copiedSource(
+  source: WorkflowNode['inputMappings'][string],
+  idMap: ReadonlyMap<string, string>,
+): WorkflowNode['inputMappings'][string] {
+  const copiedNodeSource =
+    (source.kind === 'node_output' || source.kind === 'node_failure') &&
+    idMap.has(source.nodeId);
+  if (copiedNodeSource)
+    return { ...source, nodeId: idMap.get(source.nodeId) ?? source.nodeId };
+  if (source.kind === 'expression')
+    return {
+      ...source,
+      expression: copyCallbackBindings(source.expression, idMap),
+    };
+  return source;
 }

@@ -17,13 +17,7 @@ export function TaskDetails({ details }: Readonly<{ details: Details }>) {
             {name}
           </dt>
           <dd className="mt-1 text-base whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-            {Array.isArray(value) ? (
-              <PlainDetailList values={value} />
-            ) : value === null ? (
-              '—'
-            ) : (
-              String(value)
-            )}
+            <DetailValue value={value} />
           </dd>
         </div>
       ))}
@@ -98,4 +92,9 @@ function PlainDetailList({
       ))}
     </ul>
   );
+}
+
+function DetailValue({ value }: Readonly<{ value: Details[string] }>) {
+  if (Array.isArray(value)) return <PlainDetailList values={value} />;
+  return value === null ? '—' : String(value);
 }

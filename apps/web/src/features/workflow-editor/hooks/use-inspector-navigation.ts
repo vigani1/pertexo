@@ -25,13 +25,7 @@ export function useInspectorNavigation() {
   /** Called only when the editor's guarded selection has been accepted. */
   const focusStep = useCallback(
     (target: EditorFocusTarget) => {
-      openTab(
-        (target.testOutput ?? false)
-          ? 'test'
-          : target.mappingKey === undefined
-            ? 'setup'
-            : 'inputs',
-      );
+      openTab(tabForTarget(target));
     },
     [openTab],
   );
@@ -44,4 +38,9 @@ export function useInspectorNavigation() {
     openTab,
     focusStep,
   } as const;
+}
+
+function tabForTarget(target: EditorFocusTarget): InspectorTab {
+  if (target.testOutput ?? false) return 'test';
+  return target.mappingKey === undefined ? 'setup' : 'inputs';
 }
