@@ -20,13 +20,19 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 
-async function appendStep(
-  page: Page,
-  path: string,
-  afterNodeId: string,
-  kind: RegExp,
-  label: string,
-) {
+async function appendStep({
+  page,
+  path,
+  afterNodeId,
+  kind,
+  label,
+}: Readonly<{
+  page: Page;
+  path: string;
+  afterNodeId: string;
+  kind: RegExp;
+  label: string;
+}>) {
   const before = await readEditorDraft(page, path);
   await page.getByTestId(`rf__node-${afterNodeId}`).focus();
   await page.keyboard.press('Enter');
@@ -122,20 +128,20 @@ test('saved draft tests run on the worker, skip waits and pinned human steps, an
   await row.getByRole('button', { name: 'Run input', exact: true }).click();
   await row.getByLabel('Run input path', { exact: true }).fill('$.amount');
   await page.keyboard.press('Tab');
-  const waitId = await appendStep(
+  const waitId = await appendStep({
     page,
     path,
-    codeId,
-    /^Wait /u,
-    'Immediate test wait',
-  );
-  const approvalId = await appendStep(
+    afterNodeId: codeId,
+    kind: /^Wait /u,
+    label: 'Immediate test wait',
+  });
+  const approvalId = await appendStep({
     page,
     path,
-    waitId,
-    /^Approval /u,
-    'Review test',
-  );
+    afterNodeId: waitId,
+    kind: /^Approval /u,
+    label: 'Review test',
+  });
   const first = await startTest(page, path, { amount: 21 }, approvalId);
   const stopped = await waitForRun(page, workspaceId, first, 'failed');
   expect(stopped.run.triggerType).toBe('test');

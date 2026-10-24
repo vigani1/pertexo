@@ -37,7 +37,7 @@ describe('node test panel', () => {
       },
       () => sampleResponse('pinned'),
     );
-    render(panel(apiClient, 'node-a'));
+    render(panel({ apiClient, nodeId: 'node-a' }));
     const run = await screen.findByRole('button', {
       name: 'Test with pinned output',
     });
@@ -64,7 +64,7 @@ describe('node test panel', () => {
     async (state) => {
       const execute = vi.fn();
       const apiClient = apiClientFor(execute, () => sampleResponse(state));
-      render(panel(apiClient, 'node-a'));
+      render(panel({ apiClient, nodeId: 'node-a' }));
       await screen.findByText(
         state === 'stale' ? 'Pin needs review' : 'Pin expired',
       );
@@ -90,13 +90,11 @@ describe('node test panel', () => {
     });
     const execute = vi.fn();
     render(
-      panel(
-        apiClientFor(execute, () => current),
-        'node-a',
-        undefined,
-        undefined,
+      panel({
+        apiClient: apiClientFor(execute, () => current),
+        nodeId: 'node-a',
         client,
-      ),
+      }),
     );
     const event = userEvent.setup();
     await event.click(
@@ -153,7 +151,13 @@ describe('node test panel', () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
-    render(panel(apiClient, 'node-a', undefined, undefined, client));
+    render(
+      panel({
+        apiClient,
+        nodeId: 'node-a',
+        client,
+      }),
+    );
     const event = userEvent.setup();
     await event.click(
       await screen.findByRole('button', { name: 'Test with pinned output' }),
@@ -179,7 +183,7 @@ describe('node test panel', () => {
     });
     const apiClient = apiClientFor(() => validation);
     const event = userEvent.setup();
-    const view = render(panel(apiClient, 'node-a'));
+    const view = render(panel({ apiClient, nodeId: 'node-a' }));
 
     fireEvent.change(screen.getByLabelText('Sample input (JSON)'), {
       target: { value: '{"a":1}' },
@@ -191,7 +195,7 @@ describe('node test panel', () => {
     );
     await event.click(screen.getByRole('button', { name: 'Check setup' }));
 
-    view.rerender(panel(apiClient, 'node-b'));
+    view.rerender(panel({ apiClient, nodeId: 'node-b' }));
     expect(screen.getByLabelText('Sample input (JSON)')).toHaveValue('{}');
     expect(
       screen.getByRole('switch', {
@@ -234,7 +238,13 @@ describe('node test panel', () => {
         },
       }),
     );
-    render(panel(apiClient, 'node-a', 'This sends a real Slack message.'));
+    render(
+      panel({
+        apiClient,
+        nodeId: 'node-a',
+        stepSideEffect: 'This sends a real Slack message.',
+      }),
+    );
     expect(screen.getByText('This sends a real Slack message.')).toBeVisible();
     await userEvent
       .setup()
@@ -252,7 +262,13 @@ describe('node test panel', () => {
         preview: previewSummary('succeeded'),
       }),
     );
-    render(panel(apiClient, 'node-a', undefined, onSucceeded));
+    render(
+      panel({
+        apiClient,
+        nodeId: 'node-a',
+        onSucceeded,
+      }),
+    );
     const event = userEvent.setup();
     expect(screen.getByRole('button', { name: 'Run test' })).toBeDisabled();
     await event.click(
@@ -282,7 +298,7 @@ describe('node test panel', () => {
         },
       }),
     );
-    render(panel(apiClient, 'node-a'));
+    render(panel({ apiClient, nodeId: 'node-a' }));
     const event = userEvent.setup();
     await event.click(
       screen.getByRole('switch', {
@@ -317,7 +333,7 @@ describe('node test panel', () => {
         );
       return Promise.resolve({ preview: previewSummary('succeeded') });
     });
-    render(panel(apiClient, 'node-a'));
+    render(panel({ apiClient, nodeId: 'node-a' }));
     const event = userEvent.setup();
 
     await event.click(
@@ -381,13 +397,19 @@ function previewSummary(status: 'running' | 'succeeded') {
   };
 }
 
-function panel(
-  apiClient: ApiClient,
-  nodeId: string,
-  stepSideEffect?: string,
-  onSucceeded?: () => void,
+function panel({
+  apiClient,
+  nodeId,
+  stepSideEffect,
+  onSucceeded,
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
-): ReactNode {
+}: Readonly<{
+  apiClient: ApiClient;
+  nodeId: string;
+  stepSideEffect?: string;
+  onSucceeded?: () => void;
+  client?: QueryClient;
+}>): ReactNode {
   return (
     <QueryClientProvider client={client}>
       <NotificationsProvider>

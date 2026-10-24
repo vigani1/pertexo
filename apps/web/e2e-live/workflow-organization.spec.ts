@@ -144,13 +144,19 @@ async function createWorkflow(
     throw new Error('Created workflow identifier unavailable');
   return workflowId;
 }
-async function command(
-  page: Page,
-  button: Locator,
-  suffix: string,
+async function command({
+  page,
+  button,
+  suffix,
   status = 200,
   method = 'POST',
-) {
+}: Readonly<{
+  page: Page;
+  button: Locator;
+  suffix: string;
+  status?: number;
+  method?: string;
+}>) {
   try {
     await expect(button).toBeEnabled();
     // Join both operations so a failed click cannot leave an unhandled waiter
@@ -236,11 +242,11 @@ async function organize(
       dialog.getByRole('combobox', { name: 'Folder', exact: true }),
       destination,
     );
-    await command(
+    await command({
       page,
-      dialog.getByRole('button', { name: 'Move selected workflows' }),
-      '/folder',
-    );
+      button: dialog.getByRole('button', { name: 'Move selected workflows' }),
+      suffix: '/folder',
+    });
   } else {
     await dialog
       .getByRole('button', { name: 'Replace tags', exact: true })
@@ -248,11 +254,11 @@ async function organize(
     await dialog
       .getByRole('checkbox', { name: destination, exact: true })
       .check();
-    await command(
+    await command({
       page,
-      dialog.getByRole('button', { name: 'Replace selected tags' }),
-      '/tags',
-    );
+      button: dialog.getByRole('button', { name: 'Replace selected tags' }),
+      suffix: '/tags',
+    });
   }
   await dialog.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(dialog).not.toBeVisible();
@@ -269,16 +275,16 @@ async function projection(page: Page, workspaceId: string, workflowId: string) {
 }
 async function favorite(page: Page, name: string) {
   const menu = await openRowMenu(page, name);
-  await command(
+  await command({
     page,
-    menu.getByRole('menuitem', {
+    button: menu.getByRole('menuitem', {
       name: 'Add favorite',
       exact: true,
     }),
-    '/favorite',
-    200,
-    'PUT',
-  );
+    suffix: '/favorite',
+    status: 200,
+    method: 'PUT',
+  });
 }
 async function lifecycle(
   page: Page,
@@ -301,15 +307,15 @@ async function lifecycle(
         : 'Restore this workflow?',
     exact: true,
   });
-  await command(
+  await command({
     page,
-    dialog.getByRole('button', {
+    button: dialog.getByRole('button', {
       name: action === 'archive' ? 'Archive' : 'Restore',
       exact: true,
     }),
-    `/${action}`,
-    202,
-  );
+    suffix: `/${action}`,
+    status: 202,
+  });
   await expect(dialog).not.toBeVisible();
 }
 async function cleanupTag(page: Page, workflowName: string) {
@@ -326,14 +332,14 @@ async function cleanupTag(page: Page, workflowName: string) {
       exact: true,
     })
     .check();
-  await command(
+  await command({
     page,
-    manager.getByRole('button', {
+    button: manager.getByRole('button', {
       name: 'Detach tag from 1 selected workflows',
       exact: true,
     }),
-    '/cleanup/detach',
-  );
+    suffix: '/cleanup/detach',
+  });
   await expect(manager.getByText(/Tag detached/u)).toBeVisible();
   await manager
     .getByRole('button', {
@@ -387,12 +393,15 @@ async function invitedActor(input: {
         ),
       })
       .click();
-    const response = await command(
-      input.owner,
-      sheet.getByRole('button', { name: 'Send invitation', exact: true }),
-      '/invitations',
-      202,
-    );
+    const response = await command({
+      page: input.owner,
+      button: sheet.getByRole('button', {
+        name: 'Send invitation',
+        exact: true,
+      }),
+      suffix: '/invitations',
+      status: 202,
+    });
     const invitation = workspaceInvitationCommandResponseSchema.parse(
       await response.json(),
     ).invitation;
@@ -518,14 +527,14 @@ async function qualifyExtended(input: {
       dialog.getByRole('combobox', { name: 'Folder', exact: true }),
       'Unfiled / top level',
     );
-    await command(
+    await command({
       page,
-      dialog.getByRole('button', {
+      button: dialog.getByRole('button', {
         name: 'Move selected workflows',
         exact: true,
       }),
-      '/bulk',
-    );
+      suffix: '/bulk',
+    });
     // The HTTP receipt precedes the command's final authority check.
     await expect(
       dialog.getByRole('button', { name: 'Close', exact: true }),
@@ -762,12 +771,12 @@ test('ordinary owner persists shared organization, exact recovery and private di
     .click();
   let dialog = page.getByRole('dialog', { name: 'New folder', exact: true });
   await dialog.getByLabel('Name', { exact: true }).fill('Operations');
-  const parentReply = await command(
+  const parentReply = await command({
     page,
-    dialog.getByRole('button', { name: 'Create folder', exact: true }),
-    '/workflow-folders',
-    201,
-  );
+    button: dialog.getByRole('button', { name: 'Create folder', exact: true }),
+    suffix: '/workflow-folders',
+    status: 201,
+  });
   const parent = workflowFolderCreateResponseSchema.parse(
     await parentReply.json(),
   ).folder;
@@ -782,12 +791,12 @@ test('ordinary owner persists shared organization, exact recovery and private di
     .click();
   dialog = page.getByRole('dialog', { name: 'New folder', exact: true });
   await dialog.getByLabel('Name', { exact: true }).fill('Child');
-  const childReply = await command(
+  const childReply = await command({
     page,
-    dialog.getByRole('button', { name: 'Create folder', exact: true }),
-    '/workflow-folders',
-    201,
-  );
+    button: dialog.getByRole('button', { name: 'Create folder', exact: true }),
+    suffix: '/workflow-folders',
+    status: 201,
+  });
   const child = workflowFolderCreateResponseSchema.parse(
     await childReply.json(),
   ).folder;
@@ -798,12 +807,15 @@ test('ordinary owner persists shared organization, exact recovery and private di
     name: 'Delete Operations?',
     exact: true,
   });
-  await command(
+  await command({
     page,
-    deletion.getByRole('button', { name: 'Delete folder', exact: true }),
-    '/delete',
-    409,
-  );
+    button: deletion.getByRole('button', {
+      name: 'Delete folder',
+      exact: true,
+    }),
+    suffix: '/delete',
+    status: 409,
+  });
   await expect(
     deletion.getByText(
       'Move the workflows and child folders out before deleting this folder.',
@@ -813,11 +825,11 @@ test('ordinary owner persists shared organization, exact recovery and private di
   await folderAction(page, 'Child', 'Rename…');
   dialog = page.getByRole('dialog', { name: 'Rename Child', exact: true });
   await dialog.getByLabel('Name', { exact: true }).fill('Delivery');
-  await command(
+  await command({
     page,
-    dialog.getByRole('button', { name: 'Save name', exact: true }),
-    '/rename',
-  );
+    button: dialog.getByRole('button', { name: 'Save name', exact: true }),
+    suffix: '/rename',
+  });
   await folderAction(page, 'Delivery', 'Move to…');
   dialog = page.getByRole('dialog', { name: 'Move Delivery', exact: true });
   await choose(
@@ -825,11 +837,11 @@ test('ordinary owner persists shared organization, exact recovery and private di
     dialog.getByRole('combobox', { name: 'Move to' }),
     'Top level',
   );
-  await command(
+  await command({
     page,
-    dialog.getByRole('button', { name: 'Move folder', exact: true }),
-    '/move',
-  );
+    button: dialog.getByRole('button', { name: 'Move folder', exact: true }),
+    suffix: '/move',
+  });
   await page
     .getByRole('navigation', { name: 'Folder path' })
     .getByRole('button', { name: 'All workflows', exact: true })
@@ -839,11 +851,11 @@ test('ordinary owner persists shared organization, exact recovery and private di
   let share = page.getByRole('dialog', { name: 'Share Delivery', exact: true });
   await share.getByText('Only people you choose', { exact: true }).click();
   await expect(share.getByText('Workspace owners and admins')).toBeVisible();
-  await command(
+  await command({
     page,
-    share.getByRole('button', { name: 'Save', exact: true }),
-    '/sharing',
-  );
+    button: share.getByRole('button', { name: 'Save', exact: true }),
+    suffix: '/sharing',
+  });
   await page.reload();
   await expect(
     shelf(page).getByRole('img', { name: 'Only chosen people' }),
@@ -854,21 +866,21 @@ test('ordinary owner persists shared organization, exact recovery and private di
     share.getByRole('radio', { name: /Only people you choose/u }),
   ).toBeChecked();
   await share.getByText('Everyone in this workspace', { exact: true }).click();
-  await command(
+  await command({
     page,
-    share.getByRole('button', { name: 'Save', exact: true }),
-    '/sharing',
-  );
+    button: share.getByRole('button', { name: 'Save', exact: true }),
+    suffix: '/sharing',
+  });
   await openTags(page);
   const tags = page.getByRole('dialog', { name: 'Tags', exact: true });
   await tags.getByLabel('New tag', { exact: true }).fill('ops');
   await phase('tags');
-  const tagReply = await command(
+  const tagReply = await command({
     page,
-    tags.getByRole('button', { name: 'Add tag', exact: true }),
-    '/workflow-tags',
-    201,
-  );
+    button: tags.getByRole('button', { name: 'Add tag', exact: true }),
+    suffix: '/workflow-tags',
+    status: 201,
+  });
   const tag = workflowTagCreateResponseSchema.parse(await tagReply.json()).tag;
   await tags.getByRole('button', { name: 'Done', exact: true }).click();
 
@@ -982,11 +994,11 @@ test('ordinary owner persists shared organization, exact recovery and private di
   await expect(
     bulk.getByRole('combobox', { name: 'Folder', exact: true }),
   ).toBeDisabled();
-  const replay = await command(
+  const replay = await command({
     page,
-    bulk.getByRole('button', { name: 'Retry original request' }),
-    '/bulk',
-  );
+    button: bulk.getByRole('button', { name: 'Retry original request' }),
+    suffix: '/bulk',
+  });
   expect(
     workflowOrganizationBulkRequestSchema.parse(
       replay.request().postDataJSON(),

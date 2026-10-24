@@ -5,13 +5,19 @@ import {
   workspaceIdentifierSchema,
 } from '@pertexo/contracts';
 
-export async function provisionDirectory(
-  page: Page,
-  request: APIRequestContext,
-  workspaceId: string,
-  email: string,
-  width: number,
-) {
+export async function provisionDirectory({
+  page,
+  request,
+  workspaceId,
+  email,
+  width,
+}: Readonly<{
+  page: Page;
+  request: APIRequestContext;
+  workspaceId: string;
+  email: string;
+  width: number;
+}>) {
   await page.getByRole('link', { name: 'Directory', exact: true }).click();
   await page
     .getByRole('button', {

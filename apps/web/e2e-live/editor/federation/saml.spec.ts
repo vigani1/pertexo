@@ -153,13 +153,13 @@ for (const width of [1280, 375]) {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    const directory = await provisionDirectory(
+    const directory = await provisionDirectory({
       page,
       request,
       workspaceId,
-      `member@${domain}`,
+      email: `member@${domain}`,
       width,
-    );
+    });
     await page.goto('/workspaces');
     await page
       .getByRole('button', { name: 'Account menu for SAML owner' })

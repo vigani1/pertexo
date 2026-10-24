@@ -157,36 +157,72 @@ describe('alert destinations', () => {
 
 describe('webhook delivery outcomes', () => {
   it.each([
-    ['accepted', 'verified', 'new', 'success', 'Accepted'],
-    ['replayed', 'verified', 'duplicate', 'neutral', 'Duplicate'],
-    [
-      'authentication_failed',
-      'mismatch',
-      'not_checked',
-      'failure',
-      'Authentication failed',
-    ],
-    [
-      'authentication_failed',
-      'not_checked',
-      'stale_timestamp',
-      'failure',
-      'Too old',
-    ],
-    ['authentication_failed', 'verified', 'new', 'attention', 'Not accepting'],
-    [
-      'invalid_request',
-      'verified',
-      'not_checked',
-      'failure',
-      'Invalid request',
-    ],
-    ['conflict', 'verified', 'conflict', 'attention', 'Key reused'],
-    ['rate_limited', 'verified', 'new', 'attention', 'Held back'],
-    ['paused', 'verified', 'new', 'attention', 'Paused'],
+    {
+      outcome: 'accepted',
+      signatureCheck: 'verified',
+      replayCheck: 'new',
+      tone: 'success',
+      label: 'Accepted',
+    },
+    {
+      outcome: 'replayed',
+      signatureCheck: 'verified',
+      replayCheck: 'duplicate',
+      tone: 'neutral',
+      label: 'Duplicate',
+    },
+    {
+      outcome: 'authentication_failed',
+      signatureCheck: 'mismatch',
+      replayCheck: 'not_checked',
+      tone: 'failure',
+      label: 'Authentication failed',
+    },
+    {
+      outcome: 'authentication_failed',
+      signatureCheck: 'not_checked',
+      replayCheck: 'stale_timestamp',
+      tone: 'failure',
+      label: 'Too old',
+    },
+    {
+      outcome: 'authentication_failed',
+      signatureCheck: 'verified',
+      replayCheck: 'new',
+      tone: 'attention',
+      label: 'Not accepting',
+    },
+    {
+      outcome: 'invalid_request',
+      signatureCheck: 'verified',
+      replayCheck: 'not_checked',
+      tone: 'failure',
+      label: 'Invalid request',
+    },
+    {
+      outcome: 'conflict',
+      signatureCheck: 'verified',
+      replayCheck: 'conflict',
+      tone: 'attention',
+      label: 'Key reused',
+    },
+    {
+      outcome: 'rate_limited',
+      signatureCheck: 'verified',
+      replayCheck: 'new',
+      tone: 'attention',
+      label: 'Held back',
+    },
+    {
+      outcome: 'paused',
+      signatureCheck: 'verified',
+      replayCheck: 'new',
+      tone: 'attention',
+      label: 'Paused',
+    },
   ] as const)(
-    'reads %s (%s, %s) as a %s “%s”',
-    (outcome, signatureCheck, replayCheck, tone, label) => {
+    'reads $outcome ($signatureCheck, $replayCheck) as a $tone “$label”',
+    ({ outcome, signatureCheck, replayCheck, tone, label }) => {
       const described = describeDelivery({
         outcome,
         signatureCheck,

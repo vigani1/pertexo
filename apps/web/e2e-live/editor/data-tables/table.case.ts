@@ -278,14 +278,14 @@ for (const width of [1280, 375])
     expect(
       found.rows.find((row) => row.values.key === 'alpha')?.values,
     ).toEqual({ key: 'alpha', amount: 20, currency: 'USD' });
-    const currentVersionId = await qualifyColumnNames(
+    const currentVersionId = await qualifyColumnNames({
       page,
       workspaceId,
       workflow,
       nodeId,
-      version.id,
+      originalVersionId: version.id,
       width,
-    );
+    });
     await page.goto(`/w/${workspaceId}/data-tables/${table.id}`);
     await page.setViewportSize({ width, height: 768 });
     await page

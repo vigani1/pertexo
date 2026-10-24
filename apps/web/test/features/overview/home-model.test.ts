@@ -20,13 +20,19 @@ import {
 const now = Date.parse('2026-09-24T14:00:00.000Z');
 const minute = 60_000;
 
-function run(
-  id: string,
-  workflowId: string,
-  status: WorkflowRunReadSummary['status'],
-  startMinutesAgo: number,
-  endMinutesAgo: number | null,
-): WorkflowRunReadSummary {
+function run({
+  id,
+  workflowId,
+  status,
+  startMinutesAgo,
+  endMinutesAgo,
+}: Readonly<{
+  id: string;
+  workflowId: string;
+  status: WorkflowRunReadSummary['status'];
+  startMinutesAgo: number;
+  endMinutesAgo: number | null;
+}>): WorkflowRunReadSummary {
   const started = new Date(now - startMinutesAgo * minute).toISOString();
   return {
     id,
@@ -55,12 +61,48 @@ describe('loom', () => {
   it('shapes one lane per workflow, keeps active runs open and drops old ones', () => {
     const model = shapeLoom(
       [
-        run('r1', 'wf-a', 'succeeded', 50, 49),
-        run('r2', 'wf-a', 'running', 5, null),
-        run('r2', 'wf-a', 'running', 5, null),
-        run('r3', 'wf-b', 'failed', 30, 29),
-        run('r4', 'wf-b', 'succeeded', 120, 90),
-        run('r5', 'wf-b', 'running', 90, null),
+        run({
+          id: 'r1',
+          workflowId: 'wf-a',
+          status: 'succeeded',
+          startMinutesAgo: 50,
+          endMinutesAgo: 49,
+        }),
+        run({
+          id: 'r2',
+          workflowId: 'wf-a',
+          status: 'running',
+          startMinutesAgo: 5,
+          endMinutesAgo: null,
+        }),
+        run({
+          id: 'r2',
+          workflowId: 'wf-a',
+          status: 'running',
+          startMinutesAgo: 5,
+          endMinutesAgo: null,
+        }),
+        run({
+          id: 'r3',
+          workflowId: 'wf-b',
+          status: 'failed',
+          startMinutesAgo: 30,
+          endMinutesAgo: 29,
+        }),
+        run({
+          id: 'r4',
+          workflowId: 'wf-b',
+          status: 'succeeded',
+          startMinutesAgo: 120,
+          endMinutesAgo: 90,
+        }),
+        run({
+          id: 'r5',
+          workflowId: 'wf-b',
+          status: 'running',
+          startMinutesAgo: 90,
+          endMinutesAgo: null,
+        }),
       ],
       { windowMs: 60 * minute, nowMs: now },
     );
@@ -78,13 +120,13 @@ describe('loom', () => {
 
   it('keeps only the busiest lanes and says how many are hidden', () => {
     const runs = Array.from({ length: 10 }, (_, index) =>
-      run(
-        `r${String(index)}`,
-        `wf-${String(index)}`,
-        'succeeded',
-        20,
-        10 + index,
-      ),
+      run({
+        id: `r${String(index)}`,
+        workflowId: `wf-${String(index)}`,
+        status: 'succeeded',
+        startMinutesAgo: 20,
+        endMinutesAgo: 10 + index,
+      }),
     );
     const model = shapeLoom(runs, {
       windowMs: 60 * minute,
@@ -98,8 +140,20 @@ describe('loom', () => {
   it('carries exact window totals only for lanes the statistics read knows', () => {
     const model = shapeLoom(
       [
-        run('r1', 'wf-a', 'succeeded', 50, 49),
-        run('r2', 'wf-b', 'failed', 30, 29),
+        run({
+          id: 'r1',
+          workflowId: 'wf-a',
+          status: 'succeeded',
+          startMinutesAgo: 50,
+          endMinutesAgo: 49,
+        }),
+        run({
+          id: 'r2',
+          workflowId: 'wf-b',
+          status: 'failed',
+          startMinutesAgo: 30,
+          endMinutesAgo: 29,
+        }),
       ],
       {
         windowMs: 60 * minute,
@@ -136,8 +190,20 @@ describe('run list', () => {
   it('groups by local day and scales thread bars on a log scale', () => {
     const groups = groupRunsByDay(
       [
-        run('r1', 'wf-a', 'succeeded', 10, 9),
-        run('r2', 'wf-a', 'succeeded', 60 * 24 * 3, 60 * 24 * 3 - 1),
+        run({
+          id: 'r1',
+          workflowId: 'wf-a',
+          status: 'succeeded',
+          startMinutesAgo: 10,
+          endMinutesAgo: 9,
+        }),
+        run({
+          id: 'r2',
+          workflowId: 'wf-a',
+          status: 'succeeded',
+          startMinutesAgo: 60 * 24 * 3,
+          endMinutesAgo: 60 * 24 * 3 - 1,
+        }),
       ],
       now,
     );
@@ -155,10 +221,30 @@ describe('needs attention', () => {
     const items = runAttentionItems(
       {
         failed: [
-          run('f1', 'wf-a', 'failed', 50, 49),
-          run('f2', 'wf-a', 'failed', 20, 19),
+          run({
+            id: 'f1',
+            workflowId: 'wf-a',
+            status: 'failed',
+            startMinutesAgo: 50,
+            endMinutesAgo: 49,
+          }),
+          run({
+            id: 'f2',
+            workflowId: 'wf-a',
+            status: 'failed',
+            startMinutesAgo: 20,
+            endMinutesAgo: 19,
+          }),
         ],
-        timedOut: [run('t1', 'wf-b', 'timed_out', 30, 20)],
+        timedOut: [
+          run({
+            id: 't1',
+            workflowId: 'wf-b',
+            status: 'timed_out',
+            startMinutesAgo: 30,
+            endMinutesAgo: 20,
+          }),
+        ],
         outcomeUnknown: [],
       },
       now,
