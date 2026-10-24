@@ -1,4 +1,9 @@
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+} from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import type { LeaveReason } from '../../hooks/use-leave-guard';
 
@@ -47,31 +52,50 @@ export function LeaveEditorDialog({
   };
   return (
     <ConfirmDialog
-      open={blocker.status === 'blocked'}
-      onOpenChange={(open) => {
-        if (!open && blocker.status === 'blocked') blocker.reset();
+      state={{
+        open: blocker.status === 'blocked',
+        onOpenChange: (open) => {
+          if (!open && blocker.status === 'blocked') blocker.reset();
+        },
+        locked: saving,
       }}
       title={copy.title}
       description={copy.description}
-      cancelLabel="Stay here"
-      tone={canSave ? 'default' : 'destructive'}
-      confirmLabel={canSave ? 'Save and leave' : leaveLabel}
-      pendingLabel="Saving…"
-      pending={saving}
-      onConfirm={canSave ? onSaveAndLeave : leave}
-      secondaryAction={
-        canSave ? (
-          <Button
-            type="button"
-            variant="destructive"
+      onSubmit={canSave ? onSaveAndLeave : leave}
+      submitDisabled={saving}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
             disabled={saving}
-            onClick={leave}
+            render={<Button type="button" variant="ghost" />}
           >
-            {leaveLabel}
-          </Button>
-        ) : undefined
+            Stay here
+          </DialogClose>
+          {canSave ? (
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={saving}
+              onClick={leave}
+            >
+              {leaveLabel}
+            </Button>
+          ) : undefined}
+          <ProgressButton
+            type="submit"
+            variant={
+              (canSave ? 'default' : 'destructive') === 'destructive'
+                ? 'destructive'
+                : 'primary'
+            }
+            pending={saving}
+            pendingLabel="Saving…"
+          >
+            {canSave ? 'Save and leave' : leaveLabel}
+          </ProgressButton>
+        </ConfirmationFooter>
       }
-    />
+    ></ConfirmDialog>
   );
 }
 
@@ -83,16 +107,30 @@ export function UnfinishedEditDialog({
 }: Readonly<{ open: boolean; onDiscard: () => void; onStay: () => void }>) {
   return (
     <ConfirmDialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onStay();
+      state={{
+        open: open,
+        onOpenChange: (next) => {
+          if (!next) onStay();
+        },
+        locked: false,
       }}
       title="Discard the unfinished edit?"
       description="A field in the step panel isn’t valid yet, so it hasn’t been saved. Stay to fix it, or discard it and continue."
-      tone="destructive"
-      confirmLabel="Discard edit"
-      cancelLabel="Stay"
-      onConfirm={onDiscard}
-    />
+      onSubmit={onDiscard}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose render={<Button type="button" variant="ghost" />}>
+            Stay
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant="destructive"
+            pendingLabel="Discard edit"
+          >
+            Discard edit
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
+    ></ConfirmDialog>
   );
 }

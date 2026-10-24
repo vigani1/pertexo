@@ -1,3 +1,6 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import type { ReactNode } from 'react';
 import type {
   AccessibleWorkspace,
@@ -9,7 +12,11 @@ import {
   WorkflowCommandActions,
   type useWorkflowCommandSession,
 } from '@/features/workflow-publish/public';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { EditorCommandBar } from './chrome/editor-command-bar';
 import { ConflictCompareDialog } from './chrome/conflict-compare-dialog';
 import { UnfinishedEditDialog } from './chrome/editor-dialogs';
@@ -134,18 +141,37 @@ export function SessionDialogs({
         onOpenChange={comparison.onOpenChange}
       />
       <ConfirmDialog
-        open={actions.pendingRemoval !== undefined}
-        onOpenChange={(open) => {
-          if (!open) actions.cancelRemoval();
+        state={{
+          open: actions.pendingRemoval !== undefined,
+          onOpenChange: (open) => {
+            if (!open) actions.cancelRemoval();
+          },
+          locked: false,
         }}
         title="Remove this failure path?"
         description="The owned handler steps are removed with the link, so they cannot become ordinary starting steps. The source stops this run on failure again. Undo restores the whole path."
-        consequences={actions.pendingRemoval?.labels ?? []}
-        tone="destructive"
-        confirmLabel="Remove failure path"
-        confirmDisabled={paused}
-        onConfirm={actions.confirmRemoval}
-      />
+        onSubmit={actions.confirmRemoval}
+        submitDisabled={paused}
+        footer={
+          <ConfirmationFooter>
+            <DialogClose render={<Button type="button" variant="ghost" />}>
+              Cancel
+            </DialogClose>
+            <ProgressButton
+              type="submit"
+              variant="destructive"
+              pendingLabel="Remove failure path"
+              disabled={paused}
+            >
+              Remove failure path
+            </ProgressButton>
+          </ConfirmationFooter>
+        }
+      >
+        <ConfirmationDetails
+          consequences={actions.pendingRemoval?.labels ?? []}
+        />
+      </ConfirmDialog>
       <UnfinishedEditDialog
         open={actions.pendingAction !== undefined}
         onDiscard={actions.discardAndContinue}

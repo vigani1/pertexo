@@ -1,7 +1,13 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { FEDERATION_LIMITS, type FederationSettings } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import type { FederationScope } from '../../data/settings.api';
@@ -106,33 +112,97 @@ export function Providers({
           setEditing(undefined);
         }}
       />
-      <ConfirmDialog
-        open={removing !== undefined}
-        onOpenChange={(open) => {
-          if (!open && !command.pending) setRemoving(undefined);
+      <RemoveProviderDialog
+        removing={removing}
+        organization={organization}
+        command={command}
+        editable={editable}
+        onClose={() => {
+          setRemoving(undefined);
         }}
-        title="Remove identity provider?"
-        description="This ends its sessions and removes its sign-in identities. Required domains must have another current, tested provider first."
-        confirmLabel="Remove provider"
-        pending={command.pending}
-        locked={command.pending}
-        confirmDisabled={!editable || command.expired}
-        error={command.error}
-        unconfirmed={
-          command.uncertain
-            ? { onRetry: command.retry, onDismiss: () => undefined }
-            : undefined
-        }
-        onConfirm={() =>
+      />
+    </SettingsSection>
+  );
+}
+
+function RemoveProviderDialog({
+  removing,
+  organization,
+  command,
+  editable,
+  onClose,
+}: Readonly<{
+  removing: Organization['providers'][number] | undefined;
+  organization: Organization;
+  command: ReturnType<typeof useFederationCommand>;
+  editable: boolean;
+  onClose: () => void;
+}>) {
+  const changeConfirmationOpen = (open: boolean) => {
+    if (!open && !command.pending) onClose();
+  };
+  const confirmationRetry = command.uncertain
+    ? { onRetry: command.retry, onDismiss: () => undefined }
+    : undefined;
+  const confirmBlocked = command.pending || !editable || command.expired;
+  return (
+    <ConfirmDialog
+      state={{
+        open: removing !== undefined,
+        onOpenChange: changeConfirmationOpen,
+        locked: command.pending,
+      }}
+      title="Remove identity provider?"
+      description="This ends its sessions and removes its sign-in identities. Required domains must have another current, tested provider first."
+      onSubmit={
+        confirmationRetry?.onRetry ??
+        (() =>
           removing === undefined
             ? undefined
             : command.send({
                 kind: 'removeProvider',
                 providerId: removing.id,
                 input: { expectedRevision: organization.revision },
-              })
-        }
+              }))
+      }
+      submitDisabled={confirmBlocked}
+      footer={
+        <ConfirmationFooter>
+          {confirmationRetry === undefined ? (
+            <DialogClose
+              disabled={command.pending}
+              render={<Button type="button" variant="ghost" />}
+            >
+              Cancel
+            </DialogClose>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                confirmationRetry.onDismiss();
+                changeConfirmationOpen(false);
+              }}
+            >
+              Close
+            </Button>
+          )}
+          <ProgressButton
+            type="submit"
+            variant="primary"
+            pending={command.pending}
+            pendingLabel="Remove provider"
+            disabled={!editable || command.expired}
+          >
+            {confirmationRetry === undefined ? 'Remove provider' : 'Try again'}
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
+    >
+      <ConfirmationDetails
+        error={command.error}
+        tone={confirmationRetry === undefined ? 'destructive' : 'warning'}
       />
-    </SettingsSection>
+    </ConfirmDialog>
   );
 }

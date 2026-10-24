@@ -1,10 +1,16 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { codeLanguageSchema, type CodeLanguage } from '@pertexo/node-sdk';
 import {
   CODE_LANGUAGE_CHOICES,
   CODE_LANGUAGE_PRESENTATION,
 } from './presentation';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+} from '@/components/patterns/actions/confirm-dialog';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { ChoiceSelect } from '../fields/choice-select';
 import {
@@ -46,18 +52,35 @@ export function CodeLanguageField({
         />
       </Field>
       <ConfirmDialog
-        open={requested !== undefined}
-        onOpenChange={(open) => {
-          if (!open) setRequested(undefined);
+        state={{
+          open: requested !== undefined,
+          onOpenChange: (open) => {
+            if (!open) setRequested(undefined);
+          },
+          locked: false,
         }}
         title={`Switch to ${CODE_LANGUAGE_PRESENTATION[requested ?? language].label}?`}
         description="Your code is kept as written. Check its syntax and update it for the new language before running. Undo restores the previous language."
-        confirmLabel="Switch language"
-        confirmDisabled={!form.editable}
-        onConfirm={() => {
+        onSubmit={() => {
           if (requested !== undefined) change(requested);
         }}
-      />
+        submitDisabled={!form.editable}
+        footer={
+          <ConfirmationFooter>
+            <DialogClose render={<Button type="button" variant="ghost" />}>
+              Cancel
+            </DialogClose>
+            <ProgressButton
+              type="submit"
+              variant="primary"
+              pendingLabel="Switch language"
+              disabled={!form.editable}
+            >
+              Switch language
+            </ProgressButton>
+          </ConfirmationFooter>
+        }
+      ></ConfirmDialog>
     </>
   );
 }

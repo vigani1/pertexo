@@ -23,16 +23,19 @@ export function MemberRemovalDialog(
       command={props.command}
       onClose={props.onClose}
       onConfirm={props.onConfirm}
-      tone="destructive"
-      title={`Remove ${member?.displayName ?? 'this member'} from ${props.workspaceName}?`}
-      consequences={[
-        `${firstName} loses access to this workspace’s workflows, runs and connections straight away.`,
-        `${firstName} is signed out everywhere, including other workspaces, and signs in again.`,
-        'Runs they already started keep going, and invitations they sent stay pending.',
-        'You can invite them again later.',
-      ]}
-      confirmLabel="Remove member"
-      pendingLabel="Removing…"
+
+      content={{
+        tone: 'destructive',
+        title: `Remove ${member?.displayName ?? 'this member'} from ${props.workspaceName}?`,
+        consequences: [
+          `${firstName} loses access to this workspace’s workflows, runs and connections straight away.`,
+          `${firstName} is signed out everywhere, including other workspaces, and signs in again.`,
+          'Runs they already started keep going, and invitations they sent stay pending.',
+          'You can invite them again later.',
+        ],
+        confirmLabel: 'Remove member',
+        pendingLabel: 'Removing…',
+      }}
     />
   );
 }

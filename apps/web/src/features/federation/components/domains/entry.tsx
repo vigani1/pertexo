@@ -1,7 +1,12 @@
+import { DialogClose } from '@/components/ui/dialog';
 import { domainConfirmationCopy, domainStatus } from './copy';
 import { useState } from 'react';
 import type { FederationSettings } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Status } from '@/components/ui/status';
@@ -99,42 +104,7 @@ export function DomainEntry(props: DomainEntryProps) {
       {!model.confirmation.open ? (
         <CommandFeedback command={model.command} />
       ) : null}
-      <ConfirmDialog
-        open={model.confirmation.open}
-        onOpenChange={(open) => {
-          if (!open && !model.command.pending) model.closeConfirmation();
-        }}
-        title={model.confirmationCopy.title}
-        description={model.confirmationCopy.description}
-        confirmLabel={model.confirmationCopy.confirmLabel}
-        pending={model.command.pending}
-        locked={model.command.pending}
-        confirmDisabled={!model.editable || model.command.expired}
-        error={model.command.error}
-        unconfirmed={
-          model.command.uncertain
-            ? { onRetry: model.command.retry, onDismiss: () => undefined }
-            : undefined
-        }
-        onConfirm={() =>
-          model.command.send(
-            model.confirmation.action === 'remove'
-              ? {
-                  kind: 'removeDomain',
-                  domainId: model.domain.id,
-                  input: { expectedRevision: model.confirmation.revision },
-                }
-              : {
-                  kind: 'enforcement',
-                  domainId: model.domain.id,
-                  input: {
-                    required: !model.confirmation.required,
-                    expectedRevision: model.confirmation.revision,
-                  },
-                },
-          )
-        }
-      />
+      <DomainConfirmation model={model} />
     </li>
   );
 }
@@ -234,5 +204,89 @@ function DomainChallenge({
         Challenge expires {formatDateTime(challenge.expiresAt)}.
       </p>
     </div>
+  );
+}
+
+function DomainConfirmation({
+  model,
+}: Readonly<{ model: ReturnType<typeof useDomainCommands> }>) {
+  const changeConfirmationOpen = (open: boolean) => {
+    if (!open && !model.command.pending) model.closeConfirmation();
+  };
+  const confirmationRetry = model.command.uncertain
+    ? { onRetry: model.command.retry, onDismiss: () => undefined }
+    : undefined;
+  const confirmBlocked =
+    model.command.pending || !model.editable || model.command.expired;
+  return (
+    <ConfirmDialog
+      state={{
+        open: model.confirmation.open,
+        onOpenChange: changeConfirmationOpen,
+        locked: model.command.pending,
+      }}
+      title={model.confirmationCopy.title}
+      description={model.confirmationCopy.description}
+      onSubmit={
+        confirmationRetry?.onRetry ??
+        (() =>
+          model.command.send(
+            model.confirmation.action === 'remove'
+              ? {
+                  kind: 'removeDomain',
+                  domainId: model.domain.id,
+                  input: { expectedRevision: model.confirmation.revision },
+                }
+              : {
+                  kind: 'enforcement',
+                  domainId: model.domain.id,
+                  input: {
+                    required: !model.confirmation.required,
+                    expectedRevision: model.confirmation.revision,
+                  },
+                },
+          ))
+      }
+      submitDisabled={confirmBlocked}
+      footer={
+        <ConfirmationFooter>
+          {confirmationRetry === undefined ? (
+            <DialogClose
+              disabled={model.command.pending}
+              render={<Button type="button" variant="ghost" />}
+            >
+              Cancel
+            </DialogClose>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                confirmationRetry.onDismiss();
+                changeConfirmationOpen(false);
+              }}
+            >
+              Close
+            </Button>
+          )}
+          <ProgressButton
+            type="submit"
+            variant="primary"
+            pending={model.command.pending}
+            pendingLabel={model.confirmationCopy.confirmLabel}
+            disabled={!model.editable || model.command.expired}
+          >
+            {confirmationRetry === undefined
+              ? model.confirmationCopy.confirmLabel
+              : 'Try again'}
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
+    >
+      <ConfirmationDetails
+        error={model.command.error}
+        tone={confirmationRetry === undefined ? 'destructive' : 'warning'}
+      />
+    </ConfirmDialog>
   );
 }

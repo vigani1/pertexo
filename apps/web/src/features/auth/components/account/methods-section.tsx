@@ -1,7 +1,13 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
 import type { AccountSecurityResponse } from '@pertexo/contracts';
 import { KeyRoundIcon, PlusIcon } from 'lucide-react';
 import { useState } from 'react';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
@@ -59,7 +65,6 @@ export function AccountMethodsSection({
   const linkable = security.availableProviders.filter(
     (provider) => !connected.has(provider),
   );
-  const onlyMethod = security.methods.length <= 1;
   const canLink = security.methods.some(
     (method) => method.kind === 'password' || isSocialProvider(method.provider),
   );
@@ -97,50 +102,15 @@ export function AccountMethodsSection({
           organization SSO still applies.
         </p>
       ) : null}
-      <ul
-        aria-label="Sign-in methods"
-        className="flex flex-col divide-y divide-border"
-      >
-        {security.methods.map((method) => (
-          <li
-            key={method.id}
-            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <MethodMark method={method} />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">{methodName(method)}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {method.kind === 'password'
-                    ? security.email
-                    : 'Connected account'}
-                </p>
-              </div>
-            </div>
-            {/* The only way in can't be removed, so it gets a reason
-                instead of a button that never works. */}
-            {onlyMethod ? (
-              <span className="text-xs text-subtle-foreground">
-                Your only way to sign in
-              </span>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                aria-label={`Remove ${methodName(method)}`}
-                disabled={unlink.isPending}
-                onClick={() => {
-                  unlink.reset();
-                  setMethodToRemove(method);
-                }}
-              >
-                Remove
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
+      <SignInMethods
+        methods={security.methods}
+        email={security.email}
+        pending={unlink.isPending}
+        onRemove={(method) => {
+          unlink.reset();
+          setMethodToRemove(method);
+        }}
+      />
       {adding ? (
         <LinkProviderDialog
           key={userId}
@@ -154,30 +124,50 @@ export function AccountMethodsSection({
         />
       ) : null}
       <ConfirmDialog
-        open={methodToRemove !== undefined}
-        onOpenChange={(open) => {
-          if (!open) closeRemoval();
+        state={{
+          open: methodToRemove !== undefined,
+          onOpenChange: (open) => {
+            if (!open) closeRemoval();
+          },
+          locked: unlink.isPending,
         }}
         title="Remove sign-in method?"
         description={`You won’t be able to sign in with ${
           methodToRemove === undefined ? 'it' : methodName(methodToRemove)
         } any more. Other devices will be signed out; this one stays signed in.`}
-        tone="destructive"
-        confirmLabel="Remove method"
-        pendingLabel="Removing…"
-        cancelLabel="Keep method"
-        pending={unlink.isPending}
-        confirmDisabled={methodToRemove === undefined}
-        error={removalFailure(unlink.error)}
-        errorAction={<FreshSignInLink error={unlink.error} />}
-        onConfirm={async () => {
+        onSubmit={async () => {
           if (methodToRemove === undefined) return;
           const name = methodName(methodToRemove);
           await unlink.mutateAsync(methodToRemove.id);
           setMethodToRemove(undefined);
           notifications.success({ title: `${name} removed` });
         }}
-      />
+        submitDisabled={unlink.isPending || methodToRemove === undefined}
+        footer={
+          <ConfirmationFooter>
+            <DialogClose
+              disabled={unlink.isPending}
+              render={<Button type="button" variant="ghost" />}
+            >
+              Keep method
+            </DialogClose>
+            <ProgressButton
+              type="submit"
+              variant="destructive"
+              pending={unlink.isPending}
+              pendingLabel="Removing…"
+              disabled={methodToRemove === undefined}
+            >
+              Remove method
+            </ProgressButton>
+          </ConfirmationFooter>
+        }
+      >
+        <ConfirmationDetails
+          error={removalFailure(unlink.error)}
+          errorAction={<FreshSignInLink error={unlink.error} />}
+        />
+      </ConfirmDialog>
     </AccountSection>
   );
 }
@@ -189,4 +179,61 @@ function removalFailure(error: unknown): string | undefined {
   if (methodMustRemain)
     return 'This method can’t be removed. Keep at least one way to sign in.';
   return accountCommandFailure(error, 'removing this method');
+}
+
+function SignInMethods({
+  methods,
+  email,
+  pending,
+  onRemove,
+}: Readonly<{
+  methods: readonly Method[];
+  email: string;
+  pending: boolean;
+  onRemove: (method: Method) => void;
+}>) {
+  const onlyMethod = methods.length <= 1;
+  return (
+    <ul
+      aria-label="Sign-in methods"
+      className="flex flex-col divide-y divide-border"
+    >
+      {methods.map((method) => (
+        <li
+          key={method.id}
+          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <MethodMark method={method} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">{methodName(method)}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {method.kind === 'password' ? email : 'Connected account'}
+              </p>
+            </div>
+          </div>
+          {/* The only way in can't be removed, so it gets a reason
+                instead of a button that never works. */}
+          {onlyMethod ? (
+            <span className="text-xs text-subtle-foreground">
+              Your only way to sign in
+            </span>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              aria-label={`Remove ${methodName(method)}`}
+              disabled={pending}
+              onClick={() => {
+                onRemove(method);
+              }}
+            >
+              Remove
+            </Button>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 }

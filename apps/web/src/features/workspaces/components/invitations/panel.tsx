@@ -105,25 +105,28 @@ export function InvitationsPanel({
       />
       <InvitationActionDialog
         selection={selection}
-        pending={command.pending}
-        locked={command.locked}
-        retryAvailable={command.retryAvailable && active?.kind !== 'create'}
-        message={
-          active !== undefined && active.kind !== 'create'
-            ? command.message
-            : failure
-        }
+
         onClose={() => {
           setSelected(undefined);
         }}
-        onConfirm={() => {
-          if (selection !== undefined)
-            void run(command.change(selection.invitation, selection.action));
+
+        command={{
+          pending: command.pending,
+          locked: command.locked,
+          retryAvailable: command.retryAvailable && active?.kind !== 'create',
+          message:
+            active !== undefined && active.kind !== 'create'
+              ? command.message
+              : failure,
+          onConfirm: () => {
+            if (selection !== undefined)
+              void run(command.change(selection.invitation, selection.action));
+          },
+          onRetry: () => {
+            void run(command.retry());
+          },
+          onDismiss: command.dismiss,
         }}
-        onRetry={() => {
-          void run(command.retry());
-        }}
-        onDismiss={command.dismiss}
       />
     </div>
   );

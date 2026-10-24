@@ -1,6 +1,12 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useId, useRef, useState } from 'react';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+} from '@/components/patterns/actions/confirm-dialog';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import {
   Sheet,
@@ -135,18 +141,32 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
         </SheetFooter>
       </SheetContent>
       <ConfirmDialog
-        open={model.confirmingDiscard}
-        onOpenChange={model.setConfirmingDiscard}
-        tone="destructive"
+        state={{
+          open: model.confirmingDiscard,
+          onOpenChange: model.setConfirmingDiscard,
+          locked: false,
+        }}
         title="Discard this connection?"
         description="The credential you pasted isn’t saved yet, so it’s lost if you leave now."
-        cancelLabel="Keep editing"
-        confirmLabel="Discard"
-        onConfirm={() => {
+        onSubmit={() => {
           model.setConfirmingDiscard(false);
           model.close();
         }}
-      />
+        footer={
+          <ConfirmationFooter>
+            <DialogClose render={<Button type="button" variant="ghost" />}>
+              Keep editing
+            </DialogClose>
+            <ProgressButton
+              type="submit"
+              variant="destructive"
+              pendingLabel="Discard"
+            >
+              Discard
+            </ProgressButton>
+          </ConfirmationFooter>
+        }
+      ></ConfirmDialog>
     </Sheet>
   );
 }

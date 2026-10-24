@@ -1,6 +1,13 @@
-import type { ComponentProps } from 'react';
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import type { ReactNode } from 'react';
 import type { WorkspaceMember } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import {
   feedbackFor,
   type MemberCommandFeedback,
@@ -17,16 +24,15 @@ export type MemberCommandView = Readonly<{
   dismiss: () => void;
 }>;
 
-type Content = Pick<
-  ComponentProps<typeof ConfirmDialog>,
-  | 'title'
-  | 'description'
-  | 'consequences'
-  | 'tone'
-  | 'confirmLabel'
-  | 'pendingLabel'
-  | 'errorAction'
->;
+type Content = Readonly<{
+  title: ReactNode;
+  description?: ReactNode;
+  consequences?: readonly string[];
+  tone?: 'default' | 'destructive';
+  confirmLabel: string;
+  pendingLabel?: string;
+  errorAction?: ReactNode;
+}>;
 
 /**
  * Confirms one member command. It stays on the member the command is about:
@@ -38,37 +44,81 @@ export function MemberCommandDialog({
   command,
   onClose,
   onConfirm,
-  ...content
-}: Readonly<
-  Content & {
-    member: WorkspaceMember | undefined;
-    command: MemberCommandView;
-    onClose: () => void;
-    onConfirm: () => void;
-  }
->) {
+  content,
+}: Readonly<{
+  content: Content;
+  member: WorkspaceMember | undefined;
+  command: MemberCommandView;
+  onClose: () => void;
+  onConfirm: () => void;
+}>) {
+  const changeConfirmationOpen = (open: boolean) => {
+    if (!open) onClose();
+  };
+  const confirmationRetry = command.retryAvailable
+    ? {
+        onRetry: () => {
+          void command.retry();
+        },
+        onDismiss: command.dismiss,
+      }
+    : undefined;
   return (
     <ConfirmDialog
-      {...content}
-      open={member !== undefined}
-      onOpenChange={(open) => {
-        if (!open) onClose();
+      state={{
+        open: member !== undefined,
+        onOpenChange: changeConfirmationOpen,
+        locked: command.locked,
       }}
-      locked={command.locked}
-      pending={command.pending}
-      confirmDisabled={member === undefined}
-      error={command.error ?? feedbackFor(command.feedback, member)?.message}
-      onConfirm={onConfirm}
-      unconfirmed={
-        command.retryAvailable
-          ? {
-              onRetry: () => {
-                void command.retry();
-              },
-              onDismiss: command.dismiss,
+      title={content.title}
+      description={content.description}
+      onSubmit={confirmationRetry?.onRetry ?? onConfirm}
+      submitDisabled={command.pending || member === undefined}
+      footer={
+        <ConfirmationFooter>
+          {confirmationRetry === undefined ? (
+            <DialogClose
+              disabled={command.locked}
+              render={<Button type="button" variant="ghost" />}
+            >
+              Cancel
+            </DialogClose>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                confirmationRetry.onDismiss();
+                changeConfirmationOpen(false);
+              }}
+            >
+              Close
+            </Button>
+          )}
+          <ProgressButton
+            type="submit"
+            variant={
+              (content.tone ?? 'default') === 'destructive'
+                ? 'destructive'
+                : 'primary'
             }
-          : undefined
+            pending={command.pending}
+            pendingLabel={content.pendingLabel ?? content.confirmLabel}
+            disabled={member === undefined}
+          >
+            {confirmationRetry === undefined
+              ? content.confirmLabel
+              : 'Try again'}
+          </ProgressButton>
+        </ConfirmationFooter>
       }
-    />
+    >
+      <ConfirmationDetails
+        consequences={content.consequences}
+        error={command.error ?? feedbackFor(command.feedback, member)?.message}
+        tone={confirmationRetry === undefined ? 'destructive' : 'warning'}
+        errorAction={content.errorAction}
+      />
+    </ConfirmDialog>
   );
 }

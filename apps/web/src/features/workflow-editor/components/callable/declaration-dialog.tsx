@@ -1,11 +1,17 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { Button } from '@/components/ui/button';
 import { useState, type ReactNode, type ComponentProps } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+} from '@/components/patterns/actions/confirm-dialog';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import { DeclarationForm } from './declaration-form';
@@ -79,18 +85,32 @@ export function DeclarationDialog({
           />
         )}
         <ConfirmDialog
-          open={session?.discard ?? false}
-          onOpenChange={(open) => {
-            if (!open && session !== null)
-              setSession({ ...session, discard: false });
+          state={{
+            open: session?.discard ?? false,
+            onOpenChange: (open) => {
+              if (!open && session !== null)
+                setSession({ ...session, discard: false });
+            },
+            locked: false,
           }}
           title="Discard contract changes?"
           description="These contract edits have not been applied to the workflow draft."
-          tone="destructive"
-          confirmLabel="Discard changes"
-          cancelLabel="Keep editing"
-          onConfirm={close}
-        />
+          onSubmit={close}
+          footer={
+            <ConfirmationFooter>
+              <DialogClose render={<Button type="button" variant="ghost" />}>
+                Keep editing
+              </DialogClose>
+              <ProgressButton
+                type="submit"
+                variant="destructive"
+                pendingLabel="Discard changes"
+              >
+                Discard changes
+              </ProgressButton>
+            </ConfirmationFooter>
+          }
+        ></ConfirmDialog>
       </DialogContent>
     </Dialog>
   );

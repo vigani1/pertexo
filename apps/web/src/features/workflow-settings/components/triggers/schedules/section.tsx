@@ -1,6 +1,12 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+} from '@/components/patterns/actions/confirm-dialog';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
@@ -95,23 +101,40 @@ export function SchedulesSection({
         />
       ))}
       <ConfirmDialog
-        open={pausing !== undefined}
-        onOpenChange={(open) => {
-          if (!open) setPausing(undefined);
+        state={{
+          open: pausing !== undefined,
+          onOpenChange: (open) => {
+            if (!open) setPausing(undefined);
+          },
+          locked: schedule.pendingTriggerId !== undefined,
         }}
         title="Turn off this schedule?"
         description="No new runs start from it until you turn it back on. Runs already in progress finish normally."
-        tone="destructive"
-        confirmLabel="Turn off"
-        pendingLabel="Turning off…"
-        cancelLabel="Keep it on"
-        pending={schedule.pendingTriggerId !== undefined}
-        onConfirm={() =>
+        onSubmit={() =>
           pausing === undefined
             ? undefined
             : setEnabled({ trigger: pausing, enabled: false })
         }
-      />
+        submitDisabled={schedule.pendingTriggerId !== undefined}
+        footer={
+          <ConfirmationFooter>
+            <DialogClose
+              disabled={schedule.pendingTriggerId !== undefined}
+              render={<Button type="button" variant="ghost" />}
+            >
+              Keep it on
+            </DialogClose>
+            <ProgressButton
+              type="submit"
+              variant="destructive"
+              pending={schedule.pendingTriggerId !== undefined}
+              pendingLabel="Turning off…"
+            >
+              Turn off
+            </ProgressButton>
+          </ConfirmationFooter>
+        }
+      ></ConfirmDialog>
     </>
   );
 }

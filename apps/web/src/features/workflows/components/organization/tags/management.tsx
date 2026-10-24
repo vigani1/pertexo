@@ -1,3 +1,5 @@
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
 import { TagNameActions, TagNameField } from './name-fields';
 import {
   workflowTagKeyInputSchema,
@@ -5,7 +7,11 @@ import {
 } from '@pertexo/contracts';
 import { useEffect, useId, useRef, useState } from 'react';
 import { HashIcon } from 'lucide-react';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -195,26 +201,48 @@ function TagDeleteConfirmation({
       (disabled ||
         command.error !== undefined ||
         command.result !== undefined));
+  const confirmBlocked =
+    (command.pending && pendingKind === 'delete-tag') || tagDeletionBlocked;
   return (
     <ConfirmDialog
-      open
-      onOpenChange={onOpenChange}
-      tone="destructive"
+      state={{
+        open: true,
+        onOpenChange: onOpenChange,
+        locked: command.pending || command.retryAvailable,
+      }}
       title={`Delete #${target.key}?`}
       description="It’s removed from every workflow, including archived ones. If more than 50 workflows use it, remove it from some of them first with See workflows using it."
-      pending={command.pending && pendingKind === 'delete-tag'}
-      pendingLabel="Deleting…"
-      locked={command.pending || command.retryAvailable}
-      confirmDisabled={tagDeletionBlocked}
-      confirmLabel={command.retryAvailable ? 'Try again' : 'Delete tag'}
-      error={
-        command.retryAvailable
-          ? 'We couldn’t confirm this change. Try again; it won’t be applied twice.'
-          : command.error
+      onSubmit={command.retryAvailable ? command.retry : onDelete}
+      submitDisabled={confirmBlocked}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
+            disabled={command.pending || command.retryAvailable}
+            render={<Button type="button" variant="ghost" />}
+          >
+            Cancel
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant="destructive"
+            pending={command.pending && pendingKind === 'delete-tag'}
+            pendingLabel="Deleting…"
+            disabled={tagDeletionBlocked}
+          >
+            {command.retryAvailable ? 'Try again' : 'Delete tag'}
+          </ProgressButton>
+        </ConfirmationFooter>
       }
-      errorTone={command.retryAvailable ? 'warning' : 'destructive'}
-      onConfirm={command.retryAvailable ? command.retry : onDelete}
-    />
+    >
+      <ConfirmationDetails
+        error={
+          command.retryAvailable
+            ? 'We couldn’t confirm this change. Try again; it won’t be applied twice.'
+            : command.error
+        }
+        tone={command.retryAvailable ? 'warning' : 'destructive'}
+      />
+    </ConfirmDialog>
   );
 }
 

@@ -33,19 +33,20 @@ export function OwnershipTransferDialog(
       command={props.command}
       onClose={props.onClose}
       onConfirm={props.onConfirm}
-      tone="destructive"
-      title={`Make ${member?.displayName ?? 'this member'} the owner of ${props.workspaceName}?`}
-      consequences={[
-        `${firstName} becomes the owner: the only person who can rename, delete or hand over this workspace.`,
-        'You become an admin. You keep managing members and connections, but only the new owner can make you the owner again.',
-        `You and ${firstName} are both signed out everywhere and sign in again.`,
-        'A workspace has one owner, and the owner can’t leave until they hand it over.',
-        'For your security, this needs a sign-in from the last five minutes.',
-      ]}
-      confirmLabel="Make owner"
-      pendingLabel="Handing over…"
-      errorAction={
-        freshSignIn ? (
+
+      content={{
+        tone: 'destructive',
+        title: `Make ${member?.displayName ?? 'this member'} the owner of ${props.workspaceName}?`,
+        consequences: [
+          `${firstName} becomes the owner: the only person who can rename, delete or hand over this workspace.`,
+          'You become an admin. You keep managing members and connections, but only the new owner can make you the owner again.',
+          `You and ${firstName} are both signed out everywhere and sign in again.`,
+          'A workspace has one owner, and the owner can’t leave until they hand it over.',
+          'For your security, this needs a sign-in from the last five minutes.',
+        ],
+        confirmLabel: 'Make owner',
+        pendingLabel: 'Handing over…',
+        errorAction: freshSignIn ? (
           <Link
             to="/logout"
             search={returnToSearch(
@@ -55,8 +56,8 @@ export function OwnershipTransferDialog(
           >
             Sign in again
           </Link>
-        ) : undefined
-      }
+        ) : undefined,
+      }}
     />
   );
 }

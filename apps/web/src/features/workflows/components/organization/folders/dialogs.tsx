@@ -1,10 +1,15 @@
+import { DialogClose } from '@/components/ui/dialog';
 import { useId, useState } from 'react';
 import {
   workflowFolderNameInputSchema,
   type WorkflowFolder,
 } from '@pertexo/contracts';
 import { ActionDialog } from '@/components/patterns/actions/action-dialog';
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+  ConfirmationDetails,
+} from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -258,39 +263,70 @@ export function FolderDeleteDialog({
   command: WorkflowOrganizationCommand;
   onClose: () => void;
 }>) {
+  const changeConfirmationOpen = (open: boolean) => {
+    if (!open) onClose();
+  };
+  const confirmationRetry = command.retryAvailable
+    ? { onRetry: () => command.retry(), onDismiss: onClose }
+    : undefined;
   return (
     <ConfirmDialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
+      state={{
+        open: true,
+        onOpenChange: changeConfirmationOpen,
+        locked: command.pending,
       }}
-      tone="destructive"
       title={`Delete ${folder.name}?`}
       description="Only an empty folder can be deleted. Move its workflows, including archived ones, and its folders out first."
-      confirmLabel="Delete folder"
-      pendingLabel="Deleting…"
-      pending={command.pending}
-      locked={command.pending}
-      error={command.retryAvailable ? UNCONFIRMED : command.error}
-      errorTone={command.retryAvailable ? 'warning' : 'destructive'}
-      {...(command.retryAvailable
-        ? {
-            unconfirmed: {
-              onRetry: () => command.retry(),
-              onDismiss: onClose,
-            },
-          }
-        : {})}
-      onConfirm={() =>
-        command.start({
-          workspaceId,
-          kind: 'delete-folder',
-          folderId: folder.id,
-          idempotencyKey: crypto.randomUUID(),
-          body: { expectedFolderRevision: folder.revision },
-        })
+      onSubmit={
+        confirmationRetry?.onRetry ??
+        (() =>
+          command.start({
+            workspaceId,
+            kind: 'delete-folder',
+            folderId: folder.id,
+            idempotencyKey: crypto.randomUUID(),
+            body: { expectedFolderRevision: folder.revision },
+          }))
       }
-    />
+      submitDisabled={command.pending}
+      footer={
+        <ConfirmationFooter>
+          {confirmationRetry === undefined ? (
+            <DialogClose
+              disabled={command.pending}
+              render={<Button type="button" variant="ghost" />}
+            >
+              Cancel
+            </DialogClose>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                confirmationRetry.onDismiss();
+                changeConfirmationOpen(false);
+              }}
+            >
+              Close
+            </Button>
+          )}
+          <ProgressButton
+            type="submit"
+            variant="destructive"
+            pending={command.pending}
+            pendingLabel="Deleting…"
+          >
+            {confirmationRetry === undefined ? 'Delete folder' : 'Try again'}
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
+    >
+      <ConfirmationDetails
+        error={command.retryAvailable ? UNCONFIRMED : command.error}
+        tone={command.retryAvailable ? 'warning' : 'destructive'}
+      />
+    </ConfirmDialog>
   );
 }
 

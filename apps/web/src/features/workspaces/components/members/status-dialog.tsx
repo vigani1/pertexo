@@ -69,7 +69,7 @@ export function MemberStatusDialog(
       command={props.command}
       onClose={props.onClose}
       onConfirm={props.onConfirm}
-      {...copy}
+      content={copy}
     />
   );
 }

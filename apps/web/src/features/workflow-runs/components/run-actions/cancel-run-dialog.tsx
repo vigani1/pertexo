@@ -1,4 +1,10 @@
-import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
+import { ProgressButton } from '@/components/ui/progress-button';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import {
+  ConfirmDialog,
+  ConfirmationFooter,
+} from '@/components/patterns/actions/confirm-dialog';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -62,16 +68,33 @@ export function CancelRunDialog({
 
   return (
     <ConfirmDialog
-      open={open}
-      onOpenChange={onOpenChange}
+      state={{
+        open: open,
+        onOpenChange: onOpenChange,
+        locked: cancellation.isPending,
+      }}
       title="Cancel this run?"
       description={`Steps that already finished aren’t undone. ${workflowName} stops after the step it’s on now.`}
-      tone="destructive"
-      confirmLabel="Cancel run"
-      pendingLabel="Canceling…"
-      cancelLabel="Keep running"
-      pending={cancellation.isPending}
-      onConfirm={stop}
-    />
+      onSubmit={stop}
+      submitDisabled={cancellation.isPending}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
+            disabled={cancellation.isPending}
+            render={<Button type="button" variant="ghost" />}
+          >
+            Keep running
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant="destructive"
+            pending={cancellation.isPending}
+            pendingLabel="Canceling…"
+          >
+            Cancel run
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
+    ></ConfirmDialog>
   );
 }
