@@ -55,13 +55,19 @@ type CompletedOutput = NodeAttemptStoredInputs['completedNodeOutputs'][number];
  * The checkpoint releases passes as they settle, so results are read back
  * from the stored step runs.
  */
-async function withLoopResults(
-  store: Pick<NodeAttemptRunStore, 'listNodeOutcomes' | 'readNodeOutputs'>,
-  request: LoadInputsRequest,
-  output: CompletedOutput,
-  loop: ForEachUpstream,
-  maxBytes: number,
-): Promise<CompletedOutput | undefined> {
+async function withLoopResults({
+  store,
+  request,
+  output,
+  loop,
+  maxBytes,
+}: Readonly<{
+  store: Pick<NodeAttemptRunStore, 'listNodeOutcomes' | 'readNodeOutputs'>;
+  request: LoadInputsRequest;
+  output: CompletedOutput;
+  loop: ForEachUpstream;
+  maxBytes: number;
+}>): Promise<CompletedOutput | undefined> {
   const count = (output.value as { iterationCount?: unknown } | null)
     ?.iterationCount;
   if (typeof count !== 'number') throw new NodeAttemptStateCorruptError();
@@ -165,8 +171,8 @@ function innermostLoop(
   const scope = iterationPath.at(-1);
   if (scope === undefined) return undefined;
   const enclosing = canonicalJson(iterationPath.slice(0, -1));
-  const loop = checkpoint.loops.find(
-    (candidate) =>
+  const loop = checkpoint.loops.find((candidate) => {
+    const matchesLoop =
       candidate.loopId === scope.loopNodeId &&
       canonicalJson(candidate.iterationPath) === enclosing &&
       candidate.branchPath.every(
@@ -174,8 +180,9 @@ function innermostLoop(
           branchPath[index]?.nodeId === part.nodeId &&
           branchPath[index].outputPort === part.outputPort,
       ) &&
-      candidate.activeOrdinals.includes(scope.ordinal),
-  );
+      candidate.activeOrdinals.includes(scope.ordinal);
+    return matchesLoop;
+  });
   if (loop === undefined) throw new NodeAttemptStateCorruptError();
   return { loop, scope };
 }
@@ -204,13 +211,13 @@ export async function loadAttemptInputs(
         ({ invocationKey }) => invocationKey === output.invocationKey,
       );
       if (loop === undefined) return { output, tooLarge: false };
-      const withResults = await withLoopResults(
+      const withResults = await withLoopResults({
         store,
-        input,
+        request: input,
         output,
         loop,
-        loopResults?.maxBytes ?? 0,
-      );
+        maxBytes: loopResults?.maxBytes ?? 0,
+      });
       return {
         output: withResults ?? output,
         tooLarge: withResults === undefined,
@@ -231,14 +238,13 @@ export async function loadAttemptInputs(
     const handler = checkpoint.invocations.find(
       ({ invocationKey }) => invocationKey === input.lease.invocationKey,
     );
-    if (
+    const sourceFailureStateInvalid =
       source?.status !== 'failed' ||
       source.failureHandling?.disposition !== 'pending' ||
       source.attemptNumber !== inputs.sourceFailure.attemptNumber ||
       handler?.status !== 'running' ||
-      handler.attemptNumber !== input.lease.attemptNumber
-    )
-      throw new NodeAttemptStateCorruptError();
+      handler.attemptNumber !== input.lease.attemptNumber;
+    if (sourceFailureStateInvalid) throw new NodeAttemptStateCorruptError();
   }
   const join = await coordinatorInput(store, input, checkpoint);
   const innermost = innermostLoop(
