@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 
 import { parseDatabaseConfig } from '../../../src/config.js';
-import {createArtifactUploadDatabase} from '../../../src/artifacts/uploads/repository.js';
+import { createArtifactUploadDatabase } from '../../../src/artifacts/uploads/repository.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
 

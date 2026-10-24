@@ -1,6 +1,9 @@
 import { expect, it } from 'vitest';
 
-import {ArtifactUploadConflictError, ArtifactUploadNotFoundError} from '../../../src/artifacts/uploads/input.js';
+import {
+  ArtifactUploadConflictError,
+  ArtifactUploadNotFoundError,
+} from '../../../src/artifacts/uploads/input.js';
 
 import {
   database,

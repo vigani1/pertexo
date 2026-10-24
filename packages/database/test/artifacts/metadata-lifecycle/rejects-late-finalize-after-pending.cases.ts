@@ -2,8 +2,17 @@ import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 
 import { expect, it } from 'vitest';
-import {ArtifactLifecycleConflictError, ArtifactMetadataNotFoundError} from '../../../src/artifacts/input.js';
-import {claimDueUnfinalizedArtifact, claimDueUnfinalizedArtifacts, completeArtifactRemoval, createPendingArtifact, finalizeArtifactUpload} from '../../../src/artifacts/repository.js';
+import {
+  ArtifactLifecycleConflictError,
+  ArtifactMetadataNotFoundError,
+} from '../../../src/artifacts/input.js';
+import {
+  claimDueUnfinalizedArtifact,
+  claimDueUnfinalizedArtifacts,
+  completeArtifactRemoval,
+  createPendingArtifact,
+  finalizeArtifactUpload,
+} from '../../../src/artifacts/repository.js';
 
 import {
   database,
