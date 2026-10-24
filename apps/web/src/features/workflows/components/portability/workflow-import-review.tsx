@@ -97,32 +97,36 @@ function ImportContents({
 }
 
 function WorkflowImportConnections({
-  apiClient,
-  userId,
-  workspace,
   slots,
   nodes,
   bindings,
   optionalSlots,
   disabled,
   onChange,
+  scope,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
   slots: readonly PortableConnectionSlot[];
   nodes: readonly PortableNode[];
   bindings: readonly PortableConnectionBinding[];
   optionalSlots: ReadonlySet<string>;
   disabled: boolean;
   onChange: (bindings: PortableConnectionBinding[]) => void;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+  }>;
 }>) {
+  const { apiClient, userId, workspace } = scope;
+
   const canRead = workspace.capabilities.includes('connection:read');
   const connections = useQuery({
     ...connectionDiscoveryQueryOptions(apiClient, userId, workspace.id),
     enabled: slots.length > 0 && canRead,
     staleTime: 0,
   });
+  const bindingSelectionBlocked =
+    disabled || connections.isFetching || connections.isError || !canRead;
   return (
     <section
       aria-label="Destination connection bindings"
@@ -181,64 +185,57 @@ function WorkflowImportConnections({
                 : `${describeConnectionRequirement(slot.authType)}${choices.length === 0 && !connections.isFetching ? '. This workspace has none yet; add one in Connections.' : ''}`
             }
           >
-            {(control) => {
-              const bindingSelectionBlocked =
-                disabled ||
-                connections.isFetching ||
-                connections.isError ||
-                !canRead;
-              return (
-                <Select
-                  value={selected}
-                  items={[
-                    ...(optional
-                      ? [{ value: null, label: 'No connection' }]
-                      : []),
-                    ...choices.map((connection) => ({
-                      value: connection.id,
-                      label: connection.name,
-                    })),
-                  ]}
-                  disabled={bindingSelectionBlocked}
-                  onValueChange={(value: string | null) => {
-                    onChange([
-                      ...bindings.filter(
-                        (binding) =>
-                          binding.nodeId !== slot.nodeId ||
-                          binding.slot !== slot.slot,
-                      ),
-                      ...(value === null
-                        ? []
-                        : [
-                            {
-                              nodeId: slot.nodeId,
-                              slot: slot.slot,
-                              connectionId: value,
-                            },
-                          ]),
-                    ]);
-                  }}
-                >
-                  <SelectTrigger {...control}>
-                    <SelectValue
-                      placeholder={
-                        optional ? 'No connection' : 'Choose a connection'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {optional ? (
-                      <SelectItem value={null}>No connection</SelectItem>
-                    ) : null}
-                    {choices.map((connection) => (
-                      <SelectItem key={connection.id} value={connection.id}>
-                        {connection.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              );
-            }}
+            {(control) => (
+              <Select
+                value={selected}
+                items={[
+                  ...(optional
+                    ? [{ value: null, label: 'No connection' }]
+                    : []),
+                  ...choices.map((connection) => ({
+                    value: connection.id,
+                    label: connection.name,
+                  })),
+                ]}
+                disabled={bindingSelectionBlocked}
+                onValueChange={(value: string | null) => {
+                  onChange([
+                    ...bindings.filter(
+                      (binding) =>
+                        binding.nodeId !== slot.nodeId ||
+                        binding.slot !== slot.slot,
+                    ),
+                    ...(value === null
+                      ? []
+                      : [
+                          {
+                            nodeId: slot.nodeId,
+                            slot: slot.slot,
+                            connectionId: value,
+                          },
+                        ]),
+                  ]);
+                }}
+              >
+                <SelectTrigger {...control}>
+                  <SelectValue
+                    placeholder={
+                      optional ? 'No connection' : 'Choose a connection'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {optional ? (
+                    <SelectItem value={null}>No connection</SelectItem>
+                  ) : null}
+                  {choices.map((connection) => (
+                    <SelectItem key={connection.id} value={connection.id}>
+                      {connection.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </LabelledField>
         );
       })}
@@ -284,26 +281,28 @@ function WorkflowImportCompatibility({
 
 /** The reviewed graph, destination bindings and server compatibility readback. */
 export function WorkflowImportReview({
-  apiClient,
-  userId,
-  workspace,
   manifest,
   preview,
   bindings,
   optionalSlots,
   disabled,
   onBindingsChange,
+  scope,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
   manifest: WorkflowPortableManifest | undefined;
   preview: WorkflowImportPreviewResponse | undefined;
   bindings: readonly PortableConnectionBinding[];
   optionalSlots: ReadonlySet<string>;
   disabled: boolean;
   onBindingsChange: (bindings: PortableConnectionBinding[]) => void;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+  }>;
 }>) {
+  const { apiClient, userId, workspace } = scope;
+
   return (
     <>
       {manifest === undefined ? null : (
@@ -311,15 +310,17 @@ export function WorkflowImportReview({
           <ImportContents manifest={manifest} />
           {manifest.connectionSlots.length === 0 ? null : (
             <WorkflowImportConnections
-              apiClient={apiClient}
-              userId={userId}
-              workspace={workspace}
               slots={manifest.connectionSlots}
               nodes={manifest.graph.nodes}
               bindings={bindings}
               optionalSlots={optionalSlots}
               disabled={disabled}
               onChange={onBindingsChange}
+              scope={{
+                apiClient,
+                userId,
+                workspace,
+              }}
             />
           )}
         </>

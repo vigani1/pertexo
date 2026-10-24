@@ -20,9 +20,6 @@ import { useImportDraft } from './use-import-draft';
 import { PortabilityAccessDeniedDialog } from './access-denied-dialog';
 
 type WorkflowImportDialogProps = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
   onClose: () => void;
   onCreated: (workflowId: string) => void;
   open?: boolean;
@@ -33,12 +30,17 @@ type WorkflowImportDialogProps = Readonly<{
    */
   example?: string | undefined;
   initialName?: string | undefined;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+  }>;
 }>;
 
 export function WorkflowImportDialog(props: WorkflowImportDialogProps) {
   if (
-    props.workspace.status !== 'active' ||
-    !props.workspace.capabilities.includes('workflow:create')
+    props.scope.workspace.status !== 'active' ||
+    !props.scope.workspace.capabilities.includes('workflow:create')
   )
     return (
       <PortabilityAccessDeniedDialog
@@ -49,23 +51,23 @@ export function WorkflowImportDialog(props: WorkflowImportDialogProps) {
     );
   return (
     <WorkflowImportSession
-      key={`${props.userId}:${props.workspace.id}`}
+      key={`${props.scope.userId}:${props.scope.workspace.id}`}
       {...props}
     />
   );
 }
 
 function WorkflowImportSession({
-  apiClient,
-  userId,
-  workspace,
   onClose,
   onCreated,
   open = true,
   onReopen,
   example,
   initialName = '',
+  scope,
 }: WorkflowImportDialogProps) {
+  const { apiClient, userId, workspace } = scope;
+
   const draft = useImportDraft(apiClient, userId, workspace, initialName);
   // The example the dialog opened on is chosen once; after that, by hand.
   const [opening, setOpening] = useState(example);
@@ -98,37 +100,42 @@ function WorkflowImportSession({
           {draft.denied ? null : (
             <div className="mt-5 flex flex-col gap-5">
               <WorkflowImportSourceFields
-                apiClient={apiClient}
-                userId={userId}
-                template={draft.template}
-                manifest={draft.manifest}
-                optionalSlots={draft.optionalSlots}
-                setupValues={draft.setupValues}
-                name={draft.name}
-                fileGeneration={draft.fileGeneration}
-                reading={draft.reading}
                 locked={draft.locked}
-                example={example}
-                opening={opening}
                 validation={draft.validation}
-                onChooseTemplate={(template) => {
-                  setOpening(undefined);
-                  draft.chooseTemplate(template);
+                fields={{
+                  setupValues: draft.setupValues,
+                  name: draft.name,
+                  onNameChange: draft.changeName,
+                  onSetupChange: draft.changeSetup,
                 }}
-                onChooseFile={(file) => void draft.chooseFile(file)}
-                onNameChange={draft.changeName}
-                onSetupChange={draft.changeSetup}
+                source={{
+                  template: draft.template,
+                  manifest: draft.manifest,
+                  optionalSlots: draft.optionalSlots,
+                  fileGeneration: draft.fileGeneration,
+                  reading: draft.reading,
+                  example,
+                  opening,
+                  onChooseTemplate: (template) => {
+                    setOpening(undefined);
+                    draft.chooseTemplate(template);
+                  },
+                  onChooseFile: (file) => void draft.chooseFile(file),
+                }}
+                scope={{ apiClient, userId: userId }}
               />
               <WorkflowImportReview
-                apiClient={apiClient}
-                userId={userId}
-                workspace={workspace}
                 manifest={draft.manifest}
                 preview={draft.preview}
                 bindings={draft.bindings}
                 optionalSlots={draft.optionalSlots}
                 disabled={draft.locked}
                 onBindingsChange={draft.changeBindings}
+                scope={{
+                  apiClient,
+                  userId,
+                  workspace,
+                }}
               />
               {draft.manifest === undefined ? null : (
                 <Notice tone="warning">
@@ -146,13 +153,15 @@ function WorkflowImportSession({
           />
           <WorkflowImportActions
             commandState={draft.commandState}
-            accessDenied={draft.denied}
-            checkingAccess={draft.resetting}
-            canImport={draft.canImport}
             onClose={onClose}
             onStartAnotherImport={() => void draft.startAnother()}
             onOpenWorkflow={onCreated}
             onSubmitImport={draft.submitImport}
+            access={{
+              accessDenied: draft.denied,
+              checkingAccess: draft.resetting,
+              canImport: draft.canImport,
+            }}
           >
             {!draft.locked ? (
               <ProgressButton

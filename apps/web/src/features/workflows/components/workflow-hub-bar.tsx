@@ -92,34 +92,35 @@ const TITLE_CLASS =
  * editor's pattern glyph) and `detail` under it (e.g. its save state).
  */
 export function WorkflowHubBar({
-  apiClient,
-  userId,
-  workspace,
-  workflowId,
   workflow,
   activeTab,
-  glyph,
-  presence,
-  detail,
-  actions,
   duplicateBlocked = false,
-  mobileActions,
   overflowRef,
+  scope,
+  slots = {},
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
-  workflowId: string;
   workflow: WorkflowSummary | undefined;
   activeTab: WorkflowHubTab;
-  glyph?: ReactNode;
-  presence?: ReactNode;
-  detail?: ReactNode;
-  actions?: ReactNode;
   duplicateBlocked?: boolean;
-  mobileActions?: ReactNode;
   overflowRef?: RefObject<HTMLButtonElement | null>;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+    workflowId: string;
+  }>;
+  slots?: Readonly<{
+    glyph?: ReactNode;
+    presence?: ReactNode;
+    detail?: ReactNode;
+    actions?: ReactNode;
+    mobileActions?: ReactNode;
+  }>;
 }>) {
+  const { apiClient, userId, workspace, workflowId } = scope;
+
+  const { glyph, presence, detail, actions, mobileActions } = slots;
+
   const secondaryActions =
     workflow === undefined ? null : (
       <HubSecondaryActions
@@ -253,10 +254,8 @@ function HubSecondaryActions({
       : true;
   }
   const read = workspace.capabilities.includes('workflow:read');
+  const scope = { apiClient, userId, workspace };
   const dialogProps = {
-    apiClient,
-    userId,
-    workspace,
     workflow,
     finalFocus,
     // Below 2xl these three fold into the ⋯ menu, so a laptop-width header
@@ -319,6 +318,7 @@ function HubSecondaryActions({
         </DropdownMenuContent>
       </DropdownMenu>
       <WorkflowExportAction
+        scope={scope}
         {...dialogProps}
         blocked={blocked}
         open={dialog === 'export'}
@@ -327,6 +327,7 @@ function HubSecondaryActions({
         }}
       />
       <InputCasesAction
+        {...scope}
         {...dialogProps}
         open={dialog === 'cases'}
         onOpenChange={(open) => {
@@ -334,6 +335,7 @@ function HubSecondaryActions({
         }}
       />
       <WorkflowDuplicateAction
+        scope={scope}
         {...dialogProps}
         blocked={blocked}
         open={dialog === 'duplicate'}

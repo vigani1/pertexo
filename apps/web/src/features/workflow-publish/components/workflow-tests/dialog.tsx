@@ -68,8 +68,6 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
               <InputCasesPanel
                 readOnly
                 cases={model.cases}
-                workspace={model.workspace}
-                workflow={model.workflow}
                 disabled={model.locked}
                 editing={model.editingCase}
                 onEditingChange={model.setEditingCase}
@@ -79,6 +77,7 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
                 onAccessLost={() => {
                   model.input.reset();
                 }}
+                scope={{ workspace: model.workspace, workflow: model.workflow }}
               />
             )}
             {trigger === undefined ? null : (

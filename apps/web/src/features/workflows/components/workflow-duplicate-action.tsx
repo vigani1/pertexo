@@ -19,26 +19,28 @@ const WorkflowDuplicateDialog = lazyPiece(
 
 /** Shared detail action; Build supplies its own dirty/save guard. */
 export function WorkflowDuplicateAction({
-  apiClient,
-  userId,
-  workspace,
   workflow,
   blocked = false,
   open,
   onOpenChange,
   triggerClassName,
   finalFocus,
+  scope,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   blocked?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   triggerClassName?: string;
   finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+  }>;
 }>) {
+  const { apiClient, userId, workspace } = scope;
+
   const navigate = useNavigate();
   if (!canDuplicateWorkflow(workspace, workflow)) return null;
   return (
@@ -64,9 +66,6 @@ export function WorkflowDuplicateAction({
         <Suspense fallback={null}>
           <WorkflowDuplicateDialog
             key={`${userId}:${workspace.id}:${workflow.id}`}
-            apiClient={apiClient}
-            userId={userId}
-            workspace={workspace}
             workflow={workflow}
             source={{ kind: 'draft' }}
             finalFocus={finalFocus}
@@ -80,6 +79,11 @@ export function WorkflowDuplicateAction({
                 to: '/w/$workspaceId/workflows/$workflowId',
                 params: { workspaceId: workspace.id, workflowId },
               });
+            }}
+            scope={{
+              apiClient,
+              userId,
+              workspace,
             }}
           />
         </Suspense>

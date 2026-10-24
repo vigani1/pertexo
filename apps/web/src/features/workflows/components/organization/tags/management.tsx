@@ -37,12 +37,14 @@ type TagManagementProps = Readonly<{
   ready: boolean;
   locked: boolean;
   scope: { workspaceId: string };
-  start: StartCommand;
-  onCleanup: (tag: WorkflowTag) => void;
   command: ReturnType<typeof useWorkflowOrganizationCommand>;
   pendingKind: WorkflowOrganizationAttempt['kind'] | undefined;
-  /** Reads the current tags again after a refused change. */
-  onReload: () => void;
+  actions: Readonly<{
+    start: StartCommand;
+    onCleanup: (tag: WorkflowTag) => void;
+    /** Reads the current tags again after a refused change. */
+    onReload: () => void;
+  }>;
 }>;
 
 export function TagManagement({
@@ -50,12 +52,12 @@ export function TagManagement({
   ready,
   locked,
   scope,
-  start,
-  onCleanup,
   command,
   pendingKind,
-  onReload,
+  actions,
 }: TagManagementProps) {
+  const { start, onCleanup, onReload } = actions;
+
   const [selected, setSelected] = useState<string>();
   const [name, setName] = useState('');
   // Deletion stays bound to the tag as it was shown, even if it changes meanwhile.
@@ -207,7 +209,7 @@ function TagDeleteConfirmation({
     <ConfirmDialog
       state={{
         open: true,
-        onOpenChange: onOpenChange,
+        onOpenChange,
         locked: command.pending || command.retryAvailable,
       }}
       title={`Delete #${target.key}?`}

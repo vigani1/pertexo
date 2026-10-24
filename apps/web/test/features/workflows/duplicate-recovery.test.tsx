@@ -35,19 +35,21 @@ function open() {
   const onCreated = vi.fn();
   const view = renderInRouter(
     <WorkflowDuplicateDialog
-      apiClient={createApiClient({
-        fetch: testFetch,
-        readCsrfToken: () =>
-          'csrf-token-for-component-tests-12345678901234567890',
-      })}
-      userId={userId}
-      workspace={accessibleWorkspaceSchema.parse(
-        workspaceWith(['workflow:create']),
-      )}
       workflow={workflowSummarySchema.parse(summary(workflowId, 'Source'))}
       source={{ kind: 'draft' }}
       onCreated={onCreated}
       onClose={vi.fn()}
+      scope={{
+        apiClient: createApiClient({
+          fetch: testFetch,
+          readCsrfToken: () =>
+            'csrf-token-for-component-tests-12345678901234567890',
+        }),
+        userId,
+        workspace: accessibleWorkspaceSchema.parse(
+          workspaceWith(['workflow:create']),
+        ),
+      }}
     />,
   );
   return { ...view, onCreated, event: userEvent.setup() };

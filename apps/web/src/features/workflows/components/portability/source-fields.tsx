@@ -11,44 +11,51 @@ import { WorkflowFileDrop } from './file-drop';
 
 /** Editable source selection; reading, previewing and commands stay in the owner. */
 export function WorkflowImportSourceFields({
-  apiClient,
-  userId,
-  template,
-  manifest,
-  optionalSlots,
-  setupValues,
-  name,
-  fileGeneration,
-  reading,
   locked,
   validation,
-  example,
-  opening,
-  onChooseTemplate,
-  onChooseFile,
-  onNameChange,
-  onSetupChange,
+  scope,
+  source,
+  fields,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  template: CuratedTemplate | undefined;
-  manifest: WorkflowPortableManifest | undefined;
-  optionalSlots: ReadonlySet<string>;
-  setupValues: readonly string[];
-  name: string;
-  fileGeneration: number;
-  reading: boolean;
   locked: boolean;
   validation: ReturnType<typeof useFieldValidation<string>>;
-  /** The example the dialog opened on; without one it takes a file. */
-  example: string | undefined;
-  /** The example still to choose for the person, until they've chosen one. */
-  opening: string | undefined;
-  onChooseTemplate: (template: CuratedTemplate) => void;
-  onChooseFile: (file: File | undefined) => void;
-  onNameChange: (name: string) => void;
-  onSetupChange: (index: number, value: string) => void;
+  scope: Readonly<{ apiClient: ApiClient; userId: string }>;
+  source: Readonly<{
+    template: CuratedTemplate | undefined;
+    manifest: WorkflowPortableManifest | undefined;
+    optionalSlots: ReadonlySet<string>;
+    fileGeneration: number;
+    reading: boolean;
+    /** The example the dialog opened on; without one it takes a file. */
+    example: string | undefined;
+    /** The example still to choose for the person, until they've chosen one. */
+    opening: string | undefined;
+    onChooseTemplate: (template: CuratedTemplate) => void;
+    onChooseFile: (file: File | undefined) => void;
+  }>;
+  fields: Readonly<{
+    setupValues: readonly string[];
+    name: string;
+    onNameChange: (name: string) => void;
+    onSetupChange: (index: number, value: string) => void;
+  }>;
 }>) {
+  const { apiClient, userId } = scope;
+
+  const {
+    template,
+    manifest,
+    optionalSlots,
+    fileGeneration,
+    reading,
+    example,
+    opening,
+    onChooseTemplate,
+    onChooseFile,
+  } = source;
+
+  const { setupValues, name, onNameChange, onSetupChange } = fields;
+
   return (
     <>
       {example === undefined ? (

@@ -141,8 +141,6 @@ function RunInputDialogContent(props: RunInputDialogContentProps) {
         model.caseScope !== undefined &&
         model.cases !== undefined ? (
           <InputCasesPanel
-            workspace={model.caseScope.workspace}
-            workflow={model.caseScope.workflow}
             cases={model.cases}
             disabled={model.availability.fieldsBlocked}
             editing={model.caseEditing}
@@ -152,6 +150,10 @@ function RunInputDialogContent(props: RunInputDialogContentProps) {
               model.review.clear();
               model.setLoaded(value);
               model.runInput.reset(JSON.stringify(value.input, null, 2));
+            }}
+            scope={{
+              workspace: model.caseScope.workspace,
+              workflow: model.caseScope.workflow,
             }}
           />
         ) : null}

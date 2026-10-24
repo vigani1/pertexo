@@ -17,26 +17,28 @@ const WorkflowExportDialog = lazyPiece(
 );
 
 export function WorkflowExportAction({
-  apiClient,
-  userId,
-  workspace,
   workflow,
   blocked = false,
   open,
   onOpenChange,
   triggerClassName,
   finalFocus,
+  scope,
 }: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   blocked?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   triggerClassName?: string;
   finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+  }>;
 }>) {
+  const { apiClient, userId, workspace } = scope;
+
   if (!workspace.capabilities.includes('workflow:read')) return null;
   return (
     <>

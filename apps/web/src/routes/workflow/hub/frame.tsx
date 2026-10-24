@@ -30,14 +30,15 @@ export function WorkflowHubTabFrame({
     <>
       <div className="sticky top-0 z-30 px-3 pt-3">
         <WorkflowHubBar
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-          workflowId={workflowId}
           workflow={summary.data}
           activeTab={tab}
-          presence={<WorkflowPresenceSummary />}
-          {...(actions === undefined ? {} : { actions })}
+          slots={{ presence: <WorkflowPresenceSummary />, actions }}
+          scope={{
+            apiClient,
+            userId: user.id,
+            workspace,
+            workflowId,
+          }}
         />
       </div>
       <div className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16 sm:px-6">
