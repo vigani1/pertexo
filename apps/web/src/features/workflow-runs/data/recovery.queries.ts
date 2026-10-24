@@ -1,7 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getRunRecovery } from './recovery.api';
-import { workflowRunKeys } from './workflow-runs.queries';
+import { workflowRunKeys } from './history.queries';
 export function recoveryQueryOptions(
   client: ApiClient,
   userId: string,

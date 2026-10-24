@@ -3,7 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import type { RunHistoryFilters } from '../model/list/run-search';
-import { workflowRunsInfiniteQueryOptions } from '../data/workflow-runs.queries';
+import { workflowRunsInfiniteQueryOptions } from '../data/history.queries';
 
 const LIVE_REFRESH_MS = 10_000;
 
