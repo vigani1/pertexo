@@ -1,7 +1,7 @@
 import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { isUnauthenticated } from '@/features/auth/session/session-identity.public';
+import { isUnauthenticated } from '@/features/auth/session/identity.public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';

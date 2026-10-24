@@ -51,8 +51,8 @@ import { configuredWorkflowAutoPauseRuntime } from './workflows/auto-pause-provi
 import {
   DatabaseModule,
   WORKSPACE_DATABASE,
-} from './platform/database/database.module.js';
-import { ObservabilityModule } from './platform/observability/observability.module.js';
+} from './platform/database/module.js';
+import { ObservabilityModule } from './platform/observability/module.js';
 import { configuredRetentionRuntime } from './retention/composition.js';
 import {
   RETENTION_RUNTIME,

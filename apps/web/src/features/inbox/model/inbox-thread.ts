@@ -1,6 +1,6 @@
 import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { describeListedFailure } from '@/features/workflow-runs/failure.public';
-import { describeRunStatus } from '@/features/workflow-runs/run-labels.public';
+import { describeRunStatus } from '@/features/workflow-runs/labels.public';
 import { formatDateTime } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 

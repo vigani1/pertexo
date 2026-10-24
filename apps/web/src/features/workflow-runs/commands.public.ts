@@ -4,4 +4,4 @@ export {
   type RunIntent,
 } from './model/commands/run-intent';
 
-export { runAdmissionError } from './model/commands/run-command';
+export { runAdmissionError } from './model/commands/run';

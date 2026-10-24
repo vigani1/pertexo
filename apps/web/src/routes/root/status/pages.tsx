@@ -17,13 +17,13 @@ import {
   SystemStateArt,
   SystemStateDescription,
   SystemStateTitle,
-} from '@/components/patterns/states/system-state';
+} from '@/components/patterns/states/system';
 import {
   BarredThread,
   LooseThread,
 } from '@/components/patterns/states/thread-illustrations';
-import { Wordmark } from '@/features/auth/auth-stage.public';
-import { knownWorkspaceName } from '@/features/workspaces/last-workspace.public';
+import { Wordmark } from '@/features/auth/stage.public';
+import { knownWorkspaceName } from '@/features/workspaces/last.public';
 import { isApiError } from '@/lib/api/error';
 import {
   isForbidden,

@@ -29,7 +29,7 @@ import type { GraphLevel } from '../../../model/graph/scopes';
 import type { ScheduleSchema } from '../../../model/inspector/schedule-draft';
 import { ScheduleBuilder } from '../schedule/builder';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-import { SchemaField } from '../fields/schema-field';
+import { SchemaField } from '../fields/schema';
 import { ParallelBranches } from '../builders/parallel-branches';
 import { SwitchCases } from '../builders/switch-cases';
 import { ValidateRules } from '../builders/validate-rules';

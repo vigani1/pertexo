@@ -5,7 +5,7 @@ import { describeCommandError } from '@/lib/api/error-copy';
 import {
   isUnconfirmedRunCommand,
   runAdmissionError,
-} from '../../model/commands/run-command';
+} from '../../model/commands/run';
 import {
   normalizeRunIntent,
   type RunIntent,

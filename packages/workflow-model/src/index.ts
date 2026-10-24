@@ -23,7 +23,7 @@ export {
   workflowNodeFailureValueSchema,
   workflowFailureClassificationSchema,
   type WorkflowNodeFailureValue,
-} from './flow/failure-routing/failure-value.js';
+} from './flow/failure-routing/value.js';
 export {
   inspectWorkflowDecisionTree,
   type WorkflowDecisionTree,

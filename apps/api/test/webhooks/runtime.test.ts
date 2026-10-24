@@ -13,7 +13,7 @@ import type {
 } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createApiWebhookRuntime } from '../../src/platform/webhooks/webhook-runtime.module.js';
+import { createApiWebhookRuntime } from '../../src/platform/webhooks/runtime.module.js';
 
 const config = {
   kmsKeyReference: 'alias/pertexo-webhooks',

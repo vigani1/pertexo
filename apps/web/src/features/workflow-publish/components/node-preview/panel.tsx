@@ -20,7 +20,7 @@ import {
   canOfferStepTest,
 } from '../../model/testing/preview-observation';
 import { describeValidationIssue } from '../../model/validation/issues';
-import { useNodeTest } from './use-node-test';
+import { useNodeTest } from './use-test';
 
 export type NodeTestHandle = Readonly<{ runTest: () => void }>;
 

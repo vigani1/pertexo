@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 
-import type { ApiWebhookRuntime } from '../../../src/platform/webhooks/webhook-runtime.module.js';
+import type { ApiWebhookRuntime } from '../../../src/platform/webhooks/runtime.module.js';
 import type { WebhookManagementService } from '../../../src/webhooks/management/service.js';
 
 import { createBetterAuthFixtureApplication } from '../../support/better-auth/fixture-application.js';

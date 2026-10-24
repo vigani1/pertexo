@@ -7,7 +7,7 @@ import {
   accessibleWorkspaceSchema,
   workflowSummarySchema,
 } from '@pertexo/contracts';
-import { RunInputDialog } from '@/features/workflow-publish/components/run-submission/run-input-dialog';
+import { RunInputDialog } from '@/features/workflow-publish/components/run-submission/input-dialog';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
 import { renderInRouter } from '../../support/render-in-router';

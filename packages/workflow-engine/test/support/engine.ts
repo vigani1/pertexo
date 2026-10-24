@@ -78,7 +78,7 @@ export type {
 export {
   assertNodeTransition,
   assertRunTransition,
-} from '../../src/transition/status-transitions.js';
+} from '../../src/transition/status.js';
 export { NODE_STATUSES, RUN_STATUSES } from '../../src/types.js';
 export * from '../../src/index.js';
 

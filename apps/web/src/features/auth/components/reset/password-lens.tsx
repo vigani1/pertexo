@@ -15,7 +15,7 @@ import {
   AuthLensFooter,
   AuthLensTitle,
 } from '../stage/auth-lens';
-import { AuthForm } from '../../forms/auth-form';
+import { AuthForm } from '../../forms/submission';
 
 /** New password plus confirmation for a one-time reset link. */
 export function ResetPasswordLens({

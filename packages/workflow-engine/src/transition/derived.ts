@@ -6,7 +6,7 @@ import {
   invocationKey as createInvocationKey,
   settleJoin,
 } from './scheduling/loops.js';
-import { assertNodeTransition } from './status-transitions.js';
+import { assertNodeTransition } from './status.js';
 import type { InvocationState } from '../types.js';
 import {
   assertLoopInvocations,

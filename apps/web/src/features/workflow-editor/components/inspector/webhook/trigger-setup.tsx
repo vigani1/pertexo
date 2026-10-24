@@ -1,7 +1,7 @@
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import { EventCoordinationSetup } from '../event-coordination/setup';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-import { SchemaField } from '../fields/schema-field';
+import { SchemaField } from '../fields/schema';
 
 export function WebhookTriggerSetup({
   node,

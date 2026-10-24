@@ -1,7 +1,7 @@
 import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { isUnauthenticated } from '@/features/auth/session/session-identity.public';
+import { isUnauthenticated } from '@/features/auth/session/identity.public';
 
 export type RenameError = Readonly<{
   kind: 'conflict' | 'other' | 'verification';

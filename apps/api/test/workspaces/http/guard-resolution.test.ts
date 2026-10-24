@@ -18,7 +18,7 @@ import type {
   IdentitySessionAuthority,
   IdentityWorkspaceDependencies,
 } from '../../../src/workspaces/ports.js';
-import { HttpPlatformModule } from '../../../src/platform/http/http.module.js';
+import { HttpPlatformModule } from '../../../src/platform/http/module.js';
 import { ScheduleModule } from '../../../src/schedules/module.js';
 import { ScheduleManagementService } from '../../../src/schedules/service.js';
 import { WebhookModule } from '../../../src/webhooks/module.js';

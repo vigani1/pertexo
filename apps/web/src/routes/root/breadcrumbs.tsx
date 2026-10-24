@@ -4,7 +4,7 @@ import { Link, useMatches } from '@tanstack/react-router';
 import {
   shortRunId,
   workflowLabel,
-} from '@/features/workflow-runs/run-labels.public';
+} from '@/features/workflow-runs/labels.public';
 import type { ApiClient } from '@/lib/api/client';
 import { RequestName, TableName } from './crumb-names';
 

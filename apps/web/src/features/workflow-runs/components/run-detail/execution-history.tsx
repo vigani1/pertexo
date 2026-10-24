@@ -4,12 +4,12 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { StatusGlyph } from '@/components/ui/status';
-import { describeStepError } from '../../model/step-inspection/step-error-copy';
+import { describeStepError } from '../../model/step-inspection/error-copy';
 import {
   storyEntryMeta,
   storyEntryReason,
   storyEntryTitle,
-} from '../../model/step-inspection/step-copy';
+} from '../../model/step-inspection/copy';
 import type { StepStoryEntry } from '../../model/timeline/step-replay';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 

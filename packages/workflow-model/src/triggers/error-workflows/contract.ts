@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { workflowFailureClassificationSchema } from '../../flow/failure-routing/failure-value.js';
+import { workflowFailureClassificationSchema } from '../../flow/failure-routing/value.js';
 
 const failedStepSchema = z
   .object({

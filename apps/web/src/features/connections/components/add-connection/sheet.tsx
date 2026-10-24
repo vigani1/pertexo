@@ -37,7 +37,7 @@ import {
   toCreateRequest,
   type SavedCredential,
 } from '../../model/credential-draft';
-import { useConnectionTest } from '../connection-test/use-test';
+import { useConnectionTest } from '../connection-test/use-command';
 import { useCredentialForm } from '../credential/use-form';
 import { StepIndicator, type AddStep } from './steps';
 import { StepBody } from './content';

@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/database/runs';
 import { parseCheckpoint } from '@pertexo/workflow-engine';
 
-import { advanceRun } from '../../src/runs/advance-run.js';
+import { advanceRun } from '../../src/runs/advance.js';
 import type { PersistedWorkflowProjectionVerificationOptions } from '../../src/workflows/verify-projection.js';
 
 type DecideInput = Readonly<{

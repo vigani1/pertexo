@@ -1,4 +1,4 @@
-import { WorkflowTestHistory } from '@/features/workflow-publish/workflow-tests.public';
+import { WorkflowTestHistory } from '@/features/workflow-publish/tests.public';
 import { useRef, type ReactNode } from 'react';
 import type {
   NodeTestHandle,

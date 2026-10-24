@@ -20,9 +20,9 @@ import {
 import type { RunHistoryQuery } from '../../hooks/use-run-history';
 import { useNow } from '@/lib/hooks/use-now';
 import { RunLoom } from '../loom/view';
-import { RunList } from './list';
+import { RunList } from './view';
 import { NoMatchingRuns, RunListSkeleton, RunsUnavailable } from './states';
-import type { RunListVariant } from './run-row-layout';
+import type { RunListVariant } from './row-layout';
 
 const HOUR_MS = 3_600_000;
 

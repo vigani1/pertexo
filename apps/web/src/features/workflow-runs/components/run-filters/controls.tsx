@@ -25,7 +25,7 @@ import {
   type RunStatus,
   type RunTriggerType,
 } from '../../model/presentation/run-status';
-import { TimeRangeFilter } from './time-range-filter';
+import { TimeRangeFilter } from './time-range';
 
 const statusItems = [
   { value: null, label: 'Any status' },

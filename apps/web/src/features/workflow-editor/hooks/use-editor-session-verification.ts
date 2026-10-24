@@ -10,9 +10,9 @@ import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
-} from '@/features/auth/session/session-identity.public';
+} from '@/features/auth/session/identity.public';
 import { currentUserQueryOptions } from '@/features/auth/session/queries.public';
-import { subscribeSessionChanges } from '@/features/auth/session/session-sync.public';
+import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import { isApiError } from '@/lib/api/error';
 import { isUncertainOutcome } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';

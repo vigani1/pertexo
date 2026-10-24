@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace, WorkflowTag } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { ActionDialog } from '@/components/patterns/actions/action-dialog';
+import { ActionDialog } from '@/components/patterns/actions/dialog';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';

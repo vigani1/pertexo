@@ -16,7 +16,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { formatDurationMs, formatRelativeTime } from '@/lib/format/time';
 import { cn } from '@/lib/utils';
 import { describeNodeStatus } from '../../model/presentation/run-status';
-import { shortStepError } from '../../model/step-inspection/step-error-copy';
+import { shortStepError } from '../../model/step-inspection/error-copy';
 import { loopItemOf } from '../../model/timeline/runs';
 import {
   stepHealthQueryOptions,

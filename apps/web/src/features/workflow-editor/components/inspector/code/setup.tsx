@@ -18,7 +18,7 @@ import {
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
 import { Notice } from '@/components/ui/notice';
-import { SchemaField } from '../fields/schema-field';
+import { SchemaField } from '../fields/schema';
 import { CodeLanguageField } from './language';
 import { CODE_LANGUAGE_PRESENTATION } from './presentation';
 

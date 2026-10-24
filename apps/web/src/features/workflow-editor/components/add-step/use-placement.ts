@@ -21,7 +21,7 @@ import { findDefinition } from '../../model/graph/adapter';
 import { openOutputPort } from '../../model/quick-add';
 import { shownPorts } from '../../model/step-card';
 import { findDefinitionByIdentity } from '../../model/step-catalog';
-import type { QuickAddTarget } from './use-quick-add';
+import type { QuickAddTarget } from './use-quick';
 
 type Position = Readonly<{ x: number; y: number }>;
 

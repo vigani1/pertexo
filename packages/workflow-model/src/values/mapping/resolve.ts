@@ -7,7 +7,7 @@ import type {
 } from '../expressions/policy.js';
 import type { ValueSource } from '../../graph/contract.js';
 import { resolveJsonPath } from '../json/path.js';
-import type { WorkflowNodeFailureValue } from '../../flow/failure-routing/failure-value.js';
+import type { WorkflowNodeFailureValue } from '../../flow/failure-routing/value.js';
 
 export type ValueResolution =
   | { readonly kind: 'value'; readonly value: JsonValue }

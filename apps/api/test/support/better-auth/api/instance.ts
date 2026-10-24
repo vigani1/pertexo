@@ -11,12 +11,12 @@ import {
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
-import { createApiIdentityRuntime } from '../../../../src/platform/identity/identity-runtime.module.js';
+import { createApiIdentityRuntime } from '../../../../src/platform/identity/runtime.module.js';
 import { FixtureResourceOwner } from '../../../browser/harness/resource-owner.js';
 import { dropDisconnectedDatabase } from '../../disposable-database.js';
 import { createBetterAuthFixtureApplication } from '../fixture-application.js';
 
-import { createApiNotificationRuntime } from '../../../../src/platform/notifications/notification-runtime.module.js';
+import { createApiNotificationRuntime } from '../../../../src/platform/notifications/runtime.module.js';
 import {
   adminUrl,
   migrationBaseUrl,

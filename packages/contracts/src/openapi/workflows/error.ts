@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import * as schemas from '../../schemas/workflows/error-workflow.js';
+import * as schemas from '../../schemas/workflows/error.js';
 import {
   csrfHeaderParameter,
   idempotencyHeaderParameter,

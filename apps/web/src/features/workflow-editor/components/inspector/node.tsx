@@ -28,7 +28,7 @@ import {
   type NodeFormApi,
 } from '../../model/inspector/node-form';
 import { SetupTab } from './tabs/setup';
-import { SlackChannelField } from './fields/slack-channel-field';
+import { SlackChannelField } from './fields/slack-channel';
 import { shortcut } from '@/lib/shortcut-keys';
 
 export type NodeInspectorActions = StepMenuActions &

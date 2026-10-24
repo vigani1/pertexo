@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { UsageTrendsPage } from '@/features/usage/public';
-import { parseUsageTrendsSearch } from '@/features/usage/usage-search.public';
+import { parseUsageTrendsSearch } from '@/features/usage/search.public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 export function UsageTrendsRoute() {
   const scope = useWorkspaceScope();

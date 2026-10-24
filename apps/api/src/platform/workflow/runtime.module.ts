@@ -20,7 +20,7 @@ import {
 } from '@pertexo/database/platform';
 
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
-import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
+import type { ApiIdentityRuntime } from '../identity/runtime.module.js';
 import { createApiWorkflowMetadataRuntime } from './metadata-runtime.js';
 import {
   RedisRunEventSource,

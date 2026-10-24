@@ -6,7 +6,7 @@ import {
   type ApiApplicationDependencies,
 } from '../../../src/app.js';
 import type { ApiConfig } from '../../../src/platform/config/api.js';
-import { createApiScheduleRuntime } from '../../../src/platform/schedules/schedule-runtime.module.js';
+import { createApiScheduleRuntime } from '../../../src/platform/schedules/runtime.module.js';
 import type { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';
 
 /** The real API composition used by the disposable Better Auth fixture. */

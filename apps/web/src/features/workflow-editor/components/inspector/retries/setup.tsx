@@ -5,7 +5,7 @@ import { Disclosure } from '@/components/ui/disclosure';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { ChoiceSelect } from '../fields/choice-select';
-import { SchemaField } from '../fields/schema-field';
+import { SchemaField } from '../fields/schema';
 import { useScratchForm } from '../use-draft-field';
 import {
   fieldControlId,

@@ -3,10 +3,7 @@ import { WorkflowEngineError } from '../errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { recordBranchDisposition } from './scheduling/loops.js';
 import { sameOutputReference } from '../output-reference.js';
-import {
-  assertNodeTransition,
-  assertRunTransition,
-} from './status-transitions.js';
+import { assertNodeTransition, assertRunTransition } from './status.js';
 import type { InvocationState, WorkflowObservation } from '../types.js';
 import { applyLoopCompletion, applyLoopStart } from './loops.js';
 import {

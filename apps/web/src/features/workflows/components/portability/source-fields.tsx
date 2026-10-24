@@ -5,7 +5,7 @@ import type { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowNameError } from '../../model/rename';
 import type { CuratedTemplate } from '../../model/templates/curated-setup';
-import { CuratedTemplateChoice } from '../templates/curated-template-choice';
+import { CuratedTemplateChoice } from '../templates/curated-choice';
 import { CuratedSetupFields } from '../templates/setup-fields';
 import { WorkflowFileDrop } from './file-drop';
 

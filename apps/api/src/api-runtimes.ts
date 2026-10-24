@@ -2,14 +2,14 @@ import { createApiCallbackRuntime } from './platform/webhooks/callback-runtime.m
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 
 import type { ApiConfig } from './platform/config/api.js';
-import { createApiConnectionRuntime } from './platform/connections/connection-runtime.module.js';
-import { createApiIdentityRuntime } from './platform/identity/identity-runtime.module.js';
-import { createApiWorkflowRuntime } from './platform/workflow/workflow-runtime.module.js';
-import { createApiWebhookRuntime } from './platform/webhooks/webhook-runtime.module.js';
-import { createApiScheduleRuntime } from './platform/schedules/schedule-runtime.module.js';
-import { createApiNotificationRuntime } from './platform/notifications/notification-runtime.module.js';
+import { createApiConnectionRuntime } from './platform/connections/runtime.module.js';
+import { createApiIdentityRuntime } from './platform/identity/runtime.module.js';
+import { createApiWorkflowRuntime } from './platform/workflow/runtime.module.js';
+import { createApiWebhookRuntime } from './platform/webhooks/runtime.module.js';
+import { createApiScheduleRuntime } from './platform/schedules/runtime.module.js';
+import { createApiNotificationRuntime } from './platform/notifications/runtime.module.js';
 
-import { createApiArtifactRuntime } from './platform/artifacts/artifact-runtime.module.js';
+import { createApiArtifactRuntime } from './platform/artifacts/runtime.module.js';
 import type {
   ApiApplicationDependencies,
   ApiRuntimeResources,

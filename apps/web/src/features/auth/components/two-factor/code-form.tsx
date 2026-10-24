@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent } from 'react';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { AuthForm } from '../../forms/auth-form';
+import { AuthForm } from '../../forms/submission';
 import type { useTwoFactorVerification } from './use-verify';
 
 export function TwoFactorCodeForm({

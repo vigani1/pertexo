@@ -44,7 +44,7 @@
       "packages/workflow-model": {
         "entry": [
           "src/values/expressions/evaluation-thread.ts",
-          "src/authoring/validation/validation-thread.ts"
+          "src/authoring/validation/thread.ts"
         ]
       },
       "packages/database": {

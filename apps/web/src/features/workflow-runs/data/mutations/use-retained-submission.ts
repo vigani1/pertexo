@@ -4,7 +4,7 @@ import {
   isUnconfirmedRunCommand,
   RUN_COMMAND_WINDOW_MS,
   RUN_COMMAND_EXPIRED_MESSAGE,
-} from '../../model/commands/run-command';
+} from '../../model/commands/run';
 import type { ApiClient } from '@/lib/api/client';
 type Attempt<Intent> = Readonly<{
   intent: Intent;

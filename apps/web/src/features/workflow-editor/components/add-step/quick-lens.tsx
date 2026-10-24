@@ -18,11 +18,11 @@ import { useEditorStore } from '../../model/state/context';
 import { stepTitle } from '../../model/graph/adapter';
 import { findStep } from '../../model/graph/scopes';
 import { followingSteps } from '../../model/quick-add';
-import type { QuickAddRequest } from './use-quick-add';
+import type { QuickAddRequest } from './use-quick';
 import { ChoiceSelect } from '../inspector/fields/choice-select';
 import { portName } from '@/features/catalog/presentation.public';
 import { firstStepChoice } from '../../model/step-catalog';
-import { StepChoiceList, StepSearch } from './step-picker';
+import { StepChoiceList, StepSearch } from './picker';
 
 /**
  * Quick add: the add-step search and list in a lens at the drop point (or

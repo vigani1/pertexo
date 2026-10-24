@@ -7,7 +7,7 @@ import {
   type HttpRequestInput,
   type HttpRequestConfig,
 } from './validation.js';
-import { requestBody } from './request-material.js';
+import { requestBody } from './material.js';
 
 export async function readRequestBody(
   input: HttpRequestInput,

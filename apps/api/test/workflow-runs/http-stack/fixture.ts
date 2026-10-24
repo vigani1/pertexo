@@ -1,7 +1,7 @@
 import { runPersistenceSpies } from '../../support/run-ports.js';
 import type { Role } from '@pertexo/workflow-model';
 
-import type { ApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
+import type { ApiIdentityRuntime } from '../../../src/platform/identity/runtime.module.js';
 
 import { createApiApplication } from '../../../src/app.js';
 import {

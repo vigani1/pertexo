@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Wordmark } from '@/features/auth/auth-stage.public';
+import { Wordmark } from '@/features/auth/stage.public';
 import { RingMonogram } from '../shell/workspace-mark';
 
 /** The picker's header: the wordmark and the account menu. */

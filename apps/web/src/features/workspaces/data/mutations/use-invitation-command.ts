@@ -7,7 +7,7 @@ import {
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
   isUnauthenticated,
-} from '@/features/auth/session/session-identity.public';
+} from '@/features/auth/session/identity.public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';

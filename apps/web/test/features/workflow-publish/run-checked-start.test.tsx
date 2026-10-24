@@ -7,8 +7,8 @@ import {
   accessibleWorkspaceSchema,
   workflowSummarySchema,
 } from '@pertexo/contracts';
-import { RunInputDialog } from '@/features/workflow-publish/components/run-submission/run-input-dialog';
-import { RunMenu } from '@/features/workflow-publish/components/run-submission/run-menu';
+import { RunInputDialog } from '@/features/workflow-publish/components/run-submission/input-dialog';
+import { RunMenu } from '@/features/workflow-publish/components/run-submission/menu';
 import { useWorkflowRunSubmission } from '@/features/workflow-publish/data/mutations/use-workflow-run-submission';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';

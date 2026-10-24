@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { useWorkflowTests } from '@/features/workflow-publish/workflow-tests.public';
+import { useWorkflowTests } from '@/features/workflow-publish/tests.public';
 import { useEditorStore } from '../model/state/context';
 
 /** Test progress belongs to its saved draft, never to later unsaved edits. */

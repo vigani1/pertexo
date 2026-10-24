@@ -6,7 +6,7 @@ import {
   SystemStateArt,
   SystemStateDescription,
   SystemStateTitle,
-} from '@/components/patterns/states/system-state';
+} from '@/components/patterns/states/system';
 import { LooseThread } from '@/components/patterns/states/thread-illustrations';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';

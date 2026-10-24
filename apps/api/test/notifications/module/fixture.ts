@@ -14,7 +14,7 @@ import type { InboxHintSource } from '../../../src/notifications/inbox-hint-hub.
 import { WorkspaceInboxService } from '../../../src/notifications/service.js';
 
 import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
-import { HttpPlatformModule } from '../../../src/platform/http/http.module.js';
+import { HttpPlatformModule } from '../../../src/platform/http/module.js';
 
 export const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 

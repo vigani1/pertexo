@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { WorkflowDuplicateRequest } from '@pertexo/contracts';
-import { subscribeSessionChanges } from '@/features/auth/session/session-sync.public';
+import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {

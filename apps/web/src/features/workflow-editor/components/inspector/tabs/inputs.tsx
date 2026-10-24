@@ -25,7 +25,7 @@ import {
   InsertDataPicker,
   type InsertedSource,
 } from '../input-mappings/insert-data-picker';
-import { MappingRow } from '../input-mappings/mapping-row';
+import { MappingRow } from '../input-mappings/row';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { httpRequestPlaceholders } from '../../../model/inspector/http-body';
 

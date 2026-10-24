@@ -11,7 +11,7 @@ import {
   allowlistedReturnPath,
   returnToSearch,
 } from '@/features/auth/return-path.public';
-import { publishSessionChange } from '@/features/auth/session/session-sync.public';
+import { publishSessionChange } from '@/features/auth/session/sync.public';
 import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
 import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';

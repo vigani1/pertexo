@@ -23,8 +23,8 @@ import {
 import type { ApiClient } from '@/lib/api/client';
 import { workflowLabel } from '../../model/list/runs';
 import { isActiveRunStatus } from '../../model/presentation/run-status';
-import { CancelRunDialog } from './cancel-run-dialog';
-import { ReplayRunDialog } from './replay-run-dialog';
+import { CancelRunDialog } from './cancel-dialog';
+import { ReplayRunDialog } from './replay-dialog';
 
 /** Open, open workflow, replay and cancel for one run row. */
 export function RunRowMenu({

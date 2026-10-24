@@ -1,12 +1,12 @@
 import { expect, it, vi } from 'vitest';
 import { createApiApplication } from '../../../src/app.js';
 
-import type { ApiScheduleRuntime } from '../../../src/platform/schedules/schedule-runtime.module.js';
-import type { ApiNotificationRuntime } from '../../../src/platform/notifications/notification-runtime.module.js';
+import type { ApiScheduleRuntime } from '../../../src/platform/schedules/runtime.module.js';
+import type { ApiNotificationRuntime } from '../../../src/platform/notifications/runtime.module.js';
 import { WorkspaceInboxService } from '../../../src/notifications/service.js';
 
 import type { ScheduleManagementService } from '../../../src/schedules/service.js';
-import { createApiScheduleRuntime } from '../../../src/platform/schedules/schedule-runtime.module.js';
+import { createApiScheduleRuntime } from '../../../src/platform/schedules/runtime.module.js';
 import { createBetterAuthFixtureApplication } from '../../support/better-auth/fixture-application.js';
 import { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';
 

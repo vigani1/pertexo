@@ -3,7 +3,7 @@ import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { WebhookPreflightController } from '../../../src/webhooks/authentication/preflight.controller.js';
 import { WEBHOOK_PREFLIGHT } from '../../../src/webhooks/tokens.js';
-import { RateLimitModule } from '../../../src/platform/rate-limit/rate-limit.module.js';
+import { RateLimitModule } from '../../../src/platform/rate-limit/module.js';
 import type { RateLimitConsumer } from '../../../src/platform/rate-limit/admission.js';
 
 import type { WebhookTriggerDatabase } from '@pertexo/database/testing';

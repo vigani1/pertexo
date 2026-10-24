@@ -3,7 +3,7 @@ import type {
   WorkspaceInboxFailureThread,
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
-import { describeRunStatus } from '@/features/workflow-runs/run-labels.public';
+import { describeRunStatus } from '@/features/workflow-runs/labels.public';
 import { describeInboxThread } from './inbox-thread';
 
 /** Revisions are PostgreSQL bigints as decimal strings; compare them exactly. */

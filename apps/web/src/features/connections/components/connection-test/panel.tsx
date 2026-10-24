@@ -14,8 +14,8 @@ import { Notice } from '@/components/ui/notice';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { describeTestOutcome } from '../../model/connection-health';
 import type { ProviderKey } from '../../model/connection-providers';
-import type { ConnectionTest } from './use-test';
-import { TestThread } from './test-thread';
+import type { ConnectionTest } from './use-command';
+import { TestThread } from './thread';
 
 type TestField = 'url' | 'acknowledged';
 

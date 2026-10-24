@@ -7,7 +7,7 @@ import {
   type CallableDeclaration,
   type WorkflowGraph,
 } from '../../src/index.js';
-import { validateAuthoringBatch } from '../../src/authoring/validation/validation.js';
+import { validateAuthoringBatch } from '../../src/authoring/validation/graph.js';
 
 const callable: CallableDeclaration = {
   input: { type: 'string' },

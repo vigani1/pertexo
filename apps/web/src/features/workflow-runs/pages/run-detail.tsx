@@ -22,13 +22,13 @@ import { OutcomeUnknownCard } from '../components/run-detail/outcome-unknown-car
 import { RunDetailTabs } from '../components/run-detail/tabs';
 import { CallHistory } from '../components/run-detail/call-history';
 import { RunHeader } from '../components/run-detail/header';
-import { RunStepDetails } from '../components/run-detail/step-details';
+import { RunStepDetails } from '../components/run-detail/inspection';
 import {
   describeRunSentence,
   runEnding,
 } from '../model/presentation/run-sentence';
 import { isActiveRunStatus } from '../model/presentation/run-status';
-import { upstreamSteps } from '../model/step-inspection/step-inputs';
+import { upstreamSteps } from '../model/step-inspection/inputs';
 import { buildRunTimeline, type RunTimelineRow } from '../model/timeline/runs';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { useNow } from '@/lib/hooks/use-now';

@@ -9,7 +9,7 @@ import type { NodeAttemptOutcome } from '@pertexo/workflow-engine';
 
 import { classifyProcessError } from '@pertexo/observability/startup';
 
-import type { NodeExecutionEnvironment } from '../execution/execution-environment.js';
+import type { NodeExecutionEnvironment } from '../execution/environment.js';
 
 import { connectionHealthCompletionFields } from '../../connections/health-completion.js';
 import { completionResult } from './completion-result.js';

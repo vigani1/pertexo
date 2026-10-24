@@ -1,5 +1,5 @@
 import { Status } from '@/components/ui/status';
-import { describeNodeStatus } from '@/features/workflow-runs/run-labels.public';
+import { describeNodeStatus } from '@/features/workflow-runs/labels.public';
 import { Handle, Position } from '@xyflow/react';
 import {
   ArrowRightToLineIcon,

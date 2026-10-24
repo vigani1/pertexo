@@ -13,7 +13,7 @@ import {
 import {
   workflowErrorContractPaths,
   workflowErrorContractSchemas,
-} from './error-workflow.js';
+} from './error.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import {
   workflowOrganizationContractPaths,

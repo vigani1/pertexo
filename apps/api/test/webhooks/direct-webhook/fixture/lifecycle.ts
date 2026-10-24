@@ -25,8 +25,8 @@ import type { ApiConfig } from '../../../../src/platform/config/api.js';
 import {
   createApiIdentityRuntime,
   type ApiIdentityRuntime,
-} from '../../../../src/platform/identity/identity-runtime.module.js';
-import { createCoreWorkflowAuthoringDatabase } from '../../../../src/platform/workflow/workflow-runtime.module.js';
+} from '../../../../src/platform/identity/runtime.module.js';
+import { createCoreWorkflowAuthoringDatabase } from '../../../../src/platform/workflow/runtime.module.js';
 import { WebhookManagementService } from '../../../../src/webhooks/management/service.js';
 import { dropDisconnectedDatabase } from '../../../support/disposable-database.js';
 import {

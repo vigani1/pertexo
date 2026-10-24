@@ -2,7 +2,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { screen } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
-import { RunStepDetails } from '@/features/workflow-runs/components/run-detail/step-details';
+import { RunStepDetails } from '@/features/workflow-runs/components/run-detail/inspection';
 import type { RunTimelineRow } from '@/features/workflow-runs/model/timeline/runs';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';

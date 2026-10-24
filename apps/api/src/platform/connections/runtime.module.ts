@@ -28,7 +28,7 @@ import {
   type ConnectionEmailClient,
   type ConnectionTelemetry,
 } from '../../connections/index.js';
-import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
+import type { ApiIdentityRuntime } from '../identity/runtime.module.js';
 import type { ApiConfig } from '../config/api.js';
 
 export type ApiConnectionRuntime = Readonly<{

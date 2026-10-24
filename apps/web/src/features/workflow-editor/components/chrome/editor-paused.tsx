@@ -8,7 +8,7 @@ import {
   SystemStateArt,
   SystemStateDescription,
   SystemStateTitle,
-} from '@/components/patterns/states/system-state';
+} from '@/components/patterns/states/system';
 
 /**
  * The editor stops when it can't confirm who is signed in. Nothing is saved

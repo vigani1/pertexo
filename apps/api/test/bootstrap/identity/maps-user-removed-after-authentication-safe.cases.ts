@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { createApiApplication } from '../../../src/app.js';
 
-import type { ApiWebhookRuntime } from '../../../src/platform/webhooks/webhook-runtime.module.js';
+import type { ApiWebhookRuntime } from '../../../src/platform/webhooks/runtime.module.js';
 import type { WebhookManagementService } from '../../../src/webhooks/management/service.js';
 
 import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';

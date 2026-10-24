@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { emailProblem, requiredPasswordProblem } from '../../forms/field-rules';
-import { AuthForm } from '../../forms/auth-form';
+import { AuthForm } from '../../forms/submission';
 import { PasswordField } from '../../forms/password-field';
 import type { LoginNotice } from '../../model/login-notice';
 import { returnToSearch } from '../../model/return-path';

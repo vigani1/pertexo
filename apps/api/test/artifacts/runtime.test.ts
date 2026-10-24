@@ -6,9 +6,9 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   createApiArtifactRuntime,
   type ApiArtifactRuntimeOverrides,
-} from '../../src/platform/artifacts/artifact-runtime.module.js';
+} from '../../src/platform/artifacts/runtime.module.js';
 import type { ApiConfig } from '../../src/platform/config/api.js';
-import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
+import type { ApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
 import type {
   ArtifactUploadDatabase,
   ArtifactStore,

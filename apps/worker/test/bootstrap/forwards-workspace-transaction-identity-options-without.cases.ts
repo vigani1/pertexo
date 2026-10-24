@@ -6,7 +6,7 @@ import type {
 
 import { expect, it, vi } from 'vitest';
 
-import { NestWorkspaceDatabase } from '../../src/platform/database/database.module.js';
+import { NestWorkspaceDatabase } from '../../src/platform/database/module.js';
 
 import { WorkerReadiness } from '../../src/runtime/health/readiness.js';
 import {

@@ -19,7 +19,7 @@ import {
 import {
   createNodeExecutionEnvironment,
   type NodeExecutionEnvironment,
-} from '../execution/execution-environment.js';
+} from '../execution/environment.js';
 import { NodeAttemptHandlerStateError } from './handler-state-error.js';
 import { connectionHealthCompletionFields } from '../../connections/health-completion.js';
 import { completionResult } from './completion-result.js';

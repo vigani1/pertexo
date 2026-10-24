@@ -11,7 +11,7 @@ import { Status } from '@/components/ui/status';
 import {
   describeRunStatus,
   shortRunId,
-} from '@/features/workflow-runs/run-labels.public';
+} from '@/features/workflow-runs/labels.public';
 import { formatDateTime } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 

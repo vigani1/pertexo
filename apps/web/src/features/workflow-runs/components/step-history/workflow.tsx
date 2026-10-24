@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useId, useMemo } from 'react';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
-import { StepHealthList } from './step-health-list';
+import { StepHealthList } from './health-list';
 import type { ApiClient } from '@/lib/api/client';
 
 type GraphLevel = Readonly<Pick<WorkflowGraphContract, 'nodes' | 'edges'>>;

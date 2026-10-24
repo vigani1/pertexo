@@ -2,7 +2,7 @@ import {
   workflowRecoveryUnavailableProblemSchema,
   type WorkflowRecoveryPreview,
 } from '@pertexo/contracts';
-import { isUnconfirmedRunCommand, runAdmissionError } from './run-command';
+import { isUnconfirmedRunCommand, runAdmissionError } from './run';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 export type EligibleRecovery = Extract<

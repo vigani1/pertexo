@@ -2,20 +2,20 @@ import type { ApiConfig } from '../config/api.js';
 import type {
   ApiConnectionRuntime,
   ApiConnectionRuntimeOverrides,
-} from '../connections/connection-runtime.module.js';
+} from '../connections/runtime.module.js';
 import type {
   ApiIdentityRuntime,
   ApiIdentityRuntimeOverrides,
-} from '../identity/identity-runtime.module.js';
+} from '../identity/runtime.module.js';
 import type {
   ApiWorkflowRuntime,
   ApiWorkflowRuntimeOverrides,
-} from '../workflow/workflow-runtime.module.js';
+} from '../workflow/runtime.module.js';
 
 import type {
   ApiArtifactRuntime,
   ApiArtifactRuntimeOverrides,
-} from '../artifacts/artifact-runtime.module.js';
+} from '../artifacts/runtime.module.js';
 import type {
   ApiApplicationDependencyCore,
   ApiApplicationDependencies,

@@ -11,7 +11,7 @@ import {
 } from '../../../model/inspector/input-mappings/draft';
 import type { InputKeySuggestion } from '../../../model/inspector/input-mappings/schema';
 import { MappingValueEditor, type MappingSources } from './value-editor';
-import { MappingSummary } from './mapping-summary';
+import { MappingSummary } from './summary';
 
 /** Puts the cursor in a field as it appears, e.g. a just-added input's name. */
 function focusOnMount(element: HTMLInputElement | null) {

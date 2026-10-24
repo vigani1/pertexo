@@ -17,7 +17,7 @@ import { Notice } from '@/components/ui/notice';
 import {
   describeRunStatus,
   isActiveRunStatus,
-} from '@/features/workflow-runs/run-labels.public';
+} from '@/features/workflow-runs/labels.public';
 import { useRunEvents } from '@/features/workflow-runs/queries.public';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
 

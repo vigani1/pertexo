@@ -8,7 +8,7 @@ import type {
 } from '@pertexo/database/platform';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createApiScheduleRuntime } from '../../src/platform/schedules/schedule-runtime.module.js';
+import { createApiScheduleRuntime } from '../../src/platform/schedules/runtime.module.js';
 import { NOOP_SCHEDULE_TELEMETRY } from '../../src/schedules/telemetry.js';
 
 const databaseConfig = {} as DatabaseConfig;

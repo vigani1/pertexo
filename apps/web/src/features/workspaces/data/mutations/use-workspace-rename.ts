@@ -22,7 +22,7 @@ import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
-} from '@/features/auth/session/session-identity.public';
+} from '@/features/auth/session/identity.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   accessibleWorkspacesQueryOptions,

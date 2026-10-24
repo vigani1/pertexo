@@ -6,7 +6,7 @@ import type {
 } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Notice } from '@/components/ui/notice';
-import { StepError } from './step-details';
+import { StepError } from './inspection';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 
 export function CallHistory({
