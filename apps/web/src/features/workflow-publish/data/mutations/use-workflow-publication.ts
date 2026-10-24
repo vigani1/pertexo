@@ -38,6 +38,17 @@ const failed: PublishResult = { kind: 'failed' };
  * exact saved revision (reusing a fresh report) and only then sends one
  * keyed command; an uncertain outcome keeps that command for an exact retry.
  */
+type PublicationOptions = Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  verifyIdentity: () => Promise<void>;
+  ensureSaved: () => Promise<SavedDraft>;
+  isSavedDraftCurrent: (saved: SavedDraft) => boolean;
+  onPublicationAccepted?: () => void;
+}>;
+
 export function useWorkflowPublication({
   apiClient,
   userId,
@@ -47,16 +58,7 @@ export function useWorkflowPublication({
   ensureSaved,
   isSavedDraftCurrent,
   onPublicationAccepted,
-}: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  workflowId: string;
-  verifyIdentity: () => Promise<void>;
-  ensureSaved: () => Promise<SavedDraft>;
-  isSavedDraftCurrent: (saved: SavedDraft) => boolean;
-  onPublicationAccepted?: () => void;
-}>) {
+}: PublicationOptions) {
   const queryClient = useQueryClient();
   const [publishStage, setPublishStage] = useState<PublishStage>();
   const [publishError, setPublishError] = useState<string>();
@@ -67,17 +69,7 @@ export function useWorkflowPublication({
     useState<PublicationCommand['kind']>();
   const publishAttempt = useRef<PublishAttempt | undefined>(undefined);
   const owner = useRef<symbol | undefined>(undefined);
-  const {
-    validation,
-    validationPending,
-    validationError,
-    validationBlockedUntil,
-    validate,
-    freshValidation,
-    assertValidationAvailable,
-    recordValidationCooldown,
-    resetValidation,
-  } = useWorkflowDraftValidation({
+  const draftValidation = useWorkflowDraftValidation({
     apiClient,
     workspaceId,
     workflowId,
@@ -85,7 +77,8 @@ export function useWorkflowPublication({
     ensureSaved,
     isSavedDraftCurrent,
   });
-
+  const scope = { apiClient, userId, workspaceId };
+  const { resetValidation } = draftValidation;
   useEffect(() => {
     const currentOwner = Symbol('workflow-publication');
     owner.current = currentOwner;
@@ -98,35 +91,6 @@ export function useWorkflowPublication({
     };
   }, [apiClient, userId, workspaceId, workflowId, resetValidation]);
 
-  async function prepareAttempt(
-    publishOwner: symbol,
-    command: PublicationCommand,
-  ): Promise<PublishAttempt | 'blocked' | undefined> {
-    setPublishStage('saving');
-    const saved = await ensureSaved();
-    if (owner.current !== publishOwner) return undefined;
-    const checked = await freshValidation(saved, publishOwner, () => {
-      setPublishStage('checking');
-    });
-    if (owner.current !== publishOwner || checked === undefined)
-      return undefined;
-    if (checked.etag !== saved.etag || !isSavedDraftCurrent(saved)) {
-      setPublishError(
-        'This check describes a different draft. Review the latest changes and check again before publishing.',
-      );
-      return 'blocked';
-    }
-    if (!checked.report.valid) return 'blocked';
-    const current = checked.report.currentPublication;
-    if (current?.matchesDraft) {
-      setPublishError(
-        `No changes since v${String(current.versionNumber)}. This version is already live.`,
-      );
-      return 'blocked';
-    }
-    return { ...saved, idempotencyKey: crypto.randomUUID(), command };
-  }
-
   async function publish(
     command: PublicationCommand = { kind: 'publish' },
   ): Promise<PublishResult> {
@@ -138,16 +102,33 @@ export function useWorkflowPublication({
       setPublishStage('saving');
       await verifyIdentity();
       if (owner.current !== publishOwner) return failed;
-      if (publishAttempt.current === undefined) assertValidationAvailable();
+      if (publishAttempt.current === undefined)
+        draftValidation.assertValidationAvailable();
       const prepared =
-        publishAttempt.current ?? (await prepareAttempt(publishOwner, command));
+        publishAttempt.current ??
+        (await preparePublicationAttempt(
+          {
+            owner,
+            ensureSaved,
+            freshValidation: draftValidation.freshValidation,
+            isSavedDraftCurrent,
+            setPublishStage,
+            setPublishError,
+          },
+          publishOwner,
+          command,
+        ));
       if (prepared === undefined) return failed;
       if (prepared === 'blocked') return { kind: 'blocked' };
       if (owner.current !== publishOwner) return failed;
-      if (publishAttempt.current === undefined) assertValidationAvailable();
+      if (publishAttempt.current === undefined)
+        draftValidation.assertValidationAvailable();
       if (
-        publishAttempt.current === undefined &&
-        !isSavedDraftCurrent(prepared)
+        newPublicationDraftChanged(
+          publishAttempt.current,
+          prepared,
+          isSavedDraftCurrent,
+        )
       ) {
         setPublishError(
           'Your draft changed during the check. Review your changes and try again.',
@@ -157,38 +138,17 @@ export function useWorkflowPublication({
       publishAttempt.current = prepared;
       dispatched = true;
       setPublishStage('publishing');
-      if (prepared.command.kind === 'review') {
-        const scope = { apiClient, userId, workspaceId };
-        const request = await requestPublicationReview(scope, workflowId, {
-          etag: prepared.etag,
-          idempotencyKey: prepared.idempotencyKey,
-          note: prepared.command.note,
-        });
-        if (owner.current !== publishOwner) return failed;
-        publishAttempt.current = undefined;
-        setPublishRecoveryPending(false);
-        void queryClient.invalidateQueries({
-          queryKey: publicationReviewKeys.scope(scope),
-        });
-        return { kind: 'review_requested', request };
-      }
-      const response = await publishWorkflow(
-        apiClient,
-        workspaceId,
-        workflowId,
-        { etag: prepared.etag, idempotencyKey: prepared.idempotencyKey },
-      );
+      const result = await dispatchPublication(scope, workflowId, prepared);
       if (owner.current !== publishOwner) return failed;
       publishAttempt.current = undefined;
       setPublishRecoveryPending(false);
-      const receipt = {
-        versionId: response.version.id,
-        versionNumber: response.version.versionNumber,
-        reused: response.reused,
-        etag: prepared.etag,
-        generation: prepared.generation,
-        revision: prepared.revision,
-      };
+      if (result.kind === 'review_requested') {
+        void queryClient.invalidateQueries({
+          queryKey: publicationReviewKeys.scope(scope),
+        });
+        return result;
+      }
+      const receipt = result.receipt;
       setPublicationReceipt(receipt);
       void queryClient.invalidateQueries({
         queryKey: workflowPublishKeys.latestVersion(
@@ -201,19 +161,19 @@ export function useWorkflowPublication({
       return { kind: 'published', receipt };
     } catch (error) {
       if (owner.current !== publishOwner) return failed;
-      if (dispatched && !isUnconfirmedCommand(error))
-        publishAttempt.current = undefined;
-      setPublishRecoveryPending(publishAttempt.current !== undefined);
-      setRecoveryCommand(publishAttempt.current?.command.kind);
-      if (dispatched && !isUnconfirmedCommand(error))
+      const failure = publicationFailure({
+        error,
+        dispatched,
+        attempt: publishAttempt.current,
+      });
+      publishAttempt.current = failure.attempt;
+      setPublishRecoveryPending(failure.attempt !== undefined);
+      setRecoveryCommand(failure.attempt?.command.kind);
+      if (failure.invalidateReviews)
         void queryClient.invalidateQueries({
-          queryKey: publicationReviewKeys.scope({
-            apiClient,
-            userId,
-            workspaceId,
-          }),
+          queryKey: publicationReviewKeys.scope(scope),
         });
-      recordValidationCooldown(error);
+      draftValidation.recordValidationCooldown(error);
       setPublishError(commandErrorMessage(error, 'publishing'));
       return failed;
     } finally {
@@ -222,10 +182,10 @@ export function useWorkflowPublication({
   }
 
   return {
-    validation,
-    validationPending,
-    validationError,
-    validationBlockedUntil,
+    validation: draftValidation.validation,
+    validationPending: draftValidation.validationPending,
+    validationError: draftValidation.validationError,
+    validationBlockedUntil: draftValidation.validationBlockedUntil,
     publicationReceipt,
     publishStage,
     publishPending: publishStage !== undefined,
@@ -235,9 +195,115 @@ export function useWorkflowPublication({
     clearPublishError: () => {
       setPublishError(undefined);
     },
-    validate,
+    validate: draftValidation.validate,
     publish,
   };
 }
 
 export type WorkflowPublication = ReturnType<typeof useWorkflowPublication>;
+
+type PublicationPreparation = Readonly<{
+  owner: Readonly<{ current: symbol | undefined }>;
+  ensureSaved: () => Promise<SavedDraft>;
+  freshValidation: ReturnType<
+    typeof useWorkflowDraftValidation
+  >['freshValidation'];
+  isSavedDraftCurrent: (saved: SavedDraft) => boolean;
+  setPublishStage: (stage: PublishStage) => void;
+  setPublishError: (message: string) => void;
+}>;
+async function preparePublicationAttempt(
+  {
+    owner,
+    ensureSaved,
+    freshValidation,
+    isSavedDraftCurrent,
+    setPublishStage,
+    setPublishError,
+  }: PublicationPreparation,
+  publishOwner: symbol,
+  command: PublicationCommand,
+): Promise<PublishAttempt | 'blocked' | undefined> {
+  setPublishStage('saving');
+  const saved = await ensureSaved();
+  if (owner.current !== publishOwner) return undefined;
+  const checked = await freshValidation(saved, publishOwner, () => {
+    setPublishStage('checking');
+  });
+  if (owner.current !== publishOwner || checked === undefined) return undefined;
+  if (checked.etag !== saved.etag || !isSavedDraftCurrent(saved)) {
+    setPublishError(
+      'This check describes a different draft. Review the latest changes and check again before publishing.',
+    );
+    return 'blocked';
+  }
+  if (!checked.report.valid) return 'blocked';
+  const current = checked.report.currentPublication;
+  if (current?.matchesDraft) {
+    setPublishError(
+      `No changes since v${String(current.versionNumber)}. This version is already live.`,
+    );
+    return 'blocked';
+  }
+  return { ...saved, idempotencyKey: crypto.randomUUID(), command };
+}
+
+async function dispatchPublication(
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspaceId: string;
+  }>,
+  workflowId: string,
+  prepared: PublishAttempt,
+): Promise<Extract<PublishResult, { kind: 'published' | 'review_requested' }>> {
+  if (prepared.command.kind === 'review') {
+    const request = await requestPublicationReview(scope, workflowId, {
+      etag: prepared.etag,
+      idempotencyKey: prepared.idempotencyKey,
+      note: prepared.command.note,
+    });
+    return { kind: 'review_requested', request };
+  }
+  const response = await publishWorkflow(
+    scope.apiClient,
+    scope.workspaceId,
+    workflowId,
+    { etag: prepared.etag, idempotencyKey: prepared.idempotencyKey },
+  );
+  return {
+    kind: 'published',
+    receipt: {
+      versionId: response.version.id,
+      versionNumber: response.version.versionNumber,
+      reused: response.reused,
+      etag: prepared.etag,
+      generation: prepared.generation,
+      revision: prepared.revision,
+    },
+  };
+}
+
+function publicationFailure({
+  error,
+  dispatched,
+  attempt,
+}: Readonly<{
+  error: unknown;
+  dispatched: boolean;
+  attempt: PublishAttempt | undefined;
+}>) {
+  const invalidateReviews = dispatched && !isUnconfirmedCommand(error);
+  return {
+    attempt: invalidateReviews ? undefined : attempt,
+    invalidateReviews,
+  };
+}
+
+function newPublicationDraftChanged(
+  attempt: PublishAttempt | undefined,
+  prepared: PublishAttempt,
+  isSavedDraftCurrent: PublicationOptions['isSavedDraftCurrent'],
+) {
+  return attempt === undefined && !isSavedDraftCurrent(prepared);
+}
