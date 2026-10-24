@@ -1,3 +1,8 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, sql } from 'drizzle-orm';
+import { nodeRuns, workflowRuns } from '../../../schema/runs/execution.js';
+import { pendingRunTasks } from '../../../schema/runs/pending-task.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { callbackScopeHash } from './identity.repository.js';
 import {
   readPendingTaskAllowance,
@@ -23,34 +28,60 @@ export async function prepareCallbacks(
   await assertCapabilityExecution(client, input);
   if (input.previewRunId !== undefined)
     throw new Error('Previews cannot issue live callback URLs.');
-  const scope = await client.query<{
-    branch_context: Readonly<{ iterationPath?: unknown }>;
-  }>(
-    `select node.branch_context from app.node_runs node join app.workflow_runs run on run.workspace_id=node.workspace_id and run.id=node.workflow_run_id where node.workspace_id=$1 and node.id=$2 and run.id=$3`,
-    [input.workspaceId, input.nodeRunId, input.runId],
-  );
-  const owner = scope.rows[0];
+  const db = drizzle(client),
+    n = nodeRuns,
+    r = workflowRuns,
+    t = pendingRunTasks;
+  const [owner] = await db
+    .select({
+      branch_context: sql<
+        Readonly<{ iterationPath?: unknown }>
+      >`${n.branchContext}`,
+    })
+    .from(n)
+    .innerJoin(
+      r,
+      and(eq(r.workspaceId, n.workspaceId), eq(r.id, n.workflowRunId)),
+    )
+    .where(
+      and(
+        eq(n.workspaceId, input.workspaceId),
+        eq(n.id, input.nodeRunId),
+        eq(r.id, input.runId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (owner === undefined)
     throw new Error('The callback execution scope is unavailable.');
   const iteration = owner.branch_context.iterationPath ?? [];
   const scopeHash = callbackScopeHash(iteration);
-  await client.query('select app.lock_workspace_execution_counter($1)', [
-    input.workspaceId,
-  ]);
+  await db
+    .execute(
+      sql`select app.lock_workspace_execution_counter(${input.workspaceId})`,
+    )
+    .catch(rethrowQueryFailure);
   const allowance = await readPendingTaskAllowance(client, input.workspaceId);
   let count = allowance.count;
   const result: PreparedCallback[] = [];
   for (const target of input.targets) {
-    const existing = await client.query<{
-      id: string;
-      callback_key_version: string;
-      callback_token_hash: string;
-      config: unknown;
-    }>(
-      `select id,callback_key_version,callback_token_hash,config from app.pending_run_tasks where workspace_id=$1 and run_id=$2 and callback_node_id=$3 and callback_scope_hash=$4`,
-      [input.workspaceId, input.runId, target.nodeId, scopeHash],
-    );
-    const found = existing.rows[0];
+    // A non-null callback node identity selects the callback-kind CHECK's complete key pair.
+    const [found] = await db
+      .select({
+        id: t.id,
+        callback_key_version: sql<string>`${t.callbackKeyVersion}`,
+        callback_token_hash: sql<string>`${t.callbackTokenHash}`,
+        config: t.config,
+      })
+      .from(t)
+      .where(
+        and(
+          eq(t.workspaceId, input.workspaceId),
+          eq(t.runId, input.runId),
+          eq(t.callbackNodeId, target.nodeId),
+          eq(t.callbackScopeHash, scopeHash),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     const identity = {
       id: found?.id ?? generatePersistedId(),
       workspaceId: input.workspaceId,
@@ -73,21 +104,14 @@ export async function prepareCallbacks(
     count++;
     const id = identity.id,
       tokenHash = input.tokenHash(identity);
-    await client.query(
-      `insert into app.pending_run_tasks(id,workspace_id,run_id,workflow_version_id,invocation_key,kind,config,status,callback_node_id,callback_scope,callback_scope_hash,callback_token_hash,callback_key_version) select $1,$2,$3,workflow_version_id,$4,'callback',$5::jsonb,'prepared',$6,$7::jsonb,$8,$9,$10 from app.workflow_runs where workspace_id=$2 and id=$3`,
-      [
-        id,
-        input.workspaceId,
-        input.runId,
-        `callback:${target.nodeId}:${scopeHash}`,
-        JSON.stringify(target.config),
-        target.nodeId,
-        JSON.stringify(iteration),
-        scopeHash,
-        tokenHash,
-        input.keyVersion,
-      ],
-    );
+    await persistPreparedCallback(client, {
+      input,
+      target,
+      iteration,
+      scopeHash,
+      id,
+      tokenHash,
+    });
     result.push({
       ...identity,
       id,
@@ -98,4 +122,60 @@ export async function prepareCallbacks(
   }
   await assertCapabilityExecution(client, input);
   return result;
+}
+
+function persistPreparedCallback(
+  client: PoolClient,
+  options: Readonly<{
+    input: Parameters<CallbackStore['prepare']>[0];
+    target: Parameters<CallbackStore['prepare']>[0]['targets'][number];
+    iteration: unknown;
+    scopeHash: string;
+    id: string;
+    tokenHash: string;
+  }>,
+) {
+  const { input, target, iteration, scopeHash, id, tokenHash } = options;
+  const db = drizzle(client),
+    run = workflowRuns;
+  const declaration = db
+    .select({
+      id: sql<string>`${id}::uuid`.as('id'),
+      workspaceId: sql<string>`${input.workspaceId}::uuid`.as('workspace_id'),
+      runId: sql<string>`${input.runId}::uuid`.as('run_id'),
+      workflowVersionId: run.workflowVersionId,
+      nodeRunId: sql`null`.as('node_run_id'),
+      callbackNodeId: sql<string>`${target.nodeId}`.as('callback_node_id'),
+      callbackScope: sql`${JSON.stringify(iteration)}::jsonb`.as(
+        'callback_scope',
+      ),
+      callbackScopeHash: sql<string>`${scopeHash}`.as('callback_scope_hash'),
+      callbackTokenHash: sql<string>`${tokenHash}`.as('callback_token_hash'),
+      callbackKeyVersion: sql<string>`${input.keyVersion}`.as(
+        'callback_key_version',
+      ),
+      openedAt: sql`null`.as('opened_at'),
+      invocationKey:
+        sql<string>`${'callback:' + target.nodeId + ':' + scopeHash}`.as(
+          'invocation_key',
+        ),
+      kind: sql<string>`'callback'`.as('kind'),
+      config: sql`${JSON.stringify(target.config)}::jsonb`.as('config'),
+      context: sql`'{}'::jsonb`.as('context'),
+      status: sql<string>`'prepared'`.as('status'),
+      outputRef: sql`null`.as('output_ref'),
+      decidedBy: sql`null`.as('decided_by'),
+      createdAt: sql<Date>`clock_timestamp()`.as('created_at'),
+      expiresAt: sql`null`.as('expires_at'),
+      completedAt: sql`null`.as('completed_at'),
+      consumedAt: sql`null`.as('consumed_at'),
+    })
+    .from(run)
+    .where(
+      and(eq(run.workspaceId, input.workspaceId), eq(run.id, input.runId)),
+    );
+  return db
+    .insert(pendingRunTasks)
+    .select(declaration)
+    .catch(rethrowQueryFailure);
 }
