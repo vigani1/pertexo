@@ -3,11 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  artifactStorageKey,
-  ArtifactLifecycleConflictError,
-  createPendingPreviewArtifact,
-} from '../../src/artifacts/repository.js';
+import {artifactStorageKey, createPendingPreviewArtifact} from '../../src/artifacts/repository.js';
+import {ArtifactLifecycleConflictError} from '../../src/artifacts/input.js';
 import { parseDatabaseConfig } from '../../src/config.js';
 import {
   completePreviewAttempt,
