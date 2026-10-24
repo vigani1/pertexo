@@ -11,22 +11,15 @@ import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { inRetentionTransaction } from '../retention/transactions.repository.js';
-import {
-  type WorkspacePurgeObjectStore,
-  type WorkspacePurgeProcessResult,
-  type WorkspacePurgeCoordinator,
-  optionsSchema,
-  type WorkspacePurgeOptions,
+import type {
+  WorkspacePurgeObjectStore,
+  WorkspacePurgeProcessResult,
+  WorkspacePurgeCoordinator,
+  WorkspacePurgeOptions,
 } from './contract.js';
+import { optionsSchema } from './input.js';
 import { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.repository.js';
 
-export {
-  type WorkspacePurgeObjectStore,
-  type WorkspacePurgeProcessResult,
-  type WorkspacePurgeCoordinator,
-  type WorkspacePurgeOptions,
-} from './contract.js';
-export { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.repository.js';
 /** Fails if a workspace table still holds the purged workspace's rows. */
 async function assertNothingLeft(
   client: PoolClient,

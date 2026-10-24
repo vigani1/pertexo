@@ -1,3 +1,10 @@
+import type {
+  PreviewRetentionArtifactStore,
+  PreviewRetentionProcessResult,
+  PreviewRetentionCoordinator,
+  PreviewRetentionCoordinatorOptions,
+} from './contract.js';
+import { optionsSchema } from './input.js';
 import { previewAttempts, previewRuns } from '../../schema/runs/execution.js';
 import {
   idempotencyRecords,
@@ -19,69 +26,12 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { artifacts as artifactRecords } from '../../schema/transport.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { inRetentionTransaction } from '../retention/transactions.repository.js';
-
-export interface PreviewRetentionArtifactStore {
-  delete(
-    input: Readonly<{
-      artifactId: string;
-      signal?: AbortSignal;
-      workspaceId: string;
-    }>,
-  ): Promise<void>;
-  head(
-    input: Readonly<{
-      artifactId: string;
-      signal?: AbortSignal;
-      workspaceId: string;
-    }>,
-  ): Promise<object | null>;
-}
-
-export type PreviewRetentionProcessResult =
-  | Readonly<{ status: 'idle' }>
-  | Readonly<{
-      artifactId?: string;
-      previewRunId: string;
-      status: 'completed' | 'progressed' | 'waiting';
-      workspaceId: string;
-    }>;
-
-export interface PreviewRetentionCoordinator {
-  close(): Promise<void>;
-  processNext(signal?: AbortSignal): Promise<PreviewRetentionProcessResult>;
-}
-
-export interface PreviewRetentionCoordinatorOptions {
-  readonly artifactQuiescenceSeconds?: number;
-  readonly externalOperationTimeoutMs?: number;
-  readonly lockTimeoutMs?: number;
-  readonly statementTimeoutMs?: number;
-}
-
-const optionsSchema = z
-  .object({
-    artifactQuiescenceSeconds: z.number().int().min(1).max(120).default(60),
-    externalOperationTimeoutMs: z
-      .number()
-      .int()
-      .min(1_000)
-      .max(300_000)
-      .default(30_000),
-    lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
-    statementTimeoutMs: z
-      .number()
-      .int()
-      .min(1_000)
-      .max(300_000)
-      .default(30_000),
-  })
-  .strict();
 
 /** Deletes a preview whose artifacts are all gone, with its attempts. */
 async function removePreview(

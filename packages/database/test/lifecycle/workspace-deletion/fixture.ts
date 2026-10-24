@@ -1,10 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
-import {
-  changeWorkspaceLifecycle,
-  type WorkspaceLifecycleChange,
-} from '../../../src/lifecycle/deletion/repository.js';
+import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/repository.js';
+import type { WorkspaceLifecycleChange } from '../../../src/lifecycle/deletion/contract.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';

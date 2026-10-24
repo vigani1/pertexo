@@ -1,3 +1,8 @@
+import type {
+  WorkspaceLifecycleCommandType,
+  WorkspaceLifecycleOperation,
+  WorkspaceLifecycleChange,
+} from './contract.js';
 import { connections } from '../../schema/connections.js';
 import { webhookTriggerEndpoints } from '../../schema/triggers/endpoints.js';
 import { triggerSchedules } from '../../schema/triggers/schedules.js';
@@ -29,27 +34,6 @@ import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 
 /** How long a workspace waits for restore before it is purged. */
 export const WORKSPACE_RECOVERY_DAYS = 30;
-
-export type WorkspaceLifecycleCommandType =
-  'deletion_requested' | 'deletion_restored';
-
-/** The receipt of one deletion or restore request. */
-export type WorkspaceLifecycleOperation = Readonly<{
-  id: string;
-  workspaceId: string;
-  commandType: WorkspaceLifecycleCommandType;
-  submittedAt: Date;
-}>;
-
-export type WorkspaceLifecycleChange = Readonly<{
-  operationId: string;
-  workspaceId: string;
-  actorUserId: string;
-  commandType: WorkspaceLifecycleCommandType;
-  reason: string;
-  idempotencyKeyHash: string;
-  requestHash: string;
-}>;
 
 /** Everything a workspace stops doing once deletion is requested. */
 async function applyDeletionSideEffects(

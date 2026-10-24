@@ -5,31 +5,31 @@ export {
 export { createRetentionDatabase } from './retention/repository.js';
 export { RETENTION_RULES } from './retention/rules.js';
 export { createRunArtifactRetentionCoordinator } from './artifacts/repository.js';
+export { createWorkspacePurgeCoordinator } from './purge/repository.js';
 export {
-  createWorkspacePurgeCoordinator,
   PURGE_PRESERVED_TABLES,
   PURGE_STEPS,
-} from './purge/repository.js';
+} from './purge/steps.repository.js';
 export type {
   WorkspacePurgeCoordinator,
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
-} from './purge/repository.js';
+} from './purge/contract.js';
 export type {
   RunArtifactRetentionCoordinator,
   RunArtifactRetentionCoordinatorOptions,
   RunArtifactRetentionProcessResult,
   RunArtifactRetentionStore,
-} from './artifacts/repository.js';
+} from './artifacts/contract.js';
 export type {
   RetentionDatabase,
   RetentionDatabaseOptions,
   RetentionPassResult,
-} from './retention/repository.js';
+} from './retention/contract.js';
 export { createPreviewRetentionCoordinator } from './previews/repository.js';
 export type {
   PreviewRetentionArtifactStore,
   PreviewRetentionCoordinator,
   PreviewRetentionCoordinatorOptions,
   PreviewRetentionProcessResult,
-} from './previews/repository.js';
+} from './previews/contract.js';

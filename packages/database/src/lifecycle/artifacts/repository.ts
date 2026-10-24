@@ -1,3 +1,10 @@
+import type {
+  RunArtifactRetentionStore,
+  RunArtifactRetentionProcessResult,
+  RunArtifactRetentionCoordinator,
+  RunArtifactRetentionCoordinatorOptions,
+} from './contract.js';
+import { optionsSchema } from './input.js';
 import { and, asc, eq, isNull, lte, notExists, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { artifacts as artifactRecords } from '../../schema/transport.js';
@@ -5,62 +12,11 @@ import { artifactLinks } from '../../schema/runs/support.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { artifactReferenceOwnersSql } from '../../artifacts/references/owners.queries.js';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { inRetentionTransaction } from '../retention/transactions.repository.js';
-
-export interface RunArtifactRetentionStore {
-  delete(input: {
-    readonly artifactId: string;
-    readonly signal?: AbortSignal;
-    readonly workspaceId: string;
-  }): Promise<void>;
-  head(input: {
-    readonly artifactId: string;
-    readonly signal?: AbortSignal;
-    readonly workspaceId: string;
-  }): Promise<object | null>;
-}
-
-export type RunArtifactRetentionProcessResult =
-  | Readonly<{ status: 'idle' }>
-  | Readonly<{
-      artifactId: string;
-      status: 'completed' | 'referenced' | 'waiting';
-      workspaceId: string;
-    }>;
-
-export interface RunArtifactRetentionCoordinator {
-  close(): Promise<void>;
-  processNext(signal?: AbortSignal): Promise<RunArtifactRetentionProcessResult>;
-}
-
-export interface RunArtifactRetentionCoordinatorOptions {
-  readonly externalOperationTimeoutMs?: number;
-  readonly lockTimeoutMs?: number;
-  readonly statementTimeoutMs?: number;
-}
-
-const optionsSchema = z
-  .object({
-    externalOperationTimeoutMs: z
-      .number()
-      .int()
-      .min(1_000)
-      .max(300_000)
-      .default(30_000),
-    lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
-    statementTimeoutMs: z
-      .number()
-      .int()
-      .min(1_000)
-      .max(300_000)
-      .default(30_000),
-  })
-  .strict();
 
 async function retryLater(
   client: PoolClient,

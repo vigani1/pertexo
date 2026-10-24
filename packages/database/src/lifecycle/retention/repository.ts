@@ -1,7 +1,12 @@
+import type {
+  RetentionPassResult,
+  RetentionDatabase,
+  RetentionDatabaseOptions,
+} from './contract.js';
+import { optionsSchema } from './input.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool } from '../../platform/pool/runtime.js';
@@ -9,39 +14,9 @@ import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
 import { RETENTION_RULES, type RetentionRuleName } from './rules.js';
 import { inRetentionTransaction } from './transactions.repository.js';
-export type { RetentionRuleName } from './rules.js';
 
 /** Advisory lock class for the rules; the rule's index is the second key. */
 const RETENTION_LOCK_CLASS = 1_934_781_128;
-
-export type RetentionPassResult = Readonly<{
-  /** Rows each rule removed or cleared. */
-  removed: Readonly<Record<RetentionRuleName, number>>;
-  /** Some rule filled its page, so more rows are due now. */
-  more: boolean;
-}>;
-
-export interface RetentionDatabase {
-  checkReadiness(signal?: AbortSignal): Promise<void>;
-  close(): Promise<void>;
-  /** Runs every rule once, one page each. */
-  enforce(signal?: AbortSignal): Promise<RetentionPassResult>;
-}
-
-const optionsSchema = z
-  .object({
-    lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
-    pageSize: z.number().int().min(1).max(1_000).default(100),
-    statementTimeoutMs: z
-      .number()
-      .int()
-      .min(1_000)
-      .max(300_000)
-      .default(30_000),
-  })
-  .strict();
-
-export type RetentionDatabaseOptions = z.input<typeof optionsSchema>;
 
 export function createRetentionDatabase(
   config: DatabaseConfig,
