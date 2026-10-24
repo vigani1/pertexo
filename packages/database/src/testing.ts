@@ -150,7 +150,7 @@ export type {
   ReadPublishedWorkflowForExecutionInput,
 } from './runs/queries/execution/published.js';
 export {createOutboxDispatcherDatabase} from './outbox/dispatcher/repository.js';
-export type {ClaimOutboxBatchInput, ClaimOutboxBatchResult} from './outbox/dispatcher/claim.repository.js';
+export type {ClaimOutboxBatchInput, ClaimOutboxBatchResult} from './outbox/dispatcher/contract.js';
 export type {LeasedOutboxEvent, OutboxBacklogSnapshot, OutboxDispatcherDatabase, ReleaseOutboxResult} from './outbox/dispatcher/contract.js';
 export {
   consumeInboxMessage,

@@ -10,10 +10,8 @@ import {
 import type { DatabaseConfig } from '../../config.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.js';
-import {
-  claimOutboxBatch,
-  type ClaimOutboxBatchInput,
-} from './claim.repository.js';
+import { claimOutboxBatch } from './claim.repository.js';
+import type { ClaimOutboxBatchInput } from './contract.js';
 import { leasedEventSchema, releaseInputSchema } from './input.js';
 import type {
   OutboxDispatcherDatabase,
