@@ -95,19 +95,11 @@ export function observeAuthority({
 }>) {
   return queryClient.getQueryCache().subscribe((event) => {
     if (!current() || event.type !== 'updated') return;
-    const key = event.query.queryKey as readonly unknown[];
-    const inScope =
-      key[0] === 'identity' &&
-      key[1] === userId &&
-      key[2] === 'workspace' &&
-      key[3] === workspaceId;
-    const relatedRead =
-      inScope && (key[4] === 'workflows' || key[4] === 'workflow-organization');
-    const discovery =
-      key[0] === 'identity' &&
-      key[1] === userId &&
-      key[2] === 'accessible-workspaces';
-    const identity = key[0] === 'identity' && key[1] === 'current-user';
+    const { inScope, relatedRead, discovery, identity } = authorityReadScope(
+      event.query.queryKey as readonly unknown[],
+      userId,
+      workspaceId,
+    );
     // An earlier scoped observer may synchronously cancel/remove this query.
     // Preserve the event's immutable failure instead of its reverted state.
     const failure: unknown =
@@ -117,28 +109,64 @@ export function observeAuthority({
     const requiredReadAccessLost =
       (relatedRead || discovery || identity) && accessLost(failure);
     if (requiredReadAccessLost) retire();
-    else if (inScope && isApiError(failure) && failure.status === 401) retire();
-    if (discovery && event.query.state.status === 'success') {
-      const parsed = accessibleWorkspaceSchema
-        .array()
-        .safeParse(event.query.state.data);
-      if (
-        parsed.success &&
-        !allowed(
-          parsed.data.find((item) => item.id === workspaceId),
-          requiredRole,
-        )
-      )
-        retire();
+    else {
+      const sessionLost =
+        inScope && isApiError(failure) && failure.status === 401;
+      if (sessionLost) retire();
     }
+    const discoveryRevoked =
+      discovery &&
+      event.query.state.status === 'success' &&
+      discoveryLostAccess(event.query.state.data, workspaceId, requiredRole);
+    if (discoveryRevoked) retire();
     const data: unknown = event.query.state.data;
-    const identityChanged =
-      identity &&
-      typeof data === 'object' &&
-      data !== null &&
-      'id' in data &&
-      typeof data.id === 'string' &&
-      data.id !== userId;
+    const identityChanged = identity && changedIdentity(data, userId);
     if (identityChanged) retire();
   });
+}
+
+function authorityReadScope(
+  key: readonly unknown[],
+  userId: string,
+  workspaceId: string,
+) {
+  const inScope =
+    key[0] === 'identity' &&
+    key[1] === userId &&
+    key[2] === 'workspace' &&
+    key[3] === workspaceId;
+  const relatedRead =
+    inScope && (key[4] === 'workflows' || key[4] === 'workflow-organization');
+  const discovery =
+    key[0] === 'identity' &&
+    key[1] === userId &&
+    key[2] === 'accessible-workspaces';
+  const identity = key[0] === 'identity' && key[1] === 'current-user';
+
+  return { inScope, relatedRead, discovery, identity };
+}
+
+function discoveryLostAccess(
+  data: unknown,
+  workspaceId: string,
+  requiredRole: RequiredRole,
+): boolean {
+  const parsed = accessibleWorkspaceSchema.array().safeParse(data);
+  return (
+    parsed.success &&
+    !allowed(
+      parsed.data.find((item) => item.id === workspaceId),
+      requiredRole,
+    )
+  );
+}
+
+function changedIdentity(data: unknown, userId: string): boolean {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'id' in data &&
+    typeof data.id === 'string' &&
+    data.id !== userId
+  );
 }
