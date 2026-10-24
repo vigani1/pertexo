@@ -50,16 +50,15 @@ export function HttpPaginationSetup({
   return (
     <Disclosure
       summary={`Pagination · ${label}`}
-      tone="strong"
       className="border-t border-border pt-3"
       contentClassName="mt-0 flex flex-col gap-4 pt-3"
+      appearance={{ tone: 'strong' }}
     >
       <Field>
         <FieldLabel htmlFor={id}>Pagination mode</FieldLabel>
         <ChoiceSelect
           value={mode}
           choices={paginationModes}
-
           disabled={paginationSelectionBlocked}
           onChange={(next) => {
             if (next === null) return;
@@ -74,7 +73,7 @@ export function HttpPaginationSetup({
               `${form.nodeId}:pagination:mode`,
             );
           }}
-          control={{ id: id, describedBy: modeHelpId }}
+          control={{ id, describedBy: modeHelpId }}
         />
         <FieldDescription id={modeHelpId}>
           {value === undefined
@@ -142,7 +141,6 @@ function PaginationFields({
               { value: 'link_header', label: 'Link header' },
             ]}
             disabled={!form.editable || hasScratch}
-
             onChange={(kind) => {
               if (kind === null) return;
               form.commit(

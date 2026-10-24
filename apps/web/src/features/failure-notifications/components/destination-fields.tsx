@@ -115,17 +115,19 @@ export function DestinationFields({
             }
             error={validation.error('connection')}
             // Beside the label, so the validation thread sits under the Select.
-            labelAction={
-              <Link
-                to="/w/$workspaceId/connections"
-                params={{ workspaceId }}
-                search={{ add: values.kind }}
-                className={buttonVariants({ variant: 'link', size: 'sm' })}
-              >
-                <PlusIcon data-icon="inline-start" aria-hidden="true" />
-                New {KIND_WORDS[values.kind]} connection
-              </Link>
-            }
+            slots={{
+              labelAction: (
+                <Link
+                  to="/w/$workspaceId/connections"
+                  params={{ workspaceId }}
+                  search={{ add: values.kind }}
+                  className={buttonVariants({ variant: 'link', size: 'sm' })}
+                >
+                  <PlusIcon data-icon="inline-start" aria-hidden="true" />
+                  New {KIND_WORDS[values.kind]} connection
+                </Link>
+              ),
+            }}
           >
             {(control) => (
               <Select

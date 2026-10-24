@@ -196,9 +196,6 @@ function FolderAudience({
         </p>
       </section>
       <SharingPrincipalPicker
-        apiClient={scope.apiClient}
-        userId={scope.userId}
-        workspaceId={scope.workspaceId}
         kinds={['member', 'group']}
         roleNames={ROLE_NAMES}
         selected={snapshot.grants.map(grantId)}
@@ -230,6 +227,11 @@ function FolderAudience({
                   labels: { ...value.labels, [identifier]: principal.label },
                 },
           );
+        }}
+        scope={{
+          apiClient: scope.apiClient,
+          userId: scope.userId,
+          workspaceId: scope.workspaceId,
         }}
       />
     </>

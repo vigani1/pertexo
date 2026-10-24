@@ -14,12 +14,14 @@ describe('composed field content', () => {
         <LabelledField
           id="secret"
           label="Password"
-          labelAction={<a href="#reset">Forgot?</a>}
-          trailing={<button type="button">Show</button>}
-          feedback={<p>Strength feedback</p>}
           description="Use twelve characters."
           error="Try a longer password."
           describedBy="meter"
+          slots={{
+            labelAction: <a href="#reset">Forgot?</a>,
+            trailing: <button type="button">Show</button>,
+            feedback: <p>Strength feedback</p>,
+          }}
         >
           {(control) => <Input {...control} />}
         </LabelledField>
@@ -45,9 +47,7 @@ describe('composed field content', () => {
       <Disclosure
         summary="More detail"
         lazy
-        look="framed"
-        size="xs"
-        tone="link"
+        appearance={{ look: 'framed', size: 'xs', tone: 'link' }}
       >
         <button type="button">Inspect detail</button>
       </Disclosure>,

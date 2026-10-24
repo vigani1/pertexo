@@ -65,14 +65,15 @@ export function WorkflowRenameDialog({
         </DialogDescription>
         <RenameForm
           className="mt-5 max-w-none"
-          name={current.name}
-          revision={current.nameRevision}
-          subject="workflow"
-          label="Workflow name"
-          validate={workflowNameError}
           command={command}
           onSave={command.start}
           onClose={onClose}
+          field={{
+            subject: 'workflow',
+            label: 'Workflow name',
+            validate: workflowNameError,
+          }}
+          value={{ name: current.name, revision: current.nameRevision }}
         />
       </DialogContent>
     </Dialog>

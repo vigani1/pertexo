@@ -5,7 +5,7 @@ export function CredentialHelp({
   steps,
 }: Readonly<{ steps: readonly string[] }>) {
   return (
-    <Disclosure summary="Where do I find this?" tone="link">
+    <Disclosure summary="Where do I find this?" appearance={{ tone: 'link' }}>
       <ol className="flex list-decimal flex-col gap-1.5 pl-9 text-muted-foreground marker:font-mono marker:text-xs marker:text-subtle-foreground">
         {steps.map((step) => (
           <li key={step}>{step}</li>

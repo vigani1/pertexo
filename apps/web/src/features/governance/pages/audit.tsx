@@ -93,15 +93,7 @@ export function AuditPage({
         onApply={onFilter}
       />
       <RecentLog
-        title="Events"
         headingLevel="h2"
-        subject="audit events"
-        loadMoreLabel="Load older events"
-        empty={
-          narrowed
-            ? 'Nothing matches. Widen the dates or clear a filter.'
-            : 'Nothing has changed yet. Publishing, sign-ins and changes to people, connections and settings appear here.'
-        }
         query={events}
         items={entries}
         itemKey={(event) => event.id}
@@ -118,6 +110,14 @@ export function AuditPage({
             }}
           />
         )}
+        copy={{
+          title: 'Events',
+          subject: 'audit events',
+          loadMoreLabel: 'Load older events',
+          empty: narrowed
+            ? 'Nothing matches. Widen the dates or clear a filter.'
+            : 'Nothing has changed yet. Publishing, sign-ins and changes to people, connections and settings appear here.',
+        }}
       />
       {/* Below the log and only once it has loaded, so the settings never
           appear first and then get pushed down by arriving events. */}

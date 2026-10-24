@@ -13,16 +13,23 @@ import { RenameOutcome, SaveActions } from './outcome';
  * confirmed rename, Cancel and Escape all call `onClose`.
  */
 export function RenameForm({
-  name,
-  subject,
-  label,
+  value,
+  field,
   command,
   onClose,
   className,
   ...rest
 }: RenameFormProps & Readonly<{ onClose: () => void }>) {
+  const { name } = value;
+  const { subject, label } = field;
   const id = useId();
-  const rename = useRenameDraft({ name, command, onClose, ...rest });
+  const rename = useRenameDraft({
+    ...value,
+    validate: field.validate,
+    command,
+    onClose,
+    ...rest,
+  });
   return (
     <form
       noValidate

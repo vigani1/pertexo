@@ -42,24 +42,22 @@ const summaryVariants = cva(
 export function Disclosure({
   summary,
   children,
-  size,
-  tone,
-  look,
+  appearance = {},
   lazy = false,
   defaultOpen = false,
   className,
   contentClassName,
-}: Readonly<
-  {
-    summary: ReactNode;
-    children: ReactNode;
-    lazy?: boolean;
-    defaultOpen?: boolean;
-    className?: string;
-    contentClassName?: string;
-  } & VariantProps<typeof summaryVariants> &
-    VariantProps<typeof disclosureVariants>
->) {
+}: Readonly<{
+  summary: ReactNode;
+  children: ReactNode;
+  lazy?: boolean;
+  defaultOpen?: boolean;
+  className?: string;
+  contentClassName?: string;
+  appearance?: VariantProps<typeof summaryVariants> &
+    VariantProps<typeof disclosureVariants>;
+}>) {
+  const { size, tone, look } = appearance;
   const [open, setOpen] = useState(defaultOpen);
   return (
     <details

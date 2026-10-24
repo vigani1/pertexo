@@ -7,7 +7,11 @@ export function RunBusinessValues({
   const entries = Object.entries(values ?? {});
   if (entries.length === 0) return null;
   return (
-    <Disclosure summary="Saved run values" look="framed" defaultOpen>
+    <Disclosure
+      summary="Saved run values"
+      defaultOpen
+      appearance={{ look: 'framed' }}
+    >
       <dl className="grid gap-2 sm:grid-cols-2">
         {entries.map(([key, value]) => (
           <div

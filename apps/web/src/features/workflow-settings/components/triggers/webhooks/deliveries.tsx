@@ -65,21 +65,21 @@ export function WebhookDeliveries({
   );
   return (
     <RecentLog
-      title="Recent deliveries"
-      note="Kept for 90 days"
-      subject="deliveries"
-      loadMoreLabel="Load older deliveries"
-      empty={
-        endpointReady
-          ? 'Nothing has arrived yet. Each request a sender posts to this endpoint shows up here with what happened to it.'
-          : 'Nothing has arrived. Create an endpoint, and each request a sender posts to it shows up here.'
-      }
       query={deliveries}
       items={deliveries.data?.pages.flatMap(({ items }) => items)}
       itemKey={(delivery) => delivery.id}
       renderItem={(delivery) => (
         <DeliveryEntry delivery={delivery} workspaceId={workspaceId} />
       )}
+      copy={{
+        title: 'Recent deliveries',
+        note: 'Kept for 90 days',
+        subject: 'deliveries',
+        loadMoreLabel: 'Load older deliveries',
+        empty: endpointReady
+          ? 'Nothing has arrived yet. Each request a sender posts to this endpoint shows up here with what happened to it.'
+          : 'Nothing has arrived. Create an endpoint, and each request a sender posts to it shows up here.',
+      }}
     />
   );
 }

@@ -101,7 +101,7 @@ export function VersionPreviewSheet({
                 <h3 className="text-sm font-semibold">Changes</h3>
                 <VersionChanges version={version} previous={previous} />
               </section>
-              <Disclosure summary="Details" look="framed">
+              <Disclosure summary="Details" appearance={{ look: 'framed' }}>
                 <div className="flex flex-col gap-3">
                   <CopyField
                     label="Version ID"

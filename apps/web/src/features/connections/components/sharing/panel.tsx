@@ -226,9 +226,6 @@ function RestrictedConnectionMembers({
         ))}
       </ul>
       <SharingPrincipalPicker
-        apiClient={scope.apiClient}
-        userId={scope.userId}
-        workspaceId={scope.workspaceId}
         kinds={['member']}
         roleNames={ROLE_NAMES}
         selected={snapshot.members.map((member) => member.userId)}
@@ -257,6 +254,11 @@ function RestrictedConnectionMembers({
                   ],
                 },
           );
+        }}
+        scope={{
+          apiClient: scope.apiClient,
+          userId: scope.userId,
+          workspaceId: scope.workspaceId,
         }}
       />
     </>

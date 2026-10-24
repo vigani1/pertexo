@@ -59,8 +59,8 @@ export function SettingSentence({
       {rules === undefined ? null : (
         <Disclosure
           summary="How this works"
-          size="xs"
           className="text-xs text-muted-foreground"
+          appearance={{ size: 'xs' }}
         >
           <div className="mt-2 flex max-w-lg flex-col gap-1.5 leading-relaxed">
             {rules}

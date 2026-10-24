@@ -83,7 +83,7 @@ export function ApiTokensPage({
           Personal keys for your scripts and the CLI in this workspace. Each
           grants an explicit part of your current access.
         </p>
-        <Disclosure summary="How tokens work" size="xs">
+        <Disclosure summary="How tokens work" appearance={{ size: 'xs' }}>
           <ul className="flex list-disc flex-col gap-1 pl-5 text-xs leading-relaxed text-muted-foreground">
             <li>Keep a token in a secrets manager; it is shown once.</li>
             <li>

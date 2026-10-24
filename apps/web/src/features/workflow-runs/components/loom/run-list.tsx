@@ -28,7 +28,7 @@ export function LoomRunList({
             : ''}
         </>
       }
-      size="xs"
+      appearance={{ size: 'xs' }}
     >
       <div className="mt-3 grid gap-5 sm:grid-cols-2">
         {model.lanes.map((lane) => (

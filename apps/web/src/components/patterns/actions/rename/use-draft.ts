@@ -13,10 +13,9 @@ export function useRenameDraft({
   command,
   onSave,
   onClose,
-}: Pick<
-  RenameFormProps,
-  'name' | 'revision' | 'validate' | 'command' | 'onSave'
-> &
+}: RenameFormProps['value'] &
+  Pick<RenameFormProps['field'], 'validate'> &
+  Pick<RenameFormProps, 'command' | 'onSave'> &
   Readonly<{
     /** `true` when the rename was saved, `false` when it was let go. */
     onClose: (saved: boolean) => void;

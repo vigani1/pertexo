@@ -60,13 +60,8 @@ export function WorkspaceNameField({
 
   return (
     <InlineRename
-      name={workspace.name}
-      revision={workspace.revision}
-      subject="workspace"
-      label="Workspace name"
       textClassName={type}
       {...(onDraftChange === undefined ? {} : { onDraftChange })}
-      validate={nameError}
       command={command}
       onSave={(name, expectedRevision) =>
         command.start({
@@ -74,6 +69,12 @@ export function WorkspaceNameField({
           idempotencyKey: crypto.randomUUID(),
         })
       }
+      field={{
+        subject: 'workspace',
+        label: 'Workspace name',
+        validate: nameError,
+      }}
+      value={{ name: workspace.name, revision: workspace.revision }}
     >
       {display}
     </InlineRename>

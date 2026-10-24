@@ -75,7 +75,10 @@ export function PromotionReview({
                 ))}
               </ul>
             )}
-            <Disclosure summary="Inspect proposed definition" tone="link">
+            <Disclosure
+              summary="Inspect proposed definition"
+              appearance={{ tone: 'link' }}
+            >
               <pre
                 className="max-h-72 overflow-auto rounded border border-border p-3 text-xs"
                 tabIndex={0}
