@@ -1,3 +1,13 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, sql } from 'drizzle-orm';
+import {
+  workflows,
+  workflowDrafts,
+  workflowVersions,
+} from '../../../schema/authoring/workflows.js';
+import { workflowTemplateOrigins } from '../../../schema/authoring/template-origin.js';
+import { auditEvents } from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
 import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
@@ -28,7 +38,10 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../errors.js';
-import { mapDraft } from '../representation/records.queries.js';
+import {
+  projectDraft,
+  draftProjection,
+} from '../representation/records.queries.js';
 
 const uuid = z.uuid();
 const inputSchema = z
@@ -63,24 +76,35 @@ async function selectedGraph(
   catalog: WorkflowDefinitionCatalog,
 ): Promise<WorkflowGraph> {
   if (input.source.kind === 'version') {
-    const result = await client.query<{ graph_json: unknown }>(
-      `select graph_json from app.workflow_versions
-       where workspace_id=$1 and workflow_id=$2 and id=$3`,
-      [input.workspaceId, input.workflowId, input.source.versionId],
-    );
-    const row = result.rows[0];
+    const [row] = await drizzle(client)
+      .select({ graph_json: workflowVersions.graphJson })
+      .from(workflowVersions)
+      .where(
+        and(
+          eq(workflowVersions.workspaceId, input.workspaceId),
+          eq(workflowVersions.workflowId, input.workflowId),
+          eq(workflowVersions.id, input.source.versionId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (row === undefined)
       throw new WorkflowNotFoundError('Workflow source is not visible');
     return parseWorkflowGraphDraft(row.graph_json);
   }
-  const result = await client.query<Record<string, unknown>>(
-    `select * from app.workflow_drafts where workspace_id=$1 and workflow_id=$2 for update`,
-    [input.workspaceId, input.workflowId],
-  );
-  const row = result.rows[0];
+  const [row] = await drizzle(client)
+    .select(draftProjection)
+    .from(workflowDrafts)
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, input.workspaceId),
+        eq(workflowDrafts.workflowId, input.workflowId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow source is not visible');
-  const draft = mapDraft(row, catalog);
+  const draft = projectDraft(row, catalog);
   const tag = workflowDraftRepresentationTag({
     workflowId: input.workflowId,
     revision: draft.revision,
@@ -103,129 +127,169 @@ export function createWorkflowDuplicationStore(
         input.workspaceId,
         input.actorId,
         async (client) => {
-          await context.requireAuthor(client, input.workspaceId, {
-            actorId: input.actorId,
-            workflowId: input.workflowId,
-            capability: 'workflow:read',
-          });
-          // Workflow precedes draft, consistent with restore/publication/lifecycle.
-          const source = await client.query<{ lifecycle_status: string }>(
-            `select lifecycle_status from app.workflows where workspace_id=$1 and id=$2 for update`,
-            [input.workspaceId, input.workflowId],
-          );
-          const sourceRow = source.rows[0];
-          if (sourceRow === undefined)
-            throw new WorkflowNotFoundError('Workflow source is not visible');
-          const destinationId = generatePersistedId();
-          // The graph is not part of the request: a retry duplicates the same
-          // reviewed source, or replays the first result.
-          const command = {
-            workspaceId: input.workspaceId,
-            operation: 'workflow.duplicate',
-            scope: `${input.actorId}:${input.workflowId}`,
-            idempotencyKey: input.idempotencyKey,
-          };
-          const stored = await claimCommand(client, {
-            ...command,
-            request: {
-              name: input.name,
-              source: input.source,
-              representationTag:
-                input.source.kind === 'draft' ? input.representationTag : null,
-            },
-            resourceId: destinationId,
-          });
-          if (stored !== null) {
-            const replay = resultSchema.parse(stored);
-            await context.requireAuthor(client, input.workspaceId, {
-              actorId: input.actorId,
-              workflowId: replay.workflowId,
-              capability: 'workflow:read',
-            });
-            const destination = await client.query(
-              'select id from app.workflows where workspace_id=$1 and id=$2 for share',
-              [input.workspaceId, replay.workflowId],
-            );
-            if (destination.rowCount !== 1)
-              throw new WorkflowNotFoundError(
-                'Workflow destination is not visible',
-              );
-            return Object.freeze(replay);
-          }
-          if (sourceRow.lifecycle_status !== 'active')
-            throw new WorkflowNotFoundError('Workflow source is not visible');
-          const { definitionCatalog, placementDefinitionCatalog } =
-            context.catalogs;
-          const graph = await selectedGraph(client, input, definitionCatalog);
-          context.requirePlaceable(
-            EMPTY_WORKFLOW_GRAPH,
-            graph,
-            placementDefinitionCatalog ?? definitionCatalog,
-          );
-          await requireWorkflowCallTargets(client, input, graph);
-          try {
-            await requireConnectionBindings(client, input, graph);
-          } catch (error) {
-            if (error instanceof InvalidWorkflowGraphError)
-              throw new WorkflowNotFoundError(
-                'Workflow connection is not visible',
-              );
-            throw error;
-          }
-          await lockArtifactReferences(
-            client,
-            input.workspaceId,
-            graph,
-            input.actorId,
-          );
-          await client.query(
-            `insert into app.workflows
-               (id, workspace_id, name, lifecycle_status, activation_status, created_by)
-             values ($1, $2, $3, 'active', 'inactive', $4)`,
-            [destinationId, input.workspaceId, input.name, input.actorId],
-          );
-          await client.query(
-            `insert into app.workflow_drafts
-               (workflow_id, workspace_id, revision, graph_json, updated_by)
-             values ($1, $2, 1, $3::json, $4)`,
-            [
-              destinationId,
-              input.workspaceId,
-              JSON.stringify(graph),
-              input.actorId,
-            ],
-          );
-          // A copy keeps its source's template origin, marked inherited.
-          await client.query(
-            `insert into app.workflow_template_origins (workspace_id, workflow_id, origin)
-             select workspace_id, $2, origin || '{"derivation":"inherited"}'::jsonb
-             from app.workflow_template_origins
-             where workspace_id = $1 and workflow_id = $3`,
-            [input.workspaceId, destinationId, input.workflowId],
-          );
-          await client.query(
-            `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-         values($1,$2,$3,'workflow.duplicated','workflow',$4,$5,$6,$7::jsonb)`,
-            [
-              generatePersistedId(),
-              input.workspaceId,
-              input.actorId,
-              destinationId,
-              input.requestId ?? null,
-              input.traceId ?? null,
-              JSON.stringify({
-                sourceWorkflowId: input.workflowId,
-                source: input.source,
-                revision: 1,
-              }),
-            ],
-          );
-          const result = Object.freeze({ workflowId: destinationId });
-          await completeCommand(client, command, result);
-          return result;
+          return duplicateInTransaction(client, context, input);
         },
         input.signal,
       );
     },
   };
+}
+
+async function duplicateInTransaction(
+  client: PoolClient,
+  context: WorkflowAuthoringWriteContext,
+  input: DuplicateWorkflowInput,
+) {
+  await context.requireAuthor(client, input.workspaceId, {
+    actorId: input.actorId,
+    workflowId: input.workflowId,
+    capability: 'workflow:read',
+  });
+  // Workflow precedes draft, consistent with restore/publication/lifecycle.
+  const db = drizzle(client);
+  const [sourceRow] = await db
+    .select({ lifecycle_status: workflows.lifecycleStatus })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, input.workflowId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  if (sourceRow === undefined)
+    throw new WorkflowNotFoundError('Workflow source is not visible');
+  const destinationId = generatePersistedId();
+  // The graph is not part of the request: a retry duplicates the same
+  // reviewed source, or replays the first result.
+  const command = {
+    workspaceId: input.workspaceId,
+    operation: 'workflow.duplicate',
+    scope: `${input.actorId}:${input.workflowId}`,
+    idempotencyKey: input.idempotencyKey,
+  };
+  const stored = await claimCommand(client, {
+    ...command,
+    request: {
+      name: input.name,
+      source: input.source,
+      representationTag:
+        input.source.kind === 'draft' ? input.representationTag : null,
+    },
+    resourceId: destinationId,
+  });
+  if (stored !== null) {
+    const replay = resultSchema.parse(stored);
+    await context.requireAuthor(client, input.workspaceId, {
+      actorId: input.actorId,
+      workflowId: replay.workflowId,
+      capability: 'workflow:read',
+    });
+    const destination = await db
+      .select({ id: workflows.id })
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.workspaceId, input.workspaceId),
+          eq(workflows.id, replay.workflowId),
+        ),
+      )
+      .for('share')
+      .catch(rethrowQueryFailure);
+    if (destination.length !== 1)
+      throw new WorkflowNotFoundError('Workflow destination is not visible');
+    return Object.freeze(replay);
+  }
+  if (sourceRow.lifecycle_status !== 'active')
+    throw new WorkflowNotFoundError('Workflow source is not visible');
+  const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
+  const graph = await selectedGraph(client, input, definitionCatalog);
+  context.requirePlaceable(
+    EMPTY_WORKFLOW_GRAPH,
+    graph,
+    placementDefinitionCatalog ?? definitionCatalog,
+  );
+  await requireWorkflowCallTargets(client, input, graph);
+  try {
+    await requireConnectionBindings(client, input, graph);
+  } catch (error) {
+    if (error instanceof InvalidWorkflowGraphError)
+      throw new WorkflowNotFoundError('Workflow connection is not visible');
+    throw error;
+  }
+  await lockArtifactReferences(client, input.workspaceId, graph, input.actorId);
+  await persistDuplicate(client, input, { destinationId, graph });
+  const result = Object.freeze({ workflowId: destinationId });
+  await completeCommand(client, command, result);
+  return result;
+}
+async function persistDuplicate(
+  client: PoolClient,
+  input: DuplicateWorkflowInput,
+  {
+    destinationId,
+    graph,
+  }: Readonly<{ destinationId: string; graph: WorkflowGraph }>,
+) {
+  const db = drizzle(client);
+  await db
+    .insert(workflows)
+    .values({
+      id: destinationId,
+      workspaceId: input.workspaceId,
+      name: input.name,
+      lifecycleStatus: 'active',
+      activationStatus: 'inactive',
+      createdBy: input.actorId,
+    })
+    .catch(rethrowQueryFailure);
+  await db
+    .insert(workflowDrafts)
+    .values({
+      workflowId: destinationId,
+      workspaceId: input.workspaceId,
+      revision: 1,
+      graphJson: sql`${JSON.stringify(graph)}::json`,
+      updatedBy: input.actorId,
+    })
+    .catch(rethrowQueryFailure);
+  const origin = db
+    .select({
+      workspaceId: workflowTemplateOrigins.workspaceId,
+      workflowId: sql<string>`${destinationId}::uuid`.as('workflow_id'),
+      origin:
+        sql`${workflowTemplateOrigins.origin}||'{"derivation":"inherited"}'::jsonb`.as(
+          'origin',
+        ),
+    })
+    .from(workflowTemplateOrigins)
+    .where(
+      and(
+        eq(workflowTemplateOrigins.workspaceId, input.workspaceId),
+        eq(workflowTemplateOrigins.workflowId, input.workflowId),
+      ),
+    );
+  await db
+    .insert(workflowTemplateOrigins)
+    .select(origin)
+    .catch(rethrowQueryFailure);
+  await db
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorId,
+      action: 'workflow.duplicated',
+      targetType: 'workflow',
+      targetId: destinationId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: {
+        sourceWorkflowId: input.workflowId,
+        source: input.source,
+        revision: 1,
+      },
+    })
+    .catch(rethrowQueryFailure);
 }
