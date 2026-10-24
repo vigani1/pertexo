@@ -62,7 +62,9 @@ export function WorkflowEdge({
     }, HIDE_DELAY_MS);
   }
 
-  const weaveOrder = data?.weaveOrder ?? null;
+  const { intoIssue, failure, flowing, isSelected, weaveOrder } =
+    edgePresentation({ data, selected });
+  const showRemove = editable && (hovered || isSelected);
   return (
     <>
       <BaseEdge
@@ -72,13 +74,12 @@ export function WorkflowEdge({
         interactionWidth={18}
         className={cn(
           '!stroke-[1.6] transition-[stroke] duration-150 motion-reduce:transition-none',
-          (data?.intoIssue ?? false)
+          intoIssue
             ? '!stroke-destructive [stroke-dasharray:4_5]'
             : '!stroke-graph-link',
-          (data?.failure ?? false) &&
-            '!stroke-destructive [stroke-dasharray:1_4_7_4]',
+          failure && '!stroke-destructive [stroke-dasharray:1_4_7_4]',
           hovered && '!stroke-accent-foreground/75',
-          (selected ?? false) && '!stroke-primary !stroke-2',
+          isSelected && '!stroke-primary !stroke-2',
           FOCUSED_THREAD,
         )}
       />
@@ -90,7 +91,7 @@ export function WorkflowEdge({
         onMouseEnter={show}
         onMouseLeave={hideSoon}
       />
-      {(data?.flowing ?? false) ? (
+      {flowing ? (
         <path
           d={path}
           fill="none"
@@ -112,7 +113,7 @@ export function WorkflowEdge({
           className="pointer-events-none stroke-accent-foreground [stroke-dasharray:1] [stroke-dashoffset:1] [stroke-width:2.4] drop-shadow-[0_0_6px_var(--primary)] motion-safe:animate-[editor-weave_0.55s_var(--ease-unspool)_var(--weave-delay)_forwards] motion-reduce:hidden"
         />
       )}
-      {(data?.failure ?? false) ? (
+      {failure ? (
         <EdgeLabelRenderer>
           <span
             className="pointer-events-none absolute rounded bg-card/90 px-1.5 text-[0.7rem] text-destructive"
@@ -124,7 +125,7 @@ export function WorkflowEdge({
           </span>
         </EdgeLabelRenderer>
       ) : null}
-      {editable && (hovered || (selected ?? false)) ? (
+      {showRemove ? (
         <EdgeLabelRenderer>
           <button
             type="button"
@@ -145,4 +146,20 @@ export function WorkflowEdge({
       ) : null}
     </>
   );
+}
+
+function edgePresentation({
+  data,
+  selected,
+}: Readonly<{
+  data: WorkflowFlowEdge['data'];
+  selected: EdgeProps<WorkflowFlowEdge>['selected'];
+}>) {
+  return {
+    intoIssue: data?.intoIssue ?? false,
+    failure: data?.failure ?? false,
+    flowing: data?.flowing ?? false,
+    isSelected: selected ?? false,
+    weaveOrder: data?.weaveOrder ?? null,
+  };
 }
