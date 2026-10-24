@@ -1,3 +1,8 @@
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowVersions } from '../../schema/authoring/workflows.js';
+import { workflowVersionDependencies } from '../../schema/authoring/dependencies.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import {
   InvalidWorkflowGraphError,
@@ -11,8 +16,8 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import {
-  mapVersion,
-  workflowVersionRowSelection,
+  projectVersion,
+  versionProjection,
 } from '../workflows/representation/records.queries.js';
 
 /** Current author authority is fenced by publication; RLS scopes every target read. */
@@ -27,14 +32,19 @@ export async function validatePublicationCalls(
     await validateCallDependencyClosure(
       root,
       async (pin) => {
-        const result = await client.query<Record<string, unknown>>(
-          `select ${workflowVersionRowSelection} from app.workflow_versions
-         where workspace_id=$1 and workflow_id=$2 and id=$3`,
-          [identity.workspaceId, pin.workflowId, pin.workflowVersionId],
-        );
-        const row = result.rows[0];
+        const [row] = await drizzle(client)
+          .select(versionProjection)
+          .from(workflowVersions)
+          .where(
+            and(
+              eq(workflowVersions.workspaceId, identity.workspaceId),
+              eq(workflowVersions.workflowId, pin.workflowId),
+              eq(workflowVersions.id, pin.workflowVersionId),
+            ),
+          )
+          .catch(rethrowQueryFailure);
         if (row === undefined) throw new WorkflowCallDependencyError('pin');
-        const version = mapVersion(row);
+        const version = projectVersion(row);
         if (version.graphJson.callable === undefined)
           throw new InvalidWorkflowGraphError([
             {
@@ -86,16 +96,15 @@ export async function persistPublicationCalls(
   calls: CallableVersionSummary['calls'],
 ): Promise<void> {
   for (const { nodeId, pin } of calls)
-    await client.query(
-      `insert into app.workflow_version_dependencies
-        (workspace_id,parent_version_id,node_id,target_workflow_id,target_version_id)
-       values($1,$2,$3,$4,$5) on conflict do nothing`,
-      [
+    await drizzle(client)
+      .insert(workflowVersionDependencies)
+      .values({
         workspaceId,
         parentVersionId,
         nodeId,
-        pin.workflowId,
-        pin.workflowVersionId,
-      ],
-    );
+        targetWorkflowId: pin.workflowId,
+        targetVersionId: pin.workflowVersionId,
+      })
+      .onConflictDoNothing()
+      .catch(rethrowQueryFailure);
 }

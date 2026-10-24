@@ -1,3 +1,8 @@
+import { and, asc, eq, inArray } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import { workspaceMemberships, users } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import {
   approvalConfigSchema,
@@ -38,11 +43,26 @@ export async function validateApprovalAudience(
         ]);
     }
   if (members.size === 0) return;
-  const result = await client.query<{ user_id: string }>(
-    `select member.user_id from app.workspace_memberships member join app.users actor on actor.id=member.user_id and actor.status='active' where member.workspace_id=$1 and member.user_id=any($2::uuid[]) and member.status='active' order by member.user_id for share of member,actor`,
-    [workspaceId, [...members.keys()].sort()],
-  );
-  const active = new Set(result.rows.map((row) => row.user_id));
+  const member = alias(workspaceMemberships, 'member');
+  const actor = alias(users, 'actor');
+  const result = await drizzle(client)
+    .select({ userId: member.userId })
+    .from(member)
+    .innerJoin(
+      actor,
+      and(eq(actor.id, member.userId), eq(actor.status, 'active')),
+    )
+    .where(
+      and(
+        eq(member.workspaceId, workspaceId),
+        inArray(member.userId, [...members.keys()].sort()),
+        eq(member.status, 'active'),
+      ),
+    )
+    .orderBy(asc(member.userId))
+    .for('share', { of: [member, actor] })
+    .catch(rethrowQueryFailure);
+  const active = new Set(result.map((row) => row.userId));
   const issues = [...members].flatMap(([id, paths]) =>
     active.has(id)
       ? []
