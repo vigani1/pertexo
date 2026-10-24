@@ -6,25 +6,27 @@ import type { useWorkflowImportCommand } from '../../data/portability/mutations'
 
 export function WorkflowImportActions({
   commandState,
-  accessDenied,
-  checkingAccess,
-  canImport,
   onClose,
   onStartAnotherImport,
   onOpenWorkflow,
   onSubmitImport,
   children,
+  access,
 }: Readonly<{
   commandState: ReturnType<typeof useWorkflowImportCommand>['state'];
-  accessDenied: boolean;
-  checkingAccess: boolean;
-  canImport: boolean;
   onClose: () => void;
   onStartAnotherImport: () => void;
   onOpenWorkflow: (workflowId: string) => void;
   onSubmitImport: () => void;
   children: ReactNode;
+  access: Readonly<{
+    accessDenied: boolean;
+    checkingAccess: boolean;
+    canImport: boolean;
+  }>;
 }>) {
+  const { accessDenied, checkingAccess, canImport } = access;
+
   return (
     <div className="mt-5 flex flex-wrap justify-end gap-2">
       <Button variant="ghost" onClick={onClose}>

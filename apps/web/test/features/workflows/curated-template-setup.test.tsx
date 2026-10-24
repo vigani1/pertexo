@@ -43,15 +43,17 @@ function mount(example: string, catalog = curatedCatalog()) {
   );
   const onClose = vi.fn();
   const props = {
-    apiClient: createApiClient({
-      fetch: testFetch,
-      readCsrfToken: () =>
-        'csrf-token-for-component-tests-12345678901234567890',
-    }),
-    userId,
-    workspace: accessibleWorkspaceSchema.parse(
-      workspaceWith(['workflow:create', 'connection:read']),
-    ),
+    scope: {
+      apiClient: createApiClient({
+        fetch: testFetch,
+        readCsrfToken: () =>
+          'csrf-token-for-component-tests-12345678901234567890',
+      }),
+      userId,
+      workspace: accessibleWorkspaceSchema.parse(
+        workspaceWith(['workflow:create', 'connection:read']),
+      ),
+    },
     onClose,
     onCreated: vi.fn(),
     templatesEnabled: true,

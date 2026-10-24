@@ -99,9 +99,6 @@ export function WorkflowListOverlays({
       {duplicating === undefined ? null : (
         <WorkflowDuplicateDialog
           key={`${userId}:${workspace.id}:${duplicating.id}`}
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
           workflow={duplicating}
           source={{ kind: 'draft' }}
           onClose={() => {
@@ -111,6 +108,7 @@ export function WorkflowListOverlays({
             setDuplicating(undefined);
             onCreated(workflowId);
           }}
+          scope={{ apiClient, userId, workspace: workspace }}
         />
       )}
       {exporting === undefined ? null : (
@@ -130,9 +128,6 @@ export function WorkflowListOverlays({
           retained file import isn't mixed with an example's setup. */}
       <WorkflowImportDialog
         key={`${userId}:${workspace.id}:${example ?? 'file'}:${exampleName}`}
-        apiClient={apiClient}
-        userId={userId}
-        workspace={workspace}
         open={importing}
         example={example}
         initialName={exampleName}
@@ -146,6 +141,7 @@ export function WorkflowListOverlays({
           setImporting(false);
           onCreated(id);
         }}
+        scope={{ apiClient, userId, workspace: workspace }}
       />
     </>
   );

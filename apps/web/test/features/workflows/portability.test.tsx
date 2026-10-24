@@ -75,11 +75,9 @@ function openImport() {
   const onCreated = vi.fn();
   const result = renderInRouter(
     <WorkflowImportDialog
-      apiClient={client()}
-      userId={userId}
-      workspace={workspace()}
       onClose={vi.fn()}
       onCreated={onCreated}
+      scope={{ apiClient: client(), userId, workspace: workspace() }}
     />,
   );
   return { ...result, event: userEvent.setup(), onCreated };

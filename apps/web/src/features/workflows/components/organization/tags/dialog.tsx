@@ -124,13 +124,15 @@ function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
             ready={tags.isSuccess && !tags.isFetching}
             locked={locked}
             scope={{ workspaceId: workspace.id }}
-            start={start}
             command={command}
             pendingKind={pendingKind}
-            onReload={() => void tags.refetch()}
-            onCleanup={(tag) => {
-              command.reset();
-              setCleanup(tag);
+            actions={{
+              start,
+              onReload: () => void tags.refetch(),
+              onCleanup: (tag) => {
+                command.reset();
+                setCleanup(tag);
+              },
             }}
           />
           <LoadMore

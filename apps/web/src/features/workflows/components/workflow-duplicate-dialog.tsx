@@ -23,9 +23,6 @@ import { useWorkflowDuplicate } from '../hooks/use-workflow-duplicate';
 import { canDuplicateWorkflow } from '../model/duplicate/allowed';
 
 type WorkflowDuplicateDialogProps = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
   workflow: WorkflowSummary;
   source: WorkflowDuplicateRequest['source'];
   versionNumber?: number;
@@ -33,12 +30,14 @@ type WorkflowDuplicateDialogProps = Readonly<{
   onClose: () => void;
   onCreated: (workflowId: string) => void;
   finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+  }>;
 }>;
 
 export function WorkflowDuplicateDialog({
-  apiClient,
-  userId,
-  workspace,
   workflow,
   source,
   versionNumber,
@@ -46,7 +45,10 @@ export function WorkflowDuplicateDialog({
   onClose,
   onCreated,
   finalFocus,
+  scope,
 }: WorkflowDuplicateDialogProps) {
+  const { apiClient, userId, workspace } = scope;
+
   const [name, setName] = useState(
     () => `${workflow.name.slice(0, 121)} (copy)`,
   );

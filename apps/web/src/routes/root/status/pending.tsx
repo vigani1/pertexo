@@ -76,10 +76,6 @@ export function WorkflowHubPending() {
     workflowId === null ? null : (
       <div inert aria-hidden="true">
         <WorkflowHubBar
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-          workflowId={workflowId}
           workflow={cachedWorkflowSummary(
             queryClient,
             user.id,
@@ -87,6 +83,12 @@ export function WorkflowHubPending() {
             workflowId,
           )}
           activeTab={tab}
+          scope={{
+            apiClient,
+            userId: user.id,
+            workspace,
+            workflowId,
+          }}
         />
       </div>
     );

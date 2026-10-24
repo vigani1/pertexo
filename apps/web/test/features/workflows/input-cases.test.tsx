@@ -60,9 +60,9 @@ function CaseBrowser(
   const cases = useInputCases({
     api: props.apiClient,
     userId: props.userId,
-    workspaceId: props.workspace.id,
-    workflowId: props.workflow.id,
-    canWrite: props.workspace.capabilities.includes('workflow:update'),
+    workspaceId: props.scope.workspace.id,
+    workflowId: props.scope.workflow.id,
+    canWrite: props.scope.workspace.capabilities.includes('workflow:update'),
   });
   return <InputCasesPanel {...props} cases={cases} />;
 }
@@ -87,13 +87,17 @@ function open(canWrite = true) {
           'csrf-token-for-component-tests-12345678901234567890',
       })}
       userId={userId}
-      workspace={accessibleWorkspaceSchema.parse(
-        workspaceWith(canWrite ? ['workflow:update'] : ['run:start']),
-      )}
-      workflow={workflowSummarySchema.parse(
-        summary(workflowId, 'Case workflow', { publishedVersionId: versionId }),
-      )}
       onLoad={onLoad}
+      scope={{
+        workspace: accessibleWorkspaceSchema.parse(
+          workspaceWith(canWrite ? ['workflow:update'] : ['run:start']),
+        ),
+        workflow: workflowSummarySchema.parse(
+          summary(workflowId, 'Case workflow', {
+            publishedVersionId: versionId,
+          }),
+        ),
+      }}
     />,
   );
   return { ...result, onLoad, event: userEvent.setup() };
@@ -172,9 +176,8 @@ describe('shared workflow input cases', () => {
         <CaseBrowser
           apiClient={apiClient}
           userId={userId}
-          workspace={workspace}
-          workflow={workflow}
           onLoad={vi.fn()}
+          scope={{ workspace, workflow: workflow }}
         />
         <ClosedCaseBrowser />
       </>,

@@ -67,84 +67,88 @@ export function EditorCommandBar({
       finalFocus={finalFocus}
     >
       <WorkflowHubBar
-        apiClient={apiClient}
-        userId={userId}
-        workspace={workspace}
-        workflowId={workflowId}
         workflow={workflow}
         activeTab="build"
-        presence={presence}
         duplicateBlocked={duplicateBlocked}
         overflowRef={moreRef}
-        mobileActions={
-          <>
-            <DialogTrigger
-              render={<DropdownMenuItem />}
-              disabled={contractBlocked}
-              aria-label="Workflow contract"
-            >
-              <BracesIcon aria-hidden="true" />
-              Contract
-            </DialogTrigger>
-            {testMenuItems}
-            <HistoryMenuItems
-              onUndo={onUndo}
-              onRedo={onRedo}
-              onShowShortcuts={() => {
-                onShortcutsOpenChange(true);
-              }}
+        slots={{
+          presence,
+          mobileActions: (
+            <>
+              <DialogTrigger
+                render={<DropdownMenuItem />}
+                disabled={contractBlocked}
+                aria-label="Workflow contract"
+              >
+                <BracesIcon aria-hidden="true" />
+                Contract
+              </DialogTrigger>
+              {testMenuItems}
+              <HistoryMenuItems
+                onUndo={onUndo}
+                onRedo={onRedo}
+                onShowShortcuts={() => {
+                  onShortcutsOpenChange(true);
+                }}
+              />
+            </>
+          ),
+          glyph: (
+            <PatternGlyph
+              graph={graph}
+              muted={(workflow?.publishedVersionId ?? null) === null}
+              className="hidden sm:block"
             />
-          </>
-        }
-        glyph={
-          <PatternGlyph
-            graph={graph}
-            muted={(workflow?.publishedVersionId ?? null) === null}
-            className="hidden sm:block"
-          />
-        }
-        detail={
-          <>
-            <LiveVersion
-              apiClient={apiClient}
-              userId={userId}
-              workspaceId={workspace.id}
-              workflow={workflow}
-            />
-            <SaveState onRetry={onRetrySave} onReview={onReviewConflict} />
-          </>
-        }
-        actions={
-          <>
-            <DialogTrigger
-              ref={contractRef}
-              render={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="hidden sm:inline-flex"
-                />
-              }
-              disabled={contractBlocked}
-              aria-label="Workflow contract"
-            >
-              <BracesIcon aria-hidden="true" />
-              Contract
-            </DialogTrigger>
-            <HistoryControls
-              onUndo={onUndo}
-              onRedo={onRedo}
-              className="hidden sm:flex"
-            />
-            <ShortcutSheet
-              open={shortcutsOpen}
-              onOpenChange={onShortcutsOpenChange}
-              triggerClassName="hidden sm:inline-flex"
-              fallbackAnchor={moreRef}
-            />
-            {commands}
-          </>
-        }
+          ),
+          detail: (
+            <>
+              <LiveVersion
+                apiClient={apiClient}
+                userId={userId}
+                workspaceId={workspace.id}
+                workflow={workflow}
+              />
+              <SaveState onRetry={onRetrySave} onReview={onReviewConflict} />
+            </>
+          ),
+          actions: (
+            <>
+              <DialogTrigger
+                ref={contractRef}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="hidden sm:inline-flex"
+                  />
+                }
+                disabled={contractBlocked}
+                aria-label="Workflow contract"
+              >
+                <BracesIcon aria-hidden="true" />
+                Contract
+              </DialogTrigger>
+              <HistoryControls
+                onUndo={onUndo}
+                onRedo={onRedo}
+                className="hidden sm:flex"
+              />
+              <ShortcutSheet
+                open={shortcutsOpen}
+                onOpenChange={onShortcutsOpenChange}
+                triggerClassName="hidden sm:inline-flex"
+                fallbackAnchor={moreRef}
+              />
+              {commands}
+            </>
+          ),
+        }}
+        scope={{
+          apiClient,
+          userId,
+          workspace,
+          workflowId,
+        }}
       />
     </DeclarationDialog>
   );

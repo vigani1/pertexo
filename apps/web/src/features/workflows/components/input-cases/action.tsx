@@ -124,10 +124,9 @@ function InputCasesDialog({
             <InputCasesPanel
               key={`${userId}:${workspace.id}:${workflow.id}`}
               cases={cases}
-              workspace={workspace}
-              workflow={workflow}
               onAccessLost={clearLoaded}
               onLoad={setLoaded}
+              scope={{ workspace, workflow: workflow }}
             />
           </Suspense>
           {loaded === undefined ? null : (

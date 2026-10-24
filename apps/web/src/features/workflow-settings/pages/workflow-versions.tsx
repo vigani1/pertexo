@@ -321,9 +321,6 @@ function VersionOverlayContent({
       return workflow === undefined ? null : (
         <WorkflowDuplicateDialog
           key={`${userId}:${workspace.id}:${workflowId}:${overlay.version.id}`}
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
           workflow={workflow}
           source={{ kind: 'version', versionId: overlay.version.id }}
           versionNumber={overlay.version.versionNumber}
@@ -336,6 +333,7 @@ function VersionOverlayContent({
               params: { workspaceId: workspace.id, workflowId: destinationId },
             });
           }}
+          scope={{ apiClient, userId, workspace: workspace }}
         />
       );
     case 'export':

@@ -17,18 +17,15 @@ export type LoadedInputCase = Readonly<{
 /** The single shared case browser/editor, never an execution command. */
 export function InputCasesPanel({
   cases,
-  workspace,
-  workflow,
   disabled = false,
   readOnly = false,
   editing: controlledEditing,
   onLoad,
   onEditingChange,
   onAccessLost,
+  scope,
 }: Readonly<{
   cases: ReturnType<typeof useInputCases>;
-  workspace: AccessibleWorkspace;
-  workflow: WorkflowSummary;
   disabled?: boolean;
   readOnly?: boolean;
   /** The run dialog owns editing alongside its confirmation guard. */
@@ -36,7 +33,13 @@ export function InputCasesPanel({
   onLoad: (input: LoadedInputCase) => void;
   onEditingChange?: (editing: boolean) => void;
   onAccessLost?: () => void;
+  scope: Readonly<{
+    workspace: AccessibleWorkspace;
+    workflow: WorkflowSummary;
+  }>;
 }>) {
+  const { workspace, workflow } = scope;
+
   const writable =
     !readOnly &&
     workspace.status === 'active' &&
