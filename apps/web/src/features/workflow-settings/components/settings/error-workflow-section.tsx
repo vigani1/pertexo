@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
+import { LoadMore } from '@/components/patterns/lists/load-more';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
@@ -26,7 +27,7 @@ import {
 } from '../../data/error-workflow/queries';
 import { useErrorWorkflowCommand } from '../../data/error-workflow/use-command';
 import { visibleSettingsData } from '../../model/settings-query';
-import { SettingsQueryState } from '../settings-query-state';
+import { settingsReadFailure } from '../settings-read-failure';
 
 type Scope = Readonly<{
   apiClient: ApiClient;
@@ -137,17 +138,19 @@ function ErrorWorkflowEditor({
           )}
         </LabelledField>
       </FieldGroup>
-      <SettingsQueryState query={targets} resource="Error workflow choices" />
-      {targets.hasNextPage ? (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={targets.isFetchingNextPage}
-          onClick={() => void targets.fetchNextPage()}
-        >
-          More workflows
-        </Button>
-      ) : null}
+      <QueryView
+        query={targets}
+        resource="Error workflow choices"
+        failure={settingsReadFailure}
+      />
+      <LoadMore
+        subject="workflows"
+        label="More workflows"
+        hasNextPage={targets.hasNextPage}
+        loading={targets.isFetchingNextPage}
+        failed={targets.isFetchNextPageError}
+        onLoadMore={() => void targets.fetchNextPage()}
+      />
       {available.length === 0 && !targets.isPending && !targets.isError ? (
         <p className="text-sm text-muted-foreground">
           Publish a workflow with When a workflow fails to make it available
@@ -204,7 +207,6 @@ export function ErrorWorkflowSection(scope: Scope) {
     ),
     enabled: canRead,
   });
-  const settings = canRead ? visibleSettingsData(query) : undefined;
   const editable =
     scope.workspace.status === 'active' &&
     scope.workspace.capabilities.includes('workflow:update');
@@ -213,59 +215,67 @@ export function ErrorWorkflowSection(scope: Scope) {
       title="Error workflow"
       description="Another workflow to run when this one fails."
     >
-      <SettingsQueryState query={query} resource="Error workflow settings" />
-      {settings === undefined ? null : (
-        <SettingSentence
-          summary={
-            <>
-              {settings.targetWorkflowId === null ? (
+      {canRead ? (
+        <QueryView
+          query={query}
+          resource="Error workflow settings"
+          failure={settingsReadFailure}
+        >
+          {(settings) => (
+            <SettingSentence
+              summary={
                 <>
-                  <b>Nothing else runs</b> when this workflow fails.
+                  {settings.targetWorkflowId === null ? (
+                    <>
+                      <b>Nothing else runs</b> when this workflow fails.
+                    </>
+                  ) : (
+                    <>
+                      When this workflow fails, Pertexo runs{' '}
+                      <b>
+                        {settings.targetWorkflowName ??
+                          'a workflow you can’t open'}
+                      </b>
+                      .
+                    </>
+                  )}
+                  {editable
+                    ? null
+                    : ' Changing it takes edit access to both workflows.'}
                 </>
-              ) : (
-                <>
-                  When this workflow fails, Pertexo runs{' '}
-                  <b>
-                    {settings.targetWorkflowName ?? 'a workflow you can’t open'}
-                  </b>
-                  .
-                </>
-              )}
-              {editable
-                ? null
-                : ' Changing it takes edit access to both workflows.'}
-            </>
-          }
-          editing={editing}
-          onEditingChange={setEditing}
-          {...(editable
-            ? {
-                editor: (
-                  <ErrorWorkflowEditor
-                    scope={scope}
-                    settings={settings}
-                    onSaved={() => {
-                      setEditing(false);
-                    }}
-                  />
-                ),
               }
-            : {})}
-          rules={
-            <>
-              <p>
-                Only failures nothing handled start it; handled failures and
-                canceled runs don’t.
-              </p>
-              <p>
-                It receives a short summary and a link to the run, never the
-                run’s data. It uses normal run limits, and its own failures
-                never start another error workflow.
-              </p>
-            </>
-          }
-        />
-      )}
+              editing={editing}
+              onEditingChange={setEditing}
+              {...(editable
+                ? {
+                    editor: (
+                      <ErrorWorkflowEditor
+                        scope={scope}
+                        settings={settings}
+                        onSaved={() => {
+                          setEditing(false);
+                        }}
+                      />
+                    ),
+                  }
+                : {})}
+              rules={
+                <>
+                  <p>
+                    Only failures nothing handled start it; handled failures and
+                    canceled runs don’t.
+                  </p>
+                  <p>
+                    It receives a short summary and a link to the run, never the
+                    run’s data. It uses normal run limits, and its own failures
+                    never start another error workflow.
+                  </p>
+                </>
+              }
+            />
+          )}
+        </QueryView>
+      ) : null}
     </SettingsSection>
   );
 }

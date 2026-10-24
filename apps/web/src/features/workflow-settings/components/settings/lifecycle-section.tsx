@@ -14,11 +14,12 @@ import {
 import type { ApiClient } from '@/lib/api/client';
 import { workflowSettingsKeys } from '../../data/workflow-settings.queries';
 import {
-  visibleSettingsData,
-  type SettingsQuery,
-} from '../../model/settings-query';
+  QueryView,
+  type ReadQuery,
+} from '@/components/patterns/states/query-view';
+import { visibleSettingsData } from '../../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { SettingsQueryState } from '../settings-query-state';
+import { settingsReadFailure } from '../settings-read-failure';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
 /** Where the workflow is now, what archiving or restoring does, and the button. */
@@ -98,7 +99,7 @@ export function LifecycleSection({
   userId: string;
   workspace: AccessibleWorkspace;
   workflowId: string;
-  query: SettingsQuery<WorkflowSummary>;
+  query: ReadQuery<WorkflowSummary>;
 }>) {
   const queryClient = useQueryClient();
   const [intent, setIntent] = useState<LifecycleIntent>();
@@ -110,17 +111,22 @@ export function LifecycleSection({
       title="Lifecycle"
       description="Archive a workflow you no longer need. Nothing is deleted."
     >
-      <SettingsQueryState query={query} resource="This workflow" />
-      {workflow === undefined ? null : (
-        <LifecycleCard
-          workflow={workflow}
-          role={workspace.role}
-          canManage={canManage}
-          onStart={() => {
-            setIntent(lifecycleIntentFor(workflow));
-          }}
-        />
-      )}
+      <QueryView
+        query={query}
+        resource="This workflow"
+        failure={settingsReadFailure}
+      >
+        {(shown) => (
+          <LifecycleCard
+            workflow={shown}
+            role={workspace.role}
+            canManage={canManage}
+            onStart={() => {
+              setIntent(lifecycleIntentFor(shown));
+            }}
+          />
+        )}
+      </QueryView>
       <WorkflowLifecycleDialog
         key={
           intent === undefined

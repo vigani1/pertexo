@@ -3,6 +3,8 @@ import type { WorkflowCommentThread } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
 import { Notice } from '@/components/ui/notice';
+import { LoadMore } from '@/components/patterns/lists/load-more';
+import { QueryView } from '@/components/patterns/states/query-view';
 import type { CollaborationScope } from '../data/collaboration.api';
 import { discussionQuery } from '../data/collaboration.queries';
 import { useDiscussionCommand } from '../data/collaboration.mutations';
@@ -23,33 +25,25 @@ export function WorkflowDiscussion(props: DiscussionProps) {
   const thread = query.data?.pages[0]?.thread;
   if (thread === undefined)
     return (
-      <Notice tone={query.isError ? 'warning' : 'info'}>
-        {query.isError
-          ? 'This discussion is unavailable or you no longer have access.'
-          : 'Loading discussion…'}
+      <div className="flex flex-col items-start gap-3">
+        <QueryView query={query} resource="This discussion" />
         <Button variant="ghost" onClick={onClose}>
           Back to discussions
         </Button>
-      </Notice>
+      </div>
     );
   return (
     <section aria-label="Discussion" className="space-y-5">
       <DiscussionHeader {...props} thread={thread} />
-      {query.hasNextPage ? (
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={query.isFetchingNextPage}
-          onClick={() => void query.fetchNextPage()}
-        >
-          Older comments
-        </Button>
-      ) : null}
-      {query.isError ? (
-        <Notice tone="warning">
-          Updates could not be loaded. Your text is kept.
-        </Notice>
-      ) : null}
+      <LoadMore
+        subject="comments"
+        label="Older comments"
+        hasNextPage={query.hasNextPage}
+        loading={query.isFetchingNextPage}
+        failed={query.isFetchNextPageError}
+        onLoadMore={() => void query.fetchNextPage()}
+      />
+      <QueryView query={query} resource="This discussion" />
       <ol className="space-y-3">
         {query.data?.pages
           .flatMap((page) => page.comments)

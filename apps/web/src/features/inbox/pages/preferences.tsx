@@ -1,3 +1,4 @@
+import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
 import { useId, type ReactNode } from 'react';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
@@ -17,7 +18,6 @@ export function NotificationPreferencesPage({
   scope: WorkspaceApiScope;
 }) {
   const query = useQuery(notificationPreferencesQueryOptions(scope));
-  const data = query.data;
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <PageHeader>
@@ -27,56 +27,42 @@ export function NotificationPreferencesPage({
         Choose how often email reaches you. Your Inbox always has everything;
         alerts sent to Slack or a shared address are set up in Alerts.
       </p>
-      {query.isError ? (
-        <Notice
-          tone="warning"
-          action={
-            <Button variant="outline" onClick={() => void query.refetch()}>
-              Retry
-            </Button>
-          }
-        >
-          Notification choices could not be refreshed.
-        </Notice>
-      ) : null}
-      {data === undefined ? (
-        query.isPending ? (
-          <p role="status">Loading notification choices…</p>
-        ) : null
-      ) : (
-        <>
-          {data.emailUnavailableReason === null ? null : (
-            <Notice>{data.emailUnavailableReason}</Notice>
-          )}
-          <NotificationRoute snapshot={data} />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ScheduleCard
-              title="Your email"
-              current={describePersonalChoice(data)}
-              note="Immediate messages are grouped within a minute. Hourly digests arrive at the next hour; daily ones in your time zone. New changes only."
-            >
-              <NotificationScheduleEditor
-                scope={scope}
-                snapshot={data}
-                target="personal"
-              />
-            </ScheduleCard>
-            <ScheduleCard
-              title="Workspace default"
-              current={`Members get: ${describeSchedule(data.defaults).toLowerCase()}, unless they choose their own.`}
-              note="Owners and admins set it for everyone who hasn't chosen."
-            >
-              {data.canManageDefaults ? (
+      <QueryView query={query} resource="Notification choices">
+        {(data) => (
+          <>
+            {data.emailUnavailableReason === null ? null : (
+              <Notice>{data.emailUnavailableReason}</Notice>
+            )}
+            <NotificationRoute snapshot={data} />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ScheduleCard
+                title="Your email"
+                current={describePersonalChoice(data)}
+                note="Immediate messages are grouped within a minute. Hourly digests arrive at the next hour; daily ones in your time zone. New changes only."
+              >
                 <NotificationScheduleEditor
                   scope={scope}
                   snapshot={data}
-                  target="defaults"
+                  target="personal"
                 />
-              ) : null}
-            </ScheduleCard>
-          </div>
-        </>
-      )}
+              </ScheduleCard>
+              <ScheduleCard
+                title="Workspace default"
+                current={`Members get: ${describeSchedule(data.defaults).toLowerCase()}, unless they choose their own.`}
+                note="Owners and admins set it for everyone who hasn't chosen."
+              >
+                {data.canManageDefaults ? (
+                  <NotificationScheduleEditor
+                    scope={scope}
+                    snapshot={data}
+                    target="defaults"
+                  />
+                ) : null}
+              </ScheduleCard>
+            </div>
+          </>
+        )}
+      </QueryView>
     </div>
   );
 }

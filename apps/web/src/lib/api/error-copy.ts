@@ -35,6 +35,7 @@ export function supportReference(error: unknown): string | undefined {
 /** A sentence for a failed read, e.g. `describeReadError(error, 'Runs')`. */
 export function describeReadError(error: unknown, resource: string): string {
   if (isApiError(error)) {
+    if (error.status === 401) return 'Your session ended. Sign in again.';
     if (error.status === 403)
       return `Your role no longer has access to ${resource.toLowerCase()} here.`;
     if (error.kind === 'network')

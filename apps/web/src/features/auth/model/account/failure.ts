@@ -14,16 +14,6 @@ export function needsFreshSignIn(error: unknown): boolean {
   );
 }
 
-export function accountReadFailure(error: unknown, what: string): string {
-  if (isApiError(error)) {
-    if (error.status === 401)
-      return 'Your session ended. Sign in again to see your account.';
-    if (error.kind === 'network')
-      return `Your ${what} couldn’t be reached. Check your connection and try again.`;
-  }
-  return `Your ${what} couldn’t be loaded. Try again.`;
-}
-
 /** `action` reads as a verb phrase: "changing your password". */
 export function accountCommandFailure(error: unknown, action: string): string {
   if (isApiError(error)) {

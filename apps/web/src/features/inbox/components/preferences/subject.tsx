@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldLabel as Label } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
+import { QueryView } from '@/components/patterns/states/query-view';
 import {
   Sheet,
   SheetContent,
@@ -177,19 +178,16 @@ function SubscriptionContent({
   subject: NoticeSubject;
 }) {
   const query = useQuery(notificationSubscriptionQueryOptions(scope, subject));
-  return query.data === undefined ? (
-    query.isError ? (
-      <Notice
-        tone="warning"
-        action={<Button onClick={() => void query.refetch()}>Retry</Button>}
-      >
-        Personal choices could not be loaded.
-      </Notice>
-    ) : (
-      <p role="status">Loading personal choices…</p>
-    )
-  ) : (
-    <SubscriptionEditor scope={scope} subject={subject} snapshot={query.data} />
+  return (
+    <QueryView query={query} resource="Personal choices">
+      {(snapshot) => (
+        <SubscriptionEditor
+          scope={scope}
+          subject={subject}
+          snapshot={snapshot}
+        />
+      )}
+    </QueryView>
   );
 }
 export function NoticeSubjectActions({

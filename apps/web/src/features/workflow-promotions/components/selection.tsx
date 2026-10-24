@@ -7,7 +7,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Notice } from '@/components/ui/notice';
+import { LoadMore } from '@/components/patterns/lists/load-more';
+import { QueryView } from '@/components/patterns/states/query-view';
 import {
   Select,
   SelectTrigger,
@@ -53,96 +54,92 @@ export function PromotionSelection({
         Choose up to {String(PROMOTION_LIMITS.workflows)} workflows. A retained
         version stays selected until you change it.
       </p>
-      <ul className="divide-y divide-border">
-        {candidates.data?.pages
-          .flatMap((page) => page.items)
-          .map((workflow) => {
-            const selected = selections.find(
-              (item) => item.workflowId === workflow.workflowId,
-            );
-            return (
-              <li
-                key={workflow.workflowId}
-                className="flex flex-wrap items-center gap-3 py-3"
-              >
-                <label className="flex min-w-0 flex-1 items-center gap-3 text-sm">
-                  <Checkbox
-                    checked={selected !== undefined}
-                    disabled={
-                      locked ||
-                      (selected === undefined &&
-                        selections.length >= PROMOTION_LIMITS.workflows)
-                    }
-                    onCheckedChange={(checked) => {
-                      onChange(
-                        checked
-                          ? [
-                              ...selections,
-                              {
-                                workflowId: workflow.workflowId,
-                                versionId: workflow.versionId,
-                              },
-                            ]
-                          : selections.filter(
-                              (item) => item.workflowId !== workflow.workflowId,
+      <QueryView
+        query={candidates}
+        resource="Published workflows"
+        isEmpty={(data) => data.pages.every((page) => page.items.length === 0)}
+        empty={
+          <p className="text-sm text-muted-foreground">
+            No published workflows match.
+          </p>
+        }
+      >
+        {(data) => (
+          <ul className="divide-y divide-border">
+            {data.pages
+              .flatMap((page) => page.items)
+              .map((workflow) => {
+                const selected = selections.find(
+                  (item) => item.workflowId === workflow.workflowId,
+                );
+                return (
+                  <li
+                    key={workflow.workflowId}
+                    className="flex flex-wrap items-center gap-3 py-3"
+                  >
+                    <label className="flex min-w-0 flex-1 items-center gap-3 text-sm">
+                      <Checkbox
+                        checked={selected !== undefined}
+                        disabled={
+                          locked ||
+                          (selected === undefined &&
+                            selections.length >= PROMOTION_LIMITS.workflows)
+                        }
+                        onCheckedChange={(checked) => {
+                          onChange(
+                            checked
+                              ? [
+                                  ...selections,
+                                  {
+                                    workflowId: workflow.workflowId,
+                                    versionId: workflow.versionId,
+                                  },
+                                ]
+                              : selections.filter(
+                                  (item) =>
+                                    item.workflowId !== workflow.workflowId,
+                                ),
+                          );
+                        }}
+                      />
+                      <span className="break-words">{workflow.name}</span>
+                    </label>
+                    {selected === undefined ? (
+                      <span className="text-xs text-muted-foreground">
+                        v{String(workflow.versionNumber)} live
+                      </span>
+                    ) : (
+                      <PromotionVersion
+                        scope={scope}
+                        workflowId={workflow.workflowId}
+                        workflowName={workflow.name}
+                        versionId={selected.versionId}
+                        locked={locked}
+                        onChange={(versionId) => {
+                          onChange(
+                            selections.map((item) =>
+                              item.workflowId === workflow.workflowId
+                                ? { ...item, versionId }
+                                : item,
                             ),
-                      );
-                    }}
-                  />
-                  <span className="break-words">{workflow.name}</span>
-                </label>
-                {selected === undefined ? (
-                  <span className="text-xs text-muted-foreground">
-                    v{String(workflow.versionNumber)} live
-                  </span>
-                ) : (
-                  <PromotionVersion
-                    scope={scope}
-                    workflowId={workflow.workflowId}
-                    workflowName={workflow.name}
-                    versionId={selected.versionId}
-                    locked={locked}
-                    onChange={(versionId) => {
-                      onChange(
-                        selections.map((item) =>
-                          item.workflowId === workflow.workflowId
-                            ? { ...item, versionId }
-                            : item,
-                        ),
-                      );
-                    }}
-                  />
-                )}
-              </li>
-            );
-          })}
-      </ul>
-      {candidates.isPending ? (
-        <p role="status">Loading published workflows…</p>
-      ) : null}
-      {candidates.isError ? (
-        <Notice tone="warning">
-          Published workflows could not be loaded.{' '}
-          <Button variant="ghost" onClick={() => void candidates.refetch()}>
-            Retry
-          </Button>
-        </Notice>
-      ) : null}
-      {candidates.data?.pages[0]?.items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No published workflows match.
-        </p>
-      ) : null}
-      {candidates.hasNextPage ? (
-        <Button
-          variant="outline"
-          className="self-start"
-          disabled={candidates.isFetchingNextPage}
-          onClick={() => void candidates.fetchNextPage()}
-        >
-          More workflows
-        </Button>
-      ) : null}
+                          );
+                        }}
+                      />
+                    )}
+                  </li>
+                );
+              })}
+          </ul>
+        )}
+      </QueryView>
+      <LoadMore
+        subject="workflows"
+        label="More workflows"
+        hasNextPage={candidates.hasNextPage}
+        loading={candidates.isFetchingNextPage}
+        failed={candidates.isFetchNextPageError}
+        onLoadMore={() => void candidates.fetchNextPage()}
+      />
       {selections.length > 0 ? (
         <div className="flex items-center gap-3 text-sm">
           <span>{String(selections.length)} selected</span>
@@ -212,18 +209,7 @@ function PromotionVersion({
           Older versions
         </Button>
       ) : null}
-      {versions.isError ? (
-        <p className="text-xs text-warning">
-          Versions unavailable. Your selection is kept.{' '}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void versions.refetch()}
-          >
-            Retry versions
-          </Button>
-        </p>
-      ) : null}
+      <QueryView query={versions} resource="Versions" loading={null} />
     </div>
   );
 }

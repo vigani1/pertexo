@@ -18,6 +18,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { FieldDescription, LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
+import { LoadMore } from '@/components/patterns/lists/load-more';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { workflowsInfiniteQueryOptions } from '@/features/workflows/queries.public';
 import {
   callTargetVersionsQueryOptions,
@@ -107,31 +109,24 @@ export function CallTargetField({
           )}
         </LabelledField>
       )}
-      {targetId !== null && versions.hasNextPage ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={versions.isFetching}
-          onClick={() => {
-            void versions.fetchNextPage();
-          }}
-        >
-          Load more versions
-        </Button>
-      ) : null}
-      {pinnedVersion.isError ? (
-        <Notice tone="destructive">
-          The pinned version could not be loaded.{' '}
-          <Button
-            variant="link"
-            onClick={() => {
-              void pinnedVersion.refetch();
-            }}
-          >
-            Try again
-          </Button>
-        </Notice>
-      ) : null}
+      {targetId === null ? null : (
+        <>
+          <QueryView query={versions} resource="Versions" loading={null} />
+          <LoadMore
+            subject="versions"
+            label="Load more versions"
+            hasNextPage={versions.hasNextPage}
+            loading={versions.isFetchingNextPage}
+            failed={versions.isFetchNextPageError}
+            onLoadMore={() => void versions.fetchNextPage()}
+          />
+        </>
+      )}
+      <QueryView
+        query={pinnedVersion}
+        resource="The pinned version"
+        loading={null}
+      />
       {pin === undefined ? null : (
         <p className="text-xs text-subtle-foreground">
           Pinned to{' '}
@@ -233,31 +228,15 @@ function ChildWorkflowField({
           />
         )}
       </LabelledField>
-      {workflows.hasNextPage ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={workflows.isFetchingNextPage}
-          onClick={() => {
-            void workflows.fetchNextPage();
-          }}
-        >
-          Load more workflows
-        </Button>
-      ) : null}
-      {workflows.isError ? (
-        <Notice tone="destructive">
-          Workflow discovery failed.{' '}
-          <Button
-            variant="link"
-            onClick={() => {
-              void workflows.refetch();
-            }}
-          >
-            Try again
-          </Button>
-        </Notice>
-      ) : null}
+      <LoadMore
+        subject="workflows"
+        label="Load more workflows"
+        hasNextPage={workflows.hasNextPage}
+        loading={workflows.isFetchingNextPage}
+        failed={workflows.isFetchNextPageError}
+        onLoadMore={() => void workflows.fetchNextPage()}
+      />
+      <QueryView query={workflows} resource="Workflows" loading={null} />
       {pinnedWorkflow?.lifecycleStatus === 'archived' ? (
         <Notice tone="warning">
           This child is archived. New Calls will fail until it is restored.
@@ -316,21 +295,7 @@ function versionDiscoveryDescription(
   query: VersionDiscovery,
   targets: readonly WorkflowVersionResponse[],
 ): ReactNode {
-  if (query.isError)
-    return (
-      <>
-        Versions could not be loaded.{' '}
-        <Button
-          variant="link"
-          onClick={() => {
-            void query.refetch();
-          }}
-        >
-          Try again
-        </Button>
-      </>
-    );
-  if (query.isPending || targets.length > 0) return undefined;
+  if (query.isPending || query.isError || targets.length > 0) return undefined;
   return query.hasNextPage
     ? 'No callable versions loaded yet. Load more versions to continue.'
     : 'This workflow has no published callable contract. Add a contract and publish it first.';

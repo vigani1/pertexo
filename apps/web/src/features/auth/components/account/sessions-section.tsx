@@ -9,13 +9,11 @@ import { SkeletonRows } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { accountSecuritySessionsQueryOptions } from '../../data/account-security.queries';
-import {
-  accountCommandFailure,
-  accountReadFailure,
-} from '../../model/account/failure';
+import { accountCommandFailure } from '../../model/account/failure';
 import { orderSessions } from '../../model/account/sessions';
 import { describeUserAgent } from '../../model/account/user-agent';
-import { AccountReadFailure, AccountSection, FreshSignInLink } from './section';
+import { AccountSection, FreshSignInLink } from './section';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { useSessionEnding, type SessionEnding } from './use-session-ending';
 
 type Session = AccountSecuritySessionsResponse['items'][number];
@@ -210,21 +208,19 @@ export function AccountSessionsSection({
         ) : undefined
       }
     >
-      {sessions.isPending ? (
-        <SkeletonRows label="Loading your sessions" rows={2} />
-      ) : sessions.isError ? (
-        <AccountReadFailure
-          message={accountReadFailure(sessions.error, 'sessions')}
-          retrying={sessions.isFetching}
-          onRetry={() => void sessions.refetch()}
-        />
-      ) : (
-        <SessionList
-          items={sessions.data.items}
-          busy={ending.busy}
-          onEnd={ending.ask}
-        />
-      )}
+      <QueryView
+        query={sessions}
+        resource="Your sessions"
+        loading={<SkeletonRows label="Loading your sessions" rows={2} />}
+      >
+        {(data) => (
+          <SessionList
+            items={data.items}
+            busy={ending.busy}
+            onEnd={ending.ask}
+          />
+        )}
+      </QueryView>
       <EndSessionDialog
         ending={ending.ending}
         busy={ending.busy}

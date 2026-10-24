@@ -14,10 +14,10 @@ import { AccountFactsSection } from '../components/account/facts-section';
 import { AccountMethodsSection } from '../components/account/methods-section';
 import { AccountPasswordSection } from '../components/account/password-section';
 import { AccountProfileSection } from '../components/account/profile/section';
-import { AccountReadFailure } from '../components/account/section';
 import { AccountSessionsSection } from '../components/account/sessions-section';
-import { accountReadFailure } from '../model/account/failure';
 import { Notice } from '@/components/ui/notice';
+import { QueryView } from '@/components/patterns/states/query-view';
+import { describeReadError } from '@/lib/api/error-copy';
 
 type LinkOutcome = 'returned' | 'failed';
 
@@ -37,6 +37,25 @@ function LinkOutcomeLine({ outcome }: Readonly<{ outcome: LinkOutcome }>) {
  * Your identity across workspaces: profile, how you sign in, and where you
  * are signed in. Rendered in the workspace shell and on its own page.
  */
+/** A signed-out or refused answer hides sign-in methods loaded earlier. */
+function signInMethodsHidden(error: unknown) {
+  if (!isApiError(error) || (error.status !== 401 && error.status !== 403))
+    return undefined;
+  return (
+    <Notice tone="destructive">
+      {describeReadError(error, 'Your sign-in methods')}
+    </Notice>
+  );
+}
+
+function twoFactorReadState(
+  security: Readonly<{ isFetching: boolean; isError: boolean }>,
+) {
+  if (security.isFetching) return 'refreshing';
+  if (security.isError) return 'unavailable';
+  return 'ready';
+}
+
 export function AccountSecurityPage({
   apiClient,
   user,
@@ -53,19 +72,6 @@ export function AccountSecurityPage({
   onProfileChanged: () => void;
 }>) {
   const security = useQuery(accountSecurityQueryOptions(apiClient, user.id));
-  const securityFailure = security.isError ? (
-    <AccountReadFailure
-      message={accountReadFailure(security.error, 'sign-in methods')}
-      retrying={security.isFetching}
-      onRetry={() => void security.refetch()}
-    />
-  ) : null;
-
-  const denied =
-    isApiError(security.error) &&
-    (security.error.status === 401 || security.error.status === 403);
-  const snapshot = denied ? undefined : security.data;
-
   return (
     <div className="flex w-full max-w-5xl flex-col gap-6">
       <PageHeader>
@@ -85,13 +91,11 @@ export function AccountSecurityPage({
             security={security.data}
             onProfileChanged={onProfileChanged}
           />
-          {securityFailure}
-          {security.data === undefined ? null : (
-            <AccountEmailSection
-              apiClient={apiClient}
-              security={security.data}
-            />
-          )}
+          <QueryView query={security} resource="Your sign-in methods">
+            {(snapshot) => (
+              <AccountEmailSection apiClient={apiClient} security={snapshot} />
+            )}
+          </QueryView>
           {workspaces}
           <AccountFactsSection user={user} />
         </TabsContent>
@@ -99,39 +103,35 @@ export function AccountSecurityPage({
           {linkOutcome === undefined ? null : (
             <LinkOutcomeLine outcome={linkOutcome} />
           )}
-          {snapshot === undefined ? (
-            security.isPending ? (
+          <QueryView
+            query={security}
+            resource="Your sign-in methods"
+            loading={
               <SkeletonRows label="Loading your sign-in methods" rows={2} />
-            ) : (
-              securityFailure
-            )
-          ) : (
-            <>
-              {securityFailure}
-              <AccountMethodsSection
-                apiClient={apiClient}
-                userId={user.id}
-                security={snapshot}
-              />
-              <AccountPasswordSection
-                apiClient={apiClient}
-                userId={user.id}
-                security={snapshot}
-              />
-              <AccountTwoFactorSection
-                readState={
-                  security.isFetching
-                    ? 'refreshing'
-                    : security.isError
-                      ? 'unavailable'
-                      : 'ready'
-                }
-                apiClient={apiClient}
-                userId={user.id}
-                security={snapshot}
-              />
-            </>
-          )}
+            }
+            failure={signInMethodsHidden}
+          >
+            {(snapshot) => (
+              <>
+                <AccountMethodsSection
+                  apiClient={apiClient}
+                  userId={user.id}
+                  security={snapshot}
+                />
+                <AccountPasswordSection
+                  apiClient={apiClient}
+                  userId={user.id}
+                  security={snapshot}
+                />
+                <AccountTwoFactorSection
+                  readState={twoFactorReadState(security)}
+                  apiClient={apiClient}
+                  userId={user.id}
+                  security={snapshot}
+                />
+              </>
+            )}
+          </QueryView>
         </TabsContent>
         <TabsContent value="sessions" className="pt-6">
           <AccountSessionsSection apiClient={apiClient} userId={user.id} />

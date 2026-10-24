@@ -21,8 +21,8 @@ import {
   concurrencyQueryOptions,
 } from '../../data/concurrency.queries';
 import { useConcurrencyCommand } from '../../data/mutations/use-concurrency-command';
-import { visibleSettingsData } from '../../model/settings-query';
-import { SettingsQueryState } from '../settings-query-state';
+import { QueryView } from '@/components/patterns/states/query-view';
+import { settingsReadFailure } from '../settings-read-failure';
 
 type Scope = Readonly<{
   apiClient: ApiClient;
@@ -318,21 +318,25 @@ export function ConcurrencySection(scope: Scope) {
     ),
     enabled: canRead,
   });
-  const settings = canRead ? visibleSettingsData(query) : undefined;
   return (
     <SettingsSection
       title="Concurrency"
       description="How many runs of this workflow can go at once."
     >
       {canRead ? (
-        <SettingsQueryState query={query} resource="The concurrency settings" />
+        <QueryView
+          query={query}
+          resource="The concurrency settings"
+          failure={settingsReadFailure}
+        >
+          {(settings) => (
+            <ConcurrencyPolicy settings={settings} scope={scope} />
+          )}
+        </QueryView>
       ) : (
         <p className="text-sm text-muted-foreground">
           Your role can’t read these settings.
         </p>
-      )}
-      {settings === undefined ? null : (
-        <ConcurrencyPolicy settings={settings} scope={scope} />
       )}
     </SettingsSection>
   );

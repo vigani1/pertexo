@@ -5,96 +5,105 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import type { WorkspaceVariableUsageResponse } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { LoadMore } from '@/components/patterns/lists/load-more';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { variableUsageQueryOptions } from '../data/variables.queries';
 import type { VariablesScope } from '../data/variables.api';
-function VariableUsage({
+type UsageRow = WorkspaceVariableUsageResponse['items'][number];
+
+function emptySentence(checkedAll: boolean, incomplete: boolean): string {
+  if (!checkedAll)
+    return 'No matches in the workflows checked so far. Continue the check.';
+  if (incomplete) return 'No parsed reference found; the check is incomplete.';
+  return 'No current draft or publication references this name.';
+}
+
+function UsageRows({
   scope,
-  name,
-  onRemove,
-}: Readonly<{ scope: VariablesScope; name: string; onRemove?: () => void }>) {
-  const query = useInfiniteQuery(variableUsageQueryOptions(scope, name));
-  const rows = query.data?.pages.flatMap((page) => page.items) ?? [];
-  const incomplete = query.data?.pages.some((page) => page.incomplete) === true;
+  rows,
+  incomplete,
+  checkedAll,
+}: Readonly<{
+  scope: VariablesScope;
+  rows: readonly UsageRow[];
+  incomplete: boolean;
+  checkedAll: boolean;
+}>) {
   return (
-    <div className="flex min-w-0 flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
-        Current drafts and current publications, including archived workflows.
-        Retained historical versions and run snapshots keep their own values.
-      </p>
-      {query.isPending ? (
-        <p role="status">Checking workflow references…</p>
-      ) : null}
-      {query.isError ? (
-        <Notice
-          tone="warning"
-          action={
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void query.refetch()}
-            >
-              Restart check
-            </Button>
-          }
-        >
-          References could not be checked completely. Removing this name may
-          break new runs.
-        </Notice>
-      ) : null}
+    <>
       {incomplete ? (
         <Notice tone="warning">
           Some draft expressions are invalid and could not be analysed. Fix them
           before relying on this check.
         </Notice>
       ) : null}
-      <ul className="flex flex-col divide-y divide-border">
-        {rows.map((row) => (
-          <li key={`${row.workflowId}:${row.id}`} className="py-3 text-sm">
-            <Link
-              className="text-action underline underline-offset-4"
-              to="/w/$workspaceId/workflows/$workflowId"
-              params={{
-                workspaceId: scope.workspaceId,
-                workflowId: row.workflowId,
-              }}
-            >
-              {row.workflowName}
-            </Link>
-            <p className="mt-1 break-words text-muted-foreground">
-              {row.stage === 'draft' ? 'Draft' : 'Published'}
-              {row.archived ? ' · archived' : ''} · {row.label} → {row.input}
-            </p>
-            {row.kind === 'dynamic' ? (
-              <p className="text-xs text-muted-foreground">
-                Computed lookup or whole-map expression; may use any variable.
+      {rows.length === 0 ? (
+        <p className="text-sm">{emptySentence(checkedAll, incomplete)}</p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-border">
+          {rows.map((row) => (
+            <li key={`${row.workflowId}:${row.id}`} className="py-3 text-sm">
+              <Link
+                className="text-action underline underline-offset-4"
+                to="/w/$workspaceId/workflows/$workflowId"
+                params={{
+                  workspaceId: scope.workspaceId,
+                  workflowId: row.workflowId,
+                }}
+              >
+                {row.workflowName}
+              </Link>
+              <p className="mt-1 break-words text-muted-foreground">
+                {row.stage === 'draft' ? 'Draft' : 'Published'}
+                {row.archived ? ' · archived' : ''} · {row.label} → {row.input}
               </p>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      {!query.isPending && !query.isError && rows.length === 0 ? (
-        <p className="text-sm">
-          {query.hasNextPage
-            ? 'No matches in the workflows checked so far. Continue the check.'
-            : incomplete
-              ? 'No parsed reference found; the check is incomplete.'
-              : 'No current draft or publication references this name.'}
-        </p>
-      ) : null}
-      {query.hasNextPage ? (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={query.isFetchingNextPage}
-          onClick={() => void query.fetchNextPage()}
-        >
-          {query.isFetchingNextPage ? 'Checking…' : 'Check more workflows'}
-        </Button>
-      ) : null}
+              {row.kind === 'dynamic' ? (
+                <p className="text-xs text-muted-foreground">
+                  Computed lookup or whole-map expression; may use any variable.
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function VariableUsage({
+  scope,
+  name,
+  onRemove,
+}: Readonly<{ scope: VariablesScope; name: string; onRemove?: () => void }>) {
+  const query = useInfiniteQuery(variableUsageQueryOptions(scope, name));
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      <p className="text-sm text-muted-foreground">
+        Current drafts and current publications, including archived workflows.
+        Retained historical versions and run snapshots keep their own values.
+      </p>
+      <QueryView query={query} resource="Workflow references">
+        {(data) => (
+          <UsageRows
+            scope={scope}
+            rows={data.pages.flatMap((page) => page.items)}
+            incomplete={data.pages.some((page) => page.incomplete)}
+            checkedAll={!query.hasNextPage}
+          />
+        )}
+      </QueryView>
+      <LoadMore
+        subject="workflows"
+        label="Check more workflows"
+        hasNextPage={query.hasNextPage}
+        loading={query.isFetchingNextPage}
+        failed={query.isFetchNextPageError}
+        onLoadMore={() => void query.fetchNextPage()}
+      />
       {onRemove === undefined ? null : (
         <>
           <Notice tone="warning">

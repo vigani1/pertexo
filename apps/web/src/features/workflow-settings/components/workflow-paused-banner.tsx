@@ -11,7 +11,8 @@ import { formatDateTime } from '@/lib/format/time';
 import { workflowAutoPauseQueryOptions } from '../data/auto-pause.queries';
 import { useAutoPauseCommand } from '../data/mutations/use-auto-pause-command';
 import { visibleSettingsData } from '../model/settings-query';
-import { SettingsQueryState } from './settings-query-state';
+import { QueryView } from '@/components/patterns/states/query-view';
+import { settingsReadFailure } from './settings-read-failure';
 
 function PausedStateNotice({
   settings,
@@ -143,7 +144,11 @@ export function WorkflowPausedBanner({
   return (
     <div className="pointer-events-auto space-y-2">
       {showReadError && query.isError ? (
-        <SettingsQueryState query={query} resource="The workflow pause state" />
+        <QueryView
+          query={query}
+          resource="The workflow pause state"
+          failure={settingsReadFailure}
+        />
       ) : null}
       <PausedStateNotice
         settings={settings}

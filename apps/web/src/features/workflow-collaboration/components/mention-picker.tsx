@@ -3,6 +3,8 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { COLLABORATION_LIMITS } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LoadMore } from '@/components/patterns/lists/load-more';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { peopleQuery } from '../data/collaboration.queries';
 import type { CollaborationScope } from '../data/collaboration.api';
 export type MentionPerson = Readonly<{ userId: string; displayName: string }>;
@@ -84,11 +86,7 @@ export function MentionPicker({
               />
             </>
           )}
-          {people.isError ? (
-            <p role="alert" className="text-sm">
-              Members could not be loaded. Try again.
-            </p>
-          ) : null}
+          <QueryView query={people} resource="Members" />
           <ul
             aria-label="Members to mention"
             className="max-h-48 overflow-y-auto"
@@ -122,16 +120,14 @@ export function MentionPicker({
                 </li>
               ))}
           </ul>
-          {people.hasNextPage ? (
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={people.isFetchingNextPage}
-              onClick={() => void people.fetchNextPage()}
-            >
-              More members
-            </Button>
-          ) : null}
+          <LoadMore
+            subject="members"
+            label="More members"
+            hasNextPage={people.hasNextPage}
+            loading={people.isFetchingNextPage}
+            failed={people.isFetchNextPageError}
+            onLoadMore={() => void people.fetchNextPage()}
+          />
           {selected.length >= COLLABORATION_LIMITS.mentions ? (
             <p className="text-sm">Mention up to twenty people.</p>
           ) : null}

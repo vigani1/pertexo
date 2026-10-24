@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { ApprovalAudienceInspectionResponse } from '@pertexo/contracts';
 import type { TaskAudience } from '@pertexo/workflow-model';
 import {
   audienceInspectionQueryOptions,
@@ -8,8 +9,30 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
-import { ReadFailure } from '@/components/patterns/states/read-failure';
+import { QueryView } from '@/components/patterns/states/query-view';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
+
+/** Who could decide this audience's requests right now, when that is a problem. */
+function AudienceWarning({
+  found,
+  allowed,
+}: Readonly<{ found: ApprovalAudienceInspectionResponse; allowed: boolean }>) {
+  if (found.matchingMemberCount === 0)
+    return (
+      <Notice glyph="attention">
+        No active member currently matches this audience. Choose another role or
+        member before starting a run.
+      </Notice>
+    );
+  if (!allowed && found.matchingMemberCount === 1 && found.actorMatchesAudience)
+    return (
+      <Notice glyph="attention">
+        If you start this run, nobody else in this audience can decide. Allow
+        the starter or choose another member.
+      </Notice>
+    );
+  return null;
+}
 
 export function StarterDecisionField({
   scope,
@@ -51,30 +74,14 @@ export function StarterDecisionField({
           must still belong to the chosen audience.
         </FieldDescription>
       </Field>
-      {form.editable && inspection.isError ? (
-        <ReadFailure
+      {form.editable ? (
+        <QueryView
+          query={inspection}
           resource="Approval audience"
-          error={inspection.error}
-          showing={inspection.data !== undefined}
-          retrying={inspection.isFetching}
-          updatedAt={inspection.dataUpdatedAt}
-          onRetry={() => void inspection.refetch()}
-        />
-      ) : null}
-      {form.editable &&
-      !allowed &&
-      inspection.data?.matchingMemberCount === 1 &&
-      inspection.data.actorMatchesAudience ? (
-        <Notice glyph="attention">
-          If you start this run, nobody else in this audience can decide. Allow
-          the starter or choose another member.
-        </Notice>
-      ) : null}
-      {form.editable && inspection.data?.matchingMemberCount === 0 ? (
-        <Notice glyph="attention">
-          No active member currently matches this audience. Choose another role
-          or member before starting a run.
-        </Notice>
+          loading={null}
+        >
+          {(found) => <AudienceWarning found={found} allowed={allowed} />}
+        </QueryView>
       ) : null}
     </>
   );

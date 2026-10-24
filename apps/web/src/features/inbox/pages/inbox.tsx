@@ -21,7 +21,7 @@ import {
   PageHeaderActions,
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
-import { ReadFailure } from '@/components/patterns/states/read-failure';
+import { QueryView } from '@/components/patterns/states/query-view';
 import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import {
   Empty,
@@ -267,7 +267,6 @@ function InboxThreadResults({
 }>) {
   const markRead = useMarkThreadReadMutation(scope);
   const nowMs = useNow(60_000);
-  const items = threads.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <>
       {markRead.isError || markAllFailed ? (
@@ -275,48 +274,41 @@ function InboxThreadResults({
           That couldn’t be marked read. Nothing changed; try again.
         </Notice>
       ) : null}
-      {threads.isError ? (
-        <ReadFailure
-          resource="The inbox"
-          error={threads.error}
-          showing={items.length > 0}
-          retrying={threads.isRefetching}
-          updatedAt={threads.dataUpdatedAt}
-          onRetry={() => {
-            void threads.refetch();
-          }}
-        />
-      ) : null}
-      {threads.isPending ? (
-        <InboxSkeleton />
-      ) : items.length === 0 ? (
-        threads.isError ? null : (
-          <InboxEmpty filter={filter} />
-        )
-      ) : (
-        <ul aria-label="Notices" className="flex flex-col">
-          {items.map((thread) => (
-            <NoticeThreadRow
-              key={thread.id}
-              workspaceId={scope.workspaceId}
-              thread={thread}
-              nowMs={nowMs}
-              marking={
-                markRead.isPending && markRead.variables.threadId === thread.id
-              }
-              onRead={() => {
-                if (thread.unread)
-                  markRead.mutate({
-                    threadId: thread.id,
-                    revision: thread.revision,
-                  });
-              }}
-            />
-          ))}
-        </ul>
-      )}
+      <QueryView
+        query={threads}
+        resource="The inbox"
+        loading={<InboxSkeleton />}
+        isEmpty={(data) => data.pages.every((page) => page.items.length === 0)}
+        empty={<InboxEmpty filter={filter} />}
+      >
+        {(data) => (
+          <ul aria-label="Notices" className="flex flex-col">
+            {data.pages
+              .flatMap((page) => page.items)
+              .map((thread) => (
+                <NoticeThreadRow
+                  key={thread.id}
+                  workspaceId={scope.workspaceId}
+                  thread={thread}
+                  nowMs={nowMs}
+                  marking={
+                    markRead.isPending &&
+                    markRead.variables.threadId === thread.id
+                  }
+                  onRead={() => {
+                    if (thread.unread)
+                      markRead.mutate({
+                        threadId: thread.id,
+                        revision: thread.revision,
+                      });
+                  }}
+                />
+              ))}
+          </ul>
+        )}
+      </QueryView>
       <LoadMore
-        subject="workflows"
+        subject="notices"
         hasNextPage={threads.hasNextPage}
         loading={threads.isFetchingNextPage}
         failed={threads.isFetchNextPageError}

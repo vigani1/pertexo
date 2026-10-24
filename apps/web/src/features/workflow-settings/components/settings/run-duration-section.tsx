@@ -24,7 +24,8 @@ import { visibleSettingsData } from '../../model/settings-query';
 import { useRunDurationChange } from '../../data/mutations/use-run-duration-change';
 import { workflowVersionsQueryOptions } from '../../data/workflow-settings.queries';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { SettingsQueryState } from '../settings-query-state';
+import { QueryView } from '@/components/patterns/states/query-view';
+import { settingsReadFailure } from '../settings-read-failure';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
 function choicesWith(current: number): readonly number[] {
@@ -50,7 +51,7 @@ type Scope = Readonly<{
   workflow: WorkflowSummary | undefined;
 }>;
 
-/** The draft's run duration and the live version's, when there is one. */
+/** The draft's read and the live version's run duration, when there is one. */
 function useStoredDurations({
   apiClient,
   userId,
@@ -76,16 +77,11 @@ function useStoredDurations({
     ),
     enabled: workflowId !== undefined && workflow?.publishedVersionId !== null,
   });
-  const snapshot = visibleSettingsData(draft);
   const liveVersion = visibleSettingsData(versions)?.items.find(
     (version) => version.id === workflow?.publishedVersionId,
   );
   return {
     draft,
-    draftMs:
-      snapshot === undefined
-        ? undefined
-        : maxRunDurationOf(snapshot.draft.graph),
     live:
       liveVersion === undefined
         ? undefined
@@ -217,39 +213,46 @@ export function RunDurationSection({
   const choice = useDurationChoice(scope);
   const canUpdate = workspace.capabilities.includes('workflow:update');
   const archived = workflow?.lifecycleStatus === 'archived';
-  const draftMs =
-    stored.draftMs === undefined
-      ? undefined
-      : (choice.requested ?? stored.draftMs);
 
   return (
     <SettingsSection
       title="Run duration"
       description="How long a run may take before Pertexo stops it, up to 1 hour."
     >
-      <SettingsQueryState query={stored.draft} resource="The draft" />
-      {draftMs === undefined ? null : !canUpdate ? (
-        <p className="text-sm text-muted-foreground">
-          Runs stop after {describeRunDuration(draftMs)} in the draft.{' '}
-          {roleLimitSentence(
-            workspace.role,
-            'workflow:update',
-            'change how long runs may take',
-          )}
-        </p>
-      ) : (
-        <DurationPicker
-          durationMs={draftMs}
-          disabled={archived || choice.pending}
-          saving={choice.pending}
-          note={
-            archived
-              ? 'Restore the workflow to change this.'
-              : publishNote(draftMs, stored.live)
-          }
-          onChoose={(durationMs) => void choice.choose(durationMs)}
-        />
-      )}
+      <QueryView
+        query={stored.draft}
+        resource="The draft"
+        failure={settingsReadFailure}
+      >
+        {(snapshot) => {
+          const draftMs =
+            choice.requested ?? maxRunDurationOf(snapshot.draft.graph);
+          if (!canUpdate)
+            return (
+              <p className="text-sm text-muted-foreground">
+                Runs stop after {describeRunDuration(draftMs)} in the draft.{' '}
+                {roleLimitSentence(
+                  workspace.role,
+                  'workflow:update',
+                  'change how long runs may take',
+                )}
+              </p>
+            );
+          return (
+            <DurationPicker
+              durationMs={draftMs}
+              disabled={archived || choice.pending}
+              saving={choice.pending}
+              note={
+                archived
+                  ? 'Restore the workflow to change this.'
+                  : publishNote(draftMs, stored.live)
+              }
+              onChoose={(durationMs) => void choice.choose(durationMs)}
+            />
+          );
+        }}
+      </QueryView>
       {choice.problem === undefined ? null : (
         <Notice
           tone={choice.problem.retry ? 'warning' : 'destructive'}

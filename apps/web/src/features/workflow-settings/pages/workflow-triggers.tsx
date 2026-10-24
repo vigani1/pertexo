@@ -16,7 +16,8 @@ import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { visibleSettingsData } from '../model/settings-query';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { SettingsQueryState } from '../components/settings-query-state';
+import { QueryView } from '@/components/patterns/states/query-view';
+import { settingsReadFailure } from '../components/settings-read-failure';
 import { SchedulesSection } from '../components/triggers/schedules/section';
 import { WebhooksSection } from '../components/triggers/webhooks/section';
 import { triggerStepName } from '../model/triggers/steps';
@@ -259,10 +260,13 @@ function TriggersSession({
       >
         {editable ? (
           <>
-            <SettingsQueryState query={webhooks} resource="Webhooks" />
-            {webhookItems?.length === 0 ? (
-              <NoTriggerStep kind="Webhook" {...common} />
-            ) : null}
+            <QueryView
+              query={webhooks}
+              resource="Webhooks"
+              failure={settingsReadFailure}
+              isEmpty={(listed) => listed.items.length === 0}
+              empty={<NoTriggerStep kind="Webhook" {...common} />}
+            />
             <WebhooksSection
               {...common}
               triggers={webhookItems ?? []}
@@ -280,10 +284,13 @@ function TriggersSession({
         title="Schedules"
         description="Start runs on a timetable. Times follow each schedule’s time zone."
       >
-        <SettingsQueryState query={schedules} resource="Schedules" />
-        {scheduleItems?.length === 0 ? (
-          <NoTriggerStep kind="Schedule" {...common} />
-        ) : null}
+        <QueryView
+          query={schedules}
+          resource="Schedules"
+          failure={settingsReadFailure}
+          isEmpty={(listed) => listed.items.length === 0}
+          empty={<NoTriggerStep kind="Schedule" {...common} />}
+        />
         <SchedulesSection
           {...common}
           triggers={scheduleItems ?? []}

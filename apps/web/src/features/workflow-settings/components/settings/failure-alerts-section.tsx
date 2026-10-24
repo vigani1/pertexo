@@ -30,7 +30,8 @@ import { useFailureNotificationCommands } from '../../data/mutations/use-notific
 import { visibleSettingsData } from '../../model/settings-query';
 import { failureNotificationPolicyQueryOptions } from '../../data/workflow-settings.queries';
 import { SettingsSection } from '@/components/patterns/settings/section';
-import { SettingsQueryState } from '../settings-query-state';
+import { QueryView } from '@/components/patterns/states/query-view';
+import { settingsReadFailure } from '../settings-read-failure';
 import { CurrentAlertDestination } from './current-alert-destination';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
@@ -247,30 +248,33 @@ export function FailureAlertsSection({
         </p>
       ) : (
         <>
-          <SettingsQueryState
+          <QueryView
             query={choices.policy}
             resource="The current alert destination"
-          />
-          {choices.current === undefined ? null : (
-            <CurrentAlertDestination
-              destination={choices.current.destination}
-              connectionNames={choices.connectionNames}
-              channelNames={choices.channelNames}
-              {...(workspace.capabilities.includes('connection:read')
-                ? { workspaceId: workspace.id }
-                : {})}
-            />
-          )}
-          <SettingsQueryState
+            failure={settingsReadFailure}
+          >
+            {(current) => (
+              <CurrentAlertDestination
+                destination={current.destination}
+                connectionNames={choices.connectionNames}
+                channelNames={choices.channelNames}
+                {...(workspace.capabilities.includes('connection:read')
+                  ? { workspaceId: workspace.id }
+                  : {})}
+              />
+            )}
+          </QueryView>
+          <QueryView
             query={choices.destinations}
             resource="Alert destinations"
+            failure={settingsReadFailure}
+            isEmpty={() => choices.options.length === 0}
+            empty={
+              <p className="text-sm text-muted-foreground">
+                There’s no enabled alert destination in this workspace yet.
+              </p>
+            }
           />
-          {choices.destinations.data !== undefined &&
-          choices.options.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              There’s no enabled alert destination in this workspace yet.
-            </p>
-          ) : null}
           {commands.error === undefined ? null : (
             <Notice tone="destructive">{commands.error}</Notice>
           )}

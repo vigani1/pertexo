@@ -38,28 +38,6 @@ export function AccountSection({
   );
 }
 
-/** A read failure that keeps the page usable and offers one retry. */
-export function AccountReadFailure({
-  message,
-  retrying,
-  onRetry,
-}: Readonly<{ message: string; retrying: boolean; onRetry: () => void }>) {
-  return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
-      <p className="text-destructive">{message}</p>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={retrying}
-        onClick={onRetry}
-      >
-        Try again
-      </Button>
-    </div>
-  );
-}
-
 /**
  * "Sign in again" when the server wants a fresh session for a change. The
  * new sign-in comes back to this account page.
