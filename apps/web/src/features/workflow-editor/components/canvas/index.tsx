@@ -6,43 +6,24 @@ import '@xyflow/react/dist/style.css';
 import {
   ReactFlow,
   useReactFlow,
-  type Connection,
-  type Edge,
   type EdgeChange,
-  type FinalConnectionState,
   type NodeChange,
 } from '@xyflow/react';
 import {
   useCallback,
   useMemo,
-  useState,
   type DragEvent,
   type ReactNode,
   type RefObject,
   useRef,
 } from 'react';
-import { stepSampleBindings } from '@pertexo/workflow-model';
-import { currentSampleState } from '@/features/workflow-publish/step-samples.public';
 import type {
   StepSampleMetadata,
   NodeDefinitionCatalogItem,
 } from '@pertexo/contracts';
-import { levelPositions } from '../../model/graph/for-each-body-layout';
-import { forEachBodyIssues } from '../../model/graph/for-each-body-rules';
-import {
-  projectWorkflowGraph,
-  type CanvasDecorations,
-  type WorkflowFlowEdge,
-  type WorkflowFlowNode,
-} from '../../model/graph/adapter';
-import {
-  linkWorkflowNodes,
-  moveWorkflowNodes,
-  type PortRef,
-} from '../../model/graph/commands';
-import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
-import { canLinkSteps } from '../../model/graph/scopes';
-import { gestureEndPoint, portDropSource } from '../../model/quick-add';
+import type { WorkflowFlowEdge } from '../../model/graph/adapter';
+import type { PortRef } from '../../model/graph/commands';
+import { useEditorStoreApi } from '../../model/state/context';
 import { STEP_DRAG_TYPE } from '../../model/step-catalog';
 import { CanvasActionsContext } from '../../model/canvas/actions-context';
 import { useCanvasFraming } from './use-framing';
@@ -50,6 +31,10 @@ import { CanvasZoomLens } from './zoom-lens';
 import { ForEachNodeCard } from './cards/for-each';
 import { WorkflowEdge } from './workflow-edge';
 import { WorkflowNodeCard } from './cards/node';
+import type { Position } from './projection';
+import type { CanvasOverlays } from './projection';
+import { useCanvasProjection } from './projection';
+import { useLinkGestures } from './gestures';
 
 // Module-level so React Flow never sees new node types between renders.
 const nodeTypes = Object.freeze({
@@ -57,23 +42,13 @@ const nodeTypes = Object.freeze({
   workflow: WorkflowNodeCard,
   forEach: ForEachNodeCard,
 });
+
 const edgeTypes = Object.freeze({ workflow: WorkflowEdge });
+
 const multiSelectionKeys = ['Meta', 'Control', 'Shift'];
 
 // Two taps on one step within this long open it.
 const DOUBLE_TAP_MS = 350;
-
-type Position = Readonly<{ x: number; y: number }>;
-type Size = Readonly<{ width: number; height: number }>;
-
-export type CanvasOverlays = Pick<
-  CanvasDecorations,
-  | 'issuesByNode'
-  | 'flowingEdgeIds'
-  | 'weaveOrder'
-  | 'testOutputBytes'
-  | 'testStatuses'
->;
 
 /**
  * The workflow drawn on the weave. Gestures become editor commands: drags
@@ -263,194 +238,5 @@ export function WorkflowCanvas({
       </CanvasActionsContext>
       {children}
     </div>
-  );
-}
-
-/**
- * The graph as React Flow draws it, and the node changes React Flow reports
- * back: drags move steps as one change when they end, selection goes
- * through the editor's guard, and measured sizes return with each
- * projection.
- */
-function useCanvasProjection({
-  definitions,
-  overlays,
-  samples,
-  editable,
-  onSelectNodes,
-}: Readonly<{
-  definitions: readonly NodeDefinitionCatalogItem[];
-  overlays: CanvasOverlays;
-  samples: readonly StepSampleMetadata[] | undefined;
-  editable: boolean;
-  onSelectNodes: (nodeIds: readonly string[]) => void;
-}>) {
-  const store = useEditorStoreApi();
-  const graph = useEditorStore((state) => state.graph);
-  const selectedNodeIds = useEditorStore((state) => state.selectedNodeIds);
-  const selectedEdgeIds = useEditorStore((state) => state.selectedEdgeIds);
-  const [dragPositions, setDragPositions] = useState<
-    ReadonlyMap<string, Position>
-  >(() => new Map());
-  // React Flow marks its own copy of a node selected before asking us. When
-  // the editor's guard declines a selection, fresh node objects re-sync it.
-  const [selectionResync, setSelectionResync] = useState(0);
-  // Measured sizes go back into every projection: React Flow's overview map
-  // draws the nodes we pass it, and a node without a size isn't drawn.
-  const [measuredSizes, setMeasuredSizes] = useState<ReadonlyMap<string, Size>>(
-    () => new Map(),
-  );
-
-  const sampleStates = useMemo(() => {
-    if (samples === undefined)
-      return new Map<string, StepSampleMetadata['state']>();
-    const bindings = stepSampleBindings(graph);
-    return new Map(
-      samples.map((sample) => [
-        sample.nodeId,
-        currentSampleState(sample, bindings.get(sample.nodeId)),
-      ]),
-    );
-  }, [graph, samples]);
-  const projection = useMemo(
-    () =>
-      projectWorkflowGraph(graph, definitions, {
-        ...overlays,
-        sampleStates,
-        selectedNodeIds,
-        selectedEdgeIds,
-        dragPositions,
-        bodyIssues: forEachBodyIssues(graph),
-        measuredSizes,
-      }),
-    // selectionResync only forces fresh node objects for React Flow.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      definitions,
-      dragPositions,
-      graph,
-      measuredSizes,
-      overlays,
-      sampleStates,
-      selectedEdgeIds,
-      selectedNodeIds,
-      selectionResync,
-    ],
-  );
-
-  const onNodesChange = useCallback(
-    (changes: NodeChange<WorkflowFlowNode>[]) => {
-      const moving = new Map<string, Position>();
-      const settled = new Map<string, Position>();
-      const sized = new Map<string, Size>();
-      let selection: Set<string> | undefined;
-      for (const change of changes) {
-        if (change.type === 'dimensions') {
-          if (change.dimensions !== undefined)
-            sized.set(change.id, change.dimensions);
-        } else if (change.type === 'select') {
-          selection ??= new Set(store.getState().selectedNodeIds);
-          if (change.selected) selection.add(change.id);
-          else selection.delete(change.id);
-        } else if (change.type === 'position' && editable) {
-          const position = change.position ?? dragPositions.get(change.id);
-          if (position === undefined) continue;
-          if (change.dragging ?? false) moving.set(change.id, position);
-          else settled.set(change.id, position);
-        }
-      }
-      if (selection !== undefined) {
-        const requested = [...selection];
-        onSelectNodes(requested);
-        const applied = new Set(store.getState().selectedNodeIds);
-        if (
-          applied.size !== requested.length ||
-          requested.some((id) => !applied.has(id))
-        )
-          setSelectionResync((current) => current + 1);
-      }
-      if (sized.size > 0)
-        setMeasuredSizes((current) => new Map([...current, ...sized]));
-      if (moving.size > 0)
-        setDragPositions((current) => new Map([...current, ...moving]));
-      if (settled.size === 0) return;
-      const state = store.getState();
-      state.transact(
-        moveWorkflowNodes(state.graph, levelPositions(state.graph, settled)),
-        { coalesceKey: `move:${[...settled.keys()].join(',')}` },
-      );
-      setDragPositions((current) => {
-        const next = new Map(current);
-        for (const id of settled.keys()) next.delete(id);
-        return next;
-      });
-    },
-    [dragPositions, editable, onSelectNodes, store],
-  );
-  return { projection, onNodesChange } as const;
-}
-
-/**
- * Links drawn on the canvas: only between steps on the same level (a
- * body's steps link only to each other), added as one change, and a
- * link dropped on empty canvas opens quick add there.
- */
-function useLinkGestures({
-  store,
-  editable,
-  onPortDrop,
-}: Readonly<{
-  store: ReturnType<typeof useEditorStoreApi>;
-  editable: boolean;
-  onPortDrop: (from: PortRef, point: Position) => void;
-}>) {
-  const isValidConnection = useCallback(
-    (link: Connection | Edge) => {
-      const graph = store.getState().graph;
-      return (
-        canLinkSteps(graph, link.source, link.target) &&
-        linkWorkflowNodes(graph, {
-          source: link.source,
-          target: link.target,
-          sourceHandle: link.sourceHandle ?? null,
-          targetHandle: link.targetHandle ?? null,
-        }) !== null
-      );
-    },
-    [store],
-  );
-  const onConnect = useCallback(
-    (link: Connection) => {
-      if (!editable) return;
-      const state = store.getState();
-      const next = linkWorkflowNodes(state.graph, link);
-      if (next !== null) state.transact(next);
-    },
-    [editable, store],
-  );
-  const onConnectEnd = useCallback(
-    (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
-      const point = gestureEndPoint(event);
-      if (!editable || point === null) return;
-      const from = portDropSource({ state, endedOverStep: isOverStep(point) });
-      if (from !== null) onPortDrop(from, point);
-    },
-    [editable, onPortDrop],
-  );
-  return { isValidConnection, onConnect, onConnectEnd } as const;
-}
-
-/**
- * Whether a point in the viewport is over a step card rather than canvas.
- * The empty part of a For each body counts as canvas: body steps are drawn
- * above it, so a point over one of them finds that step first.
- */
-function isOverStep(point: Position): boolean {
-  if (typeof document.elementFromPoint !== 'function') return false;
-  const element = document.elementFromPoint(point.x, point.y);
-  if (element === null) return false;
-  return (
-    element.closest('.react-flow__node') !== null &&
-    element.closest('[data-for-each-body]') === null
   );
 }
