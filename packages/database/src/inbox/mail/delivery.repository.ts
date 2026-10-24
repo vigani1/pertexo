@@ -1,3 +1,18 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { alias } from 'drizzle-orm/pg-core';
+import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  noticePreferences,
+  noticeWorkspaceSettings,
+} from '../../schema/inbox/preferences.js';
+import { noticeMailBatches, noticeMailItems } from '../../schema/inbox/mail.js';
+import { systemMailDeliveries } from '../../schema/mail/deliveries.js';
+import {
+  users as usersTable,
+  workspaceMemberships as membershipsTable,
+  workspaces,
+} from '../../schema/foundation.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import type { PoolClient } from 'pg';
 import type { NoticeSchedule } from '@pertexo/contracts';
@@ -13,31 +28,42 @@ import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority
 import { rolesForCapability } from '@pertexo/workflow-model';
 import {
   projectNoticePreferences,
-  type DefaultsRow,
   type PreferenceRow,
 } from '../preferences/settings.queries.js';
 import { noticeWindow, nextNoticeDue } from './schedule.js';
 import { readMailSubjects, mailItem } from './subjects.queries.js';
 import type { NoticeMailStore, NoticeMailSealer } from './contract.js';
+const users = alias(usersTable, 'person');
+const workspaceMemberships = alias(membershipsTable, 'member');
 type Person = Readonly<{ workspace_id: string; user_id: string }>;
-type Recipient = Readonly<{
-  email: string;
-  workspace_name: string;
-  email_verified: boolean;
-  role_revision: number;
-  created_at: Date;
-  now: Date;
-}>;
 async function recipient(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
-): Promise<Recipient | undefined> {
-  const found = await client.query<Recipient>(
-    "select person.email,workspace.name workspace_name,person.email_verified,member.role_revision,member.created_at,clock_timestamp() now from app.users person join app.workspace_memberships member on member.user_id=person.id join app.workspaces workspace on workspace.id=member.workspace_id where member.workspace_id=$1 and member.user_id=$2 and member.status='active' and person.status='active' for share of person,member",
-    [workspaceId, actorId],
-  );
-  return found.rows[0];
+) {
+  const [found] = await drizzle(client)
+    .select({
+      email: users.email,
+      workspace_name: workspaces.name,
+      email_verified: users.emailVerified,
+      role_revision: workspaceMemberships.roleRevision,
+      created_at: workspaceMemberships.createdAt,
+      now: sql<Date>`clock_timestamp()`.mapWith(workspaceMemberships.createdAt),
+    })
+    .from(users)
+    .innerJoin(workspaceMemberships, eq(workspaceMemberships.userId, users.id))
+    .innerJoin(workspaces, eq(workspaces.id, workspaceMemberships.workspaceId))
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, actorId),
+        eq(workspaceMemberships.status, 'active'),
+        eq(users.status, 'active'),
+      ),
+    )
+    .for('share', { of: [users, workspaceMemberships] })
+    .catch(rethrowQueryFailure);
+  return found;
 }
 async function settings(
   client: PoolClient,
@@ -45,29 +71,38 @@ async function settings(
   actorId: string,
   { create }: Readonly<{ create: boolean }>,
 ) {
-  const defs = await client.query<DefaultsRow>(
-    'select * from app.notice_workspace_settings where workspace_id=$1 for share',
-    [workspaceId],
-  );
+  const db = drizzle(client);
+  const [defaults] = await db
+    .select()
+    .from(noticeWorkspaceSettings)
+    .where(eq(noticeWorkspaceSettings.workspaceId, workspaceId))
+    .for('share')
+    .catch(rethrowQueryFailure);
   if (create)
-    await client.query(
-      'insert into app.notice_preferences(workspace_id,user_id) values($1,$2) on conflict do nothing',
-      [workspaceId, actorId],
-    );
-  const prefs = await client.query<PreferenceRow>(
-    'select * from app.notice_preferences where workspace_id=$1 and user_id=$2 for update',
-    [workspaceId, actorId],
-  );
-  const pref = prefs.rows[0];
-  const defaults = defs.rows[0];
+    await db
+      .insert(noticePreferences)
+      .values({ workspaceId, userId: actorId })
+      .onConflictDoNothing()
+      .catch(rethrowQueryFailure);
+  const [pref] = await db
+    .select()
+    .from(noticePreferences)
+    .where(
+      and(
+        eq(noticePreferences.workspaceId, workspaceId),
+        eq(noticePreferences.userId, actorId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
   const projected = projectNoticePreferences(pref, defaults, {
     canManageDefaults: false,
     emailAvailable: true,
   });
   const cut = new Date(
     Math.max(
-      pref?.revision === 0 ? 0 : (pref?.changed_at.getTime() ?? 0),
-      pref?.mode === null ? (defaults?.changed_at.getTime() ?? 0) : 0,
+      pref?.revision === 0 ? 0 : (pref?.changedAt.getTime() ?? 0),
+      pref?.mode === null ? (defaults?.changedAt.getTime() ?? 0) : 0,
     ),
   );
   return {
@@ -93,10 +128,19 @@ async function advance(
     defaultRevision: number;
   }>,
 ) {
-  await client.query(
-    'update app.notice_preferences set next_due_at=$3,schedule_default_revision=$4 where workspace_id=$1 and user_id=$2',
-    [workspaceId, actorId, nextNoticeDue(schedule, now), defaultRevision],
-  );
+  await drizzle(client)
+    .update(noticePreferences)
+    .set({
+      nextDueAt: nextNoticeDue(schedule, now),
+      scheduleDefaultRevision: defaultRevision,
+    })
+    .where(
+      and(
+        eq(noticePreferences.workspaceId, workspaceId),
+        eq(noticePreferences.userId, actorId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
 async function preparePerson(
   client: PoolClient,
@@ -116,30 +160,67 @@ async function preparePerson(
   });
   const pref = current.pref;
   if (pref === undefined || current.effective.mode === 'off') return 0;
-  await client.query(
-    `update app.notice_mail_batches batch set released_at=clock_timestamp() from app.system_mail_deliveries delivery where batch.id=delivery.id and batch.workspace_id=$1 and batch.user_id=$2 and batch.released_at is null and delivery.status='failed' and delivery.failure_code='notice.superseded'`,
-    [person.workspace_id, person.user_id],
+  const db = drizzle(client);
+  const batchScope = and(
+    eq(noticeMailBatches.workspaceId, person.workspace_id),
+    eq(noticeMailBatches.userId, person.user_id),
+    isNull(noticeMailBatches.releasedAt),
   );
-  const pending = await client.query(
-    `select 1 from app.notice_mail_batches batch join app.system_mail_deliveries delivery on delivery.id=batch.id where batch.workspace_id=$1 and batch.user_id=$2 and batch.released_at is null and delivery.status in ('queued','retry','outcome_unknown') limit 1`,
-    [person.workspace_id, person.user_id],
-  );
-  if (pending.rowCount !== 0) return 0;
+  await db
+    .update(noticeMailBatches)
+    .set({ releasedAt: sql`clock_timestamp()` })
+    .from(systemMailDeliveries)
+    .where(
+      and(
+        eq(noticeMailBatches.id, systemMailDeliveries.id),
+        batchScope,
+        eq(systemMailDeliveries.status, 'failed'),
+        eq(systemMailDeliveries.failureCode, 'notice.superseded'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const pending = await db
+    .select({ id: noticeMailBatches.id })
+    .from(noticeMailBatches)
+    .innerJoin(
+      systemMailDeliveries,
+      eq(systemMailDeliveries.id, noticeMailBatches.id),
+    )
+    .where(
+      and(
+        batchScope,
+        inArray(systemMailDeliveries.status, [
+          'queued',
+          'retry',
+          'outcome_unknown',
+        ]),
+      ),
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
+  if (pending.length !== 0) return 0;
   const due = nextPersonNoticeDue(pref, current);
   if (due === null) return 0;
   if (due > to.now) {
-    await client.query(
-      'update app.notice_preferences set next_due_at=$3,schedule_default_revision=$4 where workspace_id=$1 and user_id=$2',
-      [person.workspace_id, person.user_id, due, current.defaultRevision],
-    );
+    await db
+      .update(noticePreferences)
+      .set({ nextDueAt: due, scheduleDefaultRevision: current.defaultRevision })
+      .where(
+        and(
+          eq(noticePreferences.workspaceId, person.workspace_id),
+          eq(noticePreferences.userId, person.user_id),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     return 0;
   }
   const window = noticeWindow(current.effective, to.now);
-  const reserved = await client.query(
-    'select 1 from app.notice_mail_batches where workspace_id=$1 and user_id=$2 and window_key=$3 and released_at is null',
-    [person.workspace_id, person.user_id, window],
-  );
-  if (reserved.rowCount !== 0) {
+  const reserved = await db
+    .select({ id: noticeMailBatches.id })
+    .from(noticeMailBatches)
+    .where(and(batchScope, eq(noticeMailBatches.windowKey, window)))
+    .catch(rethrowQueryFailure);
+  if (reserved.length !== 0) {
     await advance(client, person.workspace_id, {
       actorId: person.user_id,
       schedule: current.effective,
@@ -153,10 +234,19 @@ async function preparePerson(
     cut: new Date(Math.max(current.cut.getTime(), to.created_at.getTime())),
   });
   if (subjects.length === 0 && current.effective.mode === 'immediate') {
-    await client.query(
-      'update app.notice_preferences set next_due_at=$3,schedule_default_revision=$4 where workspace_id=$1 and user_id=$2',
-      [person.workspace_id, person.user_id, to.now, current.defaultRevision],
-    );
+    await db
+      .update(noticePreferences)
+      .set({
+        nextDueAt: to.now,
+        scheduleDefaultRevision: current.defaultRevision,
+      })
+      .where(
+        and(
+          eq(noticePreferences.workspaceId, person.workspace_id),
+          eq(noticePreferences.userId, person.user_id),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     return 0;
   }
   await advance(client, person.workspace_id, {
@@ -185,30 +275,31 @@ async function preparePerson(
     expiresAt,
     sealedPayload,
   });
-  await client.query(
-    'insert into app.notice_mail_batches(id,workspace_id,user_id,preference_revision,default_revision,member_revision,recipient,window_key,item_count) values($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-    [
+  await db
+    .insert(noticeMailBatches)
+    .values({
       id,
-      person.workspace_id,
-      person.user_id,
-      pref.revision,
-      current.defaultRevision,
-      to.role_revision,
-      to.email,
-      window,
-      subjects.length,
-    ],
-  );
-  await client.query(
-    'insert into app.notice_mail_items(workspace_id,batch_id,thread_id,revision) select $1,$2,item.id,item.revision from jsonb_to_recordset($3::jsonb) as item(id uuid,revision bigint)',
-    [
-      person.workspace_id,
-      id,
-      JSON.stringify(
-        subjects.map((row) => ({ id: row.id, revision: row.revision })),
-      ),
-    ],
-  );
+      workspaceId: person.workspace_id,
+      userId: person.user_id,
+      preferenceRevision: pref.revision,
+      defaultRevision: current.defaultRevision,
+      memberRevision: to.role_revision,
+      recipient: to.email,
+      windowKey: window,
+      itemCount: subjects.length,
+    })
+    .catch(rethrowQueryFailure);
+  await db
+    .insert(noticeMailItems)
+    .values(
+      subjects.map((row) => ({
+        workspaceId: person.workspace_id,
+        batchId: id,
+        threadId: row.id,
+        revision: BigInt(row.revision),
+      })),
+    )
+    .catch(rethrowQueryFailure);
   return 1;
 }
 async function authorizeBatch(
@@ -217,44 +308,50 @@ async function authorizeBatch(
   actorId: string,
   deliveryId: string,
 ): Promise<boolean> {
-  const found = await client.query<{
-    preference_revision: number;
-    default_revision: number;
-    member_revision: number;
-    recipient: string;
-    item_count: number;
-    released_at: Date | null;
-  }>(
-    'select * from app.notice_mail_batches where workspace_id=$1 and user_id=$2 and id=$3',
-    [workspaceId, actorId, deliveryId],
-  );
-  const batch = found.rows[0];
-  if (batch?.released_at !== null) return false;
+  const db = drizzle(client);
+  const [batch] = await db
+    .select()
+    .from(noticeMailBatches)
+    .where(
+      and(
+        eq(noticeMailBatches.workspaceId, workspaceId),
+        eq(noticeMailBatches.userId, actorId),
+        eq(noticeMailBatches.id, deliveryId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (batch?.releasedAt !== null) return false;
   const to = await recipient(client, workspaceId, actorId);
   const recipientChanged =
     !to?.email_verified ||
     to.email !== batch.recipient ||
-    to.role_revision !== batch.member_revision;
+    to.role_revision !== batch.memberRevision;
   if (recipientChanged) return false;
   const current = await settings(client, workspaceId, actorId, {
     create: false,
   });
   const preferencesChanged =
-    current.pref?.revision !== batch.preference_revision ||
-    current.defaultRevision !== batch.default_revision ||
+    current.pref?.revision !== batch.preferenceRevision ||
+    current.defaultRevision !== batch.defaultRevision ||
     current.effective.mode === 'off';
   if (preferencesChanged) return false;
-  const items = await client.query<{ thread_id: string }>(
-    'select thread_id from app.notice_mail_items where workspace_id=$1 and batch_id=$2',
-    [workspaceId, deliveryId],
-  );
-  if (items.rows.length !== batch.item_count) return false;
+  const items = await db
+    .select({ thread_id: noticeMailItems.threadId })
+    .from(noticeMailItems)
+    .where(
+      and(
+        eq(noticeMailItems.workspaceId, workspaceId),
+        eq(noticeMailItems.batchId, deliveryId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (items.length !== batch.itemCount) return false;
   const subjects = await readMailSubjects(client, workspaceId, {
     actorId,
     cut: new Date(Math.max(current.cut.getTime(), to.created_at.getTime())),
-    onlyIds: items.rows.map((row) => row.thread_id),
+    onlyIds: items.map((row) => row.thread_id),
   });
-  return subjects.length === batch.item_count;
+  return subjects.length === batch.itemCount;
 }
 export function createNoticeMailStore(
   config: DatabaseConfig,
@@ -272,12 +369,51 @@ export function createNoticeMailStore(
     },
     prepare: async (signal) => {
       signal?.throwIfAborted();
-      const candidates = await maintenance.pool.query<Person>(
-        `select member.workspace_id,member.user_id from app.workspace_memberships member join app.workspaces workspace on workspace.id=member.workspace_id left join app.notice_preferences pref on pref.workspace_id=member.workspace_id and pref.user_id=member.user_id left join app.notice_workspace_settings defaults on defaults.workspace_id=member.workspace_id where member.status='active' and workspace.status='active' and coalesce(pref.mode,defaults.mode,'off')<>'off' and (pref.next_due_at is null or pref.next_due_at<=clock_timestamp() or (pref.mode is null and pref.schedule_default_revision<>coalesce(defaults.revision,0))) and ($1::uuid is null or (member.workspace_id,member.user_id)>($1::uuid,$2::uuid)) order by member.workspace_id,member.user_id limit 10`,
-        [after?.workspace_id ?? null, after?.user_id ?? null],
-      );
+      const db = drizzle(maintenance.pool);
+      const candidates = await db
+        .select({
+          workspace_id: workspaceMemberships.workspaceId,
+          user_id: workspaceMemberships.userId,
+        })
+        .from(workspaceMemberships)
+        .innerJoin(
+          workspaces,
+          eq(workspaces.id, workspaceMemberships.workspaceId),
+        )
+        .leftJoin(
+          noticePreferences,
+          and(
+            eq(noticePreferences.workspaceId, workspaceMemberships.workspaceId),
+            eq(noticePreferences.userId, workspaceMemberships.userId),
+          ),
+        )
+        .leftJoin(
+          noticeWorkspaceSettings,
+          eq(
+            noticeWorkspaceSettings.workspaceId,
+            workspaceMemberships.workspaceId,
+          ),
+        )
+        .where(
+          and(
+            eq(workspaceMemberships.status, 'active'),
+            eq(workspaces.status, 'active'),
+            sql`coalesce(${noticePreferences.mode},${noticeWorkspaceSettings.mode},'off')<>'off'`,
+            or(
+              isNull(noticePreferences.nextDueAt),
+              sql`${noticePreferences.nextDueAt}<=clock_timestamp()`,
+              sql`${noticePreferences.mode} is null and ${noticePreferences.scheduleDefaultRevision}<>coalesce(${noticeWorkspaceSettings.revision},0)`,
+            ),
+            after === undefined
+              ? undefined
+              : sql`(${workspaceMemberships.workspaceId},${workspaceMemberships.userId})>(${after.workspace_id}::uuid,${after.user_id}::uuid)`,
+          ),
+        )
+        .orderBy(workspaceMemberships.workspaceId, workspaceMemberships.userId)
+        .limit(10)
+        .catch(rethrowQueryFailure);
       let count = 0;
-      for (const person of candidates.rows) {
+      for (const person of candidates) {
         signal?.throwIfAborted();
         try {
           count += await withTenantScopedClient(
@@ -294,15 +430,18 @@ export function createNoticeMailStore(
         }
         after = person;
       }
-      if (candidates.rows.length < 10) after = undefined;
+      if (candidates.length < 10) after = undefined;
       return count;
     },
     authorize: async (deliveryId) => {
-      const context = await maintenance.pool.query<Person>(
-        'select workspace_id,user_id from app.notice_mail_batches where id=$1',
-        [deliveryId],
-      );
-      const person = context.rows[0];
+      const [person] = await drizzle(maintenance.pool)
+        .select({
+          workspace_id: noticeMailBatches.workspaceId,
+          user_id: noticeMailBatches.userId,
+        })
+        .from(noticeMailBatches)
+        .where(eq(noticeMailBatches.id, deliveryId))
+        .catch(rethrowQueryFailure);
       if (person === undefined) return false;
       try {
         return await withTenantScopedClient(
@@ -337,10 +476,10 @@ function nextPersonNoticeDue(
   current: Awaited<ReturnType<typeof settings>>,
 ): Date | null {
   if (
-    pref.next_due_at !== null &&
-    pref.schedule_default_revision === current.defaultRevision
+    pref.nextDueAt !== null &&
+    pref.scheduleDefaultRevision === current.defaultRevision
   ) {
-    return pref.next_due_at;
+    return pref.nextDueAt;
   }
   if (current.effective.mode === 'immediate') {
     return current.cut;

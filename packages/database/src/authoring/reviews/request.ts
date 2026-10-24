@@ -1,3 +1,4 @@
+import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -15,7 +16,7 @@ import {
   readReviewRow,
   projectReview,
 } from './read.js';
-import { REVIEW_SOURCE_SQL, REVIEW_STATE_SQL } from './eligibility.js';
+import { REVIEW_SOURCE_SQL, reviewStateSql } from './eligibility.js';
 
 export async function requestPublicationReview(
   client: PoolClient,
@@ -56,14 +57,22 @@ export async function requestPublicationReview(
     expectedTag: input.representationTag,
   });
   await requireConnectionBindings(client, input, draft.graphJson);
+  const staleParameters: unknown[] = [
+    input.workspaceId,
+    input.workflowId,
+    input.representationTag,
+  ];
+  const staleState = bindResourcePredicate(reviewStateSql, staleParameters);
   await client.query(
     `update app.workflow_publication_requests current set status='stale' where current.workspace_id=$1 and current.workflow_id=$2 and current.status='pending'
-     and (current.representation_tag<>$3 or current.id in (select review.id ${REVIEW_SOURCE_SQL} where review.workspace_id=$1 and review.workflow_id=$2 and (${REVIEW_STATE_SQL})<>'pending'))`,
-    [input.workspaceId, input.workflowId, input.representationTag],
+     and (current.representation_tag<>$3 or current.id in (select review.id ${REVIEW_SOURCE_SQL} where review.workspace_id=$1 and review.workflow_id=$2 and (${staleState})<>'pending'))`,
+    staleParameters,
   );
+  const pendingParameters: unknown[] = [input.workspaceId];
+  const pendingState = bindResourcePredicate(reviewStateSql, pendingParameters);
   const pending = await client.query(
-    `select review.id ${REVIEW_SOURCE_SQL} where review.workspace_id=$1 and (${REVIEW_STATE_SQL})='pending' limit 100`,
-    [input.workspaceId],
+    `select review.id ${REVIEW_SOURCE_SQL} where review.workspace_id=$1 and (${pendingState})='pending' limit 100`,
+    pendingParameters,
   );
   if (pending.rows.length >= 100)
     throw new PublicationReviewError(

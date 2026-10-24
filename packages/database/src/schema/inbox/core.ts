@@ -1,3 +1,7 @@
+import type {
+  WorkspaceNoticeKind,
+  WorkspaceCapacityLimit,
+} from '@pertexo/contracts';
 import { workflowCommentMentions } from '../authoring/collaboration/mentions.js';
 import { workflowPublicationRequests } from '../authoring/publication-requests.js';
 import { sql } from 'drizzle-orm';
@@ -83,7 +87,9 @@ export const workspaceInboxThreads = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     id: uuid('id').notNull(),
-    noticeKind: varchar('notice_kind', { length: 32 }).notNull(),
+    noticeKind: varchar('notice_kind', { length: 32 })
+      .$type<WorkspaceNoticeKind>()
+      .notNull(),
     subjectId: uuid('subject_id').notNull(),
     connectionId: uuid('connection_id'),
     taskId: uuid('task_id'),
@@ -91,7 +97,9 @@ export const workspaceInboxThreads = appSchema.table(
     commentMentionId: uuid('comment_mention_id'),
     active: boolean('active').notNull().default(true),
     sourceRevision: varchar('source_revision', { length: 128 }),
-    capacityLimit: varchar('capacity_limit', { length: 16 }),
+    capacityLimit: varchar('capacity_limit', {
+      length: 16,
+    }).$type<WorkspaceCapacityLimit>(),
     workflowId: uuid('workflow_id'),
     revision: bigint('revision', { mode: 'bigint' }).notNull(),
     occurrenceCount: bigint('occurrence_count', { mode: 'bigint' }).notNull(),

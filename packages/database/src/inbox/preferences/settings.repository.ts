@@ -1,10 +1,15 @@
-import type { NoticeSubscription } from '@pertexo/contracts';
-import { sql } from 'drizzle-orm';
-import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import {
-  bindResourcePredicate,
-  workflowScopeSql,
-} from '../../tenant-access/resources/query-scope.js';
+  noticePreferences,
+  noticeSubscriptions,
+} from '../../schema/inbox/preferences.js';
+import { workspaceMemberships } from '../../schema/foundation.js';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { connections } from '../../schema/connections.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.js';
+import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
 import type { Pool, PoolClient } from 'pg';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -37,23 +42,28 @@ async function subjectExists(
   input: NoticeReader & NoticeSubject,
   { locking = false }: Readonly<{ locking?: boolean | undefined }> = {},
 ) {
-  const table = input.subjectKind === 'workflow' ? 'workflows' : 'connections';
-  const parameters: unknown[] = [input.workspaceId, input.subjectId];
+  const db = drizzle(client);
+  const table = input.subjectKind === 'workflow' ? workflows : connections;
   const visible =
     input.subjectKind === 'workflow'
-      ? bindResourcePredicate(
-          workflowScopeSql(
-            await readFolderScope(client, input),
-            sql`subject.id`,
-          ),
-          parameters,
+      ? workflowScopeSql(
+          await readFolderScope(client, input),
+          sql`${workflows.id}`,
         )
-      : 'true';
-  const found = await client.query(
-    `select subject.id from app.${table} subject where subject.workspace_id=$1 and subject.id=$2 and ${visible} ${locking ? 'for share' : ''}`,
-    parameters,
-  );
-  if (found.rowCount !== 1)
+      : undefined;
+  const query = db
+    .select({ id: table.id })
+    .from(table)
+    .where(
+      and(
+        eq(table.workspaceId, input.workspaceId),
+        eq(table.id, input.subjectId),
+        visible,
+      ),
+    )
+    .$dynamic();
+  const found = await (locking ? query.for('share') : query);
+  if (found.length !== 1)
     throw new NoticeUnavailableError('This subject is unavailable.');
 }
 export function createNoticePreferencesStore(
@@ -139,7 +149,7 @@ function replacePersonalPreferences(
             current.emailUnavailableReason ?? 'Email is unavailable.',
           );
       }
-      return replacePreference(client, input, { defaults: false });
+      return replacePreference(client, { input, defaults: false });
     },
     options(input),
   );
@@ -163,7 +173,7 @@ function replaceDefaultPreferences(
         throw new NoticeUnavailableError(
           'Durable system mail is not configured.',
         );
-      return replacePreference(client, input, { defaults: true });
+      return replacePreference(client, { input, defaults: true });
     },
     options(input),
   );
@@ -182,11 +192,23 @@ function readPersonalSubscription(
         roles: rolesForCapability('run:read'),
       });
       await subjectExists(client, input);
-      const found = await client.query<NoticeSubscription>(
-        'select revision,followed,muted from app.notice_subscriptions where workspace_id=$1 and user_id=$2 and subject_kind=$3 and subject_id=$4',
-        [input.workspaceId, input.actorId, input.subjectKind, input.subjectId],
-      );
-      return found.rows[0] ?? { revision: 0, followed: false, muted: false };
+      const [found] = await drizzle(client)
+        .select({
+          revision: noticeSubscriptions.revision,
+          followed: noticeSubscriptions.followed,
+          muted: noticeSubscriptions.muted,
+        })
+        .from(noticeSubscriptions)
+        .where(
+          and(
+            eq(noticeSubscriptions.workspaceId, input.workspaceId),
+            eq(noticeSubscriptions.userId, input.actorId),
+            eq(noticeSubscriptions.subjectKind, input.subjectKind),
+            eq(noticeSubscriptions.subjectId, input.subjectId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      return found ?? { revision: 0, followed: false, muted: false };
     },
     options(input),
   );
@@ -226,26 +248,44 @@ function unsubscribePersonalMail(
       input.actorId,
       rolesForCapability('workspace:read'),
     );
-    const member = await client.query<{ role_revision: number }>(
-      'select role_revision from app.workspace_memberships where workspace_id=$1 and user_id=$2',
-      [input.workspaceId, input.actorId],
+    const db = drizzle(client);
+    const [member] = await db
+      .select({ roleRevision: workspaceMemberships.roleRevision })
+      .from(workspaceMemberships)
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, input.workspaceId),
+          eq(workspaceMemberships.userId, input.actorId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    if (member?.roleRevision !== input.memberRevision) return false;
+    const predicate = and(
+      eq(noticePreferences.workspaceId, input.workspaceId),
+      eq(noticePreferences.userId, input.actorId),
     );
-    if (member.rows[0]?.role_revision !== input.memberRevision) return false;
-    const found = await client.query<{
-      revision: number;
-      mode: string | null;
-    }>(
-      'select revision,mode from app.notice_preferences where workspace_id=$1 and user_id=$2 for update',
-      [input.workspaceId, input.actorId],
-    );
-    const row = found.rows[0];
+    const [row] = await db
+      .select({
+        revision: noticePreferences.revision,
+        mode: noticePreferences.mode,
+      })
+      .from(noticePreferences)
+      .where(predicate)
+      .for('update')
+      .catch(rethrowQueryFailure);
     if (row === undefined) return false;
     if (row.mode === 'off' && row.revision === input.revision + 1) return true;
     if (row.revision !== input.revision) return false;
-    await client.query(
-      "update app.notice_preferences set mode='off',revision=revision+1,changed_at=clock_timestamp(),next_due_at=null where workspace_id=$1 and user_id=$2",
-      [input.workspaceId, input.actorId],
-    );
+    await db
+      .update(noticePreferences)
+      .set({
+        mode: 'off',
+        revision: row.revision + 1,
+        changedAt: sql`clock_timestamp()`,
+        nextDueAt: null,
+      })
+      .where(predicate)
+      .catch(rethrowQueryFailure);
     return true;
   });
 }

@@ -18,12 +18,13 @@ import {
   withTenantScopedClient,
   withTenantScopedReadClient,
 } from '../../tenant-access/transactions.js';
-import {
-  noticeColumns,
-  noticeSource,
-  projectNotices,
-  type NoticeRow,
-} from './projection.js';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { workspaceInboxReads } from '../../schema/inbox/core.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { noticeRecords, thread, seen, unreadSql } from './records.queries.js';
+import { projectNotices } from './projection.js';
 export type WorkspaceInboxFailureKind =
   'failed' | 'timed_out' | 'outcome_unknown';
 export type WorkspaceInboxThreadRecord = WorkspaceInboxThread;
@@ -90,141 +91,212 @@ export function createWorkspaceInboxDatabase(
   runtime?: DatabaseRuntime,
 ): WorkspaceInboxDatabase {
   const lease = acquireDatabasePool(config, runtime);
-  const scope = (i: ReaderScope) => ({
-    workspaceId: i.workspaceId,
-    actorId: i.actorId,
-  });
-  const options = (i: ReaderScope) => ({
-    statementTimeoutMillis: 2000,
-    ...(i.signal === undefined ? {} : { signal: i.signal }),
-  });
   return {
     close: () => lease.close(),
     listThreads: (input) =>
       withTenantScopedReadClient(
         lease.pool,
         scope(input),
-        async (client) => {
-          const resources = await noticeAccess(client, input, { write: false });
-
-          const pageParameters: unknown[] = [
-            input.workspaceId,
-            input.actorId,
-            input.filter === 'unread',
-            input.after?.latestOccurredAt ?? null,
-            input.after?.threadId ?? null,
-            input.limit + 1,
-            input.noticeKind ?? null,
-          ];
-          const found = await client.query<NoticeRow>(
-            `select ${noticeColumns} ${noticeSource} where thread.workspace_id=$1 and ${noticeVisibilitySql('$2', resources, pageParameters)}
- and ($3::boolean is false or seen.read_revision is null or seen.read_revision<thread.revision)
- and ($4::timestamptz is null or (thread.latest_occurred_at,thread.id)<($4::timestamptz,$5::uuid))
- and ($7::varchar is null or thread.notice_kind=$7)
- order by thread.latest_occurred_at desc,thread.id desc limit $6`,
-            pageParameters,
-          );
-          const page = found.rows.slice(0, input.limit);
-          const last = page.at(-1);
-          const revisionParameters: unknown[] = [
-            input.workspaceId,
-            input.actorId,
-          ];
-          const revision = await client.query<{ revision: string }>(
-            `select coalesce(max(thread.revision),0)::text revision from app.workspace_inbox_threads thread where thread.workspace_id=$1 and ${noticeVisibilitySql('$2', resources, revisionParameters)}`,
-            revisionParameters,
-          );
-          return {
-            items: await projectNotices(client, input.workspaceId, page),
-            next:
-              found.rows.length > input.limit && last !== undefined
-                ? {
-                    latestOccurredAt: last.latest_occurred_at,
-                    threadId: last.id,
-                  }
-                : null,
-            revision: revision.rows[0]?.revision ?? '0',
-          };
-        },
+        (client) => listThreads(client, input),
         options(input),
       ),
     readSummary: (input) =>
       withTenantScopedReadClient(
         lease.pool,
         scope(input),
-        async (client) => {
-          const resources = await noticeAccess(client, input, { write: false });
-
-          const summaryParameters: unknown[] = [
-            input.workspaceId,
-            input.actorId,
-          ];
-          const result = await client.query<{
-            unread_count: string;
-            revision: string;
-          }>(
-            `select count(*) filter(where seen.read_revision is null or seen.read_revision<thread.revision)::text unread_count,coalesce(max(thread.revision),0)::text revision from app.workspace_inbox_threads thread left join app.workspace_inbox_reads seen on seen.workspace_id=thread.workspace_id and seen.thread_id=thread.id and seen.user_id=$2 where thread.workspace_id=$1 and ${noticeVisibilitySql('$2', resources, summaryParameters)}`,
-            summaryParameters,
-          );
-          return {
-            unreadCount: Number(result.rows[0]?.unread_count ?? 0),
-            revision: result.rows[0]?.revision ?? '0',
-          };
-        },
+        (client) => readSummary(client, input),
         options(input),
       ),
     markThreadRead: (input) =>
       withTenantScopedClient(
         lease.pool,
         scope(input),
-        async (client) => {
-          const resources = await noticeAccess(client, input, { write: true });
-
-          const markParameters: unknown[] = [
-            input.workspaceId,
-            input.actorId,
-            input.threadId,
-            input.revision,
-          ];
-          await client.query(
-            `insert into app.workspace_inbox_reads as seen(workspace_id,user_id,thread_id,read_revision) select thread.workspace_id,$2,thread.id,least($4::bigint,thread.revision) from app.workspace_inbox_threads thread where thread.workspace_id=$1 and ${noticeVisibilitySql('$2', resources, markParameters)} and thread.id=$3 and $4::bigint>0 on conflict(workspace_id,user_id,thread_id) do update set read_revision=excluded.read_revision,read_at=clock_timestamp() where seen.read_revision<excluded.read_revision`,
-            markParameters,
-          );
-          const threadParameters: unknown[] = [
-            input.workspaceId,
-            input.actorId,
-            input.threadId,
-          ];
-          const current = await client.query<{
-            revision: string;
-            unread: boolean;
-          }>(
-            `select thread.revision::text,(seen.read_revision is null or seen.read_revision<thread.revision) unread from app.workspace_inbox_threads thread left join app.workspace_inbox_reads seen on seen.workspace_id=thread.workspace_id and seen.thread_id=thread.id and seen.user_id=$2 where thread.workspace_id=$1 and ${noticeVisibilitySql('$2', resources, threadParameters)} and thread.id=$3`,
-            threadParameters,
-          );
-          return current.rows[0];
-        },
+        (client) => markThreadRead(client, input),
         options(input),
       ),
     markAllRead: (input) =>
       withTenantScopedClient(
         lease.pool,
         scope(input),
-        async (client) => {
-          const resources = await noticeAccess(client, input, { write: true });
-
-          const allParameters: unknown[] = [
-            input.workspaceId,
-            input.actorId,
-            input.revision,
-          ];
-          const result = await client.query(
-            `insert into app.workspace_inbox_reads as seen(workspace_id,user_id,thread_id,read_revision) select thread.workspace_id,$2,thread.id,thread.revision from app.workspace_inbox_threads thread where thread.workspace_id=$1 and ${noticeVisibilitySql('$2', resources, allParameters)} and thread.revision<=$3::bigint on conflict(workspace_id,user_id,thread_id) do update set read_revision=excluded.read_revision,read_at=clock_timestamp() where seen.read_revision<excluded.read_revision`,
-            allParameters,
-          );
-          return { marked: result.rowCount ?? 0 };
-        },
+        (client) => markAllRead(client, input),
         options(input),
       ),
   };
+}
+function scope(input: ReaderScope) {
+  return { workspaceId: input.workspaceId, actorId: input.actorId };
+}
+function options(input: ReaderScope) {
+  return {
+    statementTimeoutMillis: 2000,
+    ...(input.signal === undefined ? {} : { signal: input.signal }),
+  };
+}
+async function listThreads(
+  client: PoolClient,
+  input: Parameters<WorkspaceInboxDatabase['listThreads']>[0],
+): Promise<WorkspaceInboxThreadPage> {
+  const db = drizzle(client);
+  const resources = await noticeAccess(client, input, { write: false });
+  const visible = and(
+    eq(thread.workspaceId, input.workspaceId),
+    noticeVisibilitySql(db, input.actorId, resources),
+  );
+  const found = await noticeRecords(db, input.actorId)
+    .where(
+      and(
+        visible,
+        input.filter === 'unread' ? unreadSql : undefined,
+        input.after === undefined
+          ? undefined
+          : sql`(${thread.latestOccurredAt},${thread.id})<(${input.after.latestOccurredAt}::timestamptz,${input.after.threadId}::uuid)`,
+        input.noticeKind === undefined
+          ? undefined
+          : eq(thread.noticeKind, input.noticeKind),
+      ),
+    )
+    .orderBy(desc(thread.latestOccurredAt), desc(thread.id))
+    .limit(input.limit + 1)
+    .catch(rethrowQueryFailure);
+  const page = found.slice(0, input.limit);
+  const last = page.at(-1);
+  const [revision] = await db
+    .select({
+      revision: sql<string>`coalesce(max(${thread.revision}),0)::text`,
+    })
+    .from(thread)
+    .where(visible)
+    .catch(rethrowQueryFailure);
+  return {
+    items: await projectNotices(client, input.workspaceId, page),
+    next:
+      found.length > input.limit && last !== undefined
+        ? { latestOccurredAt: last.latest_occurred_at, threadId: last.id }
+        : null,
+    revision: revision?.revision ?? '0',
+  };
+}
+async function readSummary(
+  client: PoolClient,
+  input: ReaderScope,
+): Promise<WorkspaceInboxSummary> {
+  const db = drizzle(client);
+  const resources = await noticeAccess(client, input, { write: false });
+  const [result] = await db
+    .select({
+      unreadCount: sql<string>`count(*) filter(where ${unreadSql})::text`,
+      revision: sql<string>`coalesce(max(${thread.revision}),0)::text`,
+    })
+    .from(thread)
+    .leftJoin(
+      seen,
+      and(
+        eq(seen.workspaceId, thread.workspaceId),
+        eq(seen.threadId, thread.id),
+        eq(seen.userId, input.actorId),
+      ),
+    )
+    .where(
+      and(
+        eq(thread.workspaceId, input.workspaceId),
+        noticeVisibilitySql(db, input.actorId, resources),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return {
+    unreadCount: Number(result?.unreadCount ?? 0),
+    revision: result?.revision ?? '0',
+  };
+}
+const excluded = alias(workspaceInboxReads, 'excluded');
+const readConflict = {
+  target: [
+    workspaceInboxReads.workspaceId,
+    workspaceInboxReads.userId,
+    workspaceInboxReads.threadId,
+  ],
+  set: {
+    readRevision: sql`${excluded.readRevision}`,
+    readAt: sql`clock_timestamp()`,
+  },
+  setWhere: sql`${workspaceInboxReads.readRevision}<${excluded.readRevision}`,
+};
+async function markThreadRead(
+  client: PoolClient,
+  input: Parameters<WorkspaceInboxDatabase['markThreadRead']>[0],
+) {
+  const db = drizzle(client);
+  const resources = await noticeAccess(client, input, { write: true });
+  const visible = and(
+    eq(thread.workspaceId, input.workspaceId),
+    noticeVisibilitySql(db, input.actorId, resources),
+    eq(thread.id, input.threadId),
+  );
+  await db
+    .insert(workspaceInboxReads)
+    .select(
+      db
+        .select({
+          workspaceId: thread.workspaceId,
+          userId: sql<string>`${input.actorId}::uuid`.as('user_id'),
+          threadId: thread.id,
+          readRevision:
+            sql<bigint>`least(${input.revision}::bigint,${thread.revision})`.as(
+              'read_revision',
+            ),
+          readAt: sql`clock_timestamp()`.as('read_at'),
+        })
+        .from(thread)
+        .where(and(visible, sql`${input.revision}::bigint>0`)),
+    )
+    .onConflictDoUpdate(readConflict)
+    .catch(rethrowQueryFailure);
+  const [current] = await db
+    .select({
+      revision: sql<string>`${thread.revision}::text`,
+      unread: unreadSql,
+    })
+    .from(thread)
+    .leftJoin(
+      seen,
+      and(
+        eq(seen.workspaceId, thread.workspaceId),
+        eq(seen.threadId, thread.id),
+        eq(seen.userId, input.actorId),
+      ),
+    )
+    .where(visible)
+    .catch(rethrowQueryFailure);
+  return current;
+}
+async function markAllRead(
+  client: PoolClient,
+  input: Parameters<WorkspaceInboxDatabase['markAllRead']>[0],
+) {
+  const db = drizzle(client);
+  const resources = await noticeAccess(client, input, { write: true });
+  const result = await db
+    .insert(workspaceInboxReads)
+    .select(
+      db
+        .select({
+          workspaceId: thread.workspaceId,
+          userId: sql<string>`${input.actorId}::uuid`.as('user_id'),
+          threadId: thread.id,
+          readRevision: thread.revision,
+          readAt: sql`clock_timestamp()`.as('read_at'),
+        })
+        .from(thread)
+        .where(
+          and(
+            eq(thread.workspaceId, input.workspaceId),
+            noticeVisibilitySql(db, input.actorId, resources),
+            sql`${thread.revision}<=${input.revision}::bigint`,
+          ),
+        ),
+    )
+    .onConflictDoUpdate(readConflict)
+    .returning({ threadId: workspaceInboxReads.threadId })
+    .catch(rethrowQueryFailure);
+  return { marked: result.length };
 }

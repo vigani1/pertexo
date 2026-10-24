@@ -49,13 +49,16 @@ describe('workspace inbox producer', () => {
         ]),
       });
       expect(query).toHaveBeenCalledTimes(1);
-      const [sql, values] = query.mock.calls[0] as [string, unknown[]];
-      expect(sql).toMatch(/on conflict do nothing/u);
+      const [config, values] = query.mock.calls[0] as [
+        { text: string },
+        unknown[],
+      ];
+      expect(config.text).toMatch(/on conflict do nothing/u);
       expect(values.slice(1)).toEqual([
         workspaceId,
         workflowId,
         runId,
-        5,
+        5n,
         status,
         '2026-09-28T10:01:00.000Z',
       ]);

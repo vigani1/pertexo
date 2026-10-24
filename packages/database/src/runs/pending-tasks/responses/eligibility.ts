@@ -1,34 +1,29 @@
-/**
- * Captured role-or-member selection is shared by tasks and prospective
- * authoring checks. A missing audience selects nobody: comparing against it
- * yields null, which would otherwise let "not in the audience" pass.
- */
+import { sql, type SQL } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { pendingRunTasks } from '../../../schema/runs/pending-task.js';
+import { workflowRuns } from '../../../schema/runs/execution.js';
+export const task = alias(pendingRunTasks, 'task');
+export const run = alias(workflowRuns, 'run');
+/** A missing captured audience selects nobody. */
 export function taskAudienceSelectionSql(
-  audienceExpression: string,
-  actorExpression: string,
-  roleExpression: string,
-): string {
-  return `coalesce(((${audienceExpression})->'roles') ? (${roleExpression})::text OR ((${audienceExpression})->'memberIds') ? (${actorExpression})::text, false)`;
+  audience: SQL,
+  actor: SQL,
+  role: SQL,
+): SQL {
+  return sql`coalesce(((${audience})->'roles') ? (${role})::text OR ((${audience})->'memberIds') ? (${actor})::text, false)`;
 }
-function starterExcludedSql(actorExpression: string): string {
-  return `task.kind='approval' and task.config->'allowStarterToDecide' is distinct from 'true'::jsonb and run.started_by is not distinct from (${actorExpression})::uuid`;
+function starterExcludedSql(actor: SQL): SQL {
+  return sql`${task.kind}='approval' and ${task.config}->'allowStarterToDecide' is distinct from 'true'::jsonb and ${run.startedBy} is not distinct from (${actor})::uuid`;
 }
 /** The captured choice and audience serve discovery, notices and decisions. */
-export function pendingTaskAudienceSql(
-  actorParameter: string,
-  roleParameter: string,
-): string {
-  return `(${taskAudienceSelectionSql("task.config->'audience'", actorParameter, roleParameter)}) and not (${starterExcludedSql(actorParameter)})`;
+export function pendingTaskAudienceSql(actor: SQL, role: SQL): SQL {
+  return sql`(${taskAudienceSelectionSql(sql`${task.config}->'audience'`, actor, role)}) and not (${starterExcludedSql(actor)})`;
 }
-/** Current task/run state also gates Inbox context and mail, without copying its rules. */
-export function pendingTaskBlockedSql(
-  actorParameter: string,
-  roleParameter: string,
-): string {
-  // A canceled task closed with its run; nobody resolved it.
-  return `case when task.status='expired' then 'expired' when task.status='canceled' then 'run_closed' when task.status <> 'pending' then 'resolved'
-    when run.status not in ('queued','running','waiting') or run.cancel_requested_at is not null or run.deadline_at<=clock_timestamp() then 'run_closed'
-    when task.expires_at <= clock_timestamp() then 'expired'
-    when ${starterExcludedSql(actorParameter)} then 'starter'
-    when not ${taskAudienceSelectionSql("task.config->'audience'", actorParameter, roleParameter)} then 'audience' else null end`;
+/** Current task/run state also gates Inbox context and mail. */
+export function pendingTaskBlockedSql(actor: SQL, role: SQL): SQL {
+  return sql`case when ${task.status}='expired' then 'expired' when ${task.status}='canceled' then 'run_closed' when ${task.status} <> 'pending' then 'resolved'
+ when ${run.status} not in ('queued','running','waiting') or ${run.cancelRequestedAt} is not null or ${run.deadlineAt}<=clock_timestamp() then 'run_closed'
+ when ${task.expiresAt} <= clock_timestamp() then 'expired'
+ when ${starterExcludedSql(actor)} then 'starter'
+ when not ${taskAudienceSelectionSql(sql`${task.config}->'audience'`, actor, role)} then 'audience' else null end`;
 }

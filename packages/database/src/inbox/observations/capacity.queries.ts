@@ -1,7 +1,28 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { WorkspaceCapacityLimit } from '@pertexo/contracts';
-
-const ratio = { numerator: 4, denominator: 5 } as const;
+import {
+  and,
+  eq,
+  isNull,
+  notInArray,
+  sql,
+  type SQL,
+  type SQLWrapper,
+} from 'drizzle-orm';
+import { union } from 'drizzle-orm/pg-core';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { workspaces } from '../../schema/foundation.js';
+import {
+  workspaceExecutionAdmissionCounters as counter,
+  workflowRunActiveAdmissions as admission,
+} from '../../schema/runs/capacity/admission.js';
+import {
+  workspaceExecutionEntitlements as pointer,
+  workspaceExecutionEntitlementVersions as entitlement,
+} from '../../schema/runs/capacity/entitlements.js';
+import { workspaceArtifactCapacity as capacity } from '../../schema/transport.js';
+import { workflowRuns } from '../../schema/runs/execution.js';
 export const CAPACITY_LIMIT_LABELS: Readonly<
   Record<WorkspaceCapacityLimit, string>
 > = {
@@ -10,64 +31,104 @@ export const CAPACITY_LIMIT_LABELS: Readonly<
   artifact_bytes: 'File storage',
   artifact_count: 'File count',
 };
-
-// Expressions come only from this module's metric dictionary, never request data.
-function approaching(used: string, limit: string, available = 'true'): string {
-  return `coalesce((${available}) AND (${limit})>0 AND (${used})::numeric*${String(ratio.denominator)}>=(${limit})::numeric*${String(ratio.numerator)},false)`;
+function approaching(
+  used: SQLWrapper,
+  limit: SQLWrapper,
+  available: SQL = sql`true`,
+): SQL<boolean> {
+  return sql`coalesce((${available}) and (${limit})>0 and (${used})::numeric*5>=(${limit})::numeric*4,false)`;
 }
-const effective = `counter.workspace_id is not null and entitlement.status='active' and entitlement.effective_at<=statement_timestamp() and (entitlement.expires_at is null or entitlement.expires_at>statement_timestamp())`;
-const joins = `left join app.workspace_execution_admission_counters counter on counter.workspace_id=workspace.id
- left join app.workspace_execution_entitlements pointer on pointer.workspace_id=workspace.id
- left join app.workspace_execution_entitlement_versions entitlement on entitlement.workspace_id=pointer.workspace_id and entitlement.version=pointer.current_version
- left join app.workspace_artifact_capacity capacity on capacity.workspace_id=workspace.id`;
-function metrics(active: string, queued: string) {
-  return [
-    ['active', approaching(active, 'entitlement.active_run_limit', effective)],
-    ['queue', approaching(queued, 'entitlement.queued_run_limit', effective)],
-    [
-      'artifact_bytes',
-      approaching('capacity.charged_bytes', 'capacity.byte_limit'),
-    ],
-    [
-      'artifact_count',
-      approaching('capacity.charged_count', 'capacity.artifact_count_limit'),
-    ],
-  ] as const;
+const effective = sql`${counter.workspaceId} is not null and ${entitlement.status}='active' and ${entitlement.effectiveAt}<=statement_timestamp() and (${entitlement.expiresAt} is null or ${entitlement.expiresAt}>statement_timestamp())`;
+function metrics(active: SQL, queued: SQL) {
+  return {
+    active: approaching(active, entitlement.activeRunLimit, effective),
+    queue: approaching(queued, entitlement.queuedRunLimit, effective),
+    artifact_bytes: approaching(capacity.chargedBytes, capacity.byteLimit),
+    artifact_count: approaching(
+      capacity.chargedCount,
+      capacity.artifactCountLimit,
+    ),
+  };
 }
-
-// Maintenance discovers candidates without installing one tenant's context globally.
-// Current facts below use the scoped capacity function and its existing grants.
-export const CAPACITY_WARNING_CANDIDATES_SQL = `select workspace.id workspace_id,metric.capacity_limit
- from app.workspaces workspace
- ${joins}
- left join lateral (
-   select count(*)::integer held from app.workflow_run_active_admissions admission
-   join app.workflow_runs run on run.workspace_id=admission.workspace_id and run.id=admission.workflow_run_id
-   where admission.workspace_id=workspace.id and run.human_wait_started_at is null and run.status not in ('running','waiting')
- ) reserved on true
- cross join lateral (values ${metrics(
-   'counter.active_runs+reserved.held',
-   'counter.queued_runs',
- )
-   .map(([key, condition]) => `('${key}'::varchar,${condition})`)
-   .join(',')}) metric(capacity_limit,approaching)
- where workspace.status='active' and metric.approaching`;
-
+export const slotCounts = sql`app.workflow_run_slot_counts(${workspaces.id}) counts`;
 export async function readCapacityWarning(
   client: PoolClient,
   workspaceId: string,
   key: WorkspaceCapacityLimit,
 ): Promise<boolean> {
-  const found = await client.query<Record<WorkspaceCapacityLimit, boolean>>(
-    `select ${metrics(
-      'counts.active_runs+counts.reserved_active_slots',
-      'counts.queued_runs',
+  const [row] = await drizzle(client)
+    .select(
+      metrics(
+        sql`counts.active_runs+counts.reserved_active_slots`,
+        sql`counts.queued_runs`,
+      ),
     )
-      .map(([name, condition]) => `${condition} ${name}`)
-      .join(',')}
- from app.workspaces workspace cross join app.workflow_run_slot_counts(workspace.id) counts ${joins}
- where workspace.id=$1 and workspace.status='active'`,
-    [workspaceId],
+    .from(workspaces)
+    .innerJoin(slotCounts, sql`true`)
+    .leftJoin(counter, eq(counter.workspaceId, workspaces.id))
+    .leftJoin(pointer, eq(pointer.workspaceId, workspaces.id))
+    .leftJoin(
+      entitlement,
+      and(
+        eq(entitlement.workspaceId, pointer.workspaceId),
+        eq(entitlement.version, pointer.currentVersion),
+      ),
+    )
+    .leftJoin(capacity, eq(capacity.workspaceId, workspaces.id))
+    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.status, 'active')))
+    .catch(rethrowQueryFailure);
+  return row?.[key] ?? false;
+}
+/** Maintenance discovers candidates without installing a tenant context globally. */
+export function capacityWarningCandidates(db: Pick<NodePgDatabase, 'select'>) {
+  const reserved = db
+    .select({ held: sql<number>`count(*)::integer`.as('held') })
+    .from(admission)
+    .innerJoin(
+      workflowRuns,
+      and(
+        eq(workflowRuns.workspaceId, admission.workspaceId),
+        eq(workflowRuns.id, admission.workflowRunId),
+      ),
+    )
+    .where(
+      and(
+        eq(admission.workspaceId, workspaces.id),
+        isNull(workflowRuns.humanWaitStartedAt),
+        notInArray(workflowRuns.status, ['running', 'waiting']),
+      ),
+    )
+    .as('reserved');
+  const conditions = metrics(
+    sql`${counter.activeRuns}+${reserved.held}`,
+    sql`${counter.queuedRuns}`,
   );
-  return found.rows[0]?.[key] ?? false;
+  function candidates(key: WorkspaceCapacityLimit) {
+    return db
+      .select({
+        workspace_id: workspaces.id,
+        capacity_limit: sql<WorkspaceCapacityLimit>`${key}::varchar`.as(
+          'capacity_limit',
+        ),
+      })
+      .from(workspaces)
+      .leftJoin(counter, eq(counter.workspaceId, workspaces.id))
+      .leftJoin(pointer, eq(pointer.workspaceId, workspaces.id))
+      .leftJoin(
+        entitlement,
+        and(
+          eq(entitlement.workspaceId, pointer.workspaceId),
+          eq(entitlement.version, pointer.currentVersion),
+        ),
+      )
+      .leftJoin(capacity, eq(capacity.workspaceId, workspaces.id))
+      .leftJoinLateral(reserved, sql`true`)
+      .where(and(eq(workspaces.status, 'active'), conditions[key]));
+  }
+  return union(
+    candidates('active'),
+    candidates('queue'),
+    candidates('artifact_bytes'),
+    candidates('artifact_count'),
+  );
 }

@@ -1,4 +1,4 @@
-import { Client } from 'pg';
+import { Client, Pool } from 'pg';
 import { expect, it } from 'vitest';
 import { RETENTION_RULES } from '../../../src/lifecycle/retention-rules.js';
 import {
@@ -31,15 +31,14 @@ export function registerDoesNotDeleteWarningReactivated(): void {
     const rule = RETENTION_RULES.find(
       (candidate) => candidate.name === 'workspace_inbox_threads',
     );
-    if (rule === undefined || !('statement' in rule))
-      throw new Error('Missing inbox retention statement');
+    if (rule === undefined || !('run' in rule))
+      throw new Error('Missing inbox retention rule');
     const applicationName = `retention-warning-${randomUUID()}`;
     const blocker = new Client({ connectionString: withDatabase(adminUrl) });
-    const cleaner = new Client({
+    const cleaner = new Pool({
       connectionString: withApplicationName(maintenanceUrl, applicationName),
     });
     await blocker.connect();
-    await cleaner.connect();
     let outcome: Promise<unknown> | undefined;
     try {
       await blocker.query('begin');
@@ -47,11 +46,12 @@ export function registerDoesNotDeleteWarningReactivated(): void {
         'update app.workspace_inbox_threads set active=true,latest_occurred_at=clock_timestamp() where id=$1',
         [id],
       );
-      const pending = cleaner.query(rule.statement, [1000]);
+      const client = await cleaner.connect();
+      const pending = rule.run(client, 1000).finally(() => client.release());
       outcome = pending.catch((error: unknown) => error);
       await waitForPostgresLock(applicationName);
       await blocker.query('commit');
-      expect(await pending).toMatchObject({ rowCount: 0 });
+      expect(await pending).toBe(0);
       expect(
         (
           await admin.query(

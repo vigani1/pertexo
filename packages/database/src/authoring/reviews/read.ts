@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
@@ -22,7 +24,7 @@ import {
 import type { ReviewDependencies, ReviewScope } from './contract.js';
 import {
   REVIEW_SOURCE_SQL,
-  REVIEW_STATE_SQL,
+  reviewStateSql,
   reviewDecisionAllowedSql,
 } from './eligibility.js';
 
@@ -51,17 +53,27 @@ export async function readReviewRow(
   client: PoolClient,
   input: ReviewScope & { reviewId: string },
 ): Promise<ReviewRow> {
+  const parameters: unknown[] = [
+    input.workspaceId,
+    input.reviewId,
+    input.actorId,
+  ];
+  const state = bindResourcePredicate(reviewStateSql, parameters);
+  const allowed = bindResourcePredicate(
+    reviewDecisionAllowedSql(sql`$3`, sql`actor.role`),
+    parameters,
+  );
   const row = (
     await client.query<ReviewRow>(
       `select review.*,draft.graph_json draft_graph,workflow.name workflow_name,requester_user.display_name requester_name,
-    decider.display_name decider_name,version.version_number,(${REVIEW_STATE_SQL}) state,
-    ${reviewDecisionAllowedSql('$3', 'actor.role')} can_decide
+    decider.display_name decider_name,version.version_number,(${state}) state,
+    ${allowed} can_decide
     ${REVIEW_SOURCE_SQL}
     left join app.users decider on decider.id=review.decided_by
     left join app.workflow_versions version on version.workspace_id=review.workspace_id and version.id=review.published_version_id
     join app.workspace_memberships actor on actor.workspace_id=review.workspace_id and actor.user_id=$3 and actor.status='active'
     where review.workspace_id=$1 and review.id=$2`,
-      [input.workspaceId, input.reviewId, input.actorId],
+      parameters,
     )
   ).rows[0];
   if (row === undefined)

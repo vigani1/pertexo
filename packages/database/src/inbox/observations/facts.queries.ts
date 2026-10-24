@@ -1,8 +1,18 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readCommentMentionSource } from './mentions.queries.js';
+import { review, reviewRecords } from '../../authoring/reviews/eligibility.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { connections } from '../../schema/connections.js';
+import { task, run } from '../../runs/pending-tasks/responses/eligibility.js';
+import { workspaces } from '../../schema/foundation.js';
 import {
-  REVIEW_SOURCE_SQL,
-  REVIEW_STATE_SQL,
-} from '../../authoring/reviews/eligibility.js';
+  workspaceExecutionEntitlements as pointer,
+  workspaceExecutionEntitlementVersions as entitlement,
+} from '../../schema/runs/capacity/entitlements.js';
+import { workspaceArtifactCapacity as capacity } from '../../schema/transport.js';
+import { slotCounts } from './capacity.queries.js';
 import type { PoolClient } from 'pg';
 import { readCapacityWarning } from './capacity.queries.js';
 import type {
@@ -94,16 +104,20 @@ async function readAutoPauseFact(
   client: PoolClient,
   subject: AttentionSubject,
 ): Promise<AttentionFact> {
-  const values = [subject.workspaceId, subject.subjectId];
-
-  const found = await client.query<{
-    trigger_pause_state: string;
-    trigger_pause_revision: string;
-  }>(
-    'select trigger_pause_state,trigger_pause_revision::text from app.workflows where workspace_id=$1 and id=$2 for share',
-    values,
-  );
-  const row = found.rows[0];
+  const [row] = await drizzle(client)
+    .select({
+      trigger_pause_state: workflows.triggerPauseState,
+      trigger_pause_revision: sql<string>`${workflows.triggerPauseRevision}::text`,
+    })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, subject.workspaceId),
+        eq(workflows.id, subject.subjectId),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
   return {
     ...base,
     workflowId: subject.subjectId,
@@ -115,16 +129,20 @@ async function readConnectionAttentionFact(
   client: PoolClient,
   subject: AttentionSubject,
 ): Promise<AttentionFact> {
-  const values = [subject.workspaceId, subject.subjectId];
-
-  const found = await client.query<{
-    status: string;
-    health_revision: string;
-  }>(
-    'select status,health_revision::text from app.connections where workspace_id=$1 and id=$2 for share',
-    values,
-  );
-  const row = found.rows[0];
+  const [row] = await drizzle(client)
+    .select({
+      status: connections.status,
+      health_revision: sql<string>`${connections.healthRevision}::text`,
+    })
+    .from(connections)
+    .where(
+      and(
+        eq(connections.workspaceId, subject.workspaceId),
+        eq(connections.id, subject.subjectId),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
   return {
     ...base,
     connectionId: subject.subjectId,
@@ -136,17 +154,17 @@ async function readPublicationReviewFact(
   client: PoolClient,
   subject: AttentionSubject,
 ): Promise<AttentionFact> {
-  const values = [subject.workspaceId, subject.subjectId];
-
-  const row = (
-    await client.query<{ workflow_id: string; active: boolean }>(
-      `select review.workflow_id,((${REVIEW_STATE_SQL})='pending') active ${REVIEW_SOURCE_SQL} where review.workspace_id=$1 and review.id=$2`,
-      values,
+  const [row] = await reviewRecords(drizzle(client))
+    .where(
+      and(
+        eq(review.workspaceId, subject.workspaceId),
+        eq(review.id, subject.subjectId),
+      ),
     )
-  ).rows[0];
+    .catch(rethrowQueryFailure);
   return {
     ...base,
-    workflowId: row?.workflow_id ?? null,
+    workflowId: row?.workflowId ?? null,
     publicationRequestId: subject.subjectId,
     active: row?.active ?? false,
     sourceRevision: subject.subjectId,
@@ -156,23 +174,39 @@ async function readApprovalFact(
   client: PoolClient,
   subject: AttentionSubject,
 ): Promise<AttentionFact> {
-  const values = [subject.workspaceId, subject.subjectId];
-
+  const db = drizzle(client);
+  const predicate = and(
+    eq(task.workspaceId, subject.workspaceId),
+    eq(task.id, subject.subjectId),
+  );
   // Decisions and the coordinator lock the run before its task.
-  await client.query(
-    `select id from app.workflow_runs where workspace_id=$1 and id=(
-          select run_id from app.pending_run_tasks where workspace_id=$1 and id=$2
-        ) for share`,
-    values,
-  );
-  const found = await client.query<{
-    workflow_id: string;
-    pending: boolean;
-  }>(
-    `select run.workflow_id,(task.kind='approval' and task.status='pending' and task.expires_at>clock_timestamp() and run.status in ('queued','running','waiting') and run.cancel_requested_at is null and (run.deadline_at is null or run.deadline_at>clock_timestamp())) pending from app.pending_run_tasks task join app.workflow_runs run on run.workspace_id=task.workspace_id and run.id=task.run_id where task.workspace_id=$1 and task.id=$2 for share of task`,
-    values,
-  );
-  const row = found.rows[0];
+  await db
+    .select({ id: run.id })
+    .from(run)
+    .where(
+      and(
+        eq(run.workspaceId, subject.workspaceId),
+        eq(
+          run.id,
+          db.select({ runId: task.runId }).from(task).where(predicate),
+        ),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  const [row] = await db
+    .select({
+      workflow_id: run.workflowId,
+      pending: sql<boolean>`(${task.kind}='approval' and ${task.status}='pending' and ${task.expiresAt}>clock_timestamp() and ${run.status} in ('queued','running','waiting') and ${run.cancelRequestedAt} is null and (${run.deadlineAt} is null or ${run.deadlineAt}>clock_timestamp()))`,
+    })
+    .from(task)
+    .innerJoin(
+      run,
+      and(eq(run.workspaceId, task.workspaceId), eq(run.id, task.runId)),
+    )
+    .where(predicate)
+    .for('share', { of: task })
+    .catch(rethrowQueryFailure);
   return {
     ...base,
     workflowId: row?.workflow_id ?? null,
@@ -185,21 +219,30 @@ async function readLimitReachedFact(
   client: PoolClient,
   subject: AttentionSubject,
 ): Promise<AttentionFact> {
-  const found = await client.query<{
-    queue: boolean;
-    artifact_bytes: boolean;
-    artifact_count: boolean;
-  }>(
-    `select
- coalesce(entitlement.status='active' and entitlement.effective_at<=clock_timestamp() and (entitlement.expires_at is null or entitlement.expires_at>clock_timestamp()) and counts.queued_runs>=entitlement.queued_run_limit,false) queue,
- coalesce(capacity.charged_bytes>=capacity.byte_limit,false) artifact_bytes,coalesce(capacity.charged_count>=capacity.artifact_count_limit,false) artifact_count
- from app.workspaces workspace cross join app.workflow_run_slot_counts(workspace.id) counts
- left join app.workspace_execution_entitlements pointer on pointer.workspace_id=workspace.id
- left join app.workspace_execution_entitlement_versions entitlement on entitlement.workspace_id=pointer.workspace_id and entitlement.version=pointer.current_version
- left join app.workspace_artifact_capacity capacity on capacity.workspace_id=workspace.id where workspace.id=$1 and workspace.status='active'`,
-    [subject.workspaceId],
-  );
-  const row = found.rows[0];
+  const [row] = await drizzle(client)
+    .select({
+      queue: sql<boolean>`coalesce(${entitlement.status}='active' and ${entitlement.effectiveAt}<=clock_timestamp() and (${entitlement.expiresAt} is null or ${entitlement.expiresAt}>clock_timestamp()) and counts.queued_runs>=${entitlement.queuedRunLimit},false)`,
+      artifact_bytes: sql<boolean>`coalesce(${capacity.chargedBytes}>=${capacity.byteLimit},false)`,
+      artifact_count: sql<boolean>`coalesce(${capacity.chargedCount}>=${capacity.artifactCountLimit},false)`,
+    })
+    .from(workspaces)
+    .innerJoin(slotCounts, sql`true`)
+    .leftJoin(pointer, eq(pointer.workspaceId, workspaces.id))
+    .leftJoin(
+      entitlement,
+      and(
+        eq(entitlement.workspaceId, pointer.workspaceId),
+        eq(entitlement.version, pointer.currentVersion),
+      ),
+    )
+    .leftJoin(capacity, eq(capacity.workspaceId, workspaces.id))
+    .where(
+      and(
+        eq(workspaces.id, subject.workspaceId),
+        eq(workspaces.status, 'active'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   const limits = (
     ['queue', 'artifact_bytes', 'artifact_count'] as const
   ).filter((key) => row?.[key] ?? false);

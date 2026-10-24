@@ -1,38 +1,82 @@
-import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { alias } from 'drizzle-orm/pg-core';
 import { NOTICE_WINDOW_SQL } from '../lifetime.js';
+import { workflowCommentThreads as discussion } from '../../schema/authoring/collaboration/threads.js';
+import type { PoolClient } from 'pg';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowCommentMentions as mentionsTable } from '../../schema/authoring/collaboration/mentions.js';
+import { workflowComments as commentsTable } from '../../schema/authoring/collaboration/comments.js';
+import { workflows } from '../../schema/authoring/workflows.js';
+const comment = alias(commentsTable, 'comment');
+const mention = alias(mentionsTable, 'mention');
 /** Match the authoring lock order before the FK acquires mention locks. */
 export async function readCommentMentionSource(
   client: PoolClient,
   input: Readonly<{ workspaceId: string; subjectId: string }>,
 ) {
-  const first = (
-    await client.query<{ workflow_id: string; thread_id: string }>(
-      `select discussion.workflow_id,discussion.id thread_id from app.workflow_comment_mentions mention join app.workflow_comments comment on comment.workspace_id=mention.workspace_id and comment.id=mention.comment_id join app.workflow_comment_threads discussion on discussion.workspace_id=comment.workspace_id and discussion.id=comment.thread_id where mention.workspace_id=$1 and mention.id=$2`,
-      [input.workspaceId, input.subjectId],
+  const db = drizzle(client);
+  const predicate = and(
+    eq(mention.workspaceId, input.workspaceId),
+    eq(mention.id, input.subjectId),
+  );
+  const join = and(
+    eq(comment.workspaceId, mention.workspaceId),
+    eq(comment.id, mention.commentId),
+  );
+  const [first] = await db
+    .select({ workflowId: discussion.workflowId, threadId: discussion.id })
+    .from(mention)
+    .innerJoin(comment, join)
+    .innerJoin(
+      discussion,
+      and(
+        eq(discussion.workspaceId, comment.workspaceId),
+        eq(discussion.id, comment.threadId),
+      ),
     )
-  ).rows[0];
+    .where(predicate)
+    .catch(rethrowQueryFailure);
   if (first === undefined) return null;
-  const workflow = await client.query(
-    'select id from app.workflows where workspace_id=$1 and id=$2 for share',
-    [input.workspaceId, first.workflow_id],
-  );
-  if (workflow.rowCount !== 1) return null;
-  const discussion = await client.query(
-    'select id from app.workflow_comment_threads where workspace_id=$1 and id=$2 for share',
-    [input.workspaceId, first.thread_id],
-  );
-  if (discussion.rowCount !== 1) return null;
-  const source = (
-    await client.query<{ created_at: Date; active: boolean }>(
-      `select mention.created_at,(mention.created_at>clock_timestamp()-${NOTICE_WINDOW_SQL} and mention.user_id is distinct from comment.author_id) active from app.workflow_comment_mentions mention join app.workflow_comments comment on comment.workspace_id=mention.workspace_id and comment.id=mention.comment_id where mention.workspace_id=$1 and mention.id=$2 and comment.thread_id=$3 for share of comment,mention`,
-      [input.workspaceId, input.subjectId, first.thread_id],
+  const workflow = await db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, first.workflowId),
+      ),
     )
-  ).rows[0];
+    .for('share')
+    .catch(rethrowQueryFailure);
+  if (workflow.length !== 1) return null;
+  const locked = await db
+    .select({ id: discussion.id })
+    .from(discussion)
+    .where(
+      and(
+        eq(discussion.workspaceId, input.workspaceId),
+        eq(discussion.id, first.threadId),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  if (locked.length !== 1) return null;
+  const [source] = await db
+    .select({
+      createdAt: mention.createdAt,
+      active: sql<boolean>`(${mention.createdAt}>clock_timestamp()-${NOTICE_WINDOW_SQL} and ${mention.userId} is distinct from ${comment.authorId})`,
+    })
+    .from(mention)
+    .innerJoin(comment, join)
+    .where(and(predicate, eq(comment.threadId, first.threadId)))
+    .for('share', { of: [comment, mention] })
+    .catch(rethrowQueryFailure);
   return source === undefined
     ? null
     : {
-        workflowId: first.workflow_id,
-        occurredAt: source.created_at,
+        workflowId: first.workflowId,
+        occurredAt: source.createdAt,
         active: source.active,
       };
 }

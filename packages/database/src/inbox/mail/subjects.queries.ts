@@ -1,5 +1,22 @@
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.js';
 import { NOTICE_WINDOW_SQL } from '../lifetime.js';
+import { and, eq, gt, inArray, isNull, notExists, or, sql } from 'drizzle-orm';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { noticeSubscriptions as sub } from '../../schema/inbox/preferences.js';
+import {
+  noticeMailItems as item,
+  noticeMailBatches as batch,
+} from '../../schema/inbox/mail.js';
+import { systemMailDeliveries as delivery } from '../../schema/mail/deliveries.js';
+import {
+  thread,
+  workspace,
+  workflow,
+  connection,
+  mention,
+  comment,
+} from '../threads/records.queries.js';
 import type { PoolClient } from 'pg';
 import { CAPACITY_LIMIT_LABELS } from '../observations/capacity.queries.js';
 import type {
@@ -9,14 +26,8 @@ import type {
 import { noticeVisibilitySql } from '../threads/eligibility.queries.js';
 import { readAttentionFact } from '../observations/facts.queries.js';
 import type { NoticeMailItem } from './contract.js';
-export type MailSubjectRow = Readonly<{
-  id: string;
-  subject_id: string;
-  workflow_id: string | null;
-  revision: string;
-  name: string;
-  occurrence_count: string;
-}> &
+type MailSubjectRecord = Awaited<ReturnType<typeof mailSubjectsQuery>>[number];
+export type MailSubjectRow = MailSubjectRecord &
   (
     | Readonly<{
         notice_kind: 'limit_approaching';
@@ -56,26 +67,70 @@ export async function readMailSubjects(
   }>,
 ): Promise<readonly MailSubjectRow[]> {
   const resources = await readFolderScope(client, { workspaceId, actorId });
-  const parameters: unknown[] = [workspaceId, actorId, cut, onlyIds ?? null];
-  const found = await client.query<MailSubjectRow>(
-    `select thread.id,thread.notice_kind,thread.subject_id,thread.workflow_id,thread.revision::text,thread.occurrence_count::text,thread.capacity_limit,comment.id comment_id,comment.thread_id comment_thread_id,coalesce(workflow.name,connection.name,workspace.name) name
- from app.workspace_inbox_threads thread join app.workspaces workspace on workspace.id=thread.workspace_id
- left join app.workflows workflow on workflow.workspace_id=thread.workspace_id and workflow.id=thread.workflow_id
- left join app.connections connection on connection.workspace_id=thread.workspace_id and connection.id=thread.connection_id
- left join app.workflow_comment_mentions mention on mention.workspace_id=thread.workspace_id and mention.id=thread.comment_mention_id
- left join app.workflow_comments comment on comment.workspace_id=mention.workspace_id and comment.id=mention.comment_id
- left join app.notice_subscriptions sub on sub.workspace_id=thread.workspace_id and sub.user_id=$2 and ((sub.subject_kind='workflow' and sub.subject_id=thread.workflow_id) or (sub.subject_kind='connection' and sub.subject_id=thread.connection_id))
- where thread.workspace_id=$1 and ${noticeVisibilitySql('$2', resources, parameters)} and thread.latest_occurred_at>$3 and thread.latest_occurred_at>clock_timestamp()-${NOTICE_WINDOW_SQL}
- and (sub.changed_at is null or thread.latest_occurred_at>sub.changed_at)
- and ($4::uuid[] is null or thread.id=any($4))
- and (thread.notice_kind='workflow_failure' or (thread.notice_kind='workflow_auto_paused' and workflow.trigger_pause_state='paused') or (thread.notice_kind='connection_attention' and connection.status='reauthorization_required') or thread.notice_kind in ('limit_reached','limit_approaching') or thread.notice_kind in ('approval_waiting','publication_review_waiting','workflow_mention'))
- and ($4::uuid[] is not null or not exists(select 1 from app.notice_mail_items item join app.notice_mail_batches batch on batch.workspace_id=item.workspace_id and batch.id=item.batch_id join app.system_mail_deliveries delivery on delivery.id=batch.id where item.workspace_id=thread.workspace_id and item.thread_id=thread.id and item.revision>=thread.revision and batch.user_id=$2 and batch.released_at is null))
- order by thread.latest_occurred_at,thread.id limit 100`,
-    parameters,
-  );
+  const db = drizzle(client);
+  const found = await mailSubjectsQuery(db, actorId)
+    .where(
+      and(
+        eq(thread.workspaceId, workspaceId),
+        noticeVisibilitySql(db, actorId, resources),
+        sql`${thread.latestOccurredAt}>${cut}::timestamptz`,
+        sql`${thread.latestOccurredAt}>clock_timestamp()-${NOTICE_WINDOW_SQL}`,
+        or(
+          isNull(sub.changedAt),
+          gt(thread.latestOccurredAt, sql`${sub.changedAt}`),
+        ),
+        onlyIds === undefined ? undefined : inArray(thread.id, [...onlyIds]),
+        or(
+          eq(thread.noticeKind, 'workflow_failure'),
+          and(
+            eq(thread.noticeKind, 'workflow_auto_paused'),
+            eq(workflow.triggerPauseState, 'paused'),
+          ),
+          and(
+            eq(thread.noticeKind, 'connection_attention'),
+            eq(connection.status, 'reauthorization_required'),
+          ),
+          inArray(thread.noticeKind, [
+            'limit_reached',
+            'limit_approaching',
+            'approval_waiting',
+            'publication_review_waiting',
+            'workflow_mention',
+          ]),
+        ),
+        onlyIds === undefined
+          ? notExists(
+              db
+                .select({ one: sql`1` })
+                .from(item)
+                .innerJoin(
+                  batch,
+                  and(
+                    eq(batch.workspaceId, item.workspaceId),
+                    eq(batch.id, item.batchId),
+                  ),
+                )
+                .innerJoin(delivery, eq(delivery.id, batch.id))
+                .where(
+                  and(
+                    eq(item.workspaceId, thread.workspaceId),
+                    eq(item.threadId, thread.id),
+                    sql`${item.revision}>=${thread.revision}`,
+                    eq(batch.userId, actorId),
+                    isNull(batch.releasedAt),
+                  ),
+                ),
+            )
+          : undefined,
+      ),
+    )
+    .orderBy(thread.latestOccurredAt, thread.id)
+    .limit(100)
+    .catch(rethrowQueryFailure);
   const current: MailSubjectRow[] = [];
   // Audience and task eligibility filter before LIMIT; capacity facts are rechecked before use.
-  for (const row of found.rows) {
+  // Subject/FK checks correlate the nullable columns with the notice kind.
+  for (const row of found as MailSubjectRow[]) {
     if (
       row.notice_kind === 'limit_reached' ||
       row.notice_kind === 'limit_approaching'
@@ -124,4 +179,70 @@ export function mailItem(row: MailSubjectRow): NoticeMailItem {
     subjectId: row.subject_id,
     workflowId: row.workflow_id,
   };
+}
+
+function mailSubjectsQuery(
+  db: Pick<NodePgDatabase, 'select'>,
+  actorId: string,
+) {
+  return db
+    .select({
+      id: thread.id,
+      notice_kind: thread.noticeKind,
+      subject_id: thread.subjectId,
+      workflow_id: thread.workflowId,
+      revision: sql<string>`${thread.revision}::text`,
+      occurrence_count: sql<string>`${thread.occurrenceCount}::text`,
+      capacity_limit: thread.capacityLimit,
+      comment_id: comment.id,
+      comment_thread_id: comment.threadId,
+      name: sql<string>`coalesce(${workflow.name},${connection.name},${workspace.name})`,
+    })
+    .from(thread)
+    .innerJoin(workspace, eq(workspace.id, thread.workspaceId))
+    .leftJoin(
+      workflow,
+      and(
+        eq(workflow.workspaceId, thread.workspaceId),
+        eq(workflow.id, thread.workflowId),
+      ),
+    )
+    .leftJoin(
+      connection,
+      and(
+        eq(connection.workspaceId, thread.workspaceId),
+        eq(connection.id, thread.connectionId),
+      ),
+    )
+    .leftJoin(
+      mention,
+      and(
+        eq(mention.workspaceId, thread.workspaceId),
+        eq(mention.id, thread.commentMentionId),
+      ),
+    )
+    .leftJoin(
+      comment,
+      and(
+        eq(comment.workspaceId, mention.workspaceId),
+        eq(comment.id, mention.commentId),
+      ),
+    )
+    .leftJoin(
+      sub,
+      and(
+        eq(sub.workspaceId, thread.workspaceId),
+        eq(sub.userId, actorId),
+        or(
+          and(
+            eq(sub.subjectKind, 'workflow'),
+            eq(sub.subjectId, thread.workflowId),
+          ),
+          and(
+            eq(sub.subjectKind, 'connection'),
+            eq(sub.subjectId, thread.connectionId),
+          ),
+        ),
+      ),
+    );
 }
