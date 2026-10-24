@@ -1,3 +1,4 @@
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { and, eq, exists, notExists } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -62,20 +63,18 @@ export const VARIABLE_SET_RETENTION_RULE = {
   name: 'variable_sets',
   async run(client: PoolClient, pageSize: number): Promise<number> {
     const db = drizzle(client);
-    const page = db
-      .$with('page')
-      .as(
-        db
-          .select({
-            workspaceId: revisions.workspaceId,
-            revision: revisions.revision,
-          })
-          .from(revisions)
-          .where(unreferenced(db))
-          .orderBy(revisions.workspaceId, revisions.revision)
-          .limit(pageSize)
-          .for('update', { skipLocked: true }),
-      );
+    const page = db.$with('page').as(
+      db
+        .select({
+          workspaceId: revisions.workspaceId,
+          revision: revisions.revision,
+        })
+        .from(revisions)
+        .where(unreferenced(db))
+        .orderBy(revisions.workspaceId, revisions.revision)
+        .limit(pageSize)
+        .for('update', { skipLocked: true }),
+    );
     const removed = await db
       .with(page)
       .delete(revisions)
@@ -95,7 +94,8 @@ export const VARIABLE_SET_RETENTION_RULE = {
           unreferenced(db),
         ),
       )
-      .returning({ revision: revisions.revision });
+      .returning({ revision: revisions.revision })
+      .catch(rethrowQueryFailure);
     return removed.length;
   },
 } as const;

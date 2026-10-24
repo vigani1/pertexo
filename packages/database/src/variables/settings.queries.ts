@@ -1,3 +1,4 @@
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { WorkspaceVariablesResponse } from '@pertexo/contracts';
@@ -57,7 +58,8 @@ export async function lockWorkspaceVariableNames(
     .select({ revision: workspaceVariables.revision })
     .from(workspaceVariables)
     .where(eq(workspaceVariables.workspaceId, workspaceId))
-    .for('share');
+    .for('share')
+    .catch(rethrowQueryFailure);
   if (head === undefined) return [];
   const [stored] = await db
     .select({ values: workspaceVariableSetRevisions.values })
@@ -67,7 +69,8 @@ export async function lockWorkspaceVariableNames(
         eq(workspaceVariableSetRevisions.workspaceId, workspaceId),
         eq(workspaceVariableSetRevisions.revision, head.revision),
       ),
-    );
+    )
+    .catch(rethrowQueryFailure);
   if (stored === undefined)
     throw new Error('Workspace variable revision is missing');
   return Object.keys(stored.values);
