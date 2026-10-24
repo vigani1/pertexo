@@ -57,8 +57,7 @@ export function CanvasNote({ data }: NodeProps<NoteFlowNode>) {
             ? 'Arrow keys move this note. Shift and arrow keys resize it. Enter edits. Delete removes it.'
             : undefined
         }
-        onKeyDown={(event) =>
-          noteKeyDown(
+        onKeyDown={(event) => { noteKeyDown(
             {
               note,
               editable,
@@ -68,7 +67,7 @@ export function CanvasNote({ data }: NodeProps<NoteFlowNode>) {
               },
             },
             event,
-          )
+          ); }
         }
         className={cn(
           'group/note flex size-full flex-col overflow-hidden rounded-lg border bg-[color-mix(in_srgb,var(--note-accent)_5%,var(--card))] text-card-foreground shadow-sm outline-none focus-ring',
