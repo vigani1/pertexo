@@ -2,7 +2,7 @@ import type { Role } from '@pertexo/workflow-model';
 import { removeMemberResourceGrants } from '../resources/revocation.js';
 import type { PoolClient } from 'pg';
 
-import { appendAuditFacts } from '../../governance/audit/append.js';
+import { appendAuditFacts } from '../../governance/audit/events.repository.js';
 
 export type MembershipAddition = Readonly<
   { userId: string; role: Role } & (

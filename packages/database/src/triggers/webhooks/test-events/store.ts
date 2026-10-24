@@ -1,5 +1,5 @@
 import type { WebhookAuthentication } from '@pertexo/contracts';
-import { appendAuditFact } from '../../../governance/audit/append.js';
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import type { Pool, PoolClient } from 'pg';
 
 import type { DatabaseConfig } from '../../../config.js';

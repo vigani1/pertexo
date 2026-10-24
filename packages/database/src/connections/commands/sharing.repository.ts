@@ -6,7 +6,7 @@ import type {
 } from '@pertexo/contracts';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.js';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
-import { appendAuditFact } from '../../governance/audit/append.js';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
 import { requireConnectionManager } from '../authority.js';

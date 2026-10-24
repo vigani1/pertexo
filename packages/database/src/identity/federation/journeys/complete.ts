@@ -10,7 +10,7 @@ import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../../tenant-access/workspaces/authority.js';
 import { revokeUserSessions } from '../../../tenant-access/users/sessions.js';
-import { appendAuditFact } from '../../../governance/audit/append.js';
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import { recordIdentitySecurityFact } from '../../security-facts.js';
 import { resolveVerifiedSignInUser } from '../accounts/resolve.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';

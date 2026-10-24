@@ -1,4 +1,4 @@
-import { appendAuditFact } from '../../governance/audit/append.js';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import type { Pool } from 'pg';

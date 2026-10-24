@@ -7,7 +7,7 @@ import {
   readAuditBatch,
   projectAuditEvent,
   type AuditCursor,
-} from './query.js';
+} from './events.queries.js';
 type Read = <T>(work: (client: PoolClient) => Promise<T>) => Promise<T>;
 export async function prepareAuditExport(
   read: Read,

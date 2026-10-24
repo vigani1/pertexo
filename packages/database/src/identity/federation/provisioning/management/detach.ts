@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { appendAuditFacts } from '../../../../governance/audit/append.js';
+import { appendAuditFacts } from '../../../../governance/audit/events.repository.js';
 import {
   updateMemberships,
   type MembershipChange,

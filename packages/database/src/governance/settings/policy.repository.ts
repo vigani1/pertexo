@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { GovernanceSettings } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
-import { appendAuditFact } from '../audit/append.js';
+import { appendAuditFact } from '../audit/events.repository.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { GovernanceError, type GovernanceStore } from '../contract.js';
 export async function readGovernanceSettings(

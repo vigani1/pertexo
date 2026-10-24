@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 import {
   appendAuditFacts,
   type AuditFact,
-} from '../../../governance/audit/append.js';
+} from '../../../governance/audit/events.repository.js';
 import {
   createMemberships,
   updateMemberships,
