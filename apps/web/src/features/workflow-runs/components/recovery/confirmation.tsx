@@ -49,6 +49,9 @@ export function RecoveryConfirmation({
     });
     if (accepted) onOpenChange(false);
   }
+  const idleConfirmLabel = needsAcknowledgement
+    ? 'Retry anyway'
+    : 'Retry from this step';
   return (
     <ConfirmDialog
       open={open}
@@ -62,11 +65,7 @@ export function RecoveryConfirmation({
         </span>
       }
       confirmLabel={
-        command.unconfirmed
-          ? 'Retry same request'
-          : needsAcknowledgement
-            ? 'Retry anyway'
-            : 'Retry from this step'
+        command.unconfirmed ? 'Retry same request' : idleConfirmLabel
       }
       pendingLabel="Checking acceptance…"
       pending={command.pending}

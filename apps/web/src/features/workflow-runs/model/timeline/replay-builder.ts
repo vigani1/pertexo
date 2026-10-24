@@ -294,13 +294,29 @@ export class StepReplayBuilder {
   ): void {
     if (outputRef === undefined || outputRef.kind === 'reused') return;
     const attempt = attemptNumber === undefined ? {} : { attemptNumber };
-    this.outputs.push(
-      outputRef.kind === 'call'
-        ? { kind: 'call', callId: outputRef.callId, ...attempt }
-        : outputRef.kind === 'artifact'
-          ? { kind: 'artifact', artifactId: outputRef.artifactId, ...attempt }
-          : { kind: 'inline', attemptId: outputRef.attemptId, ...attempt },
-    );
+    switch (outputRef.kind) {
+      case 'call':
+        this.outputs.push({
+          kind: 'call',
+          callId: outputRef.callId,
+          ...attempt,
+        });
+        break;
+      case 'artifact':
+        this.outputs.push({
+          kind: 'artifact',
+          artifactId: outputRef.artifactId,
+          ...attempt,
+        });
+        break;
+      case 'inline':
+        this.outputs.push({
+          kind: 'inline',
+          attemptId: outputRef.attemptId,
+          ...attempt,
+        });
+        break;
+    }
   }
 
   /** Closes whatever is still open using the node summary, if it's final. */
