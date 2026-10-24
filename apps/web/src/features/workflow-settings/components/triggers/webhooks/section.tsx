@@ -28,15 +28,7 @@ const DONE: Readonly<Record<WebhookCommand, string>> = {
  * credentials must be acknowledged before the next, and an unconfirmed
  * command must be retried exactly before anything else is sent.
  */
-export function WebhooksSection({
-  apiClient,
-  userId,
-  workspaceId,
-  workflowId,
-  editable,
-  triggers,
-  stepNameFor,
-}: Readonly<{
+type WebhooksSectionProps = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
@@ -44,7 +36,133 @@ export function WebhooksSection({
   editable: boolean;
   triggers: readonly WebhookTriggerHealthResponse[];
   stepNameFor: (trigger: WebhookTriggerHealthResponse) => string;
-}>) {
+}>;
+
+export function WebhooksSection(props: WebhooksSectionProps) {
+  const model = useWebhookActions(props);
+  const configuring = model.configuring;
+  return (
+    <>
+      {model.triggers.map((trigger) => (
+        <WebhookCard
+          key={trigger.id}
+          trigger={trigger}
+          stepName={model.stepNameFor(trigger)}
+          editable={model.editable}
+          blocked={model.webhook.blocked}
+          pendingCommand={
+            model.webhook.pending?.triggerId === trigger.id
+              ? model.webhook.pending.command
+              : undefined
+          }
+          unresolved={
+            model.webhook.unresolvedAttempt?.triggerId === trigger.id
+              ? model.webhook.unresolvedAttempt
+              : undefined
+          }
+          onCommand={(command) => {
+            if (command === 'authentication') model.setConfiguring(trigger);
+            else if (command === 'provision')
+              void model.run(trigger.id, command);
+            else model.setConfirming({ triggerId: trigger.id, command });
+          }}
+          onRetryUnresolved={() => void model.retry()}
+          failure={
+            model.webhook.error?.triggerId === trigger.id
+              ? model.webhook.error.message
+              : undefined
+          }
+          deliveries={
+            <WebhookDeliveries
+              apiClient={model.apiClient}
+              userId={model.userId}
+              workspaceId={model.workspaceId}
+              workflowId={model.workflowId}
+              triggerId={trigger.id}
+              endpointReady={trigger.endpointReady}
+            />
+          }
+        />
+      ))}
+      {configuring === undefined ? null : (
+        <WebhookAuthenticationDialog
+          key={configuring.id}
+          authentication={configuring.authentication}
+          pending={model.webhook.pending?.command === 'authentication'}
+          blocked={model.webhook.blocked}
+          error={
+            model.webhook.error?.triggerId === configuring.id
+              ? model.webhook.error.message
+              : undefined
+          }
+          onSave={(authentication) =>
+            model.run(configuring.id, 'authentication', '', authentication)
+          }
+          onClose={() => {
+            model.setConfiguring(undefined);
+          }}
+        />
+      )}
+      <ConfirmDialog
+        open={model.confirming?.command === 'rotate-endpoint'}
+        onOpenChange={(open) => {
+          if (!open) model.setConfirming(undefined);
+        }}
+        title="Rotate this webhook’s URL?"
+        description="Senders using the current address stop being accepted right away. You’ll get a new endpoint key to give them."
+        tone="destructive"
+        confirmLabel="Rotate URL"
+        pendingLabel="Rotating…"
+        pending={model.webhook.pending?.command === 'rotate-endpoint'}
+        onConfirm={() =>
+          model.confirming === undefined
+            ? undefined
+            : model.run(model.confirming.triggerId, 'rotate-endpoint')
+        }
+      />
+      <RotateSecretDialog
+        open={model.confirming?.command === 'rotate-secret'}
+        headerSecret={
+          model.triggers.find(
+            (trigger) => trigger.id === model.confirming?.triggerId,
+          )?.authentication.mode === 'header_secret'
+        }
+        pending={model.webhook.pending?.command === 'rotate-secret'}
+        onRotate={(endpointKey) =>
+          model.confirming === undefined
+            ? Promise.resolve()
+            : model.run(
+                model.confirming.triggerId,
+                'rotate-secret',
+                endpointKey,
+              )
+        }
+        onClose={() => {
+          model.setConfirming(undefined);
+        }}
+      />
+      <SecretRevealDialog
+        credentials={model.webhook.credentials?.response}
+        onDone={() => {
+          const command = model.webhook.credentials?.command;
+          model.webhook.acknowledgeCredentials();
+          if (command !== undefined)
+            model.notifications.success({ title: DONE[command] });
+        }}
+      />
+    </>
+  );
+}
+
+function useWebhookActions({
+  apiClient,
+  userId,
+  workspaceId,
+  workflowId,
+  editable,
+  triggers,
+  stepNameFor,
+}: WebhooksSectionProps) {
   const notifications = useNotifications();
   const webhook = useWebhookCommand({
     apiClient,
@@ -92,109 +210,21 @@ export function WebhooksSection({
       notifications.success({ title: 'Confirmed — the change went through' });
   }
 
-  return (
-    <>
-      {triggers.map((trigger) => (
-        <WebhookCard
-          key={trigger.id}
-          trigger={trigger}
-          stepName={stepNameFor(trigger)}
-          editable={editable}
-          blocked={webhook.blocked}
-          pendingCommand={
-            webhook.pending?.triggerId === trigger.id
-              ? webhook.pending.command
-              : undefined
-          }
-          unresolved={
-            webhook.unresolvedAttempt?.triggerId === trigger.id
-              ? webhook.unresolvedAttempt
-              : undefined
-          }
-          onCommand={(command) => {
-            if (command === 'authentication') setConfiguring(trigger);
-            else if (command === 'provision') void run(trigger.id, command);
-            else setConfirming({ triggerId: trigger.id, command });
-          }}
-          onRetryUnresolved={() => void retry()}
-          failure={
-            webhook.error?.triggerId === trigger.id
-              ? webhook.error.message
-              : undefined
-          }
-          deliveries={
-            <WebhookDeliveries
-              apiClient={apiClient}
-              userId={userId}
-              workspaceId={workspaceId}
-              workflowId={workflowId}
-              triggerId={trigger.id}
-              endpointReady={trigger.endpointReady}
-            />
-          }
-        />
-      ))}
-      {configuring === undefined ? null : (
-        <WebhookAuthenticationDialog
-          key={configuring.id}
-          authentication={configuring.authentication}
-          pending={webhook.pending?.command === 'authentication'}
-          blocked={webhook.blocked}
-          error={
-            webhook.error?.triggerId === configuring.id
-              ? webhook.error.message
-              : undefined
-          }
-          onSave={(authentication) =>
-            run(configuring.id, 'authentication', '', authentication)
-          }
-          onClose={() => {
-            setConfiguring(undefined);
-          }}
-        />
-      )}
-      <ConfirmDialog
-        open={confirming?.command === 'rotate-endpoint'}
-        onOpenChange={(open) => {
-          if (!open) setConfirming(undefined);
-        }}
-        title="Rotate this webhook’s URL?"
-        description="Senders using the current address stop being accepted right away. You’ll get a new endpoint key to give them."
-        tone="destructive"
-        confirmLabel="Rotate URL"
-        pendingLabel="Rotating…"
-        pending={webhook.pending?.command === 'rotate-endpoint'}
-        onConfirm={() =>
-          confirming === undefined
-            ? undefined
-            : run(confirming.triggerId, 'rotate-endpoint')
-        }
-      />
-      <RotateSecretDialog
-        open={confirming?.command === 'rotate-secret'}
-        headerSecret={
-          triggers.find((trigger) => trigger.id === confirming?.triggerId)
-            ?.authentication.mode === 'header_secret'
-        }
-        pending={webhook.pending?.command === 'rotate-secret'}
-        onRotate={(endpointKey) =>
-          confirming === undefined
-            ? Promise.resolve()
-            : run(confirming.triggerId, 'rotate-secret', endpointKey)
-        }
-        onClose={() => {
-          setConfirming(undefined);
-        }}
-      />
-      <SecretRevealDialog
-        credentials={webhook.credentials?.response}
-        onDone={() => {
-          const command = webhook.credentials?.command;
-          webhook.acknowledgeCredentials();
-          if (command !== undefined)
-            notifications.success({ title: DONE[command] });
-        }}
-      />
-    </>
-  );
+  return {
+    triggers,
+    stepNameFor,
+    editable,
+    webhook,
+    setConfiguring,
+    run,
+    setConfirming,
+    retry,
+    apiClient,
+    userId,
+    workspaceId,
+    workflowId,
+    configuring,
+    confirming,
+    notifications,
+  } as const;
 }

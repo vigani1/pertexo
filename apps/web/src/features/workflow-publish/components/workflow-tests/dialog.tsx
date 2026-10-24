@@ -24,17 +24,158 @@ import {
 } from '@/features/workflows/input-cases.public';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
 
-export function WorkflowTestDialog({
-  tests,
-  workspace,
-  workflow,
-  graph,
-}: Readonly<{
+type WorkflowTestDialogProps = Readonly<{
   tests: WorkflowTests;
   workspace: AccessibleWorkspace;
   workflow: WorkflowSummary | undefined;
   graph: WorkflowGraphContract;
-}>) {
+}>;
+
+export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
+  const model = useWorkflowTestForm(props);
+  const trigger = model.trigger;
+  return (
+    <Dialog
+      open={model.tests.open}
+      onOpenChange={(open) => {
+        if (!model.locked || model.tests.start.expired)
+          model.tests.setOpen(open);
+      }}
+    >
+      <DialogContent className="flex max-h-[calc(100svh-2rem)] flex-col gap-4 overflow-y-auto">
+        <div>
+          <DialogTitle>Test workflow</DialogTitle>
+          <DialogDescription>
+            Runs the saved draft. Pins replace their steps; every other step
+            runs for real. Test data stays for seven days.
+          </DialogDescription>
+        </div>
+        {model.tests.preparing ? (
+          <p role="status">Saving and preparing the draft…</p>
+        ) : null}
+        {model.tests.preparationError === undefined ? null : (
+          <Notice tone="destructive">{model.tests.preparationError}</Notice>
+        )}
+        {model.tests.preparation === undefined ? null : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Draft revision {model.tests.preparation.draftRevision} ·{' '}
+              {model.tests.preparation.samples.length} pinned steps. Wait
+              finishes immediately. Pin Approval, Request input and Call steps
+              to continue past them.
+            </p>
+            {model.workflow === undefined ? null : (
+              <InputCasesPanel
+                readOnly
+                cases={model.cases}
+                workspace={model.workspace}
+                workflow={model.workflow}
+                disabled={model.locked}
+                editing={model.editingCase}
+                onEditingChange={model.setEditingCase}
+                onLoad={(loaded) => {
+                  model.input.reset(JSON.stringify(loaded.input, null, 2));
+                }}
+                onAccessLost={() => {
+                  model.input.reset();
+                }}
+              />
+            )}
+            {trigger === undefined ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={model.locked}
+                onClick={() => {
+                  void model.tests
+                    .loadTriggerInput(trigger.id)
+                    .then((value) => {
+                      if (value !== undefined)
+                        model.input.reset(JSON.stringify(value, null, 2));
+                    });
+                }}
+              >
+                Use trigger’s pinned sample
+              </Button>
+            )}
+            <LabelledField
+              id="workflow-test-input"
+              label="Test input (JSON)"
+              error={model.input.validation.error('input')}
+              description="Use {} if the workflow doesn’t read any input."
+            >
+              {(control) => (
+                <Textarea
+                  {...control}
+                  ref={model.input.validation.register('input')}
+                  value={model.input.input}
+                  onChange={(event) => {
+                    model.input.changeInput(event.currentTarget.value);
+                  }}
+                  disabled={model.locked}
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="min-h-28 font-mono"
+                />
+              )}
+            </LabelledField>
+            {model.tests.preparation.effectfulSteps.length === 0 ? null : (
+              <section
+                aria-label="Steps with effects"
+                className="flex flex-col gap-3"
+              >
+                <p className="text-sm">
+                  These unpinned steps can change real data:
+                </p>
+                <ul className="list-inside list-disc text-sm">
+                  {model.tests.preparation.effectfulSteps.map((step) => (
+                    <li key={step.nodeId}>{step.label}</li>
+                  ))}
+                </ul>
+                <LabelledField
+                  id="workflow-test-effects"
+                  label="I understand this test runs for real"
+                >
+                  {(control) => (
+                    <Switch
+                      {...control}
+                      checked={model.acknowledged}
+                      onCheckedChange={model.setAcknowledged}
+                      disabled={model.locked}
+                    />
+                  )}
+                </LabelledField>
+              </section>
+            )}
+          </>
+        )}
+        {model.tests.start.error === undefined ? null : (
+          <Notice tone="destructive">{model.tests.start.error}</Notice>
+        )}
+        <WorkflowTestActions
+          tests={model.tests}
+          inputBlocked={
+            model.editingCase || model.cases.pending || model.cases.uncertain
+          }
+          acknowledged={model.acknowledged}
+          onSubmit={() => void model.submit()}
+          onPrepare={() => {
+            model.setAcknowledged(false);
+            model.input.validation.reset();
+            void model.tests.prepare();
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function useWorkflowTestForm({
+  tests,
+  workspace,
+  workflow,
+  graph,
+}: WorkflowTestDialogProps) {
   const input = useRunInput();
   const [acknowledged, setAcknowledged] = useState(false);
   const [editingCase, setEditingCase] = useState(false);
@@ -66,133 +207,19 @@ export function WorkflowTestDialog({
       });
     }
   }
-  return (
-    <Dialog
-      open={tests.open}
-      onOpenChange={(open) => {
-        if (!locked || tests.start.expired) tests.setOpen(open);
-      }}
-    >
-      <DialogContent className="flex max-h-[calc(100svh-2rem)] flex-col gap-4 overflow-y-auto">
-        <div>
-          <DialogTitle>Test workflow</DialogTitle>
-          <DialogDescription>
-            Runs the saved draft. Pins replace their steps; every other step
-            runs for real. Test data stays for seven days.
-          </DialogDescription>
-        </div>
-        {tests.preparing ? (
-          <p role="status">Saving and preparing the draft…</p>
-        ) : null}
-        {tests.preparationError === undefined ? null : (
-          <Notice tone="destructive">{tests.preparationError}</Notice>
-        )}
-        {tests.preparation === undefined ? null : (
-          <>
-            <p className="text-sm text-muted-foreground">
-              Draft revision {tests.preparation.draftRevision} ·{' '}
-              {tests.preparation.samples.length} pinned steps. Wait finishes
-              immediately. Pin Approval, Request input and Call steps to
-              continue past them.
-            </p>
-            {workflow === undefined ? null : (
-              <InputCasesPanel
-                readOnly
-                cases={cases}
-                workspace={workspace}
-                workflow={workflow}
-                disabled={locked}
-                editing={editingCase}
-                onEditingChange={setEditingCase}
-                onLoad={(loaded) => {
-                  input.reset(JSON.stringify(loaded.input, null, 2));
-                }}
-                onAccessLost={() => {
-                  input.reset();
-                }}
-              />
-            )}
-            {trigger === undefined ? null : (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={locked}
-                onClick={() => {
-                  void tests.loadTriggerInput(trigger.id).then((value) => {
-                    if (value !== undefined)
-                      input.reset(JSON.stringify(value, null, 2));
-                  });
-                }}
-              >
-                Use trigger’s pinned sample
-              </Button>
-            )}
-            <LabelledField
-              id="workflow-test-input"
-              label="Test input (JSON)"
-              error={input.validation.error('input')}
-              description="Use {} if the workflow doesn’t read any input."
-            >
-              {(control) => (
-                <Textarea
-                  {...control}
-                  ref={input.validation.register('input')}
-                  value={input.input}
-                  onChange={(event) => {
-                    input.changeInput(event.currentTarget.value);
-                  }}
-                  disabled={locked}
-                  autoComplete="off"
-                  spellCheck={false}
-                  className="min-h-28 font-mono"
-                />
-              )}
-            </LabelledField>
-            {tests.preparation.effectfulSteps.length === 0 ? null : (
-              <section
-                aria-label="Steps with effects"
-                className="flex flex-col gap-3"
-              >
-                <p className="text-sm">
-                  These unpinned steps can change real data:
-                </p>
-                <ul className="list-inside list-disc text-sm">
-                  {tests.preparation.effectfulSteps.map((step) => (
-                    <li key={step.nodeId}>{step.label}</li>
-                  ))}
-                </ul>
-                <LabelledField
-                  id="workflow-test-effects"
-                  label="I understand this test runs for real"
-                >
-                  {(control) => (
-                    <Switch
-                      {...control}
-                      checked={acknowledged}
-                      onCheckedChange={setAcknowledged}
-                      disabled={locked}
-                    />
-                  )}
-                </LabelledField>
-              </section>
-            )}
-          </>
-        )}
-        {tests.start.error === undefined ? null : (
-          <Notice tone="destructive">{tests.start.error}</Notice>
-        )}
-        <WorkflowTestActions
-          tests={tests}
-          inputBlocked={editingCase || cases.pending || cases.uncertain}
-          acknowledged={acknowledged}
-          onSubmit={() => void submit()}
-          onPrepare={() => {
-            setAcknowledged(false);
-            input.validation.reset();
-            void tests.prepare();
-          }}
-        />
-      </DialogContent>
-    </Dialog>
-  );
+
+  return {
+    tests,
+    locked,
+    workflow,
+    cases,
+    workspace,
+    editingCase,
+    setEditingCase,
+    input,
+    trigger,
+    acknowledged,
+    setAcknowledged,
+    submit,
+  } as const;
 }
