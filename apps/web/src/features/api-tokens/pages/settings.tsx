@@ -37,7 +37,8 @@ export function ApiTokensPage({
   const [revoking, setRevoking] = useState<ApiTokenMetadata>();
   const first = query.data?.pages[0];
   const canCreate =
-    first?.enabled === true &&
+    first !== undefined &&
+    first.enabled &&
     first.availableScopes.length > 0 &&
     workspace.status === 'active';
   const refresh = () => {

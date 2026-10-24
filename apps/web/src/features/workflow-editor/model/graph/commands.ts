@@ -259,7 +259,7 @@ function updateIn<Level extends GraphLevel>(
       if (node.id !== nodeId) return node;
       const updated = { ...node, ...update };
       if (updated.label === undefined) delete updated.label;
-      if (updated.disabled !== true) delete updated.disabled;
+      if (!(updated.disabled ?? false)) delete updated.disabled;
       if (updated.retry === undefined) delete updated.retry;
       return updated;
     }),

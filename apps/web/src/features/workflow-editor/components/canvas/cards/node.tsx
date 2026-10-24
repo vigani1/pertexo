@@ -67,7 +67,7 @@ export function WorkflowNodeCard({
           className={handleClass}
         />
       )}
-      {data.failureEligible === true ? (
+      {(data.failureEligible ?? false) ? (
         <>
           <Handle
             id={WORKFLOW_FAILURE_PORT}

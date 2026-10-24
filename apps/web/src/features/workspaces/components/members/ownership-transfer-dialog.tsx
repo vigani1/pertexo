@@ -26,7 +26,7 @@ export function OwnershipTransferDialog(
   const { member } = props;
   const firstName = firstNameOf(member);
   const freshSignIn =
-    feedbackFor(props.command.feedback, member)?.freshSignIn === true;
+    feedbackFor(props.command.feedback, member)?.freshSignIn ?? false;
   return (
     <MemberCommandDialog
       member={member}

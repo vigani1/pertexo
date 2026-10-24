@@ -74,7 +74,7 @@ export function InspectorHeader({
       form.reportScratch('label', scratch);
     },
   });
-  const disabled = node.disabled === true;
+  const disabled = node.disabled ?? false;
   const canAddAfter =
     form.editable && (definition?.ports.outputs.length ?? 0) > 0;
   // Quick add opens once the menu has finished closing, so the menu's own

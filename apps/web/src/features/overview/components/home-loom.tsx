@@ -71,7 +71,7 @@ export function HomeLoom({
           ),
     [statistics.data],
   );
-  const capped = loom.data?.capped === true;
+  const capped = loom.data?.capped ?? false;
   const total = statistics.data?.window.total;
   // The list's disclosure already counts the drawn runs; the caption only
   // speaks when the window holds more than the drawing shows.

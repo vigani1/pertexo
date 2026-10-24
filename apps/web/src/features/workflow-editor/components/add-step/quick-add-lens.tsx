@@ -111,7 +111,9 @@ function QuickAddContent({
       align="center"
       initialFocus={searchRef}
       finalFocus={() =>
-        returnFocus?.isConnected === true ? returnFocus : fallbackFocus.current
+        (returnFocus?.isConnected ?? false)
+          ? returnFocus
+          : fallbackFocus.current
       }
       className="flex max-h-[min(28rem,var(--available-height))] w-72 flex-col gap-3 p-3"
     >

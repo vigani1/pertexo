@@ -263,7 +263,7 @@ function priorTestFor(
       edge.source.port !== WORKFLOW_FAILURE_PORT,
   );
   const source = findStep(graph, passed.nodeId);
-  return wired === true && source !== undefined
+  return (wired ?? false) && source !== undefined
     ? { id: passed.previewId, stepName: stepTitle(source) }
     : undefined;
 }

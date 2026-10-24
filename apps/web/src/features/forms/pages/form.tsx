@@ -39,7 +39,7 @@ export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
     const loaded = await query.refetch();
     if (loaded.isSuccess) command.reset();
   }
-  if (command.data?.accepted === true)
+  if (command.data?.accepted)
     return <SubmissionReceipt scope={scope} receipt={command.data} />;
   if (command.data !== undefined && 'coordinated' in command.data) {
     const look = describeCoordinatedEvent(command.data);

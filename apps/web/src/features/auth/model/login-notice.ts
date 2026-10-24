@@ -27,46 +27,46 @@ export type LoginNotice = Readonly<{
 export function loginNoticeFrom(
   outcome: LoginLinkOutcome,
 ): LoginNotice | undefined {
-  if (outcome.emailChanged === true)
+  if (outcome.emailChanged ?? false)
     return {
       tone: 'success',
       text: 'Your email changed. Sign in with your new address.',
     };
-  if (outcome.emailChangePending === true)
+  if (outcome.emailChangePending ?? false)
     return {
       tone: 'info',
       glyph: 'waiting',
       text: 'Old address confirmed. Check your new address for the final verification link.',
     };
-  if (outcome.verificationInvalid === true)
+  if (outcome.verificationInvalid ?? false)
     return {
       tone: 'destructive',
       text: 'That verification link is invalid, expired, or already used.',
       offersNewVerificationLink: true,
     };
-  if (outcome.linkReauthenticate === true)
+  if (outcome.linkReauthenticate ?? false)
     return {
       tone: 'warning',
       text: 'For your security, sign in again, then check your sign-in methods. If the new one is listed there, it’s already linked.',
     };
-  if (outcome.migrationReauthenticate === true)
+  if (outcome.migrationReauthenticate ?? false)
     return {
       tone: 'warning',
       text: 'Sign in with your new method, then check your workspaces.',
     };
-  if (outcome.migrationFailed === true)
+  if (outcome.migrationFailed ?? false)
     return {
       tone: 'destructive',
       text: 'Account recovery didn’t finish and no access moved. Start again, or ask your Pertexo operator to review your account.',
     };
-  if (outcome.verified === true)
+  if (outcome.verified ?? false)
     return { tone: 'success', text: 'Email verified. You can sign in now.' };
-  if (outcome.ssoError === true)
+  if (outcome.ssoError ?? false)
     return {
       tone: 'warning',
       text: 'Organization sign-in did not finish. Try again, or contact your workspace owner. The recovery owner can still use their password.',
     };
-  if (outcome.socialError === true)
+  if (outcome.socialError ?? false)
     return {
       tone: 'destructive',
       text: 'Sign-in with that provider didn’t finish. Try again, or use another method.',

@@ -79,7 +79,7 @@ export function DeclarationDialog({
           />
         )}
         <ConfirmDialog
-          open={session?.discard === true}
+          open={session?.discard ?? false}
           onOpenChange={(open) => {
             if (!open && session !== null)
               setSession({ ...session, discard: false });

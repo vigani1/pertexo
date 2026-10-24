@@ -20,8 +20,8 @@ export function WorkflowListRoute() {
           // Opening the lens is a step Back can undo; filters just replace.
           replace:
             typeof next === 'function' ||
-            next.create !== true ||
-            search.create === true,
+            !(next.create ?? false) ||
+            (search.create ?? false),
         });
       }}
       onCreated={(workflowId) => {

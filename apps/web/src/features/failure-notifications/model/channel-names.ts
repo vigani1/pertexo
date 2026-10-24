@@ -106,7 +106,7 @@ export function channelNamesFrom(
             ? { status: 'resolved', name: item.name }
             : { status: 'unresolved', reason: item.reason },
         );
-    else if (result?.isError === true)
+    else if (result?.isError ?? false)
       for (const channelId of channelIds)
         names.set(channelKey(connectionId, channelId), {
           status: 'unresolved',

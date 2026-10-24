@@ -85,7 +85,7 @@ export function InvitationsPanel({
             <InvitationList
               invitations={invitations}
               disabled={command.locked}
-              issuanceAvailable={data.pages[0]?.issuanceAvailable === true}
+              issuanceAvailable={data.pages[0]?.issuanceAvailable ?? false}
               onAction={(invitation, action) => {
                 if (command.locked) return;
                 setFailure(undefined);

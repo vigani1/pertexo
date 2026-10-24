@@ -47,7 +47,7 @@ export function ReviewCandidate({
             </p>
             <p className="text-xs text-muted-foreground">
               {node.definition.key} · v{node.definition.version}
-              {node.disabled === true ? ' · disabled' : ''}
+              {(node.disabled ?? false) ? ' · disabled' : ''}
             </p>
             <Disclosure summary="Setup and mappings" className="mt-2">
               <pre

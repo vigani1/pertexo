@@ -14,8 +14,10 @@ const APPLE = applePlatform();
 
 /** A shortcut as one hint, e.g. `shortcut('K')` → "⌘K" or "Ctrl K". */
 export function shortcut(key: string, options: { shift?: boolean } = {}) {
-  if (APPLE) return `${options.shift === true ? '⇧' : ''}⌘${key}`;
-  return ['Ctrl', ...(options.shift === true ? ['Shift'] : []), key].join(' ');
+  if (APPLE) return `${(options.shift ?? false) ? '⇧' : ''}⌘${key}`;
+  return ['Ctrl', ...((options.shift ?? false) ? ['Shift'] : []), key].join(
+    ' ',
+  );
 }
 
 /** A shortcut as separate keycaps, e.g. ["⇧", "⌘", "Z"] or ["Ctrl", "Shift", "Z"]. */
@@ -24,6 +26,6 @@ export function shortcutKeys(
   options: { shift?: boolean } = {},
 ): readonly string[] {
   return APPLE
-    ? [...(options.shift === true ? ['⇧'] : []), '⌘', key]
-    : ['Ctrl', ...(options.shift === true ? ['Shift'] : []), key];
+    ? [...((options.shift ?? false) ? ['⇧'] : []), '⌘', key]
+    : ['Ctrl', ...((options.shift ?? false) ? ['Shift'] : []), key];
 }

@@ -56,7 +56,8 @@ export function useTestSuites({
     ...suitesQueryOptions(scope),
     enabled,
     refetchInterval: (query) =>
-      query.state.data?.items.some((item) => item.status === 'running') === true
+      (query.state.data?.items.some((item) => item.status === 'running') ??
+      false)
         ? 2000
         : false,
   });
@@ -92,7 +93,7 @@ export function useTestSuites({
         (item.suiteId === detail.data?.suiteId
           ? detail.data.status
           : item.status) === 'running',
-    ) === true;
+    ) ?? false;
   async function signal() {
     const controller = lifetime.current;
     if (!enabled || controller === undefined || controller.signal.aborted)

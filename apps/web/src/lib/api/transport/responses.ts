@@ -47,10 +47,11 @@ export function mediaType(response: Response): string | undefined {
 }
 
 function isJsonMediaType(value: string | undefined): boolean {
-  return (
-    value === 'application/json' ||
-    (value?.startsWith('application/') === true && value.endsWith('+json'))
-  );
+  const structuredJson =
+    value !== undefined &&
+    value.startsWith('application/') &&
+    value.endsWith('+json');
+  return value === 'application/json' || structuredJson;
 }
 
 export async function readJson(response: Response): Promise<unknown> {

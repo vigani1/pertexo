@@ -26,8 +26,7 @@ export function unchangedLiveVersion(
   )
     return undefined;
   const current = checked.report.currentPublication;
-  return current?.matchesDraft === true &&
-    current.versionId === publishedVersionId
+  return current?.matchesDraft && current.versionId === publishedVersionId
     ? current.versionNumber
     : undefined;
 }

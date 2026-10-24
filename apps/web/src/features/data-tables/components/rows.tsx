@@ -292,7 +292,7 @@ export function DataTableRows({
               variant="ghost"
               size="icon-sm"
               aria-label="Next rows"
-              disabled={rows.data?.hasMore !== true || rows.isPending}
+              disabled={!(rows.data?.hasMore ?? false) || rows.isPending}
               onClick={() => {
                 setQuery((current) => ({
                   ...current,

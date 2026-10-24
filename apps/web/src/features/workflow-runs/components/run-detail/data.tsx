@@ -313,7 +313,7 @@ export function StepInputData({
   // A step that hasn't run yet only has where its input will come from.
   if (nodeRunId === undefined) return sources;
   // What a connected step receives is what it sends, which isn't kept.
-  if (row.usesConnection === true)
+  if (row.usesConnection ?? false)
     return (
       <div className="flex flex-col gap-4">
         <Muted>

@@ -67,13 +67,14 @@ export function WorkspaceMobileBar({
   const unread = unreadNoticeCount ?? 0;
   // Pages that live under More light More, so a page always shows where it is.
   const matchRoute = useMatchRoute();
-  const moreActive = secondary.some(
-    (destination) =>
+  const moreActive = secondary.some((destination) =>
+    Boolean(
       matchRoute({
         to: destination.to,
         params: { workspaceId: workspace.id },
         fuzzy: true,
-      }) !== false,
+      }),
+    ),
   );
   return (
     <>

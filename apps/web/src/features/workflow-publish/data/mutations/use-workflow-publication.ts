@@ -118,7 +118,7 @@ export function useWorkflowPublication({
     }
     if (!checked.report.valid) return 'blocked';
     const current = checked.report.currentPublication;
-    if (current?.matchesDraft === true) {
+    if (current?.matchesDraft) {
       setPublishError(
         `No changes since v${String(current.versionNumber)}. This version is already live.`,
       );

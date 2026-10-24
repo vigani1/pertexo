@@ -44,10 +44,11 @@ function useFormReplay({
   });
   return (
     source.triggerType === 'form' ||
-    version.data?.graph.nodes.some(
+    (version.data?.graph.nodes.some(
       (node) =>
         node.definition.key === 'core.form' && node.definition.version === 1,
-    ) === true
+    ) ??
+      false)
   );
 }
 

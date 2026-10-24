@@ -26,7 +26,7 @@ export function workflowConnectionIssues({
   );
   function issuesIn(level: GraphLevel): WorkflowIssue[] {
     return level.nodes.flatMap((node) => {
-      if (node.disabled === true) return [];
+      if (node.disabled ?? false) return [];
       const definition = findDefinition(definitions, node);
       const optional = new Set(definition?.optionalConnections ?? []);
       const issues = (definition?.connectionRequirements ?? []).flatMap(

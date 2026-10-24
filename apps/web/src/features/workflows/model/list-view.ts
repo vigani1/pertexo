@@ -75,7 +75,7 @@ export function updateWorkflowListSearch(
     favoritesOnly?: 'true' | null;
   }>,
 ): WorkflowListSearch {
-  const create = change.create ?? current.create === true;
+  const create = change.create ?? current.create ?? false;
   const view = change.view ?? current.view ?? 'active';
   const sort = change.sort ?? current.sort ?? 'updated';
   return {

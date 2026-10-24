@@ -48,7 +48,7 @@ export function ChoiceSelect({
       <SelectTrigger
         id={id}
         ref={ref}
-        aria-invalid={invalid === true ? true : undefined}
+        aria-invalid={(invalid ?? false) ? true : undefined}
         aria-describedby={describedBy}
         aria-label={label}
       >

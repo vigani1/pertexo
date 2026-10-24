@@ -134,7 +134,7 @@ function createHeaders(
 }
 
 function isAborted(signal: AbortSignal | undefined): boolean {
-  return signal?.aborted === true;
+  return signal?.aborted ?? false;
 }
 
 function throwTransportFailure({

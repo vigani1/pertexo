@@ -108,12 +108,13 @@ export function WorkspaceShellFrame({
   });
   const inboxAnchors = useInboxAnchors();
   const matchRoute = useMatchRoute();
-  const onInboxPage =
+  const onInboxPage = Boolean(
     matchRoute({
       to: '/w/$workspaceId/inbox',
       params: { workspaceId: workspace.id },
       fuzzy: true,
-    }) !== false;
+    }),
+  );
   const viewedRun = matchRoute({
     to: '/w/$workspaceId/runs/$runId',
     params: { workspaceId: workspace.id },
@@ -162,7 +163,7 @@ export function WorkspaceShellFrame({
           scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
           summary={inboxSummary.data}
           quiet={onInboxPage}
-          viewingRunId={viewedRun === false ? undefined : viewedRun.runId}
+          viewingRunId={!viewedRun ? undefined : viewedRun.runId}
           findAnchor={inboxAnchors.find}
         />
       ) : null}

@@ -35,7 +35,7 @@ export function ProgressButton({
   const waiting = waitSeconds > 0;
   return (
     <Button
-      disabled={disabled === true || pending || waiting}
+      disabled={(disabled ?? false) || pending || waiting}
       data-pending={pending ? '' : undefined}
       {...props}
     >

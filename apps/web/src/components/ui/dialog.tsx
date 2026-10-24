@@ -50,7 +50,10 @@ export function DialogContent({
   const popupId = id ?? generatedId;
   // Initial focus may settle after someone has already chosen another control.
   const focusFirstUnlessChosen = () =>
-    document.getElementById(popupId)?.contains(document.activeElement) !== true;
+    !(
+      document.getElementById(popupId)?.contains(document.activeElement) ??
+      false
+    );
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Backdrop className="scrim fixed inset-0 z-50 transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />

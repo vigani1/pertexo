@@ -26,7 +26,7 @@ export function useInspectorNavigation() {
   const focusStep = useCallback(
     (target: EditorFocusTarget) => {
       openTab(
-        target.testOutput === true
+        (target.testOutput ?? false)
           ? 'test'
           : target.mappingKey === undefined
             ? 'setup'
