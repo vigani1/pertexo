@@ -48,7 +48,6 @@ export function TypeFields({
       >
         {(control) => (
           <ChoiceSelect
-            id={control.id}
             value={value.type}
             choices={
               depth >= 64
@@ -56,14 +55,18 @@ export function TypeFields({
                 : TYPE_CHOICES
             }
             disabled={false}
-            name={typeField}
-            ref={validation.register(typeField)}
-            invalid={control['aria-invalid']}
-            describedBy={control['aria-describedby']}
+
             onChange={(next) => {
               const choice = TYPE_CHOICES.find((entry) => entry.value === next);
               if (choice !== undefined && choice.value !== value.type)
                 onChange(emptyType(choice.value));
+            }}
+            control={{
+              id: control.id,
+              name: typeField,
+              ref: validation.register(typeField),
+              invalid: control['aria-invalid'],
+              describedBy: control['aria-describedby'],
             }}
           />
         )}

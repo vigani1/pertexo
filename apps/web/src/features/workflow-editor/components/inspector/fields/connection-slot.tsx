@@ -69,7 +69,6 @@ export function ConnectionSlot({
     <Field>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <ChoiceSelect
-        id={id}
         value={selectedId ?? null}
         disabled={!form.editable}
         choices={[
@@ -91,6 +90,7 @@ export function ConnectionSlot({
               ]),
         ]}
         onChange={choose}
+        control={{ id: id }}
       />
       <ConnectionGuidance
         optional={optional}

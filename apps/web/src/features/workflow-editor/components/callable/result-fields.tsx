@@ -75,16 +75,19 @@ export function ResultFields({
         >
           {(control) => (
             <ChoiceSelect
-              id={control.id}
               value={value.nodeId || null}
               choices={[{ value: null, label: 'Choose a step' }, ...steps]}
               disabled={false}
-              name="callable.result.nodeId"
-              ref={validation.register('callable.result.nodeId')}
-              invalid={control['aria-invalid']}
-              describedBy={control['aria-describedby']}
+
               onChange={(nodeId) => {
                 onChange({ ...value, nodeId: nodeId ?? '' });
+              }}
+              control={{
+                id: control.id,
+                name: 'callable.result.nodeId',
+                ref: validation.register('callable.result.nodeId'),
+                invalid: control['aria-invalid'],
+                describedBy: control['aria-describedby'],
               }}
             />
           )}
@@ -180,18 +183,21 @@ function ResultSourceChoice({
     >
       {(control) => (
         <ChoiceSelect
-          id={control.id}
           value={value.kind}
           choices={SOURCES}
           disabled={false}
-          name="callable.result.kind"
-          ref={validation.register('callable.result.kind')}
-          invalid={control['aria-invalid']}
-          describedBy={control['aria-describedby']}
+
           onChange={(next) => {
             const choice = SOURCES.find((entry) => entry.value === next);
             if (choice !== undefined && choice.value !== value.kind)
               onChange(emptyResult(choice.value));
+          }}
+          control={{
+            id: control.id,
+            name: 'callable.result.kind',
+            ref: validation.register('callable.result.kind'),
+            invalid: control['aria-invalid'],
+            describedBy: control['aria-describedby'],
           }}
         />
       )}

@@ -24,7 +24,6 @@ export function CallbackSetup({
           Callback authentication
         </FieldLabel>
         <ChoiceSelect
-          id={fieldControlId(form.nodeId, 'callback-auth')}
           value={
             typeof authentication.mode === 'string'
               ? authentication.mode
@@ -55,6 +54,7 @@ export function CallbackSetup({
               `${form.nodeId}:callback-auth`,
             );
           }}
+          control={{ id: fieldControlId(form.nodeId, 'callback-auth') }}
         />
         <FieldDescription>
           {callbackAuthenticationDescription(authentication.mode)}

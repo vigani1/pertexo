@@ -104,8 +104,6 @@ export function WaitDurationField({
         />
         <div className="min-w-0 flex-1">
           <ChoiceSelect
-            id={`${id}-unit`}
-            label={`${label} unit`}
             value={live.text.unit}
             disabled={!form.editable}
             choices={UNITS.map(({ value, label: name }) => ({
@@ -117,6 +115,7 @@ export function WaitDurationField({
               if (chosen !== undefined)
                 live.change({ ...live.text, unit: chosen.value });
             }}
+            control={{ id: `${id}-unit`, label: `${label} unit` }}
           />
         </div>
       </div>

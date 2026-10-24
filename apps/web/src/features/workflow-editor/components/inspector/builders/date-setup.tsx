@@ -27,7 +27,6 @@ export function DateSetup({
       <Field>
         <FieldLabel htmlFor={id}>{fields.operation.label}</FieldLabel>
         <ChoiceSelect
-          id={id}
           value={typeof config.operation === 'string' ? config.operation : null}
           disabled={!form.editable}
           choices={(fields.operation.options ?? []).map((value) => ({
@@ -43,6 +42,7 @@ export function DateSetup({
                 `${form.nodeId}:config:operation:${operation}`,
               );
           }}
+          control={{ id: id }}
         />
         <FieldDescription>
           Use a date like 2026-10-19, a time with its offset like

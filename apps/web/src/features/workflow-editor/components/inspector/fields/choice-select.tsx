@@ -12,29 +12,28 @@ export type Choice = Readonly<{ value: string | null; label: string }>;
 
 /** The inspector's single-choice control on the Base UI select. */
 export function ChoiceSelect({
-  id,
   value,
   choices,
   disabled,
-  invalid,
-  describedBy,
-  label,
   onChange,
-  ref,
-  name,
+  control,
 }: Readonly<{
-  id: string;
   value: string | null;
   choices: readonly Choice[];
   disabled: boolean;
-  invalid?: boolean;
-  describedBy?: string | undefined;
-  /** For a select that shares its field label with another control. */
-  label?: string;
   onChange: (value: string | null) => void;
-  ref?: Ref<HTMLButtonElement>;
-  name?: string;
+  control: Readonly<{
+    id: string;
+    invalid?: boolean;
+    describedBy?: string | undefined;
+    /** For a select that shares its field label with another control. */
+    label?: string;
+    ref?: Ref<HTMLButtonElement> | undefined;
+    name?: string;
+  }>;
 }>) {
+  const { id, invalid, describedBy, label, ref, name } = control;
+
   return (
     <Select<string | null>
       items={choices}

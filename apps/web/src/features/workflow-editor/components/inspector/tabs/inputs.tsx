@@ -1,3 +1,4 @@
+import { useInspectorSession } from '../../../hooks/use-inspector-session';
 import type { ReactNode } from 'react';
 import { HttpBodyInputs } from '../http-body/inputs';
 import { ReadFileUpload } from '../input-mappings/read-file-upload';
@@ -46,13 +47,11 @@ type RowDisclosure = Readonly<{
  */
 type InputsTabProps = Readonly<{
   node: WorkflowNode;
-  workspaceScope?: WorkspaceApiScope;
   /** The level the step is on: the workflow, or the body it's in. */
   graph: GraphLevel;
   /** The body's inputs when the step is inside a For each; else empty. */
   loopPorts: readonly string[];
   definition: NodeDefinitionCatalogItem | undefined;
-  definitions: readonly NodeDefinitionCatalogItem[];
   form: NodeFormApi;
   focusTarget:
     (EditorFocusTarget & Readonly<{ requestId: number }>) | undefined;
@@ -61,14 +60,16 @@ type InputsTabProps = Readonly<{
 }>;
 
 export function InputsTab(props: InputsTabProps) {
+  const { definitions, workspaceScope } = useInspectorSession();
+  const { onConnect, onRemoveEdge, ...mapping } = props;
   const links = (
     <IncomingLinks
       node={props.node}
       graph={props.graph}
-      definitions={props.definitions}
+      definitions={definitions}
       editable={props.form.editable}
-      onConnect={props.onConnect}
-      onRemoveEdge={props.onRemoveEdge}
+      onConnect={onConnect}
+      onRemoveEdge={onRemoveEdge}
     />
   );
   return props.node.definition.key === 'http.request' ? (
@@ -76,29 +77,29 @@ export function InputsTab(props: InputsTabProps) {
       node={props.node}
       graph={props.graph}
       form={props.form}
-      fileScope={props.workspaceScope}
+      fileScope={workspaceScope}
       loopPorts={props.loopPorts}
       links={links}
       rawInputs={(form) => (
-        <MappedInputsTab {...props} form={form} links={links} />
+        <MappedInputsTab {...mapping} form={form} links={links} />
       )}
     />
   ) : (
-    <MappedInputsTab {...props} links={links} />
+    <MappedInputsTab {...mapping} links={links} />
   );
 }
 
 function MappedInputsTab({
   node,
-  workspaceScope,
   graph,
   loopPorts,
   definition,
-  definitions,
   form,
   focusTarget,
   links,
-}: InputsTabProps & Readonly<{ links: ReactNode }>) {
+}: Omit<InputsTabProps, 'onConnect' | 'onRemoveEdge'> &
+  Readonly<{ links: ReactNode }>) {
+  const { definitions, workspaceScope } = useInspectorSession();
   const store = useEditorStoreApi();
   const notifications = useNotifications();
   const mappings = useInputMappingDraft({
@@ -150,17 +151,11 @@ function MappedInputsTab({
             {mappings.rows.map((row) => (
               <MappingRow
                 key={row.id}
-                nodeId={node.id}
+
                 row={row}
-                graph={graph}
-                open={rowsShown.open.has(row.id)}
-                focusKey={rowsShown.focusKeyOf === row.id}
-                onToggle={() => {
-                  rowsShown.toggleRow(row.id);
-                }}
+
                 suggestions={suggestions}
-                predecessors={predecessors}
-                loopPorts={loopPorts}
+
                 errors={mappings.errors[row.id]}
                 disabled={!editable}
                 onChange={mappings.changeRow}
@@ -180,11 +175,25 @@ function MappedInputsTab({
                     },
                   });
                 }}
-                onFocusRow={() => {
-                  activeRowId.current = row.id;
+
+                disclosure={{
+                  open: rowsShown.open.has(row.id),
+                  focusKey: rowsShown.focusKeyOf === row.id,
+                  onToggle: () => {
+                    rowsShown.toggleRow(row.id);
+                  },
+                  onFocusRow: () => {
+                    activeRowId.current = row.id;
+                  },
+                  onLeaveRow: () => {
+                    mappings.leaveRow(row.id);
+                  },
                 }}
-                onLeaveRow={() => {
-                  mappings.leaveRow(row.id);
+                context={{
+                  nodeId: node.id,
+                  graph: graph,
+                  predecessors: predecessors,
+                  loopPorts: loopPorts,
                 }}
               />
             ))}
@@ -211,15 +220,7 @@ function MappedInputsTab({
               Add input
             </Button>
             <InsertDataPicker
-              {...(workspaceScope === undefined
-                ? {}
-                : {
-                    variableScope: {
-                      apiClient: workspaceScope.apiClient,
-                      userId: workspaceScope.userId,
-                      workspaceId: workspaceScope.workspaceId,
-                    },
-                  })}
+              variableScope={workspaceScope}
               graph={graph}
               nodeId={node.id}
               loopPorts={loopPorts}

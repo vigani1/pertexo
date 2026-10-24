@@ -3,15 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { StatusGlyph } from '@/components/ui/status';
-import type { GraphLevel } from '../../../model/graph/scopes';
+
 import {
   inputMappingKeyControlId,
   type InputMappingDraftRow,
   type InputMappingRowErrors,
-  type PredecessorOption,
 } from '../../../model/inspector/input-mappings/draft';
 import type { InputKeySuggestion } from '../../../model/inspector/input-mappings/schema';
-import { MappingValueEditor } from './value-editor';
+import { MappingValueEditor, type MappingSources } from './value-editor';
 import { MappingSummary } from './mapping-summary';
 
 /** Puts the cursor in a field as it appears, e.g. a just-added input's name. */
@@ -20,18 +19,13 @@ function focusOnMount(element: HTMLInputElement | null) {
 }
 
 type RowProps = Readonly<{
-  nodeId: string;
   row: InputMappingDraftRow;
-  /** The level the step is on, to name the step a row reads from. */
-  graph: GraphLevel;
   suggestions: readonly InputKeySuggestion[];
-  predecessors: readonly PredecessorOption[];
-  /** The body's inputs when the step is inside a For each; else empty. */
-  loopPorts: readonly string[];
   errors: InputMappingRowErrors | undefined;
   disabled: boolean;
   onChange: (row: InputMappingDraftRow) => void;
   onRemove: () => void;
+  context: MappingSources;
 }>;
 
 /**
@@ -39,22 +33,23 @@ type RowProps = Readonly<{
  * place. A closed row still says what's wrong with it.
  */
 export function MappingRow({
-  open,
-  focusKey,
-  onToggle,
-  onFocusRow,
-  onLeaveRow,
+  disclosure,
   ...props
 }: RowProps &
   Readonly<{
-    open: boolean;
-    /** Focus the field name when the editor appears (a new input). */
-    focusKey: boolean;
-    onToggle: () => void;
-    onFocusRow: () => void;
-    onLeaveRow: () => void;
+    disclosure: Readonly<{
+      open: boolean;
+      /** Focus the field name when the editor appears (a new input). */
+      focusKey: boolean;
+      onToggle: () => void;
+      onFocusRow: () => void;
+      onLeaveRow: () => void;
+    }>;
   }>) {
-  const { nodeId, row, errors } = props;
+  const { open, focusKey, onToggle, onFocusRow, onLeaveRow } = disclosure;
+
+  const { row, errors } = props;
+  const { nodeId } = props.context;
   const keyId = inputMappingKeyControlId(nodeId, row.id);
   const editorId = `${keyId}-editor`;
   const problemId = `${keyId}-problem`;
@@ -71,7 +66,7 @@ export function MappingRow({
     >
       <MappingSummary
         row={row}
-        graph={props.graph}
+        graph={props.context.graph}
         type={suggestion?.type}
         open={open}
         controlsId={editorId}
@@ -100,18 +95,17 @@ export function MappingRow({
 
 /** A row's editor: its field name, where its value comes from, and removal. */
 function MappingEditor({
-  nodeId,
   row,
   suggestions,
-  predecessors,
-  graph,
-  loopPorts,
   errors,
   disabled,
   focusKey,
   onChange,
   onRemove,
+  context,
 }: RowProps & Readonly<{ focusKey: boolean }>) {
+  const { nodeId, graph, predecessors, loopPorts } = context;
+
   const keyId = inputMappingKeyControlId(nodeId, row.id);
   const keyErrorId = `${keyId}-error`;
   const listId = `${keyId}-suggestions`;
@@ -170,15 +164,18 @@ function MappingEditor({
         </p>
       )}
       <MappingValueEditor
-        nodeId={nodeId}
         row={row}
-        graph={graph}
-        predecessors={predecessors}
-        loopPorts={loopPorts}
+
         type={suggestion?.type}
         error={errors?.source}
         disabled={disabled}
         onChange={onChange}
+        context={{
+          nodeId: nodeId,
+          graph: graph,
+          predecessors: predecessors,
+          loopPorts: loopPorts,
+        }}
       />
     </>
   );

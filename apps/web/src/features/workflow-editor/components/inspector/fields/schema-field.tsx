@@ -74,7 +74,6 @@ export function SchemaField({
       <Field>
         <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
         <ChoiceSelect
-          id={id}
           value={typeof value === 'string' ? value : null}
           disabled={!form.editable}
           choices={[
@@ -87,6 +86,7 @@ export function SchemaField({
           onChange={(next) => {
             commit(next ?? undefined);
           }}
+          control={{ id: id }}
         />
         {field.description === undefined ? null : (
           <FieldDescription>{field.description}</FieldDescription>

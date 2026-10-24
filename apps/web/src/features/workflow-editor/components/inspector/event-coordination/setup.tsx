@@ -58,7 +58,6 @@ export function EventCoordinationSetup({
       <Field>
         <FieldLabel htmlFor={id}>Policy</FieldLabel>
         <ChoiceSelect
-          id={id}
           value={policy?.mode ?? 'off'}
           disabled={!form.editable}
           choices={[
@@ -98,6 +97,7 @@ export function EventCoordinationSetup({
                 break;
             }
           }}
+          control={{ id: id }}
         />
         <FieldDescription>
           Group events by a value in their input. Authentication and transport
@@ -178,16 +178,19 @@ function CoordinationFields({
       <div onBlurCapture={draft.blur} className="flex min-w-0 flex-col gap-2">
         <p className="text-sm font-medium">Event key</p>
         <MappingValueEditor
-          nodeId={node.id}
           row={draft.text}
-          graph={graph}
-          predecessors={[]}
-          loopPorts={[]}
+
           type={undefined}
           error={draft.error}
           disabled={!form.editable}
           allowedKinds={['run_input', 'expression']}
           onChange={draft.change}
+          context={{
+            nodeId: node.id,
+            graph: graph,
+            predecessors: [],
+            loopPorts: [],
+          }}
         />
         <p className="text-xs text-muted-foreground">
           A nonempty text value (up to 512 bytes), number or true/false. Only a
@@ -229,7 +232,6 @@ function CoordinationFields({
           <Field>
             <FieldLabel htmlFor={`${node.id}-excess`}>Extra events</FieldLabel>
             <ChoiceSelect
-              id={`${node.id}-excess`}
               value={policy.onExcess}
               disabled={!form.editable}
               choices={[
@@ -240,6 +242,7 @@ function CoordinationFields({
                 if (onExcess === 'skip' || onExcess === 'delay')
                   onChange({ ...policy, onExcess });
               }}
+              control={{ id: `${node.id}-excess` }}
             />
           </Field>
         </>

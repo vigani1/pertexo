@@ -1,10 +1,11 @@
+import { useInspectorSession } from '../../../hooks/use-inspector-session';
 import { WaitSetup } from '../wait/setup';
 import { UtilitySetup } from '../builders/utility-setup';
 import { UTILITY_OPERATION_KEYS } from '../../../model/inspector/transforms/utility-config';
 import { httpSetupFields } from '../../../model/inspector/http-pagination/fields';
 import { HttpPaginationSetup } from '../http-pagination/setup';
 import { DataTableSetup } from '../builders/table-setup';
-import { isDataTableDefinition, type CodeSettings } from '@pertexo/node-sdk';
+import { isDataTableDefinition } from '@pertexo/node-sdk';
 import { Suspense } from 'react';
 import { lazyPiece } from '@/components/patterns/app-update/lazy';
 import { SkeletonLines } from '@/components/ui/skeleton';
@@ -14,11 +15,8 @@ import { HumanFormSetup } from '../human-task/setup';
 import { CreateFileSetup } from '../builders/create-file-setup';
 import { ReadFileSetup } from '../builders/read-file-setup';
 import { DateSetup } from '../builders/date-setup';
-import type { CallTargetScope } from '../../../data/call-targets.queries';
-import type {
-  NodeDefinitionCatalogItem,
-  WorkflowGraphContract,
-} from '@pertexo/contracts';
+
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { ReactNode, ComponentType } from 'react';
 import type { schemaFields } from '../../../model/inspector/draft';
 import { schemaPropertyCount } from '../../../model/inspector/draft';
@@ -67,37 +65,30 @@ const SIMPLE_SETUP_RENDERERS: Readonly<
 
 /** The controls for a catalog step's setup, when it isn't shown as JSON. */
 export function SetupControls({
-  definitions,
-  codeSettings,
   node,
   graph,
   configSchema,
   fields,
   scheduleSchema,
   form,
-  callScope,
 }: Readonly<{
-  definitions: readonly NodeDefinitionCatalogItem[];
-  codeSettings?: CodeSettings | undefined;
   node: WorkflowNode;
   graph: GraphLevel;
-  callScope?: CallTargetScope;
   configSchema: unknown;
   fields: ReturnType<typeof schemaFields>;
   scheduleSchema: ScheduleSchema | undefined;
   form: NodeFormApi;
 }>) {
+  const { codeSettings, callScope } = useInspectorSession();
   const { config } = node;
   const formKey = node.definition.key;
   const hasCallableForm =
-    (formKey === 'core.approval' ||
-      formKey === 'core.form' ||
-      formKey === 'core.request_input') &&
-    callScope !== undefined;
+    formKey === 'core.approval' ||
+    formKey === 'core.form' ||
+    formKey === 'core.request_input';
   if (hasCallableForm)
     return (
       <HumanFormSetup
-        definitions={definitions}
         definitionKey={formKey}
         node={node}
         graph={graph}
@@ -105,7 +96,7 @@ export function SetupControls({
         scope={callScope}
       />
     );
-  if (isDataTableDefinition(node.definition) && callScope !== undefined)
+  if (isDataTableDefinition(node.definition))
     return <DataTableSetup scope={callScope} config={config} form={form} />;
   if (node.definition.key === 'core.code')
     return (

@@ -1,5 +1,6 @@
+import { useInspectorSession } from '../../../hooks/use-inspector-session';
 import { useState } from 'react';
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+
 import type { VariablesScope } from '@/features/workspace-variables/picker.public';
 import type { FormField } from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,6 @@ export function ContextFieldRow({
   fields,
   graph,
   form,
-  definitions,
   variableScope,
   onChange,
   onRemove,
@@ -32,11 +32,11 @@ export function ContextFieldRow({
   fields: readonly FormField[] | undefined;
   graph: GraphLevel;
   form: NodeFormApi;
-  definitions: readonly NodeDefinitionCatalogItem[];
   variableScope: VariablesScope;
   onChange: (row: InputMappingDraftRow) => void;
   onRemove: () => void;
 }>) {
+  const { definitions } = useInspectorSession();
   const field = fields?.find((item) => item.name === row.destinationKey);
   const storedType =
     row.kind === 'literal' ? literalType(row.literalJson) : undefined;
@@ -74,7 +74,7 @@ export function ContextFieldRow({
             ) : (
               <ChoiceSelect
                 disabled={!form.editable}
-                id={control.id}
+
                 value={row.destinationKey}
                 choices={(fields ?? []).map((item) => ({
                   value: item.name,
@@ -83,6 +83,7 @@ export function ContextFieldRow({
                 onChange={(name) => {
                   if (name !== null) onChange({ ...row, destinationKey: name });
                 }}
+                control={{ id: control.id }}
               />
             )
           }
@@ -124,11 +125,8 @@ export function ContextFieldRow({
         }}
       />
       <MappingValueEditor
-        nodeId={form.nodeId}
         row={row}
-        graph={graph}
-        predecessors={directPredecessorOptions(graph, form.nodeId)}
-        loopPorts={[]}
+
         type={
           field === undefined ? detailSchemaType(currentType) : fieldType(field)
         }
@@ -142,6 +140,12 @@ export function ContextFieldRow({
           'expression',
         ]}
         onChange={onChange}
+        context={{
+          nodeId: form.nodeId,
+          graph: graph,
+          predecessors: directPredecessorOptions(graph, form.nodeId),
+          loopPorts: [],
+        }}
       />
     </section>
   );
@@ -205,7 +209,6 @@ function DetailType({
     <LabelledField id={id} label="Value type">
       {(control) => (
         <ChoiceSelect
-          id={control.id}
           disabled={disabled}
           value={value}
           choices={detailTypes}
@@ -213,6 +216,7 @@ function DetailType({
             const choice = detailTypes.find((item) => item.value === type);
             if (choice !== undefined) onChange(choice.literal);
           }}
+          control={{ id: control.id }}
         />
       )}
     </LabelledField>

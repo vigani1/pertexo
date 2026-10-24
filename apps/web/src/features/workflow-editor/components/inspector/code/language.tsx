@@ -44,11 +44,11 @@ export function CodeLanguageField({
       <Field>
         <FieldLabel htmlFor={id}>Language</FieldLabel>
         <ChoiceSelect
-          id={id}
           value={language}
           disabled={!form.editable}
           choices={CODE_LANGUAGE_CHOICES}
           onChange={choose}
+          control={{ id: id }}
         />
       </Field>
       <ConfirmDialog

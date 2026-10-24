@@ -1,4 +1,3 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { EventCoordinationSetup } from '../event-coordination/setup';
 import { TaskContextEditor } from './context-editor';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
@@ -52,12 +51,10 @@ function readSetup(
 export function HumanFormSetup({
   node,
   graph,
-  definitions,
   definitionKey,
   form,
   scope,
 }: Readonly<{
-  definitions: readonly NodeDefinitionCatalogItem[];
   node: WorkflowNode;
   graph: GraphLevel;
   definitionKey: 'core.form' | 'core.approval' | 'core.request_input';
@@ -117,7 +114,6 @@ export function HumanFormSetup({
     <>
       {text}
       <TaskContextEditor
-        definitions={definitions}
         variableScope={scope}
         node={node}
         graph={graph}
@@ -126,7 +122,6 @@ export function HumanFormSetup({
       />
       {kind === 'core.request_input' ? (
         <TaskContextEditor
-          definitions={definitions}
           variableScope={scope}
           node={node}
           graph={graph}

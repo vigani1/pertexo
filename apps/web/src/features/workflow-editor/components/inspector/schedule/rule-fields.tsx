@@ -215,8 +215,6 @@ export function TimezoneField({
     >
       {(control) => (
         <ChoiceSelect
-          id={control.id}
-          invalid={control['aria-invalid']}
           {...(control['aria-describedby'] === undefined
             ? {}
             : { describedBy: control['aria-describedby'] })}
@@ -234,6 +232,7 @@ export function TimezoneField({
           onChange={(zone) => {
             onChange({ timezone: zone ?? '' });
           }}
+          control={{ id: control.id, invalid: control['aria-invalid'] }}
         />
       )}
     </LabelledField>

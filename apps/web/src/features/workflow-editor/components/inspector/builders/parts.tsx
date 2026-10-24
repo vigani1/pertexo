@@ -117,42 +117,48 @@ export function EntryActions({
  * leave it.
  */
 export function LiveTextField<Value>({
-  id,
-  label,
-  hint,
-  value,
-  format,
-  parse,
   form,
   scratchKey,
-  mono = false,
-  inputMode,
-  placeholder,
-  className,
-  equals,
-  onCommit,
+  input,
+  binding,
 }: Readonly<{
-  id: string;
-  label: string;
-  hint?: string;
-  value: Value;
-  format: (value: Value) => string;
-  parse: (text: string) => FieldParseResult<Value>;
   form: NodeFormApi;
   /** Names this box's unfinished text for the form. */
   scratchKey: string;
-  mono?: boolean;
-  /**
-   * The digit pad, for whole counts from 0 only: iPhone's has no minus key,
-   * and its decimal key types the region's separator, often ",".
-   */
-  inputMode?: 'numeric' | undefined;
-  placeholder?: string;
-  className?: string;
-  /** Sameness for values that aren't compared by identity, like lists. */
-  equals?: (left: Value, right: Value) => boolean;
-  onCommit: (value: Value) => void;
+  input: Readonly<{
+    id: string;
+    label: string;
+    hint?: string;
+    mono?: boolean;
+    /**
+     * The digit pad, for whole counts from 0 only: iPhone's has no minus key,
+     * and its decimal key types the region's separator, often ",".
+     */
+    inputMode?: 'numeric' | undefined;
+    placeholder?: string;
+    className?: string;
+  }>;
+  binding: Readonly<{
+    value: Value;
+    format: (value: Value) => string;
+    parse: (text: string) => FieldParseResult<Value>;
+    /** Sameness for values that aren't compared by identity, like lists. */
+    equals?: (left: Value, right: Value) => boolean;
+    onCommit: (value: Value) => void;
+  }>;
 }>) {
+  const {
+    id,
+    label,
+    hint,
+    mono = false,
+    inputMode,
+    placeholder,
+    className,
+  } = input;
+
+  const { value, format, parse, equals, onCommit } = binding;
+
   const live = useInspectorDraftField<Value>({
     value,
     format,

@@ -179,17 +179,21 @@ function RuleCard({
       }
     >
       <LiveTextField<string>
-        id={`${baseId}-path`}
-        label="Path"
-        hint="The field to check, like email or items[0].id."
-        value={rule.path}
-        format={(value) => value}
-        parse={parseItemPath}
         form={form}
         scratchKey={`rules.${rule.id}.path`}
-        mono
-        onCommit={(path) => {
-          update((current) => ({ ...current, path }));
+        binding={{
+          value: rule.path,
+          format: (value) => value,
+          parse: parseItemPath,
+          onCommit: (path) => {
+            update((current) => ({ ...current, path }));
+          },
+        }}
+        input={{
+          id: `${baseId}-path`,
+          label: 'Path',
+          hint: 'The field to check, like email or items[0].id.',
+          mono: true,
         }}
       />
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end gap-3">
@@ -198,7 +202,6 @@ function RuleCard({
             Type
           </FieldLabel>
           <ChoiceSelect
-            id={`${baseId}-type`}
             value={type ?? null}
             choices={[
               { value: null, label: 'Any' },
@@ -213,6 +216,7 @@ function RuleCard({
               if (nextType !== type)
                 update((current) => withRuleType(current, nextType));
             }}
+            control={{ id: `${baseId}-type` }}
           />
         </Field>
         <Field className="h-9 flex-row items-center gap-2">
@@ -239,20 +243,25 @@ function RuleCard({
       {type === undefined || type === 'string' || type === 'number' ? (
         <LiveTextField<readonly (string | number)[] | undefined>
           key={`${type ?? 'any'}-enum`}
-          id={`${baseId}-enum`}
-          label="One of (optional)"
-          hint="Separate the allowed values with commas."
-          value={enumValues as readonly (string | number)[] | undefined}
-          format={(value) => (value === undefined ? '' : value.join(', '))}
-          parse={(text) => parseRuleEnum(text, type)}
+
           form={form}
           scratchKey={`rules.${rule.id}.enum`}
-          equals={(left, right) =>
-            JSON.stringify(left) === JSON.stringify(right)
-          }
-          placeholder={type === 'number' ? '1, 2, 3' : 'draft, sent, paid'}
-          onCommit={(value) => {
-            setOptional('enum', value === undefined ? undefined : [...value]);
+
+          binding={{
+            value: enumValues as readonly (string | number)[] | undefined,
+            format: (value) => (value === undefined ? '' : value.join(', ')),
+            parse: (text) => parseRuleEnum(text, type),
+            equals: (left, right) =>
+              JSON.stringify(left) === JSON.stringify(right),
+            onCommit: (value) => {
+              setOptional('enum', value === undefined ? undefined : [...value]);
+            },
+          }}
+          input={{
+            id: `${baseId}-enum`,
+            label: 'One of (optional)',
+            hint: 'Separate the allowed values with commas.',
+            placeholder: type === 'number' ? '1, 2, 3' : 'draft, sent, paid',
           }}
         />
       ) : null}
@@ -296,20 +305,25 @@ function RuleBounds({
         <LiveTextField<number | undefined>
           // A new type brings new bounds.
           key={`${type ?? ''}-${key}`}
-          id={`${baseId}-${key}`}
-          label={boundLabels[boundIndex] ?? key}
-          value={typeof rule[key] === 'number' ? rule[key] : undefined}
-          format={(value) => (value === undefined ? '' : String(value))}
-          parse={(text) =>
-            parseBound(text, type === 'number' ? 'any' : 'count')
-          }
+
           form={form}
           scratchKey={`rules.${rule.id}.${key}`}
-          mono
-          inputMode={type === 'number' ? undefined : 'numeric'}
-          placeholder="No limit"
-          onCommit={(value) => {
-            setOptional(key, value);
+
+          binding={{
+            value: typeof rule[key] === 'number' ? rule[key] : undefined,
+            format: (value) => (value === undefined ? '' : String(value)),
+            parse: (text) =>
+              parseBound(text, type === 'number' ? 'any' : 'count'),
+            onCommit: (value) => {
+              setOptional(key, value);
+            },
+          }}
+          input={{
+            id: `${baseId}-${key}`,
+            label: boundLabels[boundIndex] ?? key,
+            mono: true,
+            inputMode: type === 'number' ? undefined : 'numeric',
+            placeholder: 'No limit',
           }}
         />
       ))}

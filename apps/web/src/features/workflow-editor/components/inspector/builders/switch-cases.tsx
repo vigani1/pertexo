@@ -172,13 +172,13 @@ function CaseRow({
             Kind
           </FieldLabel>
           <ChoiceSelect
-            id={`${baseId}-kind`}
             value={kind}
             choices={KIND_CHOICES}
             disabled={!form.editable}
             onChange={(next) => {
               if (isKind(next) && next !== kind) setEquals(scalarOfKind(next));
             }}
+            control={{ id: `${baseId}-kind` }}
           />
         </Field>
         <CaseValue
@@ -218,7 +218,6 @@ function CaseValue({
           Equals
         </FieldLabel>
         <ChoiceSelect
-          id={id}
           value={equals === false ? 'false' : 'true'}
           choices={[
             { value: 'true', label: 'Yes (true)' },
@@ -228,6 +227,7 @@ function CaseValue({
           onChange={(next) => {
             onCommit(next === 'true');
           }}
+          control={{ id: id }}
         />
       </Field>
     );
@@ -240,32 +240,37 @@ function CaseValue({
   if (kind === 'number')
     return (
       <LiveTextField<number>
-        id={id}
-        label="Equals"
-        value={typeof equals === 'number' ? equals : 0}
-        format={String}
-        parse={parseSwitchNumber}
         form={form}
         scratchKey={scratchKey}
-        mono
-        onCommit={onCommit}
+
+        binding={{
+          value: typeof equals === 'number' ? equals : 0,
+          format: String,
+          parse: parseSwitchNumber,
+          onCommit: onCommit,
+        }}
+        input={{ id: id, label: 'Equals', mono: true }}
       />
     );
   return (
     <LiveTextField<string>
-      id={id}
-      label="Equals"
-      value={typeof equals === 'string' ? equals : ''}
-      format={(value) => value}
-      parse={(text) =>
-        text.length > SWITCH_TEXT_MAX
-          ? { ok: false, error: 'Keep it under 1,024 characters.' }
-          : { ok: true, value: text }
-      }
       form={form}
       scratchKey={scratchKey}
-      placeholder="Exact text, e.g. approved"
-      onCommit={onCommit}
+
+      binding={{
+        value: typeof equals === 'string' ? equals : '',
+        format: (value) => value,
+        parse: (text) =>
+          text.length > SWITCH_TEXT_MAX
+            ? { ok: false, error: 'Keep it under 1,024 characters.' }
+            : { ok: true, value: text },
+        onCommit: onCommit,
+      }}
+      input={{
+        id: id,
+        label: 'Equals',
+        placeholder: 'Exact text, e.g. approved',
+      }}
     />
   );
 }

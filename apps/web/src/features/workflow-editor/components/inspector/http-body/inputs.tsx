@@ -83,12 +83,9 @@ function BodyInputs(props: BodyInputsProps) {
           <MultipartParts
             parts={model.parts}
             validation={model.draft.validation}
-            nodeId={model.node.id}
-            graph={model.graph}
-            loopPorts={model.loopPorts}
-            scope={model.fileScope}
+
             editable={model.form.editable}
-            targetKey={model.signature}
+
             change={model.change}
             onChangePart={model.changePart}
             onRemove={(part) => {
@@ -118,6 +115,12 @@ function BodyInputs(props: BodyInputsProps) {
                   'This removes the part and its mapping. Shared file bytes are kept. Undo restores the part.',
                 confirmLabel: 'Remove',
               });
+            }}
+            upload={{ scope: model.fileScope, targetKey: model.signature }}
+            context={{
+              nodeId: model.node.id,
+              graph: model.graph,
+              loopPorts: model.loopPorts,
             }}
           />
           {model.links}

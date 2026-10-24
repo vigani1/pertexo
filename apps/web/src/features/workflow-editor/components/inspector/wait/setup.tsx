@@ -24,7 +24,6 @@ export function WaitSetup({
           Wait until
         </FieldLabel>
         <ChoiceSelect
-          id={fieldControlId(form.nodeId, 'wait-mode')}
           value={callback ? 'callback' : 'duration'}
           disabled={!form.editable}
           choices={[
@@ -46,6 +45,7 @@ export function WaitSetup({
               `${form.nodeId}:wait-mode`,
             );
           }}
+          control={{ id: fieldControlId(form.nodeId, 'wait-mode') }}
         />
         <FieldDescription>
           {callback

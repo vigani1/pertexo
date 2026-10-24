@@ -1,8 +1,7 @@
 import { HTTP_MULTIPART_MAX_PARTS } from '@pertexo/integrations';
 import { Button } from '@/components/ui/button';
 import { formatByteLength } from '@/lib/format/bytes';
-import type { FileUploadScope } from '@/features/artifacts/public';
-import type { GraphLevel } from '../../../model/graph/scopes';
+
 import {
   newFormPart,
   type FormPartDraft,
@@ -15,28 +14,26 @@ import { focusFormPart } from './focus';
 export function MultipartParts({
   parts,
   validation,
-  nodeId,
-  graph,
-  loopPorts,
-  scope,
   editable,
-  targetKey,
   change,
   onChangePart,
   onRemove,
+  context,
+  upload,
 }: Readonly<{
   parts: readonly FormPartDraft[];
   validation: BodyValidation;
-  nodeId: string;
-  graph: GraphLevel;
-  loopPorts: readonly string[];
-  scope: FileUploadScope | undefined;
   editable: boolean;
-  targetKey: string;
   change: (next: HttpBodyDraft, key: string) => void;
   onChangePart: (part: FormPartDraft, field: string) => string | undefined;
   onRemove: (part: FormPartDraft) => void;
+  context: Parameters<typeof FormPart>[0]['context'];
+  upload: Parameters<typeof FormPart>[0]['upload'];
 }>) {
+  const { nodeId, graph, loopPorts } = context;
+
+  const { scope, targetKey } = upload;
+
   return (
     <>
       <p className="text-sm text-muted-foreground">
@@ -67,33 +64,33 @@ export function MultipartParts({
           <FormPart
             key={part.inputKey}
             part={part}
-            index={index}
-            count={parts.length}
-            nodeId={nodeId}
-            graph={graph}
-            loopPorts={loopPorts}
-            scope={scope}
+
             editable={editable}
             errors={validation.parts[part.inputKey]}
-            targetKey={targetKey}
-            onChange={onChangePart}
-            onMove={(direction) => {
-              const next = [...parts];
-              const target = index + direction;
-              const moved = next[index];
-              const other = next[target];
-              if (moved === undefined || other === undefined) return;
-              next[index] = other;
-              next[target] = moved;
-              change(
-                { mode: 'multipart', parts: next },
-                `move:${crypto.randomUUID()}`,
-              );
-              focusFormPart(nodeId, part.inputKey);
+
+            actions={{
+              onChange: onChangePart,
+              onMove: (direction) => {
+                const next = [...parts];
+                const target = index + direction;
+                const moved = next[index];
+                const other = next[target];
+                if (moved === undefined || other === undefined) return;
+                next[index] = other;
+                next[target] = moved;
+                change(
+                  { mode: 'multipart', parts: next },
+                  `move:${crypto.randomUUID()}`,
+                );
+                focusFormPart(nodeId, part.inputKey);
+              },
+              onRemove: () => {
+                onRemove(part);
+              },
             }}
-            onRemove={() => {
-              onRemove(part);
-            }}
+            position={{ index: index, count: parts.length }}
+            upload={{ scope: scope, targetKey: targetKey }}
+            context={{ nodeId: nodeId, graph: graph, loopPorts: loopPorts }}
           />
         ))}
       </div>

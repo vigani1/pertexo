@@ -32,7 +32,6 @@ export function DataTableSetup({
     <div className="grid gap-3">
       <Label htmlFor={`table-${form.nodeId}`}>Workspace table</Label>
       <ChoiceSelect
-        id={`table-${form.nodeId}`}
         value={selected}
         choices={[
           { value: '', label: 'Choose a table' },
@@ -55,6 +54,7 @@ export function DataTableSetup({
             'table',
           );
         }}
+        control={{ id: `table-${form.nodeId}` }}
       />
       {table === undefined ? null : (
         <section aria-label="Table column bindings" className="grid gap-2">
