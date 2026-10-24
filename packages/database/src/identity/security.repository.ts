@@ -1,10 +1,10 @@
-import { hasSignInMethodCapacity } from './federation/accounts/limits.js';
+import { hasSignInMethodCapacity } from './federation/accounts/limits.queries.js';
 import {
   prepareSessionChange,
   applySessionChange,
 } from '../tenant-access/users/sessions.repository.js';
 import type { AuthenticationReplacement } from '../tenant-access/users/contract.js';
-import { isProtectedRecoveryOwner } from './federation/sessions/recovery.js';
+import { isProtectedRecoveryOwner } from './federation/sessions/recovery.queries.js';
 import { randomUUID } from 'node:crypto';
 
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
@@ -20,7 +20,7 @@ import {
 import { users } from '../schema/foundation.js';
 import { withPlatformTransaction } from '../tenant-access/transactions.js';
 import { rethrowQueryFailure } from '../platform/query-errors.js';
-import { recordIdentitySecurityFact } from './security-facts.js';
+import { recordIdentitySecurityFact } from './facts.repository.js';
 
 export async function hasCredentialAccount(
   pool: Pool,

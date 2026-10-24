@@ -1,11 +1,11 @@
-import { hasSignInMethodCapacity } from './accounts/limits.js';
-import { resolveVerifiedSignInUser } from './accounts/resolve.js';
-import { canCreateAuthenticationSession } from './sessions/authority.js';
+import { hasSignInMethodCapacity } from './accounts/limits.queries.js';
+import { resolveVerifiedSignInUser } from './accounts/resolve.repository.js';
+import { canCreateAuthenticationSession } from './sessions/authority.repository.js';
 import { randomBytes } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { revokeUserSessions } from '../../tenant-access/users/sessions.repository.js';
-import { recordIdentitySecurityFact } from '../security-facts.js';
+import { recordIdentitySecurityFact } from '../facts.repository.js';
 import type { ProvenSocialSignIn, SocialSignInResult } from './contract.js';
 
 export async function completeSocialSignIn(

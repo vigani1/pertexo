@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { authSessions } from '../../schema/authentication.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { readEligibleAuthenticationSession } from '../../identity/federation/sessions/authority.js';
+import { readEligibleAuthenticationSession } from '../../identity/federation/sessions/authority.repository.js';
 import type { SessionAuthenticationProof } from '../../identity/federation/sessions/policy.js';
 import type { PoolClient } from 'pg';
 

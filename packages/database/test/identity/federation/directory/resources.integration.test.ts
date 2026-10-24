@@ -6,22 +6,22 @@ import { useIdentityCommandDatabase } from '../../command.support.js';
 import {
   authenticateDirectory,
   lockDirectoryOrganization,
-} from '../../../../src/identity/federation/provisioning/authority.js';
+} from '../../../../src/identity/federation/provisioning/authority.repository.js';
 import {
   createDirectoryUser,
   changeDirectoryUser,
   deleteDirectoryUser,
-} from '../../../../src/identity/federation/provisioning/resources/users.js';
+} from '../../../../src/identity/federation/provisioning/resources/users.repository.js';
 import {
   createDirectoryGroup,
   changeDirectoryGroup,
   deleteDirectoryGroup,
-} from '../../../../src/identity/federation/provisioning/resources/groups.js';
+} from '../../../../src/identity/federation/provisioning/resources/groups.repository.js';
 import {
   bindDirectorySignIn,
   directorySignInCandidate,
-} from '../../../../src/identity/federation/provisioning/sign-in.js';
-import { directorySessionAllowed } from '../../../../src/identity/federation/provisioning/session.js';
+} from '../../../../src/identity/federation/provisioning/sign-in.repository.js';
+import { directorySessionAllowed } from '../../../../src/identity/federation/provisioning/session.queries.js';
 import { withPlatformTransaction } from '../../../../src/tenant-access/transactions.js';
 import type {
   DirectoryUserValues,

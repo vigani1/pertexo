@@ -7,19 +7,19 @@ import { withPlatformTransaction } from '../../../tenant-access/transactions.js'
 import {
   lockFederationWorkspace,
   organizationForWorkspace,
-} from '../management/authority.js';
+} from '../management/authority.repository.js';
 import {
   FederationConflictError,
   type FederationScope,
 } from '../management/contract.js';
-import { readEligibleAuthenticationSession } from '../sessions/authority.js';
+import { readEligibleAuthenticationSession } from '../sessions/authority.repository.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
 import { queryFailure } from '../../../platform/query-errors.js';
-import { readFederationProvider, findFederationAttempt } from './queries.js';
+import { readFederationProvider, findFederationAttempt } from './records.queries.js';
 import {
   completeFederationJourney,
   type CompleteFederationJourney,
-} from './complete.js';
+} from './complete.repository.js';
 import type {
   StartFederationJourney,
   FederationCompletion,

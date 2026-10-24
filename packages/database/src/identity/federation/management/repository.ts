@@ -2,7 +2,7 @@ import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
 import type { Pool, PoolClient, QueryResult } from 'pg';
 import { findCommandResult } from '../../../platform/idempotency/repository.js';
 
-import type { FederationCommand } from './commands.js';
+import type { FederationCommand } from './commands.repository.js';
 import type { DatabaseConfig } from '../../../config.js';
 import {
   acquireDatabasePool,
@@ -14,20 +14,20 @@ import {
 } from '../../../tenant-access/transactions.js';
 import { readWorkspaceAuthority } from '../../../tenant-access/workspaces/authority.queries.js';
 import { FederationConflictError, type FederationScope } from './contract.js';
-import { organizationForWorkspace } from './authority.js';
-import { projectOrganization } from './settings.js';
+import { organizationForWorkspace } from './authority.repository.js';
+import { projectOrganization } from './settings.queries.js';
 import {
   createOrganization,
   linkOrganizationWorkspace,
-} from './organizations.js';
+} from './organizations.repository.js';
 import {
   createDomain,
   renewDomainChallenge,
   verifyDomain,
   removeDomain,
-} from './domains.js';
-import { createProvider, updateProvider, removeProvider } from './providers.js';
-import { configureDomainEnforcement } from './enforcement.js';
+} from './domains.repository.js';
+import { createProvider, updateProvider, removeProvider } from './providers.repository.js';
+import { configureDomainEnforcement } from './enforcement.repository.js';
 import type { FederationSettings } from '@pertexo/contracts';
 
 interface StoredProviderSecret {

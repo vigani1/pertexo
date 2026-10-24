@@ -8,7 +8,7 @@ import { and, asc, eq, inArray, lte, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { detachDirectoryMemberships } from '../../identity/federation/provisioning/management/detach.js';
+import { detachDirectoryMemberships } from '../../identity/federation/provisioning/management/detach.repository.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 
 async function linkedWorkspaceIds(

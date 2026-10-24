@@ -4,20 +4,20 @@ import { useIdentityCommandDatabase } from '../../command.support.js';
 import {
   createDirectoryCredential,
   revokeDirectoryCredential,
-} from '../../../../src/identity/federation/provisioning/management/credentials.js';
+} from '../../../../src/identity/federation/provisioning/management/credentials.repository.js';
 import {
   replaceDirectoryMappings,
   adoptDirectoryMembership,
-} from '../../../../src/identity/federation/provisioning/management/mappings.js';
-import { unlinkDirectoryWorkspace } from '../../../../src/identity/federation/provisioning/management/unlink.js';
+} from '../../../../src/identity/federation/provisioning/management/mappings.repository.js';
+import { unlinkDirectoryWorkspace } from '../../../../src/identity/federation/provisioning/management/unlink.repository.js';
 import {
   authenticateDirectory,
   lockDirectoryOrganization,
-} from '../../../../src/identity/federation/provisioning/authority.js';
-import { createDirectoryUser } from '../../../../src/identity/federation/provisioning/resources/users.js';
-import { createDirectoryGroup } from '../../../../src/identity/federation/provisioning/resources/groups.js';
-import { readDirectoryUser } from '../../../../src/identity/federation/provisioning/resources/users.js';
-import { bindDirectorySignIn } from '../../../../src/identity/federation/provisioning/sign-in.js';
+} from '../../../../src/identity/federation/provisioning/authority.repository.js';
+import { createDirectoryUser } from '../../../../src/identity/federation/provisioning/resources/users.repository.js';
+import { createDirectoryGroup } from '../../../../src/identity/federation/provisioning/resources/groups.repository.js';
+import { readDirectoryUser } from '../../../../src/identity/federation/provisioning/resources/users.repository.js';
+import { bindDirectorySignIn } from '../../../../src/identity/federation/provisioning/sign-in.repository.js';
 import { withPlatformTransaction } from '../../../../src/tenant-access/transactions.js';
 
 const db = useIdentityCommandDatabase('scim_manage');

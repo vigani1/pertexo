@@ -6,16 +6,16 @@ import type {
 } from '@pertexo/contracts';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { FederationConflictError, type ProviderRow } from './contract.js';
-import { recordFederationAudit } from './authority.js';
+import { recordFederationAudit } from './authority.repository.js';
 import {
   advanceOrganization,
   assertOrganizationRevision,
   requireControlOrganization,
   runFederationCommand,
   type FederationCommand,
-} from './commands.js';
-import { requireResourceCapacity } from './organizations.js';
-import { assertRequiredDomainsReady } from './enforcement.js';
+} from './commands.repository.js';
+import { requireResourceCapacity } from './organizations.repository.js';
+import { assertRequiredDomainsReady } from './enforcement.repository.js';
 
 type SealedSecret = Readonly<Record<string, unknown>>;
 type ProviderValues = Readonly<{ name: string; enabled: boolean }> &

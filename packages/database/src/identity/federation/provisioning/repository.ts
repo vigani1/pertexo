@@ -1,4 +1,4 @@
-import { previewDirectoryAdoption } from './management/adoption.js';
+import { previewDirectoryAdoption } from './management/adoption.repository.js';
 import type { DirectoryAdoptionQuery } from '@pertexo/contracts';
 import type { DatabaseConfig } from '../../../config.js';
 import {
@@ -6,7 +6,7 @@ import {
   type DatabaseRuntime,
 } from '../../../platform/pool/runtime.js';
 import type { FederationScope } from '../management/contract.js';
-import { authenticateDirectory, withDirectoryRead } from './authority.js';
+import { authenticateDirectory, withDirectoryRead } from './authority.repository.js';
 import type {
   DirectoryPrincipal,
   DirectoryUserValues,
@@ -18,36 +18,36 @@ import {
   deleteDirectoryUser,
   readDirectoryUser,
   type DirectoryUser,
-} from './resources/users.js';
+} from './resources/users.repository.js';
 import {
   createDirectoryGroup,
   changeDirectoryGroup,
   deleteDirectoryGroup,
   readDirectoryGroup,
   type DirectoryGroup,
-} from './resources/groups.js';
+} from './resources/groups.repository.js';
 import {
   listDirectoryUsers,
   listDirectoryGroups,
   type DirectoryQuery,
-} from './resources/queries.js';
+} from './resources/records.queries.js';
 import {
   readDirectoryManagement,
   type DirectoryCommand,
-} from './management/commands.js';
+} from './management/commands.repository.js';
 import {
   createDirectoryCredential,
   revokeDirectoryCredential,
-} from './management/credentials.js';
+} from './management/credentials.repository.js';
 import {
   replaceDirectoryMappings,
   adoptDirectoryMembership,
-} from './management/mappings.js';
-import { unlinkDirectoryWorkspace } from './management/unlink.js';
+} from './management/mappings.repository.js';
+import { unlinkDirectoryWorkspace } from './management/unlink.repository.js';
 import {
   projectDirectorySettings,
   listDirectoryPeople,
-} from './management/settings.js';
+} from './management/settings.queries.js';
 import type {
   DirectoryMappings,
   DirectoryAdopt,

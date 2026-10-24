@@ -6,7 +6,7 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { recordIdentitySecurityFact } from '../../identity/security-facts.js';
+import { recordIdentitySecurityFact } from '../../identity/facts.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
   commandKeySchema,

@@ -13,15 +13,15 @@ import { lockWorkspaceAuthority } from '../../../../tenant-access/workspaces/aut
 import {
   organizationForWorkspace,
   recordFederationAudit,
-} from '../../management/authority.js';
+} from '../../management/authority.repository.js';
 import {
   lockDirectoryOrganization,
   lockDirectoryParticipants,
-} from '../authority.js';
+} from '../authority.repository.js';
 import { DirectoryError } from '../contract.js';
 import { DIRECTORY_LIMITS } from '../limits.js';
-import type { DirectoryCommand } from './commands.js';
-import { detachDirectoryMemberships } from './detach.js';
+import type { DirectoryCommand } from './commands.repository.js';
+import { detachDirectoryMemberships } from './detach.repository.js';
 
 export async function unlinkDirectoryWorkspace(
   pool: Pool,

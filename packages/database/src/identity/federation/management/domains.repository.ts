@@ -3,15 +3,15 @@ import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { FederationConflictError, type DomainRow } from './contract.js';
-import { recordFederationAudit } from './authority.js';
+import { recordFederationAudit } from './authority.repository.js';
 import {
   advanceOrganization,
   assertOrganizationRevision,
   requireControlOrganization,
   runFederationCommand,
   type FederationCommand,
-} from './commands.js';
-import { requireResourceCapacity } from './organizations.js';
+} from './commands.repository.js';
+import { requireResourceCapacity } from './organizations.repository.js';
 
 export async function requireOrganizationDomain(
   client: PoolClient,

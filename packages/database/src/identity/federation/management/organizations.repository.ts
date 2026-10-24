@@ -1,6 +1,6 @@
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import type { DelegatedRole } from '@pertexo/workflow-model';
-import { projectDirectoryMemberships } from '../provisioning/projection.js';
+import { projectDirectoryMemberships } from '../provisioning/projection.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
@@ -12,14 +12,14 @@ import {
 import {
   organizationForWorkspace,
   recordFederationAudit,
-} from './authority.js';
+} from './authority.repository.js';
 import {
   advanceOrganization,
   assertOrganizationRevision,
   requireControlOrganization,
   runFederationCommand,
   type FederationCommand,
-} from './commands.js';
+} from './commands.repository.js';
 
 export function createOrganization(
   pool: Pool,

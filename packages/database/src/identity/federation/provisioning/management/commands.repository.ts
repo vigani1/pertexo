@@ -16,14 +16,14 @@ import {
 import {
   organizationForWorkspace,
   recordFederationAudit,
-} from '../../management/authority.js';
+} from '../../management/authority.repository.js';
 import type { FederationScope } from '../../management/contract.js';
 import { DirectoryError } from '../contract.js';
 import {
   lockDirectoryOrganization,
   lockDirectoryParticipants,
   type DirectoryOrganization,
-} from '../authority.js';
+} from '../authority.repository.js';
 
 export type DirectoryCommand = FederationScope &
   Readonly<{ idempotencyKey: string; expectedRevision: number }>;

@@ -15,9 +15,9 @@ import type {
 
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.repository.js';
-import type { DirectoryOrganization } from './authority.js';
+import type { DirectoryOrganization } from './authority.repository.js';
 import type { DirectoryMapping } from './contract.js';
-import { directoryRole } from './roles.js';
+import { directoryRole } from './roles.queries.js';
 
 type BoundUser = Readonly<{
   id: string;
