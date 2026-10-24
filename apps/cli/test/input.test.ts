@@ -123,6 +123,58 @@ describe('automation command input', () => {
     });
   });
   it.each([
+    {
+      args: ['workflows', 'list', '--limit', '7', '--after', 'opaque'],
+      query: { limit: 7, after: 'opaque' },
+    },
+    {
+      args: [
+        'workflows',
+        'versions',
+        '--workflow',
+        target,
+        '--version',
+        target,
+        '--limit',
+        '7',
+      ],
+      query: { versionId: target, limit: 7 },
+    },
+    {
+      args: [
+        'runs',
+        'list',
+        '--workflow',
+        target,
+        '--limit',
+        '7',
+        '--after',
+        'opaque',
+      ],
+      query: { workflowId: target, limit: 7, after: 'opaque' },
+    },
+  ])(
+    'routes supported query fields without changing targets: $args',
+    ({ args, query }) => {
+      expect(
+        parseAutomationArguments([...args, '--workspace', workspace]),
+      ).toMatchObject({ workspaceId: workspace, query });
+    },
+  );
+  it.each([
+    ['workflows', 'list', '--version', target],
+    ['workflows', 'list', '--workflow', target],
+    ['runs', 'list', '--version', target],
+    ['runs', 'get', '--run', target, '--limit', '7'],
+  ])(
+    'refuses query options belonging to a different command: %j',
+    (...args) => {
+      expect(() =>
+        parseAutomationArguments([...args, '--workspace', workspace]),
+      ).toThrow(expect.objectContaining({ code: 'cli.invalid_argument' }));
+    },
+  );
+  it.each([
     'https://example.com',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
