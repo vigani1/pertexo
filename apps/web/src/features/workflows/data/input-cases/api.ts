@@ -91,12 +91,7 @@ export function sendInputCaseCommand(
 ) {
   return api.request({
     path: `${casesPath(workspaceId, workflowId)}${command.kind === 'create' ? '' : `/${encodeURIComponent(command.caseId)}`}`,
-    method:
-      command.kind === 'create'
-        ? 'POST'
-        : command.kind === 'update'
-          ? 'PUT'
-          : 'DELETE',
+    method: COMMAND_METHODS[command.kind],
     headers: {
       'Idempotency-Key': command.key,
       ...(command.kind === 'create' ? {} : { 'If-Match': command.tag }),
@@ -115,3 +110,9 @@ export function sendInputCaseCommand(
     },
   });
 }
+
+const COMMAND_METHODS = {
+  create: 'POST',
+  update: 'PUT',
+  delete: 'DELETE',
+} as const;

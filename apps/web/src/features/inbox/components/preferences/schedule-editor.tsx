@@ -170,6 +170,9 @@ export function NotificationScheduleEditor({
     { value: 'hourly', label: 'Hourly digest' },
     { value: 'daily', label: 'Daily digest' },
   ];
+  const idleReloadLabel = changed
+    ? 'Discard changes'
+    : 'Load the latest choices';
   const unavailable =
     !snapshot.emailAvailable &&
     draft.mode !== 'off' &&
@@ -295,11 +298,7 @@ export function NotificationScheduleEditor({
             disabled={locked}
             onClick={() => void reload()}
           >
-            {reloading
-              ? 'Loading…'
-              : changed
-                ? 'Discard changes'
-                : 'Load the latest choices'}
+            {reloading ? 'Loading…' : idleReloadLabel}
           </Button>
         ) : null}
       </div>

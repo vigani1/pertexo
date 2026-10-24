@@ -280,7 +280,7 @@ export class LoomRenderer extends CanvasScene {
         : this.#inkOpacity.thread,
     );
     context.lineWidth = 2;
-    context.setLineDash(dashed ? [3, 5] : dotted ? [1, 4] : []);
+    context.setLineDash(lineDash({ dashed, dotted }));
     context.beginPath();
     context.moveTo(x0, y);
     context.lineTo(x1, y);
@@ -397,4 +397,12 @@ export class LoomRenderer extends CanvasScene {
     });
     context.globalCompositeOperation = 'source-over';
   }
+}
+
+function lineDash({
+  dashed,
+  dotted,
+}: Readonly<{ dashed: boolean; dotted: boolean }>): number[] {
+  if (dashed) return [3, 5];
+  return dotted ? [1, 4] : [];
 }

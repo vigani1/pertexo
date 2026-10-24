@@ -46,7 +46,7 @@ export function EditorLayout({
   mobilePanel: MobilePanel;
   onMobilePanelChange: (panel: MobilePanel) => void;
 }>) {
-  const leftInset = !editable ? '0.75rem' : addStepCollapsed ? '4rem' : '17rem';
+  const leftInset = addStepInset({ editable, addStepCollapsed });
   return (
     <div
       className="relative h-svh min-h-0 overflow-hidden bg-background"
@@ -192,4 +192,12 @@ function PanelButton({
       ) : null}
     </Button>
   );
+}
+
+function addStepInset({
+  editable,
+  addStepCollapsed,
+}: Readonly<{ editable: boolean; addStepCollapsed: boolean }>): string {
+  if (!editable) return '0.75rem';
+  return addStepCollapsed ? '4rem' : '17rem';
 }

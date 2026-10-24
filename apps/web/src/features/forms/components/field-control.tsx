@@ -99,13 +99,7 @@ export function FormFieldControl({
         return (
           <Input
             {...control}
-            type={
-              field.type === 'number'
-                ? 'number'
-                : field.type === 'email'
-                  ? 'email'
-                  : 'text'
-            }
+            type={INPUT_TYPES[field.type] ?? 'text'}
             {...(field.type === 'number'
               ? { step: 'any' }
               : { maxLength: 10000 })}
@@ -119,3 +113,7 @@ export function FormFieldControl({
     </LabelledField>
   );
 }
+
+const INPUT_TYPES: Readonly<
+  Partial<Record<FormField['type'], 'number' | 'email'>>
+> = { number: 'number', email: 'email' };

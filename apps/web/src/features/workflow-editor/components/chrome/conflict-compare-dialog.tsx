@@ -140,14 +140,7 @@ function lineWords(line: Line): string {
 }
 
 function LineIcon({ kind }: Readonly<{ kind: Line['kind'] }>) {
-  const Icon =
-    kind === 'added' ? PlusIcon : kind === 'removed' ? MinusIcon : PencilIcon;
-  const tone =
-    kind === 'added'
-      ? 'text-success'
-      : kind === 'removed'
-        ? 'text-destructive'
-        : 'text-secondary';
+  const { Icon, tone } = LINE_APPEARANCE[kind];
   return <Icon aria-hidden="true" className={`size-3.5 shrink-0 ${tone}`} />;
 }
 
@@ -171,3 +164,9 @@ function GraphJson({
 function countOf(count: number, noun: string): string {
   return `${String(count)} ${noun}${count === 1 ? '' : 's'}`;
 }
+
+const LINE_APPEARANCE = {
+  added: { Icon: PlusIcon, tone: 'text-success' },
+  removed: { Icon: MinusIcon, tone: 'text-destructive' },
+  changed: { Icon: PencilIcon, tone: 'text-secondary' },
+} satisfies Record<Line['kind'], { Icon: typeof PlusIcon; tone: string }>;
