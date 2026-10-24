@@ -36,6 +36,7 @@ export function AccountTwoFactorSection({
   }
   const { enabled, recoveryCodesRemaining } = security.twoFactor;
   const codes = recoveryCodeCopy(recoveryCodesRemaining);
+  const status = enabled ? codes.status : 'Off';
   const hasPassword = security.methods.some(
     (method) => method.kind === 'password',
   );
@@ -48,9 +49,7 @@ export function AccountTwoFactorSection({
         <p className="text-sm">
           {readState === 'unavailable'
             ? 'Refresh your sign-in methods above to confirm the status.'
-            : enabled
-              ? codes.status
-              : 'Off'}
+            : status}
         </p>
         {readState !== 'unavailable' &&
         enabled &&
@@ -118,13 +117,13 @@ export function AccountTwoFactorSection({
 function recoveryCodeCopy(remaining: number | null) {
   if (remaining === null) return { status: 'On', warning: undefined };
   const noun = remaining === 1 ? 'code' : 'codes';
+  const status = `On · ${String(remaining)} recovery ${noun} remaining`;
+  if (remaining > 2) return { status, warning: undefined };
   return {
-    status: `On · ${String(remaining)} recovery ${noun} remaining`,
+    status,
     warning:
-      remaining > 2
-        ? undefined
-        : remaining === 0
-          ? 'No recovery codes left. Get new codes now.'
-          : `Only ${String(remaining)} recovery ${noun} left. Get new codes before you need them.`,
+      remaining === 0
+        ? 'No recovery codes left. Get new codes now.'
+        : `Only ${String(remaining)} recovery ${noun} left. Get new codes before you need them.`,
   };
 }

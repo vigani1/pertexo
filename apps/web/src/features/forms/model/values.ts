@@ -8,13 +8,7 @@ export function valuesFromDraft(
 ): Readonly<Record<string, FormDraftValue | number>> {
   return Object.fromEntries(
     fields.map((field): [string, FormDraftValue | number] => {
-      const raw =
-        draft[field.name] ??
-        (field.type === 'boolean'
-          ? false
-          : field.type === 'multi_select'
-            ? []
-            : '');
+      const raw = draft[field.name] ?? emptyFieldValue(field.type);
       if (
         field.type === 'number' &&
         typeof raw === 'string' &&
@@ -26,4 +20,10 @@ export function valuesFromDraft(
       return [field.name, raw];
     }),
   );
+}
+
+function emptyFieldValue(type: FormField['type']): FormDraftValue {
+  if (type === 'boolean') return false;
+  if (type === 'multi_select') return [];
+  return '';
 }

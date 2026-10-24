@@ -9,6 +9,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { LabelledField } from '@/components/ui/field';
 import { useInspectorDraftField } from '../use-draft-field';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
+const TEXT_FIELDS = {
+  title: {
+    label: 'Request title',
+    error: 'Enter a title up to 160 characters.',
+  },
+  instructions: {
+    label: 'Instructions',
+    error: 'Use at most 2,000 characters.',
+    description: 'Optional context for the person responding.',
+  },
+  thankYouMessage: {
+    label: 'Thank-you message',
+    error: 'Use 1–1,000 characters.',
+    description:
+      'Shown after acceptance. HTTP and HTTPS URLs become links. The run may still be waiting or running.',
+  },
+};
+
 export function TaskTextField({
   name,
   value,
@@ -18,6 +36,7 @@ export function TaskTextField({
   value: string;
   form: NodeFormApi;
 }>) {
+  const details = TEXT_FIELDS[name];
   const field = useInspectorDraftField({
     value,
     format: (current) => current,
@@ -31,12 +50,7 @@ export function TaskTextField({
         ? { ok: true, value: parsed.data }
         : {
             ok: false,
-            error:
-              name === 'title'
-                ? 'Enter a title up to 160 characters.'
-                : name === 'thankYouMessage'
-                  ? 'Use 1–1,000 characters.'
-                  : 'Use at most 2,000 characters.',
+            error: details.error,
           };
     },
     commit: (next) => {
@@ -52,22 +66,11 @@ export function TaskTextField({
   return (
     <LabelledField
       id={`${form.nodeId}-approval-${name}`}
-      label={
-        name === 'title'
-          ? 'Request title'
-          : name === 'thankYouMessage'
-            ? 'Thank-you message'
-            : 'Instructions'
-      }
+      label={details.label}
       error={field.error}
-      {...(name === 'instructions'
-        ? { description: 'Optional context for the person responding.' }
-        : name === 'thankYouMessage'
-          ? {
-              description:
-                'Shown after acceptance. HTTP and HTTPS URLs become links. The run may still be waiting or running.',
-            }
-          : {})}
+      {...('description' in details
+        ? { description: details.description }
+        : {})}
     >
       {(control) =>
         name === 'title' ? (

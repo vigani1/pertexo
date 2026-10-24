@@ -30,19 +30,8 @@ export function describeRunFailure(
   const node = graph?.nodes.find(
     (candidate) => candidate.id === failing.nodeId,
   );
-  const label = node?.label?.trim();
-  const step =
-    node === undefined
-      ? undefined
-      : label === undefined || label === ''
-        ? describeStep(node.definition.key).name
-        : label;
-  const reason =
-    failing.safeErrorCode === null
-      ? failing.status === 'timed_out'
-        ? 'timed out'
-        : undefined
-      : shortStepError(failing.safeErrorCode);
+  const step = failureStepName(node?.label?.trim(), node?.definition.key);
+  const reason = failureReason(failing.safeErrorCode, failing.status);
   return {
     ...(step === undefined ? {} : { step }),
     ...(reason === undefined ? {} : { reason }),
@@ -54,13 +43,10 @@ export function describeListedFailure(
   failedStep: WorkflowRunFailedStep | null | undefined,
 ): RunFailure {
   if (failedStep === null || failedStep === undefined) return {};
-  const label = failedStep.label?.trim();
-  const step =
-    label !== undefined && label !== ''
-      ? label
-      : failedStep.definitionKey === null
-        ? undefined
-        : describeStep(failedStep.definitionKey).name;
+  const step = failureStepName(
+    failedStep.label?.trim(),
+    failedStep.definitionKey,
+  );
   const reason =
     failedStep.safeErrorCode === null
       ? undefined
@@ -69,4 +55,21 @@ export function describeListedFailure(
     ...(step === undefined ? {} : { step }),
     ...(reason === undefined ? {} : { reason }),
   };
+}
+
+function failureStepName(
+  label: string | undefined,
+  definitionKey: string | null | undefined,
+): string | undefined {
+  if (label !== undefined && label !== '') return label;
+  if (definitionKey === null || definitionKey === undefined) return undefined;
+  return describeStep(definitionKey).name;
+}
+
+function failureReason(
+  code: string | null,
+  status: string,
+): string | undefined {
+  if (code !== null) return shortStepError(code);
+  return status === 'timed_out' ? 'timed out' : undefined;
 }

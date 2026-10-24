@@ -82,12 +82,8 @@ function parseField(
     const [startText = '', endText] =
       range === '*' ? [String(min), String(max)] : range.split('-');
     const start = toNumber(startText, aliases);
-    const end =
-      endText === undefined
-        ? stepText === undefined
-          ? start
-          : max
-        : toNumber(endText, aliases);
+    const omittedEnd = stepText === undefined ? start : max;
+    const end = endText === undefined ? omittedEnd : toNumber(endText, aliases);
     const invalidScheduleRange =
       start === undefined || end === undefined || start < min || end > max;
     if (invalidScheduleRange) return undefined;
