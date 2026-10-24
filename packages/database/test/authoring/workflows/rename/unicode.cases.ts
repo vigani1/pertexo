@@ -13,9 +13,7 @@ export function registerUnicodeRenameCase({
       Parameters<WorkflowAuthoringDatabase['renameWorkflow']>[0]
     >,
   ): ReturnType<WorkflowAuthoringDatabase['renameWorkflow']>;
-  nameFacts(
-    workflowId: string,
-  ): Promise<
+  nameFacts(workflowId: string): Promise<
     Readonly<{
       name: string;
       nameRevision: number;
@@ -27,6 +25,7 @@ export function registerUnicodeRenameCase({
   it('preserves Unicode code points through no-op receipts and later renames', async () => {
     const decomposed = 'レポート e\u0301 🚀';
     const composed = 'レポート é 🚀';
+    expect(decomposed.normalize('NFC')).toBe(composed);
     const workflowId = await createNamed(`  ${decomposed}  `);
     const accepted = await rename(workflowId, { name: `\t${decomposed}\n` });
     expect(accepted.workflow.name).toBe(decomposed);
