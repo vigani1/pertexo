@@ -7,7 +7,6 @@ import {
 } from 'react';
 import type { WorkflowFolder, WorkflowTag } from '@pertexo/contracts';
 import { workflowOrganizationNameQuerySchema } from '@pertexo/contracts';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LabelledField } from '@/components/ui/field';
@@ -21,18 +20,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import type { ApiClient } from '@/lib/api/client';
-import {
-  workflowFoldersQueryOptions,
-  workflowTagsInfiniteQueryOptions,
-} from '../../data/organization/queries';
 import type { updateWorkflowListSearch } from '../../model/list-view';
 import type { WorkflowListSearch } from '../../model/list-view';
 import { workflowFolderOptions } from '../../model/organization/folder-navigation';
-import {
-  isOrganizationReadDenied,
-  useOrganizationReadLifetime,
-} from '../../hooks/use-organization-read-lifetime';
 
 export function OrganizationNameFilter({
   query,
@@ -79,43 +69,6 @@ export function OrganizationNameFilter({
       )}
     </LabelledField>
   );
-}
-
-/** Own the authorized vocabulary lifetime independently of whether its popup is open. */
-export function useWorkflowFilterVocabulary(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-) {
-  const lifetime = useOrganizationReadLifetime(userId, workspaceId);
-  const folders = useQuery({
-    ...workflowFoldersQueryOptions(apiClient, userId, workspaceId),
-    enabled: lifetime.error === undefined,
-  });
-  const tags = useInfiniteQuery({
-    ...workflowTagsInfiniteQueryOptions(apiClient, userId, workspaceId),
-    enabled: lifetime.error === undefined,
-  });
-  const denied =
-    lifetime.error !== undefined ||
-    isOrganizationReadDenied(folders.error) ||
-    isOrganizationReadDenied(tags.error);
-  return {
-    folders: denied ? undefined : folders.data?.items,
-    tags: denied ? undefined : tags.data?.pages.flatMap((page) => page.items),
-    denied,
-    failed: denied || folders.isError || tags.isError,
-    showing: folders.data !== undefined || tags.data !== undefined,
-    hasMoreTags: !denied && tags.hasNextPage,
-    loadingTags: tags.isFetchingNextPage,
-    failedNextTags: tags.isFetchNextPageError,
-    loadMoreTags: () => void tags.fetchNextPage(),
-    retry: () => {
-      void Promise.all([folders.refetch(), tags.refetch()]).then((results) => {
-        if (results.every((result) => result.isSuccess)) lifetime.restore();
-      });
-    },
-  };
 }
 
 export function WorkflowFilterChoices({

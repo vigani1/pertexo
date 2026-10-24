@@ -1,6 +1,4 @@
-import { isAdministrativeRole } from '@pertexo/workflow-model';
-import { useCallback, useRef, useState, type ComponentProps } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useRef, useState, type ComponentProps } from 'react';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -9,21 +7,19 @@ import type {
 import { SkeletonThread } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { NewWorkflowSheet } from '../components/creation/new-workflow-sheet';
-import { WorkflowLifecycleDialog } from '../components/workflow-lifecycle-dialog';
 import {
   NewWorkflowButton,
   WorkflowListHeader,
 } from '../components/list/header';
 import { WorkflowListEmpty } from '../components/list/empty';
 import { WorkflowListError } from '../components/list/states';
-import { WorkflowRenameDialog } from '../components/workflow-rename-dialog';
 import { WorkflowDuplicateDialog } from '../components/workflow-duplicate-dialog';
 import { WorkflowExportDialog } from '../components/portability/workflow-export-dialog';
 import { WorkflowImportDialog } from '../components/portability/workflow-import-dialog';
 import { Button } from '@/components/ui/button';
 import { WorkflowRowsSkeleton } from '../components/list/workflow-rows';
 import { canEditOrganization } from '../components/organization/editing';
-import { lifecycleIntentFor, type LifecycleIntent } from '../model/lifecycle';
+import { lifecycleIntentFor } from '../model/lifecycle';
 import {
   isUnfilteredWorkflowList,
   updateWorkflowListSearch,
@@ -33,24 +29,12 @@ import {
 } from '../model/list-view';
 import { useListShortcuts } from '../hooks/use-list-shortcuts';
 import { useRunWorkflow } from '../hooks/use-run-workflow';
-import { useOrganizationList } from '../hooks/use-organization-list';
 import { WorkflowOrganizationFilters } from '../components/organization/filters';
 import { WorkflowOrganizedResults } from '../components/organization/workflow-organized-results';
-import {
-  FolderShelf,
-  type FolderAction,
-} from '../components/organization/folders/shelf';
-import { FolderActionDialog } from '../components/organization/folders/actions';
-import { workflowFoldersQueryOptions } from '../data/organization/queries';
-import {
-  isOrganizationReadDenied,
-  useOrganizationReadLifetime,
-} from '../hooks/use-organization-read-lifetime';
-
-type LifecycleTarget = Readonly<{
-  workflow: WorkflowSummary;
-  intent: LifecycleIntent;
-}>;
+import type { LifecycleTarget } from '../components/list/commands/dialogs';
+import { useWorkflowList } from '../hooks/use-workflow-list';
+import { WorkflowFolders } from '../components/organization/folders/list';
+import { WorkflowDialogs } from '../components/list/commands/dialogs';
 
 /** A refetch of pages already on screen, not the first load or a next page. */
 function refreshingInBackground(
@@ -61,171 +45,6 @@ function refreshingInBackground(
   }>,
 ): boolean {
   return query.isFetching && !query.isPending && !query.isFetchingNextPage;
-}
-
-/** Which of the list's four states is on screen. */
-function listState({
-  pending,
-  loaded,
-  empty,
-}: Readonly<{ pending: boolean; loaded: boolean; empty: boolean }>):
-  'loading' | 'failed' | 'empty' | 'results' {
-  if (pending) return 'loading';
-  if (!loaded) return 'failed';
-  return empty ? 'empty' : 'results';
-}
-
-type ListScope = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
-}>;
-
-/**
- * The list's pages in the chosen order and which of the list's states is on
- * screen. Changing the sort keeps the current rows until the re-sorted pages
- * land.
- */
-function useWorkflowList(
-  { apiClient, userId, workspace }: ListScope,
-  search: WorkflowListSearch,
-) {
-  const workflows = useOrganizationList(
-    apiClient,
-    userId,
-    workspace.id,
-    search,
-  );
-  const items = workflows.data?.pages.flatMap((page) => page.items) ?? [];
-  const empty = workflows.data !== undefined && items.length === 0;
-  return {
-    workflows,
-    items,
-    empty,
-    shown: listState({
-      pending: workflows.isPending,
-      loaded: workflows.data !== undefined,
-      empty,
-    }),
-    organizations:
-      workflows.data?.pages.flatMap((page) => page.organizations) ?? [],
-  } as const;
-}
-
-/**
- * The folders above the list and the dialog for whichever folder action is
- * open. Folders are managed by owners and admins; everyone can open them.
- */
-function WorkflowFolders({
-  apiClient,
-  userId,
-  workspace,
-  folderId,
-  onOpen,
-}: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
-  folderId: string | undefined;
-  onOpen: (folderId: string | null) => void;
-}>) {
-  // A denied organization read anywhere retires the folder names too.
-  const lifetime = useOrganizationReadLifetime(userId, workspace.id);
-  const folders = useQuery({
-    ...workflowFoldersQueryOptions(apiClient, userId, workspace.id),
-    enabled: lifetime.error === undefined,
-  });
-  const [action, setAction] = useState<FolderAction>();
-  const items = folders.data?.items ?? [];
-  const canManage =
-    workspace.status === 'active' && isAdministrativeRole(workspace.role);
-  const close = useCallback(() => {
-    setAction(undefined);
-  }, []);
-  const done = useCallback(
-    (finished: FolderAction) => {
-      setAction(undefined);
-      // Leaving a folder that no longer exists.
-      if (finished.kind === 'delete' && finished.folder.id === folderId)
-        onOpen(finished.folder.parentId);
-    },
-    [folderId, onOpen],
-  );
-  if (
-    folders.data === undefined ||
-    lifetime.error !== undefined ||
-    isOrganizationReadDenied(folders.error)
-  )
-    return null;
-  return (
-    <>
-      <FolderShelf
-        folders={items}
-        currentFolderId={folderId === 'root' ? undefined : folderId}
-        canManage={canManage}
-        onOpen={onOpen}
-        onAction={setAction}
-      />
-      {action === undefined ? null : (
-        <FolderActionDialog
-          key={`${action.kind}:${action.kind === 'create' ? (action.parent?.id ?? 'top') : action.folder.id}`}
-          apiClient={apiClient}
-          userId={userId}
-          workspace={workspace}
-          folders={items}
-          action={action}
-          onClose={close}
-          onDone={done}
-        />
-      )}
-    </>
-  );
-}
-
-/** Renaming or archiving/restoring one workflow, over the list. */
-function WorkflowDialogs({
-  apiClient,
-  userId,
-  workspaceId,
-  renaming,
-  lifecycle,
-  onRenameClose,
-  onLifecycleClose,
-}: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  renaming: WorkflowSummary | undefined;
-  lifecycle: LifecycleTarget | undefined;
-  onRenameClose: () => void;
-  onLifecycleClose: () => void;
-}>) {
-  return (
-    <>
-      {renaming === undefined ? null : (
-        <WorkflowRenameDialog
-          key={renaming.id}
-          apiClient={apiClient}
-          userId={userId}
-          workspaceId={workspaceId}
-          workflow={renaming}
-          onClose={onRenameClose}
-        />
-      )}
-      {lifecycle === undefined ? null : (
-        <WorkflowLifecycleDialog
-          key={lifecycle.workflow.id}
-          apiClient={apiClient}
-          userId={userId}
-          workspaceId={workspaceId}
-          workflowId={lifecycle.workflow.id}
-          workflowName={lifecycle.workflow.name}
-          intent={lifecycle.intent}
-          onClose={onLifecycleClose}
-        />
-      )}
-    </>
-  );
 }
 
 function WorkflowListContent({
