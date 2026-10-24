@@ -16,3 +16,15 @@ export const releaseInputSchema = leasedEventSchema.extend({
   maxAttempts: z.number().int().min(1).max(1_000),
   retryAt: z.date(),
 });
+
+export const claimInputSchema = z.object({
+  enabledJobNames: z
+    .array(z.string().regex(/^[a-z][a-z0-9-]{0,127}$/u))
+    .max(64)
+    .refine((values) => new Set(values).size === values.length),
+  leaseDurationMillis: z.number().int().min(1_000).max(300_000),
+  leaseOwner: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
+  leaseToken: z.uuid(),
+  limit: z.number().int().min(1).max(100),
+  maxAttempts: z.number().int().min(1).max(1_000),
+});

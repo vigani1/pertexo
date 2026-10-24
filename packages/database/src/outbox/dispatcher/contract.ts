@@ -1,3 +1,4 @@
+import type { claimInputSchema } from './input.js';
 export type LeasedOutboxEvent = Readonly<{
   aggregateId: string;
   aggregateType: string;
@@ -15,10 +16,7 @@ export type LeasedOutboxEvent = Readonly<{
 
 import type { z } from 'zod';
 import type { releaseInputSchema } from './input.js';
-import type {
-  ClaimOutboxBatchInput,
-  ClaimOutboxBatchResult,
-} from './claim.repository.js';
+
 export type ObserveOutboxBacklogInput = Readonly<{
   enabledJobNames: readonly string[];
 }>;
@@ -42,3 +40,15 @@ export interface OutboxDispatcherDatabase {
   checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }
+
+export type ClaimOutboxBatchInput = Readonly<
+  Omit<z.input<typeof claimInputSchema>, 'enabledJobNames'> & {
+    enabledJobNames: readonly string[];
+  }
+>;
+
+export type ClaimOutboxBatchResult = Readonly<{
+  events: readonly LeasedOutboxEvent[];
+  /** Rows atomically terminalized because their publish-attempt ceiling was reached. */
+  exhaustedCount: number;
+}>;

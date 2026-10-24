@@ -7,33 +7,14 @@ import {
 } from '../../schema/transport.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
+import type { z } from 'zod';
+import { claimInputSchema } from './input.js';
+import type {
+  ClaimOutboxBatchInput,
+  ClaimOutboxBatchResult,
+} from './contract.js';
 
 import type { LeasedOutboxEvent } from './contract.js';
-
-const claimInputSchema = z.object({
-  enabledJobNames: z
-    .array(z.string().regex(/^[a-z][a-z0-9-]{0,127}$/u))
-    .max(64)
-    .refine((values) => new Set(values).size === values.length),
-  leaseDurationMillis: z.number().int().min(1_000).max(300_000),
-  leaseOwner: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
-  leaseToken: z.uuid(),
-  limit: z.number().int().min(1).max(100),
-  maxAttempts: z.number().int().min(1).max(1_000),
-});
-
-export type ClaimOutboxBatchInput = Readonly<
-  Omit<z.input<typeof claimInputSchema>, 'enabledJobNames'> & {
-    enabledJobNames: readonly string[];
-  }
->;
-
-export type ClaimOutboxBatchResult = Readonly<{
-  events: readonly LeasedOutboxEvent[];
-  /** Rows atomically terminalized because their publish-attempt ceiling was reached. */
-  exhaustedCount: number;
-}>;
 
 export async function claimOutboxBatch(
   pool: Pool,
