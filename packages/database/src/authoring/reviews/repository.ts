@@ -1,9 +1,11 @@
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
-import {
-  bindResourcePredicate,
-  workflowScopeSql,
-} from '../../tenant-access/resources/scope.queries.js';
-import { sql } from 'drizzle-orm';
+import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaces } from '../../schema/foundation.js';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { workflowPublicationRequests } from '../../schema/authoring/publication-requests.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
@@ -36,10 +38,12 @@ export function createPublicationReviewStore(
       input.actorId,
       async (client) => {
         if (exclusive)
-          await client.query(
-            'select id from app.workspaces where id=$1 for update',
-            [input.workspaceId],
-          );
+          await drizzle(client)
+            .select({ id: workspaces.id })
+            .from(workspaces)
+            .where(eq(workspaces.id, input.workspaceId))
+            .for('update')
+            .catch(rethrowQueryFailure);
         await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
           actorId: input.actorId,
           roles: rolesForCapability(capability),
@@ -48,56 +52,37 @@ export function createPublicationReviewStore(
       },
       input.signal,
     );
-  const lockWorkflow = async (
-    client: PoolClient,
-    input: ReviewScope,
-    identity: { workflowId: string } | { reviewId: string },
-    { write }: Readonly<{ write: boolean }>,
-  ) => {
-    const predicate =
-      'workflowId' in identity
-        ? 'id=$2'
-        : 'id=(select workflow_id from app.workflow_publication_requests where workspace_id=$1 and id=$2)';
-    const parameters: unknown[] = [
-      input.workspaceId,
-      'workflowId' in identity ? identity.workflowId : identity.reviewId,
-    ];
-    const scope = await readFolderScope(client, input);
-    const visible = bindResourcePredicate(
-      workflowScopeSql(
-        scope,
-        sql`app.workflows.id`,
-        write ? 'workflow:publish' : 'workflow:read',
-      ),
-      parameters,
-    );
-    const found = await client.query(
-      `select id from app.workflows where workspace_id=$1 and ${predicate} and ${visible} ${write ? 'for update' : 'for share'}`,
-      parameters,
-    );
-    if (found.rowCount !== 1)
-      throw new WorkflowNotFoundError('Workflow is not visible');
-  };
   return {
     overview: (input) =>
       transact(input, 'workflow:read', {
         exclusive: false,
         work: async (client) => {
           await lockWorkflow(client, input, input, { write: false });
-          const policy = (
-            await client.query<{ require_publish_approval: boolean }>(
-              'select require_publish_approval from app.workspaces where id=$1',
-              [input.workspaceId],
+          const db = drizzle(client);
+          const [policy] = await db
+            .select({
+              requirePublishApproval: workspaces.requirePublishApproval,
+            })
+            .from(workspaces)
+            .where(eq(workspaces.id, input.workspaceId))
+            .catch(rethrowQueryFailure);
+          const [latest] = await db
+            .select({ id: workflowPublicationRequests.id })
+            .from(workflowPublicationRequests)
+            .where(
+              and(
+                eq(workflowPublicationRequests.workspaceId, input.workspaceId),
+                eq(workflowPublicationRequests.workflowId, input.workflowId),
+              ),
             )
-          ).rows[0];
-          const latest = (
-            await client.query<{ id: string }>(
-              'select id from app.workflow_publication_requests where workspace_id=$1 and workflow_id=$2 order by created_at desc,id desc limit 1',
-              [input.workspaceId, input.workflowId],
+            .orderBy(
+              desc(workflowPublicationRequests.createdAt),
+              desc(workflowPublicationRequests.id),
             )
-          ).rows[0];
+            .limit(1)
+            .catch(rethrowQueryFailure);
           return {
-            required: policy?.require_publish_approval ?? false,
+            required: policy?.requirePublishApproval ?? false,
             request:
               latest === undefined
                 ? null
@@ -133,4 +118,48 @@ export function createPublicationReviewStore(
         },
       }),
   };
+}
+
+async function lockWorkflow(
+  client: PoolClient,
+  input: ReviewScope,
+  identity: { workflowId: string } | { reviewId: string },
+  { write }: Readonly<{ write: boolean }>,
+): Promise<void> {
+  const db = drizzle(client);
+  const reviewed = db
+    .select({ workflowId: workflowPublicationRequests.workflowId })
+    .from(workflowPublicationRequests)
+    .where(
+      and(
+        eq(workflowPublicationRequests.workspaceId, input.workspaceId),
+        eq(
+          workflowPublicationRequests.id,
+          'reviewId' in identity ? identity.reviewId : sql`null`,
+        ),
+      ),
+    );
+  const predicate =
+    'workflowId' in identity
+      ? eq(workflows.id, identity.workflowId)
+      : eq(workflows.id, sql`(${reviewed})`);
+  const scope = await readFolderScope(client, input);
+  const found = await db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        predicate,
+        workflowScopeSql(
+          scope,
+          sql`${workflows.id}`,
+          write ? 'workflow:publish' : 'workflow:read',
+        ),
+      ),
+    )
+    .for(write ? 'update' : 'share')
+    .catch(rethrowQueryFailure);
+  if (found.length !== 1)
+    throw new WorkflowNotFoundError('Workflow is not visible');
 }
