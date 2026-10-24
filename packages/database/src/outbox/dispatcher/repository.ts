@@ -1,27 +1,105 @@
-import { acquireDatabasePool } from '../../platform/pool/runtime.js';
-import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool } from 'pg';
 import type { z } from 'zod';
+import { outboxEvents } from '../../schema/transport.js';
 import {
-  leasedEventSchema,
-  releaseInputSchema,
-  observeBacklogInputSchema,
-} from './input.js';
-import type {
-  OutboxDispatcherDatabase,
-  OutboxBacklogSnapshot,
-  ObserveOutboxBacklogInput,
-  ReleaseOutboxResult,
-} from './contract.js';
-
+  acquireDatabasePool,
+  type DatabaseRuntime,
+} from '../../platform/pool/runtime.js';
 import type { DatabaseConfig } from '../../config.js';
-
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { checkDatabaseReadiness } from '../../platform/readiness.js';
 import {
   claimOutboxBatch,
   type ClaimOutboxBatchInput,
-  type ClaimOutboxBatchResult,
 } from './claim.repository.js';
-import { checkDatabaseReadiness } from '../../platform/readiness.js';
+import { leasedEventSchema, releaseInputSchema } from './input.js';
+import type {
+  OutboxDispatcherDatabase,
+  ObserveOutboxBacklogInput,
+  ReleaseOutboxResult,
+} from './contract.js';
+import { observeOutboxBacklog } from './backlog.queries.js';
 
+function currentLease(id: string, leaseToken: string) {
+  return and(
+    eq(outboxEvents.id, id),
+    eq(outboxEvents.leaseToken, leaseToken),
+    isNull(outboxEvents.publishedAt),
+    isNull(outboxEvents.failedAt),
+  );
+}
+async function markPublished(
+  pool: Pool,
+  eventId: string,
+  leaseToken: string,
+): Promise<boolean> {
+  const parsed = leasedEventSchema.parse({ id: eventId, leaseToken });
+  const db = drizzle(pool);
+  const published = db.$with('published').as(
+    db
+      .update(outboxEvents)
+      .set({
+        publishedAt: sql`clock_timestamp()`,
+        leaseOwner: null,
+        leaseToken: null,
+        leaseExpiresAt: null,
+        lastErrorCode: null,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(currentLease(parsed.id, parsed.leaseToken))
+      .returning({
+        workspaceId: outboxEvents.workspaceId,
+        id: outboxEvents.id,
+      }),
+  );
+  const result = await db
+    .with(published)
+    .select({
+      id: published.id,
+      armedAdmission: sql<boolean>`app.arm_dispatcher_workflow_run_active_admission(${published.workspaceId},${published.id})`,
+    })
+    .from(published)
+    .catch(rethrowQueryFailure);
+  return result.length === 1;
+}
+async function releaseOrFail(
+  pool: Pool,
+  input: z.input<typeof releaseInputSchema>,
+): Promise<ReleaseOutboxResult> {
+  const parsed = releaseInputSchema.parse(input);
+  const db = drizzle(pool);
+  const updated = db.$with('updated').as(
+    db
+      .update(outboxEvents)
+      .set({
+        availableAt: sql`case when ${outboxEvents.publishAttempts}>=${parsed.maxAttempts} then ${outboxEvents.availableAt} else ${parsed.retryAt}::timestamptz end`,
+        failedAt: sql`case when ${outboxEvents.publishAttempts}>=${parsed.maxAttempts} then clock_timestamp() else null end`,
+        lastErrorCode: parsed.errorCode,
+        leaseOwner: null,
+        leaseToken: null,
+        leaseExpiresAt: null,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(currentLease(parsed.id, parsed.leaseToken))
+      .returning({
+        failed: sql<boolean>`${outboxEvents.failedAt} is not null`.as('failed'),
+        workspaceId: outboxEvents.workspaceId,
+        id: outboxEvents.id,
+      }),
+  );
+  const [row] = await db
+    .with(updated)
+    .select({
+      failed: updated.failed,
+      releasedAdmission: sql<boolean>`case when ${updated.failed} then app.release_dispatcher_workflow_run_active_admission(${updated.workspaceId},${updated.id}) else false end`,
+    })
+    .from(updated)
+    .catch(rethrowQueryFailure);
+  if (row === undefined) return 'not_leased';
+  return row.failed ? 'failed' : 'retry_scheduled';
+}
 export function createOutboxDispatcherDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
@@ -31,132 +109,15 @@ export function createOutboxDispatcherDatabase(
     role: 'dispatcher',
   });
   const { pool } = lease;
-
   return Object.freeze({
     claimBatch: (input: ClaimOutboxBatchInput) => claimOutboxBatch(pool, input),
-    markPublished: async (
-      eventId: string,
-      leaseToken: string,
-    ): Promise<boolean> => {
-      const parsed = leasedEventSchema.parse({ id: eventId, leaseToken });
-      const result = await pool.query(
-        `
-          with published as (
-          update app.outbox_events
-          set
-            published_at = clock_timestamp(),
-            lease_owner = null,
-            lease_token = null,
-            lease_expires_at = null,
-            last_error_code = null,
-            updated_at = clock_timestamp()
-          where id = $1
-            and lease_token = $2
-            and published_at is null
-            and failed_at is null
-          returning workspace_id,id
-          ) select id,
-              app.arm_dispatcher_workflow_run_active_admission(workspace_id,id)
-                as armed_admission
-            from published
-        `,
-        [parsed.id, parsed.leaseToken],
-      );
-      return result.rowCount === 1;
-    },
-    releaseOrFail: async (
-      input: z.input<typeof releaseInputSchema>,
-    ): Promise<ReleaseOutboxResult> => {
-      const parsed = releaseInputSchema.parse(input);
-      const result = await pool.query<{ failed: boolean }>(
-        `
-          with updated as (
-          update app.outbox_events
-          set
-            available_at = case
-              when publish_attempts >= $4 then available_at
-              else $3
-            end,
-            failed_at = case
-              when publish_attempts >= $4 then clock_timestamp()
-              else null
-            end,
-            last_error_code = $5,
-            lease_owner = null,
-            lease_token = null,
-            lease_expires_at = null,
-            updated_at = clock_timestamp()
-          where id = $1
-            and lease_token = $2
-            and published_at is null
-            and failed_at is null
-          returning failed_at is not null as failed,workspace_id,id
-          ) select failed,
-              case when failed then
-                app.release_dispatcher_workflow_run_active_admission(workspace_id,id)
-              else false end as released_admission
-            from updated
-        `,
-        [
-          parsed.id,
-          parsed.leaseToken,
-          parsed.retryAt,
-          parsed.maxAttempts,
-          parsed.errorCode,
-        ],
-      );
-      const row = result.rows[0];
-      if (row === undefined) {
-        return 'not_leased';
-      }
-      if (row.failed) {
-        return 'failed';
-      }
-      return 'retry_scheduled';
-    },
-    observeBacklog: async (
-      input: ObserveOutboxBacklogInput,
-    ): Promise<OutboxBacklogSnapshot> => {
-      const parsed = observeBacklogInputSchema.parse({
-        enabledJobNames: [...input.enabledJobNames],
-      });
-      if (parsed.enabledJobNames.length === 0) {
-        return Object.freeze({ backlog: 0 });
-      }
-      const result = await pool.query<{
-        backlog: number;
-        oldest_age_seconds: number | null;
-      }>(
-        `
-        select
-          count(*)::integer as backlog,
-          extract(
-            epoch from (clock_timestamp() - min(available_at))
-          )::double precision as oldest_age_seconds
-        from app.outbox_events
-        where published_at is null
-          and failed_at is null
-          and job_name = any($1::varchar[])
-          and available_at <= clock_timestamp()
-          and (
-            lease_expires_at is null
-            or lease_expires_at <= clock_timestamp()
-          )
-      `,
-        [parsed.enabledJobNames],
-      );
-      const row = result.rows[0];
-      if (row === undefined) {
-        throw new Error('Outbox backlog observation returned no row');
-      }
-      return Object.freeze({
-        backlog: row.backlog,
-        ...(row.oldest_age_seconds === null
-          ? {}
-          : { oldestAgeSeconds: Math.max(0, row.oldest_age_seconds) }),
-      });
-    },
-    checkReadiness: async (): Promise<void> => {
+    markPublished: (eventId: string, leaseToken: string) =>
+      markPublished(pool, eventId, leaseToken),
+    releaseOrFail: (input: z.input<typeof releaseInputSchema>) =>
+      releaseOrFail(pool, input),
+    observeBacklog: (input: ObserveOutboxBacklogInput) =>
+      observeOutboxBacklog(pool, input),
+    checkReadiness: async () => {
       await checkDatabaseReadiness(pool);
     },
     close: () => lease.close(),

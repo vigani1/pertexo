@@ -14,7 +14,7 @@ export function registerProcessesExactEvidenceDeliveryIdentity(): void {
     await expect(
       reconcileUnknownOutcomeEvidence(fixture.database, fixture.input),
     ).resolves.toEqual({ kind: 'processed' });
-    expect(fixture.execute).toHaveBeenCalledTimes(2);
+    expect(fixture.read).toHaveBeenCalledTimes(2);
 
     await expect(
       reconcileUnknownOutcomeEvidence(fixture.database, {
@@ -27,10 +27,10 @@ export function registerProcessesExactEvidenceDeliveryIdentity(): void {
 
   it.each([
     ['missing outbox', null],
-    ['wrong aggregate id', { aggregate_id: randomUUID() }],
-    ['wrong aggregate type', { aggregate_type: 'workflow-run' }],
-    ['wrong job', { job_name: 'advance-workflow-run' }],
-    ['wrong checksum', { payload_checksum: 'c'.repeat(64) }],
+    ['wrong aggregate id', { aggregateId: randomUUID() }],
+    ['wrong aggregate type', { aggregateType: 'workflow-run' }],
+    ['wrong job', { jobName: 'advance-workflow-run' }],
+    ['wrong checksum', { payloadChecksum: 'c'.repeat(64) }],
     [
       'wrong payload attempt',
       { payload: { ...evidencePayload, attemptId: randomUUID() } },
@@ -53,7 +53,7 @@ export function registerProcessesExactEvidenceDeliveryIdentity(): void {
     await expect(
       reconcileUnknownOutcomeEvidence(fixture.database, fixture.input),
     ).rejects.toBeInstanceOf(UnknownOutcomeReconciliationMismatchError);
-    expect(fixture.execute).toHaveBeenCalledOnce();
+    expect(fixture.read).toHaveBeenCalledOnce();
   });
 
   it.each([
@@ -64,7 +64,7 @@ export function registerProcessesExactEvidenceDeliveryIdentity(): void {
     await expect(
       reconcileUnknownOutcomeEvidence(fixture.database, fixture.input),
     ).rejects.toBeInstanceOf(UnknownOutcomeReconciliationStateError);
-    expect(fixture.execute).toHaveBeenCalledTimes(2);
+    expect(fixture.read).toHaveBeenCalledTimes(2);
   });
 
   it('returns duplicate without reading durable evidence again', async () => {
@@ -73,6 +73,6 @@ export function registerProcessesExactEvidenceDeliveryIdentity(): void {
     await expect(
       reconcileUnknownOutcomeEvidence(fixture.database, fixture.input),
     ).resolves.toEqual({ kind: 'duplicate' });
-    expect(fixture.execute).not.toHaveBeenCalled();
+    expect(fixture.read).not.toHaveBeenCalled();
   });
 }

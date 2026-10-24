@@ -151,18 +151,21 @@ export function reconciliationWith(
   },
 ) {
   const outbox = {
-    aggregate_id: attemptId,
-    aggregate_type: 'node-attempt',
-    job_name: 'reconcile-unknown-outcome',
+    aggregateId: attemptId,
+    aggregateType: 'node-attempt',
+    jobName: 'reconcile-unknown-outcome',
     payload: evidencePayload,
-    payload_checksum: evidencePayloadChecksum,
+    payloadChecksum: evidencePayloadChecksum,
     ...(outboxOverride ?? {}),
   };
-  const execute = vi
+  const read = vi
     .fn()
-    .mockResolvedValueOnce({ rows: outboxOverride === null ? [] : [outbox] })
-    .mockResolvedValueOnce({ rows: evidence === null ? [] : [evidence] });
-  const transaction = { db: { execute }, workspaceId };
+    .mockResolvedValueOnce(outboxOverride === null ? [] : [outbox])
+    .mockResolvedValueOnce(evidence === null ? [] : [evidence]);
+  const select = vi.fn(() => ({
+    from: () => ({ where: read, innerJoin: () => ({ where: read }) }),
+  }));
+  const transaction = { db: { select }, workspaceId };
   const database = {
     checkReadiness: vi.fn(),
     close: mocks.close,
@@ -181,7 +184,7 @@ export function reconciliationWith(
   );
   return {
     database,
-    execute,
+    read,
     input: {
       attemptId,
       delivery: {
