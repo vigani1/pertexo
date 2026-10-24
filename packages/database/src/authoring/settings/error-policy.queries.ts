@@ -1,33 +1,48 @@
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { workflowErrorPolicies } from '../../schema/authoring/error-workflow.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowErrorSettings } from '@pertexo/contracts';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
-import {
-  bindResourcePredicate,
-  workflowScopeSql,
-} from '../../tenant-access/resources/query-scope.js';
+import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
 export async function readPolicy(
   client: PoolClient,
   workspaceId: string,
   workflowId: string,
   access: FolderScope,
 ): Promise<WorkflowErrorSettings> {
-  const parameters: unknown[] = [workspaceId, workflowId];
-  const visible = bindResourcePredicate(
-    workflowScopeSql(access, sql`target.id`),
-    parameters,
-  );
-  const found = await client.query<{
-    target_workflow_id: string | null;
-    target_name: string | null;
-    revision: number;
-  }>(
-    `select policy.target_workflow_id,policy.revision,case when ${visible} then target.name else null end target_name from app.workflow_error_policies policy left join app.workflows target on target.workspace_id=policy.workspace_id and target.id=policy.target_workflow_id where policy.workspace_id=$1 and policy.workflow_id=$2`,
-    parameters,
-  );
+  const target = alias(workflows, 'target'),
+    policy = workflowErrorPolicies;
+  const visible = workflowScopeSql(access, sql`${target.id}`);
+  const [found] = await drizzle(client)
+    .select({
+      targetWorkflowId: policy.targetWorkflowId,
+      revision: policy.revision,
+      targetWorkflowName: sql<
+        string | null
+      >`case when ${visible} then ${target.name} else null end`,
+    })
+    .from(policy)
+    .leftJoin(
+      target,
+      and(
+        eq(target.workspaceId, policy.workspaceId),
+        eq(target.id, policy.targetWorkflowId),
+      ),
+    )
+    .where(
+      and(
+        eq(policy.workspaceId, workspaceId),
+        eq(policy.workflowId, workflowId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   return {
-    targetWorkflowId: found.rows[0]?.target_workflow_id ?? null,
-    revision: found.rows[0]?.revision ?? 1,
-    targetWorkflowName: found.rows[0]?.target_name ?? null,
+    targetWorkflowId: found?.targetWorkflowId ?? null,
+    revision: found?.revision ?? 1,
+    targetWorkflowName: found?.targetWorkflowName ?? null,
   };
 }

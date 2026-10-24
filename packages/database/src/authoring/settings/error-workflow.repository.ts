@@ -1,11 +1,16 @@
 import { readPolicy } from './error-policy.queries.js';
-import { sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, ne, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workflows,
+  workflowVersions,
+} from '../../schema/authoring/workflows.js';
+import { workflowErrorPolicies } from '../../schema/authoring/error-workflow.js';
+import { auditEvents } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
-import {
-  bindResourcePredicate,
-  workflowScopeSql,
-} from '../../tenant-access/resources/query-scope.js';
+import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
 import type { PoolClient } from 'pg';
 import { isWorkflowErrorTarget } from '@pertexo/workflow-model';
 import type {
@@ -93,39 +98,54 @@ function listErrorWorkflowTargets(
         }))
       )
         throw new WorkflowNotFoundError('Workflow is not visible');
-      const source = await client.query(
-        'select 1 from app.workflows where workspace_id=$1 and id=$2',
-        [input.workspaceId, input.workflowId],
-      );
-      if (source.rowCount !== 1)
+      const db = drizzle(client);
+      const source = await db
+        .select({ id: workflows.id })
+        .from(workflows)
+        .where(
+          and(
+            eq(workflows.workspaceId, input.workspaceId),
+            eq(workflows.id, input.workflowId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if (source.length !== 1)
         throw new WorkflowNotFoundError('Workflow is not visible');
-      const parameters: unknown[] = [
-        input.workspaceId,
-        input.workflowId,
-        input.after ?? null,
-      ];
-      const visible = bindResourcePredicate(
-        workflowScopeSql(access, sql`workflow.id`, 'workflow:update'),
-        parameters,
-      );
-      const rows = await client.query<{
-        id: string;
-        name: string;
-        graph: unknown;
-      }>(
-        `select workflow.id,workflow.name,version.executable_json->'graph' graph from app.workflows workflow join app.workflow_versions version on version.workspace_id=workflow.workspace_id and version.id=workflow.published_version_id
-        where workflow.workspace_id=$1 and ${visible} and workflow.id<>$2 and workflow.lifecycle_status='active'
-        and ($3::uuid is null or workflow.id>$3)
-        and version.executable_json::jsonb @> '{"graph":{"nodes":[{"definition":{"key":"core.workflow_error","version":1}}]}}'::jsonb
-        order by workflow.id limit 51`,
-        parameters,
-      );
-      const page = rows.rows.slice(0, 50);
+      const rows = await db
+        .select({
+          id: workflows.id,
+          name: workflows.name,
+          graph: sql<unknown>`${workflowVersions.executableJson}->'graph'`,
+        })
+        .from(workflows)
+        .innerJoin(
+          workflowVersions,
+          and(
+            eq(workflowVersions.workspaceId, workflows.workspaceId),
+            eq(workflowVersions.id, workflows.publishedVersionId),
+          ),
+        )
+        .where(
+          and(
+            eq(workflows.workspaceId, input.workspaceId),
+            workflowScopeSql(access, sql`${workflows.id}`, 'workflow:update'),
+            ne(workflows.id, input.workflowId),
+            eq(workflows.lifecycleStatus, 'active'),
+            input.after === undefined
+              ? undefined
+              : gt(workflows.id, input.after),
+            sql`${workflowVersions.executableJson}::jsonb @> '{"graph":{"nodes":[{"definition":{"key":"core.workflow_error","version":1}}]}}'::jsonb`,
+          ),
+        )
+        .orderBy(asc(workflows.id))
+        .limit(51)
+        .catch(rethrowQueryFailure);
+      const page = rows.slice(0, 50);
       return {
         items: page
           .filter((row) => isWorkflowErrorTarget(row.graph))
           .map((row) => ({ id: row.id, name: row.name })),
-        nextCursor: rows.rows.length > 50 ? (page.at(-1)?.id ?? null) : null,
+        nextCursor: rows.length > 50 ? (page.at(-1)?.id ?? null) : null,
       };
     },
     input.signal,
@@ -153,11 +173,18 @@ function readErrorWorkflowSettings(
         }))
       )
         throw new WorkflowNotFoundError('Workflow is not visible');
-      const source = await client.query(
-        'select id from app.workflows where workspace_id=$1 and id=$2 for share',
-        [input.workspaceId, input.workflowId],
-      );
-      if (source.rowCount !== 1)
+      const source = await drizzle(client)
+        .select({ id: workflows.id })
+        .from(workflows)
+        .where(
+          and(
+            eq(workflows.workspaceId, input.workspaceId),
+            eq(workflows.id, input.workflowId),
+          ),
+        )
+        .for('share')
+        .catch(rethrowQueryFailure);
+      if (source.length !== 1)
         throw new WorkflowNotFoundError('Workflow is not visible');
       return readPolicy(client, input.workspaceId, input.workflowId, access);
     },
@@ -202,14 +229,23 @@ function updateErrorWorkflowSettings(
           ...(input.targetWorkflowId === null ? [] : [input.targetWorkflowId]),
         ]),
       ].sort();
-      const locked = await client.query<{
-        id: string;
-        lifecycle_status: string;
-      }>(
-        'select id,lifecycle_status from app.workflows where workspace_id=$1 and id=any($2::uuid[]) order by id for update',
-        [input.workspaceId, ids],
-      );
-      if (locked.rows.length !== ids.length)
+      const db = drizzle(client);
+      const locked = await db
+        .select({
+          id: workflows.id,
+          lifecycleStatus: workflows.lifecycleStatus,
+        })
+        .from(workflows)
+        .where(
+          and(
+            eq(workflows.workspaceId, input.workspaceId),
+            inArray(workflows.id, ids),
+          ),
+        )
+        .orderBy(asc(workflows.id))
+        .for('update')
+        .catch(rethrowQueryFailure);
+      if (locked.length !== ids.length)
         throw new WorkflowNotFoundError('Workflow is not visible');
       const identity = {
         workspaceId: input.workspaceId,
@@ -242,41 +278,79 @@ function updateErrorWorkflowSettings(
       if (input.targetWorkflowId !== null) {
         if (input.targetWorkflowId === input.workflowId)
           throw new WorkflowErrorTargetUnavailableError();
-        const target = await client.query<{ graph: unknown }>(
-          `select version.executable_json->'graph' as graph from app.workflows workflow join app.workflow_versions version on version.workspace_id=workflow.workspace_id and version.id=workflow.published_version_id where workflow.workspace_id=$1 and workflow.id=$2 and workflow.lifecycle_status='active'`,
-          [input.workspaceId, input.targetWorkflowId],
-        );
-        if (!isWorkflowErrorTarget(target.rows[0]?.graph))
-          throw new WorkflowErrorTargetUnavailableError();
+        await requirePublishedErrorTarget(client, {
+          workspaceId: input.workspaceId,
+          targetWorkflowId: input.targetWorkflowId,
+        });
       }
       const settings = {
         targetWorkflowId: input.targetWorkflowId,
         revision: policy.revision + 1,
       };
-      await client.query(
-        `insert into app.workflow_error_policies(workspace_id,workflow_id,target_workflow_id,revision) values($1,$2,$3,$4) on conflict(workspace_id,workflow_id) do update set target_workflow_id=excluded.target_workflow_id,revision=excluded.revision`,
-        [
-          input.workspaceId,
-          input.workflowId,
-          settings.targetWorkflowId,
-          settings.revision,
-        ],
-      );
-      await client.query(
-        `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata) values($1,$2,$3,'workflow.error_policy_updated','workflow',$4,$5,$6,$7::jsonb)`,
-        [
-          generatePersistedId(),
-          input.workspaceId,
-          input.actorId,
-          input.workflowId,
-          input.requestId ?? null,
-          input.traceId ?? null,
-          JSON.stringify({ targetWorkflowId: settings.targetWorkflowId }),
-        ],
-      );
+      await db
+        .insert(workflowErrorPolicies)
+        .values({
+          workspaceId: input.workspaceId,
+          workflowId: input.workflowId,
+          targetWorkflowId: settings.targetWorkflowId,
+          revision: settings.revision,
+        })
+        .onConflictDoUpdate({
+          target: [
+            workflowErrorPolicies.workspaceId,
+            workflowErrorPolicies.workflowId,
+          ],
+          set: {
+            targetWorkflowId: sql`excluded.target_workflow_id`,
+            revision: sql`excluded.revision`,
+          },
+        })
+        .catch(rethrowQueryFailure);
+      await db
+        .insert(auditEvents)
+        .values({
+          id: generatePersistedId(),
+          workspaceId: input.workspaceId,
+          actorUserId: input.actorId,
+          action: 'workflow.error_policy_updated',
+          targetType: 'workflow',
+          targetId: input.workflowId,
+          requestId: input.requestId ?? null,
+          traceId: input.traceId ?? null,
+          metadata: { targetWorkflowId: settings.targetWorkflowId },
+        })
+        .catch(rethrowQueryFailure);
       await completeCommand(client, identity, settings);
       return { settings, replayed: false };
     },
     input.signal,
   );
+}
+
+async function requirePublishedErrorTarget(
+  client: PoolClient,
+  input: Readonly<{ workspaceId: string; targetWorkflowId: string }>,
+): Promise<void> {
+  const [target] = await drizzle(client)
+    .select({
+      graph: sql<unknown>`${workflowVersions.executableJson}->'graph'`,
+    })
+    .from(workflows)
+    .innerJoin(
+      workflowVersions,
+      and(
+        eq(workflowVersions.workspaceId, workflows.workspaceId),
+        eq(workflowVersions.id, workflows.publishedVersionId),
+      ),
+    )
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, input.targetWorkflowId),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (!isWorkflowErrorTarget(target?.graph))
+    throw new WorkflowErrorTargetUnavailableError();
 }
