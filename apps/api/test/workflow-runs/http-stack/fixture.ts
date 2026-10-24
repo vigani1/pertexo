@@ -3,7 +3,6 @@ import type { Role } from '@pertexo/workflow-model';
 
 import type { ApiIdentityRuntime } from '../../../src/platform/identity/identity-runtime.module.js';
 
-import { vi } from 'vitest';
 import { createApiApplication } from '../../../src/app.js';
 import {
   createApiPlatformFixture,
