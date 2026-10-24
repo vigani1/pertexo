@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
@@ -47,8 +49,17 @@ export async function admitWorkflowAuthoring(
 ) {
   if (validator === undefined)
     throw new AuthoringValidationUnavailableError('not_configured');
-  const result = await client.query<{ setting: string; unit: string | null }>(
-    "select setting, unit from pg_settings where name = 'idle_in_transaction_session_timeout'",
+  const query = new QueryBuilder()
+    .select({
+      setting: sql<string>`setting`.as('setting'),
+      unit: sql<string | null>`unit`.as('unit'),
+    })
+    .from(sql`pg_settings`)
+    .where(sql`name='idle_in_transaction_session_timeout'`);
+  const statement = query.toSQL();
+  const result = await client.query<(typeof query)['_']['result'][number]>(
+    statement.sql,
+    statement.params,
   );
   const budget = result.rows[0];
   if (!authoringIdleBudgetIsSafe(budget?.setting, budget?.unit))

@@ -1,10 +1,15 @@
 import type { ConnectionScope } from '../../../tenant-access/resources/connections/scope.js';
-import { sql } from 'drizzle-orm';
-import type { FolderScope } from '../../../tenant-access/resources/contract.js';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
 import {
-  bindResourcePredicate,
-  workflowScopeSql,
-} from '../../../tenant-access/resources/scope.queries.js';
+  workflows,
+  workflowVersions,
+} from '../../../schema/authoring/workflows.js';
+import { workflowVersionPromotions } from '../../../schema/authoring/promotions/versions.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import type { FolderScope } from '../../../tenant-access/resources/contract.js';
+import { workflowScopeSql } from '../../../tenant-access/resources/query-scope.js';
 import type { PoolClient } from 'pg';
 import {
   isWorkflowCallDefinition,
@@ -48,31 +53,46 @@ export async function rebindPromotionCalls(
       if (node.structured !== undefined) pending.push(node.structured.body);
       if (!isWorkflowCallDefinition(node.definition)) continue;
       const pin = workflowCallConfigSchema.parse(node.config).target;
-      const parameters: unknown[] = [
-        targetWorkspaceId,
-        sourceWorkspaceId,
-        pin.workflowId,
-        pin.workflowVersionId,
-        pin.executableChecksum,
-      ];
-      const visible = bindResourcePredicate(
-        workflowScopeSql(resources, sql`workflow.id`),
-        parameters,
-      );
-      const match = (
-        await client.query<{
-          workflow_id: string;
-          id: string;
-          checksum: string;
-        }>(
-          `select version.workflow_id,version.id,version.checksum from app.workflow_version_promotions origin
-       join app.workflow_versions version on version.workspace_id=origin.workspace_id and version.workflow_id=origin.workflow_id and version.id=origin.version_id
-       join app.workflows workflow on workflow.workspace_id=version.workspace_id and workflow.id=version.workflow_id
-       where origin.workspace_id=$1 and origin.source_workspace_id=$2 and origin.source_workflow_id=$3 and origin.source_version_id=$4 and origin.source_checksum=$5 and ${visible} and workflow.lifecycle_status='active'
-       order by origin.created_at desc,version.id desc limit 1 for share of workflow`,
-          parameters,
+      const workflow = alias(workflows, 'workflow'),
+        version = workflowVersions,
+        origin = workflowVersionPromotions;
+      const [match] = await drizzle(client)
+        .select({
+          workflow_id: version.workflowId,
+          id: version.id,
+          checksum: version.checksum,
+        })
+        .from(origin)
+        .innerJoin(
+          version,
+          and(
+            eq(version.workspaceId, origin.workspaceId),
+            eq(version.workflowId, origin.workflowId),
+            eq(version.id, origin.versionId),
+          ),
         )
-      ).rows[0];
+        .innerJoin(
+          workflow,
+          and(
+            eq(workflow.workspaceId, version.workspaceId),
+            eq(workflow.id, version.workflowId),
+          ),
+        )
+        .where(
+          and(
+            eq(origin.workspaceId, targetWorkspaceId),
+            eq(origin.sourceWorkspaceId, sourceWorkspaceId),
+            eq(origin.sourceWorkflowId, pin.workflowId),
+            eq(origin.sourceVersionId, pin.workflowVersionId),
+            eq(origin.sourceChecksum, pin.executableChecksum),
+            workflowScopeSql(resources, sql`${workflow.id}`),
+            eq(workflow.lifecycleStatus, 'active'),
+          ),
+        )
+        .orderBy(desc(origin.createdAt), desc(version.id))
+        .limit(1)
+        .for('share', { of: workflow })
+        .catch(rethrowQueryFailure);
       report({
         workflowId: source.workflowId,
         nodeId: node.id,
@@ -143,26 +163,22 @@ export async function inspectPromotionCallDependencies(
   await validateCallDependencyClosure(
     root,
     async (pin) => {
-      const parameters: unknown[] = [
-        workspaceId,
-        pin.workflowId,
-        pin.workflowVersionId,
-      ];
-      const visible = bindResourcePredicate(
-        workflowScopeSql(resources, sql`version.workflow_id`),
-        parameters,
-      );
-      const row = (
-        await client.query<{
-          graph_json: unknown;
-          checksum: string;
-          workflow_id: string;
-          visible: boolean;
-        }>(
-          `select graph_json,checksum,workflow_id,${visible} as visible from app.workflow_versions version where workspace_id=$1 and workflow_id=$2 and id=$3`,
-          parameters,
+      const [row] = await drizzle(client)
+        .select({
+          graph_json: workflowVersions.graphJson,
+          checksum: workflowVersions.checksum,
+          workflow_id: workflowVersions.workflowId,
+          visible: sql<boolean>`${workflowScopeSql(resources, sql`${workflowVersions.workflowId}`)}`,
+        })
+        .from(workflowVersions)
+        .where(
+          and(
+            eq(workflowVersions.workspaceId, workspaceId),
+            eq(workflowVersions.workflowId, pin.workflowId),
+            eq(workflowVersions.id, pin.workflowVersionId),
+          ),
         )
-      ).rows[0];
+        .catch(rethrowQueryFailure);
       if (row === undefined)
         throw new Error('A reviewed target Call version is unavailable.');
       const child = parseWorkflowGraphDraft(row.graph_json);

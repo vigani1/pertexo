@@ -1,3 +1,11 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workflows,
+  workflowDrafts,
+} from '../../../schema/authoring/workflows.js';
+import { workflowPromotionOrigins } from '../../../schema/authoring/promotions/origins.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowPromotionPreview } from '@pertexo/contracts';
 import {
@@ -25,61 +33,9 @@ export async function writePromotedDraft(
     promotionId: string;
   }>,
 ) {
-  const workspaceId = review.targetWorkspaceId;
-  const workflowId = workflow.targetWorkflowId ?? generatePersistedId();
-  const revision = (workflow.targetRevision ?? 0) + 1;
-  if (workflow.targetWorkflowId === null) {
-    await client.query(
-      `insert into app.workflows(id,workspace_id,name,created_by) values($1,$2,$3,$4)`,
-      [workflowId, workspaceId, workflow.sourceName, input.actorId],
-    );
-    await client.query(
-      'insert into app.workflow_drafts(workflow_id,workspace_id,revision,graph_json,updated_by) values($1,$2,1,$3::json,$4)',
-      [
-        workflowId,
-        workspaceId,
-        JSON.stringify(workflow.proposedGraph),
-        input.actorId,
-      ],
-    );
-  } else {
-    await client.query(
-      'update app.workflow_drafts set graph_json=$3::json,revision=$4,updated_by=$5,updated_at=clock_timestamp() where workspace_id=$1 and workflow_id=$2',
-      [
-        workspaceId,
-        workflowId,
-        JSON.stringify(workflow.proposedGraph),
-        revision,
-        input.actorId,
-      ],
-    );
-    await client.query(
-      'update app.workflows set name=$3::varchar,name_revision=name_revision+case when name<>$3::varchar then 1 else 0 end,updated_at=clock_timestamp() where workspace_id=$1 and id=$2',
-      [workspaceId, workflowId, workflow.sourceName],
-    );
-    await pruneStepSamples(
-      client,
-      workspaceId,
-      workflowId,
-      workflow.proposedGraph,
-    );
-  }
-  await client.query(
-    `insert into app.workflow_promotion_origins(workspace_id,workflow_id,source_workspace_id,source_workflow_id,source_version_id,source_checksum,graph_digest,target_name,draft_revision,published_version_id,promotion_id)
-    values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) on conflict(workspace_id,workflow_id) do update set source_version_id=excluded.source_version_id,source_checksum=excluded.source_checksum,graph_digest=excluded.graph_digest,target_name=excluded.target_name,draft_revision=excluded.draft_revision,published_version_id=excluded.published_version_id,promotion_id=excluded.promotion_id,applied_at=clock_timestamp()`,
-    [
-      workspaceId,
-      workflowId,
-      input.workspaceId,
-      workflow.sourceWorkflowId,
-      workflow.sourceVersionId,
-      workflow.sourceChecksum,
-      promotionDigest(workflow.proposedGraph),
-      workflow.sourceName,
-      revision,
-      workflow.targetPublishedVersionId,
-      promotionId,
-    ],
+  const { workspaceId, workflowId, revision } = await persistPromotionCandidate(
+    client,
+    { input, review, workflow, promotionId },
   );
   const representationTag = workflowDraftRepresentationTag({
     workflowId,
@@ -114,4 +70,109 @@ export async function writePromotedDraft(
     versionNumber,
     publicationRequestId,
   };
+}
+
+async function persistPromotionCandidate(
+  client: PoolClient,
+  {
+    input,
+    review,
+    workflow,
+    promotionId,
+  }: Parameters<typeof writePromotedDraft>[2],
+) {
+  const workspaceId = review.targetWorkspaceId,
+    workflowId = workflow.targetWorkflowId ?? generatePersistedId();
+  const revision = (workflow.targetRevision ?? 0) + 1,
+    db = drizzle(client);
+  if (workflow.targetWorkflowId === null) {
+    await db
+      .insert(workflows)
+      .values({
+        id: workflowId,
+        workspaceId,
+        name: workflow.sourceName,
+        createdBy: input.actorId,
+      })
+      .catch(rethrowQueryFailure);
+    await db
+      .insert(workflowDrafts)
+      .values({
+        workflowId,
+        workspaceId,
+        revision: 1,
+        graphJson: workflow.proposedGraph,
+        updatedBy: input.actorId,
+      })
+      .catch(rethrowQueryFailure);
+  } else {
+    await db
+      .update(workflowDrafts)
+      .set({
+        graphJson: workflow.proposedGraph,
+        revision,
+        updatedBy: input.actorId,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(workflowDrafts.workspaceId, workspaceId),
+          eq(workflowDrafts.workflowId, workflowId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    await db
+      .update(workflows)
+      .set({
+        name: workflow.sourceName,
+        nameRevision: sql`${workflows.nameRevision}+case when ${workflows.name}<>${workflow.sourceName}::varchar then 1 else 0 end`,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(workflows.workspaceId, workspaceId),
+          eq(workflows.id, workflowId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    await pruneStepSamples(
+      client,
+      workspaceId,
+      workflowId,
+      workflow.proposedGraph,
+    );
+  }
+  await db
+    .insert(workflowPromotionOrigins)
+    .values({
+      workspaceId,
+      workflowId,
+      sourceWorkspaceId: input.workspaceId,
+      sourceWorkflowId: workflow.sourceWorkflowId,
+      sourceVersionId: workflow.sourceVersionId,
+      sourceChecksum: workflow.sourceChecksum,
+      graphDigest: promotionDigest(workflow.proposedGraph),
+      targetName: workflow.sourceName,
+      draftRevision: revision,
+      publishedVersionId: workflow.targetPublishedVersionId,
+      promotionId,
+    })
+    .onConflictDoUpdate({
+      target: [
+        workflowPromotionOrigins.workspaceId,
+        workflowPromotionOrigins.workflowId,
+      ],
+      set: {
+        sourceVersionId: sql`excluded.source_version_id`,
+        sourceChecksum: sql`excluded.source_checksum`,
+        graphDigest: sql`excluded.graph_digest`,
+        targetName: sql`excluded.target_name`,
+        draftRevision: sql`excluded.draft_revision`,
+        publishedVersionId: sql`excluded.published_version_id`,
+        promotionId: sql`excluded.promotion_id`,
+        appliedAt: sql`clock_timestamp()`,
+      },
+    })
+    .catch(rethrowQueryFailure);
+  return { workspaceId, workflowId, revision };
 }
