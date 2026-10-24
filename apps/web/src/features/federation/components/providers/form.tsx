@@ -1,3 +1,4 @@
+import { OidcIdentityFields, OidcClaimFields } from './fields/oidc';
 import { useId, useState } from 'react';
 import {
   oidcProviderCreateSchema,
@@ -6,7 +7,6 @@ import {
   type FederationProtocol,
 } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -18,7 +18,6 @@ import {
   type ProviderEditorProps,
 } from './editor';
 import { SamlProviderForm } from './saml-form';
-import { Disclosure } from '@/components/ui/disclosure';
 type Organization = NonNullable<FederationSettings['organization']>;
 type Provider = Extract<Organization['providers'][number], { kind: 'oidc' }>;
 function initial(provider: Provider | undefined) {
@@ -62,42 +61,7 @@ function OidcProviderForm({
   const [baseRevision, setBaseRevision] = useState(organization.revision),
     [enabled, setEnabled] = useState(provider?.enabled ?? false),
     [jit, setJit] = useState(provider?.configuration.jitEnabled ?? false);
-  const fields = useFieldValues(
-    {
-      name: (value: string) =>
-        oidcProviderCreateSchema.shape.name.safeParse(value).success
-          ? undefined
-          : 'Enter a name of up to 128 characters.',
-      issuer: (value: string) =>
-        oidcProviderCreateSchema.shape.issuer.safeParse(value).success
-          ? undefined
-          : 'Use the exact public HTTPS issuer, without credentials, query or fragment.',
-      clientId: (value: string) =>
-        oidcConfigurationSchema.shape.clientId.safeParse(value).success
-          ? undefined
-          : 'Enter the provider client ID.',
-      clientSecret: (value: string) => {
-        if (provider !== undefined && value === '') {
-          return undefined;
-        }
-        if (
-          oidcProviderCreateSchema.shape.clientSecret.safeParse(value).success
-        ) {
-          return undefined;
-        }
-        return 'Enter a client secret of at most 8,192 UTF-8 bytes.';
-      },
-      emailClaim: (value: string) =>
-        oidcConfigurationSchema.shape.emailClaim.safeParse(value).success
-          ? undefined
-          : 'Enter one email claim name.',
-      nameClaim: (value: string) =>
-        oidcConfigurationSchema.shape.nameClaim.safeParse(value).success
-          ? undefined
-          : 'Enter one display name claim.',
-    },
-    initial(provider),
-  );
+  const fields = useFieldValues(oidcFieldRules(provider), initial(provider));
   const command = useFederationCommand(scope, onClose),
     locked = command.pending || command.uncertain,
     stale = organization.revision !== baseRevision;
@@ -156,71 +120,12 @@ function OidcProviderForm({
           );
         }}
       >
-        <LabelledField
-          id={`${id}-name`}
-          label="Provider name"
-          {...fields.field('name')}
-        >
-          {(control) => (
-            <Input {...control} {...fields.control('name')} disabled={locked} />
-          )}
-        </LabelledField>
-        <LabelledField
-          id={`${id}-issuer`}
-          label="OIDC issuer"
-          {...fields.field('issuer')}
-          description={
-            provider === undefined
-              ? 'Copy the exact issuer from your identity provider. Private-network issuers are not supported.'
-              : 'The issuer is fixed. Add another provider to change issuer.'
-          }
-        >
-          {(control) => (
-            <Input
-              {...control}
-              {...fields.control('issuer')}
-              type="url"
-              autoCapitalize="none"
-              autoCorrect="off"
-              disabled={locked || provider !== undefined}
-            />
-          )}
-        </LabelledField>
-        <LabelledField
-          id={`${id}-client`}
-          label="Client ID"
-          {...fields.field('clientId')}
-        >
-          {(control) => (
-            <Input
-              {...control}
-              {...fields.control('clientId')}
-              autoCapitalize="none"
-              autoCorrect="off"
-              disabled={locked}
-            />
-          )}
-        </LabelledField>
-        <LabelledField
-          id={`${id}-secret`}
-          label="Client secret"
-          {...fields.field('clientSecret')}
-          description={
-            provider === undefined
-              ? 'The secret is shown only while you enter it.'
-              : 'Leave blank to keep the configured secret.'
-          }
-        >
-          {(control) => (
-            <Input
-              {...control}
-              {...fields.control('clientSecret')}
-              type="password"
-              autoComplete="new-password"
-              disabled={locked}
-            />
-          )}
-        </LabelledField>
+        <OidcIdentityFields
+          id={id}
+          fields={fields}
+          locked={locked}
+          existing={provider !== undefined}
+        />
         <LabelledField
           id={`${id}-enabled`}
           label="Allow sign-in"
@@ -249,37 +154,7 @@ function OidcProviderForm({
             />
           )}
         </LabelledField>
-        <Disclosure summary="Claim names" tone="strong">
-          <div className="space-y-3">
-            <LabelledField
-              id={`${id}-email`}
-              label="Email claim"
-              {...fields.field('emailClaim')}
-              description="One scalar claim from the signed ID token. Default: email."
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  {...fields.control('emailClaim')}
-                  disabled={locked}
-                />
-              )}
-            </LabelledField>
-            <LabelledField
-              id={`${id}-display`}
-              label="Display name claim"
-              {...fields.field('nameClaim')}
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  {...fields.control('nameClaim')}
-                  disabled={locked}
-                />
-              )}
-            </LabelledField>
-          </div>
-        </Disclosure>
+        <OidcClaimFields id={id} fields={fields} locked={locked} />
         {stale ? (
           <Notice
             tone="warning"
@@ -312,4 +187,40 @@ function OidcProviderForm({
       </form>
     </ProviderDialog>
   );
+}
+
+function oidcFieldRules(provider: Provider | undefined) {
+  return {
+    name: (value: string) =>
+      oidcProviderCreateSchema.shape.name.safeParse(value).success
+        ? undefined
+        : 'Enter a name of up to 128 characters.',
+    issuer: (value: string) =>
+      oidcProviderCreateSchema.shape.issuer.safeParse(value).success
+        ? undefined
+        : 'Use the exact public HTTPS issuer, without credentials, query or fragment.',
+    clientId: (value: string) =>
+      oidcConfigurationSchema.shape.clientId.safeParse(value).success
+        ? undefined
+        : 'Enter the provider client ID.',
+    clientSecret: (value: string) => {
+      if (provider !== undefined && value === '') {
+        return undefined;
+      }
+      if (
+        oidcProviderCreateSchema.shape.clientSecret.safeParse(value).success
+      ) {
+        return undefined;
+      }
+      return 'Enter a client secret of at most 8,192 UTF-8 bytes.';
+    },
+    emailClaim: (value: string) =>
+      oidcConfigurationSchema.shape.emailClaim.safeParse(value).success
+        ? undefined
+        : 'Enter one email claim name.',
+    nameClaim: (value: string) =>
+      oidcConfigurationSchema.shape.nameClaim.safeParse(value).success
+        ? undefined
+        : 'Enter one display name claim.',
+  };
 }
