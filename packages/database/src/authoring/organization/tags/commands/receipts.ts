@@ -5,13 +5,13 @@ import {
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 
-import { runOrganizationCommand } from '../../command.js';
+import { runOrganizationCommand } from '../../commands.repository.js';
 
 import {
   checkOrganizationReplay,
   organizeWorkflow,
   type OrganizationChange,
-} from '../../organize-workflow.js';
+} from '../../placement.repository.js';
 import type { createOrganizationSession } from '../../session.js';
 import {
   type Command,

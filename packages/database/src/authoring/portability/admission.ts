@@ -6,16 +6,16 @@ import {
   WorkflowPortabilityError,
 } from '@pertexo/workflow-model';
 
-import type { PreviewWorkflowImportInput } from '../workflows/contracts.js';
+import type { PreviewWorkflowImportInput } from '../workflows/contract.js';
 import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
 import type { PortableCatalog } from '../workflows/types.js';
 import {
   WorkflowPortabilityUnavailableError,
   WorkflowPortabilityValidationError,
 } from '../workflows/errors.js';
-import { admitWorkflowAuthoring } from '../workflows/admission.js';
+import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
 import type { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { inspectPortableConnections } from './source-authority.js';
+import { inspectPortableConnections } from './source-authority.queries.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 export function selectedPolicy(selection: AuthoringCatalogs) {

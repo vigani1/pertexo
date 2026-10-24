@@ -2,7 +2,7 @@ import type { FolderScope } from '../../../tenant-access/resources/contract.js';
 
 import type { PoolClient } from 'pg';
 
-import type { WorkflowAuthoringDatabase } from '../contracts.js';
+import type { WorkflowAuthoringDatabase } from '../contract.js';
 
 import type { AuthoringCatalogs } from '../catalogs.js';
 

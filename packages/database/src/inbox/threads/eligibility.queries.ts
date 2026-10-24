@@ -16,7 +16,7 @@ import {
   review,
   reviewRecords,
   reviewDecisionAllowedSql,
-} from '../../authoring/reviews/eligibility.js';
+} from '../../authoring/reviews/eligibility.queries.js';
 import {
   task,
   run,

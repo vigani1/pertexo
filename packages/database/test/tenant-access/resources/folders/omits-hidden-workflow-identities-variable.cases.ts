@@ -1,5 +1,5 @@
 import { connectionScope } from '../../../../src/tenant-access/resources/connections/scope.js';
-import { inspectPromotionCallDependencies } from '../../../../src/authoring/promotion/preparation/calls.js';
+import { inspectPromotionCallDependencies } from '../../../../src/authoring/promotion/preparation/calls.queries.js';
 import { PromotionGraphBudget } from '../../../../src/authoring/promotion/preparation/graph.js';
 import { readFolderScope } from '../../../../src/tenant-access/resources/facts.queries.js';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';

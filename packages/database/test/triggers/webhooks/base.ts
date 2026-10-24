@@ -5,7 +5,7 @@ import { Pool, type QueryResultRow } from 'pg';
 import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/repository.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 import { canonicalOutboxPayloadChecksum } from '../../../src/outbox/events.repository.js';
-import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/database.js';
+import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/repository.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 
 import { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/repository.js';

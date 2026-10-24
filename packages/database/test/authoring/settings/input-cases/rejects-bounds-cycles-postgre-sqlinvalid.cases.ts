@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input-cases/store.js';
+import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input-cases/repository.js';
 import { WorkflowNotFoundError } from '../../../../src/authoring/workflows/errors.js';
 
 import {

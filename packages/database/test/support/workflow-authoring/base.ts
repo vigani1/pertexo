@@ -7,7 +7,7 @@ import { parseDatabaseConfig } from '../../../src/config.js';
 import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/repository.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 
-import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/database.js';
+import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/repository.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from '../workflow-authoring-admission.fixture.js';
 
 import { createDisposableDatabaseFixture } from '../postgres/disposable-database.js';

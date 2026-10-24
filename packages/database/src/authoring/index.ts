@@ -50,32 +50,32 @@ export {
   createWorkflowInputCaseDatabase,
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
-} from './input-cases/store.js';
+} from './input-cases/repository.js';
 export type {
   WorkflowInputCaseDatabase,
   WorkflowInputCaseMetadata,
   WorkflowInputCaseResult,
-} from './input-cases/store.js';
+} from './input-cases/repository.js';
 export {
   WorkflowConcurrencyLimitExceededError,
   WorkflowConcurrencyLimitUnavailableError,
   WorkflowConcurrencyRevisionConflictError,
-} from './settings/concurrency.js';
+} from './settings/concurrency.repository.js';
 export type {
   WorkflowConcurrencyDatabase,
   WorkflowConcurrencySettings,
-} from './settings/concurrency.js';
+} from './settings/concurrency.repository.js';
 export {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkflowPauseRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
-} from './settings/auto-pause/store.js';
+} from './settings/auto-pause/repository.js';
 export type {
   AutoPauseCommandResult,
   WorkflowAutoPauseDatabase,
   WorkflowAutoPauseSettings,
   WorkspaceAutoPauseSettings,
-} from './settings/auto-pause/store.js';
+} from './settings/auto-pause/repository.js';
 export {
   createWorkflowAuthoringDatabase,
   WorkflowDefinitionPlacementError,
@@ -88,7 +88,7 @@ export {
   WorkflowPortabilityValidationError,
   WorkflowRevisionConflictError,
   WorkflowTemplateOriginUnavailableError,
-} from './workflows/database.js';
+} from './workflows/repository.js';
 export type {
   DuplicateWorkflowInput,
   DuplicateWorkflowResult,
@@ -105,13 +105,13 @@ export type {
   WorkflowLifecycleCommand,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from './workflows/database.js';
+} from './workflows/repository.js';
 
 export {
   WorkflowErrorSettingsConflictError,
   WorkflowErrorTargetUnavailableError,
   type WorkflowErrorDatabase,
-} from './settings/error-workflow.js';
+} from './settings/error-workflow.repository.js';
 
 export { WorkflowStepSampleError } from './step-samples/contract.js';
 export type {

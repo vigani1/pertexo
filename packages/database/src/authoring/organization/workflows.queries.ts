@@ -20,8 +20,8 @@ import { WorkflowNotFoundError } from '../workflows/errors.js';
 import {
   mapWorkflow,
   workflowRowSelection,
-} from '../workflows/representation/rows.js';
-import type { WorkflowRecord } from '../workflows/representation/records.js';
+} from '../workflows/representation/records.queries.js';
+import type { WorkflowRecord } from '../workflows/representation/contract.js';
 
 type Scope = Readonly<{
   workspaceId: string;
