@@ -1,7 +1,5 @@
-import {
-  RunPublicationReview,
-  usePublicationReview,
-} from './publication-review';
+import { RunPublicationReview } from './publication-review';
+import { usePublicationReview } from './use-publication-review';
 import { RunInputUpload } from './file-input';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { useCallback, useState } from 'react';
