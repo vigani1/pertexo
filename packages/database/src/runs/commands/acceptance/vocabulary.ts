@@ -11,10 +11,7 @@ export const RUN_STATUS = {
 
 export type RunStatus = (typeof RUN_STATUS)[keyof typeof RUN_STATUS];
 
-export const RUN_STATUS_VALUES = Object.values(RUN_STATUS) as [
-  RunStatus,
-  ...RunStatus[],
-];
+export const RUN_STATUS_VALUES = Object.values(RUN_STATUS);
 
 export const IDEMPOTENCY_STATUS = {
   inProgress: 'in_progress',
@@ -25,7 +22,4 @@ export const IDEMPOTENCY_STATUS = {
 export type IdempotencyStatus =
   (typeof IDEMPOTENCY_STATUS)[keyof typeof IDEMPOTENCY_STATUS];
 
-export const IDEMPOTENCY_STATUS_VALUES = Object.values(IDEMPOTENCY_STATUS) as [
-  IdempotencyStatus,
-  ...IdempotencyStatus[],
-];
+export const IDEMPOTENCY_STATUS_VALUES = Object.values(IDEMPOTENCY_STATUS);

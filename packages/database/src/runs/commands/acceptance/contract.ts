@@ -1,4 +1,7 @@
-import type { acceptWorkflowRunInputSchema } from './input.js';
+import type {
+  acceptWorkflowRunInputSchema,
+  acceptanceReplayInputSchema,
+} from './input.js';
 import type { RunStatus as EngineRunStatus } from '@pertexo/workflow-engine';
 import type { z } from 'zod';
 
@@ -31,5 +34,3 @@ export type PreparedWorkflowRunAcceptance = Readonly<{
 export type WorkflowRunAcceptanceReplayInput = Readonly<
   z.input<typeof acceptanceReplayInputSchema>
 >;
-
-import type { acceptanceReplayInputSchema } from './input.js';
