@@ -44,13 +44,19 @@ async function readOutput(
     .output;
 }
 
-async function testStep(
-  page: Page,
-  workspaceId: string,
-  workflowPath: string,
-  nodeId: string,
-  input: unknown,
-) {
+async function testStep({
+  page,
+  workspaceId,
+  workflowPath,
+  nodeId,
+  input,
+}: Readonly<{
+  page: Page;
+  workspaceId: string;
+  workflowPath: string;
+  nodeId: string;
+  input: unknown;
+}>) {
   await page.getByTestId(`rf__node-${nodeId}`).focus();
   await page.keyboard.press('Enter');
   await page.getByRole('tab', { name: 'Test', exact: true }).click();
@@ -117,13 +123,13 @@ test('authors, previews, publishes and runs the collection chain and its portabl
   const saved = (await readEditorDraft(page, workflowPath)).graph;
   await page.reload();
   expect((await readEditorDraft(page, workflowPath)).graph).toEqual(saved);
-  const preview = await testStep(
+  const preview = await testStep({
     page,
     workspaceId,
     workflowPath,
-    authored.filterId,
-    invoiceInput,
-  );
+    nodeId: authored.filterId,
+    input: invoiceInput,
+  });
   expect(preview.output).toMatchObject({
     kind: 'inline',
     value: { inputCount: 5, removedCount: 1 },
@@ -272,13 +278,13 @@ test('authors a date conversion using an editable number example and verifies pr
       expression: '$number(runInput.text)',
     });
   const input = { text: '1767225600000' };
-  const initialPreview = await testStep(
+  const initialPreview = await testStep({
     page,
     workspaceId,
     workflowPath,
-    dateId,
+    nodeId: dateId,
     input,
-  );
+  });
   expect(initialPreview.output).toEqual({
     kind: 'inline',
     value: { value: '2026-01-01T00:00:00.000Z' },
@@ -291,13 +297,13 @@ test('authors a date conversion using an editable number example and verifies pr
   await operation('Format timestamp');
   await page.getByLabel('Time zone', { exact: true }).fill('Europe/Paris');
   await page.keyboard.press('Tab');
-  const formatPreview = await testStep(
+  const formatPreview = await testStep({
     page,
     workspaceId,
     workflowPath,
-    dateId,
+    nodeId: dateId,
     input,
-  );
+  });
   expect(formatPreview.output).toEqual({
     kind: 'inline',
     value: { value: '2026-01-01' },
@@ -322,13 +328,13 @@ test('authors a date conversion using an editable number example and verifies pr
     .fill('$.amount');
   await page.keyboard.press('Tab');
   const durationInput = { ...input, amount: 1 };
-  const durationPreview = await testStep(
+  const durationPreview = await testStep({
     page,
     workspaceId,
     workflowPath,
-    dateId,
-    durationInput,
-  );
+    nodeId: dateId,
+    input: durationInput,
+  });
   expect(durationPreview.output).toEqual({
     kind: 'inline',
     value: { value: '2026-02-01T00:00:00.000Z' },
@@ -345,13 +351,13 @@ test('authors a date conversion using an editable number example and verifies pr
   const saved = (await readEditorDraft(page, workflowPath)).graph;
   await page.reload();
   expect((await readEditorDraft(page, workflowPath)).graph).toEqual(saved);
-  const preview = await testStep(
+  const preview = await testStep({
     page,
     workspaceId,
     workflowPath,
-    dateId,
-    durationInput,
-  );
+    nodeId: dateId,
+    input: durationInput,
+  });
   expect(preview.output).toEqual({
     kind: 'inline',
     value: { value: '2026-01-01T01:00:00.000+01:00' },

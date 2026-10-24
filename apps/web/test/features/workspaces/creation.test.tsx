@@ -264,23 +264,23 @@ describe('workspace creation', () => {
   });
 
   it.each([
-    [
-      'duplicate slug',
-      409,
-      'workspace.conflict',
-      'That handle is already taken. Choose another one.',
-      'Handle',
-    ],
-    [
-      'forbidden creation',
-      403,
-      'auth.forbidden',
-      'Your account isn’t allowed to create workspaces.',
-      undefined,
-    ],
+    {
+      caseName: 'duplicate slug',
+      status: 409,
+      code: 'workspace.conflict',
+      message: 'That handle is already taken. Choose another one.',
+      focusedField: 'Handle',
+    },
+    {
+      caseName: 'forbidden creation',
+      status: 403,
+      code: 'auth.forbidden',
+      message: 'Your account isn’t allowed to create workspaces.',
+      focusedField: undefined,
+    },
   ])(
-    'shows a precise %s error without an automatic retry',
-    async (_case, status, code, message, focusedField) => {
+    'shows a precise $caseName error without an automatic retry',
+    async ({ status, code, message, focusedField }) => {
       let postCount = 0;
       installIdentity();
       mockServer.use(

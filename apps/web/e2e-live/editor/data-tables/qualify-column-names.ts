@@ -12,14 +12,21 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 
-export async function qualifyColumnNames(
-  page: Page,
-  workspaceId: string,
-  workflow: string,
-  nodeId: string,
-  originalVersionId: string,
-  width: number,
-) {
+export async function qualifyColumnNames({
+  page,
+  workspaceId,
+  workflow,
+  nodeId,
+  originalVersionId,
+  width,
+}: Readonly<{
+  page: Page;
+  workspaceId: string;
+  workflow: string;
+  nodeId: string;
+  originalVersionId: string;
+  width: number;
+}>) {
   await page.setViewportSize({ width, height: 768 });
   await page.goto(workflow.replace('/v1/workspaces/', '/w/'));
   await page.getByTestId(`rf__node-${nodeId}`).click();

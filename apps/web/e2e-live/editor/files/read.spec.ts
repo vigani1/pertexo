@@ -74,13 +74,19 @@ test('uploads CSV in the editor, reads default-converted values and runs Filter 
   await page.keyboard.press('Escape');
   const response = await page.request.get(`${path}/draft`);
   const { graph } = await readEditorDraft(page, path);
-  function node(
-    id: string,
-    key: string,
-    config: WorkflowGraphContract['nodes'][number]['config'],
-    inputMappings: WorkflowGraphContract['nodes'][number]['inputMappings'],
-    x: number,
-  ) {
+  function node({
+    id,
+    key,
+    config,
+    inputMappings,
+    x,
+  }: Readonly<{
+    id: string;
+    key: string;
+    config: WorkflowGraphContract['nodes'][number]['config'];
+    inputMappings: WorkflowGraphContract['nodes'][number]['inputMappings'];
+    x: number;
+  }>) {
     return {
       id,
       label: id,
@@ -94,30 +100,38 @@ test('uploads CSV in the editor, reads default-converted values and runs Filter 
   }
   const nodes = [
     ...graph.nodes,
-    node(
-      'paid',
-      'core.filter',
-      { path: '$.paid', operator: 'equals' },
-      {
+    node({
+      id: 'paid',
+      key: 'core.filter',
+      config: { path: '$.paid', operator: 'equals' },
+      inputMappings: {
         items: { kind: 'node_output', nodeId: readId, path: '$' },
         value: { kind: 'literal', value: true },
       },
-      320,
-    ),
-    node(
-      'totals',
-      'core.summarize',
-      { valuePath: '$.amount', groupBy: '$.currency', missing: 'error' },
-      { items: { kind: 'node_output', nodeId: 'paid', path: '$.items' } },
-      640,
-    ),
-    node(
-      'finished',
-      'core.terminate',
-      {},
-      { totals: { kind: 'node_output', nodeId: 'totals', path: '$' } },
-      960,
-    ),
+      x: 320,
+    }),
+    node({
+      id: 'totals',
+      key: 'core.summarize',
+      config: {
+        valuePath: '$.amount',
+        groupBy: '$.currency',
+        missing: 'error',
+      },
+      inputMappings: {
+        items: { kind: 'node_output', nodeId: 'paid', path: '$.items' },
+      },
+      x: 640,
+    }),
+    node({
+      id: 'finished',
+      key: 'core.terminate',
+      config: {},
+      inputMappings: {
+        totals: { kind: 'node_output', nodeId: 'totals', path: '$' },
+      },
+      x: 960,
+    }),
   ];
   const order = [readId, 'paid', 'totals', 'finished'];
   const edges = order.slice(1).map((id, index) => ({

@@ -36,21 +36,49 @@ function parallelGroup() {
       },
     ],
     edges: [
-      edge('p-l', 'parallel', 'left', 'branch-01'),
-      edge('p-r', 'parallel', 'right', 'branch-02'),
-      edge('l-m', 'left', 'merge', 'out', 'branch-01'),
-      edge('r-m', 'right', 'merge', 'out', 'branch-02'),
+      edge({
+        id: 'p-l',
+        source: 'parallel',
+        target: 'left',
+        output: 'branch-01',
+      }),
+      edge({
+        id: 'p-r',
+        source: 'parallel',
+        target: 'right',
+        output: 'branch-02',
+      }),
+      edge({
+        id: 'l-m',
+        source: 'left',
+        target: 'merge',
+        output: 'out',
+        input: 'branch-01',
+      }),
+      edge({
+        id: 'r-m',
+        source: 'right',
+        target: 'merge',
+        output: 'out',
+        input: 'branch-02',
+      }),
     ],
   };
 }
 
-function edge(
-  id: string,
-  source: string,
-  target: string,
+function edge({
+  id,
+  source,
+  target,
   output = 'out',
   input = 'in',
-) {
+}: Readonly<{
+  id: string;
+  source: string;
+  target: string;
+  output?: string;
+  input?: string;
+}>) {
   return {
     id,
     source: { nodeId: source, port: output },
@@ -74,11 +102,14 @@ function graph(nested: boolean): WorkflowGraphContract {
       ? [start, smallLoop(loopStep('loop', 'Loop', group)), end]
       : [start, ...group.nodes, end],
     edges: nested
-      ? [edge('start-loop', 'start', 'loop'), edge('loop-end', 'loop', 'end')]
+      ? [
+          edge({ id: 'start-loop', source: 'start', target: 'loop' }),
+          edge({ id: 'loop-end', source: 'loop', target: 'end' }),
+        ]
       : [
-          edge('start-p', 'start', 'parallel'),
+          edge({ id: 'start-p', source: 'start', target: 'parallel' }),
           ...group.edges,
-          edge('m-end', 'merge', 'end'),
+          edge({ id: 'm-end', source: 'merge', target: 'end' }),
         ],
   };
 }
@@ -121,8 +152,10 @@ describe('duplicating a paired Parallel/Merge group', () => {
         ...copied,
         edges: [
           ...copied.edges.filter((item) => item.id !== 'm-end'),
-          edge('between-groups', 'merge', parallel.id),
-          ...(nested ? [] : [edge('copy-end', merge.id, 'end')]),
+          edge({ id: 'between-groups', source: 'merge', target: parallel.id }),
+          ...(nested
+            ? []
+            : [edge({ id: 'copy-end', source: merge.id, target: 'end' })]),
         ],
       };
       const finalGraph = nested

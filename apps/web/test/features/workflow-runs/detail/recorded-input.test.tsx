@@ -33,13 +33,19 @@ const scope = {
   runId,
 };
 
-function row(
-  nodeRunId: string,
-  nodeId: string,
-  label: string,
-  status: RunTimelineStepStatus,
+function row({
+  nodeRunId,
+  nodeId,
+  label,
+  status,
   currentAttemptNumber = 1,
-): RunTimelineRow {
+}: Readonly<{
+  nodeRunId: string;
+  nodeId: string;
+  label: string;
+  status: RunTimelineStepStatus;
+  currentAttemptNumber?: number;
+}>): RunTimelineRow {
   const look =
     status === 'not_started'
       ? { tone: 'queued' as const, label: 'Not started yet' }
@@ -60,7 +66,12 @@ function row(
   };
 }
 
-const fetchOrder = row(fetchRunId, 'fetch-order', 'Fetch order', 'succeeded');
+const fetchOrder = row({
+  nodeRunId: fetchRunId,
+  nodeId: 'fetch-order',
+  label: 'Fetch order',
+  status: 'succeeded',
+});
 const upstream = new Map([
   ['fetch-order', []],
   ['send-receipt', ['fetch-order']],
@@ -127,7 +138,13 @@ describe('recorded step input', () => {
     async (usesConnection) => {
       const server = serve(() => recorded({ never: 'read' }));
       renderStep({
-        ...row(sendRunId, 'send-receipt', 'Send receipt', 'skipped', 0),
+        ...row({
+          nodeRunId: sendRunId,
+          nodeId: 'send-receipt',
+          label: 'Send receipt',
+          status: 'skipped',
+          currentAttemptNumber: 0,
+        }),
         usesConnection,
       });
       expect(
@@ -172,7 +189,14 @@ describe('recorded step input', () => {
   it('keeps the empty answer, stops polling and offers Retry after an HTTP 500 refresh', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { server, recover } = failAfterEmptyRead(500);
-    renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
+    renderStep(
+      row({
+        nodeRunId: sendRunId,
+        nodeId: 'send-receipt',
+        label: 'Send receipt',
+        status: 'running',
+      }),
+    );
     expect(await screen.findByText('Not recorded yet.')).toBeVisible();
     const problem = await screen.findByRole('alert', {}, { timeout: 3_000 });
     expect(problem).toHaveTextContent(/Couldn’t refresh/u);
@@ -190,7 +214,14 @@ describe('recorded step input', () => {
   it('hides the empty answer, stops polling and offers recovery after an HTTP 403 refresh', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { server, recover } = failAfterEmptyRead(403);
-    renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
+    renderStep(
+      row({
+        nodeRunId: sendRunId,
+        nodeId: 'send-receipt',
+        label: 'Send receipt',
+        status: 'running',
+      }),
+    );
     expect(await screen.findByText('Not recorded yet.')).toBeVisible();
     const problem = await screen.findByRole('alert', {}, { timeout: 3_000 });
     expect(problem).toHaveTextContent(
@@ -210,7 +241,14 @@ describe('recorded step input', () => {
   it('stops after five empty reads instead of polling indefinitely', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const server = serve(none);
-    renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
+    renderStep(
+      row({
+        nodeRunId: sendRunId,
+        nodeId: 'send-receipt',
+        label: 'Send receipt',
+        status: 'running',
+      }),
+    );
     expect(await screen.findByText('Not recorded yet.')).toBeVisible();
     // Advancing beyond the polling window also catches an unwanted sixth read.
     await act(() => vi.advanceTimersByTimeAsync(60_000));
@@ -223,7 +261,14 @@ describe('recorded step input', () => {
       calls += 1;
       return calls === 1 ? none() : recorded({ attempt: 1 });
     });
-    renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'running'));
+    renderStep(
+      row({
+        nodeRunId: sendRunId,
+        nodeId: 'send-receipt',
+        label: 'Send receipt',
+        status: 'running',
+      }),
+    );
     expect(await screen.findByText('Not recorded yet.')).toBeVisible();
     expect(await dataIn()).toHaveTextContent(/attempt: 1/u);
   });
@@ -233,7 +278,12 @@ describe('recorded step input', () => {
     let recordedYet = true;
     serve(() => (recordedYet ? recorded({ attempt: serverAttempt }) : none()));
     const step = renderStep(
-      row(sendRunId, 'send-receipt', 'Send receipt', 'running'),
+      row({
+        nodeRunId: sendRunId,
+        nodeId: 'send-receipt',
+        label: 'Send receipt',
+        status: 'running',
+      }),
     );
     expect(await dataIn()).toHaveTextContent(/attempt: 1/u);
 
@@ -241,7 +291,15 @@ describe('recorded step input', () => {
     // step shows running again before attempt 2 records its own.
     serverAttempt = 2;
     recordedYet = false;
-    step.show(row(sendRunId, 'send-receipt', 'Send receipt', 'running', 2));
+    step.show(
+      row({
+        nodeRunId: sendRunId,
+        nodeId: 'send-receipt',
+        label: 'Send receipt',
+        status: 'running',
+        currentAttemptNumber: 2,
+      }),
+    );
     expect(await screen.findByText('Not recorded yet.')).toBeVisible();
     expect(
       screen.queryByRole('group', { name: 'Data in of Send receipt' }),
@@ -254,7 +312,14 @@ describe('recorded step input', () => {
   it('keeps a finished step’s recorded input without reading it again', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const server = serve(() => recorded({ attempt: 1 }));
-    renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'succeeded'));
+    renderStep(
+      row({
+        nodeRunId: sendRunId,
+        nodeId: 'send-receipt',
+        label: 'Send receipt',
+        status: 'succeeded',
+      }),
+    );
     expect(await dataIn()).toHaveTextContent(/attempt: 1/u);
     await act(() => vi.advanceTimersByTimeAsync(1_500));
     expect(server.reads()).toBe(1);
@@ -270,7 +335,14 @@ describe('recorded step input', () => {
           )
         : recorded({ amount: 42 }),
     );
-    renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'succeeded'));
+    renderStep(
+      row({
+        nodeRunId: sendRunId,
+        nodeId: 'send-receipt',
+        label: 'Send receipt',
+        status: 'succeeded',
+      }),
+    );
     const problem = await screen.findByRole('alert');
     expect(problem).toHaveTextContent(
       'Couldn’t load exactly what this step received.',
@@ -295,7 +367,12 @@ describe('recorded step input', () => {
   it('says a step that uses a connection doesn’t keep its input, without asking', async () => {
     const server = serve(() => recorded({ never: 'read' }));
     renderStep({
-      ...row(sendRunId, 'send-receipt', 'Send receipt', 'succeeded'),
+      ...row({
+        nodeRunId: sendRunId,
+        nodeId: 'send-receipt',
+        label: 'Send receipt',
+        status: 'succeeded',
+      }),
       usesConnection: true,
     });
     expect(
@@ -321,7 +398,14 @@ describe('recorded step input', () => {
     'says why a finished step has no recorded input (%s)',
     async (kind, why) => {
       serve(() => HttpResponse.json({ input: { kind } }));
-      renderStep(row(sendRunId, 'send-receipt', 'Send receipt', 'failed'));
+      renderStep(
+        row({
+          nodeRunId: sendRunId,
+          nodeId: 'send-receipt',
+          label: 'Send receipt',
+          status: 'failed',
+        }),
+      );
       expect(await screen.findByText(why)).toBeVisible();
       expect(
         screen.getByRole('region', { name: 'Where it came from' }),

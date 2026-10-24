@@ -144,13 +144,19 @@ async function configure(
     )
     .toMatchObject({ mode });
 }
-async function send(
-  origin: string,
-  endpoint: string,
-  secret: string,
-  key: string,
-  payload: unknown,
-) {
+async function send({
+  origin,
+  endpoint,
+  secret,
+  key,
+  payload,
+}: Readonly<{
+  origin: string;
+  endpoint: string;
+  secret: string;
+  key: string;
+  payload: unknown;
+}>) {
   const body = JSON.stringify(payload),
     timestamp = String(Math.floor(Date.now() / 1000));
   const signature = `v1=${createHmac('sha256', Buffer.from(secret, 'base64url'))
@@ -248,17 +254,23 @@ test('coordinates all three real signed webhook policies with visible history', 
     await dialog.getByRole('button', { name: 'Done', exact: true }).click();
     const key = randomUUID(),
       payload = { orderId: 'order-42', message: 'first' };
-    const first = await send(origin, endpoint, secret, key, payload);
+    const first = await send({ origin, endpoint, secret, key, payload });
     expect(first.status).toBe(202);
-    const replay = await send(origin, endpoint, secret, key, payload);
+    const replay = await send({ origin, endpoint, secret, key, payload });
     expect(replay.status).toBe(202);
     const receipt = webhookIngressResponseSchema.parse(first.body);
     expect(replay.body).toEqual(
       'runId' in receipt ? { ...receipt, replayed: true } : receipt,
     );
-    const next = await send(origin, endpoint, secret, randomUUID(), {
-      ...payload,
-      message: 'latest',
+    const next = await send({
+      origin,
+      endpoint,
+      secret,
+      key: randomUUID(),
+      payload: {
+        ...payload,
+        message: 'latest',
+      },
     });
     expect(next.status).toBe(202);
     expect(next.body).toMatchObject({

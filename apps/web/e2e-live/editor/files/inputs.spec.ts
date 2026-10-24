@@ -63,14 +63,21 @@ async function setupHttp(page: Page, artifactResponse: boolean) {
     .click();
   await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
 }
-async function map(
-  page: Page,
-  workflowPath: string,
-  targetId: string,
-  source: 'Run input' | 'Step output',
-  path: string,
-  step?: string,
-) {
+async function map({
+  page,
+  workflowPath,
+  targetId,
+  source,
+  path,
+  step,
+}: Readonly<{
+  page: Page;
+  workflowPath: string;
+  targetId: string;
+  source: 'Run input' | 'Step output';
+  path: string;
+  step?: string;
+}>) {
   await page.getByRole('button', { name: 'Add input', exact: true }).click();
   const row = page
     .getByRole('region', { name: 'Inputs', exact: true })
@@ -170,7 +177,14 @@ for (const manual of [false, true])
           )?.connectionRefs,
       )
       .toEqual({ http_headers: connection.id });
-    if (manual) await map(page, workflowPath, httpId, 'Run input', '$.file');
+    if (manual)
+      await map({
+        page,
+        workflowPath,
+        targetId: httpId,
+        source: 'Run input',
+        path: '$.file',
+      });
     else {
       await page.screenshot({ path: `${images}/editor-before.png` });
       await page.setViewportSize({ width: 375, height: 768 });
@@ -261,14 +275,14 @@ for (const manual of [false, true])
         { http_headers: connection.id },
         { http_headers: connection.id },
       ]);
-    await map(
+    await map({
       page,
       workflowPath,
-      responseId,
-      'Step output',
-      '$.body',
-      'Send selected file',
-    );
+      targetId: responseId,
+      source: 'Step output',
+      path: '$.body',
+      step: 'Send selected file',
+    });
     const saved = (await readEditorDraft(page, workflowPath)).graph;
     await page.reload();
     expect((await readEditorDraft(page, workflowPath)).graph).toEqual(saved);
