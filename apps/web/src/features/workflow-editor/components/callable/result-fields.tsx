@@ -37,29 +37,12 @@ export function ResultFields({
   }));
   return (
     <FieldGroup className="gap-3">
-      <LabelledField
-        id={`${id}-source`}
-        label="Result source"
-        error={validation.error('callable.result.kind')}
-      >
-        {(control) => (
-          <ChoiceSelect
-            id={control.id}
-            value={value.kind}
-            choices={SOURCES}
-            disabled={false}
-            name="callable.result.kind"
-            ref={validation.register('callable.result.kind')}
-            invalid={control['aria-invalid']}
-            describedBy={control['aria-describedby']}
-            onChange={(next) => {
-              const choice = SOURCES.find((entry) => entry.value === next);
-              if (choice !== undefined && choice.value !== value.kind)
-                onChange(emptyResult(choice.value));
-            }}
-          />
-        )}
-      </LabelledField>
+      <ResultSourceChoice
+        id={id}
+        value={value}
+        validation={validation}
+        onChange={onChange}
+      />
       {value.kind === 'workspace_variable' ? (
         <LabelledField
           id={`${id}-variable`}
@@ -175,5 +158,43 @@ export function ResultFields({
         </LabelledField>
       ) : null}
     </FieldGroup>
+  );
+}
+
+function ResultSourceChoice({
+  id,
+  value,
+  validation,
+  onChange,
+}: Readonly<{
+  id: string;
+  value: ResultDraft;
+  validation: FieldValidation<string>;
+  onChange: (value: ResultDraft) => void;
+}>) {
+  return (
+    <LabelledField
+      id={`${id}-source`}
+      label="Result source"
+      error={validation.error('callable.result.kind')}
+    >
+      {(control) => (
+        <ChoiceSelect
+          id={control.id}
+          value={value.kind}
+          choices={SOURCES}
+          disabled={false}
+          name="callable.result.kind"
+          ref={validation.register('callable.result.kind')}
+          invalid={control['aria-invalid']}
+          describedBy={control['aria-describedby']}
+          onChange={(next) => {
+            const choice = SOURCES.find((entry) => entry.value === next);
+            if (choice !== undefined && choice.value !== value.kind)
+              onChange(emptyResult(choice.value));
+          }}
+        />
+      )}
+    </LabelledField>
   );
 }
