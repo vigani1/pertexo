@@ -67,6 +67,8 @@ import {
 @Controller('v1/workspaces/:workspaceId/workflows')
 @RateLimit('authenticated_read')
 export class WorkflowAuthoringController {
+  // Nest resolves these dependencies positionally; grouping them would change DI.
+  // eslint-disable-next-line max-params
   public constructor(
     private readonly listWorkflows: ListWorkflowsUseCase,
     private readonly createWorkflow: CreateWorkflowUseCase,

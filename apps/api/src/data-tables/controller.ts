@@ -153,6 +153,8 @@ export class DataTablesController {
       }),
     );
   }
+  // Nest binds these five route arguments independently; retain validation order.
+  // eslint-disable-next-line max-params
   @Post(':tableId/export')
   @HttpCode(200)
   @UseGuards(DataTablesReadGuard)

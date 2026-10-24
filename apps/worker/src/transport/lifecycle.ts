@@ -18,6 +18,8 @@ import {
 export class OutboxDispatcherLifecycle {
   private shutdownPromise: Promise<void> | undefined;
 
+  // Nest resolves these dependencies positionally; grouping them would change DI.
+  // eslint-disable-next-line max-params
   public constructor(
     @Inject(OUTBOX_DISPATCHER)
     private readonly dispatcher: OutboxDispatcher,

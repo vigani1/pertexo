@@ -85,6 +85,17 @@ const readablePackages = [
   'templates',
   'contracts',
   'database',
+  'artifact-store',
+  'queue',
+  'observability',
+  'rate-limit',
+];
+
+const readableWorkspaces = [
+  ...readablePackages.map((name) => `packages/${name}`),
+  ...['api', 'worker', 'code-runner', 'cli', 'ops'].map(
+    (name) => `apps/${name}`,
+  ),
 ];
 
 export default tseslint.config(
@@ -664,7 +675,7 @@ export default tseslint.config(
     },
   },
   {
-    files: readablePackages.map((name) => `packages/${name}/**/*.ts`),
+    files: readableWorkspaces.map((workspace) => `${workspace}/**/*.ts`),
     rules: {
       'no-nested-ternary': 'error',
       'no-else-return': 'error',
@@ -677,7 +688,7 @@ export default tseslint.config(
     },
   },
   {
-    files: readablePackages.map((name) => `packages/${name}/test/**/*.ts`),
+    files: readableWorkspaces.map((workspace) => `${workspace}/test/**/*.ts`),
     rules: { 'max-lines-per-function': 'off' },
   },
   {
