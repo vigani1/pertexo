@@ -23,7 +23,7 @@ export const connection = alias(connections, 'connection');
 export const mention = alias(workflowCommentMentions, 'mention');
 export const comment = alias(workflowComments, 'comment');
 export const unreadSql = sql<boolean>`(${seen.readRevision} is null or ${seen.readRevision}<${thread.revision})`;
-export const noticeFields = {
+const noticeFields = {
   id: thread.id,
   notice_kind: thread.noticeKind,
   subject_id: thread.subjectId,
