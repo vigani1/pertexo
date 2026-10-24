@@ -1,6 +1,6 @@
 import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
-import { RenameForm } from '@/components/patterns/actions/rename/inline';
+import { RenameForm } from '@/components/patterns/actions/rename/form';
 import {
   Dialog,
   DialogContent,
