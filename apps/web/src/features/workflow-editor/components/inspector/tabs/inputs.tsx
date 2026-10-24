@@ -99,7 +99,6 @@ function MappedInputsTab({
   focusTarget,
   links,
 }: InputsTabProps & Readonly<{ links: ReactNode }>) {
-  const activeRowId = useRef<string | undefined>(undefined);
   const store = useEditorStoreApi();
   const notifications = useNotifications();
   const mappings = useInputMappingDraft({
@@ -112,6 +111,10 @@ function MappedInputsTab({
     reportScratch: form.reportScratch,
   });
   const rowsShown = useRowDisclosure(mappings, node.id, focusTarget);
+  const { activeRowId, openRow, insert } = useMappingInsertion({
+    mappings,
+    rowsShown,
+  });
   const editable = form.editable && definition !== undefined;
   const suggestions = [
     ...inputKeySuggestions(definition?.inputSchema),
@@ -133,36 +136,6 @@ function MappedInputsTab({
         {links}
       </div>
     );
-
-  function openRow({
-    rowId,
-    focusKey,
-  }: Readonly<{ rowId: string; focusKey: boolean }>) {
-    activeRowId.current = rowId;
-    rowsShown.openRow({ rowId, focusKey });
-  }
-
-  /** Fills the open row you were editing, or adds one named after the field. */
-  function insert(source: InsertedSource, fieldName: string) {
-    const active = mappings.rows.find(
-      (row) => row.id === activeRowId.current && rowsShown.open.has(row.id),
-    );
-    const withSource = (
-      base: Pick<InputMappingDraftRow, 'id' | 'destinationKey'>,
-    ): InputMappingDraftRow => ({ ...base, ...source });
-    if (active !== undefined) {
-      mappings.changeRow(
-        withSource({ id: active.id, destinationKey: active.destinationKey }),
-      );
-      return;
-    }
-    const taken = mappings.rows.some((row) => row.destinationKey === fieldName);
-    const key = taken ? '' : fieldName;
-    const id = mappings.addRow((rowId) =>
-      withSource({ id: rowId, destinationKey: key }),
-    );
-    openRow({ rowId: id, focusKey: key === '' });
-  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -217,44 +190,13 @@ function MappedInputsTab({
             ))}
           </ol>
         )}
-        {workspaceScope !== undefined &&
-        node.definition.key === 'core.read_file' ? (
-          <ReadFileUpload
-            scope={workspaceScope}
-            node={node}
-            form={form}
-            hasScratch={mappings.hasScratch}
-          />
-        ) : null}
-        {workspaceScope !== undefined &&
-        node.definition.key === 'http.request' &&
-        node.config.method !== 'GET' &&
-        node.config.method !== 'HEAD' ? (
-          <UploadFile
-            targetKey={JSON.stringify(node.inputMappings)}
-            scope={workspaceScope}
-            disabled={!editable || mappings.hasScratch}
-            label="Upload body file"
-            useLabel={
-              node.inputMappings.body === undefined
-                ? 'Use file as body'
-                : 'Replace body with file'
-            }
-            description="Send this file’s exact bytes as the HTTP request body. Using it replaces the current body mapping."
-            onUse={(reference) => {
-              form.commit(
-                (current) => ({
-                  inputMappings: {
-                    ...current.inputMappings,
-                    body: { kind: 'literal', value: reference },
-                  },
-                }),
-                `${node.id}:file:${reference.artifactId}`,
-              );
-              return undefined;
-            }}
-          />
-        ) : null}
+        <InputFileActions
+          scope={workspaceScope}
+          node={node}
+          form={form}
+          editable={editable}
+          hasScratch={mappings.hasScratch}
+        />
         {editable ? (
           <div className="flex flex-wrap gap-2">
             <Button
@@ -355,4 +297,101 @@ function useRowDisclosure(
       });
     },
   } as const;
+}
+
+function InputFileActions({
+  scope,
+  node,
+  form,
+  editable,
+  hasScratch,
+}: Readonly<{
+  scope: WorkspaceApiScope | undefined;
+  node: WorkflowNode;
+  form: NodeFormApi;
+  editable: boolean;
+  hasScratch: boolean;
+}>) {
+  return (
+    <>
+      {scope !== undefined && node.definition.key === 'core.read_file' ? (
+        <ReadFileUpload
+          scope={scope}
+          node={node}
+          form={form}
+          hasScratch={hasScratch}
+        />
+      ) : null}
+      {scope !== undefined &&
+      node.definition.key === 'http.request' &&
+      node.config.method !== 'GET' &&
+      node.config.method !== 'HEAD' ? (
+        <UploadFile
+          targetKey={JSON.stringify(node.inputMappings)}
+          scope={scope}
+          disabled={!editable || hasScratch}
+          label="Upload body file"
+          useLabel={
+            node.inputMappings.body === undefined
+              ? 'Use file as body'
+              : 'Replace body with file'
+          }
+          description="Send this file’s exact bytes as the HTTP request body. Using it replaces the current body mapping."
+          onUse={(reference) => {
+            form.commit(
+              (current) => ({
+                inputMappings: {
+                  ...current.inputMappings,
+                  body: { kind: 'literal', value: reference },
+                },
+              }),
+              `${node.id}:file:${reference.artifactId}`,
+            );
+            return undefined;
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function useMappingInsertion({
+  mappings,
+  rowsShown,
+}: Readonly<{
+  mappings: ReturnType<typeof useInputMappingDraft>;
+  rowsShown: ReturnType<typeof useRowDisclosure>;
+}>) {
+  const activeRowId = useRef<string | undefined>(undefined);
+  function openRow({
+    rowId,
+    focusKey,
+  }: Readonly<{ rowId: string; focusKey: boolean }>) {
+    activeRowId.current = rowId;
+    rowsShown.openRow({ rowId, focusKey });
+  }
+
+  /** Fills the open row you were editing, or adds one named after the field. */
+  function insert(source: InsertedSource, fieldName: string) {
+    const active = mappings.rows.find(
+      (row) => row.id === activeRowId.current && rowsShown.open.has(row.id),
+    );
+    const withSource = (
+      base: Pick<InputMappingDraftRow, 'id' | 'destinationKey'>,
+    ): InputMappingDraftRow => ({ ...base, ...source });
+    if (active !== undefined) {
+      mappings.changeRow(
+        withSource({ id: active.id, destinationKey: active.destinationKey }),
+      );
+      return;
+    }
+    const taken = mappings.rows.some((row) => row.destinationKey === fieldName);
+    const key = taken ? '' : fieldName;
+    const id = mappings.addRow((rowId) =>
+      withSource({ id: rowId, destinationKey: key }),
+    );
+    openRow({ rowId: id, focusKey: key === '' });
+  }
+
+  return { activeRowId, openRow, insert };
 }

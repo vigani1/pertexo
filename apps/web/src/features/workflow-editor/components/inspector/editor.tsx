@@ -34,6 +34,7 @@ import type { useEditorActions } from '../../hooks/use-editor-actions';
 import { InspectorPanel } from './panel';
 import type { ChannelLookupScope } from './fields/slack-channel-field';
 import type { InspectorTab } from '../../hooks/use-inspector-navigation';
+import type { NodeInspectorActions } from './node';
 import type { FinishedTest } from '../../hooks/use-last-test';
 
 type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
@@ -43,34 +44,7 @@ type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
  * guarded actions, and the Test tab remembers the last passed test so the
  * next step can reuse its output.
  */
-export function EditorInspector({
-  apiClient,
-  workspaceId,
-  workspaceName,
-  workflowId,
-  definitions,
-  codeSettings,
-  connections,
-  userId,
-  lookUpChannels,
-  addConnections,
-  editable,
-  tab,
-  onTabChange,
-  actions,
-  ensureSaved,
-  testRef,
-  rememberedTest,
-  onTestFinished,
-  onTestPassed,
-  onClose,
-  onAddStepAfter,
-  onAddFailureHandler,
-  onAddToBody,
-  onDuplicateSelection,
-  onRemoveEdge,
-  renderStepRuns,
-}: Readonly<{
+type EditorInspectorProps = Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
   workspaceName: string;
@@ -101,7 +75,36 @@ export function EditorInspector({
   onAddToBody: (loopId: string, returnFocus: HTMLElement) => void;
   onDuplicateSelection: () => void;
   onRemoveEdge: (edgeId: string) => void;
-}>) {
+}>;
+
+export function EditorInspector({
+  apiClient,
+  workspaceId,
+  workspaceName,
+  workflowId,
+  definitions,
+  codeSettings,
+  connections,
+  userId,
+  lookUpChannels,
+  addConnections,
+  editable,
+  tab,
+  onTabChange,
+  actions,
+  ensureSaved,
+  testRef,
+  rememberedTest,
+  onTestFinished,
+  onTestPassed,
+  onClose,
+  onAddStepAfter,
+  onAddFailureHandler,
+  onAddToBody,
+  onDuplicateSelection,
+  onRemoveEdge,
+  renderStepRuns,
+}: EditorInspectorProps) {
   const store = useEditorStoreApi();
   const navigate = useNavigate();
   const copy = useCopyToClipboard();
@@ -159,44 +162,20 @@ export function EditorInspector({
         />
       )}
       {...(renderStepRuns === undefined ? {} : { renderRuns: renderStepRuns })}
-      actions={{
-        onAddAfter: (returnFocus) => {
-          if (selectedNodeId !== null)
-            onAddStepAfter(selectedNodeId, returnFocus);
-        },
-        onDuplicate: onDuplicateSelection,
-        onCopyId: copyStepId,
-        onDiscuss: () => {
-          if (selectedNodeId !== null)
-            void navigate({
-              to: '/w/$workspaceId/workflows/$workflowId/comments',
-              params: { workspaceId, workflowId },
-              search: { step: selectedNodeId },
-            });
-        },
-        onDelete: () => {
-          if (selectedNodeId !== null)
-            actions.request({
-              kind: 'delete',
-              nodeIds: [selectedNodeId],
-              edgeIds: [],
-            });
-        },
+      actions={inspectorActions({
+        store,
+        navigate,
+        selectedNodeId,
+        copyStepId,
+        workspaceId,
+        workflowId,
+        actions,
+        onAddStepAfter,
+        onDuplicateSelection,
         onClose,
-        onConnect: (link: Connection) => {
-          const state = store.getState();
-          const next = linkWorkflowNodes(state.graph, link);
-          if (next !== null) state.transact(next);
-        },
         onRemoveEdge,
-        onDiscardScratch: actions.discardScratch,
-        onSelectStep: (nodeId) => {
-          actions.request({ kind: 'select', nodeIds: [nodeId] });
-        },
-        onAddToBody: (opener) => {
-          if (selectedNodeId !== null) onAddToBody(selectedNodeId, opener);
-        },
-      }}
+        onAddToBody,
+      })}
       renderTest={(nodeId, stepSideEffect) => (
         <NodeTestPanel
           apiClient={apiClient}
@@ -285,4 +264,74 @@ function previewUnavailable(
   )
     return 'This handler reads an actual failure. Run the workflow to verify its failure path; a real single-step preview cannot supply that evidence.';
   return undefined;
+}
+
+function inspectorActions({
+  store,
+  navigate,
+  selectedNodeId,
+  copyStepId,
+  workspaceId,
+  workflowId,
+  actions,
+  onAddStepAfter,
+  onDuplicateSelection,
+  onClose,
+  onRemoveEdge,
+  onAddToBody,
+}: Readonly<
+  Pick<
+    EditorInspectorProps,
+    | 'workspaceId'
+    | 'workflowId'
+    | 'actions'
+    | 'onAddStepAfter'
+    | 'onDuplicateSelection'
+    | 'onClose'
+    | 'onRemoveEdge'
+    | 'onAddToBody'
+  > & {
+    store: ReturnType<typeof useEditorStoreApi>;
+    navigate: ReturnType<typeof useNavigate>;
+    selectedNodeId: string | null;
+    copyStepId: () => void;
+  }
+>): NodeInspectorActions {
+  return {
+    onAddAfter: (returnFocus) => {
+      if (selectedNodeId !== null) onAddStepAfter(selectedNodeId, returnFocus);
+    },
+    onDuplicate: onDuplicateSelection,
+    onCopyId: copyStepId,
+    onDiscuss: () => {
+      if (selectedNodeId !== null)
+        void navigate({
+          to: '/w/$workspaceId/workflows/$workflowId/comments',
+          params: { workspaceId, workflowId },
+          search: { step: selectedNodeId },
+        });
+    },
+    onDelete: () => {
+      if (selectedNodeId !== null)
+        actions.request({
+          kind: 'delete',
+          nodeIds: [selectedNodeId],
+          edgeIds: [],
+        });
+    },
+    onClose,
+    onConnect: (link: Connection) => {
+      const state = store.getState();
+      const next = linkWorkflowNodes(state.graph, link);
+      if (next !== null) state.transact(next);
+    },
+    onRemoveEdge,
+    onDiscardScratch: actions.discardScratch,
+    onSelectStep: (nodeId) => {
+      actions.request({ kind: 'select', nodeIds: [nodeId] });
+    },
+    onAddToBody: (opener) => {
+      if (selectedNodeId !== null) onAddToBody(selectedNodeId, opener);
+    },
+  };
 }
