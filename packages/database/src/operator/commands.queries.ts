@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import type { operatorCommands } from '../schema/runs/operator.js';
 
-import { type OperatorCommandRecord } from './contract.js';
+import type { OperatorCommandRecord } from './contract.js';
 
 const persistedDateSchema = z
   .union([z.date(), z.string()])

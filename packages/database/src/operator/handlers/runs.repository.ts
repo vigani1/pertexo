@@ -8,11 +8,7 @@ import {
 import { requestWorkflowRunCancellation } from '../../runs/commands/cancel.js';
 
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import {
-  type OperatorDecision,
-  TERMINAL_RUN_STATUSES,
-  RESUME_PAGE,
-} from './contract.js';
+import type { OperatorDecision } from './contract.js';
 import { withoutNulls, enqueueAdvance } from './enqueue.js';
 
 /**
@@ -212,3 +208,14 @@ function checkpointIsDue(workspaceId: string, runId: string) {
     ),
   );
 }
+
+const TERMINAL_RUN_STATUSES = new Set([
+  'succeeded',
+  'failed',
+  'canceled',
+  'timed_out',
+  'outcome_unknown',
+]);
+
+/** Due nodes one resume marks; the result says when more remain. */
+const RESUME_PAGE = 100;

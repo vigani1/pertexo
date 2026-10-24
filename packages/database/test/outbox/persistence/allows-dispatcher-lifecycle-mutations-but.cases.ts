@@ -13,7 +13,7 @@ import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { OperatorCommandConflictError } from '../../../src/operator/repository.js';
+import { OperatorCommandConflictError } from '../../../src/operator/input.js';
 import { insertOutboxEvent } from '../../../src/outbox/events.repository.js';
 import { auditEvents, outboxEvents } from '../../../src/schema.js';
 

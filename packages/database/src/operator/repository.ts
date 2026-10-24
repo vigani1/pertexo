@@ -13,15 +13,16 @@ import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '../tenant-access/transactions.js';
+import { cancelRun, resumeDueWork } from './handlers/runs.repository.js';
 import {
-  cancelRun,
   reconcileAttempt,
   recordUnknownOutcomeEvidence,
-  redispatchFailedOutbox,
+} from './handlers/attempts.repository.js';
+import { redispatchFailedOutbox } from './handlers/outbox.repository.js';
+import {
   requestRunReplay,
-  resumeDueWork,
   retryTriggerReconciliation,
-} from './command-handlers.js';
+} from './handlers/workflows.repository.js';
 import {
   OperatorCommandConflictError,
   redispatchInputSchema,
@@ -32,38 +33,23 @@ import {
   unknownEvidenceInputSchema,
   getCommandInputSchema,
   optionsSchema,
-  type OperatorCommandDatabaseOptions,
-  type RedispatchFailedOutboxInput,
-  type ReconcileOperatorAttemptInput,
-  type OperatorRunCommandInput,
-  type OperatorWorkflowCommandInput,
-  type ReplayOperatorRunInput,
-  type RecordUnknownOutcomeEvidenceInput,
-  type GetOperatorCommandInput,
-  type GenericOperatorCommandResult,
-  type OperatorCommandOutcome,
-  type OperatorCommandDatabase,
-  type CommandRequest,
+} from './input.js';
+import type {
+  OperatorCommandDatabaseOptions,
+  RedispatchFailedOutboxInput,
+  ReconcileOperatorAttemptInput,
+  OperatorRunCommandInput,
+  OperatorWorkflowCommandInput,
+  ReplayOperatorRunInput,
+  RecordUnknownOutcomeEvidenceInput,
+  GetOperatorCommandInput,
+  GenericOperatorCommandResult,
+  OperatorCommandOutcome,
+  OperatorCommandDatabase,
+  CommandRequest,
 } from './contract.js';
 import { commandRecord } from './commands.queries.js';
 import { requestFingerprint } from './fingerprint.js';
-
-export {
-  OperatorCommandConflictError,
-  type OperatorCommandDatabaseOptions,
-  type RedispatchFailedOutboxInput,
-  type ReconcileOperatorAttemptInput,
-  type OperatorRunCommandInput,
-  type OperatorWorkflowCommandInput,
-  type ReplayOperatorRunInput,
-  type RecordUnknownOutcomeEvidenceInput,
-  type GetOperatorCommandInput,
-  type GenericOperatorCommandResult,
-  type OperatorCommandOutcome,
-  type OperatorCommandResult,
-  type OperatorCommandRecord,
-  type OperatorCommandDatabase,
-} from './contract.js';
 /** Seed of the advisory lock that serializes requests reusing one command id. */
 const COMMAND_LOCK_SEED = 7_166_118_813;
 
