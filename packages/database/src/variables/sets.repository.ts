@@ -1,7 +1,13 @@
-import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaceVariables,
+  workspaceVariableSetRevisions,
+} from '../schema/variables.js';
+import { auditEvents } from '../schema/foundation.js';
 import {
   canonicalJson,
   WORKSPACE_VARIABLE_LIMITS,
@@ -20,6 +26,7 @@ export async function replaceWorkspaceVariables(
   client: PoolClient,
   input: Parameters<WorkspaceVariablesStore['replace']>[0],
 ) {
+  const db = drizzle(client);
   const identity = {
     workspaceId: input.workspaceId,
     scope: input.actorId,
@@ -64,42 +71,44 @@ export async function replaceWorkspaceVariables(
   let revision = current.revision;
   if (names.length > 0) {
     revision = current.revision + 1;
-    const inserted = await client.query<{ revision: number }>(
-      `insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json,descriptions_json)
-       values($1,$2,$3::jsonb,$4::jsonb) on conflict do nothing returning revision`,
-      [
-        input.workspaceId,
+    const inserted = await db
+      .insert(workspaceVariableSetRevisions)
+      .values({
+        workspaceId: input.workspaceId,
         revision,
-        canonicalJson(input.values),
-        canonicalJson(descriptions),
-      ],
-    );
-    if (inserted.rowCount !== 1) throw new WorkspaceVariablesConflictError();
-    const saved = await client.query<{ revision: number }>(
-      `insert into app.workspace_variables(workspace_id,revision) values($1,$2)
-       on conflict(workspace_id) do update set revision=excluded.revision,updated_at=clock_timestamp()
-       where workspace_variables.revision=$3 returning revision`,
-      [input.workspaceId, revision, input.expectedRevision],
-    );
-    if (saved.rowCount !== 1) throw new WorkspaceVariablesConflictError();
-    await client.query(
-      `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
-   values($1,$2,$3,'workspace.variables_changed','workspace_variables',$2,$4,$5,$6::jsonb)`,
-      [
-        generatePersistedId(),
-        input.workspaceId,
-        input.actorId,
-        input.requestId ?? null,
-        input.traceId ?? null,
-        JSON.stringify({
-          revision,
-          changedNames: names.slice(0, WORKSPACE_VARIABLE_LIMITS.count),
-          ...(names.length > WORKSPACE_VARIABLE_LIMITS.count
-            ? { changedCount: names.length, changedNamesTruncated: true }
-            : {}),
-        }),
-      ],
-    );
+        values: input.values,
+        descriptions,
+      })
+      .onConflictDoNothing()
+      .returning({ revision: workspaceVariableSetRevisions.revision });
+    if (inserted.length !== 1) throw new WorkspaceVariablesConflictError();
+    const saved = await db
+      .insert(workspaceVariables)
+      .values({ workspaceId: input.workspaceId, revision })
+      .onConflictDoUpdate({
+        target: workspaceVariables.workspaceId,
+        set: { revision, updatedAt: sql`clock_timestamp()` },
+        setWhere: eq(workspaceVariables.revision, input.expectedRevision),
+      })
+      .returning({ revision: workspaceVariables.revision });
+    if (saved.length !== 1) throw new WorkspaceVariablesConflictError();
+    await db.insert(auditEvents).values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorId,
+      action: 'workspace.variables_changed',
+      targetType: 'workspace_variables',
+      targetId: input.workspaceId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: {
+        revision,
+        changedNames: names.slice(0, WORKSPACE_VARIABLE_LIMITS.count),
+        ...(names.length > WORKSPACE_VARIABLE_LIMITS.count
+          ? { changedCount: names.length, changedNamesTruncated: true }
+          : {}),
+      },
+    });
   }
   const accepted = { revision, changed: names.length > 0 };
   await completeCommand(client, identity, accepted);
@@ -110,30 +119,34 @@ async function readCurrentVariableRevision(
   client: PoolClient,
   workspaceId: string,
 ) {
-  const found = await client.query<{ revision: number }>(
-    'select revision from app.workspace_variables where workspace_id=$1 for update',
-    [workspaceId],
-  );
-  const row = found.rows[0];
+  const db = drizzle(client);
+  const [head] = await db
+    .select({ revision: workspaceVariables.revision })
+    .from(workspaceVariables)
+    .where(eq(workspaceVariables.workspaceId, workspaceId))
+    .for('update');
   const stored =
-    row === undefined
+    head === undefined
       ? undefined
       : (
-          await client.query<{
-            values_json: WorkspaceVariableValues;
-            descriptions_json: Readonly<Record<string, string>>;
-          }>(
-            'select values_json,descriptions_json from app.workspace_variable_set_revisions where workspace_id=$1 and revision=$2',
-            [workspaceId, row.revision],
-          )
-        ).rows[0];
-  if (row !== undefined && stored === undefined)
+          await db
+            .select({
+              values: workspaceVariableSetRevisions.values,
+              descriptions: workspaceVariableSetRevisions.descriptions,
+            })
+            .from(workspaceVariableSetRevisions)
+            .where(
+              and(
+                eq(workspaceVariableSetRevisions.workspaceId, workspaceId),
+                eq(workspaceVariableSetRevisions.revision, head.revision),
+              ),
+            )
+        )[0];
+  if (head !== undefined && stored === undefined)
     throw new Error('Workspace variable revision is missing');
-  const current = {
-    revision: row?.revision ?? 0,
-    values: stored?.values_json ?? {},
-    descriptions: stored?.descriptions_json ?? {},
+  return {
+    revision: head?.revision ?? 0,
+    values: stored?.values ?? {},
+    descriptions: stored?.descriptions ?? {},
   };
-
-  return current;
 }

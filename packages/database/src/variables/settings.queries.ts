@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import type { WorkspaceVariablesResponse } from '@pertexo/contracts';
 import { and, eq } from 'drizzle-orm';
 import { EMPTY_VARIABLE_SNAPSHOT } from '@pertexo/workflow-model';
@@ -51,19 +52,23 @@ export async function lockWorkspaceVariableNames(
   client: PoolClient,
   workspaceId: string,
 ): Promise<readonly string[]> {
-  const head = await client.query<{ revision: number }>(
-    'select revision from app.workspace_variables where workspace_id=$1 for share',
-    [workspaceId],
-  );
-  const revision = head.rows[0]?.revision;
-  if (revision === undefined) return [];
-  const found = await client.query<{ names: string[] }>(
-    `select array(select jsonb_object_keys(values_json)) names
-     from app.workspace_variable_set_revisions where workspace_id=$1 and revision=$2`,
-    [workspaceId, revision],
-  );
-  const row = found.rows[0];
-  if (row === undefined)
+  const db = drizzle(client);
+  const [head] = await db
+    .select({ revision: workspaceVariables.revision })
+    .from(workspaceVariables)
+    .where(eq(workspaceVariables.workspaceId, workspaceId))
+    .for('share');
+  if (head === undefined) return [];
+  const [stored] = await db
+    .select({ values: workspaceVariableSetRevisions.values })
+    .from(workspaceVariableSetRevisions)
+    .where(
+      and(
+        eq(workspaceVariableSetRevisions.workspaceId, workspaceId),
+        eq(workspaceVariableSetRevisions.revision, head.revision),
+      ),
+    );
+  if (stored === undefined)
     throw new Error('Workspace variable revision is missing');
-  return row.names;
+  return Object.keys(stored.values);
 }

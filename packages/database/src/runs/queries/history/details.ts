@@ -5,12 +5,11 @@ import {
   RUN_DETAILS_RETENTION_SQL,
 } from '../../data-policy.js';
 import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
-import { variableSetSnapshotSql } from '../../../variables/values.queries.js';
-import {
-  workspaceVariableSnapshotSchema,
-  type WorkspaceVariableSnapshot,
-} from '@pertexo/workflow-model';
-import { sql } from 'drizzle-orm';
+import { readVariableSetValues } from '../../../variables/values.queries.js';
+import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
+import { sql, and, eq } from 'drizzle-orm';
+import { workflowRuns } from '../../../schema/runs/execution.js';
+import { alias } from 'drizzle-orm/pg-core';
 import { workflowGraphStepSql } from '../execution/graph-step.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
@@ -228,16 +227,29 @@ export async function readWorkflowRunVariables(
 ): Promise<WorkspaceVariableSnapshot | null | undefined> {
   const parsed = runDataInputSchema.parse(input);
   return withResourceRunRead(pool, parsed, async (transaction) => {
-    const result = await transaction.db.execute<{
-      snapshot: unknown;
-      retained: boolean;
-    }>(
-      sql`select ${sql.raw(variableSetSnapshotSql('run'))} snapshot,(run.details_purged_at IS NULL AND (run.completed_at IS NULL OR run.completed_at>clock_timestamp()-${sql.raw(RUN_DETAILS_RETENTION_SQL)}) AND ${sql.raw(retainedTestRunSql('run', 'clock_timestamp()'))}) retained from app.workflow_runs run left join app.workspace_variable_set_revisions variable_set on variable_set.workspace_id=run.workspace_id and variable_set.revision=run.variable_set_revision where run.workspace_id=${transaction.workspaceId} and run.id=${parsed.runId}`,
-    );
-    const row = result.rows[0];
+    const run = alias(workflowRuns, 'run');
+    const [row] = await transaction.db
+      .select({
+        revision: run.variableSetRevision,
+        retained: sql<boolean>`(${run.detailsPurgedAt} IS NULL AND (${run.completedAt} IS NULL OR ${run.completedAt}>clock_timestamp()-${sql.raw(RUN_DETAILS_RETENTION_SQL)}) AND ${sql.raw(retainedTestRunSql('run', 'clock_timestamp()'))})`,
+      })
+      .from(run)
+      .where(
+        and(
+          eq(run.workspaceId, transaction.workspaceId),
+          eq(run.id, parsed.runId),
+        ),
+      );
     if (row === undefined) return undefined;
     if (!row.retained) return null;
-    return workspaceVariableSnapshotSchema.parse(row.snapshot);
+    return {
+      revision: row.revision ?? 0,
+      values: await readVariableSetValues(
+        transaction.db,
+        transaction.workspaceId,
+        row.revision,
+      ),
+    };
   });
 }
 

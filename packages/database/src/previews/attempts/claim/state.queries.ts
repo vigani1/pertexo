@@ -1,5 +1,5 @@
-import { variableSetValuesSql } from '../../../variables/values.queries.js';
-import { workspaceVariableValuesSchema } from '@pertexo/workflow-model';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { readVariableSetValues } from '../../../variables/values.queries.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { executableNodeSchema } from '../../executable-node.js';
@@ -31,7 +31,7 @@ export async function loadPreviewLease(
       executor_key: string;
       executor_version: number;
       input_ref: unknown;
-      variable_values: unknown;
+      variable_set_revision: number | null;
       may_contact_provider: boolean;
       may_cause_external_side_effect: boolean;
       node_id: string;
@@ -43,15 +43,13 @@ export async function loadPreviewLease(
     }> & { execution_deadline_at: Date; retention_expires_at: Date }
   >(
     `select definition_key,definition_version,dry_run,executable_node_json,
-            executor_key,executor_version,input_ref,${variableSetValuesSql('preview')} variable_values,may_contact_provider,
+            executor_key,executor_version,input_ref,preview.variable_set_revision,may_contact_provider,
              may_cause_external_side_effect,node_id,operation_key,provider_key,
              side_effect_class,
             traceparent,workflow_id,
             execution_deadline_at,
             expires_at as retention_expires_at
      from app.preview_runs preview
-     left join app.workspace_variable_set_revisions variable_set
-       on variable_set.workspace_id=preview.workspace_id and variable_set.revision=preview.variable_set_revision
      where preview.workspace_id=$1 and preview.id=$2`,
     [input.workspaceId, input.previewRunId],
   );
@@ -94,7 +92,11 @@ export async function loadPreviewLease(
     executionDeadlineAt: run.execution_deadline_at,
     retentionExpiresAt: run.retention_expires_at,
     input: parseStoredExecutionValue(run.input_ref),
-    variables: workspaceVariableValuesSchema.parse(run.variable_values),
+    variables: await readVariableSetValues(
+      drizzle(client),
+      input.workspaceId,
+      run.variable_set_revision,
+    ),
     mayContactProvider: run.may_contact_provider,
     mayCauseExternalSideEffect: run.may_cause_external_side_effect,
     nodeId: run.node_id,
