@@ -1,7 +1,12 @@
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { nodeRuns, workflowRuns } from '../../../schema/runs/execution.js';
+import { runFailureNotificationIntents } from '../../../schema/runs/completion/notifications.js';
+import { outboxEvents } from '../../../schema/transport.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { auditFailureNotification } from '../../../notifications/delivery/evidence.repository.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
-
-import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { v5 as uuidv5 } from 'uuid';
@@ -97,54 +102,19 @@ export async function persistFailureNotificationIntent(
       ? {}
       : { traceparent: input.traceparent }),
   } as const;
-  const inserted = await client.query(
-    `insert into app.run_failure_notification_intents (
-       id,workspace_id,workflow_run_id,terminal_event_sequence,destination_id,destination_config_version,side_effect_class,
-       connection_secret_version_id,context,context_checksum
-      ) select $1,run.workspace_id,run.id,$4,
-               run.failure_notification_destination_id,
-               run.failure_notification_destination_config_version,
-               run.failure_notification_side_effect_class,
-               run.failure_notification_connection_secret_version_id,$8::jsonb,$9
-        from app.workflow_runs run
-       where run.workspace_id=$2 and run.id=$3
-         and run.failure_notification_destination_id=$5
-         and run.failure_notification_destination_config_version=$6
-         and run.failure_notification_side_effect_class=$7
-         and run.failure_notification_connection_secret_version_id is not null
-     on conflict (workflow_run_id,terminal_event_sequence) do nothing
-     returning id`,
-    [
-      intentId,
-      input.workspaceId,
-      input.runId,
-      terminalEvent.sequence,
-      input.destinationId,
-      input.destinationConfigVersion,
-      input.sideEffectClass,
-      contextJson,
-      contextChecksum,
-    ],
-  );
-  if (inserted.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
-  await client.query(
-    `insert into app.outbox_events (
-       id,workspace_id,job_name,aggregate_type,aggregate_id,payload,payload_checksum
-     ) values ($1,$2,'deliver-run-failure-notification','run-failure-notification',$3,$4::jsonb,$5)`,
-    [
-      outboxEventId,
-      input.workspaceId,
-      intentId,
-      serializeStoredExecutionJsonValue(payload),
-      canonicalOutboxPayloadChecksum(payload),
-    ],
-  );
-  await client.query(
-    `insert into app.run_failure_notification_audit_facts
-       (id,workspace_id,notification_intent_id,fact_type,attempt_number,possibly_dispatched)
-     values ($1,$2,$3,'intent_created',0,false)`,
-    [generatePersistedId(), input.workspaceId, intentId],
-  );
+  await writeNotificationRecords(client, input, {
+    intentId,
+    terminalEventSequence: terminalEvent.sequence,
+    contextJson,
+    contextChecksum,
+    outboxEventId,
+    payload,
+    pins: {
+      destinationId: input.destinationId,
+      destinationConfigVersion: input.destinationConfigVersion,
+      sideEffectClass: input.sideEffectClass,
+    },
+  });
 }
 
 async function readPrimaryFailure(
@@ -174,31 +144,187 @@ async function readPrimaryFailure(
       safeErrorCode: terminalEvent.reasonCode ?? 'execution.deadline_exceeded',
     };
   } else {
-    const physical = await client.query<{
-      current_attempt_number: number | null;
-      node_id: string;
-      safe_error_code: string | null;
-      status: string;
-    }>(
-      `select node_id,status,current_attempt_number,safe_error_code
-       from app.node_runs
-       where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3`,
-      [input.workspaceId, input.runId, primary.invocationKey],
-    );
-    const node = physical.rows[0];
-    if (node?.node_id !== primary.nodeId || node.status !== primary.status)
+    const [node] = await drizzle(client)
+      .select({
+        nodeId: nodeRuns.nodeId,
+        status: nodeRuns.status,
+        currentAttemptNumber: nodeRuns.currentAttemptNumber,
+        safeErrorCode: nodeRuns.safeErrorCode,
+      })
+      .from(nodeRuns)
+      .where(
+        and(
+          eq(nodeRuns.workspaceId, input.workspaceId),
+          eq(nodeRuns.workflowRunId, input.runId),
+          eq(nodeRuns.invocationKey, primary.invocationKey),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    if (node?.nodeId !== primary.nodeId || node.status !== primary.status)
       throw new CoordinatorRunStateCorruptError();
     primaryFailure = {
       nodeId: primary.nodeId,
       invocationKey: primary.invocationKey,
       nodeStatus: primary.status,
-      attemptNumber: node.current_attempt_number ?? primary.attemptNumber,
+      attemptNumber: node.currentAttemptNumber ?? primary.attemptNumber,
       safeErrorCode:
-        node.safe_error_code ??
+        node.safeErrorCode ??
         terminalEvent.reasonCode ??
         `execution.${primary.status}`,
     };
   }
 
   return primaryFailure;
+}
+
+async function writeNotificationRecords(
+  client: PoolClient,
+  input: Parameters<typeof persistFailureNotificationIntent>[1],
+  record: NotificationWrite,
+): Promise<void> {
+  const db = drizzle(client);
+  const inserted = await db
+    .insert(runFailureNotificationIntents)
+    .select(notificationSource(db, input, record))
+    .onConflictDoNothing({
+      target: [
+        runFailureNotificationIntents.workflowRunId,
+        runFailureNotificationIntents.terminalEventSequence,
+      ],
+    })
+    .returning({ id: runFailureNotificationIntents.id })
+    .catch(rethrowQueryFailure);
+  if (inserted.length !== 1) throw new CoordinatorRunStateCorruptError();
+  await db
+    .insert(outboxEvents)
+    .values({
+      id: record.outboxEventId,
+      workspaceId: input.workspaceId,
+      jobName: 'deliver-run-failure-notification',
+      aggregateType: 'run-failure-notification',
+      aggregateId: record.intentId,
+      payload: sql`${serializeStoredExecutionJsonValue(record.payload)}::jsonb`,
+      payloadChecksum: canonicalOutboxPayloadChecksum(record.payload),
+    })
+    .catch(rethrowQueryFailure);
+  await auditFailureNotification(client, {
+    workspaceId: input.workspaceId,
+    intentId: record.intentId,
+    factType: 'intent_created',
+    attemptNumber: 0,
+    possiblyDispatched: false,
+  });
+}
+
+type NotificationWrite = Readonly<{
+  pins: Readonly<{
+    destinationId: string;
+    destinationConfigVersion: number;
+    sideEffectClass: string;
+  }>;
+  intentId: string;
+  terminalEventSequence: number;
+  contextJson: string;
+  contextChecksum: string;
+  outboxEventId: string;
+  payload: Readonly<Record<string, string>>;
+}>;
+
+function notificationSource(
+  db: Pick<NodePgDatabase, 'select'>,
+  input: Pick<
+    Parameters<typeof persistFailureNotificationIntent>[1],
+    'workspaceId' | 'runId'
+  >,
+  record: NotificationWrite,
+) {
+  // INSERT ... SELECT needs the full field order, including the original partial insert's defaults.
+  return db
+    .select({
+      id: sql<string>`${record.intentId}`.as(
+        runFailureNotificationIntents.id.name,
+      ),
+      workspaceId: workflowRuns.workspaceId,
+      workflowRunId: workflowRuns.id,
+      terminalEventSequence: sql<number>`${record.terminalEventSequence}`.as(
+        runFailureNotificationIntents.terminalEventSequence.name,
+      ),
+      destinationId:
+        sql<string>`${workflowRuns.failureNotificationDestinationId}`.as(
+          runFailureNotificationIntents.destinationId.name,
+        ),
+      destinationConfigVersion:
+        sql<number>`${workflowRuns.failureNotificationDestinationConfigVersion}`.as(
+          runFailureNotificationIntents.destinationConfigVersion.name,
+        ),
+      sideEffectClass: sql<
+        typeof runFailureNotificationIntents.$inferSelect.sideEffectClass
+      >`${workflowRuns.failureNotificationSideEffectClass}`.as(
+        runFailureNotificationIntents.sideEffectClass.name,
+      ),
+      context: sql<unknown>`${record.contextJson}::jsonb`.as(
+        runFailureNotificationIntents.context.name,
+      ),
+      contextChecksum: sql<string>`${record.contextChecksum}`.as(
+        runFailureNotificationIntents.contextChecksum.name,
+      ),
+      status: sql<string>`'pending'`.as(
+        runFailureNotificationIntents.status.name,
+      ),
+      deliveryAttempts: sql<number>`0`.as(
+        runFailureNotificationIntents.deliveryAttempts.name,
+      ),
+      dispatchMarkedAt: sql<null>`null`.as(
+        runFailureNotificationIntents.dispatchMarkedAt.name,
+      ),
+      recoveryAt: sql<null>`null`.as(
+        runFailureNotificationIntents.recoveryAt.name,
+      ),
+      nextDeliveryAt: sql<null>`null`.as(
+        runFailureNotificationIntents.nextDeliveryAt.name,
+      ),
+      safeErrorCode: sql<null>`null`.as(
+        runFailureNotificationIntents.safeErrorCode.name,
+      ),
+      possiblyDispatched: sql<null>`null`.as(
+        runFailureNotificationIntents.possiblyDispatched.name,
+      ),
+      providerReference: sql<null>`null`.as(
+        runFailureNotificationIntents.providerReference.name,
+      ),
+      completedAt: sql<null>`null`.as(
+        runFailureNotificationIntents.completedAt.name,
+      ),
+      createdAt: sql<string>`clock_timestamp()`.as(
+        runFailureNotificationIntents.createdAt.name,
+      ),
+      updatedAt: sql<string>`clock_timestamp()`.as(
+        runFailureNotificationIntents.updatedAt.name,
+      ),
+      connectionSecretVersionId:
+        workflowRuns.failureNotificationConnectionSecretVersionId,
+      deliveryBinding: sql<null>`null`.as(
+        runFailureNotificationIntents.deliveryBinding.name,
+      ),
+    })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, input.workspaceId),
+        eq(workflowRuns.id, input.runId),
+        eq(
+          workflowRuns.failureNotificationDestinationId,
+          record.pins.destinationId,
+        ),
+        eq(
+          workflowRuns.failureNotificationDestinationConfigVersion,
+          record.pins.destinationConfigVersion,
+        ),
+        eq(
+          workflowRuns.failureNotificationSideEffectClass,
+          record.pins.sideEffectClass,
+        ),
+        isNotNull(workflowRuns.failureNotificationConnectionSecretVersionId),
+      ),
+    );
 }
