@@ -38,17 +38,7 @@ export function VersionTimeline({
   onRestore,
   onDuplicate,
   onExport,
-}: Readonly<{
-  versions: readonly WorkflowVersionResponse[];
-  liveVersionId: string | null;
-  liveLabel: string;
-  canRestore: boolean;
-  promotionWorkspaceId?: string;
-  onPreview: (version: WorkflowVersionResponse) => void;
-  onRestore: (version: WorkflowVersionResponse) => void;
-  onDuplicate?: ((version: WorkflowVersionResponse) => void) | undefined;
-  onExport?: ((version: WorkflowVersionResponse) => void) | undefined;
-}>) {
+}: VersionTimelineProps) {
   return (
     <ol
       aria-label="Published versions"
@@ -95,99 +85,142 @@ export function VersionTimeline({
                   · {stepCountLabel(version.graph.nodes.length)}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-label={`Preview ${label}`}
-                  onClick={() => {
-                    onPreview(version);
-                  }}
-                >
-                  <EyeIcon aria-hidden="true" data-icon="inline-start" />
-                  Preview
-                </Button>
-                {canRestore ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      onRestore(version);
-                    }}
-                  >
-                    <RotateCcwIcon
-                      aria-hidden="true"
-                      data-icon="inline-start"
-                    />
-                    Restore to draft
-                  </Button>
-                ) : null}
-                {/* Rarer moves wait in one menu, so a row reads at a glance. */}
-                {promotionWorkspaceId === undefined &&
-                onExport === undefined &&
-                onDuplicate === undefined ? null : (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      aria-label={`More for ${label}`}
-                      className={buttonVariants({
-                        variant: 'ghost',
-                        size: 'icon-sm',
-                      })}
-                    >
-                      <EllipsisIcon />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuGroup>
-                        {promotionWorkspaceId === undefined ? null : (
-                          <DropdownMenuLinkItem
-                            render={
-                              <Link
-                                to="/w/$workspaceId/settings/promotion"
-                                params={{ workspaceId: promotionWorkspaceId }}
-                                search={promotionSearch([
-                                  {
-                                    workflowId: version.workflowId,
-                                    versionId: version.id,
-                                  },
-                                ])}
-                              />
-                            }
-                          >
-                            <SendIcon aria-hidden="true" />
-                            Promote {label}…
-                          </DropdownMenuLinkItem>
-                        )}
-                        {onExport === undefined ? null : (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              onExport(version);
-                            }}
-                          >
-                            <DownloadIcon aria-hidden="true" />
-                            Export {label}
-                          </DropdownMenuItem>
-                        )}
-                        {onDuplicate === undefined ? null : (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              onDuplicate(version);
-                            }}
-                          >
-                            <CopyIcon aria-hidden="true" />
-                            Duplicate {label}
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
+              <VersionActions
+                version={version}
+                label={label}
+                canRestore={canRestore}
+                promotionWorkspaceId={promotionWorkspaceId}
+                onPreview={onPreview}
+                onRestore={onRestore}
+                onDuplicate={onDuplicate}
+                onExport={onExport}
+              />
             </div>
           </li>
         );
       })}
     </ol>
+  );
+}
+
+type VersionTimelineProps = Readonly<{
+  versions: readonly WorkflowVersionResponse[];
+  liveVersionId: string | null;
+  liveLabel: string;
+  canRestore: boolean;
+  promotionWorkspaceId?: string;
+  onPreview: (version: WorkflowVersionResponse) => void;
+  onRestore: (version: WorkflowVersionResponse) => void;
+  onDuplicate?: ((version: WorkflowVersionResponse) => void) | undefined;
+  onExport?: ((version: WorkflowVersionResponse) => void) | undefined;
+}>;
+
+function VersionActions({
+  version,
+  label,
+  canRestore,
+  promotionWorkspaceId,
+  onPreview,
+  onRestore,
+  onDuplicate,
+  onExport,
+}: Readonly<{
+  version: WorkflowVersionResponse;
+  label: string;
+  promotionWorkspaceId: string | undefined;
+}> &
+  Pick<
+    VersionTimelineProps,
+    'canRestore' | 'onPreview' | 'onRestore' | 'onDuplicate' | 'onExport'
+  >) {
+  const menuUnavailable =
+    promotionWorkspaceId === undefined &&
+    onExport === undefined &&
+    onDuplicate === undefined;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        aria-label={`Preview ${label}`}
+        onClick={() => {
+          onPreview(version);
+        }}
+      >
+        <EyeIcon aria-hidden="true" data-icon="inline-start" />
+        Preview
+      </Button>
+      {canRestore ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            onRestore(version);
+          }}
+        >
+          <RotateCcwIcon aria-hidden="true" data-icon="inline-start" />
+          Restore to draft
+        </Button>
+      ) : null}
+      {/* Rarer moves wait in one menu, so a row reads at a glance. */}
+      {menuUnavailable ? null : (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label={`More for ${label}`}
+            className={buttonVariants({
+              variant: 'ghost',
+              size: 'icon-sm',
+            })}
+          >
+            <EllipsisIcon />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuGroup>
+              {promotionWorkspaceId === undefined ? null : (
+                <DropdownMenuLinkItem
+                  render={
+                    <Link
+                      to="/w/$workspaceId/settings/promotion"
+                      params={{ workspaceId: promotionWorkspaceId }}
+                      search={promotionSearch([
+                        {
+                          workflowId: version.workflowId,
+                          versionId: version.id,
+                        },
+                      ])}
+                    />
+                  }
+                >
+                  <SendIcon aria-hidden="true" />
+                  Promote {label}…
+                </DropdownMenuLinkItem>
+              )}
+              {onExport === undefined ? null : (
+                <DropdownMenuItem
+                  onClick={() => {
+                    onExport(version);
+                  }}
+                >
+                  <DownloadIcon aria-hidden="true" />
+                  Export {label}
+                </DropdownMenuItem>
+              )}
+              {onDuplicate === undefined ? null : (
+                <DropdownMenuItem
+                  onClick={() => {
+                    onDuplicate(version);
+                  }}
+                >
+                  <CopyIcon aria-hidden="true" />
+                  Duplicate {label}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
   );
 }

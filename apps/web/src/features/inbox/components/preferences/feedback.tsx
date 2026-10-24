@@ -38,12 +38,7 @@ export function NotificationSaveFeedback({
             ) : undefined
           }
         >
-          {isApiError(cause) && cause.problem?.code === 'notifications.changed'
-            ? 'Someone changed these notification choices. Your edits are kept; discard them to load the latest choices, then save again.'
-            : isApiError(cause) &&
-                cause.problem?.code === 'notifications.unavailable'
-              ? 'This notification choice is unavailable now. Your edits are kept; reload current choices. Email can always be turned Off.'
-              : error}
+          {notificationFailure(cause, error)}
         </Notice>
       )}
       {expired ? (
@@ -67,4 +62,15 @@ export function NotificationSaveFeedback({
       ) : null}
     </>
   );
+}
+
+function notificationFailure(
+  cause: unknown,
+  fallback: string | undefined,
+): string | undefined {
+  if (isApiError(cause) && cause.problem?.code === 'notifications.changed')
+    return 'Someone changed these notification choices. Your edits are kept; discard them to load the latest choices, then save again.';
+  if (isApiError(cause) && cause.problem?.code === 'notifications.unavailable')
+    return 'This notification choice is unavailable now. Your edits are kept; reload current choices. Email can always be turned Off.';
+  return fallback;
 }
