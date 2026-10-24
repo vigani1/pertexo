@@ -23,7 +23,10 @@ import {
   SelectItem,
   SelectGroup,
 } from '@/components/ui/select';
-import { useFieldValidation } from '@/components/ui/use-field-validation';
+import {
+  useFieldValidation,
+  type FieldValidation,
+} from '@/components/ui/use-field-validation';
 import {
   noteFields,
   noteFieldErrors,
@@ -166,39 +169,12 @@ export function NoteForm({
             {/* Dragging and the keyboard move notes on the canvas; exact
                 numbers are the rare case, so they stay folded and the
                 dialog's buttons stay in view on a phone. */}
-            <Disclosure
-              key={geometryInvalid ? 'invalid' : 'valid'}
-              summary="Position and size"
-              defaultOpen={geometryInvalid}
-              contentClassName="grid grid-cols-2 gap-4 pt-1"
-            >
-              <p className="col-span-2 text-xs text-muted-foreground">
-                In canvas pixels.
-              </p>
-              {geometry.map((field) => (
-                <LabelledField
-                  key={field.key}
-                  id={`note-${field.key}`}
-                  label={field.label}
-                  error={validation.error(field.key)}
-                >
-                  {(control) => (
-                    <Input
-                      {...control}
-                      ref={validation.register(field.key)}
-                      type="number"
-                      min={field.min}
-                      max={field.max}
-                      step="any"
-                      value={fields[field.key]}
-                      onChange={(event) => {
-                        change(field.key, event.currentTarget.value);
-                      }}
-                    />
-                  )}
-                </LabelledField>
-              ))}
-            </Disclosure>
+            <NoteGeometry
+              fields={fields}
+              validation={validation}
+              invalid={geometryInvalid}
+              onChange={change}
+            />
           </FieldGroup>
           <div className="flex flex-wrap justify-end gap-2">
             {onRemove === undefined ? null : (
@@ -224,5 +200,56 @@ export function NoteForm({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function NoteGeometry({
+  fields,
+  validation,
+  invalid,
+  onChange,
+}: Readonly<{
+  fields: NoteFields;
+  validation: FieldValidation<keyof NoteFields>;
+  invalid: boolean;
+  onChange: <Key extends keyof NoteFields>(
+    key: Key,
+    value: NoteFields[Key],
+  ) => void;
+}>) {
+  return (
+    <Disclosure
+      key={invalid ? 'invalid' : 'valid'}
+      summary="Position and size"
+      defaultOpen={invalid}
+      contentClassName="grid grid-cols-2 gap-4 pt-1"
+    >
+      <p className="col-span-2 text-xs text-muted-foreground">
+        In canvas pixels.
+      </p>
+      {geometry.map((field) => (
+        <LabelledField
+          key={field.key}
+          id={`note-${field.key}`}
+          label={field.label}
+          error={validation.error(field.key)}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              ref={validation.register(field.key)}
+              type="number"
+              min={field.min}
+              max={field.max}
+              step="any"
+              value={fields[field.key]}
+              onChange={(event) => {
+                onChange(field.key, event.currentTarget.value);
+              }}
+            />
+          )}
+        </LabelledField>
+      ))}
+    </Disclosure>
   );
 }

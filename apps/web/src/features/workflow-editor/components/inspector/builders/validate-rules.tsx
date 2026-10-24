@@ -136,8 +136,6 @@ function RuleCard({
 }>) {
   const baseId = `${fieldControlId(form.nodeId, 'rules')}-${rule.id}`;
   const type = ruleType(rule);
-  const bounds = type === undefined ? undefined : VALIDATE_BOUNDS[type];
-  const boundLabels = type === undefined ? undefined : BOUND_LABELS[type];
   function update(next: (current: ValidateRule) => ValidateRule) {
     onChange(
       (current) =>
@@ -231,31 +229,13 @@ function RuleCard({
           </FieldLabel>
         </Field>
       </div>
-      {bounds === undefined || boundLabels === undefined ? null : (
-        <div className="grid grid-cols-2 gap-3">
-          {bounds.map((key, boundIndex) => (
-            <LiveTextField<number | undefined>
-              // A new type brings new bounds.
-              key={`${type ?? ''}-${key}`}
-              id={`${baseId}-${key}`}
-              label={boundLabels[boundIndex] ?? key}
-              value={typeof rule[key] === 'number' ? rule[key] : undefined}
-              format={(value) => (value === undefined ? '' : String(value))}
-              parse={(text) =>
-                parseBound(text, type === 'number' ? 'any' : 'count')
-              }
-              form={form}
-              scratchKey={`rules.${rule.id}.${key}`}
-              mono
-              inputMode={type === 'number' ? undefined : 'numeric'}
-              placeholder="No limit"
-              onCommit={(value) => {
-                setOptional(key, value);
-              }}
-            />
-          ))}
-        </div>
-      )}
+      <RuleBounds
+        baseId={baseId}
+        form={form}
+        rule={rule}
+        type={type}
+        setOptional={setOptional}
+      />
       {type === undefined || type === 'string' || type === 'number' ? (
         <LiveTextField<readonly (string | number)[] | undefined>
           key={`${type ?? 'any'}-enum`}
@@ -292,4 +272,47 @@ function parseBound(
   if (kind === 'count' && (!Number.isInteger(value) || value < 0))
     return { ok: false, error: 'Enter a whole number, 0 or more.' };
   return { ok: true, value };
+}
+
+function RuleBounds({
+  baseId,
+  form,
+  rule,
+  type,
+  setOptional,
+}: Readonly<{
+  baseId: string;
+  form: NodeFormApi;
+  rule: ValidateRule;
+  type: ValidateType | undefined;
+  setOptional: (key: string, value: ValidateRule[string] | undefined) => void;
+}>) {
+  const bounds = type === undefined ? undefined : VALIDATE_BOUNDS[type];
+  const boundLabels = type === undefined ? undefined : BOUND_LABELS[type];
+  if (bounds === undefined || boundLabels === undefined) return null;
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {bounds.map((key, boundIndex) => (
+        <LiveTextField<number | undefined>
+          // A new type brings new bounds.
+          key={`${type ?? ''}-${key}`}
+          id={`${baseId}-${key}`}
+          label={boundLabels[boundIndex] ?? key}
+          value={typeof rule[key] === 'number' ? rule[key] : undefined}
+          format={(value) => (value === undefined ? '' : String(value))}
+          parse={(text) =>
+            parseBound(text, type === 'number' ? 'any' : 'count')
+          }
+          form={form}
+          scratchKey={`rules.${rule.id}.${key}`}
+          mono
+          inputMode={type === 'number' ? undefined : 'numeric'}
+          placeholder="No limit"
+          onCommit={(value) => {
+            setOptional(key, value);
+          }}
+        />
+      ))}
+    </div>
+  );
 }

@@ -47,42 +47,13 @@ export function FormPart({
       <legend className="max-w-full break-all px-1 text-xs text-muted-foreground">
         Part {index + 1}: {part.name === '' ? 'new part' : part.name}
       </legend>
-      <div className="flex justify-end gap-1">
-        <Button
-          type="button"
-          size="icon-xs"
-          variant="ghost"
-          disabled={!editable || index === 0}
-          aria-label="Move part up"
-          onClick={() => {
-            onMove(-1);
-          }}
-        >
-          <ArrowUpIcon />
-        </Button>
-        <Button
-          type="button"
-          size="icon-xs"
-          variant="ghost"
-          disabled={!editable || index === count - 1}
-          aria-label="Move part down"
-          onClick={() => {
-            onMove(1);
-          }}
-        >
-          <ArrowDownIcon />
-        </Button>
-        <Button
-          type="button"
-          size="icon-xs"
-          variant="ghost"
-          disabled={!editable || count === 1}
-          aria-label="Remove part"
-          onClick={onRemove}
-        >
-          <XIcon />
-        </Button>
-      </div>
+      <PartActions
+        index={index}
+        count={count}
+        editable={editable}
+        onMove={onMove}
+        onRemove={onRemove}
+      />
       <LabelledField
         id={`${prefix}-name`}
         label="Field name"
@@ -166,6 +137,86 @@ export function FormPart({
           }}
         />
       ) : null}
+      <PartMetadata
+        prefix={prefix}
+        part={part}
+        editable={editable}
+        errors={errors}
+        onChange={onChange}
+      />
+    </fieldset>
+  );
+}
+
+function PartActions({
+  index,
+  count,
+  editable,
+  onMove,
+  onRemove,
+}: Readonly<{
+  index: number;
+  count: number;
+  editable: boolean;
+  onMove: (direction: -1 | 1) => void;
+  onRemove: () => void;
+}>) {
+  return (
+    <div className="flex justify-end gap-1">
+      <Button
+        type="button"
+        size="icon-xs"
+        variant="ghost"
+        disabled={!editable || index === 0}
+        aria-label="Move part up"
+        onClick={() => {
+          onMove(-1);
+        }}
+      >
+        <ArrowUpIcon />
+      </Button>
+      <Button
+        type="button"
+        size="icon-xs"
+        variant="ghost"
+        disabled={!editable || index === count - 1}
+        aria-label="Move part down"
+        onClick={() => {
+          onMove(1);
+        }}
+      >
+        <ArrowDownIcon />
+      </Button>
+      <Button
+        type="button"
+        size="icon-xs"
+        variant="ghost"
+        disabled={!editable || count === 1}
+        aria-label="Remove part"
+        onClick={onRemove}
+      >
+        <XIcon />
+      </Button>
+    </div>
+  );
+}
+
+function PartMetadata({
+  prefix,
+  part,
+  editable,
+  errors,
+  onChange,
+}: Readonly<{
+  prefix: string;
+  part: FormPartDraft;
+  editable: boolean;
+  errors: PartErrors | undefined;
+  onChange: (part: FormPartDraft, field: string) => string | undefined;
+}>) {
+  return (
+    <>
+      {' '}
       <LabelledField
         id={`${prefix}-filename`}
         label="Filename (optional)"
@@ -212,6 +263,6 @@ export function FormPart({
           />
         )}
       </LabelledField>
-    </fieldset>
+    </>
   );
 }
