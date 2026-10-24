@@ -1,6 +1,17 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq } from 'drizzle-orm';
+import {
+  workflowDrafts,
+  workflowVersions,
+  workflows,
+} from '../../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { dataTableReferenceIssues } from '../../../data-tables/columns/references.queries.js';
 
-import { mapDraft } from '../representation/records.queries.js';
+import {
+  projectDraft,
+  draftProjection,
+} from '../representation/records.queries.js';
 
 import {
   sameWorkflowNotes,
@@ -38,13 +49,18 @@ export function validateAuthoringDraft(
       )
         return null;
       const variant = context.catalogs;
-      const result = await client.query<Record<string, unknown>>(
-        'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
-        [workspaceId, uuidSchema.parse(workflowId)],
-      );
-      const row = result.rows[0];
+      const [row] = await drizzle(client)
+        .select(draftProjection)
+        .from(workflowDrafts)
+        .where(
+          and(
+            eq(workflowDrafts.workspaceId, workspaceId),
+            eq(workflowDrafts.workflowId, uuidSchema.parse(workflowId)),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       if (row === undefined) return null;
-      const draft = mapDraft(row, variant.definitionCatalog);
+      const draft = projectDraft(row, variant.definitionCatalog);
       let validation = await admitWorkflowAuthoring(
         client,
         variant.validateAuthoringGraph,
@@ -60,20 +76,29 @@ export function validateAuthoringDraft(
         if (issues.length > 0)
           validation = { ...validation, ok: false, issues };
       }
-      const publication = await client.query<{
-        versionId: string;
-        versionNumber: number;
-        checksum: string;
-        graphJson: unknown;
-      }>(
-        `select version.id as "versionId", version.version_number as "versionNumber", version.checksum, version.graph_json as "graphJson"
-             from app.workflows workflow join app.workflow_versions version
-               on version.workspace_id = workflow.workspace_id and version.workflow_id = workflow.id
-                 and version.id = workflow.published_version_id
-             where workflow.workspace_id = $1 and workflow.id = $2`,
-        [workspaceId, workflowId],
-      );
-      const live = publication.rows[0];
+      const [live] = await drizzle(client)
+        .select({
+          versionId: workflowVersions.id,
+          versionNumber: workflowVersions.versionNumber,
+          checksum: workflowVersions.checksum,
+          graphJson: workflowVersions.graphJson,
+        })
+        .from(workflows)
+        .innerJoin(
+          workflowVersions,
+          and(
+            eq(workflowVersions.workspaceId, workflows.workspaceId),
+            eq(workflowVersions.workflowId, workflows.id),
+            eq(workflowVersions.id, workflows.publishedVersionId),
+          ),
+        )
+        .where(
+          and(
+            eq(workflows.workspaceId, workspaceId),
+            eq(workflows.id, workflowId),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       const currentPublication =
         live === undefined
           ? null
@@ -116,12 +141,16 @@ export function readAuthoringDraft(
     )
       return null;
     const { definitionCatalog } = context.catalogs;
-    const result = await client.query<Record<string, unknown>>(
-      'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
-      [workspaceId, uuidSchema.parse(workflowId)],
-    );
-    return result.rows[0] === undefined
-      ? null
-      : mapDraft(result.rows[0], definitionCatalog);
+    const [row] = await drizzle(client)
+      .select(draftProjection)
+      .from(workflowDrafts)
+      .where(
+        and(
+          eq(workflowDrafts.workspaceId, workspaceId),
+          eq(workflowDrafts.workflowId, uuidSchema.parse(workflowId)),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    return row === undefined ? null : projectDraft(row, definitionCatalog);
   });
 }

@@ -1,21 +1,35 @@
-import { sql } from 'drizzle-orm';
-
+import { and, asc, desc, eq, exists, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
+import type { PoolClient } from 'pg';
+import { z } from 'zod';
+import { workflows } from '../../../schema/authoring/workflows.js';
+import { workflowOrganizationState } from '../../../schema/authoring/organization.js';
+import { workflowVersionDependencies } from '../../../schema/authoring/dependencies.js';
 import {
   workflowActions,
   workflowAccessible,
 } from '../../../tenant-access/resources/workflows.queries.js';
-import {
-  bindResourcePredicate,
-  workflowScopeSql,
-} from '../../../tenant-access/resources/scope.queries.js';
-
-import { z } from 'zod';
-
-import { mapWorkflow, workflowSetupSelection } from '../representation/records.queries.js';
-
+import type { FolderScope } from '../../../tenant-access/resources/contract.js';
+import { workflowScopeSql } from '../../../tenant-access/resources/query-scope.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { workflowProjection } from '../representation/records.queries.js';
 import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';
 import { uuidSchema } from './authority.js';
 
+const folder = new QueryBuilder()
+  .select({ id: workflowOrganizationState.folderId })
+  .from(workflowOrganizationState)
+  .where(
+    and(
+      eq(workflowOrganizationState.workspaceId, workflows.workspaceId),
+      eq(workflowOrganizationState.workflowId, workflows.id),
+    ),
+  );
+const readProjection = {
+  workflow: workflowProjection,
+  resource_folder_id: sql<string | null>`(${folder})`,
+};
 export function readAuthoringWorkflow(
   context: WorkflowAuthoringReadContext,
   workspaceId: Parameters<ReadStore['getWorkflow']>[0],
@@ -25,29 +39,26 @@ export function readAuthoringWorkflow(
   return context.transact(workspaceId, actorId, async (client) => {
     const access = await context.requireReader(client, workspaceId, actorId);
     if (
-      !(await workflowAccessible(client, access, {
-        workspaceId,
-        workflowId,
-      }))
+      !(await workflowAccessible(client, access, { workspaceId, workflowId }))
     )
       return null;
-    const parameters: unknown[] = [workspaceId, uuidSchema.parse(workflowId)];
-    const result = await client.query<
-      Record<string, unknown> & { resource_folder_id: string | null }
-    >(
-      `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id from app.workflows where workspace_id=$1 and id=$2`,
-      parameters,
-    );
-    const row = result.rows[0];
+    const [row] = await drizzle(client)
+      .select(readProjection)
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.workspaceId, workspaceId),
+          eq(workflows.id, uuidSchema.parse(workflowId)),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (row === undefined) return null;
-    const { resource_folder_id, ...workflow } = row;
     return {
-      ...mapWorkflow(workflow),
-      resourceAccess: workflowActions(access, resource_folder_id),
+      ...row.workflow,
+      resourceAccess: workflowActions(access, row.resource_folder_id),
     };
   });
 }
-
 export function listAuthoringWorkflows(
   context: WorkflowAuthoringReadContext,
   input: Parameters<ReadStore['listWorkflows']>[0],
@@ -58,76 +69,94 @@ export function listAuthoringWorkflows(
       input.workspaceId,
       input.actorId,
     );
-    const limit = z
-      .number()
-      .int()
-      .positive()
-      .max(100)
-      .parse(input.limit ?? 50);
-    const order = input.order ?? 'created_asc';
-    const afterPositionAt =
-      input.after === undefined
-        ? null
-        : z.iso.datetime({ offset: true }).parse(input.after.positionAt);
-    const afterId =
-      input.after === undefined ? null : uuidSchema.parse(input.after.id);
-    const parameters: unknown[] = [
-      input.workspaceId,
-      afterPositionAt,
-      afterId,
-      limit + 1,
-      input.pinsWorkflowId === undefined
-        ? null
-        : uuidSchema.parse(input.pinsWorkflowId),
-    ];
-    const visible = bindResourcePredicate(
-      workflowScopeSql(access, sql`app.workflows.id`),
-      parameters,
-    );
-    const result = await client.query<
-      Record<string, unknown> & { resource_folder_id: string | null }
-    >(
-      order === 'updated_desc'
-        ? `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id, to_char(updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
-               from app.workflows where workspace_id = $1 and ${visible}
-                 and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
-                   where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
-                     and dependency.target_workflow_id=$5))
-                 and ($2::timestamptz is null or (updated_at, id) < ($2::timestamptz, $3::uuid))
-               order by updated_at desc, id desc limit $4`
-        : `select *, ${workflowSetupSelection}, (select state.folder_id from app.workflow_organization_state state where state.workspace_id=app.workflows.workspace_id and state.workflow_id=app.workflows.id) resource_folder_id, to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_position_at
-               from app.workflows where workspace_id = $1 and ${visible}
-                 and ($5::uuid is null or exists(select 1 from app.workflow_version_dependencies dependency
-                   where dependency.workspace_id=$1 and dependency.parent_version_id=app.workflows.published_version_id
-                     and dependency.target_workflow_id=$5))
-                 and ($2::timestamptz is null or (created_at, id) > ($2::timestamptz, $3::uuid))
-               order by created_at, id limit $4`,
-      parameters,
-    );
-    const hasMore = result.rows.length > limit;
-    const pageRows = result.rows.slice(0, limit);
+    const parsed = listInput(input),
+      rows = await listRows(client, parsed, access);
+    const hasMore = rows.length > parsed.limit,
+      pageRows = rows.slice(0, parsed.limit);
     const items = Object.freeze(
-      pageRows.map((row) => {
-        const workflowRow: Record<string, unknown> = { ...row };
-        delete workflowRow.cursor_position_at;
-        delete workflowRow.resource_folder_id;
-        return {
-          ...mapWorkflow(workflowRow),
-          resourceAccess: workflowActions(access, row.resource_folder_id),
-        };
-      }),
+      pageRows.map((row) => ({
+        ...row.workflow,
+        resourceAccess: workflowActions(access, row.resource_folder_id),
+      })),
     );
-    const last = items.at(-1);
+    const lastRow = pageRows.at(-1);
     return Object.freeze({
       items,
-      ...(hasMore && last !== undefined
+      ...(hasMore && lastRow !== undefined
         ? {
             nextCursor: Object.freeze({
-              positionAt: z.string().parse(pageRows.at(-1)?.cursor_position_at),
-              id: last.id,
+              positionAt: lastRow.cursor_position_at,
+              id: lastRow.workflow.id,
             }),
           }
         : {}),
     });
   });
+}
+function listInput(input: Parameters<ReadStore['listWorkflows']>[0]) {
+  return {
+    workspaceId: input.workspaceId,
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .parse(input.limit ?? 50),
+    order: input.order ?? 'created_asc',
+    afterPositionAt:
+      input.after === undefined
+        ? null
+        : z.iso.datetime({ offset: true }).parse(input.after.positionAt),
+    afterId:
+      input.after === undefined ? null : uuidSchema.parse(input.after.id),
+    pinsWorkflowId:
+      input.pinsWorkflowId === undefined
+        ? null
+        : uuidSchema.parse(input.pinsWorkflowId),
+  };
+}
+function listRows(
+  client: PoolClient,
+  input: ReturnType<typeof listInput>,
+  access: FolderScope,
+) {
+  const db = drizzle(client),
+    w = workflows,
+    d = workflowVersionDependencies;
+  const position = input.order === 'updated_desc' ? w.updatedAt : w.createdAt;
+  const pinned = db
+    .select({ id: d.targetWorkflowId })
+    .from(d)
+    .where(
+      and(
+        eq(d.workspaceId, input.workspaceId),
+        eq(d.parentVersionId, w.publishedVersionId),
+        eq(d.targetWorkflowId, sql`${input.pinsWorkflowId}::uuid`),
+      ),
+    );
+  const after =
+    input.order === 'updated_desc'
+      ? sql`(${position},${w.id})<(${input.afterPositionAt}::timestamptz,${input.afterId}::uuid)`
+      : sql`(${position},${w.id})>(${input.afterPositionAt}::timestamptz,${input.afterId}::uuid)`;
+  return db
+    .select({
+      ...readProjection,
+      cursor_position_at: sql<string>`to_char(${position} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+    })
+    .from(w)
+    .where(
+      and(
+        eq(w.workspaceId, input.workspaceId),
+        workflowScopeSql(access, sql`${w.id}`),
+        input.pinsWorkflowId === null ? undefined : exists(pinned),
+        input.afterPositionAt === null ? undefined : after,
+      ),
+    )
+    .orderBy(
+      ...(input.order === 'updated_desc'
+        ? [desc(position), desc(w.id)]
+        : [asc(position), asc(w.id)]),
+    )
+    .limit(input.limit + 1)
+    .catch(rethrowQueryFailure);
 }

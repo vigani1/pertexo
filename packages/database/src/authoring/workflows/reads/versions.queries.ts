@@ -1,9 +1,16 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, desc, lt } from 'drizzle-orm';
+import {
+  workflows,
+  workflowVersions,
+} from '../../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { z } from 'zod';
 import { WorkflowNotFoundError } from '../errors.js';
 
 import {
-  mapVersion,
-  workflowVersionRowSelection,
+  projectVersion,
+  versionProjection,
 } from '../representation/records.queries.js';
 
 import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';
@@ -31,12 +38,18 @@ export function readAuthoringVersion(
       }))
     )
       return null;
-    const result = await client.query<Record<string, unknown>>(
-      `select ${workflowVersionRowSelection} from app.workflow_versions
-           where workspace_id = $1 and workflow_id = $2 and id = $3`,
-      [workspaceId, uuidSchema.parse(workflowId), uuidSchema.parse(versionId)],
-    );
-    return result.rows[0] === undefined ? null : mapVersion(result.rows[0]);
+    const [row] = await drizzle(client)
+      .select(versionProjection)
+      .from(workflowVersions)
+      .where(
+        and(
+          eq(workflowVersions.workspaceId, workspaceId),
+          eq(workflowVersions.workflowId, uuidSchema.parse(workflowId)),
+          eq(workflowVersions.id, uuidSchema.parse(versionId)),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    return row === undefined ? null : projectVersion(row);
   });
 }
 
@@ -54,11 +67,17 @@ export function listAuthoringVersions(
     )
       throw new WorkflowNotFoundError('Workflow is not visible');
     const workflowId = uuidSchema.parse(input.workflowId);
-    const visible = await client.query(
-      'select 1 from app.workflows where workspace_id = $1 and id = $2',
-      [input.workspaceId, workflowId],
-    );
-    if (visible.rowCount !== 1)
+    const visible = await drizzle(client)
+      .select({ id: workflows.id })
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.workspaceId, input.workspaceId),
+          eq(workflows.id, workflowId),
+        ),
+      )
+      .catch(rethrowQueryFailure);
+    if (visible.length !== 1)
       throw new WorkflowNotFoundError('Workflow is not visible');
     const limit = z
       .number()
@@ -70,24 +89,26 @@ export function listAuthoringVersions(
       input.beforeVersionNumber === undefined
         ? null
         : z.number().int().positive().parse(input.beforeVersionNumber);
-    const result = await client.query<Record<string, unknown>>(
-      `select ${workflowVersionRowSelection} from app.workflow_versions
-           where workspace_id = $1 and workflow_id = $2
-             and ($3::integer is null or version_number < $3)
-             and ($5::uuid is null or id = $5)
-           order by version_number desc limit $4`,
-      [
-        input.workspaceId,
-        workflowId,
-        beforeVersionNumber,
-        limit + 1,
-        input.versionId ?? null,
-      ],
-    );
-    const hasMore = result.rows.length > limit;
-    const items = Object.freeze(
-      result.rows.slice(0, limit).map((row) => mapVersion(row)),
-    );
+    const result = await drizzle(client)
+      .select(versionProjection)
+      .from(workflowVersions)
+      .where(
+        and(
+          eq(workflowVersions.workspaceId, input.workspaceId),
+          eq(workflowVersions.workflowId, workflowId),
+          beforeVersionNumber === null
+            ? undefined
+            : lt(workflowVersions.versionNumber, beforeVersionNumber),
+          input.versionId === undefined
+            ? undefined
+            : eq(workflowVersions.id, input.versionId),
+        ),
+      )
+      .orderBy(desc(workflowVersions.versionNumber))
+      .limit(limit + 1)
+      .catch(rethrowQueryFailure);
+    const hasMore = result.length > limit;
+    const items = Object.freeze(result.slice(0, limit).map(projectVersion));
     const last = items.at(-1);
     return Object.freeze({
       items,
