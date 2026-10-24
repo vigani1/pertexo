@@ -28,14 +28,13 @@ export function useListShortcuts({
   });
   useEffect(() => {
     function listen(event: KeyboardEvent) {
-      if (
+      const listShortcutBlocked =
         event.defaultPrevented ||
         event.metaKey ||
         event.ctrlKey ||
         event.altKey ||
-        ignoresShortcuts(event.target)
-      )
-        return;
+        ignoresShortcuts(event.target);
+      if (listShortcutBlocked) return;
       if (event.key === '/') {
         event.preventDefault();
         focusFilter();

@@ -76,8 +76,9 @@ export function useSharingEditor<
       setEdited({ resourceId, snapshot: change(snapshot) });
     },
     submit: async () => {
-      if (snapshot !== undefined && !locked && !stale && reader.isSuccess)
-        await command.send(snapshot);
+      const canChangeSharing =
+        snapshot !== undefined && !locked && !stale && reader.isSuccess;
+      if (canChangeSharing) await command.send(snapshot);
     },
     reload: async () => {
       if (locked) return;

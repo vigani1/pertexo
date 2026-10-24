@@ -135,12 +135,11 @@ export function WorkflowPausedBanner({
         description: 'Triggers you turned off stay off.',
       });
   }
-  if (
+  const nothingToShow =
     (!showReadError || !query.isError) &&
     settings?.pauseState !== 'paused' &&
-    command.problem === undefined
-  )
-    return null;
+    command.problem === undefined;
+  if (nothingToShow) return null;
   return (
     <div className="pointer-events-auto space-y-2">
       {showReadError && query.isError ? (

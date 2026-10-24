@@ -214,13 +214,13 @@ function TriggersSession({
   const onFailure = kinds?.includes('core.workflow_error') ?? false;
 
   // Only someone who can read webhooks knows the version has none.
-  if (
+  const needsFirstTrigger =
     editable &&
     webhookItems?.length === 0 &&
     scheduleItems?.length === 0 &&
     !form &&
-    !onFailure
-  )
+    !onFailure;
+  if (needsFirstTrigger)
     return (
       <NoTriggers
         workspaceId={workspace.id}

@@ -50,28 +50,29 @@ export function sourceFromExpression(
     second = steps[1];
   if (!isRecord(root)) return undefined;
   let source: ValueSource | undefined;
-  if (
+  const workspaceVariablePath =
     root.type === 'variable' &&
     root.value === 'vars' &&
     isRecord(second) &&
     second.type === 'name' &&
-    steps.length === 2
-  ) {
+    steps.length === 2;
+  if (workspaceVariablePath) {
     const name = workspaceVariableNameSchema.safeParse(second.value);
     if (name.success) source = { kind: 'workspace_variable', name: name.data };
   } else if (root.type === 'name' && root.value === 'runInput') {
     const path = readPath(steps);
     if (path !== undefined) source = { kind: 'run_input', path };
-  } else if (
-    root.type === 'name' &&
-    root.value === 'nodeOutputs' &&
-    isRecord(second) &&
-    second.type === 'name' &&
-    typeof second.value === 'string'
-  ) {
-    const path = readPath(steps.slice(1));
-    if (path !== undefined)
-      source = { kind: 'node_output', nodeId: second.value, path };
+  } else {
+    const nodeOutputPath =
+      root.type === 'name' &&
+      root.value === 'nodeOutputs' &&
+      isRecord(second) &&
+      second.type === 'name';
+    if (nodeOutputPath && typeof second.value === 'string') {
+      const path = readPath(steps.slice(1));
+      if (path !== undefined)
+        source = { kind: 'node_output', nodeId: second.value, path };
+    }
   }
   // More elaborate paths, predicates, blocks and comments remain expressions.
   return source !== undefined && valueExpression(source) === expression
@@ -91,18 +92,23 @@ function readPath(steps: readonly unknown[]): string | undefined {
     if (step.stages === undefined) continue;
     if (!Array.isArray(step.stages)) return undefined;
     for (const stage of step.stages) {
-      if (
-        !isRecord(stage) ||
-        stage.type !== 'filter' ||
-        !isRecord(stage.expr) ||
-        stage.expr.type !== 'number' ||
-        typeof stage.expr.value !== 'number' ||
-        !Number.isSafeInteger(stage.expr.value) ||
-        stage.expr.value < 0
-      )
-        return undefined;
+      if (!isArrayIndexFilter(stage)) return undefined;
       path += `[${String(stage.expr.value)}]`;
     }
   }
   return path;
+}
+
+function isArrayIndexFilter(
+  stage: unknown,
+): stage is { type: 'filter'; expr: { type: 'number'; value: number } } {
+  return (
+    isRecord(stage) &&
+    stage.type === 'filter' &&
+    isRecord(stage.expr) &&
+    stage.expr.type === 'number' &&
+    typeof stage.expr.value === 'number' &&
+    Number.isSafeInteger(stage.expr.value) &&
+    stage.expr.value >= 0
+  );
 }

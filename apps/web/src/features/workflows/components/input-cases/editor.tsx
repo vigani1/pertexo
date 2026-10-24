@@ -59,7 +59,9 @@ export function InputCaseEditor({
   const notifications = useNotifications();
   const id = useId();
   async function save() {
-    if (locked || deleting || !writable || cases.conflict) return;
+    const caseEditingBlocked =
+      locked || deleting || !writable || cases.conflict;
+    if (caseEditingBlocked) return;
     let value: unknown;
     try {
       value = JSON.parse(input) as unknown;

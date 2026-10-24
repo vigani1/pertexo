@@ -13,25 +13,12 @@ export function objectExpressions(expression: string):
   if (new TextEncoder().encode(expression).length > 16384) return undefined;
   try {
     const ast: unknown = jsonata(expression).ast();
-    if (
-      !isRecord(ast) ||
-      ast.type !== 'unary' ||
-      ast.value !== '{' ||
-      !Array.isArray(ast.lhs) ||
-      expression.trimEnd().at(-1) !== '}'
-    )
-      return undefined;
+    if (!isObjectConstruction(ast, expression)) return undefined;
     const keys: { key: string; end: number; start: number }[] = [];
     for (const pair of ast.lhs) {
       if (!Array.isArray(pair)) return undefined;
       const key: unknown = pair[0];
-      if (
-        !isRecord(key) ||
-        key.type !== 'string' ||
-        typeof key.value !== 'string' ||
-        typeof key.position !== 'number'
-      )
-        return undefined;
+      if (!isStringKey(key)) return undefined;
       const quoted = JSON.stringify(key.value);
       const start = key.position - quoted.length;
       // Noncanonical/dynamic keys stay editable as their original whole-object mapping.
@@ -48,14 +35,7 @@ export function objectExpressions(expression: string):
         .replace(/,\s*$/u, '')
         .trim();
       let value: unknown = jsonata(source).ast();
-      if (
-        isRecord(value) &&
-        value.type === 'block' &&
-        Array.isArray(value.expressions) &&
-        value.expressions.length === 1 &&
-        source.startsWith('(') &&
-        source.endsWith(')')
-      ) {
+      if (isSingleExpressionBlock(value, source)) {
         source = source.slice(1, -1).trim();
         value = value.expressions[0];
       }
@@ -69,4 +49,40 @@ export function objectExpressions(expression: string):
   } catch {
     return undefined;
   }
+}
+
+function isObjectConstruction(
+  ast: unknown,
+  expression: string,
+): ast is { type: 'unary'; value: '{'; lhs: unknown[] } {
+  return (
+    isRecord(ast) &&
+    ast.type === 'unary' &&
+    ast.value === '{' &&
+    Array.isArray(ast.lhs) &&
+    expression.trimEnd().at(-1) === '}'
+  );
+}
+function isStringKey(
+  key: unknown,
+): key is { type: 'string'; value: string; position: number } {
+  return (
+    isRecord(key) &&
+    key.type === 'string' &&
+    typeof key.value === 'string' &&
+    typeof key.position === 'number'
+  );
+}
+function isSingleExpressionBlock(
+  value: unknown,
+  source: string,
+): value is { type: 'block'; expressions: unknown[] } {
+  return (
+    isRecord(value) &&
+    value.type === 'block' &&
+    Array.isArray(value.expressions) &&
+    value.expressions.length === 1 &&
+    source.startsWith('(') &&
+    source.endsWith(')')
+  );
 }

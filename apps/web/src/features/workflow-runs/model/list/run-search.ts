@@ -81,12 +81,11 @@ function parseField<Key extends keyof RunHistoryFilters>(
   key: Key,
   value: unknown,
 ): RunHistoryFilters[Key] | undefined {
-  if (
+  const emptySearchValue =
     value === undefined ||
     value === null ||
-    (value === '' && key !== 'runValue')
-  )
-    return undefined;
+    (value === '' && key !== 'runValue');
+  if (emptySearchValue) return undefined;
   const parsed = filterShape[key].safeParse(stringValue(value));
   return parsed.success
     ? (parsed.data as RunHistoryFilters[Key] | undefined)
@@ -251,10 +250,10 @@ export function customRangeSearch<Search extends RunSearch>(
 ): CustomRangeResult<Search> {
   const from = fromDate === '' ? undefined : localMidnight(fromDate);
   const before = toDate === '' ? undefined : localMidnight(toDate, 1);
-  if (
+  const invalidDateFilter =
     (fromDate !== '' && from === undefined) ||
-    (toDate !== '' && before === undefined)
-  )
+    (toDate !== '' && before === undefined);
+  if (invalidDateFilter)
     return { ok: false, message: 'Enter each date as year, month and day.' };
   if (from === undefined && before === undefined)
     return { ok: false, message: 'Choose a start date, an end date or both.' };

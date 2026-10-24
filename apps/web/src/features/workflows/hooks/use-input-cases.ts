@@ -231,13 +231,12 @@ export function useInputCases({
     command,
     retry = false,
   }: Readonly<{ command: InputCaseCommand; retry?: boolean | undefined }>) {
-    if (
+    const inputCaseCommandBlocked =
       controllerRef.current !== undefined ||
       !canWrite ||
       accessLost ||
-      (!retry && retainedRef.current !== undefined)
-    )
-      return false;
+      (!retry && retainedRef.current !== undefined);
+    if (inputCaseCommandBlocked) return false;
     const token = ownerRef.current;
     if (token === undefined) return false;
     const attempt = retry

@@ -203,13 +203,12 @@ export function useImportDraft(
         setupValueError(target, setupValues[index] ?? ''),
       ]) ?? [],
     );
-    if (
+    const importSubmissionBlocked =
       !complete ||
       locked ||
       previewing ||
-      !validation.submit({ name: workflowNameError(name), ...setupErrors })
-    )
-      return;
+      !validation.submit({ name: workflowNameError(name), ...setupErrors });
+    if (importSubmissionBlocked) return;
     if (configuredManifest === undefined) return;
     const epoch = intent.current;
     const request = lifetime.begin();

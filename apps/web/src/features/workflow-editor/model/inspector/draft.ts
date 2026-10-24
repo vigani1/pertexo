@@ -72,13 +72,12 @@ export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
   return Object.entries(properties).flatMap(([key, candidate]) => {
     if (!isRecord(candidate)) return [];
     const type = Reflect.get(candidate, 'type');
-    if (
+    const unsupportedScalarType =
       type !== 'string' &&
       type !== 'number' &&
       type !== 'integer' &&
-      type !== 'boolean'
-    )
-      return [];
+      type !== 'boolean';
+    if (unsupportedScalarType) return [];
     const title = Reflect.get(candidate, 'title');
     const description = Reflect.get(candidate, 'description');
     const optionValue = Reflect.get(candidate, 'enum');

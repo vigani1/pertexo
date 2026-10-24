@@ -99,7 +99,9 @@ export function SamlProviderForm({
         onSubmit={(event) => {
           event.preventDefault();
           const values = fields.validate();
-          if (values === undefined || locked || stale || unavailable) return;
+          const samlSubmissionBlocked =
+            values === undefined || locked || stale || unavailable;
+          if (samlSubmissionBlocked) return;
           const configuration = {
             signInUrl: values.signInUrl.trim(),
             certificates: [

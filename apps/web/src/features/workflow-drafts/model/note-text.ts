@@ -16,14 +16,13 @@ export function noteTextStart(source: string): string {
       words.push(node.value);
     else if ('children' in node) {
       // Block boundaries become spaces; inline emphasis and links join their own text.
-      if (
+      const unsupportedTextContainer =
         node.type !== 'root' &&
         node.type !== 'emphasis' &&
         node.type !== 'strong' &&
         node.type !== 'link' &&
-        node.type !== 'linkReference'
-      )
-        words.push(' ');
+        node.type !== 'linkReference';
+      if (unsupportedTextContainer) words.push(' ');
       for (let i = node.children.length - 1; i >= 0; i -= 1) {
         const child = node.children[i];
         if (child !== undefined) pending.push(child);

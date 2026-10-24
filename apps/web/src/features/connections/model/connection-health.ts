@@ -99,12 +99,12 @@ export function describeConnectionHealth(
       text: `${connection.status === 'reauthorization_required' && health.lastHealthTransitionSource === 'run' ? 'run credential rejected' : 'last test failed'} · ${describeTestFailure(connection.providerKey, health.lastErrorCode)}`,
       tone: 'attention',
     };
-  if (
+  const newerRunEvidence =
     health.lastRunObservedAt != null &&
     health.lastHealthyAt !== null &&
     (health.lastTestedAt === null ||
-      health.lastRunObservedAt > health.lastTestedAt)
-  )
+      health.lastRunObservedAt > health.lastTestedAt);
+  if (newerRunEvidence)
     return {
       text: `healthy run ${formatElapsedTime(health.lastRunObservedAt, now)}`,
       tone: 'quiet',

@@ -26,13 +26,12 @@ export function canEditOrganization(
   workflows: readonly WorkflowOrganizationProjectionResponse[],
   operation: OrganizationOperation,
 ) {
-  if (
+  const organizationWriteBlocked =
     workspace.status !== 'active' ||
     !hasCapability(workspace.role, 'workflow:update') ||
     !workspace.capabilities.includes('workflow:update') ||
-    workflows.some((item) => item.workflow.resourceAccess?.canEdit === false)
-  )
-    return false;
+    workflows.some((item) => item.workflow.resourceAccess?.canEdit === false);
+  if (organizationWriteBlocked) return false;
   const archived = workflows.some(
     ({ workflow }) => workflow.lifecycleStatus === 'archived',
   );

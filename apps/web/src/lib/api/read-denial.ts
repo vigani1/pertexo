@@ -29,13 +29,12 @@ export function watchWorkspaceReadDenial({
   return queryClient.getQueryCache().subscribe((event) => {
     if (event.type !== 'updated') return;
     const key = event.query.queryKey as readonly unknown[];
-    if (
+    const outsideWorkspaceRead =
       key[0] !== 'identity' ||
       key[1] !== userId ||
       key[2] !== 'workspace' ||
-      key[3] !== workspaceId
-    )
-      return;
+      key[3] !== workspaceId;
+    if (outsideWorkspaceRead) return;
     // An earlier observer may already have removed this query; the event
     // still carries its failure.
     const error: unknown =

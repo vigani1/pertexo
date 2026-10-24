@@ -164,12 +164,12 @@ export async function startSocialAuthentication(
   if (!decoded.success)
     throw new NativeAuthenticationError('The provider response was invalid.');
   const parsed = new URL(decoded.data.url);
-  if (
+  const unsafeProviderUrl =
     parsed.username !== '' ||
     parsed.password !== '' ||
     (parsed.protocol !== 'https:' &&
-      !(parsed.protocol === 'http:' && parsed.hostname === 'localhost'))
-  )
+      !(parsed.protocol === 'http:' && parsed.hostname === 'localhost'));
+  if (unsafeProviderUrl)
     throw new NativeAuthenticationError('The provider URL was rejected.');
   return parsed.toString();
 }

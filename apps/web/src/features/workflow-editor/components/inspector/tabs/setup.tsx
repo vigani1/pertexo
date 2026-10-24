@@ -256,12 +256,12 @@ function SetupControls({
 }>) {
   const { config } = node;
   const formKey = node.definition.key;
-  if (
+  const hasCallableForm =
     (formKey === 'core.approval' ||
       formKey === 'core.form' ||
       formKey === 'core.request_input') &&
-    callScope !== undefined
-  )
+    callScope !== undefined;
+  if (hasCallableForm)
     return (
       <HumanFormSetup
         definitions={definitions}

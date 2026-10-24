@@ -122,10 +122,9 @@ function editorMode(
     return 'string';
   if (type === 'boolean' && (fresh || typeof parsed.value === 'boolean'))
     return 'boolean';
-  if (
+  const useNumericEditor =
     (type === 'number' || type === 'integer') &&
-    (fresh || typeof parsed.value === 'number' || !parsed.ok)
-  )
-    return 'number';
+    (fresh || typeof parsed.value === 'number' || !parsed.ok);
+  if (useNumericEditor) return 'number';
   return 'json';
 }

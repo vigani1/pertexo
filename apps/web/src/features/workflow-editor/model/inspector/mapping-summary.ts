@@ -101,14 +101,7 @@ function describeLiteral(json: string): MappingSourceSummary {
       label: `[${String(value.length)} ${value.length === 1 ? 'item' : 'items'}]`,
     };
   if (typeof value === 'object') {
-    if (
-      'kind' in value &&
-      value.kind === 'artifact' &&
-      'byteLength' in value &&
-      typeof value.byteLength === 'number' &&
-      Number.isSafeInteger(value.byteLength) &&
-      value.byteLength >= 0
-    )
+    if (hasArtifactByteLength(value))
       return {
         tone: 'value',
         label: `File · ${formatByteLength(value.byteLength)}`,
@@ -126,4 +119,17 @@ function clip(text: string): string {
   return text.length > LITERAL_LABEL_LIMIT
     ? `${text.slice(0, LITERAL_LABEL_LIMIT - 1)}…`
     : text;
+}
+
+function hasArtifactByteLength(
+  value: object,
+): value is { kind: 'artifact'; byteLength: number } {
+  return (
+    'kind' in value &&
+    value.kind === 'artifact' &&
+    'byteLength' in value &&
+    typeof value.byteLength === 'number' &&
+    Number.isSafeInteger(value.byteLength) &&
+    value.byteLength >= 0
+  );
 }

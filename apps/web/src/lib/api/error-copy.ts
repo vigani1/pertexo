@@ -96,11 +96,9 @@ export function describeCommandError(error: unknown, action: string): string {
   if (isApiError(error) && error.status === 503)
     return `We couldn’t confirm whether ${action} went through. Check again before retrying.`;
   const reference = supportReference(error);
-  if (
-    isApiError(error) &&
-    (error.status ?? 0) >= 500 &&
-    reference !== undefined
-  )
+  const serverFailureWithReference =
+    isApiError(error) && (error.status ?? 0) >= 500 && reference !== undefined;
+  if (serverFailureWithReference)
     return `${Action} didn’t work on our side. Try again; if it keeps happening, quote reference ${reference.slice(0, 8)}.`;
   return `${Action} didn’t work. Try again.`;
 }

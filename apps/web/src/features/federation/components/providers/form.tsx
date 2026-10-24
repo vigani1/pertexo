@@ -117,7 +117,9 @@ function OidcProviderForm({
         onSubmit={(event) => {
           event.preventDefault();
           const values = fields.validate();
-          if (values === undefined || locked || stale || unavailable) return;
+          const providerSubmissionBlocked =
+            values === undefined || locked || stale || unavailable;
+          if (providerSubmissionBlocked) return;
           const configuration = {
             clientId: values.clientId.trim(),
             emailClaim: values.emailClaim.trim(),

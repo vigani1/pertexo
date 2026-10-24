@@ -40,12 +40,12 @@ export function noteFieldErrors(
           : -limits.coordinate;
     const maximum =
       key === 'width' || key === 'height' ? limits.maxSize : limits.coordinate;
-    if (
+    const invalidSizeField =
       fields[key].trim() === '' ||
       !Number.isFinite(value) ||
       value < minimum ||
-      value > maximum
-    )
+      value > maximum;
+    if (invalidSizeField)
       errors[key] =
         `Use a number from ${String(minimum)} to ${String(maximum)}.`;
   }
