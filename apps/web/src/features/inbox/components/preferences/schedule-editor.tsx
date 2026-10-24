@@ -1,5 +1,6 @@
 import {
   acceptedNotificationSchedule,
+  notificationEmailUnavailable,
   type ScheduleTarget as Target,
 } from '../../model/email-schedule';
 import { useId, useState } from 'react';
@@ -127,10 +128,11 @@ export function NotificationScheduleEditor({
   const idleReloadLabel = changed
     ? 'Discard changes'
     : 'Load the latest choices';
-  const unavailable =
-    !snapshot.emailAvailable &&
-    draft.mode !== 'off' &&
-    (draft.mode !== 'inherit' || snapshot.defaults.mode !== 'off');
+  const unavailable = notificationEmailUnavailable({
+    emailAvailable: snapshot.emailAvailable,
+    mode: draft.mode,
+    defaultMode: snapshot.defaults.mode,
+  });
   return (
     <form
       className="flex max-w-xl flex-col gap-4"
@@ -155,77 +157,15 @@ export function NotificationScheduleEditor({
           load the latest choices, then save again.
         </Notice>
       ) : null}
-      <fieldset disabled={locked} className="contents">
-        <LabelledField id={`${id}-mode`} label="Email frequency">
-          {(control) => (
-            <Select
-              items={items}
-              value={draft.mode}
-              onValueChange={(value) => {
-                if (value !== null) change({ mode: value });
-              }}
-            >
-              <SelectTrigger {...control}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {items.map((item) => (
-                  <SelectItem
-                    key={item.value}
-                    value={item.value}
-                    disabled={
-                      !snapshot.emailAvailable &&
-                      item.value !== 'off' &&
-                      (item.value !== 'inherit' ||
-                        snapshot.defaults.mode !== 'off')
-                    }
-                  >
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </LabelledField>
-        {draft.mode === 'daily' ? (
-          <>
-            <LabelledField id={`${id}-hour`} label="Daily hour (0–23)">
-              {(control) => (
-                <Input
-                  {...control}
-                  type="number"
-                  required
-                  min={0}
-                  max={23}
-                  step={1}
-                  value={draft.hour}
-                  onChange={(e) => {
-                    change({ hour: e.target.value });
-                  }}
-                />
-              )}
-            </LabelledField>
-            <LabelledField
-              id={`${id}-zone`}
-              label="Time zone"
-              description="An IANA name, such as Europe/Paris or UTC."
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  value={draft.timeZone}
-                  required
-                  autoComplete="off"
-                  spellCheck={false}
-                  onChange={(e) => {
-                    change({ timeZone: e.target.value });
-                  }}
-                />
-              )}
-            </LabelledField>
-          </>
-        ) : null}
-      </fieldset>
+      <NotificationScheduleFields
+        id={id}
+        items={items}
+        draft={draft}
+        disabled={locked}
+        emailAvailable={snapshot.emailAvailable}
+        defaultMode={snapshot.defaults.mode}
+        onChange={change}
+      />
       {error === undefined ? null : <Notice tone="destructive">{error}</Notice>}
       <NotificationSaveFeedback
         error={command.error}
@@ -236,26 +176,144 @@ export function NotificationScheduleEditor({
         retry={command.retry}
         saved={saved}
       />
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="submit"
-          disabled={
-            locked || unavailable || serverRevision !== draft.baseRevision
-          }
-        >
-          {command.pending ? 'Saving…' : 'Save choices'}
-        </Button>
-        {changed || stale ? (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={locked}
-            onClick={() => void reload()}
-          >
-            {reloading ? 'Loading…' : idleReloadLabel}
-          </Button>
-        ) : null}
-      </div>
+      <NotificationScheduleActions
+        pending={command.pending}
+        saveDisabled={
+          locked || unavailable || serverRevision !== draft.baseRevision
+        }
+        reloadVisible={changed || stale}
+        reloadDisabled={locked}
+        reloadPending={reloading}
+        reloadLabel={idleReloadLabel}
+        onReload={() => void reload()}
+      />
     </form>
+  );
+}
+
+function NotificationScheduleFields({
+  id,
+  items,
+  draft,
+  disabled,
+  emailAvailable,
+  defaultMode,
+  onChange,
+}: Readonly<{
+  id: string;
+  items: readonly Readonly<{ value: string; label: string }>[];
+  draft: ReturnType<typeof initial>;
+  disabled: boolean;
+  emailAvailable: boolean;
+  defaultMode: NoticePreferencesResponse['defaults']['mode'];
+  onChange: (patch: Partial<ReturnType<typeof initial>>) => void;
+}>) {
+  return (
+    <fieldset disabled={disabled} className="contents">
+      <LabelledField id={`${id}-mode`} label="Email frequency">
+        {(control) => (
+          <Select
+            items={items}
+            value={draft.mode}
+            onValueChange={(value) => {
+              if (value !== null) onChange({ mode: value });
+            }}
+          >
+            <SelectTrigger {...control}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {items.map((item) => (
+                <SelectItem
+                  key={item.value}
+                  value={item.value}
+                  disabled={notificationEmailUnavailable({
+                    emailAvailable,
+                    mode: item.value,
+                    defaultMode,
+                  })}
+                >
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </LabelledField>
+      {draft.mode === 'daily' ? (
+        <>
+          <LabelledField id={`${id}-hour`} label="Daily hour (0–23)">
+            {(control) => (
+              <Input
+                {...control}
+                type="number"
+                required
+                min={0}
+                max={23}
+                step={1}
+                value={draft.hour}
+                onChange={(e) => {
+                  onChange({ hour: e.target.value });
+                }}
+              />
+            )}
+          </LabelledField>
+          <LabelledField
+            id={`${id}-zone`}
+            label="Time zone"
+            description="An IANA name, such as Europe/Paris or UTC."
+          >
+            {(control) => (
+              <Input
+                {...control}
+                value={draft.timeZone}
+                required
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(e) => {
+                  onChange({ timeZone: e.target.value });
+                }}
+              />
+            )}
+          </LabelledField>
+        </>
+      ) : null}
+    </fieldset>
+  );
+}
+
+function NotificationScheduleActions({
+  pending,
+  saveDisabled,
+  reloadVisible,
+  reloadDisabled,
+  reloadPending,
+  reloadLabel,
+  onReload,
+}: Readonly<{
+  pending: boolean;
+  saveDisabled: boolean;
+  reloadVisible: boolean;
+  reloadDisabled: boolean;
+  reloadPending: boolean;
+  reloadLabel: string;
+  onReload: () => void;
+}>) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button type="submit" disabled={saveDisabled}>
+        {pending ? 'Saving…' : 'Save choices'}
+      </Button>
+      {reloadVisible ? (
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={reloadDisabled}
+          onClick={onReload}
+        >
+          {reloadPending ? 'Loading…' : reloadLabel}
+        </Button>
+      ) : null}
+    </div>
   );
 }

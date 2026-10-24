@@ -93,3 +93,19 @@ export function acceptedNotificationSchedule(
         : current.effective,
   };
 }
+
+export function notificationEmailUnavailable({
+  emailAvailable,
+  mode,
+  defaultMode,
+}: Readonly<{
+  emailAvailable: boolean;
+  mode: string;
+  defaultMode: NoticePreferencesResponse['defaults']['mode'];
+}>) {
+  return (
+    !emailAvailable &&
+    mode !== 'off' &&
+    (mode !== 'inherit' || defaultMode !== 'off')
+  );
+}

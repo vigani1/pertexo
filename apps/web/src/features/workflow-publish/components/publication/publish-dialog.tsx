@@ -36,6 +36,26 @@ const stages: readonly Readonly<{ stage: PublishStage; label: string }>[] = [
  * the live version, anything blocking it, and what happens to triggers and
  * runs already in progress. Confirming shows the real steps as they run.
  */
+type PublishDialogProps = Readonly<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  versionLabel: string;
+  summary: PublishSummary | undefined;
+  summaryState: 'loading' | 'error' | 'ready';
+  graph: WorkflowGraphContract;
+  stage: PublishStage | undefined;
+  error: string | undefined;
+  recoveryPending: boolean;
+  blockingGroups: readonly WorkflowIssueGroup[];
+  unchangedVersionNumber: number | undefined;
+  suiteNotice?: ReactNode;
+  mode?: 'publish' | 'review';
+  unavailable?: boolean;
+  policyNotice?: ReactNode;
+  onPublish: (note?: string) => void;
+  onFix: (target: WorkflowValidationTarget) => void;
+}>;
+
 export function PublishDialog({
   open,
   onOpenChange,
@@ -54,25 +74,7 @@ export function PublishDialog({
   policyNotice,
   onPublish,
   onFix,
-}: Readonly<{
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  versionLabel: string;
-  summary: PublishSummary | undefined;
-  summaryState: 'loading' | 'error' | 'ready';
-  graph: WorkflowGraphContract;
-  stage: PublishStage | undefined;
-  error: string | undefined;
-  recoveryPending: boolean;
-  blockingGroups: readonly WorkflowIssueGroup[];
-  unchangedVersionNumber: number | undefined;
-  suiteNotice?: ReactNode;
-  mode?: 'publish' | 'review';
-  unavailable?: boolean;
-  policyNotice?: ReactNode;
-  onPublish: (note?: string) => void;
-  onFix: (target: WorkflowValidationTarget) => void;
-}>) {
+}: PublishDialogProps) {
   const pending = stage !== undefined;
   const noteId = useId();
   const fields = useFieldValues(
@@ -142,24 +144,15 @@ export function PublishDialog({
             ) : null}
             {suiteNotice}
             <PublishChanges summary={summary} state={summaryState} />
-            {blockingGroups.length === 0 ? null : (
-              <section aria-label="Blocking issues">
-                <h3 className="text-sm font-semibold text-destructive">
-                  Fix these first
-                </h3>
-                <div className="mt-2">
-                  <IssuesList
-                    groups={blockingGroups}
-                    graph={graph}
-                    onFix={(target) => {
-                      fixing.current = true;
-                      onOpenChange(false);
-                      onFix(target);
-                    }}
-                  />
-                </div>
-              </section>
-            )}
+            <BlockingPublicationIssues
+              groups={blockingGroups}
+              graph={graph}
+              onFix={(target) => {
+                fixing.current = true;
+                onOpenChange(false);
+                onFix(target);
+              }}
+            />
             {requesting ? (
               <p className="text-sm text-muted-foreground">
                 The live version keeps running until an eligible reviewer
@@ -279,4 +272,26 @@ function progressTone(index: number, activeIndex: number): StatusTone {
   if (index < activeIndex) return 'success';
   if (index === activeIndex) return 'live';
   return 'queued';
+}
+
+function BlockingPublicationIssues({
+  groups,
+  graph,
+  onFix,
+}: Readonly<{
+  groups: readonly WorkflowIssueGroup[];
+  graph: WorkflowGraphContract;
+  onFix: (target: WorkflowValidationTarget) => void;
+}>) {
+  if (groups.length === 0) return null;
+  return (
+    <section aria-label="Blocking issues">
+      <h3 className="text-sm font-semibold text-destructive">
+        Fix these first
+      </h3>
+      <div className="mt-2">
+        <IssuesList groups={groups} graph={graph} onFix={onFix} />
+      </div>
+    </section>
+  );
 }
