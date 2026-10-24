@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
+import type { z } from 'zod';
+import type { optionsSchema } from './input.js';
 
 /** Deletes a workspace's stored objects, one page per call. */
 export interface WorkspacePurgeObjectStore {
@@ -28,8 +29,8 @@ export interface WorkspacePurgeCoordinator {
   processNext(signal?: AbortSignal): Promise<WorkspacePurgeProcessResult>;
 }
 
-export /** One bounded change to a purging workspace's rows. */
-type PurgeStep = Readonly<{
+/** One bounded change to a purging workspace's rows. */
+export type PurgeStep = Readonly<{
   name: string;
   run(
     client: PoolClient,
@@ -37,20 +38,5 @@ type PurgeStep = Readonly<{
     pageSize: number,
   ): Promise<number>;
 }>;
-
-export const optionsSchema = z
-  .object({
-    lockTimeoutMs: z.number().int().min(100).max(60_000).default(10_000),
-    objectPageSize: z.number().int().min(1).max(1_000).default(500),
-    objectTimeoutMs: z.number().int().min(1_000).max(120_000).default(30_000),
-    pageSize: z.number().int().min(1).max(1_000).default(500),
-    statementTimeoutMs: z
-      .number()
-      .int()
-      .min(1_000)
-      .max(120_000)
-      .default(30_000),
-  })
-  .strict();
 
 export type WorkspacePurgeOptions = z.input<typeof optionsSchema>;
