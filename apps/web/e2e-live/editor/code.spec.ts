@@ -335,11 +335,15 @@ test('Python uses real previews and published runs in both themes and responsive
       await page.goto(editorUrl);
       await page.getByTestId(`rf__node-${nodeId}`).focus();
       await page.keyboard.press('Enter');
-      if (width < 1024)
-        await page
+      if (width < 1024) {
+        const stepPanel = page
           .getByRole('navigation', { name: 'Editor panels' })
-          .getByRole('button', { name: 'Step', exact: true })
-          .click();
+          .getByRole('button', { name: 'Step', exact: true });
+        // Keyboard selection may already have opened the phone's panel.
+        if ((await stepPanel.getAttribute('aria-pressed')) === 'false')
+          await stepPanel.click();
+        await expect(stepPanel).toHaveAttribute('aria-pressed', 'true');
+      }
       await page.getByRole('tab', { name: 'Setup', exact: true }).click();
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       await expect(editor).toContainText('private Python log');
