@@ -1,3 +1,4 @@
+import { getRequestUrl } from '../../support/request';
 import { createUserFixture } from '../../support/fixtures/identity';
 import { Activity } from 'react';
 import { HttpResponse, http } from 'msw';
@@ -738,12 +739,7 @@ describe('invitation acceptance', () => {
     let rejectCleanup: ((reason: Error) => void) | undefined;
     const fetchImplementation = vi.fn(
       (input: RequestInfo | URL, init?: RequestInit) => {
-        const requestUrl =
-          typeof input === 'string'
-            ? input
-            : input instanceof URL
-              ? input.href
-              : input.url;
+        const requestUrl = getRequestUrl(input);
         if (init?.method === 'DELETE')
           return new Promise<Response>((_resolve, reject) => {
             rejectCleanup = reject;
@@ -792,12 +788,7 @@ describe('invitation acceptance', () => {
   it('reports rejected acceptance cleanup without undoing the completed result', async () => {
     const fetchImplementation = vi.fn(
       (input: RequestInfo | URL, init?: RequestInit) => {
-        const requestUrl =
-          typeof input === 'string'
-            ? input
-            : input instanceof URL
-              ? input.href
-              : input.url;
+        const requestUrl = getRequestUrl(input);
         if (init?.method === 'DELETE')
           return Promise.reject(new Error('cleanup failed'));
         if (requestUrl.endsWith('/v1/invitation-acceptance'))
@@ -853,12 +844,7 @@ describe('invitation acceptance', () => {
   it('uses ordinary workspace navigation when another tab replaced the cleanup binding', async () => {
     const fetchImplementation = vi.fn(
       (input: RequestInfo | URL, init?: RequestInit) => {
-        const requestUrl =
-          typeof input === 'string'
-            ? input
-            : input instanceof URL
-              ? input.href
-              : input.url;
+        const requestUrl = getRequestUrl(input);
         if (init?.method === 'DELETE')
           return Promise.resolve(
             new Response(
@@ -925,12 +911,7 @@ describe('invitation acceptance', () => {
     let resolveCleanup: ((response: Response) => void) | undefined;
     const fetchImplementation = vi.fn(
       (input: RequestInfo | URL, init?: RequestInit) => {
-        const requestUrl =
-          typeof input === 'string'
-            ? input
-            : input instanceof URL
-              ? input.href
-              : input.url;
+        const requestUrl = getRequestUrl(input);
         if (init?.method === 'DELETE')
           return new Promise<Response>((resolve) => {
             resolveCleanup = resolve;

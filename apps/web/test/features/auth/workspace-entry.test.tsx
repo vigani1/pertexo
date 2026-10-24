@@ -1,3 +1,4 @@
+import { getRequestUrl } from '../../support/request';
 import {
   createUserFixture,
   createWorkspaceFixture,
@@ -220,12 +221,7 @@ describe('authentication and workspace entry', () => {
       release = resolve;
     });
     const fetchIgnoringAbort: typeof fetch = (input, init) => {
-      const url =
-        typeof input === 'string'
-          ? input
-          : input instanceof URL
-            ? input.href
-            : input.url;
+      const url = getRequestUrl(input);
       if (url.includes('/v1/auth/sign-in/social')) return delayed;
       return testFetch(input, init);
     };
