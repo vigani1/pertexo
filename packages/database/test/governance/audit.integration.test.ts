@@ -379,3 +379,24 @@ it('keeps valid full variable replacements inside the audit metadata budget', as
     await variables.close();
   }
 });
+
+it('keeps microsecond audit filter boundaries and literal person search', async () => {
+  const targetId = await insert();
+  const list = (query: { from?: string; until?: string; person?: string }) =>
+    store.list({ ...scope(), query: { ...query, targetId, limit: 10 } });
+  expect((await list({ from: '2026-10-16T10:00:00.123457Z' })).items).toEqual(
+    [],
+  );
+  expect((await list({ until: '2026-10-16T10:00:00.123456Z' })).items).toEqual(
+    [],
+  );
+  expect(
+    (
+      await list({
+        from: '2026-10-16T10:00:00.123456Z',
+        until: '2026-10-16T10:00:00.123457Z',
+      })
+    ).items,
+  ).toHaveLength(1);
+  expect((await list({ person: '%' })).items).toEqual([]);
+});
