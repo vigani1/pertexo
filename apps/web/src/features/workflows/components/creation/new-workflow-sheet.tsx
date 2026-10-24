@@ -46,6 +46,16 @@ function nameProblem(value: string): string | undefined {
  * idempotency key is reused while the name is unchanged, so retrying an
  * uncertain create can't make a second workflow.
  */
+type NewWorkflowSheetProps = Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: (workflowId: string) => void;
+  onChooseExample?: ((templateId: string, name?: string) => void) | undefined;
+}>;
+
 export function NewWorkflowSheet({
   apiClient,
   userId,
@@ -54,15 +64,7 @@ export function NewWorkflowSheet({
   onOpenChange,
   onCreated,
   onChooseExample,
-}: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreated: (workflowId: string) => void;
-  onChooseExample?: ((templateId: string, name?: string) => void) | undefined;
-}>) {
+}: NewWorkflowSheetProps) {
   const notifications = useNotifications();
   const [name, setName] = useState('');
   const validation = useFieldValidation<'name'>();

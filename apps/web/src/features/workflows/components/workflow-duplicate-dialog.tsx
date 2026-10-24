@@ -22,6 +22,19 @@ import { workflowNameError } from '../model/rename';
 import { useWorkflowDuplicate } from '../hooks/use-workflow-duplicate';
 import { canDuplicateWorkflow } from '../model/duplicate/allowed';
 
+type WorkflowDuplicateDialogProps = Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: AccessibleWorkspace;
+  workflow: WorkflowSummary;
+  source: WorkflowDuplicateRequest['source'];
+  versionNumber?: number;
+  allowed?: boolean;
+  onClose: () => void;
+  onCreated: (workflowId: string) => void;
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
+}>;
+
 export function WorkflowDuplicateDialog({
   apiClient,
   userId,
@@ -33,18 +46,7 @@ export function WorkflowDuplicateDialog({
   onClose,
   onCreated,
   finalFocus,
-}: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
-  workflow: WorkflowSummary;
-  source: WorkflowDuplicateRequest['source'];
-  versionNumber?: number;
-  allowed?: boolean;
-  onClose: () => void;
-  onCreated: (workflowId: string) => void;
-  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
-}>) {
+}: WorkflowDuplicateDialogProps) {
   const [name, setName] = useState(
     () => `${workflow.name.slice(0, 121)} (copy)`,
   );
