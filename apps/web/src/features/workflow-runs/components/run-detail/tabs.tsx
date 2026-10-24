@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { RunTimelineModel } from '../../model/timeline/runs';
 import { RunEventsView } from './events-view';
 import { RunLoadingWave } from './timeline/loading-wave';
-import type { RunDataScope } from './data';
+import type { RunDataScope } from './data/outputs';
 import { RunOutputsView } from './outputs-view';
 import { RunStepList } from './step-list';
 import { RunTimeline } from './timeline/view';

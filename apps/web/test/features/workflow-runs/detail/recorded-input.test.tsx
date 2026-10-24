@@ -6,7 +6,7 @@ import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
 import { NotificationsProvider } from '@/components/ui/toast';
-import { StepInputData } from '@/features/workflow-runs/components/run-detail/data';
+import { StepInputData } from '@/features/workflow-runs/components/run-detail/data/outputs';
 import { describeNodeStatus } from '@/features/workflow-runs/model/presentation/run-status';
 import type {
   RunTimelineRow,
