@@ -1,3 +1,11 @@
+import { authDirectoryGroupMembers } from '../../../../schema/identity/federation/directory/members.js';
+import { authDirectoryUsers } from '../../../../schema/identity/federation/directory/users.js';
+import { authDirectoryGroups } from '../../../../schema/identity/federation/directory/groups.js';
+import { and, asc, count, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { directoryUserRecords } from './records.queries.js';
+import { directoryUsers } from './tables.js';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
 import { withDirectoryTransaction } from '../authority.repository.js';
@@ -22,19 +30,27 @@ export async function readDirectoryUser(
   organizationId: string,
   id: string,
 ): Promise<DirectoryUser> {
-  const user = (
-    await client.query<DirectoryUserRow>(
-      'select * from app.auth_directory_users where organization_id=$1 and id=$2 and deleted_at is null',
-      [organizationId, id],
+  const [user] = await directoryUserRecords(client)
+    .where(
+      and(
+        eq(directoryUsers.organizationId, organizationId),
+        eq(directoryUsers.id, id),
+        isNull(directoryUsers.deletedAt),
+      ),
     )
-  ).rows[0];
+    .catch(rethrowQueryFailure);
   if (user === undefined) throw new DirectoryError('not_found');
-  const groups = (
-    await client.query<{ group_id: string }>(
-      'select group_id from app.auth_directory_group_members where organization_id=$1 and directory_user_id=$2 order by group_id',
-      [organizationId, id],
+  const groups = await drizzle(client)
+    .select({ group_id: authDirectoryGroupMembers.groupId })
+    .from(authDirectoryGroupMembers)
+    .where(
+      and(
+        eq(authDirectoryGroupMembers.organizationId, organizationId),
+        eq(authDirectoryGroupMembers.directoryUserId, id),
+      ),
     )
-  ).rows;
+    .orderBy(asc(authDirectoryGroupMembers.groupId))
+    .catch(rethrowQueryFailure);
   return { ...user, groupIds: groups.map((group) => group.group_id) };
 }
 export function createDirectoryUser(
@@ -44,29 +60,27 @@ export function createDirectoryUser(
 ): Promise<DirectoryUser> {
   return withDirectoryConstraintErrors(() =>
     withDirectoryTransaction(pool, principal, async (client) => {
-      const count =
-        (
-          await client.query<{ count: number }>(
-            'select count(*)::integer count from app.auth_directory_users where organization_id=$1',
-            [principal.organizationId],
-          )
-        ).rows[0]?.count ?? 0;
-      if (count >= DIRECTORY_LIMITS.users) throw new DirectoryError('limit');
+      const [row] = await drizzle(client)
+        .select({ count: count() })
+        .from(authDirectoryUsers)
+        .where(eq(authDirectoryUsers.organizationId, principal.organizationId))
+        .catch(rethrowQueryFailure);
+      if ((row?.count ?? 0) >= DIRECTORY_LIMITS.users)
+        throw new DirectoryError('limit');
       const id = generatePersistedId();
-      await client.query(
-        `insert into app.auth_directory_users(id,organization_id,user_name,normalized_user_name,login_email,external_id,active,profile)
-      values($1,$2,$3,$4,$5,$6,$7,$8::jsonb)`,
-        [
+      await drizzle(client)
+        .insert(authDirectoryUsers)
+        .values({
           id,
-          principal.organizationId,
-          values.userName,
-          values.userName.toLowerCase(),
-          values.profile.emails[0].value.toLowerCase(),
-          values.externalId,
-          values.active,
-          JSON.stringify(values.profile),
-        ],
-      );
+          organizationId: principal.organizationId,
+          userName: values.userName,
+          normalizedUserName: values.userName.toLowerCase(),
+          loginEmail: values.profile.emails[0].value.toLowerCase(),
+          externalId: values.externalId,
+          active: values.active,
+          profile: values.profile,
+        })
+        .catch(rethrowQueryFailure);
       await directoryAudit(
         client,
         principal,
@@ -100,20 +114,25 @@ export function changeDirectoryUser(
       );
       assertDirectoryRevision(current.revision, expectedRevision);
       const values = transform(current);
-      await client.query(
-        `update app.auth_directory_users set user_name=$3,normalized_user_name=$4,login_email=$5,external_id=$6,active=$7,profile=$8::jsonb,
-      revision=revision+1,updated_at=clock_timestamp() where organization_id=$1 and id=$2`,
-        [
-          principal.organizationId,
-          id,
-          values.userName,
-          values.userName.toLowerCase(),
-          values.profile.emails[0].value.toLowerCase(),
-          values.externalId,
-          values.active,
-          JSON.stringify(values.profile),
-        ],
-      );
+      await drizzle(client)
+        .update(authDirectoryUsers)
+        .set({
+          userName: values.userName,
+          normalizedUserName: values.userName.toLowerCase(),
+          loginEmail: values.profile.emails[0].value.toLowerCase(),
+          externalId: values.externalId,
+          active: values.active,
+          profile: values.profile,
+          revision: sql`${authDirectoryUsers.revision}+1`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(authDirectoryUsers.organizationId, principal.organizationId),
+            eq(authDirectoryUsers.id, id),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       if (current.user_id !== null)
         await projectDirectoryMemberships(
           client,
@@ -147,20 +166,50 @@ export function deleteDirectoryUser(
         id,
       );
       assertDirectoryRevision(user.revision, expectedRevision);
-      await client.query(
-        'update app.auth_directory_users set active=false,deleted_at=clock_timestamp(),updated_at=clock_timestamp(),revision=revision+1 where organization_id=$1 and id=$2',
-        [principal.organizationId, id],
-      );
-      const groups = (
-        await client.query<{ group_id: string }>(
-          'delete from app.auth_directory_group_members where organization_id=$1 and directory_user_id=$2 returning group_id',
-          [principal.organizationId, id],
+      await drizzle(client)
+        .update(authDirectoryUsers)
+        .set({
+          active: false,
+          deletedAt: sql`clock_timestamp()`,
+          updatedAt: sql`clock_timestamp()`,
+          revision: sql`${authDirectoryUsers.revision}+1`,
+        })
+        .where(
+          and(
+            eq(authDirectoryUsers.organizationId, principal.organizationId),
+            eq(authDirectoryUsers.id, id),
+          ),
         )
-      ).rows;
-      await client.query(
-        'update app.auth_directory_groups set revision=revision+1,updated_at=clock_timestamp() where organization_id=$1 and id=any($2::uuid[])',
-        [principal.organizationId, groups.map((group) => group.group_id)],
-      );
+        .catch(rethrowQueryFailure);
+      const groups = await drizzle(client)
+        .delete(authDirectoryGroupMembers)
+        .where(
+          and(
+            eq(
+              authDirectoryGroupMembers.organizationId,
+              principal.organizationId,
+            ),
+            eq(authDirectoryGroupMembers.directoryUserId, id),
+          ),
+        )
+        .returning({ group_id: authDirectoryGroupMembers.groupId })
+        .catch(rethrowQueryFailure);
+      await drizzle(client)
+        .update(authDirectoryGroups)
+        .set({
+          revision: sql`${authDirectoryGroups.revision}+1`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(authDirectoryGroups.organizationId, principal.organizationId),
+            inArray(
+              authDirectoryGroups.id,
+              groups.map((group) => group.group_id),
+            ),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       if (user.user_id !== null)
         await projectDirectoryMemberships(
           client,

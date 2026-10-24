@@ -1,4 +1,13 @@
-import type { Role } from '@pertexo/workflow-model';
+import {
+  loadDirectoryProjection,
+  loadWorkspaceProjection,
+} from './projection.queries.js';
+import { authDirectoryMemberships } from '../../../schema/identity/federation/directory/sources.js';
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+
 import type { PoolClient } from 'pg';
 import {
   appendAuditFacts,
@@ -16,22 +25,9 @@ import type {
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.repository.js';
 import type { DirectoryOrganization } from './authority.repository.js';
-import type { DirectoryMapping } from './contract.js';
+
 import { directoryRole } from './roles.queries.js';
 
-type BoundUser = Readonly<{
-  id: string;
-  user_id: string;
-  active: boolean;
-  deleted_at: Date | null;
-}>;
-type ExistingMember = Readonly<{
-  user_id: string;
-  role: Role;
-  status: 'active' | 'suspended' | 'removed';
-  role_revision: number;
-  directory_user_id: string | null;
-}>;
 /** The caller holds all linked workspace locks and the organization lock. */
 export async function projectDirectoryMemberships(
   client: PoolClient,
@@ -39,62 +35,23 @@ export async function projectDirectoryMemberships(
   actor: Readonly<{ actorId?: string; credentialId?: string }> = {},
   directoryUserIds?: readonly string[],
 ): Promise<void> {
-  const users = (
-    await client.query<BoundUser>(
-      `select id,user_id,active,deleted_at from app.auth_directory_users
-     where organization_id=$1 and user_id is not null and ($2::uuid[] is null or id=any($2::uuid[])) order by user_id`,
-      [organization.id, directoryUserIds ?? null],
-    )
-  ).rows;
-  if (users.length === 0) return;
-  const userIds = users.map((user) => user.user_id);
-  await client.query(
-    'select id from app.users where id=any($1::uuid[]) order by id for update',
-    [userIds],
+  const projection = await loadDirectoryProjection(
+    client,
+    organization.id,
+    directoryUserIds,
   );
-  const groupRoles = (
-    await client.query<DirectoryMapping>(
-      'select workspace_id "workspaceId",group_id "groupId",role,priority from app.auth_directory_group_mappings where organization_id=$1 order by workspace_id,priority',
-      [organization.id],
-    )
-  ).rows;
-  const groupMembers = (
-    await client.query<{ group_id: string; directory_user_id: string }>(
-      'select group_id,directory_user_id from app.auth_directory_group_members where organization_id=$1 and directory_user_id=any($2::uuid[])',
-      [organization.id, users.map((user) => user.id)],
-    )
-  ).rows;
-  const groupsByUser = new Map<string, Set<string>>();
-  for (const member of groupMembers) {
-    const groups =
-      groupsByUser.get(member.directory_user_id) ?? new Set<string>();
-    groups.add(member.group_id);
-    groupsByUser.set(member.directory_user_id, groups);
-  }
+  if (projection === undefined) return;
+  const { users, userIds, groupRoles, groupsByUser } = projection;
   const revoked = new Set<string>();
   for (const workspace of organization.workspaces)
     await withWorkspaceScope(
       client,
       { workspaceId: workspace.workspace_id },
       async (scoped) => {
-        const active =
-          (
-            await scoped.query<{ status: string }>(
-              'select status from app.workspaces where id=$1',
-              [workspace.workspace_id],
-            )
-          ).rows[0]?.status === 'active';
-        const members = new Map(
-          (
-            await scoped.query<ExistingMember>(
-              `select member.user_id,member.role,member.status,member.role_revision,source.directory_user_id
-       from app.workspace_memberships member
-       left join app.auth_directory_memberships source on source.workspace_id=member.workspace_id and source.user_id=member.user_id
-       where member.workspace_id=$1 and member.user_id=any($2::uuid[]) order by member.user_id for update of member`,
-              [workspace.workspace_id, userIds],
-            )
-          ).rows.map((member) => [member.user_id, member]),
-        );
+        const { active, members } = await loadWorkspaceProjection(scoped, {
+          workspaceId: workspace.workspace_id,
+          userIds,
+        });
         const mappings = groupRoles.filter(
           (mapping) => mapping.workspaceId === workspace.workspace_id,
         );
@@ -161,16 +118,27 @@ export async function projectDirectoryMemberships(
           await createMemberships(scoped, workspace.workspace_id, additions, {
             actorId: actor.actorId ?? null,
           });
-          await scoped.query(
-            `insert into app.auth_directory_memberships(organization_id,workspace_id,user_id,directory_user_id)
-        select $1,$2,member.user_id,member.directory_id from unnest($3::uuid[],$4::uuid[]) as member(user_id,directory_id)`,
-            [
-              organization.id,
-              workspace.workspace_id,
-              additions.map((member) => member.userId),
-              additions.map((member) => member.directoryUserId),
-            ],
-          );
+          const source = drizzle(scoped)
+            .select({
+              organizationId: sql<string>`${organization.id}::uuid`.as(
+                'organization_id',
+              ),
+              workspaceId: sql<string>`${workspace.workspace_id}::uuid`.as(
+                'workspace_id',
+              ),
+              userId: sql<string>`member.user_id`.as('user_id'),
+              directoryUserId: sql<string>`member.directory_id`.as(
+                'directory_user_id',
+              ),
+              createdAt: sql<Date>`clock_timestamp()`.as('created_at'),
+            })
+            .from(
+              sql`unnest(${sql.param(additions.map((member) => member.userId))}::uuid[],${sql.param(additions.map((member) => member.directoryUserId))}::uuid[]) as member(user_id,directory_id)`,
+            );
+          await drizzle(scoped)
+            .insert(authDirectoryMemberships)
+            .select(source)
+            .catch(rethrowQueryFailure);
         }
         await updateMemberships(scoped, workspace.workspace_id, changes);
         await appendAuditFacts(scoped, facts);

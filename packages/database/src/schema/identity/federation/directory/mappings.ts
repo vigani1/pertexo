@@ -1,3 +1,4 @@
+import type { DelegatedRole } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -17,7 +18,7 @@ export const authDirectoryGroupMappings = appSchema.table(
     organizationId: uuid('organization_id').notNull(),
     workspaceId: uuid('workspace_id').notNull(),
     groupId: uuid('group_id').notNull(),
-    role: text().notNull(),
+    role: text().$type<DelegatedRole>().notNull(),
     priority: integer().notNull(),
   },
   (t) => [

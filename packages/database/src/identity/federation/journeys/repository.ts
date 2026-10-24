@@ -1,3 +1,11 @@
+import { authDomains } from '../../../schema/identity/federation/domains.js';
+import { authProviders } from '../../../schema/identity/federation/providers.js';
+import { authOrganizations } from '../../../schema/identity/federation/organizations.js';
+import { workspaces } from '../../../schema/foundation.js';
+import { authFederationAttempts } from '../../../schema/identity/federation/journeys.js';
+import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { isUniqueConstraintFailure } from '../../../platform/query-errors.js';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { FEDERATION_WORKSPACE_STATUSES } from '../sessions/policy.js';
@@ -15,7 +23,10 @@ import {
 import { readEligibleAuthenticationSession } from '../sessions/authority.repository.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
 import { queryFailure } from '../../../platform/query-errors.js';
-import { readFederationProvider, findFederationAttempt } from './records.queries.js';
+import {
+  readFederationProvider,
+  findFederationAttempt,
+} from './records.queries.js';
 import {
   completeFederationJourney,
   type CompleteFederationJourney,
@@ -30,18 +41,42 @@ export class OrganizationSignInCommands {
     private readonly input: Readonly<{ pool: Pool; sessionTtlSeconds: number }>,
   ) {}
   async discover(domain: string): Promise<FederationDiscovery> {
-    const result = await this.input.pool.query<{
-      require_sso: boolean;
-      id: string | null;
-      name: string | null;
-      kind: 'oidc' | 'saml' | null;
-    }>(
-      `select domain.require_sso,provider.id,provider.name,provider.kind from app.auth_domains domain join app.auth_organizations organization on organization.id=domain.organization_id join app.workspaces control on control.id=organization.control_workspace_id left join app.auth_providers provider on provider.organization_id=domain.organization_id and provider.enabled where domain.domain=$1 and control.status=any($2::text[]) and domain.verified_at is not null order by provider.name,provider.id limit $3`,
-      [domain, [...FEDERATION_WORKSPACE_STATUSES], FEDERATION_LIMITS.providers],
-    );
+    const rows = await drizzle(this.input.pool)
+      .select({
+        require_sso: authDomains.requireSso,
+        id: authProviders.id,
+        name: authProviders.name,
+        kind: authProviders.kind,
+      })
+      .from(authDomains)
+      .innerJoin(
+        authOrganizations,
+        eq(authOrganizations.id, authDomains.organizationId),
+      )
+      .innerJoin(
+        workspaces,
+        eq(workspaces.id, authOrganizations.controlWorkspaceId),
+      )
+      .leftJoin(
+        authProviders,
+        and(
+          eq(authProviders.organizationId, authDomains.organizationId),
+          eq(authProviders.enabled, true),
+        ),
+      )
+      .where(
+        and(
+          eq(authDomains.domain, domain),
+          inArray(workspaces.status, FEDERATION_WORKSPACE_STATUSES),
+          isNotNull(authDomains.verifiedAt),
+        ),
+      )
+      .orderBy(asc(authProviders.name), asc(authProviders.id))
+      .limit(FEDERATION_LIMITS.providers)
+      .catch(rethrowQueryFailure);
     return {
-      required: result.rows[0]?.require_sso ?? false,
-      providers: result.rows.flatMap(({ id, name, kind }) => {
+      required: rows[0]?.require_sso ?? false,
+      providers: rows.flatMap(({ id, name, kind }) => {
         const providerUnavailable =
           id === null || name === null || kind === null;
         return providerUnavailable ? [] : [{ id, name, kind }];
@@ -65,12 +100,17 @@ export class OrganizationSignInCommands {
           'unavailable',
           'The provider or verified domain is unavailable.',
         );
-      const domain = (
-        await client.query<{ domain: string }>(
-          'select domain from app.auth_domains where id=$1 and organization_id=$2 and verified_at is not null',
-          [input.domainId, organization.id],
+      const [domain] = await drizzle(client)
+        .select({ domain: authDomains.domain })
+        .from(authDomains)
+        .where(
+          and(
+            eq(authDomains.id, input.domainId),
+            eq(authDomains.organizationId, organization.id),
+            isNotNull(authDomains.verifiedAt),
+          ),
         )
-      ).rows[0];
+        .catch(rethrowQueryFailure);
       if (domain === undefined)
         throw new FederationConflictError(
           'unavailable',
@@ -92,12 +132,15 @@ export class OrganizationSignInCommands {
   }
   async start(input: StartFederationJourney): Promise<void> {
     await withPlatformTransaction(this.input.pool, async (client) => {
-      const provider = (
-        await client.query<{ control_workspace_id: string }>(
-          `select organization.control_workspace_id from app.auth_providers provider join app.auth_organizations organization on organization.id=provider.organization_id where provider.id=$1`,
-          [input.providerId],
+      const [provider] = await drizzle(client)
+        .select({ control_workspace_id: authOrganizations.controlWorkspaceId })
+        .from(authProviders)
+        .innerJoin(
+          authOrganizations,
+          eq(authOrganizations.id, authProviders.organizationId),
         )
-      ).rows[0];
+        .where(eq(authProviders.id, input.providerId))
+        .catch(rethrowQueryFailure);
       if (provider === undefined) throw new SignInProofRejectedError();
       if (input.purpose === 'test') {
         if (
@@ -123,31 +166,79 @@ export class OrganizationSignInCommands {
         )
           throw new SignInProofRejectedError();
       } else
-        await client.query(
-          'select id from app.workspaces where id=$1 for share',
-          [provider.control_workspace_id],
+        await drizzle(client)
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.id, provider.control_workspace_id))
+          .for('share')
+          .catch(rethrowQueryFailure);
+      const db = drizzle(client);
+      const source = db
+        .select({
+          id: sql<string>`${input.id}::uuid`.as('id'),
+          organizationId: authProviders.organizationId,
+          providerId: authProviders.id,
+          providerRevision: authProviders.revision,
+          domainId: authDomains.id,
+          purpose: sql<'sign_in' | 'test'>`${input.purpose}::text`.as(
+            'purpose',
+          ),
+          ownerUserId: sql<
+            string | null
+          >`${input.ownerUserId ?? null}::uuid`.as('owner_user_id'),
+          ownerSessionId: sql<
+            string | null
+          >`${input.ownerSessionId ?? null}::uuid`.as('owner_session_id'),
+          stateDigest:
+            sql<Buffer>`${sql.param(input.stateDigest, authFederationAttempts.stateDigest)}::bytea`.as(
+              'state_digest',
+            ),
+          browserDigest:
+            sql<Buffer>`${sql.param(input.browserDigest, authFederationAttempts.browserDigest)}::bytea`.as(
+              'browser_digest',
+            ),
+          returnPath: sql<string>`${input.returnPath}::text`.as('return_path'),
+          requestId: sql<string | null>`null::text`.as('request_id'),
+          requestCreatedAt: sql<Date | null>`null::timestamptz`.as(
+            'request_created_at',
+          ),
+          expiresAt: sql<Date>`clock_timestamp()+interval '5 minutes'`.as(
+            'expires_at',
+          ),
+          consumedAt: sql<Date | null>`null::timestamptz`.as('consumed_at'),
+          createdAt: sql<Date>`clock_timestamp()`.as('created_at'),
+        })
+        .from(authProviders)
+        .innerJoin(
+          authOrganizations,
+          eq(authOrganizations.id, authProviders.organizationId),
+        )
+        .innerJoin(
+          workspaces,
+          eq(workspaces.id, authOrganizations.controlWorkspaceId),
+        )
+        .innerJoin(
+          authDomains,
+          and(
+            eq(authDomains.organizationId, authProviders.organizationId),
+            isNotNull(authDomains.verifiedAt),
+          ),
+        )
+        .where(
+          and(
+            eq(authProviders.id, input.providerId),
+            eq(authProviders.revision, input.providerRevision),
+            eq(authDomains.id, input.domainId),
+            inArray(workspaces.status, FEDERATION_WORKSPACE_STATUSES),
+            or(eq(authProviders.enabled, true), sql`${input.purpose}='test'`),
+          ),
         );
-      const inserted = await client.query(
-        `insert into app.auth_federation_attempts(id,organization_id,provider_id,provider_revision,domain_id,purpose,owner_user_id,owner_session_id,state_digest,browser_digest,return_path,expires_at)
-   select $1,provider.organization_id,provider.id,provider.revision,domain.id,$2,$3,$4,$5,$6,$7,clock_timestamp()+interval '5 minutes' from app.auth_providers provider
-   join app.auth_organizations organization on organization.id=provider.organization_id join app.workspaces control on control.id=organization.control_workspace_id
-   join app.auth_domains domain on domain.organization_id=provider.organization_id and domain.verified_at is not null
-   where provider.id=$8 and provider.revision=$9 and domain.id=$10 and control.status=any($11::text[]) and (provider.enabled or $2='test')`,
-        [
-          input.id,
-          input.purpose,
-          input.ownerUserId ?? null,
-          input.ownerSessionId ?? null,
-          input.stateDigest,
-          input.browserDigest,
-          input.returnPath,
-          input.providerId,
-          input.providerRevision,
-          input.domainId,
-          [...FEDERATION_WORKSPACE_STATUSES],
-        ],
-      );
-      if (inserted.rowCount !== 1) throw new SignInProofRejectedError();
+      const inserted = await db
+        .insert(authFederationAttempts)
+        .select(source)
+        .returning({ id: authFederationAttempts.id })
+        .catch(rethrowQueryFailure);
+      if (inserted.length !== 1) throw new SignInProofRejectedError();
     });
   }
   find(stateDigest: Buffer, browserDigest: Buffer) {

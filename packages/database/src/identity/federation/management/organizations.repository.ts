@@ -1,14 +1,20 @@
+import {
+  authOrganizations,
+  authOrganizationWorkspaces,
+} from '../../../schema/identity/federation/organizations.js';
+import { authDomains } from '../../../schema/identity/federation/domains.js';
+import { authProviders } from '../../../schema/identity/federation/providers.js';
+import { count, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { organizationSelection } from './records.queries.js';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import type { DelegatedRole } from '@pertexo/workflow-model';
 import { projectDirectoryMemberships } from '../provisioning/projection.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
-import {
-  FederationConflictError,
-  type FederationScope,
-  type OrganizationRow,
-} from './contract.js';
+import { FederationConflictError, type FederationScope } from './contract.js';
 import {
   organizationForWorkspace,
   recordFederationAudit,
@@ -38,18 +44,17 @@ export function createOrganization(
           'This workspace already belongs to an identity organization.',
         );
       const id = generatePersistedId();
-      const row = (
-        await client.query<OrganizationRow>(
-          'insert into app.auth_organizations(id,control_workspace_id,name) values($1,$2,$3) returning *',
-          [id, input.workspaceId, input.name],
-        )
-      ).rows[0];
+      const [row] = await drizzle(client)
+        .insert(authOrganizations)
+        .values({ id, controlWorkspaceId: input.workspaceId, name: input.name })
+        .returning(organizationSelection)
+        .catch(rethrowQueryFailure);
       if (row === undefined)
         throw new Error('Organization creation returned no row');
-      await client.query(
-        'insert into app.auth_organization_workspaces(workspace_id,organization_id) values($1,$2)',
-        [input.workspaceId, id],
-      );
+      await drizzle(client)
+        .insert(authOrganizationWorkspaces)
+        .values({ workspaceId: input.workspaceId, organizationId: id })
+        .catch(rethrowQueryFailure);
       await recordFederationAudit(client, input, {
         action: 'identity.organization_created',
         targetId: id,
@@ -86,23 +91,30 @@ export function linkOrganizationWorkspace(
           'That workspace already belongs to another identity organization.',
         );
       if (existing === undefined) {
-        const count =
-          (
-            await client.query<{ count: number }>(
-              'select count(*)::integer as count from app.auth_organization_workspaces where organization_id=$1',
-              [organization.id],
-            )
-          ).rows[0]?.count ?? 0;
-        if (count >= FEDERATION_LIMITS.workspaces)
+        const [row] = await drizzle(client)
+          .select({ count: count() })
+          .from(authOrganizationWorkspaces)
+          .where(eq(authOrganizationWorkspaces.organizationId, organization.id))
+          .catch(rethrowQueryFailure);
+        const total = row?.count ?? 0;
+        if (total >= FEDERATION_LIMITS.workspaces)
           throw new FederationConflictError(
             'limit',
             'The organization workspace limit has been reached.',
           );
       }
-      await client.query(
-        'insert into app.auth_organization_workspaces(workspace_id,organization_id,default_role) values($1,$2,$3) on conflict(workspace_id) do update set default_role=excluded.default_role',
-        [input.targetWorkspaceId, organization.id, input.defaultRole],
-      );
+      await drizzle(client)
+        .insert(authOrganizationWorkspaces)
+        .values({
+          workspaceId: input.targetWorkspaceId,
+          organizationId: organization.id,
+          defaultRole: input.defaultRole,
+        })
+        .onConflictDoUpdate({
+          target: authOrganizationWorkspaces.workspaceId,
+          set: { defaultRole: input.defaultRole },
+        })
+        .catch(rethrowQueryFailure);
       await projectDirectoryMemberships(
         client,
         {
@@ -147,16 +159,14 @@ export async function requireResourceCapacity(
   organizationId: string,
   resource: 'domains' | 'providers',
 ): Promise<void> {
-  const table =
-    resource === 'domains' ? 'app.auth_domains' : 'app.auth_providers';
-  const count =
-    (
-      await client.query<{ count: number }>(
-        `select count(*)::integer as count from ${table} where organization_id=$1`,
-        [organizationId],
-      )
-    ).rows[0]?.count ?? 0;
-  if (count >= FEDERATION_LIMITS[resource])
+  const table = resource === 'domains' ? authDomains : authProviders;
+  const [row] = await drizzle(client)
+    .select({ count: count() })
+    .from(table)
+    .where(eq(table.organizationId, organizationId))
+    .catch(rethrowQueryFailure);
+  const total = row?.count ?? 0;
+  if (total >= FEDERATION_LIMITS[resource])
     throw new FederationConflictError(
       'limit',
       `The organization ${resource} limit has been reached.`,

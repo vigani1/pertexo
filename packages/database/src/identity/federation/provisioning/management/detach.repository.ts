@@ -1,10 +1,14 @@
+import { authDirectoryMemberships } from '../../../../schema/identity/federation/directory/sources.js';
+import { workspaceMemberships } from '../../../../schema/foundation.js';
+import { and, asc, eq, inArray } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { appendAuditFacts } from '../../../../governance/audit/events.repository.js';
 import { updateMemberships } from '../../../../tenant-access/members/records.repository.js';
 import type { MembershipChange } from '../../../../tenant-access/members/contract.js';
 import { revokeSessionsForUsers } from '../../../../tenant-access/users/sessions.repository.js';
 import { withWorkspaceScope } from '../../../../tenant-access/transactions.js';
-import type { DirectoryRole } from '../contract.js';
 
 /** Detaching a source must remove its grant first; otherwise it silently becomes manual. */
 export async function detachDirectoryMemberships(
@@ -22,23 +26,37 @@ export async function detachDirectoryMemberships(
 ): Promise<number> {
   return withWorkspaceScope(client, { workspaceId }, async (scoped) => {
     const ids = (
-      await scoped.query<{ user_id: string }>(
-        'select user_id from app.auth_directory_memberships where organization_id=$1 and workspace_id=$2 order by user_id limit $3',
-        [organizationId, workspaceId, limit],
-      )
-    ).rows.map((row) => row.user_id);
+      await drizzle(scoped)
+        .select({ user_id: authDirectoryMemberships.userId })
+        .from(authDirectoryMemberships)
+        .where(
+          and(
+            eq(authDirectoryMemberships.organizationId, organizationId),
+            eq(authDirectoryMemberships.workspaceId, workspaceId),
+          ),
+        )
+        .orderBy(asc(authDirectoryMemberships.userId))
+        .limit(limit)
+        .catch(rethrowQueryFailure)
+    ).map((row) => row.user_id);
     if (ids.length === 0) return 0;
-    const members = (
-      await scoped.query<{
-        user_id: string;
-        role: DirectoryRole;
-        status: string;
-        role_revision: number;
-      }>(
-        'select user_id,role,status,role_revision from app.workspace_memberships where workspace_id=$1 and user_id=any($2::uuid[]) order by user_id for update',
-        [workspaceId, ids],
+    const members = await drizzle(scoped)
+      .select({
+        user_id: workspaceMemberships.userId,
+        role: workspaceMemberships.role,
+        status: workspaceMemberships.status,
+        role_revision: workspaceMemberships.roleRevision,
+      })
+      .from(workspaceMemberships)
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          inArray(workspaceMemberships.userId, ids),
+        ),
       )
-    ).rows;
+      .orderBy(asc(workspaceMemberships.userId))
+      .for('update')
+      .catch(rethrowQueryFailure);
     const changes: MembershipChange[] = members
       .filter((member) => member.status !== 'removed')
       .map((member) => ({
@@ -49,10 +67,16 @@ export async function detachDirectoryMemberships(
       }));
     await updateMemberships(scoped, workspaceId, changes);
     await revokeSessionsForUsers(scoped, ids);
-    await scoped.query(
-      'delete from app.auth_directory_memberships where organization_id=$1 and workspace_id=$2 and user_id=any($3::uuid[])',
-      [organizationId, workspaceId, ids],
-    );
+    await drizzle(scoped)
+      .delete(authDirectoryMemberships)
+      .where(
+        and(
+          eq(authDirectoryMemberships.organizationId, organizationId),
+          eq(authDirectoryMemberships.workspaceId, workspaceId),
+          inArray(authDirectoryMemberships.userId, ids),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     await appendAuditFacts(
       scoped,
       members.map((member) => ({

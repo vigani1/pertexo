@@ -1,3 +1,4 @@
+import type { DelegatedRole } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -43,7 +44,10 @@ export const authOrganizationWorkspaces = appSchema.table(
   {
     workspaceId: uuid('workspace_id').primaryKey(),
     organizationId: uuid('organization_id').notNull(),
-    defaultRole: text('default_role').notNull().default('viewer'),
+    defaultRole: text('default_role')
+      .$type<DelegatedRole>()
+      .notNull()
+      .default('viewer'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .default(sql`clock_timestamp()`),

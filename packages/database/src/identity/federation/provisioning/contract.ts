@@ -35,30 +35,10 @@ export type DirectoryPrincipal = Readonly<{
   organizationId: string;
   controlWorkspaceId: string;
 }>;
-export type DirectoryUserRow = Readonly<{
-  id: string;
-  organization_id: string;
-  user_name: string;
-  normalized_user_name: string;
-  login_email: string;
-  external_id: string | null;
-  active: boolean;
-  profile: DirectoryUserProfile;
-  user_id: string | null;
-  revision: number;
-  deleted_at: Date | null;
-  created_at: Date;
-  updated_at: Date;
-}>;
-export type DirectoryGroupRow = Readonly<{
-  id: string;
-  organization_id: string;
-  display_name: string;
-  external_id: string | null;
-  revision: number;
-  created_at: Date;
-  updated_at: Date;
-}>;
+export type {
+  DirectoryUserRecord as DirectoryUserRow,
+  DirectoryGroupRecord as DirectoryGroupRow,
+} from './resources/records.queries.js';
 export type DirectoryMapping = Readonly<{
   groupId: string;
   workspaceId: string;

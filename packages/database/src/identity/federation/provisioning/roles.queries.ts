@@ -1,3 +1,8 @@
+import { authDirectoryGroupMappings } from '../../../schema/identity/federation/directory/mappings.js';
+import { authDirectoryGroupMembers } from '../../../schema/identity/federation/directory/members.js';
+import { and, asc, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { DirectoryMapping, DirectoryRole } from './contract.js';
 
@@ -24,19 +29,32 @@ export async function readDirectoryRole(
     fallback: DirectoryRole;
   }>,
 ): Promise<DirectoryRole> {
-  const mappings = (
-    await client.query<DirectoryMapping>(
-      'select group_id "groupId",workspace_id "workspaceId",role,priority from app.auth_directory_group_mappings where organization_id=$1 and workspace_id=$2 order by priority',
-      [organizationId, workspaceId],
+  const mappings = await drizzle(client)
+    .select({
+      groupId: authDirectoryGroupMappings.groupId,
+      workspaceId: authDirectoryGroupMappings.workspaceId,
+      role: authDirectoryGroupMappings.role,
+      priority: authDirectoryGroupMappings.priority,
+    })
+    .from(authDirectoryGroupMappings)
+    .where(
+      and(
+        eq(authDirectoryGroupMappings.organizationId, organizationId),
+        eq(authDirectoryGroupMappings.workspaceId, workspaceId),
+      ),
     )
-  ).rows;
-  const groups = new Set(
-    (
-      await client.query<{ group_id: string }>(
-        'select group_id from app.auth_directory_group_members where organization_id=$1 and directory_user_id=$2',
-        [organizationId, directoryUserId],
-      )
-    ).rows.map((row) => row.group_id),
-  );
+    .orderBy(asc(authDirectoryGroupMappings.priority))
+    .catch(rethrowQueryFailure);
+  const memberships = await drizzle(client)
+    .select({ group_id: authDirectoryGroupMembers.groupId })
+    .from(authDirectoryGroupMembers)
+    .where(
+      and(
+        eq(authDirectoryGroupMembers.organizationId, organizationId),
+        eq(authDirectoryGroupMembers.directoryUserId, directoryUserId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const groups = new Set(memberships.map((row) => row.group_id));
   return directoryRole(mappings, groups, fallback);
 }

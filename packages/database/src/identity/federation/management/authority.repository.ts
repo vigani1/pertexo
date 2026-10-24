@@ -1,3 +1,13 @@
+import { workspaces } from '../../../schema/foundation.js';
+import {
+  authOrganizationWorkspaces,
+  authOrganizations,
+} from '../../../schema/identity/federation/organizations.js';
+import { eq, getTableName } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { organizationRecords } from './records.queries.js';
 import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
 import type { AdministrativeRole } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
@@ -15,9 +25,12 @@ export async function lockFederationWorkspace(
   scope: FederationScope,
   { ownerOnly }: Readonly<{ ownerOnly: boolean }>,
 ): Promise<AdministrativeRole> {
-  await client.query('select id from app.workspaces where id=$1 for update', [
-    scope.workspaceId,
-  ]);
+  await drizzle(client)
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(eq(workspaces.id, scope.workspaceId))
+    .for('update')
+    .catch(rethrowQueryFailure);
   return withWorkspaceScope(client, scope, async (scoped) => {
     const role = await lockWorkspaceAuthority(
       scoped,
@@ -38,13 +51,16 @@ export async function organizationForWorkspace(
   workspaceId: string,
   { locking = false }: Readonly<{ locking?: boolean | undefined }> = {},
 ): Promise<OrganizationRow | undefined> {
-  return (
-    await client.query<OrganizationRow>(
-      `select organization.* from app.auth_organizations organization
-    join app.auth_organization_workspaces link on link.organization_id=organization.id where link.workspace_id=$1 ${locking ? 'for update of organization' : ''}`,
-      [workspaceId],
+  const query = organizationRecords(client)
+    .innerJoin(
+      authOrganizationWorkspaces,
+      eq(authOrganizationWorkspaces.organizationId, authOrganizations.id),
     )
-  ).rows[0];
+    .where(eq(authOrganizationWorkspaces.workspaceId, workspaceId));
+  const [row] = await (
+    locking ? query.for('update', { of: organizationLockTarget }) : query
+  ).catch(rethrowQueryFailure);
+  return row;
 }
 export async function recordFederationAudit(
   client: PoolClient,
@@ -70,3 +86,8 @@ export async function recordFederationAudit(
     }),
   );
 }
+
+const organizationLockTarget = alias(
+  authOrganizations,
+  getTableName(authOrganizations),
+);

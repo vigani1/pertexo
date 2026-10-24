@@ -1,3 +1,13 @@
+import { workspaces, users } from '../../../schema/foundation.js';
+import {
+  authOrganizations,
+  authOrganizationWorkspaces,
+} from '../../../schema/identity/federation/organizations.js';
+import { authDirectoryUsers } from '../../../schema/identity/federation/directory/users.js';
+import { authProvisioningCredentials } from '../../../schema/identity/federation/directory/credentials.js';
+import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
 import { withPlatformTransaction } from '../../../tenant-access/transactions.js';
 import {
@@ -22,34 +32,31 @@ export async function lockDirectoryOrganization(
   client: PoolClient,
   organizationId: string,
 ): Promise<DirectoryOrganization> {
-  const workspaces = (
-    await client.query<DirectoryWorkspace>(
-      'select workspace_id,default_role from app.auth_organization_workspaces where organization_id=$1 order by workspace_id',
-      [organizationId],
-    )
-  ).rows;
-  for (const workspace of workspaces)
-    await client.query('select id from app.workspaces where id=$1 for update', [
-      workspace.workspace_id,
-    ]);
-  const organization = (
-    await client.query<Omit<DirectoryOrganization, 'workspaces'>>(
-      'select id,control_workspace_id,revision from app.auth_organizations where id=$1 for update',
-      [organizationId],
-    )
-  ).rows[0];
+  const linkedWorkspaces = await directoryWorkspaces(client, organizationId);
+  for (const workspace of linkedWorkspaces)
+    await drizzle(client)
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(eq(workspaces.id, workspace.workspace_id))
+      .for('update')
+      .catch(rethrowQueryFailure);
+  const [organization] = await drizzle(client)
+    .select({
+      id: authOrganizations.id,
+      control_workspace_id: authOrganizations.controlWorkspaceId,
+      revision: authOrganizations.revision,
+    })
+    .from(authOrganizations)
+    .where(eq(authOrganizations.id, organizationId))
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (organization === undefined) throw new DirectoryError('not_found');
-  const current = (
-    await client.query<DirectoryWorkspace>(
-      'select workspace_id,default_role from app.auth_organization_workspaces where organization_id=$1 order by workspace_id',
-      [organizationId],
-    )
-  ).rows;
+  const current = await directoryWorkspaces(client, organizationId);
   if (
-    current.length !== workspaces.length ||
+    current.length !== linkedWorkspaces.length ||
     current.some(
       (workspace, index) =>
-        workspace.workspace_id !== workspaces[index]?.workspace_id,
+        workspace.workspace_id !== linkedWorkspaces[index]?.workspace_id,
     )
   )
     throw new DirectoryError('stale');
@@ -62,12 +69,26 @@ export async function lockDirectoryParticipants(
   organizationId: string | undefined,
   actorId: string,
 ): Promise<void> {
-  await client.query(
-    `select id from app.users where id=$2 or id in (
-    select user_id from app.auth_directory_users where organization_id=$1 and user_id is not null)
-    order by id for update`,
-    [organizationId ?? null, actorId],
-  );
+  const db = drizzle(client);
+  const boundUsers = db
+    .select({ id: authDirectoryUsers.userId })
+    .from(authDirectoryUsers)
+    .where(
+      and(
+        eq(
+          authDirectoryUsers.organizationId,
+          sql`${organizationId ?? null}::uuid`,
+        ),
+        isNotNull(authDirectoryUsers.userId),
+      ),
+    );
+  await db
+    .select({ id: users.id })
+    .from(users)
+    .where(or(eq(users.id, actorId), inArray(users.id, boundUsers)))
+    .orderBy(asc(users.id))
+    .for('update')
+    .catch(rethrowQueryFailure);
 }
 
 export async function authenticateDirectory(
@@ -76,19 +97,16 @@ export async function authenticateDirectory(
   digest: string,
 ): Promise<DirectoryPrincipal> {
   return withPlatformTransaction(pool, async (client) => {
-    const row = (
-      await client.query<{
-        credential_id: string;
-        control_workspace_id: string;
-      }>(
-        `select credential.id credential_id,organization.control_workspace_id
-       from app.auth_provisioning_credentials credential
-       join app.auth_organizations organization on organization.id=credential.organization_id
-       join app.workspaces workspace on workspace.id=organization.control_workspace_id
-       where credential.organization_id=$1 and credential.secret_digest=$2 and credential.revoked_at is null and workspace.status='active'`,
-        [organizationId, digest],
+    const [row] = await credentialQuery(client)
+      .where(
+        and(
+          eq(authProvisioningCredentials.organizationId, organizationId),
+          eq(authProvisioningCredentials.secretDigest, digest),
+          isNull(authProvisioningCredentials.revokedAt),
+          eq(workspaces.status, 'active'),
+        ),
       )
-    ).rows[0];
+      .catch(rethrowQueryFailure);
     if (row === undefined) throw new DirectoryError('unauthorized');
     return {
       credentialId: row.credential_id,
@@ -102,21 +120,21 @@ async function requireDirectoryCredential(
   client: PoolClient,
   principal: DirectoryPrincipal,
 ): Promise<void> {
-  const valid = (
-    await client.query(
-      `select credential.id from app.auth_provisioning_credentials credential
-     join app.auth_organizations organization on organization.id=credential.organization_id
-     join app.workspaces workspace on workspace.id=organization.control_workspace_id
-     where credential.id=$1 and credential.organization_id=$2 and organization.control_workspace_id=$3
-     and credential.revoked_at is null and workspace.status='active'`,
-      [
-        principal.credentialId,
-        principal.organizationId,
-        principal.controlWorkspaceId,
-      ],
+  const valid = await credentialQuery(client)
+    .where(
+      and(
+        eq(authProvisioningCredentials.id, principal.credentialId),
+        eq(
+          authProvisioningCredentials.organizationId,
+          principal.organizationId,
+        ),
+        eq(authOrganizations.controlWorkspaceId, principal.controlWorkspaceId),
+        isNull(authProvisioningCredentials.revokedAt),
+        eq(workspaces.status, 'active'),
+      ),
     )
-  ).rowCount;
-  if (valid !== 1) throw new DirectoryError('unauthorized');
+    .catch(rethrowQueryFailure);
+  if (valid.length !== 1) throw new DirectoryError('unauthorized');
 }
 
 /** Shared short reads keep each resource and its reference-list ETag consistent. */
@@ -126,10 +144,12 @@ export function withDirectoryRead<T>(
   read: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
   return withPlatformTransaction(pool, async (client) => {
-    await client.query(
-      'select id from app.auth_organizations where id=$1 for share',
-      [principal.organizationId],
-    );
+    await drizzle(client)
+      .select({ id: authOrganizations.id })
+      .from(authOrganizations)
+      .where(eq(authOrganizations.id, principal.organizationId))
+      .for('share')
+      .catch(rethrowQueryFailure);
     await requireDirectoryCredential(client, principal);
     return read(client);
   });
@@ -151,10 +171,47 @@ export function withDirectoryTransaction<T>(
     );
     await requireDirectoryCredential(client, principal);
     const result = await change(client, organization);
-    await client.query(
-      "update app.auth_provisioning_credentials set last_used_at=clock_timestamp() where id=$1 and (last_used_at is null or last_used_at<clock_timestamp()-interval '1 minute')",
-      [principal.credentialId],
-    );
+    await drizzle(client)
+      .update(authProvisioningCredentials)
+      .set({ lastUsedAt: sql`clock_timestamp()` })
+      .where(
+        and(
+          eq(authProvisioningCredentials.id, principal.credentialId),
+          or(
+            isNull(authProvisioningCredentials.lastUsedAt),
+            sql`${authProvisioningCredentials.lastUsedAt}<clock_timestamp()-interval '1 minute'`,
+          ),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     return result;
   });
+}
+
+function directoryWorkspaces(client: PoolClient, organizationId: string) {
+  return drizzle(client)
+    .select({
+      workspace_id: authOrganizationWorkspaces.workspaceId,
+      default_role: authOrganizationWorkspaces.defaultRole,
+    })
+    .from(authOrganizationWorkspaces)
+    .where(eq(authOrganizationWorkspaces.organizationId, organizationId))
+    .orderBy(asc(authOrganizationWorkspaces.workspaceId))
+    .catch(rethrowQueryFailure);
+}
+function credentialQuery(client: PoolClient) {
+  return drizzle(client)
+    .select({
+      credential_id: authProvisioningCredentials.id,
+      control_workspace_id: authOrganizations.controlWorkspaceId,
+    })
+    .from(authProvisioningCredentials)
+    .innerJoin(
+      authOrganizations,
+      eq(authOrganizations.id, authProvisioningCredentials.organizationId),
+    )
+    .innerJoin(
+      workspaces,
+      eq(workspaces.id, authOrganizations.controlWorkspaceId),
+    );
 }

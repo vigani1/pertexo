@@ -1,3 +1,9 @@
+import { workspaces } from '../../../schema/foundation.js';
+import { authOrganizations } from '../../../schema/identity/federation/organizations.js';
+import { eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { organizationSelection } from './records.queries.js';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import {
@@ -71,10 +77,12 @@ export async function runFederationCommand(
         ...new Set([input.workspaceId, ...additionalWorkspaceIds]),
       ].sort();
       for (const workspaceId of workspaceIds)
-        await client.query(
-          'select id from app.workspaces where id=$1 for update',
-          [workspaceId],
-        );
+        await drizzle(client)
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.id, workspaceId))
+          .for('update')
+          .catch(rethrowQueryFailure);
       const organization = await organizationForWorkspace(
         client,
         input.workspaceId,
@@ -120,12 +128,12 @@ export async function advanceOrganization(
   client: PoolClient,
   organization: OrganizationRow,
 ): Promise<OrganizationRow> {
-  const row = (
-    await client.query<OrganizationRow>(
-      'update app.auth_organizations set revision=revision+1 where id=$1 returning *',
-      [organization.id],
-    )
-  ).rows[0];
+  const [row] = await drizzle(client)
+    .update(authOrganizations)
+    .set({ revision: sql`${authOrganizations.revision}+1` })
+    .where(eq(authOrganizations.id, organization.id))
+    .returning(organizationSelection)
+    .catch(rethrowQueryFailure);
   if (row === undefined) throw new Error('Organization disappeared under lock');
   return row;
 }

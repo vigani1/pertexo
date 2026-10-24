@@ -1,3 +1,13 @@
+import { authDirectoryGroupMembers } from '../../../../schema/identity/federation/directory/members.js';
+import { authDirectoryUsers } from '../../../../schema/identity/federation/directory/users.js';
+import { authDirectoryGroups } from '../../../../schema/identity/federation/directory/groups.js';
+import { authDirectoryGroupMappings } from '../../../../schema/identity/federation/directory/mappings.js';
+import { authOrganizations } from '../../../../schema/identity/federation/organizations.js';
+import { and, asc, count, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { directoryGroupRecords } from './records.queries.js';
+import { directoryGroups } from './tables.js';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '../../../../platform/persisted-id.js';
@@ -23,19 +33,26 @@ export async function readDirectoryGroup(
   organizationId: string,
   id: string,
 ): Promise<DirectoryGroup> {
-  const group = (
-    await client.query<DirectoryGroupRow>(
-      'select * from app.auth_directory_groups where organization_id=$1 and id=$2',
-      [organizationId, id],
+  const [group] = await directoryGroupRecords(client)
+    .where(
+      and(
+        eq(directoryGroups.organizationId, organizationId),
+        eq(directoryGroups.id, id),
+      ),
     )
-  ).rows[0];
+    .catch(rethrowQueryFailure);
   if (group === undefined) throw new DirectoryError('not_found');
-  const members = (
-    await client.query<{ directory_user_id: string }>(
-      'select directory_user_id from app.auth_directory_group_members where organization_id=$1 and group_id=$2 order by directory_user_id',
-      [organizationId, id],
+  const members = await drizzle(client)
+    .select({ directory_user_id: authDirectoryGroupMembers.directoryUserId })
+    .from(authDirectoryGroupMembers)
+    .where(
+      and(
+        eq(authDirectoryGroupMembers.organizationId, organizationId),
+        eq(authDirectoryGroupMembers.groupId, id),
+      ),
     )
-  ).rows;
+    .orderBy(asc(authDirectoryGroupMembers.directoryUserId))
+    .catch(rethrowQueryFailure);
   return {
     ...group,
     memberIds: members.map((member) => member.directory_user_id),
@@ -48,37 +65,74 @@ async function replaceMembers(
   memberIds: readonly string[],
 ): Promise<readonly string[]> {
   const existing = (
-    await client.query<{ directory_user_id: string }>(
-      'select directory_user_id from app.auth_directory_group_members where organization_id=$1 and group_id=$2',
-      [organizationId, groupId],
+    await drizzle(client)
+      .select({ id: authDirectoryGroupMembers.directoryUserId })
+      .from(authDirectoryGroupMembers)
+      .where(
+        and(
+          eq(authDirectoryGroupMembers.organizationId, organizationId),
+          eq(authDirectoryGroupMembers.groupId, groupId),
+        ),
+      )
+      .catch(rethrowQueryFailure)
+  ).map((member) => member.id);
+  const valid = await drizzle(client)
+    .select({ id: authDirectoryUsers.id })
+    .from(authDirectoryUsers)
+    .where(
+      and(
+        eq(authDirectoryUsers.organizationId, organizationId),
+        inArray(authDirectoryUsers.id, memberIds),
+        isNull(authDirectoryUsers.deletedAt),
+      ),
     )
-  ).rows.map((member) => member.directory_user_id);
-  const valid = (
-    await client.query(
-      'select id from app.auth_directory_users where organization_id=$1 and id=any($2::uuid[]) and deleted_at is null',
-      [organizationId, memberIds],
-    )
-  ).rowCount;
-  if (valid !== memberIds.length) throw new DirectoryError('invalid_value');
+    .catch(rethrowQueryFailure);
+  if (valid.length !== memberIds.length)
+    throw new DirectoryError('invalid_value');
   const before = new Set(existing),
     after = new Set(memberIds);
   const changed = [
     ...existing.filter((id) => !after.has(id)),
     ...memberIds.filter((id) => !before.has(id)),
   ];
-  await client.query(
-    'delete from app.auth_directory_group_members where organization_id=$1 and group_id=$2',
-    [organizationId, groupId],
-  );
-  if (memberIds.length > 0)
-    await client.query(
-      `insert into app.auth_directory_group_members(organization_id,group_id,directory_user_id) select $1,$2,unnest($3::uuid[])`,
-      [organizationId, groupId, memberIds],
-    );
-  await client.query(
-    'update app.auth_directory_users set revision=revision+1,updated_at=clock_timestamp() where organization_id=$1 and id=any($2::uuid[])',
-    [organizationId, changed],
-  );
+  const db = drizzle(client);
+  await db
+    .delete(authDirectoryGroupMembers)
+    .where(
+      and(
+        eq(authDirectoryGroupMembers.organizationId, organizationId),
+        eq(authDirectoryGroupMembers.groupId, groupId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (memberIds.length > 0) {
+    const source = db
+      .select({
+        organizationId: sql<string>`${organizationId}::uuid`.as(
+          'organization_id',
+        ),
+        groupId: sql<string>`${groupId}::uuid`.as('group_id'),
+        directoryUserId: sql<string>`member.id`.as('directory_user_id'),
+      })
+      .from(sql`unnest(${sql.param(memberIds)}::uuid[]) as member(id)`);
+    await db
+      .insert(authDirectoryGroupMembers)
+      .select(source)
+      .catch(rethrowQueryFailure);
+  }
+  await db
+    .update(authDirectoryUsers)
+    .set({
+      revision: sql`${authDirectoryUsers.revision}+1`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(authDirectoryUsers.organizationId, organizationId),
+        inArray(authDirectoryUsers.id, changed),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   return changed;
 }
 export function createDirectoryGroup(
@@ -88,19 +142,23 @@ export function createDirectoryGroup(
 ): Promise<DirectoryGroup> {
   return withDirectoryConstraintErrors(() =>
     withDirectoryTransaction(pool, principal, async (client, organization) => {
-      const count =
-        (
-          await client.query<{ count: number }>(
-            'select count(*)::integer count from app.auth_directory_groups where organization_id=$1',
-            [principal.organizationId],
-          )
-        ).rows[0]?.count ?? 0;
-      if (count >= DIRECTORY_LIMITS.groups) throw new DirectoryError('limit');
+      const [row] = await drizzle(client)
+        .select({ count: count() })
+        .from(authDirectoryGroups)
+        .where(eq(authDirectoryGroups.organizationId, principal.organizationId))
+        .catch(rethrowQueryFailure);
+      if ((row?.count ?? 0) >= DIRECTORY_LIMITS.groups)
+        throw new DirectoryError('limit');
       const id = generatePersistedId();
-      await client.query(
-        'insert into app.auth_directory_groups(id,organization_id,display_name,external_id) values($1,$2,$3,$4)',
-        [id, principal.organizationId, values.displayName, values.externalId],
-      );
+      await drizzle(client)
+        .insert(authDirectoryGroups)
+        .values({
+          id,
+          organizationId: principal.organizationId,
+          displayName: values.displayName,
+          externalId: values.externalId,
+        })
+        .catch(rethrowQueryFailure);
       const affected = await replaceMembers(
         client,
         principal.organizationId,
@@ -147,10 +205,21 @@ export function changeDirectoryGroup(
       );
       assertDirectoryRevision(current.revision, expectedRevision);
       const values = transform(current);
-      await client.query(
-        'update app.auth_directory_groups set display_name=$3,external_id=$4,revision=revision+1,updated_at=clock_timestamp() where organization_id=$1 and id=$2',
-        [principal.organizationId, id, values.displayName, values.externalId],
-      );
+      await drizzle(client)
+        .update(authDirectoryGroups)
+        .set({
+          displayName: values.displayName,
+          externalId: values.externalId,
+          revision: sql`${authDirectoryGroups.revision}+1`,
+          updatedAt: sql`clock_timestamp()`,
+        })
+        .where(
+          and(
+            eq(authDirectoryGroups.organizationId, principal.organizationId),
+            eq(authDirectoryGroups.id, id),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       const affected = await replaceMembers(
         client,
         principal.organizationId,
@@ -193,11 +262,21 @@ export function deleteDirectoryGroup(
       assertDirectoryRevision(group.revision, expectedRevision);
       const mapped =
         (
-          await client.query(
-            'select 1 from app.auth_directory_group_mappings where organization_id=$1 and group_id=$2 limit 1',
-            [principal.organizationId, id],
-          )
-        ).rowCount !== 0;
+          await drizzle(client)
+            .select({ one: sql`1` })
+            .from(authDirectoryGroupMappings)
+            .where(
+              and(
+                eq(
+                  authDirectoryGroupMappings.organizationId,
+                  principal.organizationId,
+                ),
+                eq(authDirectoryGroupMappings.groupId, id),
+              ),
+            )
+            .limit(1)
+            .catch(rethrowQueryFailure)
+        ).length !== 0;
       const affected = await replaceMembers(
         client,
         principal.organizationId,
@@ -210,15 +289,21 @@ export function deleteDirectoryGroup(
         organization.workspaces.map((workspace) => workspace.workspace_id),
         id,
       );
-      await client.query(
-        'delete from app.auth_directory_groups where organization_id=$1 and id=$2',
-        [principal.organizationId, id],
-      );
+      await drizzle(client)
+        .delete(authDirectoryGroups)
+        .where(
+          and(
+            eq(authDirectoryGroups.organizationId, principal.organizationId),
+            eq(authDirectoryGroups.id, id),
+          ),
+        )
+        .catch(rethrowQueryFailure);
       if (mapped)
-        await client.query(
-          'update app.auth_organizations set revision=revision+1 where id=$1',
-          [principal.organizationId],
-        );
+        await drizzle(client)
+          .update(authOrganizations)
+          .set({ revision: sql`${authOrganizations.revision}+1` })
+          .where(eq(authOrganizations.id, principal.organizationId))
+          .catch(rethrowQueryFailure);
       await projectDirectoryMemberships(
         client,
         organization,

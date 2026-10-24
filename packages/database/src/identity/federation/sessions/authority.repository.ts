@@ -1,3 +1,15 @@
+import {
+  users,
+  workspaceMemberships,
+  workspaces,
+} from '../../../schema/foundation.js';
+import { authDomains } from '../../../schema/identity/federation/domains.js';
+import { authOrganizations } from '../../../schema/identity/federation/organizations.js';
+import { authAccounts, authSessions } from '../../../schema/authentication.js';
+import { authProviders } from '../../../schema/identity/federation/providers.js';
+import { and, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { directorySessionAllowed } from '../provisioning/session.queries.js';
 import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
@@ -21,20 +33,28 @@ async function readAuthenticationPolicy(
   client: PoolClient,
   userId: string,
 ): Promise<AuthenticationPolicy> {
-  const account = (
-    await client.query<{
-      status: string;
-      email_verified: boolean;
-      organization_id: string | null;
-      require_sso: boolean | null;
-      control_workspace_id: string | null;
-    }>(
-      `select users.status,users.email_verified,domain.organization_id,domain.require_sso,organization.control_workspace_id from app.users users
- left join app.auth_domains domain on domain.domain=lower(split_part(users.email,'@',2)) and domain.verified_at is not null
- left join app.auth_organizations organization on organization.id=domain.organization_id where users.id=$1`,
-      [userId],
+  const [account] = await drizzle(client)
+    .select({
+      status: users.status,
+      email_verified: users.emailVerified,
+      organization_id: authDomains.organizationId,
+      require_sso: authDomains.requireSso,
+      control_workspace_id: authOrganizations.controlWorkspaceId,
+    })
+    .from(users)
+    .leftJoin(
+      authDomains,
+      and(
+        sql`${authDomains.domain}=lower(split_part(${users.email},'@',2))`,
+        isNotNull(authDomains.verifiedAt),
+      ),
     )
-  ).rows[0];
+    .leftJoin(
+      authOrganizations,
+      eq(authOrganizations.id, authDomains.organizationId),
+    )
+    .where(eq(users.id, userId))
+    .catch(rethrowQueryFailure);
   if (account === undefined)
     return {
       active: false,
@@ -55,20 +75,40 @@ async function readAuthenticationPolicy(
       { workspaceId: controlWorkspaceId },
       async (scoped) =>
         (
-          await scoped.query(
-            "select 1 from app.workspace_memberships member join app.workspaces workspace on workspace.id=member.workspace_id where member.workspace_id=$1 and member.user_id=$2 and member.role='owner' and member.status='active'",
-            [account.control_workspace_id, userId],
-          )
-        ).rowCount === 1,
+          await drizzle(scoped)
+            .select({ one: sql`1` })
+            .from(workspaceMemberships)
+            .innerJoin(
+              workspaces,
+              eq(workspaces.id, workspaceMemberships.workspaceId),
+            )
+            .where(
+              and(
+                eq(workspaceMemberships.workspaceId, controlWorkspaceId),
+                eq(workspaceMemberships.userId, userId),
+                eq(workspaceMemberships.role, 'owner'),
+                eq(workspaceMemberships.status, 'active'),
+              ),
+            )
+            .catch(rethrowQueryFailure)
+        ).length === 1,
     );
     passwordPresent =
       controlOwner &&
       (
-        await client.query(
-          "select 1 from app.auth_accounts where user_id=$1 and provider_id='credential' and password is not null and length(password)>0",
-          [userId],
-        )
-      ).rowCount === 1;
+        await drizzle(client)
+          .select({ one: sql`1` })
+          .from(authAccounts)
+          .where(
+            and(
+              eq(authAccounts.userId, userId),
+              eq(authAccounts.providerId, 'credential'),
+              isNotNull(authAccounts.password),
+              sql`length(${authAccounts.password})>0`,
+            ),
+          )
+          .catch(rethrowQueryFailure)
+      ).length === 1;
   }
   return accountPolicy({
     ...account,
@@ -84,16 +124,28 @@ export async function canCreateAuthenticationSession(
   const policy = await readAuthenticationPolicy(client, userId);
   let provider: CurrentProvider | undefined;
   if (proof.method === 'organization') {
-    const row = (
-      await client.query<{
-        organization_id: string;
-        enabled: boolean;
-        revision: number;
-      }>(
-        'select provider.organization_id,provider.enabled,provider.revision from app.auth_providers provider join app.auth_organizations organization on organization.id=provider.organization_id join app.workspaces control on control.id=organization.control_workspace_id where provider.id=$1 and control.status=any($2::text[])',
-        [proof.providerId, [...FEDERATION_WORKSPACE_STATUSES]],
+    const [row] = await drizzle(client)
+      .select({
+        organization_id: authProviders.organizationId,
+        enabled: authProviders.enabled,
+        revision: authProviders.revision,
+      })
+      .from(authProviders)
+      .innerJoin(
+        authOrganizations,
+        eq(authOrganizations.id, authProviders.organizationId),
       )
-    ).rows[0];
+      .innerJoin(
+        workspaces,
+        eq(workspaces.id, authOrganizations.controlWorkspaceId),
+      )
+      .where(
+        and(
+          eq(authProviders.id, proof.providerId),
+          inArray(workspaces.status, FEDERATION_WORKSPACE_STATUSES),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (row !== undefined)
       provider = {
         organizationId: row.organization_id,
@@ -117,18 +169,22 @@ export async function readEligibleAuthenticationSession(
   client: PoolClient,
   sessionId: string,
 ): Promise<AuthenticationSession | undefined> {
-  const session = (
-    await client.query<{
-      id: string;
-      user_id: string;
-      authentication_method: 'credential' | 'social' | 'organization';
-      federation_provider_id: string | null;
-      federation_provider_revision: number | null;
-    }>(
-      `select id,user_id,authentication_method,federation_provider_id,federation_provider_revision from app.auth_sessions where id=$1 and expires_at>clock_timestamp()`,
-      [sessionId],
+  const [session] = await drizzle(client)
+    .select({
+      id: authSessions.id,
+      user_id: authSessions.userId,
+      authentication_method: authSessions.authenticationMethod,
+      federation_provider_id: authSessions.federationProviderId,
+      federation_provider_revision: authSessions.federationProviderRevision,
+    })
+    .from(authSessions)
+    .where(
+      and(
+        eq(authSessions.id, sessionId),
+        gt(authSessions.expiresAt, sql`clock_timestamp()`),
+      ),
     )
-  ).rows[0];
+    .catch(rethrowQueryFailure);
   if (session === undefined) return undefined;
   const proof = sessionProof(session);
   if (!(await canCreateAuthenticationSession(client, session.user_id, proof)))
@@ -148,12 +204,11 @@ export function authorizeCredentialSignIn(
     if (!authenticationAllowed(policy, { method: 'credential' }))
       return 'sso_required';
     if (!policy.recoveryOwner) return 'allowed';
-    const domain = (
-      await client.query<{ control_workspace_id: string }>(
-        `select control_workspace_id from app.auth_organizations where id=$1`,
-        [policy.enforcedOrganizationId],
-      )
-    ).rows[0];
+    const [domain] = await drizzle(client)
+      .select({ control_workspace_id: authOrganizations.controlWorkspaceId })
+      .from(authOrganizations)
+      .where(eq(authOrganizations.id, sql`${policy.enforcedOrganizationId}`))
+      .catch(rethrowQueryFailure);
     if (domain === undefined) return 'sso_required';
     await withWorkspaceScope(
       client,
@@ -187,12 +242,14 @@ export async function readIdentityEmailChangeEligibility(
     !identityEmailChangeAllowed(await readAuthenticationPolicy(client, userId))
   )
     return 'managed';
-  const methods = (
-    await client.query<{ provider_id: string; password_configured: boolean }>(
-      'select provider_id,(password is not null and length(password)>0) password_configured from app.auth_accounts where user_id=$1',
-      [userId],
-    )
-  ).rows;
+  const methods = await drizzle(client)
+    .select({
+      provider_id: authAccounts.providerId,
+      password_configured: sql<boolean>`(${authAccounts.password} is not null and length(${authAccounts.password})>0)`,
+    })
+    .from(authAccounts)
+    .where(eq(authAccounts.userId, userId))
+    .catch(rethrowQueryFailure);
   const isSocial = (providerId: string) =>
     AUTHENTICATION_PROVIDERS.some((provider) => provider === providerId);
   const organizationOnly =

@@ -1,5 +1,12 @@
+import { workspaceMemberships } from '../../../schema/foundation.js';
+import { authDomains } from '../../../schema/identity/federation/domains.js';
+import { authProviders } from '../../../schema/identity/federation/providers.js';
+import { authOrganizations } from '../../../schema/identity/federation/organizations.js';
+import { and, asc, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
-import type { Pool, PoolClient, QueryResult } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { findCommandResult } from '../../../platform/idempotency/repository.js';
 
 import type { FederationCommand } from './commands.repository.js';
@@ -26,15 +33,14 @@ import {
   verifyDomain,
   removeDomain,
 } from './domains.repository.js';
-import { createProvider, updateProvider, removeProvider } from './providers.repository.js';
+import {
+  createProvider,
+  updateProvider,
+  removeProvider,
+} from './providers.repository.js';
 import { configureDomainEnforcement } from './enforcement.repository.js';
 import type { FederationSettings } from '@pertexo/contracts';
 
-interface StoredProviderSecret {
-  id: string;
-  sealed_secret: unknown;
-  control_workspace_id: string;
-}
 export function createFederationManagementStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
@@ -127,11 +133,19 @@ function readFederationSettings(
         scope,
         async (scoped) =>
           (
-            await scoped.query(
-              "select 1 from app.workspace_memberships where workspace_id=$1 and user_id=$2 and role='owner' and status='active'",
-              [scope.workspaceId, scope.actorId],
-            )
-          ).rowCount === 1,
+            await drizzle(scoped)
+              .select({ one: sql`1` })
+              .from(workspaceMemberships)
+              .where(
+                and(
+                  eq(workspaceMemberships.workspaceId, scope.workspaceId),
+                  eq(workspaceMemberships.userId, scope.actorId),
+                  eq(workspaceMemberships.role, 'owner'),
+                  eq(workspaceMemberships.status, 'active'),
+                ),
+              )
+              .catch(rethrowQueryFailure)
+          ).length === 1,
       );
       return {
         configured: true,
@@ -165,12 +179,21 @@ function readDomainChallenge(
           'owner_required',
           'Manage domains from the control workspace.',
         );
-      const row = (
-        await client.query<{ domain: string; challenge: string | null }>(
-          'select domain,challenge from app.auth_domains where id=$1 and organization_id=$2 and verified_at is null and challenge_expires_at>clock_timestamp()',
-          [scope.domainId, organization.id],
+      const [row] = await drizzle(client)
+        .select({
+          domain: authDomains.domain,
+          challenge: authDomains.challenge,
+        })
+        .from(authDomains)
+        .where(
+          and(
+            eq(authDomains.id, scope.domainId),
+            eq(authDomains.organizationId, organization.id),
+            isNull(authDomains.verifiedAt),
+            gt(authDomains.challengeExpiresAt, sql`clock_timestamp()`),
+          ),
         )
-      ).rows[0];
+        .catch(rethrowQueryFailure);
       if (row?.challenge === null || row === undefined)
         throw new FederationConflictError(
           'dns_unverified',
@@ -187,15 +210,11 @@ async function checkFederationStoredSecrets(
 ): Promise<void> {
   let after: string | null = null;
   for (;;) {
-    const batch: QueryResult<StoredProviderSecret> =
-      await pool.query<StoredProviderSecret>(
-        `select provider.id,provider.sealed_secret,organization.control_workspace_id from app.auth_providers provider join app.auth_organizations organization on organization.id=provider.organization_id where provider.sealed_secret is not null and ($1::uuid is null or provider.id>$1) order by provider.id limit 100`,
-        [after],
-      );
-    for (const row of batch.rows)
+    const batch = await storedProviderSecrets(pool, after);
+    for (const row of batch)
       check(row.sealed_secret, row.control_workspace_id, row.id);
-    const last: StoredProviderSecret | undefined = batch.rows.at(-1);
-    if (batch.rows.length < 100 || last === undefined) return;
+    const last = batch.at(-1);
+    if (batch.length < 100 || last === undefined) return;
     after = last.id;
   }
 }
@@ -231,4 +250,27 @@ function readDomainVerificationResult(
       return stored;
     },
   });
+}
+
+function storedProviderSecrets(pool: Pool, after: string | null) {
+  return drizzle(pool)
+    .select({
+      id: authProviders.id,
+      sealed_secret: authProviders.sealedSecret,
+      control_workspace_id: authOrganizations.controlWorkspaceId,
+    })
+    .from(authProviders)
+    .innerJoin(
+      authOrganizations,
+      eq(authOrganizations.id, authProviders.organizationId),
+    )
+    .where(
+      and(
+        isNotNull(authProviders.sealedSecret),
+        after === null ? undefined : gt(authProviders.id, after),
+      ),
+    )
+    .orderBy(asc(authProviders.id))
+    .limit(100)
+    .catch(rethrowQueryFailure);
 }

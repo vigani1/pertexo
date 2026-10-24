@@ -1,8 +1,4 @@
-import type {
-  FederationSettings,
-  OidcConfiguration,
-  SamlConfiguration,
-} from '@pertexo/contracts';
+import type { FederationSettings } from '@pertexo/contracts';
 export type FederationScope = Readonly<{
   workspaceId: string;
   actorId: string;
@@ -11,35 +7,11 @@ export type FederationScope = Readonly<{
 export type OrganizationSnapshot = NonNullable<
   FederationSettings['organization']
 >;
-export type OrganizationRow = Readonly<{
-  id: string;
-  control_workspace_id: string;
-  name: string;
-  revision: number;
-}>;
-export type ProviderRow = Readonly<{
-  id: string;
-  organization_id: string;
-  name: string;
-  issuer: string;
-  sealed_secret: unknown;
-  enabled: boolean;
-  revision: number;
-}> &
-  (
-    | Readonly<{ kind: 'oidc'; configuration: OidcConfiguration }>
-    | Readonly<{ kind: 'saml'; configuration: SamlConfiguration }>
-  );
-export type DomainRow = Readonly<{
-  id: string;
-  organization_id: string;
-  domain: string;
-  challenge: string | null;
-  challenge_expires_at: Date | null;
-  verified_at: Date | null;
-  require_sso: boolean;
-  revision: number;
-}>;
+export type {
+  OrganizationRecord as OrganizationRow,
+  ProviderRecord as ProviderRow,
+  DomainRecord as DomainRow,
+} from './records.queries.js';
 export class FederationConflictError extends Error {
   constructor(
     public readonly reason:

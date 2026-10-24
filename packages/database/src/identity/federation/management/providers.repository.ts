@@ -1,3 +1,12 @@
+import {
+  authProviders,
+  authProviderChecks,
+} from '../../../schema/identity/federation/providers.js';
+import { authSessions, authAccounts } from '../../../schema/authentication.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { providerRecords } from './records.queries.js';
 import type { Pool, PoolClient } from 'pg';
 import type {
   FederationSettings,
@@ -28,12 +37,15 @@ async function requireOrganizationProvider(
   organizationId: string,
   providerId: string,
 ): Promise<ProviderRow> {
-  const provider = (
-    await client.query<ProviderRow>(
-      'select * from app.auth_providers where organization_id=$1 and id=$2 for update',
-      [organizationId, providerId],
+  const [provider] = await providerRecords(client)
+    .where(
+      and(
+        eq(authProviders.organizationId, organizationId),
+        eq(authProviders.id, providerId),
+      ),
     )
-  ).rows[0];
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (provider === undefined)
     throw new FederationConflictError(
       'unavailable',
@@ -78,21 +90,20 @@ export function createProvider(
       assertOrganizationRevision(organization, input.expectedRevision);
       await requireResourceCapacity(client, organization.id, 'providers');
       const providerId = generatePersistedId();
-      await client.query(
-        'insert into app.auth_providers(id,organization_id,kind,name,issuer,configuration,sealed_secret,enabled) values($1,$2,$8,$3,$4,$5::jsonb,$6::jsonb,$7)',
-        [
-          providerId,
-          organization.id,
-          input.name,
-          input.issuer,
-          JSON.stringify(input.configuration),
-          input.kind === 'saml'
-            ? null
-            : JSON.stringify(input.sealSecret(providerId)),
-          input.enabled,
-          input.kind ?? 'oidc',
-        ],
-      );
+      await drizzle(client)
+        .insert(authProviders)
+        .values({
+          id: providerId,
+          organizationId: organization.id,
+          kind: input.kind ?? 'oidc',
+          name: input.name,
+          issuer: input.issuer,
+          configuration: input.configuration,
+          sealedSecret:
+            input.kind === 'saml' ? null : input.sealSecret(providerId),
+          enabled: input.enabled,
+        })
+        .catch(rethrowQueryFailure);
       await recordFederationAudit(client, input, {
         action: 'identity.provider_created',
         targetId: organization.id,
@@ -140,26 +151,28 @@ export function updateProvider(
           'That sign-in provider has a different protocol.',
         );
       await assertRequiredDomainsReady(client, organization.id, provider.id);
-      await client.query(
-        'update app.auth_providers set name=$2,configuration=$3::jsonb,sealed_secret=coalesce($4::jsonb,sealed_secret),enabled=$5,revision=revision+1 where id=$1',
-        [
-          provider.id,
-          input.name,
-          JSON.stringify(input.configuration),
-          input.sealedSecret === undefined
-            ? null
-            : JSON.stringify(input.sealedSecret),
-          input.enabled,
-        ],
-      );
-      await client.query(
-        'delete from app.auth_provider_checks where provider_id=$1',
-        [provider.id],
-      );
-      await client.query(
-        'delete from app.auth_sessions where federation_provider_id=$1',
-        [provider.id],
-      );
+      await drizzle(client)
+        .update(authProviders)
+        .set({
+          name: input.name,
+          configuration: input.configuration,
+          sealedSecret:
+            input.sealedSecret === undefined
+              ? authProviders.sealedSecret
+              : sql`coalesce(${sql.param(input.sealedSecret, authProviders.sealedSecret)},${authProviders.sealedSecret})`,
+          enabled: input.enabled,
+          revision: sql`${authProviders.revision}+1`,
+        })
+        .where(eq(authProviders.id, provider.id))
+        .catch(rethrowQueryFailure);
+      await drizzle(client)
+        .delete(authProviderChecks)
+        .where(eq(authProviderChecks.providerId, provider.id))
+        .catch(rethrowQueryFailure);
+      await drizzle(client)
+        .delete(authSessions)
+        .where(eq(authSessions.federationProviderId, provider.id))
+        .catch(rethrowQueryFailure);
       await recordFederationAudit(client, input, {
         action: 'identity.provider_changed',
         targetId: organization.id,
@@ -192,12 +205,14 @@ export function removeProvider(
         input.providerId,
       );
       await assertRequiredDomainsReady(client, organization.id, provider.id);
-      await client.query('delete from app.auth_providers where id=$1', [
-        provider.id,
-      ]);
-      await client.query('delete from app.auth_accounts where provider_id=$1', [
-        provider.id,
-      ]);
+      await drizzle(client)
+        .delete(authProviders)
+        .where(eq(authProviders.id, provider.id))
+        .catch(rethrowQueryFailure);
+      await drizzle(client)
+        .delete(authAccounts)
+        .where(eq(authAccounts.providerId, provider.id))
+        .catch(rethrowQueryFailure);
       await recordFederationAudit(client, input, {
         action: 'identity.provider_removed',
         targetId: organization.id,
