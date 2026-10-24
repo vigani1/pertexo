@@ -1,3 +1,9 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows, workflowDrafts } from '../../schema/authoring/workflows.js';
+import { workflowPromotionOrigins } from '../../schema/authoring/promotions/origins.js';
+import { workflowVersionPromotions } from '../../schema/authoring/promotions/versions.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowVersionRecord } from '../workflows/representation/contract.js';
 import { promotionDigest } from './preparation/graph.js';
@@ -7,23 +13,60 @@ export async function recordPromotedPublication(
   client: PoolClient,
   version: WorkflowVersionRecord,
 ): Promise<void> {
-  const row = (
-    await client.query<{ graph_digest: string }>(
-      `select origin.graph_digest from app.workflow_promotion_origins origin
-     join app.workflows workflow on workflow.workspace_id=origin.workspace_id and workflow.id=origin.workflow_id
-     join app.workflow_drafts draft on draft.workspace_id=workflow.workspace_id and draft.workflow_id=workflow.id
-     where origin.workspace_id=$1 and origin.workflow_id=$2 and workflow.name=origin.target_name and draft.revision=origin.draft_revision`,
-      [version.workspaceId, version.workflowId],
+  const db = drizzle(client);
+  const scope = and(
+    eq(workflowPromotionOrigins.workspaceId, version.workspaceId),
+    eq(workflowPromotionOrigins.workflowId, version.workflowId),
+  );
+  const [row] = await db
+    .select({ graphDigest: workflowPromotionOrigins.graphDigest })
+    .from(workflowPromotionOrigins)
+    .innerJoin(
+      workflows,
+      and(
+        eq(workflows.workspaceId, workflowPromotionOrigins.workspaceId),
+        eq(workflows.id, workflowPromotionOrigins.workflowId),
+      ),
     )
-  ).rows[0];
-  if (row?.graph_digest !== promotionDigest(version.graphJson)) return;
-  await client.query(
-    `insert into app.workflow_version_promotions(workspace_id,workflow_id,version_id,source_workspace_id,source_workflow_id,source_version_id,source_checksum,promotion_id)
-    select workspace_id,workflow_id,$3,source_workspace_id,source_workflow_id,source_version_id,source_checksum,promotion_id from app.workflow_promotion_origins where workspace_id=$1 and workflow_id=$2 on conflict do nothing`,
-    [version.workspaceId, version.workflowId, version.id],
-  );
-  await client.query(
-    'update app.workflow_promotion_origins set published_version_id=$3 where workspace_id=$1 and workflow_id=$2',
-    [version.workspaceId, version.workflowId, version.id],
-  );
+    .innerJoin(
+      workflowDrafts,
+      and(
+        eq(workflowDrafts.workspaceId, workflows.workspaceId),
+        eq(workflowDrafts.workflowId, workflows.id),
+      ),
+    )
+    .where(
+      and(
+        scope,
+        eq(workflows.name, workflowPromotionOrigins.targetName),
+        eq(workflowDrafts.revision, workflowPromotionOrigins.draftRevision),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (row?.graphDigest !== promotionDigest(version.graphJson)) return;
+  await db
+    .insert(workflowVersionPromotions)
+    .select(
+      db
+        .select({
+          workspaceId: workflowPromotionOrigins.workspaceId,
+          workflowId: workflowPromotionOrigins.workflowId,
+          versionId: sql<string>`${version.id}::uuid`.as('version_id'),
+          sourceWorkspaceId: workflowPromotionOrigins.sourceWorkspaceId,
+          sourceWorkflowId: workflowPromotionOrigins.sourceWorkflowId,
+          sourceVersionId: workflowPromotionOrigins.sourceVersionId,
+          sourceChecksum: workflowPromotionOrigins.sourceChecksum,
+          promotionId: workflowPromotionOrigins.promotionId,
+          createdAt: sql<Date>`clock_timestamp()`.as('created_at'),
+        })
+        .from(workflowPromotionOrigins)
+        .where(scope),
+    )
+    .onConflictDoNothing()
+    .catch(rethrowQueryFailure);
+  await db
+    .update(workflowPromotionOrigins)
+    .set({ publishedVersionId: version.id })
+    .where(scope)
+    .catch(rethrowQueryFailure);
 }
