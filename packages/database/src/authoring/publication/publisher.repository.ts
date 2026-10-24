@@ -1,3 +1,12 @@
+import { and, asc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workflows,
+  workflowDrafts,
+  workflowVersions,
+} from '../../schema/authoring/workflows.js';
+import { workspaces } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import { recordPromotedPublication } from '../promotion/provenance.repository.js';
 import { PublicationReviewError } from '../reviews/contract.js';
@@ -35,9 +44,10 @@ import type {
 } from '../workflows/contract.js';
 import type { WorkflowVersionRecord } from '../workflows/representation/contract.js';
 import {
-  mapDraft,
-  mapVersion,
-  workflowVersionRowSelection,
+  projectDraft,
+  projectVersion,
+  draftProjection,
+  versionProjection,
 } from '../workflows/representation/records.queries.js';
 
 import { validatePublicationCalls } from './calls.repository.js';
@@ -82,17 +92,26 @@ async function claimPublication(
   if (stored === null)
     return Object.freeze({ command, replay: null, workflowId });
   const { versionId, reused } = storedPublicationSchema.parse(stored);
-  const version = await client.query<Record<string, unknown>>(
-    `select ${workflowVersionRowSelection} from app.workflow_versions
-     where workspace_id=$1 and workflow_id=$2 and id=$3`,
-    [input.workspaceId, workflowId, versionId],
-  );
-  const row = version.rows[0];
+  const [row] = await drizzle(client)
+    .select(versionProjection)
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, input.workspaceId),
+        eq(workflowVersions.workflowId, workflowId),
+        eq(workflowVersions.id, versionId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow version is not visible');
   return Object.freeze({
     command,
-    replay: Object.freeze({ version: mapVersion(row), reused, replayed: true }),
+    replay: Object.freeze({
+      version: projectVersion(row),
+      reused,
+      replayed: true,
+    }),
     workflowId,
   });
 }
@@ -104,22 +123,35 @@ async function lockAndCompilePublication(
   dependencies: WorkflowPublicationDependencies,
 ): Promise<CompiledPublication> {
   const variant = dependencies.catalogs;
-  const workflow = await client.query(
-    `select id from app.workflows where workspace_id=$1 and id=$2
-       and lifecycle_status='active' for update`,
-    [input.workspaceId, workflowId],
-  );
-  if (workflow.rows[0] === undefined)
+  const db = drizzle(client);
+  const [workflow] = await db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, workflowId),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  if (workflow === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
-  const draftResult = await client.query<Record<string, unknown>>(
-    `select * from app.workflow_drafts
-     where workspace_id=$1 and workflow_id=$2 for update`,
-    [input.workspaceId, workflowId],
-  );
-  const draftRow = draftResult.rows[0];
+  const [draftRow] = await db
+    .select(draftProjection)
+    .from(workflowDrafts)
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, input.workspaceId),
+        eq(workflowDrafts.workflowId, workflowId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (draftRow === undefined)
     throw new Error('Workflow is missing its required draft');
-  const draft = mapDraft(draftRow, variant.definitionCatalog);
+  const draft = projectDraft(draftRow, variant.definitionCatalog);
   const currentEtag = workflowDraftRepresentationTag({
     workflowId,
     revision: draft.revision,
@@ -193,43 +225,63 @@ async function persistVersion(
   workflowId: string,
   publication: CompiledPublication,
 ): Promise<Readonly<{ reused: boolean; version: WorkflowVersionRecord }>> {
-  const retained = await client.query<Record<string, unknown>>(
-    `select ${workflowVersionRowSelection} from app.workflow_versions
-     where workspace_id=$1 and workflow_id=$2 and checksum=$3
-     order by version_number`,
-    [input.workspaceId, workflowId, publication.checksum],
+  const db = drizzle(client);
+  const scope = and(
+    eq(workflowVersions.workspaceId, input.workspaceId),
+    eq(workflowVersions.workflowId, workflowId),
   );
-  let versionRow: Record<string, unknown> | undefined;
-  for (const row of retained.rows) {
-    const version = mapVersion(row);
+  const retained = await db
+    .select(versionProjection)
+    .from(workflowVersions)
+    .where(and(scope, eq(workflowVersions.checksum, publication.checksum)))
+    .orderBy(asc(workflowVersions.versionNumber))
+    .catch(rethrowQueryFailure);
+  let versionRow: (typeof retained)[number] | undefined;
+  for (const row of retained) {
+    const version = projectVersion(row);
     if (sameWorkflowNotes(version.graphJson, publication.graph))
       versionRow = row;
   }
   const reused = versionRow !== undefined;
   if (!reused) {
-    const inserted = await client.query<Record<string, unknown>>(
-      `insert into app.workflow_versions (
-         id,workspace_id,workflow_id,version_number,graph_json,
-         checksum,executable_json,published_by)
-       select $1,$2,$3,coalesce(max(version_number),0)+1,$4::json,$5,
-         $6::json,$7 from app.workflow_versions
-       where workspace_id=$2 and workflow_id=$3
-       returning ${workflowVersionRowSelection}`,
-      [
-        publication.versionId,
-        input.workspaceId,
-        workflowId,
-        JSON.stringify(publication.graph),
-        publication.checksum,
-        JSON.stringify(publication.executable.executableJson),
-        input.actorId,
-      ],
-    );
-    versionRow = inserted.rows[0];
+    const inserted = await db
+      .insert(workflowVersions)
+      .select(
+        db
+          .select({
+            id: sql<string>`${publication.versionId}::uuid`.as('id'),
+            workspaceId: sql<string>`${input.workspaceId}::uuid`.as(
+              'workspace_id',
+            ),
+            workflowId: sql<string>`${workflowId}::uuid`.as('workflow_id'),
+            versionNumber:
+              sql<number>`coalesce(max(${workflowVersions.versionNumber}),0)+1`.as(
+                'version_number',
+              ),
+            graphJson:
+              sql<unknown>`${JSON.stringify(publication.graph)}::json`.as(
+                'graph_json',
+              ),
+            checksum: sql<string>`${publication.checksum}::varchar`.as(
+              'checksum',
+            ),
+            executableJson:
+              sql<unknown>`${JSON.stringify(publication.executable.executableJson)}::json`.as(
+                'executable_json',
+              ),
+            publishedBy: sql<string>`${input.actorId}::uuid`.as('published_by'),
+            publishedAt: sql<Date>`clock_timestamp()`.as('published_at'),
+          })
+          .from(workflowVersions)
+          .where(scope),
+      )
+      .returning(versionProjection)
+      .catch(rethrowQueryFailure);
+    versionRow = inserted[0];
   }
   if (versionRow === undefined)
     throw new Error('Workflow publication returned no version');
-  const version = mapVersion(versionRow);
+  const version = projectVersion(versionRow);
   return Object.freeze({ reused, version });
 }
 
@@ -271,12 +323,12 @@ export async function publishWorkflowDirectly(
   client: PoolClient,
   input: PublicationCandidateInput,
 ): Promise<PublishWorkflowResult> {
-  const policy = await client.query<{
-    require_publish_approval: boolean;
-  }>('select require_publish_approval from app.workspaces where id=$1', [
-    input.workspaceId,
-  ]);
-  if (policy.rows[0]?.require_publish_approval ?? false)
+  const [policy] = await drizzle(client)
+    .select({ requirePublishApproval: workspaces.requirePublishApproval })
+    .from(workspaces)
+    .where(eq(workspaces.id, input.workspaceId))
+    .catch(rethrowQueryFailure);
+  if (policy?.requirePublishApproval ?? false)
     throw new PublicationReviewError(
       'required',
       'This workspace requires publication review. Request approval for the saved draft.',

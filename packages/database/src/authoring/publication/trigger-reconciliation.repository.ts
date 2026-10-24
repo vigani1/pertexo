@@ -1,3 +1,7 @@
+import { and, eq, notInArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowTriggers } from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { z } from 'zod';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -42,36 +46,45 @@ export async function persistPublishedWorkflowTriggers(
 ): Promise<void> {
   const { workflowId, version } = input;
   const triggers = workflowTriggerProjection(version.graphJson);
-  await client.query(
-    `delete from app.workflow_triggers
-     where workspace_id=$1 and workflow_version_id=$2
-       and not (node_id=any($3::varchar[]))`,
-    [input.workspaceId, version.id, triggers.map(({ nodeId }) => nodeId)],
-  );
-  if (triggers.length > 0) {
-    const projection = triggers.map((trigger) => ({
-      id: generatePersistedId(),
-      node_id: trigger.nodeId,
-      kind: trigger.kind,
-      desired_config: trigger.config,
-      config_fingerprint: trigger.configFingerprint,
-    }));
-    await client.query(
-      `insert into app.workflow_triggers (
-         id,workspace_id,workflow_id,workflow_version_id,node_id,kind,
-         desired_config,config_fingerprint,status)
-       select item.id,$1,$2,$3,item.node_id,item.kind,item.desired_config,
-         item.config_fingerprint,'desired'
-       from jsonb_to_recordset($4::jsonb) as item(
-         id uuid,node_id varchar(128),kind varchar(16),desired_config jsonb,
-         config_fingerprint varchar(82))
-       on conflict (workflow_version_id,node_id) do update set
-         desired_config=excluded.desired_config,
-         config_fingerprint=excluded.config_fingerprint
-       where app.workflow_triggers.workspace_id=excluded.workspace_id
-         and app.workflow_triggers.workflow_id=excluded.workflow_id
-         and app.workflow_triggers.kind=excluded.kind`,
-      [input.workspaceId, workflowId, version.id, JSON.stringify(projection)],
-    );
-  }
+  const db = drizzle(client);
+  const nodeIds = triggers.map(({ nodeId }) => nodeId);
+  await db
+    .delete(workflowTriggers)
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, input.workspaceId),
+        eq(workflowTriggers.workflowVersionId, version.id),
+        notInArray(workflowTriggers.nodeId, nodeIds),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (triggers.length > 0)
+    await db
+      .insert(workflowTriggers)
+      .values(
+        triggers.map((trigger) => ({
+          id: generatePersistedId(),
+          workspaceId: input.workspaceId,
+          workflowId,
+          workflowVersionId: version.id,
+          nodeId: trigger.nodeId,
+          kind: trigger.kind,
+          desiredConfig: trigger.config,
+          configFingerprint: trigger.configFingerprint,
+          status: 'desired',
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [workflowTriggers.workflowVersionId, workflowTriggers.nodeId],
+        set: {
+          desiredConfig: sql`excluded.desired_config`,
+          configFingerprint: sql`excluded.config_fingerprint`,
+        },
+        setWhere: sql`${and(
+          eq(workflowTriggers.workspaceId, sql`excluded.workspace_id`),
+          eq(workflowTriggers.workflowId, sql`excluded.workflow_id`),
+          eq(workflowTriggers.kind, sql`excluded.kind`),
+        )}`,
+      })
+      .catch(rethrowQueryFailure);
 }
