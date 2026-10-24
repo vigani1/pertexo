@@ -1,23 +1,17 @@
 import { readTransactionFolderScope } from '../../tenant-access/resources/facts.js';
 import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
 import { sql } from 'drizzle-orm';
-import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
+
 import { and, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
   assertPreviewActor,
-  PREVIEW_STATUS,
   type PreviewRunRecord,
-  type PreviewStatus,
 } from './acceptance.repository.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { previewRuns, previewAttempts } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-
-const previewStatusSchema = z.enum(
-  Object.values(PREVIEW_STATUS) as [PreviewStatus, ...PreviewStatus[]],
-);
 
 export async function readPreviewRun(
   transaction: WorkspaceTransaction,
@@ -75,20 +69,18 @@ export async function readPreviewRun(
   return Object.freeze({
     ...(row.codeDiagnostics === null
       ? {}
-      : { codeDiagnostics: codeDiagnosticsSchema.parse(row.codeDiagnostics) }),
+      : { codeDiagnostics: row.codeDiagnostics }),
     ...(row.errorSummary === null ? {} : { errorSummary: row.errorSummary }),
     id: row.id,
     workspaceId: row.workspaceId,
     workflowId: row.workflowId,
     draftRevision: row.draftRevision,
     nodeId: row.nodeId,
-    status: previewStatusSchema.parse(row.status),
-    sideEffectClass: z
-      .enum(['safe', 'idempotent_with_key', 'unsafe'])
-      .parse(row.sideEffectClass),
+    status: row.status,
+    sideEffectClass: row.sideEffectClass,
     mayContactProvider: row.mayContactProvider,
     mayCauseExternalSideEffect: row.mayCauseExternalSideEffect,
-    dryRun: z.enum(['not_supported', 'provider_supported']).parse(row.dryRun),
+    dryRun: row.dryRun,
     output:
       row.outputRef === null ? null : parseStoredExecutionValue(row.outputRef),
     pinnedSampleId: row.pinnedSampleId,

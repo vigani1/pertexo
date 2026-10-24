@@ -1,3 +1,13 @@
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowDrafts } from '../../schema/authoring/workflows.js';
+import {
+  workflowInputCases,
+  workflowInputCasePayloads,
+} from '../../schema/authoring/input-cases.js';
+import { workflowStepSamples } from '../../schema/authoring/step-samples.js';
+import { workspaceVariables } from '../../schema/variables.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { WorkflowTestSuiteCurrent } from '@pertexo/contracts';
@@ -10,61 +20,118 @@ export async function readSuiteCurrent(
   input: SampleScope,
   frozenVariableSetRevision?: number | null,
 ): Promise<WorkflowTestSuiteCurrent> {
-  const draft = await client.query<{ revision: number }>(
-    'select revision from app.workflow_drafts where workspace_id=$1 and workflow_id=$2',
-    [input.workspaceId, input.workflowId],
-  );
-  const revision = draft.rows[0]?.revision;
+  const db = drizzle(client);
+  const draft = await db
+    .select({ revision: workflowDrafts.revision })
+    .from(workflowDrafts)
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, input.workspaceId),
+        eq(workflowDrafts.workflowId, input.workflowId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const revision = draft[0]?.revision;
   if (revision === undefined) throw new WorkflowTestError('not_found');
-  const cases = await client.query<{
-    id: string;
-    revision: number;
-    name: string;
-  }>(
-    'select id,revision,name from app.workflow_input_cases where workspace_id=$1 and workflow_id=$2 and deleted_at is null order by created_at,id limit 51',
-    [input.workspaceId, input.workflowId],
-  );
-  if (cases.rows.length > 50) throw new WorkflowTestError('cases_changed');
-  const pins = await client.query<{
-    node_id: string;
-    id: string;
-    expired: boolean;
-  }>(
-    'select node_id,id,expires_at<=clock_timestamp() expired from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 order by node_id',
-    [input.workspaceId, input.workflowId],
-  );
+  const cases = await db
+    .select({
+      id: workflowInputCases.id,
+      revision: workflowInputCases.revision,
+      name: workflowInputCases.name,
+    })
+    .from(workflowInputCases)
+    .where(
+      and(
+        eq(workflowInputCases.workspaceId, input.workspaceId),
+        eq(workflowInputCases.workflowId, input.workflowId),
+        isNull(workflowInputCases.deletedAt),
+      ),
+    )
+    .orderBy(asc(workflowInputCases.createdAt), asc(workflowInputCases.id))
+    .limit(51)
+    .catch(rethrowQueryFailure);
+  if (cases.length > 50) throw new WorkflowTestError('cases_changed');
+  const pins = await db
+    .select({
+      nodeId: workflowStepSamples.nodeId,
+      id: workflowStepSamples.id,
+      expired: sql<boolean>`${workflowStepSamples.expiresAt}<=clock_timestamp()`,
+    })
+    .from(workflowStepSamples)
+    .where(
+      and(
+        eq(workflowStepSamples.workspaceId, input.workspaceId),
+        eq(workflowStepSamples.workflowId, input.workflowId),
+      ),
+    )
+    .orderBy(asc(workflowStepSamples.nodeId))
+    .catch(rethrowQueryFailure);
   const variables =
     frozenVariableSetRevision === undefined
-      ? await client.query<{ revision: number }>(
-          'select revision from app.workspace_variables where workspace_id=$1',
-          [input.workspaceId],
-        )
+      ? await db
+          .select({ revision: workspaceVariables.revision })
+          .from(workspaceVariables)
+          .where(eq(workspaceVariables.workspaceId, input.workspaceId))
+          .catch(rethrowQueryFailure)
       : undefined;
   const variableSetRevision =
     frozenVariableSetRevision === undefined
-      ? (variables?.rows[0]?.revision ?? null)
+      ? (variables?.[0]?.revision ?? null)
       : frozenVariableSetRevision;
   const identity = {
     draftRevision: revision,
-    cases: cases.rows.map(({ id, revision }) => ({ id, revision })),
-    samples: pins.rows.map((row) => ({
-      nodeId: row.node_id,
+    cases: cases.map(({ id, revision }) => ({ id, revision })),
+    samples: pins.map((row) => ({
+      nodeId: row.nodeId,
       sampleId: row.id,
     })),
     variableSetRevision,
   };
   return {
     ...identity,
-    cases: cases.rows,
+    cases: cases,
     signature: createHash('sha256')
       .update(
         canonicalJson({
           ...identity,
-          expiredSampleIds: pins.rows
+          expiredSampleIds: pins
             .filter((pin) => pin.expired)
             .map((pin) => pin.id),
         }),
       )
       .digest('hex'),
   };
+}
+
+export function readSuiteCasePayloads(client: PoolClient, input: SampleScope) {
+  return drizzle(client)
+    .select({
+      id: workflowInputCases.id,
+      revision: workflowInputCases.revision,
+      name: workflowInputCases.name,
+      input: workflowInputCasePayloads.input,
+      expectations: workflowInputCasePayloads.expectations,
+    })
+    .from(workflowInputCases)
+    .innerJoin(
+      workflowInputCasePayloads,
+      and(
+        eq(
+          workflowInputCasePayloads.workspaceId,
+          workflowInputCases.workspaceId,
+        ),
+        eq(workflowInputCasePayloads.caseId, workflowInputCases.id),
+        eq(workflowInputCasePayloads.revision, workflowInputCases.revision),
+      ),
+    )
+    .where(
+      and(
+        eq(workflowInputCases.workspaceId, input.workspaceId),
+        eq(workflowInputCases.workflowId, input.workflowId),
+        isNull(workflowInputCases.deletedAt),
+      ),
+    )
+    .orderBy(asc(workflowInputCases.createdAt), asc(workflowInputCases.id))
+    .limit(50)
+    .catch(rethrowQueryFailure);
 }

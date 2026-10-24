@@ -1,3 +1,8 @@
+import { and, asc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowStepSamples } from '../../schema/authoring/step-samples.js';
+import { workflowTestSnapshots } from '../../schema/runs/tests.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { workflowTestStepChoices } from '@pertexo/workflow-model';
 import type { FrozenWorkflowTestPins } from '../../schema/runs/tests.js';
 import { sampleDraft } from '../../authoring/step-samples/records.js';
@@ -6,10 +11,7 @@ import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
-import {
-  SAMPLE_COLUMNS,
-  type SampleRow,
-} from '../../authoring/step-samples/contract.js';
+
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { WorkflowTestError } from './contract.js';
 
@@ -20,32 +22,43 @@ export async function loadTestSnapshot(
 ) {
   const draft = await sampleDraft(client, input, { write: true });
   const { graph, bindings } = draft;
-  const samples = await client.query<SampleRow>(
-    `select ${SAMPLE_COLUMNS} from app.workflow_step_samples where workspace_id=$1 and workflow_id=$2 order by node_id for share`,
-    [input.workspaceId, input.workflowId],
-  );
-  const clock = await client.query<{ now: Date }>(
-    'select clock_timestamp() now',
-  );
-  const now = clock.rows[0]?.now;
-  if (now === undefined) throw new Error('Test admission time is unavailable');
+  const db = drizzle(client);
+  const samples = await db
+    .select()
+    .from(workflowStepSamples)
+    .where(
+      and(
+        eq(workflowStepSamples.workspaceId, input.workspaceId),
+        eq(workflowStepSamples.workflowId, input.workflowId),
+      ),
+    )
+    .orderBy(asc(workflowStepSamples.nodeId))
+    .for('share')
+    .catch(rethrowQueryFailure);
+  const clock = await db
+    .execute<{ now: string }>(sql`select clock_timestamp() now`)
+    .catch(rethrowQueryFailure);
+  const databaseTime = clock.rows[0]?.now;
+  if (databaseTime === undefined)
+    throw new Error('Test admission time is unavailable');
+  const now = new Date(databaseTime);
   const pins: Record<string, WorkflowTestPins[string]> = Object.create(
     null,
   ) as Record<string, WorkflowTestPins[string]>;
   const frozenPins: Record<string, FrozenWorkflowTestPins[string]> =
     Object.create(null) as Record<string, FrozenWorkflowTestPins[string]>;
-  for (const sample of samples.rows) {
+  for (const sample of samples) {
     if (
-      sample.expires_at <= now ||
-      bindings.get(sample.node_id) !== sample.binding
+      sample.expiresAt <= now ||
+      bindings.get(sample.nodeId) !== sample.binding
     )
       throw new WorkflowTestError('stale_sample');
-    const output = parseStoredExecutionValue(sample.output_ref);
+    const output = parseStoredExecutionValue(sample.outputRef);
     if (output.kind !== 'inline') throw new WorkflowTestError('stale_sample');
-    pins[sample.node_id] = { sampleId: sample.id, output: output.value };
-    frozenPins[sample.node_id] = {
+    pins[sample.nodeId] = { sampleId: sample.id, output: output.value };
+    frozenPins[sample.nodeId] = {
       sampleId: sample.id,
-      outputRef: sample.output_ref,
+      outputRef: sample.outputRef,
     };
   }
   if (catalogs.workflowTestCompiler === undefined)
@@ -106,20 +119,19 @@ export async function saveTestSnapshot(
     expiresAt: Date;
   }>,
 ): Promise<void> {
-  await client.query(
-    `insert into app.workflow_test_snapshots(id,workspace_id,workflow_id,draft_revision,graph_json,executable_json,pins,expires_at,checksum,dispositions)
-  values($1,$2,$3,$4,$5::json,$6::json,$7::json,$8,$9,$10::jsonb)`,
-    [
+  await drizzle(client)
+    .insert(workflowTestSnapshots)
+    .values({
       id,
-      input.workspaceId,
-      input.workflowId,
-      snapshot.preparation.draftRevision,
-      normalizedJson(snapshot.graph),
-      normalizedJson(snapshot.compiled.executableJson),
-      normalizedJson(snapshot.frozenPins),
+      workspaceId: input.workspaceId,
+      workflowId: input.workflowId,
+      draftRevision: snapshot.preparation.draftRevision,
+      graphJson: sql`${normalizedJson(snapshot.graph)}::json`,
+      executableJson: sql`${normalizedJson(snapshot.compiled.executableJson)}::json`,
+      pins: sql`${normalizedJson(snapshot.frozenPins)}::json`,
       expiresAt,
-      snapshot.compiled.checksum,
-      JSON.stringify(snapshot.compiled.dispositions),
-    ],
-  );
+      checksum: snapshot.compiled.checksum,
+      dispositions: sql`${JSON.stringify(snapshot.compiled.dispositions)}::jsonb`,
+    })
+    .catch(rethrowQueryFailure);
 }

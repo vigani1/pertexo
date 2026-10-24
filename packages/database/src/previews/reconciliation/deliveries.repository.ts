@@ -1,14 +1,19 @@
+import { lockPreviewReconciliationState } from './state.queries.js';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { previewRuns, previewAttempts } from '../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { PREVIEW_STATUS } from '../runs/acceptance.repository.js';
-import { appendPreviewTerminalFacts } from '../attempts/completion.repository.js';
+import { appendPreviewTerminalFacts } from '../attempts/facts.repository.js';
 import {
   TERMINAL_PREVIEW_STATUSES,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
   optionsFor,
-  previewPairConsistent,
   previewReconcilerConsumerName,
   type PreviewDelivery,
 } from '../contract.js';
@@ -56,21 +61,9 @@ type PreviewReconciliationScope = Readonly<{
   workspaceId: string;
 }>;
 
-type LockedPreviewReconciliationState = Readonly<{
-  attempt_status: string;
-  dispatch_marked_at: Date | null;
-  fence_token: string;
-  lease_live: boolean;
-  lease_expires_at: Date | null;
-  may_contact_provider: boolean;
-  may_cause_external_side_effect: boolean;
-  operation_key: string | null;
-  provider_key: string | null;
-  run_deadline_expired: boolean;
-  run_status: string;
-  side_effect_class: string;
-  uses_connection: boolean;
-}>;
+type LockedPreviewReconciliationState = Awaited<
+  ReturnType<typeof lockPreviewReconciliationState>
+>;
 
 export function isValidStoredExecutionOutput(
   value: unknown,
@@ -96,7 +89,7 @@ async function completeExpiredOrUnsafePreview(
   Extract<PreviewDeliveryReconciliationResult, { kind: 'completed' }>
 > {
   const unsafePossiblyDispatched =
-    state.dispatch_marked_at !== null && state.side_effect_class === 'unsafe';
+    state.dispatchMarkedAt !== null && state.sideEffectClass === 'unsafe';
   const status = unsafePossiblyDispatched
     ? PREVIEW_STATUS.outcomeUnknown
     : PREVIEW_STATUS.timedOut;
@@ -110,41 +103,50 @@ async function completeExpiredOrUnsafePreview(
     reason,
     attemptFenceToken: scope.attemptFenceToken,
   });
-  const attempt = await client.query(
-    `update app.preview_attempts
-     set status=$4,
-         safe_error_code=$5,
-         reconciliation_ref=$6::jsonb,
-         completed_at=clock_timestamp(),
-         lease_owner=null,
-         lease_expires_at=null,
-         fence_token=fence_token+1,
-         updated_at=clock_timestamp()
-     where workspace_id=$1 and id=$2 and preview_run_id=$3
-       and status='running' and fence_token=$7`,
-    [
-      scope.workspaceId,
-      scope.previewAttemptId,
-      scope.previewRunId,
+  const db = drizzle(client);
+  const attempt = await db
+    .update(previewAttempts)
+    .set({
       status,
       safeErrorCode,
-      reconciliationRef,
-      scope.attemptFenceToken,
-    ],
-  );
-  if (attempt.rowCount !== 1)
+      reconciliationRef: sql`${reconciliationRef}::jsonb`,
+      completedAt: sql`clock_timestamp()`,
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      fenceToken: sql`${previewAttempts.fenceToken}+1`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(previewAttempts.workspaceId, scope.workspaceId),
+        eq(previewAttempts.id, scope.previewAttemptId),
+        eq(previewAttempts.previewRunId, scope.previewRunId),
+        eq(previewAttempts.status, 'running'),
+        eq(previewAttempts.fenceToken, scope.attemptFenceToken),
+      ),
+    )
+    .returning({ id: previewAttempts.id })
+    .catch(rethrowQueryFailure);
+  if (attempt.length !== 1)
     throw new PreviewAttemptStateError('reconciliation_lost');
-  const run = await client.query(
-    `update app.preview_runs
-     set status=$3,
-         safe_error_code=$4,
-         completed_at=clock_timestamp(),
-         updated_at=clock_timestamp()
-     where workspace_id=$1 and id=$2
-       and status in ('queued','running')`,
-    [scope.workspaceId, scope.previewRunId, status, safeErrorCode],
-  );
-  if (run.rowCount !== 1) throw new PreviewAttemptStateError('run_sync_lost');
+  const run = await db
+    .update(previewRuns)
+    .set({
+      status,
+      safeErrorCode,
+      completedAt: sql`clock_timestamp()`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(previewRuns.workspaceId, scope.workspaceId),
+        eq(previewRuns.id, scope.previewRunId),
+        inArray(previewRuns.status, ['queued', 'running']),
+      ),
+    )
+    .returning({ id: previewRuns.id })
+    .catch(rethrowQueryFailure);
+  if (run.length !== 1) throw new PreviewAttemptStateError('run_sync_lost');
   await appendPreviewTerminalFacts(client, {
     previewAttemptId: scope.previewAttemptId,
     previewRunId: scope.previewRunId,
@@ -154,18 +156,16 @@ async function completeExpiredOrUnsafePreview(
   await completeReceipt();
   return Object.freeze({
     kind: 'completed',
-    mayContactProvider: state.may_contact_provider,
-    mayCauseExternalSideEffect: state.may_cause_external_side_effect,
-    ...(state.operation_key === null
+    mayContactProvider: state.mayContactProvider,
+    mayCauseExternalSideEffect: state.mayCauseExternalSideEffect,
+    ...(state.operationKey === null
       ? {}
-      : { operationKey: state.operation_key }),
-    possiblyDispatched: state.dispatch_marked_at !== null,
-    ...(state.provider_key === null ? {} : { providerKey: state.provider_key }),
-    sideEffectClass: z
-      .enum(['safe', 'idempotent_with_key', 'unsafe'])
-      .parse(state.side_effect_class),
+      : { operationKey: state.operationKey }),
+    possiblyDispatched: state.dispatchMarkedAt !== null,
+    ...(state.providerKey === null ? {} : { providerKey: state.providerKey }),
+    sideEffectClass: state.sideEffectClass,
     status,
-    usesConnection: state.uses_connection,
+    usesConnection: state.usesConnection,
   });
 }
 
@@ -224,20 +224,20 @@ export async function reconcilePreviewDelivery(
             input.delivery,
           );
         const staleReconciliation =
-          TERMINAL_PREVIEW_STATUSES.has(state.attempt_status) ||
-          state.attempt_status !== PREVIEW_STATUS.running ||
-          Number(state.fence_token) !== scope.attemptFenceToken;
+          TERMINAL_PREVIEW_STATUSES.has(state.attemptStatus) ||
+          state.attemptStatus !== PREVIEW_STATUS.running ||
+          state.fenceToken !== scope.attemptFenceToken;
         if (staleReconciliation) {
           await completeReceipt();
           return Object.freeze({ kind: 'duplicate' });
         }
 
-        if (state.lease_live) {
-          if (state.lease_expires_at === null)
+        if (state.leaseLive) {
+          if (state.leaseExpiresAt === null)
             throw new PreviewAttemptStateError('lease_shape_invalid');
           const successor = await insertPreviewOutboxDelivery(client, {
             attemptFenceToken: scope.attemptFenceToken,
-            availableAt: state.lease_expires_at,
+            availableAt: state.leaseExpiresAt,
             jobName: 'reconcile-preview-attempt',
             previewAttemptId: scope.previewAttemptId,
             previewRunId: scope.previewRunId,
@@ -254,9 +254,8 @@ export async function reconcilePreviewDelivery(
         }
 
         const unsafePossiblyDispatched =
-          state.dispatch_marked_at !== null &&
-          state.side_effect_class === 'unsafe';
-        const runDeadlineExpired = state.run_deadline_expired;
+          state.dispatchMarkedAt !== null && state.sideEffectClass === 'unsafe';
+        const runDeadlineExpired = state.runDeadlineExpired;
         if (unsafePossiblyDispatched || runDeadlineExpired)
           return completeExpiredOrUnsafePreview(
             client,
@@ -287,49 +286,6 @@ export async function reconcilePreviewDelivery(
   }
 }
 
-async function lockPreviewReconciliationState(
-  client: PoolClient,
-  scope: PreviewReconciliationScope,
-): Promise<LockedPreviewReconciliationState> {
-  const locked = await client.query<LockedPreviewReconciliationState>(
-    `select attempt.status as attempt_status,
-                  attempt.dispatch_marked_at,
-                  attempt.fence_token,
-                  attempt.lease_expires_at,
-                  (attempt.lease_expires_at is not null and
-                   attempt.lease_expires_at > clock_timestamp()) as lease_live,
-                   attempt.side_effect_class,
-                   run.may_contact_provider,
-                   run.may_cause_external_side_effect,
-                   run.operation_key,
-                   run.provider_key,
-                   coalesce(
-                     jsonb_typeof(run.executable_node_json::jsonb->'connectionRefs') = 'object'
-                     and run.executable_node_json::jsonb->'connectionRefs' <> '{}'::jsonb,
-                     false
-                   )
-                     as uses_connection,
-                   run.status as run_status,
-                  (run.execution_deadline_at <= clock_timestamp()) as run_deadline_expired
-           from app.preview_attempts attempt
-           join app.preview_runs run
-             on run.workspace_id=attempt.workspace_id
-            and run.id=attempt.preview_run_id
-           where attempt.workspace_id=$1
-             and attempt.id=$2
-             and attempt.preview_run_id=$3
-           for update of attempt,run`,
-    [scope.workspaceId, scope.previewAttemptId, scope.previewRunId],
-  );
-  const state = locked.rows[0];
-  if (state === undefined)
-    throw new PreviewAttemptStateError('attempt_not_found');
-  if (!previewPairConsistent(state.attempt_status, state.run_status))
-    throw new PreviewAttemptStateError('run_attempt_divergence');
-
-  return state;
-}
-
 async function redeliverExpiredPreview(
   client: PoolClient,
   scope: PreviewReconciliationScope,
@@ -346,36 +302,43 @@ async function redeliverExpiredPreview(
   // Fence the expired owner before making the replacement delivery
   // visible. The stable provider key and prior dispatch marker remain
   // pinned for safe/idempotent repetition under ADR 007.
-  const reclaimed = await client.query(
-    `update app.preview_attempts
-           set status='queued',
-               lease_owner=null,
-               lease_expires_at=null,
-               fence_token=fence_token+1,
-               reconciliation_ref=$4::jsonb,
-               updated_at=clock_timestamp()
-           where workspace_id=$1 and id=$2 and preview_run_id=$3
-             and status='running' and fence_token=$5`,
-    [
-      scope.workspaceId,
-      scope.previewAttemptId,
-      scope.previewRunId,
-      JSON.stringify({
-        reason: 'lease_expired_redelivery',
-        attemptFenceToken: scope.attemptFenceToken,
-      }),
-      scope.attemptFenceToken,
-    ],
-  );
-  if (reclaimed.rowCount !== 1)
+  const db = drizzle(client);
+  const reclaimed = await db
+    .update(previewAttempts)
+    .set({
+      status: 'queued',
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      fenceToken: sql`${previewAttempts.fenceToken}+1`,
+      reconciliationRef: sql`${JSON.stringify({ reason: 'lease_expired_redelivery', attemptFenceToken: scope.attemptFenceToken })}::jsonb`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(previewAttempts.workspaceId, scope.workspaceId),
+        eq(previewAttempts.id, scope.previewAttemptId),
+        eq(previewAttempts.previewRunId, scope.previewRunId),
+        eq(previewAttempts.status, 'running'),
+        eq(previewAttempts.fenceToken, scope.attemptFenceToken),
+      ),
+    )
+    .returning({ id: previewAttempts.id })
+    .catch(rethrowQueryFailure);
+  if (reclaimed.length !== 1)
     throw new PreviewAttemptStateError('reconciliation_lost');
-  const queuedRun = await client.query(
-    `update app.preview_runs
-           set status='queued',updated_at=clock_timestamp()
-           where workspace_id=$1 and id=$2 and status='running'`,
-    [scope.workspaceId, scope.previewRunId],
-  );
-  if (queuedRun.rowCount !== 1)
+  const queuedRun = await db
+    .update(previewRuns)
+    .set({ status: 'queued', updatedAt: sql`clock_timestamp()` })
+    .where(
+      and(
+        eq(previewRuns.workspaceId, scope.workspaceId),
+        eq(previewRuns.id, scope.previewRunId),
+        eq(previewRuns.status, 'running'),
+      ),
+    )
+    .returning({ id: previewRuns.id })
+    .catch(rethrowQueryFailure);
+  if (queuedRun.length !== 1)
     throw new PreviewAttemptStateError('run_sync_lost');
   const execution = await insertPreviewOutboxDelivery(client, {
     jobName: 'execute-preview-attempt',

@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { evaluateSuiteCase } from '../../../src/previews/suites/evaluate.queries.js';
 import type { SuiteCaseRow } from '../../../src/previews/suites/contract.js';
 const entry: SuiteCaseRow = {
-  workspace_id: randomUUID(),
-  suite_id: randomUUID(),
+  workspaceId: randomUUID(),
+  suiteId: randomUUID(),
   ordinal: 0,
-  case_id: randomUUID(),
-  case_revision: 1,
+  caseId: randomUUID(),
+  caseRevision: 1,
   name: 'Output checks',
   input: '{}',
   expectations: JSON.stringify({
@@ -28,24 +28,19 @@ const entry: SuiteCaseRow = {
       },
     ],
   }),
-  run_id: randomUUID(),
+  runId: randomUUID(),
   status: 'running',
   report: null,
 };
 describe('suite output observations', () => {
   it('does not download a file-backed value and shares one selected output read across assertions', async () => {
     const query = vi.fn().mockResolvedValue({
-      rows: [
-        {
-          status: 'succeeded',
-          output_ref: { kind: 'artifact', artifactId: randomUUID() },
-        },
-      ],
+      rows: [['succeeded', { kind: 'artifact', artifactId: randomUUID() }]],
     });
     const result = await evaluateSuiteCase(
       { query } as unknown as PoolClient,
       entry,
-      { status: 'succeeded', output_ref: null, pin_required: false },
+      { status: 'succeeded', outputRef: null, pinRequired: false },
     );
     expect(result.status).toBe('failed');
     expect(result.report.assertions.map((item) => item.actual)).toEqual([
@@ -63,7 +58,7 @@ describe('suite output observations', () => {
           ...entry,
           expectations: JSON.stringify({ outcome: 'fails', assertions: [] }),
         },
-        { status, output_ref: null, pin_required: true },
+        { status, outputRef: null, pinRequired: true },
       );
       expect(result).toMatchObject({
         status: 'error',
@@ -91,8 +86,8 @@ describe('suite output observations', () => {
       },
       {
         status: 'succeeded',
-        output_ref: { kind: 'inline', value },
-        pin_required: false,
+        outputRef: { kind: 'inline', value },
+        pinRequired: false,
       },
     );
     expect(result).toMatchObject({

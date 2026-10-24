@@ -1,4 +1,4 @@
-import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
+import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { and, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
@@ -6,7 +6,6 @@ import { z } from 'zod';
 import {
   assertPreviewActor,
   previewWorkflowVisible,
-  PREVIEW_STATUS,
   PreviewAcceptanceCorruptError,
   readExistingAcceptance,
   type PreviewStatus,
@@ -40,10 +39,6 @@ export type PreviewReplayRecord = Readonly<{
   createdAt: Date;
   expiresAt: Date;
 }>;
-
-const previewStatusSchema = z.enum(
-  Object.values(PREVIEW_STATUS) as [PreviewStatus, ...PreviewStatus[]],
-);
 
 export async function resolvePreviewReplay(
   transaction: WorkspaceTransaction,
@@ -124,9 +119,7 @@ export async function resolvePreviewReplay(
   } = replay;
   return Object.freeze({
     ...summary,
-    ...(codeDiagnostics === null
-      ? {}
-      : { codeDiagnostics: codeDiagnosticsSchema.parse(codeDiagnostics) }),
+    ...(codeDiagnostics === null ? {} : { codeDiagnostics: codeDiagnostics }),
     ...(pinnedSampleId === null
       ? {}
       : {
@@ -134,12 +127,8 @@ export async function resolvePreviewReplay(
           completedAt,
           output: parseStoredExecutionValue(outputRef),
         }),
-    status: previewStatusSchema.parse(replay.status),
-    sideEffectClass: z
-      .enum(['safe', 'idempotent_with_key', 'unsafe'])
-      .parse(replay.sideEffectClass),
-    dryRun: z
-      .enum(['not_supported', 'provider_supported'])
-      .parse(replay.dryRun),
+    status: replay.status,
+    sideEffectClass: replay.sideEffectClass,
+    dryRun: replay.dryRun,
   });
 }

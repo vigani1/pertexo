@@ -1,52 +1,150 @@
-import {
-  workflowTestStepChoices,
-  type WorkflowGraph,
-} from '@pertexo/workflow-model';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { workflowTestStepChoices } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import type {
   WorkflowTestSuiteSummary,
   WorkflowTestSuiteDetail,
   WorkflowTestSuiteReport,
 } from '@pertexo/contracts';
+import {
+  workflowTestSuites,
+  workflowTestSuiteCases,
+} from '../../schema/runs/suites.js';
+import { workflowTestSnapshots } from '../../schema/runs/tests.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import { WorkflowTestError } from '../workflows/contract.js';
-import type { SuiteRow, SuiteCaseRow } from './contract.js';
-interface SummaryRow extends Pick<
-  SuiteRow,
-  | 'id'
-  | 'started_by'
-  | 'signature'
-  | 'status'
-  | 'stop_reason'
-  | 'created_at'
-  | 'completed_at'
-  | 'expires_at'
-> {
-  draft_revision: number;
-  total: number;
-  passed: number;
-  failed: number;
-  errors: number;
-  skipped: number;
+
+const suite = alias(workflowTestSuites, 'suite');
+const historyFields = {
+  id: suite.id,
+  workspaceId: suite.workspaceId,
+  snapshotId: suite.snapshotId,
+  startedBy: suite.startedBy,
+  signature: suite.signature,
+  status: suite.status,
+  stopReason: suite.stopReason,
+  createdAt: suite.createdAt,
+  completedAt: suite.completedAt,
+  expiresAt: suite.expiresAt,
+};
+type SummarySource = typeof historyFields;
+
+function suiteCounts(
+  db: Pick<NodePgDatabase, 'select'>,
+  source: SummarySource,
+) {
+  return db
+    .select({
+      total: sql<number>`count(*)::integer`.as('total'),
+      passed:
+        sql<number>`(count(*) filter(where ${workflowTestSuiteCases.status}='passed'))::integer`.as(
+          'passed',
+        ),
+      failed:
+        sql<number>`(count(*) filter(where ${workflowTestSuiteCases.status}='failed'))::integer`.as(
+          'failed',
+        ),
+      errors:
+        sql<number>`(count(*) filter(where ${workflowTestSuiteCases.status}='error'))::integer`.as(
+          'errors',
+        ),
+      skipped:
+        sql<number>`(count(*) filter(where ${workflowTestSuiteCases.status}='skipped'))::integer`.as(
+          'skipped',
+        ),
+    })
+    .from(workflowTestSuiteCases)
+    .where(
+      and(
+        eq(workflowTestSuiteCases.workspaceId, source.workspaceId),
+        eq(workflowTestSuiteCases.suiteId, source.id),
+      ),
+    )
+    .as('counts');
 }
-const summarySql = `select suite.id,suite.started_by,suite.signature,suite.status,suite.stop_reason,suite.created_at,suite.completed_at,suite.expires_at,snapshot.draft_revision,counts.*
- from app.workflow_test_suites suite join app.workflow_test_snapshots snapshot on snapshot.workspace_id=suite.workspace_id and snapshot.id=suite.snapshot_id
- cross join lateral(select count(*)::integer total,
-  (count(*) filter(where entry.status='passed'))::integer passed,(count(*) filter(where entry.status='failed'))::integer failed,
-  (count(*) filter(where entry.status='error'))::integer errors,(count(*) filter(where entry.status='skipped'))::integer skipped
-  from app.workflow_test_suite_cases entry where entry.workspace_id=suite.workspace_id and entry.suite_id=suite.id) counts
- where suite.workspace_id=$1 and suite.workflow_id=$2 and suite.expires_at>clock_timestamp()`;
-function summary(row: SummaryRow): WorkflowTestSuiteSummary {
+function summarySelection(
+  source: SummarySource,
+  counts: ReturnType<typeof suiteCounts>,
+) {
+  return {
+    id: source.id,
+    startedBy: source.startedBy,
+    signature: source.signature,
+    status: source.status,
+    stopReason: source.stopReason,
+    createdAt: source.createdAt,
+    completedAt: source.completedAt,
+    expiresAt: source.expiresAt,
+    draftRevision: workflowTestSnapshots.draftRevision,
+    total: counts.total,
+    passed: counts.passed,
+    failed: counts.failed,
+    errors: counts.errors,
+    skipped: counts.skipped,
+  };
+}
+function visibleSuite(input: SampleScope) {
+  return and(
+    eq(suite.workspaceId, input.workspaceId),
+    eq(suite.workflowId, input.workflowId),
+    sql`${suite.expiresAt}>clock_timestamp()`,
+  );
+}
+async function listSuiteRows(client: PoolClient, input: SampleScope) {
+  const db = drizzle(client);
+  // Counts depend on this bounded relation, so no other suite is aggregated.
+  const history = db.$with('suite').as(
+    db
+      .select(historyFields)
+      .from(suite)
+      .where(visibleSuite(input))
+      .orderBy(
+        desc(
+          sql`(${suite.startedBy}=${input.actorId} and ${suite.status}='running')`,
+        ),
+        desc(suite.createdAt),
+        desc(suite.id),
+      )
+      .limit(20),
+  );
+  const counts = suiteCounts(db, history);
+  return db
+    .with(history)
+    .select(summarySelection(history, counts))
+    .from(history)
+    .innerJoin(
+      workflowTestSnapshots,
+      and(
+        eq(workflowTestSnapshots.workspaceId, history.workspaceId),
+        eq(workflowTestSnapshots.id, history.snapshotId),
+      ),
+    )
+    .crossJoinLateral(counts)
+    .orderBy(
+      desc(
+        sql`(${history.startedBy}=${input.actorId} and ${history.status}='running')`,
+      ),
+      desc(history.createdAt),
+      desc(history.id),
+    )
+    .catch(rethrowQueryFailure);
+}
+function summary(
+  row: Awaited<ReturnType<typeof listSuiteRows>>[number],
+): WorkflowTestSuiteSummary {
   return {
     suiteId: row.id,
-    startedBy: row.started_by,
-    draftRevision: row.draft_revision,
+    startedBy: row.startedBy,
+    draftRevision: row.draftRevision,
     signature: row.signature,
     status: row.status,
-    stopReason: row.stop_reason,
-    createdAt: row.created_at.toISOString(),
-    completedAt: row.completed_at?.toISOString() ?? null,
-    expiresAt: row.expires_at.toISOString(),
+    stopReason: row.stopReason,
+    createdAt: row.createdAt.toISOString(),
+    completedAt: row.completedAt?.toISOString() ?? null,
+    expiresAt: row.expiresAt.toISOString(),
     total: row.total,
     passed: row.passed,
     failed: row.failed,
@@ -58,43 +156,49 @@ export async function listSuites(
   client: PoolClient,
   input: SampleScope,
 ): Promise<readonly WorkflowTestSuiteSummary[]> {
-  const found = await client.query<SummaryRow>(
-    `with history as materialized(select id from app.workflow_test_suites where workspace_id=$1 and workflow_id=$2 and expires_at>clock_timestamp() order by (started_by=$3 and status='running') desc,created_at desc,id desc limit 20)
-    ${summarySql.replace('from app.workflow_test_suites suite', 'from history join app.workflow_test_suites suite on suite.id=history.id')} order by (suite.started_by=$3 and suite.status='running') desc,suite.created_at desc,suite.id desc`,
-    [input.workspaceId, input.workflowId, input.actorId],
-  );
-  return found.rows.map(summary);
+  return (await listSuiteRows(client, input)).map(summary);
 }
 export async function readSuite(
   client: PoolClient,
   input: SampleScope & { suiteId: string },
 ): Promise<WorkflowTestSuiteDetail> {
-  const found = await client.query<SummaryRow>(
-    `${summarySql} and suite.id=$3`,
-    [input.workspaceId, input.workflowId, input.suiteId],
-  );
-  const row = found.rows[0];
+  const db = drizzle(client);
+  const counts = suiteCounts(db, historyFields);
+  const found = await db
+    .select(summarySelection(historyFields, counts))
+    .from(suite)
+    .innerJoin(
+      workflowTestSnapshots,
+      and(
+        eq(workflowTestSnapshots.workspaceId, suite.workspaceId),
+        eq(workflowTestSnapshots.id, suite.snapshotId),
+      ),
+    )
+    .crossJoinLateral(counts)
+    .where(and(visibleSuite(input), eq(suite.id, input.suiteId)))
+    .catch(rethrowQueryFailure);
+  const row = found[0];
   if (row === undefined) throw new WorkflowTestError('not_found');
-  const cases = await client.query<
-    Pick<
-      SuiteCaseRow,
-      'ordinal' | 'case_id' | 'case_revision' | 'name' | 'status' | 'run_id'
-    >
-  >(
-    'select ordinal,case_id,case_revision,name,status,run_id from app.workflow_test_suite_cases where workspace_id=$1 and suite_id=$2 order by ordinal limit 50',
-    [input.workspaceId, input.suiteId],
-  );
-  return {
-    ...summary(row),
-    cases: cases.rows.map((entry) => ({
-      ordinal: entry.ordinal,
-      caseId: entry.case_id,
-      caseRevision: entry.case_revision,
-      name: entry.name,
-      status: entry.status,
-      runId: entry.run_id,
-    })),
-  };
+  const cases = await db
+    .select({
+      ordinal: workflowTestSuiteCases.ordinal,
+      caseId: workflowTestSuiteCases.caseId,
+      caseRevision: workflowTestSuiteCases.caseRevision,
+      name: workflowTestSuiteCases.name,
+      status: workflowTestSuiteCases.status,
+      runId: workflowTestSuiteCases.runId,
+    })
+    .from(workflowTestSuiteCases)
+    .where(
+      and(
+        eq(workflowTestSuiteCases.workspaceId, input.workspaceId),
+        eq(workflowTestSuiteCases.suiteId, input.suiteId),
+      ),
+    )
+    .orderBy(asc(workflowTestSuiteCases.ordinal))
+    .limit(50)
+    .catch(rethrowQueryFailure);
+  return { ...summary(row), cases };
 }
 export async function readCaseReport(
   client: PoolClient,
@@ -103,14 +207,31 @@ export async function readCaseReport(
   report: WorkflowTestSuiteReport | null;
   stepLabels: Readonly<Record<string, string>>;
 }> {
-  const found = await client.query<{
-    report: string | null;
-    snapshot_id: string;
-  }>(
-    `select entry.report,suite.snapshot_id from app.workflow_test_suite_cases entry join app.workflow_test_suites suite on suite.workspace_id=entry.workspace_id and suite.id=entry.suite_id where entry.workspace_id=$1 and suite.workflow_id=$2 and suite.id=$3 and entry.ordinal=$4 and suite.expires_at>clock_timestamp()`,
-    [input.workspaceId, input.workflowId, input.suiteId, input.ordinal],
-  );
-  const row = found.rows[0];
+  const db = drizzle(client);
+  const found = await db
+    .select({
+      report: workflowTestSuiteCases.report,
+      snapshotId: suite.snapshotId,
+    })
+    .from(workflowTestSuiteCases)
+    .innerJoin(
+      suite,
+      and(
+        eq(suite.workspaceId, workflowTestSuiteCases.workspaceId),
+        eq(suite.id, workflowTestSuiteCases.suiteId),
+      ),
+    )
+    .where(
+      and(
+        eq(workflowTestSuiteCases.workspaceId, input.workspaceId),
+        eq(suite.workflowId, input.workflowId),
+        eq(suite.id, input.suiteId),
+        eq(workflowTestSuiteCases.ordinal, input.ordinal),
+        sql`${suite.expiresAt}>clock_timestamp()`,
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const row = found[0];
   if (row === undefined) throw new WorkflowTestError('not_found');
   const report =
     row.report === null
@@ -127,15 +248,21 @@ export async function readCaseReport(
     nodeIds.length === 0
       ? undefined
       : (
-          await client.query<{ graph_json: WorkflowGraph }>(
-            'select graph_json from app.workflow_test_snapshots where workspace_id=$1 and id=$2',
-            [input.workspaceId, row.snapshot_id],
-          )
-        ).rows[0];
+          await db
+            .select({ graph: workflowTestSnapshots.graphJson })
+            .from(workflowTestSnapshots)
+            .where(
+              and(
+                eq(workflowTestSnapshots.workspaceId, input.workspaceId),
+                eq(workflowTestSnapshots.id, row.snapshotId),
+              ),
+            )
+            .catch(rethrowQueryFailure)
+        )[0];
   const labels =
     source === undefined
       ? []
-      : workflowTestStepChoices(source.graph_json).filter((node) =>
+      : workflowTestStepChoices(source.graph).filter((node) =>
           nodeIds.includes(node.nodeId),
         );
   return {

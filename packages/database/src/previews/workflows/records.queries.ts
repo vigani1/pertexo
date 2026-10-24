@@ -1,4 +1,9 @@
-import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowRuns } from '../../schema/runs/execution.js';
+import { workflowTestSnapshots } from '../../schema/runs/tests.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
   testRunSql,
   retainedTestRunSql,
@@ -13,51 +18,88 @@ import {
   type WorkflowTestSummary,
 } from './contract.js';
 
-interface TestRow {
-  run_id: string;
-  started_by: string | null;
-  draft_revision: number;
-  status: string;
-  created_at: Date;
-  expires_at: Date;
-  graph_json: unknown;
-  dispositions: WorkflowTestDetail['dispositions'];
+const run = alias(workflowRuns, 'run');
+const testSummarySelection = {
+  runId: run.id,
+  draftRevision: workflowTestSnapshots.draftRevision,
+  status: run.status,
+  createdAt: run.createdAt,
+  startedBy: run.startedBy,
+  expiresAt:
+    sql<Date>`${run.createdAt}+${runRetentionIntervalSql('run')}`.mapWith(
+      run.createdAt,
+    ),
+};
+function visibleTest(input: SampleScope) {
+  return and(
+    eq(workflowTestSnapshots.workspaceId, input.workspaceId),
+    eq(run.workflowId, input.workflowId),
+    testRunSql('run'),
+    retainedTestRunSql('run'),
+    sql`${workflowTestSnapshots.expiresAt}>clock_timestamp()`,
+  );
 }
-function summary(row: TestRow): WorkflowTestSummary {
+function listTestRows(client: PoolClient, input: SampleScope) {
+  return drizzle(client)
+    .select(testSummarySelection)
+    .from(workflowTestSnapshots)
+    .innerJoin(
+      run,
+      and(
+        eq(run.workspaceId, workflowTestSnapshots.workspaceId),
+        eq(run.workflowVersionId, workflowTestSnapshots.id),
+      ),
+    )
+    .where(visibleTest(input))
+    .orderBy(
+      sql`(${run.startedBy}=${input.actorId} and ${run.status} in ('queued','running','waiting')) desc nulls last`,
+      desc(run.createdAt),
+      desc(run.id),
+    )
+    .limit(20)
+    .catch(rethrowQueryFailure);
+}
+function summary(
+  row: Awaited<ReturnType<typeof listTestRows>>[number],
+): WorkflowTestSummary {
   return {
-    runId: row.run_id,
-    startedBy: row.started_by,
-    draftRevision: row.draft_revision,
+    runId: row.runId,
+    startedBy: row.startedBy,
+    draftRevision: row.draftRevision,
     status: row.status,
-    createdAt: row.created_at.toISOString(),
-    expiresAt: row.expires_at.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+    expiresAt: row.expiresAt.toISOString(),
   };
 }
 export async function listTests(client: PoolClient, input: SampleScope) {
-  const rows = await client.query<TestRow>(
-    `select run.id run_id,snapshot.draft_revision,run.status,run.created_at,run.started_by,(run.created_at + ${bindResourcePredicate(runRetentionIntervalSql('run').inlineParams(), [])}) expires_at
-    from app.workflow_test_snapshots snapshot join app.workflow_runs run on run.workspace_id=snapshot.workspace_id and run.workflow_version_id=snapshot.id
-    where snapshot.workspace_id=$1 and run.workflow_id=$2 and ${bindResourcePredicate(testRunSql('run').inlineParams(), [])} and ${bindResourcePredicate(retainedTestRunSql('run').inlineParams(), [])} and snapshot.expires_at>clock_timestamp()
-    order by (run.started_by=$3 and run.status in ('queued','running','waiting')) desc nulls last,run.created_at desc,run.id desc limit 20`,
-    [input.workspaceId, input.workflowId, input.actorId],
-  );
-  return { items: rows.rows.map(summary) };
+  const rows = await listTestRows(client, input);
+  return { items: rows.map(summary) };
 }
 export async function readTestDetail(
   client: PoolClient,
   input: SampleScope & { runId: string },
 ): Promise<WorkflowTestDetail> {
-  const rows = await client.query<TestRow>(
-    `select run.id run_id,snapshot.draft_revision,(run.created_at + ${bindResourcePredicate(runRetentionIntervalSql('run').inlineParams(), [])}) expires_at,snapshot.graph_json,snapshot.dispositions,run.status,run.created_at,run.started_by
-    from app.workflow_test_snapshots snapshot join app.workflow_runs run on run.workspace_id=snapshot.workspace_id and run.workflow_version_id=snapshot.id
-    where snapshot.workspace_id=$1 and run.workflow_id=$2 and ${bindResourcePredicate(testRunSql('run').inlineParams(), [])} and ${bindResourcePredicate(retainedTestRunSql('run').inlineParams(), [])} and run.id=$3 and snapshot.expires_at>clock_timestamp()`,
-    [input.workspaceId, input.workflowId, input.runId],
-  );
-  const row = rows.rows[0];
+  const rows = await drizzle(client)
+    .select({
+      ...testSummarySelection,
+      graphJson: workflowTestSnapshots.graphJson,
+      dispositions: workflowTestSnapshots.dispositions,
+    })
+    .from(workflowTestSnapshots)
+    .innerJoin(
+      run,
+      and(
+        eq(run.workspaceId, workflowTestSnapshots.workspaceId),
+        eq(run.workflowVersionId, workflowTestSnapshots.id),
+      ),
+    )
+    .where(and(visibleTest(input), eq(run.id, input.runId)))
+    .catch(rethrowQueryFailure);
+  const row = rows[0];
   if (row === undefined) throw new WorkflowTestError('not_found');
   return {
     ...summary(row),
-    graph: row.graph_json,
+    graph: row.graphJson,
     dispositions: row.dispositions,
   };
 }

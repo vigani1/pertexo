@@ -1,7 +1,13 @@
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { previewRuns, previewAttempts } from '../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { appendPreviewTerminalFacts } from './facts.repository.js';
 import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
-import { v7 as uuidv7 } from 'uuid';
+
 import { z } from 'zod';
 
 import {
@@ -57,89 +63,6 @@ type PreviewCompletionScope = Readonly<{
   workspaceId: string;
 }>;
 
-export async function appendPreviewTerminalFacts(
-  client: PoolClient,
-  input: Readonly<{
-    previewAttemptId: string;
-    previewRunId: string;
-    status: Exclude<PreviewStatus, 'queued' | 'running'>;
-    workspaceId: string;
-  }>,
-): Promise<void> {
-  const result = await client.query<{
-    actor_user_id: string;
-    definition_key: string;
-    definition_version: number;
-    executor_key: string;
-    executor_version: number;
-    dry_run: string;
-    may_contact_provider: boolean;
-    may_cause_external_side_effect: boolean;
-    node_id: string;
-    request_id: string | null;
-    side_effect_class: string;
-    trace_id: string | null;
-    workflow_id: string;
-  }>(
-    `select actor_user_id,workflow_id,node_id,definition_key,
-            definition_version,executor_key,executor_version,
-            side_effect_class,may_contact_provider,
-            may_cause_external_side_effect,dry_run,request_id,trace_id
-       from app.preview_runs
-      where workspace_id=$1 and id=$2`,
-    [input.workspaceId, input.previewRunId],
-  );
-  const run = result.rows[0];
-  if (run === undefined)
-    throw new PreviewAttemptStateError('terminal_facts_run_missing');
-  const metadata = {
-    status: input.status,
-    workflowId: run.workflow_id,
-    nodeId: run.node_id,
-    definitionKey: run.definition_key,
-    definitionVersion: run.definition_version,
-    executorKey: run.executor_key,
-    executorVersion: run.executor_version,
-    dryRun: run.dry_run,
-    sideEffectClass: run.side_effect_class,
-    mayContactProvider: run.may_contact_provider,
-    mayCauseExternalSideEffect: run.may_cause_external_side_effect,
-  } as const;
-  await client.query(
-    `insert into app.audit_events (
-       id,workspace_id,actor_user_id,action,target_type,target_id,request_id,
-       trace_id,metadata
-     ) values ($1,$2,$3,'preview.execution_terminal','preview-run',$4,$5,$6,$7::jsonb)`,
-    [
-      uuidv7(),
-      input.workspaceId,
-      run.actor_user_id,
-      input.previewRunId,
-      run.request_id,
-      run.trace_id,
-      JSON.stringify({ ...metadata, previewAttemptId: input.previewAttemptId }),
-    ],
-  );
-  await client.query(
-    `insert into app.usage_events (
-       id,workspace_id,category,quantity,resource_type,resource_id,
-       idempotency_key,metadata
-     ) values ($1,$2,'preview_execution',1,'preview-run',$3,$4,$5::jsonb)`,
-    [
-      uuidv7(),
-      input.workspaceId,
-      input.previewRunId,
-      `preview-terminal:${input.previewRunId}`,
-      JSON.stringify({
-        status: input.status,
-        definitionKey: run.definition_key,
-        executorKey: run.executor_key,
-        sideEffectClass: run.side_effect_class,
-      }),
-    ],
-  );
-}
-
 async function exactDuplicateCompletion(
   client: PoolClient,
   scope: PreviewCompletionScope,
@@ -153,64 +76,68 @@ async function exactDuplicateCompletion(
     diagnostics: CodeDiagnostics | undefined;
   }>,
 ): Promise<PreviewCompletionResult> {
-  const current = await client.query<{
-    attempt_output_ref: unknown;
-    code_diagnostics: unknown;
-    error_summary: string | null;
-    attempt_safe_error_code: string | null;
-    attempt_status: string;
-    run_output_ref: unknown;
-    run_safe_error_code: string | null;
-    run_status: string;
-  }>(
-    `select attempt.code_diagnostics,attempt.error_summary,
-          attempt.status as attempt_status,
-          attempt.output_ref as attempt_output_ref,
-          attempt.safe_error_code as attempt_safe_error_code,
-          run.status as run_status,
-          run.output_ref as run_output_ref,
-          run.safe_error_code as run_safe_error_code
-     from app.preview_attempts attempt
-     join app.preview_runs run
-       on run.workspace_id=attempt.workspace_id
-      and run.id=attempt.preview_run_id
-    where attempt.workspace_id=$1 and attempt.id=$2
-      and attempt.preview_run_id=$3
-    for update of attempt,run`,
-    [scope.workspaceId, scope.previewAttemptId, scope.previewRunId],
-  );
-  const row = current.rows[0];
+  const attempt = alias(previewAttempts, 'attempt');
+  const run = alias(previewRuns, 'run');
+  const current = await drizzle(client)
+    .select({
+      codeDiagnostics: attempt.codeDiagnostics,
+      errorSummary: attempt.errorSummary,
+      attemptStatus: attempt.status,
+      attemptOutputRef: attempt.outputRef,
+      attemptSafeErrorCode: attempt.safeErrorCode,
+      runStatus: run.status,
+      runOutputRef: run.outputRef,
+      runSafeErrorCode: run.safeErrorCode,
+    })
+    .from(attempt)
+    .innerJoin(
+      run,
+      and(
+        eq(run.workspaceId, attempt.workspaceId),
+        eq(run.id, attempt.previewRunId),
+      ),
+    )
+    .where(
+      and(
+        eq(attempt.workspaceId, scope.workspaceId),
+        eq(attempt.id, scope.previewAttemptId),
+        eq(attempt.previewRunId, scope.previewRunId),
+      ),
+    )
+    .for('update', { of: [attempt, run] })
+    .catch(rethrowQueryFailure);
+  const row = current[0];
   if (row === undefined || receipt !== 'completed')
     throw new PreviewAttemptStateError('completion_lost');
   const statusesMatch =
-    row.attempt_status === outcome.status && row.run_status === outcome.status;
+    row.attemptStatus === outcome.status && row.runStatus === outcome.status;
   let valuesMatch = false;
   if (outcome.status === PREVIEW_STATUS.succeeded) {
     try {
       valuesMatch =
         serializeStoredExecutionValue(
-          parseStoredExecutionValue(row.attempt_output_ref),
+          parseStoredExecutionValue(row.attemptOutputRef),
         ) === outcome.outputRef &&
         serializeStoredExecutionValue(
-          parseStoredExecutionValue(row.run_output_ref),
+          parseStoredExecutionValue(row.runOutputRef),
         ) === outcome.outputRef &&
-        row.attempt_safe_error_code === null &&
-        row.run_safe_error_code === null;
+        row.attemptSafeErrorCode === null &&
+        row.runSafeErrorCode === null;
     } catch {
       valuesMatch = false;
     }
   } else {
     valuesMatch =
-      row.attempt_output_ref === null &&
-      row.run_output_ref === null &&
-      row.attempt_safe_error_code === outcome.safeErrorCode &&
-      row.run_safe_error_code === outcome.safeErrorCode &&
-      row.error_summary === outcome.errorSummary;
+      row.attemptOutputRef === null &&
+      row.runOutputRef === null &&
+      row.attemptSafeErrorCode === outcome.safeErrorCode &&
+      row.runSafeErrorCode === outcome.safeErrorCode &&
+      row.errorSummary === outcome.errorSummary;
   }
   const completionMismatch =
     !statusesMatch ||
     !valuesMatch ||
-    canonicalJson(row.code_diagnostics) !== canonicalJson(diagnostics ?? null);
+    canonicalJson(row.codeDiagnostics) !== canonicalJson(diagnostics ?? null);
   if (completionMismatch) throw new PreviewAttemptStateError('completion_lost');
   return Object.freeze({ kind: 'duplicate' });
 }
@@ -272,7 +199,7 @@ export async function completePreviewAttempt(
           outcome,
           diagnostics,
         });
-        if (terminal.rowCount !== 1)
+        if (terminal.length !== 1)
           return exactDuplicateCompletion(client, scope, {
             outcome,
             receipt,
@@ -280,29 +207,28 @@ export async function completePreviewAttempt(
           });
         if (receipt !== 'open')
           throw new PreviewAttemptStateError('receipt_already_completed');
-        const syncedRuns = await client.query<{ id: string }>(
-          `update app.preview_runs
-         set status=$3::varchar,
-             output_ref=$4::json,
-             safe_error_code=$5::varchar,
-             completed_at=clock_timestamp(),
-             updated_at=clock_timestamp()
-         where workspace_id=$1 and id=$2
-           and status in ('queued','running')
-         returning id`,
-          [
-            scope.workspaceId,
-            scope.previewRunId,
-            outcome.status,
-            outcome.status === PREVIEW_STATUS.succeeded
-              ? outcome.outputRef
-              : null,
-            outcome.status === PREVIEW_STATUS.succeeded
-              ? null
-              : outcome.safeErrorCode,
-          ],
-        );
-        if (syncedRuns.rowCount !== 1)
+        const syncedRuns = await drizzle(client)
+          .update(previewRuns)
+          .set({
+            status: outcome.status,
+            outputRef: sql`${outcome.status === PREVIEW_STATUS.succeeded ? outcome.outputRef : null}::json`,
+            safeErrorCode:
+              outcome.status === PREVIEW_STATUS.succeeded
+                ? null
+                : outcome.safeErrorCode,
+            completedAt: sql`clock_timestamp()`,
+            updatedAt: sql`clock_timestamp()`,
+          })
+          .where(
+            and(
+              eq(previewRuns.workspaceId, scope.workspaceId),
+              eq(previewRuns.id, scope.previewRunId),
+              inArray(previewRuns.status, ['queued', 'running']),
+            ),
+          )
+          .returning({ id: previewRuns.id })
+          .catch(rethrowQueryFailure);
+        if (syncedRuns.length !== 1)
           throw new PreviewAttemptStateError('run_sync_lost');
         await appendPreviewTerminalFacts(client, {
           previewAttemptId: scope.previewAttemptId,
@@ -369,35 +295,40 @@ async function writePreviewTerminalAttempt(
     diagnostics: CodeDiagnostics | undefined;
   }>,
 ) {
-  const terminal = await client.query<{ id: string }>(
-    `update app.preview_attempts
-         set status=$6::varchar,
-             output_ref=$7::json,
-             safe_error_code=$8::varchar,
-             code_diagnostics=$9::jsonb,
-             error_summary=$10::varchar,
-             completed_at=clock_timestamp(),
-             lease_owner=null,
-             lease_expires_at=null,
-             updated_at=clock_timestamp()
-         where workspace_id=$1 and id=$2 and preview_run_id=$3
-           and status='running' and lease_owner=$4 and fence_token=$5
-         returning id`,
-    [
-      scope.workspaceId,
-      scope.previewAttemptId,
-      scope.previewRunId,
-      scope.workerId,
-      scope.attemptFenceToken,
-      outcome.status,
-      outcome.status === PREVIEW_STATUS.succeeded ? outcome.outputRef : null,
-      outcome.status === PREVIEW_STATUS.succeeded
-        ? null
-        : outcome.safeErrorCode,
-      diagnostics === undefined ? null : canonicalJson(diagnostics),
-      outcome.status === PREVIEW_STATUS.succeeded ? null : outcome.errorSummary,
-    ],
-  );
+  const terminal = await drizzle(client)
+    .update(previewAttempts)
+    .set({
+      status: outcome.status,
+      outputRef: sql`${outcome.status === PREVIEW_STATUS.succeeded ? outcome.outputRef : null}::json`,
+      safeErrorCode:
+        outcome.status === PREVIEW_STATUS.succeeded
+          ? null
+          : outcome.safeErrorCode,
+      codeDiagnostics:
+        diagnostics === undefined
+          ? null
+          : sql`${canonicalJson(diagnostics)}::jsonb`,
+      errorSummary:
+        outcome.status === PREVIEW_STATUS.succeeded
+          ? null
+          : outcome.errorSummary,
+      completedAt: sql`clock_timestamp()`,
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(previewAttempts.workspaceId, scope.workspaceId),
+        eq(previewAttempts.id, scope.previewAttemptId),
+        eq(previewAttempts.previewRunId, scope.previewRunId),
+        eq(previewAttempts.status, 'running'),
+        eq(previewAttempts.leaseOwner, scope.workerId),
+        eq(previewAttempts.fenceToken, scope.attemptFenceToken),
+      ),
+    )
+    .returning({ id: previewAttempts.id })
+    .catch(rethrowQueryFailure);
 
   return terminal;
 }
