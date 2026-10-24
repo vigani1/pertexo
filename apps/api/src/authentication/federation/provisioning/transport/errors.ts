@@ -77,30 +77,35 @@ export function directoryFailure(reply: FastifyReply, error: unknown): void {
     typeof error === 'object' && error !== null && 'code' in error
       ? error.code
       : undefined;
-  if (code === 'FST_ERR_CTP_BODY_TOO_LARGE')
-    sendDirectoryError(
-      reply,
-      413,
-      'Provisioning requests must fit within 1 MB.',
-      'tooMany',
-    );
-  else if (code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE')
-    sendDirectoryError(
-      reply,
-      415,
-      'Use application/scim+json or application/json.',
-    );
-  else if (
+  switch (code) {
+    case 'FST_ERR_CTP_BODY_TOO_LARGE':
+      sendDirectoryError(
+        reply,
+        413,
+        'Provisioning requests must fit within 1 MB.',
+        'tooMany',
+      );
+      return;
+    case 'FST_ERR_CTP_INVALID_MEDIA_TYPE':
+      sendDirectoryError(
+        reply,
+        415,
+        'Use application/scim+json or application/json.',
+      );
+      return;
+  }
+  const invalidJson =
     error instanceof SyntaxError ||
     code === 'FST_ERR_CTP_EMPTY_JSON_BODY' ||
-    code === 'FST_ERR_CTP_INVALID_JSON_BODY'
-  )
+    code === 'FST_ERR_CTP_INVALID_JSON_BODY';
+  if (invalidJson) {
     sendDirectoryError(
       reply,
       400,
       'The request must contain valid SCIM JSON.',
       'invalidSyntax',
     );
-  else
-    sendDirectoryError(reply, 500, 'Provisioning is temporarily unavailable.');
+    return;
+  }
+  sendDirectoryError(reply, 500, 'Provisioning is temporarily unavailable.');
 }

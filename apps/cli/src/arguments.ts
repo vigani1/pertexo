@@ -149,13 +149,9 @@ export function parseAutomationArguments(
   const query: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(values)) {
     if (name === 'workspace' || name === 'help') continue;
-    if (queryCommand && (name === 'limit' || name === 'after'))
-      query[name] = value;
-    else if (operation === 'workflows versions' && name === 'version')
-      query.versionId = value;
-    else if (operation === 'runs list' && name === 'workflow')
-      query.workflowId = value;
-    else input[fieldNames[name] ?? name] = value;
+    const queryField = automationQueryField({ name, operation, queryCommand });
+    if (queryField === undefined) input[fieldNames[name] ?? name] = value;
+    else query[queryField] = value;
   }
   if (queryCommand) input.query = query;
   const parsed = commandSchema.safeParse(input);
@@ -174,4 +170,22 @@ function assertUniqueOptions(flags: ReturnType<typeof parseFlags>): void {
         return invalidArgument('Each option can be supplied only once.');
       seen.add(token.name);
     }
+}
+
+function automationQueryField(input: {
+  readonly name: string;
+  readonly operation: string;
+  readonly queryCommand: boolean;
+}): string | undefined {
+  const { name, operation, queryCommand } = input;
+  if (!queryCommand) return undefined;
+  if (name === 'limit' || name === 'after') return name;
+  switch (operation) {
+    case 'workflows versions':
+      return name === 'version' ? 'versionId' : undefined;
+    case 'runs list':
+      return name === 'workflow' ? 'workflowId' : undefined;
+    default:
+      return undefined;
+  }
 }

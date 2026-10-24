@@ -48,15 +48,22 @@ export class OwnedEmailProofs {
         : 'invalid';
     const landing = new URL('/login', this.baseUrl);
     const returnTo = allowlistedReturnPath(url.searchParams.get('returnTo'));
-    if (outcome === 'initial_verification') {
-      landing.searchParams.set('verified', 'true');
-      if (returnTo !== undefined)
-        landing.searchParams.set('returnTo', returnTo);
-    } else if (outcome === 'change_old')
-      landing.searchParams.set('emailChangePending', 'true');
-    else if (outcome === 'change_new')
-      landing.searchParams.set('emailChanged', 'true');
-    else landing.searchParams.set('error', 'verification_invalid');
+    switch (outcome) {
+      case 'initial_verification':
+        landing.searchParams.set('verified', 'true');
+        if (returnTo !== undefined)
+          landing.searchParams.set('returnTo', returnTo);
+        break;
+      case 'change_old':
+        landing.searchParams.set('emailChangePending', 'true');
+        break;
+      case 'change_new':
+        landing.searchParams.set('emailChanged', 'true');
+        break;
+      case 'invalid':
+        landing.searchParams.set('error', 'verification_invalid');
+        break;
+    }
     return Response.redirect(landing, 302);
   }
 
