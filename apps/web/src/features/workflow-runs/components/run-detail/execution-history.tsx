@@ -175,3 +175,45 @@ export function StepExecutionHistory({
     </>
   );
 }
+
+/** The step whose error explains a failed run, for the phone's notice. */
+function failureRow(
+  status: string,
+  rows: readonly RunTimelineRow[],
+): (RunTimelineRow & { safeErrorCode: string }) | undefined {
+  if (status !== 'failed' && status !== 'timed_out') return undefined;
+  const explained = rows.filter(
+    (row): row is RunTimelineRow & { safeErrorCode: string } =>
+      row.safeErrorCode !== undefined,
+  );
+  const failed = explained.filter(
+    (row) => row.status === 'failed' || row.status === 'timed_out',
+  );
+  return failed.at(-1) ?? explained.at(-1);
+}
+
+/**
+ * Phones: why a failed run failed, right under the header, since the step
+ * lens only opens on tap there.
+ */
+export function PhoneFailureNotice({
+  run,
+  rows,
+  workspace,
+}: Readonly<{
+  run: Readonly<{ status: string }>;
+  rows: readonly RunTimelineRow[];
+  workspace: AccessibleWorkspace;
+}>) {
+  const row = failureRow(run.status, rows);
+  if (row === undefined) return null;
+  return (
+    <section aria-label={`Why ${row.label} failed`} className="-mt-3">
+      <StepError
+        code={row.safeErrorCode}
+        workspace={workspace}
+        definitionKey={row.definitionKey}
+      />
+    </section>
+  );
+}
