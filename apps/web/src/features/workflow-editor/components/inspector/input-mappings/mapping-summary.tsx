@@ -1,10 +1,8 @@
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import type { GraphLevel } from '../../../model/graph/scopes';
-import type {
-  InputMappingDraftRow,
-  SchemaValueType,
-} from '../../../model/inspector/input-mappings/draft';
+import type { InputMappingDraftRow } from '../../../model/inspector/input-mappings/draft';
+import type { SchemaValueType } from '../../../model/inspector/input-mappings/schema';
 import {
   describeMappingSource,
   type MappingSourceTone,

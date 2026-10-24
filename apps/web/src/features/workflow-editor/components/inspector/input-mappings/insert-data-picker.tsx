@@ -26,9 +26,9 @@ import { findDefinition, stepTitle } from '../../../model/graph/adapter';
 import type { GraphLevel } from '../../../model/graph/scopes';
 import {
   outputFieldsOf,
-  propertyPath,
   type OutputField,
-} from '../../../model/inspector/input-mappings/draft';
+} from '../../../model/inspector/input-mappings/schema';
+import { propertyPath } from '../../../model/inspector/input-mappings/draft';
 
 export type InsertedSource =
   | Readonly<{ kind: 'expression'; expression: string }>

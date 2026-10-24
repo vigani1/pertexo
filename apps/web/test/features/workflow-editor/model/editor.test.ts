@@ -18,12 +18,12 @@ import {
 import {
   changeInputMappingKind,
   directPredecessorOptions,
-  inputKeySuggestions,
   inputMappingRowsFor,
   inputMappingSourceErrors,
   nodeUsesRunInputDirectly,
   validateInputMappingRows,
 } from '@/features/workflow-editor/model/inspector/input-mappings/draft';
+import { inputKeySuggestions } from '@/features/workflow-editor/model/inspector/input-mappings/schema';
 import { bareSetDefinition as definition } from '../../../support/fixtures/workflow-editor';
 
 function emptyGraph(): WorkflowGraphContract {

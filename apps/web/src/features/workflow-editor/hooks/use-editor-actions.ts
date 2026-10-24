@@ -3,7 +3,11 @@ import { useCallback, useState } from 'react';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { EditorStore } from '../model/state/store';
 import { stepTitle } from '../model/graph/adapter';
-import { removeWorkflowElements, restoreWorkflowElements, type RemovedElements } from '../model/graph/removal';
+import {
+  removeWorkflowElements,
+  restoreWorkflowElements,
+  type RemovedElements,
+} from '../model/graph/removal';
 import { duplicateWorkflowNodes } from '../model/graph/copies';
 import { levelAt, scopeOf, type ScopePath } from '../model/graph/scopes';
 import { useInspectorNavigation } from './use-inspector-navigation';

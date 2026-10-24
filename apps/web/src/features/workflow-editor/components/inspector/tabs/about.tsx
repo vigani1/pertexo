@@ -9,7 +9,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import {
   outputFieldsOf,
   type OutputField,
-} from '../../../model/inspector/input-mappings/draft';
+} from '../../../model/inspector/input-mappings/schema';
 import {
   describeConnectionRequirement,
   describeRetryBehaviour,

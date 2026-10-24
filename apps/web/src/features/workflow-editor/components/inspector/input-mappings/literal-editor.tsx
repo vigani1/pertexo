@@ -2,10 +2,8 @@ import { Field, FieldLabel, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import type {
-  InputMappingDraftRow,
-  SchemaValueType,
-} from '../../../model/inspector/input-mappings/draft';
+import type { InputMappingDraftRow } from '../../../model/inspector/input-mappings/draft';
+import type { SchemaValueType } from '../../../model/inspector/input-mappings/schema';
 
 type LiteralRow = Extract<InputMappingDraftRow, { kind: 'literal' }>;
 

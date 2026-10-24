@@ -14,10 +14,10 @@ import type { EditorFocusTarget } from '../../../hooks/use-editor-actions';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import {
   directPredecessorOptions,
-  inputKeySuggestions,
   nodeUsesRunInputDirectly,
   type InputMappingDraftRow,
 } from '../../../model/inspector/input-mappings/draft';
+import { inputKeySuggestions } from '../../../model/inspector/input-mappings/schema';
 import { useInputMappingDraft } from '../input-mappings/use-draft';
 import { IncomingLinks } from '../incoming-links';
 import {
