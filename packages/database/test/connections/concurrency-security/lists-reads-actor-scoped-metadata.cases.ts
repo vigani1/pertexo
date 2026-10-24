@@ -1,3 +1,4 @@
+import { insertTestMember } from '../../support/user.js';
 import type { PoolClient } from 'pg';
 import { expect, it } from 'vitest';
 import {
@@ -128,17 +129,12 @@ export function registerListsReadsActorScopedMetadata(): void {
       ]);
       for (const [role, actorId] of roleActors) {
         if (role === 'owner') continue;
-        await client.query(
-          `insert into app.users (id,email,display_name,status)
-           values ($1,$2,$3,'active')`,
-          [actorId, `${actorId}@example.test`, `Connection ${role}`],
-        );
-        await client.query(
-          `insert into app.workspace_memberships
-             (workspace_id,user_id,role,status)
-           values ($1,$2,$3,'active')`,
-          [workspaceA, actorId, role],
-        );
+        await insertTestMember(client.query.bind(client), {
+          userId: actorId,
+          workspaceId: workspaceA,
+          displayName: `Connection ${role}`,
+          role,
+        });
       }
       await client.query('commit');
     } finally {
