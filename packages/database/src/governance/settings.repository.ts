@@ -1,3 +1,7 @@
+import { rethrowQueryFailure } from '../platform/query-errors.js';
+import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaces } from '../schema/foundation.js';
 import type { PoolClient } from 'pg';
 import type { DatabaseConfig } from '../config.js';
 import {
@@ -81,10 +85,12 @@ export function createGovernanceStore(
         lease.pool,
         input,
         async (client) => {
-          await client.query(
-            'select id from app.workspaces where id=$1 for update',
-            [input.workspaceId],
-          );
+          await drizzle(client)
+            .select({ id: workspaces.id })
+            .from(workspaces)
+            .where(eq(workspaces.id, input.workspaceId))
+            .for('update')
+            .catch(rethrowQueryFailure);
           await lockWorkspaceAuthority(
             client,
             input.workspaceId,

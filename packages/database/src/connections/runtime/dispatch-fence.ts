@@ -44,7 +44,7 @@ export async function isConnectionFenceCurrent(
 
 /** Records that a worker read a connection's secret, and why. */
 export async function recordCredentialAccess(
-  client: Pick<PoolClient, 'query'>,
+  client: PoolClient,
   input: Readonly<{
     workspaceId: string;
     connectionId: string;
