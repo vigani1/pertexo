@@ -120,12 +120,16 @@ test('browses Call versions on demand while retaining an old exact pin', async (
   );
   expect(new Set(reads).size).toBe(2);
   await page.getByRole('button', { name: 'Load more versions' }).click();
-  await expect(page.getByText('Versions could not be loaded.')).toBeVisible();
+  await expect(
+    page.getByText(
+      'More versions couldn’t be loaded. The ones above are unchanged.',
+    ),
+  ).toBeVisible();
   await expect(
     page.getByRole('combobox', { name: 'Published version' }),
   ).toHaveText('Version 1');
   failOlderPage = false;
-  await page.getByRole('button', { name: 'Load more versions' }).click();
+  await page.getByRole('button', { name: 'Retry next page' }).click();
   await expect(
     page.getByRole('button', { name: 'Load more versions' }),
   ).toHaveCount(0);
