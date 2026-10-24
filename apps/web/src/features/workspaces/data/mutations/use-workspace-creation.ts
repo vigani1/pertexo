@@ -12,6 +12,7 @@ import {
   mutationOptions,
   useMutation,
   useQueryClient,
+  type QueryClient,
 } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -111,85 +112,15 @@ export function useWorkspaceCreation({
     setState(next);
   }
 
-  async function clearInvalidIdentity(scope: symbol) {
-    await queryClient.cancelQueries({ queryKey: ['identity'] });
-    if (owner.current !== scope) return;
-    queryClient.removeQueries({ queryKey: ['identity'] });
-    transition({ kind: 'idle' });
-    onSessionInvalidated();
-  }
-
-  async function verifyIdentity(
-    scope: symbol,
-    recovery: RecoveryState,
-  ): Promise<boolean> {
-    try {
-      await assertSessionIdentity(apiClient, userId);
-      return owner.current === scope;
-    } catch (error) {
-      if (owner.current !== scope) return false;
-      if (isSessionIdentityChangedError(error)) {
-        await clearInvalidIdentity(scope);
-        return false;
-      }
-      if (isSessionIdentityUnverifiedError(error) || isUnauthenticated(error)) {
-        transition({
-          ...recovery,
-          error: {
-            message:
-              'We couldn’t confirm you’re still signed in. Check your connection, then try again.',
-          },
-        });
-        return false;
-      }
-      throw error;
-    }
-  }
-
-  async function refreshDiscovery(
-    scope: symbol,
-    attempt: WorkspaceCreationAttempt,
-    workspace: WorkspaceResponse,
-  ) {
-    const recovery: State = {
-      kind: 'created',
-      attempt,
-      workspace,
-      refreshing: false,
-      error: {
-        message:
-          'Your workspace was created, but we couldn’t open it yet. Try opening it again; nothing is created twice.',
-      },
-    };
-    transition({ kind: 'created', attempt, workspace, refreshing: true });
-    if (!(await verifyIdentity(scope, recovery))) return false;
-    try {
-      const options = accessibleWorkspacesQueryOptions(apiClient, userId);
-      await queryClient.invalidateQueries({
-        queryKey: workspaceKeys.accessible(userId),
-      });
-      const workspaces = await queryClient.query(options);
-      if (owner.current !== scope) return false;
-      const accessible = workspaces.find(
-        (candidate) => candidate.id === workspace.id,
-      );
-      if (accessible === undefined) {
-        transition(recovery);
-        return false;
-      }
-      transition({ kind: 'idle' });
-      onCreated(accessible);
-      return true;
-    } catch (error) {
-      if (owner.current !== scope) return false;
-      if (isUnauthenticated(error)) {
-        await clearInvalidIdentity(scope);
-        return false;
-      }
-      transition(recovery);
-      return false;
-    }
-  }
+  const context: CreationContext = {
+    queryClient,
+    apiClient,
+    userId,
+    owner,
+    transition,
+    onCreated,
+    onSessionInvalidated,
+  };
 
   async function execute(attempt: WorkspaceCreationAttempt) {
     const scope = owner.current;
@@ -205,7 +136,8 @@ export function useWorkspaceCreation({
             'We couldn’t confirm you’re still signed in. Check your connection, then check again.',
         },
       };
-      if (!(await verifyIdentity(scope, verificationRecovery))) return false;
+      if (!(await verifyCreationIdentity(context, scope, verificationRecovery)))
+        return false;
 
       let workspace: WorkspaceResponse;
       try {
@@ -213,7 +145,7 @@ export function useWorkspaceCreation({
       } catch (error) {
         if (owner.current !== scope) return false;
         if (isUnauthenticated(error)) {
-          await clearInvalidIdentity(scope);
+          await clearCreationIdentity(context, scope);
           return false;
         }
         if (isUncertain(error)) {
@@ -231,7 +163,11 @@ export function useWorkspaceCreation({
         return false;
       }
       if (owner.current !== scope) return false;
-      return await refreshDiscovery(scope, attempt, workspace);
+      return await refreshCreationDiscovery(context, {
+        scope,
+        attempt,
+        workspace,
+      });
     } finally {
       inFlight.current = false;
     }
@@ -256,11 +192,11 @@ export function useWorkspaceCreation({
         return false;
       inFlight.current = true;
       try {
-        return await refreshDiscovery(
+        return await refreshCreationDiscovery(context, {
           scope,
-          current.attempt,
-          current.workspace,
-        );
+          attempt: current.attempt,
+          workspace: current.workspace,
+        });
       } finally {
         inFlight.current = false;
       }
@@ -272,4 +208,107 @@ export function useWorkspaceCreation({
       if (stateRef.current.kind === 'idle') transition({ kind: 'idle' });
     },
   };
+}
+
+type CreationContext = Readonly<{
+  queryClient: QueryClient;
+  apiClient: ApiClient;
+  userId: string;
+  owner: Readonly<{ current: symbol | undefined }>;
+  transition: (state: State) => void;
+  onCreated: (workspace: AccessibleWorkspace) => void;
+  onSessionInvalidated: () => void;
+}>;
+async function clearCreationIdentity(
+  { queryClient, owner, transition, onSessionInvalidated }: CreationContext,
+  scope: symbol,
+) {
+  await queryClient.cancelQueries({ queryKey: ['identity'] });
+  if (owner.current !== scope) return;
+  queryClient.removeQueries({ queryKey: ['identity'] });
+  transition({ kind: 'idle' });
+  onSessionInvalidated();
+}
+
+async function verifyCreationIdentity(
+  context: CreationContext,
+  scope: symbol,
+  recovery: RecoveryState,
+): Promise<boolean> {
+  const { apiClient, userId, owner, transition } = context;
+  try {
+    await assertSessionIdentity(apiClient, userId);
+    return owner.current === scope;
+  } catch (error) {
+    if (owner.current !== scope) return false;
+    if (isSessionIdentityChangedError(error)) {
+      await clearCreationIdentity(context, scope);
+      return false;
+    }
+    if (isSessionIdentityUnverifiedError(error) || isUnauthenticated(error)) {
+      transition({
+        ...recovery,
+        error: {
+          message:
+            'We couldn’t confirm you’re still signed in. Check your connection, then try again.',
+        },
+      });
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function refreshCreationDiscovery(
+  context: CreationContext,
+  {
+    scope,
+    attempt,
+    workspace,
+  }: Readonly<{
+    scope: symbol;
+    attempt: WorkspaceCreationAttempt;
+    workspace: WorkspaceResponse;
+  }>,
+) {
+  const { queryClient, apiClient, userId, owner, transition, onCreated } =
+    context;
+  const recovery: State = {
+    kind: 'created',
+    attempt,
+    workspace,
+    refreshing: false,
+    error: {
+      message:
+        'Your workspace was created, but we couldn’t open it yet. Try opening it again; nothing is created twice.',
+    },
+  };
+  transition({ kind: 'created', attempt, workspace, refreshing: true });
+  if (!(await verifyCreationIdentity(context, scope, recovery))) return false;
+  try {
+    const options = accessibleWorkspacesQueryOptions(apiClient, userId);
+    await queryClient.invalidateQueries({
+      queryKey: workspaceKeys.accessible(userId),
+    });
+    const workspaces = await queryClient.query(options);
+    if (owner.current !== scope) return false;
+    const accessible = workspaces.find(
+      (candidate) => candidate.id === workspace.id,
+    );
+    if (accessible === undefined) {
+      transition(recovery);
+      return false;
+    }
+    transition({ kind: 'idle' });
+    onCreated(accessible);
+    return true;
+  } catch (error) {
+    if (owner.current !== scope) return false;
+    if (isUnauthenticated(error)) {
+      await clearCreationIdentity(context, scope);
+      return false;
+    }
+    transition(recovery);
+    return false;
+  }
 }
