@@ -1,3 +1,4 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { readVariableSetValues } from '../../../variables/values.queries.js';
 import type { PoolClient } from 'pg';
 import type { RunAdvanceState } from '../contract.js';
@@ -57,7 +58,7 @@ export async function readRunCompletionValues(
         );
   return {
     variables: await readVariableSetValues(
-      client,
+      drizzle(client),
       input.workspaceId,
       input.variableSetRevision,
     ),

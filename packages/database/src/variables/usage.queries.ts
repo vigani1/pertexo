@@ -1,9 +1,13 @@
-import { sql } from 'drizzle-orm';
-import { readFolderScope } from '../tenant-access/resources/facts.js';
+import { and, eq, exists, gt, gte, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
 import {
-  bindResourcePredicate,
-  workflowScopeSql,
-} from '../tenant-access/resources/query-scope.js';
+  workflows,
+  workflowDrafts,
+  workflowVersions,
+} from '../schema/authoring/workflows.js';
+import { readFolderScope } from '../tenant-access/resources/facts.js';
+import { workflowScopeSql } from '../tenant-access/resources/query-scope.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
@@ -22,34 +26,12 @@ export async function readVariableUsage(
   input: Parameters<WorkspaceVariablesStore['usage']>[0],
 ): ReturnType<WorkspaceVariablesStore['usage']> {
   const cursor = input.after;
-  const resources = await readFolderScope(client, input);
-  const parameters: unknown[] = [
-    input.workspaceId,
-    cursor?.workflowId ?? null,
-    cursor?.offset ?? 0,
-  ];
-  const visible = bindResourcePredicate(
-    workflowScopeSql(resources, sql`workflow.id`),
-    parameters,
-  );
-  const laterVisible = bindResourcePredicate(
-    workflowScopeSql(resources, sql`later.id`),
-    parameters,
-  );
-  const found = await client.query<VariableUsageRow>(
-    `select workflow.id,workflow.name,workflow.lifecycle_status,draft.revision draft_revision,draft.graph_json draft_graph,version.id version_id,version.graph_json published_graph,
- exists(select 1 from app.workflows later where later.workspace_id=workflow.workspace_id and later.id>workflow.id and ${laterVisible}) has_more
- from app.workflows workflow left join app.workflow_drafts draft on draft.workspace_id=workflow.workspace_id and draft.workflow_id=workflow.id
- left join app.workflow_versions version on version.workspace_id=workflow.workspace_id and version.workflow_id=workflow.id and version.id=workflow.published_version_id
- where workflow.workspace_id=$1 and ${visible} and ($2::uuid is null or (case when $3>0 then workflow.id>=$2::uuid else workflow.id>$2::uuid end)) order by workflow.id limit 1`,
-    parameters,
-  );
-  const workflow = found.rows[0];
+  const workflow = await readUsageWorkflow(client, input);
   if (workflow === undefined)
     return { items: [], next: null, incomplete: false };
   const stamp = variableUsageDigest([
-    workflow.draft_revision,
-    workflow.version_id,
+    workflow.draftRevision,
+    workflow.versionId,
   ]);
   const offset = cursor?.offset ?? 0;
   const staleCursor =
@@ -59,16 +41,66 @@ export async function readVariableUsage(
   return scanVariableUsage(workflow, input, { offset, stamp });
 }
 
-interface VariableUsageRow {
-  id: string;
-  name: string;
-  lifecycle_status: string;
-  draft_revision: number | null;
-  draft_graph: unknown;
-  version_id: string | null;
-  published_graph: unknown;
-  has_more: boolean;
+async function readUsageWorkflow(
+  client: PoolClient,
+  input: Parameters<WorkspaceVariablesStore['usage']>[0],
+) {
+  const cursor = input.after;
+  const resources = await readFolderScope(client, input);
+  const db = drizzle(client);
+  const later = alias(workflows, 'later');
+  const [workflow] = await db
+    .select({
+      id: workflows.id,
+      name: workflows.name,
+      lifecycleStatus: workflows.lifecycleStatus,
+      draftRevision: workflowDrafts.revision,
+      draftGraph: workflowDrafts.graphJson,
+      versionId: workflowVersions.id,
+      publishedGraph: workflowVersions.graphJson,
+      hasMore: exists(
+        db
+          .select({ id: later.id })
+          .from(later)
+          .where(
+            and(
+              eq(later.workspaceId, workflows.workspaceId),
+              gt(later.id, workflows.id),
+              workflowScopeSql(resources, sql`${later.id}`),
+            ),
+          ),
+      ),
+    })
+    .from(workflows)
+    .leftJoin(
+      workflowDrafts,
+      and(
+        eq(workflowDrafts.workspaceId, workflows.workspaceId),
+        eq(workflowDrafts.workflowId, workflows.id),
+      ),
+    )
+    .leftJoin(
+      workflowVersions,
+      and(
+        eq(workflowVersions.workspaceId, workflows.workspaceId),
+        eq(workflowVersions.workflowId, workflows.id),
+        eq(workflowVersions.id, workflows.publishedVersionId),
+      ),
+    )
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        workflowScopeSql(resources, sql`${workflows.id}`),
+        afterWorkflow(cursor),
+      ),
+    )
+    .orderBy(workflows.id)
+    .limit(1);
+  return workflow;
 }
+type VariableUsageRow = NonNullable<
+  Awaited<ReturnType<typeof readUsageWorkflow>>
+>;
 function variableUsageDigest(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
@@ -82,11 +114,11 @@ function scanVariableUsage(
     scanned = 0,
     bytes = 0;
   let next: { workflowId: string; offset: number; stamp: string } | null =
-    workflow.has_more ? { workflowId: workflow.id, offset: 0, stamp } : null;
+    workflow.hasMore ? { workflowId: workflow.id, offset: 0, stamp } : null;
   const items = [];
   scan: for (const [stage, graph] of [
-    ['draft', workflow.draft_graph],
-    ['published', workflow.published_graph],
+    ['draft', workflow.draftGraph],
+    ['published', workflow.publishedGraph],
   ] as const) {
     if (graph === null) continue;
     for (const entry of workflowVariableSources(
@@ -114,12 +146,12 @@ function scanVariableUsage(
         items.push({
           id: variableUsageDigest([
             stage,
-            stage === 'draft' ? workflow.draft_revision : workflow.version_id,
+            stage === 'draft' ? workflow.draftRevision : workflow.versionId,
             ordinal,
           ]),
           workflowId: workflow.id,
           workflowName: workflow.name.slice(0, 160),
-          archived: workflow.lifecycle_status === 'archived',
+          archived: workflow.lifecycleStatus === 'archived',
           stage,
           nodeId: reference.nodeId,
           label: reference.label,
@@ -129,4 +161,13 @@ function scanVariableUsage(
     }
   }
   return { items, incomplete, next };
+}
+
+function afterWorkflow(
+  cursor: Parameters<WorkspaceVariablesStore['usage']>[0]['after'],
+) {
+  if (cursor === undefined) return undefined;
+  return cursor.offset > 0
+    ? gte(workflows.id, cursor.workflowId)
+    : gt(workflows.id, cursor.workflowId);
 }

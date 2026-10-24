@@ -1,19 +1,101 @@
-const unreferenced = `not exists (select 1 from app.workspace_variables head
-  where head.workspace_id=revision.workspace_id and head.revision=revision.revision)
-  and not exists (select 1 from app.workflow_runs run
-    where run.workspace_id=revision.workspace_id and run.variable_set_revision=revision.revision)
-  and not exists (select 1 from app.workflow_test_suites suite where suite.workspace_id=revision.workspace_id and suite.variable_set_revision=revision.revision)
-  and not exists (select 1 from app.preview_runs preview
-    where preview.workspace_id=revision.workspace_id and preview.variable_set_revision=revision.revision)`;
+import { and, eq, exists, notExists } from 'drizzle-orm';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import {
+  workspaceVariables,
+  workspaceVariableSetRevisions as revisions,
+} from '../schema/variables.js';
+import { workflowRuns, previewRuns } from '../schema/runs/execution.js';
+import { workflowTestSuites } from '../schema/runs/suites.js';
+
+function unreferenced(db: NodePgDatabase) {
+  return and(
+    notExists(
+      db
+        .select({ revision: workspaceVariables.revision })
+        .from(workspaceVariables)
+        .where(
+          and(
+            eq(workspaceVariables.workspaceId, revisions.workspaceId),
+            eq(workspaceVariables.revision, revisions.revision),
+          ),
+        ),
+    ),
+    notExists(
+      db
+        .select({ id: workflowRuns.id })
+        .from(workflowRuns)
+        .where(
+          and(
+            eq(workflowRuns.workspaceId, revisions.workspaceId),
+            eq(workflowRuns.variableSetRevision, revisions.revision),
+          ),
+        ),
+    ),
+    notExists(
+      db
+        .select({ id: workflowTestSuites.id })
+        .from(workflowTestSuites)
+        .where(
+          and(
+            eq(workflowTestSuites.workspaceId, revisions.workspaceId),
+            eq(workflowTestSuites.variableSetRevision, revisions.revision),
+          ),
+        ),
+    ),
+    notExists(
+      db
+        .select({ id: previewRuns.id })
+        .from(previewRuns)
+        .where(
+          and(
+            eq(previewRuns.workspaceId, revisions.workspaceId),
+            eq(previewRuns.variableSetRevision, revisions.revision),
+          ),
+        ),
+    ),
+  );
+}
 
 /** References, not age, own a set's lifetime; current configuration is always retained. */
 export const VARIABLE_SET_RETENTION_RULE = {
   name: 'variable_sets',
-  statement: `with page as (
-    select revision.workspace_id,revision.revision
-    from app.workspace_variable_set_revisions revision where ${unreferenced}
-    order by revision.workspace_id,revision.revision limit $1 for update of revision skip locked
-  ) delete from app.workspace_variable_set_revisions revision using page
-    where revision.workspace_id=page.workspace_id and revision.revision=page.revision
-      and ${unreferenced}`,
+  async run(client: PoolClient, pageSize: number): Promise<number> {
+    const db = drizzle(client);
+    const page = db
+      .$with('page')
+      .as(
+        db
+          .select({
+            workspaceId: revisions.workspaceId,
+            revision: revisions.revision,
+          })
+          .from(revisions)
+          .where(unreferenced(db))
+          .orderBy(revisions.workspaceId, revisions.revision)
+          .limit(pageSize)
+          .for('update', { skipLocked: true }),
+      );
+    const removed = await db
+      .with(page)
+      .delete(revisions)
+      .where(
+        and(
+          exists(
+            db
+              .select({ revision: page.revision })
+              .from(page)
+              .where(
+                and(
+                  eq(page.workspaceId, revisions.workspaceId),
+                  eq(page.revision, revisions.revision),
+                ),
+              ),
+          ),
+          unreferenced(db),
+        ),
+      )
+      .returning({ revision: revisions.revision });
+    return removed.length;
+  },
 } as const;

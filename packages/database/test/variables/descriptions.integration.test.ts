@@ -1,3 +1,4 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import {
   actorId,
@@ -152,11 +153,11 @@ it('distinguishes the fixed empty snapshot from a missing historical revision', 
       pool,
       { workspaceId, actorId },
       async (client) => {
-        expect(await readVariableSetValues(client, workspaceId, null)).toEqual(
-          {},
-        );
+        expect(
+          await readVariableSetValues(drizzle(client), workspaceId, null),
+        ).toEqual({});
         await expect(
-          readVariableSetValues(client, workspaceId, 999_999),
+          readVariableSetValues(drizzle(client), workspaceId, 999_999),
         ).rejects.toThrow();
       },
     );

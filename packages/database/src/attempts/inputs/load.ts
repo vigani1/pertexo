@@ -1,8 +1,6 @@
-import { variableSetValuesSql } from '../../variables/values.queries.js';
-import {
-  workspaceVariableValuesSchema,
-  workflowNodeFailureValueSchema,
-} from '@pertexo/workflow-model';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { readVariableSetValues } from '../../variables/values.queries.js';
+import { workflowNodeFailureValueSchema } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import {
@@ -109,10 +107,10 @@ export async function loadNodeAttemptInputs(
         abort_requested: boolean;
         deadline_at: Date | null;
         input_ref: unknown;
-        variable_values: unknown;
+        variable_set_revision: number | null;
         scheduler_state: unknown;
       }>(
-        `select run.input_ref,${variableSetValuesSql('run')} variable_values,run.deadline_at,checkpoint.scheduler_state,
+        `select run.input_ref,run.variable_set_revision,run.deadline_at,checkpoint.scheduler_state,
                 (run.cancel_requested_at is not null or
                  (run.deadline_at is not null and
                   run.deadline_at <= clock_timestamp())) as abort_requested,
@@ -132,8 +130,6 @@ export async function loadNodeAttemptInputs(
          join app.run_checkpoints checkpoint
            on checkpoint.workspace_id=run.workspace_id
           and checkpoint.workflow_run_id=run.id
-         left join app.workspace_variable_set_revisions variable_set
-           on variable_set.workspace_id=run.workspace_id and variable_set.revision=run.variable_set_revision
          where run.workspace_id=$1 and run.id=$2
            and run.workflow_version_id=$3 and node.id=$4
            and node.node_id=$5 and node.invocation_key=$6
@@ -217,7 +213,11 @@ export async function loadNodeAttemptInputs(
       return Object.freeze({
         ...(sourceFailure === undefined ? {} : { sourceFailure }),
         runInput,
-        variables: workspaceVariableValuesSchema.parse(row.variable_values),
+        variables: await readVariableSetValues(
+          drizzle(client),
+          input.lease.workspaceId,
+          row.variable_set_revision,
+        ),
         completedNodeOutputs,
         abortRequested: row.abort_requested,
         ...(row.abort_reason === null ? {} : { abortReason: row.abort_reason }),
