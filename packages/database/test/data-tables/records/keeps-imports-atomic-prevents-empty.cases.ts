@@ -66,6 +66,29 @@ export function registerKeepsImportsAtomicPreventsEmpty(): void {
     expect(removed.affected).toBe(1);
   });
 
+  it('rolls a late unique-key clash back with every imported row and quota charge', async () => {
+    const f = await table();
+    const before = (await store.list(scope())).quotas.storedBytes;
+    const rows = Array.from({ length: 1001 }, (_, index) => ({
+      key: index === 1000 ? 'row_0' : `row_${String(index)}`,
+      amount: index,
+    }));
+    await expect(
+      store.importRows({
+        ...scope(),
+        tableId: f.id,
+        idempotencyKey: randomUUID(),
+        rows,
+      }),
+    ).rejects.toMatchObject({ code: 'key_conflict' });
+    expect(
+      (await store.find({ ...scope(), tableId: f.id, query })).rows,
+    ).toEqual([]);
+    const after = await store.list(scope());
+    expect(after.tables.find((item) => item.id === f.id)?.rowCount).toBe(0);
+    expect(after.quotas.storedBytes).toBe(before);
+  });
+
   it('checks live membership and scopes identical table names and raw RLS to their workspace', async () => {
     const f = await table();
     await insert(f, 'private');

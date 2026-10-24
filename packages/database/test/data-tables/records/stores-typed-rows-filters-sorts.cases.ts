@@ -9,6 +9,53 @@ import { workspaceId, queryAsOwner } from '../../support/workflow-authoring.js';
 import { store, scope, query, table, insert, required } from './fixture.js';
 
 export function registerStoresTypedRowsFiltersSorts(): void {
+  it('keeps text filters literal and ASCII-folded while comparing nullable cells', async () => {
+    const f = await table();
+    await store.importRows({
+      ...scope(),
+      tableId: f.id,
+      idempotencyKey: randomUUID(),
+      rows: [
+        { key: 'A%_x', amount: null },
+        { key: 'abx', amount: null },
+        { key: 'ÄBC', amount: null },
+      ],
+    });
+    for (const [value, count] of [
+      ['%_', 1],
+      ['ä', 0],
+      ['a', 2],
+    ] as const) {
+      const found = await store.find({
+        ...scope(),
+        tableId: f.id,
+        query: {
+          ...query,
+          filters: [{ column: 'key', operator: 'contains', value }],
+        },
+      });
+      expect(found.rows).toHaveLength(count);
+    }
+    const empty = await store.find({
+      ...scope(),
+      tableId: f.id,
+      query: {
+        ...query,
+        filters: [{ column: 'amount', operator: 'equals', value: null }],
+      },
+    });
+    expect(empty.rows).toHaveLength(3);
+    const filled = await store.find({
+      ...scope(),
+      tableId: f.id,
+      query: {
+        ...query,
+        filters: [{ column: 'amount', operator: 'not_equals', value: null }],
+      },
+    });
+    expect(filled.rows).toEqual([]);
+  });
+
   it('stores typed rows, filters/sorts stable pages and preserves exact command receipts', async () => {
     const f = await table();
     const command = {
