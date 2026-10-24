@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workspaces, auditEvents } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
@@ -45,10 +45,11 @@ async function lockOrganization(
   client: PoolClient,
   workspaceId: string,
 ): Promise<void> {
-  await client.query(
-    "select pg_advisory_xact_lock(hashtextextended('workflow-organization:' || $1, 0))",
-    [workspaceId],
-  );
+  await drizzle(client)
+    .execute(
+      sql`select pg_advisory_xact_lock(hashtextextended('workflow-organization:' || ${workspaceId},0))`,
+    )
+    .catch(rethrowQueryFailure);
 }
 
 /**

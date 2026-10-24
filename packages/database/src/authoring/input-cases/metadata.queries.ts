@@ -119,7 +119,9 @@ export async function lockInputCaseQuota(
   client: PoolClient,
   workspaceId: string,
 ): Promise<void> {
-  await client.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [
-    `workflow-input-case-quota:${workspaceId}`,
-  ]);
+  await drizzle(client)
+    .execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${`workflow-input-case-quota:${workspaceId}`},0))`,
+    )
+    .catch(rethrowQueryFailure);
 }
