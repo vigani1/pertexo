@@ -8,7 +8,7 @@ import type { NodeFormApi } from '../../../model/inspector/node-form';
 import {
   directPredecessorOptions,
   type InputMappingDraftRow,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 import { MappingValueEditor } from '../input-mappings/value-editor';
 import { InsertDataPicker } from '../input-mappings/insert-data-picker';
 export function RunValueRow({

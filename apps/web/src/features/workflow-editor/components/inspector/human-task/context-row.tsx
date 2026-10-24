@@ -11,7 +11,7 @@ import {
   directPredecessorOptions,
   type InputMappingDraftRow,
   type SchemaValueType,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 import { InsertDataPicker } from '../input-mappings/insert-data-picker';
 import { MappingValueEditor } from '../input-mappings/value-editor';
 import { ChoiceSelect } from '../fields/choice-select';

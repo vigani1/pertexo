@@ -4,7 +4,7 @@ import type { GraphLevel } from '../../../model/graph/scopes';
 import type {
   InputMappingDraftRow,
   SchemaValueType,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 import {
   describeMappingSource,
   type MappingSourceTone,

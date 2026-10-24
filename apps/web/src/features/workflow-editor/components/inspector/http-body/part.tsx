@@ -8,7 +8,7 @@ import type {
   PartErrors,
 } from '../../../model/inspector/http-body';
 import type { GraphLevel } from '../../../model/graph/scopes';
-import { directPredecessorOptions } from '../../../model/inspector/input-mappings';
+import { directPredecessorOptions } from '../../../model/inspector/input-mappings/draft';
 import { ChoiceSelect } from '../fields/choice-select';
 import { MappingValueEditor } from '../input-mappings/value-editor';
 

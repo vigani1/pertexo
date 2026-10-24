@@ -12,7 +12,7 @@ import {
   type InputMappingDraftRow,
   type PredecessorOption,
   type SchemaValueType,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 import { ChoiceSelect } from '../fields/choice-select';
 import { LiteralEditor } from './literal-editor';
 import { ExpressionExamples } from './expression-examples';

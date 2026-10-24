@@ -19,7 +19,7 @@ import type { NodeFormApi } from '../../../model/inspector/node-form';
 import {
   type InputMappingDraftRow,
   validateInputMappingRows,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 export function EventCoordinationSetup({

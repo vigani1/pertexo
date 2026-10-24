@@ -23,7 +23,7 @@ import {
   inputMappingSourceErrors,
   nodeUsesRunInputDirectly,
   validateInputMappingRows,
-} from '@/features/workflow-editor/model/inspector/input-mappings';
+} from '@/features/workflow-editor/model/inspector/input-mappings/draft';
 import { bareSetDefinition as definition } from '../../../support/fixtures/workflow-editor';
 
 function emptyGraph(): WorkflowGraphContract {

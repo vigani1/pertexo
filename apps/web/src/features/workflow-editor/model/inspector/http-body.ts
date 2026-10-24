@@ -13,7 +13,7 @@ import {
   newInputMappingRow,
   validateInputMappingRows,
   type InputMappingDraftRow,
-} from './input-mappings';
+} from './input-mappings/draft';
 
 export type HttpBodyValue = Readonly<{
   multipart: HttpMultipartConfig | undefined;
