@@ -74,7 +74,7 @@ export function NodeTestPanel({
     sample,
     state: sampleState,
     expectedSampleId,
-  } = useStepSample(scope, nodeId, stepBinding, editable);
+  } = useStepSample({ scope, nodeId, binding: stepBinding, enabled: editable });
   const pinned = sampleState === 'pinned';
   const checkContext = `${stepBinding ?? ''}:${expectedSampleId ?? 'real'}`;
   const acknowledged = acknowledgedContext === checkContext;
@@ -185,7 +185,7 @@ export function NodeTestPanel({
         ) : (
           <FlaskConicalIcon data-icon="inline-start" />
         )}
-        {runLabel(test, pinned)}
+        {runLabel({ test, pinned })}
       </Button>
       <TestResult
         preview={test.preview}
@@ -199,10 +199,13 @@ export function NodeTestPanel({
   );
 }
 
-function runLabel(
-  test: ReturnType<typeof useNodeTest>,
-  pinned: boolean,
-): string {
+function runLabel({
+  test,
+  pinned,
+}: Readonly<{
+  test: ReturnType<typeof useNodeTest>;
+  pinned: boolean;
+}>): string {
   if (test.pending === 'run') return 'Testing…';
   if (test.observing) return 'Check test status';
   if (test.recoveryPending) return 'Retry the same test';

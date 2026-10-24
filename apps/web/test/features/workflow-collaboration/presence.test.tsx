@@ -67,7 +67,7 @@ it('projects only editor metadata, warns about other dirty tabs, and renews with
     etag: '"draft"',
     revision: 1,
   });
-  const source = editorPresenceSource(store, true);
+  const source = editorPresenceSource({ store, editing: true });
   renderInRouter(
     <WorkflowPresenceProvider scope={scope}>
       <WorkflowEditingPresence source={source} />

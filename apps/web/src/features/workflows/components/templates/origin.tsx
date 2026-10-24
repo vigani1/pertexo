@@ -36,12 +36,12 @@ function OriginSnapshot({
   className?: string;
 }>) {
   const canRead = workspace.capabilities.includes('workflow:read');
-  const denied = useTemplateOriginLifetime(
+  const denied = useTemplateOriginLifetime({
     userId,
-    workspace.id,
+    workspaceId: workspace.id,
     workflowId,
-    canRead,
-  );
+    allowed: canRead,
+  });
   const query = useQuery({
     ...workflowTemplateOriginQueryOptions(
       apiClient,

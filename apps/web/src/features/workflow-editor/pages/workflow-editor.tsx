@@ -189,7 +189,7 @@ function WorkflowEditorSession({
   const pauseReason = verification.pauseReason;
   const paused = pauseReason !== undefined;
   const presenceSource = useMemo(
-    () => editorPresenceSource(store, canUpdate && !paused),
+    () => editorPresenceSource({ store, editing: canUpdate && !paused }),
     [store, canUpdate, paused],
   );
   const { flushSave, ensureSaved } = useEditorSavePipeline({
@@ -248,12 +248,12 @@ function WorkflowEditorSession({
   });
   const connectionIssues = useMemo(
     () => [
-      ...workflowConnectionIssues(
+      ...workflowConnectionIssues({
         graph,
         definitions,
         connections,
-        connectionsAvailable,
-      ),
+        available: connectionsAvailable,
+      }),
       ...workflowPlaceholderIssues(graph),
     ],
     [graph, definitions, connections, connectionsAvailable],

@@ -14,7 +14,9 @@ import {
 
 type Point = Readonly<{ x: number; y: number }>;
 type Size = Readonly<{ width: number; height: number }>;
-export function useNoteProjection(editable: boolean) {
+export function useNoteProjection({
+  editable,
+}: Readonly<{ editable: boolean }>) {
   const store = useEditorStoreApi();
   const notes = useEditorStore((state) => state.graph.notes);
   const [dragging, setDragging] = useState<ReadonlyMap<string, Point>>(

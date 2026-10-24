@@ -158,11 +158,15 @@ export async function verifyJourneySession(
   }
 }
 
-function reconciledFailure(
-  state: InvitationAcceptanceJourney,
-  retained: CompletionAttempt | undefined,
-  sameIntent: boolean,
-): AcceptanceFailure | undefined {
+function reconciledFailure({
+  state,
+  retained,
+  sameIntent,
+}: Readonly<{
+  state: InvitationAcceptanceJourney;
+  retained: CompletionAttempt | undefined;
+  sameIntent: boolean;
+}>): AcceptanceFailure | undefined {
   if (state.state === 'completed') return undefined;
   if (state.state !== 'ready') return SIGN_IN_AGAIN;
   if (sameIntent) return NOT_JOINED_YET;
@@ -186,7 +190,7 @@ export async function reconcileJourney(runtime: JourneyRuntime) {
     if (retained !== undefined && (!sameIntent || state.state === 'completed'))
       runtime.completion.current = undefined;
     runtime.setJourney(state);
-    runtime.setError(reconciledFailure(state, retained, sameIntent));
+    runtime.setError(reconciledFailure({ state, retained, sameIntent }));
   } catch (cause) {
     if (stillOwned(runtime, owned, controller.signal))
       runtime.setError(acceptanceFailure(cause, true));

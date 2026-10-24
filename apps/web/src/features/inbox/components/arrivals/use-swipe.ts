@@ -113,7 +113,10 @@ export function useArrivalSwipe(
     [direction],
   );
 
-  const finish = (event: PointerEvent<HTMLElement>, commit: boolean) => {
+  const finish = ({
+    event,
+    commit,
+  }: Readonly<{ event: PointerEvent<HTMLElement>; commit: boolean }>) => {
     const current = drag.current;
     if (direction === undefined || current?.pointerId !== event.pointerId)
       return;
@@ -151,10 +154,10 @@ export function useArrivalSwipe(
       place(event.currentTarget, direction, current.along);
     },
     onPointerUp: (event: PointerEvent<HTMLElement>) => {
-      finish(event, true);
+      finish({ event, commit: true });
     },
     onPointerCancel: (event: PointerEvent<HTMLElement>) => {
-      finish(event, false);
+      finish({ event, commit: false });
     },
   };
 }

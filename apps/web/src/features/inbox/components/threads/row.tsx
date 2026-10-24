@@ -40,7 +40,7 @@ export function InboxThreadRow({
           {...(thread.unread
             ? { 'aria-label': `${thread.workflowName}, unread` }
             : {})}
-          className={noticeLinkClass(thread.unread)}
+          className={noticeLinkClass({ unread: thread.unread })}
         >
           {thread.workflowName}
         </Link>

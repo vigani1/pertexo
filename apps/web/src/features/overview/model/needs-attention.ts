@@ -161,10 +161,13 @@ export function workflowAttentionItems(
 }
 
 /** Connections that need someone to sign in to the provider again. */
-export function connectionAttentionItems(
-  connections: readonly ConnectionResponse[],
-  canManage: boolean,
-): readonly AttentionItem[] {
+export function connectionAttentionItems({
+  connections,
+  canManage,
+}: Readonly<{
+  connections: readonly ConnectionResponse[];
+  canManage: boolean;
+}>): readonly AttentionItem[] {
   return connections
     .filter((connection) => connection.status === 'reauthorization_required')
     .map((connection) => ({

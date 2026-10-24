@@ -23,10 +23,11 @@ export type LiveUpdatesLook = Readonly<{
  * The run page's live indicator in words: Live updates, Reconnecting…, Updates
  * paused. A finished run needs no indicator at all.
  */
-export function describeLiveUpdates(
-  status: LiveConnectionStatus,
-  runActive: boolean,
-): LiveUpdatesLook | undefined {
+export function describeLiveUpdates({
+  status,
+  runActive,
+}: Readonly<{ status: LiveConnectionStatus; runActive: boolean }>):
+  LiveUpdatesLook | undefined {
   if (!runActive) return undefined;
   switch (status) {
     case 'connecting':

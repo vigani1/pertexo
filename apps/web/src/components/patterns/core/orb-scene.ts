@@ -74,7 +74,10 @@ const SPRITE_STOPS = {
   ],
 } as const;
 
-function particleSprite(rgb: Rgb, ink: boolean): HTMLCanvasElement {
+function particleSprite({
+  rgb,
+  ink,
+}: Readonly<{ rgb: Rgb; ink: boolean }>): HTMLCanvasElement {
   const key = `${rgb.join(',')}${ink ? ':ink' : ''}`;
   const cached = spriteCache.get(key);
   if (cached !== undefined) return cached;
@@ -132,7 +135,7 @@ export class CoreOrbScene extends CanvasScene {
     const palette = PALETTE_TOKENS[state].map((token) =>
       readTokenColor(token, FALLBACK_RGB),
     );
-    this.#sprites = palette.map((rgb) => particleSprite(rgb, ink));
+    this.#sprites = palette.map((rgb) => particleSprite({ rgb, ink }));
     this.#halo = ink ? (palette[1] ?? FALLBACK_RGB) : undefined;
   }
 

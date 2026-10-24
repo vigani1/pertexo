@@ -50,7 +50,7 @@ describe('inbox live updates', () => {
       const queryClient = new QueryClient();
       const apiClient = client(stream);
       const { result } = renderHook(
-        () => useInboxLive(apiClient, userId, workspaceId, true),
+        () => useInboxLive({ apiClient, userId, workspaceId, enabled: true }),
         { wrapper: wrapper(queryClient) },
       );
       await waitFor(() => {
@@ -74,7 +74,7 @@ describe('inbox live updates', () => {
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
     const apiClient = client(stream);
     const { result } = renderHook(
-      () => useInboxLive(apiClient, userId, workspaceId, true),
+      () => useInboxLive({ apiClient, userId, workspaceId, enabled: true }),
       { wrapper: wrapper(queryClient) },
     );
     await act(async () => {
@@ -108,7 +108,7 @@ describe('inbox live updates', () => {
         );
       const apiClient = client(stream);
       const { result } = renderHook(
-        () => useInboxLive(apiClient, userId, workspaceId, true),
+        () => useInboxLive({ apiClient, userId, workspaceId, enabled: true }),
         { wrapper: wrapper(new QueryClient()) },
       );
       await act(async () => {
@@ -135,7 +135,7 @@ describe('inbox live updates', () => {
     );
     const apiClient = client(stream);
     const { result } = renderHook(
-      () => useInboxLive(apiClient, userId, workspaceId, true),
+      () => useInboxLive({ apiClient, userId, workspaceId, enabled: true }),
       { wrapper: wrapper(new QueryClient()) },
     );
     await waitFor(() => {
@@ -148,7 +148,7 @@ describe('inbox live updates', () => {
     const stream = vi.fn<ApiClient['stream']>();
     const apiClient = client(stream);
     const { result } = renderHook(
-      () => useInboxLive(apiClient, userId, workspaceId, false),
+      () => useInboxLive({ apiClient, userId, workspaceId, enabled: false }),
       { wrapper: wrapper(new QueryClient()) },
     );
     expect(result.current).toBe('paused');

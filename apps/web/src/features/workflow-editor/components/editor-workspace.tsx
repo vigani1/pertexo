@@ -140,7 +140,7 @@ export function EditorWorkspace({
   const { request, navigation } = actions;
   const lastTest = useLastTest();
   const { setMobilePanel } = navigation;
-  const addStep = useAddStepFold(editable, setMobilePanel);
+  const addStep = useAddStepFold({ editable, setMobilePanel });
   // An instance with Code steps off doesn't offer them; existing ones explain.
   const placeable =
     codeSettings?.enabled === false
@@ -154,7 +154,7 @@ export function EditorWorkspace({
   });
 
   const { selectNodes, removeEdge, deleteSelection, duplicateSelection } =
-    useSelectionCommands(store, request, editable);
+    useSelectionCommands({ store, request, editable });
   useEditorShortcuts(
     {
       undo: () => {
@@ -370,10 +370,13 @@ export function EditorWorkspace({
 }
 
 /** The add-step lens's fold and its search field, which "/" focuses. */
-function useAddStepFold(
-  editable: boolean,
-  setMobilePanel: (panel: MobilePanel) => void,
-) {
+function useAddStepFold({
+  editable,
+  setMobilePanel,
+}: Readonly<{
+  editable: boolean;
+  setMobilePanel: (panel: MobilePanel) => void;
+}>) {
   const searchRef = useRef<HTMLInputElement>(null);
   const [collapsed, setCollapsed] = useState(false);
   return {
@@ -465,11 +468,15 @@ function useStepAdding({
 }
 
 /** Canvas selection commands, all routed through the guarded request. */
-function useSelectionCommands(
-  store: ReturnType<typeof useEditorStoreApi>,
-  request: ReturnType<typeof useEditorActions>['request'],
-  editable: boolean,
-) {
+function useSelectionCommands({
+  store,
+  request,
+  editable,
+}: Readonly<{
+  store: ReturnType<typeof useEditorStoreApi>;
+  request: ReturnType<typeof useEditorActions>['request'];
+  editable: boolean;
+}>) {
   const selectNodes = useCallback(
     (nodeIds: readonly string[]) => {
       request({ kind: 'select', nodeIds });

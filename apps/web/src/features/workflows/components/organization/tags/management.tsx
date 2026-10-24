@@ -70,7 +70,7 @@ export function TagManagement({
     fields.reset();
     setName(tag?.key ?? '');
   };
-  const changeConfirmation = (open: boolean) => {
+  const changeConfirmation = ({ open }: Readonly<{ open: boolean }>) => {
     if (open) command.reset();
     setDeleteTarget(open ? current : undefined);
   };
@@ -215,7 +215,7 @@ export function TagManagement({
                 className="ml-auto text-destructive hover:text-destructive"
                 disabled={disabled}
                 onClick={() => {
-                  changeConfirmation(true);
+                  changeConfirmation({ open: true });
                 }}
               >
                 Delete tag
@@ -233,7 +233,9 @@ export function TagManagement({
           command={command}
           pendingKind={pendingKind}
           disabled={disabled}
-          onOpenChange={changeConfirmation}
+          onOpenChange={(open) => {
+            changeConfirmation({ open });
+          }}
           onDelete={() => {
             start({
               ...scope,

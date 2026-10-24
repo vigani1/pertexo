@@ -110,7 +110,7 @@ export function VariablesEditor({
     }));
     setInspect(undefined);
   }
-  function toggle(id: string, opened: boolean) {
+  function toggle({ id, opened }: Readonly<{ id: string; opened: boolean }>) {
     setOpen((current) => {
       const next = new Set(current);
       if (opened) next.add(id);
@@ -189,10 +189,10 @@ export function VariablesEditor({
               open={open.has(row.id)}
               unsaved={variableUnsaved(row, draft.base)}
               onOpen={() => {
-                toggle(row.id, true);
+                toggle({ id: row.id, opened: true });
               }}
               onClose={() => {
-                toggle(row.id, false);
+                toggle({ id: row.id, opened: false });
               }}
               onChange={(next) => {
                 change(row.id, next);
@@ -221,7 +221,7 @@ export function VariablesEditor({
                   { id, name: '', type: 'text', value: '', description: '' },
                 ],
               }));
-              toggle(id, true);
+              toggle({ id, opened: true });
               setSaved(undefined);
             }}
           >

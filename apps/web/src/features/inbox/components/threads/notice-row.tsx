@@ -152,7 +152,7 @@ export function NoticeThreadRow(
           workspaceId={props.workspaceId}
           thread={thread}
           onOpen={props.onRead}
-          className={noticeLinkClass(thread.unread)}
+          className={noticeLinkClass({ unread: thread.unread })}
         >
           {thread.name}
         </AttentionLink>

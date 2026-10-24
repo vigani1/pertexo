@@ -5,11 +5,15 @@ import {
   type SaveCoordinatorTransport,
 } from '../model/persistence/save-coordinator';
 
-export function useSaveCoordinator(
-  store: EditorStore,
-  transport: SaveCoordinatorTransport,
-  enabled: boolean,
-) {
+export function useSaveCoordinator({
+  store,
+  transport,
+  enabled,
+}: Readonly<{
+  store: EditorStore;
+  transport: SaveCoordinatorTransport;
+  enabled: boolean;
+}>) {
   const coordinatorRef = useRef<ReturnType<
     typeof createSaveCoordinator
   > | null>(null);

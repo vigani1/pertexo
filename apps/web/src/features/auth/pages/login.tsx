@@ -69,7 +69,10 @@ export function LoginPage({
     </AuthLensFooter>
   );
 
-  const unavailableLens = (retrying: boolean, retry: () => void) => (
+  const unavailableLens = ({
+    retrying,
+    retry,
+  }: Readonly<{ retrying: boolean; retry: () => void }>) => (
     <LensUnavailable
       id="login-unavailable"
       title="Sign in to continue"
@@ -158,15 +161,15 @@ export function LoginPage({
               label="Checking how you can sign in…"
             />
           }
-          error={({ retrying, retry }) => unavailableLens(retrying, retry)}
+          error={({ retrying, retry }) => unavailableLens({ retrying, retry })}
         >
           {(options) =>
             !options.password.enabled &&
             options.socialProviders.length === 0 ? (
-              unavailableLens(
-                capabilities.isFetching,
-                () => void capabilities.refetch(),
-              )
+              unavailableLens({
+                retrying: capabilities.isFetching,
+                retry: () => void capabilities.refetch(),
+              })
             ) : (
               <SignInLens
                 apiClient={apiClient}

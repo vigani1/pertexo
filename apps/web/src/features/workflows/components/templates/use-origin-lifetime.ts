@@ -9,12 +9,17 @@ import { workflowKeys } from '../../data/workflows.queries';
  * Only denial of that read/root authority retires it; sibling feature and
  * other-workflow denials do not establish that this workflow became unreadable.
  */
-export function useTemplateOriginLifetime(
-  userId: string,
-  workspaceId: string,
-  workflowId: string,
-  allowed: boolean,
-) {
+export function useTemplateOriginLifetime({
+  userId,
+  workspaceId,
+  workflowId,
+  allowed,
+}: Readonly<{
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  allowed: boolean;
+}>) {
   const queryClient = useQueryClient();
   const [denied, setDenied] = useState(false);
   useEffect(() => {

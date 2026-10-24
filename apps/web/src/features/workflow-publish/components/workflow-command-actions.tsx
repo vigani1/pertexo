@@ -158,7 +158,7 @@ export function WorkflowCommandActions({
     receipt !== undefined || (workflow?.publishedVersionId ?? null) !== null;
   const canPublish = workspace.capabilities.includes('workflow:publish');
   const canRun = workspace.capabilities.includes('run:start');
-  const emptyHint = emptyDraftHint(graph, triggersAvailable);
+  const emptyHint = emptyDraftHint({ graph, triggersAvailable });
 
   /**
    * Starts the live version with no input. When that can't start (it needs

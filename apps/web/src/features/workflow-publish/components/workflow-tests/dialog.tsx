@@ -56,7 +56,10 @@ export function WorkflowTestDialog({
     const intent = input.read();
     if (intent === undefined) return;
     try {
-      await tests.submit(intent.value, acknowledged);
+      await tests.submit({
+        input: intent.value,
+        acknowledgeSideEffects: acknowledged,
+      });
     } catch {
       input.validation.showErrors({
         input: 'Enter valid JSON within the run-data limits.',

@@ -18,11 +18,15 @@ import { runInputAvailability } from '../../model/run-input/availability';
 import { expectedRunVersion } from '../../model/run-input/version';
 
 /** A fetched confirmation target must also reach the displayed Query snapshot. */
-function usePublicationReview(
-  read: (() => Promise<string>) | undefined,
-  displayedVersionId: string | null | undefined,
-  recovering: boolean,
-) {
+function usePublicationReview({
+  read,
+  displayedVersionId,
+  recovering,
+}: Readonly<{
+  read: (() => Promise<string>) | undefined;
+  displayedVersionId: string | null | undefined;
+  recovering: boolean;
+}>) {
   const [target, setTarget] = useState<string>();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -154,11 +158,11 @@ function RunInputDialogContent({
   const [caseEditing, setCaseEditing] = useState(false);
   const [caseAccessLost, setCaseAccessLost] = useState(false);
   const [submittedVersion, setSubmittedVersion] = useState<string>();
-  const review = usePublicationReview(
-    onReviewPublication,
-    caseScope?.workflow.publishedVersionId,
-    retryAvailable,
-  );
+  const review = usePublicationReview({
+    read: onReviewPublication,
+    displayedVersionId: caseScope?.workflow.publishedVersionId,
+    recovering: retryAvailable,
+  });
   const hideCaseInput = useCallback(() => {
     setCaseAccessLost(true);
     setLoaded(undefined);

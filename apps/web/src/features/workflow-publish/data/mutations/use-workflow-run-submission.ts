@@ -101,7 +101,7 @@ export function useWorkflowRunSubmission({
     )
       return false;
     const command = createRunAttempt(intent);
-    return submitAttempt(command, true);
+    return submitAttempt({ command, needsSaveBarrier: true });
   }
 
   async function retry() {
@@ -118,7 +118,7 @@ export function useWorkflowRunSubmission({
       );
       return false;
     }
-    return submitAttempt(attempt.current, false);
+    return submitAttempt({ command: attempt.current, needsSaveBarrier: false });
   }
 
   async function openAcceptedRun() {
@@ -145,7 +145,10 @@ export function useWorkflowRunSubmission({
     }
   }
 
-  async function submitAttempt(command: RunAttempt, needsSaveBarrier: boolean) {
+  async function submitAttempt({
+    command,
+    needsSaveBarrier,
+  }: Readonly<{ command: RunAttempt; needsSaveBarrier: boolean }>) {
     const submissionOwner = owner.current;
     if (submissionOwner === undefined) return false;
     if (sending.current === submissionOwner) return false;

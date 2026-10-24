@@ -11,10 +11,11 @@ export type EmptyDraftHint = Readonly<{
  * This is only earlier feedback: once the draft has steps, the server's
  * validation decides whether it can be published.
  */
-export function emptyDraftHint(
-  graph: WorkflowGraphContract,
-  triggersAvailable: boolean,
-): EmptyDraftHint | undefined {
+export function emptyDraftHint({
+  graph,
+  triggersAvailable,
+}: Readonly<{ graph: WorkflowGraphContract; triggersAvailable: boolean }>):
+  EmptyDraftHint | undefined {
   if (graph.nodes.length > 0) return undefined;
   return triggersAvailable
     ? {

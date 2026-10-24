@@ -59,11 +59,15 @@ function originalInputText(data: WorkflowRunData | undefined) {
 }
 
 /** Captured input initializes the editor once; a late read never erases a person's edits. */
-function useReplayInput(
-  originalText: string | undefined,
-  open: boolean,
-  unconfirmed: boolean,
-) {
+function useReplayInput({
+  originalText,
+  open,
+  unconfirmed,
+}: Readonly<{
+  originalText: string | undefined;
+  open: boolean;
+  unconfirmed: boolean;
+}>) {
   const runInput = useRunInput();
   // Each time it opens, the field starts from the run's own input, and an
   // input that loads after opening fills a field nobody has typed in yet.
@@ -149,7 +153,11 @@ export function ReplayRunDialog({
     },
   });
   const originalText = originalInputText(original.data);
-  const runInput = useReplayInput(originalText, open, replay.unconfirmed);
+  const runInput = useReplayInput({
+    originalText,
+    open,
+    unconfirmed: replay.unconfirmed,
+  });
 
   async function submit() {
     const intent = runInput.read();

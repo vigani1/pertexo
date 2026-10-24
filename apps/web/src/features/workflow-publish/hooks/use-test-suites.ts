@@ -151,7 +151,9 @@ export function useTestSuites({
       if (lifetime.current?.signal.aborted === false) setPreparing(false);
     }
   }
-  async function submit(acknowledgeSideEffects: boolean) {
+  async function submit({
+    acknowledgeSideEffects,
+  }: Readonly<{ acknowledgeSideEffects: boolean }>) {
     if (preparation === undefined) return;
     await start.send(
       workflowTestSuiteStartRequestSchema.parse({

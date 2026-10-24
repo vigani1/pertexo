@@ -32,7 +32,10 @@ function facts(parts: readonly string[]): string {
   return parts.map((part) => part.replaceAll(' ', '\u00a0')).join(' · ');
 }
 
-function figure(count: number, more: boolean): string {
+function figure({
+  count,
+  more,
+}: Readonly<{ count: number; more: boolean }>): string {
   return `${String(count)}${more ? '+' : ''}`;
 }
 
@@ -42,7 +45,7 @@ function counted(
   many: string,
   more = false,
 ): string {
-  return `${figure(count, more)} ${count === 1 && !more ? one : many}`;
+  return `${figure({ count, more })} ${count === 1 && !more ? one : many}`;
 }
 
 /**
@@ -90,7 +93,7 @@ function OverviewTile({
           <Skeleton className="h-8 w-10" />
         ) : (
           <span className="font-display text-5xl leading-none tabular-nums [--display-optical-size:40]">
-            {failed || count === undefined ? '—' : figure(count, more)}
+            {failed || count === undefined ? '—' : figure({ count, more })}
           </span>
         )}
         <span className="text-sm font-medium">{label}</span>
@@ -139,12 +142,13 @@ function WorkflowsTile({
               tone={state.tone}
               className="font-mono text-[0.72rem] font-normal"
             >
-              {figure(state.count, query.hasNextPage)} {state.label}
+              {figure({ count: state.count, more: query.hasNextPage })}{' '}
+              {state.label}
             </Status>
           ))}
           {archived === 0 ? null : (
             <span className="font-mono text-[0.72rem]">
-              {figure(archived, query.hasNextPage)} archived
+              {figure({ count: archived, more: query.hasNextPage })} archived
             </span>
           )}
         </span>
@@ -194,7 +198,9 @@ function MembersTile({
         ...byRole,
         ...(suspended === 0
           ? []
-          : [`${figure(suspended, query.hasNextPage)} suspended`]),
+          : [
+              `${figure({ count: suspended, more: query.hasNextPage })} suspended`,
+            ]),
       ])}
     </OverviewTile>
   );

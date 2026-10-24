@@ -17,7 +17,7 @@ export function ExportTableRows({
   query: DataTableQuery;
 }>) {
   const [error, setError] = useState<string>();
-  function download(filtered: boolean) {
+  function download({ filtered }: Readonly<{ filtered: boolean }>) {
     setError(undefined);
     try {
       exportRows(scope, table.id, { filters: filtered ? query.filters : [] });
@@ -33,7 +33,7 @@ export function ExportTableRows({
         size="sm"
         title="CSV in the order rows were added"
         onClick={() => {
-          download(false);
+          download({ filtered: false });
         }}
       >
         <DownloadIcon aria-hidden="true" data-icon="inline-start" />
@@ -46,7 +46,7 @@ export function ExportTableRows({
           variant="outline"
           size="sm"
           onClick={() => {
-            download(true);
+            download({ filtered: true });
           }}
         >
           Export filtered rows

@@ -40,15 +40,15 @@ export function SchedulesSection({
   });
   const [pausing, setPausing] = useState<ScheduleTriggerHealthResponse>();
 
-  async function setEnabled(
-    trigger: ScheduleTriggerHealthResponse,
-    enabled: boolean,
-  ) {
-    const done = await schedule.setEnabled(
-      trigger.id,
+  async function setEnabled({
+    trigger,
+    enabled,
+  }: Readonly<{ trigger: ScheduleTriggerHealthResponse; enabled: boolean }>) {
+    const done = await schedule.setEnabled({
+      triggerId: trigger.id,
       enabled,
-      trigger.status !== 'disabled',
-    );
+      observedEnabled: trigger.status !== 'disabled',
+    });
     setPausing(undefined);
     if (done)
       notifications.success({
@@ -71,7 +71,7 @@ export function SchedulesSection({
           pending={schedule.pendingTriggerId === trigger.id}
           disabled={schedule.pendingTriggerId !== undefined}
           onEnabledChange={(enabled) => {
-            if (enabled) void setEnabled(trigger, true);
+            if (enabled) void setEnabled({ trigger, enabled: true });
             else setPausing(trigger);
           }}
           nextRuns={
@@ -107,7 +107,9 @@ export function SchedulesSection({
         cancelLabel="Keep it on"
         pending={schedule.pendingTriggerId !== undefined}
         onConfirm={() =>
-          pausing === undefined ? undefined : setEnabled(pausing, false)
+          pausing === undefined
+            ? undefined
+            : setEnabled({ trigger: pausing, enabled: false })
         }
       />
     </>

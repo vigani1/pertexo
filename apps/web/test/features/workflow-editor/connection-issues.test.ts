@@ -65,20 +65,34 @@ describe('editor credential issues', () => {
     };
     const request = (connectionRefs: Node['connectionRefs']) =>
       graph([node('call', { definition: http.definition, connectionRefs })]);
-    expect(workflowConnectionIssues(request({}), [http], [], true)).toEqual([]);
     expect(
-      workflowConnectionIssues(
-        request({ http_headers: '55555555-5555-4555-8555-555555555555' }),
-        [http],
-        [],
-        true,
-      ),
+      workflowConnectionIssues({
+        graph: request({}),
+        definitions: [http],
+        connections: [],
+        available: true,
+      }),
+    ).toEqual([]);
+    expect(
+      workflowConnectionIssues({
+        graph: request({
+          http_headers: '55555555-5555-4555-8555-555555555555',
+        }),
+        definitions: [http],
+        connections: [],
+        available: true,
+      }),
     ).toHaveLength(1);
   });
 
   it('counts a missing selection before the first server check and targets Setup', () => {
     const current = graph([node('post')]);
-    const issues = workflowConnectionIssues(current, [definition], [], true);
+    const issues = workflowConnectionIssues({
+      graph: current,
+      definitions: [definition],
+      connections: [],
+      available: true,
+    });
     expect(issues).toMatchObject([
       {
         message: 'Choose a Slack connection for this step.',
@@ -106,12 +120,12 @@ describe('editor credential issues', () => {
   it.each(['revoked', 'reauthorization_required'] as const)(
     'counts the selected %s credential',
     (status) => {
-      const issues = workflowConnectionIssues(
-        linked,
-        [definition],
-        [{ ...slack, status }],
-        true,
-      );
+      const issues = workflowConnectionIssues({
+        graph: linked,
+        definitions: [definition],
+        connections: [{ ...slack, status }],
+        available: true,
+      });
       expect(issues).toHaveLength(1);
       expect(issues[0]?.message).toContain(
         status === 'revoked' ? 'was revoked' : 'needs reauthorizing',
@@ -121,7 +135,12 @@ describe('editor credential issues', () => {
 
   it('counts a missing or mismatched credential without treating unknown health as rejection', () => {
     expect(
-      workflowConnectionIssues(linked, [definition], [], true)[0]?.message,
+      workflowConnectionIssues({
+        graph: linked,
+        definitions: [definition],
+        connections: [],
+        available: true,
+      })[0]?.message,
     ).toContain('is unavailable');
     const wrongKind = connectionResponseSchema.parse({
       ...slack,
@@ -129,17 +148,26 @@ describe('editor credential issues', () => {
       authType: 'http_headers',
     });
     expect(
-      workflowConnectionIssues(linked, [definition], [wrongKind], true)[0]
-        ?.message,
+      workflowConnectionIssues({
+        graph: linked,
+        definitions: [definition],
+        connections: [wrongKind],
+        available: true,
+      })[0]?.message,
     ).toContain('different credential type');
     expect(
-      workflowConnectionIssues(linked, [definition], [slack], true),
+      workflowConnectionIssues({
+        graph: linked,
+        definitions: [definition],
+        connections: [slack],
+        available: true,
+      }),
     ).toEqual([]);
     expect(
-      workflowConnectionIssues(
-        linked,
-        [definition],
-        [
+      workflowConnectionIssues({
+        graph: linked,
+        definitions: [definition],
+        connections: [
           {
             ...slack,
             health: {
@@ -149,14 +177,19 @@ describe('editor credential issues', () => {
             },
           },
         ],
-        true,
-      ),
+        available: true,
+      }),
     ).toEqual([]);
   });
 
   it('explains server unavailability instead of guessing that a credential was revoked', () => {
     expect(
-      workflowConnectionIssues(linked, [definition], [], false)[0]?.message,
+      workflowConnectionIssues({
+        graph: linked,
+        definitions: [definition],
+        connections: [],
+        available: false,
+      })[0]?.message,
     ).toContain('Connections are unavailable here');
   });
 
@@ -175,15 +208,23 @@ describe('editor credential issues', () => {
       { ...loop, id: 'off-loop', disabled: true },
     ]);
     expect(
-      workflowConnectionIssues(current, [definition], [], true).map(
-        (issue) => issue.target?.nodeId,
-      ),
+      workflowConnectionIssues({
+        graph: current,
+        definitions: [definition],
+        connections: [],
+        available: true,
+      }).map((issue) => issue.target?.nodeId),
     ).toEqual(['nested']);
   });
 
   it('groups server and credential findings once while preserving server publication rules', () => {
     const current = graph([node('post')]);
-    const findings = workflowConnectionIssues(current, [definition], [], true);
+    const findings = workflowConnectionIssues({
+      graph: current,
+      definitions: [definition],
+      connections: [],
+      available: true,
+    });
     const checked = {
       ...publication,
       validation: {

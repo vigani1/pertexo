@@ -57,10 +57,10 @@ export function DomainEntry({
           check.providerRevision === provider.revision,
       ),
   );
-  const confirmationCopy = domainConfirmationCopy(
-      confirmation.action,
-      confirmation.required,
-    ),
+  const confirmationCopy = domainConfirmationCopy({
+      action: confirmation.action,
+      required: confirmation.required,
+    }),
     status = domainStatus(domain);
   return (
     <li className="min-w-0 space-y-4 border-b border-border py-5 first:pt-0">

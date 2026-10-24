@@ -32,11 +32,15 @@ export function useScheduleCommand({
   const [pendingTriggerId, setPendingTriggerId] = useState<string>();
   const [error, setError] = useState<string>();
 
-  async function setEnabled(
-    triggerId: string,
-    enabled: boolean,
-    observedEnabled: boolean,
-  ) {
+  async function setEnabled({
+    triggerId,
+    enabled,
+    observedEnabled,
+  }: Readonly<{
+    triggerId: string;
+    enabled: boolean;
+    observedEnabled: boolean;
+  }>) {
     if (pendingRef.current) return false;
     const scope = `schedule:${triggerId}`;
     commands.resolveObserved(scope, String(observedEnabled));

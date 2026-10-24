@@ -56,13 +56,13 @@ export function useLeaveWorkspaceCommand({
       leaveWorkspace(apiClient, workspaceId, idempotencyKey),
     onMutate: () => owner.current,
     onSuccess: (_result, _key, submissionOwner) =>
-      finish(true, submissionOwner),
+      finish({ confirmed: true, submissionOwner }),
   });
 
-  async function finish(
-    confirmed: boolean,
-    submissionOwner: symbol | undefined,
-  ) {
+  async function finish({
+    confirmed,
+    submissionOwner,
+  }: Readonly<{ confirmed: boolean; submissionOwner: symbol | undefined }>) {
     if (submissionOwner === undefined || owner.current !== submissionOwner)
       return;
     // Leaving ends every session, so no protected snapshot remains valid.
@@ -86,7 +86,7 @@ export function useLeaveWorkspaceCommand({
     } catch (cause) {
       if (owner.current !== submissionOwner) return false;
       if (isUnauthenticated(cause)) {
-        await finish(false, submissionOwner);
+        await finish({ confirmed: false, submissionOwner });
         return false;
       }
       const uncertain = isUnconfirmedCommand(cause);

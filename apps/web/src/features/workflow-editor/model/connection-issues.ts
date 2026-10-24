@@ -10,12 +10,17 @@ import { findDefinition } from './graph/adapter';
 import type { GraphLevel } from './graph/scopes';
 
 /** Credential readiness for enabled steps, using the complete authorized list. */
-export function workflowConnectionIssues(
-  graph: WorkflowGraphContract,
-  definitions: readonly NodeDefinitionCatalogItem[],
-  connections: readonly ConnectionResponse[],
-  available: boolean,
-): readonly WorkflowIssue[] {
+export function workflowConnectionIssues({
+  graph,
+  definitions,
+  connections,
+  available,
+}: Readonly<{
+  graph: WorkflowGraphContract;
+  definitions: readonly NodeDefinitionCatalogItem[];
+  connections: readonly ConnectionResponse[];
+  available: boolean;
+}>): readonly WorkflowIssue[] {
   const byId = new Map(
     connections.map((connection) => [connection.id, connection]),
   );
@@ -29,12 +34,12 @@ export function workflowConnectionIssues(
           const selectedId = node.connectionRefs[requirement];
           // An optional connection left empty is a choice, not a problem.
           if (selectedId === undefined && optional.has(requirement)) return [];
-          const message = describeCredentialIssue(
+          const message = describeCredentialIssue({
             requirement,
             selectedId,
-            byId,
+            connections: byId,
             available,
-          );
+          });
           return message === undefined
             ? []
             : [
@@ -53,12 +58,17 @@ export function workflowConnectionIssues(
   return issuesIn(graph);
 }
 
-function describeCredentialIssue(
-  requirement: string,
-  selectedId: string | undefined,
-  connections: ReadonlyMap<string, ConnectionResponse>,
-  available: boolean,
-): string | undefined {
+function describeCredentialIssue({
+  requirement,
+  selectedId,
+  connections,
+  available,
+}: Readonly<{
+  requirement: string;
+  selectedId: string | undefined;
+  connections: ReadonlyMap<string, ConnectionResponse>;
+  available: boolean;
+}>): string | undefined {
   const label = describeConnectionRequirement(requirement);
   if (!available)
     return 'Connections are unavailable here. Ask the server operator to check connection configuration and workspace access.';

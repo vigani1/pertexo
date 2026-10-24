@@ -156,7 +156,10 @@ export function useWorkflowTests({
       if (lifetime.current?.signal.aborted === false) setPreparing(false);
     }
   }
-  async function submit(input: unknown, acknowledgeSideEffects: boolean) {
+  async function submit({
+    input,
+    acknowledgeSideEffects,
+  }: Readonly<{ input: unknown; acknowledgeSideEffects: boolean }>) {
     if (preparation === undefined) return;
     await start.send(
       workflowTestStartRequestSchema.parse({
