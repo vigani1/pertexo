@@ -1,5 +1,15 @@
+import { alias } from 'drizzle-orm/pg-core';
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import type { PoolClient, QueryResult } from 'pg';
+import type { PoolClient } from 'pg';
+import { and, eq, gt, sql } from 'drizzle-orm';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import {
+  workspaceDataTables as tables,
+  workspaceDataTableRows as tableRows,
+  workspaceDataTableQuotas as quotas,
+} from '../../schema/data-tables.js';
+import { auditEvents } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { DataTableSchemaChange } from '@pertexo/contracts';
 import {
   DataTableError,
@@ -166,37 +176,44 @@ export async function editTableSchema(
   )
     return { revision: table.revision };
   const bytes = await rewriteTableRows(client, input, { table, next, quota });
-  await client.query(
-    'update app.workspace_data_tables set columns_json=$3::jsonb,key_column=$4,has_removed_columns=$5,stored_bytes=$6,revision=revision+1 where workspace_id=$1 and id=$2',
-    [
-      input.workspaceId,
-      table.id,
-      JSON.stringify(next.columns),
-      next.keyColumn,
-      next.hasRemovedColumns,
-      bytes,
-    ],
-  );
-  await client.query(
-    'update app.workspace_data_table_quotas set stored_bytes=stored_bytes+$2 where workspace_id=$1',
-    [input.workspaceId, bytes - table.storedBytes],
-  );
-  await client.query(
-    `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,metadata)
-    values($1,$2,$3,'data.table_schema_changed','data_table',$4,$5::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorId,
-      table.id,
-      JSON.stringify({
+  const db = drizzle(client);
+  await db
+    .update(tables)
+    .set({
+      columns: next.columns,
+      keyColumn: next.keyColumn,
+      hasRemovedColumns: next.hasRemovedColumns,
+      storedBytes: bytes,
+      revision: sql`${tables.revision}+1`,
+    })
+    .where(
+      and(eq(tables.workspaceId, input.workspaceId), eq(tables.id, table.id)),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .update(quotas)
+    .set({
+      storedBytes: sql`${quotas.storedBytes}+${bytes - table.storedBytes}`,
+    })
+    .where(eq(quotas.workspaceId, input.workspaceId))
+    .catch(rethrowQueryFailure);
+  await db
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorId,
+      action: 'data.table_schema_changed',
+      targetType: 'data_table',
+      targetId: table.id,
+      metadata: {
         operation: input.change.operation,
         revision: next.revision,
         columns: next.columns.map(({ id, name }) => ({ id, name })),
         keyColumn: next.keyColumn,
-      }),
-    ],
-  );
+      },
+    })
+    .catch(rethrowQueryFailure);
   return { revision: next.revision };
 }
 
@@ -213,41 +230,64 @@ async function rewriteTableRows(
     quota: DataTableQuotas;
   }>,
 ): Promise<number> {
+  const db = drizzle(client);
   // Replacing keys in two phases allows valid swaps without transient uniqueness failures.
   if (
     input.change.operation === 'set_key' &&
     next.keyColumn !== table.keyColumn
   )
-    await client.query(
-      'update app.workspace_data_table_rows set key_value=null where workspace_id=$1 and table_id=$2',
-      [input.workspaceId, table.id],
-    );
+    await db
+      .update(tableRows)
+      .set({ keyValue: null })
+      .where(
+        and(
+          eq(tableRows.workspaceId, input.workspaceId),
+          eq(tableRows.tableId, table.id),
+        ),
+      )
+      .catch(rethrowQueryFailure);
   let after: string | null = null;
   let bytes = 0;
   for (;;) {
-    const batch: QueryResult<{ id: string; values_json: string }> =
-      await client.query(
-        'select id,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and ($3::uuid is null or id>$3::uuid) order by id limit 64',
-        [input.workspaceId, table.id, after],
-      );
-    if (batch.rows.length === 0) break;
-    const rows = batch.rows.map((row) => {
+    const batch: Pick<
+      typeof tableRows.$inferSelect,
+      'id' | 'values' | 'revision'
+    >[] = await db
+      .select({
+        id: tableRows.id,
+        values: tableRows.values,
+        revision: tableRows.revision,
+      })
+      .from(tableRows)
+      .where(
+        and(
+          eq(tableRows.workspaceId, input.workspaceId),
+          eq(tableRows.tableId, table.id),
+          after === null ? undefined : gt(tableRows.id, after),
+        ),
+      )
+      .orderBy(tableRows.id)
+      .limit(64)
+      .catch(rethrowQueryFailure);
+    if (batch.length === 0) break;
+    const rows = batch.map((row) => {
       const values = changedValues(
         table.columns,
         next,
         input.change,
-        JSON.parse(row.values_json) as DataTableValues,
+        JSON.parse(row.values) as DataTableValues,
       );
       const text = normalizedJson(values);
       bytes += utf8ByteLength(text);
+      // Older rows were stored with sorted keys; only content counts.
+      const changed =
+        canonicalJson(values) !==
+        canonicalJson(JSON.parse(row.values) as DataTableValues);
       return {
         id: row.id,
-        values_json: text,
-        key_value: keyValue(next, values),
-        // Older rows were stored with sorted keys; only content counts.
-        changed:
-          canonicalJson(values) !==
-          canonicalJson(JSON.parse(row.values_json) as DataTableValues),
+        values: text,
+        keyValue: keyValue(next, values),
+        revision: row.revision + (changed ? 1 : 0),
       };
     });
     if (quota.storedBytes - table.storedBytes + bytes > quota.byteLimit)
@@ -255,13 +295,47 @@ async function rewriteTableRows(
         'quota_exceeded',
         'The column default exceeds table storage. Use a smaller value or ask an admin to raise the limit.',
       );
-    await client.query(
-      `update app.workspace_data_table_rows target set values_json=source.values_json,key_value=source.key_value,revision=target.revision+case when source.changed then 1 else 0 end
-      from jsonb_to_recordset($3::jsonb) as source(id uuid,values_json text,key_value text,changed boolean)
-      where target.workspace_id=$1 and target.table_id=$2 and target.id=source.id`,
-      [input.workspaceId, table.id, JSON.stringify(rows)],
-    );
+    await writeRowChanges(db, {
+      workspaceId: input.workspaceId,
+      tableId: table.id,
+      changes: rows,
+    });
     after = rows.at(-1)?.id ?? null;
   }
   return bytes;
+}
+
+type RowChange = Pick<
+  typeof tableRows.$inferSelect,
+  'id' | 'values' | 'keyValue' | 'revision'
+>;
+
+async function writeRowChanges(
+  db: NodePgDatabase,
+  {
+    workspaceId,
+    tableId,
+    changes,
+  }: Readonly<{
+    workspaceId: string;
+    tableId: string;
+    changes: readonly RowChange[];
+  }>,
+): Promise<void> {
+  // The table lock keeps these IDs present, so a bulk upsert preserves the
+  // existing-row rewrite without issuing a write for each row.
+  const excluded = alias(tableRows, 'excluded');
+  await db
+    .insert(tableRows)
+    .values(changes.map((row) => ({ workspaceId, tableId, ...row })))
+    .onConflictDoUpdate({
+      target: tableRows.id,
+      set: {
+        values: excluded.values,
+        keyValue: excluded.keyValue,
+        revision: excluded.revision,
+      },
+      setWhere: sql`${tableRows.workspaceId}=${workspaceId} and ${tableRows.tableId}=${tableId}`,
+    })
+    .catch(rethrowQueryFailure);
 }

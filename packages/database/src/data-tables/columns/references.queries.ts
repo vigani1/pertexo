@@ -1,5 +1,8 @@
 import type { PoolClient } from 'pg';
-import { sql } from 'drizzle-orm';
+import { sql, and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowVersions } from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
   DataTableError,
   isDataTableDefinition,
@@ -13,7 +16,7 @@ import {
   type GraphValidationIssue,
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { TABLE_COLUMNS, projectTable, type StoredTable } from '../definitions.queries.js';
+import { readTablesByNames } from '../definitions.queries.js';
 import type { DataTableDefinition } from '../contract.js';
 
 type ReferenceNode = Pick<
@@ -114,11 +117,12 @@ export async function dataTableReferenceIssues(
 ): Promise<readonly GraphValidationIssue[]> {
   const refs = references(graph);
   if (refs.length === 0) return [];
-  const rows = await client.query<StoredTable>(
-    `select ${TABLE_COLUMNS} from app.workspace_data_tables where workspace_id=$1 and name=any($2::text[]) order by id for share`,
-    [workspaceId, [...new Set(refs.map((ref) => ref.config.table))]],
-  );
-  return issuesFor(refs, rows.rows.map(projectTable));
+  const found = await readTablesByNames(
+    drizzle(client),
+    workspaceId,
+    refs.map((ref) => ref.config.table),
+  ).catch(rethrowQueryFailure);
+  return issuesFor(refs, found);
 }
 
 /** Every published start, including Call, replay and recovery, crosses this fence. */
@@ -126,19 +130,29 @@ export async function requireRunTableReferences(
   transaction: WorkspaceTransaction,
   workflowVersionId: string,
 ): Promise<void> {
-  const version = await transaction.db.execute<{
-    nodes: readonly ReferenceNode[] | null;
-  }>(
-    sql`select graph_json->'nodes' nodes from app.workflow_versions where workspace_id=${transaction.workspaceId} and id=${workflowVersionId}`,
-  );
-  const nodes = version.rows[0]?.nodes;
+  const [version] = await transaction.db
+    .select({
+      nodes: sql<
+        readonly ReferenceNode[] | null
+      >`${workflowVersions.graphJson}->'nodes'`,
+    })
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, transaction.workspaceId),
+        eq(workflowVersions.id, workflowVersionId),
+      ),
+    );
+  const nodes = version?.nodes;
   if (nodes === undefined || nodes === null) return;
   const refs = references({ nodes });
   if (refs.length === 0) return;
-  const rows = await transaction.db.execute<StoredTable>(
-    sql`select id,name,columns_json,has_removed_columns,key_column,row_count,stored_bytes,revision from app.workspace_data_tables where workspace_id=${transaction.workspaceId} and name=any(${sql.param([...new Set(refs.map((ref) => ref.config.table))])}::text[]) order by id for share`,
+  const found = await readTablesByNames(
+    transaction.db,
+    transaction.workspaceId,
+    refs.map((ref) => ref.config.table),
   );
-  const issues = issuesFor(refs, rows.rows.map(projectTable));
+  const issues = issuesFor(refs, found);
   if (issues.length > 0)
     throw new DataTableError(
       'invalid_values',

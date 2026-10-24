@@ -1,12 +1,14 @@
+import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaceDataTables } from '../../schema/data-tables.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 
 import type { DataTablesStore } from '../contract.js';
 import {
   readQuotas,
   requireTable,
-  projectTable,
-  TABLE_COLUMNS,
-  type StoredTable,
+  tableFields,
 } from '../definitions.queries.js';
 import { findRows } from '../rows.queries.js';
 
@@ -20,12 +22,13 @@ export function listTables(
 ): ReturnType<DataTablesStore['list']> {
   return read(pool, input, async (client) => ({
     quotas: await readQuotas(client, input.workspaceId),
-    tables: (
-      await client.query<StoredTable>(
-        `select ${TABLE_COLUMNS} from app.workspace_data_tables where workspace_id=$1 order by name limit 100`,
-        [input.workspaceId],
-      )
-    ).rows.map(projectTable),
+    tables: await drizzle(client)
+      .select(tableFields)
+      .from(workspaceDataTables)
+      .where(eq(workspaceDataTables.workspaceId, input.workspaceId))
+      .orderBy(workspaceDataTables.name)
+      .limit(100)
+      .catch(rethrowQueryFailure),
   }));
 }
 

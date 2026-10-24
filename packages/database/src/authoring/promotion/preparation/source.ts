@@ -1,3 +1,5 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { bindResourcePredicate } from '../../../tenant-access/resources/query-scope.js';
 import {
   connectionScope,
@@ -11,12 +13,8 @@ import {
   parseWorkflowGraphDraft,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import { isDataTableDefinition } from '@pertexo/node-sdk';
-import {
-  TABLE_COLUMNS,
-  projectTable,
-  type StoredTable,
-} from '../../../data-tables/definitions.queries.js';
+import { isDataTableDefinition, type DataTableConfig } from '@pertexo/node-sdk';
+import { readTablesByNames } from '../../../data-tables/definitions.queries.js';
 import type { DataTableDefinition } from '../../../data-tables/contract.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { promotionNodes, type PromotionGraphBudget } from './graph.js';
@@ -128,17 +126,13 @@ export async function readPromotionSources(
     ...new Set(
       nodes
         .filter((node) => isDataTableDefinition(node.definition))
-        .map((node) => node.config.table),
+        .map((node) => (node.config as DataTableConfig).table),
     ),
   ];
-  const tables =
-    tableNames.length === 0
-      ? []
-      : (
-          await client.query<StoredTable>(
-            `select ${TABLE_COLUMNS} from app.workspace_data_tables where workspace_id=$1 and name=any($2::text[]) order by id for share`,
-            [workspaceId, tableNames],
-          )
-        ).rows.map(projectTable);
+  const tables = await readTablesByNames(
+    drizzle(client),
+    workspaceId,
+    tableNames,
+  ).catch(rethrowQueryFailure);
   return { workflows, connections, tables };
 }

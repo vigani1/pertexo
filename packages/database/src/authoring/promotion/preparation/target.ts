@@ -1,3 +1,5 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { connectionScope } from '../../../tenant-access/resources/connections/scope.js';
 import { readFolderScope } from '../../../tenant-access/resources/facts.js';
@@ -7,11 +9,7 @@ import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
 
-import {
-  TABLE_COLUMNS,
-  projectTable,
-  type StoredTable,
-} from '../../../data-tables/definitions.queries.js';
+import { readTablesByNames } from '../../../data-tables/definitions.queries.js';
 
 import {
   WorkflowPromotionError,
@@ -56,15 +54,11 @@ export async function preparePromotionTarget(
     requirements.push(requirement);
   };
   const names = [...new Set(sources.tables.map((table) => table.name))];
-  const tables =
-    names.length === 0
-      ? []
-      : (
-          await client.query<StoredTable>(
-            `select ${TABLE_COLUMNS} from app.workspace_data_tables where workspace_id=$1 and name=any($2::text[]) order by id for share`,
-            [input.workspaceId, names],
-          )
-        ).rows.map(projectTable);
+  const tables = await readTablesByNames(
+    drizzle(client),
+    input.workspaceId,
+    names,
+  ).catch(rethrowQueryFailure);
   const origins: (Origin | null)[] = [];
   const state = {
     input,

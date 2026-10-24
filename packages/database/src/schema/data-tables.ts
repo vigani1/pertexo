@@ -1,4 +1,4 @@
-import { DATA_TABLE_LIMITS } from '@pertexo/node-sdk';
+import { DATA_TABLE_LIMITS, type DataTableColumn } from '@pertexo/node-sdk';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -50,7 +50,7 @@ export const workspaceDataTables = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     id: uuid().primaryKey(),
     name: varchar({ length: 64 }).notNull(),
-    columns: jsonb('columns_json').notNull(),
+    columns: jsonb('columns_json').$type<DataTableColumn[]>().notNull(),
     hasRemovedColumns: boolean('has_removed_columns').notNull().default(false),
     keyColumn: varchar('key_column', { length: 64 }),
     rowCount: integer('row_count').notNull().default(0),

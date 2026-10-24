@@ -1,3 +1,7 @@
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { dataTableWriteReceipts as receipts } from '../schema/data-tables.js';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { appendAuditFact } from '../governance/audit/events.repository.js';
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
@@ -61,31 +65,29 @@ export function createWorkerDataTablesStore(
           await assertCapabilityExecution(client, input, {
             requireDispatch: true,
           });
-          const requestHash = createHash('sha256')
-            .update(
-              canonicalJson(
-                input.columnBindings === undefined
-                  ? input.command
-                  : {
-                      command: input.command,
-                      columnBindings: input.columnBindings,
-                    },
+          const requestHash = tableRequestHash(input);
+          const db = drizzle(client);
+          const [prior] = await db
+            .select({
+              requestHash: receipts.requestHash,
+              resultJson: receipts.result,
+            })
+            .from(receipts)
+            .where(
+              and(
+                eq(receipts.workspaceId, input.workspaceId),
+                eq(receipts.executionId, input.runId),
+                eq(receipts.invocationId, input.nodeRunId),
               ),
             )
-            .digest('hex');
-          const prior = (
-            await client.query<{ request_hash: string; result_json: string }>(
-              'select request_hash,result_json from app.data_table_write_receipts where workspace_id=$1 and execution_id=$2 and invocation_id=$3',
-              [input.workspaceId, input.runId, input.nodeRunId],
-            )
-          ).rows[0];
+            .catch(rethrowQueryFailure);
           if (prior !== undefined) {
-            if (prior.request_hash !== requestHash)
+            if (prior.requestHash !== requestHash)
               throw new DataTableError(
                 'conflict',
                 'The retried data table command changed.',
               );
-            return JSON.parse(prior.result_json) as DataTableResult;
+            return JSON.parse(prior.resultJson) as DataTableResult;
           }
           const table = await requireTable(
             client,
@@ -112,18 +114,18 @@ export function createWorkerDataTablesStore(
           await assertCapabilityExecution(client, input, {
             requireDispatch: true,
           });
-          await client.query(
-            'insert into app.data_table_write_receipts(workspace_id,execution_id,invocation_id,run_id,preview_run_id,request_hash,result_json) values($1,$2,$3,$4,$5,$6,$7)',
-            [
-              input.workspaceId,
-              input.runId,
-              input.nodeRunId,
-              input.previewRunId === undefined ? input.runId : null,
-              input.previewRunId ?? null,
+          await db
+            .insert(receipts)
+            .values({
+              workspaceId: input.workspaceId,
+              executionId: input.runId,
+              invocationId: input.nodeRunId,
+              runId: input.previewRunId === undefined ? input.runId : null,
+              previewRunId: input.previewRunId ?? null,
               requestHash,
-              JSON.stringify(result),
-            ],
-          );
+              result: JSON.stringify(result),
+            })
+            .catch(rethrowQueryFailure);
           await appendAuditFact(client, {
             workspaceId: input.workspaceId,
             action: 'data.tables.rows.write',
@@ -166,4 +168,21 @@ export function createWorkerDataTablesStore(
         return translateTableConstraint(error);
       }),
   };
+}
+
+function tableRequestHash(
+  input: Parameters<WorkerDataTablesStore['execute']>[0],
+): string {
+  return createHash('sha256')
+    .update(
+      canonicalJson(
+        input.columnBindings === undefined
+          ? input.command
+          : {
+              command: input.command,
+              columnBindings: input.columnBindings,
+            },
+      ),
+    )
+    .digest('hex');
 }

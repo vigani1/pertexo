@@ -1,4 +1,15 @@
-import { isUniqueConstraintFailure } from '../platform/query-errors.js';
+import {
+  isUniqueConstraintFailure,
+  queryFailure,
+  rethrowQueryFailure,
+} from '../platform/query-errors.js';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import {
+  workspaceDataTables as tables,
+  workspaceDataTableRows as tableRows,
+  workspaceDataTableQuotas as quotasTable,
+} from '../schema/data-tables.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
@@ -12,7 +23,12 @@ import {
 } from '@pertexo/node-sdk';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import type { DataTableDefinition, DataTableQuotas } from './contract.js';
-import { boundedResult, queryClause, type StoredRow } from './rows.queries.js';
+import {
+  boundedResult,
+  queryClause,
+  rowFields,
+  type StoredRow,
+} from './rows.queries.js';
 export function keyValue(
   table: DataTableDefinition,
   values: DataTableValues,
@@ -42,6 +58,7 @@ export async function mutateRows(
       Readonly<{ rowId: string; expectedRevision: number }> | undefined;
   }>,
 ): Promise<DataTableResult> {
+  const db = drizzle(client);
   const old = await lockMutationRows(client, workspaceId, {
     table,
     command,
@@ -52,15 +69,21 @@ export async function mutateRows(
   let result: DataTableResult;
   if (command.operation === 'delete') {
     if (old.length > 0)
-      await client.query(
-        'delete from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and id=any($3::uuid[])',
-        [workspaceId, table.id, old.map((row) => row.id)],
-      );
+      await db
+        .delete(tableRows)
+        .where(
+          and(
+            eq(tableRows.workspaceId, workspaceId),
+            eq(tableRows.tableId, table.id),
+            inArray(
+              tableRows.id,
+              old.map((row) => row.id),
+            ),
+          ),
+        )
+        .catch(rethrowQueryFailure);
     countDelta = -old.length;
-    byteDelta = -old.reduce(
-      (sum, row) => sum + utf8ByteLength(row.values_json),
-      0,
-    );
+    byteDelta = -old.reduce((sum, row) => sum + utf8ByteLength(row.values), 0);
     result = boundedResult([], old.length);
   } else {
     const insertsRow =
@@ -73,11 +96,15 @@ export async function mutateRows(
       countDelta = 1;
       byteDelta = utf8ByteLength(text);
       result = boundedResult([{ id, revision: 1, values }], 1);
-      await client
-        .query(
-          'insert into app.workspace_data_table_rows(workspace_id,table_id,id,values_json,key_value) values($1,$2,$3,$4,$5)',
-          [workspaceId, table.id, id, text, keyValue(table, values)],
-        )
+      await db
+        .insert(tableRows)
+        .values({
+          workspaceId,
+          tableId: table.id,
+          id,
+          values: text,
+          keyValue: keyValue(table, values),
+        })
         .catch((error: unknown) => rowKeyConflict(error, table, values));
     } else {
       // An existing row keeps every column the command doesn't name.
@@ -87,15 +114,24 @@ export async function mutateRows(
       const outputs = [];
       for (const row of old) {
         const values = validateDataTableValues(table.columns, {
-          ...(JSON.parse(row.values_json) as DataTableValues),
+          ...(JSON.parse(row.values) as DataTableValues),
           ...patch,
         });
         const text = normalizedJson(values);
-        byteDelta += utf8ByteLength(text) - utf8ByteLength(row.values_json);
-        await client
-          .query(
-            'update app.workspace_data_table_rows set values_json=$4,key_value=$5,revision=revision+1 where workspace_id=$1 and table_id=$2 and id=$3',
-            [workspaceId, table.id, row.id, text, keyValue(table, values)],
+        byteDelta += utf8ByteLength(text) - utf8ByteLength(row.values);
+        await db
+          .update(tableRows)
+          .set({
+            values: text,
+            keyValue: keyValue(table, values),
+            revision: sql`${tableRows.revision}+1`,
+          })
+          .where(
+            and(
+              eq(tableRows.workspaceId, workspaceId),
+              eq(tableRows.tableId, table.id),
+              eq(tableRows.id, row.id),
+            ),
           )
           .catch((error: unknown) => rowKeyConflict(error, table, values));
         if (command.operation === 'upsert')
@@ -113,7 +149,8 @@ export async function mutateRows(
   });
   return result;
 }
-export function translateTableConstraint(error: unknown): never {
+export function translateTableConstraint(caught: unknown): never {
+  const error = queryFailure(caught);
   if (isUniqueConstraintFailure(error))
     throw new DataTableError(
       'key_conflict',
@@ -126,10 +163,11 @@ export function translateTableConstraint(error: unknown): never {
 
 /** Names the clash, since the person writing the row sent this key. */
 function rowKeyConflict(
-  error: unknown,
+  caught: unknown,
   table: DataTableDefinition,
   values: DataTableValues,
 ): never {
+  const error = queryFailure(caught);
   if (!isUniqueConstraintFailure(error) || table.keyColumn === null)
     throw error;
   const key = values[table.keyColumn];
@@ -166,14 +204,21 @@ async function chargeMutation(
       'quota_exceeded',
       'Data table storage is full. Remove rows, split the data or ask an admin to raise the limit.',
     );
-  await client.query(
-    'update app.workspace_data_tables set row_count=row_count+$3,stored_bytes=stored_bytes+$4,revision=revision+1 where workspace_id=$1 and id=$2',
-    [workspaceId, table.id, countDelta, byteDelta],
-  );
-  await client.query(
-    'update app.workspace_data_table_quotas set stored_bytes=stored_bytes+$2 where workspace_id=$1',
-    [workspaceId, byteDelta],
-  );
+  const db = drizzle(client);
+  await db
+    .update(tables)
+    .set({
+      rowCount: sql`${tables.rowCount}+${countDelta}`,
+      storedBytes: sql`${tables.storedBytes}+${byteDelta}`,
+      revision: sql`${tables.revision}+1`,
+    })
+    .where(and(eq(tables.workspaceId, workspaceId), eq(tables.id, table.id)))
+    .catch(rethrowQueryFailure);
+  await db
+    .update(quotasTable)
+    .set({ storedBytes: sql`${quotasTable.storedBytes}+${byteDelta}` })
+    .where(eq(quotasTable.workspaceId, workspaceId))
+    .catch(rethrowQueryFailure);
 }
 export async function insertTableBatch(
   client: PoolClient,
@@ -193,8 +238,8 @@ export async function insertTableBatch(
       const values = validateDataTableValues(table.columns, input);
       return {
         id: generatePersistedId(),
-        values_json: normalizedJson(values),
-        key_value: keyValue(table, values),
+        values: normalizedJson(values),
+        keyValue: keyValue(table, values),
       };
     } catch (error) {
       if (error instanceof DataTableError)
@@ -203,7 +248,7 @@ export async function insertTableBatch(
     }
   });
   const bytes = records.reduce(
-    (sum, row) => sum + utf8ByteLength(row.values_json),
+    (sum, row) => sum + utf8ByteLength(row.values),
     0,
   );
   await chargeMutation(client, workspaceId, {
@@ -212,11 +257,14 @@ export async function insertTableBatch(
     countDelta: records.length,
     byteDelta: bytes,
   });
-  await client.query(
-    `insert into app.workspace_data_table_rows(workspace_id,table_id,id,values_json,key_value)
- select $1,$2,row.id,row.values_json,row.key_value from jsonb_to_recordset($3::jsonb) as row(id uuid,values_json text,key_value text)`,
-    [workspaceId, table.id, JSON.stringify(records)],
-  );
+  const db = drizzle(client);
+  if (records.length > 0)
+    await db
+      .insert(tableRows)
+      .values(
+        records.map((row) => ({ workspaceId, tableId: table.id, ...row })),
+      )
+      .catch(rethrowQueryFailure);
   return { affected: records.length };
 }
 
@@ -234,6 +282,7 @@ async function lockMutationRows(
       Readonly<{ rowId: string; expectedRevision: number }> | undefined;
   }>,
 ): Promise<StoredRow[]> {
+  const db = drizzle(client);
   let old: StoredRow[] = [];
   if (command.operation === 'upsert') {
     if (table.keyColumn === null)
@@ -251,20 +300,32 @@ async function lockMutationRows(
         `Column ${table.keyColumn} is required.`,
       );
     const key = keyValue(table, values);
-    old = (
-      await client.query<StoredRow>(
-        'select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and key_value=$3 for update',
-        [workspaceId, table.id, key],
+    old = await db
+      .select(rowFields)
+      .from(tableRows)
+      .where(
+        and(
+          eq(tableRows.workspaceId, workspaceId),
+          eq(tableRows.tableId, table.id),
+          eq(tableRows.keyValue, sql`${key}::text`),
+        ),
       )
-    ).rows;
+      .for('update')
+      .catch(rethrowQueryFailure);
   } else if (command.operation === 'update' || command.operation === 'delete') {
     if (rowIdentity !== undefined) {
-      old = (
-        await client.query<StoredRow>(
-          'select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and id=$3 for update',
-          [workspaceId, table.id, rowIdentity.rowId],
+      old = await db
+        .select(rowFields)
+        .from(tableRows)
+        .where(
+          and(
+            eq(tableRows.workspaceId, workspaceId),
+            eq(tableRows.tableId, table.id),
+            eq(tableRows.id, rowIdentity.rowId),
+          ),
         )
-      ).rows;
+        .for('update')
+        .catch(rethrowQueryFailure);
       if (old[0]?.revision !== rowIdentity.expectedRevision)
         throw new DataTableError(
           'conflict',
@@ -286,14 +347,20 @@ async function lockMutationRows(
           'invalid_values',
           'Writes do not support a row offset.',
         );
-      const parameters: unknown[] = [workspaceId, table.id];
-      const where = queryClause(table, command.query, parameters);
-      old = (
-        await client.query<StoredRow>(
-          `select id,revision,values_json from app.workspace_data_table_rows where workspace_id=$1 and table_id=$2 and ${where} order by id limit 1001 for update`,
-          parameters,
+      old = await db
+        .select(rowFields)
+        .from(tableRows)
+        .where(
+          and(
+            eq(tableRows.workspaceId, workspaceId),
+            eq(tableRows.tableId, table.id),
+            queryClause(table, command.query),
+          ),
         )
-      ).rows;
+        .orderBy(tableRows.id)
+        .limit(DATA_TABLE_LIMITS.batchRows + 1)
+        .for('update')
+        .catch(rethrowQueryFailure);
       if (old.length > DATA_TABLE_LIMITS.batchRows)
         throw new DataTableError(
           'quota_exceeded',
