@@ -30,44 +30,43 @@ import {
 } from './policy.js';
 
 function scopedSession(db: NodePgDatabase, sessionId: string) {
-  return db.$with('scoped_session').as(
-    db
-      .select({
-        user_id: authSessions.userId,
-        authentication_method: authSessions.authenticationMethod,
-        federation_provider_id: authSessions.federationProviderId,
-        federation_provider_revision: authSessions.federationProviderRevision,
-        status: users.status,
-        email_verified: users.emailVerified,
-        organization_id: authDomains.organizationId,
-        require_sso: authDomains.requireSso,
-        workspace_scope:
-          sql<string>`set_config('app.workspace_id',coalesce(${authOrganizations.controlWorkspaceId}::text,''),true)`.as(
-            'workspace_scope',
-          ),
-      })
-      .from(authSessions)
-      .innerJoin(users, eq(users.id, authSessions.userId))
-      .leftJoin(
-        authDomains,
-        and(
-          sql`${authDomains.domain}=lower(split_part(${users.email},'@',2))`,
-          isNotNull(authDomains.verifiedAt),
+  const source = db
+    .select({
+      user_id: authSessions.userId,
+      authentication_method: authSessions.authenticationMethod,
+      federation_provider_id: authSessions.federationProviderId,
+      federation_provider_revision: authSessions.federationProviderRevision,
+      status: users.status,
+      email_verified: users.emailVerified,
+      organization_id: authDomains.organizationId,
+      require_sso: authDomains.requireSso,
+      workspace_scope:
+        sql<string>`set_config('app.workspace_id',coalesce(${authOrganizations.controlWorkspaceId}::text,''),true)`.as(
+          'workspace_scope',
         ),
-      )
-      .leftJoin(
-        authOrganizations,
-        eq(authOrganizations.id, authDomains.organizationId),
-      )
-      .where(
-        and(
-          eq(authSessions.id, sessionId),
-          gt(authSessions.expiresAt, sql`clock_timestamp()`),
-        ),
+    })
+    .from(authSessions)
+    .innerJoin(users, eq(users.id, authSessions.userId))
+    .leftJoin(
+      authDomains,
+      and(
+        sql`${authDomains.domain}=lower(split_part(${users.email},'@',2))`,
+        isNotNull(authDomains.verifiedAt),
       ),
-  );
+    )
+    .leftJoin(
+      authOrganizations,
+      eq(authOrganizations.id, authDomains.organizationId),
+    )
+    .where(
+      and(
+        eq(authSessions.id, sessionId),
+        gt(authSessions.expiresAt, sql`clock_timestamp()`),
+      ),
+    );
+  return { source, scoped: db.$with('scoped_session').as(source) };
 }
-type ScopedSession = ReturnType<typeof scopedSession>;
+type ScopedSession = ReturnType<typeof scopedSession>['scoped'];
 function recoveryFacts(db: NodePgDatabase, scoped: ScopedSession) {
   const ownership = db
     .select({ one: sql`1` })
@@ -143,7 +142,7 @@ function providerFacts(db: NodePgDatabase, scoped: ScopedSession) {
 }
 function sessionFactsQuery(pool: Pool | PoolClient, sessionId: string) {
   const db = drizzle(pool);
-  const scoped = scopedSession(db, sessionId);
+  const { scoped, source: scope } = scopedSession(db, sessionId);
   const { ownership, password } = recoveryFacts(db, scoped);
   const { provider, directory } = providerFacts(db, scoped);
   const query = db
@@ -175,7 +174,7 @@ function sessionFactsQuery(pool: Pool | PoolClient, sessionId: string) {
     .from(scoped)
     .leftJoinLateral(provider, sql`true`)
     .leftJoinLateral(directory, sql`true`);
-  return { query, scope: scoped._.sql };
+  return { query, scope };
 }
 
 /** The materialized scope precedes RLS reads and expires with this single statement. */
