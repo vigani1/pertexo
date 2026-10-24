@@ -156,7 +156,7 @@ for (const [category, after, label] of changes) {
         ) : context === 'approval' ? (
           <ReviewCandidate graph={after} liveGraph={base} />
         ) : context === 'conflict' ? (
-          <EditorStoreContext value={{ store }}>
+          <EditorStoreContext value={store}>
             <ConflictCompareDialog open onOpenChange={() => undefined} />
           </EditorStoreContext>
         ) : context === 'promotion' ? (
