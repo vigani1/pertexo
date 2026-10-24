@@ -1,14 +1,20 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
-import type { DataTableRow } from '@pertexo/node-sdk';
+import type { DataTableRow, DataTableColumn } from '@pertexo/node-sdk';
 import { Button } from '@/components/ui/button';
 import { DateInput } from '@/components/ui/date-input';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { LabelledField } from '@/components/ui/field';
+import {
+  LabelledField,
+  type LabelledControlProps,
+} from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
-import { useFieldValidation } from '@/components/ui/use-field-validation';
+import {
+  useFieldValidation,
+  type FieldValidation,
+} from '@/components/ui/use-field-validation';
 import {
   Dialog,
   DialogContent,
@@ -135,77 +141,14 @@ export function TableRowEditor({
               };
               const text = draft[column.name] ?? '';
               return (
-                <LabelledField
+                <RowField
                   key={column.name}
-                  id={`cell-${column.name}`}
-                  label={
-                    <>
-                      {column.name}
-                      {column.required ? ' *' : ''}
-                      <span className="font-normal text-muted-foreground">
-                        {' '}
-                        · {column.type}
-                      </span>
-                    </>
-                  }
+                  column={column}
+                  text={text}
                   error={validation.error(column.name)}
-                >
-                  {(control) =>
-                    column.type === 'boolean' ? (
-                      <TableChoice
-                        id={control.id}
-                        value={text}
-                        choices={[
-                          ...(column.required
-                            ? []
-                            : [{ value: '', label: 'Empty' }]),
-                          { value: 'true', label: 'True' },
-                          { value: 'false', label: 'False' },
-                        ]}
-                        onChange={set}
-                      />
-                    ) : column.type === 'date' ? (
-                      <DateInput
-                        control={control}
-                        inputRef={validation.register(column.name)}
-                        value={text}
-                        onChange={set}
-                      />
-                    ) : column.type === 'number' ? (
-                      // No digit pad: iPhone's has no minus key, and its
-                      // decimal key types the region's separator, often ",".
-                      <Input
-                        {...control}
-                        ref={validation.register(column.name)}
-                        className="font-mono"
-                        value={text}
-                        onChange={(event) => {
-                          set(event.currentTarget.value);
-                        }}
-                      />
-                    ) : (
-                      // Text keeps its line breaks; JSON gets room to read.
-                      <Textarea
-                        {...control}
-                        ref={validation.register(column.name)}
-                        value={text}
-                        onChange={(event) => {
-                          set(event.currentTarget.value);
-                        }}
-                        className={
-                          column.type === 'json' ? 'font-mono' : 'min-h-9'
-                        }
-                        rows={Math.min(
-                          8,
-                          Math.max(
-                            column.type === 'json' ? 4 : 1,
-                            text.split('\n').length,
-                          ),
-                        )}
-                      />
-                    )
-                  }
-                </LabelledField>
+                  registerInput={validation.register}
+                  onChange={set}
+                />
               );
             })}
           </fieldset>
@@ -232,4 +175,112 @@ export function TableRowEditor({
       </DialogContent>
     </Dialog>
   );
+}
+
+type CellFieldProps = Readonly<{
+  column: DataTableColumn;
+  text: string;
+  error: string | undefined;
+  registerInput: FieldValidation<string>['register'];
+  onChange: (text: string) => void;
+}>;
+
+function RowField({
+  column,
+  text,
+  error,
+  registerInput,
+  onChange,
+}: CellFieldProps) {
+  return (
+    <LabelledField
+      id={`cell-${column.name}`}
+      label={
+        <>
+          {column.name}
+          {column.required ? ' *' : ''}
+          <span className="font-normal text-muted-foreground">
+            {' '}
+            · {column.type}
+          </span>
+        </>
+      }
+      error={error}
+    >
+      {(control) => (
+        <CellInput
+          column={column}
+          control={control}
+          text={text}
+          registerInput={registerInput}
+          onChange={onChange}
+        />
+      )}
+    </LabelledField>
+  );
+}
+
+function CellInput({
+  column,
+  control,
+  text,
+  registerInput,
+  onChange,
+}: Omit<CellFieldProps, 'error'> &
+  Readonly<{ control: LabelledControlProps }>) {
+  switch (column.type) {
+    case 'boolean':
+      return (
+        <TableChoice
+          id={control.id}
+          value={text}
+          choices={[
+            ...(column.required ? [] : [{ value: '', label: 'Empty' }]),
+            { value: 'true', label: 'True' },
+            { value: 'false', label: 'False' },
+          ]}
+          onChange={onChange}
+        />
+      );
+    case 'date':
+      return (
+        <DateInput
+          control={control}
+          inputRef={registerInput(column.name)}
+          value={text}
+          onChange={onChange}
+        />
+      );
+    case 'number':
+      return (
+        // No digit pad: iPhone's has no minus key, and its
+        // decimal key types the region's separator, often ",".
+        <Input
+          {...control}
+          ref={registerInput(column.name)}
+          className="font-mono"
+          value={text}
+          onChange={(event) => {
+            onChange(event.currentTarget.value);
+          }}
+        />
+      );
+    case 'text':
+    case 'json':
+      return (
+        <Textarea
+          {...control}
+          ref={registerInput(column.name)}
+          value={text}
+          onChange={(event) => {
+            onChange(event.currentTarget.value);
+          }}
+          className={column.type === 'json' ? 'font-mono' : 'min-h-9'}
+          rows={Math.min(
+            8,
+            Math.max(column.type === 'json' ? 4 : 1, text.split('\n').length),
+          )}
+        />
+      );
+  }
 }
