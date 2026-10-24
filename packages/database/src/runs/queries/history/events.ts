@@ -159,7 +159,7 @@ export async function readRunEventsAfter(
           and event.workflow_run_id = run.id
       ), 0)::integer as high_water
       from app.workflow_runs run
-      where ${sql.raw(retainedTestRunSql('run'))} and run.workspace_id = ${transaction.workspaceId}
+      where ${retainedTestRunSql('run')} and run.workspace_id = ${transaction.workspaceId}
         and run.id = ${parsed.runId}
     )
     select snapshot.high_water,

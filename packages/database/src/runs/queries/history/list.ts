@@ -145,10 +145,10 @@ async function listWorkflowRunsInTransaction(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
         workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`),
-        sql.raw(ordinaryRunSql('workflow_runs')),
+        ordinaryRunSql('workflow_runs'),
         input.runValueKey === undefined
           ? undefined
-          : sql`not (${sql.raw(expiredRunSql('workflow_runs'))}) and exists (
+          : sql`not (${expiredRunSql('workflow_runs')}) and exists (
           select 1 from ${workflowRunValues} value
           where value.workspace_id=${workflowRuns.workspaceId} and value.workflow_run_id=${workflowRuns.id}
             and value.key=${input.runValueKey} and value.value=${input.runValue}

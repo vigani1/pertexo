@@ -122,6 +122,7 @@ it('preserves mail identities through the rename and old messages through subseq
       '0050_folder_access.sql',
       '0051_connection_sharing.sql',
       '0052_publication_reuse_candidates.sql',
+      '0053_remove_artifact_lookup.sql',
     ]);
     const after = await catalog('app.system_mail_deliveries');
     expect(after.relation).toEqual(before.relation);

@@ -166,10 +166,13 @@ export async function finalizeArtifactUpload(
       `Artifact cannot be finalized from ${artifact.status}`,
     );
   }
-  const expiry = await transaction.db.execute<{ expired: boolean }>(
-    sql`select ${artifact.expiresAt}::timestamptz <= clock_timestamp() as expired`,
-  );
-  if (expiry.rows[0]?.expired !== false) {
+  const [expiry] = await transaction.db
+    .select({
+      expired: sql<boolean | null>`${artifacts.expiresAt}<=clock_timestamp()`,
+    })
+    .from(artifacts)
+    .where(eq(artifacts.id, artifact.id));
+  if (expiry?.expired !== false) {
     throw new ArtifactLifecycleConflictError('Pending artifact has expired');
   }
 
@@ -251,10 +254,13 @@ export async function claimDueUnfinalizedArtifact(
       `Artifact cannot be claimed for unfinalized cleanup from ${artifact.status}`,
     );
   }
-  const expiry = await transaction.db.execute<{ expired: boolean }>(
-    sql`select ${artifact.expiresAt}::timestamptz <= clock_timestamp() as expired`,
-  );
-  if (!(expiry.rows[0]?.expired ?? false)) {
+  const [expiry] = await transaction.db
+    .select({
+      expired: sql<boolean | null>`${artifacts.expiresAt}<=clock_timestamp()`,
+    })
+    .from(artifacts)
+    .where(eq(artifacts.id, artifact.id));
+  if (!(expiry?.expired ?? false)) {
     throw new ArtifactLifecycleConflictError('Pending artifact is not due');
   }
 

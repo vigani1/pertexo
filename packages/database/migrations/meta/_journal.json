@@ -372,6 +372,13 @@
       "when": 1792716381232,
       "tag": "0052_publication_reuse_candidates",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1792818543946,
+      "tag": "0053_remove_artifact_lookup",
+      "breakpoints": true
     }
   ]
 }

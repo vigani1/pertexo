@@ -1,3 +1,4 @@
+import { bindResourcePredicate } from '../../tenant-access/resources/query-scope.js';
 import {
   retainedTestRunSql,
   runRetentionIntervalSql,
@@ -83,7 +84,7 @@ export async function captureSampleSource(
           ],
         )
       : await client.query<{ output_ref: unknown }>(
-          `select node.output_ref from app.node_runs node join app.workflow_runs run on run.workspace_id=node.workspace_id and run.id=node.workflow_run_id where node.workspace_id=$1 and run.workflow_id=$2 and node.node_id=$3 and node.id=$4 and run.id=$5 and node.status='succeeded' and node.output_ref is not null and run.details_purged_at is null and ${retainedTestRunSql('run', 'clock_timestamp()')} and (run.completed_at is null or run.completed_at > clock_timestamp()-${runRetentionIntervalSql('run')})`,
+          `select node.output_ref from app.node_runs node join app.workflow_runs run on run.workspace_id=node.workspace_id and run.id=node.workflow_run_id where node.workspace_id=$1 and run.workflow_id=$2 and node.node_id=$3 and node.id=$4 and run.id=$5 and node.status='succeeded' and node.output_ref is not null and run.details_purged_at is null and ${bindResourcePredicate(retainedTestRunSql('run', 'clock_timestamp()').inlineParams(), [])} and (run.completed_at is null or run.completed_at > clock_timestamp()-${bindResourcePredicate(runRetentionIntervalSql('run').inlineParams(), [])})`,
           [
             input.workspaceId,
             input.workflowId,

@@ -284,7 +284,7 @@ function acceptedWorkflowRunValues(
     inputRefExpiresAt:
       storedRunInputJson === null
         ? null
-        : sql`now() + ${sql.raw(runInputRetentionSql(parsed.triggerType))}`,
+        : sql`now() + ${runInputRetentionSql(parsed.triggerType)}`,
     variableSetRevision,
     triggerType: parsed.triggerType,
     startedBy: parsed.startedBy ?? null,

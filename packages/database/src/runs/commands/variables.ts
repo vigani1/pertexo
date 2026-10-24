@@ -21,7 +21,7 @@ export async function variableRevisionForAcceptance(
     const [source] = await transaction.db
       .select({
         revision: workflowRuns.variableSetRevision,
-        retained: sql<boolean>`(${workflowRuns.detailsPurgedAt} IS NULL AND (${workflowRuns.completedAt} IS NULL OR ${workflowRuns.completedAt}>clock_timestamp()-${sql.raw(RUN_DETAILS_RETENTION_SQL)}))`,
+        retained: sql<boolean>`(${workflowRuns.detailsPurgedAt} IS NULL AND (${workflowRuns.completedAt} IS NULL OR ${workflowRuns.completedAt}>clock_timestamp()-${RUN_DETAILS_RETENTION_SQL}))`,
       })
       .from(workflowRuns)
       .where(

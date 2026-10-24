@@ -128,7 +128,7 @@ async function readInTransaction(
           (count(*) filter (where status = 'running'))::integer as running,
           (count(*) filter (where status = 'waiting'))::integer as waiting
         from app.workflow_runs
-        where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
+        where ${ordinaryRunSql()} and workspace_id = ${transaction.workspaceId}
           and ${workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`)}
           and status in ('queued', 'running', 'waiting')
       `)
@@ -137,7 +137,7 @@ async function readInTransaction(
   const statusRows = await transaction.db.execute(sql`
     select status, count(*)::integer as run_count
     from app.workflow_runs
-    where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
+    where ${ordinaryRunSql()} and workspace_id = ${transaction.workspaceId}
           and ${workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`)}
       and created_at >= transaction_timestamp()
         - make_interval(hours => ${hours}::integer)
@@ -191,7 +191,7 @@ async function readWorkflowBreakdown(
     with window_counts as (
       select workflow_id, status, count(*)::integer as run_count
       from app.workflow_runs
-      where ${sql.raw(ordinaryRunSql())} and workspace_id = ${transaction.workspaceId}
+      where ${ordinaryRunSql()} and workspace_id = ${transaction.workspaceId}
           and ${workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`)}
         and created_at >= transaction_timestamp()
           - make_interval(hours => ${hours}::integer)
