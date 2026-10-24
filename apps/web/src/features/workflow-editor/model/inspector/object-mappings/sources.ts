@@ -4,7 +4,7 @@ import {
   workspaceVariableNameSchema,
   type ValueSource,
 } from '@pertexo/workflow-model';
-import { propertyPath } from '../input-mappings';
+import { propertyPath } from '../input-mappings/draft';
 
 export function valueExpression(source: ValueSource): string | undefined {
   switch (source.kind) {

@@ -3,8 +3,8 @@ import {
   canonicalJson,
   type ValueSource,
 } from '@pertexo/workflow-model';
-import type { InputMappingDraftRow } from '../input-mappings';
-import { inputMappingRowsFor } from '../input-mappings';
+import type { InputMappingDraftRow } from '../input-mappings/draft';
+import { inputMappingRowsFor } from '../input-mappings/draft';
 import { objectExpressions } from './expressions';
 import { valueExpression } from './sources';
 

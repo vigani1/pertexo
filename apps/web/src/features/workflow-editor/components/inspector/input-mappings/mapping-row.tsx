@@ -10,7 +10,7 @@ import {
   type InputMappingDraftRow,
   type InputMappingRowErrors,
   type PredecessorOption,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 import { MappingValueEditor } from './value-editor';
 import { MappingSummary } from './mapping-summary';
 

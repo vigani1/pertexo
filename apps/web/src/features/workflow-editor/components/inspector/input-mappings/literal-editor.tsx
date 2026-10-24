@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type {
   InputMappingDraftRow,
   SchemaValueType,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 
 type LiteralRow = Extract<InputMappingDraftRow, { kind: 'literal' }>;
 

@@ -12,7 +12,7 @@ import {
   paginationValue,
 } from '@/features/workflow-editor/model/inspector/http-pagination/draft';
 import { paginationFields } from '@/features/workflow-editor/model/inspector/http-pagination/fields';
-import { outputFieldsOf } from '@/features/workflow-editor/model/inspector/input-mappings';
+import { outputFieldsOf } from '@/features/workflow-editor/model/inspector/input-mappings/draft';
 
 describe('HTTP pagination setup', () => {
   it.each(['next_link', 'cursor', 'page', 'offset'])(

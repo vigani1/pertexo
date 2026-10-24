@@ -7,7 +7,7 @@ import {
   validateInputMappingRows,
   type InputMappingDraftRow,
   type InputMappingRowErrors,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 
 type MappingDraft = Readonly<{
   rows: readonly InputMappingDraftRow[];

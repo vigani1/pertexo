@@ -15,7 +15,7 @@ import {
   directPredecessorOptions,
   inputMappingRowsFor,
   validateInputMappingRows,
-} from '@/features/workflow-editor/model/inspector/input-mappings';
+} from '@/features/workflow-editor/model/inspector/input-mappings/draft';
 const node = (
   id: string,
   key = 'core.set',

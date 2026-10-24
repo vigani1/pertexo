@@ -17,7 +17,7 @@ import {
   inputKeySuggestions,
   nodeUsesRunInputDirectly,
   type InputMappingDraftRow,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 import { useInputMappingDraft } from '../input-mappings/use-draft';
 import { IncomingLinks } from '../incoming-links';
 import {

@@ -20,7 +20,7 @@ import {
 import {
   validateInputMappingRows,
   type InputMappingDraftRow,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 import { useInspectorDraftField } from '../use-draft-field';
 
 type Props = Readonly<{

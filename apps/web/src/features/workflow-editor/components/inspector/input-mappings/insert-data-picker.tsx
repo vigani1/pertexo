@@ -28,7 +28,7 @@ import {
   outputFieldsOf,
   propertyPath,
   type OutputField,
-} from '../../../model/inspector/input-mappings';
+} from '../../../model/inspector/input-mappings/draft';
 
 export type InsertedSource =
   | Readonly<{ kind: 'expression'; expression: string }>

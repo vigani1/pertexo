@@ -1,7 +1,7 @@
 import { formatByteLength } from '@/lib/format/bytes';
 import { stepTitle } from '../graph/adapter';
 import type { GraphLevel } from '../graph/scopes';
-import type { InputMappingDraftRow } from './input-mappings';
+import type { InputMappingDraftRow } from './input-mappings/draft';
 
 /**
  * How a source chip reads: references to data elsewhere (a step's output,
