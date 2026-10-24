@@ -1,12 +1,13 @@
 import type { WorkflowPromotionResult } from '@pertexo/contracts';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
-import { sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { auditEvents } from '../../schema/foundation.js';
+import { workflows } from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { WorkspaceScopeRunner } from '../../tenant-access/transactions.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
-import {
-  bindResourcePredicate,
-  workflowScopeSql,
-} from '../../tenant-access/resources/scope.queries.js';
+import { workflowScopeSql } from '../../tenant-access/resources/query-scope.js';
 import type { PromotionScope } from './contract.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -30,30 +31,28 @@ async function readPromotionReceipt(
     workflowIds: readonly string[];
   }>,
 ) {
-  const parameters: unknown[] = [
-    workspaceId,
-    workflowIds,
-    receipt.promotionId,
-    PROMOTION_LIMITS.workflows + 1,
-  ];
   const scope = await readFolderScope(client, { workspaceId, actorId });
-  const visible = bindResourcePredicate(
-    workflowScopeSql(scope, sql`target_id`),
-    parameters,
-  );
-  const rows = (
-    await client.query<{
-      metadata: Omit<
-        WorkflowPromotionResult['items'][number],
-        'publishedVersionId'
-      > & {
-        targetVersionId: string | null;
-      };
-    }>(
-      `select metadata from app.audit_events where workspace_id=$1 and ${visible} and action='workflow.promotion_sent' and target_id=any($2::uuid[]) and metadata->>'promotionId'=$3 order by id limit $4`,
-      parameters,
+  const rows = await drizzle(client)
+    .select({
+      metadata: sql<
+        Omit<WorkflowPromotionResult['items'][number], 'publishedVersionId'> & {
+          targetVersionId: string | null;
+        }
+      >`${auditEvents.metadata}`,
+    })
+    .from(auditEvents)
+    .where(
+      and(
+        eq(auditEvents.workspaceId, workspaceId),
+        workflowScopeSql(scope, sql`${auditEvents.targetId}`),
+        eq(auditEvents.action, 'workflow.promotion_sent'),
+        inArray(auditEvents.targetId, [...workflowIds]),
+        sql`${auditEvents.metadata}->>'promotionId'=${receipt.promotionId}`,
+      ),
     )
-  ).rows;
+    .orderBy(asc(auditEvents.id))
+    .limit(PROMOTION_LIMITS.workflows + 1)
+    .catch(rethrowQueryFailure);
   if (rows.length !== workflowIds.length)
     throw new WorkflowPromotionError(
       'unavailable',
@@ -95,19 +94,21 @@ export async function readAuthorizedPromotionReceipt(
         workspaceId: receipt.targetWorkspaceId,
         actorId: input.actorId,
       });
-      const parameters: unknown[] = [
-        receipt.targetWorkspaceId,
-        result.items.map((item) => item.targetWorkflowId),
-      ];
-      const visible = bindResourcePredicate(
-        workflowScopeSql(scope, sql`id`, 'workflow:update'),
-        parameters,
-      );
-      const found = await client.query(
-        `select id from app.workflows where workspace_id=$1 and id=any($2::uuid[]) and ${visible}`,
-        parameters,
-      );
-      if (found.rows.length !== result.items.length)
+      const found = await drizzle(client)
+        .select({ id: workflows.id })
+        .from(workflows)
+        .where(
+          and(
+            eq(workflows.workspaceId, receipt.targetWorkspaceId),
+            inArray(
+              workflows.id,
+              result.items.map((item) => item.targetWorkflowId),
+            ),
+            workflowScopeSql(scope, sql`${workflows.id}`, 'workflow:update'),
+          ),
+        )
+        .catch(rethrowQueryFailure);
+      if (found.length !== result.items.length)
         throw new WorkflowPromotionError(
           'unavailable',
           'The target workflow is unavailable.',

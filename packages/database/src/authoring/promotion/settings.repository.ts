@@ -1,5 +1,10 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workspaces, workspaceMemberships } from '../../schema/foundation.js';
+import { workspacePromotionTargets } from '../../schema/authoring/promotions/targets.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { WorkflowPromotionTargetResult } from '@pertexo/contracts';
-import { hasCapability, type Role } from '@pertexo/workflow-model';
+import { hasCapability } from '@pertexo/workflow-model';
 import type { WorkflowPromotionSettings } from '@pertexo/contracts';
 import {
   claimCommand,
@@ -56,11 +61,18 @@ function readPromotionSettings(
           'The promotion target changed. Refresh the settings.',
         );
       const member = (
-        await client.query<{ role: Role }>(
-          "select role from app.workspace_memberships where workspace_id=$1 and user_id=$2 and status='active'",
-          [input.workspaceId, input.actorId],
-        )
-      ).rows[0];
+        await drizzle(client)
+          .select({ role: workspaceMemberships.role })
+          .from(workspaceMemberships)
+          .where(
+            and(
+              eq(workspaceMemberships.workspaceId, input.workspaceId),
+              eq(workspaceMemberships.userId, input.actorId),
+              eq(workspaceMemberships.status, 'active'),
+            ),
+          )
+          .catch(rethrowQueryFailure)
+      )[0];
       return {
         ...link,
         canConfigure:
@@ -90,14 +102,15 @@ function readPromotionSettings(
             throw error;
           }
           const row = (
-            await client.query<{
-              name: string;
-              require_publish_approval: boolean;
-            }>(
-              'select name,require_publish_approval from app.workspaces where id=$1',
-              [targetId],
-            )
-          ).rows[0];
+            await drizzle(client)
+              .select({
+                name: workspaces.name,
+                require_publish_approval: workspaces.requirePublishApproval,
+              })
+              .from(workspaces)
+              .where(eq(workspaces.id, targetId))
+              .catch(rethrowQueryFailure)
+          )[0];
           if (row === undefined)
             throw new WorkflowPromotionError(
               'unavailable',
@@ -180,11 +193,24 @@ function setPromotionTarget(
             'The promotion target changed. Refresh the settings first.',
           );
         const revision = current.revision + 1;
-        await client.query(
-          `insert into app.workspace_promotion_targets(workspace_id,target_workspace_id,revision,updated_by)
-          values($1,$2,$3,$4) on conflict(workspace_id) do update set target_workspace_id=excluded.target_workspace_id,revision=excluded.revision,updated_by=excluded.updated_by,updated_at=clock_timestamp()`,
-          [input.workspaceId, input.targetWorkspaceId, revision, input.actorId],
-        );
+        await drizzle(client)
+          .insert(workspacePromotionTargets)
+          .values({
+            workspaceId: input.workspaceId,
+            targetWorkspaceId: input.targetWorkspaceId,
+            revision,
+            updatedBy: input.actorId,
+          })
+          .onConflictDoUpdate({
+            target: [workspacePromotionTargets.workspaceId],
+            set: {
+              targetWorkspaceId: sql`excluded.target_workspace_id`,
+              revision: sql`excluded.revision`,
+              updatedBy: sql`excluded.updated_by`,
+              updatedAt: sql`clock_timestamp()`,
+            },
+          })
+          .catch(rethrowQueryFailure);
         await appendAuditFact(client, {
           workspaceId: input.workspaceId,
           actorId: input.actorId,
