@@ -50,13 +50,7 @@ export function DayRangeForm({
     <form className="mt-4 border-t border-border pt-4" onSubmit={apply}>
       <p className="text-xs font-medium text-muted-foreground">Custom days</p>
       <p aria-live="polite" className="mt-1 text-sm">
-        {from === ''
-          ? 'Pick the first day.'
-          : to === ''
-            ? `From ${dayWords(from)}. Now pick the last day.`
-            : from === to
-              ? dayWords(from)
-              : `${dayWords(from)} to ${dayWords(to)}`}
+        {rangeCaption(from, to)}
       </p>
       <div className="mt-2">
         <Calendar
@@ -88,4 +82,14 @@ export function DayRangeForm({
       </Button>
     </form>
   );
+}
+
+function rangeCaption(from: LocalDate, to: LocalDate): string {
+  return from === ''
+    ? 'Pick the first day.'
+    : to === ''
+      ? `From ${dayWords(from)}. Now pick the last day.`
+      : from === to
+        ? dayWords(from)
+        : `${dayWords(from)} to ${dayWords(to)}`;
 }

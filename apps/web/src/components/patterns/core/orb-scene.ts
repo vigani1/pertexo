@@ -272,7 +272,11 @@ function createParticles(count: number): Particle[] {
       y,
       z: Math.sin(theta) * ring,
       seed: Math.random(),
-      swatch: pick < 0.68 ? 0 : pick < 0.88 ? 1 : 2,
+      swatch: particleSwatch(pick),
     };
   });
+}
+
+function particleSwatch(pick: number): Particle['swatch'] {
+  return pick < 0.68 ? 0 : pick < 0.88 ? 1 : 2;
 }

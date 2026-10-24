@@ -49,18 +49,44 @@ export function ProgressButton({
       ) : (
         icon
       )}
-      {pending ? (
-        pendingLabel
-      ) : waiting ? (
-        <span>
-          {waitLabel}{' '}
-          <span className="font-mono tabular-nums">
-            {formatCountdown(waitSeconds)}
-          </span>
-        </span>
-      ) : (
-        children
-      )}
+      <ProgressButtonLabel
+        pending={pending}
+        pendingLabel={pendingLabel}
+        waiting={waiting}
+        waitLabel={waitLabel}
+        waitSeconds={waitSeconds}
+      >
+        {children}
+      </ProgressButtonLabel>
     </Button>
+  );
+}
+
+function ProgressButtonLabel({
+  pending,
+  pendingLabel,
+  waiting,
+  waitLabel,
+  waitSeconds,
+  children,
+}: Readonly<{
+  pending: boolean;
+  pendingLabel: string;
+  waiting: boolean;
+  waitLabel: string;
+  waitSeconds: number;
+  children: ReactNode;
+}>) {
+  return pending ? (
+    pendingLabel
+  ) : waiting ? (
+    <span>
+      {waitLabel}{' '}
+      <span className="font-mono tabular-nums">
+        {formatCountdown(waitSeconds)}
+      </span>
+    </span>
+  ) : (
+    children
   );
 }
