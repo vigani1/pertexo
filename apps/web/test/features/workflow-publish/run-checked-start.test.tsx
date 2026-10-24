@@ -66,14 +66,6 @@ function openRunMenu() {
           onOpenAcceptedRun={() => void submission.openAcceptedRun()}
         />
         <RunInputDialog
-          open={open}
-          onOpenChange={setOpen}
-          pending={submission.pending}
-          error={submission.error}
-          retryAvailable={submission.retryAvailable}
-          recoveryIntent={submission.recoveryIntent}
-          onStartNew={submission.startNew}
-          onRetry={submission.retry}
           caseScope={{
             apiClient,
             userId,
@@ -86,6 +78,15 @@ function openRunMenu() {
               }),
             ),
           }}
+          command={{
+            pending: submission.pending,
+            error: submission.error,
+            retryAvailable: submission.retryAvailable,
+            recoveryIntent: submission.recoveryIntent,
+            onStartNew: submission.startNew,
+            onRetry: submission.retry,
+          }}
+          state={{ open, onOpenChange: setOpen }}
         />
       </>
     );

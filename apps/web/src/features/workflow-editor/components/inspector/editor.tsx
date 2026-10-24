@@ -149,30 +149,32 @@ export function EditorInspector({
       })}
       renderTest={(nodeId, stepSideEffect) => (
         <NodeTestPanel
-          apiClient={apiClient}
-          userId={userId}
           editable={editable}
-          stepBinding={sampleBinding(findStep(graph, nodeId))}
-          liveTestUnavailable={previewUnavailable(findStep(graph, nodeId))}
-          workspaceId={workspaceId}
-          workflowId={workflowId}
-          nodeId={nodeId}
-          stepSideEffect={stepSideEffect}
-          priorPreview={priorTestFor(graph, passedTest, nodeId)}
-          rememberedPreview={
-            rememberedTest?.nodeId === nodeId
-              ? rememberedTest.preview
-              : undefined
-          }
           ensureSaved={ensureSaved}
           actionRef={testRef}
-          onFinished={(preview) => {
-            onTestFinished({ nodeId, preview });
+          events={{
+            onFinished: (preview) => {
+              onTestFinished({ nodeId, preview });
+            },
+            onSucceeded: (preview) => {
+              setPassedTest({ previewId: preview.id, nodeId });
+              onTestPassed(nodeId, inlineOutputBytes(preview.output));
+            },
           }}
-          onSucceeded={(preview) => {
-            setPassedTest({ previewId: preview.id, nodeId });
-            onTestPassed(nodeId, inlineOutputBytes(preview.output));
+          previews={{
+            priorPreview: priorTestFor(graph, passedTest, nodeId),
+            rememberedPreview:
+              rememberedTest?.nodeId === nodeId
+                ? rememberedTest.preview
+                : undefined,
           }}
+          step={{
+            stepBinding: sampleBinding(findStep(graph, nodeId)),
+            liveTestUnavailable: previewUnavailable(findStep(graph, nodeId)),
+            nodeId,
+            stepSideEffect,
+          }}
+          scope={{ apiClient, userId, workspaceId, workflowId }}
         >
           {editable &&
           findStep(graph, nodeId)?.definition.key === 'core.webhook' ? (
@@ -187,10 +189,10 @@ export function EditorInspector({
         </NodeTestPanel>
       )}
       view={{
-        editable: editable,
+        editable,
         scratchVersion: actions.scratchVersion,
-        tab: tab,
-        onTabChange: onTabChange,
+        tab,
+        onTabChange,
         focusTarget: actions.focusTarget,
       }}
     />

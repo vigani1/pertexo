@@ -99,24 +99,30 @@ function EditedSinceNote({
  */
 type WorkflowCommandActionsProps = Readonly<{
   testAction?: ReactNode;
-  savedDraftCurrent?: boolean;
   renderFeedback: (feedback: ReactNode) => ReactNode;
-  apiClient: ApiClient;
-  userId: string;
-  workspace: AccessibleWorkspace;
-  workflowId: string;
-  workflow: WorkflowSummary | undefined;
-  graph: WorkflowGraphContract;
-  /** The draft on screen, to say whether it changed since this publish. */
-  draft: Readonly<{ generation: number; revision: number }>;
   commandSession: WorkflowCommandSession;
-  issues: WorkflowIssuesView;
-  issuesOpen: boolean;
-  /** The catalog offers a trigger to start an empty draft with. */
-  triggersAvailable: boolean;
-  onIssuesOpenChange: (open: boolean) => void;
-  onFix: (target: WorkflowValidationTarget) => void;
   onPublished: (receipt: PublicationReceipt) => void;
+  scope: Readonly<{
+    apiClient: ApiClient;
+    userId: string;
+    workspace: AccessibleWorkspace;
+    workflowId: string;
+  }>;
+  snapshot: Readonly<{
+    savedDraftCurrent?: boolean;
+    workflow: WorkflowSummary | undefined;
+    graph: WorkflowGraphContract;
+    /** The draft on screen, to say whether it changed since this publish. */
+    draft: Readonly<{ generation: number; revision: number }>;
+    /** The catalog offers a trigger to start an empty draft with. */
+    triggersAvailable: boolean;
+  }>;
+  validation: Readonly<{
+    issues: WorkflowIssuesView;
+    issuesOpen: boolean;
+    onIssuesOpenChange: (open: boolean) => void;
+    onFix: (target: WorkflowValidationTarget) => void;
+  }>;
 }>;
 
 export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
@@ -135,8 +141,6 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
         <PublishedRunAction
           form={model.liveIsForm}
           canRun={model.canRun}
-          workspaceId={model.workspace.id}
-          workflowId={model.workflowId}
           submission={model.runSubmission}
           published={model.workflow === undefined || model.everPublished}
           loading={model.liveVersion.isFetching}
@@ -145,6 +149,10 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
           }}
           onRunWithInput={() => {
             model.setRunOpen(true);
+          }}
+          scope={{
+            workspaceId: model.workspace.id,
+            workflowId: model.workflowId,
           }}
         />
         {model.receipt === undefined ? null : (
@@ -158,16 +166,8 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
               workspaceId: model.workspace.id,
             }}
             workflowId={model.workflowId}
-            workflow={model.workflow}
-            graph={model.graph}
-            revision={model.draft.revision}
             publication={model.publication}
-            isSavedDraftCurrent={model.commandSession.isSavedDraftCurrent}
-            issues={model.issues}
-            emptyHint={model.emptyHint}
-            savedDraftCurrent={model.savedDraftCurrent}
             capabilities={model.workspace.capabilities}
-            onFix={model.onFix}
             onPublished={(nextReceipt, hasTriggers) => {
               model.setStamp({
                 receipt: nextReceipt,
@@ -178,35 +178,23 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
               });
               model.onPublished(nextReceipt);
             }}
+            validation={{
+              issues: model.issues,
+              emptyHint: model.emptyHint,
+              onFix: model.onFix,
+            }}
+            draft={{
+              workflow: model.workflow,
+              graph: model.graph,
+              revision: model.draft.revision,
+              isSavedDraftCurrent: model.commandSession.isSavedDraftCurrent,
+              savedDraftCurrent: model.savedDraftCurrent,
+            }}
           />
         ) : null}
       </div>
       <RunInputDialog
         key={`${model.userId}:${model.workspace.id}:${model.workflowId}`}
-        open={model.runOpen}
-        pending={model.runSubmission.pending}
-        error={model.runSubmission.error}
-        retryAvailable={model.runSubmission.retryAvailable}
-        recoveryIntent={model.runSubmission.recoveryIntent}
-        publicationConflict={model.runSubmission.publicationConflict}
-        onReviewPublication={async () => {
-          const reviewed = await model.queryClient.query({
-            ...workflowSummaryQueryOptions(
-              model.apiClient,
-              model.userId,
-              model.workspace.id,
-              model.workflowId,
-            ),
-            staleTime: 0,
-          });
-          if (reviewed.publishedVersionId === null)
-            throw new Error('No published version is available to review.');
-          model.runSubmission.clearPublicationConflict();
-          return reviewed.publishedVersionId;
-        }}
-        onOpenChange={model.setRunOpen}
-        onRetry={model.runSubmission.retry}
-        onStartNew={model.runSubmission.startNew}
         {...(model.workflow === undefined
           ? {}
           : {
@@ -217,14 +205,39 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
                 workflow: model.workflow,
               },
             })}
+        publication={{
+          publicationConflict: model.runSubmission.publicationConflict,
+          onReviewPublication: async () => {
+            const reviewed = await model.queryClient.query({
+              ...workflowSummaryQueryOptions(
+                model.apiClient,
+                model.userId,
+                model.workspace.id,
+                model.workflowId,
+              ),
+              staleTime: 0,
+            });
+            if (reviewed.publishedVersionId === null)
+              throw new Error('No published version is available to review.');
+            model.runSubmission.clearPublicationConflict();
+            return reviewed.publishedVersionId;
+          },
+        }}
+        command={{
+          pending: model.runSubmission.pending,
+          error: model.runSubmission.error,
+          retryAvailable: model.runSubmission.retryAvailable,
+          recoveryIntent: model.runSubmission.recoveryIntent,
+          onRetry: model.runSubmission.retry,
+          onStartNew: model.runSubmission.startNew,
+        }}
+        state={{ open: model.runOpen, onOpenChange: model.setRunOpen }}
       />
       {stamp === undefined
         ? null
         : model.renderFeedback(
             <PublishedStamp
               key={stamp.receipt.versionId}
-              workspaceId={model.workspace.id}
-              workflowId={model.workflowId}
               versionNumber={stamp.receipt.versionNumber}
               reused={stamp.receipt.reused}
               liveAgain={stamp.liveAgain}
@@ -237,6 +250,10 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
               onDismiss={() => {
                 model.setStamp(undefined);
               }}
+              scope={{
+                workspaceId: model.workspace.id,
+                workflowId: model.workflowId,
+              }}
             />,
           )}
     </>
@@ -245,23 +262,25 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
 
 function useWorkflowCommandActions({
   renderFeedback,
-  apiClient,
-  userId,
-  workspace,
-  workflowId,
-  workflow,
-  graph,
-  draft,
   commandSession,
-  issues,
-  issuesOpen,
-  triggersAvailable,
-  onIssuesOpenChange,
-  onFix,
   onPublished,
   testAction,
-  savedDraftCurrent = false,
+  scope,
+  snapshot,
+  validation,
 }: WorkflowCommandActionsProps) {
+  const { apiClient, userId, workspace, workflowId } = scope;
+
+  const {
+    workflow,
+    graph,
+    draft,
+    triggersAvailable,
+    savedDraftCurrent = false,
+  } = snapshot;
+
+  const { issues, issuesOpen, onIssuesOpenChange, onFix } = validation;
+
   const [runOpen, setRunOpen] = useState(false);
   const [stamp, setStamp] = useState<
     Readonly<{

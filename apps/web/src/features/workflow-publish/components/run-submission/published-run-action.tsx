@@ -5,24 +5,24 @@ import { RunMenu } from './run-menu';
 export function PublishedRunAction({
   form,
   canRun,
-  workspaceId,
-  workflowId,
   submission,
   published,
   loading,
   onRunNow,
   onRunWithInput,
+  scope,
 }: Readonly<{
   form: boolean;
   canRun: boolean;
-  workspaceId: string;
-  workflowId: string;
   submission: WorkflowCommandSession['runSubmission'];
   published: boolean;
   loading: boolean;
   onRunNow: () => void;
   onRunWithInput: () => void;
+  scope: Readonly<{ workspaceId: string; workflowId: string }>;
 }>) {
+  const { workspaceId, workflowId } = scope;
+
   if (
     form &&
     !submission.retryAvailable &&

@@ -393,16 +393,12 @@ function panel(
       <NotificationsProvider>
         <NodeTestPanel
           key={nodeId}
-          apiClient={apiClient}
-          userId="owner"
           editable
-          workspaceId={workspaceId}
-          workflowId={workflowId}
-          nodeId={nodeId}
-          stepSideEffect={stepSideEffect}
-          priorPreview={undefined}
           ensureSaved={() => Promise.resolve({ revision: 1 })}
-          {...(onSucceeded === undefined ? {} : { onSucceeded })}
+          events={onSucceeded === undefined ? {} : { onSucceeded }}
+          previews={{ priorPreview: undefined }}
+          step={{ nodeId, stepSideEffect }}
+          scope={{ apiClient, userId: 'owner', workspaceId, workflowId }}
         />
       </NotificationsProvider>
     </QueryClientProvider>

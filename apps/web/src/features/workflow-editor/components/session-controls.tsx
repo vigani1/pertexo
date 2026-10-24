@@ -59,7 +59,6 @@ export function SessionCommandBar({
   return (
     <EditorCommandBar
       presence={headerPresence}
-
       testMenuItems={chrome.workflowTestMenuItems}
       onRetrySave={() => void flushSave()}
       onReviewConflict={onReviewConflict}
@@ -73,24 +72,25 @@ export function SessionCommandBar({
         paused ? null : (
           <WorkflowCommandActions
             renderFeedback={chrome.renderFeedback}
-            apiClient={apiClient}
-            userId={userId}
-            workspace={workspace}
-            workflowId={workflowId}
-            workflow={workflow}
-            graph={graph}
-            draft={{ generation, revision }}
-            savedDraftCurrent={saveStatus === 'clean' && !inspectorScratch}
             commandSession={commandSession}
             testAction={chrome.workflowTestAction}
-            issues={issues}
-            issuesOpen={chrome.issuesOpen}
-            triggersAvailable={triggersAvailable}
-            onIssuesOpenChange={chrome.onIssuesOpenChange}
-            onFix={chrome.onFix}
             onPublished={(receipt) => {
               if (!receipt.reused) effects.weaveIn();
             }}
+            validation={{
+              issues,
+              issuesOpen: chrome.issuesOpen,
+              onIssuesOpenChange: chrome.onIssuesOpenChange,
+              onFix: chrome.onFix,
+            }}
+            snapshot={{
+              workflow,
+              graph,
+              draft: { generation, revision },
+              savedDraftCurrent: saveStatus === 'clean' && !inspectorScratch,
+              triggersAvailable,
+            }}
+            scope={{ apiClient, userId, workspace, workflowId }}
           />
         )
       }

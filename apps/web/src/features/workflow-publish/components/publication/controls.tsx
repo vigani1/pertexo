@@ -81,32 +81,35 @@ function summaryState({
 export function PublicationControls({
   scope,
   workflowId,
-  workflow,
-  graph,
-  revision,
   publication,
-  isSavedDraftCurrent,
-  issues,
-  emptyHint,
-  savedDraftCurrent,
   capabilities,
-  onFix,
   onPublished,
+  draft,
+  validation,
 }: Readonly<{
   scope: ReviewScope;
   workflowId: string;
-  workflow: WorkflowSummary | undefined;
-  graph: WorkflowGraphContract;
-  revision: number;
   publication: WorkflowPublication;
-  isSavedDraftCurrent: WorkflowCommandSession['isSavedDraftCurrent'];
-  issues: WorkflowIssuesView;
-  emptyHint: ReturnType<typeof emptyDraftHint>;
-  savedDraftCurrent: boolean;
   capabilities: AccessibleWorkspace['capabilities'];
-  onFix: (target: WorkflowValidationTarget) => void;
   onPublished: (receipt: PublicationReceipt, hasTriggers: boolean) => void;
+  draft: Readonly<{
+    workflow: WorkflowSummary | undefined;
+    graph: WorkflowGraphContract;
+    revision: number;
+    isSavedDraftCurrent: WorkflowCommandSession['isSavedDraftCurrent'];
+    savedDraftCurrent: boolean;
+  }>;
+  validation: Readonly<{
+    issues: WorkflowIssuesView;
+    emptyHint: ReturnType<typeof emptyDraftHint>;
+    onFix: (target: WorkflowValidationTarget) => void;
+  }>;
 }>) {
+  const { workflow, graph, revision, isSavedDraftCurrent, savedDraftCurrent } =
+    draft;
+
+  const { issues, emptyHint, onFix } = validation;
+
   const { apiClient, userId, workspaceId } = scope;
   const [publishOpen, setPublishOpen] = useState(false);
   const navigate = useNavigate();
@@ -179,40 +182,44 @@ export function PublicationControls({
         onClick={open}
       />
       <PublishDialog
-        open={publishOpen}
-        onOpenChange={setPublishOpen}
-        versionLabel={versionLabel ?? 'this draft'}
         mode={action.mode}
         unavailable={action.unavailable}
-        policyNotice={
-          <QueryView
-            query={policy}
-            resource="Publishing policy"
-            loading={
-              <p role="status" className="text-sm text-muted-foreground">
-                Checking publishing policy…
-              </p>
-            }
-          />
-        }
-        summary={summary}
-        summaryState={preview.summaryState}
-        graph={graph}
-        stage={publication.publishStage}
-        error={publication.publishError}
-        recoveryPending={publication.publishRecoveryPending}
-        blockingGroups={issues.blockingGroups}
-        unchangedVersionNumber={unchangedVersionNumber}
-        suiteNotice={
-          <SuitePublishNotice
-            scope={{ apiClient, userId, workspaceId, workflowId }}
-            savedDraftCurrent={savedDraftCurrent}
-            enabled={publishOpen}
-            capabilities={capabilities}
-          />
-        }
-        onPublish={(note) => void confirmPublish(note)}
-        onFix={onFix}
+        slots={{
+          policyNotice: (
+            <QueryView
+              query={policy}
+              resource="Publishing policy"
+              loading={
+                <p role="status" className="text-sm text-muted-foreground">
+                  Checking publishing policy…
+                </p>
+              }
+            />
+          ),
+          suiteNotice: (
+            <SuitePublishNotice
+              scope={{ apiClient, userId, workspaceId, workflowId }}
+              savedDraftCurrent={savedDraftCurrent}
+              enabled={publishOpen}
+              capabilities={capabilities}
+            />
+          ),
+        }}
+        issues={{ blockingGroups: issues.blockingGroups, onFix }}
+        command={{
+          stage: publication.publishStage,
+          error: publication.publishError,
+          recoveryPending: publication.publishRecoveryPending,
+          onPublish: (note) => void confirmPublish(note),
+        }}
+        preview={{
+          versionLabel: versionLabel ?? 'this draft',
+          summary,
+          summaryState: preview.summaryState,
+          graph,
+          unchangedVersionNumber,
+        }}
+        state={{ open: publishOpen, onOpenChange: setPublishOpen }}
       />
     </>
   );
