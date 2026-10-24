@@ -1,9 +1,14 @@
-import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import { workflowRuns } from '../../../schema/runs/execution.js';
+import { pendingRunTasks } from '../../../schema/runs/pending-task.js';
+import { workflowCalls } from '../../../schema/runs/calls.js';
+import { auditEvents } from '../../../schema/foundation.js';
+import { users } from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { and, eq, sql } from 'drizzle-orm';
 import type { FolderScope } from '../../../tenant-access/resources/contract.js';
-import {
-  bindResourcePredicate,
-  workflowScopeSql,
-} from '../../../tenant-access/resources/scope.queries.js';
+import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
 import type { PoolClient } from 'pg';
 import {
   approvalOutputSchema,
@@ -36,22 +41,33 @@ export async function respondToTask(
   role: Role,
   resources: FolderScope,
 ) {
-  const parameters: unknown[] = [input.workspaceId, input.taskId];
-  const visible = bindResourcePredicate(
-    workflowScopeSql(resources, sql`run.workflow_id`),
-    parameters,
-  );
-  const target = await client.query<{ run_id: string }>(
-    `select task.run_id from app.pending_run_tasks task join app.workflow_runs run on run.workspace_id=task.workspace_id and run.id=task.run_id where task.workspace_id=$1 and task.id=$2 and ${visible}`,
-    parameters,
-  );
-  const runId = target.rows[0]?.run_id;
+  const db = drizzle(client),
+    task = pendingRunTasks,
+    run = workflowRuns;
+  const [target] = await db
+    .select({ run_id: task.runId })
+    .from(task)
+    .innerJoin(
+      run,
+      and(eq(run.workspaceId, task.workspaceId), eq(run.id, task.runId)),
+    )
+    .where(
+      and(
+        eq(task.workspaceId, input.workspaceId),
+        eq(task.id, input.taskId),
+        workflowScopeSql(resources, sql`${run.workflowId}`),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const runId = target?.run_id;
   if (runId === undefined)
     throw new PendingTaskNotFoundError('Task is not visible.');
-  await client.query(
-    'select id from app.workflow_runs where workspace_id=$1 and id=$2 for no key update',
-    [input.workspaceId, runId],
-  );
+  await db
+    .select({ id: run.id })
+    .from(run)
+    .where(and(eq(run.workspaceId, input.workspaceId), eq(run.id, runId)))
+    .for('no key update')
+    .catch(rethrowQueryFailure);
   const row = await readTaskRow(client, input, {
     role,
     resources,
@@ -89,46 +105,56 @@ export async function respondToTask(
   if (replay !== null) return { task: projectTask(row), replayed: true };
   if (row.blocked_reason !== null)
     throw new PendingTaskDecisionError(row.blocked_reason);
-  const observed = await client.query<{ now: Date; display_name: string }>(
-    'select clock_timestamp() now,display_name from app.users where id=$1',
-    [input.actorId],
-  );
-  const observation = observed.rows[0];
+  const [observation] = await db
+    .select({
+      now: sql<Date>`clock_timestamp()`.mapWith(users.createdAt),
+      display_name: users.displayName,
+    })
+    .from(users)
+    .where(eq(users.id, input.actorId))
+    .catch(rethrowQueryFailure);
   if (observation === undefined)
     throw new Error('Decision identity and time unavailable');
   const { now, display_name } = observation;
   const output = taskResponseOutput(input, { values, now, display_name });
-  const changed = await client.query(
-    `update app.pending_run_tasks set status=$3,output_ref=$4::json,decided_by=$5,completed_at=$6 where workspace_id=$1 and id=$2 and status='pending' and expires_at>clock_timestamp()`,
-    [
-      input.workspaceId,
-      input.taskId,
+  const changed = await db
+    .update(task)
+    .set({
       status,
-      serializeStoredExecutionValue({ kind: 'inline', value: output }),
-      input.actorId,
-      now,
-    ],
-  );
+      outputRef: sql`${serializeStoredExecutionValue({ kind: 'inline', value: output })}::json`,
+      decidedBy: input.actorId,
+      completedAt: now,
+    })
+    .where(
+      and(
+        eq(task.workspaceId, input.workspaceId),
+        eq(task.id, input.taskId),
+        eq(task.status, 'pending'),
+        sql`${task.expiresAt}>clock_timestamp()`,
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (changed.rowCount !== 1) throw new PendingTaskDecisionError('expired');
-  await client.query(
-    `insert into app.audit_events(id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata) values($1,$2,$3,$8,'pending_task',$4,$5,$6,$7::jsonb)`,
-    [
-      generatePersistedId(),
-      input.workspaceId,
-      input.actorId,
-      input.taskId,
-      input.requestId ?? null,
-      input.traceId ?? null,
-      JSON.stringify(
+  await db
+    .insert(auditEvents)
+    .values({
+      id: generatePersistedId(),
+      workspaceId: input.workspaceId,
+      actorUserId: input.actorId,
+      action:
+        input.kind === 'approval'
+          ? 'pending_task.decided'
+          : 'pending_task.submitted',
+      targetType: 'pending_task',
+      targetId: input.taskId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata:
         input.kind === 'approval'
           ? { runId, decision: status }
           : { runId, status },
-      ),
-      input.kind === 'approval'
-        ? 'pending_task.decided'
-        : 'pending_task.submitted',
-    ],
-  );
+    })
+    .catch(rethrowQueryFailure);
   await completeCommand(client, command, {
     taskId: input.taskId,
     status,
@@ -147,13 +173,15 @@ export async function wakeTaskAncestors(
   workspaceId: string,
   runId: string,
 ): Promise<void> {
-  const ancestors = await client.query<{ id: string }>(
-    `with recursive ancestors(id) as (
-    select parent_run_id from app.workflow_calls where workspace_id=$1 and child_run_id=$2 and status='accepted'
-    union select call.parent_run_id from app.workflow_calls call join ancestors on call.child_run_id=ancestors.id where call.workspace_id=$1 and call.status='accepted'
+  const call = alias(workflowCalls, 'call');
+  const ancestors = await drizzle(client)
+    .execute<{ id: string }>(
+      sql`with recursive ancestors(id) as (
+    select ${workflowCalls.parentRunId} from ${workflowCalls} where ${workflowCalls.workspaceId}=${workspaceId} and ${workflowCalls.childRunId}=${runId} and ${workflowCalls.status}='accepted'
+    union select ${call.parentRunId} from ${workflowCalls} ${sql.identifier('call')} join ancestors on ${call.childRunId}=ancestors.id where ${call.workspaceId}=${workspaceId} and ${call.status}='accepted'
   ) select id from ancestors`,
-    [workspaceId, runId],
-  );
+    )
+    .catch(rethrowQueryFailure);
   for (const row of ancestors.rows)
     await wakeWorkflowRun(client, workspaceId, row.id);
 }

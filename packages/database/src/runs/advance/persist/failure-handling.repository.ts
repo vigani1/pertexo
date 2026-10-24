@@ -1,3 +1,7 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { nodeRuns } from '../../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../contract.js';
 import type { RunTransitionPlan } from '../plan.js';
@@ -16,25 +20,26 @@ export async function persistFailureHandling(
     );
     if (source?.failureHandling?.disposition !== 'pending')
       throw new CoordinatorRunStateCorruptError();
-    const written = await client.query(
-      `update app.node_runs set failure_ref=$4::json,
-       failure_handler_entry_key=$5,failure_handler_sink_key=$6,
-       failure_handling='pending',updated_at=clock_timestamp()
-       where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3
-       and status='failed' and current_attempt_number=$7 and failure_ref is null`,
-      [
-        workspaceId,
-        runId,
-        selection.value.invocationKey,
-        serializeStoredExecutionJsonValue({
-          kind: 'inline',
-          value: selection.value,
-        }),
-        selection.entryInvocationKey,
-        source.failureHandling.sinkInvocationKey,
-        selection.value.attemptNumber,
-      ],
-    );
+    const written = await drizzle(client)
+      .update(nodeRuns)
+      .set({
+        failureRef: sql`${serializeStoredExecutionJsonValue({ kind: 'inline', value: selection.value })}::json`,
+        failureHandlerEntryKey: selection.entryInvocationKey,
+        failureHandlerSinkKey: source.failureHandling.sinkInvocationKey,
+        failureHandling: 'pending',
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(nodeRuns.workspaceId, workspaceId),
+          eq(nodeRuns.workflowRunId, runId),
+          eq(nodeRuns.invocationKey, selection.value.invocationKey),
+          eq(nodeRuns.status, 'failed'),
+          eq(nodeRuns.currentAttemptNumber, selection.value.attemptNumber),
+          isNull(nodeRuns.failureRef),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (written.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
   }
   for (const event of plan.events) {
@@ -48,17 +53,23 @@ export async function persistFailureHandling(
     );
     if (source?.failureHandling?.disposition !== 'handled')
       throw new CoordinatorRunStateCorruptError();
-    const written = await client.query(
-      `update app.node_runs set failure_handling='handled',updated_at=clock_timestamp()
-       where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3
-       and status='failed' and failure_handling='pending' and failure_handler_sink_key=$4`,
-      [
-        workspaceId,
-        runId,
-        event.invocationKey,
-        source.failureHandling.sinkInvocationKey,
-      ],
-    );
+    const written = await drizzle(client)
+      .update(nodeRuns)
+      .set({ failureHandling: 'handled', updatedAt: sql`clock_timestamp()` })
+      .where(
+        and(
+          eq(nodeRuns.workspaceId, workspaceId),
+          eq(nodeRuns.workflowRunId, runId),
+          eq(nodeRuns.invocationKey, event.invocationKey),
+          eq(nodeRuns.status, 'failed'),
+          eq(nodeRuns.failureHandling, 'pending'),
+          eq(
+            nodeRuns.failureHandlerSinkKey,
+            source.failureHandling.sinkInvocationKey,
+          ),
+        ),
+      )
+      .catch(rethrowQueryFailure);
     if (written.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
   }
 }

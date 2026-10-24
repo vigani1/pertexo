@@ -1,9 +1,12 @@
-import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import { nodeRuns } from '../../../schema/runs/execution.js';
+import { workflows } from '../../../schema/authoring/workflows.js';
+import { users } from '../../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { and, eq, desc, inArray, lt, or, sql } from 'drizzle-orm';
 import type { FolderScope } from '../../../tenant-access/resources/contract.js';
-import {
-  bindResourcePredicate,
-  workflowScopeSql,
-} from '../../../tenant-access/resources/scope.queries.js';
+import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
 import type { PoolClient } from 'pg';
 import type {
   PendingTaskDetail,
@@ -22,49 +25,12 @@ import type { Role } from '@pertexo/workflow-model';
 import { PendingTaskNotFoundError, type PendingTaskScope } from './contract.js';
 
 import {
+  task,
+  run,
   pendingTaskAudienceSql,
   pendingTaskBlockedSql,
 } from './eligibility.queries.js';
-const audience = bindResourcePredicate(
-  pendingTaskAudienceSql(sql`$2`, sql`$3`),
-  [],
-);
-const blocked = bindResourcePredicate(
-  pendingTaskBlockedSql(sql`$2`, sql`$3`),
-  [],
-);
-const columns = `task.*,node.node_id,run.workflow_id,workflow.name workflow_name,
-  decider.display_name decided_by_name,node.branch_context,${blocked} blocked_reason`;
-const from = `from app.pending_run_tasks task join app.workflow_runs run
-  on run.workspace_id=task.workspace_id and run.id=task.run_id and run.workflow_version_id=task.workflow_version_id and task.kind in ('approval','input_request')
-  join app.node_runs node on node.workspace_id=task.workspace_id and node.workflow_run_id=task.run_id
-    and node.id=task.node_run_id and node.invocation_key=task.invocation_key
-  join app.workflows workflow on workflow.workspace_id=run.workspace_id and workflow.id=run.workflow_id
-  left join app.users decider on decider.id=task.decided_by`;
-export type TaskRow = Readonly<{
-  id: string;
-  workspace_id: string;
-  run_id: string;
-  workflow_version_id: string;
-  node_run_id: string;
-  invocation_key: string;
-  node_id: string;
-  branch_context: Readonly<{
-    iterationPath?: PendingTaskDetail['iterationPath'];
-  }>;
-  workflow_id: string;
-  workflow_name: string;
-  kind: 'approval' | 'input_request';
-  config: unknown;
-  context: unknown;
-  status: PendingTaskDetail['status'];
-  output_ref: unknown;
-  decided_by_name: string | null;
-  created_at: Date;
-  expires_at: Date;
-  completed_at: Date | null;
-  blocked_reason: PendingTaskDetail['blockedReason'];
-}>;
+export type TaskRow = Awaited<ReturnType<typeof taskQuery>>[number];
 export function projectTask(row: TaskRow): PendingTaskDetail {
   const captured =
     row.kind === 'approval'
@@ -138,21 +104,16 @@ export async function readTaskRow(
     locking?: boolean | undefined;
   }>,
 ): Promise<TaskRow> {
-  const parameters: unknown[] = [
-    input.workspaceId,
-    input.actorId,
-    role,
-    input.taskId,
-  ];
-  const visible = bindResourcePredicate(
-    workflowScopeSql(resources, sql`run.workflow_id`),
-    parameters,
+  const query = taskQuery(client, { actorId: input.actorId, role }).where(
+    and(
+      eq(task.workspaceId, input.workspaceId),
+      eq(task.id, input.taskId),
+      workflowScopeSql(resources, sql`${run.workflowId}`),
+    ),
   );
-  const result = await client.query<TaskRow>(
-    `select ${columns} ${from} where task.workspace_id=$1 and task.id=$4 and ${visible} ${locking ? 'for update of task' : ''}`,
-    parameters,
-  );
-  const row = result.rows[0];
+  const [row] = await (
+    locking ? query.for('update', { of: task }) : query
+  ).catch(rethrowQueryFailure);
   if (row === undefined)
     throw new PendingTaskNotFoundError('Task is not visible.');
   return row;
@@ -163,43 +124,51 @@ export async function listTasks(
   role: Role,
   resources: FolderScope,
 ): Promise<PendingTaskListResponse> {
-  const params: unknown[] = [
-    input.workspaceId,
-    input.actorId,
-    role,
-    input.runId ?? null,
-    input.view,
-    input.status,
-    input.after ?? null,
-    input.kind ?? 'all',
-  ];
-  const visible = bindResourcePredicate(
-    workflowScopeSql(resources, sql`run.workflow_id`),
-    params,
+  const visible = workflowScopeSql(resources, sql`${run.workflowId}`);
+  const kind =
+    input.kind === undefined || input.kind === 'all'
+      ? undefined
+      : eq(task.kind, input.kind);
+  const audience = pendingTaskAudienceSql(
+    sql`${input.actorId}::uuid`,
+    sql`${role}::text`,
   );
-  const candidates = `task.workspace_id=$1 and ${visible} and ($4::uuid is null or task.run_id=$4)
-    and ($5='all' or task.decided_by=$2::uuid or (${audience}))
-    and ($8='all' or task.kind=$8)
-    and ($6='all' or ($6='pending' and task.status='pending') or ($6='resolved' and task.status<>'pending'))`;
-  const rows = await client.query<TaskRow>(
-    `select ${columns} ${from} where ${candidates} and ($7::uuid is null or task.id<$7) order by task.id desc limit 51`,
-    params,
-  );
-  const countParameters: unknown[] = [
-    input.workspaceId,
-    input.actorId,
-    role,
-    input.kind ?? 'all',
-  ];
-  const countVisible = bindResourcePredicate(
-    workflowScopeSql(resources, sql`run.workflow_id`),
-    countParameters,
-  );
-  const count = await client.query<{ count: number }>(
-    `select count(*)::int count ${from} where task.workspace_id=$1 and ${countVisible} and task.status='pending' and ($4='all' or task.kind=$4) and (${blocked}) is null`,
-    countParameters,
-  );
-  const page = rows.rows.slice(0, 50);
+  const view =
+    input.view === 'all'
+      ? undefined
+      : or(eq(task.decidedBy, input.actorId), audience);
+  const status = taskStatusFilter(input.status);
+  const rows = await taskQuery(client, { actorId: input.actorId, role })
+    .where(
+      and(
+        eq(task.workspaceId, input.workspaceId),
+        visible,
+        input.runId === undefined ? undefined : eq(task.runId, input.runId),
+        view,
+        kind,
+        status,
+        input.after === undefined ? undefined : lt(task.id, input.after),
+      ),
+    )
+    .orderBy(desc(task.id))
+    .limit(51)
+    .catch(rethrowQueryFailure);
+  const counted = taskQuery(client, { actorId: input.actorId, role })
+    .where(
+      and(
+        eq(task.workspaceId, input.workspaceId),
+        visible,
+        eq(task.status, 'pending'),
+        kind,
+        sql`${pendingTaskBlockedSql(sql`${input.actorId}::uuid`, sql`${role}::text`)} is null`,
+      ),
+    )
+    .as('counted_tasks');
+  const [count] = await drizzle(client)
+    .select({ count: sql<number>`count(*)::int` })
+    .from(counted)
+    .catch(rethrowQueryFailure);
+  const page = rows.slice(0, 50);
   return {
     items: page.map((row) => {
       const {
@@ -215,7 +184,75 @@ export async function listTasks(
       }
       return summary;
     }),
-    nextCursor: rows.rows.length > 50 ? (page.at(-1)?.id ?? null) : null,
-    pendingCount: count.rows[0]?.count ?? 0,
+    nextCursor: rows.length > 50 ? (page.at(-1)?.id ?? null) : null,
+    pendingCount: count?.count ?? 0,
   };
+}
+
+function taskStatusFilter(status: PendingTaskListQuery['status']) {
+  if (status === 'pending') return eq(task.status, 'pending');
+  if (status === 'resolved') return sql`${task.status}<>'pending'`;
+  return undefined;
+}
+function taskQuery(
+  client: PoolClient,
+  input: Readonly<{ actorId: string; role: Role }>,
+) {
+  const node = nodeRuns,
+    decider = alias(users, 'decider');
+  // The ordinary-task kind/state checks and inner node join guarantee these narrower fields.
+  return drizzle(client)
+    .select({
+      id: task.id,
+      workspace_id: task.workspaceId,
+      run_id: task.runId,
+      workflow_version_id: task.workflowVersionId,
+      node_run_id: sql<string>`${task.nodeRunId}`,
+      invocation_key: task.invocationKey,
+      node_id: node.nodeId,
+      branch_context: sql<
+        Readonly<{ iterationPath?: PendingTaskDetail['iterationPath'] }>
+      >`${node.branchContext}`,
+      workflow_id: run.workflowId,
+      workflow_name: workflows.name,
+      kind: sql<'approval' | 'input_request'>`${task.kind}`,
+      config: task.config,
+      context: task.context,
+      status: sql<PendingTaskDetail['status']>`${task.status}`,
+      output_ref: task.outputRef,
+      decided_by_name: decider.displayName,
+      created_at: task.createdAt,
+      expires_at: sql<Date>`${task.expiresAt}`.mapWith(task.expiresAt),
+      completed_at: task.completedAt,
+      blocked_reason: sql<
+        PendingTaskDetail['blockedReason']
+      >`${pendingTaskBlockedSql(sql`${input.actorId}::uuid`, sql`${input.role}::text`)}`,
+    })
+    .from(task)
+    .innerJoin(
+      run,
+      and(
+        eq(run.workspaceId, task.workspaceId),
+        eq(run.id, task.runId),
+        eq(run.workflowVersionId, task.workflowVersionId),
+        inArray(task.kind, ['approval', 'input_request']),
+      ),
+    )
+    .innerJoin(
+      node,
+      and(
+        eq(node.workspaceId, task.workspaceId),
+        eq(node.workflowRunId, task.runId),
+        eq(node.id, task.nodeRunId),
+        eq(node.invocationKey, task.invocationKey),
+      ),
+    )
+    .innerJoin(
+      workflows,
+      and(
+        eq(workflows.workspaceId, run.workspaceId),
+        eq(workflows.id, run.workflowId),
+      ),
+    )
+    .leftJoin(decider, eq(decider.id, task.decidedBy));
 }

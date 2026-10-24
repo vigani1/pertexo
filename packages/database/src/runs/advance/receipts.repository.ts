@@ -1,3 +1,11 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import {
+  inboxReceipts,
+  outboxEvents,
+  transportSecurityAuditFacts,
+} from '../../schema/transport.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -24,20 +32,22 @@ export async function validateAuthoritativeAdvanceDelivery(
   runId: string,
   delivery: CoordinatorAdvanceDelivery,
 ): Promise<void> {
-  const result = await client.query<{
-    aggregate_id: string;
-    aggregate_type: string;
-    job_name: string;
-    payload: unknown;
-    payload_checksum: string;
-  }>(
-    `select aggregate_id, aggregate_type, job_name, payload,
-            payload_checksum
-     from app.outbox_events
-     where workspace_id=$1 and id=$2`,
-    [workspaceId, delivery.outboxEventId],
-  );
-  const row = result.rows[0];
+  const [row] = await drizzle(client)
+    .select({
+      aggregate_id: outboxEvents.aggregateId,
+      aggregate_type: outboxEvents.aggregateType,
+      job_name: outboxEvents.jobName,
+      payload: outboxEvents.payload,
+      payload_checksum: outboxEvents.payloadChecksum,
+    })
+    .from(outboxEvents)
+    .where(
+      and(
+        eq(outboxEvents.workspaceId, workspaceId),
+        eq(outboxEvents.id, delivery.outboxEventId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   let storedChecksum: string | undefined;
   try {
     storedChecksum =
@@ -63,31 +73,35 @@ export async function claimCoordinatorReceipt(
   workspaceId: string,
   delivery: CoordinatorAdvanceDelivery,
 ): Promise<'new' | 'duplicate'> {
-  const inserted = await client.query(
-    `insert into app.inbox_receipts (
-       consumer_name, message_id, workspace_id, payload_checksum
-     ) values ($1,$2,$3,$4)
-     on conflict (consumer_name,message_id) do nothing
-     returning message_id`,
-    [
-      coordinatorConsumerName,
-      delivery.outboxEventId,
+  const db = drizzle(client),
+    r = inboxReceipts;
+  const inserted = await db
+    .insert(r)
+    .values({
+      consumerName: coordinatorConsumerName,
+      messageId: delivery.outboxEventId,
       workspaceId,
-      delivery.payloadChecksum,
-    ],
-  );
-  if (inserted.rowCount === 1) return 'new';
-  const existing = await client.query<{
-    completed_at: Date | null;
-    payload_checksum: string;
-  }>(
-    `select completed_at, payload_checksum
-     from app.inbox_receipts
-     where consumer_name=$1 and message_id=$2 and workspace_id=$3
-     for update`,
-    [coordinatorConsumerName, delivery.outboxEventId, workspaceId],
-  );
-  const receipt = existing.rows[0];
+      payloadChecksum: delivery.payloadChecksum,
+    })
+    .onConflictDoNothing({ target: [r.consumerName, r.messageId] })
+    .returning({ messageId: r.messageId })
+    .catch(rethrowQueryFailure);
+  if (inserted.length === 1) return 'new';
+  const [receipt] = await db
+    .select({
+      completed_at: r.completedAt,
+      payload_checksum: r.payloadChecksum,
+    })
+    .from(r)
+    .where(
+      and(
+        eq(r.consumerName, coordinatorConsumerName),
+        eq(r.messageId, delivery.outboxEventId),
+        eq(r.workspaceId, workspaceId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
   if (receipt?.completed_at == null)
     throw new CoordinatorRunStateCorruptError();
   if (receipt.payload_checksum !== delivery.payloadChecksum)
@@ -100,23 +114,26 @@ export async function completeCoordinatorReceipt(
   workspaceId: string,
   delivery: CoordinatorAdvanceDelivery,
 ): Promise<void> {
-  const completed = await client.query(
-    `update app.inbox_receipts
-     set completed_at=clock_timestamp()
-     where consumer_name=$1 and message_id=$2 and workspace_id=$3
-       and payload_checksum=$4 and completed_at is null`,
-    [
-      coordinatorConsumerName,
-      delivery.outboxEventId,
-      workspaceId,
-      delivery.payloadChecksum,
-    ],
-  );
+  const r = inboxReceipts;
+  const completed = await drizzle(client)
+    .update(r)
+    .set({ completedAt: sql`clock_timestamp()` })
+    .where(
+      and(
+        eq(r.consumerName, coordinatorConsumerName),
+        eq(r.messageId, delivery.outboxEventId),
+        eq(r.workspaceId, workspaceId),
+        eq(r.payloadChecksum, delivery.payloadChecksum),
+        isNull(r.completedAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   if (completed.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
-  await client.query(
-    `select app.release_workflow_run_active_admission($1,$2)`,
-    [workspaceId, delivery.outboxEventId],
-  );
+  await drizzle(client)
+    .execute(
+      sql`select app.release_workflow_run_active_admission(${workspaceId},${delivery.outboxEventId})`,
+    )
+    .catch(rethrowQueryFailure);
 }
 
 /** Re-queues a delivery whose receipt the caller has claimed. */
@@ -131,10 +148,11 @@ export async function deferCoordinatorForActiveCapacity(
     traceparent?: string;
   }>,
 ): Promise<RunAdvanceResult | undefined> {
-  const capacity = await client.query<{ available: boolean }>(
-    `select app.workflow_run_active_capacity_available($1,$2,$3) as available`,
-    [input.workspaceId, input.entitlementVersion, input.runId],
-  );
+  const capacity = await drizzle(client)
+    .execute<{ available: boolean }>(
+      sql`select app.workflow_run_active_capacity_available(${input.workspaceId},${input.entitlementVersion},${input.runId}) as available`,
+    )
+    .catch(rethrowQueryFailure);
   const row = capacity.rows[0];
   if (row === undefined) throw new CoordinatorRunStateCorruptError();
   if (row.available) return undefined;
@@ -148,31 +166,26 @@ export async function deferCoordinatorForActiveCapacity(
       ? {}
       : { traceparent: input.traceparent }),
   } as const;
-  await client.query(
-    `insert into app.outbox_events (
-       id,workspace_id,job_name,aggregate_type,aggregate_id,
-       payload,payload_checksum,available_at
-     ) values ($1,$2,'advance-workflow-run','workflow-run',$3,$4::jsonb,$5,
-       clock_timestamp() + interval '5 seconds')`,
-    [
-      outboxEventId,
-      input.workspaceId,
-      input.runId,
-      serializeStoredExecutionJsonValue(payload),
-      canonicalOutboxPayloadChecksum(payload),
-    ],
-  );
+  await drizzle(client)
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId: input.workspaceId,
+      jobName: 'advance-workflow-run',
+      aggregateType: 'workflow-run',
+      aggregateId: input.runId,
+      payload: sql`${serializeStoredExecutionJsonValue(payload)}::jsonb`,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+      availableAt: sql`clock_timestamp()+interval '5 seconds'`,
+    })
+    .catch(rethrowQueryFailure);
   // Preserve the committed slot across FIFO deferral. Completing the old
   // receipt may release only its old binding, never the replacement delivery.
-  await client.query(
-    `select app.rebind_workflow_run_active_admission($1,$2,$3,$4)`,
-    [
-      input.workspaceId,
-      input.runId,
-      input.delivery.outboxEventId,
-      outboxEventId,
-    ],
-  );
+  await drizzle(client)
+    .execute(
+      sql`select app.rebind_workflow_run_active_admission(${input.workspaceId},${input.runId},${input.delivery.outboxEventId},${outboxEventId})`,
+    )
+    .catch(rethrowQueryFailure);
   await completeCoordinatorReceipt(client, input.workspaceId, input.delivery);
   return Object.freeze({ kind: 'deferred', revision: input.revision });
 }
@@ -188,17 +201,16 @@ export async function auditCoordinatorDeliveryMismatch(
     workspaceId,
     signal,
     async (client) => {
-      await client.query(
-        `insert into app.transport_security_audit_facts (
-           id,workspace_id,fact_type,consumer_name,message_id
-         ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
-        [
-          generatePersistedId(),
+      await drizzle(client)
+        .insert(transportSecurityAuditFacts)
+        .values({
+          id: generatePersistedId(),
           workspaceId,
-          coordinatorConsumerName,
-          delivery.outboxEventId,
-        ],
-      );
+          factType: 'inbox_checksum_mismatch',
+          consumerName: coordinatorConsumerName,
+          messageId: delivery.outboxEventId,
+        })
+        .catch(rethrowQueryFailure);
     },
   );
   throw new CoordinatorDeliveryMismatchError();

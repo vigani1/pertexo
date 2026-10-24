@@ -1,3 +1,8 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { nodeRuns, workflowRuns } from '../../../schema/runs/execution.js';
+import { pendingRunTasks } from '../../../schema/runs/pending-task.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { PendingTaskOutcome } from '@pertexo/workflow-engine';
 import { wakeTaskAncestors } from '../responses/respond.repository.js';
@@ -8,25 +13,61 @@ export async function readPendingTaskFacts(
   workspaceId: string,
   runId: string,
 ): Promise<readonly PendingTaskOutcome[]> {
-  const expired = await client.query(
-    `update app.pending_run_tasks task set status='expired',completed_at=clock_timestamp()
-    from app.workflow_runs run where task.workspace_id=$1 and task.run_id=$2 and task.status='pending' and task.expires_at<=clock_timestamp()
-      and run.workspace_id=task.workspace_id and run.id=task.run_id and run.status in ('queued','running','waiting') and run.cancel_requested_at is null`,
-    [workspaceId, runId],
-  );
-  if ((expired.rowCount ?? 0) > 0)
-    await wakeTaskAncestors(client, workspaceId, runId);
-  const rows = await client.query<{
-    id: string;
-    invocation_key: string;
-    node_id: string;
-    status: PendingTaskOutcome['status'];
-    branch_context: Pick<PendingTaskOutcome, 'branchPath' | 'iterationPath'>;
-  }>(
-    `select task.id,task.invocation_key,task.status,node.node_id,node.branch_context from app.pending_run_tasks task join app.node_runs node on node.workspace_id=task.workspace_id and node.id=task.node_run_id and node.workflow_run_id=task.run_id and node.invocation_key=task.invocation_key where task.workspace_id=$1 and task.run_id=$2 and task.status<>'pending' and task.consumed_at is null order by task.invocation_key`,
-    [workspaceId, runId],
-  );
-  return rows.rows.map((row) => ({
+  const db = drizzle(client),
+    task = pendingRunTasks,
+    run = workflowRuns,
+    node = nodeRuns;
+  const expired = await db
+    .update(task)
+    .set({ status: 'expired', completedAt: sql`clock_timestamp()` })
+    .from(run)
+    .where(
+      and(
+        eq(task.workspaceId, workspaceId),
+        eq(task.runId, runId),
+        eq(task.status, 'pending'),
+        sql`${task.expiresAt}<=clock_timestamp()`,
+        eq(run.workspaceId, task.workspaceId),
+        eq(run.id, task.runId),
+        inArray(run.status, ['queued', 'running', 'waiting']),
+        isNull(run.cancelRequestedAt),
+      ),
+    )
+    .returning({ id: task.id })
+    .catch(rethrowQueryFailure);
+  if (expired.length > 0) await wakeTaskAncestors(client, workspaceId, runId);
+  // The filter excludes pending/prepared callbacks; completed outcomes follow the task state CHECK.
+  const rows = await db
+    .select({
+      id: task.id,
+      invocation_key: task.invocationKey,
+      status: sql<PendingTaskOutcome['status']>`${task.status}`,
+      node_id: node.nodeId,
+      branch_context: sql<
+        Pick<PendingTaskOutcome, 'branchPath' | 'iterationPath'>
+      >`${node.branchContext}`,
+    })
+    .from(task)
+    .innerJoin(
+      node,
+      and(
+        eq(node.workspaceId, task.workspaceId),
+        eq(node.id, task.nodeRunId),
+        eq(node.workflowRunId, task.runId),
+        eq(node.invocationKey, task.invocationKey),
+      ),
+    )
+    .where(
+      and(
+        eq(task.workspaceId, workspaceId),
+        eq(task.runId, runId),
+        sql`${task.status}<>'pending'`,
+        isNull(task.consumedAt),
+      ),
+    )
+    .orderBy(task.invocationKey)
+    .catch(rethrowQueryFailure);
+  return rows.map((row) => ({
     ...row.branch_context,
     taskId: row.id,
     invocationKey: row.invocation_key,
