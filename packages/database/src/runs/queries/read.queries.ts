@@ -1,3 +1,5 @@
+import { nodeRuns, nodeAttempts } from '../../schema/runs/execution.js';
+import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { withResourceRunRead } from '../../tenant-access/resources/transactions.repository.js';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
@@ -7,7 +9,7 @@ import {
   type WorkflowCallReadRecord,
   type WorkflowParentCallReadRecord,
 } from './history/calls.queries.js';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -41,27 +43,6 @@ export const nodeStatusSchema = z.enum([
   'timed_out',
   'outcome_unknown',
 ]);
-const nodeRowSchema = z
-  .object({
-    id: z.uuid(),
-    node_id: z.string().min(1).max(128),
-    invocation_key: z.string().min(1).max(256),
-    status: nodeStatusSchema,
-    current_attempt_number: z.number().int().nonnegative(),
-    started_at: z.coerce.date().nullable(),
-    completed_at: z.coerce.date().nullable(),
-    resume_at: z.coerce.date().nullable(),
-    error_summary: z.string().max(2048).nullable(),
-    safe_error_code: z.string().min(1).max(128).nullable(),
-    failure_handler_entry_key: z.string().min(1).max(256).nullable(),
-    failure_handler_sink_key: z.string().min(1).max(256).nullable(),
-    failure_handling: z.enum(['pending', 'handled']).nullable(),
-    reused_source_run_id: z.uuid().nullable(),
-    reused_source_node_run_id: z.uuid().nullable(),
-    reused_source_completed_at: z.coerce.date().nullable(),
-  })
-  .strict();
-
 export type WorkflowNodeRunRecord = Readonly<{
   id: string;
   nodeId: string;
@@ -115,44 +96,20 @@ async function readRunModel(
     includeWorkflowName,
   });
   if (run === undefined) return undefined;
-  const nodes = await transaction.db.execute(sql`
-    select
-      id,
-      node_id,
-      invocation_key,
-      status,
-      coalesce(current_attempt_number, 0) as current_attempt_number,
-      started_at,
-      completed_at,
-      case when control_kind='human_task' then null else coalesce(retry_due_at, resume_at) end as resume_at,
-      safe_error_code,
-      case when safe_error_code in ('execution.file_input','execution.attempt_invalid') then (
-        select attempt.error_summary from app.node_attempts attempt
-        where attempt.workspace_id = app.node_runs.workspace_id
-          and attempt.node_run_id = app.node_runs.id
-          and attempt.id = app.node_runs.current_attempt_id
-          and attempt.safe_error_code = app.node_runs.safe_error_code
-      ) end as error_summary,
-      failure_handler_entry_key, failure_handler_sink_key, failure_handling,
-      reused_source_run_id, reused_source_node_run_id, reused_source_completed_at
-    from app.node_runs
-    where workspace_id = ${transaction.workspaceId}
-      and workflow_run_id = ${runId}
-    order by created_at, id
-    limit ${WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations + 1}
-  `);
-  if (nodes.rows.length > WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations)
+  const nodes = await readNodes(transaction, runId);
+  if (nodes.length > WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations)
     throw new WorkflowRunReadCapacityError();
   return Object.freeze({
     run,
     ...(await readWorkflowCalls(transaction, runId)),
     ...(await readErrorWorkflow(transaction, runId)),
-    nodes: Object.freeze(nodes.rows.map(toNodeRecord)),
+    nodes: Object.freeze(nodes.map(toNodeRecord)),
   });
 }
 
-function toNodeRecord(value: unknown): WorkflowNodeRunRecord {
-  const row = nodeRowSchema.parse(value);
+function toNodeRecord(
+  row: Awaited<ReturnType<typeof readNodes>>[number],
+): WorkflowNodeRunRecord {
   const {
     failure_handler_entry_key,
     failure_handler_sink_key,
@@ -199,4 +156,51 @@ function toNodeRecord(value: unknown): WorkflowNodeRunRecord {
           },
         }),
   });
+}
+
+function readNodes({ db, workspaceId }: WorkspaceTransaction, runId: string) {
+  const errorSummary = db
+    .select({ value: nodeAttempts.errorSummary })
+    .from(nodeAttempts)
+    .where(
+      and(
+        eq(nodeAttempts.workspaceId, nodeRuns.workspaceId),
+        eq(nodeAttempts.nodeRunId, nodeRuns.id),
+        eq(nodeAttempts.id, nodeRuns.currentAttemptId),
+        eq(nodeAttempts.safeErrorCode, nodeRuns.safeErrorCode),
+      ),
+    );
+  return db
+    .select({
+      id: nodeRuns.id,
+      node_id: nodeRuns.nodeId,
+      invocation_key: nodeRuns.invocationKey,
+      status: nodeRuns.status,
+      current_attempt_number: sql<number>`coalesce(${nodeRuns.currentAttemptNumber},0)`,
+      started_at: nodeRuns.startedAt,
+      completed_at: nodeRuns.completedAt,
+      resume_at:
+        sql<Date | null>`case when ${nodeRuns.controlKind}='human_task' then null else coalesce(${nodeRuns.retryDueAt},${nodeRuns.resumeAt}) end`.mapWith(
+          nodeRuns.resumeAt,
+        ),
+      safe_error_code: nodeRuns.safeErrorCode,
+      error_summary: sql<
+        string | null
+      >`case when ${nodeRuns.safeErrorCode} in ('execution.file_input','execution.attempt_invalid') then (${errorSummary}) end`,
+      failure_handler_entry_key: nodeRuns.failureHandlerEntryKey,
+      failure_handler_sink_key: nodeRuns.failureHandlerSinkKey,
+      failure_handling: nodeRuns.failureHandling,
+      reused_source_run_id: nodeRuns.reusedSourceRunId,
+      reused_source_node_run_id: nodeRuns.reusedSourceNodeRunId,
+      reused_source_completed_at: nodeRuns.reusedSourceCompletedAt,
+    })
+    .from(nodeRuns)
+    .where(
+      and(
+        eq(nodeRuns.workspaceId, workspaceId),
+        eq(nodeRuns.workflowRunId, runId),
+      ),
+    )
+    .orderBy(nodeRuns.createdAt, nodeRuns.id)
+    .limit(WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations + 1);
 }

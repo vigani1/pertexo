@@ -1,29 +1,23 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, inArray } from 'drizzle-orm';
+import type {
+  runEvents} from '../../../schema/runs/execution.js';
+import {
+  nodeAttempts,
+  nodeRuns
+} from '../../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
+type PhysicalRow = Awaited<ReturnType<typeof physicalRows>>[number];
 export type PhysicalAttemptRow = Readonly<{
-  attempt_id: string | null;
-  attempt_number: number | null;
-  attempt_status: string | null;
-  attempt_output_ref: unknown;
-  executor_failure_kind: string | null;
-  node_output_ref: unknown;
-  invocation_key: string | null;
-  node_run_id: string | null;
-  node_id: string | null;
-  current_attempt_id: string | null;
-  node_status: string | null;
-  resume_at: Date | null;
-  retry_due_at: Date | null;
-  retry_decision: string | null;
-  wait_kind: 'node_wait' | 'retry_backoff' | null;
+  [Key in keyof PhysicalRow]: PhysicalRow[Key] | null;
 }>;
-
-export type PersistedCoordinatorEventRow = Readonly<{
-  sequence: number;
-  type: string;
-  payload: unknown;
-  created_at: Date;
-}>;
+export type PersistedCoordinatorEventRow = Readonly<
+  Pick<typeof runEvents.$inferSelect, 'sequence' | 'type' | 'payload'> & {
+    created_at: typeof runEvents.$inferSelect.createdAt;
+  }
+>;
 
 export type CoordinatorEventRow = PersistedCoordinatorEventRow &
   PhysicalAttemptRow;
@@ -53,29 +47,50 @@ export async function readPhysicalAttempts(
   attemptIds: readonly string[],
 ): Promise<ReadonlyMap<string, PhysicalAttemptRow>> {
   if (attemptIds.length === 0) return new Map();
-  const result = await client.query<PhysicalAttemptRow>(
-    `select attempt.id as attempt_id, attempt.attempt_number,
-            attempt.status as attempt_status,
-            attempt.output_ref as attempt_output_ref,
-            attempt.executor_failure_kind,attempt.retry_decision,
-            node.id as node_run_id, node.node_id, node.invocation_key,
-            node.current_attempt_id, node.status as node_status,
-            node.output_ref as node_output_ref,
-            node.resume_at, node.retry_due_at, node.wait_kind
-       from app.node_attempts attempt
-       join app.node_runs node
-         on node.workspace_id=attempt.workspace_id
-        and node.id=attempt.node_run_id
-       where attempt.workspace_id=$1
-         and attempt.id=any($2::uuid[])
-         and node.workflow_run_id=$3`,
-    [workspaceId, attemptIds, runId],
-  );
-  return new Map(
-    result.rows.flatMap((row) =>
-      row.attempt_id === null ? [] : [[row.attempt_id, row] as const],
-    ),
-  );
+  const rows = await physicalRows(client, {
+    workspaceId,
+    runId,
+    attemptIds,
+  }).catch(rethrowQueryFailure);
+  return new Map(rows.map((row) => [row.attempt_id, row]));
+}
+function physicalRows(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    runId: string;
+    attemptIds: readonly string[];
+  }>,
+) {
+  const a = nodeAttempts,
+    n = nodeRuns;
+  return drizzle(client)
+    .select({
+      attempt_id: a.id,
+      attempt_number: a.attemptNumber,
+      attempt_status: a.status,
+      attempt_output_ref: a.outputRef,
+      executor_failure_kind: a.executorFailureKind,
+      retry_decision: a.retryDecision,
+      node_run_id: n.id,
+      node_id: n.nodeId,
+      invocation_key: n.invocationKey,
+      current_attempt_id: n.currentAttemptId,
+      node_status: n.status,
+      node_output_ref: n.outputRef,
+      resume_at: n.resumeAt,
+      retry_due_at: n.retryDueAt,
+      wait_kind: n.waitKind,
+    })
+    .from(a)
+    .innerJoin(n, and(eq(n.workspaceId, a.workspaceId), eq(n.id, a.nodeRunId)))
+    .where(
+      and(
+        eq(a.workspaceId, input.workspaceId),
+        inArray(a.id, [...input.attemptIds]),
+        eq(n.workflowRunId, input.runId),
+      ),
+    );
 }
 
 export function attachPhysicalAttempts(

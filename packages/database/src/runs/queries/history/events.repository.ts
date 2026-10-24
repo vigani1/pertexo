@@ -1,6 +1,7 @@
+import { runEvents, workflowRuns } from '../../../schema/runs/execution.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { retainedTestRunSql } from '../../data-policy.js';
-import { sql } from 'drizzle-orm';
+import { and, eq, gt, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -69,13 +70,17 @@ async function lockRunForEvent(
   transaction: WorkspaceTransaction,
   runId: string,
 ): Promise<void> {
-  const result = await transaction.db.execute<{ id: string }>(sql`
-    select id
-    from app.workflow_runs
-    where workspace_id = ${transaction.workspaceId} and id = ${runId}
-    for update
-  `);
-  if (result.rows[0] === undefined)
+  const rows = await transaction.db
+    .select({ id: workflowRuns.id })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, transaction.workspaceId),
+        eq(workflowRuns.id, runId),
+      ),
+    )
+    .for('update');
+  if (rows[0] === undefined)
     throw new ExecutionStateConflictError('execution.run_not_found');
 }
 
@@ -111,20 +116,31 @@ export async function appendLockedRunEvent(
       'JSON value must not exceed 4096 UTF-8 bytes',
     );
 
-  const result = await transaction.db.execute<{ sequence: number }>(sql`
-    insert into app.run_events (workspace_id, workflow_run_id, sequence, type, payload)
-    select
-      ${transaction.workspaceId},
-      ${runId},
-      coalesce(max(sequence), 0) + 1,
-      ${parsed.type},
-      ${serializedPayload}::jsonb
-    from app.run_events
-    where workspace_id = ${transaction.workspaceId}
-      and workflow_run_id = ${runId}
-    returning sequence
-  `);
-  const sequence = result.rows[0]?.sequence;
+  const next = transaction.db
+    .select({
+      workspaceId: sql<string>`${transaction.workspaceId}::uuid`.as(
+        'workspace_id',
+      ),
+      workflowRunId: sql<string>`${runId}::uuid`.as('workflow_run_id'),
+      sequence: sql<number>`coalesce(max(${runEvents.sequence}),0)+1`.as(
+        'sequence',
+      ),
+      type: sql<string>`${parsed.type}`.as('type'),
+      payload: sql`${serializedPayload}::jsonb`.as('payload'),
+      createdAt: sql<Date>`now()`.as('created_at'),
+    })
+    .from(runEvents)
+    .where(
+      and(
+        eq(runEvents.workspaceId, transaction.workspaceId),
+        eq(runEvents.workflowRunId, runId),
+      ),
+    );
+  const [inserted] = await transaction.db
+    .insert(runEvents)
+    .select(next)
+    .returning({ sequence: runEvents.sequence });
+  const sequence = inserted?.sequence;
   if (sequence === undefined)
     throw new Error('Run event insert returned no sequence');
   return sequence;
@@ -144,39 +160,11 @@ export async function readRunEventsAfter(
   input: Readonly<z.input<typeof readRunEventsSchema>>,
 ): Promise<RunEventPage> {
   const parsed = readRunEventsSchema.parse(input);
-  const result = await transaction.db.execute<{
-    created_at: Date | null;
-    high_water: number;
-    payload: unknown;
-    sequence: number | null;
-    type: RunEventType | null;
-  }>(sql`
-    with run_snapshot as materialized (
-      select coalesce((
-        select max(event.sequence)
-        from app.run_events event
-        where event.workspace_id = run.workspace_id
-          and event.workflow_run_id = run.id
-      ), 0)::integer as high_water
-      from app.workflow_runs run
-      where ${retainedTestRunSql('run')} and run.workspace_id = ${transaction.workspaceId}
-        and run.id = ${parsed.runId}
-    )
-    select snapshot.high_water,
-           page.sequence,page.type,page.payload,page.created_at
-    from run_snapshot snapshot
-    left join lateral (
-      select event.sequence,event.type,event.payload,event.created_at
-      from app.run_events event
-      where event.workspace_id = ${transaction.workspaceId}
-        and event.workflow_run_id = ${parsed.runId}
-        and event.sequence > ${parsed.afterSequence}
-        and event.sequence <= snapshot.high_water
-      order by event.sequence
-      limit ${parsed.limit + 1}
-    ) page on true
-    order by page.sequence nulls last
-  `);
+  const { snapshot, page } = eventPage(transaction, parsed);
+  // Drizzle cannot mark a CTE MATERIALIZED; retain the snapshot barrier around native reads.
+  const result = await transaction.db.execute<
+    (typeof page)['_']['result'][number]
+  >(sql`with run_snapshot as materialized (${snapshot}) ${page}`);
   const highWaterSequence = result.rows[0]?.high_water;
   if (highWaterSequence === undefined)
     throw new ExecutionStateConflictError('execution.run_not_found');
@@ -209,4 +197,67 @@ export async function readRunEventsAfter(
     hasMore: eventRows.length > parsed.limit,
     highWaterSequence,
   });
+}
+
+function eventPage(
+  transaction: WorkspaceTransaction,
+  input: z.output<typeof readRunEventsSchema>,
+) {
+  const { db, workspaceId } = transaction;
+  const highWater = db
+    .select({ value: sql<number>`max(${runEvents.sequence})` })
+    .from(runEvents)
+    .where(
+      and(
+        eq(runEvents.workspaceId, workflowRuns.workspaceId),
+        eq(runEvents.workflowRunId, workflowRuns.id),
+      ),
+    );
+  const snapshot = db
+    .select({
+      high_water: sql<number>`coalesce((${highWater}),0)::integer`.as(
+        'high_water',
+      ),
+    })
+    .from(workflowRuns)
+    .where(
+      and(
+        retainedTestRunSql(),
+        eq(workflowRuns.workspaceId, workspaceId),
+        eq(workflowRuns.id, input.runId),
+      ),
+    );
+  const source = db.$with('run_snapshot').as(snapshot);
+  // The outer left join can produce an empty page row, including computed fields.
+  const events = db
+    .select({
+      sequence: runEvents.sequence,
+      type: sql<RunEventType | null>`${runEvents.type}`.as('type'),
+      payload: runEvents.payload,
+      created_at: runEvents.createdAt,
+    })
+    .from(runEvents)
+    .where(
+      and(
+        eq(runEvents.workspaceId, workspaceId),
+        eq(runEvents.workflowRunId, input.runId),
+        gt(runEvents.sequence, input.afterSequence),
+        lte(runEvents.sequence, source.high_water),
+      ),
+    )
+    .orderBy(runEvents.sequence)
+    .limit(input.limit + 1)
+    .as('page');
+  const page = db
+    .select({
+      high_water: source.high_water,
+      sequence: events.sequence,
+      type: events.type,
+      payload: events.payload,
+      created_at: events.created_at,
+    })
+    .from(source)
+    .leftJoinLateral(events, sql`true`)
+    .orderBy(sql`${events.sequence} nulls last`);
+  return { snapshot, page };
 }

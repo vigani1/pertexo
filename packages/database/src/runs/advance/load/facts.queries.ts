@@ -1,3 +1,7 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
+import { runEvents } from '../../../schema/runs/execution.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
 import { CoordinatorRunStateCorruptError } from '../contract.js';
@@ -43,21 +47,22 @@ export async function persistedFactCapacity(
     storageBytes: number;
   }>
 > {
-  const result = await client.query<{
-    fact_count: number;
-    last_sequence: number | null;
-    maximum_storage_bytes: string;
-    storage_bytes: string;
-  }>(
-    `select count(*)::int as fact_count, max(sequence)::int as last_sequence,
-            coalesce(sum(octet_length(payload::text)),0)::bigint as storage_bytes,
-            coalesce(max(octet_length(payload::text)),0)::bigint
-              as maximum_storage_bytes
-     from app.run_events
-     where workspace_id=$1 and workflow_run_id=$2 and sequence >= $3`,
-    [workspaceId, runId, firstSequence],
-  );
-  const row = result.rows[0];
+  const [row] = await drizzle(client)
+    .select({
+      fact_count: sql<number>`count(*)::int`,
+      last_sequence: sql<number | null>`max(${runEvents.sequence})::int`,
+      storage_bytes: sql<string>`coalesce(sum(octet_length(${runEvents.payload}::text)),0)::bigint`,
+      maximum_storage_bytes: sql<string>`coalesce(max(octet_length(${runEvents.payload}::text)),0)::bigint`,
+    })
+    .from(runEvents)
+    .where(
+      and(
+        eq(runEvents.workspaceId, workspaceId),
+        eq(runEvents.workflowRunId, runId),
+        gte(runEvents.sequence, firstSequence),
+      ),
+    )
+    .catch(rethrowQueryFailure);
   const count = row?.fact_count;
   const storageBytes = Number(row?.storage_bytes);
   const maximumStorageBytes = Number(row?.maximum_storage_bytes);
@@ -109,24 +114,27 @@ export async function readPersistedFacts(
     ),
   );
   while (persistedEvents.length < input.count) {
-    const result = await client.query<PersistedCoordinatorEventRow>(
-      `select event.sequence, event.type, event.payload, event.created_at
-       from app.run_events event
-       where event.workspace_id=$1 and event.workflow_run_id=$2
-         and event.sequence >= $3
-         and event.sequence <= $4
-       order by event.sequence
-       limit $5`,
-      [
-        input.workspaceId,
-        input.runId,
-        nextSequence,
-        input.lastSequence,
-        rowsPerFetch,
-      ],
-    );
-    if (result.rows.length === 0) break;
-    for (const row of result.rows) {
+    const rows = await drizzle(client)
+      .select({
+        sequence: runEvents.sequence,
+        type: runEvents.type,
+        payload: runEvents.payload,
+        created_at: runEvents.createdAt,
+      })
+      .from(runEvents)
+      .where(
+        and(
+          eq(runEvents.workspaceId, input.workspaceId),
+          eq(runEvents.workflowRunId, input.runId),
+          gte(runEvents.sequence, nextSequence),
+          lte(runEvents.sequence, input.lastSequence),
+        ),
+      )
+      .orderBy(runEvents.sequence)
+      .limit(rowsPerFetch)
+      .catch(rethrowQueryFailure);
+    if (rows.length === 0) break;
+    for (const row of rows) {
       const canonical = canonicalEventPayload(row.payload);
       canonicalBytes += canonical.bytes;
       if (canonicalBytes > maximumCanonicalPersistedFactBytes)
