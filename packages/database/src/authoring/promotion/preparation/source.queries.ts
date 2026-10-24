@@ -1,6 +1,13 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { bindResourcePredicate } from '../../../tenant-access/resources/scope.queries.js';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import {
+  workflows as authoringWorkflows,
+  workflowVersions,
+} from '../../../schema/authoring/workflows.js';
+import { connections as storedConnections } from '../../../schema/connections.js';
+import type { ConnectionScope } from '../../../tenant-access/resources/connections/scope.js';
 import {
   connectionScope,
   connectionScopeSql,
@@ -20,13 +27,17 @@ import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { promotionNodes, type PromotionGraphBudget } from './graph.js';
 import { WorkflowPromotionError } from '../contract.js';
 
-type ConnectionMetadata = Readonly<{
-  id: string;
-  name: string;
-  normalized_name: string;
-  provider_key: string;
-  auth_type: string;
-}>;
+export const promotionConnection = alias(storedConnections, 'connection');
+export const promotionConnectionProjection = {
+  id: promotionConnection.id,
+  name: promotionConnection.name,
+  normalized_name: sql<string>`lower(${promotionConnection.name})`,
+  provider_key: promotionConnection.providerKey,
+  auth_type: promotionConnection.authType,
+};
+type ConnectionMetadata = Awaited<
+  ReturnType<typeof readSourceConnections>
+>[number];
 export type PromotionSource = Readonly<{
   workflowId: string;
   versionId: string;
@@ -67,22 +78,34 @@ export async function readPromotionSources(
       throw new WorkflowNotFoundError(
         'A selected published workflow version is unavailable.',
       );
-    const workflow = (
-      await client.query<{ name: string }>(
-        "select name from app.workflows where workspace_id=$1 and id=$2 and lifecycle_status='active' for share",
-        [workspaceId, selection.workflowId],
+    const db = drizzle(client);
+    const [workflow] = await db
+      .select({ name: authoringWorkflows.name })
+      .from(authoringWorkflows)
+      .where(
+        and(
+          eq(authoringWorkflows.workspaceId, workspaceId),
+          eq(authoringWorkflows.id, selection.workflowId),
+          eq(authoringWorkflows.lifecycleStatus, 'active'),
+        ),
       )
-    ).rows[0];
-    const version = (
-      await client.query<{
-        version_number: number;
-        checksum: string;
-        graph_json: unknown;
-      }>(
-        'select version_number,checksum,graph_json from app.workflow_versions where workspace_id=$1 and workflow_id=$2 and id=$3',
-        [workspaceId, selection.workflowId, selection.versionId],
+      .for('share')
+      .catch(rethrowQueryFailure);
+    const [version] = await db
+      .select({
+        version_number: workflowVersions.versionNumber,
+        checksum: workflowVersions.checksum,
+        graph_json: workflowVersions.graphJson,
+      })
+      .from(workflowVersions)
+      .where(
+        and(
+          eq(workflowVersions.workspaceId, workspaceId),
+          eq(workflowVersions.workflowId, selection.workflowId),
+          eq(workflowVersions.id, selection.versionId),
+        ),
       )
-    ).rows[0];
+      .catch(rethrowQueryFailure);
     if (workflow === undefined || version === undefined)
       throw new WorkflowNotFoundError(
         'A selected published workflow version is unavailable.',
@@ -106,22 +129,15 @@ export async function readPromotionSources(
       'limit',
       'Select fewer workflows to review their connections.',
     );
-  const connectionParameters: unknown[] = [workspaceId, connectionIds];
-  const permitted = bindResourcePredicate(
-    connectionScopeSql(
-      connectionScope({ workspaceId, actorId }, scope.role, 'connection:read'),
+  const connections = await readSourceConnections(client, {
+    workspaceId,
+    scope: connectionScope(
+      { workspaceId, actorId },
+      scope.role,
+      'connection:read',
     ),
-    connectionParameters,
-  );
-  const connections =
-    connectionIds.length === 0
-      ? []
-      : (
-          await client.query<ConnectionMetadata>(
-            `select id,name,lower(name) normalized_name,provider_key,auth_type from app.connections connection where workspace_id=$1 and id=any($2::uuid[]) and ${permitted} order by id for share`,
-            connectionParameters,
-          )
-        ).rows;
+    connectionIds,
+  });
   const tableNames = [
     ...new Set(
       nodes
@@ -135,4 +151,32 @@ export async function readPromotionSources(
     tableNames,
   ).catch(rethrowQueryFailure);
   return { workflows, connections, tables };
+}
+
+function readSourceConnections(
+  client: PoolClient,
+  {
+    workspaceId,
+    scope,
+    connectionIds,
+  }: Readonly<{
+    workspaceId: string;
+    scope: ConnectionScope;
+    connectionIds: string[];
+  }>,
+) {
+  if (connectionIds.length === 0) return Promise.resolve([]);
+  return drizzle(client)
+    .select(promotionConnectionProjection)
+    .from(promotionConnection)
+    .where(
+      and(
+        eq(promotionConnection.workspaceId, workspaceId),
+        inArray(promotionConnection.id, connectionIds),
+        connectionScopeSql(scope, sql`${promotionConnection}`),
+      ),
+    )
+    .orderBy(asc(promotionConnection.id))
+    .for('share')
+    .catch(rethrowQueryFailure);
 }

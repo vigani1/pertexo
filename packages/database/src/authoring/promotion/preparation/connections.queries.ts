@@ -2,7 +2,13 @@ import {
   connectionScopeSql,
   type ConnectionScope,
 } from '../../../tenant-access/resources/connections/scope.js';
-import { bindResourcePredicate } from '../../../tenant-access/resources/scope.queries.js';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import {
+  promotionConnection,
+  promotionConnectionProjection,
+} from './source.queries.js';
 import type { PoolClient } from 'pg';
 import {
   inspectWorkflowPortableManifest,
@@ -48,27 +54,25 @@ export async function rebindPromotionConnections(
       sources.connections.map((connection) => connection.normalized_name),
     ),
   ];
-  const parameters: unknown[] = [workspaceId, names];
-  const permitted = bindResourcePredicate(
-    connectionScopeSql(scope),
-    parameters,
-  );
   const targets =
     names.length === 0
       ? []
-      : (
-          await client.query<{
-            id: string;
-            name: string;
-            normalized_name: string;
-            provider_key: string;
-            auth_type: string;
-            status: string;
-          }>(
-            `select id,name,lower(name) normalized_name,provider_key,auth_type,status from app.connections connection where workspace_id=$1 and lower(name)=any($2::text[]) and ${permitted} order by id for share`,
-            parameters,
+      : await drizzle(client)
+          .select({
+            ...promotionConnectionProjection,
+            status: promotionConnection.status,
+          })
+          .from(promotionConnection)
+          .where(
+            and(
+              eq(promotionConnection.workspaceId, workspaceId),
+              inArray(sql`lower(${promotionConnection.name})`, names),
+              connectionScopeSql(scope, sql`${promotionConnection}`),
+            ),
           )
-        ).rows;
+          .orderBy(asc(promotionConnection.id))
+          .for('share')
+          .catch(rethrowQueryFailure);
   const bindings: PortableConnectionBinding[] = [];
   for (const slot of manifest.connectionSlots) {
     const sourceId = sourceNodes.get(slot.nodeId)?.connectionRefs[slot.slot];

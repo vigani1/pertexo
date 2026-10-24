@@ -1,3 +1,8 @@
+import { and, eq, ne } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflows } from '../../../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
+import { readTargetOrigin, lockTargetWorkflow } from './records.queries.js';
 import { workflowAccessible } from '../../../../tenant-access/resources/workflows.queries.js';
 import { WorkflowNotFoundError } from '../../../workflows/errors.js';
 import type { PoolClient } from 'pg';
@@ -27,11 +32,12 @@ export async function prepareTargetWorkflow(
   input.signal?.throwIfAborted();
   const origin =
     (
-      await client.query<Origin>(
-        'select workflow_id,graph_digest,target_name,draft_revision,published_version_id,promotion_id from app.workflow_promotion_origins where workspace_id=$1 and source_workspace_id=$2 and source_workflow_id=$3',
-        [input.workspaceId, sourceWorkspaceId, source.workflowId],
-      )
-    ).rows[0] ?? null;
+      await readTargetOrigin(client, {
+        workspaceId: input.workspaceId,
+        sourceWorkspaceId,
+        sourceWorkflowId: source.workflowId,
+      })
+    )[0] ?? null;
   if (
     origin !== null &&
     !(await workflowAccessible(client, scope, {
@@ -48,11 +54,11 @@ export async function prepareTargetWorkflow(
     origin === null
       ? undefined
       : (
-          await client.query<TargetWorkflowRow>(
-            `select workflow.name,workflow.published_version_id,workflow.lifecycle_status,draft.revision,draft.graph_json from app.workflows workflow join app.workflow_drafts draft on draft.workspace_id=workflow.workspace_id and draft.workflow_id=workflow.id where workflow.workspace_id=$1 and workflow.id=$2 for update of workflow,draft`,
-            [input.workspaceId, origin.workflow_id],
-          )
-        ).rows[0];
+          await lockTargetWorkflow(client, {
+            workspaceId: input.workspaceId,
+            workflowId: origin.workflow_id,
+          })
+        )[0];
   const targetGraph =
     target === undefined ? null : parseWorkflowGraphDraft(target.graph_json);
   if (targetGraph !== null) budget.add(targetGraph);
@@ -65,11 +71,19 @@ export async function prepareTargetWorkflow(
       detail: 'Restore the target workflow before promoting to it.',
     });
   const collisions = (
-    await client.query(
-      'select id from app.workflows where workspace_id=$1 and name=$2 and ($3::uuid is null or id<>$3) limit 1',
-      [input.workspaceId, source.name, origin?.workflow_id ?? null],
-    )
-  ).rowCount;
+    await drizzle(client)
+      .select({ id: workflows.id })
+      .from(workflows)
+      .where(
+        and(
+          eq(workflows.workspaceId, input.workspaceId),
+          eq(workflows.name, source.name),
+          origin === null ? undefined : ne(workflows.id, origin.workflow_id),
+        ),
+      )
+      .limit(1)
+      .catch(rethrowQueryFailure)
+  ).length;
   if (
     collisions !== 0 ||
     sources.workflows.some(
