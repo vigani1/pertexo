@@ -21,13 +21,13 @@ import {
   completeCoordinatorReceipt,
   DeliveryMismatch,
   validateAuthoritativeAdvanceDelivery,
-} from './receipts.js';
-import { observeScheduleToStartSeconds } from './schedule-observation.js';
-import { loadRunForAdvance } from './load/state.js';
+} from './receipts.repository.js';
+import { observeScheduleToStartSeconds } from './schedule-observation.repository.js';
+import { loadRunForAdvance } from './load/state.queries.js';
 import {
   assertCoordinatorNotAborted,
   withCoordinatorWriteClient,
-} from './transactions.js';
+} from './transactions.repository.js';
 
 async function advance(
   pool: Pool,

@@ -2,7 +2,7 @@
 export * from './authoring/testing.js';
 export * from './authoring/settings/auto-pause/store.js';
 export * from './connections/testing.js';
-export { lockRunAcceptanceCommand } from './runs/commands/manual-start.js';
+export { lockRunAcceptanceCommand } from './runs/commands/manual-start.repository.js';
 export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
@@ -13,8 +13,8 @@ export { createFailureNotificationDestinationDatabase } from './notifications/de
 export { FailureNotificationDestinationError } from './notifications/destinations/errors.js';
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/contract.js';
 export type { FailureNotificationDestinationDatabase } from './notifications/destinations/contract.js';
-export { createDueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.js';
-export type { DueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.js';
+export { createDueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.repository.js';
+export type { DueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.repository.js';
 export { createFailureNotificationStore } from './notifications/repository.js';
 export { FailureNotificationStateError } from './notifications/errors.js';
 export type {
@@ -23,8 +23,8 @@ export type {
   FailureNotificationResolvedDestination,
   FailureNotificationStore,
 } from './notifications/contract.js';
-export { createDeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.js';
-export type { DeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.js';
+export { createDeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.repository.js';
+export type { DeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.repository.js';
 export {
   ARTIFACT_STATUS,
   ArtifactFinalizeConflictError,
@@ -86,7 +86,7 @@ export {
   RUN_STATUS_VALUES,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from './runs/commands/acceptance.js';
+} from './runs/commands/acceptance.repository.js';
 export { acceptPreviewRun } from './previews/runs/acceptance.repository.js';
 export { readPreviewRun } from './previews/runs/records.queries.js';
 export { resolvePreviewReplay } from './previews/runs/replay.repository.js';
@@ -130,31 +130,31 @@ export type {
   IdempotencyStatus,
   RunStatus,
   WorkflowRunAcceptanceReplayInput,
-} from './runs/commands/acceptance.js';
+} from './runs/commands/acceptance.repository.js';
 export {
   appendRunEvent,
   readRunEventsAfter,
   RUN_EVENT_TYPE,
-} from './runs/queries/history/events.js';
+} from './runs/queries/history/events.repository.js';
 export type {
   PersistedRunEvent,
   RunEventPage,
   RunEventType,
-} from './runs/queries/history/events.js';
+} from './runs/queries/history/events.repository.js';
 export {
   ExecutionStateConflictError,
   RunEventGapError,
 } from './runs/state-errors.js';
-export { requestWorkflowRunCancellation } from './runs/commands/cancel.js';
+export { requestWorkflowRunCancellation } from './runs/commands/cancel.repository.js';
 export {
   createPublishedWorkflowReader,
   PublishedWorkflowVersionCorruptError,
-} from './runs/queries/execution/published.js';
+} from './runs/queries/execution/published.queries.js';
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
   ReadPublishedWorkflowForExecutionInput,
-} from './runs/queries/execution/published.js';
+} from './runs/queries/execution/published.queries.js';
 export { createOutboxDispatcherDatabase } from './outbox/dispatcher/repository.js';
 export type {
   ClaimOutboxBatchInput,

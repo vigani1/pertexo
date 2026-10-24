@@ -13,7 +13,7 @@ import {
   IDEMPOTENCY_STATUS,
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
-} from '../../runs/commands/acceptance.js';
+} from '../../runs/commands/acceptance.repository.js';
 
 import { WORKSPACE_STATUS } from '../state.js';
 import type {

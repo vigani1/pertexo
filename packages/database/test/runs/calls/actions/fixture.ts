@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import { createCheckpoint } from '../../../../../workflow-engine/dist/index.js';
 
 import { createRunAdvanceStore } from '../../../../src/runs/advance/store.js';
-import { createWorkflowCallStore } from '../../../../src/runs/calls/store.js';
+import { createWorkflowCallStore } from '../../../../src/runs/calls/repository.js';
 import { parseDatabaseConfig } from '../../../../src/config.js';
 
 import { admin } from '../../../lifecycle/calls/fixtures.js';

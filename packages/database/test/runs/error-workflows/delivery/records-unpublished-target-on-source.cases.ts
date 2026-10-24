@@ -1,4 +1,4 @@
-import { readErrorWorkflow } from '../../../../src/runs/error-workflows/read.js';
+import { readErrorWorkflow } from '../../../../src/runs/error-workflows/read.queries.js';
 
 import { createWorkspacePurgeCoordinator } from '../../../../src/lifecycle/purge/repository.js';
 import { maintenanceUrl } from '../../../lifecycle/retention.support.js';

@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { createRunValuesStore } from '../../../src/runs/values/store.js';
+import { createRunValuesStore } from '../../../src/runs/values/repository.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { completePreviewAttempt } from '../../../src/previews/attempts/completion.repository.js';
 import { createPreviewRetentionCoordinator } from '../../../src/lifecycle/previews/repository.js';

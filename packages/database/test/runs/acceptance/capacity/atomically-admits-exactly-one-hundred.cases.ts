@@ -5,7 +5,7 @@ import { expect, it } from 'vitest';
 import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
-} from '../../../../src/runs/commands/acceptance.js';
+} from '../../../../src/runs/commands/acceptance.repository.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

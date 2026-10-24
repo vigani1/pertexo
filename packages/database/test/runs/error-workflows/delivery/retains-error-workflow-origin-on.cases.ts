@@ -1,4 +1,4 @@
-import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.js';
+import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.repository.js';
 import { withWorkspaceTransaction } from '../../../../src/tenant-access/transactions.js';
 
 import { expect, it } from 'vitest';

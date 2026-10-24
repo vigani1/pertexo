@@ -1,6 +1,6 @@
 import { WorkflowRunNotExecutableError } from '../../../../src/runs/errors.js';
 
-import { lockReplaySource } from '../../../../src/runs/commands/replay.js';
+import { lockReplaySource } from '../../../../src/runs/commands/replay.repository.js';
 import { expect, it } from 'vitest';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {

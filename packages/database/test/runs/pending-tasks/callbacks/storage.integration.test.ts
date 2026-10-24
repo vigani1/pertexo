@@ -1,4 +1,4 @@
-import { requestWorkflowRunCancellation } from '../../../../src/runs/commands/cancel.js';
+import { requestWorkflowRunCancellation } from '../../../../src/runs/commands/cancel.repository.js';
 import { expect, it } from 'vitest';
 import {
   callbacks,
@@ -17,7 +17,7 @@ import {
   withTenantScopedClient,
   withWorkspaceTransaction,
 } from '../../../../src/tenant-access/transactions.js';
-import { bindCallbackTask } from '../../../../src/runs/pending-tasks/callbacks/bind.js';
+import { bindCallbackTask } from '../../../../src/runs/pending-tasks/callbacks/bind.repository.js';
 it.each(['api', 'test'])(
   'prepares and reuses one callback identity before Wait in a %s run',
   async (trigger) => {

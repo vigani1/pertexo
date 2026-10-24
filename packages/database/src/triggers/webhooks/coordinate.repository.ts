@@ -2,8 +2,8 @@ import { webhookTriggerReplayRecords as replays } from '../../schema/triggers/de
 import { createHash } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import type { PublishedWorkflow } from '../../runs/queries/execution/published.js';
-import { acceptWorkflowRun } from '../../runs/commands/acceptance.js';
+import type { PublishedWorkflow } from '../../runs/queries/execution/published.queries.js';
+import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js';
 import type { AcceptVerifiedWebhookDeliveryInput } from './runtime/contract.js';
 import { coordinateEvent } from '../coordination/accept.repository.js';
 import type { PreparedEventCoordination } from '../coordination/contract.js';

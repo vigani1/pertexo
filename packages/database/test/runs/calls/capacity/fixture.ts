@@ -1,7 +1,7 @@
 import { Pool, type PoolClient } from 'pg';
 
 import { withTenantScopedClient } from '../../../../src/tenant-access/transactions.js';
-import { readWorkspaceUsageCapacity } from '../../../../src/runs/queries/usage-capacity.js';
+import { readWorkspaceUsageCapacity } from '../../../../src/runs/queries/usage-capacity.queries.js';
 
 import {
   apiUrl,

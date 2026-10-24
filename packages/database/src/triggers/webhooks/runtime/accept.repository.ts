@@ -4,7 +4,7 @@ import type { WorkspaceTransaction } from '../../../tenant-access/transactions.j
 import { lockEventCoordination } from '../../coordination/keys.repository.js';
 import { coordinateVerifiedWebhook } from '../coordinate.repository.js';
 import type { createEventCoordinationPreparation } from '../../coordination/prepare.js';
-import { WorkflowAlreadyRunningError } from '../../../runs/commands/concurrency.js';
+import { WorkflowAlreadyRunningError } from '../../../runs/commands/concurrency.queries.js';
 import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
 
 import {
@@ -18,7 +18,7 @@ import type { Pool } from 'pg';
 
 import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
 
-import { acceptWorkflowRun } from '../../../runs/commands/acceptance.js';
+import { acceptWorkflowRun } from '../../../runs/commands/acceptance.repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import { insertWebhookDelivery } from '../deliveries.repository.js';

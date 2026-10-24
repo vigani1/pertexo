@@ -8,7 +8,7 @@ import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
   throwWorkflowRunAdmissionError,
-} from '../../../src/runs/commands/acceptance.js';
+} from '../../../src/runs/commands/acceptance.repository.js';
 
 function databaseError(code: string, cause?: unknown): Error {
   return Object.assign(new Error(`database ${code}`, { cause }), { code });

@@ -18,7 +18,7 @@ const seams = vi.hoisted(() => ({
 // Admission itself is proven against PostgreSQL; here only its inputs and the
 // completion the scanner records are observed, at exact database instants.
 vi.mock(
-  '../../../../src/runs/commands/acceptance.js',
+  '../../../../src/runs/commands/acceptance.repository.js',
   async (importOriginal) => ({
     ...(await importOriginal<object>()),
     acceptWorkflowRun: (...arguments_: unknown[]) =>

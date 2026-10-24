@@ -9,7 +9,7 @@ import {
 import {
   appendLockedRunEvent,
   RUN_EVENT_TYPE,
-} from '../../runs/queries/history/events.js';
+} from '../../runs/queries/history/events.repository.js';
 import { operatorUnknownOutcomeEvidence } from '../../schema/runs/operator.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type { OperatorDecision } from './contract.js';

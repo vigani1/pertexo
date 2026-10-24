@@ -27,7 +27,7 @@ import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 
 import { requestActiveRunCancellations } from '../../runs/runs.repository.js';
-import { IdempotencyRequestConflictError } from '../../runs/commands/acceptance.js';
+import { IdempotencyRequestConflictError } from '../../runs/commands/acceptance.repository.js';
 import { databaseSchema } from '../../schema.js';
 import { WorkspaceLifecycleConflictError } from '../../tenant-access/errors.js';
 import { parseWorkspaceId } from '../../tenant-access/transactions.js';

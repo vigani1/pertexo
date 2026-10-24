@@ -10,7 +10,7 @@ import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { createWorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/database.js';
 import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input-cases/store.js';
 import { createWorkflowTestSuiteScanner } from '../../../../src/previews/suites/scanner.repository.js';
-import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.js';
+import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.queries.js';
 import { parseDatabaseConfig } from '../../../../src/config.js';
 import { serializeStoredExecutionValue } from '../../../../src/platform/stored-execution-value.js';
 import {

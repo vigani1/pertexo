@@ -5,7 +5,7 @@ import { createWorkflowFolderDatabase } from '../../src/authoring/organization/f
 import {
   createPendingTaskStore,
   PendingTaskNotFoundError,
-} from '../../src/runs/pending-tasks/responses/store.js';
+} from '../../src/runs/pending-tasks/responses/repository.js';
 import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
 import {
   own,

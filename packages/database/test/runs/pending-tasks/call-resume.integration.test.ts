@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import { createFamily } from '../../lifecycle/calls/fixtures.js';
 import { admin, pool } from './fixtures.js';
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
-import { synchronizeHumanWait } from '../../../src/runs/pending-tasks/lifecycle/time-capacity.js';
+import { synchronizeHumanWait } from '../../../src/runs/pending-tasks/lifecycle/time-capacity.queries.js';
 
 it('keeps an ancestor awake while a descendant has an unconsumed Call result', async () => {
   const root = await createFamily({ slotLent: true });

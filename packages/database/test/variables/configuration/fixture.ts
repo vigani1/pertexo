@@ -7,7 +7,7 @@ import { createWorkspaceVariablesStore } from '../../../src/variables/settings.r
 
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { withWorkspaceTransaction } from '../../../src/tenant-access/transactions.js';
-import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.js';
+import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
 
 import { admin, createFamily } from '../../lifecycle/calls/fixtures.js';
 import { apiUrl, userId } from '../../lifecycle/retention.support.js';

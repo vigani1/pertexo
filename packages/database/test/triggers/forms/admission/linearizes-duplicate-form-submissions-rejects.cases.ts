@@ -1,5 +1,5 @@
 import { createWorkflowRunDatabase } from '../../../../src/runs/runs.repository.js';
-import { RunRequiresFormError } from '../../../../src/runs/commands/forms.js';
+import { RunRequiresFormError } from '../../../../src/runs/commands/forms.queries.js';
 import { randomBytes } from 'node:crypto';
 import { Client } from 'pg';
 import { expect, it, vi } from 'vitest';

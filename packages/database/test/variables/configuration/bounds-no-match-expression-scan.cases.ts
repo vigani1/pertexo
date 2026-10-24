@@ -11,7 +11,7 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 
 import { WorkspaceVariableUsageChangedError } from '../../../src/variables/contract.js';
 
-import { RunVariableSnapshotUnavailableError } from '../../../src/runs/commands/variables.js';
+import { RunVariableSnapshotUnavailableError } from '../../../src/runs/commands/variables.repository.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
 
 import { admin } from '../../lifecycle/calls/fixtures.js';

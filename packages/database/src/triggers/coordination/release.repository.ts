@@ -22,8 +22,8 @@ import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
-} from '../../runs/commands/acceptance.js';
-import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
+} from '../../runs/commands/acceptance.repository.js';
+import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.queries.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { recordWorkflowTriggerSkip } from '../skips.repository.js';
