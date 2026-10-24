@@ -1,3 +1,4 @@
+import { isAccessLost } from '@/lib/api/error-copy';
 import { useEffect, useRef, useState } from 'react';
 import {
   normalizeRunIntent,
@@ -46,6 +47,18 @@ async function requireRunAuthority(api: ApiClient, workspaceId: string) {
     });
 }
 
+type RunSubmissionOptions = Readonly<{
+  apiClient: ApiClient;
+  userId?: string;
+  workspaceId: string;
+  workflowId: string;
+  verifyIdentity: () => Promise<void>;
+  isSessionPaused: () => boolean;
+  ensureSaved: () => Promise<unknown>;
+  onRunAccepted: (runId: string) => void;
+  onRunCommandAccepted?: () => void;
+}>;
+
 export function useWorkflowRunSubmission({
   apiClient,
   userId,
@@ -56,17 +69,7 @@ export function useWorkflowRunSubmission({
   ensureSaved,
   onRunAccepted,
   onRunCommandAccepted,
-}: Readonly<{
-  apiClient: ApiClient;
-  userId?: string;
-  workspaceId: string;
-  workflowId: string;
-  verifyIdentity: () => Promise<void>;
-  isSessionPaused: () => boolean;
-  ensureSaved: () => Promise<unknown>;
-  onRunAccepted: (runId: string) => void;
-  onRunCommandAccepted?: () => void;
-}>) {
+}: RunSubmissionOptions) {
   // The submission in flight, if any: each one clears only its own marker,
   // so an answer from an earlier scope can't end a newer submission's wait.
   const [inFlight, setInFlight] = useState<symbol>();
@@ -77,19 +80,9 @@ export function useWorkflowRunSubmission({
   const [publicationConflict, setPublicationConflict] = useState(false);
   const [recoveryIntent, setRecoveryIntent] = useState<RunIntent>();
   const attempt = useRef<RunAttempt | undefined>(undefined);
-  const owner = useRef<symbol | undefined>(undefined);
+  const runScope = { apiClient, userId, workspaceId, workflowId };
+  const owner = useRunAttemptOwner(runScope, attempt);
   const sending = useRef<symbol | undefined>(undefined);
-
-  useEffect(() => {
-    const currentOwner = Symbol('workflow-run-submission');
-    owner.current = currentOwner;
-    return () => {
-      if (owner.current === currentOwner) {
-        owner.current = undefined;
-        attempt.current = undefined;
-      }
-    };
-  }, [apiClient, userId, workspaceId, workflowId]);
 
   async function startNew(intent: RunIntent) {
     const runSubmissionBlocked =
@@ -117,30 +110,6 @@ export function useWorkflowRunSubmission({
     return submitAttempt({ command: attempt.current, needsSaveBarrier: false });
   }
 
-  async function openAcceptedRun() {
-    if (pending || acceptedRunId === undefined || isSessionPaused())
-      return false;
-    const submissionOwner = owner.current;
-    if (submissionOwner === undefined) return false;
-    setInFlight(submissionOwner);
-    setError(undefined);
-    try {
-      await verifyIdentity();
-      if (owner.current !== submissionOwner || isSessionPaused()) return false;
-      const runId = acceptedRunId;
-      onRunAccepted(runId);
-      return true;
-    } catch (cause) {
-      if (owner.current !== submissionOwner) return false;
-      setError(commandErrorMessage(cause, 'opening the run'));
-      return false;
-    } finally {
-      setInFlight((current) =>
-        current === submissionOwner ? undefined : current,
-      );
-    }
-  }
-
   async function submitAttempt({
     command,
     needsSaveBarrier,
@@ -153,14 +122,14 @@ export function useWorkflowRunSubmission({
     setInFlight(submissionOwner);
     setError(undefined);
     try {
-      await verifyIdentity();
-      if (owner.current !== submissionOwner) return false;
-      if (needsSaveBarrier) await ensureSaved();
-      if (owner.current !== submissionOwner) return false;
-      if (userId !== undefined) {
-        await requireRunAuthority(apiClient, workspaceId);
-        if (owner.current !== submissionOwner) return false;
-      }
+      const authorized = await authorizeRunSubmission(
+        { apiClient, userId, workspaceId, verifyIdentity, ensureSaved },
+        {
+          needsSaveBarrier,
+          isCurrent: () => owner.current === submissionOwner,
+        },
+      );
+      if (!authorized) return false;
       attempt.current = command;
       setRetryAvailable(false);
       submitted = true;
@@ -168,19 +137,7 @@ export function useWorkflowRunSubmission({
         apiClient,
         workspaceId,
         workflowId,
-        {
-          value: command.intent.value,
-          ...(command.intent.deadlineAt === undefined
-            ? {}
-            : { deadlineAt: command.intent.deadlineAt }),
-          idempotencyKey: command.idempotencyKey,
-          ...(command.intent.expectedPublishedVersionId === undefined
-            ? {}
-            : {
-                expectedPublishedVersionId:
-                  command.intent.expectedPublishedVersionId,
-              }),
-        },
+        runAttemptPayload(command),
       );
       if (owner.current !== submissionOwner) return false;
       attempt.current = undefined;
@@ -204,25 +161,18 @@ export function useWorkflowRunSubmission({
       return true;
     } catch (cause) {
       if (owner.current !== submissionOwner) return false;
-      if (isApiError(cause) && [401, 403, 404].includes(cause.status ?? 0)) {
+      if (isAccessLost(cause)) {
         attempt.current = undefined;
         setRetryAvailable(false);
       }
       if (submitted) {
-        setPublicationConflict(
-          isApiError(cause) &&
-            cause.problem?.code === 'workflow.published_version_conflict',
-        );
+        setPublicationConflict(publicationVersionChanged(cause));
         const uncertain = isUnconfirmedCommand(cause);
         setRecoveryIntent(uncertain ? command.intent : undefined);
         if (!uncertain) attempt.current = undefined;
         setRetryAvailable(uncertain && attempt.current !== undefined);
       }
-      setError(
-        submitted && isUnconfirmedCommand(cause)
-          ? 'We couldn’t confirm whether this run started. Retry the same input, deadline and version within 24 hours of the first attempt. Don’t start a replacement run before resolving it.'
-          : commandErrorMessage(cause, 'starting this run'),
-      );
+      setError(runSubmissionFailureMessage(cause, { submitted }));
       return false;
     } finally {
       if (sending.current === submissionOwner) sending.current = undefined;
@@ -243,8 +193,152 @@ export function useWorkflowRunSubmission({
       setPublicationConflict(false);
       setError(undefined);
     },
-    openAcceptedRun,
+    openAcceptedRun: () =>
+      openAcceptedRun({
+        pending,
+        acceptedRunId,
+        owner,
+        setInFlight,
+        setError,
+        verifyIdentity,
+        isSessionPaused,
+        onRunAccepted,
+      }),
     retry,
     startNew,
   };
+}
+
+async function authorizeRunSubmission(
+  {
+    apiClient,
+    userId,
+    workspaceId,
+    verifyIdentity,
+    ensureSaved,
+  }: Pick<
+    RunSubmissionOptions,
+    'apiClient' | 'workspaceId' | 'verifyIdentity' | 'ensureSaved'
+  > &
+    Readonly<{ userId: RunSubmissionOptions['userId'] }>,
+  {
+    needsSaveBarrier,
+    isCurrent,
+  }: Readonly<{ needsSaveBarrier: boolean; isCurrent: () => boolean }>,
+) {
+  await verifyIdentity();
+  if (!isCurrent()) return false;
+  if (needsSaveBarrier) await ensureSaved();
+  if (!isCurrent()) return false;
+  if (userId !== undefined) {
+    await requireRunAuthority(apiClient, workspaceId);
+    if (!isCurrent()) return false;
+  }
+  return true;
+}
+
+function runAttemptPayload(
+  command: RunAttempt,
+): Parameters<typeof startWorkflowRun>[3] {
+  return {
+    value: command.intent.value,
+    ...(command.intent.deadlineAt === undefined
+      ? {}
+      : { deadlineAt: command.intent.deadlineAt }),
+    idempotencyKey: command.idempotencyKey,
+    ...(command.intent.expectedPublishedVersionId === undefined
+      ? {}
+      : {
+          expectedPublishedVersionId: command.intent.expectedPublishedVersionId,
+        }),
+  };
+}
+function publicationVersionChanged(error: unknown) {
+  return (
+    isApiError(error) &&
+    error.problem?.code === 'workflow.published_version_conflict'
+  );
+}
+function runSubmissionFailureMessage(
+  error: unknown,
+  { submitted }: Readonly<{ submitted: boolean }>,
+) {
+  if (submitted && isUnconfirmedCommand(error))
+    return 'We couldn’t confirm whether this run started. Retry the same input, deadline and version within 24 hours of the first attempt. Don’t start a replacement run before resolving it.';
+  return commandErrorMessage(error, 'starting this run');
+}
+
+async function openAcceptedRun({
+  pending,
+  acceptedRunId,
+  owner,
+  setInFlight,
+  setError,
+  verifyIdentity,
+  isSessionPaused,
+  onRunAccepted,
+}: Pick<
+  RunSubmissionOptions,
+  'verifyIdentity' | 'isSessionPaused' | 'onRunAccepted'
+> &
+  Readonly<{
+    pending: boolean;
+    acceptedRunId: string | undefined;
+    owner: Readonly<{ current: symbol | undefined }>;
+    setInFlight: (
+      value:
+        | symbol
+        | undefined
+        | ((current: symbol | undefined) => symbol | undefined),
+    ) => void;
+    setError: (message: string | undefined) => void;
+  }>) {
+  if (pending || acceptedRunId === undefined || isSessionPaused()) return false;
+  const submissionOwner = owner.current;
+  if (submissionOwner === undefined) return false;
+  setInFlight(submissionOwner);
+  setError(undefined);
+  try {
+    await verifyIdentity();
+    if (owner.current !== submissionOwner || isSessionPaused()) return false;
+    const runId = acceptedRunId;
+    onRunAccepted(runId);
+    return true;
+  } catch (cause) {
+    if (owner.current !== submissionOwner) return false;
+    setError(commandErrorMessage(cause, 'opening the run'));
+    return false;
+  } finally {
+    setInFlight((current) =>
+      current === submissionOwner ? undefined : current,
+    );
+  }
+}
+
+function useRunAttemptOwner(
+  {
+    apiClient,
+    userId,
+    workspaceId,
+    workflowId,
+  }: Readonly<{
+    apiClient: ApiClient;
+    userId: string | undefined;
+    workspaceId: string;
+    workflowId: string;
+  }>,
+  attemptRef: { current: RunAttempt | undefined },
+) {
+  const owner = useRef<symbol | undefined>(undefined);
+  useEffect(() => {
+    const currentOwner = Symbol('workflow-run-submission');
+    owner.current = currentOwner;
+    return () => {
+      if (owner.current === currentOwner) {
+        owner.current = undefined;
+        attemptRef.current = undefined;
+      }
+    };
+  }, [apiClient, userId, workspaceId, workflowId, attemptRef]);
+  return owner;
 }
