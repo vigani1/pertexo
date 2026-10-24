@@ -152,11 +152,7 @@ export function WorkflowPresenceSummary() {
                 title={person.displayName}
                 className={cn(
                   'grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-[0.6rem] text-foreground ring-1',
-                  person.dirty
-                    ? 'ring-warning'
-                    : person.editing
-                      ? 'ring-primary'
-                      : 'ring-border-strong',
+                  presencePresentation(person).ring,
                 )}
               >
                 {formatInitials(person.displayName)}
@@ -179,11 +175,7 @@ export function WorkflowPresenceSummary() {
             <li key={person.userId} className="space-y-1">
               <p className="wrap-anywhere font-medium">{person.displayName}</p>
               <p className="text-xs text-muted-foreground">
-                {person.dirty
-                  ? 'Editing · unsaved changes'
-                  : person.editing
-                    ? 'Editing'
-                    : 'Viewing'}
+                {presencePresentation(person).status}
                 {person.tabCount > 1
                   ? ' · ' + String(person.tabCount) + ' tabs'
                   : ''}
@@ -236,4 +228,14 @@ export function WorkflowEditingPresence({
     };
   }, [source, report]);
   return null;
+}
+
+function presencePresentation({
+  dirty,
+  editing,
+}: Readonly<{ dirty: boolean; editing: boolean }>) {
+  if (dirty)
+    return { ring: 'ring-warning', status: 'Editing · unsaved changes' };
+  if (editing) return { ring: 'ring-primary', status: 'Editing' };
+  return { ring: 'ring-border-strong', status: 'Viewing' };
 }

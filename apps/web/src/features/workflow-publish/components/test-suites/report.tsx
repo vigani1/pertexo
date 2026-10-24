@@ -56,15 +56,21 @@ function CaseReport({ found }: Readonly<{ found: CaseReportResponse }>) {
               : ''}
           </p>
           <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all font-mono text-xs">
-            {item.actual.preview ??
-              (item.actual.state === 'value'
-                ? JSON.stringify(item.actual.value, null, 2)
-                : item.actual.state === 'ambiguous'
-                  ? 'This step ran more than once. Assert its downstream summary instead.'
-                  : 'No value is available at this path.')}
+            {item.actual.preview ?? assertionFallback(item.actual)}
           </pre>
         </section>
       ))}
     </div>
   );
+}
+
+function assertionFallback(
+  actual: NonNullable<
+    CaseReportResponse['report']
+  >['assertions'][number]['actual'],
+): string | undefined {
+  if (actual.state === 'value') return JSON.stringify(actual.value, null, 2);
+  if (actual.state === 'ambiguous')
+    return 'This step ran more than once. Assert its downstream summary instead.';
+  return 'No value is available at this path.';
 }

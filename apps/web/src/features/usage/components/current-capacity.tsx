@@ -117,21 +117,7 @@ export function CurrentCapacity({
       <Instrument
         title="Runs at once"
         drawing={<SlotWheel execution={execution} />}
-        headline={
-          execution.activeRuns === 0 && execution.queuedRuns === 0
-            ? free === null
-              ? 'Idle.'
-              : `Idle, all ${free.toLocaleString(FORMAT_LOCALE)} places free.`
-            : `${execution.activeRuns.toLocaleString(FORMAT_LOCALE)} running${
-                free === null
-                  ? ''
-                  : `, ${free.toLocaleString(FORMAT_LOCALE)} free`
-              }${
-                execution.queuedRuns === 0
-                  ? ''
-                  : `, ${execution.queuedRuns.toLocaleString(FORMAT_LOCALE)} waiting`
-              }.`
-        }
+        headline={executionHeadline(execution, free)}
       >
         <dl className="flex flex-col gap-3">
           <CapacityFigure
@@ -156,11 +142,7 @@ export function CurrentCapacity({
         </dl>
         <p className="text-xs leading-relaxed text-subtle-foreground">
           A run stays in progress until it finishes, even while it waits.
-          {reserved === 0
-            ? null
-            : reserved === 1
-              ? ' One more place is held for a queued run about to start.'
-              : ` ${String(reserved)} more places are held for queued runs about to start.`}
+          {reservedPlaces(reserved)}
         </p>
         {execution.policy.state === 'active' ? null : (
           <p className="text-sm">
@@ -208,4 +190,29 @@ export function CurrentCapacity({
       </Instrument>
     </div>
   );
+}
+
+function executionHeadline(
+  execution: UsageCapacityResponse['execution'],
+  free: number | null,
+): string {
+  const idle = execution.activeRuns === 0 && execution.queuedRuns === 0;
+  if (idle)
+    return free === null
+      ? 'Idle.'
+      : `Idle, all ${free.toLocaleString(FORMAT_LOCALE)} places free.`;
+  return `${execution.activeRuns.toLocaleString(FORMAT_LOCALE)} running${
+    free === null ? '' : `, ${free.toLocaleString(FORMAT_LOCALE)} free`
+  }${
+    execution.queuedRuns === 0
+      ? ''
+      : `, ${execution.queuedRuns.toLocaleString(FORMAT_LOCALE)} waiting`
+  }.`;
+}
+
+function reservedPlaces(reserved: number): string | null {
+  if (reserved === 0) return null;
+  if (reserved === 1)
+    return ' One more place is held for a queued run about to start.';
+  return ` ${String(reserved)} more places are held for queued runs about to start.`;
 }

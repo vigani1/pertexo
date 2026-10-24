@@ -87,6 +87,8 @@ export function CommentForm({
     setValidation(undefined);
     void command.send(buildCommand(parsed.data));
   }
+  const idleSubmitLabel =
+    initial === undefined ? 'Post comment' : 'Save comment';
   return (
     <form onSubmit={submit} className="space-y-3">
       {children?.(locked)}
@@ -141,11 +143,7 @@ export function CommentForm({
       <DiscussionFeedback command={command} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={locked || body.trim().length === 0}>
-          {command.pending
-            ? 'Saving…'
-            : initial === undefined
-              ? 'Post comment'
-              : 'Save comment'}
+          {command.pending ? 'Saving…' : idleSubmitLabel}
         </Button>
         {onCancel === undefined ? null : (
           <Button
