@@ -96,42 +96,17 @@ export async function closeHttpServer(server: Server): Promise<void> {
 }
 
 export function createWorkerTransportTestEnvironment() {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-  const configuredMigrationUrl =
-    process.env.DATABASE_MIGRATION_URL ??
-    'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-  const configuredApiUrl =
-    process.env.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-  const configuredWorkerUrl =
-    process.env.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-  const configuredDispatcherUrl =
-    process.env.DATABASE_MAINTENANCE_URL ??
-    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
-  const configuredRedisUrl =
-    process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
-
-  const databaseName = `pertexo_test_transport_${randomUUID().replaceAll('-', '')}`;
-  const databaseUrl = (base: string): string => {
-    const url = new URL(base);
-    url.pathname = `/${databaseName}`;
-    return url.toString();
-  };
-  const migrationUrl = databaseUrl(configuredMigrationUrl);
-  const apiUrl = databaseUrl(configuredApiUrl);
-  const workerUrl = databaseUrl(configuredWorkerUrl);
-  const dispatcherUrl = databaseUrl(configuredDispatcherUrl);
-  const redisUrl = (() => {
-    const url = new URL(configuredRedisUrl);
-    url.pathname = '/11';
-    return url.toString();
-  })();
-
-  const workspaceId = randomUUID();
-  const actorId = randomUUID();
+  const {
+    adminUrl,
+    databaseName,
+    migrationUrl,
+    apiUrl,
+    workerUrl,
+    dispatcherUrl,
+    redisUrl,
+    workspaceId,
+    actorId,
+  } = transportFixtureSettings();
   let apiDatabase: ReturnType<typeof createWorkspaceDatabase> | undefined;
   let workerDatabase: ReturnType<typeof createWorkspaceDatabase> | undefined;
   let databaseCreated = false;
@@ -254,44 +229,11 @@ export function createWorkerTransportTestEnvironment() {
     }
   };
 
-  const applyLedgerFixture = async (): Promise<void> => {
-    const source = await readFile(
-      new URL(
-        '../../../../packages/database/test/fixtures/queue-duplicate-proof.sql',
-        import.meta.url,
-      ),
-      'utf8',
-    );
-    const fixture = source
-      .replaceAll('{{api_runtime_role}}', 'pertexo_app')
-      .replaceAll('{{worker_runtime_role}}', 'pertexo_app');
-    const pool = new Pool({ connectionString: migrationUrl, max: 1 });
-    let client: PoolClient | undefined;
-    try {
-      client = await pool.connect();
-      await client.query('begin');
-      await client.query('set local role pertexo_owner');
-      await client.query(fixture);
-      await client.query(
-        `insert into app.users (id,email,display_name)
-         values ($1,$2,'Worker transport proof') on conflict (id) do nothing`,
-        [actorId, `worker-transport-${actorId}@example.test`],
-      );
-      await client.query(
-        `insert into app.workspaces (id,name,slug,created_by)
-         values ($1,'Worker transport proof',$2,$3) on conflict (id) do nothing`,
-        [workspaceId, `worker-transport-${workspaceId}`, actorId],
-      );
-      await client.query('commit');
-    } catch (error: unknown) {
-      await client?.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client?.release();
-      await pool.end();
-    }
-  };
-
+  const { applyLedgerFixture } = createTransportLedgerSetup({
+    migrationUrl,
+    workspaceId,
+    actorId,
+  });
   const initialize = async (): Promise<void> => {
     let initializationError: unknown;
     try {
@@ -333,237 +275,16 @@ export function createWorkerTransportTestEnvironment() {
     );
   };
 
-  const insertRunEvent = async (
-    id = randomUUID(),
-    traceparent?: string,
-  ): Promise<string> => {
-    proofIds.add(id);
-    const payload = {
-      runId: randomUUID(),
-      ...(traceparent ? { traceparent } : {}),
-    };
-    await requireApiDatabase().withWorkspace(
-      workspaceId,
-      async (transaction) => {
-        await transaction.db.execute(sql`
-        insert into app.workflow_runs (
-          id,workspace_id,workflow_id,workflow_version_id,trigger_type,status
-        ) values (
-          ${payload.runId},${workspaceId},${randomUUID()},${randomUUID()},'manual','succeeded'
-        )
-      `);
-        await insertOutboxEvent(transaction, {
-          aggregateId: payload.runId,
-          aggregateType: 'workflow-run',
-          availableAt: new Date(0),
-          id,
-          jobName: JOB_NAME.advanceWorkflowRun,
-          payload,
-          payloadChecksum: checksum(payload),
-        });
-      },
-    );
-    return id;
-  };
-
-  const consumeProof = async (
-    messageId: string,
-    logicalAttemptId: string,
-    providerIntent?: Readonly<{
-      attemptId: string;
-      idempotencyKey: string;
-      nodeRunId: string;
-      outboxEventId: string;
-      runId: string;
-      traceparent?: string;
-    }>,
-  ) =>
-    consumeInboxMessage(requireWorkerDatabase(), workspaceId, {
-      message: {
-        consumerName: 'worker.phase0-proof',
-        messageId,
-        payloadChecksum: checksum({ logicalAttemptId }),
-      },
-      operation: async (transaction) => {
-        const { db, workspaceId: activeWorkspaceId } = transaction;
-        await db.execute(sql`
-          insert into app.queue_duplicate_probe_attempts
-            (id, workspace_id, logical_attempt_id)
-          values (${randomUUID()}, ${activeWorkspaceId}, ${logicalAttemptId})
-        `);
-        await db.execute(sql`
-          insert into app.queue_duplicate_probe_events
-            (id, workspace_id, logical_attempt_id, sequence)
-          values (${randomUUID()}, ${activeWorkspaceId}, ${logicalAttemptId}, 1)
-        `);
-        await db.execute(sql`
-          insert into app.queue_duplicate_probe_usage
-            (id, workspace_id, idempotency_key, quantity)
-          values (${randomUUID()}, ${activeWorkspaceId}, ${`usage:${logicalAttemptId}`}, 1)
-        `);
-        if (providerIntent !== undefined) {
-          const payload = {
-            attemptId: providerIntent.attemptId,
-            nodeRunId: providerIntent.nodeRunId,
-            runId: providerIntent.runId,
-            ...(providerIntent.traceparent
-              ? { traceparent: providerIntent.traceparent }
-              : {}),
-          };
-          await insertOutboxEvent(transaction, {
-            aggregateId: providerIntent.attemptId,
-            aggregateType: 'provider-intent',
-            id: providerIntent.outboxEventId,
-            jobName: JOB_NAME.executeNodeAttempt,
-            payload,
-            payloadChecksum: checksum(payload),
-          });
-          await db.execute(sql`
-            insert into app.queue_duplicate_probe_provider_intents
-              (
-                id,
-                workspace_id,
-                logical_attempt_id,
-                outbox_event_id,
-                idempotency_key
-              )
-            values (
-              ${providerIntent.attemptId},
-              ${activeWorkspaceId},
-              ${logicalAttemptId},
-              ${providerIntent.outboxEventId},
-              ${providerIntent.idempotencyKey}
-            )
-          `);
-        }
-        return logicalAttemptId;
-      },
-    });
-
-  const dispatchFairRounds = async (
-    dispatchers: readonly OutboxDispatcher[],
-    expectedClaims: number,
-  ): Promise<
-    Readonly<{ claimed: number; failed: number; published: number }>
-  > => {
-    const totals = { claimed: 0, failed: 0, published: 0 };
-    const maximumRounds = expectedClaims + 2;
-    for (let round = 0; round < maximumRounds; round += 1) {
-      const results = await Promise.all(
-        dispatchers.map((dispatcher) => dispatcher.dispatchOnce()),
-      );
-      for (const result of results) {
-        totals.claimed += result.claimed;
-        totals.failed += result.failed;
-        totals.published += result.published;
-      }
-      if (totals.claimed >= expectedClaims) return totals;
-    }
-    throw new Error(
-      `Fair dispatch did not claim ${String(expectedClaims)} events within ${String(maximumRounds)} rounds: ${JSON.stringify(totals)}`,
-    );
-  };
-
-  const createDispatcher = (
-    owner: string,
-    batchSize = 100,
-    jobNames: readonly (typeof JOB_NAME)[keyof typeof JOB_NAME][] = [
-      JOB_NAME.advanceWorkflowRun,
-      JOB_NAME.executeNodeAttempt,
-    ],
-  ): OutboxDispatcher =>
-    new OutboxDispatcher(
-      createOutboxDispatcherDatabase(
-        parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
-      ),
-      createQueueProducer({ redisUrl }),
-      {
-        drainState: new WorkerDrainState(),
-        options: {
-          batchSize,
-          jobNames,
-          leaseDurationMillis: 1_000,
-          leaseOwner: owner,
-          maxAttempts: 3,
-          operationTimeoutMillis: 5_000,
-          retryDelayMillis: 100,
-        },
-      },
-    );
-
-  const deferred = (
-    stage: string,
-    timeoutMillis = 10_000,
-  ): Readonly<{
-    dispose(): void;
-    promise: Promise<void>;
-    reject(reason: unknown): void;
-    resolve(): void;
-  }> => {
-    let resolvePromise: (() => void) | undefined;
-    let rejectPromise: ((reason: unknown) => void) | undefined;
-    let timer: NodeJS.Timeout | undefined;
-    let settled = false;
-    const settle = (operation: () => void): void => {
-      if (settled) return;
-      settled = true;
-      if (timer !== undefined) clearTimeout(timer);
-      ownedDeferreds.delete(dispose);
-      operation();
-    };
-    const dispose = (): void => {
-      settle(() => {
-        resolvePromise?.();
-      });
-    };
-    const promise = new Promise<void>((resolve, reject) => {
-      resolvePromise = resolve;
-      rejectPromise = reject;
-      timer = setTimeout(() => {
-        settle(() => {
-          reject(new Error(`Worker transport stage timed out: ${stage}`));
-        });
-      }, timeoutMillis);
-      timer.unref();
-    });
-    ownedDeferreds.add(dispose);
-    return {
-      dispose,
-      promise,
-      reject: (reason) => {
-        settle(() => {
-          rejectPromise?.(reason);
-        });
-      },
-      resolve: () => {
-        settle(() => {
-          resolvePromise?.();
-        });
-      },
-    };
-  };
-
-  const bounded = async <T>(
-    stage: string,
-    operation: Promise<T>,
-    timeoutMillis = 10_000,
-  ): Promise<T> => {
-    let timer: NodeJS.Timeout | undefined;
-    try {
-      return await Promise.race([
-        operation,
-        new Promise<never>((_resolve, reject) => {
-          timer = setTimeout(() => {
-            reject(new Error(`Worker transport stage timed out: ${stage}`));
-          }, timeoutMillis);
-          timer.unref();
-        }),
-      ]);
-    } finally {
-      if (timer !== undefined) clearTimeout(timer);
-    }
-  };
-
+  const { insertRunEvent, consumeProof } = createTransportProofOperations({
+    proofIds,
+    requireApiDatabase,
+    requireWorkerDatabase,
+    workspaceId,
+    checksum,
+  });
+  const { dispatchFairRounds, createDispatcher } =
+    createTransportDispatchControls({ dispatcherUrl, redisUrl });
+  const { deferred, bounded } = createTransportProofWaits(ownedDeferreds);
   const cleanup = async (): Promise<void> => {
     const pool = new Pool({ connectionString: migrationUrl, max: 1 });
     let client: PoolClient | undefined;
@@ -725,4 +446,365 @@ export function createWorkerTransportTestEnvironment() {
     },
     workspaceId,
   };
+}
+
+function transportFixtureSettings() {
+  const adminUrl =
+    process.env.DATABASE_ADMIN_URL ??
+    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const configuredMigrationUrl =
+    process.env.DATABASE_MIGRATION_URL ??
+    'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+  const configuredApiUrl =
+    process.env.DATABASE_URL ??
+    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+  const configuredWorkerUrl =
+    process.env.DATABASE_URL ??
+    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+  const configuredDispatcherUrl =
+    process.env.DATABASE_MAINTENANCE_URL ??
+    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+  const configuredRedisUrl =
+    process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
+
+  const databaseName = `pertexo_test_transport_${randomUUID().replaceAll('-', '')}`;
+  const databaseUrl = (base: string): string => {
+    const url = new URL(base);
+    url.pathname = `/${databaseName}`;
+    return url.toString();
+  };
+  const migrationUrl = databaseUrl(configuredMigrationUrl);
+  const apiUrl = databaseUrl(configuredApiUrl);
+  const workerUrl = databaseUrl(configuredWorkerUrl);
+  const dispatcherUrl = databaseUrl(configuredDispatcherUrl);
+  const redisUrl = (() => {
+    const url = new URL(configuredRedisUrl);
+    url.pathname = '/11';
+    return url.toString();
+  })();
+
+  const workspaceId = randomUUID();
+  const actorId = randomUUID();
+
+  return {
+    adminUrl,
+    databaseName,
+    migrationUrl,
+    apiUrl,
+    workerUrl,
+    dispatcherUrl,
+    redisUrl,
+    workspaceId,
+    actorId,
+  };
+}
+
+function createTransportLedgerSetup(
+  context: Readonly<{
+    migrationUrl: string;
+    workspaceId: string;
+    actorId: string;
+  }>,
+) {
+  const { migrationUrl, workspaceId, actorId } = context;
+  const applyLedgerFixture = async (): Promise<void> => {
+    const source = await readFile(
+      new URL(
+        '../../../../packages/database/test/fixtures/queue-duplicate-proof.sql',
+        import.meta.url,
+      ),
+      'utf8',
+    );
+    const fixture = source
+      .replaceAll('{{api_runtime_role}}', 'pertexo_app')
+      .replaceAll('{{worker_runtime_role}}', 'pertexo_app');
+    const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+    let client: PoolClient | undefined;
+    try {
+      client = await pool.connect();
+      await client.query('begin');
+      await client.query('set local role pertexo_owner');
+      await client.query(fixture);
+      await client.query(
+        `insert into app.users (id,email,display_name)
+         values ($1,$2,'Worker transport proof') on conflict (id) do nothing`,
+        [actorId, `worker-transport-${actorId}@example.test`],
+      );
+      await client.query(
+        `insert into app.workspaces (id,name,slug,created_by)
+         values ($1,'Worker transport proof',$2,$3) on conflict (id) do nothing`,
+        [workspaceId, `worker-transport-${workspaceId}`, actorId],
+      );
+      await client.query('commit');
+    } catch (error: unknown) {
+      await client?.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client?.release();
+      await pool.end();
+    }
+  };
+
+  return { applyLedgerFixture };
+}
+
+function createTransportProofOperations(
+  context: Readonly<{
+    proofIds: Set<string>;
+    requireApiDatabase: () => ReturnType<typeof createWorkspaceDatabase>;
+    requireWorkerDatabase: () => ReturnType<typeof createWorkspaceDatabase>;
+    workspaceId: string;
+    checksum: (value: unknown) => string;
+  }>,
+) {
+  const {
+    proofIds,
+    requireApiDatabase,
+    requireWorkerDatabase,
+    workspaceId,
+    checksum,
+  } = context;
+  const insertRunEvent = async (
+    id = randomUUID(),
+    traceparent?: string,
+  ): Promise<string> => {
+    proofIds.add(id);
+    const payload = {
+      runId: randomUUID(),
+      ...(traceparent ? { traceparent } : {}),
+    };
+    await requireApiDatabase().withWorkspace(
+      workspaceId,
+      async (transaction) => {
+        await transaction.db.execute(sql`
+        insert into app.workflow_runs (
+          id,workspace_id,workflow_id,workflow_version_id,trigger_type,status
+        ) values (
+          ${payload.runId},${workspaceId},${randomUUID()},${randomUUID()},'manual','succeeded'
+        )
+      `);
+        await insertOutboxEvent(transaction, {
+          aggregateId: payload.runId,
+          aggregateType: 'workflow-run',
+          availableAt: new Date(0),
+          id,
+          jobName: JOB_NAME.advanceWorkflowRun,
+          payload,
+          payloadChecksum: checksum(payload),
+        });
+      },
+    );
+    return id;
+  };
+
+  const consumeProof = async (
+    messageId: string,
+    logicalAttemptId: string,
+    providerIntent?: Readonly<{
+      attemptId: string;
+      idempotencyKey: string;
+      nodeRunId: string;
+      outboxEventId: string;
+      runId: string;
+      traceparent?: string;
+    }>,
+  ) =>
+    consumeInboxMessage(requireWorkerDatabase(), workspaceId, {
+      message: {
+        consumerName: 'worker.phase0-proof',
+        messageId,
+        payloadChecksum: checksum({ logicalAttemptId }),
+      },
+      operation: async (transaction) => {
+        const { db, workspaceId: activeWorkspaceId } = transaction;
+        await db.execute(sql`
+          insert into app.queue_duplicate_probe_attempts
+            (id, workspace_id, logical_attempt_id)
+          values (${randomUUID()}, ${activeWorkspaceId}, ${logicalAttemptId})
+        `);
+        await db.execute(sql`
+          insert into app.queue_duplicate_probe_events
+            (id, workspace_id, logical_attempt_id, sequence)
+          values (${randomUUID()}, ${activeWorkspaceId}, ${logicalAttemptId}, 1)
+        `);
+        await db.execute(sql`
+          insert into app.queue_duplicate_probe_usage
+            (id, workspace_id, idempotency_key, quantity)
+          values (${randomUUID()}, ${activeWorkspaceId}, ${`usage:${logicalAttemptId}`}, 1)
+        `);
+        if (providerIntent !== undefined) {
+          const payload = {
+            attemptId: providerIntent.attemptId,
+            nodeRunId: providerIntent.nodeRunId,
+            runId: providerIntent.runId,
+            ...(providerIntent.traceparent
+              ? { traceparent: providerIntent.traceparent }
+              : {}),
+          };
+          await insertOutboxEvent(transaction, {
+            aggregateId: providerIntent.attemptId,
+            aggregateType: 'provider-intent',
+            id: providerIntent.outboxEventId,
+            jobName: JOB_NAME.executeNodeAttempt,
+            payload,
+            payloadChecksum: checksum(payload),
+          });
+          await db.execute(sql`
+            insert into app.queue_duplicate_probe_provider_intents
+              (
+                id,
+                workspace_id,
+                logical_attempt_id,
+                outbox_event_id,
+                idempotency_key
+              )
+            values (
+              ${providerIntent.attemptId},
+              ${activeWorkspaceId},
+              ${logicalAttemptId},
+              ${providerIntent.outboxEventId},
+              ${providerIntent.idempotencyKey}
+            )
+          `);
+        }
+        return logicalAttemptId;
+      },
+    });
+
+  return { insertRunEvent, consumeProof };
+}
+
+function createTransportDispatchControls(
+  context: Readonly<{ dispatcherUrl: string; redisUrl: string }>,
+) {
+  const { dispatcherUrl, redisUrl } = context;
+  const dispatchFairRounds = async (
+    dispatchers: readonly OutboxDispatcher[],
+    expectedClaims: number,
+  ): Promise<
+    Readonly<{ claimed: number; failed: number; published: number }>
+  > => {
+    const totals = { claimed: 0, failed: 0, published: 0 };
+    const maximumRounds = expectedClaims + 2;
+    for (let round = 0; round < maximumRounds; round += 1) {
+      const results = await Promise.all(
+        dispatchers.map((dispatcher) => dispatcher.dispatchOnce()),
+      );
+      for (const result of results) {
+        totals.claimed += result.claimed;
+        totals.failed += result.failed;
+        totals.published += result.published;
+      }
+      if (totals.claimed >= expectedClaims) return totals;
+    }
+    throw new Error(
+      `Fair dispatch did not claim ${String(expectedClaims)} events within ${String(maximumRounds)} rounds: ${JSON.stringify(totals)}`,
+    );
+  };
+
+  const createDispatcher = (
+    owner: string,
+    batchSize = 100,
+    jobNames: readonly (typeof JOB_NAME)[keyof typeof JOB_NAME][] = [
+      JOB_NAME.advanceWorkflowRun,
+      JOB_NAME.executeNodeAttempt,
+    ],
+  ): OutboxDispatcher =>
+    new OutboxDispatcher(
+      createOutboxDispatcherDatabase(
+        parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
+      ),
+      createQueueProducer({ redisUrl }),
+      {
+        drainState: new WorkerDrainState(),
+        options: {
+          batchSize,
+          jobNames,
+          leaseDurationMillis: 1_000,
+          leaseOwner: owner,
+          maxAttempts: 3,
+          operationTimeoutMillis: 5_000,
+          retryDelayMillis: 100,
+        },
+      },
+    );
+
+  return { dispatchFairRounds, createDispatcher };
+}
+
+function createTransportProofWaits(ownedDeferreds: Set<() => void>) {
+  const deferred = (
+    stage: string,
+    timeoutMillis = 10_000,
+  ): Readonly<{
+    dispose(): void;
+    promise: Promise<void>;
+    reject(reason: unknown): void;
+    resolve(): void;
+  }> => {
+    let resolvePromise: (() => void) | undefined;
+    let rejectPromise: ((reason: unknown) => void) | undefined;
+    let timer: NodeJS.Timeout | undefined;
+    let settled = false;
+    const settle = (operation: () => void): void => {
+      if (settled) return;
+      settled = true;
+      if (timer !== undefined) clearTimeout(timer);
+      ownedDeferreds.delete(dispose);
+      operation();
+    };
+    const dispose = (): void => {
+      settle(() => {
+        resolvePromise?.();
+      });
+    };
+    const promise = new Promise<void>((resolve, reject) => {
+      resolvePromise = resolve;
+      rejectPromise = reject;
+      timer = setTimeout(() => {
+        settle(() => {
+          reject(new Error(`Worker transport stage timed out: ${stage}`));
+        });
+      }, timeoutMillis);
+      timer.unref();
+    });
+    ownedDeferreds.add(dispose);
+    return {
+      dispose,
+      promise,
+      reject: (reason) => {
+        settle(() => {
+          rejectPromise?.(reason);
+        });
+      },
+      resolve: () => {
+        settle(() => {
+          resolvePromise?.();
+        });
+      },
+    };
+  };
+
+  const bounded = async <T>(
+    stage: string,
+    operation: Promise<T>,
+    timeoutMillis = 10_000,
+  ): Promise<T> => {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        operation,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => {
+            reject(new Error(`Worker transport stage timed out: ${stage}`));
+          }, timeoutMillis);
+          timer.unref();
+        }),
+      ]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  };
+
+  return { deferred, bounded };
 }
