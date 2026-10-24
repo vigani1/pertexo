@@ -1,11 +1,11 @@
 import { waitForApplicationLock } from '../../../support/postgres/lock-coordination.js';
 
-import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.js';
+import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.repository.js';
 import { withWorkspaceTransaction } from '../../../../src/tenant-access/transactions.js';
 
 import { expect, it } from 'vitest';
 import { createCheckpoint } from '@pertexo/workflow-engine';
-import { createErrorWorkflowStore } from '../../../../src/runs/error-workflows/store.js';
+import { createErrorWorkflowStore } from '../../../../src/runs/error-workflows/repository.js';
 
 import { parseDatabaseConfig } from '../../../../src/config.js';
 import { withTenantScopedClient } from '../../../../src/tenant-access/transactions.js';

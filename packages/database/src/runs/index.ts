@@ -1,16 +1,16 @@
-export { RunRequiresFormError } from './commands/forms.js';
+export { RunRequiresFormError } from './commands/forms.queries.js';
 export { ExecutionStateConflictError } from './state-errors.js';
-export { readRunEventsAfter } from './queries/history/events.js';
+export { readRunEventsAfter } from './queries/history/events.repository.js';
 export {
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
   WorkflowAlreadyRunningError,
-} from './commands/acceptance.js';
+} from './commands/acceptance.repository.js';
 export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
-} from './queries/execution/published.js';
+} from './queries/execution/published.queries.js';
 export type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
 export {
   createWorkflowRunDatabase,
@@ -22,17 +22,17 @@ export type { WorkflowRunDatabase } from './runs.repository.js';
 export type {
   WorkspaceUsageCapacityInput,
   WorkspaceUsageCapacityRecord,
-} from './queries/usage-capacity.js';
+} from './queries/usage-capacity.queries.js';
 export type {
   WorkflowRunData,
   WorkflowRunFailedStep,
-} from './queries/history/details.js';
-export type { WorkflowRunListRecord } from './queries/history/list.js';
+} from './queries/history/details.queries.js';
+export type { WorkflowRunListRecord } from './queries/history/list.queries.js';
 export type {
   WorkflowStepHealthPage,
   WorkflowStepHealthRecord,
   WorkflowStepRunRecord,
-} from './queries/history/steps.js';
+} from './queries/history/steps.queries.js';
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
@@ -45,11 +45,11 @@ export type {
   RunAdvanceStore,
 } from './advance/contract.js';
 export { createRunAdvanceStore } from './advance/store.js';
-export { createDeadlineWakeupScanner } from './wakeups/deadline-scanner.js';
-export type { DeadlineWakeupScanner } from './wakeups/deadline-scanner.js';
-export { createDueNodeWakeupScanner } from './wakeups/due-node-scanner.js';
-export type { DueNodeWakeupScanner } from './wakeups/due-node-scanner.js';
-export { createPublishedWorkflowReader } from './queries/execution/published.js';
+export { createDeadlineWakeupScanner } from './wakeups/deadline-scanner.repository.js';
+export type { DeadlineWakeupScanner } from './wakeups/deadline-scanner.repository.js';
+export { createDueNodeWakeupScanner } from './wakeups/due-node-scanner.repository.js';
+export type { DueNodeWakeupScanner } from './wakeups/due-node-scanner.repository.js';
+export { createPublishedWorkflowReader } from './queries/execution/published.queries.js';
 
 export {
   createOperatorRunReplayStore,
@@ -99,7 +99,7 @@ export type { ArtifactCapacityObservation } from '../artifacts/capacity.queries.
 export { requireNodeArtifactReference } from '../artifacts/references/repository.js';
 export { ArtifactMetadataNotFoundError } from '../artifacts/input.js';
 
-export { createWorkflowCallStore } from './calls/store.js';
+export { createWorkflowCallStore } from './calls/repository.js';
 export { WorkflowCallRefusedError } from './calls/contract.js';
 export type { WorkflowCallStore } from './calls/contract.js';
 export type {
@@ -120,31 +120,31 @@ export {
   ErrorWorkflowDeliveryMismatchError,
   ErrorWorkflowVersionUnavailableError,
   type ErrorWorkflowStore,
-} from './error-workflows/store.js';
+} from './error-workflows/repository.js';
 
 export {
   createPendingTaskStore,
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
   type PendingTaskStore,
-} from './pending-tasks/responses/store.js';
+} from './pending-tasks/responses/repository.js';
 
-export { RunVariableSnapshotUnavailableError } from './commands/variables.js';
+export { RunVariableSnapshotUnavailableError } from './commands/variables.repository.js';
 
-export { createWorkflowExecutionReader } from './queries/execution/source.js';
+export { createWorkflowExecutionReader } from './queries/execution/source.queries.js';
 export type {
   WorkflowExecutionReader,
   WorkflowExecutionProjection,
-} from './queries/execution/source.js';
+} from './queries/execution/source.queries.js';
 
-export type { UsageTrendsInput } from './queries/usage-trends.js';
+export type { UsageTrendsInput } from './queries/usage-trends.queries.js';
 
-export { createRunValuesStore } from './values/store.js';
+export { createRunValuesStore } from './values/repository.js';
 export { RunValuesLimitError } from './values/records.js';
 export type { RunValuesStore } from './values/records.js';
 export { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
 
-export { createCallbackStore } from './pending-tasks/callbacks/store.js';
+export { createCallbackStore } from './pending-tasks/callbacks/repository.js';
 export {
   CallbackCapacityError,
   CallbackResponseError,

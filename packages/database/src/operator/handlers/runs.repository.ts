@@ -5,7 +5,7 @@ import {
   workflowRuns,
 } from '../../schema/runs/execution.js';
 
-import { requestWorkflowRunCancellation } from '../../runs/commands/cancel.js';
+import { requestWorkflowRunCancellation } from '../../runs/commands/cancel.repository.js';
 
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type { OperatorDecision } from './contract.js';

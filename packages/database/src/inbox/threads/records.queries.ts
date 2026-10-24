@@ -14,7 +14,7 @@ import { workflows } from '../../schema/authoring/workflows.js';
 import { connections } from '../../schema/connections.js';
 import { workflowCommentMentions } from '../../schema/authoring/collaboration/mentions.js';
 import { workflowComments } from '../../schema/authoring/collaboration/comments.js';
-import { task } from '../../runs/pending-tasks/responses/eligibility.js';
+import { task } from '../../runs/pending-tasks/responses/eligibility.queries.js';
 export const thread = alias(workspaceInboxThreads, 'thread');
 export const seen = alias(workspaceInboxReads, 'seen');
 export const workspace = alias(workspaces, 'workspace');

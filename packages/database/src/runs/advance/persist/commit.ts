@@ -1,8 +1,8 @@
 import {
   persistTaskIntents,
   persistConsumedTasks,
-} from '../../pending-tasks/lifecycle/persist.js';
-import { persistFailureHandling } from './failure-handling.js';
+} from '../../pending-tasks/lifecycle/persist.repository.js';
+import { persistFailureHandling } from './failure-handling.repository.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 
@@ -14,24 +14,24 @@ import {
 import {
   persistCallIntents,
   persistConsumedCalls,
-} from '../../calls/persist.js';
+} from '../../calls/persist.repository.js';
 import { persistCoordinatorExecutionTransitions } from './node-admissions.js';
 import type { RunTransitionPlan } from '../plan.js';
 import {
   claimCoordinatorReceipt,
   completeCoordinatorReceipt,
   deferCoordinatorForActiveCapacity,
-} from '../receipts.js';
-import { persistCoordinatorRunTransition } from './run-transition.js';
+} from '../receipts.repository.js';
+import { persistCoordinatorRunTransition } from './run-transition.repository.js';
 import {
   persistDueReadyTransitions,
   persistLoopBarrierTransitions,
   settleRejectedForEachDeclarations,
-} from './settlement.js';
+} from './settlement.repository.js';
 import type {
   CoordinatorCommitRow,
   PendingCoordinatorFailure,
-} from '../load/state.js';
+} from '../load/state.queries.js';
 
 /** Saves the engine's transition for a run locked by `loadRunForAdvance`. */
 export async function saveRunTransition(

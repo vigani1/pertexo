@@ -7,7 +7,7 @@ import type { PoolClient } from 'pg';
 import type { WorkspaceInboxThread } from '@pertexo/contracts';
 import { databaseSchema } from '../../schema.js';
 import { parseWorkspaceId } from '../../tenant-access/transactions.js';
-import { readWorkflowRunFailedSteps } from '../../runs/queries/history/details.js';
+import { readWorkflowRunFailedSteps } from '../../runs/queries/history/details.queries.js';
 import { readFailureDays } from './failure-days.queries.js';
 import type { NoticeRecord } from './records.queries.js';
 type NoticeRow = NoticeRecord &

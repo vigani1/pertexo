@@ -21,7 +21,7 @@ import {
   task,
   run,
   pendingTaskBlockedSql,
-} from '../../runs/pending-tasks/responses/eligibility.js';
+} from '../../runs/pending-tasks/responses/eligibility.queries.js';
 import { thread } from './records.queries.js';
 const member = alias(workspaceMemberships, 'member');
 function capabilityAudienceSql(capability: AuthorizationCapability): SQL {

@@ -1,4 +1,4 @@
-import type { PendingCoordinatorFailure } from './state.js';
+import type { PendingCoordinatorFailure } from './state.queries.js';
 
 /** A failed attempt awaiting its retry decision, as the engine observes it. */
 export function pendingFailureObservations(

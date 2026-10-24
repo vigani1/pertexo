@@ -5,7 +5,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows } from '../../schema/authoring/workflows.js';
 import { connections } from '../../schema/connections.js';
-import { task, run } from '../../runs/pending-tasks/responses/eligibility.js';
+import { task, run } from '../../runs/pending-tasks/responses/eligibility.queries.js';
 import { workspaces } from '../../schema/foundation.js';
 import {
   workspaceExecutionEntitlements as pointer,

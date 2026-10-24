@@ -1,19 +1,19 @@
 import type { PoolClient } from 'pg';
 
-import type { PendingCoordinatorFailure } from '../load/state.js';
+import type { PendingCoordinatorFailure } from '../load/state.queries.js';
 
 import type { RunTransitionPlan } from '../plan.js';
 
 import type { CoordinatorExecutionIdentity } from './admissions/contract.js';
-import { persistPendingFailureDecisions } from './admissions/failure-decisions.js';
+import { persistPendingFailureDecisions } from './admissions/failure-decisions.repository.js';
 import {
   persistNodeAdmissions,
   persistAttemptAdmissions,
-} from './admissions/create-executions.js';
+} from './admissions/create-executions.repository.js';
 import {
   loadEventExecutionIdentities,
   persistRunEvents,
-} from './admissions/events.js';
+} from './admissions/events.repository.js';
 
 export { type CoordinatorExecutionIdentity } from './admissions/contract.js';
 export async function persistCoordinatorExecutionTransitions(

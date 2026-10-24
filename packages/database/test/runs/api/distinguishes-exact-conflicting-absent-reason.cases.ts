@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
 
-import { IdempotencyRequestConflictError } from '../../../src/runs/commands/acceptance.js';
+import { IdempotencyRequestConflictError } from '../../../src/runs/commands/acceptance.repository.js';
 
 import {
   WorkflowRunNotFoundError,

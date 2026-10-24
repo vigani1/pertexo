@@ -4,7 +4,7 @@ import { sql } from 'drizzle-orm';
 import {
   acceptWorkflowRun,
   WorkflowAlreadyRunningError,
-} from '../../../src/runs/commands/acceptance.js';
+} from '../../../src/runs/commands/acceptance.repository.js';
 import {
   apiDatabase,
   hasPostgresCode,

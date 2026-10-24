@@ -18,10 +18,10 @@ import {
   createWorkspaceDatabase,
   type WorkspaceDatabase,
 } from '../../database.js';
-import { acceptWorkflowRun } from '../../runs/commands/acceptance.js';
+import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js';
 import { consumeInboxMessage } from '../../outbox/receipts.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
-import { parsePublishedWorkflowRow } from '../../runs/queries/execution/published.js';
+import { parsePublishedWorkflowRow } from '../../runs/queries/execution/published.queries.js';
 export class OperatorRunReplayMismatchError extends Error {
   public constructor() {
     super('Run replay delivery does not match its durable request');

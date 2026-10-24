@@ -7,8 +7,8 @@ import {
   createCheckpoint,
   type WorkflowTransitionPlan,
 } from '@pertexo/workflow-engine';
-import { createErrorWorkflowStore } from '../../../../src/runs/error-workflows/store.js';
-import { persistErrorWorkflowIntent } from '../../../../src/runs/error-workflows/produce.js';
+import { createErrorWorkflowStore } from '../../../../src/runs/error-workflows/repository.js';
+import { persistErrorWorkflowIntent } from '../../../../src/runs/error-workflows/produce.repository.js';
 import { parseDatabaseConfig } from '../../../../src/config.js';
 import { withTenantScopedClient } from '../../../../src/tenant-access/transactions.js';
 import { admin, createFamily } from '../../../lifecycle/calls/fixtures.js';

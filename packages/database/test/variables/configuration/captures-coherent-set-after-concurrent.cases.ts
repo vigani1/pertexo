@@ -7,7 +7,7 @@ import { createCheckpoint } from '@pertexo/workflow-engine';
 
 import { parseDatabaseConfig } from '../../../src/config.js';
 
-import { RunVariableSnapshotUnavailableError } from '../../../src/runs/commands/variables.js';
+import { RunVariableSnapshotUnavailableError } from '../../../src/runs/commands/variables.repository.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
 import { createRetentionDatabase } from '../../../src/lifecycle/retention/repository.js';
 import { admin } from '../../lifecycle/calls/fixtures.js';

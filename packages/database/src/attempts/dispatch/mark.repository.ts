@@ -11,7 +11,7 @@ import {
   nodeAttemptConnectionDispatches,
 } from '../../schema/connections.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { EXECUTION_SOURCE_SQL } from '../../runs/queries/execution/source.js';
+import { EXECUTION_SOURCE_SQL } from '../../runs/queries/execution/source.queries.js';
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
 

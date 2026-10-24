@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { expect, it } from 'vitest';
-import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.js';
+import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.repository.js';
 import {
   apiDatabase,
   hasPostgresCode,

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 import { usageTrendsResponseSchema } from '@pertexo/contracts';
-import { readUsageTrends } from '../../src/runs/queries/usage-trends.js';
+import { readUsageTrends } from '../../src/runs/queries/usage-trends.queries.js';
 import { apiPool, apiUrl } from '../support/workflow-authoring.js';
 import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
 import {

@@ -1,13 +1,13 @@
 import { Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, afterEach } from 'vitest';
-import { createRunValuesStore } from '../../../src/runs/values/store.js';
+import { createRunValuesStore } from '../../../src/runs/values/repository.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import {
   withTenantScopedClient,
   withWorkspaceReadTransaction,
 } from '../../../src/tenant-access/transactions.js';
-import { runValuesInTransaction } from '../../../src/runs/values/queries.js';
+import { runValuesInTransaction } from '../../../src/runs/values/records.queries.js';
 import {
   apiUrl,
   apiPool,

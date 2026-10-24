@@ -6,7 +6,7 @@ import {
   EVENT_COORDINATION_LIMITS,
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
+import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.queries.js';
 import { recordWorkflowTriggerSkip } from '../skips.repository.js';
 import {
   recordCoordinatedEvent,

@@ -1,4 +1,4 @@
-import type { UsageTrendsInput } from '../queries/usage-trends.js';
+import type { UsageTrendsInput } from '../queries/usage-trends.queries.js';
 import type { UsageTrendsResponse } from '@pertexo/contracts';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
@@ -13,35 +13,35 @@ import type {
   WorkflowRecoveryPreview,
 } from '../recovery/contract.js';
 
-import type { WorkflowRunRecord } from './records.js';
+import type { WorkflowRunRecord } from './records.repository.js';
 
 import type {
   ListWorkflowRunsDatabaseInput,
   WorkflowRunListPage,
-} from '../queries/history/list.js';
+} from '../queries/history/list.queries.js';
 import type {
   ReadWorkflowStepHealthInput,
   ReadWorkflowStepRunsInput,
   WorkflowStepHealthPage,
   WorkflowStepRunRecord,
-} from '../queries/history/steps.js';
+} from '../queries/history/steps.queries.js';
 import type {
   GetWorkflowRunInput,
   WorkflowRunReadModel,
-} from '../queries/read.js';
+} from '../queries/read.queries.js';
 import type {
   ReadWorkflowNodeRunOutputInput,
   ReadWorkflowRunInputInput,
   WorkflowRunData,
-} from '../queries/history/details.js';
+} from '../queries/history/details.queries.js';
 import type {
   WorkflowRunStatisticsDatabaseInput,
   WorkflowRunStatisticsRecord,
-} from '../queries/history/statistics.js';
+} from '../queries/history/statistics.queries.js';
 import type {
   WorkspaceUsageCapacityInput,
   WorkspaceUsageCapacityRecord,
-} from '../queries/usage-capacity.js';
+} from '../queries/usage-capacity.queries.js';
 
 const traceparentSchema = z
   .string()

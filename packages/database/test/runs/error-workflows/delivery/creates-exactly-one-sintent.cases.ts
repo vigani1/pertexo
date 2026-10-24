@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { ErrorWorkflowDeliveryMismatchError } from '../../../../src/runs/error-workflows/store.js';
+import { ErrorWorkflowDeliveryMismatchError } from '../../../../src/runs/error-workflows/repository.js';
 
 import { admin } from '../../../lifecycle/calls/fixtures.js';
 

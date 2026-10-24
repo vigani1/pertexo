@@ -19,11 +19,11 @@ vi.mock('../../../src/outbox/receipts.repository.js', () => ({
   consumeInboxMessage: mocks.consumeInboxMessage,
 }));
 
-vi.mock('../../../src/runs/commands/acceptance.js', () => ({
+vi.mock('../../../src/runs/commands/acceptance.repository.js', () => ({
   acceptWorkflowRun: mocks.acceptWorkflowRun,
 }));
 
-vi.mock('../../../src/runs/queries/execution/published.js', () => ({
+vi.mock('../../../src/runs/queries/execution/published.queries.js', () => ({
   parsePublishedWorkflowRow: mocks.parsePublishedWorkflowRow,
 }));
 

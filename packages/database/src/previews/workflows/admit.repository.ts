@@ -11,7 +11,7 @@ import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
-} from '../../runs/commands/acceptance.js';
+} from '../../runs/commands/acceptance.repository.js';
 import { WorkflowTestError } from './errors.js';
 import { testRunSql } from '../../runs/data-policy.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';

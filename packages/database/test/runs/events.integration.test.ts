@@ -6,13 +6,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../../src/config.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
-import { acceptWorkflowRun } from '../../src/runs/commands/acceptance.js';
+import { acceptWorkflowRun } from '../../src/runs/commands/acceptance.repository.js';
 import { ExecutionStateConflictError } from '../../src/runs/state-errors.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import {
   appendRunEvent,
   readRunEventsAfter,
-} from '../../src/runs/queries/history/events.js';
+} from '../../src/runs/queries/history/events.repository.js';
 import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
 
 const adminUrl =

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.js';
+import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.repository.js';
 
 import {
   acceptanceInput,

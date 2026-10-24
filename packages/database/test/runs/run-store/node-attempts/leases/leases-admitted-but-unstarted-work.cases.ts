@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { readWorkflowNodeRunDiagnostics } from '../../../../../src/runs/queries/history/details.js';
+import { readWorkflowNodeRunDiagnostics } from '../../../../../src/runs/queries/history/details.queries.js';
 
 import { it, expect } from 'vitest';
 

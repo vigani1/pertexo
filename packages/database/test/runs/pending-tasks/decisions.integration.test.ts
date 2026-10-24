@@ -4,7 +4,7 @@ import {
 } from '../../lifecycle/retention.support.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
-import { readPendingTaskFacts } from '../../../src/runs/pending-tasks/lifecycle/facts.js';
+import { readPendingTaskFacts } from '../../../src/runs/pending-tasks/lifecycle/facts.queries.js';
 import { describe, it, expect } from 'vitest';
 import { pendingTaskDetailSchema } from '@pertexo/contracts';
 import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
@@ -12,7 +12,7 @@ import {
   createPendingTaskStore,
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
-} from '../../../src/runs/pending-tasks/responses/store.js';
+} from '../../../src/runs/pending-tasks/responses/repository.js';
 import { admin, store, taskFixture, userId, pool } from './fixtures.js';
 
 describe('current authority and atomic human decisions', () => {

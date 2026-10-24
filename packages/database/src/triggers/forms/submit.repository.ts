@@ -10,7 +10,7 @@ import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
-import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.js';
+import { WorkflowAlreadyRunningError } from '../../runs/commands/concurrency.queries.js';
 import { recordWorkflowTriggerSkip } from '../skips.repository.js';
 import { readFormDefinition } from './definition.js';
 import { createHash } from 'node:crypto';
@@ -26,7 +26,7 @@ import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 import {
   acceptWorkflowRun,
   readWorkflowRunAcceptanceReplay,
-} from '../../runs/commands/acceptance.js';
+} from '../../runs/commands/acceptance.repository.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { FormChangedError, FormUnavailableError } from './errors.js';
 import type { FormStore } from './contract.js';

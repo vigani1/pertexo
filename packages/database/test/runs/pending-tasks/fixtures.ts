@@ -1,10 +1,10 @@
 import { Pool } from 'pg';
 import { beforeAll, afterAll } from 'vitest';
 import { approvalConfigSchema } from '@pertexo/workflow-model';
-import { createPendingTaskStore } from '../../../src/runs/pending-tasks/responses/store.js';
+import { createPendingTaskStore } from '../../../src/runs/pending-tasks/responses/repository.js';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
-import { synchronizeHumanWait } from '../../../src/runs/pending-tasks/lifecycle/time-capacity.js';
+import { synchronizeHumanWait } from '../../../src/runs/pending-tasks/lifecycle/time-capacity.queries.js';
 import { admin, createFamily } from '../../lifecycle/calls/fixtures.js';
 import { apiUrl, userId } from '../../lifecycle/retention.support.js';
 export { admin, userId };

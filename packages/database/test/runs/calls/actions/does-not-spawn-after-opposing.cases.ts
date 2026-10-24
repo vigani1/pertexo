@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { createWorkflowCallStore } from '../../../../src/runs/calls/store.js';
+import { createWorkflowCallStore } from '../../../../src/runs/calls/repository.js';
 import { parseDatabaseConfig } from '../../../../src/config.js';
 import { withTenantScopedClient } from '../../../../src/tenant-access/transactions.js';
 import { admin } from '../../../lifecycle/calls/fixtures.js';

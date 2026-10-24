@@ -4,11 +4,11 @@ import {
   withRunCommand,
   requireRunAccess,
   requireWorkflowAccess,
-} from './queries/access.js';
+} from './queries/access.queries.js';
 import {
   readUsageTrends,
   type UsageTrendsInput,
-} from './queries/usage-trends.js';
+} from './queries/usage-trends.queries.js';
 
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
@@ -18,29 +18,29 @@ import type { DatabaseConfig } from '../config.js';
 import {
   recoverWorkflowRunInTransaction,
   allocateRecoveryIdentity,
-} from './recovery/accept.js';
+} from './recovery/accept.repository.js';
 import {
   readRecoveryMetadata,
   readRecoveryValues,
-} from './recovery/queries.js';
+} from './recovery/records.queries.js';
 
 import {
   WorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,
 } from './errors.js';
 
-import { replayWorkflowRunInTransaction } from './commands/replay.js';
+import { replayWorkflowRunInTransaction } from './commands/replay.repository.js';
 import {
   readWorkflowRunListPage,
   type ListWorkflowRunsDatabaseInput,
-} from './queries/history/list.js';
+} from './queries/history/list.queries.js';
 import {
   readWorkflowStepHealth,
   readWorkflowStepRuns,
   type ReadWorkflowStepHealthInput,
   type ReadWorkflowStepRunsInput,
-} from './queries/history/steps.js';
-import { readWorkflowRun, type GetWorkflowRunInput } from './queries/read.js';
+} from './queries/history/steps.queries.js';
+import { readWorkflowRun, type GetWorkflowRunInput } from './queries/read.queries.js';
 import {
   readWorkflowNodeRunInput,
   readWorkflowNodeRunDiagnostics,
@@ -49,15 +49,15 @@ import {
   readWorkflowRunVariables,
   type ReadWorkflowNodeRunOutputInput,
   type ReadWorkflowRunInputInput,
-} from './queries/history/details.js';
+} from './queries/history/details.queries.js';
 import {
   readWorkflowRunStatistics,
   type WorkflowRunStatisticsDatabaseInput,
-} from './queries/history/statistics.js';
+} from './queries/history/statistics.queries.js';
 import {
   readWorkspaceUsageCapacity,
   type WorkspaceUsageCapacityInput,
-} from './queries/usage-capacity.js';
+} from './queries/usage-capacity.queries.js';
 import {
   startInputSchema,
   replayInputSchema,
@@ -71,20 +71,20 @@ import {
   type CancelWorkflowRunInput,
   type WorkflowRunDatabase,
 } from './commands/contract.js';
-import { startInTransaction } from './commands/start.js';
-import { cancelInTransaction } from './commands/cancel-active.js';
+import { startInTransaction } from './commands/start.repository.js';
+import { cancelInTransaction } from './commands/cancel-active.repository.js';
 export {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
   WorkflowRunReadCapacityError,
   WorkflowPublishedVersionConflictError,
 } from './errors.js';
-export type { WorkflowRunRecord } from './commands/records.js';
+export type { WorkflowRunRecord } from './commands/records.repository.js';
 export type {
   GetWorkflowRunInput,
   WorkflowNodeRunRecord,
   WorkflowRunReadModel,
-} from './queries/read.js';
+} from './queries/read.queries.js';
 export {
   type WorkflowRecoveryPreviewInput,
   type RecoverPublishedWorkflowRunInput,
@@ -96,7 +96,7 @@ export {
 export {
   requestActiveRunCancellations,
   cancelInTransaction,
-} from './commands/cancel-active.js';
+} from './commands/cancel-active.repository.js';
 export function createWorkflowRunDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
