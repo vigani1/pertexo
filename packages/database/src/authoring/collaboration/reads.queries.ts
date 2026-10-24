@@ -1,55 +1,96 @@
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  sql,
+} from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { QueryBuilder } from 'drizzle-orm/pg-core';
+import { workflowCommentThreads } from '../../schema/authoring/collaboration/threads.js';
+import { workflowComments } from '../../schema/authoring/collaboration/comments.js';
+import { workflowCommentMentions } from '../../schema/authoring/collaboration/mentions.js';
+import { users } from '../../schema/foundation.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowComment } from '@pertexo/contracts';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import { readWorkspacePeople } from '../../tenant-access/members/discovery.queries.js';
-import { projectCommentThread, type StoredCommentThread } from './records.queries.js';
+import { projectCommentThread } from './records.queries.js';
 import { requireCollaborationAuthority } from './authority.queries.js';
 import type {
   CollaborationContext,
   WorkflowCollaborationStore,
 } from './contract.js';
-const threadProjection = `thread.*,(select left(entry.body,200) from app.workflow_comments entry where entry.workspace_id=thread.workspace_id and entry.thread_id=thread.id order by entry.id desc limit 1) preview`;
-interface StoredComment {
-  id: string;
-  thread_id: string;
-  author_id: string | null;
-  author_name: string;
-  body: string;
-  revision: number;
-  created_at: Date;
-  edited_at: Date | null;
-}
+const preview = new QueryBuilder()
+  .select({ body: sql<string>`left(${workflowComments.body},200)` })
+  .from(workflowComments)
+  .where(
+    and(
+      eq(workflowComments.workspaceId, workflowCommentThreads.workspaceId),
+      eq(workflowComments.threadId, workflowCommentThreads.id),
+    ),
+  )
+  .orderBy(desc(workflowComments.id))
+  .limit(1);
+const threadProjection = {
+  ...getTableColumns(workflowCommentThreads),
+  preview: sql<string | null>`(${preview})`,
+};
+const commentProjection = {
+  ...getTableColumns(workflowComments),
+  authorName: sql<string>`coalesce(${users.displayName},'Former member')`,
+};
+type StoredComment = typeof workflowComments.$inferSelect & {
+  authorName: string;
+};
 async function projectComments(
   client: PoolClient,
   workspaceId: string,
   rows: readonly StoredComment[],
 ): Promise<WorkflowComment[]> {
-  const mentions = await client.query<{
-    comment_id: string;
-    user_id: string;
-    display_name: string;
-  }>(
-    'select mention.comment_id,mention.user_id,actor.display_name from app.workflow_comment_mentions mention join app.users actor on actor.id=mention.user_id where mention.workspace_id=$1 and mention.comment_id=any($2::uuid[]) order by mention.id',
-    [workspaceId, rows.map((row) => row.id)],
-  );
+  const mentions = await drizzle(client)
+    .select({
+      commentId: workflowCommentMentions.commentId,
+      userId: workflowCommentMentions.userId,
+      displayName: users.displayName,
+    })
+    .from(workflowCommentMentions)
+    .innerJoin(users, eq(users.id, workflowCommentMentions.userId))
+    .where(
+      and(
+        eq(workflowCommentMentions.workspaceId, workspaceId),
+        inArray(
+          workflowCommentMentions.commentId,
+          rows.map((row) => row.id),
+        ),
+      ),
+    )
+    .orderBy(asc(workflowCommentMentions.id))
+    .catch(rethrowQueryFailure);
   const byComment = new Map<
     string,
     { userId: string; displayName: string }[]
   >();
-  for (const mention of mentions.rows) {
-    const people = byComment.get(mention.comment_id) ?? [];
-    people.push({ userId: mention.user_id, displayName: mention.display_name });
-    byComment.set(mention.comment_id, people);
+  for (const mention of mentions) {
+    const people = byComment.get(mention.commentId) ?? [];
+    people.push({ userId: mention.userId, displayName: mention.displayName });
+    byComment.set(mention.commentId, people);
   }
   return rows.map((row) => ({
     id: row.id,
-    threadId: row.thread_id,
-    authorId: row.author_id,
-    authorName: row.author_name,
+    threadId: row.threadId,
+    authorId: row.authorId,
+    authorName: row.authorName,
     body: row.body,
     revision: row.revision,
-    createdAt: row.created_at.toISOString(),
-    editedAt: row.edited_at?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+    editedAt: row.editedAt?.toISOString() ?? null,
     mentions: byComment.get(row.id) ?? [],
   }));
 }
@@ -63,25 +104,30 @@ export function collaborationReads(
         input.actorId,
         async (client) => {
           await requireCollaborationAuthority(client, input);
-          const found = await client.query<StoredCommentThread>(
-            `select ${threadProjection} from app.workflow_comment_threads thread where thread.workspace_id=$1 and thread.workflow_id=$2 and ($3::uuid is null or thread.id<$3) and ($4='all' or thread.status=$4) and ($5='all' or ($5='workflow' and thread.step_id is null) or ($5='step' and thread.step_id=$6)) order by thread.id desc limit $7`,
-            [
-              input.workspaceId,
-              input.workflowId,
-              input.after ?? null,
-              input.status,
-              input.scope,
-              input.stepId ?? null,
-              input.limit + 1,
-            ],
-          );
-          const rows = found.rows.slice(0, input.limit);
+          const found = await drizzle(client)
+            .select(threadProjection)
+            .from(workflowCommentThreads)
+            .where(
+              and(
+                eq(workflowCommentThreads.workspaceId, input.workspaceId),
+                eq(workflowCommentThreads.workflowId, input.workflowId),
+                input.after === undefined
+                  ? undefined
+                  : lt(workflowCommentThreads.id, input.after),
+                input.status === 'all'
+                  ? undefined
+                  : eq(workflowCommentThreads.status, input.status),
+                threadScope(input),
+              ),
+            )
+            .orderBy(desc(workflowCommentThreads.id))
+            .limit(input.limit + 1)
+            .catch(rethrowQueryFailure);
+          const rows = found.slice(0, input.limit);
           return {
             items: rows.map(projectCommentThread),
             nextCursor:
-              found.rows.length > input.limit
-                ? (rows.at(-1)?.id ?? null)
-                : null,
+              found.length > input.limit ? (rows.at(-1)?.id ?? null) : null,
           };
         },
         input.signal,
@@ -92,40 +138,60 @@ export function collaborationReads(
         input.actorId,
         async (client) => {
           await requireCollaborationAuthority(client, input);
-          const thread = (
-            await client.query<StoredCommentThread>(
-              `select ${threadProjection} from app.workflow_comment_threads thread where thread.workspace_id=$1 and thread.workflow_id=$2 and thread.id=$3`,
-              [input.workspaceId, input.workflowId, input.threadId],
+          const db = drizzle(client);
+          const [thread] = await db
+            .select(threadProjection)
+            .from(workflowCommentThreads)
+            .where(
+              and(
+                eq(workflowCommentThreads.workspaceId, input.workspaceId),
+                eq(workflowCommentThreads.workflowId, input.workflowId),
+                eq(workflowCommentThreads.id, input.threadId),
+              ),
             )
-          ).rows[0];
+            .catch(rethrowQueryFailure);
           if (thread === undefined)
             throw new WorkflowNotFoundError('Discussion is not visible');
           if (input.anchor !== undefined) {
-            const anchor = await client.query(
-              'select id from app.workflow_comments where workspace_id=$1 and thread_id=$2 and id=$3',
-              [input.workspaceId, input.threadId, input.anchor],
-            );
-            if (anchor.rowCount !== 1)
+            const anchor = await db
+              .select({ id: workflowComments.id })
+              .from(workflowComments)
+              .where(
+                and(
+                  eq(workflowComments.workspaceId, input.workspaceId),
+                  eq(workflowComments.threadId, input.threadId),
+                  eq(workflowComments.id, input.anchor),
+                ),
+              )
+              .catch(rethrowQueryFailure);
+            if (anchor.length !== 1)
               throw new WorkflowNotFoundError('Comment is not visible');
           }
-          const found = await client.query<StoredComment>(
-            `select entry.*,coalesce(actor.display_name,'Former member') author_name from app.workflow_comments entry left join app.users actor on actor.id=entry.author_id where entry.workspace_id=$1 and entry.thread_id=$2 and ($3::uuid is null or entry.id<$3) and ($4::uuid is null or entry.id<=$4) order by entry.id desc limit $5`,
-            [
-              input.workspaceId,
-              input.threadId,
-              input.before ?? null,
-              input.anchor ?? null,
-              input.limit + 1,
-            ],
-          );
-          const rows = found.rows.slice(0, input.limit);
+          const found = await db
+            .select(commentProjection)
+            .from(workflowComments)
+            .leftJoin(users, eq(users.id, workflowComments.authorId))
+            .where(
+              and(
+                eq(workflowComments.workspaceId, input.workspaceId),
+                eq(workflowComments.threadId, input.threadId),
+                input.before === undefined
+                  ? undefined
+                  : lt(workflowComments.id, input.before),
+                input.anchor === undefined
+                  ? undefined
+                  : lte(workflowComments.id, input.anchor),
+              ),
+            )
+            .orderBy(desc(workflowComments.id))
+            .limit(input.limit + 1)
+            .catch(rethrowQueryFailure);
+          const rows = found.slice(0, input.limit);
           return {
             thread: projectCommentThread(thread),
             comments: await projectComments(client, input.workspaceId, rows),
             nextCursor:
-              found.rows.length > input.limit
-                ? (rows.at(-1)?.id ?? null)
-                : null,
+              found.length > input.limit ? (rows.at(-1)?.id ?? null) : null,
           };
         },
         input.signal,
@@ -141,4 +207,15 @@ export function collaborationReads(
         input.signal,
       ),
   };
+}
+
+function threadScope(input: Parameters<WorkflowCollaborationStore['list']>[0]) {
+  switch (input.scope) {
+    case 'all':
+      return undefined;
+    case 'workflow':
+      return isNull(workflowCommentThreads.stepId);
+    case 'step':
+      return eq(workflowCommentThreads.stepId, sql`${input.stepId}::varchar`);
+  }
 }
