@@ -22,12 +22,12 @@ import {
   decodeAuditCursor,
   encodeAuditCursor,
   projectAuditEvent,
-} from './audit/query.js';
-import { prepareAuditExport } from './audit/export.js';
+} from './audit/events.queries.js';
+import { prepareAuditExport } from './audit/export.queries.js';
 import {
   readGovernanceSettings,
   configureGovernance,
-} from './settings/commands.js';
+} from './settings/policy.repository.js';
 export function createGovernanceStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

@@ -3,7 +3,7 @@ import type { AdministrativeRole } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { withWorkspaceScope } from '../../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../../tenant-access/workspaces/authority.js';
-import { appendAuditFact } from '../../../governance/audit/append.js';
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import {
   FederationConflictError,
   type FederationScope,

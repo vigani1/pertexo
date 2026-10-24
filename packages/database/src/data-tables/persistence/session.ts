@@ -1,5 +1,5 @@
 import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
-import { appendAuditFact } from '../../governance/audit/append.js';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
 

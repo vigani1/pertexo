@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { claimCommand, completeCommand } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { appendAuditFact } from '../../governance/audit/append.js';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import {
   PublicationReviewError,
   type PublicationReviewStore,

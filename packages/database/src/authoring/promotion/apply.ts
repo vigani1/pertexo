@@ -18,7 +18,7 @@ import {
   findCommandResult,
 } from '../../platform/idempotency.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { appendAuditFact } from '../../governance/audit/append.js';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { pruneStepSamples } from '../step-samples/records.js';
 import { publishWorkflowDirectly } from '../publication/publisher.js';
 import { requestPublicationReview } from '../reviews/request.js';

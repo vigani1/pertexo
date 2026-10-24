@@ -1,4 +1,4 @@
-import { appendAuditFact } from '../../../governance/audit/append.js';
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';

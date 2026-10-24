@@ -10,7 +10,7 @@ import { revokeSessionsForUsers } from '../../../src/tenant-access/users/session
 import {
   appendAuditFacts,
   type AuditFact,
-} from '../../../src/governance/audit/append.js';
+} from '../../../src/governance/audit/events.repository.js';
 import { useIdentityCommandDatabase } from '../command.support.js';
 
 const database = useIdentityCommandDatabase('member_batch');
