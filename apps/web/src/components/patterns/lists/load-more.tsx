@@ -10,6 +10,7 @@ export function LoadMore({
   hasNextPage,
   loading,
   failed,
+  disabled = false,
   onLoadMore,
   label = 'Load more',
 }: Readonly<{
@@ -18,6 +19,7 @@ export function LoadMore({
   hasNextPage: boolean;
   loading: boolean;
   failed: boolean;
+  disabled?: boolean;
   onLoadMore: () => void;
   /** Tells two lists on one page apart, e.g. "Load more invitations". */
   label?: string;
@@ -30,6 +32,7 @@ export function LoadMore({
         variant="outline"
         className="min-w-32"
         pending={loading}
+        disabled={disabled}
         pendingLabel="Loading…"
         onClick={onLoadMore}
       >
