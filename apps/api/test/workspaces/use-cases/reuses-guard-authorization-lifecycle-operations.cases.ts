@@ -101,6 +101,24 @@ export function registerReusesGuardAuthorizationLifecycleOperations(): void {
     });
   });
 
+  it('rejects unsafe or oversized audit metadata before persistence', async () => {
+    for (const metadata of [
+      { tokenDigest: 'must-not-persist' },
+      { value: 'x'.repeat(8192) },
+    ]) {
+      const store = persistence();
+      await expect(
+        new CreateWorkspaceUseCase(store).execute({
+          actorId,
+          idempotencyKey,
+          request: { name: 'Operations', slug: 'operations' },
+          metadata,
+        }),
+      ).rejects.toThrow();
+      expect(store.createWorkspaceWithOwner).not.toHaveBeenCalled();
+    }
+  });
+
   it('preserves omitted optional audit identity for workspace creation', async () => {
     const store = persistence();
     await new CreateWorkspaceUseCase(store).execute({

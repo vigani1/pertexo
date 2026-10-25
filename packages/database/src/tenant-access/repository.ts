@@ -25,7 +25,6 @@ import { createIdentityWorkspaceMemberRemovalStore } from './members/removal.rep
 import { createIdentityWorkspaceMemberStore } from './members/repository.js';
 import { createIdentityWorkspaceRoleCommandStore } from './members/roles.repository.js';
 import {
-  parseIdentityMetadata,
   throwIdentityDatabaseConflict,
   throwWorkspaceLifecycleError,
 } from './support.js';
@@ -81,7 +80,7 @@ async function createWorkspaceWithOwner(
 ): Promise<WorkspaceRecord> {
   const id = input.id ?? generatePersistedId();
   const ownerUserId = input.ownerUserId;
-  const metadata = parseIdentityMetadata(input.metadata);
+  const metadata = input.metadata ?? {};
   const name = input.name.trim();
   const slug = input.slug.trim().toLowerCase();
   const keyHash = commandKeyHash(input.idempotencyKey);
