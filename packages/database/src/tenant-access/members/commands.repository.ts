@@ -1,29 +1,27 @@
-import { authDirectoryMemberships } from '../../schema/identity/federation/directory/sources.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  users,
-  workspaces,
-  workspaceMemberships,
-  auditEvents,
-} from '../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { isAdministrativeRole } from '@pertexo/workflow-model';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  auditEvents,
+  users,
+  workspaceMemberships,
+  workspaces,
+} from '../../schema/foundation.js';
+import { authDirectoryMemberships } from '../../schema/identity/federation/directory/sources.js';
 
+import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
-import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { commandKeySchema } from '../command-keys.js';
 
-import { parseIdentityUuid } from '../support.js';
-import { withTenantScopedClient } from '../transactions.js';
 import { DirectoryManagedMembershipError } from '../errors.js';
+import { withTenantScopedClient } from '../transactions.js';
 
 /*
  * The shared half of the existing-member commands (ADR 037 role change,
@@ -205,15 +203,15 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
   }>,
 ): Promise<Result & Readonly<{ replayed: boolean }>> {
   const scope: MemberCommandScope = Object.freeze({
-    workspaceId: parseIdentityUuid(command.workspaceId),
-    actorUserId: parseIdentityUuid(command.actorUserId),
-    targetUserId: parseIdentityUuid(command.targetUserId),
+    workspaceId: command.workspaceId,
+    actorUserId: command.actorUserId,
+    targetUserId: command.targetUserId,
   });
   const key: CommandIdentity = {
     workspaceId: scope.workspaceId,
     operation: command.operation,
     scope: scope.actorUserId,
-    idempotencyKey: commandKeySchema.parse(command.idempotencyKey),
+    idempotencyKey: command.idempotencyKey,
   };
   return withTenantScopedClient(
     pool,
@@ -250,9 +248,7 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
         .catch(rethrowQueryFailure);
       if (directoryMembership.length !== 0)
         throw new DirectoryManagedMembershipError();
-      const result = command.result.parse(
-        await command.apply(client, admitted, scope),
-      );
+      const result = await command.apply(client, admitted, scope);
       await completeCommand(client, key, result);
       return Object.freeze({ ...result, replayed: false });
     },

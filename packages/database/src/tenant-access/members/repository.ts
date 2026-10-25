@@ -1,56 +1,43 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
   users,
-  workspaces,
   workspaceMemberships,
+  workspaces,
 } from '../../schema/foundation.js';
 import { authDirectoryMemberships } from '../../schema/identity/federation/directory/sources.js';
 import { authDirectoryUsers } from '../../schema/identity/federation/directory/users.js';
 import { authOrganizations } from '../../schema/identity/federation/organizations.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { isIntegerInRange } from '../../platform/persisted-primitives.js';
-import type { Pool } from 'pg';
-import { z } from 'zod';
 
 import { rolesForCapability } from '@pertexo/workflow-model';
-import {
-  withActorScopedClient,
-  withTenantScopedClient,
-} from '../transactions.js';
-import { parseIdentityUuid } from '../support.js';
-import { lockWorkspaceAuthority } from '../workspaces/authority.queries.js';
 import type {
-  IdentityWorkspaceDatabase,
   AccessibleWorkspacesPage,
+  IdentityWorkspaceDatabase,
   WorkspaceAccessRecord,
   WorkspaceMembersPage,
   WorkspaceStatus,
 } from '../contract.js';
+import {
+  withActorScopedClient,
+  withTenantScopedClient,
+} from '../transactions.js';
+import { lockWorkspaceAuthority } from '../workspaces/authority.queries.js';
 
 type MemberStore = Pick<
   IdentityWorkspaceDatabase,
   'findWorkspaceAccess' | 'listAccessibleWorkspaces' | 'listWorkspaceMembers'
 >;
 
-const memberCursorTimestamp = z.iso
-  .datetime({ precision: 6 })
-  .refine((value) => !value.startsWith('0000-'), {
-    message: 'PostgreSQL timestamps do not support year zero',
-  });
-
 async function listAccessibleWorkspaces(
   pool: Pool,
   actorIdInput: string,
   input: Readonly<{ limit?: number; after?: string }> = {},
 ): Promise<AccessibleWorkspacesPage> {
-  const actorId = parseIdentityUuid(actorIdInput);
-  const after =
-    input.after === undefined ? undefined : parseIdentityUuid(input.after);
+  const actorId = actorIdInput;
+  const after = input.after;
   const limit = input.limit ?? 50;
-  const invalidLimit = !isIntegerInRange(limit, 1, 100);
-  if (invalidLimit)
-    throw new RangeError('Accessible workspace page limit is invalid');
   return withActorScopedClient(pool, actorId, async (client) => {
     const rowsFound = await drizzle(client)
       .select({
@@ -110,8 +97,8 @@ async function findWorkspaceAccess(
   workspaceIdInput: string,
   options: Readonly<{ signal?: AbortSignal }> = {},
 ): Promise<WorkspaceAccessRecord | null> {
-  const actorId = parseIdentityUuid(actorIdInput);
-  const workspaceId = parseIdentityUuid(workspaceIdInput);
+  const actorId = actorIdInput;
+  const workspaceId = workspaceIdInput;
   return withTenantScopedClient(
     pool,
     { workspaceId },
@@ -159,20 +146,13 @@ async function listWorkspaceMembers(
     after?: Readonly<{ createdAt: string; userId: string }>;
   }> = {},
 ): Promise<WorkspaceMembersPage> {
-  const workspaceId = parseIdentityUuid(workspaceIdInput);
-  const actorId = parseIdentityUuid(actorIdInput);
+  const workspaceId = workspaceIdInput;
+  const actorId = actorIdInput;
   const limit = input.limit ?? 50;
-  const invalidLimit = !isIntegerInRange(limit, 1, 100);
-  if (invalidLimit)
-    throw new RangeError('Workspace member page limit is invalid');
   const afterUserId =
-    input.after === undefined
-      ? undefined
-      : parseIdentityUuid(input.after.userId);
+    input.after === undefined ? undefined : input.after.userId;
   const afterCreatedAt =
-    input.after === undefined
-      ? undefined
-      : memberCursorTimestamp.parse(input.after.createdAt);
+    input.after === undefined ? undefined : input.after.createdAt;
   return withTenantScopedClient(
     pool,
     { workspaceId, actorId },

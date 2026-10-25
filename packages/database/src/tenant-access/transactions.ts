@@ -3,8 +3,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 
 import { databaseSchema } from '../schema.js';
-import { actorIdSchema } from './transactions/input.js';
 import type {
+  WorkspaceId,
   WorkspaceTransaction,
   WorkspaceTransactionOptions,
   TenantTransactionScope,
@@ -12,7 +12,6 @@ import type {
   WorkspaceScopeRunner,
 } from './transactions/contract.js';
 import {
-  parseWorkspaceId,
   installTransactionScope,
   assertNoTenantContext,
   verifyTenantContext,
@@ -45,7 +44,7 @@ export async function withTenantScopedClient<T>(
 ): Promise<T> {
   const scope: TenantTransactionScope = {
     ...scopeInput,
-    workspaceId: parseWorkspaceId(scopeInput.workspaceId),
+    workspaceId: scopeInput.workspaceId,
   };
   return runTransaction(pool, scope, {
     operation,
@@ -70,7 +69,7 @@ export async function withActorScopedClient<T>(
   operation: (client: PoolClient) => Promise<T>,
   options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
-  const actorId = actorIdSchema.parse(actorIdInput);
+  const actorId = actorIdInput;
   return runTransaction(
     pool,
     { actorId, discoveryScope: 'workspace_memberships' },
@@ -96,7 +95,7 @@ export async function withTenantScopedReadClient<T>(
 ): Promise<T> {
   const scope: TenantTransactionScope = {
     ...scopeInput,
-    workspaceId: parseWorkspaceId(scopeInput.workspaceId),
+    workspaceId: scopeInput.workspaceId,
   };
   return runTransaction(pool, scope, {
     operation,
@@ -193,7 +192,7 @@ export function withWorkspaceScope<T>(
 ): Promise<T> {
   return withInstalledScope(
     client,
-    { ...scope, workspaceId: parseWorkspaceId(scope.workspaceId) },
+    { ...scope, workspaceId: scope.workspaceId },
     operation,
   );
 }
@@ -207,7 +206,7 @@ export function withActorDiscoveryScope<T>(
   return withInstalledScope(
     client,
     {
-      actorId: actorIdSchema.parse(actorId),
+      actorId,
       discoveryScope: 'workspace_memberships',
     },
     operation,
@@ -220,7 +219,7 @@ export async function withWorkspaceTransaction<T>(
   operation: (transaction: WorkspaceTransaction) => Promise<T>,
   options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
-  const workspaceId = parseWorkspaceId(workspaceIdInput);
+  const workspaceId = workspaceIdInput as WorkspaceId;
   return withTenantScopedClient(
     pool,
     { workspaceId },
@@ -239,7 +238,7 @@ export async function withWorkspaceReadTransaction<T>(
   operation: (transaction: WorkspaceTransaction) => Promise<T>,
   options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
-  const workspaceId = parseWorkspaceId(workspaceIdInput);
+  const workspaceId = workspaceIdInput as WorkspaceId;
   return withTenantScopedReadClient(
     pool,
     { workspaceId },

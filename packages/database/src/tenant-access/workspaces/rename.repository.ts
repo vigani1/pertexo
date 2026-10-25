@@ -1,35 +1,33 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  users,
-  workspaces,
-  workspaceMemberships,
-  auditEvents,
-} from '../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { alias } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 import { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  auditEvents,
+  users,
+  workspaceMemberships,
+  workspaces,
+} from '../../schema/foundation.js';
 
+import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
-import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { commandKeySchema, commandRevisionSchema } from '../command-keys.js';
+import { commandRevisionSchema } from '../command-keys.js';
 import type {
   IdentityWorkspaceDatabase,
   RenameWorkspaceInput,
   WorkspaceRenameResult,
 } from '../contract.js';
 import { WorkspaceRenameCommandConflictError } from '../errors.js';
-import { workspaceRecord, workspaceSelection } from './projection.js';
-import { parseIdentityUuid } from '../support.js';
 import { withTenantScopedClient } from '../transactions.js';
+import { workspaceRecord, workspaceSelection } from './projection.js';
 
 type RenameStore = Pick<IdentityWorkspaceDatabase, 'renameWorkspace'>;
-const nameSchema = z.string().trim().min(1).max(128);
 const durableResultSchema = z
   .object({
     workspace: z
@@ -53,14 +51,14 @@ const durableResultSchema = z
   .strict();
 
 function durableResult(result: WorkspaceRenameResult) {
-  return durableResultSchema.parse({
+  return {
     workspace: {
       ...result.workspace,
       createdAt: result.workspace.createdAt.toISOString(),
       updatedAt: result.workspace.updatedAt.toISOString(),
     },
     changed: result.changed,
-  });
+  };
 }
 
 function replayedResult(value: unknown): WorkspaceRenameResult {
@@ -79,17 +77,15 @@ function replayedResult(value: unknown): WorkspaceRenameResult {
 export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
   return Object.freeze({
     renameWorkspace: async (raw: RenameWorkspaceInput) => {
-      const workspaceId = parseIdentityUuid(raw.workspaceId);
-      const actorUserId = parseIdentityUuid(raw.actorUserId);
-      const name = nameSchema.parse(raw.name);
-      const expectedRevision = commandRevisionSchema.parse(
-        raw.expectedRevision,
-      );
+      const workspaceId = raw.workspaceId;
+      const actorUserId = raw.actorUserId;
+      const name = raw.name;
+      const expectedRevision = raw.expectedRevision;
       const key: CommandIdentity = {
         workspaceId,
         operation: 'workspace.rename',
         scope: actorUserId,
-        idempotencyKey: commandKeySchema.parse(raw.idempotencyKey),
+        idempotencyKey: raw.idempotencyKey,
       };
       return withTenantScopedClient(
         pool,

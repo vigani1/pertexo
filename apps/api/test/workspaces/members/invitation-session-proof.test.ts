@@ -100,7 +100,7 @@ describe('invitation acceptance under the active session authority', () => {
       bindingDigest: createHash('sha256').update(bindingSecret).digest('hex'),
       userId,
       sessionId: userId,
-      verifiedEmail: 'Recipient@Example.test',
+      verifiedEmail: 'recipient@example.test',
       verifiedAt: new Date(now.getTime() - 60_000),
     });
   });

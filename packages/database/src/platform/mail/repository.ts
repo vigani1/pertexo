@@ -1,10 +1,3 @@
-import type {
-  SystemMailEnqueueStore,
-  SystemMailDeliveryClaim,
-  SystemMailDeliveryStore,
-  SystemMailInput,
-} from './contract.js';
-import { purpose, sealedPayload } from './input.js';
 import {
   and,
   asc,
@@ -17,13 +10,18 @@ import {
   or,
   sql,
 } from 'drizzle-orm';
-import { rethrowQueryFailure } from '../query-errors.js';
 import { randomUUID } from 'node:crypto';
+import { rethrowQueryFailure } from '../query-errors.js';
+import type {
+  SystemMailDeliveryClaim,
+  SystemMailDeliveryStore,
+  SystemMailEnqueueStore,
+  SystemMailInput,
+} from './contract.js';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 import { systemMailDeliveries } from '../../schema/mail/deliveries.js';
-import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool, type DatabaseRuntime } from '../pool/runtime.js';
@@ -33,18 +31,16 @@ export async function insertSystemMail(
   client: Pool | PoolClient,
   input: SystemMailInput,
 ): Promise<void> {
-  const sealed = sealedPayload.parse(input.sealedPayload);
-  await drizzle(client)
-    .insert(systemMailDeliveries)
-    .values({
-      id: z.uuid().parse(input.id),
-      purpose: purpose.parse(input.purpose),
-      expiresAt: z.date().parse(input.expiresAt).toISOString(),
-      payloadCiphertext: sealed.ciphertext,
-      payloadNonce: sealed.nonce,
-      payloadTag: sealed.tag,
-      payloadKeyVersion: sealed.keyVersion,
-    });
+  const sealed = input.sealedPayload;
+  await drizzle(client).insert(systemMailDeliveries).values({
+    id: input.id,
+    purpose: input.purpose,
+    expiresAt: input.expiresAt.toISOString(),
+    payloadCiphertext: sealed.ciphertext,
+    payloadNonce: sealed.nonce,
+    payloadTag: sealed.tag,
+    payloadKeyVersion: sealed.keyVersion,
+  });
 }
 
 export function createSystemMailEnqueueStore(
@@ -76,11 +72,8 @@ async function claimMail(
   pool: Pool,
   input: Parameters<SystemMailDeliveryStore['claim']>[0],
 ): Promise<readonly SystemMailDeliveryClaim[]> {
-  const workerId = z
-    .string()
-    .regex(/^[A-Za-z0-9._:-]{1,128}$/u)
-    .parse(input.workerId);
-  const limit = z.number().int().min(1).max(50).parse(input.limit);
+  const workerId = input.workerId;
+  const limit = input.limit;
   const leaseToken = randomUUID();
   const db = drizzle(pool);
   const delivery = systemMailDeliveries;
@@ -163,16 +156,10 @@ async function settleMail(
 ): Promise<boolean> {
   if (input.outcome === 'retry' && input.retryAt === undefined)
     throw new TypeError('A retry needs its next attempt time');
-  const id = z.uuid().parse(input.id),
-    leaseToken = z.uuid().parse(input.leaseToken);
-  const leaseGeneration = z
-    .number()
-    .int()
-    .positive()
-    .parse(input.leaseGeneration);
-  const outcome = z
-    .enum(['submitted', 'failed', 'retry', 'reconciliation_required'])
-    .parse(input.outcome);
+  const id = input.id,
+    leaseToken = input.leaseToken;
+  const leaseGeneration = input.leaseGeneration;
+  const outcome = input.outcome;
   const retryAt = input.retryAt ?? null;
   const db = drizzle(pool);
   const delivery = systemMailDeliveries;

@@ -1,31 +1,33 @@
+import { canonicalJson } from '@pertexo/workflow-model';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  workspaceInvitationDeliveryAttempts as attempts,
-  workspaces,
-  auditEvents,
-} from '../../../schema/foundation.js';
-import { outboxEvents } from '../../../schema/transport.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
+import type { CommandIdentity } from '../../../platform/idempotency/contract.js';
 import {
   claimCommand,
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
-import type { CommandIdentity } from '../../../platform/idempotency/contract.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import {
+  workspaceInvitationDeliveryAttempts as attempts,
+  auditEvents,
+  workspaces,
+} from '../../../schema/foundation.js';
+import { outboxEvents } from '../../../schema/transport.js';
 import type {
   WorkspaceInvitationCommandResult,
   WorkspaceInvitationRecord,
 } from '../../contract.js';
 
 import type { sealedToken } from '../input.js';
-import { idempotencyKey } from '../input.js';
-import { durableResult } from './receipt.js';
-import { serializeInvitation, mapDurableInvitation } from './receipt.js';
+import {
+  durableResult,
+  mapDurableInvitation,
+  serializeInvitation,
+} from './receipt.js';
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
@@ -42,7 +44,7 @@ export function invitationKey(
     workspaceId,
     operation: `workspace.invitation.${operation}`,
     scope: actorUserId,
-    idempotencyKey: idempotencyKey.parse(key),
+    idempotencyKey: key,
   };
 }
 

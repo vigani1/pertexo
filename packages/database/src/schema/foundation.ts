@@ -1,10 +1,5 @@
-import type { Role, DelegatedRole } from '@pertexo/workflow-model';
-import type {
-  UserRecord,
-  WorkspaceRecord,
-  WorkspaceInvitationRecord,
-  InvitationAcceptanceIntentRecord,
-} from '../tenant-access/contract.js';
+import type { DelegatedRole, Role } from '@pertexo/workflow-model';
+import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
   bigint,
@@ -24,7 +19,6 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 
 import { appSchema } from './namespace.js';
 
@@ -38,7 +32,7 @@ export const users = appSchema.table(
     twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
     image: text('image'),
     status: varchar('status', { length: 32 })
-      .$type<UserRecord['status']>()
+      .$type<'active' | 'suspended' | 'deleted'>()
       .notNull()
       .default(sql`'active'::character varying`),
     profileRevision: integer('profile_revision').notNull().default(1),
@@ -69,7 +63,9 @@ export const workspaces = appSchema.table(
     name: varchar('name', { length: 128 }).notNull(),
     slug: varchar('slug', { length: 64 }).notNull(),
     status: varchar('status', { length: 32 })
-      .$type<WorkspaceRecord['status']>()
+      .$type<
+        'active' | 'suspended' | 'pending_deletion' | 'purging' | 'deleted'
+      >()
       .notNull()
       .default(sql`'active'::character varying`),
     revision: integer('revision').notNull().default(1),
@@ -216,13 +212,13 @@ export const workspaceInvitations = appSchema.table(
     normalizedEmail: varchar('normalized_email', { length: 320 }).notNull(),
     role: varchar('role', { length: 32 }).$type<DelegatedRole>().notNull(),
     status: varchar('status', { length: 32 })
-      .$type<WorkspaceInvitationRecord['status']>()
+      .$type<'pending' | 'accepted' | 'revoked' | 'expired'>()
       .notNull()
       .default('pending'),
     revision: integer('revision').notNull().default(1),
     tokenDigest: char('token_digest', { length: 64 }).notNull(),
     deliveryStatus: varchar('delivery_status', { length: 32 })
-      .$type<WorkspaceInvitationRecord['deliveryStatus']>()
+      .$type<'queued' | 'submitted' | 'failed' | 'canceled'>()
       .notNull()
       .default('queued'),
     createdBy: uuid('created_by').notNull(),
@@ -367,7 +363,14 @@ export const workspaceInvitationAcceptanceIntents = appSchema.table(
     bindingDigest: char('binding_digest', { length: 64 }).notNull(),
     csrfDigest: char('csrf_digest', { length: 64 }).notNull(),
     status: varchar('status', { length: 32 })
-      .$type<InvitationAcceptanceIntentRecord['status']>()
+      .$type<
+        | 'pending'
+        | 'verified'
+        | 'wrong_account'
+        | 'completed'
+        | 'abandoned'
+        | 'superseded'
+      >()
       .notNull()
       .default('pending'),
     verifiedUserId: uuid('verified_user_id'),
@@ -523,6 +526,7 @@ export const auditEvents = appSchema.table(
     requestId: varchar('request_id', { length: 128 }),
     traceId: varchar('trace_id', { length: 128 }),
     metadata: jsonb('metadata')
+      .$type<Record<string, unknown>>()
       .notNull()
       .default(sql`'{}'::jsonb`),
     occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'date' })
@@ -588,6 +592,7 @@ export const usageEvents = appSchema.table(
     resourceId: uuid('resource_id').notNull(),
     idempotencyKey: varchar('idempotency_key', { length: 128 }).notNull(),
     metadata: jsonb('metadata')
+      .$type<Record<string, unknown>>()
       .default(sql`'{}'::jsonb`)
       .notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'date' })

@@ -1,22 +1,20 @@
-import { installTransactionScope } from '../../transactions/scope.js';
-import { workspaceInvitationBindingReplacementClaims as claims } from '../../../schema/foundation.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool, PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
+  workspaceInvitationBindingReplacementClaims as claims,
   workspaceInvitationAcceptanceIntents as intents,
   workspaceInvitations as invitations,
 } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import type { Pool, PoolClient } from 'pg';
+import { installTransactionScope } from '../../transactions/scope.js';
 
-import { expireWorkspaceInvitations } from '../expiration.repository.js';
-import { parseIdentityUuid } from '../../support.js';
 import { withTenantScopedClient } from '../../transactions.js';
+import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import type { AcceptanceStore } from './contract.js';
-import { digest } from '../input.js';
 import {
-  selectIntent,
   replacementLineageIsLive,
+  selectIntent,
   selectReplacementClaim,
   selectReplacementIntent,
   type ReplacementClaimRow,
@@ -26,19 +24,19 @@ export async function resolveInvitationAcceptance(
   pool: Pool,
   raw: Parameters<AcceptanceStore['resolveInvitationAcceptance']>[0],
 ): ReturnType<AcceptanceStore['resolveInvitationAcceptance']> {
-  const workspaceId = parseIdentityUuid(raw.workspaceId);
-  const invitationId = parseIdentityUuid(raw.invitationId);
-  const intentId = parseIdentityUuid(raw.intentId);
-  const tokenDigest = digest.parse(raw.tokenDigest);
-  const bindingDigest = digest.parse(raw.bindingDigest);
-  const csrfDigest = digest.parse(raw.csrfDigest);
+  const workspaceId = raw.workspaceId;
+  const invitationId = raw.invitationId;
+  const intentId = raw.intentId;
+  const tokenDigest = raw.tokenDigest;
+  const bindingDigest = raw.bindingDigest;
+  const csrfDigest = raw.csrfDigest;
   const priorBinding =
     raw.priorBinding === undefined
       ? undefined
       : {
-          workspaceId: parseIdentityUuid(raw.priorBinding.workspaceId),
-          intentId: parseIdentityUuid(raw.priorBinding.intentId),
-          bindingDigest: digest.parse(raw.priorBinding.bindingDigest),
+          workspaceId: raw.priorBinding.workspaceId,
+          intentId: raw.priorBinding.intentId,
+          bindingDigest: raw.priorBinding.bindingDigest,
         };
   const identity = {
     workspaceId,

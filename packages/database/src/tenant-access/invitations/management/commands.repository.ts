@@ -1,34 +1,31 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool, PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
-  workspaceInvitations as invitations,
   workspaceInvitationDeliveryAttempts as attempts,
   workspaceInvitationAcceptanceIntents as intents,
+  workspaceInvitations as invitations,
 } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
 
+import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import type {
   ChangeWorkspaceInvitationInput,
   WorkspaceInvitationCommandResult,
 } from '../../contract.js';
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
+import { withTenantScopedClient } from '../../transactions.js';
 import { cancelOpenInvitationDeliveries } from '../delivery-cancellation.repository.js';
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
-import { parseIdentityUuid } from '../../support.js';
-import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
-import { withTenantScopedClient } from '../../transactions.js';
-import { revision, digest, sealedToken } from '../input.js';
-import { lockAuthorizedActor, invitationSelection } from './state.queries.js';
 import {
-  invitationKey,
   claimInvitationCommand,
   completeInvitationCommand,
   insertDelivery,
+  invitationKey,
   recordAudit,
 } from './receipts.repository.js';
+import { invitationSelection, lockAuthorizedActor } from './state.queries.js';
 
 export async function changeInvitation(
   pool: Pool,
@@ -180,20 +177,28 @@ function prepareInvitationChange(
   raw: ChangeWorkspaceInvitationInput,
   operation: 'resend' | 'revoke',
 ) {
-  const workspaceId = parseIdentityUuid(raw.workspaceId);
-  const actorUserId = parseIdentityUuid(raw.actorUserId);
-  const invitationId = parseIdentityUuid(raw.invitationId);
-  const expectedRevision = revision.parse(raw.expectedRevision);
+  const workspaceId = raw.workspaceId;
+  const actorUserId = raw.actorUserId;
+  const invitationId = raw.invitationId;
+  const expectedRevision = raw.expectedRevision;
   const nextDelivery =
     operation === 'resend'
-      ? {
-          tokenDigest: digest.parse(raw.tokenDigest),
-          sealed: sealedToken.parse(raw.sealedToken),
-          deliveryAttemptId: parseIdentityUuid(
-            raw.deliveryAttemptId ?? generatePersistedId(),
-          ),
-          expiresAt: z.date().parse(raw.expiresAt),
-        }
+      ? (() => {
+          if (
+            raw.tokenDigest === undefined ||
+            raw.sealedToken === undefined ||
+            raw.expiresAt === undefined
+          )
+            throw new TypeError(
+              'A resend needs a token, sealed delivery and expiry',
+            );
+          return {
+            tokenDigest: raw.tokenDigest,
+            sealed: raw.sealedToken,
+            deliveryAttemptId: raw.deliveryAttemptId ?? generatePersistedId(),
+            expiresAt: raw.expiresAt,
+          };
+        })()
       : undefined;
 
   return {

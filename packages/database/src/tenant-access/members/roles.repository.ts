@@ -1,22 +1,22 @@
 import { DELEGATED_ROLES } from '@pertexo/workflow-model';
-import { updateMembership } from './records.repository.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
+import { updateMembership } from './records.repository.js';
 
+import { canChangeWorkspaceMemberRole } from '@pertexo/workflow-model';
+import { commandRevisionSchema } from '../command-keys.js';
 import type {
   ChangeWorkspaceMemberRoleInput,
   IdentityWorkspaceDatabase,
   WorkspaceMemberRoleChangeResult,
 } from '../contract.js';
 import { WorkspaceMemberRoleCommandConflictError } from '../errors.js';
-import { commandRevisionSchema } from '../command-keys.js';
+import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,
   isActiveMemberManager,
   recordMemberCommandAudit,
 } from './commands.repository.js';
-import { revokeUserSessions } from '../users/sessions.repository.js';
-import { canChangeWorkspaceMemberRole } from '@pertexo/workflow-model';
 
 type RoleCommandStore = Pick<
   IdentityWorkspaceDatabase,
@@ -47,10 +47,8 @@ export function createIdentityWorkspaceRoleCommandStore(
 ): RoleCommandStore {
   return Object.freeze({
     changeWorkspaceMemberRole: (raw: ChangeWorkspaceMemberRoleInput) => {
-      const role = inputRole.parse(raw.role);
-      const expectedRoleRevision = commandRevisionSchema.parse(
-        raw.expectedRoleRevision,
-      );
+      const role = raw.role;
+      const expectedRoleRevision = raw.expectedRoleRevision;
       return executeMemberCommand(pool, {
         operation: 'workspace.member.role',
         workspaceId: raw.workspaceId,

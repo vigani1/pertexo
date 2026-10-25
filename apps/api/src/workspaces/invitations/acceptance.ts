@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 
 import { InvitationAcceptanceConflictError } from '@pertexo/database/tenant-access';
@@ -164,7 +165,12 @@ export class InvitationAcceptanceUseCase {
       bindingDigest: digestSha256Hex(selected.bindingSecret, this.crypto),
       userId: evidence.userId,
       sessionId: evidence.sessionId,
-      verifiedEmail: evidence.email,
+      verifiedEmail: z
+        .email()
+        .max(320)
+        .parse(evidence.email.trim())
+        .normalize('NFKC')
+        .toLowerCase(),
       verifiedAt: evidence.signedInAt,
     });
     if (recorded === null)
