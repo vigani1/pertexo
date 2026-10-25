@@ -128,8 +128,6 @@ export type WorkspaceMembersPage = Readonly<{
 }>;
 export type WorkspaceInvitationStatus =
   'pending' | 'accepted' | 'revoked' | 'expired';
-export type WorkspaceInvitationDeliveryStatus =
-  'queued' | 'submitted' | 'failed' | 'canceled';
 export type WorkspaceInvitationRecord = Readonly<
   Pick<
     typeof workspaceInvitations.$inferSelect,
