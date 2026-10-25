@@ -98,6 +98,14 @@ export function EditorWorkspace({
   const overlays = useCanvasOverlays(issues, effects, testStatuses);
   return (
     <EditorLayout
+      history={
+        <WorkflowTestHistory
+          tests={tests}
+          ensureSaved={ensureSaved}
+          currentRevision={revision}
+          canCancel={workspace.capabilities.includes('run:cancel')}
+        />
+      }
       bottomLens={
         <>
           {bottomLens(chrome)}
@@ -145,7 +153,12 @@ export function EditorWorkspace({
         <WorkspaceInspector
           editable={editable && !paused}
 
-          testing={{ testRef, lastTest, onTestPassed: effects.showTestPath }}
+          testing={{
+            tests,
+            testRef,
+            lastTest,
+            onTestPassed: effects.showTestPath,
+          }}
           canvas={{ adding, selection }}
         />
       }
@@ -171,17 +184,7 @@ export function EditorWorkspace({
       header={{
         bar: bar(chrome),
         canvasTools: <NoteTools editable={editable} containerRef={canvasRef} />,
-        banner: (
-          <>
-            {banner}
-            <WorkflowTestHistory
-              tests={tests}
-              ensureSaved={ensureSaved}
-              currentRevision={revision}
-              canCancel={workspace.capabilities.includes('run:cancel')}
-            />
-          </>
-        ),
+        banner: <>{banner}</>,
       }}
     />
   );

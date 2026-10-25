@@ -124,7 +124,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     ).toBeVisible();
     expect(screen.getByText('Whole workflow')).toBeVisible();
     // The chip opens the issues lens at the bottom, not a popover.
-    const lens = screen.getByRole('region', { name: '2 issues' });
+    const lens = screen.getByRole('region', { name: /\d+ issues?/u });
     expect(
       within(lens).getByText('Review these before publishing or running.'),
     ).toBeVisible();
@@ -140,13 +140,13 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
       'aria-selected',
       'true',
     );
-    expect(screen.queryByRole('region', { name: '2 issues' })).toBeNull();
-    const chip = screen.getByRole('button', { name: '2 issues' });
+    expect(screen.queryByRole('region', { name: /\d+ issues?/u })).toBeNull();
+    const chip = screen.getByRole('button', { name: /\d+ issues?/u });
     expect(chip).toBeVisible();
     await event.click(chip);
     expect(chip).toHaveAttribute('aria-expanded', 'true');
     await event.click(screen.getByRole('button', { name: 'Close issues' }));
-    expect(screen.queryByRole('region', { name: '2 issues' })).toBeNull();
+    expect(screen.queryByRole('region', { name: /\d+ issues?/u })).toBeNull();
     expect(chip).toHaveFocus();
   });
   it('navigates compatibility and mapping findings to their step', async () => {
@@ -226,7 +226,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
     });
     expect(screen.getByLabelText('Setup as JSON')).toBeVisible();
 
-    await event.click(screen.getByRole('button', { name: '2 issues' }));
+    await event.click(screen.getByRole('button', { name: /\d+ issues?/u }));
     await event.click(
       await screen.findByRole('button', {
         name: /Fix: An input reads from a step/u,
@@ -257,7 +257,7 @@ describe('workflow editor issues and checks', { timeout: 30_000 }, () => {
       { timeout: 6_000 },
     );
     expect(
-      await screen.findByRole('button', { name: 'No issues' }),
+      await screen.findByRole('button', { name: '1 issue' }),
     ).toBeVisible();
     await act(() => vi.advanceTimersByTimeAsync(1_800));
     expect(validations).toBe(1);

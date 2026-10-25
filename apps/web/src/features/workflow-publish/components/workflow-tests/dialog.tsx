@@ -1,3 +1,4 @@
+import { ConfirmationDetails } from '@/components/patterns/actions/confirm-dialog';
 import { useRunInput } from '@/features/workflow-runs/input.public';
 import { WorkflowTestActions } from './controls';
 import { useState } from 'react';
@@ -42,128 +43,137 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
           model.tests.setOpen(open);
       }}
     >
-      <DialogContent className="flex max-h-[calc(100svh-2rem)] flex-col gap-4 overflow-y-auto">
-        <div>
+      <DialogContent className="flex h-[44rem] flex-col gap-4 overflow-hidden max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11">
+        <div className="shrink-0">
           <DialogTitle>Test workflow</DialogTitle>
           <DialogDescription>
             Runs the saved draft. Pins replace their steps; every other step
             runs for real. Test data stays for seven days.
           </DialogDescription>
         </div>
-        {model.tests.preparing ? (
-          <p role="status">Saving and preparing the draft…</p>
-        ) : null}
-        {model.tests.preparationError === undefined ? null : (
-          <Notice tone="destructive">{model.tests.preparationError}</Notice>
-        )}
-        {model.tests.preparation === undefined ? null : (
-          <>
-            <p className="text-sm text-muted-foreground">
-              Draft revision {model.tests.preparation.draftRevision} ·{' '}
-              {model.tests.preparation.samples.length} pinned steps. Wait
-              finishes immediately. Pin Approval, Request input and Call steps
-              to continue past them.
-            </p>
-            {model.workflow === undefined ? null : (
-              <InputCasesPanel
-                readOnly
-                cases={model.cases}
-                disabled={model.locked}
-                editing={model.editingCase}
-                onEditingChange={model.setEditingCase}
-                onLoad={(loaded) => {
-                  model.input.reset(JSON.stringify(loaded.input, null, 2));
-                }}
-                onAccessLost={() => {
-                  model.input.reset();
-                }}
-                scope={{ workspace: model.workspace, workflow: model.workflow }}
-              />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ConfirmationDetails>
+            {model.tests.preparing ? (
+              <p role="status">Saving and preparing the draft…</p>
+            ) : null}
+            {model.tests.preparationError === undefined ? null : (
+              <Notice tone="destructive">{model.tests.preparationError}</Notice>
             )}
-            {trigger === undefined ? null : (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={model.locked}
-                onClick={() => {
-                  void model.tests
-                    .loadTriggerInput(trigger.id)
-                    .then((value) => {
-                      if (value !== undefined)
-                        model.input.reset(JSON.stringify(value, null, 2));
-                    });
-                }}
-              >
-                Use trigger’s pinned sample
-              </Button>
-            )}
-            <LabelledField
-              id="workflow-test-input"
-              label="Test input (JSON)"
-              error={model.input.validation.error('input')}
-              description="Use {} if the workflow doesn’t read any input."
-            >
-              {(control) => (
-                <Textarea
-                  {...control}
-                  ref={model.input.validation.register('input')}
-                  value={model.input.input}
-                  onChange={(event) => {
-                    model.input.changeInput(event.currentTarget.value);
-                  }}
-                  disabled={model.locked}
-                  autoComplete="off"
-                  spellCheck={false}
-                  className="min-h-28 font-mono"
-                />
-              )}
-            </LabelledField>
-            {model.tests.preparation.effectfulSteps.length === 0 ? null : (
-              <section
-                aria-label="Steps with effects"
-                className="flex flex-col gap-3"
-              >
-                <p className="text-sm">
-                  These unpinned steps can change real data:
+            {model.tests.preparation === undefined ? null : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Draft revision {model.tests.preparation.draftRevision} ·{' '}
+                  {model.tests.preparation.samples.length} pinned steps. Wait
+                  finishes immediately. Pin Approval, Request input and Call
+                  steps to continue past them.
                 </p>
-                <ul className="list-inside list-disc text-sm">
-                  {model.tests.preparation.effectfulSteps.map((step) => (
-                    <li key={step.nodeId}>{step.label}</li>
-                  ))}
-                </ul>
+                {model.workflow === undefined ? null : (
+                  <InputCasesPanel
+                    readOnly
+                    cases={model.cases}
+                    disabled={model.locked}
+                    editing={model.editingCase}
+                    onEditingChange={model.setEditingCase}
+                    onLoad={(loaded) => {
+                      model.input.reset(JSON.stringify(loaded.input, null, 2));
+                    }}
+                    onAccessLost={() => {
+                      model.input.reset();
+                    }}
+                    scope={{
+                      workspace: model.workspace,
+                      workflow: model.workflow,
+                    }}
+                  />
+                )}
+                {trigger === undefined ? null : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={model.locked}
+                    onClick={() => {
+                      void model.tests
+                        .loadTriggerInput(trigger.id)
+                        .then((value) => {
+                          if (value !== undefined)
+                            model.input.reset(JSON.stringify(value, null, 2));
+                        });
+                    }}
+                  >
+                    Use trigger’s pinned sample
+                  </Button>
+                )}
                 <LabelledField
-                  id="workflow-test-effects"
-                  label="I understand this test runs for real"
+                  id="workflow-test-input"
+                  label="Test input (JSON)"
+                  error={model.input.validation.error('input')}
+                  description="Use {} if the workflow doesn’t read any input."
                 >
                   {(control) => (
-                    <Switch
+                    <Textarea
                       {...control}
-                      checked={model.acknowledged}
-                      onCheckedChange={model.setAcknowledged}
+                      ref={model.input.validation.register('input')}
+                      value={model.input.input}
+                      onChange={(event) => {
+                        model.input.changeInput(event.currentTarget.value);
+                      }}
                       disabled={model.locked}
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="min-h-28 font-mono"
                     />
                   )}
                 </LabelledField>
-              </section>
+                {model.tests.preparation.effectfulSteps.length === 0 ? null : (
+                  <section
+                    aria-label="Steps with effects"
+                    className="flex flex-col gap-3"
+                  >
+                    <p className="text-sm">
+                      These unpinned steps can change real data:
+                    </p>
+                    <ul className="list-inside list-disc text-sm">
+                      {model.tests.preparation.effectfulSteps.map((step) => (
+                        <li key={step.nodeId}>{step.label}</li>
+                      ))}
+                    </ul>
+                    <LabelledField
+                      id="workflow-test-effects"
+                      label="I understand this test runs for real"
+                    >
+                      {(control) => (
+                        <Switch
+                          {...control}
+                          checked={model.acknowledged}
+                          onCheckedChange={model.setAcknowledged}
+                          disabled={model.locked}
+                        />
+                      )}
+                    </LabelledField>
+                  </section>
+                )}
+              </>
             )}
-          </>
-        )}
-        {model.tests.start.error === undefined ? null : (
-          <Notice tone="destructive">{model.tests.start.error}</Notice>
-        )}
-        <WorkflowTestActions
-          tests={model.tests}
-          inputBlocked={
-            model.editingCase || model.cases.pending || model.cases.uncertain
-          }
-          acknowledged={model.acknowledged}
-          onSubmit={() => void model.submit()}
-          onPrepare={() => {
-            model.setAcknowledged(false);
-            model.input.validation.reset();
-            void model.tests.prepare();
-          }}
-        />
+            {model.tests.start.error === undefined ? null : (
+              <Notice tone="destructive">{model.tests.start.error}</Notice>
+            )}
+          </ConfirmationDetails>
+        </div>
+        <div className="flex shrink-0 flex-col gap-2">
+          <WorkflowTestActions
+            tests={model.tests}
+            inputBlocked={
+              model.editingCase || model.cases.pending || model.cases.uncertain
+            }
+            acknowledged={model.acknowledged}
+            onSubmit={() => void model.submit()}
+            onPrepare={() => {
+              model.setAcknowledged(false);
+              model.input.validation.reset();
+              void model.tests.prepare();
+            }}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );

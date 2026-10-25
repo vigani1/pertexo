@@ -111,7 +111,7 @@ describe('unchanged publication feedback', { timeout: 30_000 }, () => {
     setup(versionId, true, etagB);
     renderApp(editorPath, { strict: true });
     await findCanvas();
-    await screen.findByRole('button', { name: 'No issues' });
+    await screen.findByRole('button', { name: '1 issue' });
     expect(
       screen.getByRole('button', { name: 'Publish v3' }),
     ).not.toHaveAttribute('aria-disabled', 'true');

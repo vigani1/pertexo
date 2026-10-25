@@ -8,9 +8,9 @@ import { STEP_DRAG_TYPE, type StepChoice } from '../../model/step-catalog';
 
 /** The shape every add-step row shares: a tile, its words and a trailing mark. */
 export const stepRowClass =
-  'group flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left outline-none hover:bg-surface-ink/5 focus-visible:bg-surface-ink/5 focus-ring';
+  'group flex min-h-11 w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left outline-none hover:bg-surface-ink/5 focus-visible:bg-surface-ink/5 focus-ring';
 
-/** A row's name and one line about it, both cut to the row's width. */
+/** Reserve two description lines so browsing keeps a steady row rhythm. */
 export function StepRowText({
   name,
   description,
@@ -19,7 +19,7 @@ export function StepRowText({
   return (
     <span className="min-w-0 flex-1">
       <span className="block truncate text-[0.82rem] font-medium">{name}</span>
-      <span className="block truncate text-[0.72rem] leading-snug text-subtle-foreground">
+      <span className="block line-clamp-2 min-h-[2lh] text-[0.72rem] leading-snug text-subtle-foreground">
         {description}
       </span>
       {children}
@@ -38,7 +38,7 @@ export function AddStepItem({
     <button
       type="button"
       draggable
-      // The description is cut to one line here; hovering shows all of it.
+      // Longer descriptions remain available in the native tooltip.
       title={
         needsConnection
           ? `${step.description}. Needs a connection.`

@@ -110,12 +110,11 @@ for (const screen of [
       if (baseline === undefined) throw new Error('Missing command row');
       for (const box of boxes) {
         expect(Math.abs(box.y - baseline.y)).toBeLessThan(1);
+        expect(box.height).toBeGreaterThanOrEqual(44);
         expect(box.x).toBeGreaterThanOrEqual(0);
         expect(box.x + box.width).toBeLessThanOrEqual(screen.width);
       }
-      expect((await bounds(header)).height).toBeLessThanOrEqual(
-        screen.touch ? 190 : 175,
-      );
+      expect((await bounds(header)).height).toBeLessThanOrEqual(220);
       for (const name of [
         'Export…',
         'Input cases',

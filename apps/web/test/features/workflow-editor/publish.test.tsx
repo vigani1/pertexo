@@ -67,7 +67,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     ).toBeVisible();
     expect(publishes).toBe(0);
     await event.click(within(lens).getByRole('button', { name: 'Cancel' }));
-    await event.click(screen.getByRole('button', { name: /No issues/u }));
+    await event.click(screen.getByRole('button', { name: /1 issue/u }));
     expect(
       await screen.findByText(
         /This check describes a different draft; check again/u,
@@ -239,7 +239,7 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     expect(publishes).toBe(0);
     await event.click(within(lens).getByRole('button', { name: 'Cancel' }));
     expect(
-      await screen.findByRole('button', { name: '1 issue' }),
+      await screen.findByRole('button', { name: '2 issues' }),
     ).toBeVisible();
   });
   it('summarises the changes against the live version and names the next version', async () => {

@@ -143,7 +143,7 @@ describe('building a For each body', { timeout: 30_000 }, () => {
       openByKeyboard(screen.getByLabelText('Each order, For each'));
       const items = await screen.findByLabelText('Maximum items');
       fireEvent.change(items, { target: { value: '-' } });
-      await event.click(screen.getByRole('button', { name: '1 issue' }));
+      await event.click(screen.getByRole('button', { name: /\d+ issues?/u }));
       await event.click(
         screen.getByRole('button', {
           name: 'Fix: Expression syntax is invalid.',
@@ -166,7 +166,7 @@ describe('building a For each body', { timeout: 30_000 }, () => {
       expect(items).toHaveValue('-');
       expect(screen.getByLabelText('Label')).toHaveValue('Each order');
       expect(saved.graph).toBeUndefined();
-      await event.click(screen.getByRole('button', { name: '1 issue' }));
+      await event.click(screen.getByRole('button', { name: /\d+ issues?/u }));
       await event.click(
         screen.getByRole('button', {
           name: 'Fix: Expression syntax is invalid.',

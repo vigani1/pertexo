@@ -22,10 +22,12 @@ import { useRunEvents } from '@/features/workflow-runs/queries.public';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
 
 /**
- * The tests bar over the canvas. It shows only for test activity: a test or
+ * The tests dock below the canvas. It shows only for test activity: a test or
  * suite started here, history asked for from the Test workflow menu, a test
  * still running, or a problem to report. Run all tests lives in that menu.
  */
+export const WORKFLOW_TEST_HISTORY_ID = 'workflow-test-history';
+
 export function WorkflowTestHistory({
   tests,
   ensureSaved,
@@ -53,8 +55,10 @@ export function WorkflowTestHistory({
       <TestSuiteDialog key={String(tests.suites.open)} suites={tests.suites} />
       {tests.panel === 'hidden' && !running && !problem ? null : (
         <section
+          id={WORKFLOW_TEST_HISTORY_ID}
+          tabIndex={-1}
           aria-label="Workflow tests"
-          className="lens pointer-events-auto max-h-[40svh] overflow-y-auto rounded-xl p-3"
+          className={`lens pointer-events-auto flex min-h-0 flex-col gap-2 overflow-hidden rounded-t-xl p-3 ${expanded ? 'h-[30svh]' : 'max-h-[30svh] min-h-16'}`}
         >
           <WorkflowTestRunControls
             tests={tests}
@@ -67,52 +71,74 @@ export function WorkflowTestHistory({
             currentRevision={currentRevision}
             canCancel={canCancel}
           />
-          {tests.cancel.error === undefined ? null : (
-            <Notice tone="destructive">
-              {tests.cancel.error}
-              {tests.cancel.uncertain ? (
-                <Button size="sm" variant="ghost" onClick={tests.cancel.retry}>
-                  Retry same cancellation
-                </Button>
-              ) : null}
-            </Notice>
-          )}
-          <QueryView
-            query={tests.history}
-            resource="Test history"
-            loading={null}
-          />
-          <QueryView
-            query={tests.progress}
-            resource="This test"
-            loading={null}
-          />
-          <QueryView
-            query={tests.snapshot}
-            resource="This test"
-            loading={null}
-          />
-          {expanded ? (
-            <div className="mt-3 flex flex-col gap-3">
-              {tests.history.data?.items.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No workflow tests yet.
-                </p>
-              ) : null}
-              <WorkflowTestPicker tests={tests} />
-              <WorkflowTestResults tests={tests} ensureSaved={ensureSaved} />
-              <TestSuiteHistory
-                suites={tests.suites}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {tests.cancel.error === undefined ? null : (
+              <Notice tone="destructive">
+                {tests.cancel.error}
+                {tests.cancel.uncertain ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={tests.cancel.retry}
+                  >
+                    Retry same cancellation
+                  </Button>
+                ) : null}
+              </Notice>
+            )}
+            <QueryView
+              query={tests.history}
+              resource="Test history"
+              loading={null}
+            />
+            <QueryView
+              query={tests.progress}
+              resource="This test"
+              loading={null}
+            />
+            <QueryView
+              query={tests.snapshot}
+              resource="This test"
+              loading={null}
+            />
+            {expanded ? (
+              <TestHistoryContents
+                tests={tests}
+                ensureSaved={ensureSaved}
                 canCancel={canCancel}
-                onViewRun={tests.selectRun}
               />
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </section>
       )}
     </>
   );
 }
+function TestHistoryContents({
+  tests,
+  ensureSaved,
+  canCancel,
+}: Readonly<{
+  tests: WorkflowTests;
+  ensureSaved: () => Promise<{ revision: number }>;
+  canCancel: boolean;
+}>) {
+  return (
+    <div className="mt-3 flex flex-col gap-3">
+      {tests.history.data?.items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No workflow tests yet.</p>
+      ) : null}
+      <WorkflowTestPicker tests={tests} />
+      <WorkflowTestResults tests={tests} ensureSaved={ensureSaved} />
+      <TestSuiteHistory
+        suites={tests.suites}
+        canCancel={canCancel}
+        onViewRun={tests.selectRun}
+      />
+    </div>
+  );
+}
+
 function WorkflowTestRunControls({
   tests,
   expanded,
@@ -136,7 +162,7 @@ function WorkflowTestRunControls({
       : describeRunStatus({ status: progress.run.status });
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-3">
         {look === undefined ? (
           <span className="text-sm font-medium">Workflow tests</span>
         ) : (

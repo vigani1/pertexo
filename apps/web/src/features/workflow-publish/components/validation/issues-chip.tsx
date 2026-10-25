@@ -17,7 +17,7 @@ export const ISSUES_CHIP_ID = 'editor-issues-chip';
  * The command bar's issue count. Opens and closes the bottom issues lens.
  * An empty draft says what to add first instead of claiming “No issues”,
  * unless the server found some. Phones keep a readable label beside the
- * glyph and count, with long guidance truncated visually.
+ * glyph and count, with brief setup guidance and wrapped check messages.
  */
 export function IssuesChip({
   state,
@@ -42,11 +42,13 @@ export function IssuesChip({
     <button
       id={ISSUES_CHIP_ID}
       type="button"
+      aria-label={hint?.label}
+      title={hint?.detail}
       aria-expanded={open}
       aria-controls={open ? ISSUES_LENS_ID : undefined}
       className={cn(
         buttonVariants({ variant: 'ghost', size: 'sm' }),
-        'w-24 shrink-0 gap-1 px-1.5 sm:w-40 sm:gap-2 sm:px-2.5',
+        'w-20 shrink-0 gap-1 px-1.5 sm:w-40 sm:gap-2 sm:px-2.5',
         successClass,
         count !== undefined &&
           count > 0 &&
@@ -62,7 +64,11 @@ export function IssuesChip({
       ) : (
         <>
           <StatusGlyph tone="neutral" />
-          <Words>{hint.label}</Words>
+          <Words>
+            {hint.label === 'Add a trigger to start'
+              ? 'Add trigger'
+              : 'Add step'}
+          </Words>
         </>
       )}
     </button>
@@ -71,7 +77,11 @@ export function IssuesChip({
 
 /** Long setup or check messages retain their complete accessible name. */
 function Words({ children }: Readonly<{ children: ReactNode }>) {
-  return <span className="min-w-0 truncate">{children}</span>;
+  return (
+    <span className="min-w-0 whitespace-normal text-xs leading-tight">
+      {children}
+    </span>
+  );
 }
 
 function ChipLabel({

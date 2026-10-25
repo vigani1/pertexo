@@ -268,9 +268,10 @@ describe(
         name: 'Open accepted run',
       });
       expect(runRequests).toBe(1);
-      await event.click(addStepButton(/Set fields/u));
+      // Request navigation before the real autosave debounce can elapse.
+      fireEvent.click(addStepButton(/Set fields/u));
       expect(screen.getByText('Unsaved')).toBeVisible();
-      await event.click(openAccepted);
+      fireEvent.click(openAccepted);
       expect(
         await screen.findByRole('heading', {
           name: 'Leave with unsaved changes?',

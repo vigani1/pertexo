@@ -1,3 +1,4 @@
+import { unreachableStepIssues } from '@/features/workflow-publish/validation.public';
 import type { NodeChange } from '@xyflow/react';
 import { useCallback, useMemo, useState } from 'react';
 import { stepSampleBindings } from '@pertexo/workflow-model';
@@ -76,8 +77,8 @@ export function useCanvasProjection({
     );
   }, [graph, samples]);
   const projection = useMemo(
-    () =>
-      projectWorkflowGraph(graph, definitions, {
+    () => {
+      const projected = projectWorkflowGraph(graph, definitions, {
         ...overlays,
         sampleStates,
         selectedNodeIds,
@@ -85,7 +86,16 @@ export function useCanvasProjection({
         dragPositions,
         bodyIssues: forEachBodyIssues(graph),
         measuredSizes,
-      }),
+      });
+      const unreachable = new Set(
+        unreachableStepIssues(graph).map((issue) => issue.target?.nodeId),
+      );
+      for (const node of projected.nodes) {
+        if (unreachable.has(node.id) && !unreachable.has(node.parentId))
+          node.style = { ...node.style, opacity: 0.55 };
+      }
+      return projected;
+    },
     // selectionResync only forces fresh node objects for React Flow.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [

@@ -21,6 +21,7 @@ export function WorkflowTestResults({
     () => workflowTestStepLabels(tests.snapshot.data?.graph),
     [tests.snapshot.data?.graph],
   );
+  if (tests.snapshot.data === undefined) return null;
   return (
     <>
       {tests.progress.data?.nodes.map((step) => {
@@ -40,12 +41,6 @@ export function WorkflowTestResults({
               <DispositionLabel disposition={disposition} />
               {step.status === 'succeeded' && tests.activeId !== undefined ? (
                 <>
-                  <TestOutput
-                    tests={tests}
-                    runId={tests.activeId}
-                    nodeRunId={step.id}
-                    status={step.status}
-                  />
                   <PinRecordedOutputButton
                     scope={tests.scope}
                     nodeId={step.nodeId}
@@ -56,6 +51,14 @@ export function WorkflowTestResults({
                 </>
               ) : null}
             </div>
+            {step.status === 'succeeded' && tests.activeId !== undefined ? (
+              <TestOutput
+                tests={tests}
+                runId={tests.activeId}
+                nodeRunId={step.id}
+                status={step.status}
+              />
+            ) : null}
             <StepFailure step={step} />
           </section>
         );
@@ -76,8 +79,8 @@ interface TestOutputProps {
   nodeRunId: string;
   status: string;
 }
-/** Read only once the fold opens: an output can be large. */
-function TestOutputValue({
+/** Both the history fold and selected-step panel read the same retained output. */
+export function TestOutputValue({
   tests,
   runId,
   nodeRunId,

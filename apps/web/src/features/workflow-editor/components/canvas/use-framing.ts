@@ -173,5 +173,41 @@ export function useCanvasFraming(containerRef: RefObject<HTMLElement | null>) {
       at === undefined ? undefined : { id: selectedNodeId, x: at.x, y: at.y };
   }, [flow, nodesInitialized, reveal, selectedNodeId]);
 
+  useRevealOnResize(
+    containerRef,
+    nodesInitialized ? selectedNodeId : null,
+    reveal,
+    pressed,
+  );
+
   return fit;
+}
+
+function useRevealOnResize(
+  containerRef: RefObject<HTMLElement | null>,
+  selectedNodeId: string | null,
+  reveal: (id: string) => void,
+  pressed: RefObject<boolean>,
+) {
+  useEffect(() => {
+    if (selectedNodeId === null) return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (!pressed.current) reveal(selectedNodeId);
+      });
+    });
+    const container = containerRef.current;
+    if (container !== null) observer.observe(container);
+    document
+      .querySelectorAll(`[${CANVAS_COVER_ATTRIBUTE}]`)
+      .forEach((element) => {
+        observer.observe(element);
+      });
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [containerRef, pressed, reveal, selectedNodeId]);
 }

@@ -58,10 +58,12 @@ for (const width of [390, 1280]) {
           route.fulfill({ json: { items: [current], nextCursor: null } }),
       );
       await page.goto(editorUrl);
-      const chip = page.getByRole('button', { name: '1 issue' });
+      const chip = page.getByRole('button', { name: '2 issues' });
       await expect(chip).toBeVisible();
       await chip.click();
-      const fix = page.getByRole('button', { name: /^Fix:/u });
+      const fix = page.getByRole('button', {
+        name: /Fix:.*(?:Slack|Ops bot)/u,
+      });
       await expect(fix).toContainText('Fix');
       await fix.click();
       const picker = page.getByLabel('Slack connection');
@@ -74,9 +76,7 @@ for (const width of [390, 1280]) {
         current = { ...current, status: 'active' };
         await page.reload();
       }
-      await expect(
-        page.getByRole('button', { name: 'No issues' }),
-      ).toBeVisible();
+      await expect(page.getByRole('button', { name: '1 issue' })).toBeVisible();
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -123,8 +123,8 @@ test('explains disabled server connections without claiming the owner’s role c
     }),
   );
   await page.goto(editorUrl);
-  await page.getByRole('button', { name: '1 issue' }).click();
-  await expect(page.getByRole('region', { name: '1 issue' })).toContainText(
+  await page.getByRole('button', { name: '2 issues' }).click();
+  await expect(page.getByRole('region', { name: '2 issues' })).toContainText(
     'Connections are unavailable here',
   );
 });

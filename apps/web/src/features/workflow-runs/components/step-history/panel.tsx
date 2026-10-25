@@ -172,7 +172,9 @@ export function StepHistoryPanel({
   nodeId,
   stepLabel,
   renderActions,
+  published = false,
 }: Readonly<{
+  published?: boolean;
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
@@ -207,6 +209,7 @@ export function StepHistoryPanel({
         <QueryView query={runs} resource="This step’s runs" loading={loading}>
           {(runsData) => (
             <StepRecord
+              published={published}
               health={healthData}
               runs={runsData}
               scope={{ apiClient, userId, workspace }}
@@ -222,6 +225,7 @@ export function StepHistoryPanel({
 }
 
 function StepRecord({
+  published,
   health,
   runs,
   scope: { apiClient, userId, workspace },
@@ -229,6 +233,7 @@ function StepRecord({
   stepLabel,
   renderActions,
 }: Readonly<{
+  published: boolean;
   health: WorkflowStepHealthResponse;
   runs: WorkflowStepRunsResponse;
   scope: Readonly<{
@@ -245,8 +250,10 @@ function StepRecord({
   if (runsConsidered === 0)
     return (
       <p className="text-sm text-muted-foreground">
-        This workflow hasn’t run yet. Publish it and run it, and you’ll see how
-        this step does here.
+        {published
+          ? "This step hasn't run in this published workflow yet. Start a run to see its results here."
+          : "This step hasn't run yet. Publish the workflow and start a run to see its results here."}{' '}
+        Workflow tests appear in the Test tab.
       </p>
     );
   if (stepHealth === undefined)

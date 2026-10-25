@@ -1,3 +1,4 @@
+import { describeStep } from '@/features/catalog/presentation.public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 export function workflowTestStepLabels(
   graph: WorkflowGraphContract | undefined,
@@ -14,6 +15,9 @@ export function workflowTestStepLabels(
     ]);
   })(graph.nodes);
   return new Map(
-    nodes.map((node) => [node.id, node.label ?? node.definition.key]),
+    nodes.map((node) => [
+      node.id,
+      node.label ?? describeStep(node.definition.key).name,
+    ]),
   );
 }

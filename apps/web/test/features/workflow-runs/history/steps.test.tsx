@@ -162,3 +162,35 @@ describe('step history', () => {
     ]);
   });
 });
+
+for (const published of [false, true]) {
+  it(`describes empty step history for a ${published ? 'published' : 'draft'} workflow`, async () => {
+    mockServer.use(
+      health([], 0),
+      http.get(`${apiBase}/workflows/${workflowId}/steps/new-step/runs`, () =>
+        HttpResponse.json({ items: [] }),
+      ),
+    );
+    renderInRouter(
+      <StepHistoryPanel
+        apiClient={apiClient}
+        userId={userId}
+        workspace={workspace}
+        workflowId={workflowId}
+        nodeId="new-step"
+        stepLabel="New step"
+        published={published}
+      />,
+    );
+    expect(
+      await screen.findByText(
+        published
+          ? /This step hasn't run in this published workflow yet/u
+          : /Publish the workflow and start a run/u,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/Workflow tests appear in the Test tab/u),
+    ).toBeVisible();
+  });
+}
