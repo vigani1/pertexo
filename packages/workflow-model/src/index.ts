@@ -358,3 +358,5 @@ export {
   type WorkflowTemplateOriginRequest,
   type WorkflowTemplateOrigin,
 } from './authoring/portability/origin.js';
+
+export { publicationReviewDecision } from './authoring/reviews/decision.js';
