@@ -202,9 +202,14 @@ for (const manual of [false, true])
         .getByLabel('File', { exact: true })
         .setInputFiles({ name: 'opaque.bin', mimeType: '', buffer: bytes });
       await expect(page.getByText('File ready', { exact: true })).toBeVisible();
-      expect(
-        await page.getByText('opaque.bin · 1 MB', { exact: true }).count(),
-      ).toBe(1);
+      const upload = page.getByRole('dialog', {
+        name: 'Upload a file',
+        exact: true,
+      });
+      await expect(
+        upload.getByText('opaque.bin', { exact: true }),
+      ).toBeVisible();
+      await expect(upload.getByText('1 MB', { exact: true })).toBeVisible();
       const after: unknown = await heap.send('Runtime.getHeapUsage');
       process.stdout.write(
         `Owned 1 MiB browser upload observation ${JSON.stringify({ durationMs: Math.round(performance.now() - started), before, after })}\n`,
