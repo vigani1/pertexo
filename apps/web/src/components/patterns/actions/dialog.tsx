@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { XIcon } from 'lucide-react';
 import {
   Dialog,
+  DialogFooter,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -45,9 +46,7 @@ export function ActionDialog({
           <DialogDescription>{description}</DialogDescription>
         </div>
         {children}
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {footer}
-        </div>
+        <DialogFooter>{footer}</DialogFooter>
         {/* Last in order, so opening focuses the first field, not Close. */}
         <DialogClose
           disabled={locked}

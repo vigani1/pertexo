@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import type { ComponentProps } from 'react';
 import { RotateCwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -61,12 +62,12 @@ export function AppUpdatedDialog({
       <DialogContent finalFocus={finalFocus}>
         <DialogTitle>Pertexo was updated</DialogTitle>
         <DialogDescription>Reload to continue.</DialogDescription>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <DialogFooter className="mt-5">
           <Button type="button" variant="ghost" onClick={onClose}>
             Close
           </Button>
           <ReloadButton variant="primary" />
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

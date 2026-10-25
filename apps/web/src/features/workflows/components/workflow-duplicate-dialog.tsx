@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { useCallback, useState, type ComponentProps } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
@@ -145,7 +146,7 @@ export function WorkflowDuplicateDialog({
               {state.error}
             </Notice>
           )}
-          <div className="flex flex-wrap justify-end gap-2">
+          <DialogFooter>
             <Button
               type="button"
               variant="ghost"
@@ -172,7 +173,7 @@ export function WorkflowDuplicateDialog({
                 ? 'Retry exact copy'
                 : 'Duplicate workflow'}
             </ProgressButton>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

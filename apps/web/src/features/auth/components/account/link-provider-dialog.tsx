@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import {
   authenticationProviderSchema,
   type AccountSecurityLinkStartRequest,
@@ -222,7 +223,7 @@ export function LinkProviderDialog({
             {failure === undefined ? null : (
               <Notice tone="destructive">{failure}</Notice>
             )}
-            <div className="mt-2 flex flex-wrap justify-end gap-2">
+            <DialogFooter className="mt-2">
               <Button type="button" variant="ghost" onClick={close}>
                 Cancel
               </Button>
@@ -235,7 +236,7 @@ export function LinkProviderDialog({
               >
                 Continue to {providerName(target)}
               </ProgressButton>
-            </div>
+            </DialogFooter>
           </form>
         )}
       </DialogContent>

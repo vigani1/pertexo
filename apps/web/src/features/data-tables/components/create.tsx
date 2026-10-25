@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Notice } from '@/components/ui/notice';
 import {
   Dialog,
+  DialogFooter,
   DialogContent,
   DialogTitle,
   DialogDescription,
@@ -144,10 +145,7 @@ export function CreateDataTable({
           </fieldset>
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
-          <div className="flex gap-2">
-            <Button type="submit" variant="primary" disabled={locked}>
-              {command.pending ? 'Creating…' : 'Create table'}
-            </Button>
+          <DialogFooter>
             <Button
               type="button"
               variant="ghost"
@@ -156,7 +154,10 @@ export function CreateDataTable({
             >
               Cancel
             </Button>
-          </div>
+            <Button type="submit" variant="primary" disabled={locked}>
+              {command.pending ? 'Creating…' : 'Create table'}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

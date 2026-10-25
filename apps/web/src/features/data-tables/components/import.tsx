@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FileDrop } from '@/components/ui/file-drop';
 import { Textarea } from '@/components/ui/textarea';
 import { FieldLabel as Label } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import {
   Dialog,
+  DialogFooter,
   DialogContent,
   DialogTitle,
   DialogDescription,
@@ -67,14 +68,12 @@ export function ImportTableCsv({
           }}
         >
           <Label htmlFor="csv-file">Choose a UTF-8 CSV file</Label>
-          <Input
+          <FileDrop
             id="csv-file"
-            type="file"
+            aria-label="Choose a UTF-8 CSV file"
             accept=".csv,text/csv"
             disabled={locked}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file === undefined) return;
+            onChoose={(file) => {
               if (file.size > 1_048_576) {
                 setError('This file exceeds 1 MB. Split it before importing.');
                 return;
@@ -116,14 +115,7 @@ export function ImportTableCsv({
           </p>
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={locked || csv === ''}
-            >
-              {command.pending ? 'Importing…' : 'Import rows'}
-            </Button>
+          <DialogFooter>
             <Button
               type="button"
               variant="ghost"
@@ -132,7 +124,14 @@ export function ImportTableCsv({
             >
               Cancel
             </Button>
-          </div>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={locked || csv === ''}
+            >
+              {command.pending ? 'Importing…' : 'Import rows'}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

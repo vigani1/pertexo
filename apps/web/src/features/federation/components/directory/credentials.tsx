@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { DIRECTORY_LIMITS, type DirectorySettings } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
@@ -126,7 +127,17 @@ export function DirectoryCredentials({
             </DialogDescription>
             <div className="mt-5 space-y-4">
               <CommandFeedback command={command} />
-              <div className="flex flex-wrap gap-2">
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={command.pending || command.uncertain}
+                  onClick={() => {
+                    setRevoke(undefined);
+                  }}
+                >
+                  Cancel
+                </Button>
                 <ProgressButton
                   type="button"
                   variant="destructive"
@@ -143,17 +154,7 @@ export function DirectoryCredentials({
                 >
                   Revoke credential
                 </ProgressButton>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={command.pending || command.uncertain}
-                  onClick={() => {
-                    setRevoke(undefined);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
+              </DialogFooter>
             </div>
           </DialogContent>
         </Dialog>

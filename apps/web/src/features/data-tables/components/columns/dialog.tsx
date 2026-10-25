@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import {
   Dialog,
+  DialogFooter,
   DialogContent,
   DialogTitle,
   DialogDescription,
@@ -115,10 +116,7 @@ export function EditTableColumns({
               <Notice tone="warning">{error}</Notice>
             )}
             <TableCommandFeedback command={command} />
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" variant="primary" disabled={locked}>
-                {command.pending ? 'Saving…' : idleSubmitLabel}
-              </Button>
+            <DialogFooter>
               <Button
                 type="button"
                 variant="ghost"
@@ -127,7 +125,10 @@ export function EditTableColumns({
               >
                 Cancel
               </Button>
-            </div>
+              <Button type="submit" variant="primary" disabled={locked}>
+                {command.pending ? 'Saving…' : idleSubmitLabel}
+              </Button>
+            </DialogFooter>
           </form>
         </div>
       </DialogContent>

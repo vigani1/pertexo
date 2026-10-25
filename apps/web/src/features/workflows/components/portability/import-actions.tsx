@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -28,7 +29,7 @@ export function WorkflowImportActions({
   const { accessDenied, checkingAccess, canImport } = access;
 
   return (
-    <div className="mt-5 flex flex-wrap justify-end gap-2">
+    <DialogFooter className="mt-5">
       <Button variant="ghost" onClick={onClose}>
         {commandState.kind === 'uncertain' || commandState.kind === 'confirmed'
           ? 'Close'
@@ -72,7 +73,7 @@ export function WorkflowImportActions({
             : 'Import unpublished draft'}
         </ProgressButton>
       )}
-    </div>
+    </DialogFooter>
   );
 }
 

@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { useState } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import {
@@ -78,7 +79,7 @@ export function DestinationTest({
             Send one real test message to {label}? It will say that no workflow
             failed.
           </DialogDescription>
-          <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <DialogFooter className="mt-6">
             <Button
               type="button"
               variant="outline"
@@ -91,7 +92,7 @@ export function DestinationTest({
             <Button type="button" variant="primary" onClick={send}>
               Send test
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

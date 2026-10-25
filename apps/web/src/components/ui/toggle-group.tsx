@@ -27,7 +27,7 @@ export function ToggleGroupItem({
     <TogglePrimitive
       data-slot="toggle-group-item"
       className={cn(
-        "inline-flex h-7 items-center gap-1.5 rounded-sm px-3 text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground transition-colors outline-none hover:text-foreground focus-ring disabled:pointer-events-none disabled:opacity-50 data-pressed:bg-surface-ink/8 data-pressed:text-foreground data-pressed:shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-ink)_6%,transparent)] [&_svg:not([class*='size-'])]:size-3.5",
+        "inline-flex h-7 max-sm:min-h-[var(--control-min-size,2.75rem)] max-sm:min-w-[var(--control-min-size,2.75rem)] items-center gap-1.5 rounded-sm px-3 text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground transition-colors outline-none hover:text-foreground focus-ring disabled:pointer-events-none disabled:opacity-50 data-pressed:bg-surface-ink/8 data-pressed:text-foreground data-pressed:shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-ink)_6%,transparent)] [&_svg:not([class*='size-'])]:size-3.5",
         className,
       )}
       {...props}

@@ -4,6 +4,13 @@ import type {
   DataTableDefinition,
 } from '@pertexo/contracts';
 import { EllipsisIcon } from 'lucide-react';
+import {
+  Empty,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from '@/components/ui/empty';
+import { LooseThread } from '@/components/patterns/states/thread-illustrations';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -102,7 +109,7 @@ export function TableCapacity({
 }: Readonly<{ quotas: DataTablesResponse['quotas'] | undefined }>) {
   if (quotas === undefined) return null;
   return (
-    <div className="grid max-w-xl grid-cols-2 gap-6 text-sm">
+    <div className="grid max-w-xl grid-cols-1 min-[400px]:grid-cols-2 gap-6 text-sm">
       <div className="flex flex-col gap-1.5">
         <p className="flex items-baseline justify-between gap-2">
           <span className="text-muted-foreground">Tables</span>
@@ -152,16 +159,16 @@ export function TableCollection({
 }>) {
   if (tables?.length === 0)
     return (
-      <div className="flex items-center gap-4 rounded-xl border border-dashed border-surface-ink/10 px-5 py-10">
-        <TableSwatch columns={[]} rowCount={0} />
-        <div>
-          <p>No tables yet.</p>
-          <p className="text-sm text-muted-foreground">
-            Keep a small list of orders, reference values or workflow state
-            here.
-          </p>
-        </div>
-      </div>
+      <Empty>
+        <EmptyMedia className="w-full max-w-56">
+          <LooseThread />
+        </EmptyMedia>
+        <EmptyTitle>No tables yet</EmptyTitle>
+        <EmptyDescription>
+          Create a table to keep orders, reference values or workflow state
+          here.
+        </EmptyDescription>
+      </Empty>
     );
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -177,7 +184,7 @@ export function TableCollection({
               <div className="flex min-w-0 items-center gap-3">
                 <TableSwatch columns={item.columns} rowCount={item.rowCount} />
                 <div className="min-w-0">
-                  <p className="truncate font-medium group-hover:text-accent-foreground">
+                  <p className="wrap-anywhere font-medium group-hover:text-accent-foreground">
                     {item.name}
                   </p>
                   <p className="text-xs text-subtle-foreground">

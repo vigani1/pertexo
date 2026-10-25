@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { useId, useRef, useState } from 'react';
 import { directoryCredentialCreateSchema } from '@pertexo/contracts';
 import {
@@ -149,15 +150,7 @@ export function DirectoryCredentialDialog({
                 />
               )}
             </LabelledField>
-            <div className="flex flex-wrap gap-2">
-              <ProgressButton
-                type="submit"
-                variant="primary"
-                pending={request.pending}
-                pendingLabel="Creating credential…"
-              >
-                Create credential
-              </ProgressButton>
+            <DialogFooter>
               <Button
                 type="button"
                 variant="ghost"
@@ -166,7 +159,15 @@ export function DirectoryCredentialDialog({
               >
                 Cancel
               </Button>
-            </div>
+              <ProgressButton
+                type="submit"
+                variant="primary"
+                pending={request.pending}
+                pendingLabel="Creating credential…"
+              >
+                Create credential
+              </ProgressButton>
+            </DialogFooter>
           </form>
         ) : null}
       </DialogContent>

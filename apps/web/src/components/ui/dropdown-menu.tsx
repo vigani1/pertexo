@@ -59,7 +59,7 @@ export function DropdownMenuContent({
 }
 
 const itemClassName =
-  "flex w-full cursor-default items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm text-muted-foreground outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-surface-ink/6 data-highlighted:text-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:data-highlighted:bg-destructive/10 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4";
+  "flex w-full max-sm:min-h-11 cursor-default items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm text-muted-foreground outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-surface-ink/6 data-highlighted:text-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:data-highlighted:bg-destructive/10 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4";
 
 export function DropdownMenuItem({
   className,

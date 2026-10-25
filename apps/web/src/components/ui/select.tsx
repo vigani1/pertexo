@@ -14,7 +14,7 @@ export function SelectTrigger({
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        "recessed-control flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border px-3 text-sm whitespace-nowrap select-none data-placeholder:text-subtle-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "recessed-control flex h-9 max-sm:min-h-[var(--control-min-size,2.75rem)] w-full min-w-0 items-center justify-between gap-2 rounded-md border px-3 text-sm whitespace-nowrap select-none data-placeholder:text-subtle-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -81,7 +81,7 @@ export function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        'relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-surface-ink/6 data-highlighted:text-foreground',
+        'relative flex w-full max-sm:min-h-[var(--control-min-size,2.75rem)] cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-surface-ink/6 data-highlighted:text-foreground',
         className,
       )}
       {...props}

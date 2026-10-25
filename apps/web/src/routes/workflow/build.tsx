@@ -36,48 +36,51 @@ export function WorkflowBuildRoute() {
         </ResourceNotFound>
       </div>
     );
+  // The editor owns its compact controls; portalled dialogs use the app's 44px floor.
   return (
-    <WorkflowEditorPage
-      stepDiscussions={stepDiscussions}
-      headerPresence={<WorkflowPresenceSummary />}
-      renderEditingPresence={(source) => (
-        <WorkflowEditingPresence source={source} />
-      )}
-      triggerNotice={
-        <>
-          {' '}
-          <WorkflowPresenceWarning />
-          <WorkflowPausedBanner
-            key={`${user.id}:${workspace.id}:${workflowId}`}
-            apiClient={apiClient}
-            userId={user.id}
-            workspace={workspace}
-            workflowId={workflowId}
-          />
-        </>
-      }
-      onRunAccepted={(runId) => {
-        void navigate({
-          to: '/w/$workspaceId/runs/$runId',
-          params: { workspaceId: workspace.id, runId },
-        });
-      }}
-      // Versions, Triggers and Settings read what a publish changes.
-      onPublished={() => {
-        void queryClient.invalidateQueries({
-          queryKey: workflowSettingsKeys.root(
-            user.id,
-            workspace.id,
-            workflowId,
-          ),
-        });
-      }}
-      scope={{
-        apiClient: apiClient,
-        user: user,
-        workspace: workspace,
-        workflowId: workflowId,
-      }}
-    />
+    <div className="contents [--control-min-size:0px]">
+      <WorkflowEditorPage
+        stepDiscussions={stepDiscussions}
+        headerPresence={<WorkflowPresenceSummary />}
+        renderEditingPresence={(source) => (
+          <WorkflowEditingPresence source={source} />
+        )}
+        triggerNotice={
+          <>
+            {' '}
+            <WorkflowPresenceWarning />
+            <WorkflowPausedBanner
+              key={`${user.id}:${workspace.id}:${workflowId}`}
+              apiClient={apiClient}
+              userId={user.id}
+              workspace={workspace}
+              workflowId={workflowId}
+            />
+          </>
+        }
+        onRunAccepted={(runId) => {
+          void navigate({
+            to: '/w/$workspaceId/runs/$runId',
+            params: { workspaceId: workspace.id, runId },
+          });
+        }}
+        // Versions, Triggers and Settings read what a publish changes.
+        onPublished={() => {
+          void queryClient.invalidateQueries({
+            queryKey: workflowSettingsKeys.root(
+              user.id,
+              workspace.id,
+              workflowId,
+            ),
+          });
+        }}
+        scope={{
+          apiClient: apiClient,
+          user: user,
+          workspace: workspace,
+          workflowId: workflowId,
+        }}
+      />
+    </div>
   );
 }

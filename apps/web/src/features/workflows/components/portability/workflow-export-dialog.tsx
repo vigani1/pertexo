@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import {
   useCallback,
   useEffect,
@@ -165,7 +166,7 @@ function WorkflowExportSession({
             {error}
           </Notice>
         )}
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <DialogFooter className="mt-5">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
@@ -195,7 +196,7 @@ function WorkflowExportSession({
           >
             Download workflow JSON
           </ProgressButton>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -57,7 +57,7 @@ function ProductFacts() {
         Workflows that <span className="text-action">finish</span> what they
         start.
       </p>
-      <ul className="mt-5 grid gap-2.5 font-mono text-[0.78rem] leading-snug text-muted-foreground">
+      <ul className="mt-5 grid gap-2.5 rounded-lg bg-background p-3 font-mono text-[0.78rem] leading-snug text-muted-foreground">
         {FACTS.map((fact) => (
           <li key={fact.text} className="flex items-start gap-2.5 text-pretty">
             <StatusGlyph

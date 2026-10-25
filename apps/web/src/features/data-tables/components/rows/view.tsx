@@ -91,6 +91,7 @@ export function DataTableRows({
         <RowsGrid
           table={table}
           page={rows.data}
+          filtered={query.filters.length > 0}
           pending={rows.isPending}
           editable={editable}
           locked={locked}

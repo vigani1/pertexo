@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
 import {
   Dialog,
+  DialogFooter,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -72,9 +73,7 @@ export function ConfirmDialog({
 export function ConfirmationFooter({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  return (
-    <div className="flex shrink-0 flex-wrap justify-end gap-2">{children}</div>
-  );
+  return <DialogFooter>{children}</DialogFooter>;
 }
 
 /** The scrollable form content; simple confirmations need no empty area. */

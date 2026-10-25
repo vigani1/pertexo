@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { stepSampleSourceSchema } from '@pertexo/contracts';
@@ -79,7 +80,7 @@ export function PinSampleDialog({
         {parseError === undefined && command.error === undefined ? null : (
           <Notice tone="destructive">{parseError ?? command.error}</Notice>
         )}
-        <div className="flex flex-wrap justify-end gap-2">
+        <DialogFooter>
           <Button
             variant="outline"
             disabled={locked && !command.expired}
@@ -105,7 +106,7 @@ export function PinSampleDialog({
               Pin output
             </ProgressButton>
           ) : null}
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
