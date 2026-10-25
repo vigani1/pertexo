@@ -8,13 +8,7 @@ import {
 } from '../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
-import type { z } from 'zod';
-
-import { heartbeatSchema } from '../validation/delivery.js';
-import {
-  NodeAttemptReconciliationRequiredError,
-  NodeAttemptStateCorruptError,
-} from '../errors.js';
+import { NodeAttemptReconciliationRequiredError } from '../errors.js';
 import type { NodeAttemptRunStore } from '../contract.js';
 import {
   assertNotAborted,
@@ -32,12 +26,7 @@ export async function heartbeatNodeAttempt(
   }>
 > {
   assertNotAborted(inputValue.signal);
-  let input: z.output<typeof heartbeatSchema>;
-  try {
-    input = heartbeatSchema.parse(inputValue);
-  } catch {
-    throw new NodeAttemptStateCorruptError();
-  }
+  const input = inputValue;
   return withWorkspaceWriteClient(
     pool,
     input.lease.workspaceId,

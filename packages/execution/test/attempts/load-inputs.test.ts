@@ -367,3 +367,26 @@ describe('loadAttemptInputs', () => {
     ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
   });
 });
+
+it('refuses oversized or duplicate upstream sets before reading stored inputs', async () => {
+  const store = storeWith({});
+  for (const upstreamNodeOutputs of [
+    Array.from({ length: 101 }, (_, index) => ({
+      nodeId: `n${String(index)}`,
+      invocationKey: `k${String(index)}`,
+    })),
+    [
+      { nodeId: 'a', invocationKey: 'same' },
+      { nodeId: 'b', invocationKey: 'same' },
+    ],
+  ]) {
+    await expect(
+      loadAttemptInputs(store, {
+        lease: lease(),
+        signal: new AbortController().signal,
+        upstreamNodeOutputs,
+      }),
+    ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
+  }
+  expect(store.loadInputs).not.toHaveBeenCalled();
+});

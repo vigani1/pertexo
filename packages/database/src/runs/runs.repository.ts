@@ -9,12 +9,9 @@ import {
   readUsageTrends,
   type UsageTrendsInput,
 } from './queries/usage-trends.queries.js';
-
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
-
 import type { DatabaseConfig } from '../config.js';
-
 import {
   recoverWorkflowRunInTransaction,
   allocateRecoveryIdentity,
@@ -23,12 +20,10 @@ import {
   readRecoveryMetadata,
   readRecoveryValues,
 } from './recovery/records.queries.js';
-
 import {
   WorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,
 } from './errors.js';
-
 import { replayWorkflowRunInTransaction } from './commands/replay.repository.js';
 import {
   readWorkflowRunListPage,
@@ -61,13 +56,6 @@ import {
   readWorkspaceUsageCapacity,
   type WorkspaceUsageCapacityInput,
 } from './queries/usage-capacity.queries.js';
-import {
-  startInputSchema,
-  replayInputSchema,
-  cancelInputSchema,
-  recoveryPreviewInputSchema,
-  recoveryInputSchema,
-} from './commands/input.js';
 import type {
   WorkflowRecoveryPreviewInput,
   RecoverPublishedWorkflowRunInput,
@@ -89,7 +77,7 @@ export function createWorkflowRunDatabase(
       (await withResourceRunRead(pool, input, () => Promise.resolve(true))) ??
       false,
     recovery: async (input: WorkflowRecoveryPreviewInput) => {
-      const parsed = recoveryPreviewInputSchema.parse(input);
+      const parsed = input;
       return withResourceRunRead(pool, parsed, async (transaction) => {
         const metadata = await readRecoveryMetadata(
           transaction,
@@ -117,14 +105,14 @@ export function createWorkflowRunDatabase(
       });
     },
     recover: async (input: RecoverPublishedWorkflowRunInput) => {
-      const parsed = recoveryInputSchema.parse(input);
+      const parsed = input;
       return withRunCommand(pool, parsed, 'run:replay', async (transaction) => {
         await requireRunAccess(transaction, parsed.sourceRunId, 'run:replay');
         return recoverWorkflowRunInTransaction(transaction, parsed);
       });
     },
     start: async (input: StartPublishedWorkflowRunInput) => {
-      const parsed = startInputSchema.parse(input);
+      const parsed = input;
       const result = await withRunCommand(
         pool,
         parsed,
@@ -151,7 +139,7 @@ export function createWorkflowRunDatabase(
       return result;
     },
     replay: async (input: ReplayPublishedWorkflowRunInput) => {
-      const parsed = replayInputSchema.parse(input);
+      const parsed = input;
       return withRunCommand(pool, parsed, 'run:replay', async (transaction) => {
         await requireRunAccess(transaction, parsed.sourceRunId, 'run:replay');
         return replayWorkflowRunInTransaction(transaction, parsed);
@@ -180,7 +168,7 @@ export function createWorkflowRunDatabase(
     usageCapacity: (input: WorkspaceUsageCapacityInput) =>
       readWorkspaceUsageCapacity(pool, input),
     cancel: async (input: CancelWorkflowRunInput) => {
-      const parsed = cancelInputSchema.parse(input);
+      const parsed = input;
       return withRunCommand(pool, parsed, 'run:cancel', async (transaction) => {
         await requireRunAccess(transaction, parsed.runId, 'run:cancel');
         return cancelInTransaction(transaction, parsed);

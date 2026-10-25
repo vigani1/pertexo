@@ -1,8 +1,8 @@
+import type { NodeAttemptRunStore } from '../contract.js';
 import { and, eq, exists, lt, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import type { z } from 'zod';
 import {
   nodeRuns,
   nodeAttempts,
@@ -10,11 +10,10 @@ import {
 } from '../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { NodeAttemptStateCorruptError } from '../errors.js';
-import type { claimDeliverySchema } from '../validation/delivery.js';
 
 export async function lockClaimCandidate(
   client: PoolClient,
-  input: z.output<typeof claimDeliverySchema>,
+  input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
 ) {
   const db = drizzle(client);
   const candidate = await db

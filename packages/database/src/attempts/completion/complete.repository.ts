@@ -7,9 +7,6 @@ import {
   lockCompletionAttempt,
 } from './records.repository.js';
 import type { Pool } from 'pg';
-import type { z } from 'zod';
-
-import { completionSchema } from '../validation/completion.js';
 import {
   DeliveryMismatch,
   NodeAttemptOutputInvalidError,
@@ -21,7 +18,6 @@ import type {
 } from '../contract.js';
 import { auditMismatch, validateDelivery } from './receipts.repository.js';
 import { applyNodeAttemptCompletion } from './outcomes.repository.js';
-
 import {
   assertNotAborted,
   withWorkspaceWriteClient,
@@ -33,12 +29,7 @@ export async function completeNodeAttempt(
   inputValue: Parameters<NodeAttemptRunStore['complete']>[0],
 ): Promise<CompleteNodeAttemptResult> {
   assertNotAborted(inputValue.signal);
-  let input: z.output<typeof completionSchema>;
-  try {
-    input = completionSchema.parse(inputValue);
-  } catch {
-    throw new NodeAttemptStateCorruptError();
-  }
+  const input = inputValue;
   let serializedOutput: string | null = null;
   if (
     input.outcome.status === 'succeeded' ||

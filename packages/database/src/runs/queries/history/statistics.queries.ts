@@ -1,9 +1,6 @@
 import type { ResourceTransaction } from '../../../tenant-access/resources/contract.js';
 import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.repository.js';
-
 import type { Pool } from 'pg';
-import { z } from 'zod';
-
 import type { RunStatus } from '@pertexo/workflow-engine';
 import { emptyRunCounts } from '../counts.js';
 import {
@@ -19,28 +16,25 @@ type CurrentStatus = Extract<RunStatus, 'queued' | 'running' | 'waiting'>;
 
 /** Windows are whole hours so daylight-saving changes never skew them. */
 const WINDOW_HOURS = Object.freeze({ '1h': 1, '6h': 6, '24h': 24, '7d': 168 });
-const windowSchema = z.enum(['1h', '6h', '24h', '7d']);
+type Window = '1h' | '6h' | '24h' | '7d';
 const WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT = 50;
 /** The read's cost ceiling: it never holds a pooled connection longer. */
 const WORKFLOW_RUN_STATISTICS_STATEMENT_TIMEOUT_MILLIS = 2_000;
 
-const inputSchema = z
-  .object({
-    workspaceId: z.uuid(),
-    actorId: z.uuid(),
-    window: windowSchema,
-    includeWorkflows: z.boolean().default(false),
-    includeWorkflowName: z.boolean().default(false),
-    signal: z.instanceof(AbortSignal).optional(),
-  })
-  .strict();
+interface Input {
+  workspaceId: string;
+  actorId: string;
+  window: Window;
+  includeWorkflows?: boolean;
+  includeWorkflowName?: boolean;
+  signal?: AbortSignal | undefined;
+}
 
-export type WorkflowRunStatisticsDatabaseInput = Readonly<
-  z.input<typeof inputSchema>
->;
+export type WorkflowRunStatisticsDatabaseInput = Readonly<Input>;
 
 export type WorkflowRunStatusCountRecord = Readonly<Record<RunStatus, number>>;
 
+// Read projection combines stored columns with computed or joined fields.
 export type WorkflowRunWorkflowStatisticsRecord = Readonly<{
   workflowId: string;
   workflowName: string | null;
@@ -48,11 +42,12 @@ export type WorkflowRunWorkflowStatisticsRecord = Readonly<{
   byStatus: WorkflowRunStatusCountRecord;
 }>;
 
+// Read projection combines stored columns with computed or joined fields.
 export type WorkflowRunStatisticsRecord = Readonly<{
   asOf: string;
   current: Readonly<Record<CurrentStatus, number>>;
   window: Readonly<{
-    duration: z.output<typeof windowSchema>;
+    duration: Window;
     createdAtFrom: string;
     createdAtBefore: string;
     total: number;
@@ -70,7 +65,7 @@ export async function readWorkflowRunStatistics(
   pool: Pool,
   input: WorkflowRunStatisticsDatabaseInput,
 ): Promise<WorkflowRunStatisticsRecord> {
-  const parsed = inputSchema.parse(input);
+  const parsed = input;
   return withRetainedResourceRead(
     pool,
     parsed,
@@ -81,7 +76,7 @@ export async function readWorkflowRunStatistics(
 
 async function readInTransaction(
   transaction: ResourceTransaction,
-  input: z.output<typeof inputSchema>,
+  input: Input,
 ): Promise<WorkflowRunStatisticsRecord> {
   const hours = WINDOW_HOURS[input.window];
   // The transaction timestamp is fixed for the whole snapshot, so every
@@ -117,12 +112,12 @@ async function readInTransaction(
 /** The window's busiest workflows, with one extra row to detect truncation. */
 async function readWorkflowBreakdown(
   transaction: ResourceTransaction,
-  input: z.output<typeof inputSchema>,
+  input: Input,
   hours: number,
 ): Promise<NonNullable<WorkflowRunStatisticsRecord['workflows']>> {
   const result = await readWorkflowBreakdownRows(transaction, {
     hours,
-    includeWorkflowName: input.includeWorkflowName,
+    includeWorkflowName: input.includeWorkflowName ?? false,
     limit: WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT + 1,
   });
   const workflows = new Map<

@@ -1,17 +1,9 @@
-import type {
-  acceptWorkflowRunInputSchema,
-  acceptanceReplayInputSchema,
-} from './input.js';
+import type { AcceptanceInput, AcceptanceReplayInput } from './input.js';
 import type { RunStatus as EngineRunStatus } from '@pertexo/workflow-engine';
-import type { z } from 'zod';
-
 import type { resolveWorkflowFailureNotificationPolicy } from '../../../notifications/policies/admission.queries.js';
-
 import type { WorkflowRecoverySummary } from '../../recovery/contract.js';
 
-export type AcceptWorkflowRunInput = Readonly<
-  z.input<typeof acceptWorkflowRunInputSchema>
->;
+export type AcceptWorkflowRunInput = Readonly<AcceptanceInput>;
 
 export type AcceptedWorkflowRun = Readonly<{
   acceptedAt: Date;
@@ -31,6 +23,4 @@ export type PreparedWorkflowRunAcceptance = Readonly<{
   >;
 }>;
 
-export type WorkflowRunAcceptanceReplayInput = Readonly<
-  z.input<typeof acceptanceReplayInputSchema>
->;
+export type WorkflowRunAcceptanceReplayInput = Readonly<AcceptanceReplayInput>;

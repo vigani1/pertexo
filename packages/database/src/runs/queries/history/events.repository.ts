@@ -3,7 +3,6 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import { retainedTestRunSql } from '../../data-policy.js';
 import { and, eq, gt, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
-
 import {
   ExecutionStateConflictError,
   RunEventGapError,
@@ -38,20 +37,16 @@ export const RUN_EVENT_TYPE = {
 
 export type RunEventType = (typeof RUN_EVENT_TYPE)[keyof typeof RUN_EVENT_TYPE];
 
-const runEventSchema = z
-  .object({
-    type: z.enum(Object.values(RUN_EVENT_TYPE)),
-    payload: z.unknown(),
-  })
-  .strict();
+interface RunEvent {
+  type: RunEventType;
+  payload: unknown;
+}
 
-const readRunEventsSchema = z
-  .object({
-    afterSequence: z.number().int().nonnegative(),
-    limit: z.number().int().min(1).max(500),
-    runId: z.uuid(),
-  })
-  .strict();
+interface ReadRunEvents {
+  afterSequence: number;
+  limit: number;
+  runId: string;
+}
 
 export type PersistedRunEvent = Readonly<{
   createdAt: Date;
@@ -87,14 +82,14 @@ async function lockRunForEvent(
 export async function appendLockedRunEvent(
   transaction: WorkspaceTransaction,
   runId: string,
-  event: z.input<typeof runEventSchema>,
+  event: RunEvent,
 ): Promise<number> {
-  const parsed = runEventSchema.parse(event);
+  const parsed = event;
   let normalizedPayload: unknown;
   try {
     normalizedPayload = JSON.parse(
       serializeStoredExecutionJsonValue(parsed.payload),
-    ) as unknown;
+    );
   } catch {
     throw new ExecutionStateConflictError('execution.event_payload_invalid');
   }
@@ -148,18 +143,18 @@ export async function appendLockedRunEvent(
 
 export async function appendRunEvent(
   transaction: WorkspaceTransaction,
-  input: Readonly<{ runId: string; event: z.input<typeof runEventSchema> }>,
+  input: Readonly<{ runId: string; event: RunEvent }>,
 ): Promise<number> {
-  const runId = z.uuid().parse(input.runId);
+  const runId = input.runId;
   await lockRunForEvent(transaction, runId);
   return appendLockedRunEvent(transaction, runId, input.event);
 }
 
 export async function readRunEventsAfter(
   transaction: WorkspaceTransaction,
-  input: Readonly<z.input<typeof readRunEventsSchema>>,
+  input: Readonly<ReadRunEvents>,
 ): Promise<RunEventPage> {
-  const parsed = readRunEventsSchema.parse(input);
+  const parsed = input;
   const { snapshot, page } = eventPage(transaction, parsed);
   // Drizzle cannot mark a CTE MATERIALIZED; retain the snapshot barrier around native reads.
   type PageRow = (typeof page)['_']['result'][number];
@@ -202,10 +197,7 @@ export async function readRunEventsAfter(
   });
 }
 
-function eventPage(
-  transaction: WorkspaceTransaction,
-  input: z.output<typeof readRunEventsSchema>,
-) {
+function eventPage(transaction: WorkspaceTransaction, input: ReadRunEvents) {
   const { db, workspaceId } = transaction;
   const highWater = db
     .select({ value: sql<number>`max(${runEvents.sequence})` })

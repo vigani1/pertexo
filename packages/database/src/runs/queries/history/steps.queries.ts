@@ -5,35 +5,30 @@ import { withResourceWorkflowRead } from '../../../tenant-access/resources/trans
 import { ordinaryRunSql } from '../../data-policy.js';
 import { and, eq, sql, desc, isNull } from 'drizzle-orm';
 import type { Pool } from 'pg';
-import { z } from 'zod';
-
 import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
 
 /** How many of a workflow's newest runs step history looks at (ADR 051). */
 const STEP_HISTORY_RUN_WINDOW = 100;
 
-const workflowInputSchema = z
-  .object({
-    workspaceId: z.uuid(),
-    actorId: z.uuid(),
-    workflowId: z.uuid(),
-    signal: z.instanceof(AbortSignal).optional(),
-  })
-  .strict();
-const stepRunsInputSchema = workflowInputSchema
-  .extend({
-    nodeId: z.string().min(1).max(256),
-    limit: z.number().int().min(1).max(50),
-  })
-  .strict();
+interface WorkflowInput {
+  workspaceId: string;
+  actorId: string;
+  workflowId: string;
+  signal?: AbortSignal | undefined;
+}
+interface StepRunsInput {
+  workspaceId: string;
+  actorId: string;
+  workflowId: string;
+  nodeId: string;
+  limit: number;
+  signal?: AbortSignal | undefined;
+}
 
-export type ReadWorkflowStepHealthInput = Readonly<
-  z.input<typeof workflowInputSchema>
->;
-export type ReadWorkflowStepRunsInput = Readonly<
-  z.input<typeof stepRunsInputSchema>
->;
+export type ReadWorkflowStepHealthInput = Readonly<WorkflowInput>;
+export type ReadWorkflowStepRunsInput = Readonly<StepRunsInput>;
 
+// Read projection combines stored columns with computed or joined fields.
 export type WorkflowStepHealthRecord = Readonly<{
   nodeId: string;
   runs: number;
@@ -52,6 +47,7 @@ export type WorkflowStepHealthPage = Readonly<{
   items: readonly WorkflowStepHealthRecord[];
 }>;
 
+// Read projection combines stored columns with computed or joined fields.
 export type WorkflowStepRunRecord = Readonly<{
   runId: string;
   runStatus: RunStatus;
@@ -115,7 +111,7 @@ export async function readWorkflowStepHealth(
   pool: Pool,
   input: ReadWorkflowStepHealthInput,
 ): Promise<WorkflowStepHealthPage | undefined> {
-  const parsed = workflowInputSchema.parse(input);
+  const parsed = input;
   return withResourceWorkflowRead(pool, parsed, async (transaction) => {
     if (!(await workflowExists(transaction, parsed.workflowId)))
       return undefined;
@@ -163,7 +159,7 @@ export async function readWorkflowStepRuns(
   pool: Pool,
   input: ReadWorkflowStepRunsInput,
 ): Promise<readonly WorkflowStepRunRecord[] | undefined> {
-  const parsed = stepRunsInputSchema.parse(input);
+  const parsed = input;
   return withResourceWorkflowRead(pool, parsed, async (transaction) => {
     if (!(await workflowExists(transaction, parsed.workflowId)))
       return undefined;

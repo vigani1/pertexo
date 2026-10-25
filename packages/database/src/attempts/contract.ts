@@ -1,20 +1,11 @@
-import type { codeDiagnosticsSchema } from '@pertexo/node-sdk';
+import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type { WorkflowNodeFailureValue } from '@pertexo/workflow-model';
 
-import type { z } from 'zod';
-
-import type {
-  deliverySchema,
-  connectionDispatchFenceSchema,
-} from './validation/shared.js';
-import type { claimDeliverySchema } from './validation/delivery.js';
-import type {
-  executorFailureKindSchema,
-  executorErrorKindSchema,
-  connectionHealthObservationSchema,
-} from './validation/completion.js';
-export type NodeAttemptDelivery = Readonly<z.output<typeof deliverySchema>>;
+export type NodeAttemptDelivery = Readonly<{
+  outboxEventId: string;
+  payloadChecksum: string;
+}>;
 
 export type NodeAttemptLease = Readonly<{
   workspaceId: string;
@@ -99,9 +90,17 @@ export type NodeAttemptCompletion =
     }>
   | Readonly<{
       status: 'executor_failure';
-      failureKind: z.output<typeof executorFailureKindSchema>;
+      failureKind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown';
       minimumRetryDelayMillis?: number;
-      errorKind: z.output<typeof executorErrorKindSchema>;
+      errorKind:
+        | 'authentication'
+        | 'canceled'
+        | 'configuration'
+        | 'internal'
+        | 'network'
+        | 'provider'
+        | 'rate_limit'
+        | 'timeout';
       possiblyDispatched: boolean;
       safeErrorCode: string;
       errorSummary?: string;
@@ -113,11 +112,21 @@ export type CompleteNodeAttemptResult =
 
 export interface NodeAttemptRunStore {
   claimDelivery(
-    input: Readonly<z.input<typeof claimDeliverySchema>>,
+    input: Readonly<{
+      workspaceId: string;
+      runId: string;
+      nodeRunId: string;
+      attemptId: string;
+      delivery: NodeAttemptDelivery;
+      leaseDurationSeconds: number;
+      workerId: string;
+      signal: AbortSignal;
+    }>,
   ): Promise<NodeAttemptClaimResult>;
   loadInputs(
     input: Readonly<{
       lease: NodeAttemptLease;
+      sourceFailure?: Readonly<{ nodeId: string; invocationKey: string }>;
       upstreamNodeOutputs: readonly Readonly<{
         nodeId: string;
         invocationKey: string;
@@ -157,7 +166,12 @@ export interface NodeAttemptRunStore {
   markDispatched(
     input: Readonly<{
       lease: NodeAttemptLease;
-      connectionFence?: z.output<typeof connectionDispatchFenceSchema>;
+      connectionFence?: Readonly<{
+        connectionId: string;
+        expectedProviderKey: string;
+        expectedAuthType: string;
+        secretVersionId: string;
+      }>;
       providerDispatchBinding?: string;
       signal: AbortSignal;
     }>,
@@ -191,10 +205,16 @@ export interface NodeAttemptRunStore {
     input: Readonly<{
       lease: NodeAttemptLease;
       outcome: NodeAttemptCompletion;
-      codeDiagnostics?: z.output<typeof codeDiagnosticsSchema>;
-      connectionHealthObservation?: z.output<
-        typeof connectionHealthObservationSchema
-      >;
+      codeDiagnostics?: CodeDiagnostics;
+      connectionHealthObservation?:
+        | Readonly<{ kind: 'healthy' }>
+        | Readonly<{
+            kind: 'reauthorization_required';
+            reasonCode:
+              | 'connection.slack_account_inactive'
+              | 'connection.slack_token_expired'
+              | 'connection.slack_token_revoked';
+          }>;
       traceparent?: string;
       signal: AbortSignal;
     }>,

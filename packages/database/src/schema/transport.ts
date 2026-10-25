@@ -1,3 +1,4 @@
+import type { JsonValue } from '@pertexo/workflow-model';
 import type { ArtifactStatus } from '../artifacts/contract.js';
 import {
   type PgTableExtraConfigValue,
@@ -155,7 +156,9 @@ export const outboxEvents = appSchema.table(
     jobName: varchar('job_name', { length: 128 }).notNull(),
     aggregateType: varchar('aggregate_type', { length: 64 }).notNull(),
     aggregateId: uuid('aggregate_id').notNull(),
-    payload: jsonb('payload').notNull(),
+    payload: jsonb('payload')
+      .$type<JsonValue | Readonly<Record<string, unknown>>>()
+      .notNull(),
     payloadChecksum: char('payload_checksum', { length: 64 }).notNull(),
     availableAt: timestamp('available_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

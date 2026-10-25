@@ -1,7 +1,6 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
-import type { z } from 'zod';
 import { outboxEvents } from '../../schema/transport.js';
 import {
   acquireDatabasePool,
@@ -12,7 +11,7 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
 import { claimOutboxBatch } from './claim.repository.js';
 import type { ClaimOutboxBatchInput } from './contract.js';
-import { leasedEventSchema, releaseInputSchema } from './input.js';
+import type { ReleaseInput } from './input.js';
 import type {
   OutboxDispatcherDatabase,
   ObserveOutboxBacklogInput,
@@ -33,7 +32,7 @@ async function markPublished(
   eventId: string,
   leaseToken: string,
 ): Promise<boolean> {
-  const parsed = leasedEventSchema.parse({ id: eventId, leaseToken });
+  const parsed = { id: eventId, leaseToken };
   const db = drizzle(pool);
   const published = db.$with('published').as(
     db
@@ -64,9 +63,9 @@ async function markPublished(
 }
 async function releaseOrFail(
   pool: Pool,
-  input: z.input<typeof releaseInputSchema>,
+  input: ReleaseInput,
 ): Promise<ReleaseOutboxResult> {
-  const parsed = releaseInputSchema.parse(input);
+  const parsed = input;
   const db = drizzle(pool);
   const updated = db.$with('updated').as(
     db
@@ -111,8 +110,7 @@ export function createOutboxDispatcherDatabase(
     claimBatch: (input: ClaimOutboxBatchInput) => claimOutboxBatch(pool, input),
     markPublished: (eventId: string, leaseToken: string) =>
       markPublished(pool, eventId, leaseToken),
-    releaseOrFail: (input: z.input<typeof releaseInputSchema>) =>
-      releaseOrFail(pool, input),
+    releaseOrFail: (input: ReleaseInput) => releaseOrFail(pool, input),
     observeBacklog: (input: ObserveOutboxBacklogInput) =>
       observeOutboxBacklog(pool, input),
     checkReadiness: async () => {

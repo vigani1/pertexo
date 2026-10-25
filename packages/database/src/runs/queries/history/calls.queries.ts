@@ -7,6 +7,7 @@ import { WorkflowRunReadCapacityError } from '../../errors.js';
 import type { ResourceTransaction } from '../../../tenant-access/resources/contract.js';
 import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
 
+// Read projection combines stored columns with computed or joined fields.
 export type WorkflowCallReadRecord = Readonly<{
   id: string;
   invocationKey: string;
@@ -19,11 +20,12 @@ export type WorkflowCallReadRecord = Readonly<{
   detailsRetired: boolean;
   safeErrorCode: string | null;
 }>;
-export type WorkflowParentCallReadRecord = Readonly<{
-  id: string;
-  parentRunId: string;
-  invocationKey: string;
-}>;
+export type WorkflowParentCallReadRecord = Readonly<
+  Pick<
+    typeof workflowCalls.$inferSelect,
+    'id' | 'parentRunId' | 'invocationKey'
+  >
+>;
 
 /** Both directions use the same authorized run snapshot and workspace fence. */
 export async function readWorkflowCalls(

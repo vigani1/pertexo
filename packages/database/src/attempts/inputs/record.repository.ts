@@ -7,8 +7,6 @@ import {
 } from '../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
-
-import { recordInputSchema } from '../validation/delivery.js';
 import type { NodeAttemptRunStore } from '../contract.js';
 import { withWorkspaceWriteClient } from '../transactions.repository.js';
 import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
@@ -28,14 +26,13 @@ export async function recordNodeAttemptInput(
   pool: Pool,
   request: RecordInputRequest,
 ): Promise<Readonly<{ recorded: boolean }>> {
-  const parsed = recordInputSchema.safeParse(request);
-  if (!parsed.success || parsed.data.signal.aborted) return { recorded: false };
-  const { lease, signal } = parsed.data;
+  if (request.signal.aborted) return { recorded: false };
+  const { lease, signal } = request;
   let stored: string;
   try {
     stored = serializeStoredExecutionValue({
       kind: 'inline',
-      value: parsed.data.input,
+      value: request.input,
     });
   } catch {
     return { recorded: false };

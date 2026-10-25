@@ -1,18 +1,15 @@
-import type { coordinatorDeliverySchema } from './input.js';
+import type { CoordinatorDelivery } from './input.js';
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type {
   WorkflowCallOutcome,
   PendingTaskOutcome,
   WorkflowCheckpoint,
 } from '@pertexo/workflow-engine';
-import type { z } from 'zod';
 import type { WorkflowExecutionProjection } from '../queries/execution/contract.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { RunTransitionPlan } from './plan.js';
 
-export type CoordinatorAdvanceDelivery = Readonly<
-  z.input<typeof coordinatorDeliverySchema>
->;
+export type CoordinatorAdvanceDelivery = Readonly<CoordinatorDelivery>;
 
 /** Everything the engine needs, read under the run lock. */
 export type RunAdvanceState = Readonly<{

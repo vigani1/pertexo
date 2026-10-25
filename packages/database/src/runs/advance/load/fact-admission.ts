@@ -1,6 +1,5 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
-
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import { serializeStoredExecutionJsonValue } from '../../../platform/stored-execution-value.js';
@@ -10,7 +9,7 @@ const maximumCanonicalEventPayloadBytes =
 
 function normalizedJson(value: unknown): unknown {
   try {
-    return JSON.parse(serializeStoredExecutionJsonValue(value)) as unknown;
+    return JSON.parse(serializeStoredExecutionJsonValue(value));
   } catch {
     throw new CoordinatorRunStateCorruptError();
   }
@@ -35,7 +34,7 @@ export function canonicalEventPayload(value: unknown): Readonly<{
   const bytes = utf8ByteLength(serialized);
   if (bytes > maximumCanonicalEventPayloadBytes)
     throw new CoordinatorRunStateCorruptError();
-  const normalized = JSON.parse(serialized) as unknown;
+  const normalized: unknown = JSON.parse(serialized);
   if (!isRecord(normalized)) throw new CoordinatorRunStateCorruptError();
   return Object.freeze({
     bytes,

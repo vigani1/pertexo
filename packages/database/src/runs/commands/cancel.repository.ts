@@ -1,7 +1,5 @@
 import { workflowRuns } from '../../schema/runs/execution.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { z } from 'zod';
-
 import { ExecutionStateConflictError } from '../state-errors.js';
 import {
   appendLockedRunEvent,
@@ -9,14 +7,11 @@ import {
 } from '../queries/history/events.repository.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
-const actorSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u);
-const cancellationSchema = z
-  .object({
-    actor: actorSchema,
-    reason: z.string().min(1).max(512).nullable().optional(),
-    runId: z.uuid(),
-  })
-  .strict();
+interface Cancellation {
+  actor: string;
+  runId: string;
+  reason?: string | null | undefined;
+}
 const terminalRunStatuses = new Set([
   'succeeded',
   'failed',
@@ -27,7 +22,7 @@ const terminalRunStatuses = new Set([
 
 export async function requestWorkflowRunCancellation(
   transaction: WorkspaceTransaction,
-  input: Readonly<z.input<typeof cancellationSchema>>,
+  input: Readonly<Cancellation>,
 ): Promise<
   Readonly<{
     duplicate: boolean;
@@ -35,7 +30,7 @@ export async function requestWorkflowRunCancellation(
     requestedAt: Date;
   }>
 > {
-  const parsed = cancellationSchema.parse(input);
+  const parsed = input;
   const [row] = await transaction.db
     .select({
       cancel_reason: workflowRuns.cancelReason,

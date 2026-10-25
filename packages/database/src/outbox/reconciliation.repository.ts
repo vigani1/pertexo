@@ -3,8 +3,6 @@ import { outboxEvents } from '../schema/transport.js';
 import { nodeAttempts } from '../schema/runs/execution.js';
 import { operatorUnknownOutcomeEvidence } from '../schema/runs/operator.js';
 import { z } from 'zod';
-import { sha256HexSchema } from '../platform/persisted-primitives.js';
-
 import type { WorkspaceDatabase } from '../database.js';
 import { consumeInboxMessage } from './receipts.repository.js';
 import { canonicalOutboxPayloadChecksum } from './events.repository.js';
@@ -51,21 +49,7 @@ export async function reconcileUnknownOutcomeEvidence(
     workspaceId: string;
   }>,
 ): Promise<UnknownOutcomeReconciliationResult> {
-  const parsed = z
-    .object({
-      attemptId: z.uuid(),
-      delivery: z
-        .object({
-          outboxEventId: z.uuid(),
-          payloadChecksum: sha256HexSchema,
-        })
-        .strict(),
-      evidenceCommandId: z.uuid(),
-      signal: z.instanceof(AbortSignal).optional(),
-      workspaceId: z.uuid(),
-    })
-    .strict()
-    .parse(input);
+  const parsed = input;
   parsed.signal?.throwIfAborted();
 
   const consumed = await consumeInboxMessage(database, parsed.workspaceId, {

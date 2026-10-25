@@ -1,3 +1,4 @@
+import type { NodeAttemptRunStore } from '../contract.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -7,15 +8,12 @@ import {
 import { outboxEvents } from '../../schema/transport.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import type { z } from 'zod';
-
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
-import type { completionSchema } from '../validation/completion.js';
 import { NodeAttemptStateCorruptError } from '../errors.js';
 
-type CompletionInput = z.output<typeof completionSchema>;
+type CompletionInput = Parameters<NodeAttemptRunStore['complete']>[0];
 
 /** Completion replay compares evidence; absence is a meaningful identity too. */
 export async function assertConnectionHealthReplay(

@@ -6,18 +6,8 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { acquireDatabasePool } from '../../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../../platform/pool/runtime.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { z } from 'zod';
-
 import type { DatabaseConfig } from '../../../config.js';
 import { withWorkspaceTransaction } from '../../../tenant-access/transactions.js';
-
-const readInputSchema = z
-  .object({
-    signal: z.instanceof(AbortSignal).optional(),
-    workflowVersionId: z.uuid(),
-    workspaceId: z.uuid(),
-  })
-  .strict();
 
 export function createPublishedWorkflowReader(
   config: DatabaseConfig,
@@ -30,7 +20,7 @@ export function createPublishedWorkflowReader(
     readForExecution: async (
       input: ReadPublishedWorkflowForExecutionInput,
     ): Promise<PublishedWorkflow | null> => {
-      const parsedInput = readInputSchema.parse(input);
+      const parsedInput = input;
       const transactionOptions =
         parsedInput.signal === undefined
           ? undefined

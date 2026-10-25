@@ -1,10 +1,8 @@
+import type { NodeAttemptRunStore } from '../contract.js';
 import type { inboxReceipts } from '../../schema/transport.js';
 import type { lockCompletionAttempt } from './records.repository.js';
-import type { z } from 'zod';
 
-import type { completionSchema } from '../validation/completion.js';
-
-export type CompletionInput = z.output<typeof completionSchema>;
+export type CompletionInput = Parameters<NodeAttemptRunStore['complete']>[0];
 
 type ExecutorOutcome = Extract<
   CompletionInput['outcome'],

@@ -7,75 +7,46 @@ export class OperatorCommandConflictError extends Error {
   }
 }
 
-const actorRefSchema = z
-  .string()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u);
+interface CommandInput {
+  actorRef: string;
+  commandId: string;
+  dryRun: boolean;
+  reason: string;
+  workspaceId: string;
+  signal?: AbortSignal | undefined;
+}
 
-const reasonSchema = z.string().min(1).max(512);
+export type RedispatchInput = CommandInput &
+  Readonly<{ outboxEventId: string }>;
+export type ReconcileAttemptInput = CommandInput &
+  Readonly<{
+    action: 'outcome_unknown' | 'reclaim';
+    attemptId: string;
+    expectedFenceToken: number;
+  }>;
+export type TargetRunInput = CommandInput & Readonly<{ runId: string }>;
+export type TargetWorkflowInput = CommandInput &
+  Readonly<{ workflowId: string }>;
+export type ReplayRunInput = CommandInput &
+  Readonly<{
+    runInput: unknown;
+    sourceRunId: string;
+    workflowVersionId: string;
+  }>;
+export type UnknownEvidenceInput = Omit<CommandInput, 'dryRun'> &
+  Readonly<{
+    attemptId: string;
+    evidenceKind: string;
+    evidenceRef: Readonly<Record<string, unknown>>;
+  }>;
+export type GetCommandInput = Omit<CommandInput, 'dryRun'>;
 
-const signalSchema = z
-  .custom<AbortSignal>((value) => value instanceof AbortSignal)
-  .optional();
+export interface Options {
+  lockTimeoutMs?: number;
+  statementTimeoutMs?: number;
+}
 
-const baseCommandInputSchema = z.object({
-  actorRef: actorRefSchema,
-  commandId: z.uuid(),
-  dryRun: z.boolean(),
-  reason: reasonSchema,
-  signal: signalSchema,
-  workspaceId: z.uuid(),
-});
-
-export const redispatchInputSchema = baseCommandInputSchema
-  .extend({ outboxEventId: z.uuid() })
-  .strict();
-
-export const reconcileAttemptInputSchema = baseCommandInputSchema
-  .extend({
-    action: z.enum(['reclaim', 'outcome_unknown']),
-    attemptId: z.uuid(),
-    expectedFenceToken: z.number().int().positive(),
-  })
-  .strict();
-
-export const targetRunInputSchema = baseCommandInputSchema
-  .extend({ runId: z.uuid() })
-  .strict();
-
-export const targetWorkflowInputSchema = baseCommandInputSchema
-  .extend({ workflowId: z.uuid() })
-  .strict();
-
-export const replayRunInputSchema = baseCommandInputSchema
-  .extend({
-    runInput: z.unknown(),
-    sourceRunId: z.uuid(),
-    workflowVersionId: z.uuid(),
-  })
-  .strict();
-
-export const unknownEvidenceInputSchema = baseCommandInputSchema
-  .omit({ dryRun: true })
-  .extend({
-    attemptId: z.uuid(),
-    evidenceKind: z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/u),
-    evidenceRef: z.custom<Readonly<Record<string, unknown>>>(
-      (value) =>
-        typeof value === 'object' && value !== null && !Array.isArray(value),
-    ),
-  })
-  .strict();
-
-export const getCommandInputSchema = z
-  .object({
-    actorRef: actorRefSchema,
-    commandId: z.uuid(),
-    reason: reasonSchema,
-    signal: signalSchema,
-    workspaceId: z.uuid(),
-  })
-  .strict();
-
+// These constructor options have no upstream configuration parser.
 export const optionsSchema = z.object({
   lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
   statementTimeoutMs: z.number().int().min(1_000).max(300_000).default(30_000),

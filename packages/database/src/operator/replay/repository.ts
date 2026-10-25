@@ -1,5 +1,6 @@
 import type { OperatorRunReplayStore } from './contract.js';
-import { inputSchema, payloadSchema } from './input.js';
+import type { Input } from './input.js';
+import { payloadSchema } from './input.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { outboxEvents } from '../../schema/transport.js';
@@ -8,8 +9,6 @@ import {
   operatorRunReplayRequests,
 } from '../../schema/runs/operator.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
-import { z } from 'zod';
-
 import type { DatabaseConfig } from '../../config.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
@@ -72,17 +71,10 @@ export function createOperatorRunReplayStore(
     runtime === undefined ? {} : { runtime },
   );
   return Object.freeze({
-    replay: (input: z.input<typeof inputSchema>) =>
+    replay: (input: Input) =>
       replayRequest(input, { database, checkpointFactory }),
     fail: async (input: Parameters<OperatorRunReplayStore['fail']>[0]) => {
-      const parsed = z
-        .object({
-          commandId: z.uuid(),
-          safeErrorCode: z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/u),
-          workspaceId: z.uuid(),
-        })
-        .strict()
-        .parse(input);
+      const parsed = input;
       await database.withWorkspace(parsed.workspaceId, async (transaction) => {
         const failed = await transaction.db
           .update(operatorRunReplayRequests)
@@ -119,11 +111,11 @@ type ReplayContext = Readonly<{
   checkpointFactory: InitialCheckpointFactory;
 }>;
 async function replayRequest(
-  input: z.input<typeof inputSchema>,
+  input: Input,
   context: ReplayContext,
 ): ReturnType<OperatorRunReplayStore['replay']> {
   const { database, checkpointFactory } = context;
-  const parsed = inputSchema.parse(input);
+  const parsed = input;
   parsed.signal?.throwIfAborted();
   const consumed = await consumeInboxMessage(database, parsed.workspaceId, {
     message: {

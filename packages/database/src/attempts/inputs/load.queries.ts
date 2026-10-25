@@ -7,8 +7,6 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { readVariableSetValues } from '../../variables/values.queries.js';
 import { workflowNodeFailureValueSchema } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
-import type { z } from 'zod';
-import { loadInputsSchema } from '../validation/delivery.js';
 import { NodeAttemptStateCorruptError } from '../errors.js';
 import type {
   NodeAttemptRunStore,
@@ -27,7 +25,9 @@ type UpstreamOutputRow = Awaited<
 >[number];
 
 function reconcileCompletedNodeOutputs(
-  expectedOutputs: z.output<typeof loadInputsSchema>['upstreamNodeOutputs'],
+  expectedOutputs: Parameters<
+    NodeAttemptRunStore['loadInputs']
+  >[0]['upstreamNodeOutputs'],
   rows: readonly UpstreamOutputRow[],
 ): readonly Readonly<{
   invocationKey: string;
@@ -82,12 +82,7 @@ export async function loadNodeAttemptInputs(
   inputValue: Parameters<NodeAttemptRunStore['loadInputs']>[0],
 ): Promise<NodeAttemptStoredInputs> {
   assertNotAborted(inputValue.signal);
-  let input: z.output<typeof loadInputsSchema>;
-  try {
-    input = loadInputsSchema.parse(inputValue);
-  } catch {
-    throw new NodeAttemptStateCorruptError();
-  }
+  const input = inputValue;
   return withWorkspaceReadClient(
     pool,
     input.lease.workspaceId,
@@ -151,7 +146,7 @@ export async function loadNodeAttemptInputs(
 
 async function readSourceFailure(
   client: PoolClient,
-  input: z.output<typeof loadInputsSchema>,
+  input: Parameters<NodeAttemptRunStore['loadInputs']>[0],
 ): Promise<NodeAttemptStoredInputs['sourceFailure']> {
   let sourceFailure: NodeAttemptStoredInputs['sourceFailure'];
   if (input.sourceFailure !== undefined) {

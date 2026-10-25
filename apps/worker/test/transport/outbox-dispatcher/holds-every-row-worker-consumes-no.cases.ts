@@ -15,6 +15,30 @@ import {
 } from './fixture.js';
 
 export function registerHoldsEveryRowWorkerConsumesNo(): void {
+  it('rejects duplicate job allowlists at construction before storage or queue work', () => {
+    const selected = boundaries([]);
+    expect(
+      () =>
+        new OutboxDispatcher(selected.database, selected.producer, {
+          drainState: new WorkerDrainState(),
+          options: {
+            batchSize: 10,
+            jobNames: [
+              JOB_NAME.advanceWorkflowRun,
+              JOB_NAME.advanceWorkflowRun,
+            ],
+            leaseDurationMillis: 30_000,
+            leaseOwner: 'worker-a',
+            maxAttempts: 3,
+            retryDelayMillis: 1_000,
+          },
+        }),
+    ).toThrow('Outbox job allowlist must be unique');
+    expect(selected.database.claimBatch).not.toHaveBeenCalled();
+    expect(selected.database.observeBacklog).not.toHaveBeenCalled();
+    expect(selected.producer.publish).not.toHaveBeenCalled();
+  });
+
   it('holds every row when the worker consumes no job kind', async () => {
     const selected = boundaries([event()]);
     const dispatcher = new OutboxDispatcher(

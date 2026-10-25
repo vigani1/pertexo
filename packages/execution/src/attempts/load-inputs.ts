@@ -5,6 +5,7 @@ import {
 } from '@pertexo/database/attempts';
 import {
   loopIterationOrdinal,
+  NODE_ATTEMPT_INPUT_LIMITS,
   parseCheckpoint,
   type BranchScopePart,
   type IterationScopePart,
@@ -204,6 +205,13 @@ export async function loadAttemptInputs(
   input: LoadInputsRequest,
   loopResults?: LoopResultsRequest,
 ): Promise<NodeAttemptInputs> {
+  if (
+    input.upstreamNodeOutputs.length >
+      NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs ||
+    new Set(input.upstreamNodeOutputs.map(({ invocationKey }) => invocationKey))
+      .size !== input.upstreamNodeOutputs.length
+  )
+    throw new NodeAttemptStateCorruptError();
   const { checkpoint: stored, ...loaded } = await store.loadInputs(input);
   const resolved = await Promise.all(
     loaded.completedNodeOutputs.map(async (output) => {

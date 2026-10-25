@@ -11,10 +11,6 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
-import {
-  coordinatorDeliverySchema,
-  coordinatorIdentitySchema,
-} from '../advance/input.js';
 import type { RunAdvanceInput } from '../advance/contract.js';
 import {
   auditCoordinatorDeliveryMismatch,
@@ -109,9 +105,9 @@ async function performActions(
   input: RunAdvanceInput,
   prepareChild: InitialCheckpointFactory,
 ): Promise<void> {
-  const workspaceId = coordinatorIdentitySchema.parse(input.workspaceId);
-  const runId = coordinatorIdentitySchema.parse(input.runId);
-  const delivery = coordinatorDeliverySchema.parse(input.delivery);
+  const workspaceId = input.workspaceId;
+  const runId = input.runId;
+  const delivery = input.delivery;
   try {
     const validated = { ...input, workspaceId, runId, delivery };
     const controlled = await withCoordinatorWriteClient(

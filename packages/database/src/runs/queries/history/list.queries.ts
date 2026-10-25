@@ -1,8 +1,8 @@
+import type { RunStatus } from '@pertexo/workflow-engine';
 import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
 import type { ResourceTransaction } from '../../../tenant-access/resources/contract.js';
 import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.repository.js';
 import { ordinaryRunSql, expiredRunSql } from '../../data-policy.js';
-import { runValueKeySchema, runValueTextSchema } from '@pertexo/node-sdk';
 import { workflowRunValues } from '../../../schema/runs/values.js';
 import { workflows } from '../../../schema/authoring/workflows.js';
 import { workflowRuns } from '../../../schema/runs/execution.js';
@@ -12,8 +12,6 @@ import {
 } from '../admission.queries.js';
 import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
-import { z } from 'zod';
-
 import {
   readWorkflowRunFailedSteps,
   type WorkflowRunFailedStep,
@@ -23,25 +21,12 @@ import {
   type WorkflowRunReadRecord,
 } from '../../commands/records.repository.js';
 
-const runStatusSchema = z.enum([
-  'queued',
-  'running',
-  'waiting',
-  'succeeded',
-  'failed',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-]);
 /** Outcomes a step can explain; a canceled run explains itself. */
 const UNSUCCESSFUL_STATUSES: ReadonlySet<string> = new Set([
   'failed',
   'timed_out',
   'outcome_unknown',
 ]);
-const timestampCursorSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/u);
 
 export type WorkflowRunListPosition = Readonly<{
   createdAt: string;
@@ -57,7 +42,7 @@ export type ListWorkflowRunsDatabaseInput = Readonly<{
   runValue?: string;
   workflowNamePrefix?: string;
   includeWorkflowName?: boolean;
-  status?: z.output<typeof runStatusSchema>;
+  status?: RunStatus;
   createdAtFrom?: string;
   createdAtBefore?: string;
   after?: WorkflowRunListPosition;
@@ -73,33 +58,12 @@ export type WorkflowRunListPage = Readonly<{
   nextCursor?: WorkflowRunListPosition;
 }>;
 
-const inputSchema = z
-  .object({
-    workspaceId: z.uuid(),
-    actorId: z.uuid(),
-    limit: z.number().int().min(1).max(100),
-    workflowId: z.uuid().optional(),
-    runValueKey: runValueKeySchema.optional(),
-    runValue: runValueTextSchema.optional(),
-    workflowNamePrefix: z.string().trim().min(1).max(128).optional(),
-    includeWorkflowName: z.boolean().default(false),
-    status: runStatusSchema.optional(),
-    createdAtFrom: z.iso.datetime({ offset: true }).optional(),
-    createdAtBefore: z.iso.datetime({ offset: true }).optional(),
-    after: z
-      .object({ createdAt: timestampCursorSchema, id: z.uuid() })
-      .strict()
-      .optional(),
-    signal: z.instanceof(AbortSignal).optional(),
-  })
-  .strict();
-
 /** One newest-first page, read in a workspace-scoped snapshot. */
 export async function readWorkflowRunListPage(
   pool: Pool,
   input: ListWorkflowRunsDatabaseInput,
 ): Promise<WorkflowRunListPage> {
-  const parsed = inputSchema.parse(input);
+  const parsed = input;
   return withRetainedResourceRead(pool, parsed, async (transaction) =>
     listWorkflowRunsInTransaction(transaction, {
       limit: parsed.limit,
@@ -117,7 +81,7 @@ export async function readWorkflowRunListPage(
       ...(parsed.workflowNamePrefix === undefined
         ? {}
         : { workflowNamePrefix: parsed.workflowNamePrefix }),
-      includeWorkflowName: parsed.includeWorkflowName,
+      includeWorkflowName: parsed.includeWorkflowName ?? false,
       ...(parsed.status === undefined ? {} : { status: parsed.status }),
       ...(parsed.createdAtFrom === undefined
         ? {}

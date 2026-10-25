@@ -1,7 +1,5 @@
 import { workflows } from '../../schema/authoring/workflows.js';
 import { and, eq, sql } from 'drizzle-orm';
-import type { z } from 'zod';
-
 import { readWorkflowRunAcceptanceReplay } from './acceptance/replay.repository.js';
 import { lockRunAcceptanceCommand } from './lock-acceptance.repository.js';
 import {
@@ -9,12 +7,9 @@ import {
   recordManualStartRejection,
   type ManualStartRejection,
 } from './manual-start.repository.js';
-
 import { findPublishedWorkflow } from '../queries/execution/published.queries.js';
 import type { PublishedWorkflow } from '../queries/execution/contract.js';
-
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-
 import {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
@@ -24,12 +19,11 @@ import {
   readWorkflowRunRecord,
 } from './records.repository.js';
 import type { WorkflowRunRecord } from './records.repository.js';
-
-import type { startInputSchema } from './input.js';
+import type { StartInput } from './input.js';
 
 export async function startInTransaction(
   transaction: WorkspaceTransaction,
-  input: z.output<typeof startInputSchema>,
+  input: StartInput,
 ): Promise<
   Readonly<{ run: WorkflowRunRecord; replayed: boolean }> | ManualStartRejection
 > {

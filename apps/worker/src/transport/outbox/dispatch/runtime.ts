@@ -78,6 +78,11 @@ export class OutboxDispatcher {
       metrics?: TransportMetrics | undefined;
     }>,
   ) {
+    const jobNames = [...options.jobNames];
+    if (jobNames.length > 64 || new Set(jobNames).size !== jobNames.length)
+      throw new TypeError(
+        'Outbox job allowlist must be unique and contain at most 64 entries',
+      );
     this.drainState = drainState;
     this.metrics = metrics;
 
@@ -85,7 +90,7 @@ export class OutboxDispatcher {
       operationTimeoutMillis: 5_000,
       pollIntervalMillis: 250,
       ...options,
-      jobNames: Object.freeze([...options.jobNames]),
+      jobNames: Object.freeze(jobNames),
     });
     this.capacitySamples = new OutboxCapacitySampler(
       this.options.operationTimeoutMillis,

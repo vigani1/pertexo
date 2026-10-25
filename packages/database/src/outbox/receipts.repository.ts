@@ -1,22 +1,15 @@
 import { generatePersistedId } from '../platform/persisted-id.js';
-
 import { and, eq, sql } from 'drizzle-orm';
-import { z } from 'zod';
-
 import type { WorkspaceDatabase } from '../database.js';
 import { inboxReceipts, transportSecurityAuditFacts } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
-const inboxMessageSchema = z
-  .object({
-    consumerName: z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u),
-    messageId: z.uuid(),
-    payloadChecksum: sha256HexSchema,
-  })
-  .strict();
+export interface InboxMessage {
+  consumerName: string;
+  messageId: string;
+  payloadChecksum: string;
+}
 
-export type InboxMessage = Readonly<z.input<typeof inboxMessageSchema>>;
 export type InboxConsumeOptions = Readonly<{
   signal?: AbortSignal;
   lockWorkspace?: boolean;
@@ -54,7 +47,7 @@ export async function consumeInboxMessage<T>(
     options?: InboxConsumeOptions | undefined;
   }>,
 ): Promise<InboxConsumeResult<T>> {
-  const parsed = inboxMessageSchema.parse(message);
+  const parsed = message;
   const result = await database.withWorkspace(
     workspaceId,
     async (transaction) => {

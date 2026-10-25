@@ -1,13 +1,10 @@
 import { workflowRuns } from '../../schema/runs/execution.js';
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import type { z } from 'zod';
-
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '../../outbox/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { requestWorkflowRunCancellation } from './cancel.repository.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
@@ -16,8 +13,7 @@ import {
   readWorkflowRunRecord,
 } from './records.repository.js';
 import type { WorkflowRunRecord } from './records.repository.js';
-
-import type { cancelInputSchema } from './input.js';
+import type { CancelInput } from './input.js';
 
 /**
  * Requests cancellation of every run in the workspace that has not finished
@@ -51,7 +47,7 @@ export async function requestActiveRunCancellations(
 
 export async function cancelInTransaction(
   transaction: WorkspaceTransaction,
-  input: z.output<typeof cancelInputSchema>,
+  input: CancelInput,
 ): Promise<
   Readonly<{
     run: WorkflowRunRecord;

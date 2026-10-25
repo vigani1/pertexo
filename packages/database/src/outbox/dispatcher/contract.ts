@@ -1,21 +1,26 @@
-import type { claimInputSchema } from './input.js';
-export type LeasedOutboxEvent = Readonly<{
-  aggregateId: string;
-  aggregateType: string;
-  availableAt: Date;
-  id: string;
-  jobName: string;
-  leaseExpiresAt: Date;
-  leaseOwner: string;
-  leaseToken: string;
-  payload: unknown;
-  payloadChecksum: string;
-  publishAttempts: number;
-  workspaceId: string;
-}>;
+import type { outboxEvents } from '../../schema/transport.js';
+import type { ClaimInput } from './input.js';
+export type LeasedOutboxEvent = Readonly<
+  Pick<
+    typeof outboxEvents.$inferSelect,
+    | 'aggregateId'
+    | 'aggregateType'
+    | 'availableAt'
+    | 'id'
+    | 'jobName'
+    | 'payloadChecksum'
+    | 'publishAttempts'
+    | 'workspaceId'
+  > & {
+    leaseExpiresAt: Date;
+    leaseOwner: string;
+    leaseToken: string;
+    /** Each consumer validates its historical job payload at receipt. */
+    payload: unknown;
+  }
+>;
 
-import type { z } from 'zod';
-import type { releaseInputSchema } from './input.js';
+import type { ReleaseInput } from './input.js';
 
 export type ObserveOutboxBacklogInput = Readonly<{
   enabledJobNames: readonly string[];
@@ -31,9 +36,7 @@ export type OutboxBacklogSnapshot = Readonly<{
 export interface OutboxDispatcherDatabase {
   claimBatch(input: ClaimOutboxBatchInput): Promise<ClaimOutboxBatchResult>;
   markPublished(eventId: string, leaseToken: string): Promise<boolean>;
-  releaseOrFail(
-    input: z.input<typeof releaseInputSchema>,
-  ): Promise<ReleaseOutboxResult>;
+  releaseOrFail(input: ReleaseInput): Promise<ReleaseOutboxResult>;
   observeBacklog(
     input: ObserveOutboxBacklogInput,
   ): Promise<OutboxBacklogSnapshot>;
@@ -42,7 +45,7 @@ export interface OutboxDispatcherDatabase {
 }
 
 export type ClaimOutboxBatchInput = Readonly<
-  Omit<z.input<typeof claimInputSchema>, 'enabledJobNames'> & {
+  Omit<ClaimInput, 'enabledJobNames'> & {
     enabledJobNames: readonly string[];
   }
 >;

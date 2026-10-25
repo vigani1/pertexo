@@ -1,8 +1,7 @@
-import type { z } from 'zod';
-import type { inputSchema } from './input.js';
+import type { Input } from './input.js';
 
 export interface OperatorRunReplayStore {
-  replay(input: z.input<typeof inputSchema>): Promise<
+  replay(input: Input): Promise<
     Readonly<{
       kind: 'duplicate' | 'processed';
       runId?: string;

@@ -7,23 +7,17 @@ import {
 } from '../../schema/transport.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
-import type { z } from 'zod';
-import { claimInputSchema } from './input.js';
 import type {
   ClaimOutboxBatchInput,
   ClaimOutboxBatchResult,
 } from './contract.js';
-
 import type { LeasedOutboxEvent } from './contract.js';
 
 export async function claimOutboxBatch(
   pool: Pool,
   input: ClaimOutboxBatchInput,
 ): Promise<ClaimOutboxBatchResult> {
-  const parsed = claimInputSchema.parse({
-    ...input,
-    enabledJobNames: [...input.enabledJobNames],
-  });
+  const parsed = input;
   if (parsed.enabledJobNames.length === 0) {
     return Object.freeze({ events: Object.freeze([]), exhaustedCount: 0 });
   }
@@ -103,7 +97,7 @@ type ClaimRow = (RawLeasedEvent | Readonly<{ id: null }>) &
 
 async function leaseFairOutboxBatch(
   client: PoolClient,
-  parsed: z.output<typeof claimInputSchema>,
+  parsed: ClaimOutboxBatchInput,
 ): Promise<ClaimOutboxBatchResult> {
   const result = await drizzle(client)
     .execute<ClaimRow>(

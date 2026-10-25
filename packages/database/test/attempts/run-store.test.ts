@@ -3,8 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createNodeAttemptRunStore,
-  NodeAttemptDeliveryMismatchError,
-  NodeAttemptStateCorruptError,
   parseDatabaseConfig,
   type NodeAttemptLease,
 } from '../../src/testing.js';
@@ -68,33 +66,6 @@ async function withNoCheckoutStore(
 
 describe('NodeAttemptRunStore', () => {
   it.each([
-    'execution.provider',
-    'utility.unreviewed',
-    'file.create_unreviewed',
-  ])(
-    'refuses an unapproved private summary for %s before checkout',
-    async (safeErrorCode) => {
-      await withNoCheckoutStore(async (store, checkout) => {
-        await expect(
-          store.complete({
-            lease,
-            outcome: {
-              status: 'executor_failure',
-              failureKind: 'failed',
-              errorKind: 'configuration',
-              possiblyDispatched: false,
-              safeErrorCode,
-              errorSummary: 'Unreviewed provider text',
-            },
-            signal: new AbortController().signal,
-          }),
-        ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
-        expect(checkout).not.toHaveBeenCalled();
-      });
-    },
-  );
-
-  it.each([
     [
       'claim',
       (store: Store, signal: AbortSignal) =>
@@ -140,81 +111,6 @@ describe('NodeAttemptRunStore', () => {
         await expect(invoke(store, controller.signal)).rejects.toMatchObject({
           name: 'AbortError',
         });
-        expect(checkout).not.toHaveBeenCalled();
-      });
-    },
-  );
-
-  it.each([
-    '00000000-0000-0000-0000-000000000000',
-    '11111111-1111-4111-8111-11111111111A',
-    '11111111-1111-4111-7111-111111111111',
-  ])(
-    'rejects a non-canonical claim identity (%s) before checkout',
-    async (workspaceId) => {
-      await withNoCheckoutStore(async (store, checkout) => {
-        await expect(
-          store.claimDelivery({
-            ...identity,
-            workspaceId,
-            delivery,
-            leaseDurationSeconds: 30,
-            workerId: lease.workerId,
-            signal: new AbortController().signal,
-          }),
-        ).rejects.toBeInstanceOf(NodeAttemptDeliveryMismatchError);
-        expect(checkout).not.toHaveBeenCalled();
-      });
-    },
-  );
-
-  it.each([
-    [
-      'load',
-      (store: Store, invalidLease: NodeAttemptLease) =>
-        store.loadInputs({
-          lease: invalidLease,
-          signal: new AbortController().signal,
-          upstreamNodeOutputs: [],
-        }),
-    ],
-    [
-      'dispatch',
-      (store: Store, invalidLease: NodeAttemptLease) =>
-        store.markDispatched({
-          lease: invalidLease,
-          signal: new AbortController().signal,
-        }),
-    ],
-    [
-      'heartbeat',
-      (store: Store, invalidLease: NodeAttemptLease) =>
-        store.heartbeat({
-          lease: invalidLease,
-          leaseDurationSeconds: 30,
-          signal: new AbortController().signal,
-        }),
-    ],
-    [
-      'complete',
-      (store: Store, invalidLease: NodeAttemptLease) =>
-        store.complete({
-          lease: invalidLease,
-          outcome: { output: null, status: 'succeeded' },
-          signal: new AbortController().signal,
-        }),
-    ],
-  ] as const)(
-    'rejects malformed %s lease scope before PostgreSQL checkout',
-    async (_name, invoke) => {
-      await withNoCheckoutStore(async (store, checkout) => {
-        const invalidLease = {
-          ...lease,
-          workspaceId: '00000000-0000-0000-0000-000000000000',
-        } satisfies NodeAttemptLease;
-        await expect(invoke(store, invalidLease)).rejects.toBeInstanceOf(
-          NodeAttemptStateCorruptError,
-        );
         expect(checkout).not.toHaveBeenCalled();
       });
     },
