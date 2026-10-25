@@ -65,8 +65,12 @@ describe('the editor issues chip’s credential readiness', () => {
       const app = renderApp(editorPath, { strict: true });
       const event = userEvent.setup();
       await findCanvas();
-      await event.click(await screen.findByRole('button', { name: '1 issue' }));
-      const fix = await screen.findByRole('button', { name: /^Fix:/u });
+      await event.click(
+        await screen.findByRole('button', { name: '2 issues' }),
+      );
+      const fix = await screen.findByRole('button', {
+        name: /Fix:.*(?:Slack|Ops bot)/u,
+      });
       expect(fix).toHaveAccessibleName(
         {
           missing: 'Fix: Choose a Slack connection for this step.',
@@ -94,10 +98,10 @@ describe('the editor issues chip’s credential readiness', () => {
         });
       }
       await waitFor(() => {
-        expect(screen.queryByRole('button', { name: '1 issue' })).toBeNull();
+        expect(screen.queryByRole('button', { name: '2 issues' })).toBeNull();
       });
       expect(
-        await screen.findByRole('button', { name: 'No issues' }),
+        await screen.findByRole('button', { name: '1 issue' }),
       ).toBeVisible();
     },
   );

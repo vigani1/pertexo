@@ -8,3 +8,5 @@ export {
   WorkflowTestButton,
   WorkflowTestMenuItems,
 } from './components/workflow-tests/controls';
+
+export { WorkflowStepTestResult } from './components/workflow-tests/step-result';

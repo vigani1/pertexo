@@ -6,14 +6,7 @@ import {
   PopoverTitle,
 } from '@/components/ui/popover';
 import type { EditorPresenceSource } from '@/features/workflow-editor/public';
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { COLLABORATION_LIMITS } from '@pertexo/contracts';
 import { Notice } from '@/components/ui/notice';
@@ -27,6 +20,10 @@ import {
 import { presenceQuery } from '../data/collaboration.queries';
 import { PresenceContext, useWorkflowPresence } from '../model/context';
 import { VIEWING_PRESENCE, type EditingPresence } from '../model/presence';
+// One identity per browser document; route remounts retain the server lease.
+const tabId = crypto.randomUUID();
+let sequence = 0;
+
 export function WorkflowPresenceProvider({
   scope,
   children,
@@ -34,10 +31,8 @@ export function WorkflowPresenceProvider({
   scope: CollaborationScope;
   children: ReactNode;
 }) {
-  const [tabId] = useState(() => crypto.randomUUID());
   const state = useRef(VIEWING_PRESENCE);
   const renew = useRef<(() => void) | undefined>(undefined);
-  const sequence = useRef(0);
   const cache = useQueryClient();
   const { apiClient, userId, workspaceId, workflowId } = scope;
   const stableScope = useMemo(
@@ -61,7 +56,7 @@ export function WorkflowPresenceProvider({
       void heartbeatPresence(
         stableScope,
         tabId,
-        { ...state.current, sequence: ++sequence.current },
+        { ...state.current, sequence: ++sequence },
         controller.signal,
       )
         .then(() => {
@@ -89,10 +84,10 @@ export function WorkflowPresenceProvider({
       document.removeEventListener('visibilitychange', heartbeat);
       window.removeEventListener('online', heartbeat);
     };
-  }, [stableScope, tabId, cache]);
+  }, [stableScope, cache]);
   const value = useMemo(
     () => ({ scope: stableScope, tabId, report }),
-    [stableScope, tabId, report],
+    [stableScope, report],
   );
   return <PresenceContext value={value}>{children}</PresenceContext>;
 }

@@ -1,3 +1,6 @@
+import { ConfirmationDetails } from '@/components/patterns/actions/confirm-dialog';
+import { unreachableStepIssues } from '../../model/validation/reachability';
+import { groupWorkflowFindings } from '../../model/validation/issues';
 import { publicationDialogCopy } from '../../model/publication/dialog-copy';
 import type { ReactNode } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
@@ -24,6 +27,9 @@ import type { WorkflowValidationTarget } from '../../model/validation/target';
 import type { PublishStage } from '../../data/mutations/use-workflow-publication';
 import { IssuesList } from '../validation/issues-list';
 import { PublishChanges } from './publish-changes';
+
+const touchTargets =
+  'flex h-[44rem] flex-col overflow-hidden max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11';
 
 const stages: readonly Readonly<{ stage: PublishStage; label: string }>[] = [
   { stage: 'saving', label: 'Saving your last change' },
@@ -96,6 +102,11 @@ export function PublishDialog({
   });
   // Fix moves focus to the field it names; closing must not take it back.
   const fixing = useRef(false);
+  function fix(target: WorkflowValidationTarget) {
+    fixing.current = true;
+    onOpenChange(false);
+    onFix(target);
+  }
   return (
     <Dialog
       open={open}
@@ -105,103 +116,97 @@ export function PublishDialog({
       }}
     >
       <DialogContent
-        className={cn(pending && 'live-edge')}
+        className={cn(touchTargets, pending && 'live-edge')}
         finalFocus={() => !fixing.current}
       >
-        <DialogTitle>{copy.title}</DialogTitle>
-        <DialogDescription>{copy.description}</DialogDescription>
-        {pending ? (
-          <PublishProgress stage={stage} requesting={requesting} />
-        ) : (
-          <div className="mt-5 flex flex-col gap-5">
-            {unchangedVersionNumber === undefined ||
-            error !== undefined ? null : (
-              <Notice>
-                No changes since v{unchangedVersionNumber}. This version is
-                already live.
+        <DialogTitle className="shrink-0">{copy.title}</DialogTitle>
+        <DialogDescription className="shrink-0">
+          {copy.description}
+        </DialogDescription>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ConfirmationDetails>
+            {pending ? (
+              <PublishProgress stage={stage} requesting={requesting} />
+            ) : (
+              <div className="mt-5 flex flex-col gap-5">
+                {unchangedVersionNumber === undefined ||
+                error !== undefined ? null : (
+                  <Notice>
+                    No changes since v{unchangedVersionNumber}. This version is
+                    already live.
+                  </Notice>
+                )}
+                {policyNotice}
+                {requesting ? (
+                  <FieldGroup>
+                    <LabelledField
+                      id={noteId}
+                      label="Note for the reviewer"
+                      error={fields.error('note')}
+                      description="Explain what changed and what to check. This note stays on the request, outside audit metadata and email."
+                    >
+                      {(control) => (
+                        <Textarea
+                          {...control}
+                          {...fields.control('note')}
+                          maxLength={1000}
+                          rows={3}
+                          disabled={recoveryPending}
+                        />
+                      )}
+                    </LabelledField>
+                  </FieldGroup>
+                ) : null}
+                {suiteNotice}
+                <UnconnectedStepWarnings graph={graph} onFix={fix} />
+                <PublishChanges summary={summary} state={summaryState} />
+                <BlockingPublicationIssues
+                  groups={blockingGroups}
+                  graph={graph}
+                  onFix={fix}
+                />
+                {requesting ? (
+                  <p className="text-sm text-muted-foreground">
+                    The live version keeps running until an eligible reviewer
+                    approves. An approval publishes only this saved draft; it
+                    cannot include later edits.
+                  </p>
+                ) : (
+                  <WhatHappens summary={summary} versionLabel={versionLabel} />
+                )}
+                <p className="flex items-start gap-2 text-xs text-subtle-foreground lg:hidden">
+                  <MonitorIcon aria-hidden="true" className="mt-px size-3.5" />
+                  Publishing works here, but reviewing changes is easier on a
+                  larger screen.
+                </p>
+              </div>
+            )}
+            {error === undefined ? null : (
+              <Notice
+                tone="destructive"
+                className="mt-4 [overflow-wrap:anywhere]"
+              >
+                {error}
               </Notice>
             )}
-            {policyNotice}
-            {requesting ? (
-              <FieldGroup>
-                <LabelledField
-                  id={noteId}
-                  label="Note for the reviewer"
-                  error={fields.error('note')}
-                  description="Explain what changed and what to check. This note stays on the request, outside audit metadata and email."
-                >
-                  {(control) => (
-                    <Textarea
-                      {...control}
-                      {...fields.control('note')}
-                      maxLength={1000}
-                      rows={3}
-                      disabled={recoveryPending}
-                    />
-                  )}
-                </LabelledField>
-              </FieldGroup>
-            ) : null}
-            {suiteNotice}
-            <PublishChanges summary={summary} state={summaryState} />
-            <BlockingPublicationIssues
-              groups={blockingGroups}
-              graph={graph}
-              onFix={(target) => {
-                fixing.current = true;
-                onOpenChange(false);
-                onFix(target);
-              }}
-            />
-            {requesting ? (
-              <p className="text-sm text-muted-foreground">
-                The live version keeps running until an eligible reviewer
-                approves. An approval publishes only this saved draft; it cannot
-                include later edits.
-              </p>
-            ) : (
-              <WhatHappens summary={summary} versionLabel={versionLabel} />
-            )}
-            <p className="flex items-start gap-2 text-xs text-subtle-foreground lg:hidden">
-              <MonitorIcon aria-hidden="true" className="mt-px size-3.5" />
-              Publishing works here, but reviewing changes is easier on a larger
-              screen.
-            </p>
-          </div>
-        )}
-        {error === undefined ? null : (
-          <Notice tone="destructive" className="mt-4 [overflow-wrap:anywhere]">
-            {error}
-          </Notice>
-        )}
-        <div className="mt-6 flex justify-end gap-2">
-          <DialogClose
-            render={<Button type="button" variant="ghost" disabled={pending} />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="button"
-            variant="primary"
-            pending={pending}
-            pendingLabel={copy.pendingLabel}
-            icon={<ArrowUpFromLineIcon data-icon="inline-start" />}
-            disabled={
-              unavailable ||
-              blockingGroups.length > 0 ||
-              unchangedVersionNumber !== undefined
-            }
-            onClick={() => {
-              if (!requesting || recoveryPending) onPublish();
-              else {
-                const values = fields.validate();
-                if (values !== undefined) onPublish(values.note.trim());
-              }
-            }}
-          >
-            {copy.confirmLabel}
-          </ProgressButton>
+          </ConfirmationDetails>
         </div>
+        <PublishDialogActions
+          copy={copy}
+          pending={pending}
+          disabled={
+            unavailable ||
+            blockingGroups.length > 0 ||
+            unchangedVersionNumber !== undefined
+          }
+          onConfirm={() => {
+            if (!requesting || recoveryPending) onPublish();
+            else {
+              const values = fields.validate();
+              if (values !== undefined) onPublish(values.note.trim());
+            }
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -293,5 +298,60 @@ function BlockingPublicationIssues({
         <IssuesList groups={groups} graph={graph} onFix={onFix} />
       </div>
     </section>
+  );
+}
+
+function UnconnectedStepWarnings({
+  graph,
+  onFix,
+}: Readonly<{
+  graph: WorkflowGraphContract;
+  onFix: (target: WorkflowValidationTarget) => void;
+}>) {
+  const warnings = groupWorkflowFindings(unreachableStepIssues(graph));
+  if (warnings.length === 0) return null;
+  return (
+    <section aria-label="Unconnected steps">
+      <h3 className="text-sm font-semibold text-warning">
+        These steps won't run
+      </h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        You can still publish this workflow.
+      </p>
+      <IssuesList groups={warnings} graph={graph} onFix={onFix} />
+    </section>
+  );
+}
+
+function PublishDialogActions({
+  copy,
+  pending,
+  disabled,
+  onConfirm,
+}: Readonly<{
+  copy: ReturnType<typeof publicationDialogCopy>;
+  pending: boolean;
+  disabled: boolean;
+  onConfirm: () => void;
+}>) {
+  return (
+    <div className="mt-6 flex shrink-0 justify-end gap-2">
+      <DialogClose
+        render={<Button type="button" variant="ghost" disabled={pending} />}
+      >
+        Cancel
+      </DialogClose>
+      <ProgressButton
+        type="button"
+        variant="primary"
+        pending={pending}
+        pendingLabel={copy.pendingLabel}
+        icon={<ArrowUpFromLineIcon data-icon="inline-start" />}
+        disabled={disabled}
+        onClick={onConfirm}
+      >
+        {copy.confirmLabel}
+      </ProgressButton>
+    </div>
   );
 }

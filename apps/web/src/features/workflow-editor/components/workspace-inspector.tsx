@@ -1,3 +1,7 @@
+import {
+  WorkflowStepTestResult,
+  type WorkflowTests,
+} from '@/features/workflow-publish/tests.public';
 import { useEditorSession } from '../model/state/context';
 
 import type { Ref } from 'react';
@@ -13,6 +17,7 @@ import { EditorInspector } from './inspector/editor';
 type WorkspaceInspectorProps = Readonly<{
   editable: boolean;
   testing: Readonly<{
+    tests: WorkflowTests;
     testRef: Ref<NodeTestHandle>;
     lastTest: ReturnType<typeof useLastTest>;
     onTestPassed: (nodeId: string, outputBytes: number | undefined) => void;
@@ -40,6 +45,15 @@ export function WorkspaceInspector({
   return (
     <EditorInspector
       editable={editable}
+      renderWorkflowTest={(nodeId) => (
+        <WorkflowStepTestResult
+          tests={testing.tests}
+          nodeId={nodeId}
+          onViewHistory={() => {
+            navigation.setMobilePanel('none');
+          }}
+        />
+      )}
 
       renderStepRuns={(nodeId, stepLabel) => (
         <StepHistoryPanel
@@ -47,6 +61,7 @@ export function WorkspaceInspector({
           userId={userId}
           workspace={workspace}
           workflowId={workflowId}
+          published={editing.workflow?.publishedVersionId != null}
           nodeId={nodeId}
           stepLabel={stepLabel}
           renderActions={(run) =>

@@ -105,7 +105,7 @@ describe('editor credential issues', () => {
       draft,
       issues,
     );
-    expect(view.groups?.[0]?.issues).toHaveLength(1);
+    expect(view.groups?.[0]?.issues).toHaveLength(2);
     expect(view.countsByNode.get('post')).toBe(1);
     expect(view.blockingGroups).toEqual([]);
     expect(
@@ -114,7 +114,7 @@ describe('editor credential issues', () => {
         linked,
         draft,
       ).groups,
-    ).toBeUndefined();
+    ).toMatchObject([{ nodeId: 'post', issues: [{ id: 'unreachable-post' }] }]);
   });
 
   it.each(['revoked', 'reauthorization_required'] as const)(
@@ -245,14 +245,14 @@ describe('editor credential issues', () => {
     };
     const view = workflowIssuesView(checked, current, draft, findings);
     expect(view.groups).toHaveLength(1);
-    expect(view.groups?.[0]?.issues).toHaveLength(2);
+    expect(view.groups?.[0]?.issues).toHaveLength(3);
     expect(view.countsByNode.get('post')).toBe(2);
     expect(view.blockingGroups[0]?.issues).toHaveLength(1);
     expect(
       workflowIssuesView(checked, current, { ...draft, revision: 2 }, findings),
     ).toMatchObject({ stale: true, blockingGroups: [] });
     expect(workflowIssuesView(publication, linked, draft)).toMatchObject({
-      groups: [],
+      groups: [{ nodeId: 'post', issues: [{ id: 'unreachable-post' }] }],
       blockingGroups: [],
     });
   });

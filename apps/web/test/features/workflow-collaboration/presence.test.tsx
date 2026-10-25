@@ -188,3 +188,67 @@ it('names other people as beads and keeps your own other tab separate', async ()
   ).toBeVisible();
   expect(screen.queryByText('You elsewhere')).not.toBeInTheDocument();
 });
+
+it('reuses the current tab lease and increases its sequence after route remount', async () => {
+  const leases = new Set<string>();
+  const sequences: number[] = [];
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockImplementation((input, init) => {
+      let url: string;
+      if (typeof input === 'string') url = input;
+      else if (input instanceof URL) url = input.href;
+      else url = input.url;
+      if (init?.method === 'PUT') {
+        leases.add(url.split('/').at(-1) ?? '');
+        const body = JSON.parse(
+          typeof init.body === 'string' ? init.body : 'null',
+        ) as { sequence: number };
+        sequences.push(body.sequence);
+        return Promise.resolve(Response.json({ accepted: true }));
+      }
+      const current = new URL(url).searchParams.get('tabId');
+      return Promise.resolve(
+        Response.json({
+          people: [...leases]
+            .filter((id) => id !== current)
+            .map(() => ({
+              userId,
+              displayName: 'You',
+              editing: false,
+              dirty: false,
+              baseRevision: null,
+              tabCount: 1,
+            })),
+        }),
+      );
+    });
+  const scope = {
+    apiClient: createApiClient({
+      fetch,
+      readCsrfToken: () =>
+        'csrf-token-for-component-tests-12345678901234567890',
+    }),
+    userId,
+    workspaceId,
+    workflowId,
+  };
+  const content = (
+    <WorkflowPresenceProvider scope={scope}>
+      <WorkflowPresenceSummary />
+    </WorkflowPresenceProvider>
+  );
+  const first = renderInRouter(content);
+  await waitFor(() => {
+    expect(sequences.length).toBeGreaterThan(0);
+  });
+  first.unmount();
+  const count = sequences.length;
+  renderInRouter(content);
+  await waitFor(() => {
+    expect(sequences.length).toBeGreaterThan(count);
+  });
+  expect(leases.size).toBe(1);
+  expect(sequences.at(-1)).toBeGreaterThan(sequences[0] ?? 0);
+  expect(screen.queryByText('Also in another tab')).not.toBeInTheDocument();
+});

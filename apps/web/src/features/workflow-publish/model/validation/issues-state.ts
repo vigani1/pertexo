@@ -1,3 +1,4 @@
+import { unreachableStepIssues } from './reachability';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { WorkflowPublication } from '../../data/mutations/use-workflow-publication';
 import {
@@ -18,12 +19,11 @@ export type IssuesState = Readonly<{
 
 export type WorkflowIssuesView = IssuesState &
   Readonly<{
+    /** Unreachable steps are muted instead of wearing blocking-error badges. */
     countsByNode: ReadonlyMap<string, number>;
     /** Only fresh server validation governs whether publishing is blocked. */
     blockingGroups: readonly WorkflowIssueGroup[];
   }>;
-
-const noCounts: ReadonlyMap<string, number> = new Map();
 
 /** The latest report as the editor shows it: grouped, counted, and dated. */
 export function workflowIssuesView(
@@ -40,12 +40,13 @@ export function workflowIssuesView(
     validation === undefined
       ? undefined
       : groupWorkflowIssues(validation.report, graph);
+  const warnings = [...connectionIssues, ...unreachableStepIssues(graph)];
   const groups =
-    validationGroups === undefined && connectionIssues.length === 0
+    validationGroups === undefined && warnings.length === 0
       ? undefined
       : groupWorkflowFindings([
           ...(validationGroups ?? []).flatMap((group) => group.issues),
-          ...connectionIssues,
+          ...warnings,
         ]);
   const stale =
     validation !== undefined &&
@@ -58,6 +59,11 @@ export function workflowIssuesView(
     groups,
     stale,
     blockingGroups: stale ? [] : (validationGroups ?? []),
-    countsByNode: groups === undefined ? noCounts : issueCountsByNode(groups),
+    countsByNode: issueCountsByNode(
+      groupWorkflowFindings([
+        ...(validationGroups ?? []).flatMap((group) => group.issues),
+        ...connectionIssues,
+      ]),
+    ),
   };
 }

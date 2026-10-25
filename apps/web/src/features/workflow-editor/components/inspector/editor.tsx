@@ -46,6 +46,7 @@ type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
  */
 type EditorInspectorProps = Readonly<{
   editable: boolean;
+  renderWorkflowTest?: (nodeId: string) => ReactNode;
   renderStepRuns?: (nodeId: string, stepLabel: string) => ReactNode;
   navigation: Readonly<{
     tab: InspectorTab;
@@ -70,6 +71,7 @@ export function EditorInspector({
   navigation,
   testing,
   renderStepRuns,
+  renderWorkflowTest,
 }: EditorInspectorProps) {
   const { scope, catalog, editing } = useEditorSession();
   const { apiClient, userId, workspace, workflowId } = scope;
@@ -176,6 +178,7 @@ export function EditorInspector({
           }}
           scope={{ apiClient, userId, workspaceId, workflowId }}
         >
+          {renderWorkflowTest?.(nodeId)}
           {editable &&
           findStep(graph, nodeId)?.definition.key === 'core.webhook' ? (
             <WebhookTestListener

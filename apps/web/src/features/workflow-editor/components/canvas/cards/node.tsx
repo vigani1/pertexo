@@ -56,7 +56,9 @@ export function WorkflowNodeCard({
           links={data.links.outputs}
         />
       ) : null}
-      <NodeMarks id={id} data={data} />
+      <div className={data.failureEligible ? 'pb-4' : undefined}>
+        <NodeMarks id={id} data={data} />
+      </div>
       {branchingOut || data.outputPorts[0] === undefined ? null : (
         <Handle
           id={data.outputPorts[0]}
@@ -75,10 +77,10 @@ export function WorkflowNodeCard({
             position={Position.Right}
             role="img"
             aria-label={`${title}: Failure output`}
-            style={{ top: 'calc(100% - 4px)' }}
+            style={{ top: 'calc(100% - 14px)' }}
             className="!size-2.5 !border-destructive !bg-background !border-dashed"
           />
-          <span className="pointer-events-none absolute -bottom-2 right-3 flex items-center gap-1 rounded bg-card px-1 text-[0.65rem] text-destructive">
+          <span className="pointer-events-none absolute bottom-1 right-3 flex items-center gap-1 rounded bg-card px-1 text-[0.65rem] text-destructive">
             <StatusGlyph tone="failure" className="size-2.5" />
             Failure
           </span>
