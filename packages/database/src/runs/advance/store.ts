@@ -1,15 +1,10 @@
 import type { Pool } from 'pg';
-
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { saveRunTransition } from './persist/commit.js';
-import {
-  coordinatorDeliverySchema,
-  coordinatorIdentitySchema,
-} from './input.js';
 import type {
   RunAdvanceDecision,
   RunAdvanceInput,
@@ -37,9 +32,9 @@ async function advance(
   decide: (state: RunAdvanceState) => Promise<RunAdvanceDecision>,
 ): Promise<RunAdvanceResult> {
   assertCoordinatorNotAborted(input.signal);
-  const workspaceId = coordinatorIdentitySchema.parse(input.workspaceId);
-  const runId = coordinatorIdentitySchema.parse(input.runId);
-  const delivery = coordinatorDeliverySchema.parse(input.delivery);
+  const workspaceId = input.workspaceId;
+  const runId = input.runId;
+  const delivery = input.delivery;
   const { signal, traceparent } = input;
   let result: RunAdvanceResult & Readonly<{ scheduleDueAt?: string }>;
   try {

@@ -8,21 +8,18 @@ import { workspaces } from '../../schema/foundation.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
-import { z } from 'zod';
-
 import { withWorkspaceReadTransaction } from '../../tenant-access/transactions.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 
-const inputSchema = z
-  .object({
-    workspaceId: z.uuid(),
-    signal: z.instanceof(AbortSignal).optional(),
-  })
-  .strict();
+interface Input {
+  workspaceId: string;
+  signal?: AbortSignal | undefined;
+}
 type PolicyState =
   'active' | 'suspended' | 'not_yet_effective' | 'expired' | 'unavailable';
 
-export type WorkspaceUsageCapacityInput = Readonly<z.input<typeof inputSchema>>;
+export type WorkspaceUsageCapacityInput = Readonly<Input>;
+// Read projection combines stored columns with computed or joined fields.
 export type WorkspaceUsageCapacityRecord = Readonly<{
   asOf: string;
   execution: Readonly<{
@@ -51,7 +48,7 @@ export async function readWorkspaceUsageCapacity(
   pool: Pool,
   input: WorkspaceUsageCapacityInput,
 ): Promise<WorkspaceUsageCapacityRecord> {
-  const parsed = inputSchema.parse(input);
+  const parsed = input;
   return withWorkspaceReadTransaction(
     pool,
     parsed.workspaceId,

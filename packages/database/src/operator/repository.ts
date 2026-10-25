@@ -1,6 +1,5 @@
 import type { Pool } from 'pg';
 import { and, eq, sql } from 'drizzle-orm';
-
 import type { DatabaseConfig } from '../config.js';
 import { serializeBoundedPlainJson } from '../outbox/events.repository.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
@@ -23,17 +22,7 @@ import {
   requestRunReplay,
   retryTriggerReconciliation,
 } from './handlers/workflows.repository.js';
-import {
-  OperatorCommandConflictError,
-  redispatchInputSchema,
-  reconcileAttemptInputSchema,
-  targetRunInputSchema,
-  targetWorkflowInputSchema,
-  replayRunInputSchema,
-  unknownEvidenceInputSchema,
-  getCommandInputSchema,
-  optionsSchema,
-} from './input.js';
+import { OperatorCommandConflictError, optionsSchema } from './input.js';
 import type {
   OperatorCommandDatabaseOptions,
   RedispatchFailedOutboxInput,
@@ -90,7 +79,7 @@ export function createOperatorCommandDatabase(
 
 type OperatorTransactionContext = Readonly<{
   pool: Pool;
-  options: ReturnType<typeof optionsSchema.parse>;
+  options: Required<OperatorCommandDatabaseOptions>;
 }>;
 
 function withOperatorTransaction<T>(
@@ -214,7 +203,7 @@ async function readOperatorCommand(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['getCommand']>[0],
 ): ReturnType<OperatorCommandDatabase['getCommand']> {
-  const parsed = getCommandInputSchema.parse(input);
+  const parsed = input;
   return withOperatorTransaction(
     context,
     parsed.workspaceId,
@@ -251,7 +240,7 @@ async function redispatchOperatorOutbox(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['redispatchFailedOutbox']>[0],
 ): ReturnType<OperatorCommandDatabase['redispatchFailedOutbox']> {
-  const parsed = redispatchInputSchema.parse(input);
+  const parsed = input;
   const result = await runOperatorCommand(context, {
     ...parsed,
     commandType: 'outbox.redispatch',
@@ -271,7 +260,7 @@ async function reconcileOperatorAttempt(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['reconcileAttempt']>[0],
 ): ReturnType<OperatorCommandDatabase['reconcileAttempt']> {
-  const parsed = reconcileAttemptInputSchema.parse(input);
+  const parsed = input;
   return runOperatorCommand(context, {
     ...parsed,
     commandType: 'attempt.reconcile',
@@ -289,7 +278,7 @@ async function resumeOperatorRun(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['resumeDueWork']>[0],
 ): ReturnType<OperatorCommandDatabase['resumeDueWork']> {
-  const parsed = targetRunInputSchema.parse(input);
+  const parsed = input;
   return runOperatorCommand(context, {
     ...parsed,
     commandType: 'due-work.resume',
@@ -303,7 +292,7 @@ async function cancelOperatorRun(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['cancelRun']>[0],
 ): ReturnType<OperatorCommandDatabase['cancelRun']> {
-  const parsed = targetRunInputSchema.parse(input);
+  const parsed = input;
   return runOperatorCommand(context, {
     ...parsed,
     commandType: 'run.cancel',
@@ -317,7 +306,7 @@ async function recordOperatorOutcomeEvidence(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['recordUnknownOutcomeEvidence']>[0],
 ): ReturnType<OperatorCommandDatabase['recordUnknownOutcomeEvidence']> {
-  const parsed = unknownEvidenceInputSchema.parse(input);
+  const parsed = input;
   const evidenceRef = serializeBoundedPlainJson(
     parsed.evidenceRef,
     4096,
@@ -329,7 +318,7 @@ async function recordOperatorOutcomeEvidence(
     commandType: 'unknown-outcome.record-evidence',
     material: {
       evidenceKind: parsed.evidenceKind,
-      evidenceRef: JSON.parse(evidenceRef) as unknown,
+      evidenceRef: JSON.parse(evidenceRef),
       targetId: parsed.attemptId,
     },
     target: { type: 'operator-command-target', id: parsed.attemptId },
@@ -342,7 +331,7 @@ async function retryOperatorTriggerReconciliation(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['retryTriggerReconciliation']>[0],
 ): ReturnType<OperatorCommandDatabase['retryTriggerReconciliation']> {
-  const parsed = targetWorkflowInputSchema.parse(input);
+  const parsed = input;
   return runOperatorCommand(context, {
     ...parsed,
     commandType: 'trigger.reconcile',
@@ -356,7 +345,7 @@ async function replayOperatorRun(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['replayRun']>[0],
 ): ReturnType<OperatorCommandDatabase['replayRun']> {
-  const parsed = replayRunInputSchema.parse(input);
+  const parsed = input;
   const runInput = serializeBoundedPlainJson(
     parsed.runInput,
     65_536,
@@ -366,7 +355,7 @@ async function replayOperatorRun(
     ...parsed,
     commandType: 'run.replay',
     material: {
-      runInput: JSON.parse(runInput) as unknown,
+      runInput: JSON.parse(runInput),
       sourceRunId: parsed.sourceRunId,
       workflowVersionId: parsed.workflowVersionId,
     },

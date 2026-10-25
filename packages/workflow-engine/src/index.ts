@@ -83,6 +83,7 @@ export {
   runReplayOutcome,
   redispatchOutcome,
 } from './operator/decisions.js';
+export { NODE_ATTEMPT_INPUT_LIMITS } from './types.js';
 
 export {
   errorWorkflowInput,

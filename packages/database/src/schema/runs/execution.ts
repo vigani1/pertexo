@@ -1,3 +1,4 @@
+import type { StoredExecutionValue } from '../../platform/stored-execution-value.js';
 import type { NodeAttemptLease } from '../../attempts/contract.js';
 import type { RunStatus } from '@pertexo/workflow-engine';
 import type {
@@ -6,8 +7,7 @@ import type {
 } from '../../previews/contract.js';
 import type { RecoveryNode } from '@pertexo/workflow-engine';
 import type { WorkflowRecoveryEffectRisk } from '@pertexo/workflow-model';
-import type { z } from 'zod';
-import type { acceptWorkflowRunInputSchema } from '../../runs/commands/acceptance/input.js';
+import type { AcceptanceInput } from '../../runs/commands/acceptance/input.js';
 import {
   NODE_IDENTITY_KEY_PATTERN,
   type CodeDiagnostics,
@@ -70,7 +70,7 @@ export const workflowRuns = appSchema.table(
     }),
     remainingExecutionMs: integer('remaining_execution_ms'),
     triggerType: varchar('trigger_type', { length: 32 })
-      .$type<z.output<typeof acceptWorkflowRunInputSchema>['triggerType']>()
+      .$type<AcceptanceInput['triggerType']>()
       .notNull(),
     failureNotificationDestinationId: uuid(
       'failure_notification_destination_id',
@@ -109,7 +109,7 @@ export const workflowRuns = appSchema.table(
       mode: 'date',
     }),
     variableSetRevision: integer('variable_set_revision'),
-    inputRef: json('input_ref'),
+    inputRef: json('input_ref').$type<StoredExecutionValue>(),
     inputRefExpiresAt: timestamp('input_ref_expires_at', {
       withTimezone: true,
       mode: 'date',
@@ -118,7 +118,7 @@ export const workflowRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
-    outputRef: json('output_ref'),
+    outputRef: json('output_ref').$type<StoredExecutionValue>(),
     errorSummary: varchar('error_summary', { length: 2048 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -430,9 +430,9 @@ export const nodeRuns = appSchema.table(
     providerDispatchBinding: varchar('provider_dispatch_binding', {
       length: 128,
     }),
-    inputRef: json('input_ref'),
-    outputRef: json('output_ref'),
-    failureRef: json('failure_ref'),
+    inputRef: json('input_ref').$type<StoredExecutionValue>(),
+    outputRef: json('output_ref').$type<StoredExecutionValue>(),
+    failureRef: json('failure_ref').$type<StoredExecutionValue>(),
     failureHandlerEntryKey: varchar('failure_handler_entry_key', {
       length: 256,
     }),
@@ -623,7 +623,7 @@ export const nodeAttempts = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
-    outputRef: json('output_ref'),
+    outputRef: json('output_ref').$type<StoredExecutionValue>(),
     codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     errorSummary: varchar('error_summary', { length: 2048 }),

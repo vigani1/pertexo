@@ -11,8 +11,6 @@ import {
 } from './history/calls.queries.js';
 import { and, eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
-import { z } from 'zod';
-
 import type { ResourceTransaction } from '../../tenant-access/resources/contract.js';
 import { WorkflowRunReadCapacityError } from '../errors.js';
 import {
@@ -20,34 +18,21 @@ import {
   type WorkflowRunReadRecord,
 } from '../commands/records.repository.js';
 
-const getInputSchema = z
-  .object({
-    workspaceId: z.uuid(),
-    actorId: z.uuid(),
-    runId: z.uuid(),
-    includeWorkflowName: z.boolean().default(false),
-    signal: z.instanceof(AbortSignal).optional(),
-  })
-  .strict();
-export type GetWorkflowRunInput = Readonly<z.input<typeof getInputSchema>>;
+interface GetInput {
+  workspaceId: string;
+  actorId: string;
+  runId: string;
+  includeWorkflowName?: boolean;
+  signal?: AbortSignal | undefined;
+}
+export type GetWorkflowRunInput = Readonly<GetInput>;
 
-export const nodeStatusSchema = z.enum([
-  'pending',
-  'ready',
-  'running',
-  'waiting',
-  'succeeded',
-  'failed',
-  'skipped',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-]);
+// Read projection combines stored columns with computed or joined fields.
 export type WorkflowNodeRunRecord = Readonly<{
   id: string;
   nodeId: string;
   invocationKey: string;
-  status: z.output<typeof nodeStatusSchema>;
+  status: typeof nodeRuns.$inferSelect.status;
   currentAttemptNumber: number;
   failureHandling?: Readonly<{
     entryInvocationKey: string;
@@ -79,10 +64,10 @@ export async function readWorkflowRun(
   pool: Pool,
   input: GetWorkflowRunInput,
 ): Promise<WorkflowRunReadModel | undefined> {
-  const parsed = getInputSchema.parse(input);
+  const parsed = input;
   return withResourceRunRead(pool, parsed, async (transaction) =>
     readRunModel(transaction, parsed.runId, {
-      includeWorkflowName: parsed.includeWorkflowName,
+      includeWorkflowName: parsed.includeWorkflowName ?? false,
     }),
   );
 }

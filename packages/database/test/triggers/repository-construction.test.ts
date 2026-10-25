@@ -95,7 +95,7 @@ describe('trigger repository construction ownership', () => {
     expect(database.pools[0]?.end).toHaveBeenCalledOnce();
   });
 
-  it('does not check out a dispatcher client for empty or invalid allowlists', async () => {
+  it('does not check out a dispatcher client for empty allowlists', async () => {
     const dispatcher = createOutboxDispatcherDatabase(config);
     await expect(
       dispatcher.claimBatch({
@@ -107,11 +107,6 @@ describe('trigger repository construction ownership', () => {
         maxAttempts: 3,
       }),
     ).resolves.toEqual({ events: [], exhaustedCount: 0 });
-    await expect(
-      dispatcher.observeBacklog({
-        enabledJobNames: ['job', 'job'],
-      }),
-    ).rejects.toThrow();
     expect(database.pools[0]?.connect).not.toHaveBeenCalled();
     expect(database.pools[0]?.query).not.toHaveBeenCalled();
     await dispatcher.close();

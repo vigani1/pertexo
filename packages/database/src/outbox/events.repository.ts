@@ -1,31 +1,21 @@
 import { isWellFormed, utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import { types as nodeTypes } from 'node:util';
-
-import { z } from 'zod';
-
+import { sql } from 'drizzle-orm';
 import { outboxEvents } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import { sha256HexSchema } from '../platform/persisted-primitives.js';
 
 const checksumSchema = sha256HexSchema;
-const outboxEventInputSchema = z
-  .object({
-    id: z.uuid(),
-    jobName: z.string().regex(/^[a-z][a-z0-9-]{0,127}$/u),
-    aggregateType: z.string().regex(/^[a-z][a-z0-9.-]{0,63}$/u),
-    aggregateId: z.uuid(),
-    payload: z.unknown(),
-    payloadChecksum: checksumSchema,
-    availableAt: z.date().optional(),
-  })
-  .strict();
-
-type JsonPrimitive = null | boolean | number | string;
-interface JsonObject {
-  readonly [key: string]: JsonValue;
+export interface OutboxEventInput {
+  id: string;
+  jobName: string;
+  aggregateType: string;
+  aggregateId: string;
+  payload: unknown;
+  payloadChecksum: string;
+  availableAt?: Date | undefined;
 }
-type JsonValue = JsonPrimitive | JsonValue[] | JsonObject;
 
 const OUTBOX_PAYLOAD_BYTES = 4096;
 
@@ -179,6 +169,11 @@ function pushCanonicalContainer(
   frames.push({ kind: 'token', token: container.array ? '[' : '{' });
 }
 
+// Legacy outbox checksums sort even integer-looking keys lexicographically;
+// workflow-model canonicalJson uses JavaScript's integer-key enumeration order.
+// This writer also bounds PostgreSQL jsonb::text (spaces and expanded exponents)
+// while inspecting descriptors without executing accessors or proxies. Merging
+// the serializers would change existing checksums or their accepted byte limits.
 function canonicalJson(
   value: unknown,
   maximumBytes: number,
@@ -300,18 +295,15 @@ export function serializeBoundedPlainJson(
   }
 }
 
-export type OutboxEventInput = Readonly<z.input<typeof outboxEventInputSchema>>;
-export type InsertedOutboxEvent = Readonly<{
-  id: string;
-  workspaceId: string;
-  availableAt: Date;
-}>;
+export type InsertedOutboxEvent = Readonly<
+  Pick<typeof outboxEvents.$inferSelect, 'id' | 'workspaceId' | 'availableAt'>
+>;
 
 export async function insertOutboxEvent(
   transaction: WorkspaceTransaction,
   input: OutboxEventInput,
 ): Promise<InsertedOutboxEvent> {
-  const parsed = outboxEventInputSchema.parse(input);
+  const parsed = input;
   const canonicalPayload = canonicalJson(parsed.payload, OUTBOX_PAYLOAD_BYTES, {
     maximumDatabaseBytes: OUTBOX_PAYLOAD_BYTES,
     label: 'outbox payload',
@@ -332,7 +324,7 @@ export async function insertOutboxEvent(
       jobName: parsed.jobName,
       aggregateType: parsed.aggregateType,
       aggregateId: parsed.aggregateId,
-      payload: JSON.parse(canonicalPayload) as JsonValue,
+      payload: sql`${canonicalPayload}::jsonb`,
       payloadChecksum: parsed.payloadChecksum,
       ...(parsed.availableAt === undefined
         ? {}

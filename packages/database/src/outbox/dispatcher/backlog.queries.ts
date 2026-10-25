@@ -3,7 +3,6 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import { outboxEvents } from '../../schema/transport.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { observeBacklogInputSchema } from './input.js';
 import type {
   ObserveOutboxBacklogInput,
   OutboxBacklogSnapshot,
@@ -13,9 +12,7 @@ export async function observeOutboxBacklog(
   pool: Pool,
   input: ObserveOutboxBacklogInput,
 ): Promise<OutboxBacklogSnapshot> {
-  const parsed = observeBacklogInputSchema.parse({
-    enabledJobNames: [...input.enabledJobNames],
-  });
+  const parsed = input;
   if (parsed.enabledJobNames.length === 0) return Object.freeze({ backlog: 0 });
   const [row] = await drizzle(pool)
     .select({

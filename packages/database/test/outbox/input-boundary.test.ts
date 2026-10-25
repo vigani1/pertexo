@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { canonicalJson } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,7 +12,7 @@ import { parseDatabaseConfig } from '../../src/config.js';
 const checksum = 'a'.repeat(64);
 
 describe('transport persistence input boundary', () => {
-  it('holds all work for an empty allowlist and rejects duplicates before querying PostgreSQL', async () => {
+  it('holds all work for an empty allowlist before querying PostgreSQL', async () => {
     const dispatcher = createOutboxDispatcherDatabase(
       parseDatabaseConfig({
         connectionString:
@@ -33,11 +35,6 @@ describe('transport persistence input boundary', () => {
     await expect(
       dispatcher.observeBacklog({ enabledJobNames: [] }),
     ).resolves.toEqual({ backlog: 0 });
-    await expect(
-      dispatcher.observeBacklog({
-        enabledJobNames: ['advance-workflow-run', 'advance-workflow-run'],
-      }),
-    ).rejects.toThrow();
 
     await dispatcher.close();
   });
@@ -174,4 +171,16 @@ describe('transport persistence input boundary', () => {
       'outbox payload checksum does not match its canonical JSON',
     );
   });
+});
+
+it('preserves legacy outbox integer-key ordering instead of changing stored checksums', () => {
+  const payload = { '2': 'two', '10': 'ten' };
+  const legacyText = '{"10":"ten","2":"two"}';
+  expect(canonicalOutboxPayloadChecksum(payload)).toBe(
+    createHash('sha256').update(legacyText).digest('hex'),
+  );
+  expect(canonicalJson(payload)).toBe('{"2":"two","10":"ten"}');
+  expect(canonicalOutboxPayloadChecksum(payload)).not.toBe(
+    createHash('sha256').update(canonicalJson(payload)).digest('hex'),
+  );
 });

@@ -1,8 +1,7 @@
+import type { NodeAttemptRunStore } from '../contract.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import type { z } from 'zod';
-import type { loadInputsSchema } from '../validation/delivery.js';
 import {
   nodeRuns,
   nodeAttempts,
@@ -14,7 +13,7 @@ import { pendingRunTasks } from '../../schema/runs/pending-task.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { runAbortState } from '../queries/control.js';
 
-type Input = z.output<typeof loadInputsSchema>;
+type Input = Parameters<NodeAttemptRunStore['loadInputs']>[0];
 
 export async function readLeasedInputs(client: PoolClient, { lease }: Input) {
   return drizzle(client)

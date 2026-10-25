@@ -1,3 +1,4 @@
+import type { NodeAttemptRunStore } from '../contract.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -7,21 +8,15 @@ import {
 } from '../../schema/transport.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { createHash } from 'node:crypto';
-
 import { generatePersistedId } from '../../platform/persisted-id.js';
-
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
-
 import {
   DeliveryMismatch,
   NodeAttemptDeliveryMismatchError,
   NodeAttemptStateCorruptError,
 } from '../errors.js';
-import {
-  attemptJobPayloadSchema,
-  type claimDeliverySchema,
-} from '../validation/delivery.js';
+import { attemptJobPayloadSchema } from '../validation/delivery.js';
 import type { NodeAttemptDelivery } from '../contract.js';
 import { withWorkspaceWriteClient } from '../transactions.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
@@ -30,7 +25,7 @@ export const nodeAttemptConsumerName = 'node-attempt-worker';
 
 export async function validateDelivery(
   client: PoolClient,
-  input: z.output<typeof claimDeliverySchema>,
+  input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
 ): Promise<void> {
   const result = await drizzle(client)
     .select({

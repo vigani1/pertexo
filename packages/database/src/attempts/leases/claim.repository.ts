@@ -6,15 +6,12 @@ import { appendAttemptEvent } from '../events.repository.js';
 import { lockClaimCandidate } from './candidates.repository.js';
 import type { Pool } from 'pg';
 import type { z } from 'zod';
-
 import {
   DeliveryMismatch,
-  NodeAttemptDeliveryMismatchError,
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
 } from '../errors.js';
 import { branchContextSchema } from '../validation/shared.js';
-import { claimDeliverySchema } from '../validation/delivery.js';
 import type {
   NodeAttemptClaimResult,
   NodeAttemptLease,
@@ -36,12 +33,7 @@ export async function claimNodeAttemptDelivery(
   inputValue: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
 ): Promise<NodeAttemptClaimResult> {
   assertNotAborted(inputValue.signal);
-  let input: z.output<typeof claimDeliverySchema>;
-  try {
-    input = claimDeliverySchema.parse(inputValue);
-  } catch {
-    throw new NodeAttemptDeliveryMismatchError();
-  }
+  const input = inputValue;
   try {
     return await withWorkspaceWriteClient(
       pool,
@@ -161,7 +153,7 @@ export async function claimNodeAttemptDelivery(
 }
 
 function claimedAttemptLease(
-  input: z.output<typeof claimDeliverySchema>,
+  input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
   {
     row,
     runRow,

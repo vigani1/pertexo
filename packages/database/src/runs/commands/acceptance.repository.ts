@@ -6,7 +6,6 @@ import { variableRevisionForAcceptance } from './variables.repository.js';
 import { requireFormAdmission } from './forms.queries.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { lockExecutionArtifactReferences } from '../../artifacts/references/repository.js';
-
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
@@ -19,13 +18,9 @@ import {
   workflowRuns,
 } from '../../schema.js';
 import { prepareStoredExecutionValue } from '../../platform/stored-execution-value.js';
-
 import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/policies/admission.queries.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-
 import { prepareWorkflowRunAcceptanceInput } from './acceptance-input.js';
-
-import { acceptWorkflowRunInputSchema } from './acceptance/input.js';
 import { RUN_STATUS, IDEMPOTENCY_STATUS } from './acceptance/vocabulary.js';
 import type {
   AcceptWorkflowRunInput,
@@ -61,7 +56,7 @@ export async function acceptWorkflowRun(
   input: AcceptWorkflowRunInput,
   preparation?: PreparedWorkflowRunAcceptance,
 ): Promise<AcceptedWorkflowRun> {
-  const parsed = acceptWorkflowRunInputSchema.parse(input);
+  const parsed = input;
   const preparedRunInput =
     parsed.runInput === undefined
       ? null
@@ -187,7 +182,7 @@ export async function acceptWorkflowRun(
   });
 }
 
-type ParsedRunInput = ReturnType<typeof acceptWorkflowRunInputSchema.parse>;
+type ParsedRunInput = AcceptWorkflowRunInput;
 type RunAdmissionState = Readonly<{
   prepared: PreparedWorkflowRunAcceptance;
   runId: string;

@@ -14,8 +14,6 @@ import { workflowRuns } from '../../../schema/runs/execution.js';
 import { alias } from 'drizzle-orm/pg-core';
 import { workflowGraphStepSql } from '../execution/graph-step.js';
 import type { Pool } from 'pg';
-import { z } from 'zod';
-
 import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
 import {
   parseStoredExecutionValue,
@@ -40,24 +38,22 @@ export type WorkflowRunFailedStep = Readonly<{
   safeErrorCode: string | null;
 }>;
 
-const runDataInputSchema = z
-  .object({
-    workspaceId: z.uuid(),
-    actorId: z.uuid(),
-    runId: z.uuid(),
-    signal: z.instanceof(AbortSignal).optional(),
-  })
-  .strict();
-const nodeRunDataInputSchema = runDataInputSchema
-  .extend({ nodeRunId: z.uuid() })
-  .strict();
+interface RunDataInput {
+  workspaceId: string;
+  actorId: string;
+  runId: string;
+  signal?: AbortSignal | undefined;
+}
+interface NodeRunDataInput {
+  workspaceId: string;
+  actorId: string;
+  runId: string;
+  nodeRunId: string;
+  signal?: AbortSignal | undefined;
+}
 
-export type ReadWorkflowRunInputInput = Readonly<
-  z.input<typeof runDataInputSchema>
->;
-export type ReadWorkflowNodeRunOutputInput = Readonly<
-  z.input<typeof nodeRunDataInputSchema>
->;
+export type ReadWorkflowRunInputInput = Readonly<RunDataInput>;
+export type ReadWorkflowNodeRunOutputInput = Readonly<NodeRunDataInput>;
 
 function toRunData(stored: unknown): WorkflowRunData {
   const value = parseStoredExecutionValue(stored);
@@ -71,7 +67,7 @@ export async function readWorkflowRunInput(
   pool: Pool,
   input: ReadWorkflowRunInputInput,
 ): Promise<WorkflowRunData | undefined> {
-  const parsed = runDataInputSchema.parse(input);
+  const parsed = input;
   return withResourceRunRead(pool, parsed, (transaction) =>
     runInputInTransaction(transaction, parsed.runId),
   );
@@ -85,7 +81,7 @@ export async function readWorkflowNodeRunInput(
   pool: Pool,
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<WorkflowRunData | undefined> {
-  const parsed = nodeRunDataInputSchema.parse(input);
+  const parsed = input;
   return withResourceRunRead(pool, parsed, (transaction) =>
     nodeRunValueInTransaction(
       transaction,
@@ -101,7 +97,7 @@ export async function readWorkflowNodeRunOutput(
   pool: Pool,
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<WorkflowRunData | undefined> {
-  const parsed = nodeRunDataInputSchema.parse(input);
+  const parsed = input;
   return withResourceRunRead(pool, parsed, (transaction) =>
     nodeRunValueInTransaction(
       transaction,
@@ -249,7 +245,7 @@ export async function readWorkflowRunVariables(
   pool: Pool,
   input: ReadWorkflowRunInputInput,
 ): Promise<WorkspaceVariableSnapshot | null | undefined> {
-  const parsed = runDataInputSchema.parse(input);
+  const parsed = input;
   return withResourceRunRead(pool, parsed, async (transaction) => {
     const run = alias(workflowRuns, 'run');
     const [row] = await transaction.db
@@ -283,7 +279,7 @@ export async function readWorkflowNodeRunDiagnostics(
   pool: Pool,
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<CodeDiagnostics | null | undefined> {
-  const parsed = nodeRunDataInputSchema.parse(input);
+  const parsed = input;
   return withResourceRunRead(pool, parsed, async (transaction) => {
     const node = alias(nodeRuns, 'node');
     const run = alias(workflowRuns, 'run');

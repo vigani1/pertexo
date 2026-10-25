@@ -1,50 +1,31 @@
-import type { z } from 'zod';
-
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-
 import type { OperatorDecision } from './handlers/contract.js';
 import type {
-  redispatchInputSchema,
-  reconcileAttemptInputSchema,
-  targetRunInputSchema,
-  targetWorkflowInputSchema,
-  replayRunInputSchema,
-  unknownEvidenceInputSchema,
-  getCommandInputSchema,
-  optionsSchema,
+  RedispatchInput,
+  ReconcileAttemptInput,
+  TargetRunInput,
+  TargetWorkflowInput,
+  ReplayRunInput,
+  UnknownEvidenceInput,
+  GetCommandInput,
+  Options,
 } from './input.js';
 
-export type OperatorCommandDatabaseOptions = Readonly<
-  z.input<typeof optionsSchema>
->;
+export type OperatorCommandDatabaseOptions = Readonly<Options>;
 
-export type RedispatchFailedOutboxInput = Readonly<
-  z.input<typeof redispatchInputSchema>
->;
+export type RedispatchFailedOutboxInput = Readonly<RedispatchInput>;
 
-export type ReconcileOperatorAttemptInput = Readonly<
-  z.input<typeof reconcileAttemptInputSchema>
->;
+export type ReconcileOperatorAttemptInput = Readonly<ReconcileAttemptInput>;
 
-export type OperatorRunCommandInput = Readonly<
-  z.input<typeof targetRunInputSchema>
->;
+export type OperatorRunCommandInput = Readonly<TargetRunInput>;
 
-export type OperatorWorkflowCommandInput = Readonly<
-  z.input<typeof targetWorkflowInputSchema>
->;
+export type OperatorWorkflowCommandInput = Readonly<TargetWorkflowInput>;
 
-export type ReplayOperatorRunInput = Readonly<
-  z.input<typeof replayRunInputSchema>
->;
+export type ReplayOperatorRunInput = Readonly<ReplayRunInput>;
 
-export type RecordUnknownOutcomeEvidenceInput = Readonly<
-  z.input<typeof unknownEvidenceInputSchema>
->;
+export type RecordUnknownOutcomeEvidenceInput = Readonly<UnknownEvidenceInput>;
 
-export type GetOperatorCommandInput = Readonly<
-  z.input<typeof getCommandInputSchema>
->;
+export type GetOperatorCommandInput = Readonly<GetCommandInput>;
 
 type CommandStatus = 'completed' | 'failed' | 'pending';
 
@@ -79,6 +60,7 @@ export type OperatorCommandResult = Readonly<{
   status: CommandStatus;
 }>;
 
+// Read projection combines stored columns with computed or joined fields.
 export type OperatorCommandRecord = Readonly<{
   commandId: string;
   commandType: OperatorCommandType;

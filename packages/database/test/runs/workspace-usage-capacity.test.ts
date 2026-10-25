@@ -107,12 +107,6 @@ describe('workspace capacity snapshot', () => {
     );
     expect(fixture.query).toHaveBeenCalledTimes(1);
   });
-  it('validates scope before opening a transaction', async () => {
-    await expect(
-      readWorkspaceUsageCapacity(pool, { workspaceId: 'invalid' }),
-    ).rejects.toThrow();
-    expect(fixture.transaction).not.toHaveBeenCalled();
-  });
   it('does not turn missing authority into default execution limits', async () => {
     fixture.query.mockResolvedValue({
       rows: [

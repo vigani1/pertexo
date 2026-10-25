@@ -1,14 +1,8 @@
-import { acceptanceReplayInputSchema } from './input.js';
 import type { WorkflowRunAcceptanceReplayInput } from './contract.js';
 import { and, eq } from 'drizzle-orm';
-
-import type { z } from 'zod';
-
 import { idempotencyRecords, workflowRuns } from '../../../schema.js';
-
 import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
-
-import type { acceptWorkflowRunInputSchema } from './input.js';
+import type { AcceptanceInput } from './input.js';
 import { resultRefSchema } from './receipt.js';
 import { IDEMPOTENCY_STATUS } from './vocabulary.js';
 import type { AcceptedWorkflowRun } from './contract.js';
@@ -24,7 +18,7 @@ type ReplayValidation =
 export async function readExistingAcceptance(
   transaction: WorkspaceTransaction,
   input: Pick<
-    z.output<typeof acceptWorkflowRunInputSchema>,
+    AcceptanceInput,
     'keyHash' | 'operation' | 'requestHash' | 'scope'
   >,
   replayValidation: ReplayValidation,
@@ -94,6 +88,6 @@ export async function readWorkflowRunAcceptanceReplay(
   transaction: WorkspaceTransaction,
   input: WorkflowRunAcceptanceReplayInput,
 ): Promise<AcceptedWorkflowRun | null> {
-  const parsed = acceptanceReplayInputSchema.parse(input);
+  const parsed = input;
   return readExistingAcceptance(transaction, parsed, { kind: 'request_only' });
 }

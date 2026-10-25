@@ -1,19 +1,14 @@
-import type { startInputSchema } from './input.js';
-import type { replayInputSchema } from './input.js';
-import type { cancelInputSchema } from './input.js';
-import type { recoveryPreviewInputSchema } from './input.js';
-import type { recoveryInputSchema } from './input.js';
+import type { StartInput } from './input.js';
+import type { ReplayInput } from './input.js';
+import type { CancelInput } from './input.js';
+import type { RecoveryPreviewInput } from './input.js';
+import type { RecoveryInput } from './input.js';
 import type { UsageTrendsInput } from '../queries/usage-trends.queries.js';
 import type { UsageTrendsResponse } from '@pertexo/contracts';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
-
-import type { z } from 'zod';
-
 import type { WorkflowRecoveryPreview } from '../recovery/contract.js';
-
 import type { WorkflowRunRecord } from './records.repository.js';
-
 import type {
   ListWorkflowRunsDatabaseInput,
   WorkflowRunListPage,
@@ -42,25 +37,15 @@ import type {
   WorkspaceUsageCapacityRecord,
 } from '../queries/usage-capacity.queries.js';
 
-export type WorkflowRecoveryPreviewInput = Readonly<
-  z.input<typeof recoveryPreviewInputSchema>
->;
+export type WorkflowRecoveryPreviewInput = Readonly<RecoveryPreviewInput>;
 
-export type RecoverPublishedWorkflowRunInput = Readonly<
-  z.input<typeof recoveryInputSchema>
->;
+export type RecoverPublishedWorkflowRunInput = Readonly<RecoveryInput>;
 
-export type StartPublishedWorkflowRunInput = Readonly<
-  z.input<typeof startInputSchema>
->;
+export type StartPublishedWorkflowRunInput = Readonly<StartInput>;
 
-export type ReplayPublishedWorkflowRunInput = Readonly<
-  z.input<typeof replayInputSchema>
->;
+export type ReplayPublishedWorkflowRunInput = Readonly<ReplayInput>;
 
-export type CancelWorkflowRunInput = Readonly<
-  z.input<typeof cancelInputSchema>
->;
+export type CancelWorkflowRunInput = Readonly<CancelInput>;
 
 export interface WorkflowRunDatabase {
   canRead(

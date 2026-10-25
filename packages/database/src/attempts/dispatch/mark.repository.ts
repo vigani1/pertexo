@@ -14,14 +14,10 @@ import {
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { EXECUTION_SOURCE_SQL } from '../../runs/queries/execution/source.queries.js';
 import type { Pool, PoolClient } from 'pg';
-import type { z } from 'zod';
-
-import { dispatchSchema } from '../validation/delivery.js';
 import {
   NodeAttemptConnectionFenceError,
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptReconciliationRequiredError,
-  NodeAttemptStateCorruptError,
 } from '../errors.js';
 import type { NodeAttemptRunStore } from '../contract.js';
 import {
@@ -35,12 +31,7 @@ export async function markNodeAttemptDispatched(
   inputValue: Parameters<NodeAttemptRunStore['markDispatched']>[0],
 ): Promise<Readonly<{ dispatchedAt: Date }>> {
   assertNotAborted(inputValue.signal);
-  let input: z.output<typeof dispatchSchema>;
-  try {
-    input = dispatchSchema.parse(inputValue);
-  } catch {
-    throw new NodeAttemptStateCorruptError();
-  }
+  const input = inputValue;
   return withWorkspaceWriteClient(
     pool,
     input.lease.workspaceId,
@@ -162,7 +153,7 @@ export async function markNodeAttemptDispatched(
 
 async function persistSlackDispatch(
   client: PoolClient,
-  input: z.output<typeof dispatchSchema>,
+  input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
 ): Promise<void> {
   const db = drizzle(client);
   const lease = input.lease;

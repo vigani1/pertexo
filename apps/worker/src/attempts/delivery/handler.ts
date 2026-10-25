@@ -1,3 +1,4 @@
+import { executorFailureCompletion } from './executor-failure.js';
 import { codeCompletionFields } from '../code/diagnostics.js';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
 import type {
@@ -119,19 +120,7 @@ async function executePreparedNodeAttempt(
         ...connectionHealthCompletionFields(environment),
         ...codeCompletionFields(environment),
         lease,
-        outcome: {
-          status: 'executor_failure',
-          failureKind: error.kind,
-          ...(error.minimumRetryDelayMillis === undefined
-            ? {}
-            : { minimumRetryDelayMillis: error.minimumRetryDelayMillis }),
-          errorKind: error.errorKind,
-          possiblyDispatched: error.possiblyDispatched,
-          safeErrorCode: error.safeErrorCode ?? `execution.${error.errorKind}`,
-          ...(error.errorSummary === undefined
-            ? {}
-            : { errorSummary: error.errorSummary }),
-        },
+        outcome: executorFailureCompletion(error),
         ...traceContext,
         signal: contextSignal,
       });

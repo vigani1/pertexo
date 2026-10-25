@@ -10,7 +10,6 @@ import {
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
-import { errorWorkflowDeliveryInputSchema } from './input.js';
 import { ErrorWorkflowDeliveryMismatchError } from './errors.js';
 import type { ErrorWorkflowStore } from './contract.js';
 import { acceptErrorWorkflow } from './accept.repository.js';
@@ -25,7 +24,7 @@ export function createErrorWorkflowStore(
   return Object.freeze({
     close: () => lease.close(),
     dispatch: async (raw) => {
-      const input = errorWorkflowDeliveryInputSchema.parse(raw);
+      const input = raw;
       await withTenantScopedClient(
         lease.pool,
         { workspaceId: input.workspaceId },

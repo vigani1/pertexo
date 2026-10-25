@@ -1,11 +1,7 @@
-import type { errorWorkflowDeliveryInputSchema } from './input.js';
-import type { z } from 'zod';
-export type ErrorWorkflowDeliveryInput = z.infer<
-  typeof errorWorkflowDeliveryInputSchema
->;
+import type { ErrorWorkflowDeliveryInput as DeliveryInput } from './input.js';
+
+export type ErrorWorkflowDeliveryInput = DeliveryInput;
 export interface ErrorWorkflowStore {
-  dispatch(
-    input: z.infer<typeof errorWorkflowDeliveryInputSchema>,
-  ): Promise<void>;
+  dispatch(input: ErrorWorkflowDeliveryInput): Promise<void>;
   close(): Promise<void>;
 }
