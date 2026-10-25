@@ -310,12 +310,23 @@ for (const [width, height] of viewports)
       ];
       for (const [name, path] of screens) {
         await page.goto(path);
-        if (name === 'settings-usage')
-          await expect(
-            page
-              .getByRole('region', { name: 'Current capacity' })
-              .getByText('Runs at once', { exact: true }),
-          ).toBeVisible();
+        if (name === 'settings-usage') {
+          const capacity = page.getByRole('region', {
+            name: 'Current capacity',
+          });
+          for (const title of ['Runs at once', 'Storage']) {
+            const heading = capacity.getByRole('heading', {
+              name: title,
+              exact: true,
+            });
+            await expect(heading).toBeVisible();
+            expect(
+              await heading.evaluate(
+                (element) => element.getBoundingClientRect().height,
+              ),
+            ).toBeLessThanOrEqual(24);
+          }
+        }
         await shot(name);
       }
       await page.goto(`${root}/workflows`);
