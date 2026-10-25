@@ -1,20 +1,28 @@
-import type { USER_STATUS, WORKSPACE_STATUS } from './state.js';
-import type { Role, DelegatedRole } from '@pertexo/workflow-model';
 import type { DirectoryMembershipSource } from '@pertexo/contracts';
+import type { DelegatedRole, Role } from '@pertexo/workflow-model';
 import type { WorkspaceLifecycleOperation } from '../lifecycle/deletion/contract.js';
+import type {
+  users,
+  workspaceInvitations,
+  workspaces,
+} from '../schema/foundation.js';
+import type { USER_STATUS, WORKSPACE_STATUS } from './state.js';
 export type UserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
 export type WorkspaceStatus =
   (typeof WORKSPACE_STATUS)[keyof typeof WORKSPACE_STATUS];
 
-export type UserRecord = Readonly<{
-  id: string;
-  email: string;
-  displayName: string;
-  status: UserStatus;
-  profileRevision: number;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
+export type UserRecord = Readonly<
+  Pick<
+    typeof users.$inferSelect,
+    | 'id'
+    | 'email'
+    | 'displayName'
+    | 'status'
+    | 'profileRevision'
+    | 'createdAt'
+    | 'updatedAt'
+  >
+>;
 export type UpdateUserProfileInput = Readonly<{
   actorUserId: string;
   displayName: string;
@@ -26,25 +34,28 @@ export type UserProfileUpdateResult = Readonly<{
   changed: boolean;
   replayed: boolean;
 }>;
-export type WorkspaceRecord = Readonly<{
-  id: string;
-  name: string;
-  slug: string;
-  status: WorkspaceStatus;
-  revision: number;
-  createdBy: string;
-  deletionRequestedAt: Date | null;
-  deletionRequestedBy: string | null;
-  deletionReason: string | null;
-  purgeAfter: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
+export type WorkspaceRecord = Readonly<
+  Pick<
+    typeof workspaces.$inferSelect,
+    | 'id'
+    | 'name'
+    | 'slug'
+    | 'status'
+    | 'revision'
+    | 'deletionRequestedAt'
+    | 'deletionRequestedBy'
+    | 'deletionReason'
+    | 'purgeAfter'
+    | 'createdAt'
+    | 'updatedAt'
+  > & { createdBy: NonNullable<typeof workspaces.$inferSelect.createdBy> }
+>;
 export type CreateUserInput = Readonly<{
   id?: string;
   email: string;
   displayName: string;
 }>;
+// Actor membership joined to the current workspace status.
 export type WorkspaceAccessRecord = Readonly<{
   actorId: string;
   workspaceId: string;
@@ -52,6 +63,7 @@ export type WorkspaceAccessRecord = Readonly<{
   membershipStatus: 'active' | 'suspended' | 'removed';
   workspaceStatus: WorkspaceStatus;
 }>;
+// Membership joined to the user profile and optional directory provenance.
 export type WorkspaceMemberRecord = Readonly<{
   userId: string;
   email: string;
@@ -118,18 +130,20 @@ export type WorkspaceInvitationStatus =
   'pending' | 'accepted' | 'revoked' | 'expired';
 export type WorkspaceInvitationDeliveryStatus =
   'queued' | 'submitted' | 'failed' | 'canceled';
-export type WorkspaceInvitationRecord = Readonly<{
-  id: string;
-  workspaceId: string;
-  email: string;
-  role: DelegatedRole;
-  status: WorkspaceInvitationStatus;
-  revision: number;
-  deliveryStatus: WorkspaceInvitationDeliveryStatus;
-  expiresAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
+export type WorkspaceInvitationRecord = Readonly<
+  Pick<
+    typeof workspaceInvitations.$inferSelect,
+    | 'id'
+    | 'workspaceId'
+    | 'role'
+    | 'status'
+    | 'revision'
+    | 'deliveryStatus'
+    | 'expiresAt'
+    | 'createdAt'
+    | 'updatedAt'
+  > & { email: typeof workspaceInvitations.$inferSelect.recipientEmail }
+>;
 export type SealedInvitationToken = Readonly<{
   ciphertext: string;
   nonce: string;
@@ -170,6 +184,7 @@ export type WorkspaceInvitationsPage = Readonly<{
   items: readonly WorkspaceInvitationRecord[];
   nextCursor?: Readonly<{ createdAt: string; invitationId: string }>;
 }>;
+// Intent joined to workspace, invitation and recipient receipt data.
 export type InvitationAcceptanceIntentRecord = Readonly<{
   id: string;
   workspaceId: string;
@@ -238,6 +253,7 @@ export type InvitationAcceptanceResult = Readonly<{
   replayed: boolean;
   replacementSessionCreated: boolean;
 }>;
+// Workspace joined to the actor membership, narrowed to discoverable statuses.
 export type AccessibleWorkspaceRecord = Readonly<{
   id: string;
   name: string;

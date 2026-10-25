@@ -1,8 +1,14 @@
-import { updateMembership } from './records.repository.js';
-import { canTransferRecoveryOwnership } from '../../identity/federation/sessions/recovery.queries.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
+import { canTransferRecoveryOwnership } from '../../identity/federation/sessions/recovery.queries.js';
+import { updateMembership } from './records.repository.js';
 
+import {
+  canLeaveWorkspace,
+  canSuspendWorkspaceMember,
+  canTransferWorkspaceOwnership,
+} from '@pertexo/workflow-model';
+import { commandRevisionSchema } from '../command-keys.js';
 import type {
   IdentityWorkspaceDatabase,
   LeaveWorkspaceInput,
@@ -13,7 +19,7 @@ import {
   WorkspaceMembershipCommandConflictError,
   type WorkspaceMembershipCommandConflictReason,
 } from '../errors.js';
-import { commandRevisionSchema } from '../command-keys.js';
+import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,
   isActiveMemberManager,
@@ -21,12 +27,6 @@ import {
   type AdmittedMemberCommand,
   type LockedMember,
 } from './commands.repository.js';
-import { revokeUserSessions } from '../users/sessions.repository.js';
-import {
-  canLeaveWorkspace,
-  canSuspendWorkspaceMember,
-  canTransferWorkspaceOwnership,
-} from '@pertexo/workflow-model';
 
 type MembershipLifecycleStore = Pick<
   IdentityWorkspaceDatabase,
@@ -168,9 +168,7 @@ function changeMemberStatus(
   direction: keyof typeof STATUS_CHANGES,
 ) {
   const change = STATUS_CHANGES[direction];
-  const expectedRoleRevision = commandRevisionSchema.parse(
-    raw.expectedRoleRevision,
-  );
+  const expectedRoleRevision = raw.expectedRoleRevision;
   return executeMemberCommand(pool, {
     operation: 'workspace.member.suspension',
     workspaceId: raw.workspaceId,
@@ -237,12 +235,8 @@ function transferWorkspaceOwnership(
   pool: Pool,
   raw: TransferWorkspaceOwnershipInput,
 ) {
-  const expectedRoleRevision = commandRevisionSchema.parse(
-    raw.expectedRoleRevision,
-  );
-  const expectedOwnerRoleRevision = commandRevisionSchema.parse(
-    raw.expectedOwnerRoleRevision,
-  );
+  const expectedRoleRevision = raw.expectedRoleRevision;
+  const expectedOwnerRoleRevision = raw.expectedOwnerRoleRevision;
   return executeMemberCommand(pool, {
     operation: 'workspace.ownership.transfer',
     workspaceId: raw.workspaceId,

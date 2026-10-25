@@ -1,48 +1,40 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaceInvitations as invitations } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { Pool } from 'pg';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { workspaceInvitations as invitations } from '../../../schema/foundation.js';
 
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
 
-import { expireWorkspaceInvitations } from '../expiration.repository.js';
-import {
-  parseIdentityUuid,
-  readIdentityDatabaseErrorCode,
-} from '../../support.js';
 import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
+import { readIdentityDatabaseErrorCode } from '../../support.js';
 import { withTenantScopedClient } from '../../transactions.js';
-import type { InvitationStore } from './contract.js';
-import { delegatedRole, digest, sealedToken } from '../input.js';
+import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import { normalizeEmail } from '../input.js';
-import { lockAuthorizedActor, invitationSelection } from './state.queries.js';
+import type { InvitationStore } from './contract.js';
 import {
-  invitationKey,
   claimInvitationCommand,
   completeInvitationCommand,
   insertDelivery,
+  invitationKey,
   recordAudit,
 } from './receipts.repository.js';
+import { invitationSelection, lockAuthorizedActor } from './state.queries.js';
 
 export async function createWorkspaceInvitation(
   pool: Pool,
   raw: Parameters<InvitationStore['createWorkspaceInvitation']>[0],
 ): ReturnType<InvitationStore['createWorkspaceInvitation']> {
-  const workspaceId = parseIdentityUuid(raw.workspaceId);
-  const actorUserId = parseIdentityUuid(raw.actorUserId);
-  const invitationId = parseIdentityUuid(
-    raw.invitationId ?? generatePersistedId(),
-  );
-  const deliveryAttemptId = parseIdentityUuid(
-    raw.deliveryAttemptId ?? generatePersistedId(),
-  );
+  const workspaceId = raw.workspaceId;
+  const actorUserId = raw.actorUserId;
+  const invitationId = raw.invitationId ?? generatePersistedId();
+  const deliveryAttemptId = raw.deliveryAttemptId ?? generatePersistedId();
   const email = normalizeEmail(raw.email);
-  const role = delegatedRole.parse(raw.role);
-  const tokenDigest = digest.parse(raw.tokenDigest);
-  const sealed = sealedToken.parse(raw.sealedToken);
+  const role = raw.role;
+  const tokenDigest = raw.tokenDigest;
+  const sealed = raw.sealedToken;
   if (!(raw.expiresAt instanceof Date) || raw.expiresAt.getTime() <= Date.now())
     throw new Error('Invitation expiry must be in the future');
   return withTenantScopedClient(

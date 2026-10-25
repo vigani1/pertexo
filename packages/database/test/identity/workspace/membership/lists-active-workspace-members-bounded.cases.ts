@@ -13,7 +13,6 @@ import {
   identityDatabase,
   tenantDatabase,
   ownerUserId,
-  workspaceId,
 } from '../fixture.js';
 
 export function registerListsActiveWorkspaceMembersBounded(): void {
@@ -147,19 +146,4 @@ export function registerListsActiveWorkspaceMembersBounded(): void {
       );
     }
   });
-
-  it.each([
-    '2026-99-99T99:99:99.000000Z',
-    '2026-02-30T12:00:00.000000Z',
-    '0000-01-01T00:00:00.000000Z',
-  ])(
-    'rejects malformed member cursor timestamp %s before SQL',
-    async (createdAt) => {
-      await expect(
-        identityDatabase.listWorkspaceMembers(workspaceId, ownerUserId, {
-          after: { createdAt, userId: ownerUserId },
-        }),
-      ).rejects.toMatchObject({ name: 'ZodError' });
-    },
-  );
 }

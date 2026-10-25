@@ -1,15 +1,14 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { users } from '../../schema/foundation.js';
-import { userProfileCommandReceipts } from '../../schema/authentication.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { userProfileCommandReceipts } from '../../schema/authentication.js';
+import { users } from '../../schema/foundation.js';
 
 import { recordIdentitySecurityFact } from '../../identity/facts.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import {
-  commandKeySchema,
   commandRevisionSchema,
   hashFlatIdentityCommand,
   hashIdentityCommandKey,
@@ -21,9 +20,8 @@ import type {
   UserRecord,
 } from '../contract.js';
 import { UserProfileCommandConflictError } from '../errors.js';
-import { userRecord, userSelection } from './projection.js';
-import { parseIdentityUuid } from '../support.js';
 import { withPlatformTransaction } from '../transactions.js';
+import { userRecord, userSelection } from './projection.js';
 
 type ProfileStore = Pick<IdentityWorkspaceDatabase, 'updateUserProfile'>;
 
@@ -108,14 +106,10 @@ export function createIdentityWorkspaceProfileStore(pool: Pool): ProfileStore {
     updateUserProfile: async (
       raw: UpdateUserProfileInput,
     ): Promise<UserProfileUpdateResult> => {
-      const actorUserId = parseIdentityUuid(raw.actorUserId);
-      const displayName = displayNameSchema.parse(raw.displayName);
-      const expectedRevision = commandRevisionSchema.parse(
-        raw.expectedRevision,
-      );
-      const keyHash = hashIdentityCommandKey(
-        commandKeySchema.parse(raw.idempotencyKey),
-      );
+      const actorUserId = raw.actorUserId;
+      const displayName = raw.displayName;
+      const expectedRevision = raw.expectedRevision;
+      const keyHash = hashIdentityCommandKey(raw.idempotencyKey);
       const requestHash = hashFlatIdentityCommand({
         actorUserId,
         displayName,
@@ -184,7 +178,7 @@ export function createIdentityWorkspaceProfileStore(pool: Pool): ProfileStore {
           .update(userProfileCommandReceipts)
           .set({
             status: 'completed',
-            resultRef: sql`${JSON.stringify(durableResult.parse({ displayName: user.displayName, profileRevision: user.profileRevision, updatedAt: user.updatedAt.toISOString(), changed }))}::jsonb`,
+            resultRef: sql`${JSON.stringify({ displayName: user.displayName, profileRevision: user.profileRevision, updatedAt: user.updatedAt.toISOString(), changed })}::jsonb`,
             updatedAt: sql`clock_timestamp()`,
           })
           .where(

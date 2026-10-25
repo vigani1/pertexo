@@ -86,12 +86,8 @@ describe('self-service display name (ADR 043)', () => {
     await expect(profileFacts(user.id)).resolves.toHaveLength(1);
   });
 
-  it('rejects inactive users and names outside the contract', async () => {
+  it('rejects inactive users', async () => {
     const user = await database.user('Validated Name');
-    for (const displayName of ['   ', 'x'.repeat(129), 'Line\nBreak'])
-      await expect(
-        database.identity().updateUserProfile(rename(user.id, displayName)),
-      ).rejects.toBeDefined();
     await database.asAdmin(
       `update app.users set status='suspended' where id=$1`,
       [user.id],

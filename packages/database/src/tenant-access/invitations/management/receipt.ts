@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { delegatedRole, revision } from '../input.js';
 import type { WorkspaceInvitationRecord } from '../../contract.js';
+import { delegatedRole, revision } from '../input.js';
 
 export const durableInvitation = z
   .object({
@@ -22,12 +22,12 @@ export const durableResult = z
   .strict();
 
 export function serializeInvitation(invitation: WorkspaceInvitationRecord) {
-  return durableInvitation.parse({
+  return {
     ...invitation,
     expiresAt: invitation.expiresAt.toISOString(),
     createdAt: invitation.createdAt.toISOString(),
     updatedAt: invitation.updatedAt.toISOString(),
-  });
+  };
 }
 
 export function mapDurableInvitation(

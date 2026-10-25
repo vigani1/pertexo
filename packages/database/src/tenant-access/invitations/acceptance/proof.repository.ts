@@ -1,23 +1,20 @@
-import { alias } from 'drizzle-orm/pg-core';
 import { and, eq, getTableName, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import type { Pool } from 'pg';
+import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.repository.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
   workspaceInvitationAcceptanceIntents as intents,
   workspaceInvitations as invitations,
 } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.repository.js';
-import type { Pool } from 'pg';
-import { z } from 'zod';
 
-import { parseIdentityUuid } from '../../support.js';
 import {
-  withTenantScopedClient,
   withPlatformTransaction,
+  withTenantScopedClient,
   withWorkspaceScope,
 } from '../../transactions.js';
 import type { AcceptanceStore } from './contract.js';
-import { digest } from '../input.js';
 import { selectIntent } from './state.queries.js';
 
 export async function readInvitationAcceptance(
@@ -27,8 +24,8 @@ export async function readInvitationAcceptance(
     AcceptanceStore['readInvitationAcceptance']
   >[1],
 ): ReturnType<AcceptanceStore['readInvitationAcceptance']> {
-  const workspaceId = parseIdentityUuid(workspaceIdInput);
-  const bindingDigest = digest.parse(bindingDigestInput);
+  const workspaceId = workspaceIdInput;
+  const bindingDigest = bindingDigestInput;
   return withPlatformTransaction(pool, async (client) => {
     const intent = await withWorkspaceScope(client, { workspaceId }, (scoped) =>
       selectIntent(
@@ -56,19 +53,15 @@ export async function recordInvitationAcceptanceProof(
   pool: Pool,
   raw: Parameters<AcceptanceStore['recordInvitationAcceptanceProof']>[0],
 ): ReturnType<AcceptanceStore['recordInvitationAcceptanceProof']> {
-  const workspaceId = parseIdentityUuid(raw.workspaceId);
-  const intentId = parseIdentityUuid(raw.intentId);
-  const userId = parseIdentityUuid(raw.userId);
-  const bindingDigest = digest.parse(raw.bindingDigest);
-  const normalizedEmail = z
-    .email()
-    .parse(raw.verifiedEmail.trim())
-    .normalize('NFKC')
-    .toLowerCase();
+  const workspaceId = raw.workspaceId;
+  const intentId = raw.intentId;
+  const userId = raw.userId;
+  const bindingDigest = raw.bindingDigest;
+  const normalizedEmail = raw.verifiedEmail;
   return withPlatformTransaction(pool, async (client) => {
     const source = await readEligibleAuthenticationSession(
       client,
-      parseIdentityUuid(raw.sessionId),
+      raw.sessionId,
     );
     if (source?.userId !== userId) return null;
     return withWorkspaceScope(client, { workspaceId }, async (client) => {
@@ -139,9 +132,9 @@ export async function abandonInvitationAcceptance(
     AcceptanceStore['abandonInvitationAcceptance']
   >[2],
 ): ReturnType<AcceptanceStore['abandonInvitationAcceptance']> {
-  const workspaceId = parseIdentityUuid(workspaceIdInput);
-  const intentId = parseIdentityUuid(intentIdInput);
-  const bindingDigest = digest.parse(bindingDigestInput);
+  const workspaceId = workspaceIdInput;
+  const intentId = intentIdInput;
+  const bindingDigest = bindingDigestInput;
   return withTenantScopedClient(pool, { workspaceId }, async (client) => {
     const updated = await drizzle(client)
       .update(intents)

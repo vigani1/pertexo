@@ -1,5 +1,3 @@
-import type { z } from 'zod';
-import type { optionsSchema } from './input.js';
 import type { RetentionRuleName } from './rules.js';
 export type { RetentionRuleName } from './rules.js';
 
@@ -17,4 +15,8 @@ export interface RetentionDatabase {
   enforce(signal?: AbortSignal): Promise<RetentionPassResult>;
 }
 
-export type RetentionDatabaseOptions = z.input<typeof optionsSchema>;
+export type RetentionDatabaseOptions = Readonly<{
+  lockTimeoutMs?: number;
+  pageSize?: number;
+  statementTimeoutMs?: number;
+}>;

@@ -1,21 +1,20 @@
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  workspaceInvitationAcceptanceIntents as intents,
-  workspaceInvitations as invitations,
-  workspaces,
-  users,
-  workspaceMemberships,
-} from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.repository.js';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
+import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.repository.js';
+import type { CommandIdentity } from '../../../platform/idempotency/contract.js';
 import {
   claimCommand,
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
-import type { CommandIdentity } from '../../../platform/idempotency/contract.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import {
+  workspaceInvitationAcceptanceIntents as intents,
+  workspaceInvitations as invitations,
+  users,
+  workspaceMemberships,
+  workspaces,
+} from '../../../schema/foundation.js';
 import type {
   CompleteInvitationAcceptanceInput,
   InvitationAcceptanceResult,
@@ -27,17 +26,15 @@ import {
   replayedAcceptance,
 } from '../receipts.repository.js';
 
-import { replaceUserSessions } from '../../users/sessions.repository.js';
 import {
   createMemberships,
   updateMembership,
 } from '../../members/records.repository.js';
-import { parseIdentityUuid } from '../../support.js';
 import {
   withPlatformTransaction,
   withWorkspaceScope,
 } from '../../transactions.js';
-import { key } from './input.js';
+import { replaceUserSessions } from '../../users/sessions.repository.js';
 import { selectIntent } from './state.queries.js';
 
 export async function completeAcceptance(
@@ -156,12 +153,12 @@ export async function completeAcceptance(
             verifiedSession.proof,
           );
         }
-        const receipt = acceptanceReceiptSchema.parse({
+        const receipt = {
           intentId,
           workspaceId,
           role: assignedRole,
           membershipCreated,
-        });
+        };
         await recordAcceptedInvitation(client, {
           command,
           receipt,
@@ -320,19 +317,15 @@ function requireAcceptanceProof(
 }
 
 function prepareAcceptance(raw: CompleteInvitationAcceptanceInput) {
-  const workspaceId = parseIdentityUuid(raw.workspaceId);
-  const intentId = parseIdentityUuid(raw.intentId);
-  const actorUserId = parseIdentityUuid(raw.actorUserId);
-  const invitationRevision = z
-    .number()
-    .int()
-    .positive()
-    .parse(raw.invitationRevision);
+  const workspaceId = raw.workspaceId;
+  const intentId = raw.intentId;
+  const actorUserId = raw.actorUserId;
+  const invitationRevision = raw.invitationRevision;
   const command: CommandIdentity = {
     workspaceId,
     operation: 'workspace.invitation.accept',
     scope: actorUserId,
-    idempotencyKey: key.parse(raw.idempotencyKey),
+    idempotencyKey: raw.idempotencyKey,
   };
   return {
     identity: { workspaceId, intentId, actorUserId, invitationRevision },

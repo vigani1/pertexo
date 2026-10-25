@@ -1,37 +1,15 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaces, auditEvents } from '../schema/foundation.js';
-import { rethrowQueryFailure } from '../platform/query-errors.js';
 import type { Pool } from 'pg';
-import { acquireDatabasePool } from '../platform/pool/runtime.js';
-import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
+import type { DatabaseRuntime } from '../platform/pool/runtime.js';
+import { acquireDatabasePool } from '../platform/pool/runtime.js';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
+import { auditEvents, workspaces } from '../schema/foundation.js';
 
-import { z } from 'zod';
 import type { DatabaseConfig } from '../config.js';
 
 import { changeWorkspaceLifecycle } from '../lifecycle/deletion/repository.js';
-import {
-  workspaceRecord,
-  workspaceSelection,
-} from './workspaces/projection.js';
-import { createUserStore } from './users/repository.js';
-import {
-  parseIdentityMetadata,
-  parseIdentityUuid,
-  throwIdentityDatabaseConflict,
-  throwWorkspaceLifecycleError,
-} from './support.js';
-import { withTenantScopedClient } from './transactions.js';
-import { createIdentityWorkspaceMemberStore } from './members/repository.js';
-import { createMemberships } from './members/records.repository.js';
-import { createIdentityWorkspaceRoleCommandStore } from './members/roles.repository.js';
-import { createIdentityWorkspaceMemberRemovalStore } from './members/removal.repository.js';
-import { createIdentityWorkspaceMembershipLifecycleStore } from './members/lifecycle.repository.js';
-import { createIdentityWorkspaceProfileStore } from './users/profile.repository.js';
-import { createIdentityWorkspaceRenameStore } from './workspaces/rename.repository.js';
-import { createIdentityWorkspaceInvitationStore } from './invitations/repository.js';
-import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance.repository.js';
 import type {
   IdentityWorkspaceDatabase,
   RequestWorkspaceLifecycleOperationInput,
@@ -39,12 +17,32 @@ import type {
   WorkspaceRecord,
   WorkspaceWithOwnerInput,
 } from './contract.js';
+import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance.repository.js';
+import { createIdentityWorkspaceInvitationStore } from './invitations/repository.js';
+import { createIdentityWorkspaceMembershipLifecycleStore } from './members/lifecycle.repository.js';
+import { createMemberships } from './members/records.repository.js';
+import { createIdentityWorkspaceMemberRemovalStore } from './members/removal.repository.js';
+import { createIdentityWorkspaceMemberStore } from './members/repository.js';
+import { createIdentityWorkspaceRoleCommandStore } from './members/roles.repository.js';
 import {
-  commandRequestHash,
-  commandKeyHash,
+  parseIdentityMetadata,
+  throwIdentityDatabaseConflict,
+  throwWorkspaceLifecycleError,
+} from './support.js';
+import { withTenantScopedClient } from './transactions.js';
+import { createIdentityWorkspaceProfileStore } from './users/profile.repository.js';
+import { createUserStore } from './users/repository.js';
+import {
   claimWorkspaceCreationCommand,
+  commandKeyHash,
+  commandRequestHash,
   completeWorkspaceCreationCommand,
 } from './workspaces/creation-receipt.repository.js';
+import {
+  workspaceRecord,
+  workspaceSelection,
+} from './workspaces/projection.js';
+import { createIdentityWorkspaceRenameStore } from './workspaces/rename.repository.js';
 
 export function createIdentityWorkspaceDatabase(
   config: DatabaseConfig,
@@ -81,16 +79,11 @@ async function createWorkspaceWithOwner(
   pool: Pool,
   input: WorkspaceWithOwnerInput,
 ): Promise<WorkspaceRecord> {
-  const id = parseIdentityUuid(input.id ?? generatePersistedId());
-  const ownerUserId = parseIdentityUuid(input.ownerUserId);
+  const id = input.id ?? generatePersistedId();
+  const ownerUserId = input.ownerUserId;
   const metadata = parseIdentityMetadata(input.metadata);
   const name = input.name.trim();
   const slug = input.slug.trim().toLowerCase();
-  if (name.length === 0 || name.length > 128)
-    throw new Error('Invalid workspace name');
-  if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(slug)) {
-    throw new Error('Invalid workspace slug');
-  }
   const keyHash = commandKeyHash(input.idempotencyKey);
   const requestHash = commandRequestHash({
     actorId: ownerUserId,
@@ -171,12 +164,10 @@ async function requestWorkspaceLifecycleOperation(
   pool: Pool,
   input: RequestWorkspaceLifecycleOperationInput,
 ): Promise<WorkspaceLifecycleOperation> {
-  const workspaceId = parseIdentityUuid(input.workspaceId);
-  const actorUserId = parseIdentityUuid(input.actorUserId);
-  const commandType = z
-    .enum(['deletion_requested', 'deletion_restored'])
-    .parse(input.commandType);
-  const reason = z.string().trim().min(1).max(512).parse(input.reason);
+  const workspaceId = input.workspaceId;
+  const actorUserId = input.actorUserId;
+  const commandType = input.commandType;
+  const reason = input.reason;
   try {
     return await withTenantScopedClient(
       pool,

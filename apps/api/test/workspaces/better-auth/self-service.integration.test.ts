@@ -88,12 +88,14 @@ describe.runIf(betterAuthIntegrationEnabled)(
         payload: { displayName: 'Ada Lovelace', expectedRevision: 1 },
       });
       expect(missingCsrf.statusCode).toBe(403);
-      const invalid = await api.send('PATCH', url, {
-        browser,
-        headers: key,
-        payload: { displayName: 'Ada\nLovelace', expectedRevision: 1 },
-      });
-      expect(invalid.statusCode).toBe(400);
+      for (const displayName of ['   ', 'x'.repeat(129), 'Ada\nLovelace']) {
+        const invalid = await api.send('PATCH', url, {
+          browser,
+          headers: key,
+          payload: { displayName, expectedRevision: 1 },
+        });
+        expectProblem(invalid, 400, 'request.invalid');
+      }
       const renamed = await api.send('PATCH', url, {
         browser,
         headers: key,
