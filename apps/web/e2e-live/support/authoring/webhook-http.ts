@@ -32,20 +32,20 @@ export async function authorWebhookHttpGraph(
     await page.keyboard.press('Tab');
     return node.id;
   }
-  async function connect(label: string, output = 'out') {
-    await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
-    await page
-      .getByRole('button', { name: 'Link a step', exact: true })
-      .click();
-    for (const [field, choice] of [
-      ['Link from step', label],
-      ['From output', output],
-      ['Into input', 'in'],
-    ] as const) {
-      await page.getByLabel(field, { exact: true }).click();
-      await page.getByRole('option', { name: choice, exact: true }).click();
-    }
-    await page.getByRole('button', { name: 'Link', exact: true }).click();
+  async function expectAutoLink(
+    sourceId: string,
+    targetId: string,
+    output = 'out',
+  ) {
+    const graph = (await readDraft(page, workflowPath)).graph;
+    expect(
+      graph.edges.filter((edge) => edge.target.nodeId === targetId),
+    ).toEqual([
+      expect.objectContaining({
+        source: { nodeId: sourceId, port: output },
+        target: { nodeId: targetId, port: 'in' },
+      }),
+    ]);
   }
 
   const validateId = await add(/Validate/u, 'Check signed input');
@@ -59,7 +59,7 @@ export async function authorWebhookHttpGraph(
     }),
   );
   await page.keyboard.press('Tab');
-  await connect('Signed input');
+  await expectAutoLink(webhookId, validateId);
   await mapBrowserInput({
     page,
     scope: page,
@@ -68,7 +68,7 @@ export async function authorWebhookHttpGraph(
     path: '$.execute',
   });
   const mapId = await add(/Set fields/u, 'Mapped action input');
-  await connect('Check signed input');
+  await expectAutoLink(validateId, mapId);
   await mapBrowserInput({
     page,
     scope: page,
@@ -77,7 +77,7 @@ export async function authorWebhookHttpGraph(
     path: '$.execute',
   });
   const conditionId = await add(/Condition/u, 'Should send');
-  await connect('Mapped action input');
+  await expectAutoLink(mapId, conditionId);
   await mapBrowserInput({
     page,
     scope: page,
@@ -105,7 +105,7 @@ export async function authorWebhookHttpGraph(
   await page
     .getByRole('option', { name: 'Owned HTTP credential', exact: true })
     .click();
-  await connect('Should send', 'true');
+  await expectAutoLink(conditionId, httpId, 'true');
   await mapBrowserInput({
     page,
     scope: page,
@@ -129,7 +129,7 @@ export async function authorWebhookHttpGraph(
     ? await add(/^Stop run\b/u, 'Finished action')
     : undefined;
   if (stopId !== undefined) {
-    await connect('Owned HTTP effect');
+    await expectAutoLink(httpId, stopId);
     await expect
       .poll(
         async () =>

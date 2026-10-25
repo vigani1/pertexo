@@ -272,7 +272,7 @@ test('discusses steps, delivers private mentions, preserves refreshes, and warns
       );
     } finally {
       release();
-      await page.unroute('**/draft');
+      await page.unrouteAll({ behavior: 'wait' });
     }
   } catch (error) {
     primaryError = error;

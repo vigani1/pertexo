@@ -78,7 +78,19 @@ test('real nested expression admission, guarded keyboard recovery and immutable 
         { timeout: 10_000 },
       )
       .toBe(true);
-    await page.getByRole('button', { name: '1 issue', exact: true }).click();
+    await page.getByRole('button', { name: '3 issues', exact: true }).click();
+    await expect(
+      page.getByText(
+        "Expression loop isn't linked from a trigger, so it never runs.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Expression leaf isn't linked from a trigger, so it never runs.",
+        { exact: true },
+      ),
+    ).toBeVisible();
     const checkAgain = page.getByRole('button', {
       name: 'Check again',
       exact: true,
@@ -143,7 +155,7 @@ test('real nested expression admission, guarded keyboard recovery and immutable 
     const limit = page.getByLabel('Maximum items', { exact: true });
     await limit.fill('-');
     await page.keyboard.press('Tab');
-    await page.getByRole('button', { name: '1 issue', exact: true }).click();
+    await page.getByRole('button', { name: '3 issues', exact: true }).click();
     await page.getByRole('button', { name: fixName, exact: true }).click();
     const scratchDialog = page.getByRole('dialog', {
       name: 'Discard the unfinished edit?',
@@ -156,7 +168,7 @@ test('real nested expression admission, guarded keyboard recovery and immutable 
     expect((await readTaggedExpressionDraft(page, workflowPath)).etag).toBe(
       authored.etag,
     );
-    await page.getByRole('button', { name: '1 issue', exact: true }).click();
+    await page.getByRole('button', { name: '3 issues', exact: true }).click();
     await page.getByRole('button', { name: fixName, exact: true }).click();
     await scratchDialog
       .getByRole('button', { name: 'Discard edit', exact: true })
@@ -176,7 +188,7 @@ test('real nested expression admission, guarded keyboard recovery and immutable 
     await page.getByRole('tab', { name: 'Setup', exact: true }).click();
     await limit.fill('-');
     await page.keyboard.press('Tab');
-    await page.getByRole('button', { name: '1 issue', exact: true }).click();
+    await page.getByRole('button', { name: '3 issues', exact: true }).click();
     await page.getByRole('button', { name: fixName, exact: true }).click();
     await scratchDialog
       .getByRole('button', { name: 'Stay', exact: true })
@@ -192,7 +204,7 @@ test('real nested expression admission, guarded keyboard recovery and immutable 
       .toBe(2);
     const applied = await readTaggedExpressionDraft(page, workflowPath);
     expect(applied.etag).not.toBe(authored.etag);
-    await page.getByRole('button', { name: '1 issue', exact: true }).click();
+    await page.getByRole('button', { name: '3 issues', exact: true }).click();
     await page.getByRole('button', { name: fixName, exact: true }).click();
     await expect(scratchDialog).not.toBeVisible();
     await expect(page.getByLabel('Field', { exact: true })).toBeFocused();
@@ -240,7 +252,7 @@ test('real nested expression admission, guarded keyboard recovery and immutable 
         { timeout: 10_000 },
       )
       .toBe(true);
-    await page.getByRole('button', { name: 'No issues', exact: true }).click();
+    await page.getByRole('button', { name: '2 issues', exact: true }).click();
     await expect(checkAgain).toBeEnabled();
     const validRequestPending = page.waitForRequest((outgoing) =>
       isPost(outgoing, validatePath),

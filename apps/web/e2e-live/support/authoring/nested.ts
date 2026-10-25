@@ -104,16 +104,12 @@ export async function authorNestedMappingGraph(page: Page, draftPath: string) {
   await inspect(outer.id, 'Outer items');
   await limits();
   await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
-  await page.getByRole('button', { name: 'Link a step', exact: true }).click();
-  await page.getByLabel('Link from step', { exact: true }).click();
-  await page
-    .getByRole('option', { name: 'Mapping source', exact: true })
-    .click();
-  await page.getByLabel('From output', { exact: true }).click();
-  await page.getByRole('option', { name: 'out', exact: true }).click();
-  await page.getByLabel('Into input', { exact: true }).click();
-  await page.getByRole('option', { name: 'in', exact: true }).click();
-  await page.getByRole('button', { name: 'Link', exact: true }).click();
+  expect((await draft()).graph.edges).toEqual([
+    expect.objectContaining({
+      source: { nodeId: root.id, port: 'out' },
+      target: { nodeId: outer.id, port: 'in' },
+    }),
+  ]);
   await addBrowserInput({
     page,
     key: 'items',
