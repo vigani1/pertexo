@@ -16,7 +16,10 @@ import {
   completeCommand,
 } from '../../platform/idempotency/repository.js';
 import { appendAuditFact } from '../audit/events.repository.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import {
+  requiresPublicationReviewer,
+  rolesForCapability,
+} from '@pertexo/workflow-model';
 import { GovernanceError, type GovernanceStore } from '../contract.js';
 export async function configureGovernance(
   client: PoolClient,
@@ -40,11 +43,7 @@ export async function configureGovernance(
   });
   if (replay !== null) return replay;
   const previous = await readGovernanceSettings(client, input.workspaceId);
-  const enablesPublishApproval =
-    previous.revision === input.expectedRevision &&
-    !previous.requirePublishApproval &&
-    (input.requirePublishApproval ?? false);
-  if (enablesPublishApproval) {
+  if (requiresPublicationReviewer(previous, input)) {
     const reviewers = await db
       .select({ id: workspaceMemberships.userId })
       .from(workspaceMemberships)
