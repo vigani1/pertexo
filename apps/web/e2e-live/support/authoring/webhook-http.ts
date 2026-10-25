@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { mapBrowserInput } from '../../../test/support/browser/inputs';
 import { readEditorDraft } from './single-step';
 
 /** Ordinary inspector edits and wiring, never a seeded graph/save request. */
@@ -46,27 +47,7 @@ export async function authorWebhookHttpGraph(
     }
     await page.getByRole('button', { name: 'Link', exact: true }).click();
   }
-  async function map(field: string, source: string, path: string) {
-    await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
-    await page.getByRole('button', { name: 'Add input', exact: true }).click();
-    const row = page
-      .getByRole('region', { name: 'Inputs', exact: true })
-      .locator('ol > li')
-      .last();
-    await row.getByLabel('Field', { exact: true }).fill(field);
-    if (source === 'Run input') {
-      await row.getByRole('button', { name: 'Run input', exact: true }).click();
-      await row.getByLabel('Run input path', { exact: true }).fill(path);
-    } else {
-      await row
-        .getByRole('button', { name: 'Step output', exact: true })
-        .click();
-      await row.getByLabel('Source step', { exact: true }).click();
-      await page.getByRole('option', { name: source, exact: true }).click();
-      await row.getByLabel('Output path', { exact: true }).fill(path);
-    }
-    await page.keyboard.press('Tab');
-  }
+
   const validateId = await add(/Validate/u, 'Check signed input');
   await page.getByRole('tab', { name: 'Setup', exact: true }).click();
   await page.getByRole('button', { name: 'Edit as JSON', exact: true }).click();
@@ -79,13 +60,31 @@ export async function authorWebhookHttpGraph(
   );
   await page.keyboard.press('Tab');
   await connect('Signed input');
-  await map('execute', 'Signed input', '$.execute');
+  await mapBrowserInput({
+    page,
+    scope: page,
+    field: 'execute',
+    source: 'Signed input',
+    path: '$.execute',
+  });
   const mapId = await add(/Set fields/u, 'Mapped action input');
   await connect('Check signed input');
-  await map('condition', 'Run input', '$.execute');
+  await mapBrowserInput({
+    page,
+    scope: page,
+    field: 'condition',
+    source: 'Run input',
+    path: '$.execute',
+  });
   const conditionId = await add(/Condition/u, 'Should send');
   await connect('Mapped action input');
-  await map('condition', 'Mapped action input', '$.condition');
+  await mapBrowserInput({
+    page,
+    scope: page,
+    field: 'condition',
+    source: 'Mapped action input',
+    path: '$.condition',
+  });
   const httpId = await add(/HTTP request/u, 'Owned HTTP effect');
   await page.getByRole('tab', { name: 'Setup', exact: true }).click();
   await page.getByRole('button', { name: 'Edit as JSON', exact: true }).click();
@@ -107,7 +106,13 @@ export async function authorWebhookHttpGraph(
     .getByRole('option', { name: 'Owned HTTP credential', exact: true })
     .click();
   await connect('Should send', 'true');
-  await map('body', 'Run input', '$.body');
+  await mapBrowserInput({
+    page,
+    scope: page,
+    field: 'body',
+    source: 'Run input',
+    path: '$.body',
+  });
   // Palette placement already saved the last link; wait for the final input edit.
   await expect
     .poll(

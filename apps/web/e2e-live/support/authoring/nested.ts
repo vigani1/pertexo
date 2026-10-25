@@ -1,8 +1,13 @@
-import { expect, type Locator, type Page } from '@playwright/test';
 import {
   workflowDraftResponseSchema,
   type WorkflowDraftResponse,
 } from '@pertexo/contracts';
+import { expect, type Page } from '@playwright/test';
+import {
+  addBrowserInput,
+  selectLoopItem,
+  selectLoopPosition,
+} from '../../../test/support/browser/inputs';
 
 /** Browser authoring only; request calls observe saved state, never seed graphs. */
 export async function authorNestedMappingGraph(page: Page, draftPath: string) {
@@ -17,17 +22,7 @@ export async function authorNestedMappingGraph(page: Page, draftPath: string) {
     await page.getByLabel('Label', { exact: true }).fill(label);
     await page.keyboard.press('Tab');
   }
-  async function input(key: string, source: (row: Locator) => Promise<void>) {
-    await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
-    await page.getByRole('button', { name: 'Add input', exact: true }).click();
-    const row = page
-      .getByRole('region', { name: 'Inputs', exact: true })
-      .locator('ol > li')
-      .last();
-    await row.getByLabel('Field', { exact: true }).fill(key);
-    await source(row);
-    await page.keyboard.press('Tab');
-  }
+
   async function limits() {
     await page.getByRole('tab', { name: 'Setup', exact: true }).click();
     await page.getByLabel('Items at a time', { exact: true }).fill('2');
@@ -48,26 +43,44 @@ export async function authorNestedMappingGraph(page: Page, draftPath: string) {
   const root = (await draft()).graph.nodes[0];
   if (root === undefined) throw new Error('Saved root step missing');
   await inspect(root.id, 'Mapping source');
-  await input('literalProof', async (row) => {
-    await row
-      .getByLabel('JSON value', { exact: true })
-      .fill('"from-real-browser"');
+  await addBrowserInput({
+    page,
+    key: 'literalProof',
+    source: async (row) => {
+      await row
+        .getByLabel('JSON value', { exact: true })
+        .fill('"from-real-browser"');
+    },
   });
-  await input('matrix', async (row) => {
-    await row.getByRole('button', { name: 'Run input', exact: true }).click();
-    await row.getByLabel('Run input path', { exact: true }).fill('$.groups');
+  await addBrowserInput({
+    page,
+    key: 'matrix',
+    source: async (row) => {
+      await row.getByRole('button', { name: 'Run input', exact: true }).click();
+      await row.getByLabel('Run input path', { exact: true }).fill('$.groups');
+    },
   });
-  await input('expressionProof', async (row) => {
-    await row.getByRole('button', { name: 'Expression', exact: true }).click();
-    await row
-      .getByLabel('Expression', { exact: true })
-      .fill('runInput.amount > 5000');
+  await addBrowserInput({
+    page,
+    key: 'expressionProof',
+    source: async (row) => {
+      await row
+        .getByRole('button', { name: 'Expression', exact: true })
+        .click();
+      await row
+        .getByLabel('Expression', { exact: true })
+        .fill('runInput.amount > 5000');
+    },
   });
-  await input('missingProof', async (row) => {
-    await row.getByRole('button', { name: 'Run input', exact: true }).click();
-    await row
-      .getByLabel('Run input path', { exact: true })
-      .fill('$.notProvided');
+  await addBrowserInput({
+    page,
+    key: 'missingProof',
+    source: async (row) => {
+      await row.getByRole('button', { name: 'Run input', exact: true }).click();
+      await row
+        .getByLabel('Run input path', { exact: true })
+        .fill('$.notProvided');
+    },
   });
   const rootMappings = {
     literalProof: { kind: 'literal', value: 'from-real-browser' },
@@ -101,9 +114,15 @@ export async function authorNestedMappingGraph(page: Page, draftPath: string) {
   await page.getByLabel('Into input', { exact: true }).click();
   await page.getByRole('option', { name: 'in', exact: true }).click();
   await page.getByRole('button', { name: 'Link', exact: true }).click();
-  await input('items', async (row) => {
-    await row.getByRole('button', { name: 'Step output', exact: true }).click();
-    await row.getByLabel('Output path', { exact: true }).fill('$.matrix');
+  await addBrowserInput({
+    page,
+    key: 'items',
+    source: async (row) => {
+      await row
+        .getByRole('button', { name: 'Step output', exact: true })
+        .click();
+      await row.getByLabel('Output path', { exact: true }).fill('$.matrix');
+    },
   });
   await addBodyStep(/For each/u);
   await expect
@@ -118,10 +137,7 @@ export async function authorNestedMappingGraph(page: Page, draftPath: string) {
   if (inner === undefined) throw new Error('Saved inner loop missing');
   await inspect(inner.id, 'Inner items');
   await limits();
-  await input('items', async (row) => {
-    await row.getByRole('button', { name: 'Loop item', exact: true }).click();
-    await row.getByLabel('Path in it', { exact: true }).fill('$');
-  });
+  await addBrowserInput({ page, key: 'items', source: selectLoopItem });
   await addBodyStep(/Set fields/u);
   const leafFromDraft = async () =>
     (await draft()).graph.nodes.find((node) => node.id === outer.id)?.structured
@@ -132,17 +148,11 @@ export async function authorNestedMappingGraph(page: Page, draftPath: string) {
   const leaf = await leafFromDraft();
   if (leaf === undefined) throw new Error('Saved leaf step missing');
   await inspect(leaf.id, 'Leaf proof');
-  await input('item', async (row) => {
-    await row.getByRole('button', { name: 'Loop item', exact: true }).click();
-    await row.getByLabel('Path in it', { exact: true }).fill('$');
-  });
-  await input('ordinal', async (row) => {
-    await row.getByRole('button', { name: 'Loop item', exact: true }).click();
-    await row.getByLabel('Read', { exact: true }).click();
-    await page
-      .getByRole('option', { name: 'Its position (0, 1, 2…)', exact: true })
-      .click();
-    await row.getByLabel('Path in it', { exact: true }).fill('$');
+  await addBrowserInput({ page, key: 'item', source: selectLoopItem });
+  await addBrowserInput({
+    page,
+    key: 'ordinal',
+    source: (row) => selectLoopPosition({ page, row }),
   });
   await expect
     .poll(async () => (await leafFromDraft())?.inputMappings)

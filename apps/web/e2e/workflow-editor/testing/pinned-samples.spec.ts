@@ -1,16 +1,16 @@
 import {
-  stepSampleIdentity,
-  parseWorkflowGraphDraft,
-} from '@pertexo/workflow-model';
-import {
-  stepSampleWriteRequestSchema,
   stepSampleDeleteRequestSchema,
+  stepSampleWriteRequestSchema,
   type StepSampleMetadata,
 } from '@pertexo/contracts';
+import {
+  parseWorkflowGraphDraft,
+  stepSampleIdentity,
+} from '@pertexo/workflow-model';
 import { expect, test } from '../../support/fixtures';
+import { editorNode } from '../graph';
 import {
   addCsrfCookie,
-  editorNode,
   editorUrl,
   installEditorRoutes,
   remoteDraft,

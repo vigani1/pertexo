@@ -4,6 +4,8 @@ import {
   type BrowserContext,
   type Page,
 } from '../../support/fixtures';
+import { openWorkflowAction } from '../actions';
+import { mappingGraph } from '../graph';
 import {
   addCsrfCookie,
   currentEtag,
@@ -11,8 +13,6 @@ import {
   editorUrl,
   installEditorRoutes,
   manualDefinition,
-  openWorkflowAction,
-  mappingGraph,
   remoteDraft,
   workflowId,
   workflowSummary,

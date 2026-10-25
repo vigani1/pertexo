@@ -1,16 +1,16 @@
+import { dataTableCreatedSchema } from '@pertexo/contracts';
+import { expect, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { expect, type Page } from '@playwright/test';
-import { dataTableCreatedSchema } from '@pertexo/contracts';
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 
 export async function qualifyLargeDownload(page: Page, workspaceId: string) {
-  const cookie = (await page.context().cookies()).find(
-    (entry) => entry.name === 'pertexo_csrf',
-  );
-  if (cookie === undefined) throw new Error('Owned CSRF cookie missing');
+  const cookie = await readCsrfToken(page, {
+    missingMessage: 'Owned CSRF cookie missing',
+  });
   const base = `/v1/workspaces/${workspaceId}/data-tables`;
   const headers = () => ({
-    'x-csrf-token': decodeURIComponent(cookie.value),
+    'x-csrf-token': cookie,
     'Idempotency-Key': randomUUID(),
   });
   const created = await page.request.post(base, {

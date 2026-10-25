@@ -1,10 +1,10 @@
 import { expect, test } from '../../support/fixtures';
+import { openWorkflowAction } from '../actions';
+import { mappingGraph } from '../graph';
 import {
   addCsrfCookie,
   editorUrl,
   installEditorRoutes,
-  mappingGraph,
-  openWorkflowAction,
   remoteDraft,
   workflowId,
   workflowSummary,

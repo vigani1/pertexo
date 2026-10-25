@@ -1,22 +1,22 @@
 import {
-  folderSharingRequestSchema,
   connectionSharingRequestSchema,
+  folderSharingRequestSchema,
 } from '@pertexo/contracts';
-import { expect, test, type Page } from '../support/fixtures';
 import type { TestInfo } from '@playwright/test';
+import { expect, test, type Page } from '../support/fixtures';
+import { mappingGraph } from '../workflow-editor/graph';
 import {
   addCsrfCookie,
-  installEditorRoutes,
-  remoteDraft,
-  mappingGraph,
-  manualDefinition,
   definition,
+  editorUrl,
+  installEditorRoutes,
+  manualDefinition,
+  remoteDraft,
+  user,
+  workflowId,
   workflowSummary,
   workspace,
   workspaceId,
-  workflowId,
-  editorUrl,
-  user,
 } from '../workflow-editor/support';
 const parentId = '11111111-1111-4111-8111-111111111111';
 const folderId = '22222222-2222-4222-8222-222222222222';

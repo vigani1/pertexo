@@ -1,24 +1,25 @@
-import { randomUUID } from 'node:crypto';
-import { expect, type Page } from '@playwright/test';
 import {
-  workflowDraftResponseSchema,
-  workflowTestPreparationSchema,
-  workflowTestAcceptedSchema,
-  workflowTestDetailSchema,
+  dataTableResultSchema,
   nodeTestExecuteAcceptedResponseSchema,
   previewRunResponseSchema,
-  dataTableResultSchema,
   stepSampleResponseSchema,
+  workflowDraftResponseSchema,
+  workflowTestAcceptedSchema,
+  workflowTestDetailSchema,
+  workflowTestPreparationSchema,
 } from '@pertexo/contracts';
+import { expect, type Page } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { readCsrfToken } from '../../../test/support/browser/csrf';
+import {
+  addSingleStep,
+  createEditorWorkflow,
+} from '../../support/authoring/single-step';
 import { test } from '../../support/browser-fixture';
 import {
-  registerEditorUser,
   createEditorWorkspace,
+  registerEditorUser,
 } from '../../support/ordinary-editor-session';
-import {
-  createEditorWorkflow,
-  addSingleStep,
-} from '../../support/authoring/single-step';
 test('table writes require test consent, execute as real previews and are skipped by pins', async ({
   page,
   request,
@@ -28,12 +29,11 @@ test('table writes require test consent, execute as real previews and are skippe
   if (origin === undefined) throw new Error('Use the owned fixture');
   await registerEditorUser(page, request, origin, 'Table effect owner');
   const workspaceId = await createEditorWorkspace(page, 'Table test effects');
-  const csrf = (await page.context().cookies()).find(
-    (cookie) => cookie.name === 'pertexo_csrf',
-  );
-  if (csrf === undefined) throw new Error('Owned CSRF cookie missing');
+  const csrf = await readCsrfToken(page, {
+    missingMessage: 'Owned CSRF cookie missing',
+  });
   const headers = () => ({
-    'x-csrf-token': decodeURIComponent(csrf.value),
+    'x-csrf-token': csrf,
     'Idempotency-Key': randomUUID(),
   });
   const tables = `/v1/workspaces/${workspaceId}/data-tables`;

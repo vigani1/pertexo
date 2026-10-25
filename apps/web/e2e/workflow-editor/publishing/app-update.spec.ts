@@ -1,8 +1,8 @@
-import { expect, test, type Page } from '../../support/fixtures';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
+import { expect, test, type Page } from '../../support/fixtures';
+import { blocksUnload } from '../actions';
 import {
   addCsrfCookie,
-  blocksUnload,
   definition,
   editorUrl,
   installEditorRoutes,

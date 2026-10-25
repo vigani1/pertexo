@@ -1,27 +1,20 @@
-import {
-  createWorkflowNodeFixture,
-  createWorkflowEdgeFixture,
-} from '../../../test/support/fixtures/graph';
-import { readCsrfToken } from '../../../test/support/browser/csrf';
-import { mkdir } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
-import { expect } from '@playwright/test';
-import {
-  formConfigSchema,
-  inputRequestConfigSchema,
-} from '@pertexo/workflow-model';
 import { pendingTaskListResponseSchema } from '@pertexo/contracts';
-import { test } from '../../support/browser-fixture';
-import {
-  registerEditorUser,
-  createEditorWorkspace,
-} from '../../support/ordinary-editor-session';
+import { expect } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { mkdir } from 'node:fs/promises';
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import {
   createEditorWorkflow,
   publishSingleStep,
   readEditorDraft,
   waitForRun,
 } from '../../support/authoring/single-step';
+import { test } from '../../support/browser-fixture';
+import {
+  createEditorWorkspace,
+  registerEditorUser,
+} from '../../support/ordinary-editor-session';
+import { formSubmissionGraph } from './submission-graph';
 
 test('published member and public forms start real runs; captured member input continues once, with revocable links', async ({
   page,
@@ -40,92 +33,7 @@ test('published member and public forms start real runs; captured member input c
   );
   const workflowId = workflowPath.split('/').at(-1);
   if (workflowId === undefined) throw new Error('Workflow missing');
-  const form = formConfigSchema.parse({
-    title: 'Send a request',
-    instructions: 'Tell us what you need.',
-    fields: [
-      { id: 'message', name: 'message', label: 'Message', type: 'textarea' },
-      { id: 'amount', name: 'amount', label: 'Amount', type: 'number' },
-      {
-        id: 'channels',
-        name: 'channels',
-        label: 'Channels',
-        type: 'multi_select',
-        options: ['Email', 'SMS'],
-      },
-    ],
-  });
-  const graph = {
-    settings: { maxRunDurationMs: 60000 },
-    nodes: [
-      {
-        ...createWorkflowNodeFixture({
-          id: 'form',
-          definition: { key: 'core.form', version: 1 },
-          position: { x: 0, y: 0 },
-        }),
-        config: form,
-      },
-      {
-        ...createWorkflowNodeFixture({
-          id: 'input',
-          definition: { key: 'core.request_input', version: 1 },
-          position: { x: 260, y: 0 },
-        }),
-        config: inputRequestConfigSchema.parse({
-          title: 'Complete the request',
-          fields: [
-            { id: 'answer', name: 'answer', label: 'Answer', type: 'text' },
-            {
-              id: 'channels',
-              name: 'channels',
-              label: 'Channels',
-              type: 'multi_select',
-              options: ['Email', 'SMS'],
-              maxSelections: 2,
-            },
-          ],
-        }),
-        inputMappings: {
-          details: {
-            kind: 'expression',
-            language: 'jsonata',
-            expression:
-              '{"amount": nodeOutputs.form.values.amount, "request_message": nodeOutputs.form.values.request_message,"channels": nodeOutputs.form.values.channels}',
-          },
-          prefill: {
-            kind: 'expression',
-            language: 'jsonata',
-            expression:
-              '{"answer": nodeOutputs.form.values.request_message, "channels": nodeOutputs.form.values.channels}',
-          },
-        },
-      },
-      {
-        ...createWorkflowNodeFixture({
-          id: 'finish',
-          definition: { key: 'core.terminate', version: 1 },
-          position: { x: 520, y: 0 },
-        }),
-        inputMappings: {
-          result: {
-            kind: 'node_output',
-            nodeId: 'input',
-            path: '$.values.answer',
-          },
-          channels: {
-            kind: 'node_output',
-            nodeId: 'input',
-            path: '$.values.channels',
-          },
-        },
-      },
-    ],
-    edges: [
-      createWorkflowEdgeFixture({ source: 'form', target: 'input' }),
-      createWorkflowEdgeFixture({ source: 'input', target: 'finish' }),
-    ],
-  };
+  const graph = formSubmissionGraph();
   const draft = await page.request.get(`${workflowPath}/draft`);
   const saved = await page.request.put(`${workflowPath}/draft`, {
     headers: {

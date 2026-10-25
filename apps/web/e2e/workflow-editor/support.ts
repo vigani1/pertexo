@@ -1,31 +1,33 @@
+import type { WorkflowGraphContract } from '@pertexo/contracts';
+import type { WorkflowNote } from '@pertexo/workflow-model';
+import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { installPresenceRoutes } from '../../test/support/browser/mock-reads';
-import { createWorkflowNodeFixture } from '../../test/support/fixtures/graph';
+import { unpausedWorkflowSettings } from '../../test/support/fixtures/auto-pause';
+import { defaultConcurrencySettings } from '../../test/support/fixtures/concurrency';
 import {
   createUserFixture,
   createWorkspaceFixture,
 } from '../../test/support/fixtures/identity';
-import type { WorkflowGraphContract } from '@pertexo/contracts';
-import type { WorkflowNote } from '@pertexo/workflow-model';
-import { expect, type BrowserContext, type Page } from '@playwright/test';
-import { unpausedWorkflowSettings } from '../../test/support/fixtures/auto-pause';
-import { defaultConcurrencySettings } from '../../test/support/fixtures/concurrency';
 import {
   routeEmptyWorkflowOrganization,
   workflowListBody,
 } from '../workflows/list-support';
-
-// Controlled HTTP fixtures shared by the workflow editor journeys.
-
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
 export const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
 export const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+
 export const editorUrl = `/w/${workspaceId}/workflows/${workflowId}`;
+
 const csrfToken = 'csrf-token-for-editor-tests-123456789012345678901234';
+
 export const user = createUserFixture({
   id: userId,
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
 });
+
 export const workspace = createWorkspaceFixture({
   id: workspaceId,
   capabilities: [
@@ -41,6 +43,7 @@ export const workspace = createWorkspaceFixture({
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
 });
+
 export const definition = {
   definition: { key: 'core.set', version: 1 },
   family: 'transform',
@@ -69,6 +72,7 @@ export const definition = {
   resourceClass: 'cpu',
   capabilities: [],
 };
+
 export const manualDefinition = {
   ...definition,
   definition: { key: 'core.manual', version: 1 },
@@ -78,29 +82,11 @@ export const manualDefinition = {
   ports: { inputs: [], outputs: ['out'] },
 };
 
-/** Export, Input cases and Duplicate fold into ⋯ below 2xl. */
-const FOLDED_WORKFLOW_ACTIONS = new Set([
+export const FOLDED_WORKFLOW_ACTIONS = new Set([
   'Export…',
   'Input cases',
   'Duplicate…',
 ]);
-
-/**
- * A workflow action is a header button on wide screens and a ⋯ menu item
- * below them: below 2xl for the workflow's own actions, and on phones for
- * the editor's controls such as the contract.
- */
-export async function openWorkflowAction(page: Page, name: string) {
-  const width = page.viewportSize()?.width ?? 1280;
-  if (width < (FOLDED_WORKFLOW_ACTIONS.has(name) ? 1536 : 640)) {
-    await page
-      .getByRole('button', { name: 'More workflow actions', exact: true })
-      .click();
-    await page.getByRole('menuitem', { name, exact: true }).click();
-  } else {
-    await page.getByRole('button', { name, exact: true }).click();
-  }
-}
 
 export type Graph = Readonly<{
   callable?: WorkflowGraphContract['callable'];
@@ -353,55 +339,6 @@ function draftBody(remote: RemoteDraft) {
   };
 }
 
-export function editorNode(
-  id: string,
-  label: string,
-  value: string,
-  x: number,
-) {
-  return createWorkflowNodeFixture({
-    id,
-    label,
-    config: { value },
-    position: { x, y: 80 },
-  });
-}
-
-export function mappingGraph(): Graph {
-  return {
-    nodes: [
-      {
-        id: 'manual',
-        label: 'Manual input',
-        definition: { key: 'core.manual', version: 1 },
-        position: { x: 80, y: 80 },
-        configVersion: 1,
-        config: {},
-        inputMappings: {},
-        connectionRefs: {},
-      },
-      {
-        id: 'target',
-        label: 'Target',
-        definition: { key: 'core.set', version: 1 },
-        position: { x: 380, y: 80 },
-        configVersion: 1,
-        config: {},
-        inputMappings: {},
-        connectionRefs: {},
-      },
-    ],
-    edges: [
-      {
-        id: 'manual-target',
-        source: { nodeId: 'manual', port: 'out' },
-        target: { nodeId: 'target', port: 'in' },
-      },
-    ],
-    settings: {},
-  };
-}
-
 export async function addCsrfCookie(context: BrowserContext) {
   await context.route('**/v1/workspaces/*/variables', (route) =>
     route.fulfill({ json: { revision: 0, values: {} } }),
@@ -411,7 +348,6 @@ export async function addCsrfCookie(context: BrowserContext) {
   ]);
 }
 
-/** A distinct opaque tag per revision, so stale tabs always conflict. */
 export function currentEtag(remote: RemoteDraft): string {
   const suffix = String(remote.revision);
   return `"draft.${'r'.repeat(43 - suffix.length)}${suffix}"`;
@@ -436,22 +372,6 @@ export function runSummary(
     deadlineAt: null,
     cancelRequestedAt: null,
   };
-}
-
-/** The add-step lens item for a step, by its human name. */
-export function addStep(page: Page, name: RegExp) {
-  return page
-    .getByRole('complementary', { name: 'Add a step' })
-    .getByRole('button', { name });
-}
-
-/** Whether the page asks before unloading (a dirty editor does). */
-export function blocksUnload(page: Page): Promise<boolean> {
-  return page.evaluate(() => {
-    const event = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(event);
-    return event.defaultPrevented;
-  });
 }
 
 function parseGraphRequest(value: string | null): { graph: Graph } | null {

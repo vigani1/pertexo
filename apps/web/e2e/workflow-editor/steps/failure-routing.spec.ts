@@ -1,13 +1,13 @@
-import { expect, test } from '../../support/fixtures';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { expect, test } from '../../support/fixtures';
+import { mappingGraph } from '../graph';
 import {
   addCsrfCookie,
   definition,
-  manualDefinition,
   editorUrl,
   installEditorRoutes,
-  mappingGraph,
+  manualDefinition,
   remoteDraft,
 } from '../support';
 for (const viewport of [

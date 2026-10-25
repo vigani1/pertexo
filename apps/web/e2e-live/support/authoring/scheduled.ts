@@ -1,8 +1,13 @@
-import { expect, type Locator, type Page } from '@playwright/test';
 import {
   scheduleFireTimesResponseSchema,
   schedulePreviewRequestSchema,
 } from '@pertexo/contracts';
+import { expect, type Page } from '@playwright/test';
+import {
+  addBrowserInput,
+  selectLoopItem,
+  selectLoopPosition,
+} from '../../../test/support/browser/inputs';
 import { addSingleStep, readEditorDraft } from './single-step';
 
 /** Uses ordinary inspector controls; requests only observe the saved graph. */
@@ -98,17 +103,7 @@ export async function authorScheduledNestedGraph(
     await page.getByLabel('Items at a time', { exact: true }).fill('1');
     await page.keyboard.press('Tab');
   }
-  async function input(key: string, source: (row: Locator) => Promise<void>) {
-    await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
-    await page.getByRole('button', { name: 'Add input', exact: true }).click();
-    const row = page
-      .getByRole('region', { name: 'Inputs', exact: true })
-      .locator('ol > li')
-      .last();
-    await row.getByLabel('Field', { exact: true }).fill(key);
-    await source(row);
-    await page.keyboard.press('Tab');
-  }
+
   async function body(kind: RegExp) {
     await page.getByRole('tab', { name: 'Setup', exact: true }).click();
     await page
@@ -139,10 +134,14 @@ export async function authorScheduledNestedGraph(
   await page.getByLabel('Into input', { exact: true }).click();
   await page.getByRole('option', { name: 'in', exact: true }).click();
   await page.getByRole('button', { name: 'Link', exact: true }).click();
-  await input('items', async (row) => {
-    await row
-      .getByLabel('JSON value', { exact: true })
-      .fill('[["north-0","north-1"],["south-0","south-1"]]');
+  await addBrowserInput({
+    page,
+    key: 'items',
+    source: async (row) => {
+      await row
+        .getByLabel('JSON value', { exact: true })
+        .fill('[["north-0","north-1"],["south-0","south-1"]]');
+    },
   });
   await body(/For each/u);
   const innerFromDraft = async () =>
@@ -156,10 +155,7 @@ export async function authorScheduledNestedGraph(
     throw new Error('Saved scheduled inner loop missing');
   await inspect(inner.id, 'Inner scheduled items');
   await limits();
-  await input('items', async (row) => {
-    await row.getByRole('button', { name: 'Loop item', exact: true }).click();
-    await row.getByLabel('Path in it', { exact: true }).fill('$');
-  });
+  await addBrowserInput({ page, key: 'items', source: selectLoopItem });
   await body(/Set fields/u);
   const leafFromDraft = async () =>
     (await innerFromDraft())?.structured?.body.nodes[0];
@@ -169,17 +165,11 @@ export async function authorScheduledNestedGraph(
   const leaf = await leafFromDraft();
   if (leaf === undefined) throw new Error('Saved scheduled transform missing');
   await inspect(leaf.id, 'Scheduled leaf proof');
-  await input('item', async (row) => {
-    await row.getByRole('button', { name: 'Loop item', exact: true }).click();
-    await row.getByLabel('Path in it', { exact: true }).fill('$');
-  });
-  await input('ordinal', async (row) => {
-    await row.getByRole('button', { name: 'Loop item', exact: true }).click();
-    await row.getByLabel('Read', { exact: true }).click();
-    await page
-      .getByRole('option', { name: 'Its position (0, 1, 2…)', exact: true })
-      .click();
-    await row.getByLabel('Path in it', { exact: true }).fill('$');
+  await addBrowserInput({ page, key: 'item', source: selectLoopItem });
+  await addBrowserInput({
+    page,
+    key: 'ordinal',
+    source: (row) => selectLoopPosition({ page, row }),
   });
   await expect
     .poll(async () => (await leafFromDraft())?.inputMappings)

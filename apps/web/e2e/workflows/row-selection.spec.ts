@@ -1,8 +1,8 @@
 import { expect, test, type Locator } from '../support/fixtures';
+import { mappingGraph } from '../workflow-editor/graph';
 import {
   addCsrfCookie,
   installEditorRoutes,
-  mappingGraph,
   remoteDraft,
   user,
   workflowSummary,

@@ -1,22 +1,23 @@
-import { randomUUID } from 'node:crypto';
-import { expect } from '@playwright/test';
 import {
+  workflowRunListResponseSchema,
   workflowTestSuiteAcceptedSchema,
   workflowTestSuiteDetailSchema,
-  workflowRunListResponseSchema,
 } from '@pertexo/contracts';
+import { expect } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { readCsrfToken } from '../../../test/support/browser/csrf';
+import {
+  addSingleStep,
+  createEditorWorkflow,
+  publishSingleStep,
+  readEditorDraft,
+} from '../../support/authoring/single-step';
+import { openWorkflowAction } from '../../support/authoring/workflow-actions';
 import { test } from '../../support/browser-fixture';
 import {
   createEditorWorkspace,
   registerEditorUser,
 } from '../../support/ordinary-editor-session';
-import {
-  createEditorWorkflow,
-  addSingleStep,
-  readEditorDraft,
-  publishSingleStep,
-} from '../../support/authoring/single-step';
-import { openWorkflowAction } from '../../support/authoring/workflow-actions';
 test('saved input cases run as a serial suite with reports, pins and advisory publication warnings', async ({
   page,
   request,
@@ -84,14 +85,13 @@ test('saved input cases run as a serial suite with reports, pins and advisory pu
   await cases
     .getByRole('button', { name: 'Close input cases', exact: true })
     .click();
-  const csrf = (await page.context().cookies()).find(
-    (cookie) => cookie.name === 'pertexo_csrf',
-  );
-  if (csrf === undefined) throw new Error('Owned CSRF cookie missing');
+  const csrf = await readCsrfToken(page, {
+    missingMessage: 'Owned CSRF cookie missing',
+  });
   for (let ordinal = 3; ordinal <= 50; ordinal++) {
     const response = await page.request.post(`${path}/input-cases`, {
       headers: {
-        'x-csrf-token': decodeURIComponent(csrf.value),
+        'x-csrf-token': csrf,
         'Idempotency-Key': randomUUID(),
       },
       data: {

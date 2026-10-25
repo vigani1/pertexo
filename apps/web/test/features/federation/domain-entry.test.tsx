@@ -1,10 +1,11 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { expect, it, vi } from 'vitest';
 import { DomainEntry } from '@/features/federation/components/domains/entry';
 import { createApiClient } from '@/lib/api/client';
-import { organization, workspaceId, userId, providerId } from './fixtures';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { expect, it, vi } from 'vitest';
+import { readRequestJson } from '../../support/request';
+import { organization, providerId, userId, workspaceId } from './fixtures';
 
 it('retains the reviewed SSO action and revision when settings refresh while the confirmation is open', async () => {
   const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
@@ -69,8 +70,10 @@ it('retains the reviewed SSO action and revision when settings refresh while the
     expect(fetch).toHaveBeenCalledOnce();
   });
   const body = fetch.mock.calls[0]?.[1]?.body;
-  if (typeof body !== 'string') throw new Error('Missing confirmation request');
-  expect(JSON.parse(body) as unknown).toEqual({
+
+  expect(
+    readRequestJson({ body, missingMessage: 'Missing confirmation request' }),
+  ).toEqual({
     required: true,
     expectedRevision: 1,
   });
