@@ -1,3 +1,4 @@
+import { notificationFailures } from '@pertexo/workflow-engine';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { nodeRuns, workflowRuns } from '../../../schema/runs/execution.js';
@@ -7,14 +8,12 @@ import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { auditFailureNotification } from '../../../notifications/delivery/evidence.repository.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
-
 import type { PoolClient } from 'pg';
 import { v5 as uuidv5 } from 'uuid';
 import {
   FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES,
   FailureNotificationContextSchema,
 } from '@pertexo/workflow-model';
-
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import type { RunTransitionPlan } from '../plan.js';
 import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
@@ -53,19 +52,7 @@ export async function persistFailureNotificationIntent(
     input.sideEffectClass === null;
   if (notificationUnavailable) return;
 
-  const failures = input.plan.checkpoint.invocations
-    .filter(({ status }) =>
-      ['failed', 'timed_out', 'outcome_unknown'].includes(status),
-    )
-    .sort((left, right) => {
-      const severity = { outcome_unknown: 0, timed_out: 1, failed: 2 } as const;
-      const statusOrder =
-        severity[left.status as keyof typeof severity] -
-        severity[right.status as keyof typeof severity];
-      return (
-        statusOrder || left.invocationKey.localeCompare(right.invocationKey)
-      );
-    });
+  const failures = notificationFailures(input.plan.checkpoint);
   const primary = failures[0];
   const primaryFailure = await readPrimaryFailure(client, input, {
     primary,

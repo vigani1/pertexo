@@ -11,7 +11,10 @@ import type { PoolClient } from 'pg';
 import type { RunTransitionPlan } from '../advance/plan.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
-import { errorWorkflowInput, errorWorkflowFailure } from './summary.js';
+import {
+  errorWorkflowInput,
+  errorWorkflowFailure,
+} from '@pertexo/workflow-engine';
 import { readErrorWorkflowStep } from './step.queries.js';
 
 /** The terminal transition and its unique intent/outbox either all commit or none do. */

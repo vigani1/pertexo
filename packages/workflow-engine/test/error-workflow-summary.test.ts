@@ -1,9 +1,6 @@
 import { expect, it } from 'vitest';
-import {
-  createCheckpoint,
-  type InvocationState,
-} from '@pertexo/workflow-engine';
-import { errorWorkflowInput } from '../../../src/runs/error-workflows/summary.js';
+import { createCheckpoint, type InvocationState } from '../src/index.js';
+import { errorWorkflowInput } from '../src/completion/error-workflow.js';
 const id = '12345678-1234-4234-8234-123456789abc';
 const invocation = (
   nodeId: string,

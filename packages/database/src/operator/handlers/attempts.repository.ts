@@ -1,3 +1,7 @@
+import {
+  attemptReconciliationOutcome,
+  evidenceOutcome,
+} from '@pertexo/workflow-engine';
 import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
@@ -5,7 +9,6 @@ import {
   nodeRuns,
   workflowRuns,
 } from '../../schema/runs/execution.js';
-
 import {
   appendLockedRunEvent,
   RUN_EVENT_TYPE,
@@ -181,33 +184,6 @@ export async function recordUnknownOutcomeEvidence(
       outcome,
     },
   };
-}
-
-function attemptReconciliationOutcome(
-  attempt: Awaited<ReturnType<typeof readLockedAttempt>>,
-  input: Readonly<{
-    expectedFenceToken: number;
-    action: 'reclaim' | 'outcome_unknown';
-    dryRun: boolean;
-  }>,
-): string {
-  if (attempt === undefined) return 'not_found';
-  if (attempt.status !== 'running') return 'not_running';
-  if (attempt.fenceToken !== input.expectedFenceToken) return 'fence_conflict';
-  if (!(attempt.leaseExpired ?? false)) return 'lease_active';
-  const unsafeReclaim =
-    input.action === 'reclaim' &&
-    attempt.dispatchMarkedAt !== null &&
-    attempt.sideEffectClass === 'unsafe';
-  if (unsafeReclaim) return 'reclaim_unsafe';
-  if (input.dryRun)
-    return input.action === 'reclaim' ? 'would_reclaim' : 'would_mark_unknown';
-  return input.action === 'reclaim' ? 'reclaimed' : 'marked_unknown';
-}
-function evidenceOutcome(status: string | undefined): string {
-  if (status === undefined) return 'not_found';
-  if (status !== 'outcome_unknown') return 'not_unknown';
-  return 'evidence_recorded';
 }
 
 async function readLockedAttempt(

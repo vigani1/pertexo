@@ -2,7 +2,7 @@ import {
   workflowErrorInputSchema,
   type WorkflowErrorInput,
 } from '@pertexo/workflow-model';
-import type { RunTransitionPlan } from '../advance/plan.js';
+import type { WorkflowTransitionPlan as RunTransitionPlan } from '../types.js';
 
 export function errorWorkflowFailure(plan: RunTransitionPlan) {
   const status = plan.checkpoint.runStatus;
