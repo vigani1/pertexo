@@ -377,3 +377,5 @@ export {
 } from './authoring/bindings.js';
 
 export { decideInvitationAcceptance } from './workspaces/invitation-acceptance.js';
+
+export { publicationReviewDecision } from './authoring/reviews/decision.js';
