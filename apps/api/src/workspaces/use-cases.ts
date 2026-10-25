@@ -1,3 +1,4 @@
+import { parseIdentityMetadata } from '@pertexo/workflow-model';
 import {
   authorizeWorkspaceOperation,
   capabilitiesForRole,
@@ -221,7 +222,7 @@ export class CreateWorkspaceUseCase {
             ? {}
             : { requestId: input.requestId }),
           ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-          metadata: input.metadata ?? {},
+          metadata: parseIdentityMetadata(input.metadata),
         });
         return workspaceResponseSchema.parse(toWorkspaceResponse(workspace));
       },

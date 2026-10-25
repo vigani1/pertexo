@@ -184,15 +184,4 @@ export function registerSerializesDuplicateWorkspaceSlugsLeaves(): void {
       identityDatabase.createUser({ email, displayName: 'Profile B' }),
     ).rejects.toBeInstanceOf(IdentityConflictError);
   });
-
-  it('rejects credential-shaped audit metadata before persistence', async () => {
-    await expect(
-      identityDatabase.createWorkspaceWithOwner({
-        name: 'Unsafe metadata',
-        slug: `unsafe-${randomUUID().slice(0, 12)}`,
-        ownerUserId,
-        metadata: { tokenDigest: 'must-not-persist' },
-      }),
-    ).rejects.toThrow('Unsafe audit metadata key');
-  });
 }

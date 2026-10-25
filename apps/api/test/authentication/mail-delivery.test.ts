@@ -56,6 +56,30 @@ describe('local authentication mail', () => {
 });
 
 describe('durable authentication mail', () => {
+  it('rejects an oversized sealed envelope at the producer before enqueue', async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    const mail = new DurableAuthenticationMail(
+      { enqueue, close: vi.fn().mockResolvedValue(undefined) },
+      {
+        seal: () => ({
+          ciphertext: 'x'.repeat(32769),
+          nonce: 'nonce',
+          tag: 'tag',
+          keyVersion: 'v1',
+        }),
+      },
+      'security@example.test',
+    );
+    await expect(
+      mail.sendPasswordReset({
+        recipient: 'ada@example.test',
+        displayName: 'Ada',
+        url: 'https://app.example.test/reset?token=reset',
+      }),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
   it('seals recipient and immutable request bytes before durable enqueue', async () => {
     const enqueue = vi.fn().mockResolvedValue(undefined);
     const store = {

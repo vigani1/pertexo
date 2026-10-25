@@ -1,5 +1,3 @@
-export { parseIdentityMetadata } from '@pertexo/workflow-model';
-
 import { IdempotencyRequestConflictError } from '../runs/commands/acceptance/errors.js';
 import {
   IdentityConflictError,
