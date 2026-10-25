@@ -375,3 +375,5 @@ export {
   workflowConnectionReferences,
   connectionReferenceIds,
 } from './authoring/bindings.js';
+
+export { decideInvitationAcceptance } from './workspaces/invitation-acceptance.js';
