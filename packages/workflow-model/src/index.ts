@@ -366,3 +366,12 @@ export {
   formAdmissionRequirement,
   capturedFormReplayMatches,
 } from './triggers/forms/admission.js';
+
+export { parseIdentityMetadata } from './workspaces/identity-metadata.js';
+
+export {
+  addedWorkflowCallTargets,
+  addedWorkflowConnectionReferences,
+  workflowConnectionReferences,
+  connectionReferenceIds,
+} from './authoring/bindings.js';
