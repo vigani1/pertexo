@@ -14,7 +14,8 @@ canvas, inspector and test-history changes belong to the separate editor pass.
 - Sweep the requested non-editor pages at 360, 390, 768, 1024, 1440 and 1920px,
   light/dark; fix observed overflow and provide 44px phone button targets. The
   Build route retains editor-owned compact geometry; portalled dialogs use the
-  app target minimum.
+  app target minimum. Capacity cards use available content width rather than a
+  viewport breakpoint, preserving readable headings beside the Settings rail.
 
 Verify component behavior, mocked browser journeys, all six viewport sizes in
 both appearances, build/typecheck, lint and unit tests. Screenshots and the full
