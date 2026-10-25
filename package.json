@@ -39,7 +39,15 @@
         ]
       },
       "packages/contracts": {
-        "includeEntryExports": true
+        "includeEntryExports": true,
+        "paths": {
+          "@pertexo/contracts": [
+            "./src/index.ts"
+          ],
+          "@pertexo/contracts/server": [
+            "./src/server.ts"
+          ]
+        }
       },
       "packages/workflow-model": {
         "entry": [

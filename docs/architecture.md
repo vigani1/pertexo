@@ -184,7 +184,12 @@ code contains application rules; PostgreSQL retains constraints, forced
 workspace row security, transactions, queue claims, atomic capacity counters and
 checkpoint revision checks. Claims spanning workspaces, integration/session
 guards over multiple writers and locks on rows the app may not update also
-remain in SQL.
+remain in SQL. The retained run-admission guards include
+`app.require_workflow_skip_protocol`: every run writer must participate in the
+workflow concurrency Skip protocol before inserting a run under a bounded Skip
+policy. TypeScript decides admission and configures the transaction protocol;
+the trigger prevents another writer from bypassing that protocol. This stays
+beside the atomic capacity counters and admission locks.
 
 | Role          | Use                                                              |
 | ------------- | ---------------------------------------------------------------- |
