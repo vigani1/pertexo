@@ -91,6 +91,27 @@ export function registerRequiresAuthenticationCSRFEachLifecycleCommand(): void {
     }
   });
 
+  it('rejects malformed trace context at the HTTP boundary', async () => {
+    const { application, ids, workspaceId } = fixture;
+    const owner = await fixture.login('owner');
+    for (const traceparent of [
+      'arbitrary',
+      `00-${'0'.repeat(32)}-${'1'.repeat(16)}-01`,
+      `00-${'1'.repeat(32)}-${'0'.repeat(16)}-01`,
+    ]) {
+      expectProblem(
+        await application.inject({
+          method: 'POST',
+          url: lifecyclePath(workspaceId, ids.unpublished, 'archive'),
+          headers: mutationHeaders(owner, { traceparent }),
+          payload: { expectedLifecycleRevision: 1 },
+        }),
+        400,
+        'request.invalid',
+      );
+    }
+  });
+
   it('hides lifecycle commands from roles without publication authority and other tenants', async () => {
     const { application, ids, workspaceId } = fixture;
     const owner = await fixture.login('owner');

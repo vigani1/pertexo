@@ -1,16 +1,14 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflowTags } from '../../../schema/authoring/organization.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { workflowTags } from '../../../schema/authoring/organization.js';
 
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 
 import { WorkflowTagConflictError } from '../errors.js';
 
-import type { PageInput, WorkflowTagRecord, Page } from './contract.js';
-import { uuid } from './input.js';
+import type { Page, PageInput, WorkflowTagRecord } from './contract.js';
 
 export const tagProjection = {
   id: workflowTags.id,
@@ -74,13 +72,8 @@ export function requireRevision(row: TagRow, expected: number): void {
 
 export function page(input: PageInput) {
   return {
-    limit: z
-      .number()
-      .int()
-      .min(1)
-      .max(100)
-      .parse(input.limit ?? 50),
-    after: input.afterId === undefined ? null : uuid.parse(input.afterId),
+    limit: input.limit ?? 50,
+    after: input.afterId ?? null,
   };
 }
 

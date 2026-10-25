@@ -1,14 +1,10 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { FOLDER_DEPTH_LIMIT } from '../limits.js';
 import { z } from 'zod';
+import { FOLDER_DEPTH_LIMIT } from '../limits.js';
 
-export const uuid = z.uuid().overwrite((value) => value.toLowerCase());
+const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 
-export const revision = z
-  .number()
-  .int()
-  .positive()
-  .max(Number.MAX_SAFE_INTEGER);
+const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
 const canonicalName = z
   .string()
@@ -24,11 +20,6 @@ const canonicalName = z
           character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,
       ),
   );
-
-export const name = z
-  .string()
-  .overwrite((value) => value.replace(/^ +| +$(?![\s\S])/gu, ''))
-  .pipe(canonicalName);
 
 const folder = z
   .object({

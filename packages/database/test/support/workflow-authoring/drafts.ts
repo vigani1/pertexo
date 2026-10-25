@@ -1,3 +1,4 @@
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
   workflowCompatibilityReport,
   type WorkflowDefinitionCatalog,
@@ -70,11 +71,12 @@ export async function saveCurrentDraft(
   database: WorkflowAuthoringDatabase,
   input: Omit<
     Parameters<WorkflowAuthoringDatabase['saveDraft']>[0],
-    'representationTag'
-  >,
+    'representationTag' | 'graphJson'
+  > & { graphJson: unknown },
 ) {
   return database.saveDraft({
     ...input,
+    graphJson: parseWorkflowGraphDraft(input.graphJson),
     representationTag: await currentRepresentationTag(
       database,
       input.workspaceId,

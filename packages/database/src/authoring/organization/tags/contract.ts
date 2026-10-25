@@ -1,3 +1,4 @@
+import type { workflowTags } from '../../../schema/authoring/organization.js';
 import type { OrganizationRequestScope } from '../session.js';
 
 export type Command = OrganizationRequestScope &
@@ -12,11 +13,9 @@ type TaggedCommand = Command &
 export type AssignmentCommand = Command &
   Readonly<{ workflowId: string; expectedOrganizationRevision: number }>;
 
-export type WorkflowTagRecord = Readonly<{
-  id: string;
-  key: string;
-  revision: number;
-}>;
+export type WorkflowTagRecord = Readonly<
+  Pick<typeof workflowTags.$inferSelect, 'id' | 'key' | 'revision'>
+>;
 
 export type WorkflowTagAssignment = Readonly<{
   workflowId: string;

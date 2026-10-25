@@ -1,18 +1,18 @@
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  workflowInputCases,
-  workflowInputCasePayloads,
-} from '../../schema/authoring/input-cases.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { z } from 'zod';
 import {
   DEFAULT_TEST_EXPECTATIONS,
-  type WorkflowTestExpectations,
+  workflowTestExpectationsSchema,
 } from '@pertexo/workflow-model';
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  workflowInputCasePayloads,
+  workflowInputCases,
+} from '../../schema/authoring/input-cases.js';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import type { WorkflowInputCaseDatabase, CaseTransaction } from './contract.js';
+import type { CaseTransaction, WorkflowInputCaseDatabase } from './contract.js';
 import { metadataProjection, workflow } from './metadata.queries.js';
 
 export function listInputCases(
@@ -22,7 +22,7 @@ export function listInputCases(
   return transact(input, {
     write: false,
     work: async (client) => {
-      const limit = z.number().int().min(1).max(100).parse(input.limit);
+      const limit = input.limit;
       await workflow(client, input, { write: false });
       const rows = await drizzle(client)
         .select(metadataProjection)
@@ -59,7 +59,6 @@ export function getInputCase(
   return transact(input, {
     write: false,
     work: async (client) => {
-      z.uuid().parse(input.caseId);
       await workflow(client, input, { write: false });
       const [row] = await drizzle(client)
         .select({
@@ -96,8 +95,10 @@ export function getInputCase(
           expectations:
             row.expectations === null
               ? DEFAULT_TEST_EXPECTATIONS
-              : (JSON.parse(row.expectations) as WorkflowTestExpectations),
-          input: JSON.parse(row.input) as unknown,
+              : workflowTestExpectationsSchema.parse(
+                  JSON.parse(row.expectations),
+                ),
+          input: z.json().parse(JSON.parse(row.input)),
         },
       };
     },

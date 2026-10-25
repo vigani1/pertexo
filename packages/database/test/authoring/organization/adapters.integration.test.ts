@@ -58,7 +58,7 @@ describe.skipIf(!organizationFixtureEnabled)(
       const context = { workspaceId: scope.workspace, actorId: scope.actor };
       const created = await stores.folders.createFolder({
         ...context,
-        name: ' Ops ',
+        name: 'Ops',
         parentId: null,
         idempotencyKey: randomUUID(),
       });

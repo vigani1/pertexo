@@ -80,7 +80,7 @@ export function registerStoresCuratedTemplateOriginImport(): void {
 
   it('creates one normal-default unpublished revision-1 draft, safe audit and identifier-only receipt atomically', async () => {
     const db = database();
-    const input = command({ name: '  Trimmed destination  ' });
+    const input = command({ name: 'Trimmed destination' });
     const before = await firstFacts();
     const accepted = await db.importWorkflow(input);
     const draft = await db.getDraft(workspaceId, accepted.workflowId, actorId);

@@ -1,35 +1,34 @@
-import type { PoolClient } from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { and, eq, exists, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
-  workflows,
   workflowDrafts,
+  workflows,
   workflowVersions,
 } from '../../../schema/authoring/workflows.js';
 import { auditEvents } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
+import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
-import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
-import { z } from 'zod';
-import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 
 import { generatePersistedId } from '../../../platform/persisted-id.js';
-import {
-  WorkflowNotFoundError,
-  WorkflowRevisionConflictError,
-} from '../errors.js';
+import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   RestoreWorkflowVersionInput,
   WorkflowAuthoringDatabase,
 } from '../contract.js';
-import type { WorkflowDraftRecord } from '../representation/contract.js';
-import type { WorkflowAuthoringWriteContext } from '../context.js';
 import {
+  WorkflowNotFoundError,
+  WorkflowRevisionConflictError,
+} from '../errors.js';
+import type { WorkflowDraftRecord } from '../representation/contract.js';
+import {
+  draftProjection,
   projectDraft,
   projectVersion,
-  draftProjection,
   versionProjection,
 } from '../representation/records.queries.js';
 
@@ -38,22 +37,15 @@ type VersionRestoreStore = Pick<
   'restoreWorkflowVersion'
 >;
 
-const uuidSchema = z.uuid();
-const workflowDraftTagSchema = z
-  .string()
-  .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u);
-
 async function restoreWorkflowVersion(
   context: WorkflowAuthoringWriteContext,
   input: RestoreWorkflowVersionInput,
 ): Promise<WorkflowDraftRecord> {
-  const workspaceId = uuidSchema.parse(input.workspaceId);
-  const workflowId = uuidSchema.parse(input.workflowId);
-  const versionId = uuidSchema.parse(input.versionId);
-  const actorId = uuidSchema.parse(input.actorId);
-  const representationTag = workflowDraftTagSchema.parse(
-    input.representationTag,
-  );
+  const workspaceId = input.workspaceId;
+  const workflowId = input.workflowId;
+  const versionId = input.versionId;
+  const actorId = input.actorId;
+  const representationTag = input.representationTag;
 
   return context.transact(workspaceId, actorId, async (client) => {
     await context.requireAuthor(client, workspaceId, {

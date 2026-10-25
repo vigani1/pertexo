@@ -1,3 +1,8 @@
+import {
+  workflowTagCreateRequestSchema,
+  workflowTagRenameRequestSchema,
+  workflowTagReplaceRequestSchema,
+} from '@pertexo/contracts';
 import { randomBytes, randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 
@@ -44,7 +49,7 @@ export function owner<
   );
 }
 
-export function tag(
+export async function tag(
   s: Scope,
   operation: 'tag.create' | 'tag.rename' | 'tag.delete',
   {
@@ -65,15 +70,20 @@ export function tag(
     idempotencyKey: key,
   };
   if (operation === 'tag.create')
-    return fixture.tags.createTag({ ...command, key: body.key ?? '' });
+    return fixture.tags.createTag({
+      ...command,
+      ...workflowTagCreateRequestSchema.parse({ key: body.key ?? '' }),
+    });
   const tagId = required(id ?? undefined);
   const expectedTagRevision = body.expectedTagRevision ?? 0;
   return operation === 'tag.rename'
     ? fixture.tags.renameTag({
         ...command,
         tagId,
-        key: body.key ?? '',
-        expectedTagRevision,
+        ...workflowTagRenameRequestSchema.parse({
+          key: body.key ?? '',
+          expectedTagRevision,
+        }),
       })
     : fixture.tags.deleteTag({ ...command, tagId, expectedTagRevision });
 }
@@ -87,7 +97,7 @@ export async function createTag(
   return result.tag;
 }
 
-export function assignment(
+export async function assignment(
   s: Scope,
   workflow: string,
   {
@@ -107,8 +117,10 @@ export function assignment(
     actorId: actor,
     idempotencyKey: key,
     workflowId: workflow,
-    tagIds: ids,
-    expectedOrganizationRevision: revision,
+    ...workflowTagReplaceRequestSchema.parse({
+      tagIds: ids,
+      expectedOrganizationRevision: revision,
+    }),
   });
 }
 

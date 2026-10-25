@@ -217,8 +217,16 @@ describe.runIf(betterAuthIntegrationEnabled)(
         403,
         'auth.forbidden',
       );
+      let deep: unknown = null;
+      for (let index = 0; index < 65; index += 1) deep = [deep];
       for (const bad of [
         { ...payload, input: 'x'.repeat(65_535) },
+        ...[
+          Array.from({ length: 10_001 }, () => 0),
+          '\u0000',
+          '\ud800',
+          deep,
+        ].map((input) => ({ ...payload, input })),
         { ...payload, name: ' ' },
         { ...payload, pins: [] },
         { ...payload, workflowVersionId: randomUUID() },
@@ -230,10 +238,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
         });
         expectProblem(
           response,
-          'pins' in bad || bad.name === ' ' || typeof bad.input === 'string'
-            ? 400
-            : 404,
-          'pins' in bad || bad.name === ' ' || typeof bad.input === 'string'
+          bad.workflowVersionId === versionId ? 400 : 404,
+          bad.workflowVersionId === versionId
             ? 'request.invalid'
             : 'resource.not_found',
         );

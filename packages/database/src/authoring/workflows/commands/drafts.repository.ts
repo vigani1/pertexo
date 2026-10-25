@@ -1,48 +1,45 @@
+import { and, eq, exists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { and, eq, exists, sql } from 'drizzle-orm';
-import {
-  workflows,
-  workflowDrafts,
-} from '../../../schema/authoring/workflows.js';
-import { workflowOrganizationState } from '../../../schema/authoring/organization.js';
-import { auditEvents } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
-import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
-import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
-import { pruneStepSamples } from '../../step-samples/records.repository.js';
 import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
-
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { workflowOrganizationState } from '../../../schema/authoring/organization.js';
 import {
-  EMPTY_WORKFLOW_GRAPH,
-  parseWorkflowGraphDraft,
-} from '@pertexo/workflow-model';
+  workflowDrafts,
+  workflows,
+} from '../../../schema/authoring/workflows.js';
+import { auditEvents } from '../../../schema/foundation.js';
+import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
+import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
+import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
+import { pruneStepSamples } from '../../step-samples/records.repository.js';
+
+import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
+import { z } from 'zod';
 
 import {
   claimCommand,
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
-import {
-  WorkflowNotFoundError,
-  WorkflowRevisionConflictError,
-} from '../errors.js';
-import {
-  projectDraft,
-  draftProjection,
-  workflowProjection,
-} from '../representation/records.queries.js';
+import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   CreateWorkflowInput,
   CreateWorkflowResult,
   SaveWorkflowDraftInput,
   WorkflowAuthoringDatabase,
 } from '../contract.js';
+import {
+  WorkflowNotFoundError,
+  WorkflowRevisionConflictError,
+} from '../errors.js';
 import type { WorkflowDraftRecord } from '../representation/contract.js';
-import type { WorkflowAuthoringWriteContext } from '../context.js';
+import {
+  draftProjection,
+  projectDraft,
+  workflowProjection,
+} from '../representation/records.queries.js';
 
 type DraftStore = Pick<
   WorkflowAuthoringDatabase,
@@ -51,18 +48,14 @@ type DraftStore = Pick<
 
 const uuidSchema = z.uuid();
 const createdResultSchema = z.object({ workflowId: uuidSchema }).strict();
-const nameSchema = z.string().trim().min(1).max(128);
-const workflowDraftTagSchema = z
-  .string()
-  .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u);
 
 async function createWorkflow(
   context: WorkflowAuthoringWriteContext,
   input: CreateWorkflowInput,
 ): Promise<CreateWorkflowResult> {
   return context.transact(input.workspaceId, input.actorId, async (client) => {
-    const workflowId = uuidSchema.parse(input.id ?? generatePersistedId());
-    const graph = parseWorkflowGraphDraft(input.emptyGraph);
+    const workflowId = input.id ?? generatePersistedId();
+    const graph = input.emptyGraph;
     await context.requireAuthor(client, input.workspaceId, {
       actorId: input.actorId,
     });
@@ -73,9 +66,7 @@ async function createWorkflow(
       placementDefinitionCatalog,
     );
     const folderId =
-      input.folderId == null
-        ? null
-        : uuidSchema.parse(input.folderId).toLowerCase();
+      input.folderId == null ? null : input.folderId.toLowerCase();
     if (
       folderId !== null &&
       !(await readFolderScope(client, input)).permits(
@@ -84,7 +75,7 @@ async function createWorkflow(
       )
     )
       throw new WorkflowNotFoundError('Folder is not visible');
-    const name = nameSchema.parse(input.name);
+    const name = input.name;
     const command = {
       workspaceId: input.workspaceId,
       operation: 'workflow.create',
@@ -197,18 +188,16 @@ async function saveDraft(
   context: WorkflowAuthoringWriteContext,
   input: SaveWorkflowDraftInput,
 ): Promise<WorkflowDraftRecord> {
-  const representationTag = workflowDraftTagSchema.parse(
-    input.representationTag,
-  );
+  const representationTag = input.representationTag;
   return context.transact(input.workspaceId, input.actorId, async (client) => {
     await context.requireAuthor(client, input.workspaceId, {
       actorId: input.actorId,
       workflowId: input.workflowId,
     });
     const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
-    const graph = parseWorkflowGraphDraft(input.graphJson);
-    const expected = z.number().int().positive().parse(input.expectedRevision);
-    const workflowId = uuidSchema.parse(input.workflowId);
+    const graph = input.graphJson;
+    const expected = input.expectedRevision;
+    const workflowId = input.workflowId;
     const [currentRow] = await readActiveDraft(client, {
       workspaceId: input.workspaceId,
       workflowId,

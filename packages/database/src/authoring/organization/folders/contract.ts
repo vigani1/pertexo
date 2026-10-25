@@ -1,14 +1,13 @@
 import type {
-  SharingPrincipalsQuery,
-  SharingPrincipals,
-} from '@pertexo/contracts';
-import type {
   AudienceReview,
   FolderSharing,
   FolderSharingRequest,
-  WorkflowMoveReviewRequest,
+  SharingPrincipals,
+  SharingPrincipalsQuery,
   WorkflowMoveReview,
+  WorkflowMoveReviewRequest,
 } from '@pertexo/contracts';
+import type { workflowFolders } from '../../../schema/authoring/organization.js';
 import type { OrganizationRequestScope } from '../session.js';
 
 export type Command = OrganizationRequestScope &
@@ -17,15 +16,13 @@ export type Command = OrganizationRequestScope &
 type FolderCommand = Command &
   Readonly<{ folderId: string; expectedFolderRevision: number }>;
 
-export type WorkflowFolderRecord = Readonly<{
-  id: string;
-  name: string;
-  parentId: string | null;
-  revision: number;
-  depth: number;
-  accessMode: 'workspace' | 'restricted';
-  canCreateWorkflows?: boolean;
-}>;
+// Depth and creation permission come from the hierarchy and actor's grants.
+export type WorkflowFolderRecord = Readonly<
+  Pick<
+    typeof workflowFolders.$inferSelect,
+    'id' | 'name' | 'parentId' | 'revision' | 'accessMode'
+  > & { depth: number; canCreateWorkflows?: boolean }
+>;
 
 export type WorkflowFolderCommandResult = Readonly<{
   folder: WorkflowFolderRecord;

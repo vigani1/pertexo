@@ -1,21 +1,19 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflows } from '../../schema/authoring/workflows.js';
-import {
-  workflowInputCases,
-  workflowInputCasePayloads,
-} from '../../schema/authoring/input-cases.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  workflowInputCasePayloads,
+  workflowInputCases,
+} from '../../schema/authoring/input-cases.js';
+import { workflows } from '../../schema/authoring/workflows.js';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import type { WorkflowInputCaseMetadata, Scope } from './contract.js';
+import type { Scope, WorkflowInputCaseMetadata } from './contract.js';
 import {
-  WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
+  WorkflowInputCaseRevisionConflictError,
 } from './errors.js';
-import { revisionSchema } from './input.js';
 
 export const metadataProjection = {
   id: workflowInputCases.id,
@@ -91,8 +89,6 @@ export async function lockedCase(
   client: PoolClient,
   input: Scope & { caseId: string; expectedRevision: number },
 ): Promise<WorkflowInputCaseMetadata> {
-  z.uuid().parse(input.caseId);
-  revisionSchema.parse(input.expectedRevision);
   const [row] = await drizzle(client)
     .select(metadataProjection)
     .from(workflowInputCases)

@@ -7,7 +7,6 @@ import { parseDatabaseConfig } from '../../../src/config.js';
 import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/repository.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 
-import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/contract.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from '../workflow-authoring-admission.fixture.js';
 
 import { createDisposableDatabaseFixture } from '../postgres/disposable-database.js';
@@ -117,7 +116,7 @@ export let otherWorkflowId = '';
 
 export let otherVersionId = '';
 
-export let authoring: WorkflowAuthoringDatabase;
+export let authoring: ReturnType<typeof createWorkflowAuthoringDatabase>;
 
 const resources: {
   close(): Promise<void>;

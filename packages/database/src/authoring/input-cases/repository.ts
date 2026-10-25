@@ -6,19 +6,18 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 
 import type { Scope, WorkflowInputCaseDatabase } from './contract.js';
-import { scopeSchema } from './input.js';
 
 import {
   createInputCase,
-  updateInputCase,
   deleteInputCase,
+  updateInputCase,
 } from './commands/mutations.repository.js';
-import { listInputCases, getInputCase } from './read.queries.js';
+import { getInputCase, listInputCases } from './read.queries.js';
 
 /** Durable bounded authoring commands; no caller manages locks or quota counters. */
 export function createWorkflowInputCaseDatabase(
@@ -36,7 +35,6 @@ export function createWorkflowInputCaseDatabase(
       work,
     }: Readonly<{ write: boolean; work: (client: PoolClient) => Promise<T> }>,
   ): Promise<T> {
-    scopeSchema.parse(input);
     if (closed) throw new Error('Run-input case database is closed');
     const operation = withTenantScopedClient(
       lease.pool,

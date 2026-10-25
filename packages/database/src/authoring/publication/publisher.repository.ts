@@ -1,81 +1,75 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { dataTableReferenceIssues } from '../../data-tables/columns/references.queries.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
-  workflows,
   workflowDrafts,
+  workflows,
   workflowVersions,
 } from '../../schema/authoring/workflows.js';
 import { workspaces } from '../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
+import { lockWorkspaceVariableNames } from '../../variables/settings.queries.js';
 import { recordPromotedPublication } from '../promotion/provenance.repository.js';
 import { PublicationReviewError } from '../reviews/errors.js';
-import { dataTableReferenceIssues } from '../../data-tables/columns/references.queries.js';
-import { lockWorkspaceVariableNames } from '../../variables/settings.queries.js';
 
-import { validateApprovalAudience } from './pending-tasks.queries.js';
-import { lockArtifactReferences } from '../../artifacts/references/repository.js';
 import {
-  claimCommand,
-  credentialCommandScope,
-  completeCommand,
-} from '../../platform/idempotency/repository.js';
-import type { CommandIdentity } from '../../platform/idempotency/contract.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
-import {
-  sameWorkflowNotes,
   InvalidWorkflowGraphError,
+  sameWorkflowNotes,
 } from '@pertexo/workflow-model';
 import {
   parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
-import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
 import type { PoolClient } from 'pg';
-
+import { lockArtifactReferences } from '../../artifacts/references/repository.js';
+import type { CommandIdentity } from '../../platform/idempotency/contract.js';
 import {
-  WorkflowNotFoundError,
-  WorkflowRevisionConflictError,
-} from '../workflows/errors.js';
+  claimCommand,
+  completeCommand,
+  credentialCommandScope,
+} from '../../platform/idempotency/repository.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
+import { validateApprovalAudience } from './pending-tasks.queries.js';
+
 import type {
   PublishWorkflowInput,
   PublishWorkflowResult,
 } from '../workflows/contract.js';
+import {
+  WorkflowNotFoundError,
+  WorkflowRevisionConflictError,
+} from '../workflows/errors.js';
 import type { WorkflowVersionRecord } from '../workflows/representation/contract.js';
 import {
+  draftProjection,
   projectDraft,
   projectVersion,
-  draftProjection,
   versionProjection,
 } from '../workflows/representation/records.queries.js';
 
 import { validatePublicationCalls } from './calls.repository.js';
 import { connectionReferenceIssues } from './connections.queries.js';
 
-import {
-  uuidSchema,
-  digestSchema,
-  workflowDraftTagSchema,
-  executableSchema,
-  storedPublicationSchema,
-} from './input.js';
 import type {
-  WorkflowPublicationDependencies,
+  CompiledPublication,
   PublicationCandidateInput,
   PublicationClaim,
-  CompiledPublication,
+  WorkflowPublicationDependencies,
 } from './contract.js';
+import { executableSchema, storedPublicationSchema } from './input.js';
 import {
-  persistPublicationProjections,
   finalizePublication,
+  persistPublicationProjections,
 } from './projections.repository.js';
 
 async function claimPublication(
   client: PoolClient,
   input: PublishWorkflowInput,
 ): Promise<PublicationClaim> {
-  const workflowId = uuidSchema.parse(input.workflowId);
+  const workflowId = input.workflowId;
   const command: CommandIdentity = {
     workspaceId: input.workspaceId,
     operation: 'workflow.publish',
@@ -87,7 +81,7 @@ async function claimPublication(
   };
   const stored = await claimCommand(client, {
     ...command,
-    request: digestSchema.parse(input.requestHash),
+    request: input.requestHash,
     resourceId: workflowId,
   });
   if (stored === null)
@@ -162,7 +156,7 @@ async function lockAndCompilePublication(
       variant.definitionCatalog,
     ).fingerprint,
   });
-  if (currentEtag !== workflowDraftTagSchema.parse(input.representationTag))
+  if (currentEtag !== input.representationTag)
     throw new WorkflowRevisionConflictError(draft.revision, currentEtag);
   const validation = await admitWorkflowAuthoring(
     client,
@@ -197,6 +191,7 @@ async function lockAndCompilePublication(
   await validateApprovalAudience(client, input.workspaceId, graph);
   await requireWorkflowCallTargets(client, input, graph);
   await lockArtifactReferences(client, input.workspaceId, graph, input.actorId);
+  // Injected compilers return unknown executable JSON, so this is its boundary.
   const executable = executableSchema.parse(variant.executableCompiler(graph));
   const versionId = generatePersistedId();
   const { calls } = await validatePublicationCalls(

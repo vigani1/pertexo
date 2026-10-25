@@ -1,21 +1,22 @@
+import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type { PoolClient } from 'pg';
-import type { WorkflowGraph } from '@pertexo/workflow-model';
-import { workflows, workflowDrafts } from '../../schema/authoring/workflows.js';
-import { workflowTemplateOrigins } from '../../schema/authoring/template-origin.js';
-import { auditEvents } from '../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
-import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
-import { lockArtifactReferences } from '../../artifacts/references/repository.js';
 import { createHash } from 'node:crypto';
+import type { PoolClient } from 'pg';
+import { lockArtifactReferences } from '../../artifacts/references/repository.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { workflowTemplateOrigins } from '../../schema/authoring/template-origin.js';
+import { workflowDrafts, workflows } from '../../schema/authoring/workflows.js';
+import { auditEvents } from '../../schema/foundation.js';
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
 
 import {
   canonicalWorkflowPortableJson,
   portableGraphDigest,
   portableManifestDigest,
   projectWorkflowPortableManifest,
+  rolesForCapability,
   WORKFLOW_PORTABILITY_LIMITS,
 } from '@pertexo/workflow-model';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
@@ -25,35 +26,29 @@ import {
   credentialCommandScope,
 } from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
 import type {
   ExportWorkflowInput,
   ImportWorkflowInput,
   PreviewWorkflowImportInput,
   WorkflowAuthoringDatabase,
 } from '../workflows/contract.js';
-import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
 
+import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
+import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import {
   WorkflowNotFoundError,
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
   WorkflowPortabilityValidationError,
 } from '../workflows/errors.js';
-import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import {
   lockPortableSource,
   reviewedSourceGraph,
 } from './source-authority.queries.js';
 
-import {
-  previewInput,
-  importInput,
-  importResultSchema,
-  exportInput,
-} from './input.js';
-import { selectedPolicy, inspectImport, portableFailure } from './admission.js';
+import { inspectImport, portableFailure, selectedPolicy } from './admission.js';
+import { importResultSchema } from './input.js';
 
 async function requirePortabilityAuthority(
   client: Parameters<typeof lockWorkflowAuthoringAuthority>[0],
@@ -86,7 +81,6 @@ function exportPortableWorkflow(
   context: WorkflowAuthoringWriteContext,
   rawInput: ExportWorkflowInput,
 ) {
-  exportInput.parse(rawInput);
   const input: ExportWorkflowInput = rawInput;
   return context.transact(
     input.workspaceId,
@@ -152,21 +146,7 @@ function previewPortableWorkflow(
   context: WorkflowAuthoringWriteContext,
   rawInput: PreviewWorkflowImportInput,
 ) {
-  canonicalWorkflowPortableJson({
-    manifest: rawInput.manifest,
-    bindings: rawInput.bindings,
-  });
-  const {
-    templateIssues: _verification,
-    templateOrigin: _origin,
-    ...unverified
-  } = rawInput;
-  const parsed = previewInput.parse(unverified);
-  const input: PreviewWorkflowImportInput = {
-    ...rawInput,
-    manifest: parsed.manifest,
-    bindings: parsed.bindings,
-  };
+  const input = rawInput;
   return context.transact(
     input.workspaceId,
     input.actorId,
@@ -197,22 +177,7 @@ function importPortableWorkflow(
   context: WorkflowAuthoringWriteContext,
   rawInput: ImportWorkflowInput,
 ) {
-  canonicalWorkflowPortableJson({
-    manifest: rawInput.manifest,
-    bindings: rawInput.bindings,
-  });
-  const {
-    templateIssues: _verification,
-    templateOrigin: _origin,
-    ...unverified
-  } = rawInput;
-  const parsed = importInput.parse(unverified);
-  const input: ImportWorkflowInput = {
-    ...rawInput,
-    name: parsed.name,
-    manifest: parsed.manifest,
-    bindings: parsed.bindings,
-  };
+  const input = rawInput;
   return context.transact(
     input.workspaceId,
     input.actorId,

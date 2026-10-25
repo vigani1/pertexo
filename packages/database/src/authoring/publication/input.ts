@@ -1,25 +1,6 @@
 import { z } from 'zod';
-import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
-export const uuidSchema = z.uuid();
-
-export const digestSchema = sha256HexSchema;
-
-export const workflowDraftTagSchema = z
-  .string()
-  .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u);
-
-export const providerKeySchema = z
-  .string()
-  .min(1)
-  .max(64)
-  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
-
-export const operationKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
+const uuidSchema = z.uuid();
 
 export const executableSchema = z
   .object({

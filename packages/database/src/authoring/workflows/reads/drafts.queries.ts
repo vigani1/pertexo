@@ -1,27 +1,27 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { dataTableReferenceIssues } from '../../../data-tables/columns/references.queries.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
   workflowDrafts,
   workflowVersions,
   workflows,
 } from '../../../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { dataTableReferenceIssues } from '../../../data-tables/columns/references.queries.js';
 
 import {
-  projectDraft,
   draftProjection,
+  projectDraft,
 } from '../representation/records.queries.js';
 
 import {
-  sameWorkflowNotes,
   parseWorkflowGraphDraft,
+  sameWorkflowNotes,
 } from '@pertexo/workflow-model';
 import { admitWorkflowAuthoring } from '../admission.queries.js';
 
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
+import { canReadWorkflow } from './authority.js';
 import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';
-import { uuidSchema, canReadWorkflow } from './authority.js';
 
 export function validateAuthoringDraft(
   context: WorkflowAuthoringReadContext,
@@ -55,7 +55,7 @@ export function validateAuthoringDraft(
         .where(
           and(
             eq(workflowDrafts.workspaceId, workspaceId),
-            eq(workflowDrafts.workflowId, uuidSchema.parse(workflowId)),
+            eq(workflowDrafts.workflowId, workflowId),
           ),
         )
         .catch(rethrowQueryFailure);
@@ -147,7 +147,7 @@ export function readAuthoringDraft(
       .where(
         and(
           eq(workflowDrafts.workspaceId, workspaceId),
-          eq(workflowDrafts.workflowId, uuidSchema.parse(workflowId)),
+          eq(workflowDrafts.workflowId, workflowId),
         ),
       )
       .catch(rethrowQueryFailure);

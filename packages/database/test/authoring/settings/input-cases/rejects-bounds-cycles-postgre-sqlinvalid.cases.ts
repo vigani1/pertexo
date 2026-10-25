@@ -18,43 +18,22 @@ import {
 import { database, fixture } from './fixture.js';
 
 export function registerRejectsBoundsCyclesPostgreSQLInvalid(): void {
-  it('rejects bounds, cycles and PostgreSQL-invalid unicode before any persistence', async () => {
+  it('rejects malformed legacy expectations when reading stored case JSON', async () => {
     const scope = await fixture();
-    for (const input of [
-      'x'.repeat(65535),
-      Array.from({ length: 10001 }, () => 0),
-      '\u0000',
-      '\ud800',
-    ]) {
-      await expect(
-        database.createCase({
-          ...scope,
-          name: 'Invalid',
-          input,
-          idempotencyKey: randomUUID(),
-        }),
-      ).rejects.toBeInstanceOf(TypeError);
-    }
-    const value: Record<string, unknown> = {};
-    value.self = value;
+    const created = await database.createCase({
+      ...scope,
+      name: 'Legacy',
+      input: null,
+      idempotencyKey: randomUUID(),
+    });
+    await queryAsOwner(
+      `update app.workflow_input_case_payloads set expectations='{"unexpected":true}', canonical_bytes=octet_length(input)+octet_length('{"unexpected":true}') where case_id=$1`,
+      [created.caseId],
+      workspaceId,
+    );
     await expect(
-      database.createCase({
-        ...scope,
-        name: 'Invalid',
-        input: value,
-        idempotencyKey: randomUUID(),
-      }),
-    ).rejects.toBeInstanceOf(TypeError);
-    let deep: unknown = null;
-    for (let index = 0; index < 65; index += 1) deep = [deep];
-    await expect(
-      database.createCase({
-        ...scope,
-        name: 'Invalid',
-        input: deep,
-        idempotencyKey: randomUUID(),
-      }),
-    ).rejects.toBeInstanceOf(TypeError);
+      database.getCase({ ...scope, caseId: created.caseId }),
+    ).rejects.toMatchObject({ name: 'ZodError' });
   });
 
   it('forces tenant RLS, keeps a case on its workflow version and denies app physical erasure', async () => {
