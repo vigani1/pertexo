@@ -1,10 +1,9 @@
 import { connectionSlotKey } from '../../model/portability';
 import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
-import { useId, useState, type DragEvent, type Ref } from 'react';
-import { buttonVariants } from '@/components/ui/button-variants';
+import type { Ref } from 'react';
+import { FileDrop } from '@/components/ui/file-drop';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { formatByteLength } from '@/lib/format/bytes';
-import { cn } from '@/lib/utils';
 import { PatternGlyph } from '../pattern-glyph';
 
 /**
@@ -29,26 +28,6 @@ export function WorkflowFileDrop({
   optionalSlots: ReadonlySet<string>;
   onChoose: (file: File | undefined) => void;
 }>) {
-  const id = useId();
-  const [file, setFile] = useState<SelectedFile>();
-  const [dragging, setDragging] = useState(false);
-
-  function choose(next: File | undefined) {
-    setFile(
-      next === undefined ? undefined : { name: next.name, size: next.size },
-    );
-    onChoose(next);
-  }
-
-  function drop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setDragging(false);
-    if (!locked) choose(event.dataTransfer.files[0]);
-  }
-
-  const selection = { manifest, file };
-  const read = isReadSelection(selection);
-  const showSolidBorder = read && !dragging;
   const steps = manifest?.graph.nodes.length ?? 0;
   // Steps that run without a connection don't count as needing one.
   const slots =
@@ -57,68 +36,50 @@ export function WorkflowFileDrop({
     ).length ?? 0;
   return (
     <div className="flex flex-col gap-1.5">
-      <div
-        onDragOver={(event) => {
-          if (locked) return;
-          event.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => {
-          setDragging(false);
-        }}
-        onDrop={drop}
-        className={cn(
-          'relative flex items-center gap-4 rounded-xl border border-dashed px-4 py-4 transition-colors motion-reduce:transition-none',
-          dropClass({ dragging, error }),
-          showSolidBorder && 'border-solid border-border',
-        )}
+      <FileDrop
+        ref={inputRef}
+        aria-label="Workflow JSON file"
+        name="workflow-file"
+        accept=".json,application/json"
+        disabled={locked}
+        aria-invalid={error === undefined ? undefined : true}
+        aria-describedby={
+          error === undefined ? undefined : 'workflow-file-error'
+        }
+        onChoose={onChoose}
       >
-        <span
-          aria-hidden="true"
-          className="grid h-12 w-[8.25rem] shrink-0 place-items-center rounded-md bg-recess-ink/25"
-        >
-          {read ? (
-            <PatternGlyph graph={selection.manifest.graph} />
-          ) : (
-            <UnwovenThread />
-          )}
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <FileSummary
-            selection={selection}
-            reading={reading}
-            dragging={dragging}
-            steps={steps}
-            slots={slots}
-          />
-        </div>
-        <input
-          ref={inputRef}
-          id={`${id}-file`}
-          aria-label="Workflow JSON file"
-          name="workflow-file"
-          type="file"
-          accept=".json,application/json"
-          disabled={locked}
-          aria-invalid={error === undefined ? undefined : true}
-          aria-describedby={error === undefined ? undefined : `${id}-error`}
-          className="peer sr-only"
-          onChange={(event) => {
-            choose(event.target.files?.[0]);
-          }}
-        />
-        <label
-          htmlFor={`${id}-file`}
-          className={cn(
-            buttonVariants({ variant: read ? 'ghost' : 'outline', size: 'sm' }),
-            'shrink-0 cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring peer-disabled:pointer-events-none peer-disabled:opacity-50',
-          )}
-        >
-          {read ? 'Choose another' : 'Choose file'}
-        </label>
-      </div>
+        {({ file, dragging }) => {
+          const selection = { manifest, file };
+          return (
+            <div className="flex min-w-0 flex-1 flex-col items-start gap-3 sm:flex-row sm:items-center">
+              <span
+                aria-hidden="true"
+                className="grid h-12 w-24 shrink-0 place-items-center rounded-md bg-recess-ink/25 sm:w-[8.25rem]"
+              >
+                {isReadSelection(selection) ? (
+                  <PatternGlyph graph={selection.manifest.graph} />
+                ) : (
+                  <UnwovenThread />
+                )}
+              </span>
+              <div className="flex w-full min-w-0 flex-1 flex-col gap-1 sm:w-auto">
+                <FileSummary
+                  selection={selection}
+                  reading={reading}
+                  dragging={dragging}
+                  steps={steps}
+                  slots={slots}
+                />
+              </div>
+              <span className="text-sm font-semibold text-accent-foreground">
+                {file ? 'Choose another' : 'Choose file'}
+              </span>
+            </div>
+          );
+        }}
+      </FileDrop>
       {error === undefined ? null : (
-        <p id={`${id}-error`} className="text-xs text-destructive">
+        <p id="workflow-file-error" className="text-xs text-destructive">
           {error}
         </p>
       )}
@@ -166,16 +127,6 @@ function isReadSelection(selection: FileSelection): selection is Readonly<{
   return selection.manifest !== undefined && selection.file !== undefined;
 }
 
-function dropClass({
-  dragging,
-  error,
-}: Readonly<{ dragging: boolean; error: string | undefined }>): string {
-  if (dragging) return 'border-action bg-action/[0.06]';
-  return error === undefined
-    ? 'border-border-strong bg-surface-ink/[0.015]'
-    : 'border-destructive/70 bg-destructive/[0.04]';
-}
-
 function FileSummary({
   selection,
   reading,
@@ -201,7 +152,7 @@ function FileSummary({
   if (isReadSelection(selection))
     return (
       <>
-        <p className="truncate text-sm font-semibold text-foreground">
+        <p className="wrap-anywhere text-sm font-semibold text-foreground">
           {selection.file.name}
         </p>
         <p className="text-xs text-muted-foreground">
@@ -219,10 +170,14 @@ function FileSummary({
   return (
     <>
       <p className="text-sm text-foreground">
-        {dragging ? 'Release to read it' : 'Drop a workflow file here'}
+        {dragging
+          ? 'Release to read it'
+          : (selection.file?.name ?? 'Drop a workflow file here')}
       </p>
       <p className="text-xs text-muted-foreground">
-        A JSON file exported from Pertexo, up to 2 MB.
+        {selection.file
+          ? formatByteLength(selection.file.size)
+          : 'A JSON file exported from Pertexo, up to 2 MB.'}
       </p>
     </>
   );

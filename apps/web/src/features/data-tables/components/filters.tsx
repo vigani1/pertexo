@@ -98,7 +98,7 @@ export function DataTableFilters({
         <button
           type="button"
           aria-label="Clear filter"
-          className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-sm border border-action/25 bg-action/8 px-2 py-1 text-xs text-accent-foreground outline-none hover:border-action/50 focus-ring"
+          className="inline-flex max-sm:min-h-11 max-w-full min-w-0 items-center gap-1.5 rounded-sm border border-action/25 bg-action/8 px-2 py-1 text-xs text-accent-foreground outline-none hover:border-action/50 focus-ring"
           onClick={() => {
             onChange({ ...query, filters: [], offset: 0 });
           }}
@@ -135,7 +135,7 @@ export function DataTableSort({
   return (
     <TableChoice
       label="Sort"
-      className="h-8 w-32 sm:w-40"
+      className="h-8 w-40"
       value={
         query.sort === undefined
           ? ''

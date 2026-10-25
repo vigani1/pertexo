@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { DialogFooter } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { cn } from '@/lib/utils';
@@ -13,12 +14,14 @@ export function AuthForm({
   className,
   children,
   submission,
+  secondaryAction,
 }: Readonly<{
   failure: string | undefined;
   /** One way out of the failure, e.g. a link to reset the password. */
   failureAction?: ReactNode;
   className?: string;
   children: ReactNode;
+  secondaryAction?: ReactNode;
   submission: Readonly<{
     pending: boolean;
     pendingLabel: string;
@@ -35,6 +38,18 @@ export function AuthForm({
     onSubmit,
   } = submission;
 
+  const submit = (
+    <ProgressButton
+      type="submit"
+      variant="primary"
+      className={secondaryAction === undefined ? 'mt-1 w-full' : undefined}
+      pending={pending}
+      pendingLabel={pendingLabel}
+      waitSeconds={waitSeconds}
+    >
+      {submitLabel}
+    </ProgressButton>
+  );
   return (
     <form
       noValidate
@@ -50,16 +65,14 @@ export function AuthForm({
           {failure}
         </Notice>
       )}
-      <ProgressButton
-        type="submit"
-        variant="primary"
-        className="mt-1 w-full"
-        pending={pending}
-        pendingLabel={pendingLabel}
-        waitSeconds={waitSeconds}
-      >
-        {submitLabel}
-      </ProgressButton>
+      {secondaryAction === undefined ? (
+        submit
+      ) : (
+        <DialogFooter>
+          {secondaryAction}
+          {submit}
+        </DialogFooter>
+      )}
     </form>
   );
 }

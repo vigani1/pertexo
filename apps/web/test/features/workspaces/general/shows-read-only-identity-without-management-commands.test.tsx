@@ -35,15 +35,14 @@ describe('workspace settings', () => {
     expect(screen.getAllByText('Control Operations').length).toBeGreaterThan(0);
     expect(screen.getByText('control-operations')).toBeVisible();
     expect(screen.getByText('You’re an Owner here.')).toBeVisible();
-    // Access follows what the workspace grants, not the role's name alone.
     const access = within(screen.getByRole('region', { name: 'Your access' }));
+    expect(access.getByText(/You’re an Owner\. Everything/)).toBeVisible();
     expect(
-      access.getByText('See workflows, runs and connections'),
-    ).toHaveTextContent('See workflows, runs and connections');
-    expect(access.getAllByText(': not with your role')).toHaveLength(11);
-    expect(
-      access.getByText('Read the audit log and manage audit retention'),
+      access.getByText('Someone who manages members can change your role.'),
     ).toBeVisible();
+    expect(
+      access.queryByRole('link', { name: 'Compare every role on Team' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /^Copy workspace ID / }),
     ).toBeVisible();

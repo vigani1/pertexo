@@ -1051,6 +1051,16 @@ Features map their own enums to a `StatusTone` in their `model/` (for example
 
 #### Shared building blocks
 
+Dialog action rows use `DialogFooter` from `components/ui/dialog.tsx`, including
+`ConfirmationFooter`, `ActionDialog` and `SheetFooter`. Put Cancel/Close first,
+then supporting actions, then the primary action; DOM and visual order agree.
+Use `FileDrop` from `components/ui/file-drop.tsx` for native file selection and
+drag-and-drop; features retain their own validation, limits and upload status.
+Phone controls have 44 px hit targets; small checkbox/switch artwork keeps an
+invisible expanded hit area. The Build route preserves the editor’s existing
+compact geometry with `--control-min-size`; its portalled dialogs retain the app
+minimum.
+
 One implementation per concept; features compose these rather than restyling
 their own:
 

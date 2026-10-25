@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { useMemo, useState, type ReactNode } from 'react';
 import { encode } from 'uqr';
 import type { ApiClient } from '@/lib/api/client';
@@ -237,7 +238,7 @@ function PasswordSetup({
           }
         />
       )}
-      <div className="flex flex-wrap justify-end gap-2">
+      <DialogFooter>
         <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
           Cancel
         </Button>
@@ -249,7 +250,7 @@ function PasswordSetup({
         >
           {action === 'enable' ? 'Continue' : title}
         </ProgressButton>
-      </div>
+      </DialogFooter>
     </form>
   );
 }
@@ -276,10 +277,19 @@ function SetupStage({
     return (
       <div className="mt-6 flex flex-col gap-5">
         <EnrollmentKey uri={stage.uri} />
-        <TwoFactorCodeForm verification={verification} />
-        <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
-          Cancel setup
-        </Button>
+        <TwoFactorCodeForm
+          verification={verification}
+          secondaryAction={
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={onClose}
+            >
+              Cancel setup
+            </Button>
+          }
+        />
       </div>
     );
   return (

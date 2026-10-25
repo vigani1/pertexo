@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { useBlocker } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -48,7 +49,7 @@ export function WorkflowImportLeaveGuard({
           can dismiss its dialog without losing recovery. Closing or reloading
           the browser discards this in-memory recovery.
         </DialogDescription>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <DialogFooter className="mt-5">
           <Button
             variant="ghost"
             onClick={() => {
@@ -66,7 +67,7 @@ export function WorkflowImportLeaveGuard({
           >
             Reopen import
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

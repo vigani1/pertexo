@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import {
   InlineFailedRead,
   QueryView,
@@ -77,11 +78,11 @@ function InlineValue({
             label={title}
             className="mt-4 max-h-[60svh]"
           />
-          <div className="mt-4 flex justify-end">
+          <DialogFooter className="mt-4">
             <DialogClose render={<Button type="button" variant="ghost" />}>
               Close
             </DialogClose>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

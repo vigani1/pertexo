@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { WORKFLOW_EXECUTION_LIMITS } from '@pertexo/workflow-model';
 import { RUN_DURATION_LIMIT_MS } from '@/features/workflow-settings/model/run-duration';
+import { coldStart } from '../../support/fixtures/run';
 import { mockServer } from '../../support/mock-server';
 import { renderApp } from '../../support/render-app';
 import {
@@ -28,7 +29,11 @@ type SavedDraft = Readonly<{
 
 async function chooseDuration(label: string) {
   const event = userEvent.setup();
-  const section = await screen.findByRole('region', { name: 'Run duration' });
+  const section = await screen.findByRole(
+    'region',
+    { name: 'Run duration' },
+    coldStart,
+  );
   await event.click(
     await within(section).findByRole('combobox', {
       name: 'Maximum run duration',
@@ -125,7 +130,11 @@ describe('workflow settings: run duration', () => {
   it('states the duration without offering changes to roles that can’t edit', async () => {
     installQueries([]);
     renderApp(settingsPath);
-    const section = await screen.findByRole('region', { name: 'Run duration' });
+    const section = await screen.findByRole(
+      'region',
+      { name: 'Run duration' },
+      coldStart,
+    );
     expect(
       await within(section).findByText(/Runs stop after 1 hour in the draft/u),
     ).toHaveTextContent(

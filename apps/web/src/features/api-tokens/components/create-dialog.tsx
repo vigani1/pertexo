@@ -150,16 +150,8 @@ export function CreateTokenDialog({
               availableScopes={availableScopes}
               pending={request.pending}
               onCreate={create}
+              onClose={onClose}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              className="mt-3"
-              disabled={request.pending}
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
           </>
         ) : null}
       </DialogContent>

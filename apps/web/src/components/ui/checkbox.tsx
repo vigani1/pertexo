@@ -10,7 +10,7 @@ export function Checkbox({
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        'recessed-control flex size-4.5 shrink-0 items-center justify-center rounded-sm border data-checked:border-action data-checked:bg-action data-checked:text-action-foreground data-disabled:cursor-not-allowed data-disabled:opacity-50',
+        'recessed-control relative flex size-4.5 max-sm:before:absolute max-sm:before:top-1/2 max-sm:before:left-1/2 max-sm:before:size-[var(--control-min-size,2.75rem)] max-sm:before:-translate-x-1/2 max-sm:before:-translate-y-1/2 shrink-0 items-center justify-center rounded-sm border data-checked:border-action data-checked:bg-action data-checked:text-action-foreground data-disabled:cursor-not-allowed data-disabled:opacity-50',
         className,
       )}
       {...props}

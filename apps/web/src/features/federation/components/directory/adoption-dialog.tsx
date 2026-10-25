@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -91,7 +92,15 @@ function AdoptionReview({
         deprovisioning will control this membership.
       </p>
       <CommandFeedback command={command} />
-      <div className="flex flex-wrap gap-2">
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={command.pending || command.uncertain}
+          onClick={onClose}
+        >
+          Cancel
+        </Button>
         <ProgressButton
           type="button"
           variant="primary"
@@ -104,15 +113,7 @@ function AdoptionReview({
         >
           Adopt this membership
         </ProgressButton>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={command.pending || command.uncertain}
-          onClick={onClose}
-        >
-          Cancel
-        </Button>
-      </div>
+      </DialogFooter>
     </>
   );
 }

@@ -17,6 +17,7 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Status, type StatusTone } from '@/components/ui/status';
@@ -335,7 +336,7 @@ function PublishDialogActions({
   onConfirm: () => void;
 }>) {
   return (
-    <div className="mt-6 flex shrink-0 justify-end gap-2">
+    <DialogFooter className="mt-6 shrink-0">
       <DialogClose
         render={<Button type="button" variant="ghost" disabled={pending} />}
       >
@@ -352,6 +353,6 @@ function PublishDialogActions({
       >
         {copy.confirmLabel}
       </ProgressButton>
-    </div>
+    </DialogFooter>
   );
 }

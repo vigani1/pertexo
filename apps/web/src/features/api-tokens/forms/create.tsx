@@ -6,6 +6,8 @@ import {
   type ApiTokenCreateRequest,
   type ApiTokenScope,
 } from '@pertexo/contracts';
+import { Button } from '@/components/ui/button';
+import { DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -16,9 +18,11 @@ export function CreateTokenForm({
   availableScopes,
   pending,
   onCreate,
+  onClose,
 }: Readonly<{
   availableScopes: readonly ApiTokenScope[];
   pending: boolean;
+  onClose: () => void;
   onCreate: (request: ApiTokenCreateRequest) => Promise<void>;
 }>) {
   const id = useId();
@@ -137,14 +141,24 @@ export function CreateTokenForm({
           )}
         </LabelledField>
       </FieldGroup>
-      <ProgressButton
-        type="submit"
-        variant="primary"
-        pending={pending}
-        pendingLabel="Creating token…"
-      >
-        Create token
-      </ProgressButton>
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={pending}
+          onClick={onClose}
+        >
+          Cancel
+        </Button>
+        <ProgressButton
+          type="submit"
+          variant="primary"
+          pending={pending}
+          pendingLabel="Creating token…"
+        >
+          Create token
+        </ProgressButton>
+      </DialogFooter>
     </form>
   );
 }
