@@ -17,6 +17,7 @@ export type WorkflowTagRecord = Readonly<
   Pick<typeof workflowTags.$inferSelect, 'id' | 'key' | 'revision'>
 >;
 
+// Joins tag assignment identity with the current placement revision.
 export type WorkflowTagAssignment = Readonly<{
   workflowId: string;
   organizationRevision: number;
