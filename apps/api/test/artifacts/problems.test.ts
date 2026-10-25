@@ -1,4 +1,7 @@
 import 'reflect-metadata';
+import { z } from 'zod';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
+import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
 import { Test } from '@nestjs/testing';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import {
@@ -93,6 +96,29 @@ describe('artifact storage problems over the artifact API', () => {
       'artifact.conflict',
     ],
     [new Error('private database detail'), 503, 'artifact.unavailable'],
+    [
+      new z.ZodError([
+        {
+          code: 'invalid_type',
+          expected: 'string',
+          path: ['storedRow'],
+          message: 'private database detail',
+        },
+      ]),
+      503,
+      'artifact.unavailable',
+    ],
+    [
+      new WorkspaceAccessDeniedError('private access detail'),
+      503,
+      'artifact.unavailable',
+    ],
+    [new IdempotencyConflictError(), 503, 'artifact.unavailable'],
+    [
+      new ArtifactIntegrityError('private database detail'),
+      503,
+      'artifact.unavailable',
+    ],
   ] as const)(
     'preserves the upload response for %s',
     async (error, status, code) => {
@@ -117,6 +143,12 @@ describe('artifact storage problems over the artifact API', () => {
     ],
     [new ArtifactNotFoundError(), 409, 'artifact.conflict'],
     [new Error('private provider detail'), 503, 'artifact.unavailable'],
+    [
+      new WorkspaceAccessDeniedError('private provider detail'),
+      503,
+      'artifact.unavailable',
+    ],
+    [new ArtifactQuotaExceededError(), 503, 'artifact.unavailable'],
   ] as const)(
     'preserves the finalize response for %s',
     async (error, status, code) => {
