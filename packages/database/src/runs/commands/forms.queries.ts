@@ -2,7 +2,11 @@ import { workflowVersions } from '../../schema/authoring/workflows.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
 import { and, eq, or, isNull, gt, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { canonicalJson } from '@pertexo/workflow-model';
+import {
+  requiresFormAdmissionCheck,
+  formAdmissionRequirement,
+  capturedFormReplayMatches,
+} from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type { StoredExecutionValue } from '../../platform/stored-execution-value.js';
 export class RunRequiresFormError extends Error {
@@ -20,7 +24,7 @@ export async function requireFormAdmission(
   }>,
   value: StoredExecutionValue | undefined,
 ): Promise<void> {
-  if (!['manual', 'api', 'replay'].includes(input.triggerType)) return;
+  if (!requiresFormAdmissionCheck(input.triggerType)) return;
   const definitions = await transaction.db
     .select({ definition: sql<unknown>`node->'definition'` })
     .from(workflowVersions)
@@ -37,9 +41,9 @@ export async function requireFormAdmission(
   const entries = z
     .array(z.object({ key: z.string(), version: z.number().int() }).strict())
     .parse(definitions.map((row) => row.definition));
-  if (!entries.some(({ key, version }) => key === 'core.form' && version === 1))
-    return;
-  if (input.triggerType !== 'replay') throw new RunRequiresFormError();
+  const requirement = formAdmissionRequirement(entries, input.triggerType);
+  if (requirement === 'allow') return;
+  if (requirement === 'refuse') throw new RunRequiresFormError();
   const [original] = await transaction.db
     .select({
       workflow_version_id: workflowRuns.workflowVersionId,
@@ -56,9 +60,15 @@ export async function requireFormAdmission(
         ),
       ),
     );
-  const sourceInputChanged =
-    original?.workflow_version_id !== input.workflowVersionId ||
-    value === undefined ||
-    canonicalJson(original.input_ref) !== canonicalJson(value);
-  if (sourceInputChanged) throw new RunRequiresFormError();
+  const matches = capturedFormReplayMatches(
+    original === undefined
+      ? undefined
+      : {
+          workflowVersionId: original.workflow_version_id,
+          inputRef: original.input_ref,
+        },
+    input.workflowVersionId,
+    value,
+  );
+  if (!matches) throw new RunRequiresFormError();
 }

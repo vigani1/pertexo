@@ -360,3 +360,9 @@ export {
 } from './authoring/portability/origin.js';
 
 export { publishesSlackBinding } from './execution/dispatch-binding.js';
+
+export {
+  requiresFormAdmissionCheck,
+  formAdmissionRequirement,
+  capturedFormReplayMatches,
+} from './triggers/forms/admission.js';
