@@ -1,15 +1,14 @@
-import type { PreviewHeartbeatResult } from './contract.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { previewRuns, previewAttempts } from '../../schema/runs/execution.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { previewAttempts, previewRuns } from '../../schema/runs/execution.js';
+import type { PreviewHeartbeatResult } from './contract.js';
 
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import type { PreviewAttemptLease } from '../contract.js';
 import { PreviewAttemptStateError } from '../errors.js';
 import { optionsFor } from '../input.js';
-import type { PreviewAttemptLease } from '../contract.js';
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
 export async function heartbeatPreviewLease(
   pool: Pool,
@@ -23,20 +22,11 @@ export async function heartbeatPreviewLease(
     workerId: string;
   }>,
 ): Promise<PreviewHeartbeatResult> {
-  const scope = z
-    .object({
-      attemptFenceToken: z.number().int().nonnegative(),
-      leaseDurationSeconds: z.number().int().positive().max(3_600),
-      previewAttemptId: z.uuid(),
-      previewRunId: z.uuid(),
-      workerId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
-      workspaceId: z.uuid(),
-    })
-    .parse({
-      ...input.lease,
-      leaseDurationSeconds: input.leaseDurationSeconds,
-      workerId: input.workerId,
-    });
+  const scope = {
+    ...input.lease,
+    leaseDurationSeconds: input.leaseDurationSeconds,
+    workerId: input.workerId,
+  };
   return withTenantScopedClient(
     pool,
     { workspaceId: scope.workspaceId },

@@ -1,22 +1,19 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq, exists, getTableName, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaces } from '../../schema/foundation.js';
-import { runFailureNotificationIntents as intent } from '../../schema/runs/completion/notifications.js';
-import { failureNotificationDestinations as destination } from '../../schema/notifications.js';
-import { connectionSecretVersions as secret } from '../../schema/connections.js';
-import { deliverySources, currentDestinationSql } from './delivery.queries.js';
+import { alias } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { connectionSecretVersions as secret } from '../../schema/connections.js';
+import { workspaces } from '../../schema/foundation.js';
+import { failureNotificationDestinations as destination } from '../../schema/notifications.js';
+import { runFailureNotificationIntents as intent } from '../../schema/runs/completion/notifications.js';
+import { currentDestinationSql, deliverySources } from './delivery.queries.js';
 
-import { FailureNotificationStateError } from '../errors.js';
-import { auditFailureNotification } from '../delivery/evidence.repository.js';
-import { failureNotificationIdentitySchema } from '../delivery/input-validation.js';
-import type { FailureNotificationStore } from '../contract.js';
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { recordCredentialAccess } from '../../connections/runtime/dispatch.repository.js';
-import { parseFailureNotificationAttemptNumber } from '../delivery/input-validation.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import type { FailureNotificationStore } from '../contract.js';
+import { auditFailureNotification } from '../delivery/evidence.repository.js';
+import { FailureNotificationStateError } from '../errors.js';
 
 type DestinationStore = Pick<
   FailureNotificationStore,
@@ -40,12 +37,10 @@ async function loadNotificationDestination(
   pool: Pool,
   raw: Parameters<DestinationStore['loadDestination']>[0],
 ): ReturnType<DestinationStore['loadDestination']> {
-  const workspaceId = failureNotificationIdentitySchema.parse(raw.workspaceId);
-  const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
-  const workerId = z.string().min(1).max(128).parse(raw.workerId);
-  const attemptNumber = parseFailureNotificationAttemptNumber(
-    raw.attemptNumber,
-  );
+  const workspaceId = raw.workspaceId;
+  const intentId = raw.intentId;
+  const workerId = raw.workerId;
+  const attemptNumber = raw.attemptNumber;
   return withTenantScopedClient(
     pool,
     { workspaceId },
@@ -130,22 +125,14 @@ async function fenceNotificationDispatch(
   pool: Pool,
   raw: Parameters<DestinationStore['fenceDispatch']>[0],
 ): ReturnType<DestinationStore['fenceDispatch']> {
-  const workspaceId = failureNotificationIdentitySchema.parse(raw.workspaceId);
-  const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
-  const attemptNumber = parseFailureNotificationAttemptNumber(
-    raw.attemptNumber,
-  );
+  const workspaceId = raw.workspaceId;
+  const intentId = raw.intentId;
+  const attemptNumber = raw.attemptNumber;
   await withTenantScopedClient(
     pool,
     { workspaceId },
     async (client) => {
-      const parsedBinding =
-        raw.deliveryBinding === undefined
-          ? null
-          : z
-              .string()
-              .regex(/^email:sha256:[0-9a-f]{64}$/u)
-              .parse(raw.deliveryBinding);
+      const parsedBinding = raw.deliveryBinding ?? null;
       // The workspace must be active and the claimed intent's destination
       // enabled; both stay locked until the dispatch is marked.
       const db = drizzle(client);

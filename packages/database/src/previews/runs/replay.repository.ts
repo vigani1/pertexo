@@ -1,37 +1,27 @@
 import type {
-  ResolvePreviewReplayInput,
   PreviewReplayRecord,
+  ResolvePreviewReplayInput,
 } from './contract.js';
 
-import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { and, eq, gt } from 'drizzle-orm';
-import { z } from 'zod';
+import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
 
+import { PreviewAcceptanceCorruptError } from '../errors.js';
 import {
   assertPreviewActor,
   previewWorkflowVisible,
 } from './acceptance/authority.queries.js';
-import { PreviewAcceptanceCorruptError } from '../errors.js';
 import { readExistingAcceptance } from './acceptance/replay.queries.js';
 
-import { previewRuns, previewAttempts } from '../../schema.js';
+import { previewAttempts, previewRuns } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { sha256HexSchema } from '../../platform/persisted-primitives.js';
 
 export async function resolvePreviewReplay(
   transaction: WorkspaceTransaction,
   input: ResolvePreviewReplayInput,
   now: Date = new Date(),
 ): Promise<PreviewReplayRecord | null> {
-  const parsed = z
-    .object({
-      actorUserId: z.uuid(),
-      workflowId: z.uuid(),
-      keyHash: sha256HexSchema,
-      requestHash: sha256HexSchema,
-    })
-    .strict()
-    .parse(input);
+  const parsed = input;
   await assertPreviewActor(transaction, parsed.actorUserId);
   if (
     !(await previewWorkflowVisible(

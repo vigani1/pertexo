@@ -1,40 +1,38 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { triggerSchedules } from '../../../schema/triggers/schedules.js';
-import { workflowTriggers } from '../../../schema/authoring/workflows.js';
-import { auditEvents } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { generatePersistedId } from '../../../platform/persisted-id.js';
+import type { PoolClient } from 'pg';
+import { z } from 'zod';
 import {
   claimCommand,
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
-import type { PoolClient } from 'pg';
-import { z } from 'zod';
-import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { workflowTriggers } from '../../../schema/authoring/workflows.js';
+import { auditEvents } from '../../../schema/foundation.js';
+import { triggerSchedules } from '../../../schema/triggers/schedules.js';
 
 import { ScheduleTriggerError } from '../errors.js';
 
-import { uuidSchema } from '../input.js';
 import type {
-  ScheduleTriggerCommandResult,
-  SetEnabledInput,
   ScheduleCommandIdentity,
   ScheduleHealthTransition,
+  ScheduleTriggerCommandResult,
+  SetEnabledInput,
 } from './contract.js';
 import { parseStoredScheduleTrigger, readSchedule } from './state.queries.js';
 
 export function scheduleCommandIdentity(
   input: SetEnabledInput,
 ): ScheduleCommandIdentity {
-  const triggerId = uuidSchema.parse(input.triggerId);
+  const triggerId = input.triggerId;
   return Object.freeze({
-    idempotencyKey: z.string().min(1).max(128).parse(input.idempotencyKey),
+    idempotencyKey: input.idempotencyKey,
     operation: 'schedule.trigger.setenabled',
-    requestHash: digestSchema.parse(input.requestHash),
+    requestHash: input.requestHash,
     scope: `${input.actorId}:${triggerId}`,
     triggerId,
-    workflowId: uuidSchema.parse(input.workflowId),
+    workflowId: input.workflowId,
   });
 }
 

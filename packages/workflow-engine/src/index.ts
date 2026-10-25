@@ -91,3 +91,7 @@ export {
 } from './completion/error-workflow.js';
 
 export { notificationFailures } from './completion/failure-notification.js';
+export {
+  evaluateSuiteExpectations,
+  type SuiteOutput,
+} from './testing/evaluate-suite.js';

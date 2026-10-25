@@ -1,19 +1,21 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { nodeRuns, workflowRuns } from '../../schema/runs/execution.js';
-import { workflowTestSnapshots } from '../../schema/runs/tests.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { testRunSql } from '../../runs/data-policy.js';
-import type { PoolClient } from 'pg';
+import type { WorkflowTestSuiteReport } from '@pertexo/contracts';
 import {
-  observeTestAssertion,
-  type TestAssertionObservation,
-  type WorkflowTestExpectations,
+  evaluateSuiteExpectations,
+  type SuiteOutput,
+} from '@pertexo/workflow-engine';
+import {
+  workflowTestExpectationsSchema,
   type JsonValue,
 } from '@pertexo/workflow-model';
-import type { WorkflowTestSuiteReport } from '@pertexo/contracts';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
+import { testRunSql } from '../../runs/data-policy.js';
+import { nodeRuns, workflowRuns } from '../../schema/runs/execution.js';
+import { workflowTestSnapshots } from '../../schema/runs/tests.js';
 import type { SuiteCaseRow } from './contract.js';
 export interface SuiteRunOutcome {
   status: WorkflowTestSuiteReport['actualOutcome'];
@@ -29,18 +31,10 @@ export async function evaluateSuiteCase(
   status: 'passed' | 'failed' | 'error';
   report: WorkflowTestSuiteReport;
 }> {
-  const expectations = JSON.parse(
-    entry.expectations,
-  ) as WorkflowTestExpectations;
-  const outcomeMatched =
-    run.status ===
-    (expectations.outcome === 'succeeds' ? 'succeeded' : 'failed');
-  const error = suiteRunError(run);
-  const outputs = new Map<
-    string,
-    | { state: 'value'; value: JsonValue }
-    | { state: 'unavailable' | 'ambiguous' }
-  >();
+  const expectations = workflowTestExpectationsSchema.parse(
+    JSON.parse(entry.expectations),
+  );
+  const outputs = new Map<string, SuiteOutput>();
   const inline = (
     stored: unknown,
   ): { state: 'value'; value: JsonValue } | { state: 'unavailable' } => {
@@ -50,7 +44,6 @@ export async function evaluateSuiteCase(
       ? { state: 'value', value: value.value }
       : { state: 'unavailable' };
   };
-  const assertions: WorkflowTestSuiteReport['assertions'] = [];
   for (const assertion of expectations.assertions) {
     const key =
       assertion.source.kind === 'final'
@@ -80,23 +73,8 @@ export async function evaluateSuiteCase(
       }
       outputs.set(key, output);
     }
-    const actual: TestAssertionObservation =
-      output.state === 'value'
-        ? observeTestAssertion(output.value, assertion)
-        : { state: output.state, matched: false };
-    assertions.push({ assertion, actual });
   }
-  const report: WorkflowTestSuiteReport = {
-    expectedOutcome: expectations.outcome,
-    actualOutcome: run.status,
-    outcomeMatched,
-    ...(error === undefined ? {} : { error }),
-    assertions,
-  };
-  return {
-    status: suiteCaseStatus({ error, outcomeMatched, assertions }),
-    report,
-  };
+  return evaluateSuiteExpectations(expectations, run, outputs);
 }
 
 /** Pin-required checks use the frozen disposition keys and indexed step lookups. */
@@ -162,37 +140,4 @@ export async function readSuiteRunOutcome(
     outputRef: row.outputRef,
     pinRequired: problem.length !== 0,
   };
-}
-
-function suiteRunError(run: SuiteRunOutcome): WorkflowTestSuiteReport['error'] {
-  if (run.pinRequired) {
-    return 'test_pin_required';
-  }
-  if (run.status === 'timed_out') {
-    return 'run_timed_out';
-  }
-  if (run.status === 'outcome_unknown') {
-    return 'run_outcome_unknown';
-  }
-  if (run.status === 'canceled') {
-    return 'run_canceled';
-  }
-  return undefined;
-}
-
-function suiteCaseStatus(
-  input: Readonly<{
-    error: WorkflowTestSuiteReport['error'];
-    outcomeMatched: boolean;
-    assertions: WorkflowTestSuiteReport['assertions'];
-  }>,
-): 'error' | 'passed' | 'failed' {
-  const { error, outcomeMatched, assertions } = input;
-  if (error !== undefined) {
-    return 'error';
-  }
-  if (outcomeMatched && assertions.every((item) => item.actual.matched)) {
-    return 'passed';
-  }
-  return 'failed';
 }

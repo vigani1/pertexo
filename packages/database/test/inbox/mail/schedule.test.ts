@@ -1,8 +1,5 @@
+import { nextNoticeDue, noticeWindow } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
-import {
-  nextNoticeDue,
-  noticeWindow,
-} from '../../../src/inbox/mail/schedule.js';
 const daily = (timeZone: string, hour = 9) => ({
   mode: 'daily' as const,
   timeZone,

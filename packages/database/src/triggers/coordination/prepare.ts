@@ -1,16 +1,16 @@
-import { createHash } from 'node:crypto';
 import {
   canonicalJson,
-  type JsonValue,
+  normalizeJson,
   type EventCoordinationPolicy,
 } from '@pertexo/workflow-model';
 import {
   JsonataEvaluator,
   resolveEventCoordinationKey,
 } from '@pertexo/workflow-model/server';
+import { createHash } from 'node:crypto';
 import { serializeWrittenJsonValue } from '../../platform/stored-execution-value.js';
-import { EventCoordinationUnavailableError } from './errors.js';
 import type { PreparedEventCoordination } from './contract.js';
+import { EventCoordinationUnavailableError } from './errors.js';
 /** Each ingress store owns a bounded, lazy expression pool and releases it on close. */
 export function createEventCoordinationPreparation() {
   const evaluator = new JsonataEvaluator();
@@ -25,7 +25,7 @@ export function createEventCoordinationPreparation() {
       const inputJson = serializeWrittenJsonValue(input);
       const key = await resolveEventCoordinationKey(
         policy,
-        JSON.parse(inputJson) as JsonValue,
+        normalizeJson(JSON.parse(inputJson)),
         evaluator,
         signal,
       );

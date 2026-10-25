@@ -1,7 +1,5 @@
-import type { PREVIEW_STATUS } from './state.js';
-import type { safeErrorCodeSchema } from './input.js';
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
-import type { z } from 'zod';
+import type { PREVIEW_STATUS } from './state.js';
 
 import type { parseStoredExecutionValue } from '../platform/stored-execution-value.js';
 export type PreviewStatus =
@@ -18,7 +16,7 @@ export type PreviewTerminalOutcome =
       status: typeof PREVIEW_STATUS.succeeded;
     }>
   | Readonly<{
-      safeErrorCode: z.output<typeof safeErrorCodeSchema>;
+      safeErrorCode: string;
       /** The step's own reason, when it refused its input or setup. */
       errorSummary?: string;
       status: Exclude<

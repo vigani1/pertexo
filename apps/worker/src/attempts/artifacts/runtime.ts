@@ -6,7 +6,11 @@ import type {
   NodeVerifiedByteSource,
 } from '@pertexo/node-sdk/server';
 import type { NodeExecutionCapabilityContext } from '../execution/capabilities.js';
-import { artifactExpiry, assertArtifactByteLimit } from './policy.js';
+import {
+  artifactExpiry,
+  assertArtifactByteLimit,
+  artifactWriteMetadataSchema,
+} from './policy.js';
 import { createArtifactReader } from './read.js';
 import type { ArtifactScratchSpace } from './scratch/space.js';
 import { withByteProgress, closeArtifactStream } from './scratch/progress.js';
@@ -106,6 +110,7 @@ export function createNodeArtifactRuntimeFactory(
           })),
       spool,
       write: async (request: Parameters<NodeArtifactRuntime['write']>[0]) => {
+        const metadata = artifactWriteMetadataSchema.parse(request);
         const handle = await spool(request);
         try {
           request.signal.throwIfAborted();
@@ -114,7 +119,7 @@ export function createNodeArtifactRuntimeFactory(
             artifactId: id,
             workspaceId: context.workspaceId,
             byteLength: handle.byteLength,
-            mediaType: request.mediaType,
+            mediaType: metadata.mediaType,
             sha256: handle.sha256,
             storageKey: artifactStorageKey(context.workspaceId, id),
             ...(context.previewRunId === undefined
@@ -128,7 +133,7 @@ export function createNodeArtifactRuntimeFactory(
               input.retentionMillis,
               context.artifactRetentionDeadline,
             ),
-            purpose: request.purpose,
+            purpose: metadata.purpose,
             signal: request.signal,
           });
           request.signal.throwIfAborted();

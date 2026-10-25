@@ -1,13 +1,9 @@
+import { workflowTestSuiteReportSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
-import {
-  testAssertionSchema,
-  testExpectationValueSchema,
-} from '@pertexo/workflow-model';
 import {
   workflowTestPreparationSchema,
   workflowTestStartRequestSchema,
 } from './workflow-tests.js';
-import { workflowRunStatusSchema } from './runs.js';
 const caseIdentity = z
   .object({ id: z.uuid(), revision: z.number().int().positive() })
   .strict();
@@ -94,38 +90,6 @@ export const workflowTestSuiteDetailSchema = workflowTestSuiteSummarySchema
           .strict(),
       )
       .max(50),
-  })
-  .strict();
-const observation = z
-  .object({
-    state: z.enum(['value', 'missing', 'unavailable', 'ambiguous']),
-    matched: z.boolean(),
-    value: testExpectationValueSchema.optional(),
-    preview: z.string().max(4000).optional(),
-    bytes: z.number().int().nonnegative().optional(),
-    truncated: z.boolean().optional(),
-  })
-  .strict();
-export const workflowTestSuiteReportSchema = z
-  .object({
-    expectedOutcome: z.enum(['succeeds', 'fails']),
-    actualOutcome: workflowRunStatusSchema,
-    outcomeMatched: z.boolean(),
-    error: z
-      .enum([
-        'test_pin_required',
-        'run_timed_out',
-        'run_outcome_unknown',
-        'run_canceled',
-      ])
-      .optional(),
-    assertions: z
-      .array(
-        z
-          .object({ assertion: testAssertionSchema, actual: observation })
-          .strict(),
-      )
-      .max(20),
   })
   .strict();
 export const workflowTestSuiteCaseReportSchema = z

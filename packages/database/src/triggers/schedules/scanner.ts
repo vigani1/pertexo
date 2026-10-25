@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
@@ -7,26 +6,21 @@ import {
 import type { DatabaseConfig } from '../../config.js';
 
 import type {
-  ScanDueSchedulesResult,
-  ScheduleTriggerScanner,
   ScanDueInput,
+  ScanDueSchedulesResult,
   ScannerResources,
+  ScheduleTriggerScanner,
 } from './scanning/contract.js';
 import {
-  closeScheduleScannerLeases,
   claimDueSchedules,
+  closeScheduleScannerLeases,
 } from './scanning/leases.repository.js';
 import { processScheduleClaim } from './scanning/occurrences.repository.js';
 async function scanDueSchedules(
   resources: ScannerResources,
   input: ScanDueInput,
 ): Promise<ScanDueSchedulesResult> {
-  const onTimeWindowSeconds = z
-    .number()
-    .int()
-    .min(60)
-    .max(3_600)
-    .parse(input.onTimeWindowSeconds);
+  const onTimeWindowSeconds = input.onTimeWindowSeconds;
   const batch = await claimDueSchedules(resources.claimPool, input);
   const outcomes = { accepted: 0, deferred: 0, paused: 0, skipped: 0 };
   let maxLagSeconds = 0;

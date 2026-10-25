@@ -117,16 +117,4 @@ describe('database preview attempt store adapter', () => {
     );
     await store.close();
   });
-
-  it('validates the complete lease projection before calling persistence', async () => {
-    const store = createDatabasePreviewAttemptRunStore(config);
-    await expect(
-      store.markDispatched({
-        lease: { ...lease(), workspaceId: 'not-a-workspace-id' },
-        workerId: 'worker-preview-test',
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(database.markDispatched).not.toHaveBeenCalled();
-    await store.close();
-  });
 });

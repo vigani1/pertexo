@@ -2,11 +2,10 @@ import { expect, it } from 'vitest';
 
 import {
   auditFailureNotification,
-  insertFailureNotificationDeliveryOutbox,
-  withTenantScopedClient,
-  workspaceId,
-  intentId,
   completionHarness,
+  insertFailureNotificationDeliveryOutbox,
+  intentId,
+  workspaceId,
 } from './fixture.js';
 
 export function registerRejectsPreAbortedCompletionBefore(): void {
@@ -74,28 +73,4 @@ export function registerRejectsPreAbortedCompletionBefore(): void {
       expect(insertFailureNotificationDeliveryOutbox).not.toHaveBeenCalled();
     },
   );
-
-  it('rejects a malformed delivery result before transaction checkout', async () => {
-    const { complete, query } = completionHarness({
-      delivery_attempts: 1,
-      possibly_dispatched: false,
-      side_effect_class: 'safe',
-      status: 'dispatching',
-    });
-    await expect(
-      complete({
-        workspaceId,
-        intentId,
-        attemptNumber: 1,
-        maxAttempts: 3,
-        retryDelaySeconds: 5,
-        result: {
-          kind: 'delivered',
-          possiblyDispatched: false,
-        } as never,
-      }),
-    ).rejects.toThrow();
-    expect(withTenantScopedClient).not.toHaveBeenCalled();
-    expect(query).not.toHaveBeenCalled();
-  });
 }

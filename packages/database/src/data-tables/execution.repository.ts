@@ -1,32 +1,32 @@
+import {
+  bindDataTableCommand,
+  DataTableError,
+  dataTableResultSchema,
+  projectBoundDataTableResult,
+  resolveDataTableBindings,
+} from '@pertexo/node-sdk';
+import { canonicalJson } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { dataTableWriteReceipts as receipts } from '../schema/data-tables.js';
-import { rethrowQueryFailure } from '../platform/query-errors.js';
-import { appendAuditFact } from '../governance/audit/events.repository.js';
 import { createHash } from 'node:crypto';
-import { canonicalJson } from '@pertexo/workflow-model';
 import {
-  DataTableError,
-  resolveDataTableBindings,
-  bindDataTableCommand,
-  projectBoundDataTableResult,
-  type DataTableResult,
-} from '@pertexo/node-sdk';
+  assertCapabilityExecution,
+  lockCapabilityExecution,
+} from '../attempts/dispatch/fence.repository.js';
+import { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
+import { withWorkspaceWriteClient } from '../attempts/transactions.repository.js';
 import type { DatabaseConfig } from '../config.js';
+import { appendAuditFact } from '../governance/audit/events.repository.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../platform/pool/runtime.js';
-import { withWorkspaceWriteClient } from '../attempts/transactions.repository.js';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
+import { dataTableWriteReceipts as receipts } from '../schema/data-tables.js';
 import type { WorkerDataTablesStore } from './contract.js';
 import { readQuotas, requireTable } from './definitions.queries.js';
 import { findRows } from './rows.queries.js';
 import { mutateRows, translateTableConstraint } from './rows.repository.js';
-import {
-  lockCapabilityExecution,
-  assertCapabilityExecution,
-} from '../attempts/dispatch/fence.repository.js';
-import { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
 export function createWorkerDataTablesStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
@@ -87,7 +87,7 @@ export function createWorkerDataTablesStore(
                 'conflict',
                 'The retried data table command changed.',
               );
-            return JSON.parse(prior.resultJson) as DataTableResult;
+            return dataTableResultSchema.parse(JSON.parse(prior.resultJson));
           }
           const table = await requireTable(
             client,

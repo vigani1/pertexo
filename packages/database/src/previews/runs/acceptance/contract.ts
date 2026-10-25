@@ -1,19 +1,43 @@
-import type { acceptPreviewRunInputSchema } from './input.js';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
-
-import type { z } from 'zod';
 
 import type { PreviewStatus } from '../../contract.js';
 
 import type { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 
-type ParsedPreviewRunInput = z.input<typeof acceptPreviewRunInputSchema>;
-
-export type AcceptPreviewRunInput = Readonly<
-  Omit<ParsedPreviewRunInput, 'executableNode'> & {
-    executableNode: Readonly<Record<string, unknown>>;
-  }
->;
+export type AcceptPreviewRunInput = Readonly<{
+  actorUserId: string;
+  definitionKey: string;
+  definitionVersion: number;
+  draftFingerprint: string;
+  draftRevision: number;
+  dryRun: 'not_supported' | 'provider_supported';
+  executableNode: Readonly<Record<string, unknown>> & {
+    connectionRefs?: Record<string, string>;
+  };
+  executorKey: string;
+  executorVersion: number;
+  executionDeadlineAt: Date;
+  expiresAt: Date;
+  input:
+    | { kind: 'manual'; value: unknown }
+    | { kind: 'prior_preview'; previewRunId: string };
+  keyHash: string;
+  mayContactProvider: boolean;
+  mayCauseExternalSideEffect: boolean;
+  nodeId: string;
+  operation: 'preview.execute';
+  requestHash: string;
+  scope: string;
+  sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
+  workflowId: string;
+  expectedSampleId?: string | null | undefined;
+  operationKey?: string | undefined;
+  providerKey?: string | undefined;
+  providerIdempotencyKey?: string | undefined;
+  requestId?: string | undefined;
+  traceId?: string | undefined;
+  traceparent?: string | undefined;
+}>;
 
 export type AcceptedPreviewRun = Readonly<{
   acceptedAt: Date;
@@ -28,6 +52,7 @@ export type AcceptedPreviewRun = Readonly<{
   status: PreviewStatus;
 }>;
 
+// Projection decodes output and joins optional attempt diagnostics.
 export type PreviewRunRecord = Readonly<{
   codeDiagnostics?: CodeDiagnostics;
   errorSummary?: string;

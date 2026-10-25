@@ -1,14 +1,12 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { webhookTriggerEndpoints as endpoints } from '../../../schema/triggers/endpoints.js';
-import { workflowTriggers } from '../../../schema/authoring/workflows.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { workflowTriggers } from '../../../schema/authoring/workflows.js';
+import { webhookTriggerEndpoints as endpoints } from '../../../schema/triggers/endpoints.js';
 
 import { createHash } from 'node:crypto';
 
 import type { Pool } from 'pg';
-
-import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
 
 import { refreshWorkflowActivation } from '../../reconciliation/health.repository.js';
 
@@ -17,7 +15,7 @@ import {
   WebhookTriggerStateError,
 } from '../errors.js';
 
-import { uuidSchema } from '../input.js';
+import { command } from './commands.js';
 import type { WebhookTriggerDatabase } from './contract.js';
 import {
   claimWebhookCommand,
@@ -25,7 +23,6 @@ import {
   insertSecret,
 } from './receipts.repository.js';
 import { oneHealth } from './state.queries.js';
-import { command } from './commands.js';
 
 export function configureWebhookAuthentication(
   pool: Pool,
@@ -118,7 +115,7 @@ export function provisionWebhook(
       .where(
         and(
           eq(workflowTriggers.workspaceId, input.workspaceId),
-          eq(workflowTriggers.id, uuidSchema.parse(input.triggerId)),
+          eq(workflowTriggers.id, input.triggerId),
           eq(workflowTriggers.kind, 'webhook'),
         ),
       )
@@ -137,10 +134,10 @@ export function provisionWebhook(
     await db
       .insert(endpoints)
       .values({
-        id: uuidSchema.parse(input.endpointId),
+        id: input.endpointId,
         workspaceId: input.workspaceId,
         triggerId: input.triggerId,
-        endpointKeyHash: digestSchema.parse(input.endpointKeyHash),
+        endpointKeyHash: input.endpointKeyHash,
         currentSecretVersionId: secret.id,
       })
       .catch(rethrowQueryFailure);
@@ -176,7 +173,7 @@ export function rotateWebhookEndpoint(
     const result = await drizzle(client)
       .update(endpoints)
       .set({
-        endpointKeyHash: digestSchema.parse(input.endpointKeyHash),
+        endpointKeyHash: input.endpointKeyHash,
         updatedAt: sql`clock_timestamp()`,
       })
       .where(
@@ -219,10 +216,7 @@ export function rotateWebhookSecret(
         and(
           eq(endpoints.workspaceId, input.workspaceId),
           eq(endpoints.triggerId, input.triggerId),
-          eq(
-            endpoints.endpointKeyHash,
-            digestSchema.parse(input.endpointKeyHash),
-          ),
+          eq(endpoints.endpointKeyHash, input.endpointKeyHash),
           eq(endpoints.status, 'active'),
         ),
       )

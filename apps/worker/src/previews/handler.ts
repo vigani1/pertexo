@@ -1,24 +1,25 @@
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
+import type {
+  PreviewAttemptLease,
+  PreviewAttemptRunStore,
+  PreviewClaimResult,
+  PreviewCompletionResult,
+  PreviewTerminalOutcome,
+} from '@pertexo/database/previews';
 import {
   isValidStoredExecutionOutput,
   PreviewAttemptStateError,
 } from '@pertexo/database/previews';
-import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
+import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { NodeDispatchEvidenceError } from '@pertexo/node-sdk/server';
-import type {
-  PreviewAttemptLease,
-  PreviewClaimResult,
-  PreviewCompletionResult,
-  PreviewTerminalOutcome,
-  PreviewAttemptRunStore,
-} from '@pertexo/database/previews';
-export type { PreviewAttemptRunStore } from '@pertexo/database/previews';
+import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
 import type { NodeExecutionCapabilityFactories } from '../attempts/execution/capabilities.js';
 import { nodeExecutionOptionalFields } from '../attempts/execution/runtime-fields.js';
-import type { PreviewTelemetry, PreviewTerminalStatus } from './telemetry.js';
+import { parsePreviewFailure, previewDiagnostics } from './completion.js';
 import { startPreviewAttemptSupervisor } from './supervisor.js';
+import type { PreviewTelemetry, PreviewTerminalStatus } from './telemetry.js';
+export type { PreviewAttemptRunStore } from '@pertexo/database/previews';
 
 type PreviewQueueDelivery = Extract<
   QueueDelivery,
@@ -130,12 +131,12 @@ async function completeOutcome(
     terminalOutcome = isValidStoredExecutionOutput(stored)
       ? { output: stored, status: 'succeeded' }
       : { safeErrorCode: 'preview.output_invalid', status: 'failed' };
-  } else terminalOutcome = outcome;
+  } else terminalOutcome = parsePreviewFailure(outcome);
   const result = await dependencies.runStore.complete({
     delivery,
     lease,
     outcome: terminalOutcome,
-    ...(codeDiagnostics === undefined ? {} : { codeDiagnostics }),
+    ...previewDiagnostics(codeDiagnostics),
     signal: completionSignal,
     workerId: dependencies.workerId,
   });

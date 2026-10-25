@@ -1,26 +1,21 @@
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type {
   PreviewDeliveryReconciliationResult,
   PreviewReconciliationScope,
 } from './contract.js';
 import { lockPreviewReconciliationState } from './state.queries.js';
-import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { previewRuns, previewAttempts } from '../../schema/runs/execution.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { previewAttempts, previewRuns } from '../../schema/runs/execution.js';
 
-import { PREVIEW_STATUS } from '../state.js';
-import { appendPreviewTerminalFacts } from '../attempts/facts.repository.js';
-import { TERMINAL_PREVIEW_STATUSES } from '../state.js';
 import {
-  PreviewAttemptStateError,
-  PreviewDeliveryMismatchError,
-} from '../errors.js';
-import { optionsFor } from '../input.js';
-import { previewReconcilerConsumerName } from '../delivery.js';
-import type { PreviewDelivery } from '../contract.js';
+  parseStoredExecutionValue,
+  serializeStoredExecutionValue,
+  type StoredExecutionValue,
+} from '../../platform/stored-execution-value.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import {
   auditPreviewDeliveryMismatch,
   claimPreviewReceipt,
@@ -28,12 +23,15 @@ import {
   insertPreviewOutboxDelivery,
   validatePreviewReconciliationDelivery,
 } from '../attempts/deliveries.repository.js';
+import { appendPreviewTerminalFacts } from '../attempts/facts.repository.js';
+import type { PreviewDelivery } from '../contract.js';
+import { previewReconcilerConsumerName } from '../delivery.js';
 import {
-  parseStoredExecutionValue,
-  serializeStoredExecutionValue,
-  type StoredExecutionValue,
-} from '../../platform/stored-execution-value.js';
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+  PreviewAttemptStateError,
+  PreviewDeliveryMismatchError,
+} from '../errors.js';
+import { optionsFor } from '../input.js';
+import { PREVIEW_STATUS, TERMINAL_PREVIEW_STATUSES } from '../state.js';
 
 type LockedPreviewReconciliationState = Awaited<
   ReturnType<typeof lockPreviewReconciliationState>
@@ -159,14 +157,7 @@ export async function reconcilePreviewDelivery(
     workspaceId: string;
   }>,
 ): Promise<PreviewDeliveryReconciliationResult> {
-  const scope = z
-    .object({
-      attemptFenceToken: z.number().int().nonnegative(),
-      previewAttemptId: z.uuid(),
-      previewRunId: z.uuid(),
-      workspaceId: z.uuid(),
-    })
-    .parse(input);
+  const scope = input;
   try {
     return await withTenantScopedClient(
       pool,

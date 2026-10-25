@@ -1,19 +1,19 @@
-import { and, eq, gt, lte, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaceDataTableRows as rows } from '../../schema/data-tables.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import type { PoolClient } from 'pg';
 import type {
-  DataTableExportQuery,
   DataTableDefinition,
+  DataTableExportQuery,
 } from '@pertexo/contracts';
 import {
   DataTableError,
+  dataTableValuesSchema,
   escapeCsvValue,
-  type DataTableValues,
 } from '@pertexo/node-sdk';
-import { queryClause } from '../rows.queries.js';
+import { and, eq, gt, lte, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { workspaceDataTableRows as rows } from '../../schema/data-tables.js';
 import { requireTable } from '../definitions.queries.js';
+import { queryClause } from '../rows.queries.js';
 
 const BATCH_ROWS = 256;
 const BATCH_BYTES = 4 * 1024 * 1024;
@@ -95,7 +95,7 @@ export function exportTableCsv(
       if (batch.length === 0) return;
       for (const row of batch) {
         signal?.throwIfAborted();
-        const values = JSON.parse(row.valuesText) as DataTableValues;
+        const values = dataTableValuesSchema.parse(JSON.parse(row.valuesText));
         yield table.columns
           .map((column) => escapeCsvValue(values[column.name] ?? null))
           .join(',') + '\r\n';

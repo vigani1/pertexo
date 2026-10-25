@@ -1,5 +1,5 @@
-import type { PoolClient } from 'pg';
 import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
+import type { PoolClient } from 'pg';
 
 export type DestinationConfig = FailureNotificationDestinationConfig;
 
@@ -52,6 +52,7 @@ export type StoredDestinationConfig =
   | Omit<Extract<DestinationConfig, { kind: 'email' }>, 'kind'>
   | Omit<Extract<DestinationConfig, { kind: 'slack' }>, 'kind'>;
 
+// Projection joins destination metadata with its current version configuration.
 export type FailureNotificationDestinationRecord = Readonly<{
   id: string;
   workspaceId: string;

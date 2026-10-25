@@ -1,21 +1,23 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { notificationProviderRequirements } from '../policies/admission.queries.js';
+import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool, PoolClient } from 'pg';
+import type { DatabaseConfig } from '../../config.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { connections } from '../../schema/connections.js';
 import {
   failureNotificationDestinations as destination,
   failureNotificationDestinationVersions as version,
 } from '../../schema/notifications.js';
-import { acquireDatabasePool } from '../../platform/pool/runtime.js';
-import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
-import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import { notificationProviderRequirements } from '../policies/admission.queries.js';
 import {
-  FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
-  FailureNotificationDestinationConfigSchema,
-} from '@pertexo/workflow-model';
-import type { DatabaseConfig } from '../../config.js';
+  clearWorkflowFailureNotificationPolicy,
+  readWorkflowFailureNotificationPolicy,
+  setWorkflowFailureNotificationPolicy,
+} from '../policies/settings.repository.js';
 import {
   audit,
   authorize,
@@ -23,26 +25,21 @@ import {
   completeNotificationCommand,
   destinationError,
 } from './commands.repository.js';
-import type { CommandMetadata, DestinationTransaction } from './contract.js';
-import {
-  decodeFailureNotificationDestinationReplay,
-  serializeFailureNotificationDestinationRecord,
-} from './replay.js';
+import type {
+  CommandMetadata,
+  DestinationConfig,
+  DestinationTransaction,
+  FailureNotificationDestinationDatabase,
+  FailureNotificationDestinationRecord,
+} from './contract.js';
 import {
   destinationRecords,
   readFailureNotificationDestination,
 } from './records.queries.js';
-import type { FailureNotificationDestinationRecord } from './contract.js';
 import {
-  clearWorkflowFailureNotificationPolicy,
-  readWorkflowFailureNotificationPolicy,
-  setWorkflowFailureNotificationPolicy,
-} from '../policies/settings.repository.js';
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import type {
-  DestinationConfig,
-  FailureNotificationDestinationDatabase,
-} from './contract.js';
+  decodeFailureNotificationDestinationReplay,
+  serializeFailureNotificationDestinationRecord,
+} from './replay.js';
 
 async function assertConnection(
   client: PoolClient,
@@ -101,7 +98,7 @@ async function setDestinationStatus(
 ): Promise<FailureNotificationDestinationRecord> {
   return transaction(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, { manage: true });
-    const destinationId = z.uuid().parse(input.destinationId);
+    const destinationId = input.destinationId;
     const operation = 'failure.notification.destination.status';
     const scope = `${input.actorId}:${destinationId}`;
     const replay = await claimNotificationCommand(client, input, {
@@ -208,8 +205,8 @@ function transaction<T>(
   return withTenantScopedClient(
     pool,
     {
-      workspaceId: z.uuid().parse(input.workspaceId),
-      actorId: z.uuid().parse(input.actorId),
+      workspaceId: input.workspaceId,
+      actorId: input.actorId,
     },
     work,
   );
@@ -223,10 +220,8 @@ function createNotificationDestination(
     await authorize(client, input.workspaceId, input.actorId, {
       manage: true,
     });
-    const destinationId = z.uuid().parse(input.destinationId);
-    const parsed = FailureNotificationDestinationConfigSchema.parse(
-      input.config,
-    );
+    const destinationId = input.destinationId;
+    const parsed = input.config;
     const operation = 'failure.notification.destination.create';
     const scope = input.actorId;
     const replay = await claimNotificationCommand(client, input, {
@@ -318,7 +313,7 @@ function appendNotificationDestinationVersion(
     await authorize(client, input.workspaceId, input.actorId, {
       manage: true,
     });
-    const destinationId = z.uuid().parse(input.destinationId);
+    const destinationId = input.destinationId;
     const operation = 'failure.notification.destination.version.append';
     const scope = `${input.actorId}:${destinationId}`;
     const replay = await claimNotificationCommand(client, input, {
@@ -334,9 +329,7 @@ function appendNotificationDestinationVersion(
       destinationId,
       { lock: true },
     );
-    const parsed = FailureNotificationDestinationConfigSchema.parse(
-      input.config,
-    );
+    const parsed = input.config;
     if (
       current.currentVersion !== input.expectedVersion ||
       current.kind !== parsed.kind

@@ -1,13 +1,13 @@
-import type { ConnectionTestPersistence } from './contract.js';
 import type { Pool } from 'pg';
+import type { ConnectionTestPersistence } from './contract.js';
 
 import { markConnectionTestDispatched } from './dispatch.repository.js';
 
-import { startPersistedConnectionTest } from './start.repository.js';
-import { resolvePersistedConnectionTestSecret } from './secret.queries.js';
-import { completePersistedConnectionTest } from './complete.repository.js';
 import { abandonPersistedConnectionTest } from './abandon.repository.js';
-export { classifyConnectionTestCompletion } from './classify-completion.js';
+import { completePersistedConnectionTest } from './complete.repository.js';
+import { resolvePersistedConnectionTestSecret } from './secret.queries.js';
+import { startPersistedConnectionTest } from './start.repository.js';
+export { classifyConnectionTestCompletion } from '@pertexo/workflow-model';
 
 export function createConnectionTestPersistence(
   pool: Pool,

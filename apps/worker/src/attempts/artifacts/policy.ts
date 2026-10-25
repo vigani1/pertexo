@@ -1,4 +1,8 @@
-import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
+import { z } from 'zod';
+import {
+  nodeArtifactReferenceSchema,
+  FILE_PAGE_LIMITS,
+} from '@pertexo/node-sdk';
 
 export function assertArtifactByteLimit(maxBytes: number): void {
   if (
@@ -24,3 +28,15 @@ export function artifactExpiry(
     throw new RangeError('Artifact retention deadline has expired');
   return expiresAt;
 }
+
+export const artifactWriteMetadataSchema = z.object({
+  mediaType: z
+    .string()
+    .trim()
+    .pipe(nodeArtifactReferenceSchema.unwrap().shape.mediaType),
+  purpose: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[a-z][a-z0-9-]{0,63}$/u),
+});

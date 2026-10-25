@@ -1,14 +1,13 @@
-import type { PoolClient } from 'pg';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
 import {
   connections,
   connectionSecretVersions,
 } from '../schema/connections.js';
-import { rethrowQueryFailure } from '../platform/query-errors.js';
 
 import type { ConnectionRecord } from './contract.js';
-import { uuidSchema } from './admission.js';
 export const connectionFields = {
   id: connections.id,
   workspaceId: connections.workspaceId,
@@ -48,7 +47,7 @@ export async function selectConnection(
     .where(
       and(
         eq(connections.workspaceId, workspaceId),
-        eq(connections.id, uuidSchema.parse(connectionId)),
+        eq(connections.id, connectionId),
       ),
     )
     .$dynamic();

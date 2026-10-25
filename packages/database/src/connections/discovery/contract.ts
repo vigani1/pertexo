@@ -1,3 +1,6 @@
+import type { workflowIntegrationUsage } from '../../schema/authoring/integrations.js';
+
+// Projection joins workflows and versions with aggregated operation keys.
 export type ConnectionUsageRecord = Readonly<{
   workflowId: string;
   workflowName: string;
@@ -29,12 +32,10 @@ export type ConnectionUsageDatabase = Readonly<{
   ): Promise<ConnectionUsagePage>;
 }>;
 
-export type WorkflowIntegrationImpactRecord = Readonly<{
-  workflowVersionId: string;
-  providerKey: string;
-  operationKey: string;
-  connectionId: string;
-}>;
+export type WorkflowIntegrationImpactRecord = Pick<
+  typeof workflowIntegrationUsage.$inferSelect,
+  'workflowVersionId' | 'providerKey' | 'operationKey' | 'connectionId'
+>;
 
 export type WorkflowIntegrationImpactPage = Readonly<{
   items: readonly WorkflowIntegrationImpactRecord[];

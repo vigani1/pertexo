@@ -1,35 +1,34 @@
-import type { WorkflowTriggerReconciliationDatabase } from './contract.js';
-import { uuidSchema, safeReasonSchema } from './input.js';
-import {
-  readReconciliationEvent,
-  assertDeliveryIdentity,
-} from './identity.queries.js';
 import { and, eq, inArray, not, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  inboxReceipts,
-  transportSecurityAuditFacts,
-} from '../../schema/transport.js';
+import type { Pool, PoolClient } from 'pg';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
   workflows,
   workflowTriggers,
 } from '../../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { acquireDatabasePool } from '../../platform/pool/runtime.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
-import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
-import type { Pool, PoolClient } from 'pg';
+import {
+  inboxReceipts,
+  transportSecurityAuditFacts,
+} from '../../schema/transport.js';
+import type { WorkflowTriggerReconciliationDatabase } from './contract.js';
+import {
+  assertDeliveryIdentity,
+  readReconciliationEvent,
+} from './identity.queries.js';
 
 import type { DatabaseConfig } from '../../config.js';
 
-import { reconcileActiveWorkflowTriggers } from './materialization.repository.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import { deactivateArchivedWorkflowTriggers } from './activation.repository.js';
 import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
 } from './errors.js';
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { deactivateArchivedWorkflowTriggers } from './activation.repository.js';
 import { readHealth, refreshWorkflowActivation } from './health.repository.js';
+import { reconcileActiveWorkflowTriggers } from './materialization.repository.js';
 
 const reconciliationConsumerName = 'trigger-runtime.reconciliation';
 const transportChecksumMismatch = Symbol('transport-checksum-mismatch');
@@ -85,11 +84,11 @@ async function reconcileWorkflowTriggers(
 ): ReturnType<WorkflowTriggerReconciliationDatabase['reconcile']> {
   const outcome = await withTenantScopedClient(
     pool,
-    { workspaceId: uuidSchema.parse(input.workspaceId) },
+    { workspaceId: input.workspaceId },
     async (client) => {
-      const workflowId = uuidSchema.parse(input.workflowId);
-      const versionId = uuidSchema.parse(input.publishedVersionId);
-      const outboxEventId = uuidSchema.parse(input.outboxEventId);
+      const workflowId = input.workflowId;
+      const versionId = input.publishedVersionId;
+      const outboxEventId = input.outboxEventId;
       const verifiedEvent = await readReconciliationEvent(client, input, {
         outboxEventId,
         versionId,
@@ -164,7 +163,7 @@ async function reconcileWorkflowTriggers(
   if (outcome === transportChecksumMismatch) {
     await withTenantScopedClient(
       pool,
-      { workspaceId: uuidSchema.parse(input.workspaceId) },
+      { workspaceId: input.workspaceId },
       async (client) => {
         await recordTransportMismatch(
           client,
@@ -191,11 +190,11 @@ async function recordTriggerReconciliationFailure(
 ): ReturnType<WorkflowTriggerReconciliationDatabase['recordFailure']> {
   return withTenantScopedClient(
     pool,
-    { workspaceId: uuidSchema.parse(input.workspaceId) },
+    { workspaceId: input.workspaceId },
     async (client) => {
-      const workflowId = uuidSchema.parse(input.workflowId);
-      const versionId = uuidSchema.parse(input.publishedVersionId);
-      const reason = safeReasonSchema.parse(input.reason);
+      const workflowId = input.workflowId;
+      const versionId = input.publishedVersionId;
+      const reason = input.reason;
       const db = drizzle(client);
       const authority = await db
         .select({ id: workflows.id })

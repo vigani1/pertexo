@@ -1,50 +1,26 @@
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool } from 'pg';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { connections } from '../../schema/connections.js';
 import {
   connectionScope,
   connectionScopeSql,
 } from '../../tenant-access/resources/connections/scope.js';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { connections } from '../../schema/connections.js';
-import type { Pool } from 'pg';
-import { z } from 'zod';
 
 import { requireConnectionReader } from '../authority.queries.js';
-import {
-  CONNECTION_STATUS,
-  type ConnectionPage,
-  type ConnectionReadDatabase,
-  type ListConnectionsInput,
-} from '../contract.js';
+import type { ConnectionPage, ConnectionReadDatabase } from '../contract.js';
 import { connectionFields } from '../records.queries.js';
-import { uuidSchema } from '../admission.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
-
-const pageLimitSchema = z.number().int().positive().max(100);
-const connectionStatusSchema = z.enum(CONNECTION_STATUS);
-const connectionCursorTimestamp = z.iso
-  .datetime({ precision: 6 })
-  .refine((value) => !value.startsWith('0000-'), {
-    message: 'PostgreSQL timestamps do not support year zero',
-  });
-
-function parseCursor(input: ListConnectionsInput['after']) {
-  if (input === undefined) return undefined;
-  return Object.freeze({
-    status: connectionStatusSchema.parse(input.status),
-    createdAt: connectionCursorTimestamp.parse(input.createdAt),
-    id: uuidSchema.parse(input.id),
-  });
-}
 
 export function createConnectionReadPersistence(
   pool: Pool,
 ): ConnectionReadDatabase {
   return Object.freeze({
     listConnections: (input): Promise<ConnectionPage> => {
-      const actorId = uuidSchema.parse(input.actorId);
-      const limit = pageLimitSchema.parse(input.limit ?? 50);
-      const after = parseCursor(input.after);
+      const actorId = input.actorId;
+      const limit = input.limit ?? 50;
+      const after = input.after;
       return withConnectionTransaction(pool, input.workspaceId, {
         actorId,
         operation: async (client, workspaceId) => {
@@ -105,7 +81,7 @@ export function createConnectionReadPersistence(
       });
     },
     readConnection: (input) => {
-      const actorId = uuidSchema.parse(input.actorId);
+      const actorId = input.actorId;
       return withConnectionTransaction(pool, input.workspaceId, {
         actorId,
         operation: async (client, workspaceId) => {
@@ -125,7 +101,7 @@ export function createConnectionReadPersistence(
             .where(
               and(
                 eq(connections.workspaceId, workspaceId),
-                eq(connections.id, uuidSchema.parse(input.connectionId)),
+                eq(connections.id, input.connectionId),
                 connectionScopeSql(scope, connections),
               ),
             )

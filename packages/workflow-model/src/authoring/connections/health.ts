@@ -1,10 +1,13 @@
-import { CONNECTION_STATUS, CONNECTION_EVENT_TYPE } from '../contract.js';
-
-import type { ConnectionRecord, ConnectionTestResult } from '../contract.js';
+import {
+  CONNECTION_STATUS,
+  CONNECTION_EVENT_TYPE,
+  type ConnectionStatus,
+  type ConnectionTestOutcome,
+} from './contract.js';
 
 export function classifyConnectionTestCompletion(
-  currentStatus: ConnectionRecord['status'],
-  outcome: ConnectionTestResult['outcome'],
+  currentStatus: ConnectionStatus,
+  outcome: ConnectionTestOutcome,
   secretVersionId: string,
   { currentSecretWasTested }: Readonly<{ currentSecretWasTested: boolean }>,
 ) {
@@ -37,4 +40,18 @@ export function classifyConnectionTestCompletion(
       httpStatus: outcome.httpStatus,
     }),
   });
+}
+
+export function connectionTestStatus(
+  current: Readonly<{ status: ConnectionStatus }>,
+  input: Readonly<{ outcome: ConnectionTestOutcome; definitive: boolean }>,
+): ConnectionStatus {
+  const { outcome, definitive } = input;
+  if (outcome.ok) {
+    return 'active';
+  }
+  if (definitive) {
+    return 'reauthorization_required';
+  }
+  return current.status;
 }

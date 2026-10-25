@@ -1,27 +1,27 @@
-import type { PreviewOutboxClient } from './contract.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  outboxEvents,
-  inboxReceipts,
-  transportSecurityAuditFacts,
-} from '../../schema/transport.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import type { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  inboxReceipts,
+  outboxEvents,
+  transportSecurityAuditFacts,
+} from '../../schema/transport.js';
+import type { PreviewOutboxClient } from './contract.js';
 
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
-import {
-  PreviewAttemptStateError,
-  PreviewDeliveryMismatchError,
-} from '../errors.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import type { PreviewDelivery } from '../contract.js';
 import {
   previewDeliveryPayloadSchema,
   previewReconciliationPayloadSchema,
 } from '../delivery.js';
-import type { PreviewDelivery } from '../contract.js';
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import {
+  PreviewAttemptStateError,
+  PreviewDeliveryMismatchError,
+} from '../errors.js';
 
 export async function insertPreviewOutboxDelivery(
   client: PreviewOutboxClient,
@@ -47,7 +47,7 @@ export async function insertPreviewOutboxDelivery(
   const outboxEventId = uuidv7();
   const payload =
     input.jobName === 'execute-preview-attempt'
-      ? previewDeliveryPayloadSchema.parse({
+      ? {
           workspaceId: input.workspaceId,
           outboxEventId,
           previewRunId: input.previewRunId,
@@ -55,8 +55,8 @@ export async function insertPreviewOutboxDelivery(
           ...(input.traceparent === undefined
             ? {}
             : { traceparent: input.traceparent }),
-        })
-      : previewReconciliationPayloadSchema.parse({
+        }
+      : {
           workspaceId: input.workspaceId,
           outboxEventId,
           previewRunId: input.previewRunId,
@@ -65,7 +65,7 @@ export async function insertPreviewOutboxDelivery(
           ...(input.traceparent === undefined
             ? {}
             : { traceparent: input.traceparent }),
-        });
+        };
   const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
   const inserted = await drizzle(client)
     .insert(outboxEvents)

@@ -1,55 +1,55 @@
+import { workflowTestExpectationsSchema } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import {
-  workflowTestSuites,
   workflowTestSuiteCases,
+  workflowTestSuites,
 } from '../../schema/runs/suites.js';
+import { parseWorkspaceId } from '../../tenant-access/transactions.js';
 
-import { WorkflowRunNotFoundError } from '../../runs/errors.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
-import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
-import type { Pool } from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
 import {
   canonicalJson,
   DEFAULT_TEST_EXPECTATIONS,
-  type WorkflowTestExpectations,
+  rolesForCapability,
 } from '@pertexo/workflow-model';
-import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
-import { databaseSchema } from '../../schema.js';
-import { parseWorkspaceId } from '../../tenant-access/transactions.js';
-import { captureWorkspaceVariableRevision } from '../../variables/settings.queries.js';
-import { lockInputCaseQuota } from '../../authoring/input-cases/metadata.queries.js';
-import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool } from 'pg';
 import { lockArtifactReferences } from '../../artifacts/references/repository.js';
+import { lockInputCaseQuota } from '../../authoring/input-cases/metadata.queries.js';
+import type { SampleScope } from '../../authoring/step-samples/contract.js';
+import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
+import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { cancelInTransaction } from '../../runs/commands/cancel-active.repository.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
-import { WorkflowTestError } from '../workflows/errors.js';
-import {
-  withTestAuthority,
-  withTestRead,
-} from '../workflows/authority.queries.js';
+import { WorkflowRunNotFoundError } from '../../runs/errors.js';
+import { databaseSchema } from '../../schema.js';
+import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
+import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
+import { captureWorkspaceVariableRevision } from '../../variables/settings.queries.js';
 import {
   requireNoActiveSuite,
   requireNoActiveTest,
 } from '../workflows/admit.repository.js';
 import {
+  withTestAuthority,
+  withTestRead,
+} from '../workflows/authority.queries.js';
+import { WorkflowTestError } from '../workflows/errors.js';
+import {
   loadTestSnapshot,
-  saveTestSnapshot,
   sameTestSamples,
+  saveTestSnapshot,
 } from '../workflows/snapshot.repository.js';
-import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
-import type { SampleScope } from '../../authoring/step-samples/contract.js';
-import type { WorkflowTestSuiteStore } from './contract.js';
-import { readSuiteCurrent, readSuiteCasePayloads } from './current.queries.js';
-import { listSuites, readSuite, readCaseReport } from './records.queries.js';
 import { admitSuiteCase } from './admit.repository.js';
+import type { WorkflowTestSuiteStore } from './contract.js';
+import { readSuiteCasePayloads, readSuiteCurrent } from './current.queries.js';
+import { listSuites, readCaseReport, readSuite } from './records.queries.js';
 
 export function createWorkflowTestSuiteStore(
   pool: Pool,
@@ -145,7 +145,11 @@ export function createWorkflowTestSuiteStore(
               db: drizzle(client, { schema: databaseSchema }),
               workspaceId: parseWorkspaceId(input.workspaceId),
             },
-            { workspaceId: input.workspaceId, actorId: input.actorId, runId },
+            {
+              workspaceId: input.workspaceId,
+              actorId: input.actorId,
+              runId,
+            },
           );
       }),
   };
@@ -219,11 +223,11 @@ function startTestSuite(
     if (cases.length !== current.cases.length)
       throw new WorkflowTestError('cases_changed');
     for (const entry of cases) {
-      const expectations = (
+      const expectations = workflowTestExpectationsSchema.parse(
         entry.expectations === null
           ? DEFAULT_TEST_EXPECTATIONS
-          : JSON.parse(entry.expectations)
-      ) as WorkflowTestExpectations;
+          : JSON.parse(entry.expectations),
+      );
       if (
         expectations.assertions.some(
           (assertion) =>
@@ -238,7 +242,7 @@ function startTestSuite(
       await lockArtifactReferences(
         client,
         input.workspaceId,
-        JSON.parse(entry.input) as unknown,
+        JSON.parse(entry.input),
         input.actorId,
       );
     }

@@ -1,26 +1,25 @@
-import { webhookTriggerReplayRecords as replays } from '../../../schema/triggers/deliveries.js';
+import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/errors.js';
 import { workflowTriggers } from '../../../schema/authoring/workflows.js';
+import { webhookTriggerReplayRecords as replays } from '../../../schema/triggers/deliveries.js';
 import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
 import { lockEventCoordination } from '../../coordination/keys.repository.js';
-import { coordinateVerifiedWebhook } from '../coordinate.repository.js';
 import type { createEventCoordinationPreparation } from '../../coordination/prepare.js';
-import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/errors.js';
 import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
+import { coordinateVerifiedWebhook } from '../coordinate.repository.js';
 
 import {
   openWebhookResponse,
   webhookReplayWait,
 } from '../responses/admission.repository.js';
 
-import { createHash } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 
-import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
-
-import { acceptWorkflowRun } from '../../../runs/commands/acceptance.repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
+import { acceptWorkflowRun } from '../../../runs/commands/acceptance.repository.js';
 
+import type { WebhookReplayIdentity } from '../contract.js';
 import { insertWebhookDelivery } from '../deliveries.repository.js';
 import {
   deleteExpiredReplay,
@@ -28,13 +27,11 @@ import {
   readLockedReplay,
   resolveExactReplay,
 } from '../replay.repository.js';
-import type { WebhookReplayIdentity } from '../contract.js';
 
 import {
-  withWorkspaceTransaction,
   withWorkspaceReadTransaction,
+  withWorkspaceTransaction,
 } from '../../../tenant-access/transactions.js';
-import { uuidSchema } from '../input.js';
 import type { WebhookConfig, WebhookTriggerDatabase } from './contract.js';
 
 import { executableProjection, lockEligibleEndpoint } from './state.queries.js';
@@ -45,14 +42,12 @@ export async function acceptVerifiedWebhookDelivery(
   input: Parameters<WebhookTriggerDatabase['acceptVerifiedDelivery']>[0],
 ): ReturnType<WebhookTriggerDatabase['acceptVerifiedDelivery']> {
   const verification = input.verification;
-  const requestFingerprint = digestSchema.parse(input.requestFingerprint);
+  const requestFingerprint = input.requestFingerprint;
   const dedupeKind =
     input.idempotencyKeyHash === undefined ? 'fingerprint' : 'keyed';
-  const dedupeKeyHash = digestSchema.parse(
-    input.idempotencyKeyHash ?? requestFingerprint,
-  );
+  const dedupeKeyHash = input.idempotencyKeyHash ?? requestFingerprint;
   const replayIdentity: WebhookReplayIdentity = {
-    endpointId: uuidSchema.parse(verification.endpointId),
+    endpointId: verification.endpointId,
     dedupeKind,
     dedupeKeyHash,
   };
@@ -113,7 +108,7 @@ export async function acceptVerifiedWebhookDelivery(
         );
     const receipt = await withWorkspaceTransaction(
       pool,
-      uuidSchema.parse(verification.workspaceId),
+      verification.workspaceId,
       async (transaction) => {
         await transaction.db.execute(
           sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,

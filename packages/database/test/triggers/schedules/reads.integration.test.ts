@@ -3,8 +3,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { ScheduleTriggerError } from '../../../src/triggers/schedules/errors.js';
 import type { ScheduleOccurrencePosition } from '../../../src/triggers/schedules/contract.js';
+import { ScheduleTriggerError } from '../../../src/triggers/schedules/errors.js';
 import { createScheduleTriggerTestEnvironment } from '../../support/schedule-triggers.js';
 
 const schedule = createScheduleTriggerTestEnvironment();
@@ -345,28 +345,5 @@ describe('schedule fire times', () => {
       ).toMatch(/^(Mon|Tue|Wed|Thu|Fri) 09:00$/u);
     }
     await expect(writeFingerprint()).resolves.toBe(before);
-  });
-
-  it.each([
-    { kind: 'cron', expression: '0 25 * * *', timezone: 'Europe/Paris' },
-    { kind: 'cron', expression: '0 9 * * *', timezone: 'Etc/GMT+2' },
-    { kind: 'cron', expression: '0 9 * * *', timezone: 'Mars/Olympus' },
-    { kind: 'cron', expression: '0 9 * * *', timezone: 'US/Eastern' },
-    {
-      kind: 'interval',
-      intervalMinutes: 15,
-      misfirePolicy: 'catch_up_once',
-    },
-    { kind: 'interval', intervalMinutes: 43_201 },
-  ])('rejects a rule the scheduler would reject: %j', async (recurrence) => {
-    await expect(
-      schedule.schedules.previewFireTimes({
-        workspaceId,
-        actorId,
-        workflowId,
-        recurrence,
-        count: 3,
-      }),
-    ).rejects.toMatchObject({ code: 'invalid_recurrence' });
   });
 });

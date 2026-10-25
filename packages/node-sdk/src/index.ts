@@ -49,3 +49,8 @@ export {
 } from './artifacts/pages/bundle.js';
 
 export { selectOutputVariant } from './definitions/output-variant.js';
+
+export {
+  changeDataTableDefinition,
+  changeDataTableValues,
+} from './data-tables/schema.js';
