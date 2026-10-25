@@ -1,7 +1,4 @@
-import { throwApplicationError } from '../../platform/http/application-error.js';
-
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { applicationError } from '../../platform/http/index.js';
 import { singleRequestHeader } from '../../platform/http/request-headers.js';
 
 import {
@@ -31,16 +28,7 @@ export function requestContext(
   request: WorkflowAuthoringRequest,
   workspaceId: string,
 ) {
-  try {
-    return projectAuthenticatedWorkspaceContext(request, workspaceId);
-  } catch (error: unknown) {
-    return throwApplicationError(
-      applicationError('request.invalid', {
-        safeDetail:
-          error instanceof Error ? error.message : 'Invalid actor context',
-      }),
-    );
-  }
+  return projectAuthenticatedWorkspaceContext(request, workspaceId);
 }
 
 export function traceparent(

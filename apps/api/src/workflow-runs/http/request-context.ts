@@ -1,7 +1,5 @@
-import { throwApplicationError } from '../../platform/http/application-error.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/types.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { applicationError } from '../../platform/http/index.js';
 
 export type WorkflowRunsRequest = Readonly<
   Pick<
@@ -23,14 +21,5 @@ export type WorkflowRunsRequest = Readonly<
 >;
 
 export function actorFrom(request: WorkflowRunsRequest, workspaceId: string) {
-  try {
-    return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
-  } catch (error: unknown) {
-    return throwApplicationError(
-      applicationError('request.invalid', {
-        safeDetail:
-          error instanceof Error ? error.message : 'Invalid actor context',
-      }),
-    );
-  }
+  return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
 }

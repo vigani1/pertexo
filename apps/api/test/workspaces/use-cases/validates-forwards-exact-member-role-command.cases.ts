@@ -1,3 +1,4 @@
+import { InvalidWorkspaceMemberCursorError } from '../../../src/workspaces/cursor.js';
 import { expect, it, vi } from 'vitest';
 
 import {
@@ -199,7 +200,7 @@ export function registerValidatesForwardsExactMemberRoleCommand(): void {
         routeWorkspaceId: workspaceId,
         after: 'not-a-canonical-cursor',
       }),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toBeInstanceOf(InvalidWorkspaceMemberCursorError);
     expect(store.listWorkspaceMembers).not.toHaveBeenCalled();
   });
 
@@ -229,7 +230,7 @@ export function registerValidatesForwardsExactMemberRoleCommand(): void {
             }),
           ).toString('base64url'),
         }),
-      ).rejects.toMatchObject({ code: 'request.invalid' });
+      ).rejects.toBeInstanceOf(InvalidWorkspaceMemberCursorError);
       expect(store.listWorkspaceMembers).not.toHaveBeenCalled();
     },
   );

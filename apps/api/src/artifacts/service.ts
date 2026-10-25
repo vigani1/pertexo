@@ -1,14 +1,5 @@
+import { toProblem } from '../problems/registry.js';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
-import {
-  ArtifactIntegrityError,
-  ArtifactNotFoundError,
-} from '@pertexo/artifact-store';
-import {
-  ArtifactQuotaExceededError,
-  ArtifactUploadConflictError,
-  ArtifactUploadIdempotencyConflictError,
-  ArtifactUploadNotFoundError,
-} from '@pertexo/database/runs';
 import {
   artifactFinalizeRequestSchema,
   artifactUploadRequestSchema,
@@ -18,14 +9,11 @@ import {
 } from '@pertexo/contracts';
 
 import {
-  AuthorizationError,
   authorizeWorkspaceOperation,
   type AuthorizationCapability,
 } from '../authorization/index.js';
 import {
-  ArtifactApiCapacityExceededError,
   ArtifactApiConflictError,
-  ArtifactApiIdempotencyConflictError,
   ArtifactApiNotFoundError,
   ArtifactApiUnavailableError,
   ArtifactUploadDeadlineError,
@@ -91,7 +79,7 @@ export class ArtifactService {
         workspaceId: authorization.workspaceId,
       });
     } catch (error: unknown) {
-      throw mapDatabaseError(error);
+      throw storageFailure(error);
     }
 
     const artifact = created.artifact;
@@ -129,7 +117,7 @@ export class ArtifactService {
         identity,
       });
     } catch (error: unknown) {
-      throw mapDatabaseError(error);
+      throw storageFailure(error);
     }
     if (artifact === null) throw new ArtifactApiNotFoundError();
     if (artifact.status === 'available') return publicMetadata(artifact);
@@ -156,7 +144,7 @@ export class ArtifactService {
               ...(input.signal === undefined ? {} : { signal: input.signal }),
             });
           } catch (error: unknown) {
-            throw mapStoreError(error);
+            throw storageFailure(error);
           }
           // Verification may take long enough for membership to change.
           await this.authorize(input, 'artifact:upload', undefined);
@@ -164,7 +152,7 @@ export class ArtifactService {
       });
       return publicMetadata(finalized);
     } catch (error: unknown) {
-      throw mapDatabaseError(error);
+      throw storageFailure(error);
     }
   }
 
@@ -188,7 +176,7 @@ export class ArtifactService {
         ...(input.signal === undefined ? {} : { signal: input.signal }),
       });
     } catch (error: unknown) {
-      throw mapStoreError(error);
+      throw storageFailure(error);
     }
   }
 
@@ -203,7 +191,7 @@ export class ArtifactService {
         identity: this.identity(input.routeWorkspaceId, input.artifactId),
       });
     } catch (error: unknown) {
-      throw mapDatabaseError(error);
+      throw storageFailure(error);
     }
     if (artifact?.status !== 'pending' && artifact?.status !== 'available')
       throw new ArtifactApiNotFoundError();
@@ -227,7 +215,7 @@ export class ArtifactService {
         ...(signal === undefined ? {} : { signal }),
       });
     } catch (error: unknown) {
-      throw mapStoreError(error);
+      throw storageFailure(error);
     }
   }
 
@@ -280,31 +268,9 @@ function publicMetadata(artifact: ArtifactRecord): ArtifactMetadataResponse {
   });
 }
 
-function mapDatabaseError(error: unknown): Error {
-  const knownArtifactFailure =
-    error instanceof AuthorizationError ||
-    error instanceof ArtifactApiNotFoundError ||
-    error instanceof ArtifactApiConflictError ||
-    error instanceof ArtifactApiIdempotencyConflictError ||
-    error instanceof ArtifactApiCapacityExceededError ||
-    error instanceof ArtifactApiUnavailableError;
-  if (knownArtifactFailure) return error;
-  if (error instanceof ArtifactQuotaExceededError)
-    return new ArtifactApiCapacityExceededError();
-  if (error instanceof ArtifactUploadNotFoundError)
-    return new ArtifactApiNotFoundError();
-  if (error instanceof ArtifactUploadIdempotencyConflictError)
-    return new ArtifactApiIdempotencyConflictError();
-  if (error instanceof ArtifactUploadConflictError)
-    return new ArtifactApiConflictError();
-  return new ArtifactApiUnavailableError();
-}
-
-function mapStoreError(error: unknown): Error {
-  if (
-    error instanceof ArtifactIntegrityError ||
-    error instanceof ArtifactNotFoundError
-  )
-    return new ArtifactApiConflictError();
-  return new ArtifactApiUnavailableError();
+// Unknown storage failures historically return 503; the global fallback is 500.
+function storageFailure(error: unknown): unknown {
+  return toProblem(error).code === 'internal.unexpected'
+    ? new ArtifactApiUnavailableError()
+    : error;
 }

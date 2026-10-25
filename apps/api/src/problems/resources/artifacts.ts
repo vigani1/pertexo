@@ -1,9 +1,17 @@
+import {
+  ArtifactIntegrityError,
+  ArtifactNotFoundError,
+} from '@pertexo/artifact-store';
+import {
+  ArtifactQuotaExceededError,
+  ArtifactUploadConflictError,
+  ArtifactUploadIdempotencyConflictError,
+  ArtifactUploadNotFoundError,
+} from '@pertexo/database/runs';
 import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   ArtifactUploadTooLargeError,
   ArtifactApiNotFoundError,
-  ArtifactApiCapacityExceededError,
-  ArtifactApiIdempotencyConflictError,
   ArtifactApiConflictError,
   ArtifactUploadDeadlineError,
   ArtifactApiUnavailableError,
@@ -20,24 +28,30 @@ export const artifactProblems = [
   errorRegistration(ArtifactApiNotFoundError, () => {
     return applicationError('resource.not_found');
   }),
-  errorRegistration(ArtifactApiCapacityExceededError, () => {
+  errorRegistration(ArtifactQuotaExceededError, () => {
     return applicationError('workspace.quota_exceeded');
   }),
-  errorRegistration(ArtifactApiIdempotencyConflictError, () => {
+  errorRegistration(ArtifactUploadIdempotencyConflictError, () => {
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
     });
   }),
-  errorRegistration(ArtifactApiConflictError, () => {
-    return applicationError('artifact.conflict', {
-      safeDetail: 'The artifact conflicts with its current lifecycle state.',
-    });
-  }),
-  errorRegistration(ArtifactUploadDeadlineError, () => {
-    return applicationError('artifact.conflict', {
-      safeDetail: 'The artifact conflicts with its current lifecycle state.',
-    });
-  }),
+  errorRegistration(ArtifactUploadNotFoundError, () =>
+    applicationError('resource.not_found'),
+  ),
+  ...[
+    ArtifactApiConflictError,
+    ArtifactUploadDeadlineError,
+    ArtifactUploadConflictError,
+    ArtifactIntegrityError,
+    ArtifactNotFoundError,
+  ].map((kind) =>
+    errorRegistration(kind, () =>
+      applicationError('artifact.conflict', {
+        safeDetail: 'The artifact conflicts with its current lifecycle state.',
+      }),
+    ),
+  ),
   errorRegistration(ArtifactApiUnavailableError, (error) => {
     return applicationError('artifact.unavailable', {
       safeDetail: 'Artifact storage is temporarily unavailable.',

@@ -146,10 +146,7 @@ export function registerRequiresIdempotencyBeforeAcceptingAcknowledgedExecution(
           input: { kind: 'manual', value: { changed: true } },
         },
       }),
-    ).rejects.toMatchObject({
-      name: 'NodeTestRequestError',
-      code: 'idempotency_conflict',
-    });
+    ).rejects.toBeInstanceOf(PreviewIdempotencyConflictError);
     expect(store.getDraft).not.toHaveBeenCalled();
     expect(store.acceptPreview).not.toHaveBeenCalled();
   });
@@ -176,10 +173,7 @@ export function registerRequiresIdempotencyBeforeAcceptingAcknowledgedExecution(
           },
         },
       }),
-    ).rejects.toMatchObject({
-      name: 'NodeTestRequestError',
-      code: 'idempotency_conflict',
-    });
+    ).rejects.toBeInstanceOf(PreviewIdempotencyConflictError);
     expect(store.resolvePreviewReplay).toHaveBeenCalledOnce();
     expect(store.acceptPreview).toHaveBeenCalledOnce();
   });

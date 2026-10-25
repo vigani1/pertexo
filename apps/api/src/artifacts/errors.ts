@@ -10,18 +10,6 @@ export class ArtifactApiConflictError extends Error {
     this.name = 'ArtifactApiConflictError';
   }
 }
-export class ArtifactApiIdempotencyConflictError extends Error {
-  public constructor() {
-    super('The idempotency key was already used for another artifact request');
-    this.name = 'ArtifactApiIdempotencyConflictError';
-  }
-}
-export class ArtifactApiCapacityExceededError extends Error {
-  public constructor() {
-    super('Workspace artifact capacity was exceeded');
-    this.name = 'ArtifactApiCapacityExceededError';
-  }
-}
 export class ArtifactApiUnavailableError extends Error {
   public constructor(message = 'Artifact storage is unavailable') {
     super(message);

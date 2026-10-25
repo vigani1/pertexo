@@ -1,3 +1,4 @@
+import { InvalidWorkspaceMemberCursorError } from '../../workspaces/cursor.js';
 import { AuthorizationError } from '../../authorization/index.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { errorRegistration } from '../../platform/http/problems/registry.js';
@@ -25,6 +26,11 @@ import { InvalidAuthenticatedWorkspaceContextError } from '../../workspaces/requ
 import { IdentityError } from '../../identity/errors.js';
 
 export const identityProblems = [
+  errorRegistration(InvalidWorkspaceMemberCursorError, () =>
+    applicationError('request.invalid', {
+      safeDetail: 'workspace member cursor is invalid',
+    }),
+  ),
   errorRegistration(AuthorizationError, (error) => {
     return applicationError(error.code, {
       safeDetail: error.message,

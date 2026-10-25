@@ -1,3 +1,4 @@
+import { CallbackResponseError } from '@pertexo/database/runs';
 import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   WebhookTriggerIdempotencyConflictError,
@@ -8,6 +9,13 @@ import { applicationError } from '../../platform/http/index.js';
 import { InvalidWebhookDeliveryCursorError } from '../../webhooks/management/cursor.js';
 
 export const webhooksProblems = [
+  errorRegistration(CallbackResponseError, (error) =>
+    applicationError(
+      error.reason === 'resolved'
+        ? 'callback.already_received'
+        : 'callback.expired',
+    ),
+  ),
   errorRegistration(InvalidWebhookDeliveryCursorError, () => {
     return applicationError('request.invalid', {
       safeDetail: 'The delivery cursor is invalid.',
