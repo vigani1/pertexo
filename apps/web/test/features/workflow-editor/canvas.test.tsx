@@ -1,22 +1,24 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
 } from '@pertexo/contracts';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   addStepButton,
+  findCanvas,
+  pressSave,
+} from '../../support/fixtures/editor-actions';
+import { graphWithMappingNodes } from '../../support/fixtures/editor-graph';
+import {
   editorHandlers,
   editorPath,
-  findCanvas,
-  graphWithMappingNodes,
   manualDefinition,
   mappingDefinition,
-  pressSave,
 } from '../../support/fixtures/workflow-editor';
+import { mockServer } from '../../support/mock-server';
+import { renderApp } from '../../support/render-app';
 
 /**
  * jsdom lays nothing out, so React Flow never measures a step. This gives

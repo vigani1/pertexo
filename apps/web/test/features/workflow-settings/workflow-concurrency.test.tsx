@@ -1,72 +1,59 @@
-import { HttpResponse, http } from 'msw';
-import {
-  act,
-  render,
-  renderHook,
-  screen,
-  within,
-  waitFor,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { NotificationsProvider } from '@/components/ui/toast';
+
+import { ConcurrencySection } from '@/features/workflow-settings/components/settings/concurrency-section';
+
+import { concurrencyQueryOptions } from '@/features/workflow-settings/data/concurrency.queries';
+
+import { useConcurrencyCommand } from '@/features/workflow-settings/data/mutations/use-concurrency-command';
+
+import { createApiClient } from '@/lib/api/client';
+
+import { ApiError } from '@/lib/api/error';
+
+import type { WorkflowConcurrencySettings } from '@pertexo/contracts';
+
+import { accessibleWorkspaceSchema } from '@pertexo/contracts';
+
 import {
   QueryClient,
   QueryClientProvider,
   useQuery,
 } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
-import { accessibleWorkspaceSchema } from '@pertexo/contracts';
-import type { WorkflowConcurrencySettings } from '@pertexo/contracts';
-import { createApiClient } from '@/lib/api/client';
-import { concurrencyQueryOptions } from '@/features/workflow-settings/data/concurrency.queries';
-import { useConcurrencyCommand } from '@/features/workflow-settings/data/mutations/use-concurrency-command';
-import { ApiError } from '@/lib/api/error';
-import { ConcurrencySection } from '@/features/workflow-settings/components/settings/concurrency-section';
-import { NotificationsProvider } from '@/components/ui/toast';
-import { mockServer } from '../../support/mock-server';
-import { defaultConcurrencySettings } from '../../support/fixtures/concurrency';
-import { renderApp, testFetch } from '../../support/render-app';
+
 import {
-  installQueries,
-  workflowApi,
-  workspaceId,
-  workflowId,
-  userId,
-} from './fixtures';
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+
+import userEvent from '@testing-library/user-event';
+
+import { HttpResponse, http } from 'msw';
+
+import type { ReactNode } from 'react';
+
+import { describe, expect, it } from 'vitest';
+
+import { defaultConcurrencySettings } from '../../support/fixtures/concurrency';
+
+import { mockServer } from '../../support/mock-server';
+
+import { renderApp, testFetch } from '../../support/render-app';
+
 import { workspaceWith } from '../workflows/list/fixtures';
 
-/** The limit field; Change opens it when the setting reads as a sentence. */
-async function limitField(event: ReturnType<typeof userEvent.setup>) {
-  const section = await screen.findByRole('region', { name: 'Concurrency' });
-  const toggle = await within(section).findByRole('button', {
-    name: /^(Change|Close)$/u,
-  });
-  if (toggle.textContent === 'Change') await event.click(toggle);
-  return within(section).findByRole('textbox', { name: 'Runs at once' });
-}
+import { installQueries, userId, workflowId, workspaceId } from './fixtures';
 
-/** The setting's sentence, whose values sit in their own elements. */
-function sentence(start: string) {
-  return (_: string, element: Element | null) =>
-    element?.tagName === 'P' &&
-    element.textContent.replace(/\s+/gu, ' ').startsWith(start);
-}
-
-const path = `/w/${workspaceId}/workflows/${workflowId}/settings`;
-const endpoint = `${workflowApi}/concurrency`;
-function problem(status: number, code: string, extras = {}) {
-  return HttpResponse.json(
-    {
-      type: `https://api.pertexo.test/problems/${code}`,
-      title: 'Concurrency request failed',
-      status,
-      code,
-      requestId: 'concurrency-test',
-      ...extras,
-    },
-    { status, headers: { 'content-type': 'application/problem+json' } },
-  );
-}
+import {
+  endpoint,
+  limitField,
+  path,
+  problem,
+  sentence,
+} from './workflow-concurrency/fixture';
 
 describe('workflow concurrency settings', () => {
   it.each([
@@ -217,7 +204,6 @@ describe('workflow concurrency settings', () => {
       expect(writes).toBe(0);
     },
   );
-
   it('forgets settings on a capability change and requires fresh authorized data on return', async () => {
     const cache = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -271,7 +257,6 @@ describe('workflow concurrency settings', () => {
     );
     cache.clear();
   });
-
   it('does not adopt a refreshed revision from malformed typed conflict details', async () => {
     installQueries();
     let current = defaultConcurrencySettings;
@@ -353,246 +338,4 @@ describe('workflow concurrency settings', () => {
       { limit: null, expectedRevision: 2, overflow: 'queue' },
     ]);
   });
-
-  it('validates the current allowance, but permits removing a cap without an entitlement', async () => {
-    installQueries();
-    let current: WorkflowConcurrencySettings = {
-      ...defaultConcurrencySettings,
-      limit: 2,
-      workspacePolicyState: 'unavailable',
-      workspaceActiveRunLimit: null,
-    };
-    const bodies: unknown[] = [];
-    mockServer.use(
-      http.get(endpoint, () => HttpResponse.json(current)),
-      http.put(endpoint, async ({ request }) => {
-        bodies.push(await request.json());
-        current = { ...current, limit: null, revision: 2 };
-        return HttpResponse.json({ settings: current, replayed: false });
-      }),
-    );
-    renderApp(path);
-    const event = userEvent.setup();
-    const input = await limitField(event);
-    await event.click(
-      screen.getByRole('button', { name: 'Save concurrency limit' }),
-    );
-    await screen.findByText(
-      /An active workspace execution allowance is required/u,
-    );
-    expect(bodies).toHaveLength(0);
-    await event.clear(input);
-    await event.click(
-      screen.getByRole('button', { name: 'Save concurrency limit' }),
-    );
-    await screen.findByText('Concurrency settings saved');
-    expect(bodies).toEqual([
-      { limit: null, expectedRevision: 1, overflow: 'queue' },
-    ]);
-  });
-
-  it('retains edits after typed conflict and only resubmits after reviewing fresh authority', async () => {
-    installQueries();
-    let current = defaultConcurrencySettings;
-    const bodies: unknown[] = [];
-    mockServer.use(
-      http.get(endpoint, () => HttpResponse.json(current)),
-      http.put(endpoint, async ({ request }) => {
-        bodies.push(await request.json());
-        if (bodies.length === 1) {
-          current = { ...current, limit: 3, revision: 2 };
-          return problem(409, 'workflow.concurrency_revision_conflict', {
-            currentRevision: 2,
-          });
-        }
-        current = { ...current, limit: 1, revision: 3 };
-        return HttpResponse.json({ settings: current, replayed: false });
-      }),
-    );
-    renderApp(path);
-    const event = userEvent.setup();
-    const input = await limitField(event);
-    await event.type(input, '1');
-    await event.click(
-      screen.getByRole('button', { name: 'Save concurrency limit' }),
-    );
-    await screen.findByText(/Your edits are kept/u);
-    await screen.findByText(
-      sentence('Up to 3 runs at once. Extra events wait their turn.'),
-    );
-    expect(input).toHaveValue('1');
-    expect(bodies).toHaveLength(1);
-    await event.click(
-      screen.getByRole('button', { name: 'Save concurrency limit' }),
-    );
-    await screen.findByText('Concurrency settings saved');
-    expect(bodies[1]).toEqual({
-      limit: 1,
-      expectedRevision: 2,
-      overflow: 'queue',
-    });
-  });
-
-  it('retries the exact body and key after an uncertain outcome, not the refreshed revision', async () => {
-    installQueries();
-    let current = defaultConcurrencySettings;
-    const requests: { body: unknown; key: string | null }[] = [];
-    mockServer.use(
-      http.get(endpoint, () => HttpResponse.json(current)),
-      http.put(endpoint, async ({ request }) => {
-        requests.push({
-          body: await request.json(),
-          key: request.headers.get('idempotency-key'),
-        });
-        current = { ...current, limit: 1, revision: 2 };
-        return requests.length === 1
-          ? HttpResponse.error()
-          : HttpResponse.json({ settings: current, replayed: true });
-      }),
-    );
-    renderApp(path);
-    const event = userEvent.setup();
-    await event.type(await limitField(event), '1');
-    await event.click(
-      screen.getByRole('button', { name: 'Save concurrency limit' }),
-    );
-    await event.click(
-      await screen.findByRole('button', { name: 'Retry same change' }),
-    );
-    await screen.findByText('Concurrency settings saved');
-    expect(requests).toHaveLength(2);
-    expect(requests[1]).toEqual(requests[0]);
-    expect(requests[1]?.body).toEqual({
-      limit: 1,
-      expectedRevision: 1,
-      overflow: 'queue',
-    });
-  });
-
-  it('allows reading policy and history without rendering editing controls', async () => {
-    installQueries([]);
-    renderApp(path);
-    const section = await screen.findByRole('region', { name: 'Concurrency' });
-    await within(section).findByText(
-      sentence('No limit of its own. The workspace runs up to 10 at once.'),
-    );
-    expect(within(section).queryByRole('textbox')).not.toBeInTheDocument();
-    expect(within(section).queryByRole('combobox')).not.toBeInTheDocument();
-    expect(
-      within(section).getByRole('region', { name: 'Recent skipped triggers' }),
-    ).toBeVisible();
-  });
-
-  it.each([401, 403, 404, 409])(
-    'forgets denied snapshots durably after %i, including inactive cache reuse',
-    async (status) => {
-      const client = new QueryClient({
-        defaultOptions: { queries: { retry: false } },
-      });
-      const options = concurrencyQueryOptions(
-        createApiClient({ fetch: testFetch, readCsrfToken: () => undefined }),
-        userId,
-        workspaceId,
-        workflowId,
-      );
-      let response = () =>
-        HttpResponse.json({ ...defaultConcurrencySettings, limit: 7 });
-      mockServer.use(http.get(endpoint, () => response()));
-      await client.query(options);
-      expect(client.getQueryData(options.queryKey)).toMatchObject({ limit: 7 });
-      response = () =>
-        problem(
-          status,
-          status === 409 ? 'workspace.unavailable' : 'resource.not_found',
-        );
-      await expect(client.query(options)).rejects.toBeDefined();
-      expect(client.getQueryData(options.queryKey)).toBeUndefined();
-      response = () => problem(503, 'service.unavailable');
-      await expect(client.query({ ...options })).rejects.toBeDefined();
-      expect(client.getQueryData(options.queryKey)).toBeUndefined();
-      response = () =>
-        HttpResponse.json({ ...defaultConcurrencySettings, limit: 2 });
-      await client.query(options);
-      expect(client.getQueryData(options.queryKey)).toMatchObject({ limit: 2 });
-      client.clear();
-    },
-  );
-
-  it('preserves ordinary transient-error stale display without a preceding denial', async () => {
-    installQueries();
-    let response = () =>
-      HttpResponse.json({ ...defaultConcurrencySettings, limit: 7 });
-    mockServer.use(http.get(endpoint, () => response()));
-    const app = renderApp(path);
-    await screen.findByText(
-      sentence('Up to 7 runs at once. Extra events wait their turn.'),
-    );
-    response = () => problem(503, 'service.unavailable');
-    await app.queryClient.invalidateQueries({
-      queryKey: concurrencyQueryOptions(
-        app.apiClient,
-        userId,
-        workspaceId,
-        workflowId,
-      ).queryKey,
-    });
-    await waitFor(() =>
-      expect(
-        screen.getByText(
-          sentence('Up to 7 runs at once. Extra events wait their turn.'),
-        ),
-      ).toBeVisible(),
-    );
-    await screen.findByText(/Couldn’t refresh/u);
-  });
-});
-
-it('saves Skip with the workflow limit and shows metadata-only skip history', async () => {
-  installQueries();
-  let current: WorkflowConcurrencySettings = {
-    ...defaultConcurrencySettings,
-    limit: 1,
-  };
-  mockServer.use(
-    http.get(endpoint, () => HttpResponse.json(current)),
-    http.put(endpoint, async ({ request }) => {
-      const body = await request.json();
-      expect(body).toEqual({ limit: 1, overflow: 'skip', expectedRevision: 1 });
-      current = {
-        ...current,
-        overflow: 'skip',
-        revision: 2,
-        recentSkips: [
-          {
-            id: workflowId,
-            at: defaultConcurrencySettings.asOf,
-            triggerType: 'webhook',
-            reason: 'concurrency_limit',
-          },
-        ],
-      };
-      return HttpResponse.json({ settings: current, replayed: false });
-    }),
-  );
-  renderApp(path);
-  const user = userEvent.setup();
-  await limitField(user);
-  await user.click(
-    await screen.findByRole('combobox', { name: 'When the limit is reached' }),
-  );
-  await user.click(await screen.findByRole('option', { name: 'Skip' }));
-  await user.click(
-    screen.getByRole('button', { name: 'Save concurrency limit' }),
-  );
-  expect(await screen.findByText('Webhook skipped')).toBeVisible();
-  expect(
-    screen.getByText('Concurrency limit reached. No run started.'),
-  ).toBeVisible();
-  expect(
-    screen.getByText(
-      sentence(
-        'Up to 1 run at once. Extra trigger events are skipped; manual starts are refused.',
-      ),
-    ),
-  ).toBeVisible();
 });

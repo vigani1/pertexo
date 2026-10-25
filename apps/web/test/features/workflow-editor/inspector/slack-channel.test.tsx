@@ -1,14 +1,16 @@
-import { HttpResponse, http } from 'msw';
+import { parseChannelId } from '@/features/workflow-editor/model/inspector/slack-channel';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { parseChannelId } from '@/features/workflow-editor/model/inspector/slack-channel';
-import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import {
+  findCanvas,
+  pressSave,
+} from '../../../support/fixtures/editor-actions';
 import { notFoundProblem } from '../../../support/fixtures/run';
 import {
   slackChannelLookup,
@@ -18,12 +20,12 @@ import {
   api,
   editorHandlers,
   editorPath,
-  findCanvas,
-  pressSave,
   setDefinition,
   workspace,
   workspaceId,
 } from '../../../support/fixtures/workflow-editor';
+import { mockServer } from '../../../support/mock-server';
+import { renderApp } from '../../../support/render-app';
 
 type InputMappings = WorkflowGraphContract['nodes'][number]['inputMappings'];
 

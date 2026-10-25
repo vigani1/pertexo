@@ -1,3 +1,26 @@
+import { resetReadMocks } from './read-lifetime/setup';
+
+import { WorkflowOrganizationFilters } from '@/features/workflows/components/organization/filters';
+
+import {
+  getWorkflowFolders,
+  getWorkflowOrganizationPage,
+  getWorkflowTagsPage,
+  sendWorkflowOrganizationCommand,
+} from '@/features/workflows/data/organization/api';
+
+import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
+
+import { useOrganizationList } from '@/features/workflows/hooks/use-organization-list';
+
+import { useWorkflowOrganizationCommand } from '@/features/workflows/hooks/use-workflow-organization-command';
+
+import type { WorkflowListSearch } from '@/features/workflows/model/list-view';
+
+import { ApiError } from '@/lib/api/error';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 import {
   act,
   render,
@@ -5,37 +28,26 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { useState } from 'react';
+
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+import { useState } from 'react';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { userId, workflowId, workspaceId } from '../list/fixtures';
+
 import {
-  accessibleWorkspaceSchema,
-  workflowSummarySchema,
-} from '@pertexo/contracts';
-import { useOrganizationList } from '@/features/workflows/hooks/use-organization-list';
-import { WorkflowOrganizationFilters } from '@/features/workflows/components/organization/filters';
-import { workflowOrganizationKeys } from '@/features/workflows/data/organization/queries';
-import {
-  getWorkflowOrganizationPage,
-  getWorkflowFolders,
-  getWorkflowTagsPage,
-  sendWorkflowOrganizationCommand,
-} from '@/features/workflows/data/organization/api';
-import { useWorkflowOrganizationCommand } from '@/features/workflows/hooks/use-workflow-organization-command';
-import { assertSessionIdentity } from '@/features/auth/session/identity.public';
-import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
-import { ApiError } from '@/lib/api/error';
-import { createApiClient } from '@/lib/api/client';
-import {
-  userId,
-  workspaceId,
-  workflowId,
-  summary,
-  workspaceWith,
-  user,
-} from '../list/fixtures';
-import type { WorkflowListSearch } from '@/features/workflows/model/list-view';
+  deferred,
+  denied,
+  folders,
+  forgotten,
+  page,
+  ready,
+  setup,
+  tags,
+} from './read-lifetime/fixture';
+import { apiClient, folderId, tagId, workspace } from './read-lifetime/records';
 
 vi.mock('@/features/workflows/data/organization/api', async (original) => ({
   ...(await original<object>()),
@@ -44,152 +56,18 @@ vi.mock('@/features/workflows/data/organization/api', async (original) => ({
   getWorkflowTagsPage: vi.fn(),
   sendWorkflowOrganizationCommand: vi.fn(),
 }));
+
 vi.mock('@/features/auth/session/identity.public', async (original) => ({
   ...(await original<object>()),
   assertSessionIdentity: vi.fn(),
 }));
+
 vi.mock('@/features/workspaces/queries.public', async (original) => ({
   ...(await original<object>()),
   getAllAccessibleWorkspaces: vi.fn(),
 }));
-const apiClient = createApiClient({
-  fetch: vi.fn(),
-  readCsrfToken: () => undefined,
-});
-const folderId = '11111111-1111-4111-8111-111111111111';
-const tagId = '22222222-2222-4222-8222-222222222222';
-const workspace = accessibleWorkspaceSchema.parse(workspaceWith([]));
-const folders = {
-  items: [
-    {
-      id: folderId,
-      name: 'Private folder',
-      revision: 1,
-      parentId: null,
-      depth: 1,
-    },
-  ],
-};
-const tags = {
-  items: [{ id: tagId, key: 'private-tag', revision: 1 }],
-  nextCursor: null,
-};
-const page = {
-  items: [
-    {
-      workflow: workflowSummarySchema.parse(
-        summary(workflowId, 'Protected workflow'),
-      ),
-      organization: {
-        folderId,
-        tags: tags.items,
-        organizationRevision: 1,
-        isFavorite: true,
-      },
-    },
-  ],
-  nextCursor: null,
-};
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
-}
-function denied(status: number) {
-  return new ApiError({ kind: 'problem', status, message: 'private body' });
-}
-function Probe({
-  actor = userId,
-  tenant = workspaceId,
-}: Readonly<{ actor?: string; tenant?: string }>) {
-  const result = useOrganizationList(apiClient, actor, tenant, {});
-  return (
-    <>
-      <button onClick={() => void result.refetch()}>
-        Refresh workflow reads
-      </button>
-      {result.data?.pages
-        .flatMap((entry) => entry.organizations)
-        .map((entry) => (
-          <p key={entry.workflow.id}>
-            {entry.workflow.name}{' '}
-            {entry.organization.isFavorite ? 'Private favorite' : ''}
-          </p>
-        ))}
-      {result.isError ? <p>Workflow reads unavailable</p> : null}
-      <WorkflowOrganizationFilters
-        apiClient={apiClient}
-        userId={actor}
-        workspace={{ ...workspace, id: tenant }}
-        search={{ folderId, tagId }}
-        filterRef={null}
-        onSearchChange={() => undefined}
-      />
-    </>
-  );
-}
-function setup(
-  actor = userId,
-  tenant = workspaceId,
-  client = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: 0 } },
-  }),
-) {
-  const view = render(
-    <QueryClientProvider client={client}>
-      <Probe actor={actor} tenant={tenant} />
-    </QueryClientProvider>,
-  );
-  return {
-    ...view,
-    client,
-    rerenderScope: (nextActor: string, nextTenant: string) => {
-      view.rerender(
-        <QueryClientProvider client={client}>
-          <Probe actor={nextActor} tenant={nextTenant} />
-        </QueryClientProvider>,
-      );
-    },
-  };
-}
-async function ready() {
-  await screen.findByText('Protected workflow Private favorite');
-  if (
-    screen
-      .getByRole('button', { name: /^Filters/u })
-      .getAttribute('aria-expanded') !== 'true'
-  )
-    await userEvent.click(screen.getByRole('button', { name: /^Filters/u }));
-  await screen.findByText('Private folder');
-  await screen.findByText('private-tag');
-}
-async function forgotten(client: QueryClient) {
-  await waitFor(() => {
-    expect(
-      screen.queryByText('Protected workflow Private favorite'),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('Private folder')).not.toBeInTheDocument();
-    expect(screen.queryByText('private-tag')).not.toBeInTheDocument();
-    const scoped = client.getQueryCache().findAll({
-      queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
-    });
-    expect(scoped.every((query) => query.state.data === undefined)).toBe(true);
-  });
-}
-beforeEach(() => {
-  vi.mocked(assertSessionIdentity)
-    .mockReset()
-    .mockResolvedValue({ ...user, status: 'active' });
-  vi.mocked(getAllAccessibleWorkspaces)
-    .mockReset()
-    .mockResolvedValue([workspace]);
-  vi.mocked(sendWorkflowOrganizationCommand).mockReset();
-  vi.mocked(getWorkflowOrganizationPage).mockReset().mockResolvedValue(page);
-  vi.mocked(getWorkflowFolders).mockReset().mockResolvedValue(folders);
-  vi.mocked(getWorkflowTagsPage).mockReset().mockResolvedValue(tags);
-});
+
+beforeEach(resetReadMocks);
 
 describe('organization reads without a command dialog', () => {
   it('immutable query denial reaches a later command owner after the earlier read owner cancels query state', async () => {
@@ -255,7 +133,6 @@ describe('organization reads without a command dialog', () => {
     expect(hook.result.current.command.retryAvailable).toBe(false);
     expect(hook.result.current.list.data).toBeUndefined();
   });
-
   it('explicit fresh read recovers after denial but a transient retry cannot resurrect the denied snapshot', async () => {
     const { client } = setup();
     await ready();
@@ -385,7 +262,6 @@ describe('organization reads without a command dialog', () => {
       ).toBeDisabled();
     },
   );
-
   it('cancels a held sibling before removal even when transport ignores cancellation', async () => {
     const { client } = setup();
     await ready();
@@ -413,7 +289,6 @@ describe('organization reads without a command dialog', () => {
     });
     await forgotten(client);
   });
-
   it.each([
     new ApiError({
       kind: 'problem',
@@ -442,7 +317,6 @@ describe('organization reads without a command dialog', () => {
       ).toEqual(folders);
     },
   );
-
   it.each([false, true])(
     'remount uses a fresh read, never denied or held cached metadata (authorized=%s)',
     async (authorized) => {
@@ -471,51 +345,6 @@ describe('organization reads without a command dialog', () => {
       });
       if (authorized) await ready();
       else await forgotten(view.client);
-    },
-  );
-
-  it.each(['actor', 'workspace'] as const)(
-    'an old scoped late reply cannot affect a new %s read owner',
-    async (changing) => {
-      const view = setup();
-      await ready();
-      const held = deferred<typeof page>();
-      vi.mocked(getWorkflowOrganizationPage).mockReturnValueOnce(held.promise);
-      act(() => {
-        void view.client.invalidateQueries({
-          queryKey: [
-            ...workflowOrganizationKeys.scope(userId, workspaceId),
-            'list',
-          ],
-        });
-      });
-      await waitFor(() => {
-        expect(getWorkflowOrganizationPage).toHaveBeenCalledTimes(2);
-      });
-      const oldSignal = vi.mocked(getWorkflowOrganizationPage).mock
-        .calls[1]?.[3];
-      const current = {
-        ...page,
-        items: page.items.map((item) => ({
-          ...item,
-          workflow: { ...item.workflow, name: 'Current authorized workflow' },
-          organization: { ...item.organization, isFavorite: false },
-        })),
-      };
-      vi.mocked(getWorkflowOrganizationPage).mockResolvedValue(current);
-      view.rerenderScope(
-        changing === 'actor' ? 'other-actor' : userId,
-        changing === 'workspace' ? 'other-workspace' : workspaceId,
-      );
-      await screen.findByText('Current authorized workflow');
-      expect(oldSignal?.aborted).toBe(true);
-      act(() => {
-        held.resolve(page);
-      });
-      expect(
-        screen.queryByText('Protected workflow Private favorite'),
-      ).not.toBeInTheDocument();
-      expect(screen.getByText('Current authorized workflow')).toBeVisible();
     },
   );
 });

@@ -1,10 +1,4 @@
-import type {
-  NodeDefinitionCatalogItem,
-  WorkflowGraphContract,
-} from '@pertexo/contracts';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { startingConfig } from '@/features/workflow-editor/model/graph/starting-config';
 import {
   addSwitchCase,
   addValidateRule,
@@ -15,16 +9,24 @@ import {
   withParallelBranchCount,
   withRuleType,
 } from '@/features/workflow-editor/model/inspector/setup-builders';
-import { startingConfig } from '@/features/workflow-editor/model/graph/starting-config';
-import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import type {
+  NodeDefinitionCatalogItem,
+  WorkflowGraphContract,
+} from '@pertexo/contracts';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
+import {
+  findCanvas,
+  pressSave,
+} from '../../../support/fixtures/editor-actions';
 import {
   editorHandlers,
   editorPath,
-  findCanvas,
-  pressSave,
   setDefinition,
 } from '../../../support/fixtures/workflow-editor';
+import { mockServer } from '../../../support/mock-server';
+import { renderApp } from '../../../support/render-app';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 

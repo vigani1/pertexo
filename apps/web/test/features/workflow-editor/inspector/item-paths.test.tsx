@@ -1,3 +1,5 @@
+import { schemaFields } from '@/features/workflow-editor/model/inspector/draft';
+import { parseItemPath } from '@/features/workflow-editor/model/inspector/item-path';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
@@ -5,17 +7,17 @@ import type {
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { schemaFields } from '@/features/workflow-editor/model/inspector/draft';
-import { parseItemPath } from '@/features/workflow-editor/model/inspector/item-path';
-import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import {
+  findCanvas,
+  pressSave,
+} from '../../../support/fixtures/editor-actions';
 import {
   editorHandlers,
   editorPath,
-  findCanvas,
-  pressSave,
   setDefinition,
 } from '../../../support/fixtures/workflow-editor';
+import { mockServer } from '../../../support/mock-server';
+import { renderApp } from '../../../support/render-app';
 
 describe('item paths', () => {
   it('stores a typed field name as the path it means', () => {

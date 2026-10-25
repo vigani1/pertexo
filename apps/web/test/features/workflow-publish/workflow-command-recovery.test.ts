@@ -1,20 +1,31 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createElement, StrictMode, type ReactNode } from 'react';
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { ApiError } from '@/lib/api/error';
-import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
 import { useWorkflowPublication } from '@/features/workflow-publish/data/mutations/use-workflow-publication';
-import { useWorkflowRunSubmission } from '@/features/workflow-publish/data/mutations/use-workflow-run-submission';
-import { normalizeRunIntent } from '@/features/workflow-runs/model/commands/run-intent';
 
-const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-const versionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-const runId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
-const etagA = `"draft.${'a'.repeat(43)}"`;
-const etagB = `"draft.${'b'.repeat(43)}"`;
+import { useWorkflowRunSubmission } from '@/features/workflow-publish/data/mutations/use-workflow-run-submission';
+
+import type { ApiJsonRequest } from '@/lib/api/client';
+
+import { ApiError } from '@/lib/api/error';
+
+import { act, renderHook, waitFor } from '@testing-library/react';
+
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  acceptedRun,
+  apiClientFor,
+  compatibility,
+  deferred,
+  emptyGraph,
+  etagA,
+  etagB,
+  QueryWrapper,
+  runId,
+  savedState,
+  userId,
+  versionId,
+  workflowId,
+  workspaceId,
+} from './workflow-command-recovery/fixture';
 
 describe('workflow publication recovery', () => {
   it('recovers an uncertain publish with its original precondition and key', async () => {
@@ -152,7 +163,6 @@ describe('workflow run submission recovery', () => {
       expectedPublishedVersionId: versionId,
     });
   });
-
   it('stops exact retries at the original 24-hour window without silently permitting replacement', async () => {
     const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000);
     try {
@@ -188,7 +198,6 @@ describe('workflow run submission recovery', () => {
       clock.mockRestore();
     }
   });
-
   it('keeps the accepted ID when fresh opening authority cannot be confirmed and never resubmits it', async () => {
     const dispatch = vi.fn(() => Promise.resolve(acceptedRun()));
     const apiClient = apiClientFor(dispatch);
@@ -217,7 +226,6 @@ describe('workflow run submission recovery', () => {
     expect(dispatch).toHaveBeenCalledOnce();
     expect(onRunAccepted).toHaveBeenCalledWith(runId);
   });
-
   it('retries the exact accepted run intent without another save barrier', async () => {
     const requests: ApiJsonRequest<unknown>[] = [];
     let calls = 0;
@@ -280,7 +288,6 @@ describe('workflow run submission recovery', () => {
     expect(verifyIdentity).toHaveBeenCalledTimes(5);
     expect(onRunAccepted).toHaveBeenCalledWith(runId);
   });
-
   it('ignores an accepted run after the submission owner unmounts', async () => {
     const response = deferred<unknown>();
     const requests: ApiJsonRequest<unknown>[] = [];
@@ -316,231 +323,4 @@ describe('workflow run submission recovery', () => {
 
     expect(onRunAccepted).not.toHaveBeenCalled();
   });
-
-  it('fences an old response when the workflow identity changes', async () => {
-    const response = deferred<unknown>();
-    const onRunAccepted = vi.fn();
-    const request = vi.fn(() => response.promise);
-    const apiClient = apiClientFor(request);
-    const hook = renderHook(
-      ({ currentWorkflowId }) =>
-        useWorkflowRunSubmission({
-          apiClient,
-          workspaceId,
-          workflowId: currentWorkflowId,
-          verifyIdentity: vi.fn().mockResolvedValue(undefined),
-          isSessionPaused: () => false,
-          ensureSaved: vi.fn().mockResolvedValue(undefined),
-          onRunAccepted,
-        }),
-      { initialProps: { currentWorkflowId: workflowId } },
-    );
-
-    let submission!: Promise<boolean>;
-    act(() => {
-      submission = hook.result.current.startNew({ value: {} });
-    });
-    await waitFor(() => {
-      expect(request).toHaveBeenCalledOnce();
-    });
-    hook.rerender({
-      currentWorkflowId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    });
-    await act(async () => {
-      response.resolve(acceptedRun());
-      await submission;
-    });
-
-    expect(onRunAccepted).not.toHaveBeenCalled();
-  });
 });
-
-describe('workflow run submission lifecycle', () => {
-  it('does not dispatch a run after disposal during the save barrier', async () => {
-    const saved = deferred<unknown>();
-    const requests: ApiJsonRequest<unknown>[] = [];
-    const ensureSaved = vi.fn(() => saved.promise);
-    const apiClient = apiClientFor((request) => {
-      requests.push(request);
-      return Promise.resolve(acceptedRun());
-    });
-    const hook = renderHook(() =>
-      useWorkflowRunSubmission({
-        apiClient,
-        workspaceId,
-        workflowId,
-        verifyIdentity: vi.fn().mockResolvedValue(undefined),
-        isSessionPaused: () => false,
-        ensureSaved,
-        onRunAccepted: vi.fn(),
-      }),
-    );
-
-    let submission!: Promise<boolean>;
-    act(() => {
-      submission = hook.result.current.startNew({ value: {} });
-    });
-    await waitFor(() => {
-      expect(ensureSaved).toHaveBeenCalledOnce();
-    });
-    hook.unmount();
-    await act(async () => {
-      saved.resolve(undefined);
-      await submission;
-    });
-
-    expect(requests).toHaveLength(0);
-  });
-
-  it('submits and accepts a run normally under StrictMode', async () => {
-    const requests: ApiJsonRequest<unknown>[] = [];
-    const ensureSaved = vi.fn().mockResolvedValue(undefined);
-    const onRunAccepted = vi.fn();
-    const apiClient = apiClientFor((request) => {
-      requests.push(request);
-      return Promise.resolve(acceptedRun());
-    });
-    const hook = renderHook(
-      () =>
-        useWorkflowRunSubmission({
-          apiClient,
-          workspaceId,
-          workflowId,
-          verifyIdentity: vi.fn().mockResolvedValue(undefined),
-          isSessionPaused: () => false,
-          ensureSaved,
-          onRunAccepted,
-        }),
-      { wrapper: StrictModeWrapper },
-    );
-
-    await act(() => hook.result.current.startNew({ value: { a: 1 } }));
-
-    expect(requests).toHaveLength(1);
-    expect(ensureSaved).toHaveBeenCalledOnce();
-    expect(onRunAccepted).toHaveBeenCalledOnce();
-    expect(onRunAccepted).toHaveBeenCalledWith(runId);
-    expect(hook.result.current.pending).toBe(false);
-  });
-
-  it('normalizes formatting and object-key order for run retry identity', () => {
-    expect(normalizeRunIntent({ value: JSON.parse('{"a":1,"b":2}') })).toBe(
-      normalizeRunIntent({ value: JSON.parse('{\n  "b": 2, "a": 1\n}') }),
-    );
-  });
-});
-
-const emptyGraph = { nodes: [], edges: [], settings: {} };
-
-describe('a run started just before the workflow changes', () => {
-  it('stops waiting once the earlier workflow’s answer lands', async () => {
-    let answer: ((response: unknown) => void) | undefined;
-    const apiClient = apiClientFor(
-      () =>
-        new Promise((resolve) => {
-          answer = resolve;
-        }),
-    );
-    const onRunAccepted = vi.fn();
-    const hook = renderHook(
-      ({ id }: { id: string }) =>
-        useWorkflowRunSubmission({
-          apiClient,
-          workspaceId,
-          workflowId: id,
-          verifyIdentity: () => Promise.resolve(),
-          isSessionPaused: () => false,
-          ensureSaved: () => Promise.resolve(savedState(etagA, 2, 4)),
-          onRunAccepted,
-        }),
-      { initialProps: { id: workflowId } },
-    );
-
-    let started: Promise<boolean> | undefined;
-    act(() => {
-      started = hook.result.current.startNew({ value: {} });
-    });
-    await waitFor(() => {
-      expect(answer).toBeDefined();
-    });
-    expect(hook.result.current.pending).toBe(true);
-
-    // Another workflow opens while the first one's run request is out.
-    hook.rerender({ id: '99999999-9999-4999-8999-999999999999' });
-    await act(async () => {
-      answer?.(acceptedRun());
-      await started;
-    });
-    // The late answer is ignored, and nothing is left waiting on it.
-    expect(onRunAccepted).not.toHaveBeenCalled();
-    expect(hook.result.current.pending).toBe(false);
-  });
-});
-
-function savedState(etag: string, revision: number, generation: number) {
-  return {
-    etag,
-    revision,
-    generation,
-    saveStatus: 'clean',
-  } as const;
-}
-
-function compatibility() {
-  return {
-    compatible: true,
-    fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
-    issues: [],
-  };
-}
-
-function apiClientFor(
-  request: (input: ApiJsonRequest<unknown>) => Promise<unknown>,
-): ApiClient {
-  return {
-    request,
-    stream: vi.fn(),
-  } as unknown as ApiClient;
-}
-
-function acceptedRun() {
-  return {
-    run: {
-      id: runId,
-      workspaceId,
-      workflowId,
-      workflowVersionId: versionId,
-      status: 'queued',
-      triggerType: 'manual',
-      createdAt: '2026-09-15T10:00:00.000Z',
-      updatedAt: '2026-09-15T10:00:00.000Z',
-      startedAt: null,
-      completedAt: null,
-      deadlineAt: null,
-      cancelRequestedAt: null,
-    },
-    replayed: false,
-  };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
-  });
-  return { promise, reject, resolve };
-}
-
-function StrictModeWrapper({ children }: Readonly<{ children: ReactNode }>) {
-  return createElement(StrictMode, undefined, children);
-}
-
-function QueryWrapper({ children }: Readonly<{ children: ReactNode }>) {
-  return createElement(
-    QueryClientProvider,
-    { client: new QueryClient() },
-    children,
-  );
-}

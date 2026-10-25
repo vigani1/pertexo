@@ -2,19 +2,19 @@ import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { expect, it, vi } from 'vitest';
-import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import { findCanvas } from '../../../support/fixtures/editor-actions';
+import { graphWithNumericConfig } from '../../../support/fixtures/editor-graph';
 import {
   editorHandlers,
   editorPath,
-  findCanvas,
-  graphWithNumericConfig,
   numericDefinition,
   versionBody,
   versionId,
   workflowApi,
   workflowSummaryHandler,
 } from '../../../support/fixtures/workflow-editor';
+import { mockServer } from '../../../support/mock-server';
+import { renderApp } from '../../../support/render-app';
 
 it('keeps an open Run menu mounted and usable across background refetches', async () => {
   const graph = graphWithNumericConfig({ requiredCount: 1 });

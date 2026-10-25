@@ -1,21 +1,23 @@
-import { HttpResponse, http } from 'msw';
+import { workflowDraftSaveRequestSchema } from '@pertexo/contracts';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
-import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
 import {
   addStepButton,
+  findCanvas,
+} from '../../support/fixtures/editor-actions';
+import {
   draftBody,
   editorHandlers,
   editorPath,
   etagB,
-  findCanvas,
+  validHandler,
   workflowApi,
   workspace,
-  validHandler,
 } from '../../support/fixtures/workflow-editor';
-import { workflowDraftSaveRequestSchema } from '@pertexo/contracts';
+import { mockServer } from '../../support/mock-server';
+import { renderApp } from '../../support/render-app';
 
 it('blocks saved-draft duplication while local edits are dirty/saving and after a save conflict', async () => {
   let release: (() => void) | undefined;

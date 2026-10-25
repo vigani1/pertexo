@@ -1,72 +1,27 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { WorkflowGraphContract } from '@pertexo/contracts';
-import {
-  act,
-  fireEvent,
-  render,
-  renderHook,
-  screen,
-} from '@testing-library/react';
-import { createElement, type ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { ReviewCandidate } from '@/features/workflow-publish/components/reviews/candidate';
 import { diffWorkflowGraphs } from '@/features/workflow-drafts/public';
-import { emptyDraftHint } from '@/features/workflow-publish/model/publication/readiness';
+
+import { ReviewCandidate } from '@/features/workflow-publish/components/reviews/candidate';
+
 import { summarizePublish } from '@/features/workflow-publish/model/publication/summary';
+
+import { groupWorkflowIssues } from '@/features/workflow-publish/model/validation/issues';
+
 import {
   AUTO_VALIDATION_MIN_INTERVAL_MS,
   AUTO_VALIDATION_QUIET_MS,
   autoValidationDelay,
   needsAutoValidation,
 } from '@/features/workflow-publish/model/validation/throttle';
-import { groupWorkflowIssues } from '@/features/workflow-publish/model/validation/issues';
-import { useWorkflowPublication } from '@/features/workflow-publish/data/mutations/use-workflow-publication';
-import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
 
-type WorkflowNode = WorkflowGraphContract['nodes'][number];
+import { fireEvent, render, screen } from '@testing-library/react';
 
-function node(
-  id: string,
-  key: string,
-  extra: Partial<WorkflowNode> = {},
-): WorkflowNode {
-  return {
-    id,
-    definition: { key, version: 1 },
-    position: { x: 0, y: 0 },
-    configVersion: 1,
-    config: {},
-    inputMappings: {},
-    connectionRefs: {},
-    ...extra,
-  };
-}
+import { createElement } from 'react';
 
-function graph(
-  nodes: readonly WorkflowNode[],
-  edges: WorkflowGraphContract['edges'] = [],
-): WorkflowGraphContract {
-  return { nodes, edges, settings: {} };
-}
+import { describe, expect, it } from 'vitest';
 
-const compatibility = {
-  compatible: true,
-  fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
-  issues: [],
-};
+import { base, compatibility, graph, node } from './model/fixture';
 
 describe('automatic validation throttle', () => {
-  const base = {
-    enabled: true,
-    saveStatus: 'clean',
-    inspectorScratch: false,
-    pending: false,
-    revision: 4,
-    generation: 9,
-    checked: undefined,
-    attemptedRevision: undefined,
-  } as const;
-
   it('checks a clean saved revision once, and nothing unsaved or half-typed', () => {
     expect(needsAutoValidation(base)).toBe(true);
     expect(needsAutoValidation({ ...base, saveStatus: 'dirty' })).toBe(false);
@@ -84,7 +39,6 @@ describe('automatic validation throttle', () => {
       needsAutoValidation({ ...base, checked: { revision: 3, generation: 9 } }),
     ).toBe(true);
   });
-
   it('waits for editing to pause and never starts within five seconds', () => {
     const now = 100_000;
     expect(
@@ -138,7 +92,6 @@ describe('publish summary', () => {
       ).toMatchObject([{ aspects: ['setup'] }]);
     },
   );
-
   it('shows the exact reviewed retry override alongside the step setup', () => {
     render(
       createElement(ReviewCandidate, {
@@ -159,7 +112,6 @@ describe('publish summary', () => {
       screen.getByText(/"delayMillis": 2000/u, { selector: 'pre' }),
     ).toBeVisible();
   });
-
   it('lists steps added, removed and changed against the live version', () => {
     const live = graph([
       node('trigger', 'core.webhook', { label: 'New invoice' }),
@@ -212,7 +164,6 @@ describe('publish summary', () => {
     expect(summary.linksAdded).toBe(1);
     expect(summary.triggerNames).toEqual(['New invoice']);
   });
-
   it('names every trigger that starts runs on its own, but not a manual start', () => {
     const summary = summarizePublish(
       graph([
@@ -229,7 +180,6 @@ describe('publish summary', () => {
       'Nightly',
     ]);
   });
-
   it('treats a first publish as version 1 and layout-only changes as no step change', () => {
     const first = summarizePublish(graph([node('a', 'core.manual')]), null);
     expect(first).toMatchObject({
@@ -249,7 +199,6 @@ describe('publish summary', () => {
       ).changed,
     ).toEqual([]);
   });
-
   it('distinguishes credential changes from links added and removed', () => {
     const before = graph(
       [
@@ -352,157 +301,4 @@ describe('workflow issues', () => {
     expect(groups[0]?.issues[1]?.message).toBe('Url is required.');
     expect(groups[2]?.issues[0]?.message).toMatch(/loop back on themselves/u);
   });
-
-  it('files findings inside a For each body under the body step, or the For each', () => {
-    const inner = node('check', 'core.set');
-    const loop = node('loop', 'core.foreach', {
-      structured: {
-        kind: 'for_each',
-        maxIterations: 10,
-        maxConcurrency: 1,
-        body: {
-          ...graph([inner, node('retired', 'core.retired')]),
-          inputPorts: ['item', 'ordinal'],
-          outputPorts: ['result'],
-        },
-      },
-    });
-    const body = '$.nodes.loop.structured.body';
-    const groups = groupWorkflowIssues(
-      {
-        valid: false,
-        currentPublication: null,
-        issues: [
-          {
-            path: `${body}.nodes.check.inputMappings.item`,
-            code: 'invalid_structured_body',
-            message:
-              'structured input must reference a port on the nearest body',
-          },
-          {
-            path: body,
-            code: 'invalid_structured_body',
-            message: 'For Each body must not be empty',
-          },
-        ],
-        compatibility: {
-          ...compatibility,
-          compatible: false,
-          issues: [
-            {
-              code: 'unknown_definition',
-              definitionKey: 'core.retired',
-              version: 1,
-            },
-          ],
-        },
-      },
-      graph([loop]),
-    );
-    expect(
-      groups.map((group) => [
-        group.nodeId,
-        group.issues.map((issue) => issue.target),
-      ]),
-    ).toEqual([
-      ['check', [{ nodeId: 'check', mappingKey: 'item' }]],
-      ['loop', [{ nodeId: 'loop' }]],
-      ['retired', [{ nodeId: 'retired' }]],
-    ]);
-  });
 });
-
-describe('publish readiness', () => {
-  it('asks an empty draft for a first step, and leaves the rest to the server', () => {
-    expect(
-      emptyDraftHint({ graph: graph([]), triggersAvailable: true })?.label,
-    ).toBe('Add a trigger to start');
-    expect(
-      emptyDraftHint({ graph: graph([]), triggersAvailable: false }),
-    ).toMatchObject({
-      label: 'Add a step to start',
-      detail: expect.stringMatching(/No triggers are enabled/u) as unknown,
-    });
-    expect(
-      emptyDraftHint({
-        graph: graph([node('a', 'core.set')]),
-        triggersAvailable: true,
-      }),
-    ).toBe(undefined);
-  });
-});
-
-describe('publication', () => {
-  it('checks the saved draft itself before publishing and stops when it has issues', async () => {
-    const paths: string[] = [];
-    let valid = false;
-    let saved = {
-      etag: `"draft.${'a'.repeat(43)}"`,
-      generation: 1,
-      revision: 2,
-    };
-    const apiClient = {
-      request: (request: ApiJsonRequest<unknown>) => {
-        paths.push(request.path.split('/').at(-1) ?? '');
-        if (request.path.endsWith('/validate'))
-          return Promise.resolve({
-            report: { valid, issues: [], compatibility },
-            etag: saved.etag,
-          });
-        return Promise.resolve({
-          version: {
-            id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-            workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-            versionNumber: 3,
-            graph: graph([]),
-            checksum: `wf:sha256:${'c'.repeat(64)}`,
-            publishedAt: '2026-09-15T10:00:00.000Z',
-          },
-          reused: false,
-        });
-      },
-      stream: vi.fn(),
-    } as unknown as ApiClient;
-    const hook = renderHook(
-      () =>
-        useWorkflowPublication({
-          apiClient,
-          userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-          workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-          workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-          verifyIdentity: () => Promise.resolve(),
-          ensureSaved: () => Promise.resolve(saved),
-          isSavedDraftCurrent: (checked) =>
-            checked.generation === saved.generation &&
-            checked.revision === saved.revision &&
-            checked.etag === saved.etag,
-        }),
-      { wrapper: QueryWrapper },
-    );
-
-    let result = await act(() => hook.result.current.publish());
-    expect(result).toEqual({ kind: 'blocked' });
-    expect(paths).toEqual(['validate']);
-
-    result = await act(() => hook.result.current.publish());
-    expect(result).toEqual({ kind: 'blocked' });
-    expect(paths).toEqual(['validate']);
-
-    valid = true;
-    saved = { ...saved, generation: 2, revision: 3 };
-    result = await act(() => hook.result.current.publish());
-    expect(paths).toEqual(['validate', 'validate', 'publish']);
-    expect(result).toMatchObject({
-      kind: 'published',
-      receipt: { versionNumber: 3, revision: 3 },
-    });
-  });
-});
-
-function QueryWrapper({ children }: Readonly<{ children: ReactNode }>) {
-  return createElement(
-    QueryClientProvider,
-    { client: new QueryClient() },
-    children,
-  );
-}

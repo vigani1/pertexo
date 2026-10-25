@@ -1,28 +1,30 @@
-import { HttpResponse, http } from 'msw';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
 import {
   addStepButton,
+  findCanvas,
+  findPaused,
+  openRunLens,
+  pressSave,
+} from '../../support/fixtures/editor-actions';
+import { oneStepGraph } from '../../support/fixtures/editor-graph';
+import {
   api,
   deferred,
   editorHandlers,
   editorPath,
   etagA,
-  findCanvas,
-  findPaused,
-  oneStepGraph,
   identityHandler,
-  openRunLens,
   otherUser,
-  pressSave,
   publishedWorkflowHandlers,
   user,
   validHandler,
   workflowApi,
 } from '../../support/fixtures/workflow-editor';
+import { mockServer } from '../../support/mock-server';
+import { renderApp } from '../../support/render-app';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
 

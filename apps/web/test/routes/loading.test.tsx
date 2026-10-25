@@ -1,128 +1,43 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
+
+import { HttpResponse, http } from 'msw';
+
 import { afterEach, describe, expect, it } from 'vitest';
-import { mockServer } from '../support/mock-server';
-import { expectSignInPage, renderApp } from '../support/render-app';
+
 import {
   apiBase,
   coldStart,
   fixtureIds,
   fixtureUser,
-  fixtureWorkspace,
   identityHandlers,
   notFoundProblem,
   statisticsHandler,
 } from '../support/fixtures/run';
+
 import {
   draftBody,
-  editorHandlers,
+  user as editorUser,
   emptyGraph,
   etagA,
-  user as editorUser,
 } from '../support/fixtures/workflow-editor';
 
-const {
-  workspace: workspaceId,
-  firstRun: runId,
-  workflow: workflowId,
-} = fixtureIds;
-const readerCapabilities: AccessibleWorkspace['capabilities'] = [
-  'workspace:read',
-  'run:read',
-  'workflow:read',
-];
-const editorWorkspaceId = '01a0e3bb-aac9-75b8-845e-fa98f0e3e6c5';
-const editorWorkflowId = '01a0e3bb-dca6-725a-9467-b223a018bc1a';
-const editorApi = `http://pertexo.test/v1/workspaces/${editorWorkspaceId}/workflows/${editorWorkflowId}`;
-const editorRoute = `/w/${editorWorkspaceId}/workflows/${editorWorkflowId}`;
+import { mockServer } from '../support/mock-server';
 
-function installExistingEditorHandlers(
-  draftRead: () => Response | Promise<Response> = () =>
-    HttpResponse.json(
-      { ...draftBody(emptyGraph, 1), workflowId: editorWorkflowId },
-      { headers: { etag: etagA } },
-    ),
-  connectionsRead: () => Response | Promise<Response> = () =>
-    HttpResponse.json({ items: [], nextCursor: null }),
-) {
-  mockServer.use(...editorHandlers(() => undefined));
-  mockServer.use(
-    http.get('http://pertexo.test/v1/workspaces', () =>
-      HttpResponse.json({
-        items: [
-          {
-            ...fixtureWorkspace([
-              'workspace:read',
-              'workflow:read',
-              'workflow:update',
-              'connection:read',
-            ]),
-            id: editorWorkspaceId,
-          },
-        ],
-        nextCursor: null,
-      }),
-    ),
-    http.get(
-      `http://pertexo.test/v1/workspaces/${editorWorkspaceId}/connections`,
-      connectionsRead,
-    ),
-    http.get(editorApi, () =>
-      HttpResponse.json({
-        workflow: {
-          id: editorWorkflowId,
-          workspaceId: editorWorkspaceId,
-          name: 'Owned editor smoke',
-          nameRevision: 1,
-          lifecycleStatus: 'active',
-          lifecycleRevision: 1,
-          activationStatus: 'inactive',
-          webhookSetupRequired: false,
-          publishedVersionId: null,
-          createdAt: '2026-09-27T16:38:54.900Z',
-          updatedAt: '2026-09-27T16:38:54.882Z',
-        },
-      }),
-    ),
-    http.get(`${editorApi}/draft`, draftRead),
-  );
-}
+import { expectSignInPage, renderApp } from '../support/render-app';
 
-function unauthenticated() {
-  return HttpResponse.json(
-    {
-      type: 'urn:pertexo:problem:auth.unauthenticated',
-      title: 'Authentication required',
-      status: 401,
-      code: 'auth.unauthenticated',
-      requestId: 'request-signed-out',
-    },
-    { status: 401, headers: { 'content-type': 'application/problem+json' } },
-  );
-}
-
-const signInCapabilities = http.get(
-  'http://pertexo.test/v1/auth/capabilities',
-  () =>
-    HttpResponse.json({
-      password: {
-        enabled: true,
-        minimumLength: 12,
-        verificationRequired: true,
-      },
-      socialProviders: [],
-    }),
-);
-
-const noWorkflows = http.get(`${apiBase}/workflows`, () =>
-  HttpResponse.json({ items: [], nextCursor: null }),
-);
-
-/** A read that never answers, so a page can only render around it. */
-function pending() {
-  return new Promise<Response>(() => undefined);
-}
+import {
+  editorRoute,
+  editorWorkflowId,
+  installExistingEditorHandlers,
+  noWorkflows,
+  pending,
+  readerCapabilities,
+  runId,
+  signInCapabilities,
+  unauthenticated,
+  workflowId,
+  workspaceId,
+} from './loading/fixture';
 
 afterEach(() => {
   localStorage.clear();
@@ -144,7 +59,6 @@ describe('route loading', () => {
       screen.getByRole('navigation', { name: 'Breadcrumb' }),
     ).toBeVisible();
   });
-
   it('still signs out when the session check in beforeLoad fails', async () => {
     mockServer.use(
       signInCapabilities,
@@ -158,7 +72,6 @@ describe('route loading', () => {
       returnTo: `/w/${workspaceId}/runs`,
     });
   });
-
   it('signs out when a warmed read finds the session gone', async () => {
     let sessionChecks = 0;
     mockServer.use(
@@ -181,7 +94,6 @@ describe('route loading', () => {
       returnTo: `/w/${workspaceId}/runs`,
     });
   });
-
   it('keeps a missing run inside the shell', async () => {
     mockServer.use(
       ...identityHandlers(readerCapabilities),
@@ -199,7 +111,6 @@ describe('route loading', () => {
       screen.getByRole('navigation', { name: 'Breadcrumb' }),
     ).toBeVisible();
   });
-
   it('keeps the shell around an address that leads nowhere', async () => {
     mockServer.use(...identityHandlers(readerCapabilities));
     renderApp(`/w/${workspaceId}/nowhere/at-all`);
@@ -218,7 +129,6 @@ describe('route loading', () => {
       screen.getByRole('navigation', { name: 'Breadcrumb' }),
     ).toBeVisible();
   });
-
   it('shows a missing workflow inside the shell, not the hub', async () => {
     mockServer.use(
       ...identityHandlers(readerCapabilities),
@@ -238,7 +148,6 @@ describe('route loading', () => {
       within(trail).getByRole('link', { name: 'Workflows' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/workflows`);
   });
-
   it('opens an existing workflow’s editor when connection discovery is unavailable', async () => {
     // A local API without connection encryption answers 404 for connections.
     installExistingEditorHandlers(undefined, notFoundProblem);
@@ -260,7 +169,6 @@ describe('route loading', () => {
       screen.queryByRole('heading', { name: 'This doesn’t exist' }),
     ).toBeNull();
   });
-
   it('observes an early supporting failure while the draft read is delayed', async () => {
     let releaseDraft: ((response: Response) => void) | undefined;
     const delayedDraft = new Promise<Response>((resolve) => {
@@ -305,7 +213,6 @@ describe('route loading', () => {
       screen.queryByRole('heading', { name: 'This workflow doesn’t exist' }),
     ).toBeNull();
   });
-
   it('signs out for an unavailable supporting read that reports 401', async () => {
     mockServer.use(signInCapabilities);
     installExistingEditorHandlers(undefined, unauthenticated);
@@ -322,7 +229,6 @@ describe('route loading', () => {
     await expectSignInPage();
     expect(router.state.location.pathname).toBe('/login');
   });
-
   it('still treats a missing draft as a missing workflow', async () => {
     installExistingEditorHandlers(notFoundProblem);
     renderApp(editorRoute);
@@ -332,7 +238,6 @@ describe('route loading', () => {
       }),
     ).toBeVisible();
   });
-
   it('keeps a workspace the person cannot open out of the shell', async () => {
     mockServer.use(...identityHandlers(readerCapabilities));
     renderApp('/w/12345678-1234-4234-8234-123456789012/runs');
@@ -345,7 +250,6 @@ describe('route loading', () => {
     ).toBeVisible();
     expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull();
   });
-
   it('draws a progress thread while a page change waits on the session check', async () => {
     let checks = 0;
     let release: () => void = () => undefined;
@@ -389,7 +293,6 @@ describe('route loading', () => {
     ).toBeVisible();
     expect(screen.queryByRole('progressbar')).toBeNull();
   });
-
   it('names a known workspace while it opens and admits a slow connection', async () => {
     localStorage.setItem(
       'pertexo:last-workspace',

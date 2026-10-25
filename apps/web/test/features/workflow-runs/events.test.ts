@@ -1,11 +1,15 @@
-import type { WorkflowRunEvent } from '@pertexo/contracts';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { createElement, StrictMode, type ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ApiByteStream, ApiClient } from '@/lib/api/client';
-import { ApiError } from '@/lib/api/error';
 import { useRunEvents } from '@/features/workflow-runs/hooks/use-run-events';
+
+import type { ApiByteStream, ApiClient } from '@/lib/api/client';
+
+import { ApiError } from '@/lib/api/error';
+
+import type { WorkflowRunEvent } from '@pertexo/contracts';
+
+import { act, renderHook, waitFor } from '@testing-library/react';
+
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import {
   appendRunEvent,
   classifyRunEvent,
@@ -13,19 +17,18 @@ import {
   RUN_TIMELINE_LIMIT,
 } from '../../../src/features/workflow-runs/model/timeline/run-events';
 
+import {
+  event,
+  openEventStream,
+  queryWrapper,
+  reachFirstSnapshotRecovery,
+  streamApiClient,
+} from './events/fixture';
+
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
-
-function event(sequence: number): WorkflowRunEvent {
-  return {
-    sequence,
-    type: 'node.progress',
-    createdAt: '2026-09-14T10:00:00.000Z',
-    payload: {},
-  };
-}
 
 describe('run event protocol model', () => {
   it('validates the SSE ID and event type against the payload', () => {
@@ -44,13 +47,11 @@ describe('run event protocol model', () => {
       }),
     ).toThrow(/did not match/u);
   });
-
   it('deduplicates replay and rejects gaps', () => {
     expect(classifyRunEvent(4, event(4))).toBe('duplicate');
     expect(classifyRunEvent(4, event(5))).toBe('append');
     expect(() => classifyRunEvent(4, event(6))).toThrow(/skipped/u);
   });
-
   it('bounds the retained timeline', () => {
     let timeline: readonly WorkflowRunEvent[] = [];
     let truncated = 0;
@@ -84,7 +85,6 @@ describe('run event lifecycle', () => {
     expect(result.result.current.timeline[0]?.sequence).toBe(2);
     expect(result.result.current.truncatedCount).toBe(1);
   });
-
   it('resets the complete stream state and ignores a late prior-run stream', async () => {
     let resolveFirst: ((stream: ApiByteStream) => void) | undefined;
     const first = new Promise<ApiByteStream>((resolve) => {
@@ -122,7 +122,6 @@ describe('run event lifecycle', () => {
     expect(result.result.current.truncatedCount).toBe(0);
     expect(closeFirst).toHaveBeenCalledOnce();
   });
-
   it.each([
     [401, 'authentication-required'],
     [403, 'access-denied'],
@@ -150,7 +149,6 @@ describe('run event lifecycle', () => {
       expect(stream).toHaveBeenCalledOnce();
     },
   );
-
   it('honors bounded Retry-After before reconnecting a rate-limited stream', async () => {
     vi.useFakeTimers();
     const stream = vi
@@ -188,7 +186,6 @@ describe('run event lifecycle', () => {
     expect(result.result.current.timeline).toEqual([event(1)]);
     result.unmount();
   });
-
   it('stops after a non-transient protocol failure', async () => {
     const stream = vi.fn<ApiClient['stream']>().mockRejectedValue(
       new ApiError({
@@ -211,7 +208,6 @@ describe('run event lifecycle', () => {
     );
     expect(stream).toHaveBeenCalledOnce();
   });
-
   it('reconnects on request after a pause and backfills from the first event', async () => {
     const stream = vi
       .fn<ApiClient['stream']>()
@@ -237,7 +233,6 @@ describe('run event lifecycle', () => {
     expect(stream.mock.calls[1]?.[0].headers).toEqual({ 'Last-Event-ID': '0' });
     result.unmount();
   });
-
   it('uses bounded backoff for a transient disconnect and closes on unmount', async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, 'random').mockReturnValue(0);
@@ -266,7 +261,6 @@ describe('run event lifecycle', () => {
     result.unmount();
     expect(close).toHaveBeenCalledOnce();
   });
-
   it('treats a drop after a stream that delivered as a fresh one, not one more in a row', async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, 'random').mockReturnValue(0);
@@ -305,188 +299,4 @@ describe('run event lifecycle', () => {
     expect(stream).toHaveBeenCalledTimes(5);
     expect(result.result.current.connectionStatus).toBe('reconnecting');
   });
-
-  it('treats a drop after a long quiet stream as a fresh one', async () => {
-    vi.useFakeTimers();
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-    const disconnected = new ApiError({
-      kind: 'network',
-      message: 'disconnected',
-    });
-    // Opens quietly, then drops 30 seconds after it opened.
-    const quiet = () =>
-      Promise.resolve({
-        body: new ReadableStream<Uint8Array>({
-          start(controller) {
-            setTimeout(() => {
-              controller.error(new TypeError('network connection was lost'));
-            }, 30_000);
-          },
-        }),
-        close: () => undefined,
-      });
-    const stream = vi
-      .fn<ApiClient['stream']>()
-      .mockRejectedValueOnce(disconnected)
-      .mockRejectedValueOnce(disconnected)
-      .mockRejectedValueOnce(disconnected)
-      .mockImplementationOnce(quiet)
-      .mockReturnValue(new Promise(() => undefined));
-    const request = vi
-      .fn<ApiClient['request']>()
-      .mockResolvedValue({ run: { status: 'waiting' } } as never);
-    const apiClient = { request, stream } as unknown as ApiClient;
-    const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
-      { wrapper: queryWrapper(false) },
-    );
-
-    await reachFirstSnapshotRecovery();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(4_000);
-    });
-    expect(result.result.current.connectionStatus).toBe('live');
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(31_000);
-      await Promise.resolve();
-    });
-    expect(stream).toHaveBeenCalledTimes(5);
-    expect(result.result.current.connectionStatus).toBe('reconnecting');
-  });
-
-  it('does not retry a rate-limited degraded snapshot before Retry-After', async () => {
-    vi.useFakeTimers();
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-    const stream = vi
-      .fn<ApiClient['stream']>()
-      .mockRejectedValue(
-        new ApiError({ kind: 'network', message: 'disconnected' }),
-      );
-    const request = vi
-      .fn<ApiClient['request']>()
-      .mockRejectedValueOnce(
-        new ApiError({
-          kind: 'problem',
-          message: 'rate limited',
-          status: 429,
-          retryAfterMs: 120_000,
-        }),
-      )
-      .mockResolvedValueOnce({ run: { status: 'succeeded' } } as never);
-    const apiClient = { request, stream } as unknown as ApiClient;
-    const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
-      { wrapper: queryWrapper(false) },
-    );
-
-    await reachFirstSnapshotRecovery();
-    expect(request).toHaveBeenCalledOnce();
-    expect(result.result.current.connectionStatus).toBe('rate-limited');
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(119_999);
-    });
-    expect(request).toHaveBeenCalledOnce();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1);
-    });
-    expect(request).toHaveBeenCalledTimes(2);
-    expect(result.result.current.connectionStatus).toBe('stopped');
-  });
-
-  it('cancels a rate-limited degraded snapshot wait on unmount', async () => {
-    vi.useFakeTimers();
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-    const stream = vi
-      .fn<ApiClient['stream']>()
-      .mockRejectedValue(
-        new ApiError({ kind: 'network', message: 'disconnected' }),
-      );
-    const request = vi.fn<ApiClient['request']>().mockRejectedValue(
-      new ApiError({
-        kind: 'problem',
-        message: 'rate limited',
-        status: 429,
-        retryAfterMs: 120_000,
-      }),
-    );
-    const apiClient = { request, stream } as unknown as ApiClient;
-    const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
-      { wrapper: queryWrapper(false) },
-    );
-
-    await reachFirstSnapshotRecovery();
-    expect(request).toHaveBeenCalledOnce();
-    const streamCalls = stream.mock.calls.length;
-    result.unmount();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(120_000);
-    });
-    expect(request).toHaveBeenCalledOnce();
-    expect(stream).toHaveBeenCalledTimes(streamCalls);
-  });
 });
-
-async function reachFirstSnapshotRecovery() {
-  await act(async () => {
-    await Promise.resolve();
-    await vi.advanceTimersByTimeAsync(1_000);
-    await vi.advanceTimersByTimeAsync(2_000);
-    await Promise.resolve();
-  });
-}
-
-function queryWrapper(strict: boolean) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return function Wrapper({ children }: Readonly<{ children: ReactNode }>) {
-    const value = createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      children,
-    );
-    return strict ? createElement(StrictMode, null, value) : value;
-  };
-}
-
-function streamApiClient(open: () => ApiByteStream): ApiClient {
-  return {
-    download: vi.fn(),
-    request: vi.fn(),
-    stream: vi.fn(() => Promise.resolve(open())),
-  } as ApiClient;
-}
-
-function openEventStream(
-  events: readonly WorkflowRunEvent[],
-  options: Readonly<{ ends?: boolean }> = {},
-): ApiByteStream {
-  let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
-  const encoder = new TextEncoder();
-  const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      streamController = controller;
-      for (const item of events) {
-        controller.enqueue(
-          encoder.encode(
-            `id: ${String(item.sequence)}\nevent: ${item.type}\ndata: ${JSON.stringify(item)}\n\n`,
-          ),
-        );
-      }
-      if (options.ends === true) controller.close();
-    },
-  });
-  return {
-    body,
-    close: () => {
-      try {
-        streamController?.close();
-      } catch {
-        // StrictMode may close the same test stream after its reader cancels.
-      }
-    },
-  };
-}

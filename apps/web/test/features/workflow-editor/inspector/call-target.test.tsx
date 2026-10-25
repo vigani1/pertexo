@@ -1,19 +1,21 @@
-import { HttpResponse, http } from 'msw';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+import {
+  findCanvas,
+  pressSave,
+} from '../../../support/fixtures/editor-actions';
 import {
   api,
   editorHandlers,
   editorPath,
-  findCanvas,
-  pressSave,
   setDefinition,
   workspaceId,
 } from '../../../support/fixtures/workflow-editor';
+import { mockServer } from '../../../support/mock-server';
+import { renderApp } from '../../../support/render-app';
 
 const childId = '11111111-1111-4111-8111-111111111111';
 const firstId = '22222222-2222-4222-8222-222222222222';

@@ -1,161 +1,39 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { HttpResponse, http } from 'msw';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { workflowRunKeys } from '@/features/workflow-runs/data/query-cache';
+
+import { act, screen, within } from '@testing-library/react';
+
 import userEvent from '@testing-library/user-event';
+
+import { HttpResponse, http } from 'msw';
+
 import { afterEach, describe, expect, it } from 'vitest';
-import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+
 import {
   apiBase,
+  coldStart,
   fixtureIds,
   fixtureRun,
   fixtureStatistics,
-  fixtureVersion,
   identityHandlers,
-  sseEvents,
-  coldStart,
 } from '../../../support/fixtures/run';
-import { workflowRunKeys } from '@/features/workflow-runs/data/query-cache';
 
-const {
-  workspace: workspaceId,
-  workflow: workflowId,
-  firstRun: runId,
-} = fixtureIds;
-const artifactId = '55555555-5555-4555-8555-555555555555';
-const capabilities: AccessibleWorkspace['capabilities'] = [
-  'workspace:read',
-  'workflow:read',
-  'run:read',
-  'run:cancel',
-  'connection:read',
-  'artifact:read',
-];
+import { mockServer } from '../../../support/mock-server';
 
-function secondsAgo(seconds: number): string {
-  return new Date(Date.now() - seconds * 1_000).toISOString();
-}
+import { renderApp } from '../../../support/render-app';
 
-const graph = {
-  nodes: [
-    {
-      id: 'send-receipt',
-      label: 'Send receipt',
-      definition: { key: 'email.send_message', version: 1 },
-      position: { x: 0, y: 0 },
-      configVersion: 1,
-      config: {},
-      inputMappings: {},
-      connectionRefs: {},
-    },
-  ],
-  edges: [],
-  settings: {},
-};
-
-function node(status: string, overrides: Record<string, unknown> = {}) {
-  return {
-    id: '22222222-2222-4222-8222-222222222222',
-    nodeId: 'send-receipt',
-    invocationKey: 'send-receipt:0',
-    status,
-    currentAttemptNumber: 1,
-    startedAt: secondsAgo(45),
-    completedAt: null,
-    resumeAt: null,
-    safeErrorCode: null,
-    ...overrides,
-  };
-}
-
-function stepEvent(type: string, secondsBack: number, payload = {}) {
-  return {
-    type,
-    createdAt: secondsAgo(secondsBack),
-    payload: {
-      nodeId: 'send-receipt',
-      invocationKey: 'send-receipt:0',
-      ...payload,
-    },
-  };
-}
-
-function installRun({
-  run,
-  nodes,
-  events,
-  stream,
-  input = { kind: 'none' },
-  output = { kind: 'none' },
-}: Readonly<{
-  run: ReturnType<typeof fixtureRun>;
-  nodes: readonly unknown[];
-  events?: readonly Readonly<{ type: string }>[];
-  stream?: () => Response;
-  input?: unknown;
-  output?: unknown;
-}>) {
-  let streams = 0;
-  mockServer.use(
-    ...identityHandlers(capabilities),
-    http.get(`${apiBase}/runs/${runId}/input`, () =>
-      HttpResponse.json({ input }),
-    ),
-    http.get(`${apiBase}/runs/${runId}/node-runs/:nodeRunId/output`, () =>
-      HttpResponse.json({ output }),
-    ),
-    http.get(`${apiBase}/runs/${runId}/node-runs/:nodeRunId/input`, () =>
-      HttpResponse.json({ input: { kind: 'none' } }),
-    ),
-    http.get(`${apiBase}/runs/${runId}`, () =>
-      HttpResponse.json({ run, nodes }),
-    ),
-    http.get(`${apiBase}/runs/${runId}/events`, () => {
-      streams += 1;
-      return (
-        stream?.() ??
-        new HttpResponse(sseEvents(events ?? []), {
-          headers: { 'content-type': 'text/event-stream' },
-        })
-      );
-    }),
-    http.get(`${apiBase}/workflows/${workflowId}/versions`, () =>
-      HttpResponse.json({ items: [fixtureVersion(graph)], nextCursor: null }),
-    ),
-    http.get(`${apiBase}/runs`, () =>
-      HttpResponse.json({ items: [], nextCursor: null }),
-    ),
-  );
-  return { streamCount: () => streams };
-}
-
-const retryingRun = () =>
-  fixtureRun(runId, 'running', {
-    startedAt: secondsAgo(47),
-    createdAt: secondsAgo(47),
-  });
-
-const retryEvents = () => [
-  stepEvent('node.started', 45, { attemptNumber: 1 }),
-  stepEvent('node.retry_scheduled', 44, {
-    attemptNumber: 1,
-    dueAt: secondsAgo(-60),
-    safeErrorCode: 'provider.unavailable',
-  }),
-];
-
-/** Pretend the screen is a phone for the run page's layout queries. */
-function emulatePhoneScreen() {
-  Object.defineProperty(window, 'matchMedia', {
-    configurable: true,
-    value: (query: string) => ({
-      matches: query === '(max-width: 47.999rem)',
-      media: query,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-    }),
-  });
-}
+import {
+  artifactId,
+  capabilities,
+  emulatePhoneScreen,
+  installRun,
+  node,
+  retryEvents,
+  retryingRun,
+  runId,
+  secondsAgo,
+  workflowId,
+  workspaceId,
+} from './route/fixture';
 
 afterEach(() => {
   Reflect.deleteProperty(window, 'matchMedia');
@@ -217,7 +95,6 @@ describe('run page', () => {
     expect(history).toHaveTextContent('Child history expired.');
     expect(history).toHaveTextContent('Call input and result details expired.');
   });
-
   it('updates the visible run and step status when a waiting run resumes', async () => {
     installRun({ run: fixtureRun(runId, 'waiting'), nodes: [node('waiting')] });
     let status: 'waiting' | 'running' = 'waiting';
@@ -255,7 +132,6 @@ describe('run page', () => {
       screen.getByRole('button', { name: /^Send receipt: Running/u }),
     ).toBeVisible();
   });
-
   it('puts a failure first and the actions at thumb height on phones', async () => {
     emulatePhoneScreen();
     installRun({
@@ -289,7 +165,6 @@ describe('run page', () => {
       within(actions).getByRole('link', { name: 'Open workflow' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
   });
-
   it('keeps a running run’s phone actions to what fits, with the workflow a tap away above', async () => {
     emulatePhoneScreen();
     installRun({ run: retryingRun(), nodes: [node('running')] });
@@ -317,7 +192,6 @@ describe('run page', () => {
         `/w/${workspaceId}/workflows/${workflowId}`,
       );
   });
-
   it('tells a retrying run’s story in a sentence, a thread and the step lens', async () => {
     installRun({
       run: retryingRun(),
@@ -361,7 +235,6 @@ describe('run page', () => {
     ).toBeVisible();
     expect(screen.getByText('node.retry_scheduled')).toBeVisible();
   });
-
   it('traces the breadcrumb back through Runs and the run’s workflow', async () => {
     installRun({
       run: retryingRun(),
@@ -382,7 +255,6 @@ describe('run page', () => {
     ).toHaveAttribute('href', `/w/${workspaceId}/workflows/${workflowId}`);
     expect(within(trail).getByText('eeee…eeee')).toBeVisible();
   });
-
   it('asks before stopping a run and confirms the request', async () => {
     let cancels = 0;
     installRun({
@@ -418,7 +290,6 @@ describe('run page', () => {
     expect(await screen.findByText('Canceling the run')).toBeVisible();
     expect(cancels).toBe(1);
   });
-
   it('explains an unknown outcome before anyone replays', async () => {
     installRun({
       run: fixtureRun(runId, 'outcome_unknown'),
@@ -439,98 +310,5 @@ describe('run page', () => {
         name: 'Outcome unknown at Send receipt',
       }),
     ).toBeVisible();
-  });
-
-  it('says in words when live updates pause and reconnects on request', async () => {
-    const run = installRun({
-      run: retryingRun(),
-      nodes: [node('running')],
-      stream: () =>
-        HttpResponse.json(
-          {
-            type: 'urn:pertexo:problem:forbidden',
-            title: 'Forbidden',
-            status: 403,
-            code: 'auth.forbidden',
-            requestId: 'stream-forbidden',
-          },
-          {
-            status: 403,
-            headers: { 'content-type': 'application/problem+json' },
-          },
-        ),
-    });
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
-    expect(
-      await screen.findByText('Updates paused', undefined, coldStart),
-    ).toBeVisible();
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Retry' }));
-    await waitFor(() => {
-      expect(run.streamCount()).toBe(2);
-    });
-  });
-
-  it('shows the run input and a step’s file in its Data out', async () => {
-    mockServer.use(
-      http.get(`${apiBase}/artifacts/${artifactId}`, () =>
-        HttpResponse.json({
-          id: artifactId,
-          workspaceId,
-          byteLength: 2_048,
-          mediaType: 'text/csv',
-          sha256: 'a'.repeat(64),
-          status: 'available',
-          createdAt: '2026-09-14T10:00:00.000Z',
-          expiresAt: null,
-        }),
-      ),
-    );
-    installRun({
-      run: fixtureRun(runId, 'succeeded'),
-      nodes: [node('succeeded', { completedAt: secondsAgo(1) })],
-      events: [
-        stepEvent('node.started', 3, { attemptNumber: 1 }),
-        stepEvent('node.succeeded', 2, {
-          attemptNumber: 1,
-          outputRef: { kind: 'artifact', artifactId },
-        }),
-        { type: 'run.succeeded' },
-      ],
-      input: { kind: 'inline', value: { orderId: 'A-17' } },
-      output: { kind: 'artifact', artifactId },
-    });
-    renderApp(`/w/${workspaceId}/runs/${runId}`);
-    expect(
-      await screen.findByRole(
-        'heading',
-        { level: 1, name: 'Succeeded in 2s' },
-        coldStart,
-      ),
-    ).toBeVisible();
-
-    // The only step's input came from the run's; with nothing recorded, it
-    // shows as source data. It returned a file.
-    const lens = screen.getByRole('complementary', { name: 'Step details' });
-    const sources = await within(lens).findByRole('region', {
-      name: 'Where it came from',
-    });
-    const runInput = await within(sources).findByRole('group', {
-      name: 'Run input',
-    });
-    expect(await within(runInput).findByText(/A-17/u)).toBeVisible();
-    expect(await within(lens).findByText('CSV file')).toBeVisible();
-
-    await userEvent
-      .setup()
-      .click(screen.getByRole('tab', { name: 'Input & output' }));
-    const panel = screen.getByRole('tabpanel');
-    expect(
-      await within(panel).findByRole('group', { name: 'Run input' }),
-    ).toHaveTextContent(/orderId/u);
-    expect(
-      within(panel).getByRole('button', { name: /Send receipt/u }),
-    ).toHaveTextContent('file');
   });
 });

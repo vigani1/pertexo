@@ -1,22 +1,22 @@
-import { HttpResponse, http } from 'msw';
+import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
-import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { findCanvas } from '../../support/fixtures/editor-actions';
 import { slackConnection } from '../../support/fixtures/slack-channels';
 import {
   api,
   editorHandlers,
   editorPath,
   etagA,
-  findCanvas,
   setDefinition,
   userId,
   validHandler,
   workspaceId,
 } from '../../support/fixtures/workflow-editor';
+import { mockServer } from '../../support/mock-server';
+import { renderApp } from '../../support/render-app';
 
 const connectionId = '44444444-4444-4444-8444-444444444444';
 const definition = {

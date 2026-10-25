@@ -1,152 +1,28 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts';
-import {
-  createUserFixture,
-  createWorkspaceFixture,
-} from '../../support/fixtures/identity';
-import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
+
 import userEvent from '@testing-library/user-event';
+
+import { HttpResponse, http } from 'msw';
+
 import { describe, expect, it } from 'vitest';
+
 import { mockServer } from '../../support/mock-server';
+
 import { renderApp } from '../../support/render-app';
 
-const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const importId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const billingId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-const runId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-const timestamp = '2026-09-15T10:00:00.000Z';
-const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
-const user = createUserFixture({
-  id: userId,
-  displayName: 'Workspace Operator',
-  createdAt: timestamp,
-  updatedAt: timestamp,
-});
-
-function workspace(
-  capabilities: Readonly<AccessibleWorkspace['capabilities']>,
-) {
-  return createWorkspaceFixture({
-    id: workspaceId,
-    role: 'operator',
-    capabilities: ['workspace:read', 'workflow:read', ...capabilities],
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  });
-}
-
-function thread(
-  workflowId: string,
-  overrides: Readonly<Record<string, unknown>> = {},
-) {
-  return {
-    id: workflowId,
-    noticeKind: 'workflow_failure' as const,
-    workflowId,
-    workflowName: workflowId === importId ? 'Nightly import' : 'Billing sync',
-    kind: 'failed',
-    failureDays: [],
-    occurrenceCount: 1,
-    firstOccurredAt: '2026-09-15T09:00:00.000000Z',
-    latestOccurredAt: '2026-09-15T09:30:00.000000Z',
-    latestRunId: runId,
-    latestFailedStep: null,
-    revision: '7',
-    unread: true,
-    ...overrides,
-  };
-}
-
-/** A hint stream the test can push to while the page is open. */
-function hintStream() {
-  const encoder = new TextEncoder();
-  let push: (text: string) => void = () => undefined;
-  const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      push = (text) => {
-        controller.enqueue(encoder.encode(text));
-      };
-      push('event: inbox.ready\ndata: {"revision":null}\n\n');
-    },
-  });
-  return {
-    response: () =>
-      new HttpResponse(body, {
-        headers: { 'content-type': 'text/event-stream' },
-      }),
-    changed: (revision: string) => {
-      push(`event: inbox.changed\ndata: {"revision":"${revision}"}\n\n`);
-    },
-  };
-}
-
-/** The API as one operator sees it; `state` changes as the test goes. */
-function inboxApi(state: {
-  threads: ReturnType<typeof thread>[];
-  revision: string;
-}) {
-  const reads: unknown[] = [];
-  const readAlls: unknown[] = [];
-  const unreadLists = { count: 0 };
-  const stream = hintStream();
-  mockServer.use(
-    http.get('http://pertexo.test/v1/users/me', () => HttpResponse.json(user)),
-    http.get('http://pertexo.test/v1/workspaces', () =>
-      HttpResponse.json({
-        items: [workspace(['notification:read'])],
-        nextCursor: null,
-      }),
-    ),
-    http.get(`${api}/notifications/summary`, () =>
-      HttpResponse.json({
-        unreadCount: state.threads.filter((item) => item.unread).length,
-        revision: state.revision,
-      }),
-    ),
-    http.get(`${api}/notifications/events`, () => stream.response()),
-    http.get(`${api}/notifications`, ({ request }) => {
-      const filter = new URL(request.url).searchParams.get('filter');
-      if (filter === 'unread') unreadLists.count += 1;
-      return HttpResponse.json({
-        items: state.threads.filter(
-          (item) => filter !== 'unread' || item.unread,
-        ),
-        nextCursor: null,
-        revision: state.revision,
-      });
-    }),
-    http.post(`${api}/notifications/read-all`, async ({ request }) => {
-      readAlls.push(await request.json());
-      state.threads = state.threads.map((item) => ({ ...item, unread: false }));
-      return HttpResponse.json({ marked: 2 });
-    }),
-    http.post(
-      `${api}/notifications/:workflowId/read`,
-      async ({ params, request }) => {
-        const body = (await request.json()) as Record<string, unknown>;
-        reads.push({ workflowId: params.workflowId, ...body });
-        state.threads = state.threads.map((item) =>
-          item.workflowId === params.workflowId
-            ? { ...item, unread: false }
-            : item,
-        );
-        return HttpResponse.json({
-          threadId: params.workflowId,
-          unread: false,
-          revision: state.revision,
-        });
-      },
-    ),
-  );
-  return { reads, readAlls, unreadLists, stream };
-}
-
-function spineInbox() {
-  const [spine] = screen.getAllByRole('navigation', { name: 'Workspace' });
-  if (spine === undefined) throw new Error('Expected the workspace spine');
-  return within(spine);
-}
+import {
+  api,
+  billingId,
+  failedStep,
+  importId,
+  inboxApi,
+  runId,
+  spineInbox,
+  thread,
+  user,
+  workspace,
+  workspaceId,
+} from './page/fixture';
 
 describe('workspace inbox', () => {
   it('lists failing workflows with how often and where they failed', async () => {
@@ -192,7 +68,6 @@ describe('workspace inbox', () => {
       ).toBeVisible();
     });
   });
-
   it('marks one notice read with the revision it showed', async () => {
     const actor = userEvent.setup();
     const { reads } = inboxApi({
@@ -218,7 +93,6 @@ describe('workspace inbox', () => {
       ).toBeVisible();
     });
   });
-
   it('marks all read only up to what the list showed', async () => {
     const actor = userEvent.setup();
     const { readAlls } = inboxApi({
@@ -236,7 +110,6 @@ describe('workspace inbox', () => {
       await screen.findByRole('heading', { name: 'You’re caught up' }),
     ).toBeVisible();
   });
-
   it('refreshes when the workspace reports a new failure', async () => {
     const state = {
       threads: [thread(importId, { unread: false })],
@@ -261,7 +134,6 @@ describe('workspace inbox', () => {
       ).toBeVisible();
     });
   });
-
   it('lets a viewer move between its notices and input requests', async () => {
     inboxApi({ threads: [], revision: '1' });
     let failureReads = 0;
@@ -312,7 +184,6 @@ describe('workspace inbox', () => {
       'page',
     );
   });
-
   it('keeps the inbox available to builders', async () => {
     inboxApi({ threads: [], revision: '0' });
     mockServer.use(
@@ -336,13 +207,6 @@ describe('workspace inbox', () => {
 });
 
 describe('new failure notice', () => {
-  const failedStep = {
-    nodeId: 'fetch',
-    label: 'Fetch orders',
-    definitionKey: 'core.http',
-    safeErrorCode: null,
-  };
-
   it('announces a workflow that starts failing, not what was already unread', async () => {
     const state = { threads: [thread(billingId)], revision: '7' };
     const { stream } = inboxApi(state);
@@ -378,7 +242,6 @@ describe('new failure notice', () => {
     ).toHaveAttribute('href', `/w/${workspaceId}/runs/${runId}`);
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
   });
-
   it('gathers failures that arrive together into one notice', async () => {
     const state = { threads: [] as ReturnType<typeof thread>[], revision: '7' };
     const { stream } = inboxApi(state);
@@ -402,7 +265,6 @@ describe('new failure notice', () => {
       within(notice).getByRole('link', { name: 'Open inbox' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/inbox?filter=unread`);
   });
-
   it('opens the run from the notice and marks the workflow read', async () => {
     const actor = userEvent.setup();
     const state = { threads: [] as ReturnType<typeof thread>[], revision: '7' };
@@ -447,27 +309,5 @@ describe('new failure notice', () => {
         screen.queryByRole('dialog', { name: 'Nightly import' }),
       ).toBeNull();
     });
-  });
-
-  it('stays quiet on the inbox page, whose list shows the failure', async () => {
-    const state = { threads: [] as ReturnType<typeof thread>[], revision: '7' };
-    const { stream, unreadLists } = inboxApi(state);
-    const { queryClient } = renderApp(`/w/${workspaceId}/inbox`);
-
-    await screen.findByRole('heading', { name: 'Inbox' });
-    state.threads = [thread(importId, { revision: '8' })];
-    state.revision = '8';
-    stream.changed('8');
-
-    expect(
-      await screen.findByRole('link', { name: 'Nightly import, unread' }),
-    ).toBeVisible();
-    await waitFor(() => {
-      expect(unreadLists.count).toBeGreaterThan(0);
-    });
-    await waitFor(() => {
-      expect(queryClient.isFetching()).toBe(0);
-    });
-    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

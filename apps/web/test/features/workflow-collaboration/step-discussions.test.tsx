@@ -1,8 +1,7 @@
-import { HttpResponse, http } from 'msw';
 import { screen } from '@testing-library/react';
+import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
-import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { findCanvas } from '../../support/fixtures/editor-actions';
 import {
   bodyStepDefinition,
   forEachDefinition,
@@ -11,9 +10,10 @@ import {
 import {
   editorHandlers,
   editorPath,
-  findCanvas,
   workflowApi,
 } from '../../support/fixtures/workflow-editor';
+import { mockServer } from '../../support/mock-server';
+import { renderApp } from '../../support/render-app';
 
 function thread(id: string, stepId: string | null) {
   return {

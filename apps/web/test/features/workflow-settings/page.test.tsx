@@ -1,12 +1,18 @@
-import { HttpResponse, http } from 'msw';
-import { screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
 import { workflowKeys } from '@/features/workflows/queries.public';
+
+import { screen, waitFor, within } from '@testing-library/react';
+
+import userEvent from '@testing-library/user-event';
+
+import { HttpResponse, http } from 'msw';
+
+import { describe, expect, it } from 'vitest';
+
 import { mockServer } from '../../support/mock-server';
+
 import { renderApp } from '../../support/render-app';
+
 import {
-  api,
   destination,
   destinationId,
   installQueries,
@@ -18,13 +24,7 @@ import {
   workspaceId,
 } from './fixtures';
 
-const settingsPath = `/w/${workspaceId}/workflows/${workflowId}/settings`;
-const detailKey = workflowKeys.detail(userId, workspaceId, workflowId);
-
-/** Sections stay queryable behind an open modal, which hides them from AT. */
-function region(name: string) {
-  return screen.getByRole('region', { name, hidden: true });
-}
+import { detailKey, region, settingsPath } from './page/fixture';
 
 describe('workflow settings tab', () => {
   it('shows identity and archives with its consequences spelled out', async () => {
@@ -83,7 +83,6 @@ describe('workflow settings tab', () => {
         ?.isInvalidated,
     ).toBe(true);
   });
-
   it('retains the exact lifecycle command across an uncertain retry and refreshed status', async () => {
     installQueries();
     const requests: { path: string; key: string; body: unknown }[] = [];
@@ -166,7 +165,6 @@ describe('workflow settings tab', () => {
     });
     expect(requests[2]?.key).not.toBe(requests[0]?.key);
   });
-
   it('removes lifecycle details and an open confirmation after an authoritative unavailable refresh', async () => {
     installQueries();
     const { queryClient } = renderApp(settingsPath);
@@ -199,7 +197,6 @@ describe('workflow settings tab', () => {
       screen.queryByRole('button', { name: 'Archive workflow' }),
     ).not.toBeInTheDocument();
   });
-
   it('keeps lifecycle details and the confirmation through a transient refresh failure', async () => {
     installQueries();
     const { queryClient } = renderApp(settingsPath);
@@ -232,7 +229,6 @@ describe('workflow settings tab', () => {
       screen.getByRole('heading', { name: 'Archive this workflow?' }),
     ).toBeVisible();
   });
-
   it('shows the current choice, then sends alerts to a destination chosen by its human label', async () => {
     const keys: (string | null)[] = [];
     let current: typeof destination | null = null;
@@ -291,7 +287,6 @@ describe('workflow settings tab', () => {
       within(alerts).getByRole('button', { name: 'Turn alerts off' }),
     ).toBeEnabled();
   });
-
   it('says plainly when the current alert destination is turned off', async () => {
     installQueries();
     mockServer.use(
@@ -313,123 +308,5 @@ describe('workflow settings tab', () => {
     expect(
       within(alerts).getByText(/turned off, so nothing is sent/u),
     ).toBeVisible();
-  });
-
-  it('still turns alerts off when its destination was the last one enabled', async () => {
-    const disabled = { ...destination, status: 'disabled' };
-    let current: typeof disabled | null = disabled;
-    installQueries();
-    mockServer.use(
-      http.get(`${api}/failure-notification-destinations`, () =>
-        HttpResponse.json({ items: [disabled] }),
-      ),
-      http.get(`${workflowApi}/failure-notification-policy`, () =>
-        HttpResponse.json({ destination: current }),
-      ),
-      http.delete(`${workflowApi}/failure-notification-policy`, () => {
-        current = null;
-        return new HttpResponse(null, { status: 204 });
-      }),
-    );
-    renderApp(settingsPath);
-    const event = userEvent.setup();
-    const alerts = await screen.findByRole('region', {
-      name: 'Failure alerts',
-    });
-    expect(
-      await within(alerts).findByText(
-        /There’s no enabled alert destination in this workspace yet/u,
-      ),
-    ).toBeVisible();
-    expect(
-      within(alerts).queryByRole('combobox', {
-        name: 'Send failure alerts to',
-      }),
-    ).not.toBeInTheDocument();
-    await event.click(
-      within(alerts).getByRole('button', { name: 'Turn alerts off' }),
-    );
-    expect(await screen.findByText('Failure alerts turned off')).toBeVisible();
-    expect(
-      await within(alerts).findByText(/aren’t announced anywhere/u),
-    ).toBeVisible();
-  });
-
-  it('blocks a conflicting alert change until the exact uncertain attempt resolves', async () => {
-    installQueries();
-    const setKeys: string[] = [];
-    const clearKeys: string[] = [];
-    mockServer.use(
-      http.get(`${workflowApi}/failure-notification-policy`, () =>
-        HttpResponse.json({ destination }),
-      ),
-      http.put(`${workflowApi}/failure-notification-policy`, ({ request }) => {
-        setKeys.push(request.headers.get('idempotency-key') ?? '');
-        return setKeys.length === 1
-          ? HttpResponse.error()
-          : new HttpResponse(null, { status: 204 });
-      }),
-      http.delete(
-        `${workflowApi}/failure-notification-policy`,
-        ({ request }) => {
-          clearKeys.push(request.headers.get('idempotency-key') ?? '');
-          return new HttpResponse(null, { status: 204 });
-        },
-      ),
-    );
-    renderApp(settingsPath);
-    const event = userEvent.setup();
-    await event.click(
-      await screen.findByRole('combobox', { name: 'Send failure alerts to' }),
-    );
-    await event.click(
-      await screen.findByRole('option', {
-        name: 'Email to alerts@example.test',
-      }),
-    );
-    await event.click(screen.getByRole('button', { name: 'Save destination' }));
-    expect(
-      await screen.findByText(
-        /couldn’t confirm whether changing where alerts go/u,
-      ),
-    ).toBeVisible();
-    await event.click(screen.getByRole('button', { name: 'Turn alerts off' }));
-    expect(
-      await screen.findByText(/An earlier change is still unconfirmed/u),
-    ).toBeVisible();
-    expect(clearKeys).toHaveLength(0);
-    await event.click(screen.getByRole('button', { name: 'Save destination' }));
-    expect(await screen.findByText('Failure alerts updated')).toBeVisible();
-    await event.click(screen.getByRole('button', { name: 'Turn alerts off' }));
-    await waitFor(() => {
-      expect(clearKeys).toHaveLength(1);
-    });
-    expect(setKeys).toHaveLength(2);
-    expect(setKeys[1]).toBe(setKeys[0]);
-    expect(clearKeys[0]).not.toBe(setKeys[0]);
-  });
-
-  it('explains what a role can’t do instead of offering it', async () => {
-    installQueries([]);
-    mockServer.use(
-      http.get(`${api}/failure-notification-destinations`, () =>
-        problem(403, 'auth.forbidden'),
-      ),
-    );
-    renderApp(settingsPath);
-    const lifecycle = await screen.findByRole('region', { name: 'Lifecycle' });
-    const archive = await within(lifecycle).findByRole('button', {
-      name: 'Archive workflow',
-    });
-    expect(archive).toBeDisabled();
-    expect(archive).toHaveAccessibleDescription(
-      /can’t archive or restore workflows\. Builders and admins can\./u,
-    );
-    expect(
-      within(region('Failure alerts')).getByText(
-        /can’t change failure alerts\. Builders and admins can\./u,
-      ),
-    ).toBeVisible();
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 });

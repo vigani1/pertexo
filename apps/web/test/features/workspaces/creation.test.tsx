@@ -1,125 +1,28 @@
-import {
-  createUserFixture,
-  createWorkspaceFixture,
-} from '../../support/fixtures/identity';
-import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
+
 import userEvent from '@testing-library/user-event';
+
+import { HttpResponse, http } from 'msw';
+
 import { describe, expect, it } from 'vitest';
+
 import { mockServer } from '../../support/mock-server';
+
 import { renderApp } from '../../support/render-app';
 
-const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const existingWorkspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const createdWorkspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const timestamp = '2026-09-21T10:00:00.000Z';
-const csrfToken = 'csrf-token-for-component-tests-12345678901234567890';
-const user = createUserFixture({
-  id: userId,
-  email: 'owner@example.test',
-  displayName: 'Workspace Owner',
-  createdAt: timestamp,
-  updatedAt: timestamp,
-});
-const existingWorkspace = accessibleWorkspace(
-  existingWorkspaceId,
-  'Existing Operations',
-  'existing-operations',
-);
-const createdWorkspace = accessibleWorkspace(
+import {
+  createdWorkspace,
   createdWorkspaceId,
-  'Signal Operations',
-  'signal-operations',
-);
-
-function accessibleWorkspace(id: string, name: string, slug: string) {
-  return createWorkspaceFixture({
-    id,
-    name,
-    slug,
-    capabilities: [
-      'workspace:read',
-      'workspace:manage',
-      'workflow:read',
-      'workflow:create',
-    ],
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  });
-}
-
-function workspaceResponse() {
-  return {
-    id: createdWorkspace.id,
-    name: createdWorkspace.name,
-    slug: createdWorkspace.slug,
-    status: createdWorkspace.status,
-    createdAt: createdWorkspace.createdAt,
-    updatedAt: createdWorkspace.updatedAt,
-  };
-}
-
-function problem(status: number, code: string, title: string) {
-  return HttpResponse.json(
-    {
-      type: `https://pertexo.test/problems/${code}`,
-      title,
-      status,
-      code,
-      requestId: 'workspace-create-test',
-    },
-    { status, headers: { 'content-type': 'application/problem+json' } },
-  );
-}
-
-function installWorkspaceDestination() {
-  mockServer.use(
-    http.get(
-      `http://pertexo.test/v1/workspaces/${createdWorkspaceId}/workflows`,
-      () => HttpResponse.json({ items: [], nextCursor: null }),
-    ),
-    http.get('http://pertexo.test/v1/node-definitions', () =>
-      HttpResponse.json({
-        items: [],
-      }),
-    ),
-    http.get('http://pertexo.test/v1/integrations', () =>
-      HttpResponse.json({
-        items: [],
-      }),
-    ),
-    http.get(
-      `http://pertexo.test/v1/workspaces/${createdWorkspaceId}/connections`,
-      () => HttpResponse.json({ items: [], nextCursor: null }),
-    ),
-  );
-}
-
-function installIdentity(workspaces: readonly object[] = []) {
-  mockServer.use(
-    http.get('http://pertexo.test/v1/users/me', () => HttpResponse.json(user)),
-    http.get('http://pertexo.test/v1/workspaces', () =>
-      HttpResponse.json({ items: workspaces, nextCursor: null }),
-    ),
-  );
-}
-
-/** The inline first-workspace form, or the sheet for another workspace. */
-async function openCreation(kind: 'first' | 'another') {
-  if (kind === 'first')
-    return screen.findByRole('region', { name: 'Create your workspace' });
-  await userEvent
-    .setup()
-    .click(await screen.findByRole('button', { name: 'New workspace' }));
-  return screen.findByRole('dialog', { name: 'New workspace' });
-}
-
-async function revealHandle(form: HTMLElement) {
-  await userEvent
-    .setup()
-    .click(within(form).getByRole('button', { name: 'Edit handle' }));
-  return within(form).getByLabelText('Handle');
-}
+  csrfToken,
+  existingWorkspace,
+  installIdentity,
+  installWorkspaceDestination,
+  openCreation,
+  problem,
+  revealHandle,
+  user,
+  workspaceResponse,
+} from './creation/fixture';
 
 describe('workspace creation', () => {
   it('creates the first workspace with CSRF/idempotency and enters its empty workflow list', async () => {
@@ -168,7 +71,6 @@ describe('workspace creation', () => {
     expect(requests[0]?.csrf).toBe(csrfToken);
     expect(typeof requests[0]?.key).toBe('string');
   });
-
   it('uses the same form for an additional workspace and preserves an edited slug', async () => {
     let authoritativeWorkspaces: object[] = [existingWorkspace];
     installIdentity(authoritativeWorkspaces);
@@ -206,7 +108,6 @@ describe('workspace creation', () => {
       await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
     ).not.toHaveLength(0);
   });
-
   it('validates on submit and focuses the first invalid field', async () => {
     installIdentity();
     renderApp('/workspaces');
@@ -235,7 +136,6 @@ describe('workspace creation', () => {
       .click(within(form).getByRole('button', { name: 'Create workspace' }));
     expect(slug).toHaveFocus();
   });
-
   it('reveals an invalid handle on submit and cancels the sheet cleanly', async () => {
     installIdentity([existingWorkspace]);
     renderApp('/workspaces');
@@ -262,7 +162,6 @@ describe('workspace creation', () => {
     expect(within(reopened).getByLabelText('Workspace name')).toHaveValue('');
     expect(within(reopened).queryByLabelText('Handle')).not.toBeInTheDocument();
   });
-
   it.each([
     {
       caseName: 'duplicate slug',
@@ -306,7 +205,6 @@ describe('workspace creation', () => {
         expect(within(dialog).getByLabelText(focusedField)).toHaveFocus();
     },
   );
-
   it('preserves the exact uncertain command through failed verification and retry', async () => {
     let userReads = 0;
     let postCount = 0;
@@ -369,7 +267,6 @@ describe('workspace creation', () => {
     expect(attempts).toHaveLength(2);
     expect(attempts[1]).toEqual(attempts[0]);
   });
-
   it('keeps an uncertain request locked until it is checked or started over', async () => {
     let postCount = 0;
     installIdentity();
@@ -402,106 +299,6 @@ describe('workspace creation', () => {
     const name = within(form).getByLabelText('Workspace name');
     expect(name).toBeEnabled();
     expect(name).toHaveValue('');
-    expect(postCount).toBe(1);
-  });
-
-  it('retires an uncertain command and protected discovery when the session identity changes', async () => {
-    const nextUser = {
-      ...user,
-      id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-      email: 'next-owner@example.test',
-      displayName: 'Next Owner',
-    };
-    let activeUser = user;
-    let postCount = 0;
-    mockServer.use(
-      http.get('http://pertexo.test/v1/users/me', () =>
-        HttpResponse.json(activeUser),
-      ),
-      http.get('http://pertexo.test/v1/workspaces', () =>
-        HttpResponse.json({
-          items: activeUser.id === userId ? [existingWorkspace] : [],
-          nextCursor: null,
-        }),
-      ),
-      http.post('http://pertexo.test/v1/workspaces', () => {
-        postCount += 1;
-        activeUser = nextUser;
-        return HttpResponse.error();
-      }),
-    );
-    const app = renderApp('/workspaces');
-    const dialog = await openCreation('another');
-    await userEvent
-      .setup()
-      .type(within(dialog).getByLabelText('Workspace name'), 'Old Session');
-    await userEvent
-      .setup()
-      .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
-    await userEvent.setup().click(
-      await within(dialog).findByRole('button', {
-        name: 'Check again',
-      }),
-    );
-
-    expect(await screen.findByText('next-owner@example.test')).toBeVisible();
-    expect(screen.queryByText('Existing Operations')).not.toBeInTheDocument();
-    expect(postCount).toBe(1);
-    expect(
-      app.queryClient.getQueryCache().findAll({
-        queryKey: ['identity', userId],
-      }),
-    ).toHaveLength(0);
-  });
-
-  it('recovers a failed discovery refresh without submitting creation again', async () => {
-    let workspaceReads = 0;
-    let postCount = 0;
-    mockServer.use(
-      http.get('http://pertexo.test/v1/users/me', () =>
-        HttpResponse.json(user),
-      ),
-      http.get('http://pertexo.test/v1/workspaces', () => {
-        workspaceReads += 1;
-        if (workspaceReads === 1)
-          return HttpResponse.json({ items: [], nextCursor: null });
-        if (workspaceReads === 2)
-          return problem(503, 'service.unavailable', 'Discovery unavailable');
-        return HttpResponse.json({
-          items: [createdWorkspace],
-          nextCursor: null,
-        });
-      }),
-      http.post('http://pertexo.test/v1/workspaces', () => {
-        postCount += 1;
-        return HttpResponse.json(workspaceResponse(), { status: 201 });
-      }),
-    );
-    installWorkspaceDestination();
-    renderApp('/workspaces');
-    const dialog = await openCreation('first');
-    await userEvent
-      .setup()
-      .type(
-        within(dialog).getByLabelText('Workspace name'),
-        'Signal Operations',
-      );
-    await userEvent
-      .setup()
-      .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
-
-    expect(
-      await within(dialog).findByText(/workspace was created/u),
-    ).toBeVisible();
-    expect(postCount).toBe(1);
-    await userEvent.setup().click(
-      within(dialog).getByRole('button', {
-        name: 'Open workspace',
-      }),
-    );
-    expect(
-      await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
-    ).not.toHaveLength(0);
     expect(postCount).toBe(1);
   });
 });

@@ -1,23 +1,23 @@
-import { HttpResponse, http } from 'msw';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { findCanvas } from '../../support/fixtures/editor-actions';
+import { graphWithNumericConfig } from '../../support/fixtures/editor-graph';
 import {
   compatibility,
   editorHandlers,
   editorPath,
   etagA,
   etagB,
-  findCanvas,
-  graphWithNumericConfig,
   numericDefinition,
   versionBody,
   versionId,
   workflowApi,
   workflowSummaryHandler,
 } from '../../support/fixtures/workflow-editor';
+import { mockServer } from '../../support/mock-server';
+import { renderApp } from '../../support/render-app';
 
 const newerVersionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const graph = graphWithNumericConfig({ requiredCount: 1 });
