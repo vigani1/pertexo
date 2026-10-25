@@ -11,6 +11,7 @@ import {
 import { auditEvents } from '../schema/foundation.js';
 import {
   canonicalJson,
+  planWorkspaceVariableReplacement,
   WORKSPACE_VARIABLE_LIMITS,
 } from '@pertexo/workflow-model';
 
@@ -56,22 +57,8 @@ export async function replaceWorkspaceVariables(
   const current = await readCurrentVariableRevision(client, input.workspaceId);
   if (current.revision !== input.expectedRevision)
     throw new WorkspaceVariablesConflictError();
-  // An update without metadata keeps descriptions for the names it retains.
-  const descriptions: Record<string, string> = {};
-  for (const [name, description] of Object.entries(
-    input.descriptions ?? current.descriptions,
-  ))
-    if (Object.hasOwn(input.values, name) && description !== '')
-      descriptions[name] = description;
-  const names = [
-    ...new Set([...Object.keys(current.values), ...Object.keys(input.values)]),
-  ]
-    .sort()
-    .filter(
-      (name) =>
-        !Object.is(current.values[name], input.values[name]) ||
-        current.descriptions[name] !== descriptions[name],
-    );
+  const { descriptions, changedNames: names } =
+    planWorkspaceVariableReplacement(current, input);
   let revision = current.revision;
   if (names.length > 0) {
     revision = current.revision + 1;

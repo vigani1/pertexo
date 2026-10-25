@@ -360,3 +360,5 @@ export {
 } from './authoring/portability/origin.js';
 
 export { publicationReviewDecision } from './authoring/reviews/decision.js';
+export { requiresPublicationReviewer } from './workspaces/governance.js';
+export { planWorkspaceVariableReplacement } from './values/variables/replacement.js';
