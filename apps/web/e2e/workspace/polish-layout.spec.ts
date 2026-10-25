@@ -118,7 +118,7 @@ async function routes(page: Page) {
   await page.route('**/v1/workspaces/*/usage-capacity', (route) =>
     route.fulfill({
       json: {
-        asOf: '2026-09-15T10:00:00.000Z',
+        asOf: '2026-09-15T10:00:00.000000Z',
         execution: {
           activeRuns: 2,
           reservedActiveSlots: 1,
@@ -310,6 +310,12 @@ for (const [width, height] of viewports)
       ];
       for (const [name, path] of screens) {
         await page.goto(path);
+        if (name === 'settings-usage')
+          await expect(
+            page
+              .getByRole('region', { name: 'Current capacity' })
+              .getByText('Runs at once', { exact: true }),
+          ).toBeVisible();
         await shot(name);
       }
       await page.goto(`${root}/workflows`);
