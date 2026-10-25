@@ -21,7 +21,6 @@ import {
 } from './types.js';
 import {
   decodeWorkspaceMemberCursor,
-  InvalidWorkspaceMemberCursorError,
   encodeWorkspaceMemberCursor,
 } from './cursor.js';
 import type {
@@ -155,16 +154,7 @@ export class ListWorkspaceMembersUseCase {
         });
         let after: Readonly<{ createdAt: string; userId: string }> | undefined;
         if (input.after !== undefined) {
-          try {
-            after = decodeWorkspaceMemberCursor(input.after);
-          } catch (error: unknown) {
-            if (error instanceof InvalidWorkspaceMemberCursorError)
-              throw new AuthorizationError(
-                'request.invalid',
-                'workspace member cursor is invalid',
-              );
-            throw error;
-          }
+          after = decodeWorkspaceMemberCursor(input.after);
         }
         const page = await this.persistence.listWorkspaceMembers(
           input.routeWorkspaceId,

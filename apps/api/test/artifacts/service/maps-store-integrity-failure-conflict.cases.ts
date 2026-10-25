@@ -9,8 +9,6 @@ import {
 import { expect, it, vi } from 'vitest';
 import {
   ArtifactApiConflictError,
-  ArtifactApiCapacityExceededError,
-  ArtifactApiIdempotencyConflictError,
   ArtifactApiNotFoundError,
   ArtifactApiUnavailableError,
   ArtifactService,
@@ -42,7 +40,7 @@ export function registerMapsStoreIntegrityFailureConflict(): void {
     });
     await expect(
       service.finalizeUpload({ ...context(), artifactId, request: {} }),
-    ).rejects.toBeInstanceOf(ArtifactApiConflictError);
+    ).rejects.toBeInstanceOf(ArtifactIntegrityError);
   });
 
   it('does not infer a store conflict from an arbitrary provider message', async () => {
@@ -64,16 +62,16 @@ export function registerMapsStoreIntegrityFailureConflict(): void {
   });
 
   it.each([
-    [new ArtifactQuotaExceededError(), ArtifactApiCapacityExceededError],
+    [new ArtifactQuotaExceededError(), ArtifactQuotaExceededError],
     [
       new ArtifactUploadIdempotencyConflictError(),
-      ArtifactApiIdempotencyConflictError,
+      ArtifactUploadIdempotencyConflictError,
     ],
     [
       new ArtifactUploadConflictError('reservation conflict'),
-      ArtifactApiConflictError,
+      ArtifactUploadConflictError,
     ],
-    [new ArtifactUploadNotFoundError(), ArtifactApiNotFoundError],
+    [new ArtifactUploadNotFoundError(), ArtifactUploadNotFoundError],
     [new Error('database unavailable'), ArtifactApiUnavailableError],
   ] as const)(
     'maps reservation database failures without exposing provider errors',

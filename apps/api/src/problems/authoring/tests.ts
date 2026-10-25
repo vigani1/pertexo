@@ -8,11 +8,19 @@ import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
 import { WorkflowTestError } from '@pertexo/database/authoring';
 
 import { sampleApplicationError } from './samples.js';
-import { PriorPreviewInputUnavailableError } from '@pertexo/database/previews';
+import {
+  PreviewIdempotencyConflictError,
+  PriorPreviewInputUnavailableError,
+} from '@pertexo/database/previews';
 import { WorkflowStepSampleError } from '@pertexo/database/authoring';
 import { applicationError } from '../../platform/http/index.js';
 
 export const nodeTestProblems = [
+  errorRegistration(PreviewIdempotencyConflictError, () =>
+    applicationError('request.idempotency_conflict', {
+      safeDetail: 'The idempotency key was already used for another request.',
+    }),
+  ),
   errorRegistration(StoredExecutionValueInvalidError, () => {
     return applicationError('workflow.invalid', {
       safeDetail:

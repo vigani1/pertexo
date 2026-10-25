@@ -1,3 +1,5 @@
+import { API_PROBLEM_MANIFEST } from '@pertexo/contracts';
+import { toProblem } from '../../problems/registry.js';
 import { hasHttpStatus } from '../../platform/http/problems/status.js';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
@@ -50,6 +52,14 @@ export function registerCallbackIngress(
         hasHttpStatus(error, 413)
       ) {
         await problem(reply, 413, 'webhook.payload_too_large', requestId);
+      } else if (error instanceof CallbackResponseError) {
+        const mapped = toProblem(error);
+        await problem(
+          reply,
+          API_PROBLEM_MANIFEST[mapped.code].status,
+          mapped.code,
+          requestId,
+        );
       } else await problem(reply, 503, 'callback.unavailable', requestId);
     });
     scope.addHook('onRequest', (_request, reply, next) => {
@@ -154,31 +164,16 @@ async function receive(
     rejectAuthentication,
   });
   if (parsed === undefined) return;
-  try {
-    await dependencies.store.respond({
-      callback,
-      output: {
-        body: parsed.value,
-        headers: webhookHeaders(request, authentication),
-      },
-      redactOutput: (canonical) =>
-        redactText(canonical, [material.token, material.secret]),
-      signal,
-    });
-  } catch (error) {
-    if (error instanceof CallbackResponseError) {
-      await problem(
-        reply,
-        error.reason === 'resolved' ? 409 : 410,
-        error.reason === 'resolved'
-          ? 'callback.already_received'
-          : 'callback.expired',
-        requestId,
-      );
-      return;
-    }
-    throw error;
-  }
+  await dependencies.store.respond({
+    callback,
+    output: {
+      body: parsed.value,
+      headers: webhookHeaders(request, authentication),
+    },
+    redactOutput: (canonical) =>
+      redactText(canonical, [material.token, material.secret]),
+    signal,
+  });
   await reply.code(202).send({ accepted: true });
 }
 

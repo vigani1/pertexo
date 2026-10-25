@@ -4,7 +4,6 @@ import {
   type NodeTestExecuteAcceptedResponse,
   type NodeValidationResponse,
 } from '@pertexo/contracts';
-import { PreviewIdempotencyConflictError } from '@pertexo/database/previews';
 import {
   WorkflowNotFoundError,
   WorkflowStepSampleError,
@@ -26,16 +25,13 @@ import type {
   AuthorizedWorkspaceContext,
 } from '../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
-import { NodeTestRequestError, NodeTestInvalidError } from './errors.js';
+import { NodeTestInvalidError } from './errors.js';
 import type { NodeTestingPersistence } from './ports.js';
 import {
   prepareNodeValidation,
   type PreparedNodePreview,
 } from './validation.js';
-import {
-  type PreviewRunRecord,
-  previewAcceptanceResponse,
-} from './previews/response.js';
+import { previewAcceptanceResponse } from './previews/response.js';
 import {
   PREVIEW_RETENTION_MS,
   PREVIEW_EXECUTION_TIMEOUT_MS,
@@ -145,19 +141,12 @@ export class TestWorkflowNodeUseCase {
     input: NodeTestUseCaseInput,
     executionIdentity: ReturnType<typeof previewExecutionIdentity>,
   ): Promise<NodeTestExecuteAcceptedResponse | undefined> {
-    let replay: PreviewRunRecord | null;
-    try {
-      replay = await this.persistence.resolvePreviewReplay({
-        workspaceId: input.routeWorkspaceId,
-        actorUserId: input.actor.actorId,
-        workflowId: input.workflowId,
-        ...executionIdentity,
-      });
-    } catch (error: unknown) {
-      if (error instanceof PreviewIdempotencyConflictError)
-        throw new NodeTestRequestError('idempotency_conflict');
-      throw error;
-    }
+    const replay = await this.persistence.resolvePreviewReplay({
+      workspaceId: input.routeWorkspaceId,
+      actorUserId: input.actor.actorId,
+      workflowId: input.workflowId,
+      ...executionIdentity,
+    });
     if (replay !== null)
       return previewAcceptanceResponse(replay, { replayed: true });
     return undefined;
@@ -213,88 +202,80 @@ export class TestWorkflowNodeUseCase {
   ): Promise<NodeTestExecuteAcceptedResponse> {
     const acceptedAt = this.now();
     const { keyHash, requestHash } = executionIdentity;
-    try {
-      const accepted = await this.persistence.acceptPreview({
+    const accepted = await this.persistence.acceptPreview({
+      workspaceId: input.routeWorkspaceId,
+      workflowId: input.workflowId,
+      actorUserId: input.actor.actorId,
+      draftRevision: draft.revision,
+      expectedSampleId: pinnedSampleId ?? null,
+      draftFingerprint: digest(graph),
+      nodeId: input.nodeId,
+      definitionKey: prepared.definition.key,
+      definitionVersion: prepared.definition.version,
+      executorKey: prepared.executor.key,
+      executorVersion: prepared.executor.version,
+      executableNode: normalizedExecutableNode(prepared.executableNode),
+      input: request.input,
+      sideEffectClass: prepared.disclosure.sideEffectClass,
+      mayContactProvider: prepared.disclosure.mayContactProvider,
+      mayCauseExternalSideEffect:
+        prepared.disclosure.mayCauseExternalSideEffect,
+      dryRun: prepared.disclosure.dryRun,
+      keyHash,
+      requestHash,
+      operation: 'preview.execute',
+      ...(prepared.integration === undefined
+        ? {}
+        : {
+            operationKey: prepared.integration.operationKey,
+            providerKey: prepared.integration.providerKey,
+          }),
+      scope: `${input.actor.actorId}:${input.workflowId}`,
+      ...(prepared.disclosure.sideEffectClass === 'idempotent_with_key'
+        ? {
+            providerIdempotencyKey: `pv1.${digest({
+              workspaceId: input.routeWorkspaceId,
+              workflowId: input.workflowId,
+              nodeId: input.nodeId,
+              requestHash,
+            })}`,
+          }
+        : {}),
+      expiresAt: new Date(acceptedAt.getTime() + PREVIEW_RETENTION_MS),
+      executionDeadlineAt: new Date(
+        acceptedAt.getTime() + PREVIEW_EXECUTION_TIMEOUT_MS,
+      ),
+      ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
+      ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
+      ...(input.traceparent === undefined
+        ? {}
+        : { traceparent: input.traceparent }),
+    });
+    return previewAcceptanceResponse(
+      {
+        id: accepted.previewRunId,
         workspaceId: input.routeWorkspaceId,
         workflowId: input.workflowId,
-        actorUserId: input.actor.actorId,
         draftRevision: draft.revision,
-        expectedSampleId: pinnedSampleId ?? null,
-        draftFingerprint: digest(graph),
         nodeId: input.nodeId,
-        definitionKey: prepared.definition.key,
-        definitionVersion: prepared.definition.version,
-        executorKey: prepared.executor.key,
-        executorVersion: prepared.executor.version,
-        executableNode: normalizedExecutableNode(prepared.executableNode),
-        input: request.input,
+        status: accepted.status,
+        ...(accepted.pinnedSampleId === undefined
+          ? {}
+          : {
+              pinnedSampleId: accepted.pinnedSampleId,
+              output: accepted.pinnedOutput,
+            }),
         sideEffectClass: prepared.disclosure.sideEffectClass,
         mayContactProvider: prepared.disclosure.mayContactProvider,
         mayCauseExternalSideEffect:
           prepared.disclosure.mayCauseExternalSideEffect,
         dryRun: prepared.disclosure.dryRun,
-        keyHash,
-        requestHash,
-        operation: 'preview.execute',
-        ...(prepared.integration === undefined
-          ? {}
-          : {
-              operationKey: prepared.integration.operationKey,
-              providerKey: prepared.integration.providerKey,
-            }),
-        scope: `${input.actor.actorId}:${input.workflowId}`,
-        ...(prepared.disclosure.sideEffectClass === 'idempotent_with_key'
-          ? {
-              providerIdempotencyKey: `pv1.${digest({
-                workspaceId: input.routeWorkspaceId,
-                workflowId: input.workflowId,
-                nodeId: input.nodeId,
-                requestHash,
-              })}`,
-            }
-          : {}),
-        expiresAt: new Date(acceptedAt.getTime() + PREVIEW_RETENTION_MS),
-        executionDeadlineAt: new Date(
-          acceptedAt.getTime() + PREVIEW_EXECUTION_TIMEOUT_MS,
-        ),
-        ...(input.requestId === undefined
-          ? {}
-          : { requestId: input.requestId }),
-        ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-        ...(input.traceparent === undefined
-          ? {}
-          : { traceparent: input.traceparent }),
-      });
-      return previewAcceptanceResponse(
-        {
-          id: accepted.previewRunId,
-          workspaceId: input.routeWorkspaceId,
-          workflowId: input.workflowId,
-          draftRevision: draft.revision,
-          nodeId: input.nodeId,
-          status: accepted.status,
-          ...(accepted.pinnedSampleId === undefined
-            ? {}
-            : {
-                pinnedSampleId: accepted.pinnedSampleId,
-                output: accepted.pinnedOutput,
-              }),
-          sideEffectClass: prepared.disclosure.sideEffectClass,
-          mayContactProvider: prepared.disclosure.mayContactProvider,
-          mayCauseExternalSideEffect:
-            prepared.disclosure.mayCauseExternalSideEffect,
-          dryRun: prepared.disclosure.dryRun,
-          completedAt: accepted.completedAt ?? null,
-          createdAt: accepted.acceptedAt,
-          expiresAt: accepted.expiresAt,
-        },
-        { replayed: accepted.duplicate },
-      );
-    } catch (error: unknown) {
-      if (error instanceof PreviewIdempotencyConflictError)
-        throw new NodeTestRequestError('idempotency_conflict');
-      throw error;
-    }
+        completedAt: accepted.completedAt ?? null,
+        createdAt: accepted.acceptedAt,
+        expiresAt: accepted.expiresAt,
+      },
+      { replayed: accepted.duplicate },
+    );
   }
 
   private async currentDraft(
