@@ -8,7 +8,7 @@ export function planWorkspaceVariableReplacement(
   }>,
   input: Readonly<{
     values: WorkspaceVariableValues;
-    descriptions?: Readonly<Record<string, string>>;
+    descriptions?: Readonly<Record<string, string>> | undefined;
   }>,
 ) {
   const descriptions: Record<string, string> = {};

@@ -11,6 +11,14 @@ describe('workspace variable replacement', () => {
       planWorkspaceVariableReplacement(current, { values: { A: 1 } }),
     ).toEqual({ descriptions: { A: 'Number' }, changedNames: ['B'] });
   });
+  it('treats explicit undefined metadata as omitted', () => {
+    expect(
+      planWorkspaceVariableReplacement(current, {
+        values: current.values,
+        descriptions: undefined,
+      }),
+    ).toEqual({ descriptions: current.descriptions, changedNames: [] });
+  });
   it('clears descriptions when an explicit empty map is supplied', () => {
     expect(
       planWorkspaceVariableReplacement(current, {
