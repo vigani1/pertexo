@@ -184,22 +184,32 @@ describe('workflow integration usage pagination', () => {
           operationKey: 'missing',
         }),
       ).resolves.toEqual({ items: [] });
-      for (const limit of [0, 1_001])
-        await expect(
-          usage.findConnectionImpact({
-            workspaceId: workspaceA,
-            connectionId: connectionA.connectionId,
-            limit,
-          }),
-        ).rejects.toThrow();
+      for (const limit of [undefined, 1_000]) {
+        const providerPage = await usage.findProviderOperationImpact({
+          workspaceId: workspaceA,
+          providerKey: 'http',
+          operationKey: 'request',
+          ...(limit === undefined ? {} : { limit }),
+        });
+        expect(providerPage).toEqual({ items: providerItems });
+        const connectionPage = await usage.findConnectionImpact({
+          workspaceId: workspaceA,
+          connectionId: connectionA.connectionId,
+          ...(limit === undefined ? {} : { limit }),
+        });
+        expect(connectionPage).toEqual({ items: connectionItems });
+      }
+      const lastProviderItem = providerItems.at(-1);
+      if (lastProviderItem === undefined)
+        throw new Error('Missing usage fixture');
       await expect(
         usage.findProviderOperationImpact({
           workspaceId: workspaceA,
           providerKey: 'http',
           operationKey: 'request',
-          after: { workflowVersionId: 'invalid', connectionId: randomUUID() },
+          after: lastProviderItem,
         }),
-      ).rejects.toThrow();
+      ).resolves.toEqual({ items: [] });
     } finally {
       await usage.close();
     }
