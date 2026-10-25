@@ -1,20 +1,23 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { workflowTestStepChoices } from '@pertexo/workflow-model';
-import type { PoolClient } from 'pg';
 import type {
-  WorkflowTestSuiteSummary,
   WorkflowTestSuiteDetail,
   WorkflowTestSuiteReport,
+  WorkflowTestSuiteSummary,
 } from '@pertexo/contracts';
 import {
-  workflowTestSuites,
+  workflowTestStepChoices,
+  workflowTestSuiteReportSchema,
+} from '@pertexo/workflow-model';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import type { PoolClient } from 'pg';
+import type { SampleScope } from '../../authoring/step-samples/contract.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
   workflowTestSuiteCases,
+  workflowTestSuites,
 } from '../../schema/runs/suites.js';
 import { workflowTestSnapshots } from '../../schema/runs/tests.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import { WorkflowTestError } from '../workflows/errors.js';
 
 const suite = alias(workflowTestSuites, 'suite');
@@ -236,7 +239,7 @@ export async function readCaseReport(
   const report =
     row.report === null
       ? null
-      : (JSON.parse(row.report) as WorkflowTestSuiteReport);
+      : workflowTestSuiteReportSchema.parse(JSON.parse(row.report));
   const nodeIds = [
     ...new Set(
       report?.assertions.flatMap(({ assertion }) =>

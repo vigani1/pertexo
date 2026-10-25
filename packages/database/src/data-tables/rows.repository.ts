@@ -1,27 +1,31 @@
 import {
+  DATA_TABLE_LIMITS,
+  DataTableError,
+  dataTableValuesSchema,
+  validateDataTableValues,
+  type DataTableCommand,
+  type DataTableResult,
+  type DataTableValues,
+} from '@pertexo/node-sdk';
+import {
+  canonicalJson,
+  normalizedJson,
+  utf8ByteLength,
+} from '@pertexo/workflow-model';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import { generatePersistedId } from '../platform/persisted-id.js';
+import {
   isUniqueConstraintFailure,
   queryFailure,
   rethrowQueryFailure,
 } from '../platform/query-errors.js';
-import { and, eq, inArray, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import {
-  workspaceDataTables as tables,
-  workspaceDataTableRows as tableRows,
   workspaceDataTableQuotas as quotasTable,
+  workspaceDataTableRows as tableRows,
+  workspaceDataTables as tables,
 } from '../schema/data-tables.js';
-import { utf8ByteLength } from '@pertexo/workflow-model';
-import type { PoolClient } from 'pg';
-import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
-import {
-  DataTableError,
-  DATA_TABLE_LIMITS,
-  validateDataTableValues,
-  type DataTableCommand,
-  type DataTableValues,
-  type DataTableResult,
-} from '@pertexo/node-sdk';
-import { generatePersistedId } from '../platform/persisted-id.js';
 import type { DataTableDefinition, DataTableQuotas } from './contract.js';
 import {
   boundedResult,
@@ -114,7 +118,7 @@ export async function mutateRows(
       const outputs = [];
       for (const row of old) {
         const values = validateDataTableValues(table.columns, {
-          ...(JSON.parse(row.values) as DataTableValues),
+          ...dataTableValuesSchema.parse(JSON.parse(row.values)),
           ...patch,
         });
         const text = normalizedJson(values);

@@ -1,19 +1,18 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { webhookTriggerEndpoints as endpoints } from '../../../schema/triggers/endpoints.js';
-import { workflowTriggers } from '../../../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { WebhookAuthentication } from '@pertexo/contracts';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { workflowTriggers } from '../../../schema/authoring/workflows.js';
+import { webhookTriggerEndpoints as endpoints } from '../../../schema/triggers/endpoints.js';
 
 import { and, eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
-import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
 
-import { WebhookIngressRateLimitExceededError } from '../errors.js';
 import { withWorkspaceReadTransaction } from '../../../tenant-access/transactions.js';
+import { WebhookIngressRateLimitExceededError } from '../errors.js';
 import type {
+  SealedWebhookTriggerSecret,
   WebhookConfig,
   WebhookTriggerDatabase,
-  SealedWebhookTriggerSecret,
 } from './contract.js';
 
 export async function resolveWebhookVerification(
@@ -22,7 +21,7 @@ export async function resolveWebhookVerification(
     WebhookTriggerDatabase['resolveVerification']
   >[0],
 ): ReturnType<WebhookTriggerDatabase['resolveVerification']> {
-  const endpointKeyHash = digestSchema.parse(endpointKeyHashInput);
+  const endpointKeyHash = endpointKeyHashInput;
   const result = await drizzle(pool)
     .select({
       endpointId: sql<string>`resolution.endpoint_id`,
@@ -106,7 +105,7 @@ export async function consumeWebhookIngressLimit(
 ): ReturnType<WebhookTriggerDatabase['consumeIngressLimit']> {
   const result = await drizzle(pool)
     .execute<{ allowed: boolean; retry_after_seconds: number }>(
-      sql`select * from app.consume_webhook_ingress_limit(${digestSchema.parse(endpointKeyHashInput)}::char(64))`,
+      sql`select * from app.consume_webhook_ingress_limit(${endpointKeyHashInput}::char(64))`,
     )
     .catch(rethrowQueryFailure);
   const decision = result.rows[0];

@@ -1,11 +1,9 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { webhookTriggerSecretVersions as secrets } from '../../../schema/triggers/endpoints.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { appendAuditFact } from '../../../governance/audit/events.repository.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { webhookTriggerSecretVersions as secrets } from '../../../schema/triggers/endpoints.js';
 
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
-import { sha256HexSchema as digestSchema } from '../../../platform/persisted-primitives.js';
 
 import {
   claimCommand,
@@ -14,16 +12,15 @@ import {
 
 import { WebhookTriggerIdempotencyConflictError } from '../errors.js';
 
-import { sealedSchema } from './input.js';
-import type { SealedWebhookTriggerSecret, Command } from './contract.js';
+import type { Command, SealedWebhookTriggerSecret } from './contract.js';
 
 function webhookCommand(input: Command, operation: string) {
   return {
     workspaceId: input.workspaceId,
     operation,
     scope: `${input.actorId}:${input.workflowId}:${input.triggerId}`,
-    idempotencyKey: z.string().min(1).max(128).parse(input.idempotencyKey),
-    requestHash: digestSchema.parse(input.requestHash),
+    idempotencyKey: input.idempotencyKey,
+    requestHash: input.requestHash,
     conflict: () => new WebhookTriggerIdempotencyConflictError(),
   };
 }
@@ -63,8 +60,15 @@ export async function insertSecret(
   client: PoolClient,
   input: Command,
   secretInput: SealedWebhookTriggerSecret,
-): Promise<z.output<typeof sealedSchema>> {
-  const secret = sealedSchema.parse(secretInput);
+): Promise<{
+  id: string;
+  kmsKeyReference: string;
+  encryptedDataKey: string;
+  ciphertext: string;
+  nonce: string;
+  authTag: string;
+}> {
+  const secret = secretInput;
   await drizzle(client)
     .insert(secrets)
     .values({

@@ -1,22 +1,24 @@
-import type { ConnectionHealthApplicationResult } from './contract.js';
 import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import {
-  connectionHealthObservations as observations,
-  nodeAttemptConnectionDispatches as dispatches,
-  connections,
   connectionEvents,
+  connections,
+  nodeAttemptConnectionDispatches as dispatches,
+  connectionHealthObservations as observations,
 } from '../../schema/connections.js';
 import { nodeAttempts } from '../../schema/runs/execution.js';
 import { outboxEvents } from '../../schema/transport.js';
-import { z } from 'zod';
+import type {
+  ApplyConnectionHealthObservationInput,
+  ConnectionHealthApplicationResult,
+} from './contract.js';
 
 import type { WorkspaceDatabase } from '../../database.js';
-import { sha256HexSchema } from '../../platform/persisted-primitives.js';
+import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import {
   consumeInboxMessage,
   InboxReceiptUnavailableError,
 } from '../../outbox/receipts.repository.js';
-import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 
 const payloadSchema = z
   .object({
@@ -27,16 +29,6 @@ const payloadSchema = z
       .string()
       .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
       .optional(),
-  })
-  .strict();
-const inputSchema = z
-  .object({
-    workspaceId: z.uuid(),
-    observationId: z.uuid(),
-    delivery: z
-      .object({ outboxEventId: z.uuid(), payloadChecksum: sha256HexSchema })
-      .strict(),
-    signal: z.instanceof(AbortSignal).optional(),
   })
   .strict();
 
@@ -52,7 +44,7 @@ type Transaction = Parameters<
  */
 async function applyObservation(
   transaction: Transaction,
-  input: z.output<typeof inputSchema>,
+  input: ApplyConnectionHealthObservationInput,
 ): Promise<boolean> {
   const workspaceId = transaction.workspaceId;
   const db = transaction.db;
@@ -178,9 +170,9 @@ async function applyObservation(
 /** Consumes persisted IDs, never a caller-chosen connection/status/reason. */
 export async function applyConnectionHealthObservation(
   database: WorkspaceDatabase,
-  input: Readonly<z.input<typeof inputSchema>>,
+  input: ApplyConnectionHealthObservationInput,
 ): Promise<ConnectionHealthApplicationResult> {
-  const parsed = inputSchema.parse(input);
+  const parsed = input;
   parsed.signal?.throwIfAborted();
   const consumed = await consumeInboxMessage(database, parsed.workspaceId, {
     message: {

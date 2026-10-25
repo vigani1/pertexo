@@ -1,13 +1,12 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflowTestSuites } from '../../schema/runs/suites.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { workflowTestSuites } from '../../schema/runs/suites.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { advanceSuite } from './advance.repository.js';
 import type { WorkflowTestSuiteScanner } from './contract.js';
@@ -39,9 +38,6 @@ export async function createWorkflowTestSuiteScanner(
   return {
     scan: async (limit, signal) => {
       signal?.throwIfAborted();
-      const invalidLimit = !isIntegerInRange(limit, 1, 100);
-      if (invalidLimit)
-        throw new RangeError('Suite scan limit must be between 1 and 100');
       const candidates = await drizzle(discovery.pool)
         .select({
           id: workflowTestSuites.id,

@@ -1,14 +1,13 @@
-import type { FailureNotificationDestinationRecord } from './contract.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
   failureNotificationDestinations as destination,
   failureNotificationDestinationVersions as version,
 } from '../../schema/notifications.js';
-import type { PoolClient } from 'pg';
-import { z } from 'zod';
-import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
+import type { FailureNotificationDestinationRecord } from './contract.js';
 
 import { FailureNotificationDestinationError } from './errors.js';
 
@@ -54,7 +53,7 @@ export async function readFailureNotificationDestination(
   destinationId: string,
   { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
 ): Promise<FailureNotificationDestinationRecord> {
-  const parsedDestinationId = z.uuid().parse(destinationId);
+  const parsedDestinationId = destinationId;
   const db = drizzle(client);
   const predicate = and(
     eq(destination.workspaceId, workspaceId),

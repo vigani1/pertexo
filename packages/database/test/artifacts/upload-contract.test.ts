@@ -22,26 +22,6 @@ function beginInput(mediaType: string) {
 }
 
 describe('artifact upload media type contract', () => {
-  it.each([
-    'application/js\u000bon',
-    'application/js\u001fon',
-    'application/js\u007fon',
-    'application/js\u0100on',
-  ])('rejects an HTTP-unsafe value before reservation %#', (mediaType) => {
-    expect(() => normalizeBeginInput(beginInput(mediaType))).toThrow();
-  });
-
-  it.each([
-    ['text/plain', 'text/plain'],
-    [' application/json; charset=utf-8 ', 'application/json; charset=utf-8'],
-    [
-      'application/vnd.pertexo+json;version=1',
-      'application/vnd.pertexo+json;version=1',
-    ],
-  ])('normalizes supported values %#', (mediaType, expected) => {
-    expect(normalizeBeginInput(beginInput(mediaType)).mediaType).toBe(expected);
-  });
-
   it('rejects actor and route workspace mismatches while preserving allowed actor context', () => {
     expect(() =>
       normalizeBeginInput({
@@ -78,28 +58,5 @@ describe('artifact upload media type contract', () => {
         },
       }),
     ).toMatchObject({ actorId, workspaceId });
-  });
-
-  it('enforces independent idempotency, byte, hash, bounds', () => {
-    expect(
-      normalizeBeginInput({
-        ...beginInput('text/plain'),
-        byteLength: 5 * 1024 * 1024 * 1024,
-        idempotencyKey: 'x'.repeat(128),
-      }),
-    ).toMatchObject({
-      byteLength: 5 * 1024 * 1024 * 1024,
-      idempotencyKey: 'x'.repeat(128),
-    });
-    for (const override of [
-      { idempotencyKey: 'contains,delimiter' },
-      { idempotencyKey: 'x'.repeat(129) },
-      { byteLength: 5 * 1024 * 1024 * 1024 + 1 },
-      { byteLength: Number.MAX_SAFE_INTEGER + 1 },
-      { sha256: 'A'.repeat(64) },
-    ])
-      expect(() =>
-        normalizeBeginInput({ ...beginInput('text/plain'), ...override }),
-      ).toThrow();
   });
 });

@@ -1,16 +1,15 @@
-import { z } from 'zod';
 import {
   DATA_TABLE_LIMITS,
+  dataTableColumnsSchema,
   dataTableIdentifierSchema,
   dataTableNameSchema,
-  dataTableColumnsSchema,
   dataTableNewColumnsSchema,
-  dataTableNewColumnSchema,
-  dataTableValueSchema,
   dataTableQuerySchema,
-  dataTableWriteCommandSchema,
   dataTableResultSchema,
+  dataTableSchemaChangeSchema,
+  dataTableWriteCommandSchema,
 } from '@pertexo/node-sdk';
+import { z } from 'zod';
 export const dataTableCreateSchema = z
   .object({
     name: dataTableNameSchema,
@@ -100,35 +99,6 @@ export const dataTableWriteReceiptSchema = z
   .strict();
 export type DataTableWriteReceipt = z.infer<typeof dataTableWriteReceiptSchema>;
 
-export const dataTableSchemaChangeSchema = z.discriminatedUnion('operation', [
-  z
-    .object({
-      operation: z.literal('add_column'),
-      column: dataTableNewColumnSchema,
-      defaultValue: dataTableValueSchema.optional(),
-    })
-    .strict(),
-  z
-    .object({
-      operation: z.literal('rename_column'),
-      columnId: dataTableIdentifierSchema,
-      name: dataTableIdentifierSchema,
-    })
-    .strict(),
-  z
-    .object({
-      operation: z.literal('remove_column'),
-      columnId: dataTableIdentifierSchema,
-      confirm: z.literal(true),
-    })
-    .strict(),
-  z
-    .object({
-      operation: z.literal('set_key'),
-      columnId: dataTableIdentifierSchema.nullable(),
-    })
-    .strict(),
-]);
 export const dataTableSchemaEditSchema = z
   .object({
     expectedRevision: z.number().int().positive(),
@@ -144,5 +114,5 @@ export const dataTableExportQuerySchema = dataTableQuerySchema.omit({
   sort: true,
 });
 export type DataTableSchemaEdit = z.infer<typeof dataTableSchemaEditSchema>;
-export type DataTableSchemaChange = z.infer<typeof dataTableSchemaChangeSchema>;
+export type { DataTableSchemaChange } from '@pertexo/node-sdk';
 export type DataTableExportQuery = z.infer<typeof dataTableExportQuerySchema>;

@@ -1,14 +1,15 @@
+import { decideScheduleHealthTransition } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import type { PoolClient } from 'pg';
+import { z } from 'zod';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
   workflowTriggers,
   workflows,
 } from '../../../schema/authoring/workflows.js';
 import { triggerSchedules } from '../../../schema/triggers/schedules.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import type { PoolClient } from 'pg';
-import { z } from 'zod';
 
 import { ScheduleTriggerError } from '../errors.js';
 import {
@@ -16,14 +17,14 @@ import {
   resolveScheduleObservation,
 } from '../recurrence.js';
 
-import { scheduleTriggerSchema } from './receipt.js';
 import type {
-  ScheduleTriggerRecord,
-  SetEnabledInput,
   ScheduleCommandIdentity,
   ScheduleCommandTarget,
   ScheduleHealthTransition,
+  ScheduleTriggerRecord,
+  SetEnabledInput,
 } from './contract.js';
+import { scheduleTriggerSchema } from './receipt.js';
 
 function scheduleQuery(client: PoolClient) {
   return drizzle(client)
@@ -183,42 +184,14 @@ export function scheduleHealthTransition(
   input: SetEnabledInput,
   target: ScheduleCommandTarget,
 ): ScheduleHealthTransition {
-  let nextFireAt = target.next_fire_at;
-  const enablesSkippedSchedule =
-    input.enabled &&
-    target.status === 'disabled' &&
-    target.misfire_policy === 'skip';
-  if (enablesSkippedSchedule) {
-    nextFireAt = resolveScheduleObservation(
-      parsePersistedScheduleRecurrence(target),
-      target.anchor_at,
-      target.observed_at,
-    ).nextAt;
-  }
-  const retainsAdmissionBackoff =
-    input.enabled &&
-    target.admission_deferred_until !== null &&
-    target.admission_deferred_until.getTime() > target.observed_at.getTime();
-  return Object.freeze({
-    healthStatus: scheduleHealthStatus(input, { retainsAdmissionBackoff }),
-    lastErrorCode: retainsAdmissionBackoff
-      ? 'schedule.admission_throttled'
-      : null,
-    nextFireAt,
-    scheduleStatus: input.enabled ? 'enabled' : 'disabled',
-    triggerStatus: input.enabled ? 'active' : 'disabled',
-  });
-}
-
-function scheduleHealthStatus(
-  input: Pick<SetEnabledInput, 'enabled'>,
-  { retainsAdmissionBackoff }: Readonly<{ retainsAdmissionBackoff: boolean }>,
-): ScheduleHealthTransition['healthStatus'] {
-  if (input.enabled) {
-    if (retainsAdmissionBackoff) {
-      return 'degraded';
-    }
-    return 'healthy';
-  }
-  return 'disabled';
+  return decideScheduleHealthTransition(
+    input,
+    target,
+    () =>
+      resolveScheduleObservation(
+        parsePersistedScheduleRecurrence(target),
+        target.anchor_at,
+        target.observed_at,
+      ).nextAt,
+  );
 }

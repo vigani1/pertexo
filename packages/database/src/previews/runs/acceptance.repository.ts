@@ -3,53 +3,52 @@ import { connectionScope } from '../../tenant-access/resources/connections/scope
 
 import { resolvePreviewSample } from './samples.repository.js';
 
-import { captureWorkspaceVariableRevision } from '../../variables/settings.queries.js';
-import { lockActorArtifactReferences } from '../../artifacts/references/repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
+import { lockActorArtifactReferences } from '../../artifacts/references/repository.js';
+import { captureWorkspaceVariableRevision } from '../../variables/settings.queries.js';
 
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '../../outbox/events.repository.js';
 
-import { PREVIEW_STATUS } from '../state.js';
+import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import {
   auditEvents,
   idempotencyRecords,
   previewAttempts,
   previewRuns,
 } from '../../schema.js';
-import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
+import { PREVIEW_STATUS } from '../state.js';
 
-import {
-  PREVIEW_RETENTION_MAX_MS,
-  PREVIEW_EXECUTION_TIMEOUT_MAX_MS,
-} from './acceptance/limits.js';
-import { acceptPreviewRunInputSchema } from './acceptance/input.js';
-import type {
-  AcceptPreviewRunInput,
-  AcceptedPreviewRun,
-} from './acceptance/contract.js';
 import {
   PreviewAcceptanceCorruptError,
   PreviewAdmissionDeniedError,
 } from '../errors.js';
 import {
-  readExistingAcceptance,
-  resolveInput,
-} from './acceptance/replay.queries.js';
-import {
   assertAdmission,
   assertPreviewActor,
   assertPreviewWorkflow,
 } from './acceptance/authority.queries.js';
+import type {
+  AcceptPreviewRunInput,
+  AcceptedPreviewRun,
+} from './acceptance/contract.js';
+import {
+  PREVIEW_EXECUTION_TIMEOUT_MAX_MS,
+  PREVIEW_RETENTION_MAX_MS,
+} from './acceptance/limits.js';
+import {
+  readExistingAcceptance,
+  resolveInput,
+} from './acceptance/replay.queries.js';
 export async function acceptPreviewRun(
   transaction: WorkspaceTransaction,
   input: AcceptPreviewRunInput,
 ): Promise<AcceptedPreviewRun> {
-  const parsed = acceptPreviewRunInputSchema.parse(input);
+  const parsed = input;
   await assertPreviewActor(transaction, parsed.actorUserId);
   const resources = await assertPreviewWorkflow(
     transaction,
@@ -182,7 +181,7 @@ export async function acceptPreviewRun(
   });
 }
 
-type ParsedPreviewInput = ReturnType<typeof acceptPreviewRunInputSchema.parse>;
+type ParsedPreviewInput = AcceptPreviewRunInput;
 type PreviewSample = Awaited<ReturnType<typeof resolvePreviewSample>>;
 function assertPreviewDeadlines(parsed: ParsedPreviewInput, now: Date): void {
   if (
@@ -228,7 +227,7 @@ async function assertPreviewInputAuthority(
     await lockActorArtifactReferences(
       transaction,
       parsed.actorUserId,
-      JSON.parse(resolvedInput.stored) as unknown,
+      JSON.parse(resolvedInput.stored),
       resolvedInput.priorPreviewRunId ?? undefined,
     );
     await lockActorArtifactReferences(

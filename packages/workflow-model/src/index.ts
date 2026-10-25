@@ -358,3 +358,42 @@ export {
   type WorkflowTemplateOriginRequest,
   type WorkflowTemplateOrigin,
 } from './authoring/portability/origin.js';
+
+export {
+  workflowTestSuiteReportSchema,
+  type SuiteCaseReport,
+} from './authoring/test-suites/report.js';
+
+export {
+  failureNotificationCompletionDecision,
+  failureNotificationCompletionAuditFactType,
+  type CompletionDecision,
+} from './execution/notification-completion.js';
+
+export {
+  notificationProviderRequirements,
+  eligibleNotificationDestination,
+  eligibleNotificationConnection,
+} from './execution/notification-policy.js';
+export { decideScheduleHealthTransition } from './triggers/schedules/health.js';
+
+export {
+  CONNECTION_STATUS,
+  CONNECTION_AUTH_TYPE,
+  CONNECTION_EVENT_TYPE,
+  type ConnectionStatus,
+  type ConnectionAuthType,
+  type ConnectionTestOutcome,
+} from './authoring/connections/contract.js';
+export {
+  classifyConnectionTestCompletion,
+  connectionTestStatus,
+} from './authoring/connections/health.js';
+export {
+  noticeScheduleSchema,
+  noticeEmailModeSchema,
+  nextNoticeDue,
+  noticeWindow,
+  nextPersonNoticeDue,
+  type NoticeSchedule,
+} from './execution/notice-schedule.js';

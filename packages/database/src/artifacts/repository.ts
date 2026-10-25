@@ -1,29 +1,22 @@
 import { and, asc, eq, lte, sql } from 'drizzle-orm';
-import type { z } from 'zod';
 import { artifactLinks, artifacts, previewRuns } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
-import { artifactMetadataMatches } from './metadata/validation.js';
+import type {
+  ArtifactRecord,
+  ClaimDueUnfinalizedArtifactInput,
+  ClaimDueUnfinalizedArtifactsInput,
+  CompleteArtifactRemovalInput,
+  CreatePendingArtifactInput,
+  CreatePendingPreviewArtifactInput,
+  FinalizeArtifactInput,
+} from './contract.js';
 import {
   ARTIFACT_STATUS,
-  pendingArtifactSchema,
-  pendingPreviewArtifactSchema,
-  finalizeArtifactSchema,
-  claimInputSchema,
-  claimOneInputSchema,
-  removalInputSchema,
   ArtifactFinalizeConflictError,
   ArtifactLifecycleConflictError,
   ArtifactMetadataNotFoundError,
 } from './input.js';
-import type {
-  ArtifactRecord,
-  CreatePendingArtifactInput,
-  CreatePendingPreviewArtifactInput,
-  FinalizeArtifactInput,
-  ClaimDueUnfinalizedArtifactsInput,
-  ClaimDueUnfinalizedArtifactInput,
-  CompleteArtifactRemovalInput,
-} from './contract.js';
+import { artifactMetadataMatches } from './metadata/validation.js';
 export function artifactStorageKey(
   workspaceId: string,
   artifactId: string,
@@ -33,7 +26,7 @@ export function artifactStorageKey(
 
 function exactMetadataMatches(
   artifact: ArtifactRecord,
-  validated: z.output<typeof finalizeArtifactSchema>,
+  validated: FinalizeArtifactInput,
 ): boolean {
   return (
     artifact.workspaceId === validated.workspaceId &&
@@ -47,12 +40,12 @@ export async function createPendingArtifact(
   transaction: WorkspaceTransaction,
   input: CreatePendingArtifactInput,
 ): Promise<ArtifactRecord> {
-  return insertPendingArtifact(transaction, pendingArtifactSchema.parse(input));
+  return insertPendingArtifact(transaction, input);
 }
 
 async function insertPendingArtifact(
   transaction: WorkspaceTransaction,
-  parsed: z.output<typeof pendingArtifactSchema>,
+  parsed: CreatePendingArtifactInput,
 ): Promise<ArtifactRecord> {
   if (
     parsed.storageKey !==
@@ -90,7 +83,7 @@ export async function createPendingPreviewArtifact(
   transaction: WorkspaceTransaction,
   input: CreatePendingPreviewArtifactInput,
 ): Promise<ArtifactRecord> {
-  const parsed = pendingPreviewArtifactSchema.parse(input);
+  const parsed = input;
   const [owner] = await transaction.db
     .select({ expiresAt: previewRuns.expiresAt })
     .from(previewRuns)
@@ -122,7 +115,7 @@ export async function finalizeArtifactUpload(
   transaction: WorkspaceTransaction,
   input: FinalizeArtifactInput,
 ): Promise<ArtifactRecord> {
-  const parsed = finalizeArtifactSchema.parse(input);
+  const parsed = input;
   if (
     parsed.workspaceId !== transaction.workspaceId ||
     parsed.storageKey !==
@@ -182,7 +175,7 @@ export async function claimDueUnfinalizedArtifacts(
   transaction: WorkspaceTransaction,
   input: ClaimDueUnfinalizedArtifactsInput,
 ): Promise<readonly ArtifactRecord[]> {
-  const parsed = claimInputSchema.parse(input);
+  const parsed = input;
   const due = await transaction.db
     .select({ id: artifacts.id })
     .from(artifacts)
@@ -221,7 +214,7 @@ export async function claimDueUnfinalizedArtifact(
   transaction: WorkspaceTransaction,
   input: ClaimDueUnfinalizedArtifactInput,
 ): Promise<ArtifactRecord> {
-  const parsed = claimOneInputSchema.parse(input);
+  const parsed = input;
   const locked = await transaction.db
     .select()
     .from(artifacts)
@@ -269,7 +262,7 @@ export async function completeArtifactRemoval(
   transaction: WorkspaceTransaction,
   input: CompleteArtifactRemovalInput,
 ): Promise<ArtifactRecord> {
-  const parsed = removalInputSchema.parse(input);
+  const parsed = input;
   const locked = await transaction.db
     .select()
     .from(artifacts)

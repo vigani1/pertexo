@@ -1,6 +1,6 @@
 import type { CoordinatedEvent } from '@pertexo/contracts';
 import type { HTTP_STATUS } from './delivery.js';
-import type { SIGNATURE_CHECKS, REPLAY_CHECKS } from './input.js';
+import type { REPLAY_CHECKS, SIGNATURE_CHECKS } from './input.js';
 
 export type WebhookDeliveryOutcome = keyof typeof HTTP_STATUS;
 
@@ -26,6 +26,7 @@ export type RejectedWebhookDelivery = Readonly<{
   bodyBytes: number;
 }>;
 
+// Projection formats timestamps and includes skip/coordination evidence.
 export type WebhookDeliveryRecord = Readonly<{
   id: string;
   receivedAt: string;

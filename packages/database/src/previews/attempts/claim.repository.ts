@@ -1,20 +1,18 @@
-import type { PreviewClaimResult } from './contract.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { previewRuns, previewAttempts } from '../../schema/runs/execution.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { previewAttempts, previewRuns } from '../../schema/runs/execution.js';
+import type { PreviewClaimResult } from './contract.js';
 
-import { appendPreviewTerminalFacts } from './facts.repository.js';
-import { TERMINAL_PREVIEW_STATUSES } from '../state.js';
+import type { PreviewDelivery } from '../contract.js';
+import { previewConsumerName } from '../delivery.js';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
 } from '../errors.js';
 import { optionsFor } from '../input.js';
-import { previewConsumerName } from '../delivery.js';
-import type { PreviewDelivery } from '../contract.js';
+import { TERMINAL_PREVIEW_STATUSES } from '../state.js';
 import {
   auditPreviewDeliveryMismatch,
   claimPreviewReceipt,
@@ -22,6 +20,7 @@ import {
   insertPreviewOutboxDelivery,
   validatePreviewDelivery,
 } from './deliveries.repository.js';
+import { appendPreviewTerminalFacts } from './facts.repository.js';
 
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import {
@@ -109,15 +108,7 @@ export async function claimPreviewDelivery(
     workspaceId: string;
   }>,
 ): Promise<PreviewClaimResult> {
-  const parsed = z
-    .object({
-      leaseDurationSeconds: z.number().int().positive().max(3_600),
-      previewAttemptId: z.uuid(),
-      previewRunId: z.uuid(),
-      workerId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
-      workspaceId: z.uuid(),
-    })
-    .parse(input);
+  const parsed = input;
   try {
     return await withTenantScopedClient(
       pool,

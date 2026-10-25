@@ -1,14 +1,13 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { workflows } from '../../schema/authoring/workflows.js';
 import {
   failureNotificationDestinations as destination,
   workflowFailureNotificationPolicies as policy,
 } from '../../schema/notifications.js';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
-import { z } from 'zod';
 
 import {
   audit,
@@ -20,10 +19,10 @@ import {
 import type {
   CommandMetadata,
   DestinationTransaction,
+  FailureNotificationDestinationRecord,
   IdempotentCommandMetadata,
 } from '../destinations/contract.js';
 import { readFailureNotificationDestination } from '../destinations/records.queries.js';
-import type { FailureNotificationDestinationRecord } from '../destinations/contract.js';
 
 type WorkflowPolicyScope = Readonly<{ workflowId: string }>;
 
@@ -41,7 +40,7 @@ export function setWorkflowFailureNotificationPolicy(
     await authorize(client, input.workspaceId, input.actorId, {
       manage: false,
     });
-    const workflowId = z.uuid().parse(input.workflowId);
+    const workflowId = input.workflowId;
     if (
       !(await authorizeWorkflowResource(
         client,
@@ -128,7 +127,7 @@ export function clearWorkflowFailureNotificationPolicy(
     await authorize(client, input.workspaceId, input.actorId, {
       manage: false,
     });
-    const workflowId = z.uuid().parse(input.workflowId);
+    const workflowId = input.workflowId;
     const db = drizzle(client);
     const existing = await db
       .select({ id: workflows.id })
@@ -198,7 +197,7 @@ export function readWorkflowFailureNotificationPolicy(
     await authorize(client, input.workspaceId, input.actorId, {
       manage: false,
     });
-    const workflowId = z.uuid().parse(input.workflowId);
+    const workflowId = input.workflowId;
     if (
       !(await authorizeWorkflowResource(
         client,

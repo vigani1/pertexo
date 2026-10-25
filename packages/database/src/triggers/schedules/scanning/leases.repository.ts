@@ -1,15 +1,14 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { triggerSchedules } from '../../../schema/triggers/schedules.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { Pool } from 'pg';
-import { z } from 'zod';
 import type { acquireDatabasePool } from '../../../platform/pool/runtime.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { triggerSchedules } from '../../../schema/triggers/schedules.js';
 
-import { retireInterruptedBatch } from '../retirement.repository.js';
 import { withPlatformTransaction } from '../../../tenant-access/transactions.js';
+import { retireInterruptedBatch } from '../retirement.repository.js';
+import type { ScanDueInput, ScheduleClaim } from './contract.js';
 import { claimSchema } from './input.js';
-import type { ScheduleClaim, ScanDueInput } from './contract.js';
 
 function throwableError(value: unknown, fallbackMessage: string): Error {
   return value instanceof Error
@@ -45,14 +44,9 @@ export async function claimDueSchedules(
   claimPool: Pool,
   input: ScanDueInput,
 ): Promise<Readonly<{ claimed: number; claims: readonly ScheduleClaim[] }>> {
-  const leaseOwner = z.string().min(1).max(128).parse(input.leaseOwner);
-  const limit = z.number().int().min(1).max(100).parse(input.limit);
-  const leaseSeconds = z
-    .number()
-    .int()
-    .min(1)
-    .max(300)
-    .parse(input.leaseSeconds);
+  const leaseOwner = input.leaseOwner;
+  const limit = input.limit;
+  const leaseSeconds = input.leaseSeconds;
   input.signal?.throwIfAborted();
   const result = await withPlatformTransaction(
     claimPool,

@@ -1,43 +1,37 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  connections,
-  connectionSecretVersions,
-  connectionEvents,
-} from '../../schema/connections.js';
-import { auditEvents } from '../../schema/foundation.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  connectionEvents,
+  connections,
+  connectionSecretVersions,
+} from '../../schema/connections.js';
+import { auditEvents } from '../../schema/foundation.js';
 
 import type { Pool } from 'pg';
-import { z } from 'zod';
-import {
-  uuidSchema,
-  providerKeySchema,
-  connectionNameSchema,
-  sealedSecretSchema,
-  connectionCommand,
-  parseRequestMetadata,
-  databaseConstraint,
-  decodeDurableConnectionReplay,
-  serializeConnectionSnapshot,
-} from '../admission.js';
-import {
-  CONNECTION_STATUS,
-  CONNECTION_AUTH_TYPE,
-  ConnectionNotFoundError,
-  ConnectionConflictError,
-} from '../contract.js';
-import { connectionFields, selectConnection } from '../records.queries.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
-import { requireConnectionManager } from '../authority.queries.js';
-import { revokeConnectionHealth } from '../health/transitions.repository.js';
 import {
   claimCommand,
   completeCommand,
   findCommandResult,
 } from '../../platform/idempotency/repository.js';
+import {
+  connectionCommand,
+  databaseConstraint,
+  decodeDurableConnectionReplay,
+  parseRequestMetadata,
+  serializeConnectionSnapshot,
+} from '../admission.js';
+import { requireConnectionManager } from '../authority.queries.js';
 import type { ConnectionDatabase } from '../contract.js';
+import {
+  CONNECTION_STATUS,
+  ConnectionConflictError,
+  ConnectionNotFoundError,
+} from '../contract.js';
+import { revokeConnectionHealth } from '../health/transitions.repository.js';
+import { connectionFields, selectConnection } from '../records.queries.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
 
 /** Owns atomic creation/idempotency, reads, and revocation transactions. */
 
@@ -74,13 +68,13 @@ async function persistCreatedConnection(
   pool: Pool,
   input: Parameters<ConnectionManagementPersistence['createConnection']>[0],
 ): ReturnType<ConnectionManagementPersistence['createConnection']> {
-  const connectionId = uuidSchema.parse(input.connectionId);
-  const secretVersionId = uuidSchema.parse(input.secretVersionId);
-  const actorId = uuidSchema.parse(input.actorId);
-  const providerKey = providerKeySchema.parse(input.providerKey);
-  const name = connectionNameSchema.parse(input.name);
-  const authType = z.enum(CONNECTION_AUTH_TYPE).parse(input.authType);
-  const sealed = sealedSecretSchema.parse(input.sealed);
+  const connectionId = input.connectionId;
+  const secretVersionId = input.secretVersionId;
+  const actorId = input.actorId;
+  const providerKey = input.providerKey;
+  const name = input.name;
+  const authType = input.authType;
+  const sealed = input.sealed;
   const metadata = parseRequestMetadata(input);
   try {
     return await withConnectionTransaction(pool, input.workspaceId, {
@@ -186,7 +180,7 @@ async function readConnectionCreateReplay(
     ConnectionManagementPersistence['findConnectionCreateReplay']
   >[0],
 ): ReturnType<ConnectionManagementPersistence['findConnectionCreateReplay']> {
-  const actorId = uuidSchema.parse(input.actorId);
+  const actorId = input.actorId;
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
     operation: async (client, workspaceId) => {
@@ -208,8 +202,8 @@ async function persistRevokedConnection(
   pool: Pool,
   input: Parameters<ConnectionManagementPersistence['revokeConnection']>[0],
 ): ReturnType<ConnectionManagementPersistence['revokeConnection']> {
-  const actorId = uuidSchema.parse(input.actorId);
-  const connectionId = uuidSchema.parse(input.connectionId);
+  const actorId = input.actorId;
+  const connectionId = input.connectionId;
   const metadata = parseRequestMetadata(input);
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId,

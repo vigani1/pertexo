@@ -73,3 +73,8 @@ export {
   buildWorkflowTestExecutable,
   type WorkflowTestCompilation,
 } from './testing/compile.js';
+
+export {
+  evaluateSuiteExpectations,
+  type SuiteOutput,
+} from './testing/evaluate-suite.js';

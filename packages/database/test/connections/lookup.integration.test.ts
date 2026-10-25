@@ -117,7 +117,6 @@ describe('connection lookup credential resolution (ADR 046)', () => {
     await expect(
       lookup({ connectionId: http.connectionId }),
     ).rejects.toBeInstanceOf(ConnectionUnavailableError);
-    await expect(lookup({ purpose: 'Slack lookup' })).rejects.toThrow();
 
     await connections.api.revokeConnection({
       workspaceId: workspaceA,

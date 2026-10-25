@@ -1,4 +1,5 @@
 import type { ScheduleOccurrenceDisposition } from './misfire.js';
+import type { ScheduleRecurrence } from './recurrence.js';
 
 /** ADR 056: a paused workflow's occurrence is recorded without a run. */
 export type RecordedScheduleOccurrence =
@@ -6,6 +7,7 @@ export type RecordedScheduleOccurrence =
 
 export type ScheduleOccurrenceOutcome = RecordedScheduleOccurrence;
 
+// Projection formats timestamps and joins run and skip evidence.
 export type ScheduleOccurrenceRecord = Readonly<{
   id: string;
   scheduledAt: string;
@@ -49,6 +51,6 @@ export interface ScheduleTriggerReads {
   ): Promise<ScheduleFireTimes>;
   previewFireTimes(
     input: Omit<TriggerRead, 'triggerId'> &
-      Readonly<{ recurrence: unknown; count: number }>,
+      Readonly<{ recurrence: ScheduleRecurrence; count: number }>,
   ): Promise<ScheduleFireTimes>;
 }

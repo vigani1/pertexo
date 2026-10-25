@@ -1,23 +1,23 @@
-import type {
-  CommandMetadata,
-  IdempotentCommandMetadata,
-  DestinationAuditTarget,
-} from './contract.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { auditEvents } from '../../schema/foundation.js';
+import type { Role } from '@pertexo/workflow-model';
 import {
   ADMINISTRATIVE_ROLES,
   WORKFLOW_EDITOR_ROLES,
 } from '@pertexo/workflow-model';
-import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
-import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
-import type { Role } from '@pertexo/workflow-model';
-import { generatePersistedId } from '../../platform/persisted-id.js';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { auditEvents } from '../../schema/foundation.js';
+import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
+import type {
+  CommandMetadata,
+  DestinationAuditTarget,
+  IdempotentCommandMetadata,
+} from './contract.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -26,7 +26,6 @@ import {
   FailureNotificationDestinationError,
   type FailureNotificationDestinationErrorCode,
 } from './errors.js';
-import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
 /*
  * Transaction, idempotency, authorization and audit steps shared by the
@@ -55,7 +54,7 @@ function commandIdentity(
     workspaceId: input.workspaceId,
     operation,
     scope,
-    idempotencyKey: z.string().min(1).max(256).parse(input.idempotencyKey),
+    idempotencyKey: input.idempotencyKey,
   };
 }
 
@@ -73,7 +72,7 @@ export async function claimNotificationCommand(
 > {
   const stored = await claimCommand(client, {
     ...commandIdentity(input, operation, scope),
-    requestHash: digestSchema.parse(input.requestHash),
+    requestHash: input.requestHash,
     resourceId,
     conflict: () =>
       destinationError(

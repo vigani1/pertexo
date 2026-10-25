@@ -1,14 +1,10 @@
+import {
+  ianaTimeZoneSchema,
+  noticeEmailModeSchema,
+  noticeScheduleSchema,
+} from '@pertexo/workflow-model';
 import { z } from 'zod';
-import { ianaTimeZoneSchema } from '@pertexo/workflow-model';
 const revision = z.number().int().nonnegative().max(2_147_483_646);
-const noticeEmailModeSchema = z.enum(['off', 'immediate', 'hourly', 'daily']);
-const noticeScheduleSchema = z
-  .object({
-    mode: noticeEmailModeSchema,
-    hour: z.number().int().min(0).max(23),
-    timeZone: ianaTimeZoneSchema,
-  })
-  .strict();
 export const noticePreferencesRequestSchema = noticeScheduleSchema
   .extend({
     mode: noticeEmailModeSchema.nullable(),
@@ -61,7 +57,7 @@ export const noticeUnsubscribeResponseSchema = z
   .object({ unsubscribed: z.literal(true) })
   .strict();
 export type NoticeEmailMode = z.output<typeof noticeEmailModeSchema>;
-export type NoticeSchedule = z.output<typeof noticeScheduleSchema>;
+export type { NoticeSchedule } from '@pertexo/workflow-model';
 export type NoticePreferencesRequest = z.output<
   typeof noticePreferencesRequestSchema
 >;

@@ -1,14 +1,18 @@
 import { z } from 'zod';
 
 import {
-  opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
+  opaqueCursor,
 } from '../../platform/http/opaque-cursor.js';
 
 const deliveryCursorPayloadSchema = opaqueCursor('webhook_deliveries', {
   triggerId: z.uuid(),
-  receivedAt: z.iso.datetime({ precision: 6 }),
+  receivedAt: z.iso
+    .datetime({ precision: 6 })
+    .refine((value) => !value.startsWith('0000-'), {
+      message: 'PostgreSQL timestamps do not support year zero',
+    }),
   id: z.uuid(),
 }).readonly();
 

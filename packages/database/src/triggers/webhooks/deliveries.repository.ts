@@ -1,44 +1,34 @@
+import type { CoordinatedEvent } from '@pertexo/contracts';
+import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import type { Pool, PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { workflowTriggers } from '../../schema/authoring/workflows.js';
+import { triggerCoordinatedEvents } from '../../schema/event-coordination/records.js';
+import { webhookTriggerDeliveries as deliveries } from '../../schema/triggers/deliveries.js';
+import { COORDINATED_EVENT_METADATA } from '../coordination/history.queries.js';
 import type {
-  WebhookDeliveryLog,
-  WebhookDeliveryEndpoint,
-  WebhookDeliveryOutcome,
-  WebhookSignatureCheck,
-  WebhookReplayCheck,
-  WebhookDeliveryPosition,
-  WebhookDeliveryPage,
-  RejectedWebhookDelivery,
   ListWebhookDeliveriesInput,
+  RejectedWebhookDelivery,
+  WebhookDeliveryEndpoint,
+  WebhookDeliveryLog,
+  WebhookDeliveryOutcome,
+  WebhookDeliveryPage,
+  WebhookDeliveryPosition,
+  WebhookReplayCheck,
+  WebhookSignatureCheck,
 } from './contract.js';
 import { HTTP_STATUS } from './delivery.js';
-import {
-  SIGNATURE_CHECKS,
-  REPLAY_CHECKS,
-  uuidSchema,
-  bodyBytesSchema,
-  pageLimitSchema,
-  positionSchema,
-  rejectedOutcomeSchema,
-} from './input.js';
-import { alias } from 'drizzle-orm/pg-core';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { webhookTriggerDeliveries as deliveries } from '../../schema/triggers/deliveries.js';
-import { triggerCoordinatedEvents } from '../../schema/event-coordination/records.js';
-import { workflowTriggers } from '../../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
-import type { CoordinatedEvent } from '@pertexo/contracts';
-import { COORDINATED_EVENT_METADATA } from '../coordination/history.queries.js';
-import { and, desc, eq, sql } from 'drizzle-orm';
-import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '../../tenant-access/transactions.js';
-import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { WebhookTriggerNotFoundError } from './errors.js';
 const DEFAULT_PAGE_LIMIT = 25;
 
@@ -81,15 +71,15 @@ export async function insertWebhookDelivery(
   await transaction.db.insert(deliveries).values({
     id: delivery.id ?? generatePersistedId(),
     workspaceId: transaction.workspaceId,
-    triggerId: uuidSchema.parse(endpoint.triggerId),
-    endpointId: uuidSchema.parse(endpoint.endpointId),
+    triggerId: endpoint.triggerId,
+    endpointId: endpoint.endpointId,
     workflowRunId: delivery.runId ?? null,
     dedupeKind: delivery.dedupeKind ?? null,
     outcome: delivery.outcome,
     httpStatus: HTTP_STATUS[delivery.outcome],
     signatureCheck: delivery.signatureCheck,
     replayCheck: delivery.replayCheck,
-    bodyBytes: bodyBytesSchema.parse(delivery.bodyBytes),
+    bodyBytes: delivery.bodyBytes,
     skipReason: delivery.outcome === 'skipped' ? 'concurrency_limit' : null,
     coordinationEventId: delivery.coordinationEventId ?? null,
   });
@@ -170,15 +160,12 @@ async function readDeliveryPage(
 export function createWebhookDeliveryLog(pool: Pool): WebhookDeliveryLog {
   return Object.freeze({
     listDeliveries: (input: ListWebhookDeliveriesInput) => {
-      const workspaceId = uuidSchema.parse(input.workspaceId);
-      const actorId = uuidSchema.parse(input.actorId);
-      const workflowId = uuidSchema.parse(input.workflowId);
-      const triggerId = uuidSchema.parse(input.triggerId);
-      const limit = pageLimitSchema.parse(input.limit ?? DEFAULT_PAGE_LIMIT);
-      const after =
-        input.after === undefined
-          ? undefined
-          : positionSchema.parse(input.after);
+      const workspaceId = input.workspaceId;
+      const actorId = input.actorId;
+      const workflowId = input.workflowId;
+      const triggerId = input.triggerId;
+      const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
+      const after = input.after;
       return withTenantScopedClient(
         pool,
         { workspaceId, actorId },
@@ -212,17 +199,15 @@ export function createWebhookDeliveryLog(pool: Pool): WebhookDeliveryLog {
       );
     },
     recordRejectedDelivery: async (input: RejectedWebhookDelivery) => {
-      const outcome = rejectedOutcomeSchema.parse(input.outcome);
+      const outcome = input.outcome;
       await withWorkspaceTransaction(
         pool,
-        uuidSchema.parse(input.endpoint.workspaceId),
+        input.endpoint.workspaceId,
         (transaction) =>
           insertWebhookDelivery(transaction, input.endpoint, {
             outcome,
-            signatureCheck: z
-              .enum(SIGNATURE_CHECKS)
-              .parse(input.signatureCheck),
-            replayCheck: z.enum(REPLAY_CHECKS).parse(input.replayCheck),
+            signatureCheck: input.signatureCheck,
+            replayCheck: input.replayCheck,
             bodyBytes: input.bodyBytes,
           }),
       );

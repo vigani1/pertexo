@@ -1,43 +1,34 @@
-import type {
-  TriggerRead,
-  ScheduleOccurrencePosition,
-  ScheduleOccurrencePage,
-  ScheduleFireTimes,
-  ScheduleTriggerReads,
-} from './contract.js';
-import {
-  parseTriggerRead,
-  uuidSchema,
-  pageLimitSchema,
-  countSchema,
-  positionSchema,
-} from './input.js';
 import { and, desc, eq, sql, type SQLWrapper } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  triggerSchedules as schedules,
-  triggerScheduleOccurrences as occurrences,
-} from '../../schema/triggers/schedules.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
   workflowTriggers as triggers,
   workflows,
 } from '../../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  triggerScheduleOccurrences as occurrences,
+  triggerSchedules as schedules,
+} from '../../schema/triggers/schedules.js';
+import type {
+  ScheduleFireTimes,
+  ScheduleOccurrencePage,
+  ScheduleOccurrencePosition,
+  ScheduleTriggerReads,
+  TriggerRead,
+} from './contract.js';
 
 import type { Pool, PoolClient } from 'pg';
 
+import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import {
   withTenantScopedClient,
   withTenantScopedReadClient,
 } from '../../tenant-access/transactions.js';
-import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
+import { ScheduleTriggerError } from './errors.js';
 import {
   parsePersistedScheduleRecurrence,
-  parseScheduleRecurrence,
   projectScheduleOccurrences,
-  type ScheduleRecurrence,
 } from './recurrence.js';
-import { ScheduleTriggerError } from './errors.js';
 
 /**
  * ADR 048: reads of what a schedule did and will do. Occurrence history is
@@ -200,25 +191,14 @@ function projectPersistedSchedule(
   });
 }
 
-function parseDraftRecurrence(value: unknown): ScheduleRecurrence {
-  try {
-    return parseScheduleRecurrence(value);
-  } catch (error: unknown) {
-    throw new ScheduleTriggerError('invalid_recurrence', { cause: error });
-  }
-}
-
 export function createScheduleTriggerReads(pool: Pool): ScheduleTriggerReads {
   return Object.freeze({
     listOccurrences: (
       input: Parameters<ScheduleTriggerReads['listOccurrences']>[0],
     ) => {
-      const read = parseTriggerRead(input);
-      const limit = pageLimitSchema.parse(input.limit ?? DEFAULT_PAGE_LIMIT);
-      const after =
-        input.after === undefined
-          ? undefined
-          : positionSchema.parse(input.after);
+      const read = input;
+      const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
+      const after = input.after;
       return withTenantScopedClient(pool, tenantScope(read), async (client) => {
         await authorizeScheduleReader(
           client,
@@ -245,8 +225,8 @@ export function createScheduleTriggerReads(pool: Pool): ScheduleTriggerReads {
     nextFireTimes: async (
       input: Parameters<ScheduleTriggerReads['nextFireTimes']>[0],
     ) => {
-      const read = parseTriggerRead(input);
-      const count = countSchema.parse(input.count);
+      const read = input;
+      const count = input.count;
       const row = await withTenantScopedReadClient(
         pool,
         tenantScope(read),
@@ -266,12 +246,12 @@ export function createScheduleTriggerReads(pool: Pool): ScheduleTriggerReads {
       input: Parameters<ScheduleTriggerReads['previewFireTimes']>[0],
     ) => {
       const scope = {
-        workspaceId: uuidSchema.parse(input.workspaceId),
-        actorId: uuidSchema.parse(input.actorId),
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
       };
-      const workflowId = uuidSchema.parse(input.workflowId);
-      const count = countSchema.parse(input.count);
-      const recurrence = parseDraftRecurrence(input.recurrence);
+      const workflowId = input.workflowId;
+      const count = input.count;
+      const recurrence = input.recurrence;
       const observedAt = await withTenantScopedReadClient(
         pool,
         scope,

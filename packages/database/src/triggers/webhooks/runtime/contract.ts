@@ -1,15 +1,14 @@
-import type { sealedSchema } from './input.js';
 import type { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 
 import type { EventCoordinationReceipt } from '@pertexo/workflow-model';
 
 import type { WebhookAuthentication } from '@pertexo/contracts';
 
+import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
 import type {
   WebhookResponseScope,
   WebhookResponseSnapshot,
 } from '../responses/contract.js';
-import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
 
 import type { z } from 'zod';
 
@@ -17,7 +16,14 @@ import type { WorkflowTriggerHealth } from '../../reconciliation/contract.js';
 
 import type { WebhookDeliveryLog } from '../contract.js';
 
-export type SealedWebhookTriggerSecret = Readonly<z.input<typeof sealedSchema>>;
+export type SealedWebhookTriggerSecret = Readonly<{
+  id: string;
+  kmsKeyReference: string;
+  encryptedDataKey: string;
+  ciphertext: string;
+  nonce: string;
+  authTag: string;
+}>;
 
 export type Command = Readonly<{
   workspaceId: string;

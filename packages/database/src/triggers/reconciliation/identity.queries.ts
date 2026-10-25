@@ -2,13 +2,12 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
-import { outboxEvents } from '../../schema/transport.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
-import { WorkflowTriggerReconciliationMismatchError } from './errors.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { outboxEvents } from '../../schema/transport.js';
 import type { WorkflowTriggerReconciliationDatabase } from './contract.js';
-import { uuidSchema, reconciliationPayloadSchema } from './input.js';
+import { WorkflowTriggerReconciliationMismatchError } from './errors.js';
+import { reconciliationPayloadSchema } from './input.js';
 
 type ReconciliationEvent = Readonly<{
   payload: z.output<typeof reconciliationPayloadSchema>;
@@ -81,9 +80,8 @@ export function assertDeliveryIdentity(
   outboxEventId: string,
 ): boolean {
   return (
-    uuidSchema.safeParse(delivery.outboxEventId).data === outboxEventId &&
-    digestSchema.safeParse(delivery.payloadChecksum).data ===
-      event.payloadChecksum
+    delivery.outboxEventId === outboxEventId &&
+    delivery.payloadChecksum === event.payloadChecksum
   );
 }
 

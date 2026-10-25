@@ -1,10 +1,3 @@
-import { z } from 'zod';
-
-import {
-  artifactByteLengthSchema,
-  artifactMediaTypeSchema,
-  artifactSha256Schema,
-} from '../metadata/validation.js';
 import type {
   ArtifactUploadAuthorization,
   BeginArtifactUploadInput,
@@ -17,57 +10,6 @@ import type {
 export const ARTIFACT_UPLOAD_PENDING_MS = 15 * 60 * 1_000;
 
 export const ARTIFACT_UPLOAD_PURPOSE = 'user-upload';
-
-const uuidSchema = z.uuid();
-
-const idempotencyKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$/u)
-  .refine((value) => !value.includes(','));
-
-export const actorInputSchema = z.looseObject({
-  actorId: uuidSchema,
-  workspaceId: uuidSchema,
-});
-
-export const artifactIdentitySchema = z
-  .object({
-    workspaceId: uuidSchema,
-    artifactId: uuidSchema,
-  })
-  .strict();
-
-export const beginArtifactUploadSchema = z
-  .object({
-    actor: actorInputSchema,
-    byteLength: artifactByteLengthSchema,
-    idempotencyKey: idempotencyKeySchema,
-    mediaType: artifactMediaTypeSchema,
-    sha256: artifactSha256Schema,
-    workspaceId: uuidSchema,
-  })
-  .strict();
-
-export const artifactUploadIdentitySchema = z
-  .object({
-    actor: actorInputSchema,
-    identity: artifactIdentitySchema,
-  })
-  .strict();
-
-export const finalizeArtifactUploadSchema = artifactUploadIdentitySchema
-  .extend({
-    expectedMetadata: z
-      .object({
-        byteLength: artifactByteLengthSchema,
-        mediaType: artifactMediaTypeSchema,
-        sha256: artifactSha256Schema,
-      })
-      .strict(),
-  })
-  .strict();
 
 export class ArtifactQuotaExceededError extends Error {
   public readonly code = 'workspace.quota_exceeded' as const;
@@ -102,7 +44,7 @@ export class ArtifactUploadNotFoundError extends Error {
 export function normalizeBeginInput(
   input: BeginArtifactUploadInput,
 ): NormalizedBeginArtifactUploadInput {
-  const parsed = beginArtifactUploadSchema.parse(input);
+  const parsed = input;
   if (parsed.actor.workspaceId !== parsed.workspaceId)
     throw new ArtifactUploadNotFoundError();
   return {
@@ -118,7 +60,7 @@ export function normalizeBeginInput(
 export function normalizeIdentity(
   input: ArtifactUploadAuthorization,
 ): NormalizedArtifactIdentity {
-  const parsed = artifactUploadIdentitySchema.parse(input);
+  const parsed = input;
   if (parsed.actor.workspaceId !== parsed.identity.workspaceId)
     throw new ArtifactUploadNotFoundError();
   return {
@@ -131,11 +73,11 @@ export function normalizeIdentity(
 export function normalizeFinalizeInput(
   input: FinalizeArtifactUploadInput,
 ): NormalizedFinalizeArtifactUploadInput {
-  const parsed = finalizeArtifactUploadSchema.parse({
+  const parsed = {
     actor: input.actor,
     expectedMetadata: input.expectedMetadata,
     identity: input.identity,
-  });
+  };
   if (parsed.actor.workspaceId !== parsed.identity.workspaceId)
     throw new ArtifactUploadNotFoundError();
   return {

@@ -1,7 +1,7 @@
-import { isIntegerInRange } from '../../platform/persisted-primitives.js';
-import { CronExpressionParser } from 'cron-parser';
 import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
+import { CronExpressionParser } from 'cron-parser';
 import { z } from 'zod';
+import type { triggerSchedules } from '../../schema/triggers/schedules.js';
 
 export const SCHEDULE_CRON_PARSER_VERSION = '5.10.0' as const;
 
@@ -32,11 +32,16 @@ export type ScheduleObservation = Readonly<{
   nextAt: Date;
 }>;
 
+interface RecurrenceAliases {
+  recurrenceKind: 'recurrence_kind';
+  cronExpression: 'cron_expression';
+  timezone: 'timezone';
+  intervalMinutes: 'interval_minutes';
+}
 export type PersistedScheduleRecurrenceRow = Readonly<{
-  recurrence_kind: 'cron' | 'interval';
-  cron_expression: string | null;
-  timezone: string | null;
-  interval_minutes: number | null;
+  [
+    Key in keyof RecurrenceAliases as RecurrenceAliases[Key]
+  ]: (typeof triggerSchedules.$inferSelect)[Key];
 }>;
 
 // Resolution examines a three-hour overlap window at minute precision. Keep a
@@ -284,7 +289,7 @@ export function resolveScheduleObservation(
   anchorAt: Date,
   observedAt: Date,
 ): ScheduleObservation {
-  const recurrence = parseScheduleRecurrence(recurrenceInput);
+  const recurrence = recurrenceInput;
   if (
     !Number.isFinite(anchorAt.getTime()) ||
     !Number.isFinite(observedAt.getTime())
@@ -330,13 +335,6 @@ export function projectScheduleOccurrences(
   observedAt: Date,
   count: number,
 ): readonly Date[] {
-  const invalidProjectionCount = !isIntegerInRange(
-    count,
-    1,
-    MAX_SCHEDULE_PROJECTION,
-  );
-  if (invalidProjectionCount)
-    throw new RangeError('Schedule projection count is out of bounds');
   const occurrences: Date[] = [];
   let cursor = observedAt;
   while (occurrences.length < count) {

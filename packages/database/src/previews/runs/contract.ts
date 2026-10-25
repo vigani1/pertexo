@@ -9,6 +9,7 @@ export type ResolvePreviewReplayInput = Readonly<{
   requestHash: string;
 }>;
 
+// Projection joins preview runs, attempts and stored acceptance receipts.
 export type PreviewReplayRecord = Readonly<{
   codeDiagnostics?: CodeDiagnostics;
   id: string;

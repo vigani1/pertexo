@@ -1,15 +1,14 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { previewAttempts } from '../../schema/runs/execution.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { previewAttempts } from '../../schema/runs/execution.js';
 
+import { isConnectionFenceCurrent } from '../../connections/runtime/dispatch.repository.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import type { PreviewAttemptLease } from '../contract.js';
 import { PreviewAttemptStateError } from '../errors.js';
 import { optionsFor } from '../input.js';
-import type { PreviewAttemptLease } from '../contract.js';
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { isConnectionFenceCurrent } from '../../connections/runtime/dispatch.repository.js';
 
 export async function markPreviewDispatched(
   pool: Pool,
@@ -29,38 +28,16 @@ export async function markPreviewDispatched(
     workerId: string;
   }>,
 ): Promise<'committed'> {
-  const scope = z
-    .object({
-      attemptFenceToken: z.number().int().nonnegative(),
-      previewAttemptId: z.uuid(),
-      previewRunId: z.uuid(),
-      connectionFence: z
-        .object({
-          connectionId: z.uuid(),
-          expectedProviderKey: z.string().regex(/^[a-z][a-z0-9._-]{0,63}$/u),
-          expectedAuthType: z.string().regex(/^[a-z][a-z0-9._-]{0,63}$/u),
-          secretVersionId: z.uuid(),
-        })
-        .strict()
-        .optional(),
-      providerDispatchBinding: z
-        .string()
-        .max(128)
-        .regex(/^[a-z][a-z0-9._-]{0,31}:sha256:[0-9a-f]{64}$/u)
-        .optional(),
-      workerId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
-      workspaceId: z.uuid(),
-    })
-    .parse({
-      ...input.lease,
-      ...(input.connectionFence === undefined
-        ? {}
-        : { connectionFence: input.connectionFence }),
-      ...(input.providerDispatchBinding === undefined
-        ? {}
-        : { providerDispatchBinding: input.providerDispatchBinding }),
-      workerId: input.workerId,
-    });
+  const scope = {
+    ...input.lease,
+    ...(input.connectionFence === undefined
+      ? {}
+      : { connectionFence: input.connectionFence }),
+    ...(input.providerDispatchBinding === undefined
+      ? {}
+      : { providerDispatchBinding: input.providerDispatchBinding }),
+    workerId: input.workerId,
+  };
   return withTenantScopedClient(
     pool,
     { workspaceId: scope.workspaceId },

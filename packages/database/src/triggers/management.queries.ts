@@ -1,9 +1,8 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflowTriggers } from '../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
+import { workflowTriggers } from '../schema/authoring/workflows.js';
 import { authorizeWorkflowResource } from '../tenant-access/resources/authority.js';
 import { lockActiveTriggerWorkflow } from './reconciliation/activation.repository.js';
 
@@ -17,10 +16,10 @@ export async function canManageWorkflowTrigger(
     workflowId?: string;
   }>,
 ): Promise<boolean> {
-  const workspaceId = z.uuid().parse(input.workspaceId);
-  const actorId = z.uuid().parse(input.actorId);
-  const triggerId = z.uuid().parse(input.triggerId);
-  const workflowId = z.uuid().optional().parse(input.workflowId);
+  const workspaceId = input.workspaceId;
+  const actorId = input.actorId;
+  const triggerId = input.triggerId;
+  const workflowId = input.workflowId;
   const trigger = await drizzle(client)
     .select({ workflowId: workflowTriggers.workflowId })
     .from(workflowTriggers)

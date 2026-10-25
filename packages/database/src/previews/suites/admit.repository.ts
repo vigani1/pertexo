@@ -1,20 +1,20 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflowTestSnapshots } from '../../schema/runs/tests.js';
-import { workflowTestSuiteCases } from '../../schema/runs/suites.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
+import { workflowTestSuiteCases } from '../../schema/runs/suites.js';
+import { workflowTestSnapshots } from '../../schema/runs/tests.js';
 import { admitTestRun } from '../workflows/admit.repository.js';
-import type { SuiteRow, SuiteCaseRow } from './contract.js';
+import type { SuiteCaseRow, SuiteRow } from './contract.js';
 export async function admitSuiteCase(
   client: PoolClient,
   suite: SuiteRow,
   entry: SuiteCaseRow,
   now: Date,
 ): Promise<void> {
-  const input = JSON.parse(entry.input) as unknown;
+  const input: unknown = JSON.parse(entry.input);
   const accepted = await admitTestRun(client, {
     workspaceId: suite.workspaceId,
     workflowId: suite.workflowId,
