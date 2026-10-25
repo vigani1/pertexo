@@ -1,3 +1,4 @@
+import { connectionCreateRequestSchema } from '@pertexo/contracts';
 import { randomUUID, createHash } from 'node:crypto';
 import { expect } from 'vitest';
 import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
@@ -121,7 +122,14 @@ export async function connection(ws: string, actor: string, name: string) {
     connectionId,
     secretVersionId: randomUUID(),
     providerKey: 'http',
-    name,
+    name: connectionCreateRequestSchema.parse({
+      providerKey: 'http',
+      name,
+      credential: {
+        type: 'http_headers',
+        headers: { authorization: 'fixture' },
+      },
+    }).name,
     authType: CONNECTION_AUTH_TYPE.httpHeaders,
     idempotencyKey: randomUUID(),
     requestHash: createHash('sha256').update(connectionId).digest('hex'),
