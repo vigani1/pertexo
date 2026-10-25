@@ -1,13 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-/** Retained printable key contract for member, profile and rename receipts. */
-export const commandKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$/u);
-
 export const commandRevisionSchema = z.number().int().positive();
 
 /** Retained flat member/profile/rename receipt encoding; nested values are unsupported. */

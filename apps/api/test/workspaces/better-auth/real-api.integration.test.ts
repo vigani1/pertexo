@@ -87,6 +87,41 @@ describe.runIf(betterAuthIntegrationEnabled)(
       return { journey, bound };
     }
 
+    it('rejects invalid member cursors at the API boundary', async () => {
+      const email = `${randomUUID()}@example.test`;
+      await signUp(email, '/login?verified=true');
+      const owner = await signIn(email);
+      const created = await send('POST', '/v1/workspaces', {
+        browser: owner,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: {
+          name: 'Cursor validation',
+          slug: `cursor-${randomUUID().slice(0, 8)}`,
+        },
+      });
+      expect(created.statusCode, created.payload).toBe(201);
+      const workspaceId = created.json<{ id: string }>().id;
+      for (const createdAt of [
+        '2026-99-99T99:99:99.000000Z',
+        '2026-02-30T12:00:00.000000Z',
+        '0000-01-01T00:00:00.000000Z',
+      ]) {
+        const after = Buffer.from(
+          JSON.stringify({
+            kind: 'workspace_members',
+            createdAt,
+            userId: randomUUID(),
+          }),
+        ).toString('base64url');
+        const reply = await send(
+          'GET',
+          `/v1/workspaces/${workspaceId}/members?after=${after}`,
+          { browser: owner },
+        );
+        expectProblem(reply, 400, 'request.invalid');
+      }
+    });
+
     it('accepts an invitation from a fresh sign-in, removes the member and lets them rejoin', async () => {
       const ownerEmail = `${randomUUID()}@example.test`;
       const recipientEmail = `${randomUUID()}@example.test`;

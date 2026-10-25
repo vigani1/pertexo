@@ -1,22 +1,19 @@
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { users } from '../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { users } from '../../schema/foundation.js';
 
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { userRecord, userSelection } from './projection.js';
-import {
-  parseIdentityUuid,
-  throwIdentityDatabaseConflict,
-} from '../support.js';
 import type {
   CreateUserInput,
   IdentityWorkspaceDatabase,
   UserRecord,
 } from '../contract.js';
+import { throwIdentityDatabaseConflict } from '../support.js';
+import { userRecord, userSelection } from './projection.js';
 
 const userIdentityFieldsSchema = z.object({
   email: z.string().trim().min(3).max(320),
@@ -35,7 +32,7 @@ async function createUser(
   pool: Pool,
   input: CreateUserInput,
 ): Promise<UserRecord> {
-  const id = parseIdentityUuid(input.id ?? generatePersistedId());
+  const id = input.id ?? generatePersistedId();
   const fields = parseUserIdentityFields(input);
   if (fields.email !== input.email) throw new Error('Invalid user email');
   try {
@@ -67,7 +64,7 @@ async function findUserById(
   const result = await drizzle(pool)
     .select(userSelection)
     .from(users)
-    .where(eq(users.id, parseIdentityUuid(userId)))
+    .where(eq(users.id, userId))
     .catch(rethrowQueryFailure);
   const row = result[0];
   return row === undefined ? null : userRecord(row);

@@ -1,20 +1,20 @@
-import { updateMembership } from './records.repository.js';
 import type { Pool } from 'pg';
 import { z } from 'zod';
+import { updateMembership } from './records.repository.js';
 
+import { canRemoveWorkspaceMember } from '@pertexo/workflow-model';
+import { commandRevisionSchema } from '../command-keys.js';
 import type {
   IdentityWorkspaceDatabase,
   RemoveWorkspaceMemberInput,
 } from '../contract.js';
 import { WorkspaceMemberRemovalCommandConflictError } from '../errors.js';
-import { commandRevisionSchema } from '../command-keys.js';
+import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,
   isActiveMemberManager,
   recordMemberCommandAudit,
 } from './commands.repository.js';
-import { revokeUserSessions } from '../users/sessions.repository.js';
-import { canRemoveWorkspaceMember } from '@pertexo/workflow-model';
 
 type RemovalStore = Pick<IdentityWorkspaceDatabase, 'removeWorkspaceMember'>;
 
@@ -41,9 +41,7 @@ export function createIdentityWorkspaceMemberRemovalStore(
 ): RemovalStore {
   return Object.freeze({
     removeWorkspaceMember: (raw: RemoveWorkspaceMemberInput) => {
-      const expectedRoleRevision = commandRevisionSchema.parse(
-        raw.expectedRoleRevision,
-      );
+      const expectedRoleRevision = raw.expectedRoleRevision;
       return executeMemberCommand(pool, {
         operation: 'workspace.member.removal',
         workspaceId: raw.workspaceId,

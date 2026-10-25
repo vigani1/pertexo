@@ -1,19 +1,18 @@
-import { sealedToken } from './input.js';
-import type { WorkspaceInvitationDeliveryStore } from './delivery/contract.js';
-import { lockDeliveryScope } from './delivery/authority.queries.js';
-import { assertInvitationDeliveryIdentity } from './delivery/identity.queries.js';
 import { and, eq, exists, inArray, isNotNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
-  workspaceInvitations as invitations,
   workspaceInvitationDeliveryAttempts as attempts,
+  workspaceInvitations as invitations,
   workspaces,
 } from '../../schema/foundation.js';
+import { lockDeliveryScope } from './delivery/authority.queries.js';
+import type { WorkspaceInvitationDeliveryStore } from './delivery/contract.js';
+import { assertInvitationDeliveryIdentity } from './delivery/identity.queries.js';
+import { sealedToken } from './input.js';
 
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import {
@@ -21,8 +20,6 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { withTenantScopedClient } from '../transactions.js';
-
-const id = z.uuid();
 
 export function createWorkspaceInvitationDeliveryStore(
   config: DatabaseConfig,
@@ -62,10 +59,10 @@ async function claimInvitationDelivery(
   pool: Pool,
   raw: Parameters<WorkspaceInvitationDeliveryStore['claim']>[0],
 ): ReturnType<WorkspaceInvitationDeliveryStore['claim']> {
-  const workspaceId = id.parse(raw.workspaceId);
-  const invitationId = id.parse(raw.invitationId);
-  const deliveryAttemptId = id.parse(raw.deliveryAttemptId);
-  const outboxEventId = id.parse(raw.outboxEventId);
+  const workspaceId = raw.workspaceId;
+  const invitationId = raw.invitationId;
+  const deliveryAttemptId = raw.deliveryAttemptId;
+  const outboxEventId = raw.outboxEventId;
   return transaction(pool, workspaceId, raw.signal, async (client) => {
     await assertInvitationDeliveryIdentity(client, {
       workspaceId,
@@ -192,10 +189,10 @@ async function markInvitationDeliveryDispatching(
   pool: Pool,
   raw: Parameters<WorkspaceInvitationDeliveryStore['markDispatching']>[0],
 ): ReturnType<WorkspaceInvitationDeliveryStore['markDispatching']> {
-  const workspaceId = id.parse(raw.workspaceId);
+  const workspaceId = raw.workspaceId;
   return transaction(pool, workspaceId, raw.signal, async (client) => {
-    const invitationId = id.parse(raw.invitationId);
-    const deliveryAttemptId = id.parse(raw.deliveryAttemptId);
+    const invitationId = raw.invitationId;
+    const deliveryAttemptId = raw.deliveryAttemptId;
     await lockDeliveryScope(
       client,
       workspaceId,
@@ -223,9 +220,9 @@ async function retryInvitationDelivery(
   pool: Pool,
   raw: Parameters<WorkspaceInvitationDeliveryStore['retry']>[0],
 ): ReturnType<WorkspaceInvitationDeliveryStore['retry']> {
-  const workspaceId = id.parse(raw.workspaceId);
-  const invitationId = id.parse(raw.invitationId);
-  const deliveryAttemptId = id.parse(raw.deliveryAttemptId);
+  const workspaceId = raw.workspaceId;
+  const invitationId = raw.invitationId;
+  const deliveryAttemptId = raw.deliveryAttemptId;
   return transaction(pool, workspaceId, raw.signal, async (client) => {
     await lockDeliveryScope(
       client,
@@ -271,10 +268,10 @@ async function completeInvitationDelivery(
   pool: Pool,
   raw: Parameters<WorkspaceInvitationDeliveryStore['complete']>[0],
 ): ReturnType<WorkspaceInvitationDeliveryStore['complete']> {
-  const workspaceId = id.parse(raw.workspaceId);
+  const workspaceId = raw.workspaceId;
   await transaction(pool, workspaceId, raw.signal, async (client) => {
-    const invitationId = id.parse(raw.invitationId);
-    const deliveryAttemptId = id.parse(raw.deliveryAttemptId);
+    const invitationId = raw.invitationId;
+    const deliveryAttemptId = raw.deliveryAttemptId;
     await lockDeliveryScope(
       client,
       workspaceId,

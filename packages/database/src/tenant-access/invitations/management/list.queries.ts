@@ -1,16 +1,14 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaceInvitations as invitations } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { workspaceInvitations as invitations } from '../../../schema/foundation.js';
 
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
-import { parseIdentityUuid } from '../../support.js';
 
 import { withTenantScopedClient } from '../../transactions.js';
 import type { InvitationStore } from './contract.js';
-import { lockAuthorizedActor, invitationSelection } from './state.queries.js';
+import { invitationSelection, lockAuthorizedActor } from './state.queries.js';
 
 export async function listWorkspaceInvitations(
   pool: Pool,
@@ -18,14 +16,9 @@ export async function listWorkspaceInvitations(
   actorIdInput: Parameters<InvitationStore['listWorkspaceInvitations']>[1],
   input: Parameters<InvitationStore['listWorkspaceInvitations']>[2] = {},
 ): ReturnType<InvitationStore['listWorkspaceInvitations']> {
-  const workspaceId = parseIdentityUuid(workspaceIdInput);
-  const actorUserId = parseIdentityUuid(actorIdInput);
-  const limit = z
-    .number()
-    .int()
-    .min(1)
-    .max(100)
-    .parse(input.limit ?? 50);
+  const workspaceId = workspaceIdInput;
+  const actorUserId = actorIdInput;
+  const limit = input.limit ?? 50;
   return withTenantScopedClient(
     pool,
     { workspaceId, actorId: actorUserId },
@@ -33,9 +26,7 @@ export async function listWorkspaceInvitations(
       await lockAuthorizedActor(client, workspaceId, actorUserId, 'share');
       await expireWorkspaceInvitations(client, { workspaceId });
       const afterId =
-        input.after === undefined
-          ? undefined
-          : parseIdentityUuid(input.after.invitationId);
+        input.after === undefined ? undefined : input.after.invitationId;
       const result = await drizzle(client)
         .select({
           ...invitationSelection,

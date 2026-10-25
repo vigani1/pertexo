@@ -1,32 +1,25 @@
+import { canonicalJson } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaceCreationIdempotencyRecords as records } from '../../schema/runs/support.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash, randomUUID } from 'node:crypto';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { workspaceCreationIdempotencyRecords as records } from '../../schema/runs/support.js';
 
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
+import { generatePersistedId } from '../../platform/persisted-id.js';
 
-import { IDEMPOTENCY_STATUS } from '../../runs/commands/acceptance/vocabulary.js';
 import {
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
 } from '../../runs/commands/acceptance/errors.js';
+import { IDEMPOTENCY_STATUS } from '../../runs/commands/acceptance/vocabulary.js';
 
-import { WORKSPACE_STATUS } from '../state.js';
 import type {
   WorkspaceCreationResult as PublicWorkspaceCreationResult,
   WorkspaceRecord,
 } from '../contract.js';
-
-const idempotencyKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$/u)
-  .refine((value) => !value.includes(','));
+import { WORKSPACE_STATUS } from '../state.js';
 
 type WorkspaceCreationResult = PublicWorkspaceCreationResult;
 
@@ -58,10 +51,8 @@ const durableWorkspaceResultSchema = z
   })
   .strict();
 
-function durableWorkspaceResult(
-  workspace: WorkspaceRecord,
-): z.output<typeof durableWorkspaceResultSchema> {
-  return durableWorkspaceResultSchema.parse({
+function durableWorkspaceResult(workspace: WorkspaceRecord) {
+  return {
     workspace: {
       ...workspace,
       deletionRequestedAt: workspace.deletionRequestedAt?.toISOString() ?? null,
@@ -70,7 +61,7 @@ function durableWorkspaceResult(
       createdAt: workspace.createdAt.toISOString(),
       updatedAt: workspace.updatedAt.toISOString(),
     },
-  });
+  };
 }
 
 function parseDurableWorkspaceResult(value: unknown): WorkspaceCreationResult {
@@ -101,7 +92,7 @@ export function commandRequestHash(value: Record<string, unknown>): string {
 }
 
 export function commandKeyHash(value: string | undefined): string {
-  return sha256(idempotencyKeySchema.parse(value ?? randomUUID()));
+  return sha256(value ?? randomUUID());
 }
 
 type CommandClaim =

@@ -1,10 +1,17 @@
-import type { z } from 'zod';
+export type SystemMailPurpose =
+  | 'workspace_notice'
+  | 'two_factor_disabled'
+  | 'recovery_code_sign_in'
+  | 'verification'
+  | 'password_reset'
+  | 'email_change_confirmation';
 
-import type { purpose, sealedPayload } from './input.js';
-
-export type SystemMailPurpose = z.infer<typeof purpose>;
-
-export type SealedSystemMailPayload = z.infer<typeof sealedPayload>;
+export type SealedSystemMailPayload = Readonly<{
+  ciphertext: string;
+  nonce: string;
+  tag: string;
+  keyVersion: string;
+}>;
 
 export interface SystemMailEnqueueStore {
   enqueue(input: SystemMailInput): Promise<void>;

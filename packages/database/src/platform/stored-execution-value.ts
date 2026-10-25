@@ -1,15 +1,14 @@
-import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
   storedExecutionJsonStringBytes as jsonStringBytes,
 } from '@pertexo/node-sdk';
+import { UUID_PATTERN, utf8ByteLength } from '@pertexo/workflow-model';
+import { types as nodeTypes } from 'node:util';
 export {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
 } from '@pertexo/node-sdk';
-import { UUID_PATTERN } from '@pertexo/workflow-model';
-import { types as nodeTypes } from 'node:util';
 
 // PostgreSQL jsonb::text is only a storage backstop, not the application byte
 // definition. Numeric exponents may expand by hundreds of bytes per member.
@@ -305,7 +304,7 @@ export function parseStoredExecutionValue(
     if (utf8ByteLength(input) > EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES)
       invalid();
     try {
-      input = JSON.parse(input) as unknown;
+      input = JSON.parse(input);
     } catch {
       invalid();
     }

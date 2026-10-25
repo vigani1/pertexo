@@ -1,5 +1,4 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { z } from 'zod';
 
 import { IdempotencyRequestConflictError } from '../runs/commands/acceptance/errors.js';
 import {
@@ -8,16 +7,11 @@ import {
   type IdentityConflictReason,
 } from './errors.js';
 
-const uuidSchema = z.uuid();
 const IDENTITY_METADATA_MAX_BYTES = 8_192;
 const IDENTITY_METADATA_MAX_DEPTH = 32;
 const IDENTITY_METADATA_MAX_MEMBERS = 1_024;
 const unsafeMetadataKey =
   /(?:password|secret|token|credential|verifier|nonce|private[_-]?key|authorization|cookie)/iu;
-
-export function parseIdentityUuid(value: string): string {
-  return uuidSchema.parse(value);
-}
 
 type JsonContainer = Record<string, unknown> | unknown[];
 
