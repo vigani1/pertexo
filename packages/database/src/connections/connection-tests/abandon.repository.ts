@@ -1,13 +1,11 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { idempotencyRecords as records } from '../../schema/runs/support.js';
 import type { Pool } from 'pg';
-import { uuidSchema, keyDigest } from '../admission.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { idempotencyRecords as records } from '../../schema/runs/support.js';
+import { keyDigest } from '../admission.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
 import { connectionTestScope } from './claim.js';
-
-import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
 import type { ConnectionTestPersistence } from './contract.js';
 
@@ -15,10 +13,10 @@ export async function abandonPersistedConnectionTest(
   pool: Pool,
   input: Parameters<ConnectionTestPersistence['abandonConnectionTest']>[0],
 ): ReturnType<ConnectionTestPersistence['abandonConnectionTest']> {
-  const actorId = uuidSchema.parse(input.actorId);
-  const connectionId = uuidSchema.parse(input.connectionId);
-  const requestHash = digestSchema.parse(input.requestHash);
-  const dispatchToken = uuidSchema.parse(input.dispatchToken);
+  const actorId = input.actorId;
+  const connectionId = input.connectionId;
+  const requestHash = input.requestHash;
+  const dispatchToken = input.dispatchToken;
   const digest = keyDigest(input.idempotencyKey);
   const scope = connectionTestScope(actorId, connectionId);
   await withConnectionTransaction(pool, input.workspaceId, {

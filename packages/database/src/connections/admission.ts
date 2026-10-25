@@ -5,71 +5,32 @@ import {
 } from './health/metadata.js';
 
 import { z } from 'zod';
-import { sha256HexSchema as digestSchema } from '../platform/persisted-primitives.js';
 
 import {
-  CONNECTION_STATUS,
   CONNECTION_AUTH_TYPE,
-  type ConnectionRecord,
-  type RequestMetadata,
-  type ConnectionTestResult,
+  CONNECTION_STATUS,
   ConnectionIdempotencyConflictError,
+  type ConnectionRecord,
+  type ConnectionTestResult,
+  type RequestMetadata,
 } from './contract.js';
 
+// Shared with tenant-access bindings until PR C removes its repeated input checks.
 export const uuidSchema = z.uuid();
 
-export const providerKeySchema = z
+const providerKeySchema = z
   .string()
   .min(1)
   .max(64)
   .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
 
-export const connectionNameSchema = z.string().trim().min(1).max(128);
-
-const idempotencyKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[\x21-\x7e]+$/u)
-  .refine((value) => !value.includes(','));
-
-export const identifierSchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u);
-
-const requestIdentifierSchema = z.string().min(1).max(128);
+const connectionNameSchema = z.string().trim().min(1).max(128);
 
 const errorCodeSchema = z
   .string()
   .min(1)
   .max(128)
   .regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
-
-export const sealedSecretSchema = z
-  .object({
-    kmsKeyReference: z.string().min(1).max(2048),
-    encryptedDataKey: z
-      .string()
-      .min(1)
-      .max(10_923)
-      .regex(/^[A-Za-z0-9_-]+$/u),
-    ciphertext: z
-      .string()
-      .min(1)
-      .max(87_382)
-      .regex(/^[A-Za-z0-9_-]+$/u),
-    nonce: z
-      .string()
-      .length(16)
-      .regex(/^[A-Za-z0-9_-]+$/u),
-    tag: z
-      .string()
-      .length(22)
-      .regex(/^[A-Za-z0-9_-]+$/u),
-  })
-  .strict();
 
 /** One connection command under its idempotency key and request digest. */
 export function connectionCommand(
@@ -82,8 +43,8 @@ export function connectionCommand(
     workspaceId,
     operation,
     scope,
-    idempotencyKey: idempotencyKeySchema.parse(input.idempotencyKey),
-    requestHash: digestSchema.parse(input.requestHash),
+    idempotencyKey: input.idempotencyKey,
+    requestHash: input.requestHash,
     conflict: () =>
       new ConnectionIdempotencyConflictError(
         'Idempotency key request mismatch',
@@ -92,15 +53,13 @@ export function connectionCommand(
 }
 
 export function keyDigest(value: string): string {
-  return createHash('sha256')
-    .update(idempotencyKeySchema.parse(value))
-    .digest('hex');
+  return createHash('sha256').update(value).digest('hex');
 }
 
 export function safeOptionalIdentifier(
   value: string | undefined,
 ): string | null {
-  return value === undefined ? null : requestIdentifierSchema.parse(value);
+  return value ?? null;
 }
 
 export function parseRequestMetadata(input: RequestMetadata): Readonly<{
@@ -157,7 +116,14 @@ const durableConnectionSnapshotSchema = z
 export function decodeDurableConnectionReplay(
   value: unknown,
 ): ConnectionRecord {
-  const parsed = durableConnectionSnapshotSchema.parse(value);
+  return hydrateConnectionSnapshot(
+    durableConnectionSnapshotSchema.parse(value),
+  );
+}
+
+function hydrateConnectionSnapshot(
+  parsed: z.output<typeof durableConnectionSnapshotSchema>,
+): ConnectionRecord {
   return Object.freeze({
     ...parsed,
     lastTestedAt:
@@ -185,7 +151,7 @@ export function serializeConnectionSnapshot(
   });
 }
 
-export const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
+const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
   z
     .object({
       ok: z.literal(true),
@@ -214,7 +180,7 @@ export function parseConnectionTestResult(
 ): ConnectionTestResult {
   const parsed = durableConnectionTestResultSchema.parse(value);
   return Object.freeze({
-    connection: decodeDurableConnectionReplay(parsed.connection),
+    connection: hydrateConnectionSnapshot(parsed.connection),
     outcome: parsed.outcome,
   });
 }

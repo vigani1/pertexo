@@ -1,41 +1,38 @@
-import type { PreviewCompletionResult } from './contract.js';
-import { and, eq, inArray, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { previewRuns, previewAttempts } from '../../schema/runs/execution.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { appendPreviewTerminalFacts } from './facts.repository.js';
-import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
+import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
 import type { Pool, PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { previewAttempts, previewRuns } from '../../schema/runs/execution.js';
+import type { PreviewCompletionResult } from './contract.js';
+import { appendPreviewTerminalFacts } from './facts.repository.js';
 
-import { z } from 'zod';
-
-import { PREVIEW_STATUS } from '../state.js';
-import type { PreviewStatus } from '../contract.js';
-import { sha256HexSchema } from '../../platform/persisted-primitives.js';
+import {
+  parseStoredExecutionValue,
+  serializeStoredExecutionValue,
+} from '../../platform/stored-execution-value.js';
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import type {
+  PreviewAttemptLease,
+  PreviewDelivery,
+  PreviewStatus,
+  PreviewTerminalOutcome,
+} from '../contract.js';
+import { previewConsumerName } from '../delivery.js';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
 } from '../errors.js';
-import { optionsFor, safeErrorCodeSchema } from '../input.js';
-import { previewConsumerName } from '../delivery.js';
-import type {
-  PreviewAttemptLease,
-  PreviewDelivery,
-  PreviewTerminalOutcome,
-} from '../contract.js';
+import { optionsFor } from '../input.js';
+import { PREVIEW_STATUS } from '../state.js';
 import {
   auditPreviewDeliveryMismatch,
   completePreviewReceipt,
   readPreviewReceipt,
   validatePreviewDelivery,
 } from './deliveries.repository.js';
-import {
-  parseStoredExecutionValue,
-  serializeStoredExecutionValue,
-} from '../../platform/stored-execution-value.js';
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
 type CanonicalCompletionOutcome =
   | Readonly<{
@@ -47,8 +44,6 @@ type CanonicalCompletionOutcome =
       errorSummary: string | null;
       status: Exclude<PreviewStatus, 'queued' | 'running' | 'succeeded'>;
     }>;
-
-const errorSummarySchema = z.string().min(1).max(2048);
 
 type PreviewCompletionScope = Readonly<{
   attemptFenceToken: number;
@@ -152,27 +147,12 @@ export async function completePreviewAttempt(
     workerId: string;
   }>,
 ): Promise<PreviewCompletionResult> {
-  const scope = z
-    .object({
-      attemptFenceToken: z.number().int().nonnegative(),
-      delivery: z.object({
-        outboxEventId: z.uuid(),
-        payloadChecksum: sha256HexSchema,
-      }),
-      previewAttemptId: z.uuid(),
-      previewRunId: z.uuid(),
-      workerId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
-      workspaceId: z.uuid(),
-    })
-    .parse({
-      ...input.lease,
-      delivery: input.delivery,
-      workerId: input.workerId,
-    });
-  const diagnostics =
-    input.codeDiagnostics === undefined
-      ? undefined
-      : codeDiagnosticsSchema.parse(input.codeDiagnostics);
+  const scope = {
+    ...input.lease,
+    delivery: input.delivery,
+    workerId: input.workerId,
+  };
+  const diagnostics = input.codeDiagnostics;
   const outcome = canonicalPreviewOutcome(input.outcome);
   try {
     return await withTenantScopedClient(
@@ -271,11 +251,8 @@ function canonicalPreviewOutcome(
         outputRef: serializeStoredExecutionValue(outcome.output),
       } as const)
     : ({
-        safeErrorCode: safeErrorCodeSchema.parse(outcome.safeErrorCode),
-        errorSummary:
-          outcome.errorSummary === undefined
-            ? null
-            : errorSummarySchema.parse(outcome.errorSummary),
+        safeErrorCode: outcome.safeErrorCode,
+        errorSummary: outcome.errorSummary ?? null,
         status: outcome.status,
       } as const);
 }

@@ -5,6 +5,8 @@ import type {
   FailureNotificationContext,
   FailureNotificationDeliveryResult,
 } from '@pertexo/workflow-model';
+import { FailureNotificationDeliveryResultSchema } from '@pertexo/workflow-model';
+import { z } from 'zod';
 
 type Delivery = Extract<
   QueueDelivery,
@@ -50,6 +52,11 @@ export function createFailureNotificationHandler(
     retryDelaySeconds: number;
   }>,
 ): FailureNotificationHandler {
+  z.object({
+    maxAttempts: z.number().int().min(1).max(10),
+    retryDelaySeconds: z.number().int().min(0).max(3600),
+    timeoutMillis: z.number().int().positive().max(3_599_000),
+  }).parse(dependencies);
   const pendingOperations = new Set<Promise<void>>();
   const trackPending = (operation: Promise<unknown>): void => {
     const observed = operation
@@ -132,7 +139,9 @@ export function createFailureNotificationHandler(
           }
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Queue cancellation can arrive while provider work awaits I/O.
           if (queueContext.signal.aborted) return;
-          result = settlement.value;
+          result = FailureNotificationDeliveryResultSchema.parse(
+            settlement.value,
+          );
         } catch {
           result = {
             kind: 'retry',

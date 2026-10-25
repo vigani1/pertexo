@@ -1,59 +1,49 @@
-import type { z } from 'zod';
+import type {
+  ConnectionAuthType,
+  ConnectionStatus,
+  ConnectionTestOutcome,
+} from '@pertexo/workflow-model';
+import type {
+  connections,
+  connectionSecretVersions,
+} from '../schema/connections.js';
 
-import type { sealedSecretSchema } from './admission.js';
-
-export const CONNECTION_STATUS = {
-  active: 'active',
-  reauthorizationRequired: 'reauthorization_required',
-  revoked: 'revoked',
-} as const;
-
-export type ConnectionStatus =
-  (typeof CONNECTION_STATUS)[keyof typeof CONNECTION_STATUS];
-
-export const CONNECTION_AUTH_TYPE = {
-  signingKey: 'hmac_key',
-  httpHeaders: 'http_headers',
-  slackBotToken: 'slack_bot_token',
-  resendApiKey: 'resend_api_key',
-} as const;
-
-export type ConnectionAuthType =
-  (typeof CONNECTION_AUTH_TYPE)[keyof typeof CONNECTION_AUTH_TYPE];
-
-export const CONNECTION_EVENT_TYPE = {
-  created: 'connection.created',
-  secretRotated: 'connection.secret_rotated',
-  testSucceeded: 'connection.test_succeeded',
-  testFailed: 'connection.test_failed',
-  reauthorizationRequired: 'connection.reauthorization_required',
-  revoked: 'connection.revoked',
-  credentialAccessed: 'connection.credential_accessed',
-} as const;
+export {
+  CONNECTION_AUTH_TYPE,
+  CONNECTION_EVENT_TYPE,
+  CONNECTION_STATUS,
+} from '@pertexo/workflow-model';
+export type {
+  ConnectionAuthType,
+  ConnectionStatus,
+  ConnectionTestOutcome,
+} from '@pertexo/workflow-model';
 
 export type SealedConnectionSecretRecord = Readonly<
-  z.output<typeof sealedSecretSchema>
+  Pick<
+    typeof connectionSecretVersions.$inferSelect,
+    'kmsKeyReference' | 'encryptedDataKey' | 'ciphertext' | 'nonce'
+  > & { tag: (typeof connectionSecretVersions.$inferSelect)['authTag'] }
 >;
 
-export type ConnectionRecord = Readonly<{
-  id: string;
-  workspaceId: string;
-  providerKey: string;
-  name: string;
-  authType: ConnectionAuthType;
-  status: ConnectionStatus;
-  currentSecretVersionId: string;
-  lastTestedAt: Date | null;
-  lastHealthyAt: Date | null;
-  lastErrorCode: string | null;
-  lastRunObservedAt?: Date | null;
-  lastHealthTransitionAt?: Date | null;
-  lastHealthTransitionSource?: 'run' | 'test' | 'rotation' | 'revoke' | null;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-  accessMode: 'workspace' | 'restricted';
-}>;
+export type ConnectionRecord = Readonly<
+  Omit<
+    typeof connections.$inferSelect,
+    | 'sharingRevision'
+    | 'healthRevision'
+    | 'lastRunObservedAt'
+    | 'lastHealthTransitionAt'
+    | 'lastHealthTransitionSource'
+  > &
+    Partial<
+      Pick<
+        typeof connections.$inferSelect,
+        | 'lastRunObservedAt'
+        | 'lastHealthTransitionAt'
+        | 'lastHealthTransitionSource'
+      >
+    >
+>;
 
 export type ListConnectionsInput = Readonly<{
   workspaceId: string;
@@ -159,15 +149,6 @@ export type AssertConnectionSecretCurrentInput = Readonly<{
   secretVersionId: string;
   signal?: AbortSignal;
 }>;
-
-export type ConnectionTestOutcome =
-  | Readonly<{ ok: true; httpStatus: number }>
-  | Readonly<{
-      ok: false;
-      httpStatus: number | null;
-      errorCode: string;
-      reauthorizationRequired: boolean;
-    }>;
 
 export type ConnectionTestResult = Readonly<{
   connection: ConnectionRecord;

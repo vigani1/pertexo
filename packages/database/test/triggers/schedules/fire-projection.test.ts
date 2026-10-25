@@ -187,20 +187,8 @@ describe('schedule fire-time projection', () => {
     ]);
   });
 
-  it('rejects unbounded counts and recurrences the scheduler would reject', () => {
+  it('rejects stored recurrences and timestamps the scheduler would reject', () => {
     const recurrence = cron('0 9 * * *', 'Europe/Paris');
-    for (const count of [0, MAX_SCHEDULE_PROJECTION + 1, 1.5, Number.NaN])
-      expect(() =>
-        projectScheduleOccurrences(recurrence, new Date(), new Date(), count),
-      ).toThrow(RangeError);
-    expect(() =>
-      projectScheduleOccurrences(
-        { kind: 'cron', expression: '0 9 * * *', timezone: 'Etc/GMT+2' },
-        new Date(),
-        new Date(),
-        1,
-      ),
-    ).toThrow(TypeError);
     expect(() =>
       projectScheduleOccurrences(
         recurrence,

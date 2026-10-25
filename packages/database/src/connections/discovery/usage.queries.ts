@@ -1,30 +1,28 @@
-import type {
-  ConnectionUsageRecord,
-  ConnectionUsageDatabase,
-} from './contract.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import {
-  connectionScope,
-  connectionScopeSql,
-} from '../../tenant-access/resources/connections/scope.js';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { connections } from '../../schema/connections.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { workflowIntegrationUsage as usage } from '../../schema/authoring/integrations.js';
 import {
   workflowVersions as version,
   workflows as workflow,
 } from '../../schema/authoring/workflows.js';
+import { connections } from '../../schema/connections.js';
+import {
+  connectionScope,
+  connectionScopeSql,
+} from '../../tenant-access/resources/connections/scope.js';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
-import { requireConnectionReader } from '../authority.queries.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
+import { requireConnectionReader } from '../authority.queries.js';
+import type {
+  ConnectionUsageDatabase,
+  ConnectionUsageRecord,
+} from './contract.js';
 
 import type { Pool } from 'pg';
-import { z } from 'zod';
 
 import { ConnectionNotFoundError } from '../contract.js';
-import { uuidSchema } from '../admission.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
 
 /** The projection index pages version identities before bounded metadata joins. */
@@ -106,18 +104,11 @@ export function createConnectionUsagePersistence(
 ): ConnectionUsageDatabase {
   return Object.freeze({
     listConnectionUsage: (input) => {
-      const actorId = uuidSchema.parse(input.actorId);
-      const connectionId = uuidSchema.parse(input.connectionId);
-      const limit = z
-        .number()
-        .int()
-        .min(1)
-        .max(100)
-        .parse(input.limit ?? 50);
+      const actorId = input.actorId;
+      const connectionId = input.connectionId;
+      const limit = input.limit ?? 50;
       const after =
-        input.after === undefined
-          ? undefined
-          : uuidSchema.parse(input.after.workflowVersionId);
+        input.after === undefined ? undefined : input.after.workflowVersionId;
       return withConnectionTransaction(pool, input.workspaceId, {
         actorId,
         operation: async (client, workspaceId) => {

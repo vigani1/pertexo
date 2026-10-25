@@ -1,9 +1,10 @@
-import { createHash } from 'node:crypto';
 import type { NodeTestRequest } from '@pertexo/contracts';
+import { createHash } from 'node:crypto';
 
 import {
   canonicalJson,
   normalizedJson,
+  utf8ByteLength,
   type JsonValue,
 } from '@pertexo/workflow-model';
 
@@ -17,7 +18,12 @@ export const PREVIEW_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 
 export const PREVIEW_EXECUTION_TIMEOUT_MS = 5 * 60 * 1_000;
 
-const executableNodeSchema = z.record(z.string(), z.json());
+const executableNodeSchema = z
+  .record(z.string(), z.json())
+  .refine(
+    (node) => utf8ByteLength(JSON.stringify(node)) <= 1_048_576,
+    'executable node must be a bounded JSON object',
+  );
 
 export function validationInputFields(
   request: NodeTestRequest,
@@ -56,5 +62,15 @@ export function previewExecutionIdentity(
 
 export function normalizedExecutableNode(value: unknown) {
   const parsed: unknown = JSON.parse(normalizedJson(value));
-  return executableNodeSchema.parse(parsed);
+  const node = executableNodeSchema.parse(parsed);
+  return {
+    ...node,
+    ...(node.connectionRefs === undefined
+      ? {}
+      : {
+          connectionRefs: z
+            .record(z.string(), z.string())
+            .parse(node.connectionRefs),
+        }),
+  };
 }

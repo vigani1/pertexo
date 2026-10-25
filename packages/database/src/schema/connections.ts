@@ -1,9 +1,4 @@
-import type {
-  ConnectionAuthType,
-  ConnectionStatus,
-  ConnectionRecord,
-} from '../connections/contract.js';
-import { users, workspaces, workspaceMemberships } from './foundation.js';
+import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
   bigint,
@@ -19,7 +14,11 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+import type {
+  ConnectionAuthType,
+  ConnectionStatus,
+} from '../connections/contract.js';
+import { users, workspaceMemberships, workspaces } from './foundation.js';
 
 import { appSchema } from './namespace.js';
 import { nodeAttempts } from './runs/execution.js';
@@ -38,7 +37,7 @@ export const connections = appSchema.table(
       .$type<ConnectionStatus>()
       .notNull(),
     accessMode: varchar('access_mode', { length: 16 })
-      .$type<ConnectionRecord['accessMode']>()
+      .$type<'workspace' | 'restricted'>()
       .notNull()
       .default('workspace'),
     sharingRevision: bigint('sharing_revision', { mode: 'number' })
@@ -67,7 +66,7 @@ export const connections = appSchema.table(
     }),
     lastHealthTransitionSource: varchar('last_health_transition_source', {
       length: 16,
-    }).$type<NonNullable<ConnectionRecord['lastHealthTransitionSource']>>(),
+    }).$type<'run' | 'test' | 'rotation' | 'revoke'>(),
     createdBy: uuid('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)

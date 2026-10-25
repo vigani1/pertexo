@@ -1,31 +1,25 @@
 import { and, eq, gt } from 'drizzle-orm';
 
-import type { z } from 'zod';
-
-import { PREVIEW_STATUS } from '../../state.js';
-import { idempotencyRecords, previewRuns } from '../../../schema.js';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
 } from '../../../platform/stored-execution-value.js';
+import { idempotencyRecords, previewRuns } from '../../../schema.js';
 import type { WorkspaceTransaction } from '../../../tenant-access/transactions.js';
+import { PREVIEW_STATUS } from '../../state.js';
 
-import type {
-  inputSourceSchema,
-  acceptPreviewRunInputSchema,
-} from './input.js';
-import { resultRefSchema } from './input.js';
-import type { AcceptedPreviewRun } from './contract.js';
 import {
-  PreviewIdempotencyConflictError,
   PreviewAcceptanceCorruptError,
+  PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
 } from '../../errors.js';
+import type { AcceptedPreviewRun, AcceptPreviewRunInput } from './contract.js';
+import { resultRefSchema } from './input.js';
 
 export async function readExistingAcceptance(
   transaction: WorkspaceTransaction,
   input: Pick<
-    z.output<typeof acceptPreviewRunInputSchema>,
+    AcceptPreviewRunInput,
     'keyHash' | 'operation' | 'requestHash' | 'scope'
   >,
 ): Promise<AcceptedPreviewRun | null> {
@@ -104,7 +98,7 @@ export async function readExistingAcceptance(
 export async function resolveInput(
   transaction: WorkspaceTransaction,
   workflowId: string,
-  input: z.output<typeof inputSourceSchema>,
+  input: AcceptPreviewRunInput['input'],
   now: Date,
 ): Promise<Readonly<{ priorPreviewRunId: string | null; stored: string }>> {
   if (input.kind === 'manual') {

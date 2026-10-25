@@ -3,16 +3,16 @@ import { createHash } from 'node:crypto';
 import { expect, it } from 'vitest';
 
 import {
-  seams,
-  ids,
   claim,
-  scannerWithClaims,
-  scanInput,
-  runId,
-  recordAdmissionTransactions,
   completion,
   eligibilityCheck,
   hourlyClaim,
+  ids,
+  recordAdmissionTransactions,
+  runId,
+  scanInput,
+  scannerWithClaims,
+  seams,
 } from './fixture.js';
 
 export function registerScheduleMisfireDisposition(): void {
@@ -138,21 +138,6 @@ export function registerScheduleMisfireDisposition(): void {
       expect(seams.acceptWorkflowRun).toHaveBeenCalledTimes(
         disposition === 'accepted' ? 1 : 0,
       );
-    },
-  );
-
-  it.each([59, 3_601, 300.5])(
-    'rejects an on-time window of %s seconds before claiming',
-    async (onTimeWindowSeconds) => {
-      const { queries, scanner } = scannerWithClaims([
-        hourlyClaim('skip', '2026-01-01T01:00:01.000Z'),
-      ]);
-
-      await expect(
-        scanner.scanDue({ ...scanInput, onTimeWindowSeconds }),
-      ).rejects.toThrow();
-      expect(queries).toEqual([]);
-      expect(seams.workspaceTransaction).not.toHaveBeenCalled();
     },
   );
 }

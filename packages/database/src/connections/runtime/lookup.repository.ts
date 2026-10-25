@@ -1,48 +1,36 @@
-import type { ConnectionLookupDatabase } from './contract.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  connectionSecretVersions,
-  connectionEvents,
-} from '../../schema/connections.js';
-import { sealedFields } from '../records.queries.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  connectionEvents,
+  connectionSecretVersions,
+} from '../../schema/connections.js';
+import { sealedFields } from '../records.queries.js';
+import type { ConnectionLookupDatabase } from './contract.js';
 
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import { parseRequestMetadata } from '../admission.js';
+import { requireConnectionUser } from '../authority.queries.js';
 import {
   CONNECTION_EVENT_TYPE,
   CONNECTION_STATUS,
   ConnectionNotFoundError,
   ConnectionUnavailableError,
 } from '../contract.js';
-import {
-  parseRequestMetadata,
-  providerKeySchema,
-  uuidSchema,
-} from '../admission.js';
 import { selectConnection } from '../records.queries.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
-import { requireConnectionUser } from '../authority.queries.js';
-
-const lookupPurposeSchema = z
-  .string()
-  .regex(/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/u)
-  .max(64);
 
 export function createConnectionLookupPersistence(
   pool: Pool,
 ): ConnectionLookupDatabase {
   return Object.freeze({
     resolveConnectionLookupSecret: async (input) => {
-      const actorId = uuidSchema.parse(input.actorId);
-      const connectionId = uuidSchema.parse(input.connectionId);
-      const expectedProviderKey = providerKeySchema.parse(
-        input.expectedProviderKey,
-      );
-      const purpose = lookupPurposeSchema.parse(input.purpose);
+      const actorId = input.actorId;
+      const connectionId = input.connectionId;
+      const expectedProviderKey = input.expectedProviderKey;
+      const purpose = input.purpose;
       const metadata = parseRequestMetadata(input);
       return withConnectionTransaction(pool, input.workspaceId, {
         actorId,

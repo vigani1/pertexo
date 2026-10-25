@@ -1,23 +1,22 @@
+import { sql } from 'drizzle-orm';
 import { readTransactionFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
-import { sql } from 'drizzle-orm';
 
 import { and, eq, gt } from 'drizzle-orm';
-import { z } from 'zod';
 
+import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
+import { previewAttempts, previewRuns } from '../../schema.js';
+import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { assertPreviewActor } from './acceptance/authority.queries.js';
 import type { PreviewRunRecord } from './acceptance/contract.js';
-import { parseStoredExecutionValue } from '../../platform/stored-execution-value.js';
-import { previewRuns, previewAttempts } from '../../schema.js';
-import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 
 export async function readPreviewRun(
   transaction: WorkspaceTransaction,
   input: Readonly<{ actorUserId: string; previewRunId: string }>,
   now: Date = new Date(),
 ): Promise<PreviewRunRecord | null> {
-  const actorUserId = z.uuid().parse(input.actorUserId);
-  const previewRunId = z.uuid().parse(input.previewRunId);
+  const actorUserId = input.actorUserId;
+  const previewRunId = input.previewRunId;
   await assertPreviewActor(transaction, actorUserId);
   const resources = await readTransactionFolderScope(transaction, {
     workspaceId: transaction.workspaceId,

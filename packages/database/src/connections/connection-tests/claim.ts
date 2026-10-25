@@ -1,12 +1,10 @@
 import { z } from 'zod';
 
-import { uuidSchema } from '../admission.js';
-
 export function connectionTestScope(
   actorId: string,
   connectionId: string,
 ): string {
-  return `${uuidSchema.parse(actorId)}:${uuidSchema.parse(connectionId)}`;
+  return `${actorId}:${connectionId}`;
 }
 
 export function connectionTestClaim(
@@ -16,14 +14,14 @@ export function connectionTestClaim(
   healthRevision?: string,
 ) {
   const base = {
-    dispatchToken: uuidSchema.parse(dispatchToken),
+    dispatchToken: dispatchToken,
   };
   if (state === 'claimed' && secretVersionId === undefined)
     return Object.freeze({ ...base, state });
   return Object.freeze({
     ...base,
     state,
-    secretVersionId: uuidSchema.parse(secretVersionId),
+    secretVersionId: secretVersionId,
     ...(healthRevision === undefined
       ? {}
       : {

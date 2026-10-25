@@ -1,19 +1,19 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-import {
-  previewRuns,
-  previewAttempts,
-} from '../../../schema/runs/execution.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { readVariableSetValues } from '../../../variables/values.queries.js';
+import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import {
+  previewAttempts,
+  previewRuns,
+} from '../../../schema/runs/execution.js';
+import { readVariableSetValues } from '../../../variables/values.queries.js';
 import { executableNodeSchema } from '../../executable-node.js';
 
+import type { PreviewAttemptLease } from '../../contract.js';
 import { PreviewAttemptStateError } from '../../errors.js';
 import { previewPairConsistent } from '../../state.js';
-import type { PreviewAttemptLease } from '../../contract.js';
 
 import { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import type { withTenantScopedClient } from '../../../tenant-access/transactions.js';
@@ -91,6 +91,7 @@ export async function loadPreviewLease(
       .number()
       .int()
       .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
       .parse(input.attemptFenceToken),
     workspaceId: input.workspaceId,
     executableNode: Object.freeze(

@@ -1,31 +1,24 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { idempotencyRecords as records } from '../../schema/runs/support.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { Pool } from 'pg';
-import {
-  uuidSchema,
-  providerKeySchema,
-  keyDigest,
-  parseConnectionTestResult,
-} from '../admission.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { idempotencyRecords as records } from '../../schema/runs/support.js';
+import { keyDigest, parseConnectionTestResult } from '../admission.js';
+import { requireConnectionUser } from '../authority.queries.js';
 import {
   CONNECTION_STATUS,
   ConnectionIdempotencyConflictError,
-  ConnectionUnavailableError,
   ConnectionTestInProgressError,
+  ConnectionUnavailableError,
 } from '../contract.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
 import { selectConnection } from '../records.queries.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
 import {
   connectionTestClaim,
   connectionTestClaimSchema,
   connectionTestScope,
 } from './claim.js';
-import { requireConnectionUser } from '../authority.queries.js';
-
-import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
 import type { ConnectionTestPersistence } from './contract.js';
 
@@ -33,14 +26,12 @@ export async function startPersistedConnectionTest(
   pool: Pool,
   input: Parameters<ConnectionTestPersistence['startConnectionTest']>[0],
 ): ReturnType<ConnectionTestPersistence['startConnectionTest']> {
-  const actorId = uuidSchema.parse(input.actorId);
-  const connectionId = uuidSchema.parse(input.connectionId);
-  const expectedProviderKey = providerKeySchema.parse(
-    input.expectedProviderKey,
-  );
-  const requestHash = digestSchema.parse(input.requestHash);
+  const actorId = input.actorId;
+  const connectionId = input.connectionId;
+  const expectedProviderKey = input.expectedProviderKey;
+  const requestHash = input.requestHash;
   const digest = keyDigest(input.idempotencyKey);
-  const dispatchToken = uuidSchema.parse(input.dispatchToken);
+  const dispatchToken = input.dispatchToken;
   const scope = connectionTestScope(actorId, connectionId);
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId,

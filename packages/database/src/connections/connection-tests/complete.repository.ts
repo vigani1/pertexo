@@ -1,15 +1,13 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { connectionEvents } from '../../schema/connections.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { idempotencyRecords as records } from '../../schema/runs/support.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { Pool } from 'pg';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { connectionEvents } from '../../schema/connections.js';
+import { idempotencyRecords as records } from '../../schema/runs/support.js';
 import {
-  uuidSchema,
   keyDigest,
   parseRequestMetadata,
-  connectionTestOutcomeSchema,
   serializeConnectionTestResult,
 } from '../admission.js';
 import {
@@ -17,29 +15,28 @@ import {
   ConnectionNotFoundError,
   ConnectionTestInProgressError,
 } from '../contract.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
 import { selectConnection } from '../records.queries.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
 import { connectionTestClaimSchema, connectionTestScope } from './claim.js';
 
 import { applyCurrentConnectionTestHealth } from '../health/transitions.repository.js';
-import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
 
-import { classifyConnectionTestCompletion } from './classify-completion.js';
+import { classifyConnectionTestCompletion } from '@pertexo/workflow-model';
 import type { ConnectionTestPersistence } from './contract.js';
 
 export async function completePersistedConnectionTest(
   pool: Pool,
   input: Parameters<ConnectionTestPersistence['completeConnectionTest']>[0],
 ): ReturnType<ConnectionTestPersistence['completeConnectionTest']> {
-  const actorId = uuidSchema.parse(input.actorId);
-  const connectionId = uuidSchema.parse(input.connectionId);
-  const requestHash = digestSchema.parse(input.requestHash);
-  const dispatchToken = uuidSchema.parse(input.dispatchToken);
-  const secretVersionId = uuidSchema.parse(input.secretVersionId);
+  const actorId = input.actorId;
+  const connectionId = input.connectionId;
+  const requestHash = input.requestHash;
+  const dispatchToken = input.dispatchToken;
+  const secretVersionId = input.secretVersionId;
   const digest = keyDigest(input.idempotencyKey);
   const scope = connectionTestScope(actorId, connectionId);
   const metadata = parseRequestMetadata(input);
-  const outcome = connectionTestOutcomeSchema.parse(input.outcome);
+  const outcome = input.outcome;
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
     operation: async (client, workspaceId) => {

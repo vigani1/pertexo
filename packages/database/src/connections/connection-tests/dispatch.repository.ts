@@ -1,38 +1,37 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool } from 'pg';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { connections } from '../../schema/connections.js';
 import { auditEvents } from '../../schema/foundation.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { idempotencyRecords as records } from '../../schema/runs/support.js';
-import type { Pool } from 'pg';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { sha256HexSchema as digestSchema } from '../../platform/persisted-primitives.js';
+import { keyDigest, parseRequestMetadata } from '../admission.js';
 import { requireConnectionUser } from '../authority.queries.js';
-import {
-  connectionTestClaim,
-  connectionTestClaimSchema,
-  connectionTestScope,
-} from './claim.js';
+import type { MarkConnectionTestDispatchedInput } from '../contract.js';
 import {
   CONNECTION_STATUS,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
 } from '../contract.js';
-import { keyDigest, parseRequestMetadata, uuidSchema } from '../admission.js';
 import { selectConnection } from '../records.queries.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
-import type { MarkConnectionTestDispatchedInput } from '../contract.js';
+import {
+  connectionTestClaim,
+  connectionTestClaimSchema,
+  connectionTestScope,
+} from './claim.js';
 
 export async function markConnectionTestDispatched(
   pool: Pool,
   input: MarkConnectionTestDispatchedInput,
 ): Promise<void> {
-  const actorId = uuidSchema.parse(input.actorId);
-  const connectionId = uuidSchema.parse(input.connectionId);
-  const secretVersionId = uuidSchema.parse(input.secretVersionId);
-  const requestHash = digestSchema.parse(input.requestHash);
-  const dispatchToken = uuidSchema.parse(input.dispatchToken);
+  const actorId = input.actorId;
+  const connectionId = input.connectionId;
+  const secretVersionId = input.secretVersionId;
+  const requestHash = input.requestHash;
+  const dispatchToken = input.dispatchToken;
   const digest = keyDigest(input.idempotencyKey);
   const scope = connectionTestScope(actorId, connectionId);
   const metadata = parseRequestMetadata(input);

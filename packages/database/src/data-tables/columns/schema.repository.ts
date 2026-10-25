@@ -1,135 +1,34 @@
-import { alias } from 'drizzle-orm/pg-core';
-import { utf8ByteLength } from '@pertexo/workflow-model';
-import type { PoolClient } from 'pg';
+import {
+  changeDataTableDefinition,
+  changeDataTableValues,
+  DataTableError,
+  dataTableValuesSchema,
+  validateDataTableValues,
+} from '@pertexo/node-sdk';
+import {
+  canonicalJson,
+  normalizedJson,
+  utf8ByteLength,
+} from '@pertexo/workflow-model';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import type { PoolClient } from 'pg';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
-  workspaceDataTables as tables,
-  workspaceDataTableRows as tableRows,
   workspaceDataTableQuotas as quotas,
+  workspaceDataTableRows as tableRows,
+  workspaceDataTables as tables,
 } from '../../schema/data-tables.js';
 import { auditEvents } from '../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import type { DataTableSchemaChange } from '@pertexo/contracts';
-import {
-  DataTableError,
-  validateDataTableValues,
-  type DataTableColumn,
-  type DataTableValues,
-} from '@pertexo/node-sdk';
-import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
-import { generatePersistedId } from '../../platform/persisted-id.js';
-import { readQuotas, requireTable } from '../definitions.queries.js';
-import { keyValue } from '../rows.repository.js';
 import type {
-  DataTablesStore,
   DataTableDefinition,
   DataTableQuotas,
+  DataTablesStore,
 } from '../contract.js';
-
-function changedDefinition(
-  table: DataTableDefinition,
-  change: DataTableSchemaChange,
-): DataTableDefinition {
-  const columns = table.columns.map((column) => ({ ...column }));
-  let keyColumn = table.keyColumn;
-  let hasRemovedColumns = table.hasRemovedColumns;
-  switch (change.operation) {
-    case 'add_column':
-      if (columns.some((column) => column.name === change.column.name))
-        throw new DataTableError(
-          'invalid_values',
-          'A column already uses that name.',
-        );
-      columns.push({
-        ...change.column,
-        id: `col_${generatePersistedId().replaceAll('-', '')}`,
-      });
-      break;
-    case 'rename_column': {
-      const column = columns.find((column) => column.id === change.columnId);
-      if (column === undefined)
-        throw new DataTableError(
-          'invalid_values',
-          'This column was removed. Refresh the table.',
-        );
-      if (
-        columns.some(
-          (other) => other.id !== column.id && other.name === change.name,
-        )
-      )
-        throw new DataTableError(
-          'invalid_values',
-          'A column already uses that name.',
-        );
-      if (keyColumn === column.name) keyColumn = change.name;
-      column.name = change.name;
-      break;
-    }
-    case 'remove_column': {
-      const index = columns.findIndex(
-        (column) => column.id === change.columnId,
-      );
-      const removed = columns[index];
-      if (removed === undefined)
-        throw new DataTableError(
-          'invalid_values',
-          'This column was removed. Refresh the table.',
-        );
-      if (columns.length === 1)
-        throw new DataTableError(
-          'invalid_values',
-          'Keep at least one column. Delete the table to remove all its data.',
-        );
-      columns.splice(index, 1);
-      if (keyColumn === removed.name) keyColumn = null;
-      hasRemovedColumns = true;
-      break;
-    }
-    case 'set_key': {
-      const column = columns.find((column) => column.id === change.columnId);
-      const invalidKeyColumn =
-        change.columnId !== null &&
-        (column === undefined ||
-          !column.required ||
-          !['text', 'number', 'date'].includes(column.type));
-      if (invalidKeyColumn)
-        throw new DataTableError(
-          'invalid_values',
-          'The unique key must be a required text, number or date column.',
-        );
-      keyColumn = column?.name ?? null;
-      break;
-    }
-  }
-  return {
-    ...table,
-    columns,
-    keyColumn,
-    hasRemovedColumns,
-    revision: table.revision + 1,
-  };
-}
-
-function changedValues(
-  oldColumns: readonly DataTableColumn[],
-  table: DataTableDefinition,
-  change: DataTableSchemaChange,
-  values: DataTableValues,
-): DataTableValues {
-  const next = Object.fromEntries(
-    table.columns.map((column) => {
-      const old = oldColumns.find((candidate) => candidate.id === column.id);
-      return [
-        column.name,
-        old === undefined && change.operation === 'add_column'
-          ? (change.defaultValue ?? null)
-          : (values[old?.name ?? column.name] ?? null),
-      ];
-    }),
-  );
-  return validateDataTableValues(table.columns, next);
-}
+import { readQuotas, requireTable } from '../definitions.queries.js';
+import { keyValue } from '../rows.repository.js';
 
 export async function editTableSchema(
   client: PoolClient,
@@ -147,7 +46,11 @@ export async function editTableSchema(
       'conflict',
       'This table changed. Refresh before editing its columns.',
     );
-  const next = changedDefinition(table, input.change);
+  const next = changeDataTableDefinition(
+    table,
+    input.change,
+    `col_${generatePersistedId().replaceAll('-', '')}`,
+  );
   if (next.columns.length > quota.columnLimit)
     throw new DataTableError(
       'quota_exceeded',
@@ -271,18 +174,17 @@ async function rewriteTableRows(
       .catch(rethrowQueryFailure);
     if (batch.length === 0) break;
     const rows = batch.map((row) => {
-      const values = changedValues(
+      const stored = dataTableValuesSchema.parse(JSON.parse(row.values));
+      const values = changeDataTableValues(
         table.columns,
         next,
         input.change,
-        JSON.parse(row.values) as DataTableValues,
+        stored,
       );
       const text = normalizedJson(values);
       bytes += utf8ByteLength(text);
       // Older rows were stored with sorted keys; only content counts.
-      const changed =
-        canonicalJson(values) !==
-        canonicalJson(JSON.parse(row.values) as DataTableValues);
+      const changed = canonicalJson(values) !== canonicalJson(stored);
       return {
         id: row.id,
         values: text,

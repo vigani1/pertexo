@@ -191,14 +191,6 @@ describe('authorized published connection usage', () => {
           after: { workflowVersionId: randomUUID() },
         }),
       ).rejects.toThrow(ConnectionNotFoundError);
-      expect(() =>
-        usage.listConnectionUsage({
-          workspaceId: workspaceA,
-          actorId: ownerA,
-          connectionId: input.connectionId,
-          limit: 101,
-        }),
-      ).toThrow();
       const client = await apiPool.connect();
       try {
         await client.query('begin');

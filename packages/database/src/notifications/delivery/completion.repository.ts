@@ -1,29 +1,22 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  failureNotificationCompletionAuditFactType,
+  failureNotificationCompletionDecision,
+} from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { runFailureNotificationIntents as intents } from '../../schema/runs/completion/notifications.js';
 import type { Pool } from 'pg';
-import { FailureNotificationDeliveryResultSchema } from '@pertexo/workflow-model';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { runFailureNotificationIntents as intents } from '../../schema/runs/completion/notifications.js';
 
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import type { FailureNotificationStore } from '../contract.js';
 import { FailureNotificationStateError } from '../errors.js';
 import {
   auditFailureNotification,
   insertFailureNotificationDeliveryOutbox,
 } from './evidence.repository.js';
-import { failureNotificationIdentitySchema } from './input-validation.js';
-import type { FailureNotificationStore } from '../contract.js';
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import {
-  parseFailureNotificationAttemptNumber,
-  parseFailureNotificationMaximumAttempts,
-  parseFailureNotificationRetryDelaySeconds,
-} from './input-validation.js';
 
 type CompletionStore = Pick<FailureNotificationStore, 'completeDelivery'>;
-type DeliveryResult = ReturnType<
-  typeof FailureNotificationDeliveryResultSchema.parse
->;
-type LockedIntent = Awaited<ReturnType<typeof lockedCompletion>>[number];
 function lockedCompletion(
   db: Pick<NodePgDatabase, 'select'>,
   input: Readonly<{ workspaceId: string; intentId: string }>,
@@ -44,70 +37,6 @@ function lockedCompletion(
     )
     .for('update');
 }
-type CompletionDecision =
-  | Readonly<{ kind: 'retry'; deliveryUnresolved: boolean }>
-  | Readonly<{
-      kind: 'terminal';
-      deliveryUnresolved: boolean;
-      status: 'delivered' | 'outcome_unknown' | 'dead_letter';
-    }>;
-type TerminalCompletionStatus = Extract<
-  CompletionDecision,
-  { readonly kind: 'terminal' }
->['status'];
-
-function terminalCompletionStatus(
-  row: LockedIntent,
-  result: DeliveryResult,
-  {
-    actuallyDispatched,
-    deliveryUnresolved,
-  }: Readonly<{ actuallyDispatched: boolean; deliveryUnresolved: boolean }>,
-): TerminalCompletionStatus {
-  if (result.kind === 'delivered') return 'delivered';
-  if (actuallyDispatched || result.kind === 'outcome_unknown')
-    return 'outcome_unknown';
-  if (row.side_effect_class === 'idempotent_with_key' && deliveryUnresolved)
-    return 'outcome_unknown';
-  return 'dead_letter';
-}
-
-function completionAuditFactType(
-  status: TerminalCompletionStatus,
-): 'delivered' | 'outcome_unknown' | 'dead_lettered' {
-  if (status === 'delivered') return 'delivered';
-  if (status === 'outcome_unknown') return 'outcome_unknown';
-  return 'dead_lettered';
-}
-
-function completionDecision(
-  row: LockedIntent,
-  result: DeliveryResult,
-  attemptNumber: number,
-  maxAttempts: number,
-): CompletionDecision {
-  const actuallyDispatched =
-    row.status === 'dispatching' && result.possiblyDispatched;
-  const deliveryUnresolved =
-    (row.possibly_dispatched ?? false) || actuallyDispatched;
-  const retryRequested =
-    result.kind === 'retry' ||
-    (row.side_effect_class !== 'unsafe' && result.kind === 'outcome_unknown');
-  const unsafeRetryIsKnownNotDispatched =
-    row.side_effect_class !== 'unsafe' ||
-    (result.kind === 'retry' && !actuallyDispatched);
-  const canRetry =
-    retryRequested &&
-    unsafeRetryIsKnownNotDispatched &&
-    attemptNumber < maxAttempts;
-  if (canRetry) return { kind: 'retry', deliveryUnresolved };
-  const status = terminalCompletionStatus(row, result, {
-    actuallyDispatched,
-    deliveryUnresolved,
-  });
-  return { kind: 'terminal', deliveryUnresolved, status };
-}
-
 export function createFailureNotificationCompletionStore(
   pool: Pool,
 ): CompletionStore {
@@ -115,20 +44,12 @@ export function createFailureNotificationCompletionStore(
     completeDelivery: async (
       raw: Parameters<FailureNotificationStore['completeDelivery']>[0],
     ) => {
-      const workspaceId = failureNotificationIdentitySchema.parse(
-        raw.workspaceId,
-      );
-      const intentId = failureNotificationIdentitySchema.parse(raw.intentId);
-      const result = FailureNotificationDeliveryResultSchema.parse(raw.result);
-      const attemptNumber = parseFailureNotificationAttemptNumber(
-        raw.attemptNumber,
-      );
-      const maxAttempts = parseFailureNotificationMaximumAttempts(
-        raw.maxAttempts,
-      );
-      const retryDelaySeconds = parseFailureNotificationRetryDelaySeconds(
-        raw.retryDelaySeconds,
-      );
+      const workspaceId = raw.workspaceId;
+      const intentId = raw.intentId;
+      const result = raw.result;
+      const attemptNumber = raw.attemptNumber;
+      const maxAttempts = raw.maxAttempts;
+      const retryDelaySeconds = raw.retryDelaySeconds;
       const safeErrorCode =
         result.kind === 'delivered' ? undefined : result.safeErrorCode;
       const providerReference =
@@ -156,7 +77,7 @@ export function createFailureNotificationCompletionStore(
             throw new FailureNotificationStateError(
               'Predispatch completion result is incompatible',
             );
-          const decision = completionDecision(
+          const decision = failureNotificationCompletionDecision(
             row,
             result,
             attemptNumber,
@@ -224,7 +145,9 @@ export function createFailureNotificationCompletionStore(
           await auditFailureNotification(client, {
             workspaceId,
             intentId,
-            factType: completionAuditFactType(decision.status),
+            factType: failureNotificationCompletionAuditFactType(
+              decision.status,
+            ),
             attemptNumber,
             ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
             possiblyDispatched: decision.deliveryUnresolved,

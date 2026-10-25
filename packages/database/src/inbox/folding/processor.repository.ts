@@ -1,20 +1,18 @@
-import type { WorkspaceInboxFoldStore } from './contract.js';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { createAttentionObserver } from '../observations/state.repository.js';
-import { z } from 'zod';
+import type { WorkspaceInboxFoldStore } from './contract.js';
 
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
-import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
+import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
-const limitSchema = z.number().int().min(1).max(1_000);
 /** ADR 055: the worker's fold command, run across workspaces. */
 export function createWorkspaceInboxFoldStore(
   config: DatabaseConfig,
@@ -42,7 +40,7 @@ export function createWorkspaceInboxFoldStore(
       await checkDatabaseReadiness(pool);
     },
     foldPending: (limit: number, signal?: AbortSignal) => {
-      const bounded = limitSchema.parse(limit);
+      const bounded = limit;
       return withPlatformTransaction(
         pool,
         async (client) => {

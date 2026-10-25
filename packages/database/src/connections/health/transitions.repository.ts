@@ -1,12 +1,13 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { connectionTestStatus } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 
-import { generatePersistedId } from '../../platform/persisted-id.js';
-import { connectionFields } from '../records.queries.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { connections, connectionEvents } from '../../schema/connections.js';
+import { generatePersistedId } from '../../platform/persisted-id.js';
+import { connectionEvents, connections } from '../../schema/connections.js';
 import type { ConnectionRecord, ConnectionTestOutcome } from '../contract.js';
+import { connectionFields } from '../records.queries.js';
 
 /** Transaction-private revision transitions; callers already own the connection lock. */
 export async function revokeConnectionHealth(
@@ -134,18 +135,4 @@ export async function applyCurrentConnectionTestHealth(
       .catch(rethrowQueryFailure);
   }
   return Object.freeze(row);
-}
-
-function connectionTestStatus(
-  current: ConnectionRecord,
-  input: Readonly<{ outcome: ConnectionTestOutcome; definitive: boolean }>,
-): ConnectionRecord['status'] {
-  const { outcome, definitive } = input;
-  if (outcome.ok) {
-    return 'active';
-  }
-  if (definitive) {
-    return 'reauthorization_required';
-  }
-  return current.status;
 }

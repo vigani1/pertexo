@@ -1,28 +1,22 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { connections } from '../../schema/connections.js';
 import { workspaces } from '../../schema/foundation.js';
 import { connectionSecrets } from './credentials.queries.js';
-import type { Pool } from 'pg';
-import { z } from 'zod';
 
-import {
-  isConnectionFenceCurrent,
-  recordCredentialAccess,
-} from './dispatch.repository.js';
-import {
-  uuidSchema,
-  providerKeySchema,
-  identifierSchema,
-  safeOptionalIdentifier,
-} from '../admission.js';
-import { ConnectionUnavailableError } from '../contract.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { safeOptionalIdentifier } from '../admission.js';
 import type {
   ConnectionDatabase,
   ResolvedConnectionSecretRecord,
 } from '../contract.js';
+import { ConnectionUnavailableError } from '../contract.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
+import {
+  isConnectionFenceCurrent,
+  recordCredentialAccess,
+} from './dispatch.repository.js';
 
 /** Owns worker credential resolution and its access audit fact. */
 
@@ -38,17 +32,10 @@ export function createConnectionResolutionPersistence(
     resolveConnectionSecret: async (
       input,
     ): Promise<ResolvedConnectionSecretRecord> => {
-      const connectionId = uuidSchema.parse(input.connectionId);
-      const expectedProviderKey = providerKeySchema.parse(
-        input.expectedProviderKey,
-      );
-      const workerId = identifierSchema.parse(input.workerId);
-      const purpose = z
-        .string()
-        .min(1)
-        .max(128)
-        .regex(/^[a-z][a-z0-9._:-]{0,127}$/u)
-        .parse(input.purpose);
+      const connectionId = input.connectionId;
+      const expectedProviderKey = input.expectedProviderKey;
+      const workerId = input.workerId;
+      const purpose = input.purpose;
       const traceId = safeOptionalIdentifier(input.traceId);
       return withConnectionTransaction(pool, input.workspaceId, {
         actorId: undefined,

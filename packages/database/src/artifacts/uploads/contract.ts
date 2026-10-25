@@ -1,61 +1,42 @@
-import type { z } from 'zod';
-
 import type { ArtifactRecord } from '../contract.js';
+import type { ArtifactMetadataIdentity } from '../metadata/contract.js';
 
 import type { DatabaseReadiness } from '../../platform/contract.js';
 
-import type {
-  actorInputSchema,
-  artifactIdentitySchema,
-  beginArtifactUploadSchema,
-  artifactUploadIdentitySchema,
-  finalizeArtifactUploadSchema,
-} from './input.js';
-
-export type ArtifactUploadActor = Readonly<z.input<typeof actorInputSchema>>;
-
-export type ArtifactUploadIdentity = z.input<typeof artifactIdentitySchema>;
-
-export type ArtifactUploadAuthorization = Readonly<
-  z.input<typeof artifactUploadIdentitySchema>
->;
-
-export type BeginArtifactUploadInput = z.input<
-  typeof beginArtifactUploadSchema
->;
-
-export type FinalizeArtifactUploadInput = z.input<
-  typeof finalizeArtifactUploadSchema
-> &
-  Readonly<{
-    /** Runs while expiry cleanup is excluded by the workspace lifecycle lock. */
-    signal?: AbortSignal;
-    verifyUpload?: () => Promise<void>;
-  }>;
-
-export type NormalizedArtifactIdentity = Readonly<{
+export type ArtifactUploadActor = Readonly<{
+  [key: string]: unknown;
   actorId: string;
+  workspaceId: string;
+}>;
+export type ArtifactUploadIdentity = Readonly<{
+  workspaceId: string;
   artifactId: string;
-  workspaceId: string;
 }>;
-
-export type NormalizedBeginArtifactUploadInput = Readonly<{
-  actorId: string;
-  byteLength: number;
-  idempotencyKey: string;
-  mediaType: string;
-  sha256: string;
-  workspaceId: string;
+export type ArtifactUploadAuthorization = Readonly<{
+  actor: ArtifactUploadActor;
+  identity: ArtifactUploadIdentity;
 }>;
-
-export type NormalizedFinalizeArtifactUploadInput = NormalizedArtifactIdentity &
+export type BeginArtifactUploadInput = ArtifactMetadataIdentity &
   Readonly<{
-    expectedMetadata: Readonly<{
-      byteLength: number;
-      mediaType: string;
-      sha256: string;
-    }>;
+    actor: ArtifactUploadActor;
+    workspaceId: string;
+    idempotencyKey: string;
   }>;
+export type FinalizeArtifactUploadInput = ArtifactUploadAuthorization &
+  Readonly<{
+    expectedMetadata: ArtifactMetadataIdentity;
+    signal?: AbortSignal;
+    /** Runs while expiry cleanup is excluded by the workspace lifecycle lock. */ verifyUpload?: () => Promise<void>;
+  }>;
+export type NormalizedArtifactIdentity = ArtifactUploadIdentity &
+  Readonly<{ actorId: string }>;
+export type NormalizedBeginArtifactUploadInput = Omit<
+  BeginArtifactUploadInput,
+  'actor'
+> &
+  Readonly<{ actorId: string }>;
+export type NormalizedFinalizeArtifactUploadInput = NormalizedArtifactIdentity &
+  Readonly<{ expectedMetadata: ArtifactMetadataIdentity }>;
 
 export type ArtifactUploadResult = Readonly<{
   artifact: ArtifactRecord;
