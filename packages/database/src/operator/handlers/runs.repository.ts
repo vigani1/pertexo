@@ -1,12 +1,11 @@
+import { resumeOutcome, cancellationOutcome } from '@pertexo/workflow-engine';
 import { and, asc, eq, exists, isNull, lte, or, sql } from 'drizzle-orm';
 import {
   nodeRuns,
   runCheckpoints,
   workflowRuns,
 } from '../../schema/runs/execution.js';
-
 import { requestWorkflowRunCancellation } from '../../runs/commands/cancel.repository.js';
-
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type { OperatorDecision } from './contract.js';
 import { withoutNulls, enqueueAdvance } from './enqueue.js';
@@ -170,24 +169,6 @@ export async function cancelRun(
   };
 }
 
-function resumeOutcome(
-  status: string,
-  input: Readonly<{ dueNodeCount: number; dueWait: boolean; dryRun: boolean }>,
-): string {
-  if (TERMINAL_RUN_STATUSES.has(status)) return 'terminal';
-  if (input.dueNodeCount === 0 && !input.dueWait) return 'not_due';
-  return input.dryRun ? 'would_resume' : 'resumed';
-}
-function cancellationOutcome(
-  run: Readonly<{ status: string; cancelRequested: boolean }> | undefined,
-  input: Readonly<{ dryRun: boolean }>,
-): string {
-  if (run === undefined) return 'not_found';
-  if (TERMINAL_RUN_STATUSES.has(run.status)) return 'terminal';
-  if (run.cancelRequested) return 'already_requested';
-  return input.dryRun ? 'would_cancel' : 'cancel_requested';
-}
-
 function nodeIsDue(workspaceId: string, runId: string) {
   return and(
     eq(nodeRuns.workspaceId, workspaceId),
@@ -208,14 +189,6 @@ function checkpointIsDue(workspaceId: string, runId: string) {
     ),
   );
 }
-
-const TERMINAL_RUN_STATUSES = new Set([
-  'succeeded',
-  'failed',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-]);
 
 /** Due nodes one resume marks; the result says when more remain. */
 const RESUME_PAGE = 100;

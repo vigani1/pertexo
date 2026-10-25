@@ -1,13 +1,8 @@
+import { redispatchOutcome } from '@pertexo/workflow-engine';
 import { and, eq, sql } from 'drizzle-orm';
 import { outboxEvents } from '../../schema/transport.js';
-
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type { OperatorDecision } from './contract.js';
-
-type OutboxState = Pick<
-  typeof outboxEvents.$inferSelect,
-  'failedAt' | 'lastErrorCode' | 'publishAttempts' | 'publishedAt'
->;
 
 /** Makes a failed outbox event available to the dispatcher again. */
 export async function redispatchFailedOutbox(
@@ -59,14 +54,4 @@ export async function redispatchFailedOutbox(
     result: { outcome, ...prior },
     auditMetadata: prior,
   };
-}
-
-function redispatchOutcome(
-  outbox: OutboxState | undefined,
-  input: Readonly<{ dryRun: boolean }>,
-): string {
-  if (outbox === undefined) return 'not_found';
-  if (outbox.publishedAt !== null) return 'already_published';
-  if (outbox.failedAt === null) return 'not_failed';
-  return input.dryRun ? 'would_redispatch' : 'redispatched';
 }

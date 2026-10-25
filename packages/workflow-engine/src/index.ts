@@ -73,3 +73,20 @@ export {
   buildWorkflowTestExecutable,
   type WorkflowTestCompilation,
 } from './testing/compile.js';
+
+export {
+  attemptReconciliationOutcome,
+  evidenceOutcome,
+  resumeOutcome,
+  cancellationOutcome,
+  triggerReconciliationOutcome,
+  runReplayOutcome,
+  redispatchOutcome,
+} from './operator/decisions.js';
+
+export {
+  errorWorkflowInput,
+  errorWorkflowFailure,
+} from './completion/error-workflow.js';
+
+export { notificationFailures } from './completion/failure-notification.js';

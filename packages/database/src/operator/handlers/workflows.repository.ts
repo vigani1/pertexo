@@ -1,3 +1,7 @@
+import {
+  triggerReconciliationOutcome,
+  runReplayOutcome,
+} from '@pertexo/workflow-engine';
 import { ordinaryRunSql } from '../../runs/data-policy.js';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import {
@@ -5,7 +9,6 @@ import {
   workflowVersions,
 } from '../../schema/authoring/workflows.js';
 import { workflowRuns } from '../../schema/runs/execution.js';
-
 import { operatorRunReplayRequests } from '../../schema/runs/operator.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type { OperatorDecision } from './contract.js';
@@ -120,29 +123,4 @@ export async function requestRunReplay(
       workflowVersionId: input.workflowVersionId,
     }),
   };
-}
-
-function triggerReconciliationOutcome(
-  workflow: Readonly<{ publishedVersionId: string | null }> | undefined,
-  publishedVersionId: string | null,
-  input: Readonly<{ dryRun: boolean }>,
-): string {
-  if (workflow === undefined) return 'not_found';
-  if (publishedVersionId === null) return 'not_published';
-  return input.dryRun ? 'would_retry' : 'retry_requested';
-}
-function runReplayOutcome(
-  source:
-    | Readonly<{
-        sourceWorkflowId: string;
-        targetWorkflowId: string | null;
-      }>
-    | undefined,
-  input: Readonly<{ dryRun: boolean }>,
-): string {
-  if (source === undefined) return 'source_not_found';
-  if (source.targetWorkflowId === null) return 'version_not_executable';
-  if (source.targetWorkflowId !== source.sourceWorkflowId)
-    return 'workflow_mismatch';
-  return input.dryRun ? 'would_request' : 'replay_requested';
 }
