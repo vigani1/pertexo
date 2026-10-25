@@ -51,12 +51,10 @@ describe('trigger states', () => {
 });
 
 describe('version changes', () => {
-  const graph = (nodes: unknown[], edges: unknown[] = []) =>
-    /* This focused graph fixture supplies the node/edge metadata read by the presenter; executable-only fields are omitted. */ ({
-      ...emptyGraph,
-      nodes,
-      edges,
-    }) as unknown as WorkflowGraphContract;
+  const graph = (
+    nodes: WorkflowGraphContract['nodes'],
+    edges: WorkflowGraphContract['edges'] = [],
+  ): WorkflowGraphContract => ({ ...emptyGraph, nodes, edges });
   const edge = (from: string, to: string) => ({
     id: `${from}-${to}`,
     source: { nodeId: from, port: 'out' },
