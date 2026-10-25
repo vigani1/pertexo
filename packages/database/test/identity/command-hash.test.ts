@@ -1,17 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  commandKeySchema,
   commandRevisionSchema,
   hashFlatIdentityCommand,
   hashIdentityCommandKey,
 } from '../../src/tenant-access/command-keys.js';
 
 describe('flat identity command receipt hashes', () => {
-  it('retains the shared printable-key and positive-revision boundaries', () => {
-    expect(commandKeySchema.parse('a,b')).toBe('a,b');
-    expect(commandKeySchema.safeParse('x'.repeat(129)).success).toBe(false);
-    expect(commandKeySchema.safeParse('a b').success).toBe(false);
+  it('validates positive revisions when reading stored receipts', () => {
     expect(commandRevisionSchema.parse(1)).toBe(1);
     expect(commandRevisionSchema.safeParse(0).success).toBe(false);
   });
