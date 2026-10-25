@@ -1,5 +1,4 @@
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import {
@@ -12,9 +11,6 @@ import type { OrganizationScope } from './commands.repository.js';
 export type OrganizationRequestScope = OrganizationScope &
   Readonly<{ signal?: AbortSignal }>;
 
-const uuid = z.uuid().overwrite((value) => value.toLowerCase());
-const scopeSchema = z.object({ workspaceId: uuid, actorId: uuid });
-
 /** Tenant transactions for organization reads and commands on a leased pool. */
 export function createOrganizationSession(
   config: DatabaseConfig,
@@ -26,7 +22,7 @@ export function createOrganizationSession(
       input: OrganizationRequestScope,
       work: (client: PoolClient, scope: OrganizationScope) => Promise<T>,
     ): Promise<T> {
-      const scope = scopeSchema.parse(input);
+      const scope = { workspaceId: input.workspaceId, actorId: input.actorId };
       const { signal } = input;
       return withTenantScopedClient(
         lease.pool,

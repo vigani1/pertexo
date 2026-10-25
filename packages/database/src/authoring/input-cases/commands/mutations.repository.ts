@@ -1,42 +1,36 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflowVersions } from '../../../schema/authoring/workflows.js';
-import {
-  workflowInputCases,
-  workflowInputCasePayloads,
-} from '../../../schema/authoring/input-cases.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { utf8ByteLength } from '@pertexo/workflow-model';
 import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
-
-import { z } from 'zod';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
-  canonicalJson,
-  workflowTestExpectationsSchema,
-} from '@pertexo/workflow-model';
+  workflowInputCasePayloads,
+  workflowInputCases,
+} from '../../../schema/authoring/input-cases.js';
+import { workflowVersions } from '../../../schema/authoring/workflows.js';
+
+import { canonicalJson } from '@pertexo/workflow-model';
 
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import type {
-  WorkflowInputCaseDatabase,
   CaseTransaction,
+  WorkflowInputCaseDatabase,
 } from '../contract.js';
 import { payload } from '../input.js';
-import { quota, lockedCase } from '../metadata.queries.js';
+import { lockedCase, quota } from '../metadata.queries.js';
 import { mutate } from './receipt.repository.js';
 
 export async function createInputCase(
   transact: CaseTransaction,
   input: Parameters<WorkflowInputCaseDatabase['createCase']>[0],
 ): ReturnType<WorkflowInputCaseDatabase['createCase']> {
-  const name = z.string().trim().min(1).max(128).parse(input.name);
-  z.uuid().parse(input.workflowVersionId);
+  const name = input.name;
+
   const json = payload(input.input);
   const expectations =
-    input.expectations === undefined
-      ? null
-      : canonicalJson(workflowTestExpectationsSchema.parse(input.expectations));
+    input.expectations === undefined ? null : canonicalJson(input.expectations);
   const caseId = generatePersistedId();
   return mutate(transact, input, {
     kind: 'create',
@@ -109,11 +103,11 @@ export async function updateInputCase(
   transact: CaseTransaction,
   input: Parameters<WorkflowInputCaseDatabase['updateCase']>[0],
 ): ReturnType<WorkflowInputCaseDatabase['updateCase']> {
-  const name = z.string().trim().min(1).max(128).parse(input.name);
+  const name = input.name;
   const json = payload(input.input);
   return mutate(transact, input, {
     kind: 'update',
-    caseId: z.uuid().parse(input.caseId),
+    caseId: input.caseId,
     intent: {
       caseId: input.caseId,
       expectedRevision: input.expectedRevision,
@@ -140,9 +134,7 @@ export async function updateInputCase(
       const expectations =
         input.expectations === undefined
           ? (previous?.expectations ?? null)
-          : canonicalJson(
-              workflowTestExpectationsSchema.parse(input.expectations),
-            );
+          : canonicalJson(input.expectations);
       const bytes =
         json.bytes + (expectations === null ? 0 : utf8ByteLength(expectations));
       await quota(client, input, bytes, { create: false });
@@ -185,7 +177,7 @@ export async function deleteInputCase(
 ): ReturnType<WorkflowInputCaseDatabase['deleteCase']> {
   return mutate(transact, input, {
     kind: 'delete',
-    caseId: z.uuid().parse(input.caseId),
+    caseId: input.caseId,
     intent: { caseId: input.caseId, expectedRevision: input.expectedRevision },
     work: async (client) => {
       const item = await lockedCase(client, input);

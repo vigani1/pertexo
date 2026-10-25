@@ -1,22 +1,21 @@
 import { and, asc, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
-  workflowTags,
-  workflowTagAssignments,
   workflowOrganizationState,
+  workflowTagAssignments,
+  workflowTags,
 } from '../../../schema/authoring/organization.js';
 import { workflows } from '../../../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 
 import { ROLES } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 
 import type { createOrganizationSession } from '../session.js';
-import type { WorkflowTagDatabase } from './contract.js';
-import { uuid } from './input.js';
-import { page, pagination, tagProjection } from './state.queries.js';
 import { ADMINISTRATORS } from './commands/receipts.js';
+import type { WorkflowTagDatabase } from './contract.js';
+import { page, pagination, tagProjection } from './state.queries.js';
 
 export async function listTags(
   session: ReturnType<typeof createOrganizationSession>,
@@ -49,7 +48,7 @@ export async function listTagAssignments(
   input: Parameters<WorkflowTagDatabase['listTagAssignments']>[0],
 ): ReturnType<WorkflowTagDatabase['listTagAssignments']> {
   const { limit, after } = page(input),
-    tagId = uuid.parse(input.tagId);
+    tagId = input.tagId;
   return session.transact(input, async (client, scope) => {
     await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
       actorId: scope.actorId,

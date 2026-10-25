@@ -21,7 +21,7 @@ export function registerListsMetadataGetsDetachedCanonical(): void {
     const scope = await fixture();
     const command = {
       ...scope,
-      name: '  Synthetic input  ',
+      name: 'Synthetic input',
       input: { b: 2, a: 1 },
       idempotencyKey: randomUUID(),
     };

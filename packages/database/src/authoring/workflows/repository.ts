@@ -1,54 +1,51 @@
-import { WorkflowDefinitionPlacementError } from './errors.js';
-import type { FolderScope } from '../../tenant-access/resources/contract.js';
+import { ROLES } from '@pertexo/workflow-model';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import { createWorkflowTestSuiteStore } from '../../previews/suites/repository.js';
+import { createWorkflowTestStore } from '../../previews/workflows/repository.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
-import { ROLES } from '@pertexo/workflow-model';
 import { createWorkflowCollaborationStore } from '../collaboration/repository.js';
 import { createWorkflowPromotionStore } from '../promotion/repository.js';
 import { createPublicationReviewStore } from '../reviews/repository.js';
-import { createWorkflowTestSuiteStore } from '../../previews/suites/repository.js';
-import { createWorkflowTestStore } from '../../previews/workflows/repository.js';
-import { createWorkflowStepSampleStore } from '../step-samples/repository.js';
 import { createWorkflowErrorStore } from '../settings/error-workflow.repository.js';
-import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import { createWorkflowStepSampleStore } from '../step-samples/repository.js';
+import { WorkflowDefinitionPlacementError } from './errors.js';
 
-import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
 import {
   workflowDefinitionPlacementIssues,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
+import type { Pool, PoolClient } from 'pg';
 
+import { rolesForCapability } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '../../config.js';
-import { WorkflowNotFoundError } from './errors.js';
-import { authoringCatalogs } from './catalogs.js';
-import { createWorkflowPublisher } from '../publication/publisher.repository.js';
-import { createWorkflowAuthoringReadStore } from './reads.queries.js';
-import { lockWorkflowAuthoringAuthority } from './authority.js';
-import { createWorkflowAuthoringDraftStore } from './commands/drafts.repository.js';
-import { createWorkflowVersionRestoreStore } from './commands/version-restore.repository.js';
-import { createWorkflowDuplicationStore } from './commands/duplication.repository.js';
-import { createWorkflowPortabilityStore } from '../portability/repository.js';
-import type { WorkflowAuthoringWriteContext } from './context.js';
-import { createWorkflowAuthoringLifecycleStore } from './commands/lifecycle.repository.js';
-import { createWorkflowAuthoringRenameStore } from './commands/rename.repository.js';
-import { createWorkflowAutoPauseStore } from '../settings/auto-pause/repository.js';
-import { createWorkflowConcurrencyStore } from '../settings/concurrency.repository.js';
 import { acceptPreviewRun } from '../../previews/runs/acceptance.repository.js';
 import { readPreviewRun } from '../../previews/runs/records.queries.js';
 import { resolvePreviewReplay } from '../../previews/runs/replay.repository.js';
 import {
-  withTenantScopedClient,
   withMultiWorkspaceTransaction,
-  type WorkspaceScopeRunner,
+  withTenantScopedClient,
   withWorkspaceTransaction,
+  type WorkspaceScopeRunner,
 } from '../../tenant-access/transactions.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import { createWorkflowPortabilityStore } from '../portability/repository.js';
+import { createWorkflowPublisher } from '../publication/publisher.repository.js';
+import { createWorkflowAutoPauseStore } from '../settings/auto-pause/repository.js';
+import { createWorkflowConcurrencyStore } from '../settings/concurrency.repository.js';
+import { lockWorkflowAuthoringAuthority } from './authority.js';
+import { authoringCatalogs } from './catalogs.js';
+import { createWorkflowAuthoringDraftStore } from './commands/drafts.repository.js';
+import { createWorkflowDuplicationStore } from './commands/duplication.repository.js';
+import { createWorkflowAuthoringLifecycleStore } from './commands/lifecycle.repository.js';
+import { createWorkflowAuthoringRenameStore } from './commands/rename.repository.js';
+import { createWorkflowVersionRestoreStore } from './commands/version-restore.repository.js';
+import type { WorkflowAuthoringWriteContext } from './context.js';
+import { WorkflowNotFoundError } from './errors.js';
+import { createWorkflowAuthoringReadStore } from './reads.queries.js';
 import type { WorkflowAuthoringDatabaseOptions } from './types.js';
-
-const uuidSchema = z.uuid();
 
 import type { WorkflowAuthoringDatabase } from './contract.js';
 
@@ -83,8 +80,8 @@ async function withAuthorTransaction<T>(
   return withTenantScopedClient(
     pool,
     {
-      workspaceId: uuidSchema.parse(workspaceIdInput),
-      actorId: uuidSchema.parse(actorIdInput),
+      workspaceId: workspaceIdInput,
+      actorId: actorIdInput,
     },
     operation,
     signal === undefined ? {} : { signal },

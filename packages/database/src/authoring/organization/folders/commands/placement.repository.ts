@@ -9,7 +9,7 @@ import {
 } from '../../placement.repository.js';
 import type { createOrganizationSession } from '../../session.js';
 import type { WorkflowFolderDatabase } from '../contract.js';
-import { uuid, revision, placementResult } from '../input.js';
+import { placementResult } from '../input.js';
 
 import { EDITORS } from './receipt.js';
 
@@ -30,17 +30,15 @@ export async function placeWorkflow(
   session: ReturnType<typeof createOrganizationSession>,
   input: Parameters<WorkflowFolderDatabase['placeWorkflow']>[0],
 ): ReturnType<WorkflowFolderDatabase['placeWorkflow']> {
-  const workflowId = uuid.parse(input.workflowId);
+  const workflowId = input.workflowId;
   const request = {
-    folderId: uuid.nullable().parse(input.folderId),
+    folderId: input.folderId,
     ...(input.audienceReview === undefined
       ? {}
       : {
           audienceReview: input.audienceReview,
         }),
-    expectedOrganizationRevision: revision.parse(
-      input.expectedOrganizationRevision,
-    ),
+    expectedOrganizationRevision: input.expectedOrganizationRevision,
   };
   return session.transact(input, async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {

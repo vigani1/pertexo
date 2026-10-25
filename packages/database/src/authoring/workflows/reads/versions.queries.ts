@@ -1,11 +1,10 @@
+import { and, desc, eq, lt } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { and, eq, desc, lt } from 'drizzle-orm';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
   workflows,
   workflowVersions,
 } from '../../../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { z } from 'zod';
 import { WorkflowNotFoundError } from '../errors.js';
 
 import {
@@ -13,8 +12,8 @@ import {
   versionProjection,
 } from '../representation/records.queries.js';
 
+import { canReadWorkflow } from './authority.js';
 import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';
-import { uuidSchema, canReadWorkflow } from './authority.js';
 
 export function readAuthoringVersion(
   context: WorkflowAuthoringReadContext,
@@ -44,8 +43,8 @@ export function readAuthoringVersion(
       .where(
         and(
           eq(workflowVersions.workspaceId, workspaceId),
-          eq(workflowVersions.workflowId, uuidSchema.parse(workflowId)),
-          eq(workflowVersions.id, uuidSchema.parse(versionId)),
+          eq(workflowVersions.workflowId, workflowId),
+          eq(workflowVersions.id, versionId),
         ),
       )
       .catch(rethrowQueryFailure);
@@ -66,7 +65,7 @@ export function listAuthoringVersions(
       }))
     )
       throw new WorkflowNotFoundError('Workflow is not visible');
-    const workflowId = uuidSchema.parse(input.workflowId);
+    const workflowId = input.workflowId;
     const visible = await drizzle(client)
       .select({ id: workflows.id })
       .from(workflows)
@@ -79,16 +78,8 @@ export function listAuthoringVersions(
       .catch(rethrowQueryFailure);
     if (visible.length !== 1)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    const limit = z
-      .number()
-      .int()
-      .positive()
-      .max(100)
-      .parse(input.limit ?? 50);
-    const beforeVersionNumber =
-      input.beforeVersionNumber === undefined
-        ? null
-        : z.number().int().positive().parse(input.beforeVersionNumber);
+    const limit = input.limit ?? 50;
+    const beforeVersionNumber = input.beforeVersionNumber ?? null;
     const result = await drizzle(client)
       .select(versionProjection)
       .from(workflowVersions)

@@ -1,5 +1,4 @@
-import { utf8ByteLength } from '@pertexo/workflow-model';
-import { workflowActions } from '../../tenant-access/resources/workflows.queries.js';
+import { ROLES } from '@pertexo/workflow-model';
 import {
   and,
   asc,
@@ -13,17 +12,6 @@ import {
 } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
-import {
-  workflowOrganizationState,
-  workflowFavorites,
-  workflowTags,
-  workflowTagAssignments,
-} from '../../schema/authoring/organization.js';
-import { workflows } from '../../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import type { FolderScope } from '../../tenant-access/resources/contract.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
-import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import type { DatabaseConfig } from '../../config.js';
@@ -31,12 +19,23 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  workflowFavorites,
+  workflowOrganizationState,
+  workflowTagAssignments,
+  workflowTags,
+} from '../../schema/authoring/organization.js';
+import { workflows } from '../../schema/authoring/workflows.js';
+import type { FolderScope } from '../../tenant-access/resources/contract.js';
+import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
+import { workflowActions } from '../../tenant-access/resources/workflows.queries.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { ROLES } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import { workflowProjection } from '../workflows/representation/records.queries.js';
 import type { WorkflowRecord } from '../workflows/representation/contract.js';
+import { workflowProjection } from '../workflows/representation/records.queries.js';
 
 type Scope = Readonly<{
   workspaceId: string;
@@ -81,24 +80,6 @@ export interface WorkflowOrganizationReadDatabase {
   >;
   close(): Promise<void>;
 }
-const uuid = z.uuid().overwrite((value) => value.toLowerCase());
-const scopeSchema = z.object({
-  workspaceId: uuid,
-  actorId: uuid,
-  signal: z.instanceof(AbortSignal).optional(),
-});
-const filterSchema = z.object({
-  query: z
-    .string()
-    .overwrite((value) => value.replace(/^ +| +$(?![\s\S])/gu, ''))
-    .refine((value) => utf8ByteLength(value) <= 128)
-    .optional(),
-  view: z.enum(['active', 'archived', 'all']).default('all'),
-  tagId: uuid.optional(),
-  folderId: z.union([uuid, z.literal('root')]).optional(),
-  favoritesOnly: z.boolean().default(false),
-});
-
 /** Applies resource and organization filters before one bounded keyset page. */
 export function createWorkflowOrganizationReadDatabase(
   config: DatabaseConfig,
@@ -119,7 +100,7 @@ async function transact<T>(
   input: Scope,
   operation: (client: PoolClient, scope: Scope) => Promise<T>,
 ): Promise<T> {
-  const { signal, ...base } = scopeSchema.parse(input);
+  const { signal, ...base } = input;
   const scope: Scope = signal === undefined ? base : { ...base, signal };
   try {
     return await withTenantScopedClient(
@@ -151,13 +132,11 @@ async function select(
     roles: ROLES,
   });
   const access = await readFolderScope(client, scope);
-  const filters = filterSchema.parse({
-    query: input.query,
-    view: input.view,
-    tagId: input.tagId,
-    folderId: input.folderId,
-    favoritesOnly: input.favoritesOnly,
-  });
+  const filters = {
+    ...input,
+    view: input.view ?? 'all',
+    favoritesOnly: input.favoritesOnly ?? false,
+  };
   const projections = await organizedRows(client, {
     scope,
     input,
@@ -200,7 +179,10 @@ function organizedRows(
     scope: Scope;
     input: Parameters<typeof select>[2];
     access: FolderScope;
-    filters: z.infer<typeof filterSchema>;
+    filters: Required<
+      Pick<WorkflowOrganizationFilters, 'view' | 'favoritesOnly'>
+    > &
+      WorkflowOrganizationFilters;
   }>,
 ) {
   const db = drizzle(client);
@@ -275,7 +257,10 @@ function organizedPredicates({
   scope: Scope;
   input: Parameters<typeof select>[2];
   access: FolderScope;
-  filters: z.infer<typeof filterSchema>;
+  filters: Required<
+    Pick<WorkflowOrganizationFilters, 'view' | 'favoritesOnly'>
+  > &
+    WorkflowOrganizationFilters;
   position: typeof workflows.createdAt | typeof workflows.updatedAt;
 }>): SQL[] {
   const predicates = [
@@ -283,7 +268,7 @@ function organizedPredicates({
     workflowScopeSql(access, sql`${workflows.id}`),
   ];
   if (input.workflowId !== undefined)
-    predicates.push(eq(workflows.id, uuid.parse(input.workflowId)));
+    predicates.push(eq(workflows.id, input.workflowId));
   // PostgreSQL cannot store NUL, so a literal query containing it never matches.
   if (filters.query?.includes('\0') ?? false) predicates.push(sql`false`);
   else if (filters.query !== undefined && filters.query !== '') {
@@ -314,10 +299,7 @@ function organizedPredicates({
   else if (filters.folderId !== undefined)
     predicates.push(eq(workflowOrganizationState.folderId, filters.folderId));
   if (input.after !== undefined) {
-    const after = z
-      .object({ positionAt: z.iso.datetime({ offset: true }), id: uuid })
-      .strict()
-      .parse(input.after);
+    const after = input.after;
     predicates.push(
       input.order === 'created_asc'
         ? sql`(${position},${workflows.id})>(${after.positionAt}::timestamptz,${after.id}::uuid)`
@@ -337,7 +319,7 @@ function readOrganizedWorkflow(
     async (client, scope) =>
       (
         await select(client, scope, {
-          workflowId: uuid.parse(input.workflowId),
+          workflowId: input.workflowId,
           limit: 1,
           order: 'created_asc',
         })
@@ -349,15 +331,8 @@ function listOrganizedWorkflows(
   pool: Pool,
   input: Parameters<WorkflowOrganizationReadDatabase['listWorkflows']>[0],
 ): ReturnType<WorkflowOrganizationReadDatabase['listWorkflows']> {
-  const limit = z
-    .number()
-    .int()
-    .min(1)
-    .max(100)
-    .parse(input.limit ?? 50);
-  const order = z
-    .enum(['created_asc', 'updated_desc'])
-    .parse(input.order ?? 'created_asc');
+  const limit = input.limit ?? 50;
+  const order = input.order ?? 'created_asc';
   return transact(pool, input, (client, scope) =>
     select(client, scope, { ...input, limit, order }),
   );

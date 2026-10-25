@@ -12,17 +12,16 @@ import {
   type OrganizationRequestScope,
 } from '../session.js';
 import type { WorkflowFolderDatabase } from './contract.js';
-import { uuid } from './input.js';
 
 import {
   createFolder,
-  renameFolder,
-  moveFolder,
   deleteFolder,
+  moveFolder,
+  renameFolder,
 } from './commands/mutations.repository.js';
 import {
-  reviewFolderMove,
   placeWorkflow,
+  reviewFolderMove,
 } from './commands/placement.repository.js';
 import { listFolders } from './list.queries.js';
 
@@ -40,14 +39,14 @@ export function createWorkflowFolderDatabase(
     },
     readSharing: (input) => {
       return session.transact(input, (client, scope) =>
-        readFolderSharing(client, scope, uuid.parse(input.folderId)),
+        readFolderSharing(client, scope, input.folderId),
       );
     },
     replaceSharing: (input) => {
       return session.transact(input, (client, scope) =>
         replaceFolderSharing(client, scope, {
           ...input,
-          folderId: uuid.parse(input.folderId),
+          folderId: input.folderId,
         }),
       );
     },

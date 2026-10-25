@@ -81,8 +81,10 @@ export async function mutateStepSample(
         .catch(rethrowQueryFailure);
       if ((current?.id ?? null) !== input.expectedSampleId)
         throw new WorkflowStepSampleError('changed');
+      let receiptSampleId = sampleId;
       if (source === 'remove') {
         if (current === undefined) throw new WorkflowStepSampleError('changed');
+        receiptSampleId = current.id;
         await db
           .delete(workflowStepSamples)
           .where(
@@ -101,7 +103,7 @@ export async function mutateStepSample(
         });
       }
       const receipt = {
-        sampleId: source === 'remove' ? input.expectedSampleId : sampleId,
+        sampleId: receiptSampleId,
         removed: source === 'remove',
       };
       await db
@@ -126,7 +128,7 @@ export async function mutateStepSample(
         })
         .catch(rethrowQueryFailure);
       await completeCommand(client, command, receipt);
-      return { ...resultSchema.parse(receipt), replayed: false };
+      return { ...receipt, replayed: false };
     },
   });
 }

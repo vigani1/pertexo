@@ -1,8 +1,8 @@
+import type { AudienceReview } from '@pertexo/contracts';
 import {
   ADMINISTRATIVE_ROLES,
   WORKFLOW_EDITOR_ROLES,
 } from '@pertexo/workflow-model';
-import type { AudienceReview } from '@pertexo/contracts';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
@@ -64,36 +64,6 @@ const EDITORS = WORKFLOW_EDITOR_ROLES;
 
 const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
-const item = z
-  .object({
-    workflowId: uuid,
-    expectedOrganizationRevision: revision,
-  })
-  .strict();
-const items = z
-  .array(item)
-  .min(1)
-  .max(50)
-  .refine(
-    (value) =>
-      new Set(value.map((entry) => entry.workflowId)).size === value.length,
-  );
-const tags = z
-  .array(uuid)
-  .max(16)
-  .refine((value) => new Set(value).size === value.length)
-  .overwrite((value) => [...value].sort());
-const request = z.discriminatedUnion('operation', [
-  z
-    .object({ operation: z.literal('move'), folderId: uuid.nullable(), items })
-    .strict(),
-  z
-    .object({ operation: z.literal('replace_tags'), tagIds: tags, items })
-    .strict(),
-  z
-    .object({ operation: z.literal('tag_cleanup'), tagId: uuid, items })
-    .strict(),
-]);
 const itemResult = z
   .object({
     workflowId: uuid,
@@ -102,7 +72,7 @@ const itemResult = z
   })
   .strict();
 
-type BatchRequest = z.output<typeof request>;
+type BatchRequest = WorkflowOrganizationBatchRequest;
 
 const rolesFor = (body: BatchRequest) =>
   body.operation === 'tag_cleanup' ? ADMINISTRATORS : EDITORS;
@@ -127,7 +97,7 @@ export function createWorkflowOrganizationBatchDatabase(
   const session = createOrganizationSession(config, options.runtime);
   return Object.freeze({
     admitBatch: async (input: WorkflowOrganizationBatchInput) => {
-      const body = parseRequest(input.request);
+      const body = input.request;
       return session.transact(input, async (client, scope) => {
         await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
           actorId: scope.actorId,
@@ -153,8 +123,8 @@ export function createWorkflowOrganizationBatchDatabase(
     executeBatchItem: async (
       input: WorkflowOrganizationBatchInput & Readonly<{ workflowId: string }>,
     ) => {
-      const body = parseRequest(input.request);
-      const workflowId = uuid.parse(input.workflowId);
+      const body = input.request;
+      const workflowId = input.workflowId;
       const selected = body.items.find(
         (entry) => entry.workflowId === workflowId,
       );
@@ -225,20 +195,4 @@ export function createWorkflowOrganizationBatchDatabase(
 
     close: session.close,
   });
-}
-
-function parseRequest(input: WorkflowOrganizationBatchRequest) {
-  const body = request.parse({
-    ...input,
-    items: input.items.map(({ audienceReview: _review, ...item }) => item),
-  });
-  return {
-    ...body,
-    items: body.items.map((item, index) => ({
-      ...item,
-      ...(input.items[index]?.audienceReview === undefined
-        ? {}
-        : { audienceReview: input.items[index].audienceReview }),
-    })),
-  };
 }

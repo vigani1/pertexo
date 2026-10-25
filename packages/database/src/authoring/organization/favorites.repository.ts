@@ -1,13 +1,12 @@
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflows } from '../../schema/authoring/workflows.js';
-import { workflowFavorites } from '../../schema/authoring/organization.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { z } from 'zod';
+import { workflowFavorites } from '../../schema/authoring/organization.js';
+import { workflows } from '../../schema/authoring/workflows.js';
 
+import { ROLES } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '../../config.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
-import { ROLES } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import {
@@ -26,8 +25,6 @@ export interface WorkflowFavoriteDatabase {
   close(): Promise<void>;
 }
 
-const uuid = z.uuid().overwrite((value) => value.toLowerCase());
-
 /** Favorites are private to each member and go when the member leaves. */
 export function createWorkflowFavoriteDatabase(
   config: DatabaseConfig,
@@ -36,7 +33,7 @@ export function createWorkflowFavoriteDatabase(
   const session = createOrganizationSession(config, options.runtime);
   return Object.freeze({
     setFavorite: async (input: WorkflowFavoriteCommand) => {
-      const workflowId = uuid.parse(input.workflowId);
+      const workflowId = input.workflowId;
       return session.transact(input, async (client, scope) => {
         await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
           actorId: scope.actorId,

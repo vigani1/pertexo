@@ -1,39 +1,29 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { workflows } from '../../../schema/authoring/workflows.js';
 import { auditEvents } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
 
-import {
-  claimWorkflowCommand,
-  completeWorkflowCommand,
-  type WorkflowCommand,
-} from '../receipts.repository.js';
-import {
-  WorkflowNameRevisionConflictError,
-  WorkflowNotFoundError,
-} from '../errors.js';
+import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   RenameWorkflowInput,
   RenameWorkflowResult,
   WorkflowAuthoringDatabase,
 } from '../contract.js';
-import type { WorkflowAuthoringWriteContext } from '../context.js';
+import {
+  WorkflowNameRevisionConflictError,
+  WorkflowNotFoundError,
+} from '../errors.js';
+import {
+  claimWorkflowCommand,
+  completeWorkflowCommand,
+  type WorkflowCommand,
+} from '../receipts.repository.js';
 import type { WorkflowRecord } from '../representation/contract.js';
 import { workflowProjection } from '../representation/records.queries.js';
-
-const uuidSchema = z.uuid();
-const nameSchema = z.string().trim().min(1).max(128);
-const nameRevisionSchema = z
-  .number()
-  .int()
-  .positive()
-  .max(Number.MAX_SAFE_INTEGER);
-const requestIdSchema = z.string().max(128);
 
 type WorkflowRenameStore = Pick<WorkflowAuthoringDatabase, 'renameWorkflow'>;
 type WorkflowRenameContext = Pick<
@@ -53,17 +43,13 @@ type RenameCommand = Readonly<{
 
 function parseRenameCommand(input: RenameWorkflowInput): RenameCommand {
   return Object.freeze({
-    workspaceId: uuidSchema.parse(input.workspaceId),
-    workflowId: uuidSchema.parse(input.workflowId),
-    actorId: uuidSchema.parse(input.actorId),
-    name: nameSchema.parse(input.name),
-    expectedNameRevision: nameRevisionSchema.parse(input.expectedNameRevision),
-    requestId:
-      input.requestId === undefined
-        ? null
-        : requestIdSchema.parse(input.requestId),
-    traceId:
-      input.traceId === undefined ? null : requestIdSchema.parse(input.traceId),
+    workspaceId: input.workspaceId,
+    workflowId: input.workflowId,
+    actorId: input.actorId,
+    name: input.name,
+    expectedNameRevision: input.expectedNameRevision,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
   });
 }
 

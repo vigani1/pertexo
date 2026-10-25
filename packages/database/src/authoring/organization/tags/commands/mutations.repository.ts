@@ -1,13 +1,13 @@
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import {
-  workflowTags,
-  workflowTagAssignments,
   workflowOrganizationState,
+  workflowTagAssignments,
+  workflowTags,
 } from '../../../../schema/authoring/organization.js';
 import { workflows } from '../../../../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
-import type { PoolClient } from 'pg';
 
 import {
   runOrganizationCommand,
@@ -15,25 +15,17 @@ import {
 } from '../../commands.repository.js';
 import { WorkflowTagConflictError } from '../../errors.js';
 
+import { TAG_DELETE_WORKFLOW_LIMIT, TAG_LIMIT } from '../../limits.js';
 import type { createOrganizationSession } from '../../session.js';
 import type { WorkflowTagDatabase } from '../contract.js';
-import { TAG_LIMIT, TAG_DELETE_WORKFLOW_LIMIT } from '../../limits.js';
+import { assignment, deleteResult, replaceResult } from '../input.js';
 import {
-  uuid,
-  revision,
-  key,
-  assignment,
-  deleteResult,
-  tagIds,
-  replaceResult,
-} from '../input.js';
-import {
-  tagProjection,
   readTag,
   requireFreeKey,
   requireRevision,
+  tagProjection,
 } from '../state.queries.js';
-import { ADMINISTRATORS, tagCommand, assignmentCommand } from './receipts.js';
+import { ADMINISTRATORS, assignmentCommand, tagCommand } from './receipts.js';
 
 /** Detaches a tag from at most 50 workflows, advancing each one's revision. */
 async function deleteTag(
@@ -112,7 +104,7 @@ export async function createTag(
   session: ReturnType<typeof createOrganizationSession>,
   input: Parameters<WorkflowTagDatabase['createTag']>[0],
 ): ReturnType<WorkflowTagDatabase['createTag']> {
-  const request = { key: key.parse(input.key) };
+  const request = { key: input.key };
   return tagCommand(session, input, {
     operation: 'tag.create',
     target: null,
@@ -142,10 +134,10 @@ export async function renameTag(
   session: ReturnType<typeof createOrganizationSession>,
   input: Parameters<WorkflowTagDatabase['renameTag']>[0],
 ): ReturnType<WorkflowTagDatabase['renameTag']> {
-  const tagId = uuid.parse(input.tagId);
+  const tagId = input.tagId;
   const request = {
-    key: key.parse(input.key),
-    expectedTagRevision: revision.parse(input.expectedTagRevision),
+    key: input.key,
+    expectedTagRevision: input.expectedTagRevision,
   };
   return tagCommand(session, input, {
     operation: 'tag.rename',
@@ -175,9 +167,9 @@ export async function deleteTagCommand(
   session: ReturnType<typeof createOrganizationSession>,
   input: Parameters<WorkflowTagDatabase['deleteTag']>[0],
 ): ReturnType<WorkflowTagDatabase['deleteTag']> {
-  const tagId = uuid.parse(input.tagId);
+  const tagId = input.tagId;
   const request = {
-    expectedTagRevision: revision.parse(input.expectedTagRevision),
+    expectedTagRevision: input.expectedTagRevision,
   };
   return session.transact(input, async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {
@@ -210,7 +202,7 @@ export async function replaceWorkflowTags(
 ): ReturnType<WorkflowTagDatabase['replaceTags']> {
   return assignmentCommand(session, input, {
     operation: 'tags.replace',
-    change: { kind: 'replace_tags', tagIds: tagIds.parse(input.tagIds) },
+    change: { kind: 'replace_tags', tagIds: input.tagIds },
     schema: replaceResult,
   });
 }
@@ -221,7 +213,7 @@ export async function detachTag(
 ): ReturnType<WorkflowTagDatabase['detachTag']> {
   return assignmentCommand(session, input, {
     operation: 'tag.detach',
-    change: { kind: 'detach_tag', tagId: uuid.parse(input.tagId) },
+    change: { kind: 'detach_tag', tagId: input.tagId },
     schema: assignment,
   });
 }

@@ -2,20 +2,18 @@ import { and, asc, desc, eq, exists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
-import { workflows } from '../../../schema/authoring/workflows.js';
-import { workflowOrganizationState } from '../../../schema/authoring/organization.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { workflowVersionDependencies } from '../../../schema/authoring/dependencies.js';
-import {
-  workflowActions,
-  workflowAccessible,
-} from '../../../tenant-access/resources/workflows.queries.js';
+import { workflowOrganizationState } from '../../../schema/authoring/organization.js';
+import { workflows } from '../../../schema/authoring/workflows.js';
 import type { FolderScope } from '../../../tenant-access/resources/contract.js';
 import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import {
+  workflowAccessible,
+  workflowActions,
+} from '../../../tenant-access/resources/workflows.queries.js';
 import { workflowProjection } from '../representation/records.queries.js';
 import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';
-import { uuidSchema } from './authority.js';
 
 const folder = new QueryBuilder()
   .select({ id: workflowOrganizationState.folderId })
@@ -48,7 +46,7 @@ export function readAuthoringWorkflow(
       .where(
         and(
           eq(workflows.workspaceId, workspaceId),
-          eq(workflows.id, uuidSchema.parse(workflowId)),
+          eq(workflows.id, workflowId),
         ),
       )
       .catch(rethrowQueryFailure);
@@ -96,23 +94,11 @@ export function listAuthoringWorkflows(
 function listInput(input: Parameters<ReadStore['listWorkflows']>[0]) {
   return {
     workspaceId: input.workspaceId,
-    limit: z
-      .number()
-      .int()
-      .positive()
-      .max(100)
-      .parse(input.limit ?? 50),
+    limit: input.limit ?? 50,
     order: input.order ?? 'created_asc',
-    afterPositionAt:
-      input.after === undefined
-        ? null
-        : z.iso.datetime({ offset: true }).parse(input.after.positionAt),
-    afterId:
-      input.after === undefined ? null : uuidSchema.parse(input.after.id),
-    pinsWorkflowId:
-      input.pinsWorkflowId === undefined
-        ? null
-        : uuidSchema.parse(input.pinsWorkflowId),
+    afterPositionAt: input.after?.positionAt ?? null,
+    afterId: input.after?.id ?? null,
+    pinsWorkflowId: input.pinsWorkflowId ?? null,
   };
 }
 function listRows(

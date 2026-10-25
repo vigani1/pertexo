@@ -1,13 +1,13 @@
 import { z } from 'zod';
 
-export const revision = z.number().int().positive().max(2_147_483_647);
+const revision = z.number().int().positive().max(2_147_483_647);
 
-export const pauseRevision = z
+const pauseRevision = z
   .string()
   .regex(/^[1-9][0-9]{0,18}$/u)
   .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n);
 
-export const threshold = z.number().int().min(3).max(100);
+const threshold = z.number().int().min(3).max(100);
 
 export const workflowSettings = z
   .object({

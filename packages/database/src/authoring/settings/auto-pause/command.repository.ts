@@ -1,19 +1,19 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { auditEvents } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import type { PoolClient } from 'pg';
-import { z } from 'zod';
 import type { Role } from '@pertexo/workflow-model';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import type { z } from 'zod';
 import {
   claimCommand,
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { auditEvents } from '../../../schema/foundation.js';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import type {
   AutoPauseCommandResult,
-  Transact,
   CommandInput,
+  Transact,
 } from './contract.js';
 import { lockWorkspace, type WorkspaceRow } from './state.queries.js';
 /**
@@ -43,8 +43,8 @@ export function command<T>(
     >;
   }>,
 ): Promise<AutoPauseCommandResult<T>> {
-  const workspaceId = z.uuid().parse(input.workspaceId);
-  const actorId = z.uuid().parse(input.actorId);
+  const workspaceId = input.workspaceId;
+  const actorId = input.actorId;
   return transact(workspaceId, actorId, async (client) => {
     const workspace = await lockWorkspace(client, workspaceId, {
       exclusive: options.exclusive,

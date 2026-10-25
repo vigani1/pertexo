@@ -1,19 +1,18 @@
+import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflows } from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { workflowOrganizationState } from '../../schema/authoring/organization.js';
 import { workflowTemplateOrigins } from '../../schema/authoring/template-origin.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { workflows } from '../../schema/authoring/workflows.js';
 import {
-  workflowActions,
   workflowAccessible,
+  workflowActions,
 } from '../../tenant-access/resources/workflows.queries.js';
 import type { WorkflowAuthoringDatabase } from '../workflows/contract.js';
-import type { WorkflowAuthoringReadContext } from '../workflows/reads/contract.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/errors.js';
-import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
+import type { WorkflowAuthoringReadContext } from '../workflows/reads/contract.js';
 import { workflowProjection } from '../workflows/representation/records.queries.js';
-import { z } from 'zod';
 
 /** One scoped statement keeps summary and immutable origin in the same snapshot. */
 export function createWorkflowTemplateOriginReader(
@@ -29,7 +28,7 @@ export function createWorkflowTemplateOriginReader(
         }))
       )
         return null;
-      const id = z.uuid().parse(workflowId);
+      const id = workflowId;
       let result;
       try {
         result = await drizzle(client)

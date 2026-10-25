@@ -1,42 +1,32 @@
-import type { PoolClient } from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { workflows } from '../../../schema/authoring/workflows.js';
 import { auditEvents } from '../../../schema/foundation.js';
 import { outboxEvents } from '../../../schema/transport.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { generatePersistedId } from '../../../platform/persisted-id.js';
 
-import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
-import { z } from 'zod';
 import { planWorkflowLifecycleCommand } from '@pertexo/workflow-model';
+import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
 
-import {
-  claimWorkflowCommand,
-  completeWorkflowCommand,
-  type WorkflowCommand,
-} from '../receipts.repository.js';
-import {
-  WorkflowLifecycleRevisionConflictError,
-  WorkflowNotFoundError,
-} from '../errors.js';
+import { reconcileWorkflowTriggersPayload } from '../../publication/trigger-reconciliation.repository.js';
+import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   TransitionWorkflowLifecycleInput,
   TransitionWorkflowLifecycleResult,
   WorkflowAuthoringDatabase,
 } from '../contract.js';
-import type { WorkflowAuthoringWriteContext } from '../context.js';
+import {
+  WorkflowLifecycleRevisionConflictError,
+  WorkflowNotFoundError,
+} from '../errors.js';
+import {
+  claimWorkflowCommand,
+  completeWorkflowCommand,
+  type WorkflowCommand,
+} from '../receipts.repository.js';
 import { workflowProjection } from '../representation/records.queries.js';
-import { reconcileWorkflowTriggersPayload } from '../../publication/trigger-reconciliation.repository.js';
-
-const uuidSchema = z.uuid();
-const commandSchema = z.enum(['archive', 'restore']);
-const lifecycleRevisionSchema = z
-  .number()
-  .int()
-  .positive()
-  .max(Number.MAX_SAFE_INTEGER);
-const requestIdSchema = z.string().max(128);
 
 type WorkflowLifecycleStore = Pick<
   WorkflowAuthoringDatabase,
@@ -52,21 +42,13 @@ async function transitionWorkflowLifecycle(
   context: WorkflowLifecycleContext,
   input: TransitionWorkflowLifecycleInput,
 ): Promise<TransitionWorkflowLifecycleResult> {
-  const command = commandSchema.parse(input.command);
-  const workspaceId = uuidSchema.parse(input.workspaceId);
-  const workflowId = uuidSchema.parse(input.workflowId);
-  const actorId = uuidSchema.parse(input.actorId);
-  const expectedLifecycleRevision = lifecycleRevisionSchema.parse(
-    input.expectedLifecycleRevision,
-  );
-  const requestId =
-    input.requestId === undefined
-      ? undefined
-      : requestIdSchema.parse(input.requestId);
-  const traceId =
-    input.traceId === undefined
-      ? undefined
-      : requestIdSchema.parse(input.traceId);
+  const command = input.command;
+  const workspaceId = input.workspaceId;
+  const workflowId = input.workflowId;
+  const actorId = input.actorId;
+  const expectedLifecycleRevision = input.expectedLifecycleRevision;
+  const requestId = input.requestId;
+  const traceId = input.traceId;
 
   return context.transact(workspaceId, actorId, async (client) => {
     await context.requireAuthor(client, workspaceId, {

@@ -1,10 +1,14 @@
-import type { WorkflowCollaborationStore } from '../collaboration/contract.js';
-import type { WorkflowPromotionStore } from '../promotion/contract.js';
-import type { PublicationReviewStore } from '../reviews/contract.js';
-import type { WorkflowTestSuiteStore } from '../../previews/suites/contract.js';
-import type { WorkflowTestStore } from '../../previews/workflows/contract.js';
-import type { WorkflowStepSampleStore } from '../step-samples/contract.js';
-import type { WorkflowErrorDatabase } from '../settings/error-workflow.repository.js';
+import type {
+  WorkflowTemplateOrigin,
+  WorkflowTemplateOriginRequest,
+} from '@pertexo/templates';
+import type {
+  GraphValidationResult,
+  PortableConnectionBinding,
+  PortableIssue,
+  WorkflowGraph,
+  WorkflowPortableManifest,
+} from '@pertexo/workflow-model';
 import type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
@@ -14,23 +18,20 @@ import type {
   PreviewReplayRecord,
   ResolvePreviewReplayInput,
 } from '../../previews/runs/contract.js';
+import type { WorkflowTestSuiteStore } from '../../previews/suites/contract.js';
+import type { WorkflowTestStore } from '../../previews/workflows/contract.js';
+import type { WorkflowCollaborationStore } from '../collaboration/contract.js';
+import type { WorkflowPromotionStore } from '../promotion/contract.js';
+import type { PublicationReviewStore } from '../reviews/contract.js';
+import type { WorkflowAutoPauseDatabase } from '../settings/auto-pause/contract.js';
+import type { WorkflowConcurrencyDatabase } from '../settings/concurrency.repository.js';
+import type { WorkflowErrorDatabase } from '../settings/error-workflow.repository.js';
+import type { WorkflowStepSampleStore } from '../step-samples/contract.js';
 import type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
 } from './representation/contract.js';
-import type {
-  GraphValidationResult,
-  PortableConnectionBinding,
-  PortableIssue,
-  WorkflowPortableManifest,
-} from '@pertexo/workflow-model';
-import type { WorkflowAutoPauseDatabase } from '../settings/auto-pause/contract.js';
-import type { WorkflowConcurrencyDatabase } from '../settings/concurrency.repository.js';
-import type {
-  WorkflowTemplateOriginRequest,
-  WorkflowTemplateOrigin,
-} from '@pertexo/templates';
 
 export type ExportWorkflowInput = Readonly<{
   workspaceId: string;
@@ -84,7 +85,7 @@ export type CreateWorkflowInput = Readonly<{
   workspaceId: string;
   actorId: string;
   name: string;
-  emptyGraph: unknown;
+  emptyGraph: WorkflowGraph;
   idempotencyKey: string;
   requestId?: string;
   traceId?: string;
@@ -116,7 +117,7 @@ export type SaveWorkflowDraftInput = Readonly<{
   /** Original opaque If-Match value, rechecked under write-time compatibility authority. */
   representationTag: string;
   expectedRevision: number;
-  graphJson: unknown;
+  graphJson: WorkflowGraph;
   requestId?: string;
   traceId?: string;
 }>;
