@@ -61,6 +61,7 @@ export function DialogContent({
         className={dialogViewportVariants({ placement })}
       >
         <DialogPrimitive.Popup
+          data-slot="dialog-content"
           id={popupId}
           initialFocus={initialFocus ?? focusFirstUnlessChosen}
           className={cn(dialogContentVariants({ placement }), className)}
