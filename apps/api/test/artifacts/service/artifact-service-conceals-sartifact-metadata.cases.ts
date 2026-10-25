@@ -1,7 +1,10 @@
 import { ArtifactNotFoundError } from '@pertexo/artifact-store';
 
 import { expect, it, vi } from 'vitest';
-import { ArtifactApiNotFoundError } from '../../../src/artifacts/index.js';
+import {
+  ArtifactApiConflictError,
+  ArtifactApiNotFoundError,
+} from '../../../src/artifacts/index.js';
 
 import {
   artifactId,
@@ -47,6 +50,6 @@ export function registerArtifactServiceConcealsSArtifactMetadata(): void {
 
     await expect(
       service(deps).finalizeUpload({ ...context(), artifactId, request: {} }),
-    ).rejects.toBeInstanceOf(ArtifactNotFoundError);
+    ).rejects.toBeInstanceOf(ArtifactApiConflictError);
   });
 }

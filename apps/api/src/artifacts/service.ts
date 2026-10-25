@@ -1,4 +1,13 @@
-import { toProblem } from '../problems/registry.js';
+import {
+  ArtifactIntegrityError,
+  ArtifactNotFoundError,
+} from '@pertexo/artifact-store';
+import {
+  ArtifactQuotaExceededError,
+  ArtifactUploadConflictError,
+  ArtifactUploadIdempotencyConflictError,
+  ArtifactUploadNotFoundError,
+} from '@pertexo/database/runs';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import {
   artifactFinalizeRequestSchema,
@@ -9,6 +18,7 @@ import {
 } from '@pertexo/contracts';
 
 import {
+  AuthorizationError,
   authorizeWorkspaceOperation,
   type AuthorizationCapability,
 } from '../authorization/index.js';
@@ -79,7 +89,7 @@ export class ArtifactService {
         workspaceId: authorization.workspaceId,
       });
     } catch (error: unknown) {
-      throw storageFailure(error);
+      throw storageFailure(error, 'database');
     }
 
     const artifact = created.artifact;
@@ -117,7 +127,7 @@ export class ArtifactService {
         identity,
       });
     } catch (error: unknown) {
-      throw storageFailure(error);
+      throw storageFailure(error, 'database');
     }
     if (artifact === null) throw new ArtifactApiNotFoundError();
     if (artifact.status === 'available') return publicMetadata(artifact);
@@ -144,7 +154,7 @@ export class ArtifactService {
               ...(input.signal === undefined ? {} : { signal: input.signal }),
             });
           } catch (error: unknown) {
-            throw storageFailure(error);
+            throw storageFailure(error, 'store');
           }
           // Verification may take long enough for membership to change.
           await this.authorize(input, 'artifact:upload', undefined);
@@ -152,7 +162,7 @@ export class ArtifactService {
       });
       return publicMetadata(finalized);
     } catch (error: unknown) {
-      throw storageFailure(error);
+      throw storageFailure(error, 'database');
     }
   }
 
@@ -176,7 +186,7 @@ export class ArtifactService {
         ...(input.signal === undefined ? {} : { signal: input.signal }),
       });
     } catch (error: unknown) {
-      throw storageFailure(error);
+      throw storageFailure(error, 'store');
     }
   }
 
@@ -191,7 +201,7 @@ export class ArtifactService {
         identity: this.identity(input.routeWorkspaceId, input.artifactId),
       });
     } catch (error: unknown) {
-      throw storageFailure(error);
+      throw storageFailure(error, 'database');
     }
     if (artifact?.status !== 'pending' && artifact?.status !== 'available')
       throw new ArtifactApiNotFoundError();
@@ -215,7 +225,7 @@ export class ArtifactService {
         ...(signal === undefined ? {} : { signal }),
       });
     } catch (error: unknown) {
-      throw storageFailure(error);
+      throw storageFailure(error, 'store');
     }
   }
 
@@ -268,9 +278,26 @@ function publicMetadata(artifact: ArtifactRecord): ArtifactMetadataResponse {
   });
 }
 
-// Unknown storage failures historically return 503; the global fallback is 500.
-function storageFailure(error: unknown): unknown {
-  return toProblem(error).code === 'internal.unexpected'
-    ? new ArtifactApiUnavailableError()
-    : error;
+// Only failures expected from each storage boundary may reach the registry.
+function storageFailure(error: unknown, source: 'database' | 'store'): Error {
+  if (source === 'store') {
+    // Finalization also crosses the database catch, which accepts API errors.
+    return error instanceof ArtifactIntegrityError ||
+      error instanceof ArtifactNotFoundError
+      ? new ArtifactApiConflictError()
+      : new ArtifactApiUnavailableError();
+  }
+  if (
+    error instanceof AuthorizationError ||
+    error instanceof ArtifactApiNotFoundError ||
+    error instanceof ArtifactApiConflictError ||
+    error instanceof ArtifactApiUnavailableError ||
+    error instanceof ArtifactUploadDeadlineError ||
+    error instanceof ArtifactQuotaExceededError ||
+    error instanceof ArtifactUploadNotFoundError ||
+    error instanceof ArtifactUploadIdempotencyConflictError ||
+    error instanceof ArtifactUploadConflictError
+  )
+    return error;
+  return new ArtifactApiUnavailableError();
 }

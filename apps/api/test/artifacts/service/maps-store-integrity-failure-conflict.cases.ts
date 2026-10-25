@@ -40,7 +40,7 @@ export function registerMapsStoreIntegrityFailureConflict(): void {
     });
     await expect(
       service.finalizeUpload({ ...context(), artifactId, request: {} }),
-    ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+    ).rejects.toBeInstanceOf(ArtifactApiConflictError);
   });
 
   it('does not infer a store conflict from an arbitrary provider message', async () => {
