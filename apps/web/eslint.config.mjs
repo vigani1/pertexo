@@ -52,7 +52,11 @@ export default tseslint.config(
   { files: ['src/**/*.{ts,tsx}'], rules: readabilityRules },
   {
     files: ['test/**/*.{ts,tsx}', 'e2e/**/*.ts', 'e2e-live/**/*.ts'],
-    rules: { 'max-params': ['error', 4], complexity: ['error', 20] },
+    rules: {
+      'max-params': ['error', 4],
+      complexity: ['error', 20],
+      'max-lines': ['error', 400],
+    },
   },
   {
     files: [
