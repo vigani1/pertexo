@@ -111,7 +111,7 @@ const EDITOR_JOURNEY_PATHS = {
   approvals: 'editor/approvals.spec.ts',
   'error-workflows': 'editor/error-workflows.spec.ts',
   'api-tokens': 'api-tokens.spec.ts',
-  callable: 'editor/callable.spec.ts',
+  callable: 'editor/callable',
   'curated-templates': 'curated-templates.spec.ts',
   portability: 'workflow-portability.spec.ts',
   'input-cases': 'workflow-input-cases.spec.ts',
