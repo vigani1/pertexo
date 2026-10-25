@@ -9,7 +9,7 @@ import { workflowRuns } from '../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { databaseSchema } from '../../schema.js';
 import {
-  parseWorkspaceId,
+  type WorkspaceId,
   withTenantScopedReadClient,
   withTenantScopedClient,
 } from '../transactions.js';
@@ -30,7 +30,7 @@ export function withRetainedResourceRead<T>(
     async (client) =>
       read({
         db: drizzle(client, { schema: databaseSchema }),
-        workspaceId: parseWorkspaceId(input.workspaceId),
+        workspaceId: input.workspaceId as WorkspaceId,
         resources: await readFolderScope(
           client,
           input,
@@ -65,7 +65,7 @@ export function withResourceCommand<T>(
       );
       return command({
         db: drizzle(client, { schema: databaseSchema }),
-        workspaceId: parseWorkspaceId(input.workspaceId),
+        workspaceId: input.workspaceId as WorkspaceId,
         resources: await readFolderScope(client, input, role),
       });
     },

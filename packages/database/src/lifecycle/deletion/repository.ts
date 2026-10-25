@@ -30,7 +30,7 @@ import { requestActiveRunCancellations } from '../../runs/commands/cancel-active
 import { IdempotencyRequestConflictError } from '../../runs/commands/acceptance/errors.js';
 import { databaseSchema } from '../../schema.js';
 import { WorkspaceLifecycleConflictError } from '../../tenant-access/errors.js';
-import { parseWorkspaceId } from '../../tenant-access/transactions.js';
+import type { WorkspaceId } from '../../tenant-access/transactions.js';
 
 /** How long a workspace waits for restore before it is purged. */
 export const WORKSPACE_RECOVERY_DAYS = 30;
@@ -174,7 +174,7 @@ async function applyDeletionSideEffects(
   await requestActiveRunCancellations(
     Object.freeze({
       db: drizzle(client, { schema: databaseSchema }),
-      workspaceId: parseWorkspaceId(workspaceId),
+      workspaceId: workspaceId as WorkspaceId,
     }),
     { actorId: actorUserId, reason: 'Workspace deletion requested' },
   );
