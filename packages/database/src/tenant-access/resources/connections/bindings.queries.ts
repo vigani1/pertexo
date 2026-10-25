@@ -4,11 +4,11 @@ import { connections } from '../../../schema/connections.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import {
-  canonicalJson,
+  addedWorkflowConnectionReferences,
+  connectionReferenceIds,
   InvalidWorkflowGraphError,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import { uuidSchema } from '../../../connections/admission.js';
 import type { WorkspaceTransaction } from '../../transactions.js';
 import type { ResourceActor } from '../contract.js';
 import {
@@ -17,54 +17,10 @@ import {
   type ConnectionScope,
 } from './scope.js';
 
-type ConnectionReference = Readonly<{
-  id: string;
-  path: string;
-  enabled: boolean;
-}>;
-function bindings(graph: WorkflowGraph): Map<string, ConnectionReference> {
-  const result = new Map<string, ConnectionReference>();
-  const pending: {
-    graph: WorkflowGraph;
-    path: readonly string[];
-    enabled: boolean;
-  }[] = [{ graph, path: [], enabled: true }];
-  for (const level of pending)
-    for (const node of level.graph.nodes) {
-      const path = [...level.path, node.id];
-      const enabled = level.enabled && !(node.disabled ?? false);
-      for (const [slot, id] of Object.entries(node.connectionRefs))
-        result.set(
-          canonicalJson([path, node.definition, slot, id.toLowerCase()]),
-          {
-            id,
-            enabled,
-            path: `$.${path.map((id) => `nodes.${id}`).join('.structured.body.')}.connectionRefs.${slot}`,
-          },
-        );
-      if (node.structured !== undefined)
-        pending.push({ graph: node.structured.body, path, enabled });
-    }
-  return result;
-}
-
-export function workflowConnectionReferences(
-  graph: WorkflowGraph,
-): readonly ConnectionReference[] {
-  return [...bindings(graph).values()];
-}
-export function connectionReferenceIds(
-  references: readonly { id: string }[],
-): string[] {
-  return [
-    ...new Set(
-      references.flatMap((reference) => {
-        const parsed = uuidSchema.safeParse(reference.id);
-        return parsed.success ? [parsed.data.toLowerCase()] : [];
-      }),
-    ),
-  ];
-}
+export {
+  workflowConnectionReferences,
+  connectionReferenceIds,
+} from '@pertexo/workflow-model';
 
 /** The source is checked before a new reference can authorize any use of it. */
 export async function connectionUseIssues(
@@ -124,12 +80,7 @@ export async function requireConnectionBindings(
   graph: WorkflowGraph,
   previous?: WorkflowGraph,
 ): Promise<void> {
-  const before = new Set(
-    previous === undefined ? [] : bindings(previous).keys(),
-  );
-  const added = [...bindings(graph)]
-    .filter(([key]) => !before.has(key))
-    .map(([, reference]) => reference);
+  const added = addedWorkflowConnectionReferences(graph, previous);
   if (added.length === 0) return;
   await requireTransactionConnectionBindings(
     { db: drizzle(client) },
