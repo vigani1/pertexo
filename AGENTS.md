@@ -32,6 +32,8 @@
   including the browser) and `@pertexo/<name>/server` (Node only). The database
   is the accepted exception: Node-only entry points per area (`/runs`,
   `/authoring`, `/platform`, etc.) and `/testing`, as recorded in the reset plan.
+  `@pertexo/observability/startup` is also a Node-only entry-point exception:
+  instrumentation must load before the dependencies it instruments.
   Do not add consumer-named barrels or expose database entry points to the browser.
 - Group files by directory: sub-area first, then role. A folder holds at most
   ~10 files; no long flat lists.
