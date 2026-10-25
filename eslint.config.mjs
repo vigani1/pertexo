@@ -700,8 +700,10 @@ export default tseslint.config(
     rules: { 'max-lines-per-function': 'off' },
   },
   {
-    // Declarative protocol, schema, retention and OpenAPI tables stay together.
+    // Declarative protocol, schema, retention and OpenAPI tables stay together,
+    // as does the workflow-model entry point, which only lists its exports.
     files: [
+      'packages/workflow-model/src/index.ts',
       'packages/database/src/schema/foundation.ts',
       'packages/database/src/schema/runs/execution.ts',
       'packages/contracts/src/errors/api-problem.ts',
