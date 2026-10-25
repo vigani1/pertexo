@@ -1,3 +1,4 @@
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -69,7 +70,7 @@ export async function seedWebhook(
       compatibilityFingerprint: created.draft.compatibility.fingerprint,
     }),
     expectedRevision: 1,
-    graphJson: graph,
+    graphJson: parseWorkflowGraphDraft(graph),
   });
   const published = await authoring.publishWorkflow({
     actorId,

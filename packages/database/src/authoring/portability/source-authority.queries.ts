@@ -1,37 +1,36 @@
 import {
-  readConnectionScope,
-  connectionScopeSql,
-} from '../../tenant-access/resources/connections/scope.js';
-import { and, asc, eq, inArray } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { alias } from 'drizzle-orm/pg-core';
-import {
-  workflows,
-  workflowDrafts,
-  workflowVersions,
-} from '../../schema/authoring/workflows.js';
-import { connections } from '../../schema/connections.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
-import type { PoolClient } from 'pg';
-import { z } from 'zod';
-import {
   parseWorkflowGraphDraft,
   type PortableConnectionBinding,
   type WorkflowGraph,
   type WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
+import { and, asc, eq, inArray } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  workflowDrafts,
+  workflows,
+  workflowVersions,
+} from '../../schema/authoring/workflows.js';
+import { connections } from '../../schema/connections.js';
+import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
+import {
+  connectionScopeSql,
+  readConnectionScope,
+} from '../../tenant-access/resources/connections/scope.js';
+import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 import type { ExportWorkflowInput } from '../workflows/contract.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../workflows/errors.js';
 import {
-  projectDraft,
   draftProjection,
+  projectDraft,
 } from '../workflows/representation/records.queries.js';
-import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 /** Lock workflow before its selected source; select catalog only after source. */
 export async function lockPortableSource(
@@ -84,7 +83,7 @@ export async function lockPortableSource(
       and(
         eq(workflowVersions.workspaceId, input.workspaceId),
         eq(workflowVersions.workflowId, input.workflowId),
-        eq(workflowVersions.id, z.uuid().parse(input.source.versionId)),
+        eq(workflowVersions.id, input.source.versionId),
       ),
     )
     .catch(rethrowQueryFailure);
@@ -127,9 +126,7 @@ export async function inspectPortableConnections(
   }>,
 ) {
   const ids = [
-    ...new Set(
-      bindings.map(({ connectionId }) => z.uuid().parse(connectionId)),
-    ),
+    ...new Set(bindings.map(({ connectionId }) => connectionId)),
   ].sort();
   if (ids.length === 0) return [];
   const connection = alias(connections, 'connection');

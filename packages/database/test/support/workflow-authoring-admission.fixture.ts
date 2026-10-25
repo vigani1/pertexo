@@ -1,3 +1,8 @@
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import type {
+  CreateWorkflowInput,
+  SaveWorkflowDraftInput,
+} from '../../src/authoring/workflows/contract.js';
 import {
   AuthoringValidationUnavailableError,
   EMPTY_DEFINITION_CATALOG,
@@ -62,6 +67,21 @@ export function createWorkflowAuthoringFixtureDatabase(
   }
   return Object.freeze({
     ...database,
+    // Synthetic callers enter through the graph boundary used by the API.
+    createWorkflow: async (
+      input: Omit<CreateWorkflowInput, 'emptyGraph'> & { emptyGraph: unknown },
+    ) =>
+      database.createWorkflow({
+        ...input,
+        emptyGraph: parseWorkflowGraphDraft(input.emptyGraph),
+      }),
+    saveDraft: async (
+      input: Omit<SaveWorkflowDraftInput, 'graphJson'> & { graphJson: unknown },
+    ) =>
+      database.saveDraft({
+        ...input,
+        graphJson: parseWorkflowGraphDraft(input.graphJson),
+      }),
     close: () => {
       closed = true;
       closePromise ??= dispose();

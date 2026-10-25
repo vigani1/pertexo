@@ -1,37 +1,33 @@
+import {
+  ROLES,
+  WORKFLOW_EDITOR_ROLES,
+  type Role,
+} from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { workflows } from '../../../schema/authoring/workflows.js';
 import { workspaces } from '../../../schema/foundation.js';
 import {
-  workflowTriggerPausePeriods,
   workflowFailureStreaks,
+  workflowTriggerPausePeriods,
 } from '../../../schema/trigger-pause.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { command } from './command.repository.js';
-import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
-import { z } from 'zod';
-import { ROLES, type Role } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
+import { command } from './command.repository.js';
 
-import type { WorkflowAutoPauseDatabase, Transact } from './contract.js';
+import type { Transact, WorkflowAutoPauseDatabase } from './contract.js';
 import {
-  WorkflowPauseRevisionConflictError,
   WorkflowAutoPauseSettingsRevisionConflictError,
+  WorkflowPauseRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
 } from './errors.js';
+import { workflowSettings, workspaceSettings } from './input.js';
 import {
-  revision,
-  pauseRevision,
-  threshold,
-  workflowSettings,
-  workspaceSettings,
-} from './input.js';
-import {
+  lockWorkflow,
   lockWorkspace,
   workflowProjection,
-  workspaceProjection,
-  lockWorkflow,
   workflowSettingsOf,
+  workspaceProjection,
 } from './state.queries.js';
 
 const EDITORS: readonly Role[] = WORKFLOW_EDITOR_ROLES;
@@ -62,9 +58,9 @@ async function readWorkflowPauseSettings(
   transact: Transact,
   input: Parameters<WorkflowAutoPauseDatabase['readWorkflowSettings']>[0],
 ): ReturnType<WorkflowAutoPauseDatabase['readWorkflowSettings']> {
-  const workspaceId = z.uuid().parse(input.workspaceId),
-    actorId = z.uuid().parse(input.actorId),
-    workflowId = z.uuid().parse(input.workflowId);
+  const workspaceId = input.workspaceId,
+    actorId = input.actorId,
+    workflowId = input.workflowId;
   return transact(workspaceId, actorId, async (client) => {
     const workspace = await lockWorkspace(client, workspaceId, {
       exclusive: false,
@@ -88,8 +84,8 @@ async function readWorkspacePauseSettings(
   transact: Transact,
   input: Parameters<WorkflowAutoPauseDatabase['readWorkspaceSettings']>[0],
 ): ReturnType<WorkflowAutoPauseDatabase['readWorkspaceSettings']> {
-  const workspaceId = z.uuid().parse(input.workspaceId),
-    actorId = z.uuid().parse(input.actorId);
+  const workspaceId = input.workspaceId,
+    actorId = input.actorId;
   return transact(workspaceId, actorId, async (client) => {
     const workspace = await lockWorkspace(client, workspaceId, {
       exclusive: false,
@@ -109,9 +105,9 @@ async function resumePausedWorkflow(
   transact: Transact,
   input: Parameters<WorkflowAutoPauseDatabase['resumeWorkflow']>[0],
 ): ReturnType<WorkflowAutoPauseDatabase['resumeWorkflow']> {
-  const workflowId = z.uuid().parse(input.workflowId);
+  const workflowId = input.workflowId;
   const request = {
-    expectedPauseRevision: pauseRevision.parse(input.expectedPauseRevision),
+    expectedPauseRevision: input.expectedPauseRevision,
   };
   return command(transact, input, {
     operation: 'workflow.autopause.resume',
@@ -205,11 +201,11 @@ async function updateWorkflowPauseSettings(
   transact: Transact,
   input: Parameters<WorkflowAutoPauseDatabase['updateWorkflowSettings']>[0],
 ): ReturnType<WorkflowAutoPauseDatabase['updateWorkflowSettings']> {
-  const workflowId = z.uuid().parse(input.workflowId);
+  const workflowId = input.workflowId;
   const request = {
-    enabled: z.boolean().parse(input.enabled),
-    thresholdOverride: threshold.nullable().parse(input.thresholdOverride),
-    expectedSettingsRevision: revision.parse(input.expectedSettingsRevision),
+    enabled: input.enabled,
+    thresholdOverride: input.thresholdOverride,
+    expectedSettingsRevision: input.expectedSettingsRevision,
   };
   return command(transact, input, {
     operation: 'workflow.autopause.settings',
@@ -262,10 +258,10 @@ async function updateWorkspacePauseSettings(
   transact: Transact,
   input: Parameters<WorkflowAutoPauseDatabase['updateWorkspaceSettings']>[0],
 ): ReturnType<WorkflowAutoPauseDatabase['updateWorkspaceSettings']> {
-  const workspaceId = z.uuid().parse(input.workspaceId);
+  const workspaceId = input.workspaceId;
   const request = {
-    threshold: threshold.parse(input.threshold),
-    expectedRevision: revision.parse(input.expectedRevision),
+    threshold: input.threshold,
+    expectedRevision: input.expectedRevision,
   };
   return command(transact, input, {
     operation: 'workspace.autopause.settings',

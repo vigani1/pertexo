@@ -1,3 +1,7 @@
+import {
+  workflowFolderCreateRequestSchema,
+  workflowFolderRenameRequestSchema,
+} from '@pertexo/contracts';
 import type { WorkflowOrganizationBatchRequest } from '../../../../src/authoring/index.js';
 import {
   commandKey,
@@ -28,12 +32,11 @@ export const create = async (
   (
     await stores.folders.createFolder({
       ...command(scope, commandKey(), actor),
-      name,
-      parentId,
+      ...workflowFolderCreateRequestSchema.parse({ name, parentId }),
     })
   ).folder;
 
-export const rename = (
+export const rename = async (
   scope: Scope,
   folderId: string,
   {
@@ -49,8 +52,10 @@ export const rename = (
   stores.folders.renameFolder({
     ...command(scope, key, scope.actor),
     folderId,
-    name,
-    expectedFolderRevision,
+    ...workflowFolderRenameRequestSchema.parse({
+      name,
+      expectedFolderRevision,
+    }),
   });
 
 export const moveFolder = (

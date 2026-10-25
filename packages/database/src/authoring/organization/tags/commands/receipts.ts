@@ -14,12 +14,12 @@ import {
 } from '../../placement.repository.js';
 import type { createOrganizationSession } from '../../session.js';
 import type {
-  Command,
   AssignmentCommand,
+  Command,
   WorkflowTagCommandResult,
 } from '../contract.js';
-import { uuid, revision, tagResult } from '../input.js';
-import { type TagRow, tagRecord } from '../state.queries.js';
+import { tagResult } from '../input.js';
+import { tagRecord, type TagRow } from '../state.queries.js';
 
 export const ADMINISTRATORS = ADMINISTRATIVE_ROLES;
 
@@ -77,10 +77,8 @@ export function assignmentCommand<T extends object>(
     schema: z.ZodType<T>;
   }>,
 ): Promise<T & Readonly<{ replayed: boolean }>> {
-  const workflowId = uuid.parse(input.workflowId);
-  const expectedOrganizationRevision = revision.parse(
-    input.expectedOrganizationRevision,
-  );
+  const workflowId = input.workflowId;
+  const expectedOrganizationRevision = input.expectedOrganizationRevision;
   const request =
     change.kind === 'replace_tags'
       ? { tagIds: change.tagIds, expectedOrganizationRevision }

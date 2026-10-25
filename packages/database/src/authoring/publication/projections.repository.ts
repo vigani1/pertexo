@@ -1,10 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflows } from '../../schema/authoring/workflows.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { workflowIntegrationUsage as integrationUsage } from '../../schema/authoring/integrations.js';
+import { workflows } from '../../schema/authoring/workflows.js';
 import { auditEvents } from '../../schema/foundation.js';
 import { outboxEvents } from '../../schema/transport.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { revokeRemovedFormAccess } from '../../triggers/forms/publication.repository.js';
 
 import { generatePersistedId } from '../../platform/persisted-id.js';
@@ -17,16 +17,15 @@ import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.j
 
 import type { WorkflowVersionRecord } from '../workflows/representation/contract.js';
 
-import {
-  reconcileWorkflowTriggersPayload,
-  persistPublishedWorkflowTriggers,
-} from './trigger-reconciliation.repository.js';
 import { persistPublicationCalls } from './calls.repository.js';
+import {
+  persistPublishedWorkflowTriggers,
+  reconcileWorkflowTriggersPayload,
+} from './trigger-reconciliation.repository.js';
 
-import { uuidSchema, providerKeySchema, operationKeySchema } from './input.js';
 import type {
-  PublicationCandidateInput,
   CompiledPublication,
+  PublicationCandidateInput,
 } from './contract.js';
 
 export async function persistPublicationProjections(
@@ -51,11 +50,7 @@ export async function persistPublicationProjections(
   const usage = workflowIntegrationUsage(
     version.graphJson,
     publication.definitionCatalog,
-  ).map((item) => ({
-    connectionId: uuidSchema.parse(item.connectionId),
-    operationKey: operationKeySchema.parse(item.operationKey),
-    providerKey: providerKeySchema.parse(item.providerKey),
-  }));
+  );
   const db = drizzle(client);
   await db
     .delete(integrationUsage)

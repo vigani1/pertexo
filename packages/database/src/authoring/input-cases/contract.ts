@@ -1,17 +1,21 @@
+import type { workflowInputCases } from '../../schema/authoring/input-cases.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowTestExpectations } from '@pertexo/workflow-model';
 
-export type WorkflowInputCaseMetadata = Readonly<{
-  id: string;
-  workspaceId: string;
-  workflowId: string;
-  workflowVersionId: string;
-  versionChecksum: string;
-  name: string;
-  revision: number;
-  createdAt: Date;
-  updatedAt: Date;
-}>;
+export type WorkflowInputCaseMetadata = Readonly<
+  Pick<
+    typeof workflowInputCases.$inferSelect,
+    | 'id'
+    | 'workspaceId'
+    | 'workflowId'
+    | 'workflowVersionId'
+    | 'versionChecksum'
+    | 'name'
+    | 'revision'
+    | 'createdAt'
+    | 'updatedAt'
+  >
+>;
 
 export type WorkflowInputCaseResult = Readonly<{
   caseId: string;

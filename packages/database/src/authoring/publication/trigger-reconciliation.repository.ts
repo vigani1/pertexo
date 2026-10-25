@@ -1,19 +1,11 @@
 import { and, eq, notInArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflowTriggers } from '../../schema/authoring/workflows.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { z } from 'zod';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { workflowTriggers } from '../../schema/authoring/workflows.js';
 import { workflowTriggerProjection } from '../../triggers/reconciliation/projection.js';
 import type { WorkflowVersionRecord } from '../workflows/representation/contract.js';
-
-const uuidSchema = z.uuid();
-const traceparentSchema = z
-  .string()
-  .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
-  .refine((value) => value.slice(3, 35) !== '0'.repeat(32))
-  .refine((value) => value.slice(36, 52) !== '0'.repeat(16));
 
 export function reconcileWorkflowTriggersPayload(
   input: Readonly<{
@@ -25,13 +17,13 @@ export function reconcileWorkflowTriggersPayload(
   }>,
 ): Record<string, unknown> {
   return Object.freeze({
-    workspaceId: uuidSchema.parse(input.workspaceId),
-    outboxEventId: uuidSchema.parse(input.outboxEventId),
-    workflowId: uuidSchema.parse(input.workflowId),
-    publishedVersionId: uuidSchema.parse(input.publishedVersionId),
+    workspaceId: input.workspaceId,
+    outboxEventId: input.outboxEventId,
+    workflowId: input.workflowId,
+    publishedVersionId: input.publishedVersionId,
     ...(input.traceparent === undefined
       ? {}
-      : { traceparent: traceparentSchema.parse(input.traceparent) }),
+      : { traceparent: input.traceparent }),
   });
 }
 

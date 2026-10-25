@@ -31,10 +31,6 @@ export function registerRequiresFullCurrentRepresentationTag(): void {
       scopedActorId: actorId,
     });
 
-    await expect(
-      authoring.saveDraft({ ...input, representationTag: 'not-a-draft-tag' }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-
     const wrongTag = `"draft.${'A'.repeat(43)}"`;
     await expect(
       authoring.saveDraft({ ...input, representationTag: wrongTag }),

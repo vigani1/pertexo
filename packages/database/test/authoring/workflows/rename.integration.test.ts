@@ -1,3 +1,4 @@
+import { workflowNameSchema } from '@pertexo/contracts';
 import { registerUnicodeRenameCase } from './rename/unicode.cases.js';
 import { insertTestMember } from '../../support/user.js';
 import { describe, expect, it } from 'vitest';
@@ -38,7 +39,7 @@ async function createNamed(name: string): Promise<string> {
     actorId,
     emptyGraph,
     idempotencyKey: `rename-create-${randomUUID()}`,
-    name,
+    name: workflowNameSchema.parse(name),
     workspaceId,
   });
   return created.workflowId;
@@ -86,10 +87,10 @@ function rename(
     actorId,
     expectedNameRevision: 1,
     idempotencyKey: `rename-${workflowId}`,
-    name: 'Invoice sync',
     workflowId,
     workspaceId,
     ...overrides,
+    name: workflowNameSchema.parse(overrides.name ?? 'Invoice sync'),
   });
 }
 

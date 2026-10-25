@@ -1,18 +1,3 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { and, eq, sql } from 'drizzle-orm';
-import {
-  workflows,
-  workflowDrafts,
-  workflowVersions,
-} from '../../../schema/authoring/workflows.js';
-import { workflowTemplateOrigins } from '../../../schema/authoring/template-origin.js';
-import { auditEvents } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
-import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
-import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
-import type { PoolClient } from 'pg';
-import { z } from 'zod';
 import {
   EMPTY_WORKFLOW_GRAPH,
   InvalidWorkflowGraphError,
@@ -23,51 +8,42 @@ import {
   type WorkflowDefinitionCatalog,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
+import { z } from 'zod';
+import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
+import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { workflowTemplateOrigins } from '../../../schema/authoring/template-origin.js';
+import {
+  workflowDrafts,
+  workflows,
+  workflowVersions,
+} from '../../../schema/authoring/workflows.js';
+import { auditEvents } from '../../../schema/foundation.js';
+import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
+import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 
-import { generatePersistedId } from '../../../platform/persisted-id.js';
 import {
   claimCommand,
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
+import { generatePersistedId } from '../../../platform/persisted-id.js';
+import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   DuplicateWorkflowInput,
   WorkflowAuthoringDatabase,
 } from '../contract.js';
-import type { WorkflowAuthoringWriteContext } from '../context.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../errors.js';
 import {
-  projectDraft,
   draftProjection,
+  projectDraft,
 } from '../representation/records.queries.js';
 
 const uuid = z.uuid();
-const inputSchema = z
-  .object({
-    workspaceId: uuid,
-    workflowId: uuid,
-    actorId: uuid,
-    name: z.string().trim().min(1).max(128),
-    source: z.discriminatedUnion('kind', [
-      z.object({ kind: z.literal('draft') }).strict(),
-      z.object({ kind: z.literal('version'), versionId: uuid }).strict(),
-    ]),
-    representationTag: z
-      .string()
-      .regex(/^"draft\.[A-Za-z0-9_-]{43}"$/u)
-      .optional(),
-    idempotencyKey: z.string(),
-    requestId: z.string().optional(),
-    traceId: z.string().optional(),
-    signal: z.instanceof(AbortSignal).optional(),
-  })
-  .strict()
-  .refine(
-    (input) =>
-      input.source.kind !== 'draft' || input.representationTag !== undefined,
-  );
 const resultSchema = z.object({ workflowId: uuid }).strict();
 
 async function selectedGraph(
@@ -121,8 +97,7 @@ export function createWorkflowDuplicationStore(
 ): Pick<WorkflowAuthoringDatabase, 'duplicateWorkflow'> {
   return {
     duplicateWorkflow: async (rawInput) => {
-      const parsed = inputSchema.parse(rawInput);
-      const input: DuplicateWorkflowInput = { ...rawInput, name: parsed.name };
+      const input = rawInput;
       return context.transact(
         input.workspaceId,
         input.actorId,

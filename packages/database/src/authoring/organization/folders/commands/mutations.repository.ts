@@ -1,28 +1,28 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias, unionAll } from 'drizzle-orm/pg-core';
+import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import {
   workflowFolders,
   workflowOrganizationState,
 } from '../../../../schema/authoring/organization.js';
-import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
 import { requireMoveAudienceReview } from '../../sharing/audience.queries.js';
 
-import { FOLDER_LIMIT, FOLDER_DEPTH_LIMIT } from '../../limits.js';
+import { FOLDER_DEPTH_LIMIT, FOLDER_LIMIT } from '../../limits.js';
 
 import { runOrganizationCommand } from '../../commands.repository.js';
 import { WorkflowFolderConflictError } from '../../errors.js';
 
 import type { createOrganizationSession } from '../../session.js';
 import type { WorkflowFolderDatabase } from '../contract.js';
-import { uuid, revision, name, deleteResult, nameKey } from '../input.js';
 import {
+  folderDepth,
   folderProjection,
   readFolder,
-  folderDepth,
   requireFreeName,
   requireRevision,
 } from '../hierarchy.queries.js';
+import { deleteResult, nameKey } from '../input.js';
 import { ADMINISTRATORS, folderCommand } from './receipt.js';
 
 export async function createFolder(
@@ -30,8 +30,8 @@ export async function createFolder(
   input: Parameters<WorkflowFolderDatabase['createFolder']>[0],
 ): ReturnType<WorkflowFolderDatabase['createFolder']> {
   const request = {
-    name: name.parse(input.name),
-    parentId: uuid.nullable().parse(input.parentId),
+    name: input.name,
+    parentId: input.parentId,
   };
   return folderCommand(session, input, {
     operation: 'folder.create',
@@ -79,10 +79,10 @@ export async function renameFolder(
   session: ReturnType<typeof createOrganizationSession>,
   input: Parameters<WorkflowFolderDatabase['renameFolder']>[0],
 ): ReturnType<WorkflowFolderDatabase['renameFolder']> {
-  const folderId = uuid.parse(input.folderId);
+  const folderId = input.folderId;
   const request = {
-    name: name.parse(input.name),
-    expectedFolderRevision: revision.parse(input.expectedFolderRevision),
+    name: input.name,
+    expectedFolderRevision: input.expectedFolderRevision,
   };
   return folderCommand(session, input, {
     operation: 'folder.rename',
@@ -120,15 +120,15 @@ export async function moveFolder(
   session: ReturnType<typeof createOrganizationSession>,
   input: Parameters<WorkflowFolderDatabase['moveFolder']>[0],
 ): ReturnType<WorkflowFolderDatabase['moveFolder']> {
-  const folderId = uuid.parse(input.folderId);
+  const folderId = input.folderId;
   const request = {
-    parentId: uuid.nullable().parse(input.parentId),
+    parentId: input.parentId,
     ...(input.audienceReview === undefined
       ? {}
       : {
           audienceReview: input.audienceReview,
         }),
-    expectedFolderRevision: revision.parse(input.expectedFolderRevision),
+    expectedFolderRevision: input.expectedFolderRevision,
   };
   return folderCommand(session, input, {
     operation: 'folder.move',
@@ -198,9 +198,9 @@ export async function deleteFolder(
   session: ReturnType<typeof createOrganizationSession>,
   input: Parameters<WorkflowFolderDatabase['deleteFolder']>[0],
 ): ReturnType<WorkflowFolderDatabase['deleteFolder']> {
-  const folderId = uuid.parse(input.folderId);
+  const folderId = input.folderId;
   const request = {
-    expectedFolderRevision: revision.parse(input.expectedFolderRevision),
+    expectedFolderRevision: input.expectedFolderRevision,
   };
   return session.transact(input, async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {

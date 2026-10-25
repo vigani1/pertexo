@@ -1,34 +1,31 @@
+import type { WorkflowConcurrencySettings as ConcurrencySettings } from '@pertexo/contracts';
+import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import { and, asc, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflows } from '../../schema/authoring/workflows.js';
+import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { workflowConcurrencyPolicies } from '../../schema/authoring/concurrency.js';
+import { workflows } from '../../schema/authoring/workflows.js';
+import {
+  auditEvents,
+  usageEvents,
+  workspaces,
+} from '../../schema/foundation.js';
 import {
   workspaceExecutionEntitlements,
   workspaceExecutionEntitlementVersions,
 } from '../../schema/runs/capacity/entitlements.js';
-import {
-  workspaces,
-  auditEvents,
-  usageEvents,
-} from '../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
-import type { WorkflowConcurrencySettings as ConcurrencySettings } from '@pertexo/contracts';
-import type { PoolClient } from 'pg';
-import { z } from 'zod';
 
+import { ROLES, type Role } from '@pertexo/workflow-model';
 import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { RUN_SUMMARY_RETENTION_SQL } from '../../runs/data-policy.js';
-import { ROLES, type Role } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 
-const revision = z.number().int().min(1).max(2_147_483_647);
-const limit = z.number().int().min(1).max(10_000).nullable();
 export type WorkflowConcurrencySettings = ConcurrencySettings;
 type Scope = Readonly<{
   workspaceId: string;
@@ -187,9 +184,9 @@ async function readConcurrencySettings(
   transact: Transact,
   input: Parameters<WorkflowConcurrencyDatabase['readSettings']>[0],
 ): ReturnType<WorkflowConcurrencyDatabase['readSettings']> {
-  const workspaceId = z.uuid().parse(input.workspaceId),
-    actorId = z.uuid().parse(input.actorId),
-    workflowId = z.uuid().parse(input.workflowId);
+  const workspaceId = input.workspaceId,
+    actorId = input.actorId,
+    workflowId = input.workflowId;
   return transact(
     workspaceId,
     actorId,
@@ -248,15 +245,13 @@ async function updateConcurrencySettings(
   transact: Transact,
   input: Parameters<WorkflowConcurrencyDatabase['updateSettings']>[0],
 ): ReturnType<WorkflowConcurrencyDatabase['updateSettings']> {
-  const workspaceId = z.uuid().parse(input.workspaceId),
-    actorId = z.uuid().parse(input.actorId),
-    workflowId = z.uuid().parse(input.workflowId);
+  const workspaceId = input.workspaceId,
+    actorId = input.actorId,
+    workflowId = input.workflowId;
   const request = {
-    limit: limit.parse(input.limit),
-    expectedRevision: revision.parse(input.expectedRevision),
-    ...(input.overflow === undefined
-      ? {}
-      : { overflow: z.enum(['queue', 'skip']).parse(input.overflow) }),
+    limit: input.limit,
+    expectedRevision: input.expectedRevision,
+    ...(input.overflow === undefined ? {} : { overflow: input.overflow }),
   };
   return transact(
     workspaceId,
