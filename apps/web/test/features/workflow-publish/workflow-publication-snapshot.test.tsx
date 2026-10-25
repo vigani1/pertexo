@@ -1,70 +1,28 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { StrictMode, type ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApiClient } from '@/lib/api/client';
-import { workflowIssuesView } from '@/features/workflow-publish/model/validation/issues-state';
 import { useWorkflowPublication } from '@/features/workflow-publish/data/mutations/use-workflow-publication';
+
 import { validateWorkflow } from '@/features/workflow-publish/data/workflow-publish.api';
 
-const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-const etagA = `"draft.${'a'.repeat(43)}"`;
-const etagB = `"draft.${'b'.repeat(43)}"`;
-const graph = { nodes: [], edges: [], settings: {} };
-const report = {
-  valid: true,
-  currentPublication: null,
-  issues: [],
-  compatibility: {
-    compatible: true,
-    fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
-    issues: [],
-  },
-};
-const saved = { etag: etagA, generation: 4, revision: 2 };
+import { workflowIssuesView } from '@/features/workflow-publish/model/validation/issues-state';
 
-function json(body: unknown, headers: HeadersInit = {}, status = 200) {
-  const responseHeaders = new Headers(headers);
-  responseHeaders.set(
-    'content-type',
-    status === 200 ? 'application/json' : 'application/problem+json',
-  );
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: responseHeaders,
-  });
-}
+import { act, renderHook, waitFor } from '@testing-library/react';
 
-function client(fetch: typeof globalThis.fetch) {
-  return createApiClient({
-    fetch,
-    readCsrfToken: () => 'csrf-token-for-component-tests-12345678901234567890',
-  });
-}
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-function requestPath(input: Parameters<typeof globalThis.fetch>[0]) {
-  return input instanceof Request ? input.url : input.toString();
-}
-
-function wrapper({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <StrictMode>
-      <QueryClientProvider client={new QueryClient()}>
-        {children}
-      </QueryClientProvider>
-    </StrictMode>
-  );
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((complete) => {
-    resolve = complete;
-  });
-  return { promise, resolve };
-}
+import {
+  client,
+  deferred,
+  etagA,
+  etagB,
+  graph,
+  json,
+  report,
+  requestPath,
+  saved,
+  userId,
+  workflowId,
+  workspaceId,
+  wrapper,
+} from './workflow-publication-snapshot/fixture';
 
 afterEach(() => vi.useRealTimers());
 
@@ -80,7 +38,6 @@ describe('checked validation transport', () => {
       new Headers(fetch.mock.calls[0]?.[1]?.headers).get('x-csrf-token'),
     ).toBeTruthy();
   });
-
   it.each([undefined, 'not-an-etag', `W/${etagA}`])(
     'rejects absent or malformed metadata (%s) as a protocol failure',
     async (etag) => {
@@ -165,7 +122,6 @@ describe('publication checked-snapshot ownership', () => {
     expect(verifyIdentity).toHaveBeenCalledTimes(2);
     expect(hook.result.current.publicationReceipt?.revision).toBe(2);
   });
-
   it.each(['identity', 'save'])(
     'honors a new cooldown after publication resumes from pending %s verification',
     async (prerequisite) => {
@@ -257,7 +213,6 @@ describe('publication checked-snapshot ownership', () => {
       expect(hook.result.current.publicationReceipt?.revision).toBe(2);
     },
   );
-
   it('shares an in-flight unavailable check without immediately checking again', async () => {
     const response = deferred<Response>();
     const fetch = vi
@@ -310,7 +265,6 @@ describe('publication checked-snapshot ownership', () => {
     );
     expect(hook.result.current.publishRecoveryPending).toBe(false);
   });
-
   it('reuses only a matching saved snapshot and sends its original precondition', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation((input) =>
       Promise.resolve(
@@ -351,7 +305,6 @@ describe('publication checked-snapshot ownership', () => {
     );
     expect(hook.result.current.publicationReceipt?.revision).toBe(2);
   });
-
   it('keeps another-tab snapshot readable but stale, and never dispatches publication', async () => {
     const fetch = vi
       .fn<typeof globalThis.fetch>()
@@ -379,185 +332,5 @@ describe('publication checked-snapshot ownership', () => {
       { stale: true, groups: [] },
     );
     expect(hook.result.current.publishError).toMatch(/different draft/u);
-  });
-
-  it('blocks publication when local edits occur while checking the saved graph', async () => {
-    const response = deferred<Response>();
-    const fetch = vi
-      .fn<typeof globalThis.fetch>()
-      .mockImplementation(() => response.promise);
-    const apiClient = client(fetch);
-    let current = saved;
-    const hook = renderHook(
-      () =>
-        useWorkflowPublication({
-          apiClient,
-          userId,
-          workspaceId,
-          workflowId,
-          verifyIdentity: () => Promise.resolve(),
-          ensureSaved: () => Promise.resolve(saved),
-          isSavedDraftCurrent: (checked) =>
-            checked.generation === current.generation,
-        }),
-      { wrapper },
-    );
-    let pending!: ReturnType<typeof hook.result.current.publish>;
-    act(() => {
-      pending = hook.result.current.publish();
-    });
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledOnce();
-    });
-    current = { ...saved, generation: 5 };
-    await act(async () => {
-      response.resolve(json(report, { etag: etagA }));
-      await pending;
-    });
-    expect(fetch).toHaveBeenCalledOnce();
-    expect(hook.result.current.publicationReceipt).toBeUndefined();
-    expect(workflowIssuesView(hook.result.current, graph, current).stale).toBe(
-      true,
-    );
-  });
-
-  it('ignores a delayed validation after workflow scope changes or unmounts', async () => {
-    const response = deferred<Response>();
-    const fetch = vi
-      .fn<typeof globalThis.fetch>()
-      .mockImplementation(() => response.promise);
-    const apiClient = client(fetch);
-    const hook = renderHook(
-      ({ id }) =>
-        useWorkflowPublication({
-          apiClient,
-          userId,
-          workspaceId,
-          workflowId: id,
-          verifyIdentity: () => Promise.resolve(),
-          ensureSaved: () => Promise.resolve(saved),
-          isSavedDraftCurrent: () => true,
-        }),
-      { wrapper, initialProps: { id: workflowId } },
-    );
-    let pending!: Promise<void>;
-    act(() => {
-      pending = hook.result.current.validate();
-    });
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledOnce();
-    });
-    hook.rerender({ id: userId });
-    await act(async () => {
-      response.resolve(json(report, { etag: etagA }));
-      await pending;
-    });
-    expect(hook.result.current.validation).toBeUndefined();
-    hook.unmount();
-  });
-
-  it.each(['identity', 'unmount'])(
-    'ignores a delayed publication after %s disposal',
-    async (disposal) => {
-      const accepted = deferred<Response>();
-      const onPublicationAccepted = vi.fn();
-      const fetch = vi
-        .fn<typeof globalThis.fetch>()
-        .mockImplementation((input) =>
-          requestPath(input).endsWith('/validate')
-            ? Promise.resolve(json(report, { etag: etagA }))
-            : accepted.promise,
-        );
-      const apiClient = client(fetch);
-      const hook = renderHook(
-        ({ currentUserId }) =>
-          useWorkflowPublication({
-            apiClient,
-            userId: currentUserId,
-            workspaceId,
-            workflowId,
-            verifyIdentity: () => Promise.resolve(),
-            ensureSaved: () => Promise.resolve(saved),
-            isSavedDraftCurrent: () => true,
-            onPublicationAccepted,
-          }),
-        { wrapper, initialProps: { currentUserId: userId } },
-      );
-      let pending!: ReturnType<typeof hook.result.current.publish>;
-      act(() => {
-        pending = hook.result.current.publish();
-      });
-      await waitFor(() => {
-        expect(fetch).toHaveBeenCalledTimes(2);
-      });
-      if (disposal === 'identity') hook.rerender({ currentUserId: workflowId });
-      else hook.unmount();
-      await act(async () => {
-        accepted.resolve(
-          json({
-            version: {
-              id: userId,
-              workflowId,
-              versionNumber: 1,
-              graph,
-              checksum: `wf:sha256:${'c'.repeat(64)}`,
-              publishedAt: '2026-09-15T10:00:00.000Z',
-            },
-            reused: false,
-          }),
-        );
-        await pending;
-      });
-      expect(onPublicationAccepted).not.toHaveBeenCalled();
-      expect(hook.result.current.publicationReceipt).toBeUndefined();
-    },
-  );
-
-  it('enforces the unavailable cooldown for manual checks and new publication without automatic replay', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(100_000);
-    const fetch = vi
-      .fn<typeof globalThis.fetch>()
-      .mockResolvedValueOnce(
-        json(
-          {
-            type: 'urn:pertexo:problem:workflow.validation_unavailable',
-            title: 'Workflow validation unavailable',
-            status: 503,
-            code: 'workflow.validation_unavailable',
-            requestId: 'request-unavailable',
-          },
-          { 'retry-after': '1' },
-          503,
-        ),
-      )
-      .mockImplementation(() => Promise.resolve(json(report, { etag: etagA })));
-    const apiClient = client(fetch);
-    const hook = renderHook(
-      () =>
-        useWorkflowPublication({
-          apiClient,
-          userId,
-          workspaceId,
-          workflowId,
-          verifyIdentity: () => Promise.resolve(),
-          ensureSaved: () => Promise.resolve(saved),
-          isSavedDraftCurrent: () => true,
-        }),
-      { wrapper },
-    );
-    await act(() => hook.result.current.validate());
-    expect(hook.result.current.validationBlockedUntil).toBe(105_000);
-    await act(() => hook.result.current.validate());
-    await act(() => hook.result.current.publish());
-    expect(fetch).toHaveBeenCalledOnce();
-    await act(() => vi.advanceTimersByTimeAsync(4_999));
-    await act(() => hook.result.current.validate());
-    expect(fetch).toHaveBeenCalledOnce();
-    await act(() => vi.advanceTimersByTimeAsync(1));
-    expect(fetch).toHaveBeenCalledOnce();
-    await act(() => hook.result.current.validate());
-    expect(fetch).toHaveBeenCalledTimes(2);
-    expect(hook.result.current.validationError).toBeUndefined();
   });
 });

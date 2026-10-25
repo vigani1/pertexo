@@ -1,32 +1,36 @@
-import { HttpResponse, http } from 'msw';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
 import {
   addStepButton,
-  api,
   choose,
+  findCanvas,
+  pressSave,
+  toastAction,
+} from '../../support/fixtures/editor-actions';
+import {
+  graphWithMappingNodes,
+  graphWithNumericConfig,
+} from '../../support/fixtures/editor-graph';
+import {
+  api,
   draftBody,
   editorHandlers,
   editorPath,
   emptyGraph,
   etagA,
   etagB,
-  findCanvas,
-  graphWithMappingNodes,
-  graphWithNumericConfig,
   manualDefinition,
   mappingDefinition,
   numericDefinition,
-  pressSave,
   setDefinition,
-  toastAction,
   workflowApi,
   workspaceId,
 } from '../../support/fixtures/workflow-editor';
+import { mockServer } from '../../support/mock-server';
+import { renderApp } from '../../support/render-app';
 
 // The lazy editor route and React Flow are slow to start on a busy machine.
 

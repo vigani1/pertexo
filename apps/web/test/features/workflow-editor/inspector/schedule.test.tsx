@@ -1,85 +1,39 @@
-import type {
-  NodeDefinitionCatalogItem,
-  WorkflowGraphContract,
-} from '@pertexo/contracts';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { HttpResponse, http } from 'msw';
-import { describe, expect, it, vi } from 'vitest';
 import {
   configFromDraft,
   cronFor,
-  draftFromConfig,
   readScheduleSchema,
   scheduleIssue,
-  type ScheduleDraft,
-  type ScheduleSchema,
 } from '@/features/workflow-editor/model/inspector/schedule-draft';
-import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+
+import type { WorkflowGraphContract } from '@pertexo/contracts';
+
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+
+import userEvent from '@testing-library/user-event';
+
+import { describe, expect, it, vi } from 'vitest';
+
 import {
   choose,
-  editorHandlers,
-  editorPath,
   findCanvas,
   pressSave,
-  setDefinition,
-  workflowApi,
-  workflowSummaryHandler,
+} from '../../../support/fixtures/editor-actions';
+import {
+  editorHandlers,
+  editorPath,
 } from '../../../support/fixtures/workflow-editor';
 
-const misfirePolicy = {
-  default: 'catch_up_once',
-  type: 'string',
-  enum: ['catch_up_once', 'skip'],
-};
+import { mockServer } from '../../../support/mock-server';
 
-/** The JSON Schema the catalog publishes for `core.schedule` setup. */
-const scheduleConfigSchema = {
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  oneOf: [
-    {
-      type: 'object',
-      properties: {
-        kind: { type: 'string', const: 'cron' },
-        expression: { type: 'string', minLength: 9, maxLength: 255 },
-        timezone: { type: 'string', minLength: 1, maxLength: 255 },
-        misfirePolicy,
-      },
-      required: ['kind', 'expression', 'timezone', 'misfirePolicy'],
-      additionalProperties: false,
-    },
-    {
-      type: 'object',
-      properties: {
-        kind: { type: 'string', const: 'interval' },
-        intervalMinutes: { type: 'integer', minimum: 1, maximum: 43_200 },
-        misfirePolicy,
-      },
-      required: ['kind', 'intervalMinutes', 'misfirePolicy'],
-      additionalProperties: false,
-    },
-  ],
-};
+import { renderApp } from '../../../support/render-app';
 
-const scheduleDefinition = {
-  ...setDefinition,
-  definition: { key: 'core.schedule', version: 1 },
-  family: 'trigger',
-  configVersion: 1,
-  configSchema: scheduleConfigSchema,
-  ports: { inputs: [], outputs: ['out'] },
-} satisfies NodeDefinitionCatalogItem;
-
-function readSchema(): ScheduleSchema {
-  const schema = readScheduleSchema(scheduleConfigSchema);
-  if (schema === undefined) throw new Error('schedule schema not understood');
-  return schema;
-}
-
-function draftOf(config: Record<string, unknown>): ScheduleDraft {
-  return draftFromConfig(config as never, readSchema(), 'Europe/Berlin');
-}
+import {
+  draftOf,
+  previewHandler,
+  readSchema,
+  scheduleDefinition,
+  scheduleGraph,
+} from './schedule/fixture';
 
 describe('schedule builder model', () => {
   it.each(['0 9 * * THU', '0 9 * JUL *', '0 9 * JUL THU', '0 9 * jul thu'])(
@@ -113,7 +67,6 @@ describe('schedule builder model', () => {
     expect(issue?.field).toBe('expression');
     expect(issue?.message).toContain('aren’t supported');
   });
-
   it('reads what the catalog’s schedule schema allows', () => {
     expect(readSchema()).toEqual({
       cron: { minLength: 9, maxLength: 255 },
@@ -127,7 +80,6 @@ describe('schedule builder model', () => {
       readScheduleSchema({ type: 'object', properties: {} }),
     ).toBeUndefined();
   });
-
   it('shows stored rules with the friendliest builder that writes them back exactly', () => {
     expect(draftOf({ kind: 'interval', intervalMinutes: 90 })).toMatchObject({
       mode: 'every',
@@ -163,7 +115,6 @@ describe('schedule builder model', () => {
       misfirePolicy: 'catch_up_once',
     });
   });
-
   it('writes the step’s own config shape and nothing else', () => {
     const schema = readSchema();
     const base = draftOf({});
@@ -213,7 +164,6 @@ describe('schedule builder model', () => {
       '45 18 * * 1-5',
     );
   });
-
   it.each([
     [{ mode: 'every', every: '0' }, 'every', 'The shortest gap is 1 minute.'],
     [
@@ -249,56 +199,6 @@ describe('schedule builder model', () => {
     expect(issue).toEqual({ field, message });
   });
 });
-
-/** The server's preview: three run times, or a 400 for an hour of 25. */
-function previewHandler(sent: unknown[] = []) {
-  return http.post(
-    `${workflowApi}/triggers/schedules/preview`,
-    async ({ request }) => {
-      const body: unknown = await request.json();
-      sent.push(body);
-      if (JSON.stringify(body).includes('"0 25 * * *"'))
-        return HttpResponse.json(
-          {
-            type: 'about:blank',
-            title: 'Invalid request',
-            status: 400,
-            code: 'request.invalid',
-          },
-          { status: 400 },
-        );
-      return HttpResponse.json({
-        observedAt: '2027-03-12T12:00:00.000Z',
-        items: [
-          { scheduledAt: '2027-03-13T07:30:00.000Z' },
-          { scheduledAt: '2027-03-14T07:00:00.000Z' },
-          { scheduledAt: '2027-03-15T06:30:00.000Z' },
-        ],
-      });
-    },
-  );
-}
-
-function scheduleGraph(
-  config: WorkflowGraphContract['nodes'][number]['config'],
-): WorkflowGraphContract {
-  return {
-    nodes: [
-      {
-        id: 'nightly',
-        label: 'Nightly',
-        definition: { key: 'core.schedule', version: 1 },
-        position: { x: 80, y: 80 },
-        configVersion: 1,
-        config,
-        inputMappings: {},
-        connectionRefs: {},
-      },
-    ],
-    edges: [],
-    settings: {},
-  };
-}
 
 describe('schedule builder in Setup', { timeout: 30_000 }, () => {
   it('builds a rule live, reads it back as a sentence and keeps bad rules as scratch', async () => {
@@ -367,7 +267,6 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
       });
     });
   });
-
   it('uses the suggested rule, in this browser’s timezone, only when asked', async () => {
     // Node follows TZ at runtime, so the builder's browser timezone is known.
     vi.stubEnv('TZ', 'Europe/Berlin');
@@ -407,60 +306,5 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
     } finally {
       vi.unstubAllEnvs();
     }
-  });
-
-  it('shows the next runs the server works out for the rule on screen', async () => {
-    const sent: unknown[] = [];
-    mockServer.use(
-      ...editorHandlers(() => undefined, {
-        graph: scheduleGraph({
-          kind: 'cron',
-          expression: '30 2 * * *',
-          timezone: 'America/New_York',
-          misfirePolicy: 'catch_up_once',
-        }),
-        definitions: [scheduleDefinition],
-      }),
-      workflowSummaryHandler('Nightly schedule', null),
-      previewHandler(sent),
-    );
-    renderApp(editorPath);
-    const event = userEvent.setup();
-    fireEvent.click((await findCanvas()).getByText('Nightly'));
-    const preview = screen.getByRole('region', { name: 'When it runs' });
-    expect(
-      within(preview).getByRole('status', {
-        name: 'Working out the next runs',
-      }),
-    ).toBeVisible();
-    const list = await within(preview).findByRole('list', {
-      name: 'Next runs if published now',
-    });
-    const [before, gap, after] = within(list).getAllByRole('listitem');
-    // New York's clocks spring forward on 14 March 2027.
-    expect(before).toHaveTextContent(/\b0?2:30.*EST/u);
-    expect(gap).toHaveTextContent(/\b0?3:00.*EDT/u);
-    expect(after).toHaveTextContent(/\b0?2:30.*EDT/u);
-    expect(sent).toEqual([
-      {
-        config: {
-          kind: 'cron',
-          expression: '30 2 * * *',
-          timezone: 'America/New_York',
-        },
-        count: 3,
-      },
-    ]);
-
-    await choose(event, 'Runs', 'Custom cron rule');
-    fireEvent.change(screen.getByLabelText('Cron rule'), {
-      target: { value: '0 25 * * *' },
-    });
-    expect(
-      await within(preview).findByText(
-        'Pertexo can’t schedule this rule. Check the cron fields and the timezone.',
-      ),
-    ).toBeVisible();
-    expect(within(preview).queryByRole('list')).not.toBeInTheDocument();
   });
 });

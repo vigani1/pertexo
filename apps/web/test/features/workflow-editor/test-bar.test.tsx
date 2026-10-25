@@ -2,23 +2,22 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { findCanvas, findPaused } from '../../support/fixtures/editor-actions';
+import { graphWithMappingNodes } from '../../support/fixtures/editor-graph';
 import {
   editorHandlers,
   editorPath,
-  findCanvas,
-  graphWithMappingNodes,
+  identityHandler,
   manualDefinition,
   mappingDefinition,
-  identityHandler,
-  user,
   otherUser,
-  findPaused,
+  user,
   workflowApi,
   workflowId,
   workspaceId,
 } from '../../support/fixtures/workflow-editor';
+import { mockServer } from '../../support/mock-server';
+import { renderApp } from '../../support/render-app';
 
 const disclosure = {
   sideEffectClass: 'safe',

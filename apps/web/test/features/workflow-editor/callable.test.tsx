@@ -2,17 +2,16 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { findCanvas, pressSave } from '../../support/fixtures/editor-actions';
+import { graphWithMappingNodes } from '../../support/fixtures/editor-graph';
 import {
   editorHandlers,
   editorPath,
-  findCanvas,
-  graphWithMappingNodes,
   manualDefinition,
   mappingDefinition,
-  pressSave,
 } from '../../support/fixtures/workflow-editor';
+import { mockServer } from '../../support/mock-server';
+import { renderApp } from '../../support/render-app';
 
 describe('workflow callable contract editor', { timeout: 30_000 }, () => {
   it('lets readers inspect the declaration without applying changes', async () => {

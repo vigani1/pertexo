@@ -1,132 +1,21 @@
-import { QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
+
 import userEvent from '@testing-library/user-event';
-import { HttpResponse, http } from 'msw';
+
+import { HttpResponse } from 'msw';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createQueryClient } from '@/app/query-client';
-import { NotificationsProvider } from '@/components/ui/toast';
-import { StepInputData } from '@/features/workflow-runs/components/run-detail/data/inputs';
-import { describeNodeStatus } from '@/features/workflow-runs/model/presentation/run-status';
-import type {
-  RunTimelineRow,
-  RunTimelineStepStatus,
-} from '@/features/workflow-runs/model/timeline/runs';
-import { createApiClient } from '@/lib/api/client';
-import { mockServer } from '../../../support/mock-server';
-import { testFetch } from '../../../support/render-app';
+
 import {
-  apiBase,
-  fixtureIds,
-  fixtureWorkspace,
-} from '../../../support/fixtures/run';
-
-const { user: userId, firstRun: runId } = fixtureIds;
-const fetchRunId = '33333333-3333-4333-8333-333333333333';
-const sendRunId = '44444444-4444-4444-8444-444444444444';
-const scope = {
-  apiClient: createApiClient({
-    fetch: testFetch,
-    readCsrfToken: () => 'csrf-token-for-component-tests-12345678901234567890',
-  }),
-  userId,
-  workspace: fixtureWorkspace(['workspace:read', 'run:read', 'artifact:read']),
-  runId,
-};
-
-function row({
-  nodeRunId,
-  nodeId,
-  label,
-  status,
-  currentAttemptNumber = 1,
-}: Readonly<{
-  nodeRunId: string;
-  nodeId: string;
-  label: string;
-  status: RunTimelineStepStatus;
-  currentAttemptNumber?: number;
-}>): RunTimelineRow {
-  const look =
-    status === 'not_started'
-      ? { tone: 'queued' as const, label: 'Not started yet' }
-      : describeNodeStatus(status);
-  return {
-    key: nodeId,
-    nodeId,
-    nodeRunId,
-    label,
-    status,
-    tone: look.tone,
-    statusLabel: look.label,
-    attempts: currentAttemptNumber,
-    currentAttemptNumber,
-    segments: [],
-    story: [],
-    outputs: [],
-  };
-}
-
-const fetchOrder = row({
-  nodeRunId: fetchRunId,
-  nodeId: 'fetch-order',
-  label: 'Fetch order',
-  status: 'succeeded',
-});
-const upstream = new Map([
-  ['fetch-order', []],
-  ['send-receipt', ['fetch-order']],
-]);
-
-/** Serves the recorded input from `respond`, and Fetch order's output. */
-function serve(respond: () => Response) {
-  let reads = 0;
-  mockServer.use(
-    http.get(`${apiBase}/runs/${runId}/node-runs/${sendRunId}/input`, () => {
-      reads += 1;
-      return respond();
-    }),
-    http.get(`${apiBase}/runs/${runId}/node-runs/${fetchRunId}/output`, () =>
-      HttpResponse.json({ output: { kind: 'inline', value: { total: 42 } } }),
-    ),
-  );
-  return { reads: () => reads };
-}
-
-const recorded = (value: unknown) =>
-  HttpResponse.json({ input: { kind: 'inline', value } });
-const none = () => HttpResponse.json({ input: { kind: 'none' } });
-
-/** Renders Send receipt's Data in; `show` hands it the row a later snapshot has. */
-function renderStep(initial: RunTimelineRow) {
-  const queryClient = createQueryClient();
-  const view = (current: RunTimelineRow) => (
-    <QueryClientProvider client={queryClient}>
-      <NotificationsProvider>
-        <StepInputData
-          row={current}
-          rows={[fetchOrder, current]}
-          upstream={upstream}
-          scope={scope}
-        />
-      </NotificationsProvider>
-    </QueryClientProvider>
-  );
-  const result = render(view(initial));
-  return {
-    show: (next: RunTimelineRow) => {
-      result.rerender(view(next));
-    },
-  };
-}
-
-const dataIn = () =>
-  screen.findByRole(
-    'group',
-    { name: 'Data in of Send receipt' },
-    {
-      timeout: 4_000,
-    },
-  );
+  dataIn,
+  failAfterEmptyRead,
+  none,
+  recorded,
+  renderStep,
+  row,
+  sendRunId,
+  serve,
+} from './recorded-input/fixture';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -164,28 +53,6 @@ describe('recorded step input', () => {
       ).not.toBeInTheDocument();
     },
   );
-
-  function failAfterEmptyRead(status: number) {
-    let calls = 0;
-    let recovered = false;
-    const server = serve(() => {
-      calls += 1;
-      if (recovered) return recorded({ recovered: true });
-      return calls === 1
-        ? none()
-        : HttpResponse.json(
-            { code: 'internal', message: 'Unavailable' },
-            { status },
-          );
-    });
-    return {
-      server,
-      recover: () => {
-        recovered = true;
-      },
-    };
-  }
-
   it('keeps the empty answer, stops polling and offers Retry after an HTTP 500 refresh', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { server, recover } = failAfterEmptyRead(500);
@@ -210,7 +77,6 @@ describe('recorded step input', () => {
     expect(await dataIn()).toHaveTextContent(/recovered: true/u);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
-
   it('hides the empty answer, stops polling and offers recovery after an HTTP 403 refresh', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { server, recover } = failAfterEmptyRead(403);
@@ -237,7 +103,6 @@ describe('recorded step input', () => {
     expect(await dataIn()).toHaveTextContent(/recovered: true/u);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
-
   it('stops after five empty reads instead of polling indefinitely', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const server = serve(none);
@@ -254,7 +119,6 @@ describe('recorded step input', () => {
     await act(() => vi.advanceTimersByTimeAsync(60_000));
     expect(server.reads()).toBe(5);
   }, 25_000);
-
   it('reads again when a running step records its input after the first read', async () => {
     let calls = 0;
     serve(() => {
@@ -272,7 +136,6 @@ describe('recorded step input', () => {
     expect(await screen.findByText('Not recorded yet.')).toBeVisible();
     expect(await dataIn()).toHaveTextContent(/attempt: 1/u);
   });
-
   it('never shows an earlier attempt’s input for a retry, even with the same status', async () => {
     let serverAttempt = 1;
     let recordedYet = true;
@@ -308,7 +171,6 @@ describe('recorded step input', () => {
     recordedYet = true;
     expect(await dataIn()).toHaveTextContent(/attempt: 2/u);
   });
-
   it('keeps a finished step’s recorded input without reading it again', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const server = serve(() => recorded({ attempt: 1 }));
@@ -324,7 +186,6 @@ describe('recorded step input', () => {
     await act(() => vi.advanceTimersByTimeAsync(1_500));
     expect(server.reads()).toBe(1);
   });
-
   it('says when the input couldn’t load, offers a retry, and labels the sources', async () => {
     let fail = true;
     serve(() =>
@@ -363,7 +224,6 @@ describe('recorded step input', () => {
     expect(await dataIn()).toHaveTextContent(/amount: 42/u);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
-
   it('says a step that uses a connection doesn’t keep its input, without asking', async () => {
     const server = serve(() => recorded({ never: 'read' }));
     renderStep({
@@ -387,7 +247,6 @@ describe('recorded step input', () => {
     ).toHaveTextContent(/total: 42/u);
     expect(server.reads()).toBe(0);
   });
-
   it.each([
     [
       'none',

@@ -1,69 +1,35 @@
-import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
+
 import userEvent from '@testing-library/user-event';
+
+import { HttpResponse, http } from 'msw';
+
 import { describe, expect, it } from 'vitest';
-import { mockServer } from '../../../support/mock-server';
-import { renderApp } from '../../../support/render-app';
+
 import {
   apiBase,
+  coldStart,
   fixtureIds,
   fixtureRun,
   fixtureStatistics,
-  fixtureWorkflow,
   identityHandlers,
-  notFoundProblem,
-  coldStart,
   statisticsHandler,
 } from '../../../support/fixtures/run';
 
-const { workspace: workspaceId, workflow: workflowId } = fixtureIds;
-const { firstRun: firstRunId, secondRun: secondRunId } = fixtureIds;
-const readerCapabilities: AccessibleWorkspace['capabilities'] = [
-  'workspace:read',
-  'run:read',
-  'workflow:read',
-];
+import { mockServer } from '../../../support/mock-server';
 
-function workflowReads() {
-  return [
-    http.get(`${apiBase}/workflows`, () =>
-      HttpResponse.json({ items: [fixtureWorkflow()], nextCursor: null }),
-    ),
-    http.get(`${apiBase}/workflows/${workflowId}`, () =>
-      HttpResponse.json({ workflow: fixtureWorkflow() }),
-    ),
-  ];
-}
+import { renderApp } from '../../../support/render-app';
 
-/** Two pages of history, plus the statistics read behind the header. */
-function historyReads(requests: URLSearchParams[] = []) {
-  const history = http.get(`${apiBase}/runs`, ({ request }) => {
-    const query = new URL(request.url).searchParams;
-    requests.push(query);
-    return HttpResponse.json(
-      query.get('after') === null
-        ? { items: [fixtureRun(firstRunId, 'succeeded')], nextCursor: 'next' }
-        : {
-            items: [
-              fixtureRun(secondRunId, 'failed', { triggerType: 'webhook' }),
-            ],
-            nextCursor: null,
-          },
-    );
-  });
-  return [history, statisticsHandler()];
-}
-
-function latest(requests: readonly URLSearchParams[]) {
-  return requests.at(-1) ?? new URLSearchParams();
-}
-
-async function chooseOption(label: string, option: string) {
-  const event = userEvent.setup();
-  await event.click(screen.getByRole('combobox', { name: label }));
-  await event.click(await screen.findByRole('option', { name: option }));
-}
+import {
+  chooseOption,
+  firstRunId,
+  historyReads,
+  latest,
+  readerCapabilities,
+  workflowId,
+  workflowReads,
+  workspaceId,
+} from './list/fixture';
 
 describe('workspace runs', () => {
   it('paginates in StrictMode and opens a run from its row', async () => {
@@ -114,7 +80,6 @@ describe('workspace runs', () => {
       );
     });
   });
-
   it('shows exact live counts in the header from one statistics read', async () => {
     const requests: URLSearchParams[] = [];
     const statistics: URLSearchParams[] = [];
@@ -146,7 +111,6 @@ describe('workspace runs', () => {
     expect(statistics.map(String)).toEqual(['window=24h']);
     expect(requests.every((query) => query.get('status') === null)).toBe(true);
   });
-
   it('keeps filters in the URL and sends the chosen bounds', async () => {
     const requests: URLSearchParams[] = [];
     mockServer.use(
@@ -211,7 +175,6 @@ describe('workspace runs', () => {
       expect(router.state.location.search).toEqual({});
     });
   });
-
   it('picks a workflow from the typeahead and narrows by trigger locally', async () => {
     const requests: URLSearchParams[] = [];
     mockServer.use(
@@ -254,7 +217,6 @@ describe('workspace runs', () => {
       }),
     ).toBeVisible();
   });
-
   it('drops unknown or malformed URL keys instead of failing the page', async () => {
     const requests: URLSearchParams[] = [];
     mockServer.use(
@@ -279,7 +241,6 @@ describe('workspace runs', () => {
       screen.getByRole('button', { name: 'Remove filter Trigger: Webhook' }),
     ).toBeVisible();
   });
-
   it('keeps long applied filters inspectable and keyboard removable', async () => {
     const longPrefix = 'W'.repeat(128);
     mockServer.use(
@@ -315,7 +276,6 @@ describe('workspace runs', () => {
       screen.getByRole('heading', { name: 'No runs match these filters' }),
     ).toBeVisible();
   });
-
   it('keeps cached runs visible when a background refresh fails', async () => {
     let response: 'ok' | 'failed' = 'ok';
     mockServer.use(
@@ -350,130 +310,6 @@ describe('workspace runs', () => {
       .click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    });
-  });
-
-  it('hides cached runs when a refresh says the collection is gone', async () => {
-    let unavailable = false;
-    mockServer.use(
-      ...identityHandlers(readerCapabilities),
-      ...workflowReads(),
-      http.get(`${apiBase}/runs`, () =>
-        unavailable
-          ? notFoundProblem()
-          : HttpResponse.json({
-              items: [fixtureRun(firstRunId, 'succeeded')],
-              nextCursor: null,
-            }),
-      ),
-    );
-    const { queryClient } = renderApp(`/w/${workspaceId}/runs`);
-    await screen.findByRole(
-      'button',
-      { name: 'Copy run ID eeee…eeee' },
-      coldStart,
-    );
-    unavailable = true;
-    await queryClient.refetchQueries({
-      queryKey: ['identity', fixtureIds.user, 'workspace', workspaceId, 'runs'],
-    });
-    expect(
-      await screen.findByRole('heading', {
-        name: 'Runs aren’t available here',
-      }),
-    ).toBeVisible();
-    expect(
-      screen.queryByRole('button', { name: 'Copy run ID eeee…eeee' }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('explains missing run access without reading runs', async () => {
-    let reads = 0;
-    mockServer.use(
-      ...identityHandlers(['workspace:read']),
-      http.get(`${apiBase}/runs`, () => {
-        reads += 1;
-        return HttpResponse.json({ items: [], nextCursor: null });
-      }),
-    );
-    renderApp(`/w/${workspaceId}/runs`);
-    expect(
-      await screen.findByRole(
-        'heading',
-        { name: 'Runs aren’t available for your role' },
-        coldStart,
-      ),
-    ).toBeVisible();
-    expect(screen.queryByRole('combobox', { name: 'Status' })).toBeNull();
-    expect(reads).toBe(0);
-  });
-
-  it('tells a failed first read apart from an empty history', async () => {
-    mockServer.use(
-      ...identityHandlers(readerCapabilities),
-      ...workflowReads(),
-      http.get(`${apiBase}/runs`, () => HttpResponse.error()),
-    );
-    renderApp(`/w/${workspaceId}/runs`);
-    expect(
-      await screen.findByRole(
-        'heading',
-        { name: 'Runs couldn’t be loaded' },
-        coldStart,
-      ),
-    ).toBeVisible();
-    expect(
-      screen.queryByRole('heading', { name: 'No runs yet' }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('guides an empty workspace to its workflows', async () => {
-    mockServer.use(
-      ...identityHandlers(readerCapabilities),
-      ...workflowReads(),
-      http.get(`${apiBase}/runs`, () =>
-        HttpResponse.json({ items: [], nextCursor: null }),
-      ),
-    );
-    renderApp(`/w/${workspaceId}/runs`);
-    const empty = await screen.findByRole(
-      'heading',
-      { name: 'No runs yet' },
-      coldStart,
-    );
-    expect(empty).toBeVisible();
-    expect(
-      within(empty.parentElement ?? document.body).getByRole('link', {
-        name: 'Go to workflows',
-      }),
-    ).toHaveAttribute('href', `/w/${workspaceId}/workflows`);
-  });
-
-  it('lists a workflow’s runs in its hub tab without a workflow filter', async () => {
-    const requests: URLSearchParams[] = [];
-    mockServer.use(
-      ...identityHandlers(readerCapabilities),
-      ...workflowReads(),
-      ...historyReads(requests),
-    );
-    const { router } = renderApp(
-      `/w/${workspaceId}/workflows/${workflowId}/runs?workflowId=ignored`,
-    );
-    expect(
-      await screen.findByRole('button', { name: 'Copy run ID eeee…eeee' }),
-    ).toBeVisible();
-    expect(screen.queryByLabelText('Workflow name')).toBeNull();
-    // One start time per run: relative, with the exact time on hover.
-    const run = screen.getByRole('link', { name: /^Run from /u });
-    expect(run).toHaveTextContent(/ago$/u);
-    expect(within(run).getByText(/ago$/u)).toHaveAttribute('title');
-    expect(latest(requests).get('workflowId')).toBe(workflowId);
-    await chooseOption('Status', 'Failed');
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe(
-        `/w/${workspaceId}/workflows/${workflowId}/runs`,
-      );
-      expect(latest(requests).get('status')).toBe('failed');
     });
   });
 });

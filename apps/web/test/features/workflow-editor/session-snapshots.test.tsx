@@ -1,21 +1,20 @@
+import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
-import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
-import { mockServer } from '../../support/mock-server';
-import { renderApp } from '../../support/render-app';
+import { findCanvas, pressSave } from '../../support/fixtures/editor-actions';
+import { graphWithNumericConfig } from '../../support/fixtures/editor-graph';
 import {
   api,
   editorHandlers,
   editorPath,
-  findCanvas,
-  graphWithNumericConfig,
   numericDefinition,
-  pressSave,
   userId,
 } from '../../support/fixtures/workflow-editor';
+import { mockServer } from '../../support/mock-server';
+import { renderApp } from '../../support/render-app';
 
 describe('editor session snapshots', { timeout: 30_000 }, () => {
   it('reads refreshed catalog fields without replacing the edited draft or selection', async () => {

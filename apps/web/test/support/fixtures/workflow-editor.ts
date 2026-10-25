@@ -1,29 +1,33 @@
-import { createUserFixture, createWorkspaceFixture } from './identity';
-import { HttpResponse, http } from 'msw';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
   workflowSummaryResponseSchema,
   type WorkflowGraphContract,
 } from '@pertexo/contracts';
-import { fireEvent, screen, within } from '@testing-library/react';
-import type { UserEvent } from '@testing-library/user-event';
-import { coldStart } from './run';
-
-// Shared, contract-valid fixtures for the workflow editor's component tests.
-
+import { HttpResponse, http } from 'msw';
+import { oneStepGraph } from './editor-graph';
+import { createUserFixture, createWorkspaceFixture } from './identity';
 export const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
 export const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
 export const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+
 export const editorPath = `/w/${workspaceId}/workflows/${workflowId}`;
+
 export const etagA = `"draft.${'a'.repeat(43)}"`;
+
 export const etagB = `"draft.${'b'.repeat(43)}"`;
+
 export const api = 'http://pertexo.test/v1';
+
 export const workflowApi = `${api}/workspaces/${workspaceId}/workflows/${workflowId}`;
+
 export const compatibility = {
   compatible: true,
   fingerprint: `wf-compat:sha256:${'a'.repeat(64)}`,
   issues: [],
 };
+
 export const user = createUserFixture({
   id: userId,
   email: 'owner@example.test',
@@ -31,10 +35,12 @@ export const user = createUserFixture({
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
 });
+
 export const otherUser = {
   ...user,
   id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
 };
+
 export const workspace = createWorkspaceFixture({
   id: workspaceId,
   capabilities: [
@@ -50,6 +56,7 @@ export const workspace = createWorkspaceFixture({
   createdAt: '2026-09-14T10:00:00.000Z',
   updatedAt: '2026-09-14T10:00:00.000Z',
 });
+
 export const emptyGraph: WorkflowGraphContract = {
   nodes: [],
   edges: [],
@@ -73,11 +80,12 @@ export const setDefinition = {
   resourceClass: 'cpu',
   capabilities: [],
 } satisfies NodeDefinitionCatalogItem;
-/** The Set step with no configurable fields, for pure graph and save tests. */
+
 export const bareSetDefinition = {
   ...setDefinition,
   configSchema: { type: 'object', properties: {} },
 } satisfies NodeDefinitionCatalogItem;
+
 export const manualDefinition = {
   ...setDefinition,
   definition: { key: 'core.manual', version: 1 },
@@ -90,6 +98,7 @@ export const manualDefinition = {
   },
   ports: { inputs: [], outputs: ['out'] },
 } satisfies NodeDefinitionCatalogItem;
+
 export const mappingDefinition = {
   ...setDefinition,
   inputSchema: {
@@ -103,6 +112,7 @@ export const mappingDefinition = {
   },
   outputSchema: { type: 'object', additionalProperties: true },
 } satisfies NodeDefinitionCatalogItem;
+
 export const numericDefinition = {
   ...setDefinition,
   configSchema: {
@@ -122,7 +132,6 @@ interface SaveBody {
   graph: WorkflowGraphContract;
 }
 
-/** The routes every editor render needs, with a draft that saves as rev 2. */
 export function editorHandlers(
   onSave: (request: Request, body: SaveBody) => void,
   options: Readonly<{
@@ -246,67 +255,6 @@ export function runSummary(
   };
 }
 
-export function graphWithNumericConfig(
-  config: WorkflowGraphContract['nodes'][number]['config'],
-): WorkflowGraphContract {
-  return {
-    nodes: [
-      {
-        id: '11111111-1111-4111-8111-111111111111',
-        definition: { key: 'core.set', version: 1 },
-        position: { x: 80, y: 80 },
-        configVersion: 1,
-        config,
-        inputMappings: {},
-        connectionRefs: {},
-        label: 'Numbers',
-      },
-    ],
-    edges: [],
-    settings: {},
-  };
-}
-
-/** One Set step: enough for Publish, which an empty draft keeps disabled. */
-export const oneStepGraph = graphWithNumericConfig({});
-
-export function graphWithMappingNodes(
-  inputMappings: WorkflowGraphContract['nodes'][number]['inputMappings'] = {},
-): WorkflowGraphContract {
-  return {
-    nodes: [
-      {
-        id: 'manual',
-        definition: { key: 'core.manual', version: 1 },
-        position: { x: 80, y: 80 },
-        configVersion: 1,
-        config: {},
-        inputMappings: {},
-        connectionRefs: {},
-        label: 'Manual input',
-      },
-      {
-        id: 'target',
-        definition: { key: 'core.set', version: 1 },
-        position: { x: 340, y: 80 },
-        configVersion: 1,
-        config: {},
-        inputMappings,
-        connectionRefs: {},
-        label: 'Target',
-      },
-    ],
-    edges: [
-      {
-        id: 'manual-target',
-        source: { nodeId: 'manual', port: 'out' },
-        target: { nodeId: 'target', port: 'in' },
-      },
-    ],
-    settings: {},
-  };
-}
-
 export function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason?: unknown) => void;
@@ -317,70 +265,12 @@ export function deferred<T>() {
   return { promise, reject, resolve };
 }
 
-/** The canvas once the lazy editor route has loaded. */
-export async function findCanvas() {
-  return within(await screen.findByRole('application', {}, coldStart));
-}
-
-/** ⌘S: flush the draft save now. */
-export function pressSave() {
-  fireEvent.keyDown(window, { key: 's', metaKey: true });
-}
-
-/** Opens a Base UI select by its label and picks an option. */
-export async function choose(event: UserEvent, label: string, option: string) {
-  await event.click(screen.getByLabelText(label));
-  await event.click(await screen.findByRole('option', { name: option }));
-}
-
-/** A notification's action button, not the command bar's control. */
-export function toastAction(name: string) {
-  const action = screen
-    .getAllByRole('button', { name })
-    .find((button) => button.closest('header') === null);
-  if (action === undefined) throw new Error(`No notification action ${name}`);
-  return action;
-}
-
-/** The add-step item for a step, found by its human name. */
-export function addStepButton(name: RegExp) {
-  return within(
-    screen.getByRole('complementary', { name: 'Add a step' }),
-  ).getByRole('button', { name });
-}
-
 export const runId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+
 export const versionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+
 const runApi = `${api}/workspaces/${workspaceId}/runs/${runId}`;
 
-/** Run ▾ → Run with input… */
-export async function openRunLens(event: UserEvent) {
-  const recover = screen.queryByRole('button', {
-    name: 'Recover unconfirmed run',
-  });
-  if (recover !== null) {
-    await event.click(recover);
-    return;
-  }
-  await event.click(await screen.findByRole('button', { name: 'Run' }));
-  await event.click(
-    await screen.findByRole('menuitem', { name: 'Run with input…' }),
-  );
-}
-
-/** Opens the issues lens from its chip and asks for a fresh check. */
-export async function checkNow(event: UserEvent) {
-  await event.click(
-    screen.getByRole('button', { name: /Not checked yet|No issues|issue/u }),
-  );
-  await event.click(await screen.findByRole('button', { name: 'Check again' }));
-}
-
-export function findPaused() {
-  return screen.findByRole('heading', { name: 'Editor paused' });
-}
-
-/** `/users/me` answering with whoever `current` says, or a network error. */
 export function identityHandler(current: () => typeof user | 'error') {
   return http.get(`${api}/users/me`, () => {
     const identity = current();
@@ -390,7 +280,6 @@ export function identityHandler(current: () => typeof user | 'error') {
   });
 }
 
-/** Enough of the run page for navigation after a run is accepted. */
 export function runDetailHandlers() {
   return [
     http.get(runApi, () =>
@@ -434,7 +323,6 @@ export function workflowSummaryHandler(
   );
 }
 
-/** A workflow with a real immutable version for tests that exercise Run. */
 export function publishedWorkflowHandlers(
   graph: WorkflowGraphContract = oneStepGraph,
 ) {
