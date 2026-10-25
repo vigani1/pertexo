@@ -51,6 +51,16 @@ async function appendStep({
   await page.keyboard.press('Enter');
   await page.getByLabel('Label', { exact: true }).fill(label);
   await page.keyboard.press('Tab');
+  expect(
+    (await readEditorDraft(page, path)).graph.edges.filter(
+      (edge) => edge.target.nodeId === step.id,
+    ),
+  ).toEqual([
+    expect.objectContaining({
+      source: { nodeId: afterNodeId, port: 'out' },
+      target: { nodeId: step.id, port: 'in' },
+    }),
+  ]);
   return step.id;
 }
 async function startTest(
@@ -194,6 +204,25 @@ test('saved draft tests run on the worker, skip waits and pinned human steps, an
       ).json(),
     ).output,
   ).toEqual({ kind: 'inline', value: { amount: 42 } });
+  await page.getByTestId(`rf__node-${codeId}`).focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('tab', { name: 'Test', exact: true }).click();
+  const inspectorResult = page.getByRole('region', {
+    name: 'Latest workflow test',
+    exact: true,
+  });
+  await expect(inspectorResult).toContainText('42');
+  await inspectorResult
+    .getByRole('button', { name: 'View full test history', exact: true })
+    .click();
+  await expect(history).toBeFocused();
+  const [canvas, dock] = await Promise.all([
+    page.locator('.react-flow').boundingBox(),
+    history.boundingBox(),
+  ]);
+  if (canvas === null || dock === null)
+    throw new Error('Canvas or test dock missing');
+  expect(canvas.y + canvas.height).toBeLessThanOrEqual(dock.y + 1);
   const codeResult = history.getByRole('region', {
     name: 'Test result: Calculate test',
     exact: true,
