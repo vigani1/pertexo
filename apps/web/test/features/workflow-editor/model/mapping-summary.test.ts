@@ -1,7 +1,7 @@
-import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { describe, expect, it } from 'vitest';
 import { addDefinitionNode } from '@/features/workflow-editor/model/graph/commands';
 import { describeMappingSource } from '@/features/workflow-editor/model/inspector/mapping-summary';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
+import { describe, expect, it } from 'vitest';
 import { bareSetDefinition as definition } from '../../../support/fixtures/workflow-editor';
 
 function emptyGraph(): WorkflowGraphContract {
@@ -9,21 +9,22 @@ function emptyGraph(): WorkflowGraphContract {
 }
 
 describe('input mapping summaries', () => {
-  const level = {
-    nodes: [
-      {
-        ...addDefinitionNode(
-          emptyGraph(),
-          definition,
-          { x: 0, y: 0 },
-          'invoice',
-        ).nodes[0],
-        id: 'invoice',
-        label: 'New invoice',
-      },
-    ],
-    edges: [],
-  } as unknown as WorkflowGraphContract;
+  const level =
+    /* This focused graph fixture supplies the node/edge metadata read by the presenter; executable-only fields are omitted. */ {
+      nodes: [
+        {
+          ...addDefinitionNode(
+            emptyGraph(),
+            definition,
+            { x: 0, y: 0 },
+            'invoice',
+          ).nodes[0],
+          id: 'invoice',
+          label: 'New invoice',
+        },
+      ],
+      edges: [],
+    } as unknown as WorkflowGraphContract;
   const row = { id: 'r', destinationKey: 'amount' } as const;
 
   it('names where each kind of source reads from, without the $ root', () => {

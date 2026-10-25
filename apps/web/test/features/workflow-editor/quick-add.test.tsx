@@ -162,9 +162,10 @@ describe('quick add port drop', () => {
     expect(
       gestureEndPoint(new MouseEvent('mouseup', { clientX: 12, clientY: 34 })),
     ).toEqual({ x: 12, y: 34 });
-    const touch = {
-      changedTouches: [{ clientX: 5, clientY: 6 }],
-    } as unknown as TouchEvent;
+    const touch =
+      /* This synthetic touch notification supplies the coordinates and targets used by the gesture handler. */ {
+        changedTouches: [{ clientX: 5, clientY: 6 }],
+      } as unknown as TouchEvent;
     expect(gestureEndPoint(touch)).toEqual({ x: 5, y: 6 });
   });
 });

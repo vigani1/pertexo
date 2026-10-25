@@ -13,8 +13,10 @@ describe('native authentication API', () => {
     'http://localhost:4321/authorize',
   ])('accepts an allowed provider authorization URL: %s', async (url) => {
     const apiClient = {
+      stream: vi.fn(),
+      download: vi.fn(),
       request: vi.fn().mockResolvedValue({ url, redirect: true }),
-    } as unknown as ApiClient;
+    } satisfies ApiClient;
     await expect(startSocialAuthentication(apiClient, 'google')).resolves.toBe(
       url,
     );
@@ -26,15 +28,21 @@ describe('native authentication API', () => {
     'https://username:password@identity.example/authorize',
   ])('rejects unsupported provider schemes and hosts: %s', async (url) => {
     const apiClient = {
+      stream: vi.fn(),
+      download: vi.fn(),
       request: vi.fn().mockResolvedValue({ url, redirect: true }),
-    } as unknown as ApiClient;
+    } satisfies ApiClient;
     await expect(
       startSocialAuthentication(apiClient, 'google'),
     ).rejects.toThrow('provider URL was rejected');
   });
   it('uses the Better Auth password-reset request route', async () => {
     const request = vi.fn().mockResolvedValue({ status: true });
-    const apiClient = { request } as unknown as ApiClient;
+    const apiClient = {
+      stream: vi.fn(),
+      download: vi.fn(),
+      request,
+    } satisfies ApiClient;
 
     await requestPasswordReset(apiClient, 'ada@example.test');
 
@@ -52,7 +60,11 @@ describe('native authentication API', () => {
 
   it('consumes a reset through the transactional Pertexo endpoint', async () => {
     const request = vi.fn().mockResolvedValue({ status: true });
-    const apiClient = { request } as unknown as ApiClient;
+    const apiClient = {
+      stream: vi.fn(),
+      download: vi.fn(),
+      request,
+    } satisfies ApiClient;
     await resetPassword(apiClient, {
       token: 'reset-token',
       password: 'a new password with enough characters',

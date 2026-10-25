@@ -1,7 +1,7 @@
-import { File as NodeFile } from 'node:buffer';
-import { http, HttpResponse } from 'msw';
-import { expect } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
+import { http, HttpResponse } from 'msw';
+import { File as NodeFile } from 'node:buffer';
+import { expect } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';
 export const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -22,7 +22,7 @@ const sha256 =
 
 export function file(size = bytes.length): File {
   // Undici needs Node’s native Blob; bridge the DOM-only directory property in this test seam.
-  return new NodeFile(
+  return /* Undici needs Node’s native Blob; only the DOM directory property is absent from this File. */ new NodeFile(
     [size === bytes.length ? bytes : new Uint8Array(size)],
     'opaque.bin',
   ) as unknown as File;

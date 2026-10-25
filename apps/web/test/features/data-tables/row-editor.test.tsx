@@ -1,8 +1,8 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
-import type { DataTableDefinition } from '@pertexo/contracts';
 import { TableRowEditor } from '@/features/data-tables/components/row-editor';
 import { createApiClient } from '@/lib/api/client';
+import type { DataTableDefinition } from '@pertexo/contracts';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { expect, it, vi } from 'vitest';
 import { renderInRouter } from '../../support/render-in-router';
 
 const fetchRows = vi.fn<typeof fetch>();
@@ -15,19 +15,20 @@ const scope = {
   workspaceId: '01900000-0000-7000-8000-000000000002',
 };
 
-const table = {
-  id: '01900000-0000-7000-8000-000000000001',
-  name: 'Orders',
-  keyColumn: 'key',
-  revision: 1,
-  rowCount: 0,
-  byteCount: 0,
-  columns: [
-    { id: 'c1', name: 'key', type: 'text', required: true },
-    { id: 'c2', name: 'amount', type: 'number', required: false },
-    { id: 'c3', name: 'note', type: 'text', required: false },
-  ],
-} as unknown as DataTableDefinition;
+const table =
+  /* This focused fixture supplies the table fields read by the value editor; unrelated metadata is omitted. */ {
+    id: '01900000-0000-7000-8000-000000000001',
+    name: 'Orders',
+    keyColumn: 'key',
+    revision: 1,
+    rowCount: 0,
+    byteCount: 0,
+    columns: [
+      { id: 'c1', name: 'key', type: 'text', required: true },
+      { id: 'c2', name: 'amount', type: 'number', required: false },
+      { id: 'c3', name: 'note', type: 'text', required: false },
+    ],
+  } as unknown as DataTableDefinition;
 
 it('shows each field’s problem on it and focuses the first', async () => {
   renderInRouter(

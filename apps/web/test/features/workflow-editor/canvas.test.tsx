@@ -70,7 +70,14 @@ function measureStepCards(size: Readonly<{ width: number; height: number }>) {
     public observe(target: Element) {
       if (!target.classList.contains('react-flow__node')) return;
       queueMicrotask(() => {
-        this.#callback([{ target } as unknown as ResizeObserverEntry], this);
+        this.#callback(
+          [
+            /* The resize callback reads only target; this notification intentionally omits unused geometry. */ {
+              target,
+            } as unknown as ResizeObserverEntry,
+          ],
+          this,
+        );
       });
     }
     public unobserve() {

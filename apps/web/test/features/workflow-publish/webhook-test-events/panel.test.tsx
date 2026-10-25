@@ -1,10 +1,10 @@
+import { NotificationsProvider } from '@/components/ui/toast';
+import { WebhookTestEventPanel } from '@/features/workflow-publish/components/webhook-test-events/panel';
+import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { WebhookTestEventPanel } from '@/features/workflow-publish/components/webhook-test-events/panel';
-import { NotificationsProvider } from '@/components/ui/toast';
-import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
 const id = '11111111-1111-4111-8111-111111111111';
 const limits = { inlineBytes: 262144, depth: 64, members: 10000 };
 function fixture() {
@@ -13,38 +13,39 @@ function fixture() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const apiClient = {
-    request: (input: ApiJsonRequest<unknown>) =>
-      Promise.resolve().then(() => {
-        requests.push(input);
-        if (input.path.endsWith('/sample')) {
-          if (input.method === 'PUT')
-            return { sampleId: id, removed: false, replayed: false };
-          return { sample: null, output: null, draftRevision: 3, limits };
-        }
-        if (input.method === 'POST')
+  const apiClient =
+    /* Vitest models the overloaded request method as its last signature; this recorder exercises only the declared test responses. */ {
+      request: (input: ApiJsonRequest<unknown>) =>
+        Promise.resolve().then(() => {
+          requests.push(input);
+          if (input.path.endsWith('/sample')) {
+            if (input.method === 'PUT')
+              return { sampleId: id, removed: false, replayed: false };
+            return { sample: null, output: null, draftRevision: 3, limits };
+          }
+          if (input.method === 'POST')
+            return {
+              id,
+              path: `/hooks/${'a'.repeat(43)}/test`,
+              expiresAt: new Date(Date.now() + 120000).toISOString(),
+              signingSecret: 'b'.repeat(43),
+              authentication:
+                input.body === undefined
+                  ? {}
+                  : (input.body as { authentication: unknown }).authentication,
+            };
+          if (input.method === 'DELETE') return undefined;
           return {
-            id,
-            path: `/hooks/${'a'.repeat(43)}/test`,
+            state,
             expiresAt: new Date(Date.now() + 120000).toISOString(),
-            signingSecret: 'b'.repeat(43),
-            authentication:
-              input.body === undefined
-                ? {}
-                : (input.body as { authentication: unknown }).authentication,
+            output:
+              state === 'captured'
+                ? { kind: 'inline', value: { amount: 17 } }
+                : null,
           };
-        if (input.method === 'DELETE') return undefined;
-        return {
-          state,
-          expiresAt: new Date(Date.now() + 120000).toISOString(),
-          output:
-            state === 'captured'
-              ? { kind: 'inline', value: { amount: 17 } }
-              : null,
-        };
-      }),
-    stream: vi.fn(),
-  } as unknown as ApiClient;
+        }),
+      stream: vi.fn(),
+    } as unknown as ApiClient;
   const scope = {
     apiClient,
     userId: 'owner',

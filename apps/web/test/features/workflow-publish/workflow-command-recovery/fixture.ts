@@ -38,7 +38,7 @@ export function compatibility() {
 export function apiClientFor(
   request: (input: ApiJsonRequest<unknown>) => Promise<unknown>,
 ): ApiClient {
-  return {
+  return /* This endpoint dispatcher supplies specific decoded responses; the generic ApiClient request signature cannot express its finite fixture responses. */ {
     request,
     stream: vi.fn(),
   } as unknown as ApiClient;

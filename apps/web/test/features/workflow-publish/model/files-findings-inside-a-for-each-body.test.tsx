@@ -102,28 +102,29 @@ describe('publication', () => {
       generation: 1,
       revision: 2,
     };
-    const apiClient = {
-      request: (request: ApiJsonRequest<unknown>) => {
-        paths.push(request.path.split('/').at(-1) ?? '');
-        if (request.path.endsWith('/validate'))
+    const apiClient =
+      /* This endpoint dispatcher supplies specific decoded responses; the generic ApiClient request signature cannot express its finite fixture responses. */ {
+        request: (request: ApiJsonRequest<unknown>) => {
+          paths.push(request.path.split('/').at(-1) ?? '');
+          if (request.path.endsWith('/validate'))
+            return Promise.resolve({
+              report: { valid, issues: [], compatibility },
+              etag: saved.etag,
+            });
           return Promise.resolve({
-            report: { valid, issues: [], compatibility },
-            etag: saved.etag,
+            version: {
+              id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+              workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+              versionNumber: 3,
+              graph: graph([]),
+              checksum: `wf:sha256:${'c'.repeat(64)}`,
+              publishedAt: '2026-09-15T10:00:00.000Z',
+            },
+            reused: false,
           });
-        return Promise.resolve({
-          version: {
-            id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-            workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-            versionNumber: 3,
-            graph: graph([]),
-            checksum: `wf:sha256:${'c'.repeat(64)}`,
-            publishedAt: '2026-09-15T10:00:00.000Z',
-          },
-          reused: false,
-        });
-      },
-      stream: vi.fn(),
-    } as unknown as ApiClient;
+        },
+        stream: vi.fn(),
+      } as unknown as ApiClient;
     const hook = renderHook(
       () =>
         useWorkflowPublication({

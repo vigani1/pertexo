@@ -24,70 +24,71 @@ import {
 describe('thread view', () => {
   it('names invoked nested loop steps without listing unrun body steps as pending roots', () => {
     eventSequence.value = 0;
-    const nestedGraph = {
-      settings: {},
-      edges: [],
-      nodes: [
-        {
-          id: 'outer',
-          label: 'Outer pair',
-          definition: { key: 'core.foreach', version: 1 },
-          position: { x: 0, y: 0 },
-          configVersion: 1,
-          config: {},
-          inputMappings: {},
-          connectionRefs: {},
-          structured: {
-            kind: 'for_each',
-            maxIterations: 2,
-            maxConcurrency: 1,
-            body: {
-              settings: {},
-              inputPorts: ['item', 'ordinal'],
-              outputPorts: ['result'],
-              edges: [],
-              nodes: [
-                {
-                  id: 'inner',
-                  label: 'Inner pair',
-                  definition: { key: 'core.foreach', version: 1 },
-                  position: { x: 0, y: 0 },
-                  configVersion: 1,
-                  config: {},
-                  inputMappings: {},
-                  connectionRefs: {},
-                  structured: {
-                    kind: 'for_each',
-                    maxIterations: 2,
-                    maxConcurrency: 1,
-                    body: {
-                      settings: {},
-                      inputPorts: ['item', 'ordinal'],
-                      outputPorts: ['result'],
-                      edges: [],
-                      nodes: [
-                        {
-                          id: 'leaf',
-                          label: 'Nested receipt',
-                          definition: { key: 'core.set', version: 1 },
-                          position: { x: 0, y: 0 },
-                          configVersion: 1,
-                          config: {},
-                          inputMappings: {},
-                          connectionRefs: {},
-                        },
-                      ],
+    const nestedGraph =
+      /* This focused graph fixture supplies the node/edge metadata read by the presenter; executable-only fields are omitted. */ {
+        settings: {},
+        edges: [],
+        nodes: [
+          {
+            id: 'outer',
+            label: 'Outer pair',
+            definition: { key: 'core.foreach', version: 1 },
+            position: { x: 0, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {},
+            connectionRefs: {},
+            structured: {
+              kind: 'for_each',
+              maxIterations: 2,
+              maxConcurrency: 1,
+              body: {
+                settings: {},
+                inputPorts: ['item', 'ordinal'],
+                outputPorts: ['result'],
+                edges: [],
+                nodes: [
+                  {
+                    id: 'inner',
+                    label: 'Inner pair',
+                    definition: { key: 'core.foreach', version: 1 },
+                    position: { x: 0, y: 0 },
+                    configVersion: 1,
+                    config: {},
+                    inputMappings: {},
+                    connectionRefs: {},
+                    structured: {
+                      kind: 'for_each',
+                      maxIterations: 2,
+                      maxConcurrency: 1,
+                      body: {
+                        settings: {},
+                        inputPorts: ['item', 'ordinal'],
+                        outputPorts: ['result'],
+                        edges: [],
+                        nodes: [
+                          {
+                            id: 'leaf',
+                            label: 'Nested receipt',
+                            definition: { key: 'core.set', version: 1 },
+                            position: { x: 0, y: 0 },
+                            configVersion: 1,
+                            config: {},
+                            inputMappings: {},
+                            connectionRefs: {},
+                          },
+                        ],
+                      },
                     },
                   },
-                },
-              ],
+                ],
+              },
             },
           },
-        },
-      ],
-    } as unknown as NonNullable<
-      Parameters<typeof buildRunTimeline>[0]['graph']
-    >;
+        ],
+      } as unknown as NonNullable<
+        Parameters<typeof buildRunTimeline>[0]['graph']
+      >;
     const event = nodeEvent('node.succeeded', 2, {
       nodeId: 'inner',
       invocationKey: 'inner:outer:0',

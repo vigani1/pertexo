@@ -1,14 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { describeDelivery } from '@/features/workflow-settings/model/triggers/delivery-outcome';
 import { describeDestination } from '@/features/workflow-settings/model/destination-label';
+import { describeDelivery } from '@/features/workflow-settings/model/triggers/delivery-outcome';
 import { extractEndpointKey } from '@/features/workflow-settings/model/triggers/endpoint-key';
 import { describeTriggerState } from '@/features/workflow-settings/model/triggers/state';
+import { versionSteps } from '@/features/workflow-settings/model/versions/steps';
 import {
   diffWorkflowGraphs,
   isEmptyDiff,
 } from '@/features/workflows/comparison.public';
-import { versionSteps } from '@/features/workflow-settings/model/versions/steps';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
+import { describe, expect, it } from 'vitest';
 import { emptyGraph, stepNode } from './fixtures';
 
 describe('webhook endpoint keys', () => {
@@ -52,7 +52,11 @@ describe('trigger states', () => {
 
 describe('version changes', () => {
   const graph = (nodes: unknown[], edges: unknown[] = []) =>
-    ({ ...emptyGraph, nodes, edges }) as unknown as WorkflowGraphContract;
+    /* This focused graph fixture supplies the node/edge metadata read by the presenter; executable-only fields are omitted. */ ({
+      ...emptyGraph,
+      nodes,
+      edges,
+    }) as unknown as WorkflowGraphContract;
   const edge = (from: string, to: string) => ({
     id: `${from}-${to}`,
     source: { nodeId: from, port: 'out' },

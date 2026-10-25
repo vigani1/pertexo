@@ -302,9 +302,10 @@ describe('handled failure history', () => {
 
 describe('a run’s ending', () => {
   it('names the fixed outcome of the Stop run step that finished the run', () => {
-    const graph = {
-      nodes: [stop('accepted', 'accepted'), stop('rejected', 'rejected')],
-    } as unknown as Parameters<typeof runEnding>[1];
+    const graph =
+      /* The sentence presenter reads only the supplied terminal output fields from this historical-run fixture. */ {
+        nodes: [stop('accepted', 'accepted'), stop('rejected', 'rejected')],
+      } as unknown as Parameters<typeof runEnding>[1];
     expect(
       runEnding(
         [

@@ -78,7 +78,7 @@ export function apiClientFor(
     limits: { inlineBytes: 262144, depth: 64, members: 10000 },
   }),
 ): ApiClient {
-  return {
+  return /* This endpoint dispatcher supplies specific decoded responses; the generic ApiClient request signature cannot express its finite fixture responses. */ {
     request: (input: ApiJsonRequest<unknown>) => {
       if (
         (input.path.endsWith('/sample') || input.path.endsWith('/samples')) &&
