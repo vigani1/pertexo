@@ -1,24 +1,27 @@
+import {
+  publicationReviewDecision,
+  rolesForCapability,
+} from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflowDrafts } from '../../schema/authoring/workflows.js';
-import { workflowPublicationRequests } from '../../schema/authoring/publication-requests.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
-import { appendAuditFact } from '../../governance/audit/events.repository.js';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { workflowPublicationRequests } from '../../schema/authoring/publication-requests.js';
+import { workflowDrafts } from '../../schema/authoring/workflows.js';
 import { publishWorkflowCandidate } from '../publication/publisher.repository.js';
-import { PublicationReviewError } from './errors.js';
+import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import type { PublicationReviewStore, ReviewDependencies } from './contract.js';
+import { PublicationReviewError } from './errors.js';
 import {
+  projectReview,
   readReviewDraft,
   readReviewRow,
-  projectReview,
 } from './read.queries.js';
 
 export async function decidePublicationReview(
@@ -68,18 +71,14 @@ export async function decidePublicationReview(
     .for('update')
     .catch(rethrowQueryFailure);
   const row = await readReviewRow(client, input);
-  if (row.requestedBy === input.actorId)
-    throw new PublicationReviewError(
-      'self',
-      'Another owner or admin must decide your publication request.',
-    );
-  if (row.state !== 'pending')
-    throw new PublicationReviewError(
-      row.state === 'approved' || row.state === 'rejected'
-        ? 'decided'
-        : 'stale',
-      'This publication request is no longer pending. Review the latest draft and request approval again.',
-    );
+  const decision = publicationReviewDecision({
+    requestedBy: row.requestedBy,
+    actorId: input.actorId,
+    state: row.state,
+    decision: input.decision,
+  });
+  if (!decision.allowed)
+    throw new PublicationReviewError(decision.reason, decision.message);
   await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
     actorId: row.requestedBy,
     roles: rolesForCapability('workflow:publish'),
@@ -102,7 +101,7 @@ export async function decidePublicationReview(
   await db
     .update(workflowPublicationRequests)
     .set({
-      status: input.decision === 'approve' ? 'approved' : 'rejected',
+      status: decision.status,
       decidedBy: input.actorId,
       decidedAt: sql`clock_timestamp()`,
       comment: input.comment ?? null,
@@ -121,10 +120,7 @@ export async function decidePublicationReview(
     actorId: input.actorId,
     requestId: input.requestId ?? null,
     traceId: input.traceId ?? null,
-    action:
-      input.decision === 'approve'
-        ? 'workflow.publication_approved'
-        : 'workflow.publication_rejected',
+    action: decision.action,
     targetType: 'workflow',
     targetId: row.workflowId,
     metadata: {
