@@ -3,18 +3,18 @@ import { UploadIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogFooter,
   DialogContent,
   DialogTitle,
   DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { LabelledField } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { FileDrop } from '@/components/ui/file-drop';
 import { Notice } from '@/components/ui/notice';
 import { Status, type StatusTone } from '@/components/ui/status';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
-import { formatByteLength } from '@/lib/format/bytes';
 import { useUpload } from '../hooks/use-upload';
 import type { FileReference, UploadPhase } from '../model/upload';
 
@@ -118,16 +118,12 @@ function UploadSession({
         description="Up to 10 MB (or the server’s lower storage limit). Files are not virus-checked."
       >
         {(control) => (
-          <Input
+          <FileDrop
             {...control}
-            type="file"
             disabled={upload.pending || attachment.pending}
-            onChange={(event) => {
-              const file = event.currentTarget.files?.[0];
-              if (file !== undefined) {
-                setAttachmentError(undefined);
-                void upload.select(file);
-              }
+            onChoose={(file) => {
+              setAttachmentError(undefined);
+              void upload.select(file);
             }}
           />
         )}
@@ -139,12 +135,6 @@ function UploadSession({
         aria-atomic="true"
       >
         <Status tone={phase.tone}>{phase.label}</Status>
-        {upload.state.filename === undefined ? null : (
-          <p className="break-words text-sm text-muted-foreground">
-            {upload.state.filename} ·{' '}
-            {formatByteLength(upload.state.byteLength ?? 0)}
-          </p>
-        )}
       </div>
       {upload.state.error === undefined ? null : (
         <Notice tone="warning">{upload.state.error}</Notice>
@@ -158,7 +148,7 @@ function UploadSession({
         input cases and runs keep their files. Unused finalized files expire
         after 30 days.
       </p>
-      <div className="flex flex-wrap justify-end gap-2">
+      <DialogFooter>
         <Button type="button" variant="ghost" onClick={close}>
           {upload.pending ? 'Cancel upload' : 'Cancel'}
         </Button>
@@ -206,7 +196,7 @@ function UploadSession({
         >
           {useLabel}
         </Button>
-      </div>
+      </DialogFooter>
     </>
   );
 }

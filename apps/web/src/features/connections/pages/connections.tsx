@@ -1,3 +1,4 @@
+import { LooseThread } from '@/components/patterns/states/thread-illustrations';
 import {
   FailedReadState,
   QueryView,
@@ -20,7 +21,12 @@ import {
 import { HowItWorks } from '@/components/patterns/guidance/how-it-works';
 import { UnavailablePage } from '@/components/patterns/states/unavailable-page';
 import { Button } from '@/components/ui/button';
-import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
@@ -112,6 +118,9 @@ function ConnectionsBody({
       isEmpty={() => items.length === 0}
       empty={
         <Empty>
+          <EmptyMedia className="w-full max-w-56">
+            <LooseThread />
+          </EmptyMedia>
           <EmptyTitle>Nothing connected yet</EmptyTitle>
           <EmptyDescription>
             {canManage

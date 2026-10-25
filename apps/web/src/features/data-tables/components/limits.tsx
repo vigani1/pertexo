@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { FieldLabel as Label } from '@/components/ui/field';
 import {
   Dialog,
+  DialogFooter,
   DialogContent,
   DialogTitle,
   DialogDescription,
@@ -104,10 +105,7 @@ export function DataTableLimits({
           ))}
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
-          <div className="flex gap-2">
-            <Button type="submit" variant="primary" disabled={locked}>
-              Save limits
-            </Button>
+          <DialogFooter>
             <Button
               type="button"
               variant="ghost"
@@ -116,7 +114,10 @@ export function DataTableLimits({
             >
               Cancel
             </Button>
-          </div>
+            <Button type="submit" variant="primary" disabled={locked}>
+              Save limits
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

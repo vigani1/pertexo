@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { isAdministrativeRole } from '@pertexo/workflow-model';
 import { AudienceMoveReview } from './folders/audience-review';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
@@ -179,7 +180,7 @@ function OrganizationRecoveryActions({
 }>) {
   const { command, tags, preparing, locked, refresh } = editor;
   return (
-    <div className="flex flex-wrap justify-end gap-2">
+    <DialogFooter>
       <Button variant="ghost" disabled={locked} onClick={onClose}>
         Close
       </Button>
@@ -223,6 +224,6 @@ function OrganizationRecoveryActions({
             : 'Refresh for a new change'}
         </ProgressButton>
       )}
-    </div>
+    </DialogFooter>
   );
 }

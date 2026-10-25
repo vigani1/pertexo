@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import type { ReactNode } from 'react';
 import type { FederationSettings } from '@pertexo/contracts';
 import {
@@ -73,7 +74,7 @@ export function ProviderFooter({
         Changing a required provider needs another tested provider first, or
         required SSO turned off. Provider changes end its existing sessions.
       </p>
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
+      <DialogFooter className="pt-2">
         <Button
           type="button"
           variant="ghost"
@@ -90,7 +91,7 @@ export function ProviderFooter({
         >
           Save provider
         </ProgressButton>
-      </div>
+      </DialogFooter>
     </>
   );
 }

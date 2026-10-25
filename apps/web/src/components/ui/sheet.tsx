@@ -1,3 +1,4 @@
+import { DialogFooter } from './dialog';
 import type { ComponentProps } from 'react';
 import { Dialog as SheetPrimitive } from '@base-ui/react/dialog';
 import { cva, type VariantProps } from 'class-variance-authority';
@@ -78,12 +79,9 @@ export function SheetBody({ className, ...props }: ComponentProps<'div'>) {
 
 export function SheetFooter({ className, ...props }: ComponentProps<'div'>) {
   return (
-    <div
+    <DialogFooter
       data-slot="sheet-footer"
-      className={cn(
-        'flex items-center justify-end gap-2 border-t border-border px-5 py-4',
-        className,
-      )}
+      className={cn('border-t border-border px-5 py-4', className)}
       {...props}
     />
   );

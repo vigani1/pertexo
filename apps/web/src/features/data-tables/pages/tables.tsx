@@ -64,7 +64,7 @@ export function DataTablesPage({
             >
               <ArrowLeftIcon aria-hidden="true" />
             </Button>
-            <PageHeaderTitle className="truncate">
+            <PageHeaderTitle className="wrap-anywhere">
               {table?.name ?? 'Data table'}
             </PageHeaderTitle>
           </div>

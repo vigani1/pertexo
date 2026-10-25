@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { SuitePreparation } from './preparation';
 import { useState } from 'react';
 import {
@@ -73,7 +74,7 @@ function SuiteStartActions({
     preparation.cases.length === 0 ||
     (preparation.effectfulSteps.length > 0 && !acknowledged);
   return (
-    <div className="flex flex-wrap justify-end gap-2">
+    <DialogFooter>
       <Button
         variant="ghost"
         disabled={locked && !suites.start.expired}
@@ -109,6 +110,6 @@ function SuiteStartActions({
           </Button>
         </>
       )}
-    </div>
+    </DialogFooter>
   );
 }

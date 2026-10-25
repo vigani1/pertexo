@@ -21,15 +21,19 @@ export function RowsPager({
   onPrevious: () => void;
   onNext: () => void;
 }>) {
+  let count = `${table.rowCount.toLocaleString(FORMAT_LOCALE)} ${table.rowCount === 1 ? 'row' : 'rows'} total`;
+  if (query.filters.length > 0) count = '0 matching rows';
+  if (shown > 0) {
+    const range = `Rows ${String(query.offset + 1)}–${String(query.offset + shown)}`;
+    count =
+      query.filters.length === 0
+        ? `${range} of ${table.rowCount.toLocaleString(FORMAT_LOCALE)}`
+        : `${range} · filtered`;
+  }
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-surface-ink/8 px-4 py-2 text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-surface-ink/8 px-4 py-2 text-xs text-muted-foreground">
       <p className="font-mono tabular-nums" aria-live="polite">
-        {shown === 0
-          ? 'No rows shown'
-          : `Rows ${String(query.offset + 1)}–${String(query.offset + shown)}`}
-        {query.filters.length === 0
-          ? ` of ${table.rowCount.toLocaleString(FORMAT_LOCALE)}`
-          : ' · filtered'}
+        {count}
       </p>
       <div className="flex items-center gap-1">
         <Button

@@ -6,7 +6,7 @@ export function Switch({ className, ...props }: SwitchPrimitive.Root.Props) {
     <SwitchPrimitive.Root
       data-slot="switch"
       className={cn(
-        'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-surface-ink/12 bg-surface-ink/8 transition-colors outline-none focus-ring data-checked:border-success/60 data-checked:bg-success/25 data-disabled:cursor-not-allowed data-disabled:opacity-50 motion-reduce:transition-none',
+        'relative inline-flex h-5 max-sm:before:absolute max-sm:before:top-1/2 max-sm:before:left-1/2 max-sm:before:size-[var(--control-min-size,2.75rem)] max-sm:before:-translate-x-1/2 max-sm:before:-translate-y-1/2 w-9 shrink-0 items-center rounded-full border border-surface-ink/12 bg-surface-ink/8 transition-colors outline-none focus-ring data-checked:border-success/60 data-checked:bg-success/25 data-disabled:cursor-not-allowed data-disabled:opacity-50 motion-reduce:transition-none',
         className,
       )}
       {...props}

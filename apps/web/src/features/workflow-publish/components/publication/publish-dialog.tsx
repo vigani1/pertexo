@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import { publicationDialogCopy } from '../../model/publication/dialog-copy';
 import type { ReactNode } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
@@ -174,7 +175,7 @@ export function PublishDialog({
             {error}
           </Notice>
         )}
-        <div className="mt-6 flex justify-end gap-2">
+        <DialogFooter className="mt-6">
           <DialogClose
             render={<Button type="button" variant="ghost" disabled={pending} />}
           >
@@ -201,7 +202,7 @@ export function PublishDialog({
           >
             {copy.confirmLabel}
           </ProgressButton>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

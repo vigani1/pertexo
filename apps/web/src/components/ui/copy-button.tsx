@@ -89,7 +89,7 @@ export function CopyButton({
       title={outcome === undefined ? label : name}
       className={cn(
         // A little room inside, so the focus ring doesn't touch the text.
-        'group/copy -mx-1 inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-sm px-1 font-mono text-xs pointer-coarse:min-h-10 text-subtle-foreground outline-none hover:text-foreground focus-ring [&_svg]:size-3 [&_svg]:shrink-0',
+        'group/copy -mx-1 inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-sm px-1 font-mono text-xs pointer-coarse:h-10 max-sm:min-h-[var(--control-min-size,2.75rem)] max-sm:min-w-[var(--control-min-size,2.75rem)] text-subtle-foreground outline-none hover:text-foreground focus-ring [&_svg]:size-3 [&_svg]:shrink-0',
         className,
       )}
       onClick={copy}

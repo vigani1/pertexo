@@ -1,3 +1,4 @@
+import { DialogFooter } from '@/components/ui/dialog';
 import type { ComponentProps } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,11 +36,11 @@ export function PortabilityAccessDeniedDialog({
             ? 'Access changed. The file, preview and retained command have been cleared.'
             : 'Access changed. The reviewed source has been cleared.'}
         </DialogDescription>
-        <div className="mt-5 flex justify-end">
+        <DialogFooter className="mt-5">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

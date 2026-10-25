@@ -3,7 +3,7 @@ import { cva } from 'class-variance-authority';
 // `primary` is the one filled action per screen; `default` is the tinted
 // everyday action. Destructive intent keeps its own variant everywhere.
 export const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] duration-150 outline-none select-none focus-ring motion-safe:active:not-aria-[haspopup]:translate-y-px motion-reduce:transition-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 data-pending:disabled:opacity-100 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] duration-150 outline-none select-none max-sm:min-h-[var(--control-min-size,2.75rem)] max-sm:min-w-[var(--control-min-size,2.75rem)] focus-ring motion-safe:active:not-aria-[haspopup]:translate-y-px motion-reduce:transition-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 data-pending:disabled:opacity-100 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/30 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -21,8 +21,8 @@ export const buttonVariants = cva(
           'border-destructive/30 bg-destructive/6 text-destructive hover:border-destructive/60 hover:bg-destructive/14 [--focus-ring-color:var(--destructive)]',
         link: 'inline-link h-auto px-0',
       },
-      // On touch screens (pointer-coarse) every size is at least 40px, so
-      // small icon and text buttons stay easy to hit with a thumb.
+      // Coarse pointers keep a 40px floor; phone controls use the shared
+      // 44px minimum above unless their surface owns compact geometry.
       size: {
         default:
           'h-9 gap-2 px-3.5 pointer-coarse:h-10 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3',

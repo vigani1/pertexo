@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent } from 'react';
+import { useEffect, useEffectEvent, type ReactNode } from 'react';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { AuthForm } from '../../forms/submission';
@@ -6,7 +6,11 @@ import type { useTwoFactorVerification } from './use-verify';
 
 export function TwoFactorCodeForm({
   verification,
-}: Readonly<{ verification: ReturnType<typeof useTwoFactorVerification> }>) {
+  secondaryAction,
+}: Readonly<{
+  verification: ReturnType<typeof useTwoFactorVerification>;
+  secondaryAction?: ReactNode;
+}>) {
   const { pending, method } = verification;
   const focusCode = useEffectEvent(() => {
     verification.fields.focus('code');
@@ -16,6 +20,7 @@ export function TwoFactorCodeForm({
   }, [pending, method]);
   return (
     <AuthForm
+      secondaryAction={secondaryAction}
       failure={verification.failure}
       submission={{
         pending: verification.pending,

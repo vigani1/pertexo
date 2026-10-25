@@ -35,7 +35,8 @@ it('finalizes opaque bytes before inserting only the descriptor, without applica
   await event.upload(screen.getByLabelText('File', { exact: true }), file());
   await screen.findByText('File ready');
   expect(onUse).not.toHaveBeenCalled();
-  expect(screen.getByText(/opaque.bin/)).toHaveTextContent('4 B');
+  expect(screen.getByText('opaque.bin')).toBeVisible();
+  expect(screen.getByText('4 B')).toBeVisible();
   await event.click(screen.getByRole('button', { name: 'Use file' }));
   await waitFor(() => {
     expect(onUse).toHaveBeenCalledTimes(1);

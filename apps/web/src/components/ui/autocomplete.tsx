@@ -14,7 +14,7 @@ export function AutocompleteInput({
     <AutocompletePrimitive.Input
       data-slot="autocomplete-input"
       className={cn(
-        'recessed-control h-9 w-full min-w-0 rounded-md border px-3 py-2 text-base md:text-sm',
+        'recessed-control h-9 max-sm:min-h-[var(--control-min-size,2.75rem)] w-full min-w-0 rounded-md border px-3 py-2 text-base md:text-sm',
         className,
       )}
       {...props}
@@ -61,7 +61,7 @@ export function AutocompleteItem({
     <AutocompletePrimitive.Item
       data-slot="autocomplete-item"
       className={cn(
-        'flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground outline-none select-none data-highlighted:bg-surface-ink/6 data-highlighted:text-foreground',
+        'flex w-full max-sm:min-h-[var(--control-min-size,2.75rem)] cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground outline-none select-none data-highlighted:bg-surface-ink/6 data-highlighted:text-foreground',
         className,
       )}
       {...props}

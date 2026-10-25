@@ -78,7 +78,7 @@ export function DialogTitle({
   return (
     <DialogPrimitive.Title
       className={cn(
-        'font-display text-xl leading-tight [--display-optical-size:24] [--display-width:84%]',
+        'font-display text-xl leading-tight wrap-anywhere [--display-optical-size:24] [--display-width:84%]',
         className,
       )}
       {...props}
@@ -93,7 +93,21 @@ export function DialogDescription({
   return (
     <DialogPrimitive.Description
       className={cn(
-        'mt-2 text-sm leading-relaxed text-muted-foreground',
+        'mt-2 text-sm leading-relaxed wrap-anywhere text-muted-foreground',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+/** Cancel/Close first, supporting actions next, primary action last in DOM order. */
+export function DialogFooter({ className, ...props }: ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="dialog-footer"
+      className={cn(
+        'flex shrink-0 flex-wrap items-center justify-end gap-2 max-sm:[&>button]:min-h-11 max-sm:[&>button]:max-w-full max-sm:[&>button]:whitespace-normal',
         className,
       )}
       {...props}

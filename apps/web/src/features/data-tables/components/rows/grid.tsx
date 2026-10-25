@@ -66,6 +66,7 @@ export function RowsGrid({
   table,
   page,
   pending,
+  filtered,
   editable,
   locked,
   onEdit,
@@ -74,6 +75,7 @@ export function RowsGrid({
   table: DataTableDefinition;
   page: DataTableResult | undefined;
   pending: boolean;
+  filtered: boolean;
   editable: boolean;
   locked: boolean;
   onEdit: (row: DataTableRow) => void;
@@ -150,10 +152,7 @@ export function RowsGrid({
       </table>
       {page?.rows.length === 0 ? (
         <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-          No rows match.{' '}
-          {table.rowCount === 0
-            ? 'Add a row or import CSV to start.'
-            : 'Try a different filter.'}
+          {emptyRowsText(table, filtered, editable)}
         </p>
       ) : null}
     </div>
@@ -227,4 +226,16 @@ function DataRow({
       ) : null}
     </tr>
   );
+}
+
+function emptyRowsText(
+  table: DataTableDefinition,
+  filtered: boolean,
+  editable: boolean,
+): string {
+  if (filtered) return 'No rows match this filter. Try a different filter.';
+  if (table.rowCount > 0)
+    return 'No rows on this page. Go to the previous page or refresh rows.';
+  if (editable) return 'No rows yet. Add a row or import CSV to start.';
+  return 'No rows yet. Rows added by your team or workflows will appear here.';
 }

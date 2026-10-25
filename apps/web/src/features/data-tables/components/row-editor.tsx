@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/use-field-validation';
 import {
   Dialog,
+  DialogFooter,
   DialogContent,
   DialogTitle,
   DialogDescription,
@@ -154,14 +155,7 @@ export function TableRowEditor({
           </fieldset>
           {error === undefined ? null : <Notice tone="warning">{error}</Notice>}
           <TableCommandFeedback command={command} />
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={locked || schemaChanged}
-            >
-              {command.pending ? 'Saving…' : 'Save row'}
-            </Button>
+          <DialogFooter>
             <Button
               type="button"
               variant="ghost"
@@ -170,7 +164,14 @@ export function TableRowEditor({
             >
               Cancel
             </Button>
-          </div>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={locked || schemaChanged}
+            >
+              {command.pending ? 'Saving…' : 'Save row'}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
