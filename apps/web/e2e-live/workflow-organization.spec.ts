@@ -5,7 +5,7 @@ import {
   workflowOrganizationProjectionResponseSchema,
   workflowTagCreateResponseSchema,
 } from '@pertexo/contracts';
-import { installOrganizationObservations } from './organization-observations';
+import { installOrganizationObservations } from './workflow-organization/observations';
 
 import { expect } from '@playwright/test';
 
@@ -16,7 +16,7 @@ import {
   registerEditorUser,
 } from './support/ordinary-editor-session';
 
-import { qualifyExtended } from './organization-qualification';
+import { qualifyExtended } from './workflow-organization/qualification';
 import {
   choose,
   cleanupTag,

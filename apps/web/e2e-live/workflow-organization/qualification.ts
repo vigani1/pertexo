@@ -9,7 +9,7 @@ import {
   type Browser,
   type Page,
 } from '@playwright/test';
-import { invitedActor } from './organization-actors';
+import { invitedActor } from './actors';
 import {
   choose,
   cleanupTag,
@@ -22,7 +22,7 @@ import {
   organize,
   projection,
   row,
-} from './workflow-organization/fixture';
+} from './fixture';
 export async function qualifyExtended(input: {
   browser: Browser;
   page: Page;

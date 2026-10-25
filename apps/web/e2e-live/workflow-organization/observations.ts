@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test';
 
-import { test } from './support/browser-fixture';
+import { test } from '../support/browser-fixture';
 
-import { observation } from './workflow-organization/fixture';
+import { observation } from './fixture';
 
 export function installOrganizationObservations() {
   test.beforeEach(({ page }) => {

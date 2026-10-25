@@ -9,8 +9,8 @@ import {
   type Browser,
   type Page,
 } from '@playwright/test';
-import { registerEditorUser } from './support/ordinary-editor-session';
-import { command } from './workflow-organization/fixture';
+import { registerEditorUser } from '../support/ordinary-editor-session';
+import { command } from './fixture';
 export async function invitedActor(input: {
   browser: Browser;
   owner: Page;
