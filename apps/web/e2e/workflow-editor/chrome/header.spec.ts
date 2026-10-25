@@ -21,6 +21,7 @@ import {
 
 async function measureHeader(page: Page) {
   const header = page.locator('header');
+  expect((await header.boundingBox())?.height).toBeLessThanOrEqual(190);
   const controls = [
     header,
     header.getByRole('status'),
@@ -78,6 +79,24 @@ async function exerciseSaveStates(
   await installEditorRoutes(page, remote, {
     definitions: [manualDefinition, definition],
   });
+  await page.route('**/v1/workspaces/*/workflows/*/presence**', (route) =>
+    route.request().method() === 'PUT'
+      ? route.fulfill({ json: { accepted: true } })
+      : route.fulfill({
+          json: {
+            people: [
+              {
+                userId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+                displayName: 'Discussion owner',
+                editing: true,
+                dirty: true,
+                baseRevision: 1,
+                tabCount: 1,
+              },
+            ],
+          },
+        }),
+  );
   let mode: 'held-failure' | 'uncertain' | 'pass' = 'held-failure';
   let finishFailure!: () => Promise<void>;
   await page.route(
@@ -139,13 +158,16 @@ async function exerciseSaveStates(
     path: `/tmp/pertexo-polish-9-conflict-${String(width)}.png`,
   });
 }
-for (const width of [320, 390, 1280, 1536, 1920]) {
-  test(`keeps save states and recovery controls stationary at ${String(width)}px`, async ({
-    page,
-    context,
-  }) => {
-    await exerciseSaveStates(page, context, width);
-  });
+for (const colorScheme of ['light', 'dark'] as const) {
+  for (const width of [320, 360, 375, 390, 768, 1024, 1280, 1440, 1536, 1920]) {
+    test(`keeps save states and recovery controls stationary at ${String(width)}px in ${colorScheme}`, async ({
+      page,
+      context,
+    }) => {
+      await page.emulateMedia({ colorScheme });
+      await exerciseSaveStates(page, context, width);
+    });
+  }
 }
 test.describe('touch header', () => {
   test.use({ hasTouch: true });

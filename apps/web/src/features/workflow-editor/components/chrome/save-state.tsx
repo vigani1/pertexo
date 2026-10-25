@@ -24,7 +24,7 @@ export function SaveState({
     <span
       role="status"
       aria-live="polite"
-      className="inline-flex h-9 w-44 max-w-full shrink-0 items-center gap-1 pointer-coarse:h-10"
+      className="inline-flex h-9 w-44 min-w-0 max-w-full shrink-0 max-sm:flex-1 max-sm:min-h-11 items-center gap-1 pointer-coarse:h-10"
     >
       <span aria-hidden="true">·</span>
       <Sentence
