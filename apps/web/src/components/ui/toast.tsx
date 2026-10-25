@@ -75,8 +75,8 @@ function ToastList() {
 /**
  * App-wide notification viewport: bottom-right lenses, at most three visible,
  * each with a thread that counts down its timeout and pauses on hover/focus.
- * While a side sheet is open the stack steps aside (see `globals.css`), so a
- * notification never covers the sheet's actions.
+ * While a side sheet is open the stack steps aside (see `globals.css`).
+ * Modal dialogs place it below their backdrop so actions stay unobstructed.
  * Errors never time out. Use `useNotifications` to raise one.
  */
 export function NotificationsProvider({
@@ -88,7 +88,7 @@ export function NotificationsProvider({
       <Toast.Portal>
         <Toast.Viewport
           data-slot="toast-viewport"
-          className="fixed top-[var(--toast-top,auto)] right-[var(--toast-right,1rem)] bottom-[var(--toast-bottom,1rem)] z-60 flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2 outline-none [pointer-events:var(--toast-pointer-events,auto)]"
+          className="fixed top-[var(--toast-top,auto)] right-[var(--toast-right,1rem)] bottom-[var(--toast-bottom,1rem)] z-[var(--toast-z-index,60)] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2 outline-none [pointer-events:var(--toast-pointer-events,auto)]"
         >
           <ToastList />
         </Toast.Viewport>
