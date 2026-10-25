@@ -247,3 +247,35 @@ export class DataTableError extends Error {
 export function isDataTableResultBounded(value: DataTableResult): boolean {
   return inspectBoundedJson(value).ok;
 }
+
+export const dataTableSchemaChangeSchema = z.discriminatedUnion('operation', [
+  z
+    .object({
+      operation: z.literal('add_column'),
+      column: dataTableNewColumnSchema,
+      defaultValue: dataTableValueSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      operation: z.literal('rename_column'),
+      columnId: dataTableIdentifierSchema,
+      name: dataTableIdentifierSchema,
+    })
+    .strict(),
+  z
+    .object({
+      operation: z.literal('remove_column'),
+      columnId: dataTableIdentifierSchema,
+      confirm: z.literal(true),
+    })
+    .strict(),
+  z
+    .object({
+      operation: z.literal('set_key'),
+      columnId: dataTableIdentifierSchema.nullable(),
+    })
+    .strict(),
+]);
+
+export type DataTableSchemaChange = z.infer<typeof dataTableSchemaChangeSchema>;

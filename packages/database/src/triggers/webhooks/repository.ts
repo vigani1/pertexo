@@ -1,12 +1,12 @@
 import {
-  createEventCoordinationPreparation,
   closeEventCoordinationStore,
+  createEventCoordinationPreparation,
 } from '../coordination/prepare.js';
 
-import { readWebhookResponse } from './responses/records.queries.js';
-import type { WebhookResponseScope } from './responses/contract.js';
-import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import type { WebhookResponseScope } from './responses/contract.js';
+import { readWebhookResponse } from './responses/records.queries.js';
 
 import type { DatabaseConfig } from '../../config.js';
 
@@ -18,9 +18,9 @@ import {
 } from './deliveries.repository.js';
 
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { uuidSchema } from './input.js';
 import type { WebhookTriggerDatabase } from './runtime/contract.js';
 
+import { acceptVerifiedWebhookDelivery } from './runtime/accept.repository.js';
 import {
   configureWebhookAuthentication,
   provisionWebhook,
@@ -28,10 +28,9 @@ import {
   rotateWebhookSecret,
 } from './runtime/management.repository.js';
 import {
-  resolveWebhookVerification,
   consumeWebhookIngressLimit,
+  resolveWebhookVerification,
 } from './runtime/verification.queries.js';
-import { acceptVerifiedWebhookDelivery } from './runtime/accept.repository.js';
 
 export function createWebhookTriggerDatabase(
   config: DatabaseConfig,
@@ -60,8 +59,8 @@ export function createWebhookTriggerDatabase(
       return withTenantScopedClient(
         pool,
         {
-          workspaceId: uuidSchema.parse(input.workspaceId),
-          actorId: uuidSchema.parse(input.actorId),
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
         },
         async (client) => {
           await authorizeWebhookTriggerReader(
@@ -70,11 +69,7 @@ export function createWebhookTriggerDatabase(
             input.actorId,
             input.workflowId,
           );
-          return readHealth(
-            client,
-            input.workspaceId,
-            uuidSchema.parse(input.workflowId),
-          );
+          return readHealth(client, input.workspaceId, input.workflowId);
         },
       );
     },

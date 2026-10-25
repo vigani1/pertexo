@@ -7,10 +7,6 @@ export const traceparentSchema = z
   .refine((value) => value.slice(36, 52) !== '0'.repeat(16))
   .optional();
 
-export const safeErrorCodeSchema = z
-  .string()
-  .regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
-
 export function optionsFor(signal: AbortSignal | undefined): {
   signal?: AbortSignal;
 } {

@@ -1,36 +1,40 @@
-import { alias } from 'drizzle-orm/pg-core';
-import { workspaceMemberships as membershipsTable } from '../../schema/foundation.js';
-import { createNoticeMailBatch } from './batches.repository.js';
 import {
-  recipient,
-  settings,
-  advance,
   nextPersonNoticeDue,
-  type Person,
-} from './recipients.repository.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+  noticeWindow,
+  rolesForCapability,
+} from '@pertexo/workflow-model';
 import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  noticePreferences,
-  noticeWorkspaceSettings,
-} from '../../schema/inbox/preferences.js';
-import { noticeMailBatches, noticeMailItems } from '../../schema/inbox/mail.js';
-import { systemMailDeliveries } from '../../schema/mail/deliveries.js';
-import { workspaces } from '../../schema/foundation.js';
-import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  workspaceMemberships as membershipsTable,
+  workspaces,
+} from '../../schema/foundation.js';
+import { noticeMailBatches, noticeMailItems } from '../../schema/inbox/mail.js';
+import {
+  noticePreferences,
+  noticeWorkspaceSettings,
+} from '../../schema/inbox/preferences.js';
+import { systemMailDeliveries } from '../../schema/mail/deliveries.js';
+import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
-import { noticeWindow } from './schedule.js';
+import { createNoticeMailBatch } from './batches.repository.js';
+import type { NoticeMailSealer, NoticeMailStore } from './contract.js';
+import {
+  advance,
+  recipient,
+  settings,
+  type Person,
+} from './recipients.repository.js';
 import { readMailSubjects } from './subjects.queries.js';
-import type { NoticeMailStore, NoticeMailSealer } from './contract.js';
 const workspaceMemberships = alias(membershipsTable, 'member');
 async function preparePerson(
   client: PoolClient,

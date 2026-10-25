@@ -381,3 +381,34 @@ export { decideInvitationAcceptance } from './workspaces/invitation-acceptance.j
 export { publicationReviewDecision } from './authoring/reviews/decision.js';
 export { requiresPublicationReviewer } from './workspaces/governance.js';
 export { planWorkspaceVariableReplacement } from './values/variables/replacement.js';
+
+export {
+  workflowTestSuiteReportSchema,
+  type SuiteCaseReport,
+} from './authoring/test-suites/report.js';
+
+export {
+  failureNotificationCompletionDecision,
+  failureNotificationCompletionAuditFactType,
+} from './execution/notification-completion.js';
+
+export {
+  notificationProviderRequirements,
+  eligibleNotificationDestination,
+  eligibleNotificationConnection,
+} from './execution/notification-policy.js';
+export { decideScheduleHealthTransition } from './triggers/schedules/health.js';
+
+export * from './authoring/connections/contract.js';
+export {
+  classifyConnectionTestCompletion,
+  connectionTestStatus,
+} from './authoring/connections/health.js';
+export {
+  noticeScheduleSchema,
+  noticeEmailModeSchema,
+  nextNoticeDue,
+  noticeWindow,
+  nextPersonNoticeDue,
+  type NoticeSchedule,
+} from './execution/notice-schedule.js';

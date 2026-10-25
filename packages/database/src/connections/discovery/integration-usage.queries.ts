@@ -1,25 +1,15 @@
+import { and, eq, sql } from 'drizzle-orm';
+import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import { workflowIntegrationUsage as usage } from '../../schema/authoring/integrations.js';
 import type {
-  WorkflowIntegrationImpactRecord,
   WorkflowIntegrationImpactPage,
+  WorkflowIntegrationImpactRecord,
   WorkflowIntegrationUsageDatabase,
 } from './contract.js';
-import { acquireDatabasePool } from '../../platform/pool/runtime.js';
-import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { workflowIntegrationUsage as usage } from '../../schema/authoring/integrations.js';
-import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import { withWorkspaceTransaction } from '../../tenant-access/transactions.js';
-
-const uuidSchema = z.uuid();
-const integrationKeySchema = z
-  .string()
-  .min(1)
-  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
-const providerKeySchema = integrationKeySchema.max(64);
-const operationKeySchema = integrationKeySchema.max(128);
-const limitSchema = z.number().int().positive().max(1_000).default(100);
 
 function page(
   rows: readonly WorkflowIntegrationImpactRecord[],
@@ -44,17 +34,15 @@ export function createWorkflowIntegrationUsageDatabase(
   const { pool } = lease;
   return Object.freeze({
     findProviderOperationImpact: async (input) => {
-      const providerKey = providerKeySchema.parse(input.providerKey);
-      const operationKey = operationKeySchema.parse(input.operationKey);
-      const limit = limitSchema.parse(input.limit);
+      const providerKey = input.providerKey;
+      const operationKey = input.operationKey;
+      const limit = input.limit ?? 100;
       const after =
         input.after === undefined
           ? undefined
           : {
-              workflowVersionId: uuidSchema.parse(
-                input.after.workflowVersionId,
-              ),
-              connectionId: uuidSchema.parse(input.after.connectionId),
+              workflowVersionId: input.after.workflowVersionId,
+              connectionId: input.after.connectionId,
             };
       return withWorkspaceTransaction(
         pool,
@@ -84,17 +72,15 @@ export function createWorkflowIntegrationUsageDatabase(
       );
     },
     findConnectionImpact: async (input) => {
-      const connectionId = uuidSchema.parse(input.connectionId);
-      const limit = limitSchema.parse(input.limit);
+      const connectionId = input.connectionId;
+      const limit = input.limit ?? 100;
       const after =
         input.after === undefined
           ? undefined
           : {
-              workflowVersionId: uuidSchema.parse(
-                input.after.workflowVersionId,
-              ),
-              providerKey: providerKeySchema.parse(input.after.providerKey),
-              operationKey: operationKeySchema.parse(input.after.operationKey),
+              workflowVersionId: input.after.workflowVersionId,
+              providerKey: input.after.providerKey,
+              operationKey: input.after.operationKey,
             };
       return withWorkspaceTransaction(
         pool,

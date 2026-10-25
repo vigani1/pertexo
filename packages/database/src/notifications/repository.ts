@@ -1,13 +1,12 @@
-import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { runFailureNotificationIntents as intents } from '../schema/runs/completion/notifications.js';
-import { outboxEvents } from '../schema/transport.js';
-import { isIntegerInRange } from '../platform/persisted-primitives.js';
-import { acquireDatabasePool } from '../platform/pool/runtime.js';
-import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
+import type { DatabaseRuntime } from '../platform/pool/runtime.js';
+import { acquireDatabasePool } from '../platform/pool/runtime.js';
+import { rethrowQueryFailure } from '../platform/query-errors.js';
+import { runFailureNotificationIntents as intents } from '../schema/runs/completion/notifications.js';
+import { outboxEvents } from '../schema/transport.js';
 
 import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
 
@@ -17,16 +16,11 @@ import {
   withPlatformTransaction,
   withTenantScopedClient,
 } from '../tenant-access/transactions.js';
-import { FailureNotificationStateError } from './errors.js';
-import { createFailureNotificationDestinationStore } from './destinations/dispatch.repository.js';
-import { createFailureNotificationCompletionStore } from './delivery/completion.repository.js';
-import { parseFailureNotificationMaximumAttempts } from './delivery/input-validation.js';
 import type { FailureNotificationStore } from './contract.js';
+import { createFailureNotificationCompletionStore } from './delivery/completion.repository.js';
 import { auditFailureNotification as audit } from './delivery/evidence.repository.js';
-import {
-  failureNotificationChecksumSchema as checksumSchema,
-  failureNotificationIdentitySchema as identitySchema,
-} from './delivery/input-validation.js';
+import { createFailureNotificationDestinationStore } from './destinations/dispatch.repository.js';
+import { FailureNotificationStateError } from './errors.js';
 
 type FailureNotificationTransaction = Readonly<{
   pool: Pool;
@@ -55,11 +49,7 @@ function createFailureNotificationRecovery(
       maxAttempts: number,
       signal?: AbortSignal,
     ) => {
-      const invalidLimit = !isIntegerInRange(limit, 1, 100);
-      if (invalidLimit)
-        throw new FailureNotificationStateError('Invalid recovery limit');
-      const parsedMaxAttempts =
-        parseFailureNotificationMaximumAttempts(maxAttempts);
+      const parsedMaxAttempts = maxAttempts;
       return withPlatformTransaction(
         pool,
         async (client) => {
@@ -95,16 +85,13 @@ async function claimFailureNotificationDelivery(
   pool: Pool,
   raw: Parameters<FailureNotificationStore['claimDelivery']>[0],
 ): ReturnType<FailureNotificationStore['claimDelivery']> {
-  const workspaceId = identitySchema.parse(raw.workspaceId);
-  const intentId = identitySchema.parse(raw.intentId);
+  const workspaceId = raw.workspaceId;
+  const intentId = raw.intentId;
   const delivery = {
-    outboxEventId: identitySchema.parse(raw.delivery.outboxEventId),
-    payloadChecksum: checksumSchema.parse(raw.delivery.payloadChecksum),
+    outboxEventId: raw.delivery.outboxEventId,
+    payloadChecksum: raw.delivery.payloadChecksum,
   };
-  const maxAttempts = parseFailureNotificationMaximumAttempts(raw.maxAttempts);
-  const invalidRecoveryWindow = !isIntegerInRange(raw.recoverySeconds, 1, 3600);
-  if (invalidRecoveryWindow)
-    throw new FailureNotificationStateError('Invalid recovery timeout');
+  const maxAttempts = raw.maxAttempts;
   const transaction: FailureNotificationTransaction =
     raw.signal === undefined
       ? { pool, workspaceId }

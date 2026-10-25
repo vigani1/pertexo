@@ -1,4 +1,22 @@
-import type { NoticeSchedule } from '@pertexo/contracts';
+import { z } from 'zod';
+import { ianaTimeZoneSchema } from '../values/json/time-zone.js';
+
+export const noticeEmailModeSchema = z.enum([
+  'off',
+  'immediate',
+  'hourly',
+  'daily',
+]);
+export const noticeScheduleSchema = z
+  .object({
+    mode: noticeEmailModeSchema,
+    hour: z.number().int().min(0).max(23),
+    timeZone: ianaTimeZoneSchema,
+  })
+  .strict();
+
+export type NoticeSchedule = z.output<typeof noticeScheduleSchema>;
+
 const minute = 60_000;
 function calendar(time: Date, zone: string) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -80,4 +98,24 @@ export function noticeWindow(schedule: NoticeSchedule, now: Date): string {
   if (schedule.mode === 'daily')
     return `daily:${new Date(calendar(now, schedule.timeZone)).toISOString().slice(0, 10)}`;
   return `${schedule.mode}:${now.toISOString().slice(0, schedule.mode === 'hourly' ? 13 : 16)}`;
+}
+
+export function nextPersonNoticeDue(
+  pref: Readonly<{ nextDueAt: Date | null; scheduleDefaultRevision: number }>,
+  current: Readonly<{
+    defaultRevision: number;
+    effective: NoticeSchedule;
+    cut: Date;
+  }>,
+): Date | null {
+  if (
+    pref.nextDueAt !== null &&
+    pref.scheduleDefaultRevision === current.defaultRevision
+  ) {
+    return pref.nextDueAt;
+  }
+  if (current.effective.mode === 'immediate') {
+    return current.cut;
+  }
+  return nextNoticeDue(current.effective, current.cut);
 }

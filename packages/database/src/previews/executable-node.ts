@@ -1,6 +1,5 @@
-import { utf8ByteLength } from '@pertexo/workflow-model';
+import { normalizeJson, utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
-import { normalizeJson } from '@pertexo/workflow-model';
 
 export const executableNodeSchema = z.unknown().transform((value, context) => {
   try {
@@ -17,7 +16,9 @@ export const executableNodeSchema = z.unknown().transform((value, context) => {
     // Drizzle inspects the root object's constructor. Materialize the admitted
     // descriptor snapshot as ordinary JSON instead of exposing its null-
     // prototype normalization object to the adapter.
-    const node = JSON.parse(serialized) as Readonly<Record<string, unknown>>;
+    const node = z
+      .record(z.string(), z.unknown())
+      .parse(JSON.parse(serialized));
     const connectionRefs = z
       .record(z.string(), z.string())
       .optional()

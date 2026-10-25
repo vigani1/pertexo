@@ -52,7 +52,7 @@ export function registerIdempotentlyManagesImmutableFailureNotification(): void 
       config: {
         kind: 'email' as const,
         connectionId: connection.connectionId,
-        toEmail: 'Ops@EXAMPLE.TEST',
+        toEmail: 'Ops@example.test',
       },
       idempotencyKey: `destination-create-${destinationId}`,
       requestHash: '1'.repeat(64),

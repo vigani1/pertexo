@@ -1,17 +1,17 @@
-import type { PoolClient } from 'pg';
-import { and, eq, sql } from 'drizzle-orm';
 import {
   DataTableError,
+  dataTableValuesSchema,
   isDataTableResultBounded,
   validateDataTableQuery,
   type DataTableQuery,
-  type DataTableRow,
   type DataTableResult,
-  type DataTableValues,
+  type DataTableRow,
 } from '@pertexo/node-sdk';
+import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaceDataTableRows as rows } from '../schema/data-tables.js';
+import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '../platform/query-errors.js';
+import { workspaceDataTableRows as rows } from '../schema/data-tables.js';
 import type { DataTableDefinition } from './contract.js';
 
 export type StoredRow = Pick<
@@ -26,7 +26,7 @@ export const rowFields = {
 
 /** Text values retain their stored format; output follows the table's column order. */
 function projectRow(table: DataTableDefinition, row: StoredRow): DataTableRow {
-  const stored = JSON.parse(row.values) as DataTableValues;
+  const stored = dataTableValuesSchema.parse(JSON.parse(row.values));
   return {
     id: row.id,
     revision: row.revision,

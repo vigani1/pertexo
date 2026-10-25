@@ -1,23 +1,20 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { alias } from 'drizzle-orm/pg-core';
+import type { NoticeSchedule } from '@pertexo/contracts';
+import { nextNoticeDue } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
+import type { PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  workspaceMemberships as membershipsTable,
+  users as usersTable,
+  workspaces,
+} from '../../schema/foundation.js';
 import {
   noticePreferences,
   noticeWorkspaceSettings,
 } from '../../schema/inbox/preferences.js';
-import {
-  users as usersTable,
-  workspaceMemberships as membershipsTable,
-  workspaces,
-} from '../../schema/foundation.js';
-import type { PoolClient } from 'pg';
-import type { NoticeSchedule } from '@pertexo/contracts';
-import {
-  projectNoticePreferences,
-  type PreferenceRow,
-} from '../preferences/settings.queries.js';
-import { nextNoticeDue } from './schedule.js';
+import { projectNoticePreferences } from '../preferences/settings.queries.js';
 
 const users = alias(usersTable, 'person');
 const workspaceMemberships = alias(membershipsTable, 'member');
@@ -127,19 +124,4 @@ export async function advance(
       ),
     )
     .catch(rethrowQueryFailure);
-}
-export function nextPersonNoticeDue(
-  pref: PreferenceRow,
-  current: Awaited<ReturnType<typeof settings>>,
-): Date | null {
-  if (
-    pref.nextDueAt !== null &&
-    pref.scheduleDefaultRevision === current.defaultRevision
-  ) {
-    return pref.nextDueAt;
-  }
-  if (current.effective.mode === 'immediate') {
-    return current.cut;
-  }
-  return nextNoticeDue(current.effective, current.cut);
 }

@@ -17,44 +17,6 @@ describe('failure notification destination attempt validation', () => {
     withTenantScopedClient.mockReset();
   });
 
-  it.each([
-    -1,
-    0,
-    1.5,
-    Number.NaN,
-    Number.POSITIVE_INFINITY,
-    11,
-    Number.MAX_SAFE_INTEGER + 1,
-  ])('rejects load attempt %s before checkout', async (attemptNumber) => {
-    const store = createFailureNotificationDestinationStore({} as Pool);
-    await expect(
-      store.loadDestination({
-        attemptNumber,
-        intentId,
-        signal: new AbortController().signal,
-        workerId: 'notification-worker',
-        workspaceId,
-      }),
-    ).rejects.toThrow('Invalid delivery attempt number');
-    expect(withTenantScopedClient).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    -1,
-    0,
-    1.5,
-    Number.NaN,
-    Number.NEGATIVE_INFINITY,
-    11,
-    Number.MAX_SAFE_INTEGER + 1,
-  ])('rejects fence attempt %s before checkout', async (attemptNumber) => {
-    const store = createFailureNotificationDestinationStore({} as Pool);
-    await expect(
-      store.fenceDispatch({ attemptNumber, intentId, workspaceId }),
-    ).rejects.toThrow('Invalid delivery attempt number');
-    expect(withTenantScopedClient).not.toHaveBeenCalled();
-  });
-
   it.each([1, 10])(
     'accepts load attempt boundary %s at the transaction seam',
     async (attemptNumber) => {

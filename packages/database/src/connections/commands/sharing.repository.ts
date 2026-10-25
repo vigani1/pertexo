@@ -1,30 +1,30 @@
-import type { ConnectionSharingDatabase } from './contract.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import type { Pool, PoolClient } from 'pg';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { connections, connectionShares } from '../../schema/connections.js';
 import {
-  workspaces,
-  workspaceMemberships,
   users,
+  workspaceMemberships,
+  workspaces,
 } from '../../schema/foundation.js';
-import type { Pool, PoolClient } from 'pg';
+import type { ConnectionSharingDatabase } from './contract.js';
 
 import type { ConnectionSharing } from '@pertexo/contracts';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
-import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 
+import { connectionCommand } from '../admission.js';
 import { requireConnectionManager } from '../authority.queries.js';
 import {
   ConnectionNotFoundError,
   ConnectionSharingRevisionConflictError,
 } from '../contract.js';
-import { connectionCommand, uuidSchema } from '../admission.js';
 
 async function readSharing(
   client: PoolClient,
@@ -87,10 +87,10 @@ export function createConnectionSharingPersistence(
   return {
     readConnectionSharing: async (input) => {
       const actor = {
-        workspaceId: uuidSchema.parse(input.workspaceId),
-        actorId: uuidSchema.parse(input.actorId),
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
       };
-      const connectionId = uuidSchema.parse(input.connectionId);
+      const connectionId = input.connectionId;
       return withTenantScopedClient(pool, actor, async (client) => {
         await requireConnectionManager(
           client,
@@ -102,10 +102,10 @@ export function createConnectionSharingPersistence(
     },
     replaceConnectionSharing: async (input) => {
       const actor = {
-        workspaceId: uuidSchema.parse(input.workspaceId),
-        actorId: uuidSchema.parse(input.actorId),
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
       };
-      const connectionId = uuidSchema.parse(input.connectionId);
+      const connectionId = input.connectionId;
       const request = input.request;
       // Take the exclusive workspace fence first; upgrading a shared fence can deadlock concurrent edits.
       return withTenantScopedClient(pool, actor, async (client) => {

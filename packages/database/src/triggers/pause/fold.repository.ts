@@ -1,22 +1,20 @@
+import { sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type {
   WorkflowTriggerPauseDecision,
   WorkflowTriggerPauseFoldStore,
 } from './contract.js';
-import { sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
-import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
+import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
-const limitSchema = z.number().int().min(1).max(1_000);
 /** ADR 056: the worker's streak fold, run across workspaces. */
 export function createWorkflowTriggerPauseFoldStore(
   config: DatabaseConfig,
@@ -30,7 +28,7 @@ export function createWorkflowTriggerPauseFoldStore(
       await checkDatabaseReadiness(pool);
     },
     foldPending: (limit: number, signal?: AbortSignal) => {
-      const bounded = limitSchema.parse(limit);
+      const bounded = limit;
       return withPlatformTransaction(
         pool,
         async (client) => {

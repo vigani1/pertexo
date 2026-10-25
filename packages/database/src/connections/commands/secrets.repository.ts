@@ -1,43 +1,39 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  connections,
-  connectionSecretVersions,
-  connectionEvents,
-} from '../../schema/connections.js';
-import { workspaces } from '../../schema/foundation.js';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  connectionEvents,
+  connections,
+  connectionSecretVersions,
+} from '../../schema/connections.js';
+import { workspaces } from '../../schema/foundation.js';
 
 import type { Pool } from 'pg';
-import { z } from 'zod';
-import {
-  uuidSchema,
-  providerKeySchema,
-  sealedSecretSchema,
-  connectionCommand,
-  parseRequestMetadata,
-  decodeDurableConnectionReplay,
-  serializeConnectionSnapshot,
-} from '../admission.js';
-import {
-  CONNECTION_STATUS,
-  CONNECTION_AUTH_TYPE,
-  ConnectionNotFoundError,
-  ConnectionUnavailableError,
-  ConnectionSecretVersionConflictError,
-} from '../contract.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
-import { selectConnection } from '../records.queries.js';
-import { requireConnectionManager } from '../authority.queries.js';
-import { rotateConnectionHealth } from '../health/transitions.repository.js';
 import {
   claimCommand,
   completeCommand,
   findCommandResult,
 } from '../../platform/idempotency/repository.js';
+import {
+  connectionCommand,
+  decodeDurableConnectionReplay,
+  parseRequestMetadata,
+  serializeConnectionSnapshot,
+} from '../admission.js';
+import { requireConnectionManager } from '../authority.queries.js';
 import type { ConnectionDatabase } from '../contract.js';
+import {
+  CONNECTION_AUTH_TYPE,
+  CONNECTION_STATUS,
+  ConnectionNotFoundError,
+  ConnectionSecretVersionConflictError,
+  ConnectionUnavailableError,
+} from '../contract.js';
+import { rotateConnectionHealth } from '../health/transitions.repository.js';
+import { selectConnection } from '../records.queries.js';
+import { withConnectionTransaction } from '../transactions.repository.js';
 
 /** Owns secret rotation idempotency and current-version fencing. */
 
@@ -47,10 +43,6 @@ export type ConnectionSecretPersistence = Pick<
   | 'rotateConnectionSecret'
   | 'assertConnectionSecretCurrent'
 >;
-
-function parseConnectionAuthType(input: unknown) {
-  return z.enum(CONNECTION_AUTH_TYPE).parse(input);
-}
 
 export function createConnectionSecretPersistence(
   pool: Pool,
@@ -71,8 +63,8 @@ async function readConnectionRotateReplay(
     ConnectionSecretPersistence['findConnectionRotateReplay']
   >[0],
 ): ReturnType<ConnectionSecretPersistence['findConnectionRotateReplay']> {
-  const actorId = uuidSchema.parse(input.actorId);
-  const connectionId = uuidSchema.parse(input.connectionId);
+  const actorId = input.actorId;
+  const connectionId = input.connectionId;
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
     operation: async (client, workspaceId) => {
@@ -99,11 +91,11 @@ async function persistRotatedConnectionSecret(
   pool: Pool,
   input: Parameters<ConnectionSecretPersistence['rotateConnectionSecret']>[0],
 ): ReturnType<ConnectionSecretPersistence['rotateConnectionSecret']> {
-  const actorId = uuidSchema.parse(input.actorId);
-  const connectionId = uuidSchema.parse(input.connectionId);
-  const secretVersionId = uuidSchema.parse(input.secretVersionId);
-  const expected = uuidSchema.parse(input.expectedCurrentSecretVersionId);
-  const sealed = sealedSecretSchema.parse(input.sealed);
+  const actorId = input.actorId;
+  const connectionId = input.connectionId;
+  const secretVersionId = input.secretVersionId;
+  const expected = input.expectedCurrentSecretVersionId;
+  const sealed = input.sealed;
   const metadata = parseRequestMetadata(input);
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId,
@@ -209,12 +201,10 @@ async function assertPersistedConnectionSecretCurrent(
     ConnectionSecretPersistence['assertConnectionSecretCurrent']
   >[0],
 ): ReturnType<ConnectionSecretPersistence['assertConnectionSecretCurrent']> {
-  const connectionId = uuidSchema.parse(input.connectionId);
-  const expectedProviderKey = providerKeySchema.parse(
-    input.expectedProviderKey,
-  );
-  const expectedAuthType = parseConnectionAuthType(input.expectedAuthType);
-  const secretVersionId = uuidSchema.parse(input.secretVersionId);
+  const connectionId = input.connectionId;
+  const expectedProviderKey = input.expectedProviderKey;
+  const expectedAuthType = input.expectedAuthType;
+  const secretVersionId = input.secretVersionId;
   await withConnectionTransaction(pool, input.workspaceId, {
     actorId: undefined,
     operation: async (client, workspaceId) => {

@@ -1,36 +1,33 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { triggerSchedules } from '../../schema/triggers/schedules.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { acquireDatabasePool } from '../../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../../platform/pool/runtime.js';
-
-import { z } from 'zod';
+import { acquireDatabasePool } from '../../platform/pool/runtime.js';
+import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { triggerSchedules } from '../../schema/triggers/schedules.js';
 
 import type { DatabaseConfig } from '../../config.js';
 import { ScheduleTriggerError } from './errors.js';
 
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
+import { canManageWorkflowTrigger } from '../management.queries.js';
+import { refreshWorkflowActivation } from '../reconciliation/health.repository.js';
+import type { ScheduleTriggerDatabase } from './management/contract.js';
+import {
+  applyScheduleHealthTransition,
+  claimScheduleCommand,
+  completeScheduleCommand,
+  recordScheduleCommandAudit,
+  scheduleCommandIdentity,
+} from './management/receipts.repository.js';
+import {
+  readScheduleCommandTarget,
+  readSchedules,
+  scheduleHealthTransition,
+} from './management/state.queries.js';
 import {
   authorizeScheduleReader,
   createScheduleTriggerReads,
 } from './reads.queries.js';
-import { refreshWorkflowActivation } from '../reconciliation/health.repository.js';
-import { canManageWorkflowTrigger } from '../management.queries.js';
-import { withTenantScopedClient } from '../../tenant-access/transactions.js';
-import { uuidSchema } from './input.js';
-import type { ScheduleTriggerDatabase } from './management/contract.js';
-import {
-  readSchedules,
-  readScheduleCommandTarget,
-  scheduleHealthTransition,
-} from './management/state.queries.js';
-import {
-  scheduleCommandIdentity,
-  claimScheduleCommand,
-  applyScheduleHealthTransition,
-  recordScheduleCommandAudit,
-  completeScheduleCommand,
-} from './management/receipts.repository.js';
 export function createScheduleTriggerDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
@@ -43,11 +40,11 @@ export function createScheduleTriggerDatabase(
       withTenantScopedClient(
         pool,
         {
-          workspaceId: uuidSchema.parse(input.workspaceId),
-          actorId: uuidSchema.parse(input.actorId),
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
         },
         async (client) => {
-          const workflowId = uuidSchema.parse(input.workflowId);
+          const workflowId = input.workflowId;
           await authorizeScheduleReader(
             client,
             input.workspaceId,
@@ -63,8 +60,8 @@ export function createScheduleTriggerDatabase(
       withTenantScopedClient(
         pool,
         {
-          workspaceId: z.uuid().parse(input.workspaceId),
-          actorId: z.uuid().parse(input.actorId),
+          workspaceId: input.workspaceId,
+          actorId: input.actorId,
         },
         async (client) => {
           if (!(await canManageWorkflowTrigger(client, input)))
