@@ -17,7 +17,7 @@ export const ISSUES_CHIP_ID = 'editor-issues-chip';
  * The command bar's issue count. Opens and closes the bottom issues lens.
  * An empty draft says what to add first instead of claiming “No issues”,
  * unless the server found some. Phones keep a readable label beside the
- * glyph and count, with brief setup guidance and wrapped check messages.
+ * glyph and count; longer check messages truncate and retain a tooltip.
  */
 export function IssuesChip({
   state,
@@ -32,7 +32,8 @@ export function IssuesChip({
 }>) {
   const count =
     state.groups === undefined ? undefined : countIssues(state.groups);
-  const hint = count !== undefined && count > 0 ? undefined : emptyHint;
+  const hasIssues = count !== undefined && count > 0;
+  const hint = hasIssues ? undefined : emptyHint;
   const successClass =
     count === 0 &&
     !state.stale &&
@@ -43,16 +44,14 @@ export function IssuesChip({
       id={ISSUES_CHIP_ID}
       type="button"
       aria-label={hint?.label}
-      title={hint?.detail}
+      title={hint?.detail ?? describeChip(state, count)}
       aria-expanded={open}
       aria-controls={open ? ISSUES_LENS_ID : undefined}
       className={cn(
         buttonVariants({ variant: 'ghost', size: 'sm' }),
-        'w-20 shrink-0 gap-1 px-1.5 sm:w-40 sm:gap-2 sm:px-2.5',
+        'w-20 min-w-0 shrink-0 gap-1 px-1.5 sm:w-32 sm:gap-2 sm:px-2.5',
         successClass,
-        count !== undefined &&
-          count > 0 &&
-          'text-destructive hover:text-destructive',
+        hasIssues && 'text-destructive hover:text-destructive',
         state.stale && 'opacity-70',
       )}
       onClick={() => {
@@ -76,9 +75,17 @@ export function IssuesChip({
 }
 
 /** Long setup or check messages retain their complete accessible name. */
-function Words({ children }: Readonly<{ children: ReactNode }>) {
+function Words({
+  children,
+  wrap = false,
+}: Readonly<{ children: ReactNode; wrap?: boolean }>) {
   return (
-    <span className="min-w-0 whitespace-normal text-xs leading-tight">
+    <span
+      className={cn(
+        'min-w-0 text-xs leading-tight',
+        wrap ? 'whitespace-normal' : 'truncate',
+      )}
+    >
       {children}
     </span>
   );
@@ -92,26 +99,26 @@ function ChipLabel({
     return (
       <>
         <LoadingOrb />
-        <Words>Checking…</Words>
+        <Words>{describeChip(state, count)}</Words>
       </>
     );
   if (count === undefined)
     return state.error === undefined ? (
       <>
         <StatusGlyph tone="neutral" className="sm:hidden" />
-        <Words>Not checked yet</Words>
+        <Words>{describeChip(state, count)}</Words>
       </>
     ) : (
       <>
         <StatusGlyph tone="attention" className="text-warning" />
-        <Words>Couldn’t check</Words>
+        <Words>{describeChip(state, count)}</Words>
       </>
     );
   if (count === 0)
     return (
       <>
         <CheckIcon data-icon="inline-start" />
-        <Words>No issues</Words>
+        <Words wrap>{describeChip(state, count)}</Words>
       </>
     );
   return (
@@ -120,4 +127,13 @@ function ChipLabel({
       {count} <Words>{count === 1 ? 'issue' : 'issues'}</Words>
     </>
   );
+}
+
+function describeChip(state: IssuesState, count: number | undefined): string {
+  if (count !== undefined)
+    return count === 0
+      ? 'No issues'
+      : `${String(count)} ${count === 1 ? 'issue' : 'issues'}`;
+  if (state.checking) return 'Checking…';
+  return state.error === undefined ? 'Not checked yet' : 'Couldn’t check';
 }

@@ -137,7 +137,7 @@ export function WorkflowHubBar({
   return (
     // Keep room for the identity before fitting tabs and actions beside it.
     // Intermediate widths put the tabs on their own row instead of squeezing saves.
-    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-2 py-1.5 sm:gap-y-2 sm:py-2 min-[1728px]:grid min-[1728px]:grid-cols-[minmax(20rem,1fr)_auto_auto]">
+    <header className="lens relative z-30 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-0 rounded-xl px-2 py-1 sm:gap-y-1 sm:py-2 min-[1728px]:grid min-[1728px]:grid-cols-[minmax(20rem,1fr)_auto_auto]">
       <div className="flex min-w-[min(100%,20rem)] flex-1 items-center gap-3 min-[1728px]:min-w-0">
         <Link
           to="/w/$workspaceId/workflows"
@@ -148,7 +148,7 @@ export function WorkflowHubBar({
           <ArrowLeftIcon aria-hidden="true" />
         </Link>
         {glyph}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           {workflow === undefined ? (
             // The name is still loading: hold its place instead of showing
             // a stand-in word that then changes.
@@ -166,7 +166,7 @@ export function WorkflowHubBar({
               <h1 className={TITLE_CLASS}>{workflow.name}</h1>
             </WorkflowNameWithDialog>
           )}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 font-mono text-[0.7rem] text-subtle-foreground">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 max-sm:flex-nowrap max-sm:gap-x-1 gap-y-0.5 font-mono text-[0.7rem] text-subtle-foreground">
             <WorkflowActivationState
               workspace={workspace}
               workflowId={workflowId}
@@ -192,7 +192,7 @@ export function WorkflowHubBar({
       </div>
       <nav
         aria-label="Workflow sections"
-        className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-md border border-surface-ink/6 bg-recess-ink/25 p-[3px] min-[1728px]:order-none min-[1728px]:w-auto"
+        className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-md border border-surface-ink/6 bg-recess-ink/25 p-px sm:p-[3px] min-[1728px]:order-none min-[1728px]:w-auto"
       >
         {hubTabs(workspace).map((link) => (
           <Link
