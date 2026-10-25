@@ -9,16 +9,17 @@ import { nodeEvent, start } from './fixture';
 
 describe('a run’s ending', () => {
   it('stays unnamed for computed outcomes or runs without a Stop run step', () => {
-    const graph = {
-      nodes: [
-        {
-          id: 'computed',
-          inputMappings: {
-            outcome: { kind: 'node_output', nodeId: 'a', path: '$' },
+    const graph =
+      /* The sentence presenter reads only the supplied terminal output fields from this historical-run fixture. */ {
+        nodes: [
+          {
+            id: 'computed',
+            inputMappings: {
+              outcome: { kind: 'node_output', nodeId: 'a', path: '$' },
+            },
           },
-        },
-      ],
-    } as unknown as Parameters<typeof runEnding>[1];
+        ],
+      } as unknown as Parameters<typeof runEnding>[1];
     expect(
       runEnding(
         [

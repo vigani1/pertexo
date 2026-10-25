@@ -34,7 +34,7 @@ function deviceMatching(matching: string) {
   vi.stubGlobal(
     'matchMedia',
     (query: string) =>
-      ({
+      /* This matchMedia recorder implements only matches and the listener methods used by the hook. */ ({
         matches: query === matching,
         addEventListener: () => undefined,
         removeEventListener: () => undefined,

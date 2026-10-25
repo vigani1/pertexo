@@ -1,9 +1,9 @@
-import { workspaceInboxStreamEventSchema } from '@pertexo/contracts';
-import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { decodeSseMessages, type SseMessage } from '@/lib/api/sse';
+import { workspaceInboxStreamEventSchema } from '@pertexo/contracts';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { openInboxEvents } from '../data/inbox.api';
 import { inboxKeys } from '../data/inbox.queries';
 
@@ -124,6 +124,7 @@ export function useInboxLive({
           }
           throw new Error('The inbox stream closed.');
         } catch (error: unknown) {
+          // Cancellation may arrive while opening or reading the stream awaits I/O.
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           if (signal.aborted) return;
           if (stopsLiveUpdates(error)) {

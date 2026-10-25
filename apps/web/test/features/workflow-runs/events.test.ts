@@ -99,7 +99,7 @@ describe('run event lifecycle', () => {
       download: vi.fn(),
       request: vi.fn(),
       stream,
-    } as unknown as ApiClient;
+    } satisfies ApiClient;
     const result = renderHook(
       ({ runId }) => useRunEvents(apiClient, 'user-a', 'workspace-a', runId),
       { initialProps: { runId: 'run-a' }, wrapper: queryWrapper(false) },
@@ -136,7 +136,11 @@ describe('run event lifecycle', () => {
           status,
         }),
       );
-      const apiClient = { request: vi.fn(), stream } as unknown as ApiClient;
+      const apiClient = {
+        download: vi.fn(),
+        request: vi.fn(),
+        stream,
+      } satisfies ApiClient;
       const result = renderHook(
         () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
         { wrapper: queryWrapper(false) },
@@ -162,7 +166,11 @@ describe('run event lifecycle', () => {
         }),
       )
       .mockResolvedValueOnce(openEventStream([event(1)]));
-    const apiClient = { request: vi.fn(), stream } as unknown as ApiClient;
+    const apiClient = {
+      download: vi.fn(),
+      request: vi.fn(),
+      stream,
+    } satisfies ApiClient;
     const result = renderHook(
       () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
       { wrapper: queryWrapper(false) },
@@ -194,7 +202,11 @@ describe('run event lifecycle', () => {
         status: 400,
       }),
     );
-    const apiClient = { request: vi.fn(), stream } as unknown as ApiClient;
+    const apiClient = {
+      download: vi.fn(),
+      request: vi.fn(),
+      stream,
+    } satisfies ApiClient;
     const result = renderHook(
       () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
       { wrapper: queryWrapper(false) },
@@ -215,7 +227,11 @@ describe('run event lifecycle', () => {
         new ApiError({ kind: 'problem', message: 'forbidden', status: 403 }),
       )
       .mockResolvedValueOnce(openEventStream([event(1), event(2)]));
-    const apiClient = { request: vi.fn(), stream } as unknown as ApiClient;
+    const apiClient = {
+      download: vi.fn(),
+      request: vi.fn(),
+      stream,
+    } satisfies ApiClient;
     const result = renderHook(
       () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
       { wrapper: queryWrapper(false) },
@@ -243,7 +259,11 @@ describe('run event lifecycle', () => {
         new ApiError({ kind: 'network', message: 'disconnected' }),
       )
       .mockResolvedValueOnce({ ...openEventStream([event(1)]), close });
-    const apiClient = { request: vi.fn(), stream } as unknown as ApiClient;
+    const apiClient = {
+      download: vi.fn(),
+      request: vi.fn(),
+      stream,
+    } satisfies ApiClient;
     const result = renderHook(
       () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
       { wrapper: queryWrapper(false) },
@@ -278,7 +298,11 @@ describe('run event lifecycle', () => {
     const request = vi
       .fn<ApiClient['request']>()
       .mockResolvedValue({ run: { status: 'running' } } as never);
-    const apiClient = { request, stream } as unknown as ApiClient;
+    const apiClient =
+      /* Vitest retains only the last request overload; this recorder supplies the response exercised by the case. */ {
+        request,
+        stream,
+      } as unknown as ApiClient;
     const result = renderHook(
       () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
       { wrapper: queryWrapper(false) },

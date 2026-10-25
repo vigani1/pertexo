@@ -1,16 +1,17 @@
-import { expect, it } from 'vitest';
-import type { DataTableColumn } from '@pertexo/node-sdk';
 import {
   tableCellText,
   tableValueErrors,
 } from '@/features/data-tables/model/values';
+import type { DataTableColumn } from '@pertexo/node-sdk';
+import { expect, it } from 'vitest';
 
-const columns = [
-  { id: 'c1', name: 'key', type: 'text', required: true },
-  { id: 'c2', name: 'amount', type: 'number', required: false },
-  { id: 'c3', name: 'day', type: 'date', required: false },
-  { id: 'c4', name: 'meta', type: 'json', required: false },
-] as unknown as readonly DataTableColumn[];
+const columns =
+  /* This focused fixture supplies the table fields read by the value editor; unrelated metadata is omitted. */ [
+    { id: 'c1', name: 'key', type: 'text', required: true },
+    { id: 'c2', name: 'amount', type: 'number', required: false },
+    { id: 'c3', name: 'day', type: 'date', required: false },
+    { id: 'c4', name: 'meta', type: 'json', required: false },
+  ] as unknown as readonly DataTableColumn[];
 
 it('says what is wrong with each field before the row is sent', () => {
   expect(

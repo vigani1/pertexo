@@ -70,41 +70,42 @@ export function nodeEvent(
   };
 }
 
-export const graph = {
-  nodes: [
-    {
-      id: 'post-erp',
-      label: 'Post to ERP',
-      definition: { key: 'http.request', version: 1 },
-      position: { x: 0, y: 0 },
-      configVersion: 1,
-      config: {},
-      inputMappings: {},
-      connectionRefs: {},
-    },
-    {
-      id: 'send-receipt',
-      label: 'Send receipt',
-      definition: { key: 'email.send_notification', version: 1 },
-      position: { x: 200, y: 0 },
-      configVersion: 1,
-      config: {},
-      inputMappings: {},
-      connectionRefs: {},
-    },
-    {
-      id: 'done',
-      definition: { key: 'core.terminate', version: 1 },
-      position: { x: 400, y: 0 },
-      configVersion: 1,
-      config: {},
-      inputMappings: {},
-      connectionRefs: {},
-    },
-  ],
-  edges: [],
-  settings: {},
-} as unknown as NonNullable<Parameters<typeof buildRunTimeline>[0]['graph']>;
+export const graph =
+  /* This focused graph fixture supplies the node/edge metadata read by the presenter; executable-only fields are omitted. */ {
+    nodes: [
+      {
+        id: 'post-erp',
+        label: 'Post to ERP',
+        definition: { key: 'http.request', version: 1 },
+        position: { x: 0, y: 0 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+      },
+      {
+        id: 'send-receipt',
+        label: 'Send receipt',
+        definition: { key: 'email.send_notification', version: 1 },
+        position: { x: 200, y: 0 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+      },
+      {
+        id: 'done',
+        definition: { key: 'core.terminate', version: 1 },
+        position: { x: 400, y: 0 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+      },
+    ],
+    edges: [],
+    settings: {},
+  } as unknown as NonNullable<Parameters<typeof buildRunTimeline>[0]['graph']>;
 
 export const stop = (id: string, value: unknown) => ({
   id,

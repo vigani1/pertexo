@@ -36,10 +36,11 @@ describe('canvas scenes', () => {
   it('sizes the backing store to the pixel ratio and clears each frame in CSS pixels', () => {
     const setTransform = vi.fn();
     const clearRect = vi.fn();
-    const context = {
-      setTransform,
-      clearRect,
-    } as unknown as CanvasRenderingContext2D;
+    const context =
+      /* This canvas recorder exposes only the transform and clear operations exercised by the scene. */ {
+        setTransform,
+        clearRect,
+      } as unknown as CanvasRenderingContext2D;
     const canvas = document.createElement('canvas');
     vi.spyOn(canvas, 'getContext').mockReturnValue(context);
     const scene = new Dots(canvas);

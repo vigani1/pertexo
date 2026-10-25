@@ -185,7 +185,11 @@ describe('authentication and workspace entry', () => {
       release = resolve;
     });
     const request = vi.fn().mockReturnValue(delayed);
-    const apiClient = { request } as unknown as ApiClient;
+    const apiClient = {
+      stream: vi.fn(),
+      download: vi.fn(),
+      request,
+    } satisfies ApiClient;
     const navigate = vi.fn();
     const security = {
       email: 'operator@example.test',

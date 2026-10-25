@@ -45,7 +45,11 @@ describe('run event lifecycle', () => {
     const request = vi
       .fn<ApiClient['request']>()
       .mockResolvedValue({ run: { status: 'waiting' } } as never);
-    const apiClient = { request, stream } as unknown as ApiClient;
+    const apiClient =
+      /* Vitest retains only the last request overload; this recorder supplies the response exercised by the case. */ {
+        request,
+        stream,
+      } as unknown as ApiClient;
     const result = renderHook(
       () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
       { wrapper: queryWrapper(false) },
@@ -82,7 +86,11 @@ describe('run event lifecycle', () => {
         }),
       )
       .mockResolvedValueOnce({ run: { status: 'succeeded' } } as never);
-    const apiClient = { request, stream } as unknown as ApiClient;
+    const apiClient =
+      /* Vitest retains only the last request overload; this recorder supplies the response exercised by the case. */ {
+        request,
+        stream,
+      } as unknown as ApiClient;
     const result = renderHook(
       () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
       { wrapper: queryWrapper(false) },
@@ -119,7 +127,11 @@ describe('run event lifecycle', () => {
         retryAfterMs: 120_000,
       }),
     );
-    const apiClient = { request, stream } as unknown as ApiClient;
+    const apiClient =
+      /* Vitest retains only the last request overload; this recorder supplies the response exercised by the case. */ {
+        request,
+        stream,
+      } as unknown as ApiClient;
     const result = renderHook(
       () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
       { wrapper: queryWrapper(false) },
