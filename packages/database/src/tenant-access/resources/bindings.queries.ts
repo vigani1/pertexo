@@ -1,10 +1,8 @@
 import type { PoolClient } from 'pg';
 import { and, eq, sql } from 'drizzle-orm';
 import {
-  canonicalJson,
+  addedWorkflowCallTargets,
   InvalidWorkflowGraphError,
-  isWorkflowCallDefinition,
-  workflowCallConfigSchema,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -14,38 +12,6 @@ import { readFolderScope } from './facts.queries.js';
 import { workflowScopeSql } from './scope.queries.js';
 import type { ResourceActor } from './contract.js';
 
-function callTargets(graph: WorkflowGraph): Map<string, string> {
-  const targets = new Map<string, string>();
-  const pending: { graph: WorkflowGraph; path: readonly string[] }[] = [
-    { graph, path: [] },
-  ];
-  while (pending.length > 0) {
-    const current = pending.pop();
-    if (current === undefined) break;
-    for (const node of current.graph.nodes) {
-      if (isWorkflowCallDefinition(node.definition)) {
-        // Incomplete draft configuration is not an executable binding yet.
-        const parsed = workflowCallConfigSchema.safeParse(node.config);
-        if (parsed.success)
-          targets.set(
-            canonicalJson([
-              [...current.path, node.id],
-              node.definition,
-              parsed.data.target,
-            ]),
-            parsed.data.target.workflowId,
-          );
-      }
-      if (node.structured !== undefined)
-        pending.push({
-          graph: node.structured.body,
-          path: [...current.path, node.id],
-        });
-    }
-  }
-  return targets;
-}
-
 /** Only direct bindings are admitted; immutable child versions delegate their own closure. */
 export async function requireWorkflowCallTargets(
   client: PoolClient,
@@ -53,15 +19,7 @@ export async function requireWorkflowCallTargets(
   graph: WorkflowGraph,
   previous?: WorkflowGraph,
 ): Promise<void> {
-  const existing =
-    previous === undefined ? new Map<string, string>() : callTargets(previous);
-  const targets = [
-    ...new Set(
-      [...callTargets(graph)]
-        .filter(([key]) => !existing.has(key))
-        .map(([, id]) => id),
-    ),
-  ];
+  const targets = addedWorkflowCallTargets(graph, previous);
   if (targets.length === 0) return;
   const scope = await readFolderScope(client, actor);
   const found = await drizzle(client)

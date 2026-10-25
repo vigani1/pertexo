@@ -358,3 +358,12 @@ export {
   type WorkflowTemplateOriginRequest,
   type WorkflowTemplateOrigin,
 } from './authoring/portability/origin.js';
+
+export { parseIdentityMetadata } from './workspaces/identity-metadata.js';
+
+export {
+  addedWorkflowCallTargets,
+  addedWorkflowConnectionReferences,
+  workflowConnectionReferences,
+  connectionReferenceIds,
+} from './authoring/bindings.js';
