@@ -15,9 +15,6 @@ import {
   type RequestMetadata,
 } from './contract.js';
 
-// Shared with tenant-access bindings until PR C removes its repeated input checks.
-export const uuidSchema = z.uuid();
-
 const providerKeySchema = z
   .string()
   .min(1)
