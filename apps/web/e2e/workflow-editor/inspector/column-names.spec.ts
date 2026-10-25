@@ -1,13 +1,13 @@
 import { workflowGraphSchema } from '@pertexo/contracts';
 import { expect, test } from '../../support/fixtures';
+import { mappingGraph } from '../graph';
 import {
   addCsrfCookie,
-  installEditorRoutes,
-  mappingGraph,
-  remoteDraft,
   definition,
-  manualDefinition,
   editorUrl,
+  installEditorRoutes,
+  manualDefinition,
+  remoteDraft,
   workspaceId,
 } from '../support';
 for (const width of [1280, 375])

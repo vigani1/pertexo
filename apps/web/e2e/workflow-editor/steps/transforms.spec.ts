@@ -1,17 +1,17 @@
-import { createWorkspaceFixture } from '../../../test/support/fixtures/identity';
-import { expect, test } from '../../support/fixtures';
-import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import {
   nodeDefinitionListResponseSchema,
   workflowDraftResponseSchema,
   workflowGraphSchema,
 } from '@pertexo/contracts';
+import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import { authorCollectionGraph } from '../../../e2e-live/support/authoring/transforms';
+import { createWorkspaceFixture } from '../../../test/support/fixtures/identity';
+import { expect, test } from '../../support/fixtures';
+import { mappingGraph } from '../graph';
 import {
   addCsrfCookie,
   editorUrl,
   installEditorRoutes,
-  mappingGraph,
   remoteDraft,
   user,
   workflowId,

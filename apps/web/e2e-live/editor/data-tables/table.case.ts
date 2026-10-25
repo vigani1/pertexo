@@ -1,26 +1,27 @@
-import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { expect } from '@playwright/test';
 import {
-  dataTablesResponseSchema,
-  dataTableResultSchema,
-  workflowNodeRunOutputResponseSchema,
   apiProblemSchema,
+  dataTableResultSchema,
+  dataTablesResponseSchema,
+  workflowNodeRunOutputResponseSchema,
   workflowValidateResponseSchema,
 } from '@pertexo/contracts';
-import { test } from '../../support/browser-fixture';
+import { expect } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import {
-  registerEditorUser,
-  createEditorWorkspace,
-} from '../../support/ordinary-editor-session';
-import {
-  createEditorWorkflow,
   addSingleStep,
-  readEditorDraft,
+  createEditorWorkflow,
   publishSingleStep,
+  readEditorDraft,
   startSingleStep,
   waitForRun,
 } from '../../support/authoring/single-step';
+import { test } from '../../support/browser-fixture';
+import {
+  createEditorWorkspace,
+  registerEditorUser,
+} from '../../support/ordinary-editor-session';
 import { qualifyColumnNames } from './qualify-column-names';
 import { qualifyLargeDownload } from './qualify-download';
 for (const width of [1280, 375])
@@ -301,12 +302,11 @@ for (const width of [1280, 375])
       .getByRole('button', { name: 'Confirm delete column', exact: true })
       .click();
     await expect(columns).not.toBeVisible();
-    const csrf = (await page.context().cookies()).find(
-      (cookie) => cookie.name === 'pertexo_csrf',
-    );
-    if (csrf === undefined) throw new Error('Owned CSRF cookie missing');
+    const csrf = await readCsrfToken(page, {
+      missingMessage: 'Owned CSRF cookie missing',
+    });
     const headers = {
-      'x-csrf-token': decodeURIComponent(csrf.value),
+      'x-csrf-token': csrf,
       'Idempotency-Key': randomUUID(),
     };
     const rows = await page.request.post(

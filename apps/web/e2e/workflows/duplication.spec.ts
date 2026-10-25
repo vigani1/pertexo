@@ -1,4 +1,5 @@
 import { expect, test } from '../support/fixtures';
+import { openWorkflowAction } from '../workflow-editor/actions';
 import {
   addCsrfCookie,
   currentEtag,
@@ -8,7 +9,6 @@ import {
   workflowId,
   workspace,
   workspaceId,
-  openWorkflowAction,
 } from '../workflow-editor/support';
 
 test('keeps a workflow copy exact through retry and postflight outages until verified recovery', async ({

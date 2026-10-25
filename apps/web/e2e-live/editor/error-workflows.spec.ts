@@ -1,36 +1,34 @@
-import { createWorkflowNodeFixture } from '../../test/support/fixtures/graph';
-import { mkdir } from 'node:fs/promises';
-import { expect, type Page } from '@playwright/test';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { workflowNodeRunOutputResponseSchema } from '@pertexo/contracts';
-import { workflowErrorInputSchema, isRecord } from '@pertexo/workflow-model';
-import { test } from '../support/browser-fixture';
+import { isRecord, workflowErrorInputSchema } from '@pertexo/workflow-model';
+import { expect, type Page } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import { readCsrfToken } from '../../test/support/browser/csrf';
+import { createWorkflowNodeFixture } from '../../test/support/fixtures/graph';
 import {
-  registerEditorUser,
-  createEditorWorkspace,
-} from '../support/ordinary-editor-session';
-import {
-  createEditorWorkflow,
   addSingleStep,
+  createEditorWorkflow,
   publishSingleStep,
   startSingleStep,
   waitForRun,
 } from '../support/authoring/single-step';
+import { test } from '../support/browser-fixture';
+import {
+  createEditorWorkspace,
+  registerEditorUser,
+} from '../support/ordinary-editor-session';
 
 async function saveGraph(
   page: Page,
   path: string,
   graph: WorkflowGraphContract,
 ) {
-  const csrf = (await page.context().cookies()).find(
-    (cookie) => cookie.name === 'pertexo_csrf',
-  );
-  if (csrf === undefined) throw new Error('CSRF missing');
+  const csrf = await readCsrfToken(page, { missingMessage: 'CSRF missing' });
   const draft = await page.request.get(`${path}/draft`);
   expect(draft.status()).toBe(200);
   const saved = await page.request.put(`${path}/draft`, {
     headers: {
-      'x-csrf-token': decodeURIComponent(csrf.value),
+      'x-csrf-token': csrf,
       'If-Match': draft.headers().etag ?? '',
     },
     data: { graph },

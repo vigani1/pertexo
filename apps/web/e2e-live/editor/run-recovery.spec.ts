@@ -1,15 +1,10 @@
-import { addRunInputMapping } from '../../test/support/browser/steps';
-import { expect } from '@playwright/test';
 import {
   workflowNodeRunInputResponseSchema,
   workflowNodeRunOutputResponseSchema,
   workflowRunStartResponseSchema,
 } from '@pertexo/contracts';
-import { test } from '../support/browser-fixture';
-import {
-  createEditorWorkspace,
-  registerEditorUser,
-} from '../support/ordinary-editor-session';
+import { expect } from '@playwright/test';
+import { mapBrowserInput } from '../../test/support/browser/inputs';
 import {
   addSingleStep,
   createEditorWorkflow,
@@ -18,6 +13,11 @@ import {
   startSingleStep,
   waitForRun,
 } from '../support/authoring/single-step';
+import { test } from '../support/browser-fixture';
+import {
+  createEditorWorkspace,
+  registerEditorUser,
+} from '../support/ordinary-editor-session';
 
 test('inspects a real failed Condition, replays its version and cancels a waiting run', async ({
   page,
@@ -43,7 +43,12 @@ test('inspects a real failed Condition, replays its version and cancels a waitin
     /Condition/u,
     'Replay gate',
   );
-  await addRunInputMapping(page, { field: 'condition', path: '$.condition' });
+  await mapBrowserInput({
+    page,
+    field: 'condition',
+    path: '$.condition',
+    source: 'Run input',
+  });
   await expect
     .poll(
       async () =>

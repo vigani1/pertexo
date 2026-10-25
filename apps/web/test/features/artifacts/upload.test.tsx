@@ -1,11 +1,10 @@
 import { describeUpload } from '@/features/artifacts/model/upload';
-import { createHash } from 'node:crypto';
-import { setup, file, scope, artifactId, bytes } from './upload.fixture';
-import { webcrypto } from 'node:crypto';
+import { UploadFile } from '@/features/artifacts/public';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createHash, webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { UploadFile } from '@/features/artifacts/public';
+import { artifactId, bytes, file, scope, setup } from './upload.fixture';
 
 beforeEach(() => {
   vi.stubGlobal('crypto', webcrypto);
@@ -51,8 +50,17 @@ it('finalizes opaque bytes before inserting only the descriptor, without applica
   expect(calls.counts()).toEqual({ puts: 1, finalizes: 1 });
 });
 
-it('reconciles a lost PUT reply using the same identity before sending bytes again', async () => {
-  const calls = setup({ lostPut: true });
+it.each([
+  {
+    name: 'reconciles a lost PUT reply using the same identity before sending bytes again',
+    options: { lostPut: true },
+  },
+  {
+    name: 'checks finalized metadata after a lost finalization reply, without another upload',
+    options: { lostFinalize: true },
+  },
+])('$name', async ({ options }) => {
+  const calls = setup(options);
   const { event } = await open();
   await event.upload(screen.getByLabelText('File', { exact: true }), file());
   await event.click(
@@ -118,18 +126,6 @@ it('reuses the reservation key when admission committed but its reply was lost',
   await screen.findByText('File ready');
   expect(calls.keys).toHaveLength(2);
   expect(calls.keys[0]).toBe(calls.keys[1]);
-  expect(calls.counts()).toEqual({ puts: 1, finalizes: 1 });
-});
-
-it('checks finalized metadata after a lost finalization reply, without another upload', async () => {
-  const calls = setup({ lostFinalize: true });
-  const { event } = await open();
-  await event.upload(screen.getByLabelText('File', { exact: true }), file());
-  await event.click(
-    await screen.findByRole('button', { name: 'Check and retry same file' }),
-  );
-  await screen.findByText('File ready');
-  expect(calls.keys).toHaveLength(1);
   expect(calls.counts()).toEqual({ puts: 1, finalizes: 1 });
 });
 

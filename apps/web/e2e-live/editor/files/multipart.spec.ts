@@ -1,12 +1,12 @@
-import { createHash } from 'node:crypto';
-import { mkdir } from 'node:fs/promises';
-import { expect, type Locator, type Page } from '@playwright/test';
 import {
   workflowDraftResponseSchema,
   workflowNodeRunOutputResponseSchema,
 } from '@pertexo/contracts';
 import { httpMultipartConfigSchema } from '@pertexo/integrations';
-import { test } from '../../support/browser-fixture';
+import { expect, type Locator, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import { mkdir } from 'node:fs/promises';
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { createOwnedHttpConnection } from '../../support/authoring/http-connection';
 import {
   addSingleStep,
@@ -15,6 +15,7 @@ import {
   readEditorDraft,
   waitForRun,
 } from '../../support/authoring/single-step';
+import { test } from '../../support/browser-fixture';
 
 const images = '/tmp/pertexo-f04-multipart-screenshots';
 const binary = Buffer.from([0, 255, 13, 10, 128]);
@@ -196,16 +197,16 @@ test('authors multipart at desktop and phone widths, then sends exact ordered pa
   const response = await page.request.get(`${path}/draft`);
   const { graph } = workflowDraftResponseSchema.parse(await response.json());
   const responsePart = original.find(({ name }) => name === 'response');
-  const cookie = (await page.context().cookies()).find(
-    ({ name }) => name === 'pertexo_csrf',
-  );
-  if (responsePart === undefined || cookie === undefined)
+  const cookie = await readCsrfToken(page, {
+    missingMessage: 'Owned multipart authoring context missing',
+  });
+  if (responsePart === undefined)
     throw new Error('Owned multipart authoring context missing');
   expect(
     (
       await page.request.put(`${path}/draft`, {
         headers: {
-          'x-csrf-token': decodeURIComponent(cookie.value),
+          'x-csrf-token': cookie,
           'If-Match': response.headers().etag ?? '',
         },
         data: {

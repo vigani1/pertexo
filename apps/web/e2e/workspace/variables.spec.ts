@@ -1,12 +1,12 @@
-import { test, expect } from '../support/fixtures';
+import { expect, test } from '../support/fixtures';
+import { mappingGraph } from '../workflow-editor/graph';
 import {
+  addCsrfCookie,
+  editorUrl,
   installEditorRoutes,
   remoteDraft,
   workspace,
   workspaceId,
-  addCsrfCookie,
-  mappingGraph,
-  editorUrl,
 } from '../workflow-editor/support';
 for (const width of [1280, 375])
   test(`typed variables retain an uncertain command and a conflicting draft at ${String(width)}px`, async ({

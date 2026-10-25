@@ -1,6 +1,7 @@
-import { randomUUID } from 'node:crypto';
-import { expect, type Page } from '@playwright/test';
 import { workflowRunStartResponseSchema } from '@pertexo/contracts';
+import { expect, type Page } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { readCsrfToken } from '../../../test/support/browser/csrf';
 import { waitForRun } from './single-step';
 
 /** Uses the ordinary replay and recovery controls against the owned HTTP target. */
@@ -152,16 +153,15 @@ export async function recoverOwnedHttp(
       effectRisk: 'unknown_outcome',
       reusedCount: 4,
     });
-    const cookie = (await page.context().cookies()).find(
-      (item) => item.name === 'pertexo_csrf',
-    );
-    if (cookie === undefined) throw new Error('CSRF context missing');
+    const cookie = await readCsrfToken(page, {
+      missingMessage: 'CSRF context missing',
+    });
     for (const acknowledgement of [{}, { acknowledgePossibleEffects: true }]) {
       const refused = await page.request.post(
         `/v1/workspaces/${workspaceId}/runs/${originalId}/recover`,
         {
           headers: {
-            'x-csrf-token': decodeURIComponent(cookie.value),
+            'x-csrf-token': cookie,
             'Idempotency-Key': randomUUID(),
           },
           data: {

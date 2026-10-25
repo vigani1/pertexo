@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from '../../support/fixtures';
+import { mappingGraph } from '../graph';
 import {
   addCsrfCookie,
   currentEtag,
@@ -6,7 +7,6 @@ import {
   editorUrl,
   installEditorRoutes,
   manualDefinition,
-  mappingGraph,
   remoteDraft,
   workflowId,
   workflowSummary,

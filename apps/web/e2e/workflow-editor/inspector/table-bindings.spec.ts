@@ -1,12 +1,12 @@
 import { expect, test } from '../../support/fixtures';
+import { mappingGraph } from '../graph';
 import {
   addCsrfCookie,
-  installEditorRoutes,
-  remoteDraft,
-  mappingGraph,
   definition,
-  manualDefinition,
   editorUrl,
+  installEditorRoutes,
+  manualDefinition,
+  remoteDraft,
   workspaceId,
 } from '../support';
 

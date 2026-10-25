@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '../../support/fixtures';
+import { editorNode } from '../graph';
 import {
   addCsrfCookie,
   definition,
-  editorNode,
   editorUrl,
   installEditorRoutes,
   remoteDraft,

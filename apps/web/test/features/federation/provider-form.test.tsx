@@ -1,10 +1,11 @@
+import { ProviderForm } from '@/features/federation/components/providers/form';
+import { createApiClient } from '@/lib/api/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { ProviderForm } from '@/features/federation/components/providers/form';
-import { createApiClient } from '@/lib/api/client';
-import { organization, settings, workspaceId, userId, json } from './fixtures';
+import { readRequestJson } from '../../support/request';
+import { json, organization, settings, userId, workspaceId } from './fixtures';
 function fixture() {
   const fetch = vi.fn<typeof globalThis.fetch>();
   const apiClient = createApiClient({
@@ -208,8 +209,10 @@ describe('SAML provider editing', () => {
       expect(onClose).toHaveBeenCalledOnce();
     });
     const body = fetch.mock.calls[0]?.[1]?.body;
-    if (typeof body !== 'string') throw new Error('Provider request missing');
-    expect(JSON.parse(body) as unknown).toEqual({
+
+    expect(
+      readRequestJson({ body, missingMessage: 'Provider request missing' }),
+    ).toEqual({
       kind: 'saml',
       name: 'SAML sign-in',
       issuer: 'http://www.okta.com/owned-idp',

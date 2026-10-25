@@ -1,17 +1,15 @@
-import {
-  createUserFixture,
-  createWorkspaceFixture,
-} from '../../test/support/fixtures/identity';
 import { expect, test } from '../support/fixtures';
 
-const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-const intentId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
-const csrfToken = 'invitation-acceptance-csrf-token-123456';
-const sessionCsrfToken = 'invitation-session-csrf-token-123456789012345678';
-const token = `wi1.${workspaceId}.${intentId}.${'a'.repeat(43)}`;
-const staleIntentId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-const staleBinding = `wb1.${workspaceId}.${staleIntentId}.${'b'.repeat(43)}.${'c'.repeat(43)}`;
-const recoveredBinding = `wb1.${workspaceId}.${intentId}.${'d'.repeat(43)}.${'e'.repeat(43)}`;
+import {
+  csrfToken,
+  intentId,
+  readyJourney,
+  recoveredBinding,
+  sessionCsrfToken,
+  staleBinding,
+  token,
+  workspaceId,
+} from './invitation-acceptance/fixture';
 
 test('removes the invitation token and explicitly accepts the bound journey', async ({
   page,
@@ -316,86 +314,3 @@ test('reloads the committed journey when the replacement cookie arrives before a
     page.getByRole('button', { name: 'Sign in to accept' }),
   ).toBeVisible();
 });
-
-test('keeps ordinary workspace discovery available when a replacement binding rejects cleanup', async ({
-  page,
-}) => {
-  let cleanupRequests = 0;
-  await page.route(/\/v1\/invitation-acceptance$/, async (route) => {
-    if (route.request().method() === 'DELETE') {
-      cleanupRequests += 1;
-      await route.fulfill({
-        status: 403,
-        contentType: 'application/problem+json',
-        json: {
-          type: 'https://pertexo.test/problems/auth.forbidden',
-          title: 'Forbidden',
-          status: 403,
-          code: 'auth.forbidden',
-          requestId: 'browser-replaced-invitation-binding',
-        },
-      });
-      return;
-    }
-    await route.fulfill({
-      json: {
-        state: 'completed',
-        intentId,
-        expiresAt: '2026-09-19T19:00:00.000Z',
-        csrfToken,
-        workspace: { id: workspaceId, name: 'Control Operations' },
-        role: 'builder',
-        membershipCreated: true,
-      },
-    });
-  });
-  await page.route('**/v1/users/me', async (route) => {
-    await route.fulfill({
-      json: createUserFixture({
-        email: 'builder@example.test',
-        displayName: 'Pertexo Builder',
-        createdAt: '2026-09-19T10:00:00.000Z',
-        updatedAt: '2026-09-19T10:00:00.000Z',
-      }),
-    });
-  });
-  await page.route('**/v1/workspaces?**', async (route) => {
-    await route.fulfill({
-      json: {
-        items: [
-          createWorkspaceFixture({
-            id: workspaceId,
-            role: 'builder',
-            capabilities: ['workspace:read', 'workflow:read'],
-            createdAt: '2026-09-19T10:00:00.000Z',
-            updatedAt: '2026-09-19T10:00:00.000Z',
-          }),
-        ],
-        nextCursor: null,
-      },
-    });
-  });
-
-  await page.goto('/invitations/accept');
-  await page.getByRole('button', { name: 'Open workspace' }).click();
-  await expect(
-    page.getByText(/couldn’t finish tidying up the invitation/iu),
-  ).toBeVisible();
-  await page.getByRole('button', { name: 'Go to my workspaces' }).click();
-
-  await expect(page).toHaveURL('/workspaces');
-  expect(cleanupRequests).toBe(1);
-});
-
-function readyJourney() {
-  return {
-    state: 'ready',
-    intentId,
-    expiresAt: '2026-09-19T19:00:00.000Z',
-    csrfToken,
-    invitationRevision: 2,
-    role: 'builder',
-    sessionRotationRequired: true,
-    workspace: { id: workspaceId, name: 'Control Operations' },
-  } as const;
-}

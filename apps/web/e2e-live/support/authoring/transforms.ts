@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { mapBrowserInput } from '../../../test/support/browser/inputs';
 import { readEditorDraft } from './single-step';
 
 /** Shared ordinary UI actions; the mock and live journeys author the same graph. */
@@ -54,53 +55,93 @@ export async function authorCollectionGraph(
     await panel.getByLabel(label, { exact: true }).fill(value);
     await page.keyboard.press('Tab');
   }
-  async function map(field: string, source: string, path: string) {
-    await panel.getByRole('tab', { name: 'Inputs', exact: true }).click();
-    await panel.getByRole('button', { name: 'Add input', exact: true }).click();
-    const row = panel
-      .getByRole('region', { name: 'Inputs', exact: true })
-      .locator('ol > li')
-      .last();
-    await row.getByLabel('Field', { exact: true }).fill(field);
-    if (source === 'Run input') {
-      await row.getByRole('button', { name: 'Run input', exact: true }).click();
-      await row.getByLabel('Run input path', { exact: true }).fill(path);
-    } else {
-      await row
-        .getByRole('button', { name: 'Step output', exact: true })
-        .click();
-      await row.getByLabel('Source step', { exact: true }).click();
-      await page.getByRole('option', { name: source, exact: true }).click();
-      await row.getByLabel('Output path', { exact: true }).fill(path);
-    }
-    await page.keyboard.press('Tab');
-  }
+
   const manualId = await add('Manual start', 'Invoice input');
   const filterId = await add('Filter items', 'Paid invoices', manualId);
   await setup('Item path', '$.paid');
-  await map('items', 'Run input', '$.invoices');
-  await map('value', 'Run input', '$.paid');
+  await mapBrowserInput({
+    page,
+    scope: panel,
+    field: 'items',
+    source: 'Run input',
+    path: '$.invoices',
+  });
+  await mapBrowserInput({
+    page,
+    scope: panel,
+    field: 'value',
+    source: 'Run input',
+    path: '$.paid',
+  });
   const sortId = await add('Sort items', 'Amount order', filterId);
   await setup('Sort by', '$.amount');
-  await map('items', 'Paid invoices', '$.items');
+  await mapBrowserInput({
+    page,
+    scope: panel,
+    field: 'items',
+    source: 'Paid invoices',
+    path: '$.items',
+  });
   const uniqueId = await add('Remove duplicates', 'One invoice per ID', sortId);
   await setup('Compare by', '$.id');
-  await map('items', 'Amount order', '$.items');
+  await mapBrowserInput({
+    page,
+    scope: panel,
+    field: 'items',
+    source: 'Amount order',
+    path: '$.items',
+  });
   const takeId = await add('Take first items', 'First invoices', uniqueId);
   await setup('Items to keep', '100');
-  await map('items', 'One invoice per ID', '$.items');
+  await mapBrowserInput({
+    page,
+    scope: panel,
+    field: 'items',
+    source: 'One invoice per ID',
+    path: '$.items',
+  });
   const concatId = await add('Concatenate lists', 'Combined invoices', takeId);
-  await map('items', 'First invoices', '$.items');
-  await map('otherItems', 'Run input', '$.extra');
+  await mapBrowserInput({
+    page,
+    scope: panel,
+    field: 'items',
+    source: 'First invoices',
+    path: '$.items',
+  });
+  await mapBrowserInput({
+    page,
+    scope: panel,
+    field: 'otherItems',
+    source: 'Run input',
+    path: '$.extra',
+  });
   const batchId = await add('Batch items', 'Invoice batch', concatId);
   await setup('Items per batch', '100');
-  await map('items', 'Combined invoices', '$.items');
+  await mapBrowserInput({
+    page,
+    scope: panel,
+    field: 'items',
+    source: 'Combined invoices',
+    path: '$.items',
+  });
   const summaryId = await add('Summarize items', 'Currency totals', batchId);
   await setup('Numeric value', '$.amount');
   await setup('Group by', '$.currency');
-  await map('items', 'Invoice batch', '$.batches[0]');
+  await mapBrowserInput({
+    page,
+    scope: panel,
+    field: 'items',
+    source: 'Invoice batch',
+    path: '$.batches[0]',
+  });
   const stopId = await add('Stop run', 'Return totals', summaryId);
-  await map('result', 'Currency totals', '$.groups');
+  await mapBrowserInput({
+    page,
+    scope: panel,
+    field: 'result',
+    source: 'Currency totals',
+    path: '$.groups',
+  });
   await expect
     .poll(
       async () =>

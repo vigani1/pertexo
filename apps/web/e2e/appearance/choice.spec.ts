@@ -1,11 +1,11 @@
 import { expect, test } from '../support/fixtures';
+import { mappingGraph } from '../workflow-editor/graph';
 import {
+  editorUrl,
   installEditorRoutes,
   remoteDraft,
-  workspaceId,
   user,
-  editorUrl,
-  mappingGraph,
+  workspaceId,
 } from '../workflow-editor/support';
 
 for (const theme of ['light', 'dark'] as const) {
