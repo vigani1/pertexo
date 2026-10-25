@@ -872,6 +872,13 @@
     --toast-pointer-events: none;
   }
 
+  /* Notifications can outlive navigation into a dialog. Keep them below its
+     backdrop so they cannot cover or intercept the dialog's actions. */
+  body:has([data-slot='dialog-content']) [data-slot='toast-viewport'] {
+    --toast-z-index: 40;
+    --toast-pointer-events: none;
+  }
+
   /* In the editor, toasts sit left of an open step panel, not on its
      footer. Below 64rem the panel is a bottom sheet instead. */
   @media (width >= 64rem) {
