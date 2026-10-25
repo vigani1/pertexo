@@ -42,7 +42,13 @@ for (const width of [1280, 375])
     const tablePath = `/v1/workspaces/${workspaceId}/data-tables`;
     await page.goto(`/w/${workspaceId}/data-tables`);
     await expect(
-      page.getByText('No tables yet.', { exact: true }),
+      page.getByText('No tables yet', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        'Create a table to keep orders, reference values or workflow state here.',
+        { exact: true },
+      ),
     ).toBeVisible();
     await page.getByRole('button', { name: 'New table', exact: true }).click();
     const create = page.getByRole('dialog', {
@@ -63,12 +69,23 @@ for (const width of [1280, 375])
     await page.getByRole('option', { name: 'number', exact: true }).click();
     await create.getByLabel('Unique key (optional)', { exact: true }).click();
     await page.getByRole('option', { name: 'key', exact: true }).click();
+    await create.getByRole('button', { name: 'Cancel', exact: true }).focus();
+    await page.keyboard.press('Tab');
+    await expect(
+      create.getByRole('button', { name: 'Create table', exact: true }),
+    ).toBeFocused();
     await create
       .getByRole('button', { name: 'Create table', exact: true })
       .click();
     await expect(
       page.getByRole('heading', { name: 'Orders', exact: true }),
     ).toBeVisible();
+    await expect(
+      page.getByText('No rows yet. Add a row or import CSV to start.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.getByText('0 rows total', { exact: true })).toBeVisible();
     const list = await page.request.get(tablePath);
     expect(list.status()).toBe(200);
     const table = dataTablesResponseSchema.parse(await list.json()).tables[0];
@@ -98,6 +115,11 @@ for (const width of [1280, 375])
     const add = page.getByRole('dialog', { name: 'Add row', exact: true });
     await add.getByLabel('key', { exact: false }).fill('alpha');
     await add.getByLabel('amount', { exact: false }).fill('12.5');
+    await add.getByRole('button', { name: 'Cancel', exact: true }).focus();
+    await page.keyboard.press('Tab');
+    await expect(
+      add.getByRole('button', { name: 'Save row', exact: true }),
+    ).toBeFocused();
     await add.getByRole('button', { name: 'Save row', exact: true }).click();
     await add
       .getByRole('button', { name: 'Retry same action', exact: true })
@@ -114,9 +136,29 @@ for (const width of [1280, 375])
       name: 'Import CSV',
       exact: true,
     });
+    await expect(
+      importing.getByText('Drop a file here or choose file', { exact: true }),
+    ).toBeVisible();
     await importing
-      .getByLabel('Or paste CSV', { exact: true })
-      .fill('key,amount\nbeta,7\ngamma,wrong');
+      .getByLabel('Choose a UTF-8 CSV file', { exact: true })
+      .setInputFiles({
+        name: 'orders.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from('key,amount\nbeta,7\ngamma,wrong'),
+      });
+    await expect(
+      importing.getByLabel('Or paste CSV', { exact: true }),
+    ).toHaveValue('key,amount\nbeta,7\ngamma,wrong');
+    await expect(
+      importing.getByText('orders.csv', { exact: true }),
+    ).toBeVisible();
+    await importing
+      .getByRole('button', { name: 'Cancel', exact: true })
+      .focus();
+    await page.keyboard.press('Tab');
+    await expect(
+      importing.getByRole('button', { name: 'Import rows', exact: true }),
+    ).toBeFocused();
     await importing
       .getByRole('button', { name: 'Import rows', exact: true })
       .click();
@@ -133,6 +175,19 @@ for (const width of [1280, 375])
     await expect(
       page.getByRole('row').filter({ hasText: 'beta' }),
     ).toContainText('7');
+    await page.getByLabel('Value', { exact: true }).fill('missing-order');
+    await page.getByRole('button', { name: 'Filter', exact: true }).click();
+    await expect(
+      page.getByText('No rows match this filter. Try a different filter.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText('0 matching rows', { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole('button', { name: 'Clear filter', exact: true })
+      .click();
     await page
       .getByRole('row')
       .filter({ hasText: 'alpha' })
