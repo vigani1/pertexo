@@ -6,7 +6,9 @@ import {
   type NodeArtifactRuntime,
   type JsonValue,
 } from '@pertexo/node-sdk/server';
+import type { RowFormat } from './encode.js';
 import { refuseFileCreation } from './failure.js';
+import { writeWorkbook, XLSX_MEDIA_TYPE } from './xlsx/workbook.js';
 import type {
   CoreCreateFileConfig,
   CoreCreateFileInput,
@@ -83,14 +85,31 @@ export function createFileFromPages(
   if (config.format === 'text' || !('pages' in input))
     refuseFileCreation(
       'data',
-      'Map the ordered page references to Pages and choose JSON or CSV.',
+      'Map the ordered page references to Pages and choose JSON, CSV or Excel.',
     );
-  if (config.format === 'csv' && config.columns.length === 0)
+  if (config.format !== 'json' && config.columns.length === 0)
     refuseFileCreation(
       'columns',
-      'Choose CSV columns explicitly, in output order, when creating a file from pages.',
+      `Choose ${config.format === 'csv' ? 'CSV' : 'Excel'} columns explicitly, in output order, when creating a file from pages.`,
     );
   const pages = input.pages;
+  if (config.format === 'xlsx')
+    return artifacts.write({
+      body: limitedWorkbook(
+        writeWorkbook(
+          {
+            sheetName: config.sheetName,
+            columns: config.columns,
+            rows: objectRows(records(pages, artifacts, signal), 'Excel'),
+          },
+          signal,
+        ),
+      ),
+      maxBytes: FILE_PAGE_LIMITS.fileBytes,
+      mediaType: XLSX_MEDIA_TYPE,
+      purpose: 'node-output',
+      signal,
+    });
   const selected = config;
   async function* body() {
     let size = 0,
@@ -110,38 +129,31 @@ export function createFileFromPages(
         bytes.fill(0);
       }
     }
-    if (selected.format === 'json') yield* append('[');
-    else
-      yield* append(
-        selected.columns.map(escapeCsvValue).join(selected.delimiter) + '\r\n',
-      );
-    for await (const record of records(pages, artifacts, signal)) {
-      if (selected.format === 'json')
+    if (selected.format === 'json') {
+      yield* append('[');
+      for await (const record of records(pages, artifacts, signal)) {
         yield* append((first ? '' : ',') + JSON.stringify(record));
-      else {
-        if (
-          record === null ||
-          typeof record !== 'object' ||
-          Array.isArray(record)
-        )
-          refuseFileCreation(
-            'data',
-            'CSV pages need object rows with named fields. Choose JSON for other values.',
-          );
-        const row = record as Readonly<Record<string, JsonValue>>;
-        yield* append(
-          selected.columns
-            .map((name) =>
-              escapeCsvValue(
-                Object.hasOwn(row, name) ? (row[name] ?? null) : null,
-              ),
-            )
-            .join(selected.delimiter) + '\r\n',
-        );
+        first = false;
       }
-      first = false;
+      yield* append(']');
+      return;
     }
-    if (selected.format === 'json') yield* append(']');
+    yield* append(
+      selected.columns.map(escapeCsvValue).join(selected.delimiter) + '\r\n',
+    );
+    for await (const row of objectRows(
+      records(pages, artifacts, signal),
+      'CSV',
+    ))
+      yield* append(
+        selected.columns
+          .map((name) =>
+            escapeCsvValue(
+              Object.hasOwn(row, name) ? (row[name] ?? null) : null,
+            ),
+          )
+          .join(selected.delimiter) + '\r\n',
+      );
   }
   return artifacts.write({
     body: body(),
@@ -151,4 +163,33 @@ export function createFileFromPages(
     purpose: 'node-output',
     signal,
   });
+}
+
+async function* objectRows(
+  values: AsyncIterable<JsonValue>,
+  format: RowFormat,
+): AsyncGenerator<Readonly<Record<string, JsonValue>>> {
+  for await (const record of values) {
+    if (record === null || typeof record !== 'object' || Array.isArray(record))
+      refuseFileCreation(
+        'data',
+        `${format} pages need object rows with named fields. Choose JSON for other values.`,
+      );
+    yield record as Readonly<Record<string, JsonValue>>;
+  }
+}
+
+async function* limitedWorkbook(
+  parts: AsyncIterable<Uint8Array>,
+): AsyncGenerator<Uint8Array> {
+  let size = 0;
+  for await (const part of parts) {
+    size += part.byteLength;
+    if (size > FILE_PAGE_LIMITS.fileBytes)
+      refuseFileCreation(
+        'size',
+        'The created workbook exceeds 10 MB. Choose fewer columns or split the data into smaller files.',
+      );
+    yield part;
+  }
 }

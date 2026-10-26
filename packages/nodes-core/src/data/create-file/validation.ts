@@ -2,15 +2,23 @@ import {
   nodeArtifactReferenceSchema,
   filePageReferenceSchema,
   FILE_PAGE_LIMITS,
+  sheetNameSchema,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 import { COLLECTION_MAX_ITEMS } from '../lists/semantics/validation.js';
-export const csvColumnNameSchema = z
+export const fileColumnNameSchema = z
   .string()
   .min(1)
   .max(256)
   .refine((name) => name.trim() !== '', 'Column names cannot be blank.');
+const fileColumnsSchema = z
+  .array(fileColumnNameSchema)
+  .max(COLLECTION_MAX_ITEMS)
+  .refine(
+    (columns) => new Set(columns).size === columns.length,
+    'Choose each column once.',
+  );
 export const CORE_CREATE_FILE_CONFIG_SCHEMA = z.discriminatedUnion('format', [
   z
     .object({
@@ -24,13 +32,17 @@ export const CORE_CREATE_FILE_CONFIG_SCHEMA = z.discriminatedUnion('format', [
       format: z.literal('csv'),
       inputMode: z.literal('pages').optional(),
       delimiter: z.enum([',', ';', '\t']),
-      columns: z
-        .array(csvColumnNameSchema)
-        .max(COLLECTION_MAX_ITEMS)
-        .refine(
-          (columns) => new Set(columns).size === columns.length,
-          'Choose each column once.',
-        ),
+      columns: fileColumnsSchema,
+    })
+    .strict(),
+  z
+    .object({
+      format: z.literal('xlsx'),
+      inputMode: z.literal('pages').optional(),
+      sheetName: sheetNameSchema.default('Sheet1').meta({
+        title: 'Sheet name',
+      }),
+      columns: fileColumnsSchema,
     })
     .strict(),
 ]);
