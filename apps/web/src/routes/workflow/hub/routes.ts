@@ -17,7 +17,7 @@ import {
   workflowRunsInfiniteQueryOptions,
 } from '@/features/workflow-runs/queries.public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
-import { WorkflowHubPending } from '../../root/status/pending';
+import { WorkflowHubPending } from '../../root/status/workflow-pending';
 import { pageTitle } from '../../root/page-title';
 import {
   authoringPrefetches,
