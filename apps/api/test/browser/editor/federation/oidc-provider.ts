@@ -10,6 +10,8 @@ import {
   type SecureHttpTransport,
 } from '@pertexo/integrations/server';
 
+import { liveWebOrigin } from '../../web-origin.js';
+
 function validClientAuthorization(
   header: string | undefined,
   clientId: string,
@@ -140,7 +142,7 @@ export async function createBrowserOidcProvider() {
       }
       const code = randomUUID(),
         redirectUri = url.searchParams.get('redirect_uri') ?? '';
-      if (new URL(redirectUri).origin !== 'http://127.0.0.1:4174') {
+      if (new URL(redirectUri).origin !== liveWebOrigin) {
         response.writeHead(400).end();
         return;
       }

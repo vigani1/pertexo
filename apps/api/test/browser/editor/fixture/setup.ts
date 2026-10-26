@@ -32,6 +32,7 @@ import {
   recheckOwnership,
 } from './lifecycle.js';
 import { httpMaster, httpAuthorization, useEditorApiFixture } from './api.js';
+import { liveWebPort } from '../../web-origin.js';
 
 export function createEditorBrowserFixture() {
   let worker: ChildProcess;
@@ -68,7 +69,7 @@ export function createEditorBrowserFixture() {
     const probe = createTcpServer();
     await new Promise<void>((resolve, reject) => {
       probe.once('error', reject);
-      probe.listen(4174, '127.0.0.1', resolve);
+      probe.listen(liveWebPort, '127.0.0.1', resolve);
     });
     await new Promise<void>((resolve, reject) =>
       probe.close((error) => {

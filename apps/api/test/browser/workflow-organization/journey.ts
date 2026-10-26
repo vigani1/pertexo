@@ -19,6 +19,7 @@ import {
 } from './environment.js';
 import type { createWorkflowOrganizationJourney } from './fixture.js';
 import { createOrganizationInvitationDelivery } from './mail.js';
+import { liveWebPort } from '../web-origin.js';
 
 export function registerWorkflowOrganizationJourney(
   fixture: ReturnType<typeof createWorkflowOrganizationJourney>,
@@ -314,7 +315,7 @@ export function registerWorkflowOrganizationJourney(
     );
     // Never accept another preview's healthy HTTP response as readiness for
     // this owned child. A occupied shared lane is not permission to reuse it.
-    await assertOrganizationPreviewPortVacant(4174);
+    await assertOrganizationPreviewPortVacant(liveWebPort);
     await successfulExit(start([vite, 'build'], 'vite'), 'build');
     const preview = start(
       [
@@ -323,7 +324,7 @@ export function registerWorkflowOrganizationJourney(
         '--host',
         '127.0.0.1',
         '--port',
-        '4174',
+        String(liveWebPort),
         '--strictPort',
       ],
       'vite',

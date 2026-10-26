@@ -38,6 +38,7 @@ import type {
 } from './contract.js';
 import { createEditorControlServer } from '../control/server.js';
 import { verifyEditorBrowserOutcome } from '../outcomes/dispatch.js';
+import { liveWebPort } from '../../web-origin.js';
 
 export function registerEditorBrowserJourney(
   fixture: ReturnType<typeof createEditorBrowserFixture>,
@@ -212,7 +213,7 @@ async function runEditorBrowserJourney(
     '--host',
     '127.0.0.1',
     '--port',
-    '4174',
+    String(liveWebPort),
     '--strictPort',
   ]);
 

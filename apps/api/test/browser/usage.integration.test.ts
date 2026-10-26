@@ -12,9 +12,10 @@ import { z } from 'zod';
 import { FixtureResourceOwner } from './harness/resource-owner.js';
 import { ownEditorBrowserProcess } from './harness/process.js';
 import { useBetterAuthRealApi } from '../support/better-auth/real-api.support.js';
+import { liveWebOrigin, liveWebPort } from './web-origin.js';
 
 const enabled = process.env.USAGE_BROWSER_INTEGRATION === 'true';
-const webOrigin = 'http://127.0.0.1:4174';
+const webOrigin = liveWebOrigin;
 const webDirectory = new URL('../../../web/', import.meta.url);
 const webRequire = createRequire(new URL('package.json', webDirectory));
 const receipts = z.object({ instanceId: z.uuid() }).strict();
@@ -280,7 +281,7 @@ describe.skipIf(!enabled)('real Usage browser, API and PostgreSQL', () => {
         '--host',
         '127.0.0.1',
         '--port',
-        '4174',
+        String(liveWebPort),
         '--strictPort',
       ],
       'vite',

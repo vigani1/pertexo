@@ -19,12 +19,13 @@ import {
   createBrowserSamlProvider,
   createSamlAppProxy,
 } from './saml-provider.js';
+import { liveWebOrigin, liveWebPort } from '../../web-origin.js';
 
 const enabled =
   process.env.EDITOR_BROWSER_INTEGRATION === 'true' &&
   process.env.EDITOR_BROWSER_CASE === 'organization-saml';
-const appOrigin = 'https://127.0.0.1:4175',
-  webOrigin = 'http://127.0.0.1:4174';
+const appOrigin = `https://127.0.0.1:${String(liveWebPort + 1)}`,
+  webOrigin = liveWebOrigin;
 const webDirectory = new URL('../../../../../web/', import.meta.url),
   webRequire = createRequire(new URL('package.json', webDirectory));
 const lifetime = z.strictObject({ instanceId: z.uuid() });
@@ -44,8 +45,8 @@ describe.skipIf(!enabled)(
     let opened = false;
     beforeAll(async () => {
       await recheckOwnership();
-      await assertOrganizationPreviewPortVacant(4174);
-      await assertOrganizationPreviewPortVacant(4175);
+      await assertOrganizationPreviewPortVacant(liveWebPort);
+      await assertOrganizationPreviewPortVacant(liveWebPort + 1);
     });
     const api = useBetterAuthRealApi('saml_browser', {
       publicWebOrigin: appOrigin,
@@ -226,7 +227,7 @@ describe.skipIf(!enabled)(
           '--host',
           '127.0.0.1',
           '--port',
-          '4174',
+          String(liveWebPort),
           '--strictPort',
         ],
         'vite',

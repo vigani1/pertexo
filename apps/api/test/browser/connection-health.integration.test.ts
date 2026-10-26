@@ -6,9 +6,10 @@ import { describe, expect, it } from 'vitest';
 import { FixtureResourceOwner } from './harness/resource-owner.js';
 import { ownEditorBrowserProcess } from './harness/process.js';
 import { useConnectionHealthFixture } from '../connections/health/fixture.js';
+import { liveWebOrigin, liveWebPort } from './web-origin.js';
 
 const enabled = process.env.CONNECTION_HEALTH_BROWSER_INTEGRATION === 'true';
-const webOrigin = 'http://127.0.0.1:4174';
+const webOrigin = liveWebOrigin;
 const webDirectory = new URL('../../../web/', import.meta.url);
 const webRequire = createRequire(new URL('package.json', webDirectory));
 function successfulExit(
@@ -105,7 +106,7 @@ describe.skipIf(!enabled)(
           '--host',
           '127.0.0.1',
           '--port',
-          '4174',
+          String(liveWebPort),
           '--strictPort',
         ],
         'vite',
