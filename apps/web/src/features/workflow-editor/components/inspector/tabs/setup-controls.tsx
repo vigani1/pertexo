@@ -12,8 +12,8 @@ import { SkeletonLines } from '@/components/ui/skeleton';
 import { WebhookTriggerSetup } from '../webhook/trigger-setup';
 import { WebhookResponseSetup } from '../webhook/response-setup';
 import { HumanFormSetup } from '../human-task/setup';
-import { CreateFileSetup } from '../builders/create-file-setup';
-import { ReadFileSetup } from '../builders/read-file-setup';
+import { CreateFileSetup } from '../builders/files/create-setup';
+import { ReadFileSetup } from '../builders/files/read-setup';
 import { DateSetup } from '../builders/date-setup';
 
 import type { WorkflowGraphContract } from '@pertexo/contracts';
