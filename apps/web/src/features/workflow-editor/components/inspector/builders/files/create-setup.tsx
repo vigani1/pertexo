@@ -14,7 +14,7 @@ import {
 import {
   fileColumnLimits,
   parseFileColumns,
-} from '../../../../model/inspector/transforms/file-columns';
+} from '../../../../model/inspector/files/columns';
 import { useInspectorDraftField, useScratchForm } from '../../use-draft-field';
 import { ChoiceSelect } from '../../fields/choice-select';
 import { SchemaField } from '../../fields/schema';
