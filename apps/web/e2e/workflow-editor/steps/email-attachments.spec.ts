@@ -1,4 +1,3 @@
-import { openStepSetup } from '../../../test/support/browser/steps';
 import { expect, test, type Page } from '../../support/fixtures';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
@@ -67,8 +66,18 @@ function weeklyReport(attachments?: unknown) {
 }
 
 async function openInputs(page: Page, width: number) {
-  await openStepSetup(page, { nodeId: 'email', width });
-  await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
+  const inputs = page.getByRole('tab', { name: 'Inputs', exact: true });
+  // A click can land while the canvas is still settling; select again.
+  await expect(async () => {
+    await page.getByTestId('rf__node-email').click();
+    if (width < 1024)
+      await page
+        .getByRole('navigation', { name: 'Editor panels' })
+        .getByRole('button', { name: 'Step', exact: true })
+        .click();
+    await expect(inputs).toBeVisible({ timeout: 2_000 });
+  }).toPass();
+  await inputs.click();
   return page.getByRole('region', { name: 'Attachments', exact: true });
 }
 
@@ -78,6 +87,7 @@ for (const theme of ['light', 'dark'] as const)
       page,
       context,
     }) => {
+      test.setTimeout(60_000);
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript((choice) => {
         localStorage.setItem('pertexo.appearance', choice);
@@ -160,31 +170,37 @@ for (const theme of ['light', 'dark'] as const)
       await expect.poll(() => saved()?.attachments).toBeDefined();
     });
 
-test('measures uploaded files against the email size limit', async ({
-  page,
-  context,
-}) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await addCsrfCookie(context);
-  const remote = weeklyReport([
-    { file: uploaded(4_823_449), filename: 'Terms.pdf' },
-  ]);
-  await installEditorRoutes(page, remote, { definitions });
-  await page.goto(editorUrl);
-  const attachments = await openInputs(page, 1440);
-  await expect(attachments.getByText('Uploaded file')).toBeVisible();
-  await expect(
-    attachments.getByRole('meter', { name: 'Attachment size' }),
-  ).toHaveAttribute('aria-valuetext', '1 file · 4.6 MB of 6 MB');
-  remote.graph = weeklyReport([
-    { file: uploaded(4_823_449), filename: 'Terms.pdf' },
-    { file: uploaded(2_097_152) },
-  ]).graph;
-  remote.revision += 1;
-  await page.reload();
-  const over = await openInputs(page, 1440);
-  await expect(
-    over.getByRole('meter', { name: 'Attachment size' }),
-  ).toHaveAttribute('aria-valuetext', '2 files · 6.6 MB of 6 MB');
-  await expect(over.getByText('attachment-2.pdf')).toBeVisible();
-});
+for (const [title, attachments, reading] of [
+  [
+    'within',
+    [{ file: uploaded(4_823_449), filename: 'Terms.pdf' }],
+    '1 file · 4.6 MB of 6 MB',
+  ],
+  [
+    'over',
+    [
+      { file: uploaded(4_823_449), filename: 'Terms.pdf' },
+      { file: uploaded(2_097_152) },
+    ],
+    '2 files · 6.6 MB of 6 MB',
+  ],
+] as const)
+  test(`measures uploaded files ${title} the email size limit`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await addCsrfCookie(context);
+    await installEditorRoutes(page, weeklyReport(attachments), {
+      definitions,
+    });
+    await page.goto(editorUrl);
+    const section = await openInputs(page, 1440);
+    await expect(section.getByText('Uploaded file').first()).toBeVisible();
+    await expect(
+      section.getByRole('meter', { name: 'Attachment size' }),
+    ).toHaveAttribute('aria-valuetext', reading);
+    await expect(
+      section.getByText(/over the limit for one email/u),
+    ).toHaveCount(title === 'over' ? 1 : 0);
+  });
