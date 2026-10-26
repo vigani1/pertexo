@@ -8,6 +8,7 @@ import {
   formFileMatchesType,
   formFilename,
   formFileType,
+  formFileValueSchema,
   formSubmissionSchema,
   formFileUploads,
   FormValuesInvalidError,
@@ -226,6 +227,30 @@ describe('file type and size checks', () => {
     expect(Array.from(formFilename(`${'é'.repeat(300)}.txt`))).toHaveLength(
       255,
     );
+  });
+
+  it('drops format characters that could disguise a file name', () => {
+    // A right-to-left override shows `report\u202Efdp.txt` as reporttxt.pdf.
+    expect(formFilename('report\u202Efdp.txt')).toBe('reportfdp.txt');
+    expect(formFilename('in\u200Bvoice\u2066.pdf')).toBe('invoice.pdf');
+  });
+
+  it('caps a file name by the same length its schema measures', () => {
+    // Each of these takes two UTF-16 units, as schemas count string length.
+    const name = formFilename(`${'😀'.repeat(200)}.pdf`);
+    expect(name).toBe('😀'.repeat(127));
+    expect(
+      formFileValueSchema.safeParse({
+        file: {
+          kind: 'artifact',
+          artifactId: upload(1),
+          byteLength: 3,
+          mediaType: 'application/pdf',
+          sha256: 'a'.repeat(64),
+        },
+        filename: name,
+      }).success,
+    ).toBe(true);
   });
 
   it.each([

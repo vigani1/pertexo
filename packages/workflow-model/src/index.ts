@@ -358,6 +358,7 @@ export {
   utf8ByteLength,
   isWellFormed,
   jsonStringByteLength,
+  withoutHiddenCharacters,
 } from './values/text.js';
 
 export {

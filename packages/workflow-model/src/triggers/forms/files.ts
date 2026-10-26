@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { storageTextSchema } from '../../values/json/text.js';
+import { withoutHiddenCharacters } from '../../values/text.js';
 
 const MEBIBYTE = 1_048_576;
 
@@ -134,14 +135,20 @@ export function assertFormFileSize(byteLength: number, maxBytes: number) {
   );
 }
 
-/** Responder names are labels only: keep the last path part, without controls. */
+/**
+ * Responder names are labels only: keep the last path part, without hidden
+ * characters, within the length the schemas measure (UTF-16 units) and
+ * without splitting a character.
+ */
 export function formFilename(name: string): string {
   const base = name.split(/[\\/]/u).at(-1) ?? '';
-  // eslint-disable-next-line no-control-regex -- control characters are the target
-  const clean = base.replace(/[\u0000-\u001f\u007f]/gu, '').trim();
-  return Array.from(clean)
-    .slice(0, FORM_FILE_LIMITS.filenameCharacters)
-    .join('');
+  let kept = '';
+  for (const character of withoutHiddenCharacters(base).trim()) {
+    if (kept.length + character.length > FORM_FILE_LIMITS.filenameCharacters)
+      break;
+    kept += character;
+  }
+  return kept;
 }
 
 const ascii = (text: string) => Array.from(text, (char) => char.charCodeAt(0));

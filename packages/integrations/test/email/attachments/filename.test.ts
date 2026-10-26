@@ -36,6 +36,13 @@ describe('email attachment filenames', () => {
     );
   });
 
+  it('drops format characters, such as bidi overrides, from a name', () => {
+    expect(sanitizeAttachmentFilename('report\u202Efdp.txt')).toBe(
+      'reportfdp.txt',
+    );
+    expect(sanitizeAttachmentFilename('\u202E\u200B')).toBeUndefined();
+  });
+
   it('leaves nothing usable as no name, so the default applies', () => {
     for (const value of ['', '   ', '///', '\u0007', '.', '..'])
       expect(sanitizeAttachmentFilename(value)).toBeUndefined();
