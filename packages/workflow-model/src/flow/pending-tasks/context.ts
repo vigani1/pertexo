@@ -4,6 +4,7 @@ import { storageTextSchema } from '../../values/json/text.js';
 import {
   parseFormValues,
   formValuesSchema,
+  FormValuesInvalidError,
 } from '../../triggers/forms/values.js';
 import type { FormField } from '../../triggers/forms/fields.js';
 
@@ -38,6 +39,21 @@ export const taskContextSchema = z
 
 /** Responders finish partial selections; prefills still enforce choices and maxima. */
 export function parseTaskPrefill(fields: readonly FormField[], input: unknown) {
+  const files = fields.filter(
+    (field) =>
+      field.type === 'file' &&
+      typeof input === 'object' &&
+      input !== null &&
+      Object.hasOwn(input, field.name),
+  );
+  // Only the responder can upload; a file reference is not a prefill.
+  if (files.length > 0)
+    throw new FormValuesInvalidError(
+      files.map(({ name }) => ({
+        name,
+        message: 'File fields cannot be prefilled.',
+      })),
+    );
   return parseFormValues(
     fields.map((field) =>
       field.type === 'multi_select'

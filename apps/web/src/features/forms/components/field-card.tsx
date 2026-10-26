@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LabelledField } from '@/components/ui/field';
+import { fieldOfType } from '../model/fields';
 
 const fieldTypes: readonly Readonly<{
   value: FormField['type'];
@@ -211,27 +212,8 @@ function FieldTypeControl({
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
           value={field.type}
           onChange={(event) => {
-            onUpdate((current) => {
-              const type = event.target.value as FormField['type'];
-              const base = {
-                id: current.id,
-                name: current.name,
-                label: current.label,
-                help: current.help,
-                required: current.required,
-              };
-              return type === 'select' || type === 'multi_select'
-                ? {
-                    ...base,
-                    type,
-                    options:
-                      current.type === 'select' ||
-                      current.type === 'multi_select'
-                        ? current.options
-                        : ['Option 1'],
-                  }
-                : { ...base, type };
-            });
+            const type = event.target.value as FormField['type'];
+            onUpdate((current) => fieldOfType(current, type));
           }}
         >
           {fieldTypes.map((type) => (

@@ -2,6 +2,11 @@ import { storageTextSchema } from '../../values/json/text.js';
 import { z } from 'zod';
 import { inspectJsonValue } from '../../values/json/canonical.js';
 import { FORM_LIMITS, type FormField } from './fields.js';
+import {
+  FORM_FILE_LIMITS,
+  formFileValueSchema,
+  type FormFileValue,
+} from './files.js';
 
 const selectionSchema = z
   .array(storageTextSchema)
@@ -12,7 +17,13 @@ const selectionSchema = z
   );
 export const formValuesSchema = z.record(
   z.string(),
-  z.union([storageTextSchema, z.number(), z.boolean(), selectionSchema]),
+  z.union([
+    storageTextSchema,
+    z.number(),
+    z.boolean(),
+    selectionSchema,
+    z.array(formFileValueSchema).max(FORM_FILE_LIMITS.maxFiles),
+  ]),
 );
 export type FormValues = Readonly<z.output<typeof formValuesSchema>>;
 export class FormValuesInvalidError extends Error {
@@ -44,6 +55,16 @@ function valueSchema(field: FormField): z.ZodType {
         .refine(
           (values) => values.every((value) => field.options.includes(value)),
           'Choose available options.',
+        );
+    case 'file':
+      // Responses name uploads; the server swaps them for file references.
+      return z
+        .array(z.uuid().transform((id) => id.toLowerCase()))
+        .min(1)
+        .max(field.maxFiles)
+        .refine(
+          (values) => new Set(values).size === values.length,
+          'Attach each file once.',
         );
     case 'select':
       return z
@@ -85,10 +106,10 @@ export function parseFormValues(
           ? schema
           : z.preprocess(
               (value) =>
-                (field.type !== 'multi_select' &&
+                (!isListField(field) &&
                   typeof value === 'string' &&
                   value.trim() === '') ||
-                (field.type === 'multi_select' &&
+                (isListField(field) &&
                   Array.isArray(value) &&
                   value.length === 0)
                   ? undefined
@@ -128,6 +149,23 @@ export const formSubmissionSchema = z
   .strict();
 export type FormSubmission = z.output<typeof formSubmissionSchema>;
 
+function isListField(field: FormField): boolean {
+  return field.type === 'multi_select' || field.type === 'file';
+}
+
+function fileMessage(
+  field: Extract<FormField, { type: 'file' }>,
+  value: unknown,
+): string {
+  if (!Array.isArray(value) || value.length === 0)
+    return field.maxFiles === 1
+      ? 'Attach a file.'
+      : 'Attach at least one file.';
+  if (value.length > field.maxFiles)
+    return `Attach up to ${String(field.maxFiles)} ${field.maxFiles === 1 ? 'file' : 'files'}.`;
+  return 'Upload each file again; one of them was not received.';
+}
+
 function selectionMessage(
   field: Extract<FormField, { type: 'multi_select' }>,
 ): string {
@@ -143,6 +181,7 @@ function fieldMessage(
 ): string {
   const value = submittedFieldValue(field, input);
   if (field.type === 'multi_select') return selectionMessage(field);
+  if (field.type === 'file') return fileMessage(field, value);
   if (
     field.type === 'boolean' &&
     (field.mustBeTicked ?? false) &&
@@ -189,4 +228,39 @@ function submittedFieldValue(field: FormField, input: unknown): unknown {
     Object.hasOwn(input, field.name)
     ? (input as Record<string, unknown>)[field.name]
     : undefined;
+}
+
+/** Upload IDs a parsed response names, by field; the server resolves them. */
+export function formFileUploads(
+  fields: readonly FormField[],
+  values: FormValues,
+): readonly Readonly<{ field: FormField; uploadIds: readonly string[] }>[] {
+  return fields.flatMap((field) => {
+    const value = values[field.name];
+    return field.type === 'file' && Array.isArray(value)
+      ? [{ field, uploadIds: value.filter((id) => typeof id === 'string') }]
+      : [];
+  });
+}
+
+/** Swap upload IDs for the files they name; unknown IDs are field errors. */
+export function attachFormFiles(
+  fields: readonly FormField[],
+  values: FormValues,
+  files: ReadonlyMap<string, FormFileValue>,
+): FormValues {
+  const missing: { name: string; message: string }[] = [];
+  const attached = { ...values };
+  for (const { field, uploadIds } of formFileUploads(fields, values)) {
+    const found = uploadIds.map((id) => files.get(`${field.id}:${id}`));
+    if (found.every((file) => file !== undefined)) attached[field.name] = found;
+    else
+      missing.push({
+        name: field.name,
+        message:
+          'A file is no longer available. Remove it and upload it again.',
+      });
+  }
+  if (missing.length > 0) throw new FormValuesInvalidError(missing);
+  return attached;
 }

@@ -35,9 +35,15 @@ export function InputResponse({
                   <dd className="whitespace-pre-wrap break-words">
                     {Array.isArray(value) ? (
                       <ul className="list-inside list-disc">
-                        {value.map((option) => (
-                          <li key={option}>{option}</li>
-                        ))}
+                        {value.map((option) =>
+                          typeof option === 'string' ? (
+                            <li key={option}>{option}</li>
+                          ) : (
+                            <li key={option.file.artifactId}>
+                              {option.filename}
+                            </li>
+                          ),
+                        )}
                       </ul>
                     ) : (
                       String(value)

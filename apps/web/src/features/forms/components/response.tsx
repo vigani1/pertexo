@@ -9,6 +9,7 @@ import {
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import {
+  draftFromValues,
   valuesFromDraft,
   type FormDraft,
   type FormDraftValue,
@@ -30,12 +31,7 @@ export function FormResponse({
 }>) {
   const id = useId();
   const [draft, setDraft] = useState<FormDraft>(() =>
-    Object.fromEntries(
-      Object.entries(initialValues ?? {}).map(([name, value]) => [
-        name,
-        typeof value === 'number' ? String(value) : value,
-      ]),
-    ),
+    draftFromValues(initialValues),
   );
   const [errors, setErrors] = useState<
     readonly Readonly<{ name: string; message: string }>[]
