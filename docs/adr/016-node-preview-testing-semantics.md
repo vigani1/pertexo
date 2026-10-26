@@ -50,8 +50,11 @@ preview does not publish or mutate a workflow version, advance production
 graph state, update trigger cursors or subscriptions, emit production run SSE,
 or become reusable production input. A prior preview can supply test input only
 through its explicit, same-workspace, same-workflow, successful, unexpired
-reference. Preview records are short-retained and remain visible to scoped
-audit and usage queries until expiry.
+reference. That output is the tested step's run input and also the output of
+the prior preview's step, so mappings from that step resolve as they would in
+a run; mappings from any other step fail and name the mapping. Preview records
+are short-retained and remain visible to scoped audit and usage queries until
+expiry.
 
 ### Execution truth and bounded values
 

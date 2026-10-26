@@ -23,3 +23,17 @@ export class WorkflowEngineError extends Error {
     this.name = 'WorkflowEngineError';
   }
 }
+
+/**
+ * A single-step test maps another step's output that the test doesn't carry:
+ * only a prior test of that step supplies it.
+ */
+export class PreviewMappingSourceError extends WorkflowEngineError {
+  constructor(
+    readonly mappingKey: string,
+    readonly sourceNodeId: string,
+  ) {
+    super('attempt_invalid', 'preview mapping source is not the prior test');
+    this.name = 'PreviewMappingSourceError';
+  }
+}

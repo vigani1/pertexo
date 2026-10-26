@@ -41,6 +41,8 @@ export type PreviewAttemptLease = Readonly<{
   executionDeadlineAt: Date;
   retentionExpiresAt: Date;
   input: ReturnType<typeof parseStoredExecutionValue>;
+  /** The step whose prior test supplied `input`, when one did. */
+  priorPreviewNodeId?: string;
   variables?: WorkspaceVariableValues;
   mayContactProvider: boolean;
   mayCauseExternalSideEffect: boolean;

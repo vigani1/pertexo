@@ -16,7 +16,7 @@ import {
 } from '@pertexo/workflow-model';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
-import { WorkflowEngineError } from '../errors.js';
+import { PreviewMappingSourceError, WorkflowEngineError } from '../errors.js';
 
 import type { WorkflowExecutableNode } from '../compilation/foundation.js';
 import { normalizeBoundedEngineValue } from '../compilation/validation.js';
@@ -93,11 +93,17 @@ export async function resolveMappedNodeInput(
   }
 }
 
-/** Resolve one isolated preview node through the production ValueSource path. */
+/**
+ * Resolve one isolated preview node through the production ValueSource path.
+ * A test fed by a prior test runs as if that step had just finished: its
+ * output is both the run input and the linked step's output.
+ */
 export async function resolveSingleNodePreviewInput(
   input: Readonly<{
     node: unknown;
     runInput: unknown;
+    /** The step whose prior test supplied `runInput`. */
+    priorPreviewNodeId?: string | undefined;
     variables?: WorkspaceVariableValues | undefined;
     signal: AbortSignal;
     expressionEvaluator?: ExpressionEvaluator | undefined;
@@ -127,10 +133,16 @@ export async function resolveSingleNodePreviewInput(
       error instanceof Error ? error.message : 'preview input is invalid',
     );
   }
+  const prior = input.priorPreviewNodeId;
+  for (const [mappingKey, source] of Object.entries(node.inputMappings))
+    if (source.kind === 'node_output' && source.nodeId !== prior)
+      throw new PreviewMappingSourceError(mappingKey, source.nodeId);
   return resolveMappedNodeInput(node, {
     runInput: runInput,
-    completedOutputs: Object.freeze({}),
-    directUpstream: new Set(),
+    completedOutputs: Object.freeze(
+      prior === undefined ? {} : { [prior]: runInput },
+    ),
+    directUpstream: new Set(prior === undefined ? [] : [prior]),
     signal: input.signal,
     expressionEvaluator: input.expressionEvaluator,
     structuredInputs: undefined,

@@ -84,6 +84,8 @@ export function registerRejectsArtifactBackedPreviewInputBefore(): void {
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({
+      errorSummary:
+        'Input upstream uses another step’s output. Test that step first, then test this one with “Use the output from testing” switched on.',
       safeErrorCode: 'preview.input_invalid',
       status: 'failed',
     });

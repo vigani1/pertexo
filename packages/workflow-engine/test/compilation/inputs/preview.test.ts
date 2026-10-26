@@ -197,6 +197,64 @@ describe('input resolution production operations', () => {
       }),
     ).rejects.toMatchObject({ code: 'attempt_invalid' });
   });
+  it('resolves the tested earlier step’s output when a test uses it', async () => {
+    const node = {
+      config: {},
+      configVersion: 1,
+      connectionRefs: {},
+      definition: { key: 'core.set', version: 1 },
+      id: 'create-file',
+      inputMappings: {
+        data: { kind: 'node_output', nodeId: 'read-file', path: '$' },
+        firstName: {
+          kind: 'node_output',
+          nodeId: 'read-file',
+          path: '$.rows[0].name',
+        },
+        fromRun: { kind: 'run_input', path: '$.rows[0].name' },
+      },
+    };
+    const priorOutput = { rows: [{ name: 'Ada' }] };
+
+    await expect(
+      resolveSingleNodePreviewInput({
+        node,
+        runInput: priorOutput,
+        priorPreviewNodeId: 'read-file',
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      data: priorOutput,
+      firstName: 'Ada',
+      fromRun: 'Ada',
+    });
+  });
+  it('names the mapping that needs an earlier step’s tested output', async () => {
+    const node = {
+      config: {},
+      configVersion: 1,
+      connectionRefs: {},
+      definition: { key: 'core.set', version: 1 },
+      id: 'create-file',
+      inputMappings: {
+        name: { kind: 'literal', value: 'report.csv' },
+        data: { kind: 'node_output', nodeId: 'read-file', path: '$' },
+      },
+    };
+    for (const priorPreviewNodeId of [undefined, 'another-step'])
+      await expect(
+        resolveSingleNodePreviewInput({
+          node,
+          runInput: {},
+          ...(priorPreviewNodeId === undefined ? {} : { priorPreviewNodeId }),
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toMatchObject({
+        code: 'attempt_invalid',
+        mappingKey: 'data',
+        sourceNodeId: 'read-file',
+      });
+  });
   it('classifies aggregate mapped-input overflow as an invalid attempt', async () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const repeatedGraph = structuredClone(graph());
