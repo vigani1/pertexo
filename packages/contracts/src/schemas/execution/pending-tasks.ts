@@ -13,6 +13,7 @@ import {
   PENDING_TASK_LIMITS,
   taskDetailsSchema,
   taskContextSchema,
+  taskExpiryChoiceSchema,
 } from '@pertexo/workflow-model';
 
 export const pendingTaskParamsSchema = z
@@ -73,6 +74,7 @@ const taskDetailBase = pendingTaskSummarySchema.extend({
   workflowVersionId: z.uuid(),
   instructions: z.string().max(PENDING_TASK_LIMITS.instructionsCharacters),
   audience: taskAudienceSchema,
+  onExpiry: taskExpiryChoiceSchema,
 });
 export const pendingTaskDetailSchema = z.discriminatedUnion('kind', [
   taskDetailBase

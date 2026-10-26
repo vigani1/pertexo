@@ -143,7 +143,7 @@ describe('workflow authoring error mapping', () => {
               path: '$.nodes',
               code: 'executable_invalid',
               message:
-                'A Switch or Parallel step has a connection from a branch it doesn’t define. Add that branch in its setup, or remove the connection.',
+                'A step has a link from an output its setup doesn’t define: a Switch case, a Parallel branch or a Timed out path. Add it in the step’s setup, or remove the link.',
             },
           ],
         },

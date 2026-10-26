@@ -5,6 +5,7 @@ import { prepareApprovalThroughRealWorkersDurableTasks } from './execution/fixtu
 import { registerContinuesSPathOnceAfterWorker } from './execution/continues-spath-once-after-worker.cases.js';
 import { registerClosesPendingTaskCancellationWinsRejects } from './execution/closes-pending-task-cancellation-wins-rejects.cases.js';
 import { registerPausesUnstartedSiblingCallDeadlineAnother } from './execution/pauses-unstarted-sibling-call-deadline-another.cases.js';
+import { registerContinuesTimedOutPath } from './execution/continues-timed-out-path.cases.js';
 describe.runIf(fixture.enabled)(
   'Approval through real workers, durable tasks and transport',
   () => {
@@ -16,5 +17,7 @@ describe.runIf(fixture.enabled)(
     registerClosesPendingTaskCancellationWinsRejects();
 
     registerPausesUnstartedSiblingCallDeadlineAnother();
+
+    registerContinuesTimedOutPath();
   },
 );

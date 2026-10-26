@@ -155,6 +155,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0052_publication_reuse_candidates.sql',
         '0053_remove_artifact_lookup.sql',
         '0054_form_uploads.sql',
+        '0055_task_timeout_output.sql',
       ]);
       expect(
         (

@@ -1,5 +1,5 @@
 import type { NodeAttemptRunStore } from '../contract.js';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import {
@@ -105,7 +105,7 @@ export async function readUpstreamOutputs(client: PoolClient, input: Input) {
         eq(pendingRunTasks.workspaceId, nodeRuns.workspaceId),
         eq(pendingRunTasks.nodeRunId, nodeRuns.id),
         eq(pendingRunTasks.runId, nodeRuns.workflowRunId),
-        inArray(pendingRunTasks.status, ['approved', 'rejected', 'submitted']),
+        isNotNull(pendingRunTasks.outputRef),
       ),
     )
     .where(

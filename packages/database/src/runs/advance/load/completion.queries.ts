@@ -107,7 +107,7 @@ function completionRows(
         eq(t.runId, n.workflowRunId),
         eq(t.nodeRunId, n.id),
         eq(t.invocationKey, n.invocationKey),
-        inArray(t.status, ['approved', 'rejected', 'submitted']),
+        isNotNull(t.outputRef),
       ),
     )
     .where(

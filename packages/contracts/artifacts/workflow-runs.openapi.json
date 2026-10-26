@@ -4069,6 +4069,13 @@
                 ],
                 "additionalProperties": false
               },
+              "onExpiry": {
+                "type": "string",
+                "enum": [
+                  "fail",
+                  "continue"
+                ]
+              },
               "output": {
                 "anyOf": [
                   {
@@ -4143,6 +4150,7 @@
               "workflowVersionId",
               "instructions",
               "audience",
+              "onExpiry",
               "output"
             ],
             "additionalProperties": false
@@ -4359,6 +4367,13 @@
                   "memberIds"
                 ],
                 "additionalProperties": false
+              },
+              "onExpiry": {
+                "type": "string",
+                "enum": [
+                  "fail",
+                  "continue"
+                ]
               },
               "fields": {
                 "minItems": 1,
@@ -4861,6 +4876,7 @@
               "workflowVersionId",
               "instructions",
               "audience",
+              "onExpiry",
               "fields",
               "prefill",
               "output"
@@ -5088,6 +5104,13 @@
                     ],
                     "additionalProperties": false
                   },
+                  "onExpiry": {
+                    "type": "string",
+                    "enum": [
+                      "fail",
+                      "continue"
+                    ]
+                  },
                   "output": {
                     "anyOf": [
                       {
@@ -5162,6 +5185,7 @@
                   "workflowVersionId",
                   "instructions",
                   "audience",
+                  "onExpiry",
                   "output"
                 ],
                 "additionalProperties": false
@@ -5378,6 +5402,13 @@
                       "memberIds"
                     ],
                     "additionalProperties": false
+                  },
+                  "onExpiry": {
+                    "type": "string",
+                    "enum": [
+                      "fail",
+                      "continue"
+                    ]
                   },
                   "fields": {
                     "minItems": 1,
@@ -5880,6 +5911,7 @@
                   "workflowVersionId",
                   "instructions",
                   "audience",
+                  "onExpiry",
                   "fields",
                   "prefill",
                   "output"
@@ -6359,6 +6391,13 @@
                     ],
                     "additionalProperties": false
                   },
+                  "onExpiry": {
+                    "type": "string",
+                    "enum": [
+                      "fail",
+                      "continue"
+                    ]
+                  },
                   "output": {
                     "anyOf": [
                       {
@@ -6433,6 +6472,7 @@
                   "workflowVersionId",
                   "instructions",
                   "audience",
+                  "onExpiry",
                   "output"
                 ],
                 "additionalProperties": false
@@ -6649,6 +6689,13 @@
                       "memberIds"
                     ],
                     "additionalProperties": false
+                  },
+                  "onExpiry": {
+                    "type": "string",
+                    "enum": [
+                      "fail",
+                      "continue"
+                    ]
                   },
                   "fields": {
                     "minItems": 1,
@@ -7151,6 +7198,7 @@
                   "workflowVersionId",
                   "instructions",
                   "audience",
+                  "onExpiry",
                   "fields",
                   "prefill",
                   "output"
