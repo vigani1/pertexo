@@ -1,5 +1,9 @@
 import { scenario } from '../fixture/environment.js';
-import { fixtureState, noticeMessages } from '../fixture/state.js';
+import {
+  emailDeliveries,
+  fixtureState,
+  noticeMessages,
+} from '../fixture/state.js';
 import type { EditorControlRequest } from './contract.js';
 
 export function handleEditorOidcMetadata(input: EditorControlRequest): boolean {
@@ -69,6 +73,26 @@ export function handleEditorVerificationLink(
     return true;
   }
   return false;
+}
+
+/** The emails the worker's Resend stand-in accepted, for the journey to read. */
+export function handleEditorEmailDeliveries(
+  input: EditorControlRequest,
+): boolean {
+  const { request, response, url } = input;
+  if (
+    request.method !== 'GET' ||
+    url.pathname !== '/email-deliveries' ||
+    scenario !== 'email-attachments'
+  )
+    return false;
+  response
+    .writeHead(200, {
+      'content-type': 'application/json',
+      'cache-control': 'no-store',
+    })
+    .end(JSON.stringify({ emails: emailDeliveries }));
+  return true;
 }
 
 export function handleEditorNoticeMail(input: EditorControlRequest): boolean {

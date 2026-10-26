@@ -26,6 +26,9 @@ export const previewCase =
 export const artifactInputs =
   process.env.EDITOR_BROWSER_CASE === 'artifact-inputs';
 
+export const emailAttachments =
+  process.env.EDITOR_BROWSER_CASE === 'email-attachments';
+
 export const controlledHttp =
   process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http' ||
   process.env.EDITOR_BROWSER_CASE === 'failure-routing' ||

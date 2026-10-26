@@ -37,6 +37,7 @@ import type {
 } from '../../curated-templates/fixture.js';
 import type { curatedTemplateEffectsSchema } from '../../curated-templates/worker-evidence.js';
 import type { browserEvidenceSchema } from './environment.js';
+import type { DeliveredEmail } from '../evidence/notifications/email-attachments.js';
 
 export const fixtureState: EditorBrowserFixtureState = {
   browserWasOpened: false,
@@ -68,6 +69,8 @@ export const fixtureState: EditorBrowserFixtureState = {
 };
 
 export const noticeMessages: string[] = [];
+
+export const emailDeliveries: DeliveredEmail[] = [];
 
 interface EditorBrowserFixtureState {
   browserWasOpened: boolean;

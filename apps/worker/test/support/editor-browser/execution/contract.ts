@@ -10,6 +10,11 @@ import type { createCuratedTemplateQualificationTransports } from '../../curated
 
 import type { createEditorControlledHttpTarget } from '../controlled-http.js';
 
+import type {
+  createEditorResendMailbox,
+  DeliveredEmail,
+} from '../notifications/resend-mailbox.js';
+
 import type { createRedisTestNamespace } from '../../infrastructure/redis-test-namespace.js';
 
 import type { EditorBrowserRuntimeConstruction } from '../lifetime.js';
@@ -32,6 +37,7 @@ export interface EditorBrowserWorkerState {
   curatedTarget:
     ReturnType<typeof createCuratedTemplateQualificationTransports> | undefined;
   httpTarget: ReturnType<typeof createEditorControlledHttpTarget> | undefined;
+  resendMailbox: ReturnType<typeof createEditorResendMailbox> | undefined;
 }
 
 export type EditorWorkerCapabilities = Awaited<
@@ -54,6 +60,7 @@ export type EditorWorkerExecution = EditorWorkerSetup &
     raw: EditorBrowserWorkerConfiguration;
     database: ReturnType<typeof parseDatabaseConfig>;
     sendHttpEffects: () => void;
+    sendEmailDeliveries: (emails: readonly DeliveredEmail[]) => void;
   }>;
 
 export type EditorWorkerAttemptContext = Readonly<{

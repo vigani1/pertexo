@@ -43,7 +43,8 @@ import type { EditorBrowserApi } from './contract.js';
 export const httpMaster =
   controlledHttpScenario ||
   scenario === 'curated-templates' ||
-  scenario === 'webhook-responses'
+  scenario === 'webhook-responses' ||
+  scenario === 'email-attachments'
     ? randomBytes(32)
     : undefined;
 
@@ -109,7 +110,7 @@ export function useEditorApiFixture(context: {
             },
           },
         }),
-    ...(scenario === 'artifact-inputs'
+    ...(scenario === 'artifact-inputs' || scenario === 'email-attachments'
       ? { artifacts: parseArtifactStoreConfig() }
       : {}),
     schedules: scenario === 'schedule' || scenario === 'curated-templates',
@@ -220,7 +221,7 @@ export function useEditorApiFixture(context: {
       // Stop before worker/lease cleanup if a browser descendant is unconfirmed.
       for (const child of browserChildren.toReversed()) await closeChild(child);
       await owner.close();
-      if (scenario === 'artifact-inputs') {
+      if (scenario === 'artifact-inputs' || scenario === 'email-attachments') {
         const rows = await api
           .database()
           .query<{ workspace_id: string; id: string }>(

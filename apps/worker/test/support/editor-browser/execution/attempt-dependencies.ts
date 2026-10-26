@@ -8,7 +8,7 @@ import type {
   EditorWorkerHttpClient,
   EditorWorkerAttemptContext,
 } from './contract.js';
-import { artifactInputs } from './environment.js';
+import { artifactInputs, emailAttachments } from './environment.js';
 
 export function editorAttemptDependencies(context: EditorWorkerAttemptContext) {
   const { controlledCapabilities, controlledHttpClient, state } = context;
@@ -83,7 +83,7 @@ function controlledEditorDependencies(
         },
       },
       emailSendNotification: {
-        client: {
+        client: state.resendMailbox?.client ?? {
           sendNotification: () =>
             Promise.reject(
               new Error('Provider outside controlled HTTP fixture'),
@@ -95,7 +95,7 @@ function controlledEditorDependencies(
       ...(artifactInputs
         ? withArtifactReadOutage(controlledCapabilities.factories)
         : controlledCapabilities.factories),
-      ...(artifactInputs
+      ...(artifactInputs || emailAttachments
         ? {}
         : {
             artifacts: () => ({

@@ -15,6 +15,7 @@ import { createCuratedTemplateEnvelopeContext } from '../../../../../../infrastr
 import { createCuratedTemplateQualificationTransports } from '../../curated-templates/controlled-transports.js';
 
 import { createEditorControlledHttpTarget } from '../controlled-http.js';
+import { createEditorResendMailbox } from '../notifications/resend-mailbox.js';
 
 import type { EditorWorkerExecution } from './contract.js';
 import {
@@ -23,21 +24,14 @@ import {
   artifactInputs,
   controlledHttp,
   curatedTemplates,
+  emailAttachments,
 } from './environment.js';
 
 export async function createEditorCapabilities(context: EditorWorkerExecution) {
-  const {
-    state,
-    raw,
-    database,
-    namespace,
-    resources,
-    assertSetupActive,
-    sendHttpEffects,
-  } = context;
+  const { raw, database, namespace, resources, assertSetupActive } = context;
   let controlledCapabilities:
     Awaited<ReturnType<typeof createWorkerNodeRuntimeCapabilities>> | undefined;
-  if (controlledHttp || curatedTemplates) {
+  if (controlledHttp || curatedTemplates || emailAttachments) {
     if (
       raw.connectionMasterKey === undefined ||
       (controlledHttp && raw.authorizationValue === undefined)
@@ -59,28 +53,10 @@ export async function createEditorCapabilities(context: EditorWorkerExecution) {
         return Promise.resolve();
       },
     };
-    if (curatedTemplates) {
-      state.curatedTarget = createCuratedTemplateQualificationTransports();
-      resources.controlledHttp = state.curatedTarget;
-    } else if (artifactInputs) {
-      state.artifactTarget = await createArtifactDestination(sendHttpEffects);
-      resources.controlledHttp = state.artifactTarget;
-      sendHttpEffects();
-    } else {
-      if (raw.authorizationValue === undefined)
-        throw new Error('Owned HTTP authorization missing');
-      state.httpTarget = createEditorControlledHttpTarget(
-        raw.authorizationValue,
-        undefined,
-        sendHttpEffects,
-      );
-      resources.controlledHttp = state.httpTarget;
-      await state.httpTarget.start();
-    }
+    await createControlledTransport(context);
     assertSetupActive();
-    const scratch = artifactInputs
-      ? await createTestArtifactScratch()
-      : undefined;
+    const storesFiles = artifactInputs || emailAttachments;
+    const scratch = storesFiles ? await createTestArtifactScratch() : undefined;
     resources.artifactScratch = scratch;
     controlledCapabilities = await createWorkerNodeRuntimeCapabilities(
       {
@@ -89,9 +65,7 @@ export async function createEditorCapabilities(context: EditorWorkerExecution) {
           : { artifactScratchDirectory: scratch.directory }),
         database,
         redisUrl: namespace.redisUrl,
-        ...(artifactInputs
-          ? { artifactStore: parseArtifactStoreConfig() }
-          : {}),
+        ...(storesFiles ? { artifactStore: parseArtifactStoreConfig() } : {}),
       },
       { connectionEncryption: new ConnectionEnvelopeEncryption(keys) },
     );
@@ -125,4 +99,31 @@ export async function createEditorCapabilities(context: EditorWorkerExecution) {
   }
 
   return controlledCapabilities;
+}
+
+/** The one controlled destination this case's provider calls reach. */
+async function createControlledTransport(context: EditorWorkerExecution) {
+  const { state, raw, resources, sendHttpEffects, sendEmailDeliveries } =
+    context;
+  if (curatedTemplates) {
+    state.curatedTarget = createCuratedTemplateQualificationTransports();
+    resources.controlledHttp = state.curatedTarget;
+  } else if (emailAttachments) {
+    state.resendMailbox = createEditorResendMailbox(sendEmailDeliveries);
+    resources.controlledHttp = state.resendMailbox;
+  } else if (artifactInputs) {
+    state.artifactTarget = await createArtifactDestination(sendHttpEffects);
+    resources.controlledHttp = state.artifactTarget;
+    sendHttpEffects();
+  } else {
+    if (raw.authorizationValue === undefined)
+      throw new Error('Owned HTTP authorization missing');
+    state.httpTarget = createEditorControlledHttpTarget(
+      raw.authorizationValue,
+      undefined,
+      sendHttpEffects,
+    );
+    resources.controlledHttp = state.httpTarget;
+    await state.httpTarget.start();
+  }
 }
