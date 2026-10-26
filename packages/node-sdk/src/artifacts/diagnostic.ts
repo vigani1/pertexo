@@ -49,10 +49,13 @@ export const fileInputDiagnosticSchema = z.discriminatedUnion('reason', [
   z
     .object({ reason: z.literal('csv_syntax'), line: location.optional() })
     .strict(),
+  z.object({ reason: z.literal('blank_header'), column: location }).strict(),
   z
     .object({
-      reason: z.enum(['blank_header', 'duplicate_header']),
+      reason: z.literal('duplicate_header'),
       column: location,
+      /** A merged area filled the repeat: usually a title above the header. */
+      merged: z.literal(true).optional(),
     })
     .strict(),
   z
