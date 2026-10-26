@@ -169,6 +169,7 @@ async function runEditorBrowserJourney(
     ...process.env,
     PERTEXO_API_PROXY_TARGET: apiOrigin,
     PERTEXO_LIVE_MAIL_ORIGIN: `http://127.0.0.1:${String(address.port)}`,
+    PERTEXO_LIVE_WEB_ORIGIN: webOrigin,
   };
 
   const viteCli = join(

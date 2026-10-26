@@ -21,6 +21,14 @@ function testMatch() {
   return '**/*.spec.ts';
 }
 
+// The API journey owner validates PERTEXO_LIVE_WEB_PORT, serves the preview
+// there and passes its origin, so the port has one reading.
+const liveWebOrigin = process.env.PERTEXO_LIVE_WEB_ORIGIN;
+if (liveWebOrigin === undefined)
+  throw new Error(
+    'PERTEXO_LIVE_WEB_ORIGIN is missing: run live journeys through their apps/api integration test.',
+  );
+
 export default defineConfig({
   testDir: './e2e-live',
   testMatch: testMatch(),
@@ -29,9 +37,7 @@ export default defineConfig({
   workers: 1,
   timeout: 60_000,
   use: {
-    baseURL:
-      process.env.PERTEXO_LIVE_WEB_ORIGIN ??
-      `http://127.0.0.1:${process.env.PERTEXO_LIVE_WEB_PORT ?? '4174'}`,
+    baseURL: liveWebOrigin,
     // Live authentication cookies/verification URLs must not become artifacts.
     trace: 'off',
     screenshot: 'off',
