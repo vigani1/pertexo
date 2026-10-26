@@ -112,7 +112,7 @@ export function AttachmentRow({
             <LabelledField
               id={`${context.nodeId}-${row.id}-filename`}
               label="Name in the email"
-              description="Optional. Path separators and control characters are left out."
+              description="Optional. Leave it empty to name the file from its type."
             >
               {(control) => (
                 <Input

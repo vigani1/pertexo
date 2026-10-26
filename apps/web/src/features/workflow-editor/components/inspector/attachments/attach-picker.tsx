@@ -35,7 +35,7 @@ function ChoiceButton({
     <button
       type="button"
       aria-label={choice.name}
-      className="flex w-full items-center justify-between gap-3 rounded-sm px-1.5 py-1.5 text-left text-[0.8rem] text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-accent-foreground focus-ring"
+      className="flex w-full items-center justify-between gap-3 rounded-sm px-1.5 py-1.5 text-left max-sm:min-h-11 text-[0.8rem] text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-accent-foreground focus-ring"
       onClick={() => {
         onPick(choice.source);
       }}
@@ -159,7 +159,7 @@ export function AttachPicker({
           <li className="border-t border-surface-ink/7 pt-2">
             <button
               type="button"
-              className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1.5 text-left text-[0.8rem] text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-accent-foreground focus-ring"
+              className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1.5 text-left max-sm:min-h-11 text-[0.8rem] text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-accent-foreground focus-ring"
               onClick={() => {
                 pick(undefined);
               }}
