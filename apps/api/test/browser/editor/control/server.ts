@@ -8,6 +8,7 @@ import {
   handleEditorPortabilityDenial,
   handleEditorReadonlySetup,
   handleEditorScheduleRestart,
+  handleEditorTaskExpiry,
 } from './commands.js';
 import {
   handleEditorOidcMetadata,
@@ -35,6 +36,7 @@ export function createEditorControlServer(
     if (fixtureState.httpControl?.handle(request, response) === true) return;
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
     if (handleEditorCallbackResume({ context, request, response, url })) return;
+    if (handleEditorTaskExpiry({ context, request, response, url })) return;
 
     if (handleEditorOidcMetadata({ context, request, response, url })) return;
     if (handleEditorCuratedSeed({ context, request, response, url })) return;

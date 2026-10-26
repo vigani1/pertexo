@@ -77,6 +77,47 @@ export function handleEditorCallbackResume(
   return false;
 }
 
+/**
+ * Brings an owned run's open Approval or Request input to its expiry now,
+ * keeping its window, so the due scanner settles it as real time would.
+ */
+export function handleEditorTaskExpiry(input: EditorControlRequest): boolean {
+  const { request, response, url, context } = input;
+  if (
+    scenario !== 'task-timeouts' ||
+    request.method !== 'POST' ||
+    url.pathname !== '/task-expire'
+  )
+    return false;
+  void (async () => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) {
+      if (!(chunk instanceof Uint8Array))
+        throw new Error('Invalid task expiry command bytes');
+      chunks.push(Buffer.from(chunk));
+      if (chunks.reduce((sum, value) => sum + value.byteLength, 0) > 1024)
+        throw new Error('Task expiry command too large');
+    }
+    const target = z
+      .object({ workspaceId: z.uuid(), runId: z.uuid() })
+      .parse(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+    const database = context.api.database();
+    const moved = await database.query(
+      "update app.pending_run_tasks set created_at=created_at-(expires_at-clock_timestamp()),expires_at=clock_timestamp() where workspace_id=$1 and run_id=$2 and status='pending' and kind in ('approval','input_request')",
+      [target.workspaceId, target.runId],
+    );
+    if (moved.rowCount !== 1) throw new Error('No owned open task to expire');
+    await database.query(
+      "update app.node_runs set resume_at=clock_timestamp() where workspace_id=$1 and workflow_run_id=$2 and status='waiting' and control_kind='human_task'",
+      [target.workspaceId, target.runId],
+    );
+    response.writeHead(204).end();
+  })().catch(() => {
+    response.writeHead(500).end('Task expiry qualification failed');
+  });
+  return true;
+}
+
 export function handleEditorPortabilityDenial(
   input: EditorControlRequest,
 ): boolean {
