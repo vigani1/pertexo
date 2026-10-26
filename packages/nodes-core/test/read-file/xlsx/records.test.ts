@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  entriesOf,
   number,
   readWorkbook,
   row,
   text,
   workbook,
+  zip,
 } from './workbook.fixture.js';
 
 async function rows(bytes: Uint8Array, config?: Record<string, unknown>) {
@@ -286,6 +288,16 @@ describe('Read file with Excel workbooks', () => {
       });
     },
   );
+
+  it('reads parts stored without compression, the sheet included', async () => {
+    const stored = zip(
+      entriesOf(orders).map((entry) => ({ ...entry, stored: true })),
+    );
+    expect(await rows(stored)).toEqual([
+      { name: 'Ada', amount: 12.5, paid: true },
+      { name: 'Grace', amount: -2, paid: false },
+    ]);
+  });
 
   it('accepts a header-only sheet and namespace-prefixed parts', async () => {
     const prefixed = workbook({
