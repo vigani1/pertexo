@@ -1,15 +1,4 @@
 import {
-  ArtifactIntegrityError,
-  ArtifactNotFoundError,
-} from '@pertexo/artifact-store';
-import {
-  ArtifactQuotaExceededError,
-  ArtifactUploadConflictError,
-  ArtifactUploadIdempotencyConflictError,
-  ArtifactUploadNotFoundError,
-} from '@pertexo/database/runs';
-import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
-import {
   artifactFinalizeRequestSchema,
   artifactUploadRequestSchema,
   type ArtifactDownloadResponse,
@@ -18,17 +7,20 @@ import {
 } from '@pertexo/contracts';
 
 import {
-  AuthorizationError,
   authorizeWorkspaceOperation,
   type AuthorizationCapability,
 } from '../authorization/index.js';
 import {
   ArtifactApiConflictError,
   ArtifactApiNotFoundError,
-  ArtifactApiUnavailableError,
   ArtifactUploadDeadlineError,
-  ArtifactUploadTooLargeError,
 } from './errors.js';
+import {
+  assertUploadSize,
+  signArtifactUpload,
+  storageFailure,
+  verifyDirectUpload,
+} from './transfer.js';
 import type {
   ArtifactDeclaredMetadata,
   ArtifactDependencies,
@@ -37,8 +29,6 @@ import type {
   ArtifactServiceContext,
 } from './ports.js';
 
-const MIN_SIGNER_TTL_SECONDS = 60;
-const MAX_SIGNER_TTL_SECONDS = 900;
 const DOWNLOAD_TTL_SECONDS = 60;
 
 export type ArtifactServiceOptions = Readonly<{
@@ -77,7 +67,7 @@ export class ArtifactService {
       input.authorizedWorkspace,
     );
     const metadata = artifactUploadRequestSchema.parse(input.request);
-    this.assertSize(metadata.byteLength);
+    assertUploadSize(metadata.byteLength, this.options.maxObjectBytes);
     let created: Awaited<
       ReturnType<ArtifactDependencies['database']['beginUpload']>
     >;
@@ -102,7 +92,12 @@ export class ArtifactService {
       );
     }
     if (artifact.status !== 'pending') throw new ArtifactApiConflictError();
-    const upload = await this.signUpload(artifact, input.signal);
+    const upload = await signArtifactUpload(
+      this.dependencies.store,
+      artifact,
+      this.now(),
+      input.signal,
+    );
     return Object.freeze({
       artifact: Object.freeze({
         ...publicMetadata(artifact),
@@ -135,7 +130,7 @@ export class ArtifactService {
     if (artifact.expiresAt.getTime() <= this.now().getTime())
       throw new ArtifactUploadDeadlineError();
 
-    this.assertSize(artifact.byteLength);
+    assertUploadSize(artifact.byteLength, this.options.maxObjectBytes);
     const expected = declaredMetadata(artifact);
     try {
       const finalized = await this.dependencies.database.finalizeUpload({
@@ -144,18 +139,11 @@ export class ArtifactService {
         identity,
         ...(input.signal === undefined ? {} : { signal: input.signal }),
         verifyUpload: async () => {
-          try {
-            await this.dependencies.store.validateDirectUpload({
-              artifactId: identity.artifactId,
-              byteLength: expected.byteLength,
-              mediaType: expected.mediaType,
-              sha256: expected.sha256,
-              workspaceId: identity.workspaceId,
-              ...(input.signal === undefined ? {} : { signal: input.signal }),
-            });
-          } catch (error: unknown) {
-            throw storageFailure(error, 'store');
-          }
+          await verifyDirectUpload(
+            this.dependencies.store,
+            artifact,
+            input.signal,
+          );
           // Verification may take long enough for membership to change.
           await this.authorize(input, 'artifact:upload', undefined);
         },
@@ -208,27 +196,6 @@ export class ArtifactService {
     return artifact;
   }
 
-  private async signUpload(artifact: ArtifactRecord, signal?: AbortSignal) {
-    const remaining = Math.floor(
-      (artifact.expiresAt.getTime() - this.now().getTime()) / 1_000,
-    );
-    if (remaining < MIN_SIGNER_TTL_SECONDS)
-      throw new ArtifactUploadDeadlineError();
-    try {
-      return await this.dependencies.store.beginDirectUpload({
-        artifactId: artifact.id,
-        byteLength: artifact.byteLength,
-        expiresInSeconds: Math.min(MAX_SIGNER_TTL_SECONDS, remaining),
-        mediaType: artifact.mediaType,
-        sha256: artifact.sha256,
-        workspaceId: artifact.workspaceId,
-        ...(signal === undefined ? {} : { signal }),
-      });
-    } catch (error: unknown) {
-      throw storageFailure(error, 'store');
-    }
-  }
-
   private async authorize(
     input: ArtifactServiceContext,
     capability: AuthorizationCapability,
@@ -241,14 +208,6 @@ export class ArtifactService {
       capability,
       routeWorkspaceId: input.routeWorkspaceId,
     });
-  }
-
-  private assertSize(byteLength: number): void {
-    if (
-      byteLength >
-      Math.min(FILE_PAGE_LIMITS.fileBytes, this.options.maxObjectBytes)
-    )
-      throw new ArtifactUploadTooLargeError();
   }
 
   private identity(workspaceId: string, artifactId: string): ArtifactIdentity {
@@ -276,28 +235,4 @@ function publicMetadata(artifact: ArtifactRecord): ArtifactMetadataResponse {
     status: artifact.status === 'available' ? 'available' : 'pending',
     workspaceId: artifact.workspaceId,
   });
-}
-
-// Only failures expected from each storage boundary may reach the registry.
-function storageFailure(error: unknown, source: 'database' | 'store'): Error {
-  if (source === 'store') {
-    // Finalization also crosses the database catch, which accepts API errors.
-    return error instanceof ArtifactIntegrityError ||
-      error instanceof ArtifactNotFoundError
-      ? new ArtifactApiConflictError()
-      : new ArtifactApiUnavailableError();
-  }
-  if (
-    error instanceof AuthorizationError ||
-    error instanceof ArtifactApiNotFoundError ||
-    error instanceof ArtifactApiConflictError ||
-    error instanceof ArtifactApiUnavailableError ||
-    error instanceof ArtifactUploadDeadlineError ||
-    error instanceof ArtifactQuotaExceededError ||
-    error instanceof ArtifactUploadNotFoundError ||
-    error instanceof ArtifactUploadIdempotencyConflictError ||
-    error instanceof ArtifactUploadConflictError
-  )
-    return error;
-  return new ArtifactApiUnavailableError();
 }
