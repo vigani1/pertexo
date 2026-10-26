@@ -49,6 +49,17 @@ describe('missing-sheet summaries', () => {
     expect(readSheetSuggestions(text)).toEqual([]);
   });
 
+  it('reads a hostile unterminated name in one pass and offers nothing', () => {
+    const hostile = `Its sheets: "${'\\"'.repeat(200_000)}`;
+    const started = performance.now();
+    expect(readSheetSuggestions(hostile)).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(250);
+  });
+
+  it('skips a name it cannot decode and keeps the rest', () => {
+    expect(readSheetSuggestions('Its sheets: "a\\x", "b".')).toEqual(['b']);
+  });
+
   it('reads nothing from other summaries', () => {
     expect(
       readSheetSuggestions(
