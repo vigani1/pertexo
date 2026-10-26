@@ -1,9 +1,9 @@
 import { crc32, deflateRawSync, inflateRawSync } from 'node:zlib';
 import { expect, type Page } from '@playwright/test';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { csrfHeaders } from '../../../test/support/browser/csrf';
-import { test } from '../../support/browser-fixture';
-import { createOwnedHttpConnection } from '../../support/authoring/http-connection';
+import { csrfHeaders } from '../../test/support/browser/csrf';
+import { test } from '../support/browser-fixture';
+import { createOwnedHttpConnection } from '../support/authoring/http-connection';
 import {
   addSingleStep,
   createEditorWorkflow,
@@ -11,7 +11,7 @@ import {
   readEditorDraft,
   startSingleStep,
   waitForRun,
-} from '../../support/authoring/single-step';
+} from '../support/authoring/single-step';
 
 type Cell = string | number | boolean;
 const XLSX =
