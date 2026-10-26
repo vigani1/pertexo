@@ -5,6 +5,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { formatTimeSpan } from '@/lib/format/time';
 import {
   withConfigValue,
   type FieldParseResult,
@@ -45,13 +46,15 @@ export function DurationField({
   configKey,
   label,
   description,
+  minimumSeconds = 1,
   maximumSeconds,
 }: Readonly<{
   config: NodeConfig;
   form: NodeFormApi;
-  configKey: 'durationSeconds' | 'timeoutSeconds';
+  configKey: 'durationSeconds' | 'timeoutSeconds' | 'expiresAfterSeconds';
   label: string;
   description: string;
+  minimumSeconds?: number;
   maximumSeconds: number;
 }>) {
   const id = fieldControlId(form.nodeId, configKey);
@@ -66,8 +69,16 @@ export function DurationField({
         return { ok: false, error: 'Enter a whole number, 1 or more.' };
       const unit = UNITS.find((choice) => choice.value === text.unit);
       const seconds = amount * (unit?.seconds ?? 1);
+      if (seconds < minimumSeconds)
+        return {
+          ok: false,
+          error: `Use ${formatTimeSpan(minimumSeconds)} or more.`,
+        };
       if (seconds > maximumSeconds)
-        return { ok: false, error: 'Use 30 days or less.' };
+        return {
+          ok: false,
+          error: `Use ${formatTimeSpan(maximumSeconds)} or less.`,
+        };
       return { ok: true, value: seconds };
     },
     commit: (seconds) => {

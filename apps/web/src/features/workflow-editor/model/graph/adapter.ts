@@ -1,6 +1,7 @@
 import {
   inspectWorkflowFailureRoutes,
   isWorkflowFailureSource,
+  TIMED_OUT_PORT,
   WORKFLOW_FAILURE_PORT,
 } from '@pertexo/workflow-model';
 import type {
@@ -92,6 +93,7 @@ interface WorkflowNodeData extends Record<string, unknown> {
 
 interface WorkflowEdgeData extends Record<string, unknown> {
   failure?: boolean;
+  timedOut?: boolean;
   sourceLabel: string;
   targetLabel: string;
   /** The last successful test ran along this link. */
@@ -280,7 +282,7 @@ function projectNode({
   const definition = projection.definitions.get(
     definitionIdentity(node.definition.key, node.definition.version),
   );
-
+  const outputPorts = shownPorts(node, definition, level, 'outputs');
   return {
     id: node.id,
     type: isForEach(node) ? 'forEach' : 'workflow',
@@ -292,10 +294,10 @@ function projectNode({
       definitionVersion: node.definition.version,
       family: definition?.family ?? 'unknown',
       inputPorts: shownPorts(node, definition, level, 'inputs'),
-      outputPorts: shownPorts(node, definition, level, 'outputs'),
+      outputPorts,
       branching: {
         inputs: (definition?.ports.inputs.length ?? 0) > 1,
-        outputs: (definition?.ports.outputs.length ?? 0) > 1,
+        outputs: outputPorts.length > 1,
       },
       links: {
         inputs: portLinks(node, level, 'inputs', labels),
@@ -346,6 +348,7 @@ function projectEdge(
     selected: projection.selectedEdges.has(edge.id),
     data: {
       failure: edge.source.port === WORKFLOW_FAILURE_PORT,
+      timedOut: edge.source.port === TIMED_OUT_PORT,
       sourceLabel: labels.get(edge.source.nodeId) ?? 'a step',
       targetLabel: labels.get(edge.target.nodeId) ?? 'a step',
       flowing: decorations.flowingEdgeIds.has(edge.id),

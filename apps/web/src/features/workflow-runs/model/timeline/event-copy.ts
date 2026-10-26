@@ -89,11 +89,12 @@ const dynamicSentences: Readonly<
 };
 
 function describeSentence(event: WorkflowRunEvent): string {
-  if (
-    event.type === 'node.succeeded' &&
-    event.payload.reasonCode === 'callback.received'
-  )
-    return 'resumed after callback';
+  if (event.type === 'node.succeeded') {
+    if (event.payload.reasonCode === 'callback.received')
+      return 'resumed after callback';
+    if (event.payload.reasonCode === 'pending_task.timed_out')
+      return 'nobody responded · continued on Timed out';
+  }
   const fixed = fixedSentences[event.type];
   if (fixed !== undefined) return fixed;
   const describeDynamic = dynamicSentences[event.type];

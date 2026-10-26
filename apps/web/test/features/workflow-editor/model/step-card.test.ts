@@ -70,6 +70,14 @@ const mergeDefinition = definition(
   { inputs: branches, outputs: ['out'] },
   { type: 'object', properties: { parallelNodeId: { type: 'string' } } },
 );
+const approvalDefinition = definition('core.approval', {
+  inputs: ['in'],
+  outputs: ['approved', 'rejected', 'timed_out'],
+});
+const inputRequestDefinition = definition('core.request_input', {
+  inputs: ['in'],
+  outputs: ['out', 'timed_out'],
+});
 const conditionDefinition = definition('core.condition', {
   inputs: ['in'],
   outputs: ['true', 'false'],
@@ -102,6 +110,51 @@ function link(source: string, port: string, target: string, into = 'in') {
 }
 
 describe('step cards', () => {
+  it('draws Timed out only on a task step that continues there', () => {
+    const empty = { nodes: [], edges: [] };
+    const approval = step('review', 'core.approval');
+    expect(shownPorts(approval, approvalDefinition, empty, 'outputs')).toEqual([
+      'approved',
+      'rejected',
+    ]);
+    expect(
+      shownPorts(
+        step('review', 'core.approval', { config: { onExpiry: 'continue' } }),
+        approvalDefinition,
+        empty,
+        'outputs',
+      ),
+    ).toEqual(['approved', 'rejected', 'timed_out']);
+    const request = step('ask', 'core.request_input');
+    expect(
+      shownPorts(request, inputRequestDefinition, empty, 'outputs'),
+    ).toEqual(['out']);
+    expect(
+      shownPorts(
+        step('ask', 'core.request_input', { config: { onExpiry: 'continue' } }),
+        inputRequestDefinition,
+        empty,
+        'outputs',
+      ),
+    ).toEqual(['out', 'timed_out']);
+  });
+
+  it('keeps drawing a Timed out link the step no longer offers, so it can be removed', () => {
+    const approval = step('review', 'core.approval');
+    const level = {
+      nodes: [approval, step('escalate', 'core.set')],
+      edges: [link('review', 'timed_out', 'escalate')],
+    };
+    expect(shownPorts(approval, approvalDefinition, level, 'outputs')).toEqual([
+      'approved',
+      'rejected',
+      'timed_out',
+    ]);
+    expect(portLinkLabel('timed_out', 'outputs', ['Escalate'])).toBe(
+      'Timed out → Escalate',
+    );
+  });
+
   it('draws only the cases a Switch sets up, its default and connected ones', () => {
     const router = step('router', 'core.switch', {
       config: { cases: [{ id: 'case-01' }, { id: 'case-02' }] },

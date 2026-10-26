@@ -1,4 +1,4 @@
-import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import { TIMED_OUT_PORT, WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { registry, type StepFamily, type StepPresentation } from './registry';
 import {
@@ -189,6 +189,7 @@ export function describeRetryBehaviour(
  */
 export function portName(port: string): string {
   if (port === WORKFLOW_FAILURE_PORT) return 'Failure';
+  if (port === TIMED_OUT_PORT) return 'Timed out';
   const numbered = /^(branch|case)-0*(\d+)$/u.exec(port);
   if (numbered !== null)
     return `${numbered[1] === 'branch' ? 'Branch' : 'Case'} ${numbered[2] ?? ''}`;

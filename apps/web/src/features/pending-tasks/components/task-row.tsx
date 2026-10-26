@@ -8,6 +8,7 @@ import {
   formatElapsedTime,
   formatRelativeTime,
 } from '@/lib/format/time';
+import { TimedOutGlyph } from '@/features/catalog/presentation.public';
 import { cn } from '@/lib/utils';
 import type { TaskScope } from '../data/tasks.api';
 import {
@@ -15,6 +16,7 @@ import {
   taskOutcome,
   taskStatusLabel,
   taskTone,
+  timedOutAfter,
 } from '../model/presentation';
 import { TaskDetailsLine } from './details';
 import { QuickDecision } from './quick-decision';
@@ -29,7 +31,9 @@ export function TaskRow({
   task,
   nowMs,
 }: Readonly<{ scope: TaskScope; task: PendingTaskSummary; nowMs: number }>) {
-  const tone = taskTone(task.status);
+  const timedOut = timedOutAfter(task) !== undefined;
+  // A request that moved its run on along Timed out reads amber, not failed.
+  const tone = timedOut ? 'attention' : taskTone(task.status);
   const waiting = task.status === 'pending';
   const yours = waiting && task.canRespond;
   const blocked = waiting ? blockedLabel(task.blockedReason) : undefined;
@@ -45,7 +49,11 @@ export function TaskRow({
             : 'border-border bg-surface-ink/[0.02]',
         )}
       >
-        <StatusGlyph tone={tone} />
+        {timedOut ? (
+          <TimedOutGlyph className="text-warning" />
+        ) : (
+          <StatusGlyph tone={tone} />
+        )}
       </span>
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -83,7 +91,7 @@ export function TaskRow({
           className="font-mono text-xs text-subtle-foreground"
         >
           {waiting
-            ? `expires ${formatRelativeTime(when, nowMs)}`
+            ? `expires ${formatRelativeTime(when, nowMs, 'long')}`
             : formatElapsedTime(when, nowMs)}
         </time>
       </div>

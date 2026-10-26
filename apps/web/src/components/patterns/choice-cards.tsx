@@ -7,6 +7,8 @@ export type CardChoice<Value extends string> = Readonly<{
   hint: ReactNode;
   /** A small mark for the choice, drawn in a ring beside its label. */
   glyph: ReactNode;
+  /** Unavailable now, though the others may still be chosen. */
+  disabled?: boolean;
 }>;
 
 /**
@@ -49,6 +51,7 @@ export function ChoiceCards<Value extends string>({
               name={name}
               value={choice.value}
               checked={value === choice.value}
+              disabled={choice.disabled}
               className="sr-only"
               onChange={() => {
                 onChange(choice.value);

@@ -6,6 +6,7 @@ import {
 } from '@xyflow/react';
 import { XIcon } from 'lucide-react';
 import { use, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { TimedOutGlyph } from '@/features/catalog/presentation.public';
 import { cn } from '@/lib/utils';
 import type { WorkflowFlowEdge } from '../../model/graph/adapter';
 import { CanvasActionsContext } from '../../model/canvas/actions-context';
@@ -18,7 +19,8 @@ const FOCUSED_THREAD = String.raw`in-[.react-flow\_\_edge:focus-visible]:!stroke
 
 /**
  * A link is a thread: it brightens on hover, turns cyan when selected
- * and offers ✕ to remove it. Into a step with issues it runs dashed; after a
+ * and offers ✕ to remove it. Failure runs red and Timed out amber, each
+ * dashed in its own rhythm. Into a step with issues it runs dashed; after a
  * passed test it flows; on publish it weaves in by execution order.
  */
 export function WorkflowEdge({
@@ -62,7 +64,7 @@ export function WorkflowEdge({
     }, HIDE_DELAY_MS);
   }
 
-  const { intoIssue, failure, flowing, isSelected, weaveOrder } =
+  const { intoIssue, failure, timedOut, flowing, isSelected, weaveOrder } =
     edgePresentation({ data, selected });
   const showRemove = editable && (hovered || isSelected);
   return (
@@ -78,6 +80,7 @@ export function WorkflowEdge({
             ? '!stroke-destructive [stroke-dasharray:4_5]'
             : '!stroke-graph-link',
           failure && '!stroke-destructive [stroke-dasharray:1_4_7_4]',
+          timedOut && '!stroke-warning/75 [stroke-dasharray:6_4]',
           hovered && '!stroke-accent-foreground/75',
           isSelected && '!stroke-primary !stroke-2',
           FOCUSED_THREAD,
@@ -113,15 +116,25 @@ export function WorkflowEdge({
           className="pointer-events-none stroke-accent-foreground [stroke-dasharray:1] [stroke-dashoffset:1] [stroke-width:2.4] drop-shadow-[0_0_6px_var(--primary)] motion-safe:animate-[editor-weave_0.55s_var(--ease-unspool)_var(--weave-delay)_forwards] motion-reduce:hidden"
         />
       )}
-      {failure ? (
+      {failure || timedOut ? (
         <EdgeLabelRenderer>
           <span
-            className="pointer-events-none absolute rounded bg-card/90 px-1.5 text-[0.7rem] text-destructive"
+            className={cn(
+              'pointer-events-none absolute flex items-center gap-1 rounded bg-card/90 px-1.5 text-[0.7rem] whitespace-nowrap',
+              failure ? 'text-destructive' : 'text-warning',
+            )}
             style={{
               transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(labelY - 14)}px)`,
             }}
           >
-            × Failure
+            {failure ? (
+              '× Failure'
+            ) : (
+              <>
+                <TimedOutGlyph className="size-3" />
+                Timed out
+              </>
+            )}
           </span>
         </EdgeLabelRenderer>
       ) : null}
@@ -158,6 +171,7 @@ function edgePresentation({
   return {
     intoIssue: data?.intoIssue ?? false,
     failure: data?.failure ?? false,
+    timedOut: data?.timedOut ?? false,
     flowing: data?.flowing ?? false,
     isSelected: selected ?? false,
     weaveOrder: data?.weaveOrder ?? null,

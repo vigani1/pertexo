@@ -22,10 +22,16 @@ const dayHeadingFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   day: 'numeric',
   month: 'short',
 });
-const relativeFormatter = new Intl.RelativeTimeFormat(FORMAT_LOCALE, {
-  numeric: 'auto',
-  style: 'narrow',
-});
+const relativeFormatters = {
+  narrow: new Intl.RelativeTimeFormat(FORMAT_LOCALE, {
+    numeric: 'auto',
+    style: 'narrow',
+  }),
+  long: new Intl.RelativeTimeFormat(FORMAT_LOCALE, {
+    numeric: 'auto',
+    style: 'long',
+  }),
+} as const;
 
 const MISSING = '—';
 
@@ -74,11 +80,16 @@ export function formatDayHeading(value: string, now = Date.now()): string {
   return dayHeadingFormatter.format(date);
 }
 
-/** "12m ago", "in 3h", "yesterday". */
+/**
+ * "12m ago", "in 3h", "yesterday"; spelled out ("in 2 days") where a calm
+ * sentence reads better than an instrument.
+ */
 export function formatRelativeTime(
   value: string | null | undefined,
   now = Date.now(),
+  style: keyof typeof relativeFormatters = 'narrow',
 ): string {
+  const relativeFormatter = relativeFormatters[style];
   const date = toDate(value);
   if (date === undefined) return MISSING;
   const seconds = Math.round((date.getTime() - now) / 1000);
@@ -124,6 +135,22 @@ export function formatDurationMs(
   if (hours > 0)
     return `${String(hours)}h ${String(minutes).padStart(2, '0')}m`;
   return `${String(minutes)}m ${String(seconds).padStart(2, '0')}s`;
+}
+
+const SPAN_UNITS = [
+  ['day', 86_400],
+  ['hour', 3_600],
+  ['minute', 60],
+] as const;
+
+/** A span as people say it, in its largest exact unit: "7 days", "1 hour", "90 minutes". */
+export function formatTimeSpan(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const [unit, size] = SPAN_UNITS.find(
+    ([, unitSeconds]) => seconds >= unitSeconds && seconds % unitSeconds === 0,
+  ) ?? ['second', 1];
+  const amount = seconds / size;
+  return `${String(amount)} ${unit}${amount === 1 ? '' : 's'}`;
 }
 
 /** "0:24", "4:59" — the instrument voice for a countdown in whole seconds. */
