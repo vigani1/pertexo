@@ -214,7 +214,7 @@ describe('quick add in the editor', { timeout: 30_000 }, () => {
     expect(
       canvas.getByText('Set fields', { selector: 'h2' }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('Label')).toHaveAttribute(
+    expect(await screen.findByLabelText('Label')).toHaveAttribute(
       'placeholder',
       'Set fields',
     );

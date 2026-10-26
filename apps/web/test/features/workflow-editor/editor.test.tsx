@@ -65,7 +65,7 @@ describe('workflow editor canvas', { timeout: 30_000 }, () => {
     expect(
       within(screen.getByRole('application')).getByText('Set fields'),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('Label')).toHaveAttribute(
+    expect(await screen.findByLabelText('Label')).toHaveAttribute(
       'placeholder',
       'Set fields',
     );
@@ -123,7 +123,7 @@ describe('workflow editor canvas', { timeout: 30_000 }, () => {
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Target'));
-    const label = screen.getByLabelText('Label');
+    const label = await screen.findByLabelText('Label');
     await event.clear(label);
     await event.type(label, 'Renamed/step');
     fireEvent.keyDown(label, { key: 'Backspace' });
@@ -154,7 +154,7 @@ describe('workflow editor setup fields', { timeout: 30_000 }, () => {
     renderApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Numbers'));
-    const count = screen.getByLabelText('Count');
+    const count = await screen.findByLabelText('Count');
     fireEvent.change(count, { target: { value: '-' } });
     expect(screen.queryByText('Count must be a number.')).toBeNull();
     fireEvent.blur(count);
@@ -190,7 +190,7 @@ describe('workflow editor setup fields', { timeout: 30_000 }, () => {
     ).toBeDisabled();
     await event.click(screen.getByRole('button', { name: 'Discard it' }));
     expect(screen.getByRole('button', { name: 'Edit as JSON' })).toBeVisible();
-    expect(screen.getByLabelText('Count')).toHaveValue('-2.5');
+    expect(await screen.findByLabelText('Count')).toHaveValue('-2.5');
 
     pressSave();
     await waitFor(() => {
