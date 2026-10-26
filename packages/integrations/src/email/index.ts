@@ -8,10 +8,21 @@ export {
 } from './definition.js';
 export {
   EMAIL_SEND_NOTIFICATION_LIMITS,
+  emailAttachmentSchema,
+  emailSentAttachmentSchema,
+  encodedAttachmentBytes,
   providerEmailMailboxSchema,
   emailSendNotificationConfigSchema,
   emailSendNotificationInputSchema,
   emailSendNotificationOutputSchema,
   resolvedResendApiKeyCredentialSchema,
 } from './validation.js';
-export type { EmailSendNotificationOutput } from './validation.js';
+export type {
+  EmailAttachment,
+  EmailSentAttachment,
+  EmailSendNotificationOutput,
+} from './validation.js';
+export {
+  defaultAttachmentFilename,
+  sanitizeAttachmentFilename,
+} from './attachments/filename.js';

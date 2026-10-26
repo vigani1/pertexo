@@ -1,4 +1,8 @@
-import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
+import {
+  ARTIFACT_INPUT_CAPABILITY,
+  generateSchemaDocument,
+  type NodeManifest,
+} from '@pertexo/node-sdk';
 
 import {
   emailSendNotificationConfigSchema,
@@ -39,7 +43,11 @@ export const EMAIL_SEND_NOTIFICATION_MANIFEST: NodeManifest = Object.freeze({
   }),
   retryClass: 'idempotent-with-key',
   resourceClass: 'io',
-  capabilities: Object.freeze(['external_http', 'side_effect_disclosure']),
+  capabilities: Object.freeze([
+    'external_http',
+    'side_effect_disclosure',
+    ARTIFACT_INPUT_CAPABILITY,
+  ]),
   executor: EMAIL_SEND_NOTIFICATION_EXECUTOR,
   executorAbi: 2,
   policyReferences: Object.freeze([EMAIL_SEND_NOTIFICATION_POLICY]),

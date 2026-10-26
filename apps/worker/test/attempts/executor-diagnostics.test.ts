@@ -13,6 +13,7 @@ describe('executor diagnostic persistence boundary', () => {
     'execution.provider',
     'utility.unreviewed',
     'file.create_unreviewed',
+    'email.unreviewed',
   ])('refuses an unapproved private summary for %s', (safeErrorCode) => {
     expect(() =>
       executorFailureCompletion(
@@ -32,6 +33,8 @@ describe('executor diagnostic persistence boundary', () => {
   it.each([
     'utility.invalid_data',
     'file.create_size',
+    'email.attachments_too_large',
+    'email.too_many_attachments',
     'execution.file_input',
     'http.pagination_limit',
     'execution.attempt_invalid',
