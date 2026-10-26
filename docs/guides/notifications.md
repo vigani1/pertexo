@@ -93,6 +93,12 @@ Shared workflow alerts retain their existing destinations and behavior regardles
 of personal choices. Public approval actions, chat/push channels, marketing mail
 and per-application frequencies are outside this feature.
 
+## Email from workflow steps
+
+This page covers your own notices. A workflow emails people with its **Send
+email** step, which can also attach files from earlier steps: see
+[Attach files to an email](files.md#attach-files-to-an-email).
+
 ## Mail operator requirements
 
 For mail-client one-click actions, configure your relay to DKIM-sign both

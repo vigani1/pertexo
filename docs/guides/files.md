@@ -1,7 +1,8 @@
 # Files in workflows
 
 Upload a file once and use its finalized workspace reference in **Read file**,
-a raw **HTTP Request** body, or an HTTP multipart part. **Create file** produces
+a raw **HTTP Request** body, an HTTP multipart part or a **Send email**
+attachment. **Create file** produces
 the same reference from step data. A reference can also come from manual run
 input or an earlier HTTP response. File bytes stay in the
 existing artifact store; the editor does not parse files or save signed URLs.
@@ -57,6 +58,7 @@ columns or split the data when the step reports that a file cannot fit.
 | Lists after Read file | About 4,996 narrow CSV rows end to end; fewer for wide rows               | Split by rows or reduce the columns before uploading                 |
 | Raw HTTP file body    | 10 MB of file bytes (or lower configured storage limit)                                                        | Send a smaller file or separate uploads supported by the destination |
 | Multipart HTTP body   | 10 MB **including every part header and boundary**, up to 64 ordered parts | Use smaller files; a full 10 MB file cannot fit with framing          |
+| Email attachments     | 10 files and 6 MB together (8 MB once base64-encoded)                      | Attach fewer or smaller files, or split them across several emails    |
 
 The UI uses binary units: 1 MB means **1 MiB (1,048,576 bytes)**; 10 MB is **10 MiB (10,485,760 bytes)**. A lower configured storage ceiling wins. Each parsed array accepts up to
 4,998 items; downstream list wrappers leave roughly 4,996 narrow rows.
@@ -269,6 +271,66 @@ All headers, boundaries and closing framing count toward 1 MB. For example, a
 valid. Use a smaller file or split uploads only when the destination supports
 that. Pertexo does not automatically split a multipart request.
 
+## Attach files to an email
+
+**Send email** can attach up to 10 files produced earlier in the run. Open the
+step's **Inputs**: **Attachments** sits under the message. **Attach a file**
+lists the file outputs of steps linked right before this one, such as Create
+file's `file` or an HTTP response saved as a file, and the run input's `file`.
+**Another source…** takes a step output path, run input path, variable or
+expression, as other inputs do. **Upload a file** attaches the same fixed file
+to every email, such as terms or a price list.
+
+Each attachment is a chip with its type, name and size. The pencil opens **Name
+in the email**; leave it empty and the file is named from its stored type,
+`attachment.csv`, or `attachment-2.pdf` when there are several. Names lose path
+separators and control characters and stay within 255 bytes with the extension
+kept. The content type is the file's stored media type, never sniffed. The meter
+under the list fills toward the limit with the sizes it already knows (uploaded
+files); files from earlier steps are measured when the run sends them.
+
+### How it works
+
+The step has one optional `attachments` input: a list of
+`{ "file": <file reference>, "filename": "optional name" }`. The editor writes
+it for you. A step that already returns such a list, for example Code, can be
+mapped to it as a whole. Email steps without attachments send exactly what they
+did before.
+
+Before anything is sent, the worker counts the files, adds up their size after
+base64 encoding (as email providers measure it), then reads each one through the
+same verified workspace read as Read file and multipart. A missing, unfinished
+or other-workspace file fails as the usual file problem; more than 10 files
+fails as too many attachments and more than 6 MB of files as attachments too
+large. Nothing is sent in those cases. The 6 MB leaves room for the message
+inside the 10 MB request ceiling every outgoing file body shares. The message
+and its files go through worker scratch to Resend as one request.
+
+For example, to email the weekly report:
+
+1. **Create file**: CSV with the columns `week` and `total`.
+2. **Send email**: map To, Subject and Text, then **Attach a file → Weekly
+   report → file** and name it `weekly-report.csv`.
+
+The saved mapping evaluates to:
+
+```json
+[
+  {
+    "file": { "kind": "artifact", "artifactId": "…", "byteLength": 1234, "mediaType": "text/csv; charset=utf-8", "sha256": "…" },
+    "filename": "weekly-report.csv"
+  }
+]
+```
+
+The step's output names what it sent, never the contents:
+`{ "emailId": "…", "attachments": [{ "filename": "weekly-report.csv", "mediaType": "text/csv; charset=utf-8", "byteLength": 1234 }] }`.
+Run detail shows those files as the same chips. Sending doesn't copy a file or
+extend its storage; the run that references it keeps it, as for any step input.
+A retry reuses the step's provider idempotency key with byte-identical content,
+so Resend delivers one email. HTML bodies, several recipients, inline images and
+files from URLs that aren't stored files are not supported.
+
 ## What is checked and what can repeat
 
 Every consumer uses the existing workspace-bound worker read. It requires an
@@ -325,6 +387,5 @@ signature-validating storage; no real destination service is used. See
 [multipart phone](../images/f04/multipart-phone.png).
 
 Later work: larger files via streaming or paging first, then separately planned
-email attachments, webhook file ingestion, Excel/other formats, a file browser,
-scanning and artifact-aware step recovery. None is supplied by
-this bounded release.
+webhook file ingestion, Excel/other formats, a file browser, scanning and
+artifact-aware step recovery. None is supplied by this bounded release.
