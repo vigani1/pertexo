@@ -29,7 +29,10 @@ export function decodeCell(
   const raw = cell.value ?? '';
   switch (cell.type ?? 'n') {
     case 's':
-      return text(sharedString(raw, context.sharedStrings));
+      // `Number('')` is 0, which would read the first shared string.
+      return raw === ''
+        ? undefined
+        : text(sharedString(raw, context.sharedStrings));
     case 'inlineStr':
       return text(plainText(cell.inline ?? ''));
     case 'str':
