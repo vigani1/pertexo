@@ -58,3 +58,21 @@ export function indexSchedulerGraph(
     pairedParallelByMerge,
   };
 }
+
+/** Steps reachable from `roots`, not crossing or including `boundaries`. */
+export function descendants(
+  roots: readonly string[],
+  adjacency: ReadonlyMap<string, readonly string[]>,
+  boundaries: ReadonlySet<string> = new Set(),
+): ReadonlySet<string> {
+  const reached = new Set<string>();
+  const pending = [...roots];
+  while (pending.length > 0) {
+    const nodeId = pending.pop();
+    if (nodeId === undefined || reached.has(nodeId)) continue;
+    if (boundaries.has(nodeId)) continue;
+    reached.add(nodeId);
+    pending.push(...(adjacency.get(nodeId) ?? []));
+  }
+  return reached;
+}
