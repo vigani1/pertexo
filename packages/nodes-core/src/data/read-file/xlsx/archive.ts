@@ -169,8 +169,12 @@ async function* inflate(
   let produced = 0,
     checksum = 0;
   function* slices() {
-    for (let offset = 0; offset < data.length; offset += SLICE)
-      yield data.subarray(offset, offset + SLICE);
+    for (let offset = 0; offset < data.length; offset += SLICE) {
+      const slice = data.subarray(offset, offset + SLICE);
+      // A stored entry's chunks are wiped after use below; copying keeps the
+      // workbook intact, as the sheet part is read twice.
+      yield entry.method === 0 ? Buffer.from(slice) : slice;
+    }
   }
   const source = Readable.from(slices(), { objectMode: false });
   const output =
