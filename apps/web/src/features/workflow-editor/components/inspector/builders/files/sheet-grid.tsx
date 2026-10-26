@@ -1,3 +1,4 @@
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { SHEET_PREVIEW_ROWS } from '../../../../model/inspector/files/sheet-preview';
@@ -166,19 +167,25 @@ function useHiddenColumns(columns: number) {
   return { scroller, hidden };
 }
 
+/** A fade with a chevron where columns are hidden; the cut alone reads as the sheet's end. */
 function EdgeFade({
   side,
   shown,
 }: Readonly<{ side: 'start' | 'end'; shown: boolean }>) {
+  const Chevron = side === 'start' ? ChevronLeftIcon : ChevronRightIcon;
   return (
     <span
       aria-hidden="true"
       className={cn(
-        'pointer-events-none absolute inset-y-0 z-[5] w-8 from-background to-transparent transition-opacity duration-200 motion-reduce:transition-none',
-        side === 'start' ? 'left-0 bg-linear-to-r' : 'right-0 bg-linear-to-l',
-        shown ? 'opacity-90' : 'opacity-0',
+        'pointer-events-none absolute inset-y-0 z-[5] flex w-12 items-center from-background from-35% to-transparent transition-opacity duration-200 motion-reduce:transition-none',
+        side === 'start'
+          ? 'left-0 justify-start bg-linear-to-r pl-1'
+          : 'right-0 justify-end bg-linear-to-l pr-1',
+        shown ? 'opacity-100' : 'opacity-0',
       )}
-    />
+    >
+      <Chevron className="size-4 text-subtle-foreground" />
+    </span>
   );
 }
 
