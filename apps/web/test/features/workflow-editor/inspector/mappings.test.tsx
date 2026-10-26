@@ -39,7 +39,7 @@ describe('workflow editor live input mappings', { timeout: 30_000 }, () => {
     renderApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
-    expect(screen.getByText(/Nothing to set up here/u)).toBeVisible();
+    expect(await screen.findByText(/Nothing to set up here/u)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Edit as JSON' })).toBeNull();
     await event.click(screen.getByRole('button', { name: 'Go to Inputs' }));
     expect(screen.getByRole('tab', { name: 'Inputs' })).toHaveAttribute(

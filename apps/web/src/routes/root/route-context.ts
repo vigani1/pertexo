@@ -12,9 +12,6 @@ import {
   returnToSearch,
 } from '@/features/auth/return-path.public';
 import { publishSessionChange } from '@/features/auth/session/sync.public';
-import { authoringCatalogQueryOptions } from '@/features/catalog/queries.public';
-import { editorConnectionsQueryOptions } from '@/features/connections/queries.public';
-import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/queries.public';
 
 export type RouterContext = Readonly<{
   queryClient: QueryClient;
@@ -88,6 +85,8 @@ export async function findCurrentUser(context: RouterContext) {
 
 export async function loadWorkspaces(context: RouterContext, userId: string) {
   try {
+    const { accessibleWorkspacesQueryOptions } =
+      await import('@/features/workspaces/queries.public');
     return await context.queryClient.query(
       accessibleWorkspacesQueryOptions(context.apiClient, userId),
     );
@@ -137,9 +136,15 @@ export function authoringPrefetches(
 ): readonly Promise<unknown>[] {
   const { apiClient, queryClient } = context;
   return [
-    queryClient.query(authoringCatalogQueryOptions(apiClient, userId)),
-    queryClient.query(
-      editorConnectionsQueryOptions(apiClient, userId, workspaceId),
+    import('@/features/catalog/queries.public').then(
+      ({ authoringCatalogQueryOptions }) =>
+        queryClient.query(authoringCatalogQueryOptions(apiClient, userId)),
+    ),
+    import('@/features/connections/queries.public').then(
+      ({ editorConnectionsQueryOptions }) =>
+        queryClient.query(
+          editorConnectionsQueryOptions(apiClient, userId, workspaceId),
+        ),
     ),
   ];
 }

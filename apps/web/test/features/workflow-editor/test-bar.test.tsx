@@ -86,7 +86,7 @@ async function testTarget(
   const event = userEvent.setup();
   const canvas = await findCanvas();
   fireEvent.click(canvas.getByText('Target'));
-  await event.click(screen.getByRole('tab', { name: 'Test' }));
+  await event.click(await screen.findByRole('tab', { name: 'Test' }));
   await event.click(
     screen.getByRole('switch', {
       name: 'I understand this test runs for real',

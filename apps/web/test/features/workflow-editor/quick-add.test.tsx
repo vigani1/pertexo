@@ -185,7 +185,9 @@ describe('quick add in the editor', { timeout: 30_000 }, () => {
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Target'));
-    await event.click(screen.getByRole('button', { name: 'Step actions' }));
+    await event.click(
+      await screen.findByRole('button', { name: 'Step actions' }),
+    );
     await event.click(
       await screen.findByRole('menuitem', { name: 'Add step after' }),
     );

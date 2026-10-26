@@ -4,8 +4,7 @@ import { parseAuditSearch } from '@/features/governance/search.public';
 import { parseUsageTrendsSearch } from '@/features/usage/search.public';
 import { createRoute } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
-import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
+
 import { pageTitle } from '../../root/page-title';
 import { parseUsageSearch } from '@/features/usage/search.public';
 import { warmPrefetches } from '../../root/route-context';
@@ -22,7 +21,15 @@ export const alertsRoute = createRoute({
   getParentRoute: () => settingsHubRoute,
   path: 'settings/alerts',
   staticData: { crumb: 'Alerts' },
-  loader: ({ context }) => {
+  loader: async ({ context }) => {
+    const [
+      { connectionDiscoveryQueryOptions },
+      { failureNotificationDestinationsQueryOptions },
+    ] = await Promise.all([
+      import('@/features/connections/queries.public'),
+      import('@/features/failure-notifications/queries.public'),
+    ]);
+
     const { apiClient, queryClient, user, workspace } = context;
     const can = (capability: (typeof workspace.capabilities)[number]) =>
       workspace.capabilities.includes(capability);

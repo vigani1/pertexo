@@ -1,18 +1,6 @@
 import { createRoute } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
-import { connectionDiscoveryQueryOptions } from '@/features/connections/queries.public';
-import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
-import {
-  anyRunQueryOptions,
-  attentionRunsQueryOptions,
-  loomStatisticsQueryOptions,
-  runLoomQueryOptions,
-  runStatisticsQueryOptions,
-} from '@/features/workflow-runs/queries.public';
-import {
-  recentWorkflowsQueryOptions,
-  workflowsInfiniteQueryOptions,
-} from '@/features/workflows/queries.public';
+
 import { pageTitle } from '../../root/page-title';
 import { warmPrefetches } from '../../root/route-context';
 import { workspaceShellRoute } from '../routes';
@@ -24,7 +12,25 @@ export const homeRoute = createRoute({
   // Every block warms its read without holding the page: the Loom may page
   // through 300 runs, and each block shows its own skeleton and retries on
   // mount if its warm-up read failed.
-  loader: ({ context }) => {
+  loader: async ({ context }) => {
+    const [
+      { connectionDiscoveryQueryOptions },
+      { failureNotificationDestinationsQueryOptions },
+      {
+        anyRunQueryOptions,
+        attentionRunsQueryOptions,
+        loomStatisticsQueryOptions,
+        runLoomQueryOptions,
+        runStatisticsQueryOptions,
+      },
+      { recentWorkflowsQueryOptions, workflowsInfiniteQueryOptions },
+    ] = await Promise.all([
+      import('@/features/connections/queries.public'),
+      import('@/features/failure-notifications/queries.public'),
+      import('@/features/workflow-runs/queries.public'),
+      import('@/features/workflows/queries.public'),
+    ]);
+
     const { apiClient, queryClient, user, workspace } = context;
     const can = (capability: (typeof workspace.capabilities)[number]) =>
       workspace.capabilities.includes(capability);

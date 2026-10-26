@@ -39,7 +39,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
     renderApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Nightly'));
-    const preview = screen.getByRole('region', { name: 'When it runs' });
+    const preview = await screen.findByRole('region', { name: 'When it runs' });
     expect(
       within(preview).getByRole('status', {
         name: 'Working out the next runs',

@@ -38,7 +38,7 @@ describe('editor session snapshots', { timeout: 30_000 }, () => {
     const user = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Numbers'));
-    await user.clear(screen.getByLabelText('Label'));
+    await user.clear(await screen.findByLabelText('Label'));
     await user.type(screen.getByLabelText('Label'), 'Kept draft label');
     await user.clear(screen.getByLabelText('Count'));
     await user.type(screen.getByLabelText('Count'), '9');

@@ -215,7 +215,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
     renderApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Nightly'));
-    expect(screen.getByText('Not scheduled yet')).toBeVisible();
+    expect(await screen.findByText('Not scheduled yet')).toBeVisible();
 
     await choose(event, 'Runs', 'Weekdays at a time');
     await choose(event, 'Timezone', 'Europe/Berlin');

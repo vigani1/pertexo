@@ -1,23 +1,12 @@
 import { parseCollaborationSearch } from '@/features/workflow-collaboration/search.public';
 import { createRoute } from '@tanstack/react-router';
-import { lazyRoute } from '@/components/patterns/app-update/lazy';
+import { lazyPiece, lazyRoute } from '@/components/patterns/app-update/lazy';
 import { workflowIdentifierSchema } from '@pertexo/contracts';
-import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
-import {
-  failureNotificationPolicyQueryOptions,
-  scheduleTriggersQueryOptions,
-  webhookTriggersQueryOptions,
-  workflowVersionsQueryOptions,
-} from '@/features/workflow-settings/queries.public';
-import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
 import {
   filtersFromSearch,
   sanitizeWorkflowRunSearch,
-  stepHealthQueryOptions,
-  workflowRunsInfiniteQueryOptions,
-} from '@/features/workflow-runs/queries.public';
-import { workflowSummaryQueryOptions } from '@/features/workflows/queries.public';
-import { WorkflowHubPending } from '../../root/status/workflow-pending';
+} from '@/features/workflow-runs/search.public';
+
 import { pageTitle } from '../../root/page-title';
 import {
   authoringPrefetches,
@@ -26,6 +15,12 @@ import {
   warmPrefetches,
 } from '../../root/route-context';
 import { workspaceScopeRoute } from '../../workspace/routes';
+
+const WorkflowHubPending = lazyPiece(() =>
+  import('../../root/status/workflow-pending').then(
+    (module) => module.WorkflowHubPending,
+  ),
+);
 
 /**
  * `/workflows/$workflowId` is an immersive hub (no spine): a floating command
@@ -42,7 +37,10 @@ export const workflowHubRoute = createRoute({
   },
   // The summary decides whether the workflow exists; a missing one renders
   // inside the workspace shell instead of the hub.
-  loader: ({ context }) => {
+  loader: async ({ context }) => {
+    const { workflowSummaryQueryOptions } =
+      await import('@/features/workflows/queries.public');
+
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return { found: false };
     return probeResource(
@@ -65,6 +63,9 @@ export const workflowBuildRoute = createRoute({
   pendingComponent: WorkflowHubPending,
   path: '/',
   loader: async ({ context }) => {
+    const { workflowDraftQueryOptions } =
+      await import('@/features/workflow-editor/draft.public');
+
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return { found: false };
     const draftRead = queryClient.query(
@@ -89,7 +90,10 @@ export const workflowRunsRoute = createRoute({
   path: 'runs',
   validateSearch: (search) => sanitizeWorkflowRunSearch(search),
   loaderDeps: ({ search }) => filtersFromSearch(search),
-  loader: ({ context, deps }) => {
+  loader: async ({ context, deps }) => {
+    const { workflowRunsInfiniteQueryOptions } =
+      await import('@/features/workflow-runs/queries.public');
+
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null || !workspace.capabilities.includes('run:read'))
       return;
@@ -112,7 +116,13 @@ export const workflowTriggersRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
   pendingComponent: WorkflowHubPending,
   path: 'triggers',
-  loader: ({ context }) => {
+  loader: async ({ context }) => {
+    const {
+      scheduleTriggersQueryOptions,
+      webhookTriggersQueryOptions,
+      workflowVersionsQueryOptions,
+    } = await import('@/features/workflow-settings/queries.public');
+
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return;
     warmPrefetches(context, [
@@ -157,7 +167,10 @@ export const workflowVersionsRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
   pendingComponent: WorkflowHubPending,
   path: 'versions',
-  loader: ({ context }) => {
+  loader: async ({ context }) => {
+    const { workflowVersionsQueryOptions } =
+      await import('@/features/workflow-settings/queries.public');
+
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return;
     warmPrefetches(context, [
@@ -184,6 +197,18 @@ export const workflowSettingsRoute = createRoute({
   // Every section's read settles first, so the page renders whole rather
   // than growing and shrinking as each one arrives.
   loader: async ({ context }) => {
+    const [
+      { failureNotificationDestinationsQueryOptions },
+      { failureNotificationPolicyQueryOptions, workflowVersionsQueryOptions },
+      { workflowDraftQueryOptions },
+      { stepHealthQueryOptions },
+    ] = await Promise.all([
+      import('@/features/failure-notifications/queries.public'),
+      import('@/features/workflow-settings/queries.public'),
+      import('@/features/workflow-editor/draft.public'),
+      import('@/features/workflow-runs/queries.public'),
+    ]);
+
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return;
     const can = (capability: (typeof workspace.capabilities)[number]) =>

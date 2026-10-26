@@ -1225,7 +1225,12 @@ node placement and link alternatives, not drag-only essential actions. Protect
 text input from canvas shortcuts and handle delete/undo intentionally.
 
 **Performance:** lazy-load editor and feature CSS; keep canvas dependencies out
-of workflow-list entry code. Use stable node/edge component registrations and
+of workflow-list entry code. Route loaders import their feature query interfaces
+when entered; synchronous search parsers use focused public entries. The generic
+page skeleton stays independent of the lazy workflow hub skeleton. Selected-step
+inspector controls load inside the existing lens, with shared skeletons while
+loading. React, Router and Query share one cached runtime chunk; feature chunks
+remain automatically split. Use stable node/edge component registrations and
 narrow store subscriptions, not subscriptions to the entire graph in each
 toolbar. Profile before adding generalized memoization, layout engines or worker
 threads. React Flow specifically warns about broad node subscriptions and

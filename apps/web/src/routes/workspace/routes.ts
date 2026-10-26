@@ -1,32 +1,18 @@
-import { parseTaskSearch } from '@/features/pending-tasks/queries.public';
+import { parseTaskSearch } from '@/features/pending-tasks/search.public';
 import { createRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import {
   type AccessibleWorkspace,
   workflowRunIdentifierSchema,
 } from '@pertexo/contracts';
-import {
-  connectionsInfiniteQueryOptions,
-  parseConnectionsSearch,
-} from '@/features/connections/queries.public';
-import {
-  inboxSummaryQueryOptions,
-  inboxThreadsInfiniteQueryOptions,
-  parseInboxSearch,
-} from '@/features/inbox/queries.public';
+import { parseConnectionsSearch } from '@/features/connections/search.public';
+import { parseInboxSearch } from '@/features/inbox/search.public';
 import {
   filtersFromSearch,
-  runStatisticsQueryOptions,
   sanitizeRunSearch,
-  workflowRunQueryOptions,
-  workflowRunsInfiniteQueryOptions,
-} from '@/features/workflow-runs/queries.public';
+} from '@/features/workflow-runs/search.public';
 import { parseWorkflowListSearch } from '@/features/workflows/list-search.public';
-import { workflowListQueryOptions } from '@/features/workflows/queries.public';
-import {
-  parseTeamSearch,
-  workspaceMembersInfiniteQueryOptions,
-} from '@/features/workspaces/queries.public';
+import { parseTeamSearch } from '@/features/workspaces/search.public';
 import { pageTitle } from '../root/page-title';
 import {
   findWorkspace,
@@ -102,7 +88,10 @@ export const workflowsRoute = createRoute({
   // filters shareable. Unknown values fall back to the defaults.
   validateSearch: (search) => parseWorkflowListSearch(search),
   loaderDeps: ({ search: { create: _create, ...list } }) => list,
-  loader: ({ context, deps }) => {
+  loader: async ({ context, deps }) => {
+    const { workflowListQueryOptions } =
+      await import('@/features/workflows/queries.public');
+
     const { apiClient, queryClient, user, workspace } = context;
     warmPrefetches(context, [
       queryClient.infiniteQuery(
@@ -125,7 +114,10 @@ export const runsRoute = createRoute({
   // opens the Runs page.
   validateSearch: (search) => sanitizeRunSearch(search),
   loaderDeps: ({ search }) => filtersFromSearch(search),
-  loader: ({ context, deps }) => {
+  loader: async ({ context, deps }) => {
+    const { runStatisticsQueryOptions, workflowRunsInfiniteQueryOptions } =
+      await import('@/features/workflow-runs/queries.public');
+
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('run:read')) return;
     warmPrefetches(context, [
@@ -159,6 +151,9 @@ export const runDetailRoute = createRoute({
     context,
     params,
   }): Promise<Readonly<{ found: boolean; run?: RunCrumb }>> => {
+    const { workflowRunQueryOptions } =
+      await import('@/features/workflow-runs/queries.public');
+
     const { apiClient, queryClient, user, workspace } = context;
     const runId = workflowRunIdentifierSchema.safeParse(params.runId);
     if (!runId.success) return { found: false };
@@ -191,7 +186,10 @@ export const connectionsRoute = createRoute({
   path: 'connections',
   staticData: { crumb: 'Connections' },
   validateSearch: (search) => parseConnectionsSearch(search),
-  loader: ({ context }) => {
+  loader: async ({ context }) => {
+    const { connectionsInfiniteQueryOptions } =
+      await import('@/features/connections/queries.public');
+
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('connection:read')) return;
     warmPrefetches(context, [
@@ -216,7 +214,10 @@ export const inboxRoute = createRoute({
     filter: search.filter ?? ('all' as const),
     noticeKind: search.noticeKind,
   }),
-  loader: ({ context, deps }) => {
+  loader: async ({ context, deps }) => {
+    const { inboxSummaryQueryOptions, inboxThreadsInfiniteQueryOptions } =
+      await import('@/features/inbox/queries.public');
+
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('workspace:read')) return;
     warmPrefetches(context, [
@@ -245,7 +246,10 @@ export const teamRoute = createRoute({
   path: 'team',
   staticData: { crumb: 'Team' },
   validateSearch: (search) => parseTeamSearch(search),
-  loader: ({ context }) => {
+  loader: async ({ context }) => {
+    const { workspaceMembersInfiniteQueryOptions } =
+      await import('@/features/workspaces/queries.public');
+
     const { apiClient, queryClient, user, workspace } = context;
     if (!workspace.capabilities.includes('member:read')) return;
     warmPrefetches(context, [
