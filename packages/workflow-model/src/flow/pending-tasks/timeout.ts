@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { formValuesSchema } from '../../triggers/forms/values.js';
-import { approvalConfigSchema, isHumanTaskDefinition } from './approval.js';
+import { isHumanTaskDefinition, taskExpiryChoiceSchema } from './approval.js';
 import { taskAudienceSchema, type TaskAudience } from './audience.js';
 import { taskDetailsSchema, type TaskContext } from './context.js';
 
@@ -15,9 +15,7 @@ type TaskStep = Readonly<{
 /** Whether an expired task continues on Timed out instead of failing its step. */
 export function continuesOnExpiry(step: TaskStep): boolean {
   if (!isHumanTaskDefinition(step.definition)) return false;
-  const choice = approvalConfigSchema.shape.onExpiry.safeParse(
-    step.config?.onExpiry,
-  );
+  const choice = taskExpiryChoiceSchema.safeParse(step.config?.onExpiry);
   return choice.success && choice.data === 'continue';
 }
 

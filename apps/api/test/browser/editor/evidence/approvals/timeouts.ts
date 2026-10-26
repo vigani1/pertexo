@@ -15,9 +15,10 @@ export async function verifyTaskTimeoutEvidence(database: Pool) {
       run_status: 'succeeded',
     },
     {
+      // Saved without the choice, like every step before it existed.
       status: 'expired',
       consumed: true,
-      on_expiry: 'fail',
+      on_expiry: null,
       timed_out: null,
       run_status: 'failed',
     },

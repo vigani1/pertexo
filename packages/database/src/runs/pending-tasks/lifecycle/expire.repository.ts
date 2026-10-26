@@ -5,6 +5,7 @@ import {
   approvalConfigSchema,
   inputRequestConfigSchema,
   taskContextSchema,
+  taskExpiryChoice,
   timedOutTaskOutput,
 } from '@pertexo/workflow-model';
 import { workflowRuns } from '../../../schema/runs/execution.js';
@@ -52,7 +53,7 @@ export async function expireDueTasks(
     .catch(rethrowQueryFailure);
   for (const row of expired) {
     const setup = timeoutSetup(row);
-    if (setup?.onExpiry !== 'continue') continue;
+    if (setup === undefined || taskExpiryChoice(setup) !== 'continue') continue;
     const output = timedOutTaskOutput({
       openedAt: row.created_at,
       expiredAt: row.expires_at,

@@ -137,7 +137,7 @@ describe('registered portable definition policy', () => {
   });
 });
 
-it('preserves legacy approval setup without inserting a new starter default', () => {
+it('preserves legacy approval setup without inserting a starter or expiry default', () => {
   const definition = platformPortableDefinitionPolicy().definitions.find(
     ({ key }) => key === 'core.approval',
   );
@@ -155,6 +155,11 @@ it('preserves legacy approval setup without inserting a new starter default', ()
   expect(
     definition?.validateConfig({ ...legacy, allowStarterToDecide: 'true' }),
   ).toBe(false);
+  for (const onExpiry of ['fail', 'continue'])
+    expect(definition?.validateConfig({ ...legacy, onExpiry })).toBe(true);
+  expect(definition?.validateConfig({ ...legacy, onExpiry: 'later' })).toBe(
+    false,
+  );
 });
 
 it('exports old Form setup and explicit acceptance messages and multi-selects without rewriting them', () => {

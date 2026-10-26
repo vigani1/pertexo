@@ -182,7 +182,9 @@ export {
   approvalDecisionSchema,
   approvalOutputSchema,
   isHumanTaskDefinition,
+  taskExpiryChoice,
   taskExpiryChoiceSchema,
+  type TaskExpiryChoice,
   type ApprovalConfig,
   type ApprovalOutput,
 } from './flow/pending-tasks/approval.js';

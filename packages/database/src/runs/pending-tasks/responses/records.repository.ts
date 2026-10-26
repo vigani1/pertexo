@@ -19,6 +19,7 @@ import {
   formSubmissionSchema,
   approvalOutputSchema,
   taskContextSchema,
+  taskExpiryChoice,
 } from '@pertexo/workflow-model';
 import { parseStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import type { Role } from '@pertexo/workflow-model';
@@ -67,7 +68,7 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
     details: context.details ?? {},
     instructions: config.instructions,
     audience: config.audience,
-    onExpiry: config.onExpiry,
+    onExpiry: taskExpiryChoice(config),
     status: row.status,
     createdAt: row.created_at.toISOString(),
     expiresAt: row.expires_at.toISOString(),
