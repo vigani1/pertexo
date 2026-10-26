@@ -9,7 +9,10 @@ only workflow editors can change them. Don’t use samples as secret storage.
 A pinned test returns that saved JSON without calling the step, evaluating its
 unused input mappings or contacting its service. The canvas and test result say
 **Pinned**. You can use the output of that test as the input of a following step’s
-test. **Check setup** still checks the real settings.
+test: switch on **Use the output from testing …** there. The following step’s
+mappings from the tested step then read that output, as they would in a run; a
+mapping from any other step fails and names the input. **Check setup** still
+checks the real settings.
 
 Published runs always execute their real steps. Publishing, running, replaying,
 recovering, duplicating and exporting never carry pins along. Importing a workflow

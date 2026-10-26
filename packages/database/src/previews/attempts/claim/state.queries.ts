@@ -28,6 +28,7 @@ export async function loadPreviewLease(
   }>,
 ): Promise<PreviewAttemptLease> {
   const db = drizzle(client);
+  const prior = alias(previewRuns, 'prior');
   const runs = await db
     .select({
       definitionKey: previewRuns.definitionKey,
@@ -37,6 +38,7 @@ export async function loadPreviewLease(
       executorKey: previewRuns.executorKey,
       executorVersion: previewRuns.executorVersion,
       inputRef: previewRuns.inputRef,
+      priorPreviewNodeId: prior.nodeId,
       variableSetRevision: previewRuns.variableSetRevision,
       mayContactProvider: previewRuns.mayContactProvider,
       mayCauseExternalSideEffect: previewRuns.mayCauseExternalSideEffect,
@@ -49,6 +51,14 @@ export async function loadPreviewLease(
       retentionExpiresAt: previewRuns.expiresAt,
     })
     .from(previewRuns)
+    .leftJoin(
+      prior,
+      and(
+        eq(prior.workspaceId, previewRuns.workspaceId),
+        eq(prior.workflowId, previewRuns.workflowId),
+        eq(prior.id, previewRuns.priorPreviewRunId),
+      ),
+    )
     .where(
       and(
         eq(previewRuns.workspaceId, input.workspaceId),
@@ -78,6 +88,7 @@ export async function loadPreviewLease(
   const {
     executableNodeJson,
     inputRef,
+    priorPreviewNodeId,
     variableSetRevision,
     operationKey,
     providerKey,
@@ -98,6 +109,7 @@ export async function loadPreviewLease(
       executableNodeSchema.parse(executableNodeJson),
     ),
     input: parseStoredExecutionValue(inputRef),
+    ...(priorPreviewNodeId === null ? {} : { priorPreviewNodeId }),
     variables: await readVariableSetValues(
       db,
       input.workspaceId,

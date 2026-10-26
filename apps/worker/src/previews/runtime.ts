@@ -3,6 +3,7 @@ import {
   PreviewDeliveryMismatchError,
 } from '@pertexo/database/previews';
 import {
+  PreviewMappingSourceError,
   resolveSingleNodePreviewInput,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
@@ -92,6 +93,7 @@ export function createPlatformPreviewNodeInvoker(
       const resolvedInput = await resolveSingleNodePreviewInput({
         node,
         runInput: lease.input.value,
+        priorPreviewNodeId: lease.priorPreviewNodeId,
         ...(lease.variables === undefined
           ? {}
           : { variables: lease.variables }),
@@ -125,6 +127,12 @@ export function createPlatformPreviewNodeInvoker(
           error.code === 'variable_missing'
         )
           return failedWith('preview.variable_missing');
+        // Only a prior test of the mapped step can supply its output.
+        if (error instanceof PreviewMappingSourceError)
+          return failedWith(
+            'preview.input_invalid',
+            `Input ${error.mappingKey} uses another step’s output. Test that step first, then test this one with “Use the output from testing” switched on.`,
+          );
         // The step refused its input or setup and said why.
         if (error instanceof NodeInputValidationError)
           return failedWith(
