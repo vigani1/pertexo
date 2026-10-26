@@ -4,9 +4,15 @@ import {
 } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { RepeatIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
 import { findDefinition, stepTitle } from '../../../../model/graph/adapter';
 import type { WorkflowNode } from '../../../../model/graph/scopes';
+import {
+  firstFormFilePath,
+  type FormFiles,
+  type formFilesToRead,
+} from '../../../../model/inspector/input-mappings/form-files';
 import {
   outputFieldsOf,
   propertyPath,
@@ -33,10 +39,13 @@ export function FieldList({
   fields,
   wholeLabel = 'Whole output',
   onPick,
+  children,
 }: Readonly<{
   fields: readonly OutputField[];
   wholeLabel?: string;
   onPick: (path: string, fieldName: string) => void;
+  /** More choices from the same source, such as a form's files. */
+  children?: ReactNode;
 }>) {
   return (
     <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
@@ -60,7 +69,34 @@ export function FieldList({
           />
         </li>
       ))}
+      {children}
     </ul>
+  );
+}
+
+/** The first file each form question received, for a step that reads one. */
+export function FirstFormFiles({
+  toRead,
+  from,
+  onPick,
+}: Readonly<{
+  toRead: ReturnType<typeof formFilesToRead>;
+  from: (form: FormFiles) => boolean;
+  onPick: (source: InsertedSource, fieldName: string) => void;
+}>) {
+  if (toRead === undefined) return null;
+  return toRead.forms.filter(from).flatMap((form) =>
+    form.fields.map((field) => (
+      <li key={`${form.step.id}:${field.name}`}>
+        <PickButton
+          label={`first file from ${field.label}`}
+          type="file"
+          onClick={() => {
+            onPick(form.read(firstFormFilePath(field)), toRead.input);
+          }}
+        />
+      </li>
+    )),
   );
 }
 
@@ -168,10 +204,12 @@ export function NodeOutputChoices({
   source,
   definitions,
   onPick: pick,
+  children,
 }: Readonly<{
   source: WorkflowNode;
   definitions: readonly NodeDefinitionCatalogItem[];
   onPick: (source: InsertedSource, fieldName: string) => void;
+  children?: ReactNode;
 }>) {
   const definition = findDefinition(definitions, source);
   const step = describeStep(source.definition.key, definition?.family);
@@ -190,7 +228,9 @@ export function NodeOutputChoices({
         onPick={(path, name) => {
           pick({ kind: 'node_output', nodeId: source.id, path }, name);
         }}
-      />
+      >
+        {children}
+      </FieldList>
     </li>
   );
 }

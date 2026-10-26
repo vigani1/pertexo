@@ -11,6 +11,7 @@ import type { NodeFormApi } from '../../../model/inspector/node-form';
 import {
   ATTACHMENTS_KEY,
   attachmentName,
+  attachmentsDraft,
   attachmentsSize,
   newAttachment,
   type AttachmentDraft,
@@ -174,6 +175,7 @@ function AttachActions({
           definitions={definitions}
           disabled={disabled}
           onPick={model.add}
+          onPickList={model.attachList}
         />
         <UploadFile
           scope={workspaceScope}
@@ -283,6 +285,22 @@ function useAttachments({
       change([...rows, row]);
       // A source still to choose opens where it is chosen.
       if (source === undefined) toggle(row.id);
+    },
+    /** Attaches a whole list in place of the files attached one by one. */
+    attachList: (source: ValueSource) => {
+      const before = store.getState().generation;
+      draft.change(attachmentsDraft(source));
+      const after = store.getState().generation;
+      if (rows.length === 0 || after === before) return;
+      notifications.undo({
+        title:
+          rows.length === 1
+            ? 'Replaced the attachment'
+            : `Replaced ${String(rows.length)} attachments`,
+        onUndo: () => {
+          if (store.getState().generation === after) store.getState().undo();
+        },
+      });
     },
     replace: (row: AttachmentDraft) => {
       change(rows.map((current) => (current.id === row.id ? row : current)));

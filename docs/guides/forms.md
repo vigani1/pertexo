@@ -88,8 +88,12 @@ How it works:
 }
 ```
 
-Map `$.values.orders[0].file` into [Read file](files.md) to parse the CSV, or
-send it on with HTTP Request. An optional file field left empty is omitted.
+To parse the CSV, open [Read file](files.md)'s **Insert data** and choose
+**first file from** the question's label: it maps `$.values.orders[0].file`
+from the run input, so it works however far the step is from the Form. Send
+email's **Attach a file** offers **all files from** the label, which attaches
+every uploaded file with its name. An optional file field left empty is
+omitted.
 Members see a response's files as download cards on the run's **Input &
 output** tab and on the answered request; public responders never see other
 responses' files, and download links stay member-only.
@@ -186,8 +190,10 @@ use **Retry same response** before changing it; this retains the original comman
 and cannot create a second run or overwrite another person's response.
 
 A Request input file field works the same way: the responder attaches files on
-the task page, and the step's output lists them under `values`. Files can't be
-prefilled; only the responder can upload them.
+the task page, and the step's output lists them under `values`. Steps linked
+right after it offer the same **first file from** and **all files from**
+choices, read from its output. Files can't be prefilled; only the responder
+can upload them.
 
 Later work: public mid-run input, email links, conditional fields and richer
 validation. These are not available in this release.

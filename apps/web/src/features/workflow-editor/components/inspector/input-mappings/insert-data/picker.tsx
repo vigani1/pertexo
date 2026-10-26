@@ -21,9 +21,13 @@ import {
 } from '@/components/ui/popover';
 import { findDefinition } from '../../../../model/graph/adapter';
 import type { GraphLevel } from '../../../../model/graph/scopes';
+import { directPredecessorOptions } from '../../../../model/inspector/input-mappings/draft';
+import { formFilesToRead } from '../../../../model/inspector/input-mappings/form-files';
+import { useEditorStore } from '../../../../model/state/context';
 import {
   CallbackInputChoices,
   FieldList,
+  FirstFormFiles,
   LoopInputChoices,
   NodeOutputChoices,
   type InsertedSource,
@@ -32,8 +36,9 @@ import {
 /**
  * "Insert data": inside a For each body, the item it runs for; the output
  * fields of steps linked right before this one (from their output
- * schema); and the run input. Picking one fills the input row you were
- * editing, or adds a row named after the field.
+ * schema); and the run input. A step that reads a file is also offered the
+ * first file each form question received. Picking one fills the input row
+ * you were editing, or adds a row named after the field.
  */
 export function InsertDataPicker({
   graph,
@@ -58,12 +63,7 @@ export function InsertDataPicker({
 }>) {
   const [open, setOpen] = useState(false);
   const sourceIds = new Set(
-    graph.edges.flatMap((edge) =>
-      edge.target.nodeId === nodeId &&
-      edge.source.port !== WORKFLOW_FAILURE_PORT
-        ? [edge.source.nodeId]
-        : [],
-    ),
+    directPredecessorOptions(graph, nodeId).map((option) => option.nodeId),
   );
   const failureSource = allowFailure
     ? graph.edges.find(
@@ -80,6 +80,12 @@ export function InsertDataPicker({
       ? callbackTargetNodes(graph, nodeId)
       : [];
   const sources = graph.nodes.filter((node) => sourceIds.has(node.id));
+  const toRead = formFilesToRead(
+    useEditorStore((state) => state.graph),
+    graph,
+    nodeId,
+    definition?.inputSchema,
+  );
   function pick(source: InsertedSource, fieldName: string) {
     setOpen(false);
     onInsert(source, fieldName);
@@ -133,7 +139,15 @@ export function InsertDataPicker({
               source={source}
               definitions={definitions}
               onPick={pick}
-            />
+            >
+              <FirstFormFiles
+                toRead={toRead}
+                from={(form) =>
+                  form.origin === 'node_output' && form.step === source
+                }
+                onPick={pick}
+              />
+            </NodeOutputChoices>
           ))}
           {variableScope === undefined ? null : (
             <li>
@@ -156,7 +170,13 @@ export function InsertDataPicker({
               onPick={(path, name) => {
                 pick({ kind: 'run_input', path }, name);
               }}
-            />
+            >
+              <FirstFormFiles
+                toRead={toRead}
+                from={(form) => form.origin === 'run_input'}
+                onPick={pick}
+              />
+            </FieldList>
           </li>
         </ul>
         {sources.length === 0 && failureSource === undefined ? (

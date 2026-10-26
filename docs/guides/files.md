@@ -363,9 +363,14 @@ that. Pertexo does not automatically split a multipart request.
 step's **Inputs**: **Attachments** sits under the message. **Attach a file**
 lists the file outputs of steps linked right before this one, such as Create
 file's `file` or an HTTP response saved as a file, and the run input's `file`.
-**Another source…** takes a step output path, run input path, variable or
-expression, as other inputs do. **Upload a file** attaches the same fixed file
-to every email, such as terms or a price list.
+A workflow started by a [Form](forms.md#file-questions) lists each file
+question instead, as **all files from** its label: that maps the whole answer
+(`$.values.<name>`), so every uploaded file goes out under the name it was
+uploaded with. A Request input linked right before the email offers its file
+questions the same way, from its output. **Another source…** takes a step
+output path, run input path, variable or expression, as other inputs do.
+**Upload a file** attaches the same fixed file to every email, such as terms or
+a price list.
 
 Each attachment is a chip with its type, name and size. The pencil opens **Name
 in the email**; leave it empty and the file is named from its stored type,
