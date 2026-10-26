@@ -126,11 +126,15 @@ production deployment.
 Live journeys serve the web preview on `PERTEXO_LIVE_WEB_PORT` (default `4174`;
 the SAML journey also takes the next port). To run a journey next to another
 run, use its own checkout (each build writes that checkout's `dist/`), its own
-Compose project and service ports, and a free web port:
+Compose project and service ports, and a free web port. Name the project like
+CI's (`pertexo-ci-<n>-<n>-browser`), the form every journey's ownership check
+accepts:
 
 ```sh
-export COMPOSE_PROJECT_NAME=pertexo-live-b POSTGRES_PORT=55520 REDIS_PORT=56520 \
-  ARTIFACT_STORE_PORT=59520 PERTEXO_LIVE_WEB_PORT=4184
+export COMPOSE_PROJECT_NAME=pertexo-ci-0-2-browser POSTGRES_PORT=55520 \
+  REDIS_PORT=56520 ARTIFACT_STORE_PORT=59520 PERTEXO_LIVE_WEB_PORT=4184 \
+  WORKFLOW_CONCURRENCY_COMPOSE_PROJECT=pertexo-ci-0-2-browser \
+  CONNECTION_HEALTH_COMPOSE_PROJECT=pertexo-ci-0-2-browser
 # Point DATABASE_*_URL, REDIS_URL and ARTIFACT_STORE_ENDPOINT at those ports,
 # then start the services, build the ownership manifest and run the journey
 # exactly as the "Browser journeys against the real stack" step in ci.yml does.
