@@ -96,6 +96,9 @@ export const API_PROBLEM_CODES = [
   'form.changed',
   'form.access_conflict',
   'form.invalid',
+  'form.file_type_not_allowed',
+  'form.file_too_large',
+  'form.upload_limit',
   'form.required',
 
   'workflow.sample_conflict',

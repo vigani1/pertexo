@@ -34,6 +34,7 @@ import {
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
+import { optionalUploadSession } from '../artifacts/form-uploads/session.js';
 import { PendingTaskReadGuard, ApprovalAudienceGuard } from './guards.js';
 import { PendingTaskService } from './service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
@@ -162,6 +163,7 @@ export class PendingTasksController {
       this.tasks.submit({
         ...route,
         ...input,
+        ...optionalUploadSession(request.headers),
         actorId: authenticatedSession(request).userId,
         idempotencyKey,
         ...authenticatedRequestIdentifiers(request),

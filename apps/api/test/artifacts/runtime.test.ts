@@ -50,6 +50,7 @@ function store(): ArtifactStore {
     beginDirectDownload: vi.fn(),
     checkReadiness: vi.fn().mockResolvedValue(undefined),
     close: vi.fn(),
+    getStream: vi.fn(),
   };
 }
 

@@ -1,6 +1,7 @@
 import type { ArtifactStore } from './store-port.js';
 import type {
   ArtifactUploadDatabase as PersistedArtifactUploadDatabase,
+  FormUploadDatabase as PersistedFormUploadDatabase,
   ArtifactUploadIdentity,
   ArtifactUploadResult,
   FinalizeArtifactUploadInput,
@@ -26,11 +27,23 @@ type ArtifactUploadOperations = Pick<
 export type ArtifactUploadDatabase = ArtifactUploadOperations &
   Pick<PersistedArtifactUploadDatabase, 'checkReadiness' | 'close'>;
 
+export type FormUploadDatabase = Pick<
+  PersistedFormUploadDatabase,
+  'discover' | 'begin' | 'read' | 'finalize'
+>;
+
 export type ArtifactDependencies = Readonly<{
   database: ArtifactUploadOperations;
+  formUploads: FormUploadDatabase;
   authorization: WorkspaceAuthorizationSource;
   store: ArtifactStore;
 }>;
+
+/** The member artifact API needs neither form uploads nor their database. */
+export type ArtifactServiceDependencies = Omit<
+  ArtifactDependencies,
+  'formUploads'
+>;
 
 export type ArtifactServiceContext = Readonly<{
   actor: ActorContext;

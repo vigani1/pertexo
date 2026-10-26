@@ -872,6 +872,74 @@
                         "default": true,
                         "type": "boolean"
                       },
+                      "type": {
+                        "type": "string",
+                        "const": "file"
+                      },
+                      "accept": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "documents",
+                            "images",
+                            "spreadsheets",
+                            "data"
+                          ]
+                        }
+                      },
+                      "maxFiles": {
+                        "default": 1,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5
+                      },
+                      "maxBytes": {
+                        "default": 5242880,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10485760
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "label",
+                      "help",
+                      "required",
+                      "type",
+                      "accept",
+                      "maxFiles",
+                      "maxBytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                      },
+                      "name": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      },
+                      "help": {
+                        "default": "",
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      "required": {
+                        "default": true,
+                        "type": "boolean"
+                      },
                       "options": {
                         "minItems": 1,
                         "maxItems": 50,
@@ -935,6 +1003,61 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "file": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "artifact"
+                            },
+                            "artifactId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "byteLength": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 10485760
+                            },
+                            "mediaType": {
+                              "type": "string",
+                              "minLength": 3,
+                              "maxLength": 255
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "artifactId",
+                            "byteLength",
+                            "mediaType",
+                            "sha256"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "filename": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 255
+                        }
+                      },
+                      "required": [
+                        "file",
+                        "filename"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 ]
               }
@@ -965,6 +1088,61 @@
                             "type": "array",
                             "items": {
                               "type": "string"
+                            }
+                          },
+                          {
+                            "maxItems": 5,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "file": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "artifact"
+                                    },
+                                    "artifactId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "byteLength": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 10485760
+                                    },
+                                    "mediaType": {
+                                      "type": "string",
+                                      "minLength": 3,
+                                      "maxLength": 255
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "artifactId",
+                                    "byteLength",
+                                    "mediaType",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "filename": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 255
+                                }
+                              },
+                              "required": [
+                                "file",
+                                "filename"
+                              ],
+                              "additionalProperties": false
                             }
                           }
                         ]
@@ -1713,6 +1891,74 @@
                             "default": true,
                             "type": "boolean"
                           },
+                          "type": {
+                            "type": "string",
+                            "const": "file"
+                          },
+                          "accept": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "documents",
+                                "images",
+                                "spreadsheets",
+                                "data"
+                              ]
+                            }
+                          },
+                          "maxFiles": {
+                            "default": 1,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5
+                          },
+                          "maxBytes": {
+                            "default": 5242880,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 10485760
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "label",
+                          "help",
+                          "required",
+                          "type",
+                          "accept",
+                          "maxFiles",
+                          "maxBytes"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          },
+                          "help": {
+                            "default": "",
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          "required": {
+                            "default": true,
+                            "type": "boolean"
+                          },
                           "options": {
                             "minItems": 1,
                             "maxItems": 50,
@@ -1776,6 +2022,61 @@
                         "items": {
                           "type": "string"
                         }
+                      },
+                      {
+                        "maxItems": 5,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "file": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "artifact"
+                                },
+                                "artifactId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "byteLength": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 10485760
+                                },
+                                "mediaType": {
+                                  "type": "string",
+                                  "minLength": 3,
+                                  "maxLength": 255
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "artifactId",
+                                "byteLength",
+                                "mediaType",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "filename": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 255
+                            }
+                          },
+                          "required": [
+                            "file",
+                            "filename"
+                          ],
+                          "additionalProperties": false
+                        }
                       }
                     ]
                   }
@@ -1806,6 +2107,61 @@
                                 "type": "array",
                                 "items": {
                                   "type": "string"
+                                }
+                              },
+                              {
+                                "maxItems": 5,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "file": {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "const": "artifact"
+                                        },
+                                        "artifactId": {
+                                          "type": "string",
+                                          "format": "uuid",
+                                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                        },
+                                        "byteLength": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 10485760
+                                        },
+                                        "mediaType": {
+                                          "type": "string",
+                                          "minLength": 3,
+                                          "maxLength": 255
+                                        },
+                                        "sha256": {
+                                          "type": "string",
+                                          "pattern": "^[a-f0-9]{64}$"
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "artifactId",
+                                        "byteLength",
+                                        "mediaType",
+                                        "sha256"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "filename": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 255
+                                    }
+                                  },
+                                  "required": [
+                                    "file",
+                                    "filename"
+                                  ],
+                                  "additionalProperties": false
                                 }
                               }
                             ]
@@ -2806,6 +3162,74 @@
                             "default": true,
                             "type": "boolean"
                           },
+                          "type": {
+                            "type": "string",
+                            "const": "file"
+                          },
+                          "accept": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "documents",
+                                "images",
+                                "spreadsheets",
+                                "data"
+                              ]
+                            }
+                          },
+                          "maxFiles": {
+                            "default": 1,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 5
+                          },
+                          "maxBytes": {
+                            "default": 5242880,
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 10485760
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "label",
+                          "help",
+                          "required",
+                          "type",
+                          "accept",
+                          "maxFiles",
+                          "maxBytes"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 160
+                          },
+                          "help": {
+                            "default": "",
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          "required": {
+                            "default": true,
+                            "type": "boolean"
+                          },
                           "options": {
                             "minItems": 1,
                             "maxItems": 50,
@@ -2869,6 +3293,61 @@
                         "items": {
                           "type": "string"
                         }
+                      },
+                      {
+                        "maxItems": 5,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "file": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "artifact"
+                                },
+                                "artifactId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "byteLength": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 10485760
+                                },
+                                "mediaType": {
+                                  "type": "string",
+                                  "minLength": 3,
+                                  "maxLength": 255
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "artifactId",
+                                "byteLength",
+                                "mediaType",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "filename": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 255
+                            }
+                          },
+                          "required": [
+                            "file",
+                            "filename"
+                          ],
+                          "additionalProperties": false
+                        }
                       }
                     ]
                   }
@@ -2899,6 +3378,61 @@
                                 "type": "array",
                                 "items": {
                                   "type": "string"
+                                }
+                              },
+                              {
+                                "maxItems": 5,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "file": {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "const": "artifact"
+                                        },
+                                        "artifactId": {
+                                          "type": "string",
+                                          "format": "uuid",
+                                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                        },
+                                        "byteLength": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 10485760
+                                        },
+                                        "mediaType": {
+                                          "type": "string",
+                                          "minLength": 3,
+                                          "maxLength": 255
+                                        },
+                                        "sha256": {
+                                          "type": "string",
+                                          "pattern": "^[a-f0-9]{64}$"
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "artifactId",
+                                        "byteLength",
+                                        "mediaType",
+                                        "sha256"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "filename": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 255
+                                    }
+                                  },
+                                  "required": [
+                                    "file",
+                                    "filename"
+                                  ],
+                                  "additionalProperties": false
                                 }
                               }
                             ]
@@ -3494,6 +4028,74 @@
                         "default": true,
                         "type": "boolean"
                       },
+                      "type": {
+                        "type": "string",
+                        "const": "file"
+                      },
+                      "accept": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "documents",
+                            "images",
+                            "spreadsheets",
+                            "data"
+                          ]
+                        }
+                      },
+                      "maxFiles": {
+                        "default": 1,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5
+                      },
+                      "maxBytes": {
+                        "default": 5242880,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10485760
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "label",
+                      "help",
+                      "required",
+                      "type",
+                      "accept",
+                      "maxFiles",
+                      "maxBytes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                      },
+                      "name": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 160
+                      },
+                      "help": {
+                        "default": "",
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      "required": {
+                        "default": true,
+                        "type": "boolean"
+                      },
                       "options": {
                         "minItems": 1,
                         "maxItems": 50,
@@ -3922,6 +4524,227 @@
           "additionalProperties": false
         }
       ]
+    },
+    "FormUploadRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "versionId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "fieldId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10485760
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "versionId",
+        "fieldId",
+        "filename",
+        "byteLength",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "TaskUploadRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "fieldId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10485760
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "fieldId",
+        "filename",
+        "byteLength",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "FormFinalizeUploadRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "FormUploadResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "upload": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "filename": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "byteLength": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10485760
+            },
+            "mediaType": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 255
+            },
+            "status": {
+              "type": "string",
+              "const": "pending"
+            },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            }
+          },
+          "required": [
+            "id",
+            "filename",
+            "byteLength",
+            "mediaType",
+            "status",
+            "expiresAt"
+          ],
+          "additionalProperties": false
+        },
+        "transfer": {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "PUT"
+            },
+            "url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "headers": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            },
+            "expiresInSeconds": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 900
+            }
+          },
+          "required": [
+            "method",
+            "url",
+            "headers",
+            "expiresAt",
+            "expiresInSeconds"
+          ],
+          "additionalProperties": false
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "upload",
+        "transfer",
+        "replayed"
+      ],
+      "additionalProperties": false
+    },
+    "FormUpload": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10485760
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 255
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "available"
+          ]
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        }
+      },
+      "required": [
+        "id",
+        "filename",
+        "byteLength",
+        "mediaType",
+        "status",
+        "expiresAt"
+      ],
+      "additionalProperties": false
     },
     "WorkflowRunVariablesResponse": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4830,6 +5653,9 @@
             "form.changed",
             "form.access_conflict",
             "form.invalid",
+            "form.file_type_not_allowed",
+            "form.file_too_large",
+            "form.upload_limit",
             "form.required",
             "workflow.sample_conflict",
             "workflow.sample_invalid",

@@ -1,7 +1,11 @@
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { createArtifactStore } from '@pertexo/artifact-store';
-import { createArtifactUploadDatabase } from '@pertexo/database/runs';
+import {
+  createArtifactUploadDatabase,
+  createFormUploadDatabase,
+  type FormUploadDatabase,
+} from '@pertexo/database/runs';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -27,6 +31,7 @@ export type ApiArtifactRuntime = Readonly<{
 export type ApiArtifactRuntimeOverrides = Readonly<{
   database?: ArtifactUploadDatabase;
   databaseFactory?: typeof createArtifactUploadDatabase;
+  formUploads?: FormUploadDatabase;
   store?: ArtifactStore;
 }>;
 
@@ -45,11 +50,15 @@ export function createApiArtifactRuntime(
 ): ApiArtifactRuntime {
   const store = overrides.store ?? createArtifactStore(config);
   let database: ArtifactUploadDatabase;
+  let formUploads: FormUploadDatabase;
   try {
     database =
       overrides.database ??
       overrides.databaseFactory?.(databaseConfig, databaseRuntime) ??
       createArtifactUploadDatabase(databaseConfig, databaseRuntime);
+    formUploads =
+      overrides.formUploads ??
+      createFormUploadDatabase(databaseConfig, databaseRuntime);
   } catch (error: unknown) {
     closeStore(store, error);
     throw error;
@@ -57,6 +66,7 @@ export function createApiArtifactRuntime(
   const dependencies = Object.freeze({
     authorization: identityRuntime.dependencies.authorization,
     database,
+    formUploads,
     store,
   });
   let closePromise: Promise<void> | undefined;
@@ -66,18 +76,20 @@ export function createApiArtifactRuntime(
       await Promise.all([store.checkReadiness(), database.checkReadiness()]);
     },
     close: (): Promise<void> => {
-      closePromise ??= closeResources(database, store);
+      closePromise ??= closeResources([database, formUploads], store);
       return closePromise;
     },
   });
 }
 
 async function closeResources(
-  database: ArtifactUploadDatabase,
+  databases: readonly Readonly<{ close(): Promise<void> }>[],
   store: ArtifactStore,
 ): Promise<void> {
   const results = await Promise.allSettled([
-    Promise.resolve().then(() => database.close()),
+    ...databases.map((database) =>
+      Promise.resolve().then(() => database.close()),
+    ),
     Promise.resolve().then(() => {
       store.close();
     }),
@@ -106,13 +118,13 @@ function closeStore(store: ArtifactStore, original: unknown): void {
 export class ArtifactRuntimeModule {
   public static register(
     runtime: ApiArtifactRuntime,
-    identityModule: DynamicModule,
+    modules: Readonly<{ identity: DynamicModule; admission: DynamicModule }>,
     options: Readonly<{ maxObjectBytes: number }>,
   ): DynamicModule {
     return {
       module: ArtifactRuntimeModule,
       imports: [
-        ArtifactsModule.register(runtime.dependencies, identityModule, {
+        ArtifactsModule.register(runtime.dependencies, modules, {
           maxObjectBytes: options.maxObjectBytes,
         }),
       ],

@@ -5,7 +5,11 @@ import {
   FormChangedError,
   FormAccessConflictError,
 } from '@pertexo/database/triggers';
-import { FormValuesInvalidError } from '@pertexo/workflow-model';
+import {
+  FormFileRejectedError,
+  FormValuesInvalidError,
+} from '@pertexo/workflow-model';
+import { FormUploadLimitError } from '@pertexo/database/runs';
 import { applicationError } from '../../platform/http/index.js';
 
 export const formsProblems = [
@@ -33,6 +37,20 @@ export const formsProblems = [
   errorRegistration(FormValuesInvalidError, (error) => {
     return formValidationProblem(error);
   }),
+  errorRegistration(FormFileRejectedError, (error) =>
+    applicationError(
+      error.reason === 'type'
+        ? 'form.file_type_not_allowed'
+        : 'form.file_too_large',
+      { safeDetail: error.message },
+    ),
+  ),
+  errorRegistration(FormUploadLimitError, () =>
+    applicationError('form.upload_limit', {
+      safeDetail:
+        'This response has started too many uploads. Reload the form to start again.',
+    }),
+  ),
 ];
 
 function formValidationProblem(error: FormValuesInvalidError) {

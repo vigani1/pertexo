@@ -5,7 +5,17 @@ import {
   ArtifactsController,
   UnconfiguredArtifactsController,
 } from './controllers.js';
-import { ArtifactReadGuard, ArtifactUploadGuard } from './guards.js';
+import {
+  ArtifactReadGuard,
+  ArtifactUploadGuard,
+  FormResponderGuard,
+  InputRequestResponderGuard,
+} from './guards.js';
+import { FormUploadService } from './form-uploads/service.js';
+import { PublicFormUploadsController } from './form-uploads/public.controller.js';
+import { MemberFormUploadsController } from './form-uploads/members.controller.js';
+import { InputRequestUploadsController } from './form-uploads/tasks.controller.js';
+import { UnconfiguredFormUploadsController } from './form-uploads/unavailable.controller.js';
 import type { ArtifactDependencies } from './ports.js';
 import { ArtifactService } from './service.js';
 import {
@@ -25,7 +35,10 @@ export class ArtifactsModule {
     return {
       module: ArtifactsModule,
       imports: [identityModule],
-      controllers: [UnconfiguredArtifactsController],
+      controllers: [
+        UnconfiguredArtifactsController,
+        UnconfiguredFormUploadsController,
+      ],
       providers: [
         { provide: ARTIFACT_AUTHORIZATION, useValue: authorization },
         ArtifactUploadGuard,
@@ -36,7 +49,7 @@ export class ArtifactsModule {
 
   public static register(
     dependencies: ArtifactDependencies,
-    identityModule: DynamicModule,
+    modules: Readonly<{ identity: DynamicModule; admission: DynamicModule }>,
     options: Readonly<{ maxObjectBytes: number; now?: () => Date }>,
   ): DynamicModule {
     const providers: Provider[] = [
@@ -52,13 +65,27 @@ export class ArtifactsModule {
         ) => new ArtifactService({ database, store, authorization }, options),
         inject: [ARTIFACT_DATABASE, ARTIFACT_STORE, ARTIFACT_AUTHORIZATION],
       },
+      {
+        provide: FormUploadService,
+        useValue: new FormUploadService(
+          { database: dependencies.formUploads, store: dependencies.store },
+          options,
+        ),
+      },
       ArtifactUploadGuard,
       ArtifactReadGuard,
+      FormResponderGuard,
+      InputRequestResponderGuard,
     ];
     return {
       module: ArtifactsModule,
-      imports: [identityModule],
-      controllers: [ArtifactsController],
+      imports: [modules.identity, modules.admission],
+      controllers: [
+        ArtifactsController,
+        PublicFormUploadsController,
+        MemberFormUploadsController,
+        InputRequestUploadsController,
+      ],
       providers,
       exports: [ArtifactService],
     };

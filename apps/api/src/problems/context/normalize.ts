@@ -136,6 +136,10 @@ export function formFailure(error: unknown): unknown {
   return hiddenResourceFailure(error);
 }
 
+export function formUploadFailure(error: unknown): unknown {
+  return formFailure(requestFailure(error, 'The upload request is invalid.'));
+}
+
 export function memberFormFailure(error: unknown): unknown {
   return formFailure(requestFailure(error, 'The workflow request is invalid.'));
 }

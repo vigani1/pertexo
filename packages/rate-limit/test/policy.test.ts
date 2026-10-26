@@ -44,6 +44,14 @@ describe('abuse rate-limit policy', () => {
         ],
       ],
       form_workspace_submission: ['closed', [['workspace', 60]]],
+      form_upload: [
+        'closed',
+        [
+          ['client_address', 20],
+          ['form', 60],
+          ['workspace', 120],
+        ],
+      ],
       identity_start: [
         'closed',
         [

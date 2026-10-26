@@ -5,6 +5,7 @@ export const RATE_LIMIT_ENDPOINT_CLASSES = [
   'form_read',
   'form_submission',
   'form_workspace_submission',
+  'form_upload',
   'identity_start',
   'automation_authentication',
   'directory_provisioning',
@@ -106,6 +107,15 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
   form_workspace_submission: {
     failureMode: 'closed',
     dimensions: [{ kind: 'workspace', subject: 'workspaceId', limit: 60 }],
+  },
+  // Begin and finalize per file: five files take ten requests.
+  form_upload: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'client_address', subject: 'clientAddress', limit: 20 },
+      { kind: 'form', subject: 'formId', limit: 60 },
+      { kind: 'workspace', subject: 'workspaceId', limit: 120 },
+    ],
   },
 
   directory_provisioning: {

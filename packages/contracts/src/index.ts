@@ -80,6 +80,20 @@ export {
   type FormAccessRequest,
 } from './schemas/forms/requests.js';
 export { publicFormSubmissionResponseSchema } from './schemas/forms/requests.js';
+export {
+  formUploadSessionSchema,
+  formUploadRequestSchema,
+  taskUploadRequestSchema,
+  formFinalizeUploadRequestSchema,
+  publicFormUploadParamsSchema,
+  memberFormUploadParamsSchema,
+  taskUploadsParamsSchema,
+  taskUploadParamsSchema,
+  formUploadSchema,
+  formUploadResponseSchema,
+  type FormUploadMetadata,
+  type FormUploadResponse,
+} from './schemas/forms/uploads.js';
 
 export {
   workspaceVariablesResponseSchema,

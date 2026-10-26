@@ -119,6 +119,8 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
       close: () => {
         verificationStore.close();
       },
+      getStream: (...args: Parameters<VerificationStore['getStream']>) =>
+        verificationStore.getStream(...args),
       validateDirectUpload: async (
         ...args: Parameters<VerificationStore['validateDirectUpload']>
       ) => {
