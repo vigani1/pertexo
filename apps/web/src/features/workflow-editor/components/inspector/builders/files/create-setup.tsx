@@ -5,19 +5,19 @@ import {
   FieldError,
 } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
-import { withConfigValue } from '../../../model/inspector/draft';
-import type { NodeConfig } from '../../../model/inspector/draft';
+import { withConfigValue } from '../../../../model/inspector/draft';
+import type { NodeConfig } from '../../../../model/inspector/draft';
 import {
   fieldControlId,
   type NodeFormApi,
-} from '../../../model/inspector/node-form';
+} from '../../../../model/inspector/node-form';
 import {
   fileColumnLimits,
   parseFileColumns,
-} from '../../../model/inspector/transforms/file-columns';
-import { useInspectorDraftField, useScratchForm } from '../use-draft-field';
-import { ChoiceSelect } from '../fields/choice-select';
-import { SchemaField } from '../fields/schema';
+} from '../../../../model/inspector/transforms/file-columns';
+import { useInspectorDraftField, useScratchForm } from '../../use-draft-field';
+import { ChoiceSelect } from '../../fields/choice-select';
+import { SchemaField } from '../../fields/schema';
 
 export function CreateFileSetup({
   schema,

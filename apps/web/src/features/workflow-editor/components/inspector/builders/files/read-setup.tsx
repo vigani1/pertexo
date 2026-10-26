@@ -1,12 +1,12 @@
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
-import { withConfigValue } from '../../../model/inspector/draft';
-import type { NodeConfig } from '../../../model/inspector/draft';
+import { withConfigValue } from '../../../../model/inspector/draft';
+import type { NodeConfig } from '../../../../model/inspector/draft';
 import {
   fieldControlId,
   type NodeFormApi,
-} from '../../../model/inspector/node-form';
-import { ChoiceSelect } from '../fields/choice-select';
-import { SchemaField } from '../fields/schema';
+} from '../../../../model/inspector/node-form';
+import { ChoiceSelect } from '../../fields/choice-select';
+import { SchemaField } from '../../fields/schema';
 
 export function ReadFileSetup({
   config,
