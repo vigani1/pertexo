@@ -39,9 +39,9 @@ describe('editor session snapshots', { timeout: 30_000 }, () => {
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Numbers'));
     await user.clear(await screen.findByLabelText('Label'));
-    await user.type(screen.getByLabelText('Label'), 'Kept draft label');
-    await user.clear(screen.getByLabelText('Count'));
-    await user.type(screen.getByLabelText('Count'), '9');
+    await user.type(await screen.findByLabelText('Label'), 'Kept draft label');
+    await user.clear(await screen.findByLabelText('Count'));
+    await user.type(await screen.findByLabelText('Count'), '9');
     mockServer.use(
       http.get(`${api}/node-definitions`, () =>
         HttpResponse.json({
@@ -66,7 +66,9 @@ describe('editor session snapshots', { timeout: 30_000 }, () => {
       });
     });
     expect(await screen.findByLabelText('Current count')).toHaveValue('9');
-    expect(screen.getByLabelText('Label')).toHaveValue('Kept draft label');
+    expect(await screen.findByLabelText('Label')).toHaveValue(
+      'Kept draft label',
+    );
     expect(canvas.getByText('Kept draft label')).toBeInTheDocument();
     expect(screen.getByLabelText('Value')).toHaveValue('kept');
     pressSave();

@@ -102,7 +102,7 @@ describe('the last test bar', { timeout: 30_000 }, () => {
     const { event, canvas, bar, saves } = await testTarget('succeeded', true);
     fireEvent.click(canvas.getByText('Manual input'));
     await event.click(screen.getByRole('tab', { name: 'Setup' }));
-    const count = screen.getByLabelText('Count');
+    const count = await screen.findByLabelText('Count');
     fireEvent.change(count, { target: { value: '-' } });
     await event.click(bar.getByRole('button', { name: 'View output' }));
     expect(
@@ -116,7 +116,7 @@ describe('the last test bar', { timeout: 30_000 }, () => {
     await event.click(screen.getByRole('button', { name: 'Stay' }));
     expect(count).toBeVisible();
     expect(count).toHaveValue('-');
-    expect(screen.getByLabelText('Label')).toHaveValue('Manual input');
+    expect(await screen.findByLabelText('Label')).toHaveValue('Manual input');
     expect(saves()).toBe(0);
     await event.click(bar.getByRole('button', { name: 'View output' }));
     await event.click(
@@ -129,7 +129,7 @@ describe('the last test bar', { timeout: 30_000 }, () => {
     await waitFor(() => {
       expect(screen.getByRole('region', { name: 'Test result' })).toHaveFocus();
     });
-    expect(screen.getByLabelText('Label')).toHaveValue('Target');
+    expect(await screen.findByLabelText('Label')).toHaveValue('Target');
     expect(saves()).toBe(0);
   });
 
@@ -142,7 +142,7 @@ describe('the last test bar', { timeout: 30_000 }, () => {
     mockServer.use(identityHandler(() => currentUser));
     fireEvent.click(canvas.getByText('Manual input'));
     await event.click(screen.getByRole('tab', { name: 'Setup' }));
-    fireEvent.change(screen.getByLabelText('Count'), {
+    fireEvent.change(await screen.findByLabelText('Count'), {
       target: { value: '-' },
     });
     await event.click(bar.getByRole('button', { name: 'View output' }));
@@ -166,9 +166,9 @@ describe('the last test bar', { timeout: 30_000 }, () => {
       screen.getByRole('tab', { name: 'Setup', hidden: true }),
     ).toHaveAttribute('aria-selected', 'true');
     await event.click(screen.getByRole('button', { name: 'Stay' }));
-    expect(screen.getByLabelText('Label')).toHaveValue('Manual input');
-    expect(screen.getByLabelText('Count')).toBeVisible();
-    expect(screen.getByLabelText('Count')).toHaveValue('-');
+    expect(await screen.findByLabelText('Label')).toHaveValue('Manual input');
+    expect(await screen.findByLabelText('Count')).toBeVisible();
+    expect(await screen.findByLabelText('Count')).toHaveValue('-');
   });
 
   it('sums up a passed test and opens its output on the step’s Test tab', async () => {
@@ -205,7 +205,7 @@ describe('the last test bar', { timeout: 30_000 }, () => {
     ).toHaveTextContent('accepted');
 
     // The next edit to the draft puts the bar away.
-    fireEvent.change(screen.getByLabelText('Label'), {
+    fireEvent.change(await screen.findByLabelText('Label'), {
       target: { value: 'Renamed target' },
     });
     await waitFor(() => {
