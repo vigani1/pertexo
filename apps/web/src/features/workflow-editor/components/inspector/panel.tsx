@@ -1,14 +1,16 @@
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
+import { lazyPiece } from '@/components/patterns/app-update/lazy';
+import { Skeleton } from '@/components/ui/skeleton';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { useEditorStore } from '../../model/state/context';
 
 import { locateStep } from '../../model/graph/scopes';
 
-import {
-  NodeInspector,
-  type NodeInspectorActions,
-  type NodeInspectorView,
-} from './node';
+import type { NodeInspectorActions, NodeInspectorView } from './node';
+
+const NodeInspector = lazyPiece(() =>
+  import('./node').then((module) => module.NodeInspector),
+);
 
 function stepName(
   node: Readonly<{ label?: string | undefined; definition: { key: string } }>,
@@ -47,22 +49,36 @@ export function InspectorPanel({
   if (step !== undefined) {
     const { node } = step;
     return (
-      <NodeInspector
-        key={`${node.id}:${String(scratchVersion)}`}
-        node={node}
-        graph={step.level}
-        loopPorts={step.loopPorts}
-        view={view}
-        panels={{
-          testPanel: renderTest(
-            node.id,
-            describeStep(node.definition.key).sideEffect,
-          ),
-          runsPanel: renderRuns?.(node.id, stepName(node)),
-          failureSetup: renderFailureSetup?.(node),
-        }}
-        actions={actions}
-      />
+      <Suspense
+        fallback={
+          <div
+            role="status"
+            aria-label="Loading step"
+            className="flex min-h-0 flex-1 flex-col gap-4 p-4"
+          >
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        }
+      >
+        <NodeInspector
+          key={`${node.id}:${String(scratchVersion)}`}
+          node={node}
+          graph={step.level}
+          loopPorts={step.loopPorts}
+          view={view}
+          panels={{
+            testPanel: renderTest(
+              node.id,
+              describeStep(node.definition.key).sideEffect,
+            ),
+            runsPanel: renderRuns?.(node.id, stepName(node)),
+            failureSetup: renderFailureSetup?.(node),
+          }}
+          actions={actions}
+        />
+      </Suspense>
     );
   }
   if (selectedCount > 1)

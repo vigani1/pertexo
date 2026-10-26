@@ -62,5 +62,20 @@ export default defineConfig({
       },
     },
   },
-  build: { target: 'es2022' },
+  build: {
+    target: 'es2022',
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              // Keep the runtime cached when application routes change.
+              name: 'react-runtime',
+              test: /node_modules[\\/](?:(?:react|react-dom|scheduler)[\\/]|@tanstack[\\/](?:react-router|router-core|history|react-query|query-core|react-store|store)[\\/])/u,
+            },
+          ],
+        },
+      },
+    },
+  },
 });

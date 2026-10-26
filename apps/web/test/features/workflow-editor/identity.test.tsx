@@ -47,7 +47,7 @@ describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
     const event = userEvent.setup();
     const canvas = await findCanvas();
     fireEvent.click(canvas.getByText('Numbers'));
-    await event.click(screen.getByRole('tab', { name: 'Test' }));
+    await event.click(await screen.findByRole('tab', { name: 'Test' }));
     await event.click(
       await screen.findByRole('button', { name: 'Paste JSON…' }),
     );

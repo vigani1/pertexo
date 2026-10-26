@@ -118,7 +118,7 @@ describe('a path setting in Setup', { timeout: 30_000 }, () => {
     renderApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Sort orders'));
-    const field = screen.getByLabelText('Sort by');
+    const field = await screen.findByLabelText('Sort by');
     await event.clear(field);
     // user-event reads "[[" as one "[".
     await event.type(field, 'email[[');

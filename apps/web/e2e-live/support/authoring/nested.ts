@@ -19,6 +19,9 @@ export async function authorNestedMappingGraph(page: Page, draftPath: string) {
   async function inspect(nodeId: string, label: string) {
     await page.getByTestId(`rf__node-${nodeId}`).focus();
     await page.keyboard.press('Enter');
+    await expect(
+      page.getByRole('tab', { name: 'Setup', exact: true }),
+    ).toBeVisible();
     await page.getByLabel('Label', { exact: true }).fill(label);
     await page.keyboard.press('Tab');
   }

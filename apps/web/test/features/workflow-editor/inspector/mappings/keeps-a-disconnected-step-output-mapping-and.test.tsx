@@ -44,7 +44,7 @@ describe('workflow editor input sources', { timeout: 30_000 }, () => {
     renderApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Target'));
-    await event.click(screen.getByRole('tab', { name: 'Inputs' }));
+    await event.click(await screen.findByRole('tab', { name: 'Inputs' }));
     expect(
       screen.getByText('The source must be a directly linked predecessor.'),
     ).toBeVisible();

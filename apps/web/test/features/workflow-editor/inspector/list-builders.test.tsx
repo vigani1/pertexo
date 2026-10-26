@@ -192,7 +192,7 @@ describe('Switch cases in Setup', { timeout: 30_000 }, () => {
     renderApp(editorPath);
     const event = userEvent.setup();
     fireEvent.click((await findCanvas()).getByText('Route'));
-    const cases = screen.getByRole('group', { name: 'Cases' });
+    const cases = await screen.findByRole('group', { name: 'Cases' });
     // Case 1 feeds Ship on the canvas, so it stays until disconnected.
     expect(
       within(cases).getByRole('button', { name: 'Remove case 1' }),
