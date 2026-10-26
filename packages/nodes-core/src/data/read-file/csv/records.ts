@@ -3,13 +3,13 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { setImmediate } from 'node:timers/promises';
 import { parse, CsvError, type Options } from 'csv-parse';
-import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import {
   FileInputFailure,
   NodeExecutorFailure,
   type JsonValue,
 } from '@pertexo/node-sdk/server';
 import { convertCsvValue } from '../conversion.js';
+import { admitHeaders } from '../headers.js';
 import type { CoreReadFileConfig } from '../validation.js';
 
 type CsvConfig = Extract<CoreReadFileConfig, { format: 'csv' }>;
@@ -39,23 +39,7 @@ export async function* readCsvRecords<T>(
     on_record: (record: string[]) => {
       signal.throwIfAborted();
       if (headers === undefined) {
-        if (record.length > NODE_JSON_LIMITS.members)
-          throw new FileInputFailure({ reason: 'value_size' });
-        const unique = new Set<string>();
-        for (const [index, name] of record.entries()) {
-          if (name.trim() === '')
-            throw new FileInputFailure({
-              reason: 'csv_blank_header',
-              column: index + 1,
-            });
-          if (unique.has(name))
-            throw new FileInputFailure({
-              reason: 'csv_duplicate_header',
-              column: index + 1,
-            });
-          unique.add(name);
-        }
-        headers = record;
+        headers = admitHeaders(record);
         // A short CSV row can expand to long repeated keys. Bound one parse
         // window by header bytes before allowing the producer to read ahead.
         const headerBytes = utf8ByteLength(JSON.stringify(headers));

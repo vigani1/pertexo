@@ -39,7 +39,7 @@ export const fileInputDiagnosticSchema = z.discriminatedUnion('reason', [
     .strict(),
   z
     .object({
-      reason: z.enum(['csv_blank_header', 'csv_duplicate_header']),
+      reason: z.enum(['blank_header', 'duplicate_header']),
       column: location,
     })
     .strict(),

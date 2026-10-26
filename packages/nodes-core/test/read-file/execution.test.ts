@@ -151,8 +151,8 @@ describe('Read file through the scoped runtime', () => {
   it.each([
     ['', 'csv_empty'],
     ['\n\r\n', 'csv_empty'],
-    ['a,a\nx,y', 'csv_duplicate_header'],
-    ['a, \nx,y', 'csv_blank_header'],
+    ['a,a\nx,y', 'duplicate_header'],
+    ['a, \nx,y', 'blank_header'],
     ['a,b\nx', 'csv_columns'],
     ['a\nx,y', 'csv_columns'],
     ['a\n"open', 'csv_syntax'],
