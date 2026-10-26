@@ -61,7 +61,7 @@ export function IssueBadge({ count }: Readonly<{ count: number }>) {
 }
 
 /**
- * One line of facts from real data, then any marks. Facts: the output size
+ * Facts from real data, then any marks. Facts: the output size
  * of the step's last passed test here and whether the latest check found
  * nothing wrong with it. Marks: the step whose output is its For each
  * body's result, steps that aren't in the catalog, need a connection, are
@@ -99,9 +99,8 @@ export function NodeMarks({
   return (
     <div className="mt-2.5 flex flex-col gap-1.5">
       {facts.length === 0 ? null : (
-        <div className="flex min-w-0 gap-1.5 [&>*:first-child]:min-w-0 [&>*:first-child]:shrink">
-          {facts}
-        </div>
+        // Facts wrap rather than squeeze: a status word can't shrink.
+        <div className="flex flex-wrap items-center gap-1.5">{facts}</div>
       )}
       {marks.length === 0 ? null : (
         <div className="flex flex-wrap gap-1.5">{marks}</div>
