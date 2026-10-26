@@ -10,6 +10,7 @@ import {
   verifyEditorGovernanceOutcome,
   verifyEditorVariablesOutcome,
   verifyEditorFormsOutcome,
+  verifyEditorFormUploadsOutcome,
   verifyEditorApprovalsOutcome,
 } from './workspace.js';
 import {
@@ -63,6 +64,7 @@ const editorOutcomeChecks: Record<
   governance: verifyEditorGovernanceOutcome,
   variables: verifyEditorVariablesOutcome,
   forms: verifyEditorFormsOutcome,
+  'form-uploads': verifyEditorFormUploadsOutcome,
   approvals: verifyEditorApprovalsOutcome,
   'error-workflows': verifyEditorErrorWorkflowsOutcome,
   'api-tokens': verifyEditorApiTokensOutcome,

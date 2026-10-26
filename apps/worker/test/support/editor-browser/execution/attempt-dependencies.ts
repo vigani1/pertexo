@@ -52,12 +52,15 @@ function pureEditorDependencies(
             new Error('Provider access is outside this pure-node fixture'),
           ),
       }),
-      artifacts: () => ({
-        write: () =>
-          Promise.reject(
-            new Error('Artifacts are outside this pure-node fixture'),
-          ),
-      }),
+      // Only the form-uploads journey configures a real artifact store.
+      artifacts:
+        controlledCapabilities?.factories.artifacts ??
+        (() => ({
+          write: () =>
+            Promise.reject(
+              new Error('Artifacts are outside this pure-node fixture'),
+            ),
+        })),
     },
   };
 }
