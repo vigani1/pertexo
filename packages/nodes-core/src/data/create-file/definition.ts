@@ -24,8 +24,8 @@ export const CORE_CREATE_FILE_MANIFEST: NodeManifest = Object.freeze({
   inputSchema: generateSchemaDocument(CORE_CREATE_FILE_INPUT_SCHEMA),
   outputSchema: generateSchemaDocument(CORE_CREATE_FILE_OUTPUT_SCHEMA, {
     runtimeOnlySemantics: [
-      'Inline data creates up to 1 MiB. Explicit From pages streams ordered JSON-array files into CSV or JSON up to 10 MiB, including headers and quoting. CSV from pages requires explicit columns. Split larger data into smaller files.',
-      'CSV accepts bounded object rows, always writes a header, preserves explicit column order, and protects spreadsheet formulas. An empty column list discovers fields in first-seen order.',
+      'Inline data creates up to 1 MiB. Explicit From pages streams ordered JSON-array files into CSV, Excel or JSON up to 10 MiB, including headers and quoting. CSV and Excel from pages require explicit columns.',
+      'CSV and Excel take bounded object rows, always write a header, keep explicit column order and protect formula-like text. Excel writes one sheet with a bold frozen header and typed cells. Empty columns discover fields.',
       'Files use existing workspace-scoped artifact storage, accounting and run/preview retention. No external destination is called.',
     ],
   }),

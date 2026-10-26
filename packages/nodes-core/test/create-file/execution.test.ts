@@ -215,7 +215,11 @@ describe('Create file through the existing runtime', () => {
     const data = Array.from({ length: 1000 }, () => ({
       value: 'x'.repeat(700),
     }));
-    const initial = encodeFile(config, data, new AbortController().signal);
+    const initial = await encodeFile(
+      config,
+      data,
+      new AbortController().signal,
+    );
     const initialSize = initial.bytes.byteLength;
     initial.bytes.fill(0);
     const last = data.at(-1);

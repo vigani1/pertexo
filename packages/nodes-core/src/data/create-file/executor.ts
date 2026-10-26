@@ -41,7 +41,7 @@ export const coreCreateFileExecutor: NodeExecutorRegistration = Object.freeze({
           'data',
           'Map a value to Data, or choose From pages and map page references.',
         );
-      const encoded = encodeFile(
+      const encoded = await encodeFile(
         invocation.config as CoreCreateFileConfig,
         input.data,
         invocation.signal,

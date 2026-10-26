@@ -3,65 +3,86 @@ import { ARTIFACT_INPUT_MAX_BYTES, escapeCsvValue } from '@pertexo/node-sdk';
 import type { JsonValue } from '@pertexo/node-sdk/server';
 import { COLLECTION_MAX_ITEMS } from '../lists/semantics/validation.js';
 import {
-  csvColumnNameSchema,
+  fileColumnNameSchema,
   type CoreCreateFileConfig,
 } from './validation.js';
 import { refuseFileCreation } from './failure.js';
+import { writeWorkbook, XLSX_MEDIA_TYPE } from './xlsx/workbook.js';
 
 type Row = Readonly<Record<string, JsonValue>>;
-function csvRows(data: JsonValue): readonly Row[] {
+/** How refusals name the row format: `CSV` or `Excel`. */
+export type RowFormat = 'CSV' | 'Excel';
+
+function tableRows(data: JsonValue, format: RowFormat): readonly Row[] {
   if (!Array.isArray(data))
     refuseFileCreation(
       'data',
-      'CSV needs a list of objects. Map the list to Data.',
+      `${format} needs a list of objects. Map the list to Data.`,
     );
   if (data.length > COLLECTION_MAX_ITEMS)
     refuseFileCreation(
       'size',
-      `CSV supports up to ${String(COLLECTION_MAX_ITEMS)} rows. Split the data into smaller files.`,
+      `${format} supports up to ${String(COLLECTION_MAX_ITEMS)} rows. Split the data into smaller files.`,
     );
   return data.map((row: JsonValue, index: number) => {
     if (row === null || typeof row !== 'object' || Array.isArray(row))
       refuseFileCreation(
         'data',
-        `CSV row ${String(index + 1)} needs an object with named fields.`,
+        `${format} row ${String(index + 1)} needs an object with named fields.`,
       );
     return row as Row;
   });
 }
-function csvColumns(
+function tableColumns(
   rows: readonly Row[],
   chosen: readonly string[],
+  format: RowFormat,
 ): readonly string[] {
   if (chosen.length > 0) return chosen;
   const columns = new Set<string>();
   for (const row of rows)
     for (const name of Object.keys(row)) {
       if (columns.has(name)) continue;
-      if (!csvColumnNameSchema.safeParse(name).success)
+      if (!fileColumnNameSchema.safeParse(name).success)
         refuseFileCreation(
           'columns',
-          'CSV field names must be nonblank and at most 256 characters. Choose columns explicitly or rename the fields.',
+          `${format} field names must be nonblank and at most 256 characters. Choose columns explicitly or rename the fields.`,
         );
       columns.add(name);
       if (columns.size > COLLECTION_MAX_ITEMS)
         refuseFileCreation(
           'size',
-          `Choose up to ${String(COLLECTION_MAX_ITEMS)} CSV columns, in output order.`,
+          `Choose up to ${String(COLLECTION_MAX_ITEMS)} ${format} columns, in output order.`,
         );
     }
   if (columns.size === 0)
     refuseFileCreation(
       'columns',
-      'Choose CSV columns when the rows have no fields.',
+      `Choose ${format} columns when the rows have no fields.`,
     );
   return [...columns];
 }
-export function encodeFile(
+export async function encodeFile(
   config: CoreCreateFileConfig,
   data: JsonValue,
   signal: AbortSignal,
-): Readonly<{ bytes: Uint8Array; mediaType: string }> {
+): Promise<Readonly<{ bytes: Uint8Array; mediaType: string }>> {
+  if (config.format === 'xlsx') {
+    const rows = tableRows(data, 'Excel');
+    return {
+      bytes: await collectWorkbook(
+        writeWorkbook(
+          {
+            sheetName: config.sheetName,
+            columns: tableColumns(rows, config.columns, 'Excel'),
+            rows,
+          },
+          signal,
+        ),
+      ),
+      mediaType: XLSX_MEDIA_TYPE,
+    };
+  }
   const chunks: Uint8Array[] = [];
   let byteLength = 0;
   const append = (text: string): void => {
@@ -84,8 +105,8 @@ export function encodeFile(
         );
       append(data);
     } else {
-      const rows = csvRows(data);
-      const columns = csvColumns(rows, config.columns);
+      const rows = tableRows(data, 'CSV');
+      const columns = tableColumns(rows, config.columns, 'CSV');
       append(columns.map(escapeCsvValue).join(config.delimiter) + '\r\n');
       for (const row of rows)
         append(
@@ -102,6 +123,27 @@ export function encodeFile(
       bytes: Buffer.concat(chunks, byteLength),
       mediaType: FILE_MEDIA_TYPES[config.format],
     };
+  } finally {
+    for (const chunk of chunks) chunk.fill(0);
+  }
+}
+
+async function collectWorkbook(
+  parts: AsyncIterable<Uint8Array>,
+): Promise<Uint8Array> {
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  try {
+    for await (const chunk of parts) {
+      byteLength += chunk.byteLength;
+      if (byteLength > ARTIFACT_INPUT_MAX_BYTES)
+        refuseFileCreation(
+          'size',
+          'The created workbook exceeds 1 MB. Choose From pages, fewer columns or split the data into smaller files.',
+        );
+      chunks.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks, byteLength);
   } finally {
     for (const chunk of chunks) chunk.fill(0);
   }
