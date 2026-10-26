@@ -34,31 +34,15 @@ type Choice = Readonly<{
   pick: () => void;
 }>;
 
-function ChoiceButton({ choice }: Readonly<{ choice: Choice }>) {
-  return (
-    <button
-      type="button"
-      aria-label={choice.name}
-      className="flex w-full items-center justify-between gap-3 rounded-sm px-1.5 py-1.5 text-left max-sm:min-h-11 text-[0.8rem] text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-accent-foreground focus-ring"
-      onClick={choice.pick}
-    >
-      <span className="truncate">{choice.label}</span>
-      {choice.hint === undefined ? null : (
-        <span
-          aria-hidden="true"
-          className="shrink-0 font-mono text-[0.66rem] text-subtle-foreground"
-        >
-          {choice.hint}
-        </span>
-      )}
-    </button>
-  );
-}
-
 function ChoiceGroup({
   title,
   choices,
-}: Readonly<{ title: ReactNode; choices: readonly Choice[] }>) {
+  onPicked,
+}: Readonly<{
+  title: ReactNode;
+  choices: readonly Choice[];
+  onPicked: () => void;
+}>) {
   return (
     <li>
       <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
@@ -67,12 +51,106 @@ function ChoiceGroup({
       <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
         {choices.map((choice) => (
           <li key={choice.key}>
-            <ChoiceButton choice={choice} />
+            <button
+              type="button"
+              aria-label={choice.name}
+              className="flex w-full items-center justify-between gap-3 rounded-sm px-1.5 py-1.5 text-left max-sm:min-h-11 text-[0.8rem] text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-accent-foreground focus-ring"
+              onClick={() => {
+                onPicked();
+                choice.pick();
+              }}
+            >
+              <span className="truncate">{choice.label}</span>
+              {choice.hint === undefined ? null : (
+                <span
+                  aria-hidden="true"
+                  className="shrink-0 font-mono text-[0.66rem] text-subtle-foreground"
+                >
+                  {choice.hint}
+                </span>
+              )}
+            </button>
           </li>
         ))}
       </ul>
     </li>
   );
+}
+
+type Picks = Readonly<{
+  onPick: (source: ValueSource | undefined) => void;
+  onPickList: (source: ValueSource) => void;
+}>;
+
+/**
+ * Every file the picker offers: under each step linked right before this
+ * one, its file outputs and a Request input's file questions; under the run
+ * input, a Form's file questions and, unless only Forms start the run, `file`.
+ */
+function attachChoices(
+  scope: Readonly<{
+    workflow: GraphLevel;
+    graph: GraphLevel;
+    nodeId: string;
+    definitions: readonly NodeDefinitionCatalogItem[];
+  }>,
+  { onPick, onPickList }: Picks,
+) {
+  const { workflow, graph, nodeId, definitions } = scope;
+  const steps = new Map<WorkflowNode, Choice[]>();
+  const offer = (step: WorkflowNode, choice: Choice) => {
+    steps.set(step, [...(steps.get(step) ?? []), choice]);
+  };
+  for (const { nodeId: sourceId } of directPredecessorOptions(graph, nodeId)) {
+    const source = graph.nodes.find((node) => node.id === sourceId);
+    if (source === undefined) continue;
+    const definition = findDefinition(definitions, source);
+    for (const field of fileFieldsOf(
+      definition?.outputSchema,
+      source,
+      definition?.outputVariant,
+    ))
+      offer(source, {
+        key: field.key,
+        label: field.key,
+        name: `${field.key} from ${stepTitle(source)}`,
+        hint: field.sometimes ? 'if saved as a file' : propertyPath(field.key),
+        pick: () => {
+          onPick({
+            kind: 'node_output',
+            nodeId: source.id,
+            path: propertyPath(field.key),
+          });
+        },
+      });
+  }
+  const forms = formFilesFor(workflow, graph, nodeId);
+  const runInput: Choice[] = [];
+  for (const form of forms)
+    for (const field of form.fields) {
+      const choice: Choice = {
+        key: `${form.step.id}:${field.name}`,
+        label: `all files from ${field.label}`,
+        name: `all files from ${field.label}`,
+        hint: allFormFilesPath(field),
+        pick: () => {
+          onPickList(form.read(allFormFilesPath(field)));
+        },
+      };
+      if (form.origin === 'run_input') runInput.push(choice);
+      else offer(form.step, choice);
+    }
+  if (runInputMayCarryFile(workflow))
+    runInput.push({
+      key: 'file',
+      label: 'file',
+      name: 'file from the run input',
+      hint: '$.file',
+      pick: () => {
+        onPick({ kind: 'run_input', path: '$.file' });
+      },
+    });
+  return { steps: [...steps], runInput, fromForms: forms.length > 0 };
 }
 
 function StepTitle({
@@ -119,80 +197,18 @@ export function AttachPicker({
   onPickList: (source: ValueSource) => void;
 }>) {
   const [open, setOpen] = useState(false);
-  const workflow = useEditorStore((state) => state.graph);
-  function close(apply: () => void) {
-    return () => {
-      setOpen(false);
-      apply();
-    };
-  }
-  const stepGroups = directPredecessorOptions(graph, nodeId).flatMap(
-    ({ nodeId: sourceId }) => {
-      const source = graph.nodes.find((node) => node.id === sourceId);
-      if (source === undefined) return [];
-      const definition = findDefinition(definitions, source);
-      return fileFieldsOf(
-        definition?.outputSchema,
-        source,
-        definition?.outputVariant,
-      ).map((field): Readonly<{ step: WorkflowNode; choice: Choice }> => ({
-        step: source,
-        choice: {
-          key: field.key,
-          label: field.key,
-          name: `${field.key} from ${stepTitle(source)}`,
-          hint: field.sometimes
-            ? 'if saved as a file'
-            : propertyPath(field.key),
-          pick: close(() => {
-            onPick({
-              kind: 'node_output',
-              nodeId: source.id,
-              path: propertyPath(field.key),
-            });
-          }),
-        },
-      }));
+  const close = () => {
+    setOpen(false);
+  };
+  const choices = attachChoices(
+    {
+      workflow: useEditorStore((state) => state.graph),
+      graph,
+      nodeId,
+      definitions,
     },
+    { onPick, onPickList },
   );
-  const formGroups = formFilesFor(workflow, graph, nodeId).map((form) => ({
-    ...form,
-    choices: form.fields.map((field): Choice => ({
-      key: `${form.step.id}:${field.name}`,
-      label: `all files from ${field.label}`,
-      name: `all files from ${field.label}`,
-      hint: allFormFilesPath(field),
-      pick: close(() => {
-        onPickList(form.read(allFormFilesPath(field)));
-      }),
-    })),
-  }));
-  const runInputChoices: Choice[] = [
-    ...formGroups.flatMap((form) =>
-      form.origin === 'run_input' ? form.choices : [],
-    ),
-    ...(runInputMayCarryFile(workflow)
-      ? [
-          {
-            key: 'file',
-            label: 'file',
-            name: 'file from the run input',
-            hint: '$.file',
-            pick: close(() => {
-              onPick({ kind: 'run_input', path: '$.file' });
-            }),
-          },
-        ]
-      : []),
-  ];
-  const steps = [
-    ...new Set([
-      ...stepGroups.map(({ step }) => step),
-      ...formGroups.flatMap((form) =>
-        form.origin === 'node_output' ? [form.step] : [],
-      ),
-    ]),
-  ];
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -210,37 +226,36 @@ export function AttachPicker({
           with the run.
         </PopoverDescription>
         <ul className="mt-3 flex max-h-72 flex-col gap-3 overflow-y-auto">
-          {steps.map((step) => (
+          {choices.steps.map(([step, offered]) => (
             <ChoiceGroup
               key={step.id}
               title={<StepTitle step={step} definitions={definitions} />}
-              choices={[
-                ...stepGroups.flatMap((group) =>
-                  group.step === step ? [group.choice] : [],
-                ),
-                ...formGroups.flatMap((form) =>
-                  form.step === step ? form.choices : [],
-                ),
-              ]}
+              choices={offered}
+              onPicked={close}
             />
           ))}
-          {runInputChoices.length === 0 ? null : (
-            <ChoiceGroup title="Run input" choices={runInputChoices} />
+          {choices.runInput.length === 0 ? null : (
+            <ChoiceGroup
+              title="Run input"
+              choices={choices.runInput}
+              onPicked={close}
+            />
           )}
           <li className="border-t border-surface-ink/7 pt-2">
             <button
               type="button"
               className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1.5 text-left max-sm:min-h-11 text-[0.8rem] text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-accent-foreground focus-ring"
-              onClick={close(() => {
+              onClick={() => {
+                close();
                 onPick(undefined);
-              })}
+              }}
             >
               <PlusIcon aria-hidden="true" className="size-3.5" />
               Another source…
             </button>
           </li>
         </ul>
-        {steps.length === 0 && formGroups.length === 0 ? (
+        {choices.steps.length === 0 && !choices.fromForms ? (
           <p className="mt-3 text-xs text-subtle-foreground">
             Link a step that makes a file, such as Create file, into this one to
             attach its output.
