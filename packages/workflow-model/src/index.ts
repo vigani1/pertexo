@@ -182,6 +182,7 @@ export {
   approvalDecisionSchema,
   approvalOutputSchema,
   isHumanTaskDefinition,
+  taskExpiryChoiceSchema,
   type ApprovalConfig,
   type ApprovalOutput,
 } from './flow/pending-tasks/approval.js';
@@ -233,6 +234,14 @@ export {
   inputRequestConfigSchema,
   type InputRequestConfig,
 } from './flow/pending-tasks/input-request.js';
+export {
+  TIMED_OUT_PORT,
+  continuesOnExpiry,
+  pendingTaskOutputPorts,
+  timedOutTaskOutput,
+  timedOutTaskOutputSchema,
+  type TimedOutTaskOutput,
+} from './flow/pending-tasks/timeout.js';
 
 export {
   WORKSPACE_VARIABLE_LIMITS,

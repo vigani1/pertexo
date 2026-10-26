@@ -1,4 +1,5 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
+import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
 import {
   CORE_BOUNDED_JSON_POLICY,
   CORE_JSONATA_POLICY,
@@ -26,7 +27,7 @@ export const CORE_REQUEST_INPUT_MANIFEST: NodeManifest = Object.freeze({
   outputSchema: generateSchemaDocument(CORE_REQUEST_INPUT_OUTPUT_SCHEMA),
   ports: Object.freeze({
     inputs: Object.freeze(['in']),
-    outputs: Object.freeze(['out']),
+    outputs: Object.freeze(['out', TIMED_OUT_PORT]),
   }),
   credentialRequirements: Object.freeze([]),
   connectionRequirements: Object.freeze([]),

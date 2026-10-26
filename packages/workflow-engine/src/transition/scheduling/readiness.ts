@@ -161,13 +161,17 @@ function markReachableDescendants(
   {
     branchPath,
     skipped = false,
+    taken = new Set(),
   }: Readonly<{
     branchPath?: readonly BranchScopePart[] | undefined;
     skipped?: boolean | undefined;
+    /** Steps the selected path reaches; another path never skips them. */
+    taken?: ReadonlySet<string> | undefined;
   }> = {},
 ): void {
   const reached = descendants(roots, indexes.adjacency, indexes.mergeNodeIds);
   for (const nodeId of reached) {
+    if (taken.has(nodeId)) continue;
     if (branchPath === undefined) marks.blocked.add(nodeId);
     else rememberBranchPath(marks, nodeId, branchPath);
     if (skipped) marks.skipped.add(nodeId);
@@ -200,22 +204,28 @@ function markConditionalBranches(
       );
       continue;
     }
+    const roots = (port: string) =>
+      outgoing
+        .filter((edge) => edge.source.port === port)
+        .map(({ target }) => target.nodeId);
+    const selected = selection.selectedOutputPort;
+    // Only an Approval or Request input may link two paths to one step (Timed
+    // out beside Approved); the selected path keeps that step and its scope.
+    const taken = descendants(
+      roots(selected),
+      indexes.adjacency,
+      indexes.mergeNodeIds,
+    );
     for (const port of configuredBranchOutputPorts(branchNode) ?? []) {
       const branchPath = [
         ...(invocation.branchPath ?? []),
         { nodeId: branchNode.id, outputPort: port },
       ];
-      markReachableDescendants(
-        outgoing
-          .filter((edge) => edge.source.port === port)
-          .map(({ target }) => target.nodeId),
-        indexes,
-        marks,
-        {
-          branchPath: branchPath,
-          skipped: port !== selection.selectedOutputPort,
-        },
-      );
+      markReachableDescendants(roots(port), indexes, marks, {
+        branchPath,
+        skipped: port !== selected,
+        taken: port === selected ? undefined : taken,
+      });
     }
   }
 }

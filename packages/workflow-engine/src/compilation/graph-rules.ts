@@ -9,6 +9,7 @@ import type {
 import {
   WORKFLOW_FAILURE_PORT,
   isWorkflowFailureSource,
+  pendingTaskOutputPorts,
 } from '@pertexo/workflow-model';
 import type {
   WorkflowEdge,
@@ -87,17 +88,27 @@ export function assertGraphPorts(
     )
       fail('workflow edge source port is unavailable');
     const sourceNode = index.nodesById.get(edge.source.nodeId);
-    const invalidStructuredPort =
-      sourceNode !== undefined &&
-      ((sourceNode.definition.key === 'core.switch' &&
-        sourceNode.definition.version === 1) ||
-        isCoreParallelDefinition(sourceNode.definition)) &&
-      !configuredStructuredOutputPorts(sourceNode).includes(edge.source.port);
-    if (invalidStructuredPort)
+    if (sourceNode !== undefined && !configuresOutputPort(sourceNode, edge))
       fail('workflow edge source port is not configured');
     if (!target.ports.inputs.includes(edge.target.port))
       fail('workflow edge target port is unavailable');
   }
+}
+
+function configuresOutputPort(
+  node: WorkflowGraph['nodes'][number],
+  edge: WorkflowEdge,
+): boolean {
+  if (edge.source.port === WORKFLOW_FAILURE_PORT) return true;
+  const taskPorts = pendingTaskOutputPorts(node);
+  if (taskPorts !== undefined) return taskPorts.includes(edge.source.port);
+  const structured =
+    (node.definition.key === 'core.switch' && node.definition.version === 1) ||
+    isCoreParallelDefinition(node.definition);
+  return (
+    !structured ||
+    configuredStructuredOutputPorts(node).includes(edge.source.port)
+  );
 }
 
 function configuredBranchPorts(
