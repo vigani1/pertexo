@@ -15,6 +15,7 @@ import {
   handleEditorPortabilitySeed,
   handleEditorVerificationLink,
   handleEditorNoticeMail,
+  handleEditorEmailDeliveries,
 } from './reads.js';
 import {
   handleEditorBrowserReceipt,
@@ -50,6 +51,8 @@ export function createEditorControlServer(
     if (handleEditorEvidenceReceipt({ context, request, response, url }))
       return;
     if (handleEditorNoticeMail({ context, request, response, url })) return;
+    if (handleEditorEmailDeliveries({ context, request, response, url }))
+      return;
     response.writeHead(404).end();
   });
   return mailServer;

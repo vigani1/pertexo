@@ -37,6 +37,7 @@ import {
   verifyEditorRunRecoveryOutcome,
 } from './execution.js';
 import { verifyEditorNestedOutcome } from './nested.js';
+import { verifyEditorEmailAttachmentsOutcome } from '../evidence/notifications/email-attachments.js';
 
 export function verifyEditorBrowserOutcome(
   context: EditorBrowserJourneyContext,
@@ -78,6 +79,7 @@ const editorOutcomeChecks: Record<
   readonly: verifyEditorReadonlyOutcome,
   'expression-admission': verifyEditorExpressionAdmissionOutcome,
   receipts: verifyEditorReceiptsOutcome,
+  'email-attachments': verifyEditorEmailAttachmentsOutcome,
   'run-recovery': verifyEditorRunRecoveryOutcome,
   'nested-conflict': verifyEditorNestedOutcome,
 };

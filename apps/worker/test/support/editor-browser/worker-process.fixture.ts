@@ -13,6 +13,7 @@ import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import type { createCuratedTemplateQualificationTransports } from '../curated-templates/controlled-transports.js';
 
 import type { createEditorControlledHttpTarget } from './controlled-http.js';
+import type { DeliveredEmail } from './notifications/resend-mailbox.js';
 import {
   createTriggerRuntime,
   type TriggerRuntime,
@@ -58,6 +59,14 @@ export let curatedTarget:
 
 export let httpTarget:
   ReturnType<typeof createEditorControlledHttpTarget> | undefined;
+
+/** Hands each delivered email to the API fixture's mail-sink control listener. */
+function sendEmailDeliveries(emails: readonly DeliveredEmail[]) {
+  if (process.connected)
+    process.send?.({ phase: 'email-deliveries', emails }, (error) => {
+      if (error !== null) stop();
+    });
+}
 
 export function sendHttpEffects() {
   const files = artifactTarget?.observe();
@@ -243,6 +252,7 @@ export const state: EditorBrowserWorkerState = {
   set httpTarget(value: typeof httpTarget) {
     httpTarget = value;
   },
+  resendMailbox: undefined,
 };
 
 async function constructRuntimes(
@@ -256,11 +266,21 @@ async function constructRuntimes(
     connectionString: raw.workerUrl,
     max: 6,
   });
-  const execution = { ...setup, raw, database, sendHttpEffects };
+  const execution = {
+    ...setup,
+    raw,
+    database,
+    sendHttpEffects,
+    sendEmailDeliveries,
+  };
   const coordinator = await startEditorCoordinator(execution);
   const controlledCapabilities = await createEditorCapabilities(execution);
-  const controlledHttpClient = (artifactTarget ?? curatedTarget ?? httpTarget)
-    ?.httpClient;
+  const controlledHttpClient = (
+    artifactTarget ??
+    curatedTarget ??
+    httpTarget ??
+    state.resendMailbox
+  )?.httpClient;
   const attempts = await createNodeAttemptRuntime(
     {
       database,

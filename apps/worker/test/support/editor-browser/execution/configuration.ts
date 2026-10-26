@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
 import type { EditorWorkerSetup } from './contract.js';
-import { controlledHttp, curatedTemplates } from './environment.js';
+import {
+  controlledHttp,
+  curatedTemplates,
+  emailAttachments,
+} from './environment.js';
 
 export async function configureEditorWorker(context: EditorWorkerSetup) {
   const { state, namespace, assertSetupActive } = context;
@@ -66,7 +70,7 @@ function parseEditorWorkerConfiguration(
             .parse(raw.callbackConfig),
         }
       : {}),
-    ...(!controlledHttp && !curatedTemplates
+    ...(!controlledHttp && !curatedTemplates && !emailAttachments
       ? {}
       : editorHttpConfiguration(raw)),
   };

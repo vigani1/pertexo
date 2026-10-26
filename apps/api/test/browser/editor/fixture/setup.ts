@@ -22,7 +22,8 @@ import {
   workerDirectory,
   noticeMailKey,
 } from './environment.js';
-import { fixtureState, noticeMessages } from './state.js';
+import { emailDeliveries, fixtureState, noticeMessages } from './state.js';
+import { emailDeliveriesSchema } from '../evidence/notifications/email-attachments.js';
 import {
   owner,
   ownChild,
@@ -113,6 +114,11 @@ export function createEditorBrowserFixture() {
           .strict()
           .parse(value);
         noticeMessages.push(parsed.text);
+        return;
+      }
+      const deliveries = emailDeliveriesSchema.safeParse(value);
+      if (deliveries.success && scenario === 'email-attachments') {
+        emailDeliveries.splice(0, Infinity, ...deliveries.data.emails);
         return;
       }
       const curatedObservation = curatedTemplateEffectsSchema.safeParse(value);
