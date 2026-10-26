@@ -77,7 +77,7 @@ function isFileReferenceSchema(candidate: unknown): boolean {
   return isRecord(kind) && kind.const === 'artifact';
 }
 
-/** Top-level output fields that hold a file reference, for attaching files. */
+/** Top-level fields that hold a file reference: files a step makes or reads. */
 export function fileFieldsOf(
   outputSchema: unknown,
   node?: Pick<WorkflowNode, 'config'>,
