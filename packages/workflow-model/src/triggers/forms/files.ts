@@ -217,6 +217,6 @@ export function formatFormFileBytes(byteLength: number): string {
   if (byteLength < 1_024) return `${String(byteLength)} B`;
   if (byteLength < MEBIBYTE)
     return `${String(Math.round(byteLength / 1_024))} KB`;
-  const megabytes = byteLength / MEBIBYTE;
-  return `${Number.isInteger(megabytes) ? String(megabytes) : megabytes.toFixed(1)} MB`;
+  // One decimal at most, and none when it rounds away: "2 MB", "2.4 MB".
+  return `${String(Math.round((byteLength / MEBIBYTE) * 10) / 10)} MB`;
 }

@@ -1,23 +1,38 @@
 import type { FormField } from '@pertexo/workflow-model';
+import {
+  AlignLeftIcon,
+  AtSignIcon,
+  CalendarDaysIcon,
+  CircleDotIcon,
+  HashIcon,
+  ListChecksIcon,
+  PaperclipIcon,
+  SquareCheckIcon,
+  TypeIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LabelledField } from '@/components/ui/field';
 import { fieldOfType } from '../model/fields';
+import { FileFieldSetup } from './files/setup';
 
 const fieldTypes: readonly Readonly<{
   value: FormField['type'];
   label: string;
+  glyph: LucideIcon;
 }>[] = [
-  { value: 'text', label: 'Short text' },
-  { value: 'textarea', label: 'Long text' },
-  { value: 'email', label: 'Email' },
-  { value: 'number', label: 'Number' },
-  { value: 'boolean', label: 'True or false' },
-  { value: 'select', label: 'Choose one' },
-  { value: 'multi_select', label: 'Choose multiple' },
-  { value: 'date', label: 'Date' },
+  { value: 'text', label: 'Short text', glyph: TypeIcon },
+  { value: 'textarea', label: 'Long text', glyph: AlignLeftIcon },
+  { value: 'email', label: 'Email', glyph: AtSignIcon },
+  { value: 'number', label: 'Number', glyph: HashIcon },
+  { value: 'boolean', label: 'True or false', glyph: SquareCheckIcon },
+  { value: 'select', label: 'Choose one', glyph: CircleDotIcon },
+  { value: 'multi_select', label: 'Choose multiple', glyph: ListChecksIcon },
+  { value: 'date', label: 'Date', glyph: CalendarDaysIcon },
+  { value: 'file', label: 'File', glyph: PaperclipIcon },
 ];
 
 export function FormFieldCard({
@@ -102,6 +117,17 @@ export function FormFieldCard({
         )}
       </LabelledField>
       <FieldChoices field={field} id={id} onUpdate={onUpdate} />
+      {field.type === 'file' ? (
+        <FileFieldSetup
+          field={field}
+          id={id}
+          onChange={(change) => {
+            onUpdate((current) =>
+              current.type === 'file' ? { ...current, ...change } : current,
+            );
+          }}
+        />
+      ) : null}
 
       <LabelledField id={`${id}-${field.id}-required`} label="Required">
         {(control) => (
@@ -204,24 +230,32 @@ function FieldTypeControl({
   id,
   onUpdate,
 }: Readonly<{ field: FormField; id: string; onUpdate: FieldUpdate }>) {
+  const Glyph =
+    fieldTypes.find((type) => type.value === field.type)?.glyph ?? TypeIcon;
   return (
     <LabelledField id={`${id}-${field.id}-type`} label="Type">
       {(control) => (
-        <select
-          {...control}
-          className="h-9 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
-          value={field.type}
-          onChange={(event) => {
-            const type = event.target.value as FormField['type'];
-            onUpdate((current) => fieldOfType(current, type));
-          }}
-        >
-          {fieldTypes.map((type) => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </select>
+        <>
+          <Glyph
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+          />
+          <select
+            {...control}
+            className="h-9 w-full rounded-md border border-input bg-background pr-3 pl-9 text-base focus-visible:outline-2 focus-visible:outline-ring md:text-sm"
+            value={field.type}
+            onChange={(event) => {
+              const type = event.target.value as FormField['type'];
+              onUpdate((current) => fieldOfType(current, type));
+            }}
+          >
+            {fieldTypes.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </>
       )}
     </LabelledField>
   );

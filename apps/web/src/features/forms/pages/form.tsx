@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { describeCoordinatedEvent } from '@/features/trigger-events/presentation.public';
 import { ThankYouMessage } from '../components/thank-you';
 import { useQuery } from '@tanstack/react-query';
@@ -17,6 +17,11 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { isApiError } from '@/lib/api/error';
 import { FormResponse } from '../components/response';
 import { sendForm, type FormScope } from '../data/forms.api';
+import {
+  formUploadTarget,
+  newUploadSession,
+  type FormUploadTarget,
+} from '../data/uploads.api';
 import { formQueryOptions } from '../data/forms.queries';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 function formUnavailable(error: unknown) {
@@ -32,8 +37,11 @@ function formUnavailable(error: unknown) {
 
 export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
   const query = useQuery(formQueryOptions(scope));
+  // One response session per page: its uploads and its submission share it.
+  const [session] = useState(newUploadSession);
   const command = useRetainedCommand(
-    (body: FormSubmissionRequest, key: string) => sendForm(scope, body, key),
+    (body: FormSubmissionRequest, key: string) =>
+      sendForm(scope, body, key, session),
   );
   async function reload() {
     const loaded = await query.refetch();
@@ -67,6 +75,7 @@ export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
           key={schema.versionId}
           command={command}
           schema={schema}
+          uploads={formUploadTarget(scope, schema.versionId, session)}
           reload={reload}
         />
       )}
@@ -125,10 +134,12 @@ type SubmissionCommand = ReturnType<
 function PublishedForm({
   command,
   schema,
+  uploads,
   reload,
 }: Readonly<{
   command: SubmissionCommand;
   schema: FormSchemaResponse;
+  uploads: FormUploadTarget;
   reload: () => Promise<void>;
 }>) {
   const changed =
@@ -151,6 +162,7 @@ function PublishedForm({
         pending={command.pending}
         disabled={command.uncertain || changed}
         submitLabel="Send response"
+        uploads={uploads}
         onSubmit={(values) => command.send({ versionId, values })}
       />
       {command.data?.accepted === false ? (

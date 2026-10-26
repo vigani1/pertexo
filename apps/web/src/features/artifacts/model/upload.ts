@@ -36,6 +36,25 @@ export function fileReference(
   };
 }
 
+/** Hex SHA-256 of a chosen file; its bytes are cleared once hashed. */
+export async function digestFile(
+  file: File,
+  signal: AbortSignal,
+): Promise<string> {
+  signal.throwIfAborted();
+  const bytes = await file.arrayBuffer();
+  try {
+    signal.throwIfAborted();
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    signal.throwIfAborted();
+    return Array.from(new Uint8Array(digest), (byte) =>
+      byte.toString(16).padStart(2, '0'),
+    ).join('');
+  } finally {
+    new Uint8Array(bytes).fill(0);
+  }
+}
+
 export async function describeUpload(
   file: File,
   signal: AbortSignal,
@@ -44,28 +63,16 @@ export async function describeUpload(
     throw new UploadValidationError(
       'Choose a file no larger than 10 MB. Split larger files into smaller files and upload them separately.',
     );
-  signal.throwIfAborted();
-  const bytes = await file.arrayBuffer();
-  try {
-    signal.throwIfAborted();
-    const digest = await crypto.subtle.digest('SHA-256', bytes);
-    signal.throwIfAborted();
-    const sha256 = Array.from(new Uint8Array(digest), (byte) =>
-      byte.toString(16).padStart(2, '0'),
-    ).join('');
-    const result = artifactUploadRequestSchema.safeParse({
-      byteLength: file.size,
-      mediaType: file.type || 'application/octet-stream',
-      sha256,
-    });
-    if (!result.success)
-      throw new UploadValidationError(
-        'This file has an unsupported media type. Choose another file.',
-      );
-    return result.data;
-  } finally {
-    new Uint8Array(bytes).fill(0);
-  }
+  const result = artifactUploadRequestSchema.safeParse({
+    byteLength: file.size,
+    mediaType: file.type || 'application/octet-stream',
+    sha256: await digestFile(file, signal),
+  });
+  if (!result.success)
+    throw new UploadValidationError(
+      'This file has an unsupported media type. Choose another file.',
+    );
+  return result.data;
 }
 
 export function uploadFailure(error: unknown): string {

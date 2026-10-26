@@ -73,7 +73,8 @@ export function FormFieldsEditor({
         Add field
       </Button>
       <p className="text-xs text-muted-foreground">
-        Up to 20 fields. File uploads are not available.
+        Up to 20 fields. A file question takes up to 5 files of up to 10 MB
+        each; files are not virus-checked.
       </p>
     </fieldset>
   );

@@ -23,6 +23,8 @@ type ArtifactDownloadProps = Readonly<{
   artifactId: string;
   /** With the person's ID the card shows the file's type and size up front. */
   userId?: string;
+  /** A responder's name for the file, shown in place of its kind. */
+  filename?: string;
 }>;
 
 /**
@@ -44,6 +46,7 @@ function ArtifactDownloadScope({
   workspaceId,
   artifactId,
   userId,
+  filename,
 }: ArtifactDownloadProps) {
   const metadata = useQuery({
     ...artifactMetadataQueryOptions(
@@ -106,12 +109,12 @@ function ArtifactDownloadScope({
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">
-            {describeFileKind(details?.mediaType)}
+            {filename ?? describeFileKind(details?.mediaType)}
           </p>
           <p className="truncate font-mono text-[0.7rem] text-subtle-foreground">
             {details === undefined
               ? shortArtifactId(artifactId)
-              : `${details.mediaType} · ${formatByteLength(details.byteLength)}`}
+              : describeDetails(details, filename)}
           </p>
         </div>
         <ProgressButton
@@ -122,6 +125,9 @@ function ArtifactDownloadScope({
           pendingLabel="Preparing…"
           icon={<DownloadIcon data-icon="inline-start" aria-hidden="true" />}
           onClick={() => void prepare()}
+          {...(filename === undefined
+            ? {}
+            : { 'aria-label': `Download ${filename}` })}
         >
           Download
         </ProgressButton>
@@ -146,4 +152,16 @@ function ArtifactDownloadScope({
       )}
     </div>
   );
+}
+
+/** A named file already says what it is; its kind is friendlier than a MIME type. */
+function describeDetails(
+  details: Readonly<{ mediaType: string; byteLength: number }>,
+  filename: string | undefined,
+): string {
+  const kind =
+    filename === undefined
+      ? details.mediaType
+      : describeFileKind(details.mediaType);
+  return `${kind} · ${formatByteLength(details.byteLength)}`;
 }

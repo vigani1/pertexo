@@ -10,6 +10,7 @@ import {
   type FormAccessRequest,
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
+import { UPLOAD_SESSION_HEADER } from './uploads.api';
 export type MemberFormScope = Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -84,16 +85,22 @@ export function readForm(scope: FormScope, signal?: AbortSignal) {
     },
   });
 }
+/** The upload session names the files this response may use. */
 export function sendForm(
   scope: FormScope,
   body: FormSubmissionRequest,
   key: string,
+  session: string,
 ): Promise<FormSubmissionResponse> {
   return scope.apiClient.request({
     path: `${targetPath(scope)}/submit`,
     method: 'POST',
     ...(scope.target.kind === 'public' ? { csrf: 'external' as const } : {}),
-    headers: { ...publicHeaders(scope), 'Idempotency-Key': key },
+    headers: {
+      ...publicHeaders(scope),
+      [UPLOAD_SESSION_HEADER]: session,
+      'Idempotency-Key': key,
+    },
     body,
     response: {
       kind: 'json',

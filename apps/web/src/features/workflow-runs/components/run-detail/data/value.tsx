@@ -18,7 +18,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { SkeletonLines } from '@/components/ui/skeleton';
-import { ArtifactDownload, FilePages } from '@/features/artifacts/public';
+import {
+  ArtifactDownload,
+  FilePages,
+  ResponseFiles,
+} from '@/features/artifacts/public';
 import { SentAttachments } from './sent-attachments';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -110,11 +114,19 @@ export function RunDataValue({
       ) : (
         <>
           {scope.workspace.capabilities.includes('artifact:read') ? (
-            <FilePages
-              value={data.value}
-              apiClient={scope.apiClient}
-              workspaceId={scope.workspace.id}
-            />
+            <>
+              <ResponseFiles
+                value={data.value}
+                apiClient={scope.apiClient}
+                userId={scope.userId}
+                workspaceId={scope.workspace.id}
+              />
+              <FilePages
+                value={data.value}
+                apiClient={scope.apiClient}
+                workspaceId={scope.workspace.id}
+              />
+            </>
           ) : null}
           <SentAttachments value={data.value} />
           <InlineValue value={data.value} title={title} />
