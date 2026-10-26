@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0053_remove_artifact_lookup.sql';
+export const EXPECTED_MIGRATION_HEAD = '0054_form_uploads.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

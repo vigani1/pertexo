@@ -22,6 +22,7 @@ import {
   nodeAttempts,
 } from '../../schema/runs/execution.js';
 import { runEvents, runCheckpoints } from '../../schema/runs/execution.js';
+import { pendingRunTasks } from '../../schema/runs/pending-task.js';
 const snapshot = alias(workflowTestSnapshots, 'snapshot');
 const entry = alias(workflowTestSuiteCases, 'entry');
 const suite = alias(workflowTestSuites, 'suite');
@@ -36,6 +37,7 @@ const node = alias(nodeRuns, 'node');
 const attempt = alias(nodeAttempts, 'attempt');
 const event = alias(runEvents, 'event');
 const checkpoint = alias(runCheckpoints, 'checkpoint');
+const task = alias(pendingRunTasks, 'task');
 const db = new QueryBuilder();
 type ReferenceOwner = Readonly<{
   build(where: SQL | undefined): SQLWrapper;
@@ -237,6 +239,22 @@ const OWNERS: readonly ReferenceOwner[] = [
     workflow: run.workflowId,
     accessibleWhen: liveRunValues,
     values: [sql`${checkpoint.schedulerState}`],
+  },
+  {
+    // A response's files are its own until the resumed step outputs them.
+    build: (where) =>
+      db
+        .select({ one: sql`1` })
+        .from(task)
+        .innerJoin(
+          run,
+          and(eq(run.workspaceId, task.workspaceId), eq(run.id, task.runId)),
+        )
+        .where(where),
+    workspace: task.workspaceId,
+    workflow: run.workflowId,
+    accessibleWhen: liveRunValues,
+    values: [sql`${task.outputRef}::jsonb`],
   },
 ];
 function referencesArtifact(value: SQL, artifact: SQL): SQL {

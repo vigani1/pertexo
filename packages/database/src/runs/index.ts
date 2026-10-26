@@ -76,6 +76,13 @@ export {
   ArtifactUploadNotFoundError,
 } from '../artifacts/uploads/input.js';
 export { createArtifactUploadDatabase } from '../artifacts/uploads/repository.js';
+export { createFormUploadDatabase } from '../artifacts/form-uploads/repository.js';
+export { FormUploadLimitError } from '../artifacts/form-uploads/errors.js';
+export type {
+  FormUpload,
+  FormUploadDatabase,
+  FormUploadTarget,
+} from '../artifacts/form-uploads/contract.js';
 export type {
   ArtifactUploadActor,
   ArtifactUploadAuthorization,

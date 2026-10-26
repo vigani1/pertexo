@@ -5,6 +5,7 @@ import { registerRetainsEveryOrdinaryPageNested } from './retention-artifacts/re
 import { registerKeepsExpiredPendingUploadDeleting } from './retention-artifacts/keeps-expired-pending-upload-deleting.cases.js';
 import { registerRetainsReferencedArtifactsDeletesUnreferenced } from './retention-artifacts/retains-referenced-artifacts-deletes-unreferenced.cases.js';
 import { registerFailsLateUploadFinalizationOnce } from './retention-artifacts/fails-late-upload-finalization-once.cases.js';
+import { registerDeletesAbandonedFormUpload } from './retention-artifacts/deletes-abandoned-form-upload.cases.js';
 beforeEach(beforeEachFixture1);
 describe('retention artifact reclamation', () => {
   registerRetainsEveryOrdinaryPageNested();
@@ -14,4 +15,6 @@ describe('retention artifact reclamation', () => {
   registerRetainsReferencedArtifactsDeletesUnreferenced();
 
   registerFailsLateUploadFinalizationOnce();
+
+  registerDeletesAbandonedFormUpload();
 });
