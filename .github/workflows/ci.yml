@@ -241,7 +241,7 @@ jobs:
             journeys: >-
               workflow-concurrency connection-health input-cases callable
               webhook-controlled-http api-tokens workflow-organization receipts
-              readonly nested-conflict email-attachments
+              readonly nested-conflict email-attachments form-uploads
           - suite: live-3
             journeys: >-
               duplication portability curated-templates run-recovery forms

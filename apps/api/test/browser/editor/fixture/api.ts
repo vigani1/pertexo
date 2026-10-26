@@ -29,6 +29,7 @@ import {
   callbackConfig,
   noticeMailKey,
   controlledHttpScenario,
+  artifactScenario,
 } from './environment.js';
 import {
   owner,
@@ -94,6 +95,7 @@ export function useEditorApiFixture(context: {
     automationTokens: scenario === 'api-tokens',
     notifications: [
       'forms',
+      'form-uploads',
       'approvals',
       'variables',
       'notifications',
@@ -110,9 +112,7 @@ export function useEditorApiFixture(context: {
             },
           },
         }),
-    ...(scenario === 'artifact-inputs' || scenario === 'email-attachments'
-      ? { artifacts: parseArtifactStoreConfig() }
-      : {}),
+    ...(artifactScenario ? { artifacts: parseArtifactStoreConfig() } : {}),
     schedules: scenario === 'schedule' || scenario === 'curated-templates',
     ...(httpMaster === undefined
       ? {}
@@ -221,7 +221,7 @@ export function useEditorApiFixture(context: {
       // Stop before worker/lease cleanup if a browser descendant is unconfirmed.
       for (const child of browserChildren.toReversed()) await closeChild(child);
       await owner.close();
-      if (scenario === 'artifact-inputs' || scenario === 'email-attachments') {
+      if (artifactScenario) {
         const rows = await api
           .database()
           .query<{ workspace_id: string; id: string }>(

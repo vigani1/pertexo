@@ -29,6 +29,10 @@ export const artifactInputs =
 export const emailAttachments =
   process.env.EDITOR_BROWSER_CASE === 'email-attachments';
 
+/** Form uploads read real stored files without any controlled HTTP. */
+export const formUploadsCase =
+  process.env.EDITOR_BROWSER_CASE === 'form-uploads';
+
 export const controlledHttp =
   process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http' ||
   process.env.EDITOR_BROWSER_CASE === 'failure-routing' ||

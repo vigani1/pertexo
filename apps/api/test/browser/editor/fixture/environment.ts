@@ -21,6 +21,7 @@ export const scenario = z
     'error-workflows',
     'approvals',
     'forms',
+    'form-uploads',
     'variables',
     'run-values',
     'governance',
@@ -68,6 +69,12 @@ export const webRequire = createRequire(new URL('package.json', webDirectory));
 export const noticeMailKey =
   scenario === 'notifications' ? randomBytes(32).toString('base64') : undefined;
 
+/** Journeys that store real files in the owned object store. */
+export const artifactScenario =
+  scenario === 'artifact-inputs' ||
+  scenario === 'email-attachments' ||
+  scenario === 'form-uploads';
+
 export const controlledHttpScenario =
   scenario === 'webhook-controlled-http' ||
   scenario === 'failure-routing' ||
@@ -111,6 +118,7 @@ const EDITOR_JOURNEY_PATHS = {
   notifications: 'editor/notifications/attention.spec.ts',
   variables: 'editor/variables/snapshots.spec.ts',
   forms: 'editor/forms/submission.spec.ts',
+  'form-uploads': 'editor/forms/uploads.spec.ts',
   approvals: 'editor/approvals.spec.ts',
   'error-workflows': 'editor/error-workflows.spec.ts',
   'api-tokens': 'api-tokens.spec.ts',

@@ -3,6 +3,7 @@ import { verifyCallbackEvidence } from '../evidence/callbacks/verify.js';
 import { verifyNotificationEvidence } from '../evidence/notifications/verify.js';
 import { verifyVariableEvidence } from '../evidence/variables/verify.js';
 import { verifyFormEvidence } from '../evidence/forms/verify.js';
+import { verifyFormUploadEvidence } from '../evidence/forms/uploads.js';
 import { verifyApprovalEvidence } from '../evidence/approvals/verify.js';
 
 import { expect } from 'vitest';
@@ -117,6 +118,12 @@ export async function verifyEditorFormsOutcome(
   const { api } = context;
   await verifyFormEvidence(api.database());
   return;
+}
+
+export async function verifyEditorFormUploadsOutcome(
+  context: EditorBrowserJourneyContext,
+) {
+  await verifyFormUploadEvidence(context.api.database());
 }
 
 export async function verifyEditorApprovalsOutcome(
