@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { SHEET_PREVIEW_ROWS } from '../../../../model/inspector/files/sheet-preview';
 
@@ -13,8 +13,9 @@ const PLACEHOLDER_WIDTHS = [
 /**
  * A few rows of a sheet in a fixed frame: column letters, the header row
  * lit and frozen above the data, then up to four rows. Without rows it draws
- * the same frame softly, so nothing moves when a test fills it. `footer`
- * sits under the frame, where Excel keeps its sheet tabs.
+ * the same frame softly, so nothing moves when a test fills it; `notice`
+ * says why it's empty. Columns that don't fit fade at the edge they scroll
+ * from. `footer` sits under the frame, where Excel keeps its sheet tabs.
  */
 export function SheetGrid({
   label,
@@ -22,6 +23,7 @@ export function SheetGrid({
   headers,
   rows,
   caption,
+  notice,
   stale = false,
   footer,
 }: Readonly<{
@@ -31,12 +33,17 @@ export function SheetGrid({
   headers: readonly string[] | undefined;
   rows: readonly (readonly (string | undefined)[])[];
   caption: ReactNode;
+  /** Drawn over the empty frame, such as a sheet with only its header row. */
+  notice?: string | undefined;
   /** The rows came from before the latest edit. */
   stale?: boolean;
   footer?: ReactNode;
 }>) {
   const columns = Math.max(3, headers?.length ?? 0);
   const template = `1.75rem repeat(${String(columns)}, minmax(4.5rem, 1fr))`;
+  const hintId = useId();
+  const { scroller, hidden } = useHiddenColumns(columns);
+  const scrolls = hidden.start || hidden.end;
   return (
     <figure className="m-0 flex min-w-0 flex-col">
       <div className="relative min-w-0 overflow-hidden rounded-t-lg border border-surface-ink/8 bg-recess-ink/15">
@@ -48,10 +55,26 @@ export function SheetGrid({
             Before your edits
           </span>
         ) : null}
+        <EdgeFade side="start" shown={hidden.start} />
+        <EdgeFade side="end" shown={hidden.end} />
+        {notice === undefined ? null : (
+          // The caption says the same to screen readers.
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-0 top-12 bottom-0 z-[6] grid place-items-center"
+          >
+            <span className="rounded-full border border-surface-ink/10 bg-background/90 px-2.5 font-sans text-xs leading-6 text-muted-foreground">
+              {notice}
+            </span>
+          </span>
+        )}
         <div
+          ref={scroller}
           role={headers === undefined ? undefined : 'table'}
           aria-label={headers === undefined ? undefined : label}
-          className="overflow-x-auto overscroll-x-contain [scrollbar-width:thin]"
+          aria-describedby={scrolls ? hintId : undefined}
+          tabIndex={scrolls ? 0 : undefined}
+          className="overflow-x-auto overscroll-x-contain [scrollbar-width:thin] focus-ring"
         >
           <div
             className="grid w-max min-w-full font-mono text-[0.68rem] leading-6"
@@ -89,6 +112,9 @@ export function SheetGrid({
           </div>
         </div>
       </div>
+      <span id={hintId} className="sr-only">
+        Scroll sideways to see more columns.
+      </span>
       {footer}
       {/* Two lines are kept, so captions of different lengths don't shift the panel. */}
       <figcaption
@@ -105,6 +131,54 @@ export function SheetGrid({
         ) : null}
       </figcaption>
     </figure>
+  );
+}
+
+/** Which edges hide columns: the frame fades there to show it scrolls. */
+function useHiddenColumns(columns: number) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [hidden, setHidden] = useState({ start: false, end: false });
+  useEffect(() => {
+    const element = scroller.current;
+    if (element === null) return;
+    const measure = () => {
+      const start = element.scrollLeft > 1;
+      const end =
+        element.scrollLeft + element.clientWidth < element.scrollWidth - 1;
+      setHidden((current) =>
+        current.start === start && current.end === end
+          ? current
+          : { start, end },
+      );
+    };
+    measure();
+    // The frame resizes with the panel, the grid with its columns.
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    if (element.firstElementChild !== null)
+      observer.observe(element.firstElementChild);
+    element.addEventListener('scroll', measure, { passive: true });
+    return () => {
+      observer.disconnect();
+      element.removeEventListener('scroll', measure);
+    };
+  }, [columns]);
+  return { scroller, hidden };
+}
+
+function EdgeFade({
+  side,
+  shown,
+}: Readonly<{ side: 'start' | 'end'; shown: boolean }>) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'pointer-events-none absolute inset-y-0 z-[5] w-8 from-background to-transparent transition-opacity duration-200 motion-reduce:transition-none',
+        side === 'start' ? 'left-0 bg-linear-to-r' : 'right-0 bg-linear-to-l',
+        shown ? 'opacity-90' : 'opacity-0',
+      )}
+    />
   );
 }
 

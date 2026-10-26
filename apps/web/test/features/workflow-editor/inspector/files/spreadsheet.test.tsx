@@ -1,6 +1,6 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   PreviewRunSummary,
   WorkflowGraphContract,
@@ -125,6 +125,21 @@ function setup(
   };
 }
 
+/** jsdom lays nothing out; give scrollers the widths a narrow panel has. */
+function widthsOf(
+  widths: Readonly<{ clientWidth: number; scrollWidth: number }>,
+) {
+  for (const [key, value] of Object.entries(widths))
+    Object.defineProperty(HTMLElement.prototype, key, {
+      configurable: true,
+      get: () => value,
+    });
+}
+
+afterEach(() => {
+  widthsOf({ clientWidth: 0, scrollWidth: 0 });
+});
+
 describe('Excel in the file step setups', () => {
   it('reads a sheet named from the last failed test and previews its rows', async () => {
     const user = userEvent.setup();
@@ -200,6 +215,49 @@ describe('Excel in the file step setups', () => {
     await user.type(sheet, 'a/b');
     await user.tab();
     expect(screen.getByText(/Sheet names cannot use/u)).toBeVisible();
+  });
+
+  it('says so when the sheet has a header row and no rows under it', () => {
+    const state = setup({
+      definition: { key: 'core.read_file', version: 1 },
+      config: { format: 'xlsx', headerRow: 1, convertValues: true },
+      inputMappings: {},
+    });
+    act(() => {
+      state.finishTest({ output: { kind: 'inline', value: [] } });
+    });
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.getByText('No rows under the header row')).toBeVisible();
+    expect(
+      screen.getByText(
+        'The last test found the header row and no rows under it.',
+      ),
+    ).toBeVisible();
+  });
+
+  it('shows that a wide sheet scrolls sideways', () => {
+    widthsOf({ clientWidth: 300, scrollWidth: 620 });
+    const state = setup({
+      definition: { key: 'core.read_file', version: 1 },
+      config: { format: 'xlsx', headerRow: 1, convertValues: true },
+      inputMappings: {},
+    });
+    act(() => {
+      state.finishTest({
+        output: {
+          kind: 'inline',
+          value: [{ sku: 'A1', name: 'Bolt', stock: 4, bin: 'C2', price: 1 }],
+        },
+      });
+    });
+    const table = screen.getByRole('table', {
+      name: 'First rows from the last test',
+    });
+    expect(table).toHaveAccessibleDescription(
+      'Scroll sideways to see more columns.',
+    );
+    // Keyboard people can reach the hidden columns too.
+    expect(table).toHaveAttribute('tabindex', '0');
   });
 
   it('writes Excel with ordered columns and shows how the sheet starts', async () => {
