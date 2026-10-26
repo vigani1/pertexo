@@ -62,6 +62,7 @@ export const pendingTaskSummarySchema = z
     status: pendingTaskStatusSchema,
     createdAt: z.iso.datetime(),
     expiresAt: z.iso.datetime(),
+    onExpiry: taskExpiryChoiceSchema,
     completedAt: z.iso.datetime().nullable(),
     completedByName: z.string().max(256).nullable(),
     canRespond: z.boolean(),
@@ -74,7 +75,6 @@ const taskDetailBase = pendingTaskSummarySchema.extend({
   workflowVersionId: z.uuid(),
   instructions: z.string().max(PENDING_TASK_LIMITS.instructionsCharacters),
   audience: taskAudienceSchema,
-  onExpiry: taskExpiryChoiceSchema,
 });
 export const pendingTaskDetailSchema = z.discriminatedUnion('kind', [
   taskDetailBase

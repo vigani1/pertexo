@@ -127,6 +127,13 @@
           "format": "date-time",
           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
         },
+        "onExpiry": {
+          "type": "string",
+          "enum": [
+            "fail",
+            "continue"
+          ]
+        },
         "completedAt": {
           "anyOf": [
             {
@@ -186,6 +193,7 @@
         "status",
         "createdAt",
         "expiresAt",
+        "onExpiry",
         "completedAt",
         "completedByName",
         "canRespond",
@@ -319,6 +327,13 @@
               "format": "date-time",
               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
             },
+            "onExpiry": {
+              "type": "string",
+              "enum": [
+                "fail",
+                "continue"
+              ]
+            },
             "completedAt": {
               "anyOf": [
                 {
@@ -409,13 +424,6 @@
               ],
               "additionalProperties": false
             },
-            "onExpiry": {
-              "type": "string",
-              "enum": [
-                "fail",
-                "continue"
-              ]
-            },
             "output": {
               "anyOf": [
                 {
@@ -483,6 +491,7 @@
             "status",
             "createdAt",
             "expiresAt",
+            "onExpiry",
             "completedAt",
             "completedByName",
             "canRespond",
@@ -490,7 +499,6 @@
             "workflowVersionId",
             "instructions",
             "audience",
-            "onExpiry",
             "output"
           ],
           "additionalProperties": false
@@ -618,6 +626,13 @@
               "format": "date-time",
               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
             },
+            "onExpiry": {
+              "type": "string",
+              "enum": [
+                "fail",
+                "continue"
+              ]
+            },
             "completedAt": {
               "anyOf": [
                 {
@@ -707,13 +722,6 @@
                 "memberIds"
               ],
               "additionalProperties": false
-            },
-            "onExpiry": {
-              "type": "string",
-              "enum": [
-                "fail",
-                "continue"
-              ]
             },
             "fields": {
               "minItems": 1,
@@ -1209,6 +1217,7 @@
             "status",
             "createdAt",
             "expiresAt",
+            "onExpiry",
             "completedAt",
             "completedByName",
             "canRespond",
@@ -1216,7 +1225,6 @@
             "workflowVersionId",
             "instructions",
             "audience",
-            "onExpiry",
             "fields",
             "prefill",
             "output"
@@ -1354,6 +1362,13 @@
                   "format": "date-time",
                   "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                 },
+                "onExpiry": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ]
+                },
                 "completedAt": {
                   "anyOf": [
                     {
@@ -1444,13 +1459,6 @@
                   ],
                   "additionalProperties": false
                 },
-                "onExpiry": {
-                  "type": "string",
-                  "enum": [
-                    "fail",
-                    "continue"
-                  ]
-                },
                 "output": {
                   "anyOf": [
                     {
@@ -1518,6 +1526,7 @@
                 "status",
                 "createdAt",
                 "expiresAt",
+                "onExpiry",
                 "completedAt",
                 "completedByName",
                 "canRespond",
@@ -1525,7 +1534,6 @@
                 "workflowVersionId",
                 "instructions",
                 "audience",
-                "onExpiry",
                 "output"
               ],
               "additionalProperties": false
@@ -1653,6 +1661,13 @@
                   "format": "date-time",
                   "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                 },
+                "onExpiry": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ]
+                },
                 "completedAt": {
                   "anyOf": [
                     {
@@ -1742,13 +1757,6 @@
                     "memberIds"
                   ],
                   "additionalProperties": false
-                },
-                "onExpiry": {
-                  "type": "string",
-                  "enum": [
-                    "fail",
-                    "continue"
-                  ]
                 },
                 "fields": {
                   "minItems": 1,
@@ -2244,6 +2252,7 @@
                 "status",
                 "createdAt",
                 "expiresAt",
+                "onExpiry",
                 "completedAt",
                 "completedByName",
                 "canRespond",
@@ -2251,7 +2260,6 @@
                 "workflowVersionId",
                 "instructions",
                 "audience",
-                "onExpiry",
                 "fields",
                 "prefill",
                 "output"
@@ -2399,6 +2407,13 @@
                 "format": "date-time",
                 "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
               },
+              "onExpiry": {
+                "type": "string",
+                "enum": [
+                  "fail",
+                  "continue"
+                ]
+              },
               "completedAt": {
                 "anyOf": [
                   {
@@ -2458,6 +2473,7 @@
               "status",
               "createdAt",
               "expiresAt",
+              "onExpiry",
               "completedAt",
               "completedByName",
               "canRespond",
@@ -2641,6 +2657,13 @@
                   "format": "date-time",
                   "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                 },
+                "onExpiry": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ]
+                },
                 "completedAt": {
                   "anyOf": [
                     {
@@ -2731,13 +2754,6 @@
                   ],
                   "additionalProperties": false
                 },
-                "onExpiry": {
-                  "type": "string",
-                  "enum": [
-                    "fail",
-                    "continue"
-                  ]
-                },
                 "output": {
                   "anyOf": [
                     {
@@ -2805,6 +2821,7 @@
                 "status",
                 "createdAt",
                 "expiresAt",
+                "onExpiry",
                 "completedAt",
                 "completedByName",
                 "canRespond",
@@ -2812,7 +2829,6 @@
                 "workflowVersionId",
                 "instructions",
                 "audience",
-                "onExpiry",
                 "output"
               ],
               "additionalProperties": false
@@ -2940,6 +2956,13 @@
                   "format": "date-time",
                   "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                 },
+                "onExpiry": {
+                  "type": "string",
+                  "enum": [
+                    "fail",
+                    "continue"
+                  ]
+                },
                 "completedAt": {
                   "anyOf": [
                     {
@@ -3029,13 +3052,6 @@
                     "memberIds"
                   ],
                   "additionalProperties": false
-                },
-                "onExpiry": {
-                  "type": "string",
-                  "enum": [
-                    "fail",
-                    "continue"
-                  ]
                 },
                 "fields": {
                   "minItems": 1,
@@ -3531,6 +3547,7 @@
                 "status",
                 "createdAt",
                 "expiresAt",
+                "onExpiry",
                 "completedAt",
                 "completedByName",
                 "canRespond",
@@ -3538,7 +3555,6 @@
                 "workflowVersionId",
                 "instructions",
                 "audience",
-                "onExpiry",
                 "fields",
                 "prefill",
                 "output"

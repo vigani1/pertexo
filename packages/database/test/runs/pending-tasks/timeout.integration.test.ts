@@ -88,6 +88,10 @@ describe('expiry of a task that continues on Timed out', () => {
       blockedReason: 'expired',
     });
     expect((await storedTask(f)).status).toBe('expired');
+    const listed = await store.list({ ...f.scope, view: 'all', status: 'all' });
+    expect(listed.items).toMatchObject([
+      { id: f.taskId, status: 'expired', onExpiry: 'continue' },
+    ]);
   });
 
   it('keeps a failing task without an output', async () => {
