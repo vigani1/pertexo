@@ -413,9 +413,6 @@ importers:
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
-      '@types/smtp-server':
-        specifier: 3.5.13
-        version: 3.5.13
       bullmq:
         specifier: 6.3.16
         version: 6.3.16(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1)
@@ -564,9 +561,6 @@ importers:
       '@types/nodemailer':
         specifier: 8.0.2
         version: 8.0.2
-      '@types/smtp-server':
-        specifier: 3.5.13
-        version: 3.5.13
       smtp-server:
         specifier: 3.21.1
         version: 3.21.1
@@ -2524,9 +2518,6 @@ packages:
 
   '@types/set-cookie-parser@2.4.10':
     resolution: {integrity: sha512-GGmQVGpQWUe5qglJozEjZV/5dyxbOOZ0LHe/lqyWssB88Y4svNfst0uqBVscdDeIKl5Jy5+aPSvy7mI9tYRguw==}
-
-  '@types/smtp-server@3.5.13':
-    resolution: {integrity: sha512-S3rGl2KbViH+98/CgHipPIWgtAFnjxLsppxIRbgJHNuZL7Y+py+7kZjT7xS+wOmCxYTn4O7IqLqkvekg99MDVQ==}
 
   '@types/statuses@2.0.6':
     resolution: {integrity: sha512-xMAgYwceFhRA2zY+XbEA7mxYbA093wdiW8Vu6gZPGWy9cmOyU9XesH1tNcEWsKFd5Vzrqx5T3D38PWx1FIIXkA==}
@@ -6703,11 +6694,6 @@ snapshots:
   '@types/set-cookie-parser@2.4.10':
     dependencies:
       '@types/node': 24.19.2
-
-  '@types/smtp-server@3.5.13':
-    dependencies:
-      '@types/node': 24.19.2
-      '@types/nodemailer': 8.0.2
 
   '@types/statuses@2.0.6': {}
 
