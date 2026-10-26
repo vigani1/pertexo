@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
+import { useRemovalFocus } from '@/lib/hooks/use-removal-focus';
 import { UploadFile } from '@/features/artifacts/public';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
@@ -124,6 +125,7 @@ function AttachmentList({
                 model.toggle(row.id);
               }}
               onChange={model.replace}
+              removeRef={model.focus.removeButton(row.id)}
               onRemove={() => {
                 model.remove(row, index);
               }}
@@ -170,6 +172,7 @@ function AttachActions({
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
         <AttachPicker
+          triggerRef={model.focus.fallback}
           graph={graph}
           nodeId={model.form.nodeId}
           definitions={definitions}
@@ -263,6 +266,7 @@ function useAttachments({
   const store = useEditorStoreApi();
   const notifications = useNotifications();
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
+  const focus = useRemovalFocus<HTMLButtonElement>();
   const rows = draft.text.mode === 'files' ? draft.text.rows : [];
   function change(next: readonly AttachmentDraft[]) {
     draft.change({ mode: 'files', rows: next });
@@ -279,6 +283,7 @@ function useAttachments({
     form,
     rows,
     open,
+    focus,
     toggle,
     add: (source: ValueSource | undefined) => {
       const row = newAttachment(source);
@@ -306,6 +311,10 @@ function useAttachments({
       change(rows.map((current) => (current.id === row.id ? row : current)));
     },
     remove: (row: AttachmentDraft, index: number) => {
+      focus.removing(
+        rows.map((each) => each.id),
+        row.id,
+      );
       const before = store.getState().generation;
       change(rows.filter((current) => current.id !== row.id));
       const after = store.getState().generation;

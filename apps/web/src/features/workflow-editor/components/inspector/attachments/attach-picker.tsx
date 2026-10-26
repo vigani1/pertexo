@@ -1,6 +1,6 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { ChevronDownIcon, PaperclipIcon, PlusIcon } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type Ref } from 'react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import {
   Popover,
@@ -180,6 +180,7 @@ function StepTitle({
  * source picked in the row itself.
  */
 export function AttachPicker({
+  triggerRef,
   graph,
   nodeId,
   definitions,
@@ -187,6 +188,8 @@ export function AttachPicker({
   onPick,
   onPickList,
 }: Readonly<{
+  /** Takes focus when the last attachment is removed. */
+  triggerRef?: Ref<HTMLButtonElement>;
   graph: GraphLevel;
   nodeId: string;
   definitions: readonly NodeDefinitionCatalogItem[];
@@ -212,6 +215,7 @@ export function AttachPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
+        ref={triggerRef}
         disabled={disabled}
         className={buttonVariants({ size: 'sm', variant: 'outline' })}
       >
