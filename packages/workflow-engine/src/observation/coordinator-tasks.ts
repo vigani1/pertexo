@@ -1,7 +1,9 @@
 import {
   approvalConfigSchema,
   canonicalJson,
+  continuesOnExpiry,
   inputRequestConfigSchema,
+  TIMED_OUT_PORT,
   isPendingTaskNode,
   isCallbackWaitNode,
   callbackWaitConfigSchema,
@@ -19,7 +21,10 @@ import { findExecutableNodeContext } from '../compilation/graph.js';
 import { normalizeBoundedEngineJson } from '../compilation/validation.js';
 import { exactKeys, operationError, record } from '../operation-values.js';
 import { parseBranchPath, parseIterationPath } from '../checkpoint/fields.js';
-import { configuredScopedOutputPorts } from '../transition/scheduling/readiness.js';
+import {
+  configuredBranchOutputPorts,
+  configuredScopedOutputPorts,
+} from '../transition/scheduling/readiness.js';
 import { invocationKey } from '../transition/scheduling/loops.js';
 import {
   isFinishedIterationScope,
@@ -278,59 +283,101 @@ function taskResultObservations(
   owner: InvocationState,
   nodes: ReadonlyMap<string, WorkflowExecutableNode>,
 ): readonly WorkflowObservation[] {
-  const observations: WorkflowObservation[] = [];
+  const node = nodes.get(fact.nodeId);
   const inputRequest =
-    nodes.get(fact.nodeId)?.definition.key === 'core.request_input' ||
-    isCallbackWaitNode(nodes.get(fact.nodeId));
+    node?.definition.key === 'core.request_input' || isCallbackWaitNode(node);
   const incompatibleTaskResult =
     (fact.status === 'submitted' && !inputRequest) ||
     (['approved', 'rejected'].includes(fact.status) && inputRequest);
   if (incompatibleTaskResult)
     operationError('observation_invalid', 'task result kind conflicts');
-  const decided = ['approved', 'rejected', 'submitted'].includes(fact.status);
-  const reasonCode =
-    fact.status === 'refused'
-      ? 'pending_task.capacity_exceeded'
-      : 'pending_task.expired';
-  observations.push({
-    kind: 'outcome',
-    invocationKey: fact.invocationKey,
-    status: taskOutcomeStatus(fact.status, { decided }),
-    ...(decided
-      ? {
-          output: { kind: 'task', taskId: fact.taskId } as const,
-          ...(isCallbackWaitNode(nodes.get(fact.nodeId))
-            ? { reasonCode: 'callback.received' }
-            : {}),
-        }
-      : { reasonCode }),
-    ...(!decided && fact.status !== 'canceled'
-      ? {
-          failure: {
-            nodeId: fact.nodeId,
-            invocationKey: fact.invocationKey,
-            attemptNumber: owner.attemptNumber,
-            errorKind: 'human_task' as const,
-            safeErrorCode: reasonCode,
-          },
-        }
-      : {}),
-    coordinatorDerived: true,
-  });
-  if (decided && !inputRequest)
+  // Silence settles like an answer when the step continues on Timed out.
+  const timedOut =
+    fact.status === 'expired' && node !== undefined && continuesOnExpiry(node);
+  const settled =
+    timedOut || ['approved', 'rejected', 'submitted'].includes(fact.status);
+  const observations: WorkflowObservation[] = [
+    settled
+      ? settledTaskOutcome(fact, { node, timedOut })
+      : unsettledTaskOutcome(fact, owner),
+  ];
+  const selectedOutputPort = settled
+    ? selectedTaskPort(fact, { node, timedOut })
+    : undefined;
+  if (selectedOutputPort !== undefined)
     observations.push({
       kind: 'branch_selected',
       invocationKey: fact.invocationKey,
       nodeId: fact.nodeId,
-      selectedOutputPort: fact.status,
+      selectedOutputPort,
       coordinatorDerived: true,
     });
   return observations;
 }
-function taskOutcomeStatus(
-  status: PendingTaskOutcome['status'],
-  { decided }: Readonly<{ decided: boolean }>,
-): 'succeeded' | 'canceled' | 'failed' {
-  if (decided) return 'succeeded';
-  return status === 'canceled' ? 'canceled' : 'failed';
+
+function settledTaskOutcome(
+  fact: PendingTaskOutcome,
+  {
+    node,
+    timedOut,
+  }: Readonly<{ node: WorkflowExecutableNode | undefined; timedOut: boolean }>,
+): WorkflowObservation {
+  let reasonCode: string | undefined;
+  if (timedOut) reasonCode = 'pending_task.timed_out';
+  else if (isCallbackWaitNode(node)) reasonCode = 'callback.received';
+  return {
+    kind: 'outcome',
+    invocationKey: fact.invocationKey,
+    status: 'succeeded',
+    output: { kind: 'task', taskId: fact.taskId },
+    ...(reasonCode === undefined ? {} : { reasonCode }),
+    coordinatorDerived: true,
+  };
+}
+
+function unsettledTaskOutcome(
+  fact: PendingTaskOutcome,
+  owner: InvocationState,
+): WorkflowObservation {
+  if (fact.status === 'canceled')
+    return {
+      kind: 'outcome',
+      invocationKey: fact.invocationKey,
+      status: 'canceled',
+      reasonCode: 'pending_task.expired',
+      coordinatorDerived: true,
+    };
+  const reasonCode =
+    fact.status === 'refused'
+      ? 'pending_task.capacity_exceeded'
+      : 'pending_task.expired';
+  return {
+    kind: 'outcome',
+    invocationKey: fact.invocationKey,
+    status: 'failed',
+    reasonCode,
+    failure: {
+      nodeId: fact.nodeId,
+      invocationKey: fact.invocationKey,
+      attemptNumber: owner.attemptNumber,
+      errorKind: 'human_task',
+      safeErrorCode: reasonCode,
+    },
+    coordinatorDerived: true,
+  };
+}
+
+/** The decision's own path, or Timed out; a step without branches has none. */
+function selectedTaskPort(
+  fact: PendingTaskOutcome,
+  {
+    node,
+    timedOut,
+  }: Readonly<{ node: WorkflowExecutableNode | undefined; timedOut: boolean }>,
+): string | undefined {
+  const ports =
+    node === undefined ? undefined : configuredBranchOutputPorts(node);
+  if (ports === undefined) return undefined;
+  if (timedOut) return TIMED_OUT_PORT;
+  return fact.status === 'submitted' ? 'out' : fact.status;
 }

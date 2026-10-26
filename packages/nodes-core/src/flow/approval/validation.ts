@@ -3,6 +3,7 @@ import {
   approvalOutputSchema,
   taskContextSchema,
   taskDetailsSchema,
+  timedOutTaskOutputSchema,
 } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
@@ -15,4 +16,5 @@ export const CORE_APPROVAL_OUTPUT_SCHEMA = z.union([
     .object({ pending: z.literal(true), context: taskContextSchema.optional() })
     .strict(),
   approvalOutputSchema,
+  timedOutTaskOutputSchema,
 ]);

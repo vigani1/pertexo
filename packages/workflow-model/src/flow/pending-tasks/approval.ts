@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { storageTextSchema } from '../../values/json/text.js';
 import { PENDING_TASK_LIMITS, taskAudienceSchema } from './audience.js';
 
+/** What happens when nobody responds before the task expires. */
+export const taskExpiryChoiceSchema = z.enum(['fail', 'continue']);
+
 export const approvalConfigSchema = z
   .object({
     title: z
@@ -21,6 +24,9 @@ export const approvalConfigSchema = z
       .min(PENDING_TASK_LIMITS.minimumExpirySeconds)
       .max(PENDING_TASK_LIMITS.maximumExpirySeconds)
       .default(PENDING_TASK_LIMITS.defaultExpirySeconds),
+    // Absent in every step saved before the Timed out path existed, so those
+    // steps keep failing when nobody responds.
+    onExpiry: taskExpiryChoiceSchema.default('fail'),
     allowStarterToDecide: z.boolean().exactOptional(),
     audience: taskAudienceSchema.default({
       roles: [...ADMINISTRATIVE_ROLES],

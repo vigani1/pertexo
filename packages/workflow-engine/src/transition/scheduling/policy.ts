@@ -1,4 +1,8 @@
-import { isRecord, workflowControlOutputKind } from '@pertexo/workflow-model';
+import {
+  isRecord,
+  pendingTaskOutputPorts,
+  workflowControlOutputKind,
+} from '@pertexo/workflow-model';
 import type { ExecutionFailureRoute } from '../../compilation/foundation.js';
 
 import type { BranchScopePart, IterationScopePart } from '../../types.js';
@@ -33,14 +37,16 @@ export function configuredBranchOutputPorts(
     config?: Readonly<Record<string, unknown>>;
   }>,
 ): readonly string[] | undefined {
+  // A Request input routes by branch only once it has a Timed out path.
+  const taskPorts = pendingTaskOutputPorts(node);
+  if (taskPorts !== undefined)
+    return taskPorts.length > 1 ? taskPorts : undefined;
   if (workflowControlOutputKind(node.definition) !== 'branch') return undefined;
   if (
     node.definition?.key === 'core.condition' &&
     node.definition.version === 1
   )
     return ['false', 'true'];
-  if (node.definition?.key === 'core.approval' && node.definition.version === 1)
-    return ['approved', 'rejected'];
   if (node.definition?.key !== 'core.switch' || node.definition.version !== 1)
     return undefined;
   if (node.config === undefined) return undefined;

@@ -56,13 +56,13 @@ const fixtureDefinitions: Readonly<
     capabilities: ['suspends_run'],
     family: 'logic',
     inputs: ['in'],
-    outputs: ['out'],
+    outputs: ['out', 'timed_out'],
   },
   'core.approval': {
     capabilities: ['suspends_run'],
     family: 'logic',
     inputs: ['in'],
-    outputs: ['approved', 'rejected'],
+    outputs: ['approved', 'rejected', 'timed_out'],
   },
   'core.call': {
     capabilities: [],

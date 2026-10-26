@@ -10,6 +10,7 @@ export const inputRequestConfigSchema = formConfigSchema
     title: formConfigSchema.shape.title.default('Input needed'),
     audience: approvalConfigSchema.shape.audience,
     expiresAfterSeconds: approvalConfigSchema.shape.expiresAfterSeconds,
+    onExpiry: approvalConfigSchema.shape.onExpiry,
   })
   .strict()
   .refine((value) => {
