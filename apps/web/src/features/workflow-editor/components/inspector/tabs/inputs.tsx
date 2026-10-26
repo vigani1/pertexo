@@ -9,7 +9,10 @@ import { PlusIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { useEditorStoreApi } from '../../../model/state/context';
+import {
+  useEditorStore,
+  useEditorStoreApi,
+} from '../../../model/state/context';
 import type { EditorFocusTarget } from '../../../hooks/use-editor-actions';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import {
@@ -108,6 +111,7 @@ function MappedInputsTab({
   Readonly<{ links: ReactNode }>) {
   const { definitions, workspaceScope } = useInspectorSession();
   const store = useEditorStoreApi();
+  const workflow = useEditorStore((state) => state.graph);
   const notifications = useNotifications();
   const mappings = useInputMappingDraft({
     node,
@@ -228,6 +232,7 @@ function MappedInputsTab({
             </Button>
             <InsertDataPicker
               variableScope={workspaceScope}
+              workflow={workflow}
               graph={graph}
               nodeId={node.id}
               loopPorts={loopPorts}

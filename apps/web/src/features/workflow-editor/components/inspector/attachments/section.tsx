@@ -17,7 +17,10 @@ import {
   newAttachment,
   type AttachmentDraft,
 } from '../../../model/inspector/object-mappings/attachments';
-import { useEditorStoreApi } from '../../../model/state/context';
+import {
+  useEditorStore,
+  useEditorStoreApi,
+} from '../../../model/state/context';
 import { MappingValueEditor } from '../input-mappings/value-editor';
 import {
   directPredecessorOptions,
@@ -166,6 +169,7 @@ function AttachActions({
   graph,
 }: Readonly<{ model: AttachmentsModel; graph: GraphLevel }>) {
   const { definitions, workspaceScope } = useInspectorSession();
+  const workflow = useEditorStore((state) => state.graph);
   const full = model.rows.length >= maxAttachments;
   const disabled = !model.form.editable || full;
   return (
@@ -173,6 +177,7 @@ function AttachActions({
       <div className="flex flex-wrap gap-2">
         <AttachPicker
           triggerRef={model.focus.fallback}
+          workflow={workflow}
           graph={graph}
           nodeId={model.form.nodeId}
           definitions={definitions}
