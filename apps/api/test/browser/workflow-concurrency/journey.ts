@@ -12,6 +12,7 @@ import { restartEditorBrowserWorker } from '../harness/worker-restart.js';
 
 import { webOrigin, webDirectory, webRequire } from './environment.js';
 import { successfulExit } from './process.js';
+import { liveWebPort } from '../web-origin.js';
 import type { createWorkflowConcurrencyJourney } from './fixture.js';
 
 export function registerWorkflowConcurrencyJourney(
@@ -290,7 +291,7 @@ export function registerWorkflowConcurrencyJourney(
         '--host',
         '127.0.0.1',
         '--port',
-        '4174',
+        String(liveWebPort),
         '--strictPort',
       ],
       'vite',

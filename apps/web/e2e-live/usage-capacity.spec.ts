@@ -90,10 +90,7 @@ test('reports real current capacity and retained activity with exact drilldowns'
   const failed = page
     .getByRole('list', { name: 'Activity by current run status' })
     .getByRole('link', { name: 'Failed 1' });
-  const href = new URL(
-    (await failed.getAttribute('href')) ?? '',
-    'http://127.0.0.1:4174',
-  );
+  const href = new URL((await failed.getAttribute('href')) ?? '', page.url());
   expect(href.searchParams.get('createdAtFrom')).toBe(
     sixHour.window.createdAtFrom,
   );

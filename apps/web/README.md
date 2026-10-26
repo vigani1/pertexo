@@ -123,6 +123,20 @@ controlled HTTP journey alongside authoring cases. Use the fixture's ownership
 requirements; mocked journeys do not qualify live provider credentials or
 production deployment.
 
+Live journeys serve the web preview on `PERTEXO_LIVE_WEB_PORT` (default `4174`;
+the SAML journey also takes the next port). To run a journey next to another
+run, use its own checkout (each build writes that checkout's `dist/`), its own
+Compose project and service ports, and a free web port:
+
+```sh
+export COMPOSE_PROJECT_NAME=pertexo-live-b POSTGRES_PORT=55520 REDIS_PORT=56520 \
+  ARTIFACT_STORE_PORT=59520 PERTEXO_LIVE_WEB_PORT=4184
+# Point DATABASE_*_URL, REDIS_URL and ARTIFACT_STORE_ENDPOINT at those ports,
+# then start the services, build the ownership manifest and run the journey
+# exactly as the "Browser journeys against the real stack" step in ci.yml does.
+docker compose up -d --wait postgres redis artifact-store
+```
+
 Root build/typecheck/lint/test commands include this workspace. CI runs both its
 unit tests and the authenticated Chromium journeys. The production output is
 `dist/`; the production reverse-proxy template is
