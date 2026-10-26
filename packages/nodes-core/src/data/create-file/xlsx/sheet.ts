@@ -9,7 +9,7 @@ export type SheetRow = Readonly<Record<string, JsonValue>>;
  * the bold quoted style. quotePrefix keeps formula-like text as text even
  * after someone edits the cell in Excel.
  */
-export const SHEET_STYLES = Object.freeze({ header: 1, quoted: 2 });
+const SHEET_STYLES = Object.freeze({ header: 1, quoted: 2 });
 
 const MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const CELL_TEXT_LENGTH = 32_767;
