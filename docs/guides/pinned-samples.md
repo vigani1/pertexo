@@ -104,7 +104,7 @@ changes. Conflicts preserve your pasted JSON so you can review before retrying.
 
 Use JSON within the usual inline run-data limits: 256 KB, depth 64 and 10,000
 members. File references and file-backed output can’t be pinned yet. Use **Read
-file** first to turn a JSON or CSV file into bounded JSON.
+file** first to turn a JSON, CSV or Excel file into bounded JSON.
 
 Samples expire 30 days after saving or confirming. Pin fresh data after expiry.
 Replacing or removing a pin erases its old sample immediately. Existing test
