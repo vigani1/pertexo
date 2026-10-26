@@ -10,7 +10,7 @@ import {
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from '../fields/choice-select';
-import { WaitDurationField } from './duration-field';
+import { DurationField } from '../fields/duration';
 
 export function WaitSetup({
   config,
@@ -53,7 +53,7 @@ export function WaitSetup({
             : 'Test runs skip the wait, so you don’t have to sit through it.'}
         </FieldDescription>
       </Field>
-      <WaitDurationField
+      <DurationField
         key={callback ? 'timeout' : 'duration'}
         config={config}
         form={form}
