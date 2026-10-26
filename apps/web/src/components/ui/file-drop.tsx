@@ -22,12 +22,17 @@ export function FileDrop({
   disabled,
   className,
   children,
+  announces = true,
   onChoose,
   onChooseFiles,
   ...inputProps
 }: Omit<ComponentProps<'input'>, 'type' | 'onChange' | 'children' | 'value'> &
   Choice &
-  Readonly<{ children?: (state: FileDropState) => ReactNode }>) {
+  Readonly<{
+    children?: (state: FileDropState) => ReactNode;
+    /** Off when the consumer announces each file itself, so it's read once. */
+    announces?: boolean;
+  }>) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
   const [file, setFile] = useState<File>();
@@ -87,7 +92,7 @@ export function FileDrop({
       </label>
       <div
         className="pointer-events-none flex w-full min-w-0 items-center gap-3"
-        aria-live="polite"
+        aria-live={announces ? 'polite' : undefined}
       >
         {children ? (
           children({ file, dragging })

@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { PencilIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
@@ -27,6 +28,7 @@ type AttachmentRowProps = Readonly<{
   context: Omit<MappingSources, 'predecessors'>;
   onToggle: () => void;
   onChange: (row: AttachmentDraft) => void;
+  removeRef?: Ref<HTMLButtonElement>;
   onRemove: () => void;
 }>;
 
@@ -43,6 +45,7 @@ export function AttachmentRow({
   context,
   onToggle,
   onChange,
+  removeRef,
   onRemove,
 }: AttachmentRowProps) {
   const file = literalFile(row);
@@ -81,6 +84,7 @@ export function AttachmentRow({
               <PencilIcon />
             </Button>
             <Button
+              ref={removeRef}
               type="button"
               size="icon-sm"
               variant="ghost"

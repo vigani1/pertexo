@@ -205,12 +205,17 @@ describe('Send email attachments', { timeout: 30_000 }, () => {
       within(section).getByRole('button', { name: 'Remove attachment-2.pdf' }),
     );
     expect(within(section).queryByText(/over the limit/u)).toBeNull();
-    await event.click(
+    // Focus stays in the list as rows go, then lands on Attach a file.
+    expect(
       within(section).getByRole('button', { name: 'Remove Price list.pdf' }),
-    );
+    ).toHaveFocus();
+    await event.keyboard('{Enter}');
     expect(
       within(section).getByText('Attach a file from an earlier step'),
     ).toBeVisible();
+    expect(
+      within(section).getByRole('button', { name: 'Attach a file' }),
+    ).toHaveFocus();
     pressSave();
     await waitFor(() => {
       expect(saved.graph?.nodes[1]?.inputMappings).toEqual(message);

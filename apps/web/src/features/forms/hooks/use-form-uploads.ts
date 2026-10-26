@@ -25,7 +25,15 @@ class UploadsUnavailableError extends Error {}
  */
 export function useFormUploads(target: FormUploadTarget | undefined) {
   const [rows, setRows] = useState<Rows>({});
+  // The rows as of the last change, not the last render: two drops before a
+  // render must both count the files already taken.
+  const latest = useRef<Rows>(rows);
   const entries = useRef(new Map<string, Entry>());
+
+  function change(next: (previous: Rows) => Rows) {
+    latest.current = next(latest.current);
+    setRows(latest.current);
+  }
 
   useEffect(() => {
     const live = entries.current;
@@ -34,11 +42,11 @@ export function useFormUploads(target: FormUploadTarget | undefined) {
     };
   }, []);
 
-  function update(entry: Entry, change: Partial<UploadRow>) {
-    setRows((previous) => ({
+  function update(entry: Entry, patch: Partial<UploadRow>) {
+    change((previous) => ({
       ...previous,
       [entry.field.name]: (previous[entry.field.name] ?? []).map((row) =>
-        row.key === entry.key ? { ...row, ...change } : row,
+        row.key === entry.key ? { ...row, ...patch } : row,
       ),
     }));
   }
@@ -70,7 +78,7 @@ export function useFormUploads(target: FormUploadTarget | undefined) {
 
   /** Adds what fits; returns how many files were left out. */
   function add(field: FileField, files: readonly File[]): number {
-    const current = rows[field.name] ?? [];
+    const current = latest.current[field.name] ?? [];
     const taken = current.filter((row) => row.phase !== 'failed').length;
     const fitting = files.slice(0, Math.max(0, field.maxFiles - taken));
     const added = fitting.map((file) => {
@@ -101,7 +109,7 @@ export function useFormUploads(target: FormUploadTarget | undefined) {
             };
       return { entry, row, problem };
     });
-    setRows((previous) => ({
+    change((previous) => ({
       ...previous,
       [field.name]: [
         ...(previous[field.name] ?? []),
@@ -116,7 +124,7 @@ export function useFormUploads(target: FormUploadTarget | undefined) {
   function remove(field: FormField, key: string) {
     entries.current.get(key)?.controller?.abort();
     entries.current.delete(key);
-    setRows((previous) => ({
+    change((previous) => ({
       ...previous,
       [field.name]: (previous[field.name] ?? []).filter(
         (row) => row.key !== key,

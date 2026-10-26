@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -252,6 +253,63 @@ it('takes only as many files as the question allows', async () => {
   ).toBeVisible();
   await screen.findByText('All 2 files attached');
   expect(screen.getByLabelText('Invoice')).toBeDisabled();
+});
+
+it('counts files from both of two quick drops', async () => {
+  storeAccepts();
+  render(
+    <FormResponse fields={fields} uploads={target()} onSubmit={vi.fn()} />,
+  );
+  const zone = screen.getByLabelText('Invoice').closest('[data-slot]');
+  if (zone === null) throw new Error('No drop zone');
+  // Both drops land before React renders the first one.
+  act(() => {
+    fireEvent.drop(zone, {
+      dataTransfer: { files: [file('one.pdf'), file('two.pdf')] },
+    });
+    fireEvent.drop(zone, { dataTransfer: { files: [file('three.pdf')] } });
+  });
+  expect(
+    within(screen.getByRole('list', { name: 'Invoice files' }))
+      .getAllByRole('listitem')
+      .map((row) => within(row).getByText(/\.pdf$/u).textContent),
+  ).toEqual(['one.pdf', 'two.pdf']);
+  expect(
+    screen.getByText('One file was left out: this question takes up to 2.'),
+  ).toBeVisible();
+  await screen.findByText('All 2 files attached');
+});
+
+it('keeps focus in the field when a file is removed', async () => {
+  storeAccepts();
+  render(
+    <FormResponse fields={fields} uploads={target()} onSubmit={vi.fn()} />,
+  );
+  const user = userEvent.setup();
+  await user.upload(screen.getByLabelText('Invoice'), [
+    file('one.pdf'),
+    file('two.pdf'),
+  ]);
+  await screen.findByText('All 2 files attached');
+  await user.click(screen.getByRole('button', { name: 'Remove one.pdf' }));
+  expect(screen.getByRole('button', { name: 'Remove two.pdf' })).toHaveFocus();
+  await user.keyboard('{Enter}');
+  expect(screen.getByLabelText('Invoice')).toHaveFocus();
+});
+
+it('announces an attached file once', async () => {
+  storeAccepts();
+  const single = formFieldsSchema.parse([{ ...fields[0], maxFiles: 1 }]);
+  const { container } = render(
+    <FormResponse fields={single} uploads={target()} onSubmit={vi.fn()} />,
+  );
+  const user = userEvent.setup();
+  await user.upload(screen.getByLabelText('Invoice'), file('invoice.pdf'));
+  await screen.findByText('File attached');
+  const announced = [...container.querySelectorAll('[aria-live]')]
+    .map((region) => region.textContent.trim())
+    .filter((text) => text !== '');
+  expect(announced).toEqual(['invoice.pdf attached.']);
 });
 
 function Editor({ initial }: Readonly<{ initial: FormField }>) {

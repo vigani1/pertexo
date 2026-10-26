@@ -7,6 +7,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { FileDrop } from '@/components/ui/file-drop';
+import { useRemovalFocus } from '@/lib/hooks/use-removal-focus';
 import { cn } from '@/lib/utils';
 import {
   acceptAttribute,
@@ -41,6 +42,8 @@ export function FileFieldControl({
   onRetry: (key: string) => void;
 }>) {
   const [leftOut, setLeftOut] = useState(0);
+  const { fallback, removeButton, removing } =
+    useRemovalFocus<HTMLInputElement>();
   const taken = rows.filter((row) => row.phase !== 'failed');
   const attached = taken.length;
   const full = attached >= field.maxFiles;
@@ -58,7 +61,10 @@ export function FileFieldControl({
         {field.required ? '' : ' (optional)'}
       </FieldLabel>
       <FileDrop
+        ref={fallback}
         id={id}
+        // The field announces each file itself, below.
+        announces={false}
         multiple={field.maxFiles > 1}
         accept={acceptAttribute(field)}
         disabled={disabled || full}
@@ -118,8 +124,13 @@ export function FileFieldControl({
               key={row.key}
               row={row}
               disabled={disabled}
+              removeRef={removeButton(row.key)}
               onRemove={() => {
                 setLeftOut(0);
+                removing(
+                  rows.map((each) => each.key),
+                  row.key,
+                );
                 onRemove(row.key);
               }}
               onRetry={() => {

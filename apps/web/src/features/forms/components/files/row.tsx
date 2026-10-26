@@ -1,4 +1,5 @@
 import { RotateCcwIcon, XIcon } from 'lucide-react';
+import type { Ref } from 'react';
 import { Button } from '@/components/ui/button';
 import { formatByteLength } from '@/lib/format/bytes';
 import { cn } from '@/lib/utils';
@@ -11,11 +12,13 @@ import { UploadRing } from './ring';
 export function FileRow({
   row,
   disabled,
+  removeRef,
   onRemove,
   onRetry,
 }: Readonly<{
   row: UploadRow;
   disabled: boolean;
+  removeRef?: Ref<HTMLButtonElement>;
   onRemove: () => void;
   onRetry: () => void;
 }>) {
@@ -63,6 +66,7 @@ export function FileRow({
           </Button>
         ) : null}
         <Button
+          ref={removeRef}
           type="button"
           variant="ghost"
           size="icon-sm"
