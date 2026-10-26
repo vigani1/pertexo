@@ -1,24 +1,13 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { and, eq, inArray, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { artifacts } from '../../schema/transport.js';
-import { artifactStorageKey } from '../repository.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { visibleArtifactIds } from '../references/access.queries.js';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
 
 import type { DatabaseConfig } from '../../config.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
-import {
-  claimCommand,
-  completeCommand,
-} from '../../platform/idempotency/repository.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
 import type { DatabaseReadiness } from '../../platform/contract.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
@@ -28,10 +17,12 @@ import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { artifactMetadataMatches } from '../metadata/validation.js';
 
 import {
-  ARTIFACT_UPLOAD_PENDING_MS,
-  ArtifactQuotaExceededError,
+  completeArtifactUpload,
+  loadArtifact,
+  reserveArtifactUpload,
+} from './reservation.repository.js';
+import {
   ArtifactUploadConflictError,
-  ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
   normalizeBeginInput,
   normalizeFinalizeInput,
@@ -45,23 +36,6 @@ import type {
   FinalizeArtifactUploadInput,
   NormalizedBeginArtifactUploadInput,
 } from './contract.js';
-
-function isDatabaseError(
-  error: unknown,
-  code: string,
-  detail: string,
-): boolean {
-  try {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      Reflect.get(error, 'code') === code &&
-      Reflect.get(error, 'detail') === detail
-    );
-  } catch {
-    return false;
-  }
-}
 
 async function requireWorkspaceAccess(
   client: PoolClient,
@@ -80,29 +54,6 @@ async function requireWorkspaceAccess(
     throw error;
   }
 }
-
-async function loadArtifact(
-  client: PoolClient,
-  workspaceId: string,
-  artifactId: string,
-  statuses: readonly ArtifactRecord['status'][],
-): Promise<ArtifactRecord> {
-  const [row] = await drizzle(client)
-    .select()
-    .from(artifacts)
-    .where(
-      and(
-        eq(artifacts.workspaceId, workspaceId),
-        eq(artifacts.id, artifactId),
-        inArray(artifacts.status, [...statuses]),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  if (row === undefined) throw new ArtifactUploadNotFoundError();
-  return Object.freeze(row);
-}
-
-const storedUploadSchema = z.object({ artifactId: z.uuid() }).strict();
 
 function uploadRequestHash(input: NormalizedBeginArtifactUploadInput): string {
   return canonicalOutboxPayloadChecksum({
@@ -130,59 +81,14 @@ async function beginUpload(
         parsed.actorId,
         'upload',
       );
-      const artifactId = generatePersistedId();
-      const command = {
+      return reserveArtifactUpload(client, {
         workspaceId: parsed.workspaceId,
-        operation: 'artifact.upload',
+        purpose: 'user-upload',
         scope: `${parsed.actorId}:artifact-upload`,
         idempotencyKey: parsed.idempotencyKey,
         requestHash: uploadRequestHash(parsed),
-        conflict: () => new ArtifactUploadIdempotencyConflictError(),
-      };
-      const stored = await claimCommand(client, {
-        ...command,
-        resourceId: artifactId,
+        metadata: parsed,
       });
-      if (stored !== null) {
-        const artifact = await loadArtifact(
-          client,
-          parsed.workspaceId,
-          storedUploadSchema.parse(stored).artifactId,
-          ['pending', 'available'],
-        );
-        return Object.freeze({ artifact, replayed: true });
-      }
-
-      let artifact: ArtifactRecord;
-      try {
-        const [row] = await drizzle(client)
-          .insert(artifacts)
-          .values({
-            id: artifactId,
-            workspaceId: parsed.workspaceId,
-            purpose: 'user-upload',
-            storageKey: artifactStorageKey(
-              parsed.workspaceId.toLowerCase(),
-              artifactId,
-            ),
-            mediaType: parsed.mediaType,
-            byteLength: parsed.byteLength,
-            sha256: parsed.sha256,
-            status: 'pending',
-            expiresAt: sql`clock_timestamp()+make_interval(secs=>${ARTIFACT_UPLOAD_PENDING_MS / 1000})`,
-          })
-          .returning()
-          .catch(rethrowQueryFailure);
-        if (row === undefined)
-          throw new Error('Artifact upload insert returned no row');
-        artifact = Object.freeze(row);
-      } catch (error: unknown) {
-        if (isDatabaseError(error, 'P0001', 'artifact_capacity_exceeded'))
-          throw new ArtifactQuotaExceededError();
-        throw error;
-      }
-      await completeCommand(client, command, { artifactId: artifact.id });
-      return Object.freeze({ artifact, replayed: false });
     },
   );
 }
@@ -252,53 +158,19 @@ async function completeUploadFinalization(
         parsed.actorId,
         'upload',
       );
-      const db = drizzle(client);
-      const predicate = and(
-        eq(artifacts.workspaceId, parsed.workspaceId),
-        eq(artifacts.id, parsed.artifactId),
-      );
-      const [row] = await db
-        .select()
-        .from(artifacts)
-        .where(and(predicate, eq(artifacts.purpose, 'user-upload')))
-        .for('update')
-        .catch(rethrowQueryFailure);
-      if (row === undefined) throw new ArtifactUploadNotFoundError();
       if (
         !(await visibleArtifactIds(client, parsed, [parsed.artifactId])).has(
           parsed.artifactId,
         )
       )
         throw new ArtifactUploadNotFoundError();
-      const artifact = Object.freeze(row);
-      const expected = parsed.expectedMetadata;
-      if (!artifactMetadataMatches(artifact, expected))
-        throw new ArtifactUploadConflictError(
-          'Artifact upload metadata does not match the declared object',
-        );
-      if (artifact.status === 'available') return artifact;
-      if (artifact.status !== 'pending')
-        throw new ArtifactUploadConflictError('Artifact upload is not pending');
-      const [finalizedRow] = await db
-        .update(artifacts)
-        .set({
-          status: 'available',
-          finalizedAt: sql`clock_timestamp()`,
-          expiresAt: sql`clock_timestamp()+interval '30 days'`,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(
-          and(
-            predicate,
-            eq(artifacts.status, 'pending'),
-            sql`${artifacts.expiresAt}>clock_timestamp()`,
-          ),
-        )
-        .returning()
-        .catch(rethrowQueryFailure);
-      if (finalizedRow === undefined)
-        throw new ArtifactUploadConflictError('Artifact upload has expired');
-      return Object.freeze(finalizedRow);
+      return completeArtifactUpload(client, {
+        workspaceId: parsed.workspaceId,
+        artifactId: parsed.artifactId,
+        purpose: 'user-upload',
+        expectedMetadata: parsed.expectedMetadata,
+        retainFor: '30 days',
+      });
     },
     signal === undefined ? {} : { signal },
   );
