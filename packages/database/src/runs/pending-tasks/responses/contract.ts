@@ -33,7 +33,11 @@ export interface PendingTaskStore {
   submit(
     input: PendingTaskScope &
       PendingTaskSubmitRequest &
-      Readonly<{ taskId: string; idempotencyKey: string }>,
+      Readonly<{
+        taskId: string;
+        idempotencyKey: string;
+        uploadSession?: string;
+      }>,
   ): Promise<PendingTaskDecisionResponse>;
   audience(
     input: PendingTaskScope & ApprovalAudienceQuery,

@@ -12,6 +12,7 @@ import {
 import { withTenantScopedReadClient } from '../../tenant-access/transactions.js';
 import { authorizeForm, readFormVersion } from './records.queries.js';
 import type { FormStore, PublicFormGrant } from './contract.js';
+import { resolveFormFiles } from '../../artifacts/form-uploads/resolve.queries.js';
 
 import type { createEventCoordinationPreparation } from '../coordination/prepare.js';
 /** Read an authorized immutable candidate; expression work holds no admission locks. */
@@ -43,7 +44,20 @@ export async function prepareFormEvent(
       if (loaded.version.id !== input.versionId) return undefined;
       let values: ReturnType<typeof parseFormValues>;
       try {
-        values = parseFormValues(loaded.form.fields, input.values);
+        values = await resolveFormFiles(
+          client,
+          {
+            workspaceId: input.workspaceId,
+            workflowId: input.workflowId,
+            workflowVersionId: loaded.version.id,
+            taskId: null,
+            capabilityHash: grant?.capabilityHash ?? null,
+            uploadedBy: grant === undefined ? (input.actorId ?? null) : null,
+            session: input.uploadSession,
+          },
+          loaded.form.fields,
+          parseFormValues(loaded.form.fields, input.values),
+        );
       } catch (error) {
         if (error instanceof FormValuesInvalidError)
           return { versionId: loaded.version.id, error };

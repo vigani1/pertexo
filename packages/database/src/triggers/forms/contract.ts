@@ -39,7 +39,7 @@ export interface FormStore {
   submit(
     input: FormScope &
       FormSubmissionRequest &
-      Readonly<{ idempotencyKey: string }>,
+      Readonly<{ idempotencyKey: string; uploadSession?: string }>,
     grant?: PublicFormGrant,
   ): Promise<FormSubmissionResponse>;
   history(

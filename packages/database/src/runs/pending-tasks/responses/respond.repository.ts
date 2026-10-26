@@ -30,6 +30,7 @@ import {
 } from './errors.js';
 import type { PendingTaskStore } from './contract.js';
 import { projectTask, readTaskRow } from './records.repository.js';
+import { resolveFormFiles } from '../../../artifacts/form-uploads/resolve.queries.js';
 
 export async function respondToTask(
   client: PoolClient,
@@ -75,7 +76,7 @@ export async function respondToTask(
   });
   if (row.kind !== input.kind)
     throw new PendingTaskNotFoundError('Task is not visible.');
-  const values =
+  const submitted =
     input.kind === 'input_request'
       ? parseFormValues(
           inputRequestConfigSchema.parse(row.config).fields,
@@ -96,7 +97,7 @@ export async function respondToTask(
           decision: input.decision,
           comment: input.comment === '' ? null : (input.comment ?? null),
         }
-      : { values };
+      : { values: submitted };
   const replay = await claimCommand(client, {
     ...command,
     request,
@@ -105,6 +106,10 @@ export async function respondToTask(
   if (replay !== null) return { task: projectTask(row), replayed: true };
   if (row.blocked_reason !== null)
     throw new PendingTaskDecisionError(row.blocked_reason);
+  const values =
+    submitted === undefined
+      ? undefined
+      : await responseFiles(client, input, row, submitted);
   const [observation] = await db
     .select({
       now: sql<Date>`clock_timestamp()`.mapWith(users.createdAt),
@@ -165,6 +170,29 @@ export async function respondToTask(
     task: projectTask(await readTaskRow(client, input, { role, resources })),
     replayed: false,
   };
+}
+
+/** Uploads count only if this responder began them for this task. */
+function responseFiles(
+  client: PoolClient,
+  input: Parameters<typeof respondToTask>[1],
+  row: Awaited<ReturnType<typeof readTaskRow>>,
+  submitted: ReturnType<typeof parseFormValues>,
+) {
+  return resolveFormFiles(
+    client,
+    {
+      workspaceId: input.workspaceId,
+      workflowId: row.workflow_id,
+      workflowVersionId: null,
+      taskId: input.taskId,
+      capabilityHash: null,
+      uploadedBy: input.actorId,
+      session: input.kind === 'input_request' ? input.uploadSession : undefined,
+    },
+    inputRequestConfigSchema.parse(row.config).fields,
+    submitted,
+  );
 }
 
 /** Ancestors observe their own state/locks; a response never takes parent locks. */

@@ -52,7 +52,7 @@ export function createFormStore(
   } satisfies FormStore);
 }
 
-async function discoverPublicForm(
+export async function discoverPublicForm(
   pool: Pool,
   input: Parameters<FormStore['discover']>[0],
 ): ReturnType<FormStore['discover']> {

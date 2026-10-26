@@ -56,7 +56,7 @@ import {
   workspaceVariables,
   workspaceVariableSetRevisions,
 } from './schema/variables.js';
-import { workflowForms } from './schema/triggers/forms.js';
+import { formUploads, workflowForms } from './schema/triggers/forms.js';
 import { pendingRunTasks } from './schema/runs/pending-task.js';
 import { workflowErrorPolicies } from './schema/authoring/error-workflow.js';
 import { runErrorWorkflowIntents } from './schema/runs/completion/error-workflow.js';
@@ -281,6 +281,7 @@ export const databaseSchema = {
   workspaceVariables,
   workspaceVariableSetRevisions,
   workflowForms,
+  formUploads,
   pendingRunTasks,
   workflowErrorPolicies,
   runErrorWorkflowIntents,

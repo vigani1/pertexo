@@ -111,6 +111,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0051_connection_sharing.sql',
       '0052_publication_reuse_candidates.sql',
       '0053_remove_artifact_lookup.sql',
+      '0054_form_uploads.sql',
     ]);
     expect(
       (

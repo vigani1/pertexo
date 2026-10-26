@@ -5,7 +5,17 @@ import type {
   RunArtifactRetentionCoordinatorOptions,
 } from './contract.js';
 import { optionsSchema } from './input.js';
-import { and, asc, eq, isNull, lte, notExists, or, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  isNull,
+  lte,
+  notExists,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { artifacts as artifactRecords } from '../../schema/transport.js';
 import { artifactLinks } from '../../schema/runs/support.js';
@@ -81,7 +91,10 @@ export function createRunArtifactRetentionCoordinator(
               or(
                 and(
                   eq(artifactRecords.status, 'pending'),
-                  eq(artifactRecords.purpose, 'user-upload'),
+                  inArray(artifactRecords.purpose, [
+                    'user-upload',
+                    'form-upload',
+                  ]),
                   lte(artifactRecords.expiresAt, sql`clock_timestamp()`),
                 ),
                 and(

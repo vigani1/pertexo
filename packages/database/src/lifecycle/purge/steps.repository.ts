@@ -38,7 +38,7 @@ import {
 import { authDirectoryGroupMappings } from '../../schema/identity/federation/directory/mappings.js';
 import { authOrganizationWorkspaces } from '../../schema/identity/federation/organizations.js';
 import { apiTokens } from '../../schema/identity/api-tokens.js';
-import { workflowForms } from '../../schema/triggers/forms.js';
+import { formUploads, workflowForms } from '../../schema/triggers/forms.js';
 import { pendingRunTasks } from '../../schema/runs/pending-task.js';
 import { workflowPublicationRequests } from '../../schema/authoring/publication-requests.js';
 import { workspacePromotionTargets } from '../../schema/authoring/promotions/targets.js';
@@ -321,6 +321,7 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
     workflowPromotionOrigins,
     workflowDrafts,
     connectionEvents,
+    formUploads,
     artifacts,
     workspaceArtifactCapacity,
     outboxEvents,
