@@ -3,6 +3,15 @@
 - **Status:** accepted under the owner's autonomous feature instruction
 - **Date:** 2026-10-15
 - **Plan:** [F10 Approvals](../feature-plans/10-human-approvals.md)
+- **Amended:** 2026-10-26 by [F50 timeout paths](../feature-plans/50-task-timeout-paths.md)
+
+> **Amendment note (2026-10-26, F50).** Expiry is still `pending_task.expired`
+> by default, and every step saved before F50 keeps that. An Approval or Request
+> input may instead choose `onExpiry: 'continue'`: expiry then settles as a
+> success on a `timed_out` output port, and the expiry sweep records the
+> timed-out output on the task row (`output_ref` on an expired approval or
+> input request) in the same transaction, so every reader takes a task's output
+> from one place. Capacity refusal, cancellation and late decisions are unchanged.
 
 ## Context
 

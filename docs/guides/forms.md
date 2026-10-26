@@ -171,8 +171,12 @@ budget. Both details and prefills are captured once when the task opens. The
 responder can edit prefills, and refreshing task data never replaces unsent edits.
 
 The run releases its active slot and pauses its execution budget while only human
-tasks are pending; an explicit absolute deadline still applies. Request expiry
-fails the step and can follow its failure link. Cancellation closes the task.
+tasks are pending; an explicit absolute deadline still applies. By default,
+request expiry fails the step and can follow its failure link. Choose **Continue
+on Timed out** under **When nobody responds** to give the step a Timed out
+output instead; the run then continues there with `timedOut`, `openedAt`,
+`expiredAt`, the audience and the captured details and prefills (see
+[Approvals](approvals.md#how-the-timed-out-path-works)). Cancellation closes the task.
 Restarting the worker preserves the pending task and captured fields. Inputs stay
 with ordinary run detail retention; no second submission store or copy in audit.
 

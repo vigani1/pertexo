@@ -44,10 +44,54 @@ request and in Inbox. Later workflow edits do not change an open request. Includ
 only what the person needs to decide; details are retained run data, visible to
 authorized run readers. They are never included in notification emails.
 
-Expiry defaults to 7 days (168 hours). Setup accepts from 1 hour to 30 days. An
-expired task fails its step with `pending_task.expired`; attach a failure route if
-expiry needs a fallback. Expiry is not a rejection and does not automatically retry
-the declaration. Canceled or finished runs cannot accept a late decision.
+Expiry defaults to 7 days. Setup accepts from 1 hour to 30 days and shows the
+window as a timeline from the moment the run reaches the step. Under it, **When
+nobody responds** decides what an expired task does:
+
+- **Fail the step** (the default) fails it with `pending_task.expired`. A failure
+  route can still handle it. Steps saved before this choice existed keep this
+  behaviour.
+- **Continue on Timed out** adds a **Timed out** output to the step. The run
+  carries on along that path instead of failing.
+
+Expiry is neither a rejection nor a retry. Once a task has expired, nobody can
+answer it, and a late decision cannot bring it back. Canceled or finished runs
+cannot accept a late decision either. A task refused because too many tasks are
+outstanding still fails the step; that is not a timeout.
+
+### How the Timed out path works
+
+The Timed out output appears on the canvas only after you choose **Continue on
+Timed out**. It has its own amber hourglass and dashed line, apart from the
+success paths and the red Failure path. While Timed out is linked, the setup
+keeps it chosen; remove the link to fail the step instead. Publishing with
+Timed out chosen but not linked is allowed, like any other unlinked output; the
+run then simply ends on that path.
+
+When nobody answers in time, the step succeeds with this output:
+
+```json
+{
+  "timedOut": true,
+  "openedAt": "2026-10-20T09:00:00.000Z",
+  "expiredAt": "2026-10-27T09:00:00.000Z",
+  "audience": { "roles": ["owner", "admin"], "memberIds": [] },
+  "details": { "Customer": "Ada", "Amount": 120 }
+}
+```
+
+`openedAt` is when the request opened and `expiredAt` when its window ended.
+`audience` names who was asked, and `details` repeats the captured details, so
+a later step can say who was asked and when. Run detail shows the step as
+"Timed out after 7 days" and highlights the path the run took.
+
+Two common patterns:
+
+- **Escalate.** Link Timed out to a **Send email** or **Send Slack message** step
+  that tells a manager, then to a second Approval for that manager.
+- **Default decision.** To treat silence as approval, link Timed out to the same
+  next step as Approved. The canvas shows both links, so the default is visible.
+  Prefer escalation for anything with real consequences.
 
 When no executable work remains except human decisions, the run releases its
 active slot and pauses its execution budget. Active steps, ordinary timed Waits,
@@ -64,9 +108,11 @@ Live input and referenced files remain retained while the run needs them; task
 history follows normal run-detail retention and workspace deletion.
 
 Full replay starts fresh tasks. Retry-from-step remains unavailable for workflows
-containing human tasks until recovery can prove a durable decision prefix. There
-are no email or public approval links, escalations, delegation, or multi-person
-voting in this release.
+containing human tasks until recovery can prove a durable decision prefix.
+
+Later work: reminders before expiry, reassigning an open task, email or public
+approval links, delegation and multi-person voting are not available in this
+release. Escalate through the Timed out path instead.
 
 In Approval setup, **Allow the person who started the run to decide** is an optional
 per-step choice, off by default. It is saved when each task opens. The editor
