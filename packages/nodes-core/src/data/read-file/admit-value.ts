@@ -1,3 +1,5 @@
+import { utf8ByteLength } from '@pertexo/workflow-model';
+import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import {
   FileInputFailure,
   InvalidBoundedJsonError,
@@ -30,4 +32,25 @@ export function admitFileValue(value: unknown): JsonValue {
       pending.push(...Object.values(item));
   }
   return admitted;
+}
+
+/** Inline row reads stop as soon as the rows can't fit one step value. */
+export async function admitFileRows(
+  records: AsyncIterable<Readonly<Record<string, JsonValue>>>,
+): Promise<JsonValue> {
+  const rows: JsonValue[] = [];
+  let members = 0,
+    bytes = 2;
+  for await (const row of records) {
+    if (rows.length >= COLLECTION_MAX_ITEMS)
+      throw new FileInputFailure({ reason: 'item_count' });
+    members += 1 + Object.keys(row).length;
+    if (members > NODE_JSON_LIMITS.members)
+      throw new FileInputFailure({ reason: 'value_size' });
+    bytes += utf8ByteLength(JSON.stringify(row)) + (rows.length > 0 ? 1 : 0);
+    if (bytes > NODE_JSON_LIMITS.bytes)
+      throw new FileInputFailure({ reason: 'value_size' });
+    rows.push(row);
+  }
+  return admitFileValue(rows);
 }

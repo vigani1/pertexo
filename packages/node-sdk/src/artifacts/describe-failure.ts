@@ -1,4 +1,5 @@
 import type { FileInputDiagnostic } from './diagnostic.js';
+import { describeSheetList } from './sheet-names.js';
 
 const split = 'Split the file into smaller files and run them separately.';
 
@@ -21,7 +22,7 @@ export function describeFileInputFailure(
     case 'file_size':
       return `The file exceeds this operation's file limit (up to 10 MB, or the lower configured storage limit). ${split}`;
     case 'inline_file_size':
-      return `Inline Read file accepts up to 1 MB. For CSV or a JSON list, choose Output pages (up to 10 MB); otherwise split the file.`;
+      return `Inline Read file accepts up to 1 MB. For CSV, Excel or a JSON list, choose Output pages (up to 10 MB); otherwise split the file.`;
     case 'page_array':
       return 'Output pages needs a top-level JSON list. Choose Inline data for a small object, or export a list.';
     case 'page_value_size':
@@ -48,6 +49,14 @@ export function describeFileInputFailure(
       return `Header column ${String(diagnostic.column)} repeats a column name. Use unique names and upload the corrected file.`;
     case 'csv_columns':
       return `CSV record ${String(diagnostic.record)} has ${String(diagnostic.actual)} ${diagnostic.actual === 1 ? 'column' : 'columns'}; the header has ${String(diagnostic.expected)}. Check the delimiter and quoting, then upload the corrected file.`;
+    case 'spreadsheet_too_large':
+      return 'The workbook is too large to read safely. Read file opens workbooks up to 100 MB uncompressed, with at most 1,000 internal parts and 256 sheets, and reads up to 1,000,000 cells per step. Delete unused sheets, or split the rows into smaller workbooks and run them separately.';
+    case 'unsupported_spreadsheet':
+      return 'The file is not a readable Excel workbook (.xlsx). Legacy .xls, macro-enabled .xlsm, password-protected and damaged files cannot be read. Open it in Excel, save it as Excel Workbook (.xlsx) and upload it again.';
+    case 'sheet_missing':
+      return `The workbook has no sheet with that name. ${describeSheetList(diagnostic)} Enter a name exactly, or leave Sheet empty to read the first visible sheet.`;
+    case 'sheet_header_row':
+      return `Row ${String(diagnostic.row)} of the sheet is empty, so there are no column names. Set Header row to the row that holds the column names.`;
     case 'file_unavailable':
       return 'The file is unavailable in this workspace. Upload it again and use the new file reference.';
     case 'file_integrity':

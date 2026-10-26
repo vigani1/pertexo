@@ -2,14 +2,17 @@ import { ARTIFACT_INPUT_MAX_BYTES } from '@pertexo/node-sdk';
 import {
   FileInputFailure,
   NodeExecutorFailure,
+  type JsonValue,
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
 } from '@pertexo/node-sdk/server';
+import { admitFileRows } from './admit-value.js';
 import { readFilePages } from './pages.js';
 import { CORE_READ_FILE_EXECUTOR } from './definition.js';
 import type { CoreReadFileConfig, CoreReadFileInput } from './validation.js';
 import { parseJsonFile } from './json/inline.js';
 import { parseCsvFile } from './csv/inline.js';
+import { readXlsxRecords } from './xlsx/records.js';
 
 export const coreReadFileExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_READ_FILE_EXECUTOR,
@@ -49,15 +52,7 @@ export const coreReadFileExecutor: NodeExecutorRegistration = Object.freeze({
         signal: invocation.signal,
       });
       invocation.signal.throwIfAborted();
-      let text: string;
-      try {
-        text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-      } catch {
-        throw new FileInputFailure({ reason: 'invalid_utf8' });
-      }
-      return config.format === 'json'
-        ? parseJsonFile(text)
-        : await parseCsvFile(text, config, invocation.signal);
+      return await parseInline(bytes, config, invocation.signal);
     } catch (error) {
       if (invocation.signal.aborted)
         throw new NodeExecutorFailure({
@@ -71,3 +66,23 @@ export const coreReadFileExecutor: NodeExecutorRegistration = Object.freeze({
     }
   },
 });
+
+async function parseInline(
+  bytes: Uint8Array,
+  config: CoreReadFileConfig,
+  signal: AbortSignal,
+): Promise<JsonValue> {
+  if (config.format === 'xlsx')
+    return admitFileRows(
+      readXlsxRecords(bytes, config, signal, { accept: (row) => row }),
+    );
+  let text: string;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new FileInputFailure({ reason: 'invalid_utf8' });
+  }
+  return config.format === 'json'
+    ? parseJsonFile(text)
+    : parseCsvFile(text, config, signal);
+}

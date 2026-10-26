@@ -7,6 +7,16 @@ const location = z
   .int()
   .min(1)
   .max(FILE_PAGE_LIMITS.fileBytes + 1);
+/** Excel's own sheet-name limit; longer names only come from crafted files. */
+export const SHEET_NAME_MAX_LENGTH = 31;
+/** A missing-sheet failure lists this many names so a test shows real ones. */
+export const SHEET_NAME_SUGGESTIONS = 20;
+// Counted in code points plus a closing ellipsis; one may take two units.
+const sheetName = z
+  .string()
+  .min(1)
+  .max(SHEET_NAME_MAX_LENGTH * 2 + 1)
+  .regex(/^[^\p{Cc}\p{Cf}]+$/u);
 export const fileInputDiagnosticSchema = z.discriminatedUnion('reason', [
   z
     .object({
@@ -23,6 +33,8 @@ export const fileInputDiagnosticSchema = z.discriminatedUnion('reason', [
         'file_unavailable',
         'file_integrity',
         'csv_empty',
+        'spreadsheet_too_large',
+        'unsupported_spreadsheet',
         'multipart_size',
         'multipart_values',
         'multipart_content_type',
@@ -43,6 +55,14 @@ export const fileInputDiagnosticSchema = z.discriminatedUnion('reason', [
       column: location,
     })
     .strict(),
+  z
+    .object({
+      reason: z.literal('sheet_missing'),
+      sheets: z.array(sheetName).max(SHEET_NAME_SUGGESTIONS),
+      more: z.number().int().min(0).max(256),
+    })
+    .strict(),
+  z.object({ reason: z.literal('sheet_header_row'), row: location }).strict(),
   z
     .object({
       reason: z.literal('csv_columns'),
