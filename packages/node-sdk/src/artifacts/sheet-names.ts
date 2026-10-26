@@ -15,7 +15,6 @@ export const sheetNameSchema = z
 
 const LIST_START = 'Its sheets: ';
 const UNSAFE = /[\p{Cc}\p{Cf}]/gu;
-const QUOTED = /"(?:[^"\\]|\\.)*"/uy;
 
 /**
  * Sheet names are the one piece of file content a failure may show: a test
@@ -52,17 +51,36 @@ export function readSheetSuggestions(summary: string): readonly string[] {
   const start = summary.indexOf(LIST_START);
   if (start < 0) return [];
   const names: string[] = [];
-  QUOTED.lastIndex = start + LIST_START.length;
+  let cursor = start + LIST_START.length;
   for (;;) {
-    const match = QUOTED.exec(summary);
-    if (match === null) break;
-    const name: unknown = JSON.parse(match[0]);
+    const end = jsonStringEnd(summary, cursor);
+    if (end < 0) break;
+    const name = parseJsonString(summary.slice(cursor, end));
     // A shortened name can't match the sheet, so it isn't offered.
-    if (typeof name === 'string' && !isShortened(name)) names.push(name);
-    if (!summary.startsWith(', ', QUOTED.lastIndex)) break;
-    QUOTED.lastIndex += 2;
+    if (name !== undefined && !isShortened(name)) names.push(name);
+    if (!summary.startsWith(', ', end)) break;
+    cursor = end + 2;
   }
   return names;
+}
+
+/** One linear pass to the closing quote; a summary is untrusted text. */
+function jsonStringEnd(text: string, from: number): number {
+  if (text[from] !== '"') return -1;
+  for (let index = from + 1; index < text.length; index++) {
+    if (text[index] === '\\') index++;
+    else if (text[index] === '"') return index + 1;
+  }
+  return -1;
+}
+
+function parseJsonString(literal: string): string | undefined {
+  try {
+    const value: unknown = JSON.parse(literal);
+    return typeof value === 'string' ? value : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function isShortened(name: string): boolean {
