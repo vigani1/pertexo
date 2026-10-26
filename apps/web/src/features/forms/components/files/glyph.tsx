@@ -2,16 +2,18 @@ import type { FormFileGroup } from '@pertexo/workflow-model';
 import {
   BracesIcon,
   FileIcon,
-  FileSpreadsheetIcon,
   FileTextIcon,
   ImageIcon,
+  SheetIcon,
   type LucideProps,
 } from 'lucide-react';
 
+// Spreadsheets get a grid, like the Excel format tile: at this size Lucide's
+// file-spreadsheet reads as the same lined page as documents.
 const GLYPHS = {
   documents: FileTextIcon,
   images: ImageIcon,
-  spreadsheets: FileSpreadsheetIcon,
+  spreadsheets: SheetIcon,
   data: BracesIcon,
 } as const satisfies Record<FormFileGroup, typeof FileIcon>;
 
