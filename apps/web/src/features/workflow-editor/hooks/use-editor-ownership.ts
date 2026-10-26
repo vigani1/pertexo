@@ -45,6 +45,7 @@ export function useEditorOwnership({
   const { flushSave, ensureSaved } = useEditorSavePipeline({
     apiClient,
     store,
+    userId,
     workspaceId: workspace.id,
     workflowId,
     canUpdate,
