@@ -139,13 +139,13 @@ export const registry: Readonly<Record<string, RegistryEntry>> = Object.freeze({
   },
   'core.create_file': {
     name: 'Create file',
-    description: 'Turn data into a CSV, JSON or text file',
+    description: 'Turn data into a CSV, Excel, JSON or text file',
     icon: FileJsonIcon,
     family: 'transform',
   },
   'core.read_file': {
     name: 'Read file',
-    description: 'Turn a CSV or JSON file into data',
+    description: 'Turn a CSV, Excel or JSON file into data',
     icon: FileJsonIcon,
     family: 'transform',
   },

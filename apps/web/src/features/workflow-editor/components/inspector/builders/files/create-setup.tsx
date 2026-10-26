@@ -1,221 +1,228 @@
-import {
-  Field,
-  FieldLabel,
-  FieldDescription,
-  FieldError,
-} from '@/components/ui/field';
-import { Textarea } from '@/components/ui/textarea';
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { withConfigValue } from '../../../../model/inspector/draft';
 import type { NodeConfig } from '../../../../model/inspector/draft';
+import { fileColumnLimits } from '../../../../model/inspector/files/columns';
+import { sheetCellText } from '../../../../model/inspector/files/sheet-preview';
 import {
   fieldControlId,
   type NodeFormApi,
 } from '../../../../model/inspector/node-form';
-import {
-  fileColumnLimits,
-  parseFileColumns,
-} from '../../../../model/inspector/files/columns';
-import { useInspectorDraftField, useScratchForm } from '../../use-draft-field';
+import { findStep } from '../../../../model/graph/scopes';
+import { useEditorStore } from '../../../../model/state/context';
 import { ChoiceSelect } from '../../fields/choice-select';
 import { SchemaField } from '../../fields/schema';
+import { ColumnOrder } from './column-order';
+import { FormatTiles, type FileFormat } from './format-tiles';
+import { SheetGrid } from './sheet-grid';
+import { SheetTabs } from './sheet-tabs';
+
+const CREATE_FORMATS = ['json', 'csv', 'xlsx', 'text'] as const;
 
 export function CreateFileSetup({
   schema,
   config,
   form,
 }: Readonly<{ schema: unknown; config: NodeConfig; form: NodeFormApi }>) {
-  const { form: columnsForm, hasScratch } = useScratchForm(form);
-  const id = fieldControlId(form.nodeId, 'format');
+  const format = typeof config.format === 'string' ? config.format : undefined;
+  const pages = config.inputMode === 'pages';
   return (
     <>
       <Field>
-        <FieldLabel htmlFor={id}>File format</FieldLabel>
-        <ChoiceSelect
-          value={typeof config.format === 'string' ? config.format : null}
-          disabled={!form.editable || hasScratch}
-          choices={[
-            { value: 'csv', label: 'CSV' },
-            { value: 'json', label: 'JSON' },
-            { value: 'text', label: 'Plain text' },
-          ]}
-          onChange={(format) => {
-            if (format === null) return;
+        <FormatTiles
+          id={fieldControlId(form.nodeId, 'format')}
+          formats={CREATE_FORMATS}
+          value={format}
+          disabled={!form.editable}
+          onChange={(next) => {
             form.commit(
-              {
-                config:
-                  format === 'csv'
-                    ? {
-                        format,
-                        delimiter: ',',
-                        columns: [],
-                        ...(config.inputMode === 'pages'
-                          ? { inputMode: 'pages' }
-                          : {}),
-                      }
-                    : {
-                        format,
-                        ...(format !== 'text' && config.inputMode === 'pages'
-                          ? { inputMode: 'pages' }
-                          : {}),
-                      },
-              },
-              `${form.nodeId}:config:format:${format}`,
+              { config: startingConfig(next, pages) },
+              `${form.nodeId}:config:format:${next}`,
             );
           }}
-          control={{ id: id }}
         />
         <FieldDescription>
-          {formatGuidance({ hasScratch, inputMode: config.inputMode })}
+          {pages
+            ? 'Stream pages into a file up to 10 MB, including headers and quoting.'
+            : 'Create a file up to 1 MB from inline data. Choose From pages for larger CSV, Excel or JSON files.'}
         </FieldDescription>
       </Field>
-      {config.format === 'text' ? null : (
-        <Field>
-          <FieldLabel htmlFor={fieldControlId(form.nodeId, 'input-mode')}>
-            Data source
-          </FieldLabel>
-          <ChoiceSelect
-            value={config.inputMode === 'pages' ? 'pages' : 'inline'}
-            disabled={!form.editable || hasScratch}
-            choices={[
-              { value: 'inline', label: 'Inline data' },
-              { value: 'pages', label: 'From pages' },
-            ]}
-            onChange={(mode) => {
-              if (mode === null) return;
-              form.commit(
-                {
-                  config: withConfigValue(
-                    config,
-                    'inputMode',
-                    mode === 'pages' ? 'pages' : undefined,
-                  ),
-                },
-                `${form.nodeId}:config:inputMode`,
-              );
-            }}
-            control={{ id: fieldControlId(form.nodeId, 'input-mode') }}
-          />
-          <FieldDescription>
-            From pages reads the ordered page references on Inputs. CSV needs
-            explicit columns; it writes the header once. Remove any incompatible
-            Data or Pages mapping when changing source.
-          </FieldDescription>
-        </Field>
-      )}
-      {config.format === 'csv' ? (
-        <>
-          <SchemaField
-            config={config}
-            form={form}
-            field={{
-              key: 'delimiter',
-              label: 'Delimiter',
-              kind: 'string',
-              required: true,
-              options: [',', ';', '\t'],
-              optionLabels: { ',': 'Comma', ';': 'Semicolon', '\t': 'Tab' },
-            }}
-          />
-          <FileColumns schema={schema} config={config} form={columnsForm} />
-        </>
+      {format === 'text' ? null : <DataSource config={config} form={form} />}
+      {format === 'csv' ? (
+        <SchemaField
+          config={config}
+          form={form}
+          field={{
+            key: 'delimiter',
+            label: 'Delimiter',
+            kind: 'string',
+            required: true,
+            options: [',', ';', '\t'],
+            optionLabels: { ',': 'Comma', ';': 'Semicolon', '\t': 'Tab' },
+          }}
+        />
       ) : null}
+      {format === 'csv' || format === 'xlsx' ? (
+        <FileColumns schema={schema} config={config} form={form} />
+      ) : null}
+      {format === 'xlsx' ? <ExcelSheet config={config} form={form} /> : null}
       <p className="text-xs text-muted-foreground">
-        {config.inputMode === 'pages'
+        {pages
           ? 'Map the pages list to Pages on Inputs. Files are read in order, one page at a time.'
-          : 'Map Data on Inputs: rows with named fields for CSV, any value for JSON, or a string for plain text.'}{' '}
+          : 'Map Data on Inputs: rows with named fields for CSV or Excel, any value for JSON, or a string for plain text.'}{' '}
         The file can be read or sent by a later step.
       </p>
     </>
   );
 }
+
+function startingConfig(format: FileFormat, pages: boolean): NodeConfig {
+  const inputMode = pages && format !== 'text' ? { inputMode: 'pages' } : {};
+  if (format === 'csv')
+    return { format, delimiter: ',', columns: [], ...inputMode };
+  if (format === 'xlsx')
+    return { format, sheetName: 'Sheet1', columns: [], ...inputMode };
+  return { format, ...inputMode };
+}
+
+function DataSource({
+  config,
+  form,
+}: Readonly<{ config: NodeConfig; form: NodeFormApi }>) {
+  const id = fieldControlId(form.nodeId, 'input-mode');
+  return (
+    <Field>
+      <FieldLabel htmlFor={id}>Data source</FieldLabel>
+      <ChoiceSelect
+        value={config.inputMode === 'pages' ? 'pages' : 'inline'}
+        disabled={!form.editable}
+        choices={[
+          { value: 'inline', label: 'Inline data' },
+          { value: 'pages', label: 'From pages' },
+        ]}
+        onChange={(mode) => {
+          if (mode === null) return;
+          form.commit(
+            {
+              config: withConfigValue(
+                config,
+                'inputMode',
+                mode === 'pages' ? 'pages' : undefined,
+              ),
+            },
+            `${form.nodeId}:config:inputMode`,
+          );
+        }}
+        control={{ id }}
+      />
+      <FieldDescription>
+        From pages reads the ordered page references on Inputs. CSV and Excel
+        need explicit columns; the header is written once. Remove any
+        incompatible Data or Pages mapping when changing source.
+      </FieldDescription>
+    </Field>
+  );
+}
+
 function FileColumns({
   schema,
   config,
   form,
 }: Readonly<{ schema: unknown; config: NodeConfig; form: NodeFormApi }>) {
   const limits = fileColumnLimits(schema);
-  const columns = config.columns;
+  const { columns } = config;
   if (
     limits === undefined ||
     !Array.isArray(columns) ||
-    columns.some((value) => typeof value !== 'string' || /[\r\n]/u.test(value))
+    columns.some((value) => typeof value !== 'string')
   )
     return (
       <p className="text-sm text-muted-foreground">
-        Use Edit as JSON to choose CSV columns.
+        Use Edit as JSON to choose the columns.
       </p>
     );
   return (
-    <ColumnNames
-      config={config}
-      columns={columns as string[]}
+    <ColumnOrder
       form={form}
+      columns={columns as string[]}
       limits={limits}
+      hint={
+        config.inputMode === 'pages'
+          ? 'From pages needs the columns listed.'
+          : 'Leave empty to use every field. Missing cells stay empty; formula-like text stays text.'
+      }
+      onChange={(next) => {
+        form.commit(
+          (node) => ({ config: { ...node.config, columns: [...next] } }),
+          `${form.nodeId}:config:columns`,
+        );
+      }}
     />
   );
 }
-function ColumnNames({
+
+/**
+ * The workbook as it will open: the bold header frozen above the first row
+ * of the mapped data, and the sheet's name on its tab underneath.
+ */
+function ExcelSheet({
   config,
-  columns,
   form,
-  limits,
-}: Readonly<{
-  config: NodeConfig;
-  columns: readonly string[];
-  form: NodeFormApi;
-  limits: NonNullable<ReturnType<typeof fileColumnLimits>>;
-}>) {
-  const id = fieldControlId(form.nodeId, 'columns');
-  const live = useInspectorDraftField<readonly string[]>({
-    value: columns,
-    format: (value) => value.join('\n'),
-    parse: (text) => parseFileColumns(text, limits),
-    equals: (left, right) => JSON.stringify(left) === JSON.stringify(right),
-    commit: (value) => {
-      form.commit(
-        { config: { ...config, columns: value } },
-        `${form.nodeId}:config:columns`,
-      );
-    },
-    onScratchChange: (scratch) => {
-      form.reportScratch('columns', scratch);
-    },
-  });
+}: Readonly<{ config: NodeConfig; form: NodeFormApi }>) {
+  const data = useEditorStore(
+    (state) => findStep(state.graph, form.nodeId)?.inputMappings.data,
+  );
+  const first =
+    data?.kind === 'literal' && Array.isArray(data.value)
+      ? (data.value[0] as unknown)
+      : undefined;
+  const row =
+    typeof first === 'object' && first !== null && !Array.isArray(first)
+      ? (first as Readonly<Record<string, unknown>>)
+      : undefined;
+  const chosen = Array.isArray(config.columns)
+    ? config.columns.filter((name): name is string => typeof name === 'string')
+    : [];
+  const headers = chosen.length > 0 ? chosen : Object.keys(row ?? {});
+  const sheetId = fieldControlId(form.nodeId, 'sheet-name');
   return (
-    <Field data-invalid={live.error !== undefined}>
-      <FieldLabel htmlFor={id}>Columns, in output order</FieldLabel>
-      <Textarea
-        id={id}
-        className="min-h-24 font-mono"
-        autoComplete="off"
-        spellCheck={false}
-        value={live.text}
-        disabled={!form.editable}
-        aria-invalid={live.error !== undefined}
-        aria-describedby={`${id}-hint${live.error === undefined ? '' : ` ${id}-error`}`}
-        onChange={(event) => {
-          live.change(event.currentTarget.value);
-        }}
-        onBlur={live.blur}
+    <Field>
+      <FieldLabel htmlFor={sheetId}>Sheet name</FieldLabel>
+      <SheetGrid
+        label="How the sheet starts"
+        headerRow={1}
+        headers={headers.length > 0 ? headers : undefined}
+        rows={
+          row === undefined
+            ? []
+            : [headers.map((name) => sheetCellText(row[name]))]
+        }
+        caption={
+          row === undefined
+            ? 'A bold header row, frozen above the data. Rows come from Data when the step runs.'
+            : 'A bold header row, frozen above the data, then the first row of the mapped Data.'
+        }
+        footer={
+          <SheetTabs
+            form={form}
+            input={{
+              id: sheetId,
+              label: 'Sheet name',
+              value:
+                typeof config.sheetName === 'string'
+                  ? config.sheetName
+                  : 'Sheet1',
+            }}
+            onCommit={(sheetName) => {
+              form.commit(
+                (node) => ({
+                  config: withConfigValue(node.config, 'sheetName', sheetName),
+                }),
+                `${form.nodeId}:config:sheetName`,
+              );
+            }}
+          />
+        }
       />
-      <FieldDescription id={`${id}-hint`}>
-        One field name per line, up to {limits.count}. Leave empty to use all
-        fields for inline data. From pages requires explicit columns. Missing
-        cells are empty; spreadsheet formulas are protected.
-      </FieldDescription>
-      {live.error === undefined ? null : (
-        <FieldError id={`${id}-error`}>{live.error}</FieldError>
-      )}
     </Field>
   );
-}
-
-function formatGuidance(
-  input: Readonly<{ hasScratch: boolean; inputMode: unknown }>,
-) {
-  if (input.hasScratch)
-    return 'Finish or clear the column names before changing format.';
-  if (input.inputMode === 'pages')
-    return 'Stream pages into a file up to 10 MB, including CSV headers and quoting.';
-  return 'Create a file up to 1 MB from inline data. Choose From pages for larger CSV or JSON files.';
 }

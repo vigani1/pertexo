@@ -118,7 +118,7 @@ for (const theme of ['light', 'dark'] as const)
                 ],
             )
             .toBe('pages');
-          await choose(page, 'File format', 'JSON');
+          await page.getByRole('button', { name: 'JSON', exact: true }).click();
           await expect
             .poll(() => saved()?.config)
             .toMatchObject({

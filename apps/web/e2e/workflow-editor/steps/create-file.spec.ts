@@ -45,28 +45,32 @@ for (const theme of ['light', 'dark'] as const)
       await installEditorRoutes(page, remote, { definitions });
       await page.goto(editorUrl);
       await openStepSetup(page, { nodeId: 'create', width: width });
-      const columns = page.getByRole('textbox', {
+      const add = page.getByRole('textbox', {
         name: 'Columns, in output order',
       });
-      await columns.fill('paid\ncurrency\namount');
-      await expect(columns).toBeFocused();
+      // Pasting several names adds one column per line.
+      await add.focus();
+      await page.evaluate(async () => {
+        const data = new DataTransfer();
+        data.setData('text/plain', 'paid\ncurrency\namount');
+        document.activeElement?.dispatchEvent(
+          new ClipboardEvent('paste', { clipboardData: data, bubbles: true }),
+        );
+        await Promise.resolve();
+      });
       await expect
         .poll(() => saved()?.config.columns)
         .toEqual(['paid', 'currency', 'amount']);
-      await columns.fill('amount\namount');
-      await columns.blur();
+      await add.fill('amount');
+      await add.press('Enter');
       await expect(
         page.getByText('Choose each column once.', { exact: true }),
       ).toBeVisible();
-      await expect(
-        page.getByRole('combobox', { name: 'File format', exact: true }),
-      ).toBeDisabled();
-      await expect(
-        page.getByRole('button', { name: 'Edit as JSON', exact: true }),
-      ).toBeDisabled();
       expect(saved()?.config.columns).toEqual(['paid', 'currency', 'amount']);
-      await columns.fill('currency\namount');
-      await columns.blur();
+      await add.fill('');
+      await page
+        .getByRole('button', { name: 'Remove paid', exact: true })
+        .click();
       await page
         .getByRole('combobox', { name: 'Delimiter', exact: true })
         .click();
@@ -82,15 +86,14 @@ for (const theme of ['light', 'dark'] as const)
         });
       await page.reload();
       await openStepSetup(page, { nodeId: 'create', width: width });
-      await expect(columns).toHaveValue('currency\namount');
+      await expect(
+        page.getByRole('list', { name: 'Columns, in output order' }),
+      ).toHaveText(/currency.*amount/su);
       await page.screenshot({
         path: info.outputPath(`create-file-${theme}-${String(width)}.png`),
         fullPage: true,
       });
-      await page
-        .getByRole('combobox', { name: 'File format', exact: true })
-        .click();
-      await page.getByRole('option', { name: 'JSON', exact: true }).click();
+      await page.getByRole('button', { name: 'JSON', exact: true }).click();
       await expect.poll(() => saved()?.config).toEqual({ format: 'json' });
       expect(saved()?.inputMappings).toEqual({
         data: { kind: 'literal', value: data },
