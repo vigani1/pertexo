@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   approvalConfigSchema,
   continuesOnExpiry,
+  taskExpiryChoice,
   inputRequestConfigSchema,
   pendingTaskOutputPorts,
   timedOutTaskOutput,
@@ -13,8 +14,11 @@ const inputRequest = { key: 'core.request_input', version: 1 } as const;
 
 describe('When nobody responds', () => {
   it('fails the step unless the setup chooses the Timed out path', () => {
-    expect(approvalConfigSchema.parse({}).onExpiry).toBe('fail');
-    expect(inputRequestConfigSchema.parse({}).onExpiry).toBe('fail');
+    // A setup saved before the choice existed parses to itself and fails.
+    const legacy = approvalConfigSchema.parse({});
+    expect(legacy).not.toHaveProperty('onExpiry');
+    expect(taskExpiryChoice(legacy)).toBe('fail');
+    expect(taskExpiryChoice(inputRequestConfigSchema.parse({}))).toBe('fail');
     expect(approvalConfigSchema.parse({ onExpiry: 'continue' }).onExpiry).toBe(
       'continue',
     );

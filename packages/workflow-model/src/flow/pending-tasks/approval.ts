@@ -5,6 +5,14 @@ import { PENDING_TASK_LIMITS, taskAudienceSchema } from './audience.js';
 
 /** What happens when nobody responds before the task expires. */
 export const taskExpiryChoiceSchema = z.enum(['fail', 'continue']);
+export type TaskExpiryChoice = z.output<typeof taskExpiryChoiceSchema>;
+
+/** A task setup's expiry choice; one saved without it fails the step. */
+export function taskExpiryChoice(
+  setup: Readonly<{ onExpiry?: TaskExpiryChoice | undefined }>,
+): TaskExpiryChoice {
+  return setup.onExpiry ?? 'fail';
+}
 
 export const approvalConfigSchema = z
   .object({
@@ -24,9 +32,9 @@ export const approvalConfigSchema = z
       .min(PENDING_TASK_LIMITS.minimumExpirySeconds)
       .max(PENDING_TASK_LIMITS.maximumExpirySeconds)
       .default(PENDING_TASK_LIMITS.defaultExpirySeconds),
-    // Absent in every step saved before the Timed out path existed, so those
-    // steps keep failing when nobody responds.
-    onExpiry: taskExpiryChoiceSchema.default('fail'),
+    // Absent means fail, as in every step saved before the Timed out path
+    // existed. No default: a stored setup must parse to itself.
+    onExpiry: taskExpiryChoiceSchema.exactOptional(),
     allowStarterToDecide: z.boolean().exactOptional(),
     audience: taskAudienceSchema.default({
       roles: [...ADMINISTRATIVE_ROLES],

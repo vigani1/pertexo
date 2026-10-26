@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { approvalConfigSchema } from '@pertexo/workflow-model';
+import {
+  approvalConfigSchema,
+  taskExpiryChoice,
+} from '@pertexo/workflow-model';
 import { TaskExpiry } from '@/features/workflow-editor/components/inspector/human-task/expiry';
 import type { NodeFormApi } from '@/features/workflow-editor/model/inspector/node-form';
 import type {
@@ -58,7 +61,7 @@ function Expiry({
         form={form}
         kind={kind}
         seconds={setup.expiresAfterSeconds}
-        onExpiry={setup.onExpiry}
+        onExpiry={taskExpiryChoice(setup)}
       />
       <output aria-label="Saved configuration">
         {JSON.stringify(node.config)}

@@ -2,7 +2,7 @@ import { useId } from 'react';
 import {
   PENDING_TASK_LIMITS,
   TIMED_OUT_PORT,
-  type ApprovalConfig,
+  type TaskExpiryChoice,
 } from '@pertexo/workflow-model';
 import { ChoiceCards } from '@/components/patterns/choice-cards';
 import { StatusGlyph } from '@/components/ui/status';
@@ -13,7 +13,7 @@ import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { DurationField } from '../fields/duration';
 
-type OnExpiry = ApprovalConfig['onExpiry'];
+type OnExpiry = TaskExpiryChoice;
 
 const { minimumExpirySeconds: MINIMUM, maximumExpirySeconds: MAXIMUM } =
   PENDING_TASK_LIMITS;

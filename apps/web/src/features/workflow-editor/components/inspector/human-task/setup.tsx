@@ -10,6 +10,7 @@ import type { MemberFormScope } from '@/features/forms/queries.public';
 import {
   approvalConfigSchema,
   inputRequestConfigSchema,
+  taskExpiryChoice,
   formConfigSchema,
   DEFAULT_FORM_THANK_YOU_MESSAGE,
   type TaskAudience,
@@ -139,7 +140,7 @@ export function HumanFormSetup({
         form={form}
         kind={kind}
         seconds={captured.expiresAfterSeconds}
-        onExpiry={captured.onExpiry}
+        onExpiry={taskExpiryChoice(captured)}
       />
       <AudienceField
         purpose={kind === 'core.approval' ? 'approval' : 'input_request'}
