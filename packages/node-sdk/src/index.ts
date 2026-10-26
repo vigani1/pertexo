@@ -9,8 +9,13 @@ export {
 export {
   FILE_INPUT_ERROR_CODE,
   fileInputDiagnosticSchema,
+  SHEET_NAME_MAX_LENGTH,
   type FileInputDiagnostic,
 } from './artifacts/diagnostic.js';
+export {
+  readSheetSuggestions,
+  sheetNameSchema,
+} from './artifacts/sheet-names.js';
 
 export * from './execution/webhooks.js';
 
@@ -29,7 +34,7 @@ export {
 
 export * from './data-tables/bindings.js';
 
-export { escapeCsvValue } from './values/csv.js';
+export { escapeCsvValue, looksLikeFormula } from './values/csv.js';
 export {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,

@@ -66,6 +66,7 @@ export { readCodeFrame, writeCodeFrame } from './code/framing.js';
 export { NodeDataTableFailure } from './data-tables/failure.js';
 
 export { describeFileInputFailure } from './artifacts/describe-failure.js';
+export { listSheetNames } from './artifacts/sheet-names.js';
 
 export type { NodeVerifiedByteSource } from './artifacts/verified-source.js';
 
