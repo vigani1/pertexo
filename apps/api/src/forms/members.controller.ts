@@ -32,6 +32,7 @@ import { authenticatedRequestIdentifiers } from '../workspaces/request/authentic
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { FormMemberGuard, FormManageGuard } from './guards.js';
 import { FormService } from './service.js';
+import { optionalUploadSession } from '../artifacts/form-uploads/session.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { memberFormFailure } from '../problems/context/normalize.js';
 
@@ -72,6 +73,7 @@ export class MemberFormsController {
       this.forms.submit({
         ...scope,
         ...input,
+        ...optionalUploadSession(request.headers),
         actorId: authenticatedSession(request).userId,
         idempotencyKey,
         ...authenticatedRequestIdentifiers(request),

@@ -209,6 +209,13 @@ export function artifactRuntime(): ApiArtifactRuntime {
         beginDirectDownload: vi.fn(),
         checkReadiness: vi.fn().mockResolvedValue(undefined),
         close: vi.fn(),
+        getStream: vi.fn(),
+      },
+      formUploads: {
+        discover: vi.fn(),
+        begin: vi.fn(),
+        read: vi.fn(),
+        finalize: vi.fn(),
       },
     },
     checkReadiness: vi.fn().mockResolvedValue(undefined),

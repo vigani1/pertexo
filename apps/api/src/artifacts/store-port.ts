@@ -10,5 +10,6 @@ export type ArtifactStore = Pick<
   | 'beginDirectUpload'
   | 'checkReadiness'
   | 'close'
+  | 'getStream'
   | 'validateDirectUpload'
 >;

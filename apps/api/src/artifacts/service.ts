@@ -24,6 +24,7 @@ import {
 import type {
   ArtifactDeclaredMetadata,
   ArtifactDependencies,
+  ArtifactServiceDependencies,
   ArtifactIdentity,
   ArtifactRecord,
   ArtifactServiceContext,
@@ -45,7 +46,7 @@ export class ArtifactService {
   private readonly now: () => Date;
 
   public constructor(
-    private readonly dependencies: ArtifactDependencies,
+    private readonly dependencies: ArtifactServiceDependencies,
     private readonly options: ArtifactServiceOptions,
   ) {
     if (

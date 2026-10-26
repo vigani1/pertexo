@@ -4,6 +4,7 @@ import {
 } from '../../schemas/execution/usage-trends.js';
 import { workflowRunVariablesResponseSchema } from '../../schemas/identity/variables.js';
 import { formSchemas, formPaths } from './forms.js';
+import { formUploadPaths, formUploadSchemas } from './form-uploads.js';
 import { pendingTaskPaths, pendingTaskSchemas } from './pending-tasks.js';
 import {
   authenticatedComponents,
@@ -60,6 +61,7 @@ import {
 const schemas = Object.freeze({
   ...pendingTaskSchemas,
   ...formSchemas,
+  ...formUploadSchemas,
   WorkflowRunVariablesResponse: jsonSchema(
     workflowRunVariablesResponseSchema,
     'output',
@@ -183,6 +185,7 @@ export const workflowRunsOpenApiDocument = Object.freeze({
   paths: {
     ...pendingTaskPaths,
     ...formPaths,
+    ...formUploadPaths,
     '/v1/workspaces/{workspaceId}/runs/{runId}/variables': {
       get: {
         operationId: 'getWorkflowRunVariables',

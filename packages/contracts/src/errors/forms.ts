@@ -23,6 +23,24 @@ export const formProblems = {
     severity: 'info',
     exposeDetail: true,
   },
+  'form.file_type_not_allowed': {
+    status: 415,
+    title: 'File type not allowed',
+    severity: 'info',
+    exposeDetail: true,
+  },
+  'form.file_too_large': {
+    status: 413,
+    title: 'File too large',
+    severity: 'info',
+    exposeDetail: true,
+  },
+  'form.upload_limit': {
+    status: 429,
+    title: 'Too many uploads',
+    severity: 'info',
+    exposeDetail: true,
+  },
   'form.required': {
     status: 409,
     title: 'Use the workflow form',

@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import {
   ArtifactService,
   type ArtifactDependencies,
+  type ArtifactServiceDependencies,
   type ArtifactRecord,
   type ArtifactStore,
 } from '../../../src/artifacts/index.js';
@@ -56,7 +57,7 @@ export function dependencies(
       membershipStatus: 'active' as const,
       workspaceStatus: 'active' as const,
     }),
-): ArtifactDependencies {
+): ArtifactServiceDependencies {
   const database = {
     beginUpload: vi
       .fn()
@@ -104,6 +105,7 @@ export function dependencies(
       }),
     checkReadiness: vi.fn().mockResolvedValue(undefined),
     close: vi.fn<NonNullable<ArtifactStore['close']>>(),
+    getStream: vi.fn<NonNullable<ArtifactStore['getStream']>>(),
     ...storeOverrides,
   } satisfies ArtifactStore;
   return { authorization, database, store };
@@ -126,7 +128,7 @@ export const uploadRequest = Object.freeze({
 });
 
 export function service(
-  deps: ArtifactDependencies,
+  deps: ArtifactServiceDependencies,
   now = '2026-09-06T00:00:00.000Z',
 ) {
   return new ArtifactService(deps, {

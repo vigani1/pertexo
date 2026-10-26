@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   ArtifactService,
-  type ArtifactDependencies,
+  type ArtifactServiceDependencies,
 } from '../../src/artifacts/index.js';
 import { ArtifactsController } from '../../src/artifacts/controllers.js';
 
@@ -64,7 +64,7 @@ function request(
 }
 
 function controller() {
-  const dependencies: ArtifactDependencies = {
+  const dependencies: ArtifactServiceDependencies = {
     authorization: () =>
       Promise.resolve({
         actorId,
@@ -84,6 +84,7 @@ function controller() {
       beginDirectUpload: vi.fn(),
       checkReadiness: vi.fn(),
       close: vi.fn(),
+      getStream: vi.fn(),
       validateDirectUpload: vi.fn(),
     },
   };

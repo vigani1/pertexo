@@ -1228,6 +1228,848 @@
         }
       }
     },
+    "/v1/forms/{publicId}/uploads": {
+      "post": {
+        "operationId": "beginPublicFormUpload",
+        "security": [],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "description": "Opaque public form identity",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-key",
+            "required": true,
+            "description": "Capability from the public link fragment.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": true,
+            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pending upload bound to this response, with a short-lived PUT capability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "description": "The file is larger than the field allows",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The file type is not accepted by the field",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate or upload limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "File storage unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/forms/{publicId}/uploads/{uploadId}/finalize": {
+      "post": {
+        "operationId": "finalizePublicFormUpload",
+        "security": [],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "description": "Opaque public form identity",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-key",
+            "required": true,
+            "description": "Capability from the public link fragment.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          },
+          {
+            "name": "uploadId",
+            "in": "path",
+            "required": true,
+            "description": "Upload (file) identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": true,
+            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormFinalizeUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verified file, kept for a day unless a submission uses it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormUpload"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "description": "The file is larger than the field allows",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The file type is not accepted by the field",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate or upload limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "File storage unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/form/uploads": {
+      "post": {
+        "operationId": "beginMemberFormUpload",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "description": "Workspace identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "description": "Workflow identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": true,
+            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pending upload bound to this response, with a short-lived PUT capability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "description": "The file is larger than the field allows",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The file type is not accepted by the field",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate or upload limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "File storage unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/form/uploads/{uploadId}/finalize": {
+      "post": {
+        "operationId": "finalizeMemberFormUpload",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "description": "Workspace identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "description": "Workflow identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          },
+          {
+            "name": "uploadId",
+            "in": "path",
+            "required": true,
+            "description": "Upload (file) identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": true,
+            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormFinalizeUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verified file, kept for a day unless a submission uses it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormUpload"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "description": "The file is larger than the field allows",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The file type is not accepted by the field",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate or upload limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "File storage unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/pending-tasks/{taskId}/uploads": {
+      "post": {
+        "operationId": "beginInputRequestUpload",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "description": "Workspace identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "description": "Pending task identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": true,
+            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x2b\\x2d-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pending upload bound to this response, with a short-lived PUT capability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "description": "The file is larger than the field allows",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The file type is not accepted by the field",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate or upload limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "File storage unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/pending-tasks/{taskId}/uploads/{uploadId}/finalize": {
+      "post": {
+        "operationId": "finalizeInputRequestUpload",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "description": "Workspace identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "description": "Pending task identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          },
+          {
+            "name": "uploadId",
+            "in": "path",
+            "required": true,
+            "description": "Upload (file) identifier",
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-pertexo-form-session",
+            "required": true,
+            "description": "Random token for one response. A submission can use only uploads begun with the same token.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FormFinalizeUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verified file, kept for a day unless a submission uses it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormUpload"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "description": "The file is larger than the field allows",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The file type is not accepted by the field",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate or upload limit reached",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "description": "File storage unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/workspaces/{workspaceId}/runs/{runId}/variables": {
       "get": {
         "operationId": "getWorkflowRunVariables",
@@ -3690,6 +4532,74 @@
                           "default": true,
                           "type": "boolean"
                         },
+                        "type": {
+                          "type": "string",
+                          "const": "file"
+                        },
+                        "accept": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "documents",
+                              "images",
+                              "spreadsheets",
+                              "data"
+                            ]
+                          }
+                        },
+                        "maxFiles": {
+                          "default": 1,
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "maxBytes": {
+                          "default": 5242880,
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10485760
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "label",
+                        "help",
+                        "required",
+                        "type",
+                        "accept",
+                        "maxFiles",
+                        "maxBytes"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "help": {
+                          "default": "",
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "required": {
+                          "default": true,
+                          "type": "boolean"
+                        },
                         "options": {
                           "minItems": 1,
                           "maxItems": 50,
@@ -3753,6 +4663,61 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    {
+                      "maxItems": 5,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "file": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "artifact"
+                              },
+                              "artifactId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "byteLength": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10485760
+                              },
+                              "mediaType": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 255
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "artifactId",
+                              "byteLength",
+                              "mediaType",
+                              "sha256"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "filename": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 255
+                          }
+                        },
+                        "required": [
+                          "file",
+                          "filename"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   ]
                 }
@@ -3783,6 +4748,61 @@
                               "type": "array",
                               "items": {
                                 "type": "string"
+                              }
+                            },
+                            {
+                              "maxItems": 5,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "file": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "artifact"
+                                      },
+                                      "artifactId": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "byteLength": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 10485760
+                                      },
+                                      "mediaType": {
+                                        "type": "string",
+                                        "minLength": 3,
+                                        "maxLength": 255
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "artifactId",
+                                      "byteLength",
+                                      "mediaType",
+                                      "sha256"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "filename": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 255
+                                  }
+                                },
+                                "required": [
+                                  "file",
+                                  "filename"
+                                ],
+                                "additionalProperties": false
                               }
                             }
                           ]
@@ -4531,6 +5551,74 @@
                               "default": true,
                               "type": "boolean"
                             },
+                            "type": {
+                              "type": "string",
+                              "const": "file"
+                            },
+                            "accept": {
+                              "minItems": 1,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "documents",
+                                  "images",
+                                  "spreadsheets",
+                                  "data"
+                                ]
+                              }
+                            },
+                            "maxFiles": {
+                              "default": 1,
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 5
+                            },
+                            "maxBytes": {
+                              "default": 5242880,
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 10485760
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "label",
+                            "help",
+                            "required",
+                            "type",
+                            "accept",
+                            "maxFiles",
+                            "maxBytes"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                            },
+                            "name": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 160
+                            },
+                            "help": {
+                              "default": "",
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            "required": {
+                              "default": true,
+                              "type": "boolean"
+                            },
                             "options": {
                               "minItems": 1,
                               "maxItems": 50,
@@ -4594,6 +5682,61 @@
                           "items": {
                             "type": "string"
                           }
+                        },
+                        {
+                          "maxItems": 5,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "file": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "artifact"
+                                  },
+                                  "artifactId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "byteLength": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 10485760
+                                  },
+                                  "mediaType": {
+                                    "type": "string",
+                                    "minLength": 3,
+                                    "maxLength": 255
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "artifactId",
+                                  "byteLength",
+                                  "mediaType",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "filename": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 255
+                              }
+                            },
+                            "required": [
+                              "file",
+                              "filename"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       ]
                     }
@@ -4624,6 +5767,61 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string"
+                                  }
+                                },
+                                {
+                                  "maxItems": 5,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "file": {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "const": "artifact"
+                                          },
+                                          "artifactId": {
+                                            "type": "string",
+                                            "format": "uuid",
+                                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                          },
+                                          "byteLength": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 10485760
+                                          },
+                                          "mediaType": {
+                                            "type": "string",
+                                            "minLength": 3,
+                                            "maxLength": 255
+                                          },
+                                          "sha256": {
+                                            "type": "string",
+                                            "pattern": "^[a-f0-9]{64}$"
+                                          }
+                                        },
+                                        "required": [
+                                          "kind",
+                                          "artifactId",
+                                          "byteLength",
+                                          "mediaType",
+                                          "sha256"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "filename": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 255
+                                      }
+                                    },
+                                    "required": [
+                                      "file",
+                                      "filename"
+                                    ],
+                                    "additionalProperties": false
                                   }
                                 }
                               ]
@@ -5624,6 +6822,74 @@
                               "default": true,
                               "type": "boolean"
                             },
+                            "type": {
+                              "type": "string",
+                              "const": "file"
+                            },
+                            "accept": {
+                              "minItems": 1,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "documents",
+                                  "images",
+                                  "spreadsheets",
+                                  "data"
+                                ]
+                              }
+                            },
+                            "maxFiles": {
+                              "default": 1,
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 5
+                            },
+                            "maxBytes": {
+                              "default": 5242880,
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 10485760
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "label",
+                            "help",
+                            "required",
+                            "type",
+                            "accept",
+                            "maxFiles",
+                            "maxBytes"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                            },
+                            "name": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 160
+                            },
+                            "help": {
+                              "default": "",
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            "required": {
+                              "default": true,
+                              "type": "boolean"
+                            },
                             "options": {
                               "minItems": 1,
                               "maxItems": 50,
@@ -5687,6 +6953,61 @@
                           "items": {
                             "type": "string"
                           }
+                        },
+                        {
+                          "maxItems": 5,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "file": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "artifact"
+                                  },
+                                  "artifactId": {
+                                    "type": "string",
+                                    "format": "uuid",
+                                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                  },
+                                  "byteLength": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 10485760
+                                  },
+                                  "mediaType": {
+                                    "type": "string",
+                                    "minLength": 3,
+                                    "maxLength": 255
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "artifactId",
+                                  "byteLength",
+                                  "mediaType",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "filename": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 255
+                              }
+                            },
+                            "required": [
+                              "file",
+                              "filename"
+                            ],
+                            "additionalProperties": false
+                          }
                         }
                       ]
                     }
@@ -5717,6 +7038,61 @@
                                   "type": "array",
                                   "items": {
                                     "type": "string"
+                                  }
+                                },
+                                {
+                                  "maxItems": 5,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "file": {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "const": "artifact"
+                                          },
+                                          "artifactId": {
+                                            "type": "string",
+                                            "format": "uuid",
+                                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                          },
+                                          "byteLength": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 10485760
+                                          },
+                                          "mediaType": {
+                                            "type": "string",
+                                            "minLength": 3,
+                                            "maxLength": 255
+                                          },
+                                          "sha256": {
+                                            "type": "string",
+                                            "pattern": "^[a-f0-9]{64}$"
+                                          }
+                                        },
+                                        "required": [
+                                          "kind",
+                                          "artifactId",
+                                          "byteLength",
+                                          "mediaType",
+                                          "sha256"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "filename": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 255
+                                      }
+                                    },
+                                    "required": [
+                                      "file",
+                                      "filename"
+                                    ],
+                                    "additionalProperties": false
                                   }
                                 }
                               ]
@@ -6312,6 +7688,74 @@
                           "default": true,
                           "type": "boolean"
                         },
+                        "type": {
+                          "type": "string",
+                          "const": "file"
+                        },
+                        "accept": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "documents",
+                              "images",
+                              "spreadsheets",
+                              "data"
+                            ]
+                          }
+                        },
+                        "maxFiles": {
+                          "default": 1,
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "maxBytes": {
+                          "default": 5242880,
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10485760
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "label",
+                        "help",
+                        "required",
+                        "type",
+                        "accept",
+                        "maxFiles",
+                        "maxBytes"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "help": {
+                          "default": "",
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "required": {
+                          "default": true,
+                          "type": "boolean"
+                        },
                         "options": {
                           "minItems": 1,
                           "maxItems": 50,
@@ -6740,6 +8184,227 @@
             "additionalProperties": false
           }
         ]
+      },
+      "FormUploadRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "versionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "fieldId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "byteLength": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10485760
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "versionId",
+          "fieldId",
+          "filename",
+          "byteLength",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "TaskUploadRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "fieldId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "byteLength": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10485760
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "fieldId",
+          "filename",
+          "byteLength",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "FormFinalizeUploadRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "FormUploadResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "upload": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "filename": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "byteLength": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10485760
+              },
+              "mediaType": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 255
+              },
+              "status": {
+                "type": "string",
+                "const": "pending"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "id",
+              "filename",
+              "byteLength",
+              "mediaType",
+              "status",
+              "expiresAt"
+            ],
+            "additionalProperties": false
+          },
+          "transfer": {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "const": "PUT"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "headers": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "expiresInSeconds": {
+                "type": "integer",
+                "minimum": 60,
+                "maximum": 900
+              }
+            },
+            "required": [
+              "method",
+              "url",
+              "headers",
+              "expiresAt",
+              "expiresInSeconds"
+            ],
+            "additionalProperties": false
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "upload",
+          "transfer",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "FormUpload": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "byteLength": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10485760
+          },
+          "mediaType": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 255
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "available"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "byteLength",
+          "mediaType",
+          "status",
+          "expiresAt"
+        ],
+        "additionalProperties": false
       },
       "WorkflowRunVariablesResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -7648,6 +9313,9 @@
               "form.changed",
               "form.access_conflict",
               "form.invalid",
+              "form.file_type_not_allowed",
+              "form.file_too_large",
+              "form.upload_limit",
               "form.required",
               "workflow.sample_conflict",
               "workflow.sample_invalid",

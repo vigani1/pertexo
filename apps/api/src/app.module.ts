@@ -288,7 +288,7 @@ function registerFeatureModules(
     modules.push(
       ArtifactRuntimeModule.register(
         dependencies.artifactRuntime,
-        identityModule,
+        { identity: identityModule, admission: admissionModule },
         {
           maxObjectBytes:
             config.artifacts?.maxObjectBytes ??

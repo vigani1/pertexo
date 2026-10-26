@@ -24,6 +24,7 @@ import type { AbortableRequest } from '../platform/http/request-operation-signal
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { HttpRateLimitAdmission } from '../platform/rate-limit/admission.js';
 import { FormService } from './service.js';
+import { optionalUploadSession } from '../artifacts/form-uploads/session.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { formFailure } from '../problems/context/normalize.js';
 
@@ -82,6 +83,7 @@ export class PublicFormsController {
           workspaceId: grant.workspaceId,
           workflowId: grant.workflowId,
           ...input,
+          ...optionalUploadSession(request.headers),
           idempotencyKey,
           signal,
         },
