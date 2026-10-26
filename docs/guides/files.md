@@ -352,10 +352,21 @@ explicit recovery acknowledgements apply unchanged. This release adds no special
 Read file recovery exception and does not relax F09's artifact/reused-prefix
 restrictions. See [failure paths and recovery](../feature-plans/09-failure-paths-and-recovery.md).
 
+## Files from forms and input requests
+
+A [form or Request input file question](forms.md#file-questions) uploads through
+the same begin → direct upload → finalize transfer, bound to that response. The
+run receives each file as `{ "file": <file reference>, "filename": "…" }`, so
+`$.values.<field>[0].file` maps straight into Read file. Unlike editor uploads,
+responder files are checked against the field's kinds and size, and their first
+bytes must match their extension.
+
 ## How long files stay
 
-An unreferenced finalized upload has the existing 30-day deadline. A retained
-draft, published version, input-case payload or execution fact protects its file.
+An unreferenced finalized upload has the existing 30-day deadline; a form or
+Request input upload that was never sent has one day. A retained
+draft, published version, input-case payload, execution fact or answered input
+request protects its file.
 Archiving a workflow keeps these references. Old input-case payloads stop keeping
 files when the existing retention reaper removes them. Preview outputs keep
 preview lifetimes and cannot be promoted into permanent workflow/run ownership
