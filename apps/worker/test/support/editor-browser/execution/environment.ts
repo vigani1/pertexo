@@ -14,8 +14,13 @@ export const webhookResponseCase =
 
 const paginationCase = process.env.EDITOR_BROWSER_CASE === 'http-pagination';
 
+/** Reads and writes workbooks through the owned object store, without HTTP. */
+export const spreadsheetCase =
+  process.env.EDITOR_BROWSER_CASE === 'spreadsheets';
+
 export const previewCase =
   process.env.EDITOR_BROWSER_CASE === 'artifact-inputs' ||
+  spreadsheetCase ||
   process.env.EDITOR_BROWSER_CASE === 'variables' ||
   process.env.EDITOR_BROWSER_CASE === 'transforms' ||
   process.env.EDITOR_BROWSER_CASE === 'pinned-samples' ||

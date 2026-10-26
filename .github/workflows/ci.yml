@@ -236,18 +236,18 @@ jobs:
             journeys: >-
               usage failure-routing error-workflows approvals variables
               notifications artifact-inputs webhook-responses code
-              organization-saml schedule
+              organization-saml schedule form-uploads
           - suite: live-2
             journeys: >-
               workflow-concurrency connection-health input-cases callable
               webhook-controlled-http api-tokens workflow-organization receipts
-              readonly nested-conflict email-attachments form-uploads
+              readonly nested-conflict email-attachments
           - suite: live-3
             journeys: >-
               duplication portability curated-templates run-recovery forms
               transforms pinned-samples governance promotion collaboration
               federation organization-oidc two-factor http-pagination run-values
-              expression-admission
+              expression-admission spreadsheets
     env:
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser

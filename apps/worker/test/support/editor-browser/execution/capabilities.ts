@@ -26,6 +26,7 @@ import {
   curatedTemplates,
   emailAttachments,
   formUploadsCase,
+  spreadsheetCase,
 } from './environment.js';
 
 export async function createEditorCapabilities(context: EditorWorkerExecution) {
@@ -93,6 +94,18 @@ export async function createEditorCapabilities(context: EditorWorkerExecution) {
     resources.codeRunner = code;
     controlledCapabilities = code.capabilities;
     resources.capabilities = controlledCapabilities;
+    assertSetupActive();
+  }
+  if (spreadsheetCase) {
+    const scratch = await createTestArtifactScratch();
+    resources.artifactScratch = scratch;
+    controlledCapabilities = await createWorkerNodeRuntimeCapabilities({
+      database,
+      artifactScratchDirectory: scratch.directory,
+      artifactStore: parseArtifactStoreConfig(),
+    });
+    resources.capabilities = controlledCapabilities;
+    await controlledCapabilities.checkReadiness();
     assertSetupActive();
   }
   if (
