@@ -42,10 +42,10 @@ export function describeFileInputFailure(
       return 'The CSV has no header row. Add column names and upload the corrected file.';
     case 'csv_syntax':
       return `The CSV quoting is malformed${diagnostic.line === undefined ? '' : ` near line ${String(diagnostic.line)}`}. Check the delimiter and quotes, then upload the corrected file.`;
-    case 'csv_blank_header':
-      return `CSV header column ${String(diagnostic.column)} is blank. Give every column a name and upload the corrected file.`;
-    case 'csv_duplicate_header':
-      return `CSV header column ${String(diagnostic.column)} repeats a column name. Use unique names and upload the corrected file.`;
+    case 'blank_header':
+      return `Header column ${String(diagnostic.column)} is blank. Give every column a name and upload the corrected file.`;
+    case 'duplicate_header':
+      return `Header column ${String(diagnostic.column)} repeats a column name. Use unique names and upload the corrected file.`;
     case 'csv_columns':
       return `CSV record ${String(diagnostic.record)} has ${String(diagnostic.actual)} ${diagnostic.actual === 1 ? 'column' : 'columns'}; the header has ${String(diagnostic.expected)}. Check the delimiter and quoting, then upload the corrected file.`;
     case 'file_unavailable':
