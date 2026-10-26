@@ -5,6 +5,7 @@ import { verifyVariableEvidence } from '../evidence/variables/verify.js';
 import { verifyFormEvidence } from '../evidence/forms/verify.js';
 import { verifyFormUploadEvidence } from '../evidence/forms/uploads.js';
 import { verifyApprovalEvidence } from '../evidence/approvals/verify.js';
+import { verifyTaskTimeoutEvidence } from '../evidence/approvals/timeouts.js';
 
 import { expect } from 'vitest';
 
@@ -124,6 +125,12 @@ export async function verifyEditorFormUploadsOutcome(
   context: EditorBrowserJourneyContext,
 ) {
   await verifyFormUploadEvidence(context.api.database());
+}
+
+export async function verifyEditorTaskTimeoutsOutcome(
+  context: EditorBrowserJourneyContext,
+) {
+  await verifyTaskTimeoutEvidence(context.api.database());
 }
 
 export async function verifyEditorApprovalsOutcome(

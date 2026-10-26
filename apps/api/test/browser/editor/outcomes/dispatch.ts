@@ -12,6 +12,7 @@ import {
   verifyEditorFormsOutcome,
   verifyEditorFormUploadsOutcome,
   verifyEditorApprovalsOutcome,
+  verifyEditorTaskTimeoutsOutcome,
 } from './workspace.js';
 import {
   verifyEditorApiTokensOutcome,
@@ -67,6 +68,7 @@ const editorOutcomeChecks: Record<
   forms: verifyEditorFormsOutcome,
   'form-uploads': verifyEditorFormUploadsOutcome,
   approvals: verifyEditorApprovalsOutcome,
+  'task-timeouts': verifyEditorTaskTimeoutsOutcome,
   'error-workflows': verifyEditorErrorWorkflowsOutcome,
   'api-tokens': verifyEditorApiTokensOutcome,
   callable: verifyEditorCallableOutcome,
