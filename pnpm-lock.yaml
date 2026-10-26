@@ -429,8 +429,8 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
       smtp-server:
-        specifier: 3.19.23
-        version: 3.19.23
+        specifier: 3.21.1
+        version: 3.21.1
 
   packages/artifact-store:
     dependencies:
@@ -568,8 +568,8 @@ importers:
         specifier: 3.5.13
         version: 3.5.13
       smtp-server:
-        specifier: 3.19.23
-        version: 3.19.23
+        specifier: 3.21.1
+        version: 3.21.1
 
   packages/node-catalog:
     dependencies:
@@ -4101,12 +4101,12 @@ packages:
     resolution: {integrity: sha512-mIrE/Cw9y+9Au6dS5vDKDhQza9YvG6w+ZrS6X+ZzA7yFW/soAeaups4Qzn1bL6g5FVy8WtP79+0j82oPIbqRjQ==}
     engines: {node: '>=18'}
 
-  nodemailer@10.1.2:
-    resolution: {integrity: sha512-rnQn9Rzh8RAwcp42MVsIvxbsv6YZ2a2/av+uyJ/LPU1+2QSlrRgFsWWZTKenyRUqkIl8urOI0c4+CEcmFdsvQw==}
-    engines: {node: '>=20.0.0'}
-
   nodemailer@10.1.4:
     resolution: {integrity: sha512-EsMnOR2oRv4LGnWvHgcVYkkQ4O2j8KO4WTw6l+PHR4sOXo8SAgIraxtEnGDmotjbhv0hDsu3IuDIFZm8iXwO4A==}
+    engines: {node: '>=20.0.0'}
+
+  nodemailer@10.2.1:
+    resolution: {integrity: sha512-ZrDNsPFoDMwefNs7sJwrYiEJ/CG4ClJWDZv05iNJsEBWa8GRDry1QJHTJxsuTAY9eDDKjX4k+q3SxslXJOao7w==}
     engines: {node: '>=20.0.0'}
 
   nth-check@3.0.1:
@@ -4471,8 +4471,8 @@ packages:
     resolution: {integrity: sha512-j7WyPdf0CJoutMzMoPLF/bVXHtKZIT9Rb4eGeEbWw8X2t5oirjPgpL+OpaENZrILYaXqYwnVH+qgUwVbl+pUJQ==}
     engines: {node: '>= 18'}
 
-  smtp-server@3.19.23:
-    resolution: {integrity: sha512-t6AOBe7RR9Y/9Kox4e5SIm7wS2ZA8P0VuhVEZ5Yiox0WyevX+rMjATzIwEX3A+B6SGwnJ8QvoHtJAhbJYbjy3A==}
+  smtp-server@3.21.1:
+    resolution: {integrity: sha512-gj95f6YhcL0uu3m3FvRnQ6LSotursugAuVjK5V4f0f2C/4OSVpn/+h28F4pPJFob/myli9V+F7/Hxx9DJVdwvg==}
     engines: {node: '>=20.0.0'}
 
   sonic-boom@4.2.1:
@@ -8347,9 +8347,9 @@ snapshots:
 
   node-releases@2.0.55: {}
 
-  nodemailer@10.1.2: {}
-
   nodemailer@10.1.4: {}
+
+  nodemailer@10.2.1: {}
 
   nth-check@3.0.1:
     dependencies:
@@ -8725,10 +8725,10 @@ snapshots:
 
   smol-toml@1.9.1: {}
 
-  smtp-server@3.19.23:
+  smtp-server@3.21.1:
     dependencies:
       ipv6-normalize: 1.0.1
-      nodemailer: 10.1.2
+      nodemailer: 10.2.1
       punycode.js: 2.3.1
 
   sonic-boom@4.2.1:
