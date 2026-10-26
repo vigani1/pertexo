@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fileColumnLimits,
   parseFileColumns,
-} from '@/features/workflow-editor/model/inspector/transforms/file-columns';
+} from '@/features/workflow-editor/model/inspector/files/columns';
 import { startingConfig } from '@/features/workflow-editor/model/graph/starting-config';
 const schema = {
   oneOf: [
