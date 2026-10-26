@@ -106,3 +106,25 @@ Never interpret HTML, markdown or other URL schemes. A form may omit a redirect
 and show its normal receipt and links. Request input has neither destination nor
 thank-you configuration. Start matching readers before publishing these optional
 configuration fields; no new stored-format version, service or role is required.
+
+### Amendment: file questions (2026-10-26)
+
+The owner approved [F52](../feature-plans/52-form-file-uploads.md) on
+2026-10-26. Forms and Request input gain a shared `file` field (accepted kinds,
+1–5 files, at most 10 MB each), replacing this ADR's "no files". Responses name
+upload IDs; admission swaps them for ordinary file references, so a form value
+is a list of `{ file, filename }`. The responder's file name is a stored label
+here, an exception to ADR 075's transient-filename rule like multipart part
+names: the last path part only, without control characters, up to 255
+characters, never used to choose storage or format.
+
+Uploads reuse the artifact transfer and its reservation, idempotency, capacity
+and cleanup. A `form-upload` artifact is bound in `form_uploads` to its
+published version or task, field, response session digest and the link
+capability digest or uploading member. A submission resolves only bound,
+available, unexpired uploads. Unsent files expire after one day; references in
+run input or an answered task retain them like any execution fact. Public
+uploads spend the form read budget and a per-client, per-link and per-workspace
+upload budget. Finalization verifies size and SHA-256 and sniffs the leading
+bytes against the extension; files are still never scanned, parsed or rendered
+outside an explicit step.

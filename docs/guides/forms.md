@@ -10,10 +10,11 @@ Workspace members, including viewers, can submit the member form. This does not
 give viewers permission to edit the workflow or start arbitrary runs. Existing run
 history permissions apply to the member's **Open run** link.
 
-Supported fields are short/long text, email, number, true/false, one choice, multiple choices and date.
+Supported fields are short/long text, email, number, true/false, one choice,
+multiple choices, date and file (see [File questions](#file-questions)).
 Names are stable mapping keys: letters first, then letters, numbers or underscores.
 Use up to 20 fields, with unique names. Choice fields allow 1–50 unique single-line options. Text
-is plain text; no HTML, files, scripts, calculations or conditional fields.
+is plain text; no HTML, scripts, calculations or conditional fields.
 Responses fit 64 KB; field definitions fit 10 KB. Number and boolean fields
 produce real JSON numbers and booleans. Zero and false are valid values; turn on
 **Must be ticked to send** for an agreement box that only accepts a tick. Optional
@@ -41,6 +42,66 @@ step's `values.currency`. The full input is:
 The server supplies the person and timestamp. Ordinary Manual/API starts refuse
 Form versions; use the form submission endpoint. Replay reuses the original
 submission input and source version. To change either, send a new form response.
+
+## File questions
+
+A **File** field asks for an invoice PDF, a photo or a spreadsheet. In its setup,
+choose what it **Accepts** (Documents: PDF, Word, text and Markdown; Images:
+PNG, JPEG, WebP, GIF and HEIC; Spreadsheets: Excel and CSV; Data: JSON and
+XML), how many **Files per response** (1–5) and the **Largest file** (1–10 MB,
+5 MB by default). The same field works in a Form trigger and in Request input.
+
+How it works:
+
+1. The responder drops or chooses files. Each file is checked against the
+   field before anything is sent, then uploaded straight to file storage and
+   verified: its size, its SHA-256 and its first bytes must match the type its
+   name claims. A PDF renamed from a web page is refused with
+   `form.file_type_not_allowed`. A file over the limit says so in plain words,
+   such as "This file is 12 MB; the limit is 5 MB."
+2. Each upload is bound to that form link (or member), published version,
+   field and response. A response can only use files it uploaded itself, and
+   only while they are kept. **Send response** waits until every upload has
+   finished.
+3. The run receives each file as an ordinary file reference with its name. The
+   value is always a list, even when the field takes one file:
+
+```json
+{
+  "values": {
+    "shop": "Corner shop",
+    "orders": [
+      {
+        "file": {
+          "kind": "artifact",
+          "artifactId": "<file ID>",
+          "byteLength": 20,
+          "mediaType": "text/csv",
+          "sha256": "<checksum>"
+        },
+        "filename": "orders.csv"
+      }
+    ]
+  },
+  "submittedBy": null,
+  "submittedAt": "<server timestamp>"
+}
+```
+
+Map `$.values.orders[0].file` into [Read file](files.md) to parse the CSV, or
+send it on with HTTP Request. An optional file field left empty is omitted.
+Members see a response's files as download cards on the run's **Input &
+output** tab and on the answered request; public responders never see other
+responses' files, and download links stay member-only.
+
+Public uploads spend the form's read limit plus an upload budget per client,
+link and workspace. One response can begin at most 25 uploads. Files count
+against the workspace's storage quota; a full workspace refuses new uploads
+with `workspace.quota_exceeded`. Files that are uploaded but never sent are
+removed after a day by the ordinary cleanup; a sent response's files stay for
+as long as its run keeps its data. Regenerating or turning off the public link
+also stops unfinished uploads from being finalized. Files are not
+virus-checked; treat them as untrusted, as for any [file](files.md).
 
 ## After submission
 
@@ -120,8 +181,12 @@ no public mid-run responses or email links. If sending has an uncertain outcome,
 use **Retry same response** before changing it; this retains the original command
 and cannot create a second run or overwrite another person's response.
 
-Later work: file fields, public mid-run input, email links, conditional fields and
-richer validation. These are not available in this release.
+A Request input file field works the same way: the responder attaches files on
+the task page, and the step's output lists them under `values`. Files can't be
+prefilled; only the responder can upload them.
+
+Later work: public mid-run input, email links, conditional fields and richer
+validation. These are not available in this release.
 
 ## When the workflow is busy
 
