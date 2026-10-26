@@ -127,7 +127,12 @@ export async function persistRunEvents(
         .set({
           status: terminalNodeStatus,
           completedAt: sql`clock_timestamp()`,
-          safeErrorCode: event.reasonCode ?? null,
+          // A succeeded step's reason (callback received, timed out) is
+          // event copy, never an error code.
+          safeErrorCode:
+            terminalNodeStatus === 'succeeded'
+              ? null
+              : (event.reasonCode ?? null),
           resumeAt: null,
           retryDueAt: null,
           dueWakeupAt: null,

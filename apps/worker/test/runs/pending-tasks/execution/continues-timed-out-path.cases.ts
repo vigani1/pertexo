@@ -119,13 +119,15 @@ export function registerContinuesTimedOutPath(): void {
       ]);
       const [approval] = await fixture.workerQuery<{
         status: string;
+        safe_error_code: string | null;
         output: Record<string, unknown>;
       }>(
-        "select status,output_ref->'value' output from app.node_runs where workflow_run_id=$1 and node_id='approval'",
+        "select status,safe_error_code,output_ref->'value' output from app.node_runs where workflow_run_id=$1 and node_id='approval'",
         [run.runId],
       );
       expect(approval).toMatchObject({
         status: 'succeeded',
+        safe_error_code: null,
         output: { timedOut: true },
       });
       expect(
