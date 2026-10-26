@@ -39,7 +39,7 @@ function splitSeconds(seconds: unknown): DurationText {
  * A duration as people say it, an amount and a unit, kept as whole seconds
  * in the step. Changing the unit keeps the amount: 2 hours becomes 2 days.
  */
-export function WaitDurationField({
+export function DurationField({
   config,
   form,
   configKey,
