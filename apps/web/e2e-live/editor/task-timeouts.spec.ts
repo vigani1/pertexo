@@ -78,6 +78,33 @@ async function saveDraft(page: Page, workflowPath: string, graph: Graph) {
   expect(saved.status(), await saved.text()).toBe(200);
 }
 
+const sizes = [
+  [360, 740],
+  [390, 844],
+  [768, 1024],
+  [1024, 768],
+  [1440, 900],
+  [1920, 1080],
+] as const;
+
+async function captureEverySize(page: Page, name: string) {
+  for (const theme of ['light', 'dark'] as const)
+    for (const [width, height] of sizes) {
+      await page.setViewportSize({ width, height });
+      await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: theme });
+      await page.screenshot({
+        path: `${screenshots}/${name}-${String(width)}x${String(height)}-${theme}.png`,
+      });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'light' });
+}
+
 /** Starts the published workflow and lets its open task reach expiry. */
 async function runUntilExpiry(
   page: Page,
@@ -188,10 +215,19 @@ test('an unanswered approval continues on Timed out to a later step; one without
   ).toBe('skipped');
   await page.goto(`/w/${workspaceId}/runs/${continued}`);
   await expect(page.getByText('Timed out after 7 days').first()).toBeVisible();
-  await page.screenshot({
-    path: `${screenshots}/run-1440.png`,
-    fullPage: true,
-  });
+  await page
+    .getByRole('list', { name: 'Steps in this run' })
+    .getByRole('button', { name: /^Manager approval:/u })
+    .click();
+  await expect(
+    page.getByText(
+      'Nobody responded in time, so the run continued on Timed out.',
+    ),
+  ).toBeVisible();
+  await captureEverySize(page, 'run');
+  await page.getByRole('tab', { name: 'Graph', exact: true }).click();
+  await expect(page.getByText('Timed out', { exact: true })).toBeVisible();
+  await captureEverySize(page, 'run-graph');
   const task = await openTask(page, workspaceId, continued);
   expect(task).toMatchObject({ status: 'expired', onExpiry: 'continue' });
   await expect(page.getByText('Timed out after 7 days')).toBeVisible();
