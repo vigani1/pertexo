@@ -237,9 +237,12 @@ How it works: the worker opens the workbook's zip directory before inflating
 anything and refuses a workbook with more than 1,000 parts or 100 MB
 uncompressed, then holds the same limits while it reads, so a "zip bomb" fails
 fast without using memory. It reads at most 256 sheets and 1,000,000 cells in
-one step. Legacy `.xls`, macro-enabled `.xlsm`, password-protected, OpenDocument
-and damaged files fail with a hint to save the file as Excel Workbook (`.xlsx`).
-External links and embedded objects are ignored and never fetched.
+one step. A cell reads up to 32,767 characters, Excel's limit, counted after
+escapes such as `_x000D_` become their characters. Legacy `.xls`, macro-enabled
+`.xlsm`, password-protected, OpenDocument and damaged files fail with a hint to
+save the file as Excel Workbook (`.xlsx`); so does the rare workbook whose parts
+are saved as UTF-16 rather than UTF-8. External links and embedded objects are
+ignored and never fetched.
 
 The editor never opens the file itself. After you test the step, Setup shows
 the first rows it read in a small grid, the header row lit. If the sheet name

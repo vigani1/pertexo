@@ -46,7 +46,7 @@ export async function* readSheetRows(
   const append = (text: string) => {
     if (cell === undefined || target === undefined) return;
     const next = (cell[target] ?? '') + text;
-    if (next.length > SPREADSHEET_LIMITS.cellTextLength)
+    if (next.length > SPREADSHEET_LIMITS.writtenCellTextLength)
       throw new FileInputFailure({ reason: 'value_size' });
     cell[target] = next;
   };
@@ -89,6 +89,9 @@ export async function* readSheetRows(
       else if (name === 'rPh') phonetic--;
       else if (name === 'c' && cell !== undefined && row !== undefined) {
         const decoded = decodeCell(cell, context);
+        // Shared and inline text alike, as read rather than as written.
+        if ((decoded?.text.length ?? 0) > SPREADSHEET_LIMITS.cellTextLength)
+          throw new FileInputFailure({ reason: 'value_size' });
         if (decoded !== undefined) row.cells.set(cell.column, decoded);
         cell = undefined;
       } else if (name === 'row' && row !== undefined) {

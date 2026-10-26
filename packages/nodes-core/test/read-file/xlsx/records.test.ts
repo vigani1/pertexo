@@ -342,6 +342,36 @@ describe('Read file with Excel workbooks', () => {
     ]);
   });
 
+  it('measures the 32,767-character cell limit after unescaping', async () => {
+    // Seven escaped characters read as one, so this text is written longer
+    // than the limit but reads within it.
+    const fits = 'a'.repeat(32_000) + '_x0041_'.repeat(767);
+    const inline = (value: string) =>
+      `<c r="B2" t="inlineStr"><is><t>${value}</t></is></c>`;
+    const sheet = (shared: string, inlineText: string) =>
+      workbook({
+        sharedItems: `<si><t>shared</t></si><si><t>inline</t></si><si><t>${shared}</t></si>`,
+        sheets: [
+          {
+            name: 'Sheet1',
+            rows:
+              row(1, text('A1', 0) + text('B1', 1)) +
+              row(2, text('A2', 2) + inline(inlineText)),
+          },
+        ],
+      });
+    const expected = 'a'.repeat(32_000) + 'A'.repeat(767);
+    expect(await rows(sheet(fits, fits))).toEqual([
+      { shared: expected, inline: expected },
+    ]);
+
+    const over = fits + 'a';
+    for (const bytes of [sheet(over, fits), sheet(fits, over)])
+      await expect(readWorkbook(bytes)).rejects.toMatchObject({
+        diagnostic: { reason: 'value_size' },
+      });
+  });
+
   it('accepts a header-only sheet and namespace-prefixed parts', async () => {
     const prefixed = workbook({
       sharedStrings: ['only'],
