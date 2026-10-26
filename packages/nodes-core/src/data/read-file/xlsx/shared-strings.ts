@@ -28,7 +28,7 @@ export async function readSharedStrings(
         if (!inText || item === undefined) return;
         item += text;
         length += text.length;
-        if (item.length > SPREADSHEET_LIMITS.cellTextLength)
+        if (item.length > SPREADSHEET_LIMITS.writtenCellTextLength)
           throw new FileInputFailure({ reason: 'value_size' });
         if (length > SPREADSHEET_LIMITS.sharedTextLength) tooLarge();
       },

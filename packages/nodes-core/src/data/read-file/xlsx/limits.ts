@@ -12,8 +12,10 @@ export const SPREADSHEET_LIMITS = Object.freeze({
   styles: 65_536,
   sharedStrings: 1_000_000,
   sharedTextLength: 33_554_432,
-  /** Excel's own cell limit. */
+  /** Excel's own cell limit, counted after `_xHHHH_` unescaping. */
   cellTextLength: 32_767,
+  /** Each escape is seven written characters for one read. */
+  writtenCellTextLength: 32_767 * 7,
   rows: 1_048_576,
   columns: 16_384,
   xmlDepth: 64,
