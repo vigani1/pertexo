@@ -37,6 +37,10 @@ One test can be active per person per workflow. Workspace capacity limits apply.
 **Approval**, **Request input** and **Call workflow** before testing beyond them;
 an unpinned one stops with **Pin this step to continue the test**. Branching
 pins must contain a valid `selectedPort` (for example `approved` for Approval).
+With **Continue on Timed out**, Approval also accepts `timed_out`, and Request
+input becomes a branching step: its pin needs `"selectedPort": "out"` for a
+submitted form or `"timed_out"`. A Request input pin saved before that choice,
+or copied from a run, needs the field added before the test can use it.
 **Respond to webhook** validates its response but never answers a real caller.
 
 Tests appear only in the editor’s history, never the main runs list. They do not
