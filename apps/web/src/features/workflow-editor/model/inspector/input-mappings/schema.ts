@@ -35,23 +35,63 @@ export function inputKeySuggestions(
 
 export type OutputField = Readonly<{ key: string; type?: SchemaValueType }>;
 
+function selectedOutputSchema(
+  outputSchema: unknown,
+  node?: Pick<WorkflowNode, 'config'>,
+  outputVariant?: OutputVariantSelection,
+): unknown {
+  if (
+    node === undefined ||
+    outputVariant === undefined ||
+    !isRecord(outputSchema)
+  )
+    return outputSchema;
+  const variants = outputSchema.anyOf ?? outputSchema.oneOf;
+  return Array.isArray(variants)
+    ? variants[selectOutputVariant(outputVariant, node.config)]
+    : outputSchema;
+}
+
 /** Top-level output fields, including alternatives, for "Insert data". */
 export function outputFieldsOf(
   outputSchema: unknown,
   node?: Pick<WorkflowNode, 'config'>,
   outputVariant?: OutputVariantSelection,
 ): readonly OutputField[] {
-  let schema = outputSchema;
-  if (node !== undefined && outputVariant !== undefined && isRecord(schema)) {
-    const variants = schema.anyOf ?? schema.oneOf;
-    if (Array.isArray(variants)) {
-      const index = selectOutputVariant(outputVariant, node.config);
-      schema = variants[index];
-    }
-  }
+  const schema = selectedOutputSchema(outputSchema, node, outputVariant);
   return schemaProperties(schema).map(([key, candidate]) => {
     const type = isRecord(candidate) ? schemaValueType(candidate) : undefined;
     return type === undefined ? { key } : { key, type };
+  });
+}
+
+export type FileField = Readonly<{
+  key: string;
+  /** Some outputs are a file only sometimes, such as an HTTP response body. */
+  sometimes: boolean;
+}>;
+
+function isFileReferenceSchema(candidate: unknown): boolean {
+  if (!isRecord(candidate) || !isRecord(candidate.properties)) return false;
+  const kind = candidate.properties.kind;
+  return isRecord(kind) && kind.const === 'artifact';
+}
+
+/** Top-level output fields that hold a file reference, for attaching files. */
+export function fileFieldsOf(
+  outputSchema: unknown,
+  node?: Pick<WorkflowNode, 'config'>,
+  outputVariant?: OutputVariantSelection,
+): readonly FileField[] {
+  const schema = selectedOutputSchema(outputSchema, node, outputVariant);
+  return schemaProperties(schema).flatMap(([key, candidate]): FileField[] => {
+    if (isFileReferenceSchema(candidate)) return [{ key, sometimes: false }];
+    const variants: unknown = isRecord(candidate)
+      ? (candidate.oneOf ?? candidate.anyOf)
+      : undefined;
+    return Array.isArray(variants) && variants.some(isFileReferenceSchema)
+      ? [{ key, sometimes: true }]
+      : [];
   });
 }
 

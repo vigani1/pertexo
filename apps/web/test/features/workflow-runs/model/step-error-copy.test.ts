@@ -23,8 +23,16 @@ describe('step error copy', () => {
       'code.memory_limit',
       'code.output_invalid',
       'code.module_refused',
+      'email.too_many_attachments',
+      'email.attachments_too_large',
     ])
       expect(describeStepError(code), code).not.toEqual(fallback);
+    expect(describeStepError('email.attachments_too_large').advice).toMatch(
+      /6 MB/u,
+    );
+    expect(shortStepError('email.too_many_attachments')).toBe(
+      'too many attachments',
+    );
     expect(describeStepError('execution.provider').advice).toMatch(
       /Return error responses/u,
     );

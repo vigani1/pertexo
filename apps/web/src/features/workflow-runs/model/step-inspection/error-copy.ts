@@ -96,6 +96,16 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
     advice:
       'Correct the file or reference, then start a new run. Files fit up to 1 MB; split larger files into smaller files for separate runs.',
   },
+  'email.too_many_attachments': {
+    sentence: 'This email had more files attached than it can carry.',
+    advice:
+      'Attach at most 10 files, or split them across several emails, then start a new run.',
+  },
+  'email.attachments_too_large': {
+    sentence: 'The attached files were too large to send together.',
+    advice:
+      'Keep the files within 6 MB in total, or split them across several emails, then start a new run.',
+  },
   call_target_unavailable: {
     sentence: 'The child workflow could not accept this Call.',
     advice: 'Check that the child is active, then replay the parent.',
@@ -322,6 +332,8 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
   'execution.timeout': 'the service didn’t answer in time',
   'execution.configuration': 'its setup couldn’t be used',
   'execution.output_invalid': 'its output couldn’t be kept',
+  'email.too_many_attachments': 'too many attachments',
+  'email.attachments_too_large': 'attachments too large',
   'code.runtime_error': 'the code threw an error',
   'code.syntax_error': 'the code has a syntax error',
   'code.timeout': 'the code ran too long',
