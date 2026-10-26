@@ -3,7 +3,10 @@ import { expect, type Page } from '@playwright/test';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { csrfHeaders } from '../../test/support/browser/csrf';
 import { test } from '../support/browser-fixture';
-import { createOwnedHttpConnection } from '../support/authoring/http-connection';
+import {
+  createEditorWorkspace,
+  registerEditorUser,
+} from '../support/ordinary-editor-session';
 import {
   addSingleStep,
   createEditorWorkflow,
@@ -22,7 +25,14 @@ test('reads sheet 2 of an uploaded workbook, filters it and downloads a new work
   request,
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  const { workspaceId } = await createOwnedHttpConnection(page, request);
+  const origin = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
+  if (origin === undefined)
+    throw new Error('Run through the owned API fixture');
+  await registerEditorUser(page, request, origin, 'Spreadsheet owner');
+  const workspaceId = await createEditorWorkspace(
+    page,
+    'Spreadsheet workspace',
+  );
   const path = await createEditorWorkflow(page, workspaceId, 'Paid Q2 orders');
   const readId = await addSingleStep(page, path, /Read file/u, 'Read Q2 sheet');
   await page.getByRole('button', { name: 'Excel', exact: true }).click();

@@ -106,6 +106,30 @@ export async function verifyEditorFailureRoutingOutcome(
   return;
 }
 
+/** The journey uploaded one workbook and a run created another from it. */
+export async function verifyEditorSpreadsheetsOutcome(
+  context: EditorBrowserJourneyContext,
+) {
+  const { rows } = await context.api
+    .database()
+    .query<{ purpose: string; count: number }>(
+      `select purpose, count(*)::int as count from app.artifacts
+        where media_type = $1 and status = 'available'
+        group by purpose order by purpose`,
+      ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    );
+  const counts = Object.fromEntries(
+    rows.map((row) => [row.purpose, row.count]),
+  );
+  expect(counts['node-output']).toBeGreaterThanOrEqual(1);
+  expect(
+    Object.values(counts).reduce((sum, count) => sum + count, 0),
+  ).toBeGreaterThanOrEqual(2);
+  process.stdout.write(
+    `Live spreadsheet workbooks ${JSON.stringify(counts)}\n`,
+  );
+}
+
 export function verifyEditorArtifactInputsOutcome(
   _context: EditorBrowserJourneyContext,
 ) {

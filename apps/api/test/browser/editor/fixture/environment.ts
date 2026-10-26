@@ -34,6 +34,7 @@ export const scenario = z
     'notifications',
     'transforms',
     'artifact-inputs',
+    'spreadsheets',
     'api-tokens',
     'duplication',
     'portability',
@@ -69,11 +70,12 @@ export const webRequire = createRequire(new URL('package.json', webDirectory));
 export const noticeMailKey =
   scenario === 'notifications' ? randomBytes(32).toString('base64') : undefined;
 
-/** Journeys that store real files in the owned object store. */
+/** Journeys that read and write real files through the owned object store. */
 export const artifactScenario =
   scenario === 'artifact-inputs' ||
   scenario === 'email-attachments' ||
-  scenario === 'form-uploads';
+  scenario === 'form-uploads' ||
+  scenario === 'spreadsheets';
 
 export const controlledHttpScenario =
   scenario === 'webhook-controlled-http' ||
@@ -135,6 +137,7 @@ const EDITOR_JOURNEY_PATHS = {
   schedule: 'editor/schedule.spec.ts',
   'failure-routing': 'editor/failure-routing.spec.ts',
   transforms: 'editor/transforms.spec.ts',
+  spreadsheets: 'editor/spreadsheets.spec.ts',
   'webhook-controlled-http': 'editor/webhook-controlled-http.spec.ts',
   'email-attachments': 'editor/email-attachments.spec.ts',
 } satisfies Record<Exclude<typeof scenario, 'artifact-inputs'>, string>;

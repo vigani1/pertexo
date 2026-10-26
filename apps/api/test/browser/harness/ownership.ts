@@ -89,7 +89,8 @@ async function verifyArtifactStore(
   inspect: (id: string) => Promise<string>,
 ): Promise<void> {
   if (
-    env.EDITOR_BROWSER_CASE === 'artifact-inputs' &&
+    (env.EDITOR_BROWSER_CASE === 'artifact-inputs' ||
+      env.EDITOR_BROWSER_CASE === 'spreadsheets') &&
     manifest.artifactStore === undefined
   )
     throw new Error(

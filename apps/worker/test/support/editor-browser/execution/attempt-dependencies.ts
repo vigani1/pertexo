@@ -52,7 +52,7 @@ function pureEditorDependencies(
             new Error('Provider access is outside this pure-node fixture'),
           ),
       }),
-      // Only the form-uploads journey configures a real artifact store.
+      // Only the file journeys configure a real artifact store.
       artifacts:
         controlledCapabilities?.factories.artifacts ??
         (() => ({
