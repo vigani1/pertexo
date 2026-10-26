@@ -20,10 +20,8 @@ import {
 import { inputKeySuggestions } from '../../../model/inspector/input-mappings/schema';
 import { useInputMappingDraft } from '../input-mappings/use-draft';
 import { IncomingLinks } from '../incoming-links';
-import {
-  InsertDataPicker,
-  type InsertedSource,
-} from '../input-mappings/insert-data/picker';
+import { InsertDataPicker } from '../input-mappings/insert-data/picker';
+import type { InsertedSource } from '../input-mappings/insert-data/choices';
 import { MappingRow } from '../input-mappings/row';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { httpRequestPlaceholders } from '../../../model/inspector/http-body';
