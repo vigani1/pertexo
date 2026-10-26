@@ -2,14 +2,16 @@ import jsonata from 'jsonata';
 import { isRecord, type ValueSource } from '@pertexo/workflow-model';
 import { sourceFromExpression } from './sources';
 
+type ObjectEntry = Readonly<{
+  key: string;
+  expression: string;
+  source?: ValueSource;
+}>;
+
 /** Use the existing parser's key positions; never interpret/evaluate expressions in the browser. */
-export function objectExpressions(expression: string):
-  | readonly Readonly<{
-      key: string;
-      expression: string;
-      source?: ValueSource;
-    }>[]
-  | undefined {
+export function objectExpressions(
+  expression: string,
+): readonly ObjectEntry[] | undefined {
   if (new TextEncoder().encode(expression).length > 16384) return undefined;
   try {
     const ast: unknown = jsonata(expression).ast();
@@ -49,6 +51,59 @@ export function objectExpressions(expression: string):
   } catch {
     return undefined;
   }
+}
+
+/**
+ * A list of object constructions, `[{…}, {…}]`, as each object's entries.
+ * Anything else, such as a path to a list, stays one whole mapping.
+ */
+export function listExpressions(
+  expression: string,
+): readonly (readonly ObjectEntry[])[] | undefined {
+  if (new TextEncoder().encode(expression).length > 16384) return undefined;
+  try {
+    const ast: unknown = jsonata(expression).ast();
+    if (!isListConstruction(ast, expression)) return undefined;
+    // An element's position is just past its opening brace.
+    const starts = ast.expressions.map((element) =>
+      isRecord(element) &&
+      element.type === 'unary' &&
+      element.value === '{' &&
+      typeof element.position === 'number'
+        ? element.position - 1
+        : undefined,
+    );
+    if (starts.some((start) => start === undefined)) return undefined;
+    const end = expression.lastIndexOf(']');
+    const objects = starts.map((start, index) =>
+      objectExpressions(
+        expression
+          .slice(start, starts[index + 1] ?? end)
+          .trim()
+          .replace(/,$/u, '')
+          .trimEnd(),
+      ),
+    );
+    return objects.every((entries) => entries !== undefined)
+      ? objects
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isListConstruction(
+  ast: unknown,
+  expression: string,
+): ast is { type: 'unary'; value: '['; expressions: unknown[] } {
+  return (
+    isRecord(ast) &&
+    ast.type === 'unary' &&
+    ast.value === '[' &&
+    Array.isArray(ast.expressions) &&
+    expression.trimStart().startsWith('[') &&
+    expression.trimEnd().at(-1) === ']'
+  );
 }
 
 function isObjectConstruction(

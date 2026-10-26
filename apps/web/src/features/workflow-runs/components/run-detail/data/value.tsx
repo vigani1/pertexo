@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { ArtifactDownload, FilePages } from '@/features/artifacts/public';
+import { SentAttachments } from './sent-attachments';
 import type { ApiClient } from '@/lib/api/client';
 import {
   describeValue,
@@ -115,6 +116,7 @@ export function RunDataValue({
               workspaceId={scope.workspace.id}
             />
           ) : null}
+          <SentAttachments value={data.value} />
           <InlineValue value={data.value} title={title} />
         </>
       );

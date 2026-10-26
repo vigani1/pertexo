@@ -1,6 +1,7 @@
 import { useInspectorSession } from '../use-session';
 import type { ReactNode } from 'react';
 import { HttpBodyInputs } from '../http-body/inputs';
+import { EmailInputs } from '../attachments/email-inputs';
 import { InputFileActions } from '../input-mappings/file-actions';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
@@ -70,21 +71,31 @@ export function InputsTab(props: InputsTabProps) {
       onRemoveEdge={onRemoveEdge}
     />
   );
-  return props.node.definition.key === 'http.request' ? (
-    <HttpBodyInputs
-      node={props.node}
-      graph={props.graph}
-      form={props.form}
-      fileScope={workspaceScope}
-      loopPorts={props.loopPorts}
-      links={links}
-      rawInputs={(form) => (
-        <MappedInputsTab {...mapping} form={form} links={links} />
-      )}
-    />
-  ) : (
-    <MappedInputsTab {...mapping} links={links} />
-  );
+  if (props.node.definition.key === 'http.request')
+    return (
+      <HttpBodyInputs
+        node={props.node}
+        graph={props.graph}
+        form={props.form}
+        fileScope={workspaceScope}
+        loopPorts={props.loopPorts}
+        links={links}
+        rawInputs={(form) => (
+          <MappedInputsTab {...mapping} form={form} links={links} />
+        )}
+      />
+    );
+  if (props.node.definition.key === 'email.send_notification')
+    return (
+      <EmailInputs
+        {...mapping}
+        links={links}
+        messageInputs={(message) => (
+          <MappedInputsTab {...mapping} {...message} />
+        )}
+      />
+    );
+  return <MappedInputsTab {...mapping} links={links} />;
 }
 
 function MappedInputsTab({
