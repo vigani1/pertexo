@@ -22,7 +22,7 @@ const glyphVariants = cva(
 );
 
 /** A page with a folded corner and the file's type set in mono. */
-export function FileGlyph({
+function FileGlyph({
   mediaType,
   name,
   className,
