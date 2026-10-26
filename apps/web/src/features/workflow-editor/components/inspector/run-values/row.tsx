@@ -10,7 +10,7 @@ import {
   type InputMappingDraftRow,
 } from '../../../model/inspector/input-mappings/draft';
 import { MappingValueEditor } from '../input-mappings/value-editor';
-import { InsertDataPicker } from '../input-mappings/insert-data-picker';
+import { InsertDataPicker } from '../input-mappings/insert-data/picker';
 export function RunValueRow({
   row,
   graph,

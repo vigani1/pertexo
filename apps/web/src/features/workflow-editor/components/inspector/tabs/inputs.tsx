@@ -23,7 +23,7 @@ import { IncomingLinks } from '../incoming-links';
 import {
   InsertDataPicker,
   type InsertedSource,
-} from '../input-mappings/insert-data-picker';
+} from '../input-mappings/insert-data/picker';
 import { MappingRow } from '../input-mappings/row';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { httpRequestPlaceholders } from '../../../model/inspector/http-body';
