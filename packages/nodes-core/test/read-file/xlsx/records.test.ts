@@ -289,6 +289,25 @@ describe('Read file with Excel workbooks', () => {
     },
   );
 
+  it('reads a shared-string cell without a value as empty', async () => {
+    const bytes = workbook({
+      sharedStrings: ['name', 'city', 'Oslo'],
+      sheets: [
+        {
+          name: 'Sheet1',
+          rows:
+            row(1, text('A1', 0) + text('B1', 1)) +
+            row(2, '<c r="A2" t="s"/>' + text('B2', 2)) +
+            row(3, '<c r="A3" t="s"><v></v></c>' + text('B3', 2)),
+        },
+      ],
+    });
+    expect(await rows(bytes)).toEqual([
+      { name: '', city: 'Oslo' },
+      { name: '', city: 'Oslo' },
+    ]);
+  });
+
   it('reads parts stored without compression, the sheet included', async () => {
     const stored = zip(
       entriesOf(orders).map((entry) => ({ ...entry, stored: true })),
