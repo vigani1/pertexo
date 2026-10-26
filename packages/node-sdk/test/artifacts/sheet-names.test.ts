@@ -22,7 +22,10 @@ describe('missing-sheet summaries', () => {
   });
 
   it('bounds the list to 20 names and counts the rest', () => {
-    const names = Array.from({ length: 256 }, (_, index) => `Sheet${index}`);
+    const names = Array.from(
+      { length: 256 },
+      (_, index) => `Sheet${String(index)}`,
+    );
     const text = summary(names);
     expect(readSheetSuggestions(text)).toEqual(names.slice(0, 20));
     expect(text).toContain('and 236 more.');
