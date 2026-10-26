@@ -11,6 +11,11 @@ import {
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { searchParams } from '@/lib/api/pagination';
+import {
+  uploadTarget,
+  UPLOAD_SESSION_HEADER,
+  type FormUploadTarget,
+} from '@/features/forms/fields.public';
 export type TaskScope = Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -79,16 +84,27 @@ export function listAudience(
   });
 }
 
+/** The upload session names the files this response may use. */
 export function submitTask(
   scope: TaskScope,
   taskId: string,
-  values: FormValues,
-  key: string,
+  {
+    values,
+    key,
+    session,
+  }: Readonly<{
+    values: FormValues;
+    key: string;
+    session?: string | undefined;
+  }>,
 ) {
   return scope.apiClient.request({
     path: `${path(scope.workspaceId)}/${encodeURIComponent(taskId)}/submit`,
     method: 'POST',
-    headers: { 'Idempotency-Key': key },
+    headers: {
+      'Idempotency-Key': key,
+      ...(session === undefined ? {} : { [UPLOAD_SESSION_HEADER]: session }),
+    },
     body: { values },
     response: {
       kind: 'json',
@@ -111,5 +127,18 @@ export function inspectAudience(
       kind: 'json',
       decode: (value) => approvalAudienceInspectionResponseSchema.parse(value),
     },
+  });
+}
+
+/** The task page is where an input request's files are attached. */
+export function taskUploadTarget(
+  scope: TaskScope,
+  taskId: string,
+  session: string,
+): FormUploadTarget {
+  return uploadTarget({
+    apiClient: scope.apiClient,
+    path: `${path(scope.workspaceId)}/${encodeURIComponent(taskId)}`,
+    session,
   });
 }

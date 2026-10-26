@@ -9,7 +9,12 @@ import { decideTask, submitTask, type TaskScope } from './tasks.api';
 import { taskKeys, taskQueryOptions } from './tasks.queries';
 type TaskResponse =
   PendingTaskDecisionRequest | Readonly<{ values: FormValues }>;
-export function useTaskResponse(scope: TaskScope, taskId: string) {
+export function useTaskResponse(
+  scope: TaskScope,
+  taskId: string,
+  /** Input requests send it so their uploaded files count. */
+  session?: string,
+) {
   const cache = useQueryClient();
   const intent = useRef<
     Readonly<{ body: TaskResponse; key: string }> | undefined
@@ -18,7 +23,11 @@ export function useTaskResponse(scope: TaskScope, taskId: string) {
   const mutation = useMutation({
     mutationFn: (command: NonNullable<typeof intent.current>) =>
       'values' in command.body
-        ? submitTask(scope, taskId, command.body.values, command.key)
+        ? submitTask(scope, taskId, {
+            values: command.body.values,
+            key: command.key,
+            session,
+          })
         : decideTask(scope, taskId, command.body, command.key),
     retry: false,
     onSuccess: (result) => {

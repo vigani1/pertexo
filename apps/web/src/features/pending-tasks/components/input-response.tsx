@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import type { PendingTaskDetail } from '@pertexo/contracts';
-import { FormResponse } from '@/features/forms/fields.public';
+import type { FormValues } from '@pertexo/workflow-model';
+import { FormResponse, newUploadSession } from '@/features/forms/fields.public';
+import { ResponseFiles } from '@/features/artifacts/public';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/format/time';
 import { useTaskResponse } from '../data/use-response';
-import type { TaskScope } from '../data/tasks.api';
+import { taskUploadTarget, type TaskScope } from '../data/tasks.api';
 import { blockedSentence } from '../model/presentation';
 export function InputResponse({
   task,
@@ -13,7 +16,9 @@ export function InputResponse({
   task: Extract<PendingTaskDetail, { kind: 'input_request' }>;
   scope: TaskScope;
 }>) {
-  const command = useTaskResponse(scope, task.id);
+  // One response session: the files attached here and the response share it.
+  const [session] = useState(newUploadSession);
+  const command = useTaskResponse(scope, task.id, session);
   return (
     <div className="flex flex-col gap-4">
       {task.output === null ? null : (
@@ -33,21 +38,7 @@ export function InputResponse({
                     {field.label}
                   </dt>
                   <dd className="whitespace-pre-wrap break-words">
-                    {Array.isArray(value) ? (
-                      <ul className="list-inside list-disc">
-                        {value.map((option) =>
-                          typeof option === 'string' ? (
-                            <li key={option}>{option}</li>
-                          ) : (
-                            <li key={option.file.artifactId}>
-                              {option.filename}
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    ) : (
-                      String(value)
-                    )}
+                    <ResponseValue value={value} scope={scope} />
                   </dd>
                 </div>
               );
@@ -64,6 +55,7 @@ export function InputResponse({
           initialValues={task.prefill}
           pending={command.pending}
           disabled={!task.canRespond || command.uncertain}
+          uploads={taskUploadTarget(scope, task.id, session)}
           onSubmit={(values) => command.send({ values })}
         />
       ) : null}
@@ -87,5 +79,29 @@ export function InputResponse({
         </Notice>
       )}
     </div>
+  );
+}
+
+function ResponseValue({
+  value,
+  scope,
+}: Readonly<{ value: FormValues[string]; scope: TaskScope }>) {
+  if (!Array.isArray(value)) return String(value);
+  const choices = value.filter((item) => typeof item === 'string');
+  if (choices.length < value.length)
+    return (
+      <ResponseFiles
+        value={value}
+        apiClient={scope.apiClient}
+        userId={scope.userId}
+        workspaceId={scope.workspaceId}
+      />
+    );
+  return (
+    <ul className="list-inside list-disc">
+      {choices.map((option) => (
+        <li key={option}>{option}</li>
+      ))}
+    </ul>
   );
 }

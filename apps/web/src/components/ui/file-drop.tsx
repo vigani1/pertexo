@@ -8,6 +8,14 @@ type FileDropState = Readonly<{
   dragging: boolean;
 }>;
 
+type Choice =
+  | Readonly<{ onChoose: (file: File) => void; onChooseFiles?: never }>
+  | Readonly<{
+      /** Every chosen or dropped file at once, for a `multiple` drop. */
+      onChooseFiles: (files: readonly File[]) => void;
+      onChoose?: never;
+    }>;
+
 /** The native input owns keyboard/file-picker access; the same choice handles drops. */
 export function FileDrop({
   id,
@@ -15,20 +23,22 @@ export function FileDrop({
   className,
   children,
   onChoose,
+  onChooseFiles,
   ...inputProps
 }: Omit<ComponentProps<'input'>, 'type' | 'onChange' | 'children' | 'value'> &
-  Readonly<{
-    onChoose: (file: File) => void;
-    children?: (state: FileDropState) => ReactNode;
-  }>) {
+  Choice &
+  Readonly<{ children?: (state: FileDropState) => ReactNode }>) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
   const [file, setFile] = useState<File>();
   const [dragging, setDragging] = useState(false);
-  function choose(next: File | undefined) {
+  function choose(list: FileList | null | undefined) {
+    const files = Array.from(list ?? []);
+    const next = files[0];
     if (disabled || next === undefined) return;
     setFile(next);
-    onChoose(next);
+    if (onChooseFiles === undefined) onChoose(next);
+    else onChooseFiles(inputProps.multiple === true ? files : [next]);
   }
   return (
     <div
@@ -44,7 +54,7 @@ export function FileDrop({
       onDrop={(event) => {
         event.preventDefault();
         setDragging(false);
-        choose(event.dataTransfer.files[0]);
+        choose(event.dataTransfer.files);
       }}
       className={cn(
         'relative flex min-h-28 min-w-0 items-center gap-3 rounded-xl border border-dashed border-border-strong bg-surface-ink/[0.015] p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring motion-reduce:transition-none',
@@ -61,7 +71,7 @@ export function FileDrop({
         disabled={disabled}
         className="sr-only"
         onChange={(event) => {
-          choose(event.currentTarget.files?.[0]);
+          choose(event.currentTarget.files);
           // The same file can be chosen again after a read or validation failure.
           event.currentTarget.value = '';
         }}

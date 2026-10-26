@@ -24,7 +24,7 @@ export function valuesFromDraft(
 
 function emptyFieldValue(type: FormField['type']): FormDraftValue {
   if (type === 'boolean') return false;
-  if (type === 'multi_select') return [];
+  if (type === 'multi_select' || type === 'file') return [];
   return '';
 }
 
