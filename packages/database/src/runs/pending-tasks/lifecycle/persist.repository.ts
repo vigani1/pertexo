@@ -1,5 +1,13 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { and, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  notInArray,
+  sql,
+} from 'drizzle-orm';
 import { pendingRunTasks } from '../../../schema/runs/pending-task.js';
 import { nodeRuns, workflowRuns } from '../../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
@@ -115,8 +123,7 @@ export async function persistConsumedTasks(
           eq(t.runId, runId),
           eq(t.id, node.output.taskId),
           eq(t.invocationKey, node.invocationKey),
-          inArray(t.status, ['approved', 'rejected', 'submitted']),
-          sql`${t.outputRef} is not null`,
+          isNotNull(t.outputRef),
           eq(n.workspaceId, t.workspaceId),
           eq(n.id, t.nodeRunId),
           eq(n.workflowRunId, t.runId),

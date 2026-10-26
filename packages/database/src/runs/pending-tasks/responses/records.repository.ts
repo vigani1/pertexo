@@ -45,8 +45,11 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
         };
   const config = captured.config;
   const context = taskContextSchema.parse(row.context);
+  // A timed-out task's output is for later steps; the request has no answer.
   const stored =
-    row.output_ref === null ? null : parseStoredExecutionValue(row.output_ref);
+    row.output_ref === null || row.status === 'expired'
+      ? null
+      : parseStoredExecutionValue(row.output_ref);
   if (stored !== null && stored.kind !== 'inline')
     throw new Error('Task result is not inline');
   const common = {
@@ -64,6 +67,7 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
     details: context.details ?? {},
     instructions: config.instructions,
     audience: config.audience,
+    onExpiry: config.onExpiry,
     status: row.status,
     createdAt: row.created_at.toISOString(),
     expiresAt: row.expires_at.toISOString(),

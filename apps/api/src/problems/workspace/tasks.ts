@@ -17,7 +17,7 @@ export const tasksProblems = [
       ],
       expired: [
         'pending_task.expired',
-        'This task expired. The run will follow its failure path.',
+        'This task expired and no longer accepts a response. The run continues on its Timed out path or fails the step, as the step’s setup says.',
       ],
       run_closed: [
         'pending_task.run_closed',

@@ -23,6 +23,7 @@ export async function taskFixture(
   input: Readonly<{
     named?: boolean;
     allowStarterToDecide?: boolean;
+    onExpiry?: 'fail' | 'continue';
     budget?: boolean;
     hardDeadline?: boolean;
     unlimited?: boolean;
@@ -50,6 +51,7 @@ export async function taskFixture(
     ...(input.allowStarterToDecide === undefined
       ? {}
       : { allowStarterToDecide: input.allowStarterToDecide }),
+    ...(input.onExpiry === undefined ? {} : { onExpiry: input.onExpiry }),
   });
   await admin.query(
     `update app.workflow_runs set started_by=$2,deadline_at=case when $3 then null else clock_timestamp()+interval '30 minutes' end,absolute_deadline_at=case when $4 then clock_timestamp()+interval '5 days' else null end where id=$1`,

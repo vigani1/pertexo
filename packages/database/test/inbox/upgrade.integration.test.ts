@@ -115,6 +115,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0052_publication_reuse_candidates.sql',
       '0053_remove_artifact_lookup.sql',
       '0054_form_uploads.sql',
+      '0055_task_timeout_output.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

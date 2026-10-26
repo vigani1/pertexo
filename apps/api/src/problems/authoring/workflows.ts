@@ -221,7 +221,7 @@ export const workflowProblems = [
 
 const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
   'workflow edge source port is not configured':
-    'A Switch or Parallel step has a connection from a branch it doesn’t define. Add that branch in its setup, or remove the connection.',
+    'A step has a link from an output its setup doesn’t define: a Switch case, a Parallel branch or a Timed out path. Add it in the step’s setup, or remove the link.',
   'Merge must reference a pinned Parallel node':
     'A Merge step doesn’t say which Parallel step it joins. Choose it in the Merge step’s setup.',
   'Parallel requires exactly one paired Merge':
