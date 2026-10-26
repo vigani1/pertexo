@@ -35,7 +35,11 @@ import { InspectorPanel } from './panel';
 
 import type { InspectorTab } from '../../hooks/use-inspector-navigation';
 import type { NodeInspectorActions } from './node';
-import type { FinishedTest } from '../../hooks/use-last-test';
+import {
+  LastTestContext,
+  type FinishedTest,
+  type RecordedTest,
+} from '../../hooks/use-last-test';
 
 type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
 
@@ -60,7 +64,7 @@ type EditorInspectorProps = Readonly<{
   }>;
   testing: Readonly<{
     testRef: Ref<NodeTestHandle>;
-    rememberedTest: FinishedTest | undefined;
+    rememberedTest: RecordedTest | undefined;
     onTestFinished: (test: FinishedTest) => void;
     onTestPassed: (nodeId: string, outputBytes: number | undefined) => void;
   }>;
@@ -200,12 +204,13 @@ export function EditorInspector({
       }}
     />
   );
-  // The Schedule step's builder previews its rule against this workflow, and
-  // connection slots add connections to this workspace.
+  // The Schedule step's builder previews its rule against this workflow,
+  // connection slots add connections to this workspace, and file setups
+  // preview their step's last test.
   return (
     <SchedulePreviewScope value={previewScope}>
       <AddConnectionContext value={connectionScope}>
-        {panel}
+        <LastTestContext value={rememberedTest}>{panel}</LastTestContext>
       </AddConnectionContext>
     </SchedulePreviewScope>
   );

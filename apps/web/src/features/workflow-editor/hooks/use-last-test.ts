@@ -1,6 +1,6 @@
 import type { PreviewRunSummary } from '@pertexo/contracts';
-import { useState } from 'react';
-import { useEditorStoreApi } from '../model/state/context';
+import { createContext, use, useState } from 'react';
+import { useEditorStore, useEditorStoreApi } from '../model/state/context';
 
 export type FinishedTest = Readonly<{
   nodeId: string;
@@ -23,5 +23,21 @@ export function useLastTest() {
     record: (test: FinishedTest) => {
       setLast({ ...test, generation: store.getState().generation });
     },
+  } as const;
+}
+
+/** The session's last finished test, for setups that preview its output. */
+export const LastTestContext = createContext<RecordedTest | undefined>(
+  undefined,
+);
+
+/** One step's last finished test, and whether the draft changed after it. */
+export function useStepLastTest(nodeId: string) {
+  const last = use(LastTestContext);
+  const generation = useEditorStore((state) => state.generation);
+  if (last?.nodeId !== nodeId) return undefined;
+  return {
+    preview: last.preview,
+    stale: last.generation !== generation,
   } as const;
 }

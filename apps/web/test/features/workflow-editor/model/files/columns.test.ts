@@ -1,48 +1,55 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addFileColumns,
   fileColumnLimits,
-  parseFileColumns,
+  moveFileColumn,
 } from '@/features/workflow-editor/model/inspector/files/columns';
-import { startingConfig } from '@/features/workflow-editor/model/graph/starting-config';
+
 const schema = {
   oneOf: [
     { properties: { format: { const: 'json' } } },
     {
       properties: {
-        format: { const: 'csv' },
-        columns: { maxItems: 64, items: { maxLength: 256 } },
+        columns: { maxItems: 3, items: { type: 'string', maxLength: 8 } },
       },
     },
   ],
 };
-describe('Create file columns', () => {
-  it('uses catalog bounds, preserves exact names and order, and leaves empty discovery explicit', () => {
-    expect(startingConfig('core.create_file', [])).toEqual({
-      format: 'csv',
-      delimiter: ',',
-      columns: [],
-    });
-    const limits = fileColumnLimits(schema);
-    expect(limits).toEqual({ count: 64, characters: 256 });
-    if (limits === undefined) throw new Error('Missing column bounds');
-    expect(parseFileColumns('currency\r\n amount ', limits)).toEqual({
-      ok: true,
-      value: ['currency', ' amount '],
-    });
-    expect(parseFileColumns('', limits)).toEqual({ ok: true, value: [] });
-    expect(parseFileColumns('amount\namount', limits)).toMatchObject({
-      ok: false,
-    });
-    expect(parseFileColumns('amount\n', limits)).toMatchObject({ ok: false });
-    expect(parseFileColumns('x'.repeat(257), limits)).toMatchObject({
-      ok: false,
-    });
-    expect(
-      parseFileColumns(
-        Array.from({ length: 65 }, (_, i) => String(i)).join('\n'),
-        limits,
-      ),
-    ).toMatchObject({ ok: false });
+
+describe('file columns', () => {
+  it('reads the column limits from the step schema', () => {
+    expect(fileColumnLimits(schema)).toEqual({ count: 3, characters: 8 });
     expect(fileColumnLimits({})).toBeUndefined();
+  });
+
+  it('adds a name, or each line of pasted names, keeping their spelling', () => {
+    const limits = { count: 3, characters: 8 };
+    expect(addFileColumns([], ' amount', limits)).toEqual({
+      ok: true,
+      value: [' amount'],
+    });
+    expect(addFileColumns(['id'], 'currency\r\namount\n', limits)).toEqual({
+      ok: true,
+      value: ['id', 'currency', 'amount'],
+    });
+  });
+
+  it.each([
+    [[], '', 'Type a field name'],
+    [['id'], 'id', 'each column once'],
+    [['a', 'b'], 'c\nd', 'up to 3 columns'],
+    [[], '   ', 'nonblank names'],
+    [[], 'x'.repeat(9), 'up to 8 characters'],
+  ])('refuses %j + %j', (columns, text, error) => {
+    const result = addFileColumns(columns, text, { count: 3, characters: 8 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain(error);
+  });
+
+  it('moves a column one place and stays put at the ends', () => {
+    expect(moveFileColumn(['a', 'b', 'c'], 2, -1)).toEqual(['a', 'c', 'b']);
+    expect(moveFileColumn(['a', 'b', 'c'], 0, 1)).toEqual(['b', 'a', 'c']);
+    expect(moveFileColumn(['a', 'b'], 0, -1)).toEqual(['a', 'b']);
+    expect(moveFileColumn(['a', 'b'], 1, 1)).toEqual(['a', 'b']);
   });
 });

@@ -320,8 +320,7 @@ test('reads a JSON file supplied through manual run input', async ({
     'Read manual JSON file',
   );
   await addSingleStep(page, path, /Read file/u, 'Read orders');
-  await page.getByLabel('File format', { exact: true }).click();
-  await page.getByRole('option', { name: 'JSON', exact: true }).click();
+  await page.getByRole('button', { name: 'JSON', exact: true }).click();
   await expect
     .poll(
       async () => (await readEditorDraft(page, path)).graph.nodes[0]?.config,
