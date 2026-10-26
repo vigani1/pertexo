@@ -36,7 +36,6 @@
   "devDependencies": {
     "@fastify/busboy": "3.2.3",
     "@types/pg": "8.23.1",
-    "@types/smtp-server": "3.5.13",
     "bullmq": "6.3.16",
     "drizzle-orm": "0.45.4",
     "ioredis": "6.0.0",
