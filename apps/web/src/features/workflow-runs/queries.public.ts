@@ -18,7 +18,6 @@ export {
 } from './data/detail.queries';
 export { workflowRunKeys } from './data/query-cache';
 export {
-  filtersFromSearch,
   sanitizeRunSearch,
   sanitizeWorkflowRunSearch,
 } from './model/list/run-search';
