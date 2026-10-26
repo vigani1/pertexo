@@ -103,6 +103,33 @@ describe('Excel workbook safety', () => {
     await expect(drain()).rejects.toMatchObject(tooLarge);
   });
 
+  it('keeps rows without cells free of per-merge work', async () => {
+    // Every area stays active down the sheet; a cost per merge per row
+    // would be 3e10 steps, far past the deadline.
+    const bytes = workbook({
+      sharedStrings: ['a'],
+      sheets: [
+        {
+          name: 'Sheet1',
+          rows: row(1, text('A1', 0)) + '<row/>'.repeat(300_000),
+          after: `<mergeCells>${'<mergeCell ref="A1:A1048576"/>'.repeat(100_000)}</mergeCells>`,
+        },
+      ],
+    });
+    const read = async () => {
+      const rows = [];
+      for await (const record of readXlsxRecords(
+        bytes,
+        { format: 'xlsx', headerRow: 1, convertValues: true },
+        AbortSignal.timeout(5_000),
+        { accept: (value) => value },
+      ))
+        rows.push(record);
+      return rows;
+    };
+    await expect(read()).resolves.toEqual([]);
+  }, 30_000);
+
   it.each([
     [
       'macro-enabled .xlsm',

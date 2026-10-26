@@ -128,11 +128,13 @@ function headerNames(
 /**
  * Every position of a merged area reads its top-left value. Fills count
  * toward the cell budget, and areas outside the header are dropped once its
- * width is known, so a hostile merge can't multiply the work.
+ * width is known, so a hostile merge can't multiply the work. Only rows
+ * with cells visit the active areas, and below its top row each visit fills
+ * a counted cell or drops the area, so empty rows cost nothing per merge.
  */
 function mergedFill(areas: readonly MergedArea[], countCell: () => void) {
   let pending = [...areas].sort((left, right) => left.top - right.top);
-  let active: (MergedArea & { value?: Cell | undefined })[] = [];
+  let active: (MergedArea & { value: Cell })[] = [];
   let next = 0;
   return {
     capture(row: SheetRow) {
@@ -140,15 +142,17 @@ function mergedFill(areas: readonly MergedArea[], countCell: () => void) {
         let area = pending[next];
         area !== undefined && area.top <= row.index;
         area = pending[++next]
-      )
-        active.push({ ...area });
-      active = active.filter((area) => area.bottom >= row.index);
-      for (const area of active)
-        if (area.top === row.index) area.value = row.cells.get(area.left);
+      ) {
+        // An area whose top-left cell is empty, or whose top row is absent,
+        // has nothing to fill.
+        const value =
+          area.top === row.index ? row.cells.get(area.left) : undefined;
+        if (value !== undefined) active.push({ ...area, value });
+      }
     },
     fill(row: SheetRow, width: number = SPREADSHEET_LIMITS.columns) {
+      active = active.filter((area) => area.bottom >= row.index);
       for (const area of active) {
-        if (area.value === undefined) continue;
         for (
           let column = area.left;
           column <= Math.min(area.right, width);
