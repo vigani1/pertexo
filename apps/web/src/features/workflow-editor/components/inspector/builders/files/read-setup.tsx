@@ -151,9 +151,18 @@ function ExcelSheet({
         <SheetGrid
           label="First rows from the last test"
           headerRow={headerRow ?? 1}
-          headers={preview.kind === 'rows' ? preview.headers : undefined}
+          headers={
+            preview.kind === 'rows' && preview.total > 0
+              ? preview.headers
+              : undefined
+          }
           rows={preview.kind === 'rows' ? preview.rows : []}
           caption={describePreview(preview)}
+          notice={
+            preview.kind === 'rows' && preview.total === 0
+              ? 'No rows under the header row'
+              : undefined
+          }
           stale={'stale' in preview && preview.stale}
           footer={
             <SheetTabs
