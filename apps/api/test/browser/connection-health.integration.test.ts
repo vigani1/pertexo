@@ -72,6 +72,7 @@ describe.skipIf(!enabled)(
         ...process.env,
         PERTEXO_API_PROXY_TARGET: await fixture.api.listen(),
         PERTEXO_LIVE_MAIL_ORIGIN: fixture.controlOrigin,
+        PERTEXO_LIVE_WEB_ORIGIN: webOrigin,
       };
       const start = (args: string[], kind: 'vite' | 'browser') => {
         const child = spawn(process.execPath, args, {
