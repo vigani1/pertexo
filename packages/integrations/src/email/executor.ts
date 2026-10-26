@@ -2,7 +2,6 @@ import {
   type NodeExecutionInvocation,
   type NodeExecutionRuntime,
   type NodeExecutorRegistration,
-  NodeExecutorFailure,
   ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
@@ -14,7 +13,14 @@ import {
   safeInstanceOf,
   safeNumberProperty,
 } from '../http/unknown-error.js';
-import type { ResendApiResult, ResendClient } from './client.js';
+import type { ResendClient } from './client.js';
+import {
+  EmailSendNotificationExecutorError,
+  classifyResult,
+  credentialFailure,
+  dispatchIdentityFailure,
+  failure,
+} from './failure.js';
 import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 import {
   EMAIL_SEND_NOTIFICATION_EXECUTOR,
@@ -27,10 +33,6 @@ import {
   resolvedResendApiKeyCredentialSchema,
   type EmailSendNotificationOutput,
 } from './validation.js';
-
-export class EmailSendNotificationExecutorError extends NodeExecutorFailure {
-  public override readonly name = 'EmailSendNotificationExecutorError';
-}
 
 export interface EmailSendNotificationExecutorTelemetry {
   measure(
@@ -63,87 +65,6 @@ function hasIdempotentEmailDispatchPolicy(
     runtime?.sideEffectClass === 'idempotent_with_key' &&
     runtime.providerIdempotencyKey !== undefined
   );
-}
-
-function failure(
-  kind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown',
-  errorKind:
-    | 'authentication'
-    | 'canceled'
-    | 'configuration'
-    | 'internal'
-    | 'network'
-    | 'provider'
-    | 'rate_limit'
-    | 'timeout',
-  {
-    possiblyDispatched,
-    retryAfterMillis,
-  }: Readonly<{
-    possiblyDispatched: boolean;
-    retryAfterMillis?: number | undefined;
-  }>,
-) {
-  return new EmailSendNotificationExecutorError({
-    kind,
-    errorKind,
-    possiblyDispatched,
-    ...(retryAfterMillis === undefined
-      ? {}
-      : { minimumRetryDelayMillis: Math.min(retryAfterMillis, 60_000) }),
-  });
-}
-
-function credentialFailure(runtime: NodeExecutionRuntime | undefined) {
-  return !(runtime?.providerDispatchUnresolved ?? false)
-    ? failure('failed', 'authentication', { possiblyDispatched: false })
-    : failure('outcome_unknown', 'authentication', {
-        possiblyDispatched: true,
-      });
-}
-
-function dispatchIdentityFailure(
-  runtime: NodeExecutionRuntime | undefined,
-  errorKind: 'authentication' | 'configuration',
-) {
-  return !(runtime?.providerDispatchUnresolved ?? false)
-    ? failure('failed', errorKind, { possiblyDispatched: false })
-    : failure('outcome_unknown', errorKind, { possiblyDispatched: true });
-}
-
-function classifyResult(
-  result: Exclude<ResendApiResult, { kind: 'succeeded' }>,
-  runtime: NodeExecutionRuntime,
-): never {
-  if (runtime.providerDispatchUnresolved ?? false)
-    throw failure('outcome_unknown', 'provider', { possiblyDispatched: true });
-  switch (result.kind) {
-    case 'rate_limited':
-      throw failure('retry', 'rate_limit', {
-        possiblyDispatched: false,
-        retryAfterMillis: result.retryAfterMillis,
-      });
-    case 'http_failure':
-      if (result.status === 401 || result.status === 403)
-        throw failure('failed', 'authentication', {
-          possiblyDispatched: false,
-        });
-      if (result.status === 400 || result.status === 422)
-        throw failure('failed', 'provider', { possiblyDispatched: false });
-      throw failure('retry', 'provider', { possiblyDispatched: true });
-    case 'invalid_response':
-      throw failure('retry', 'provider', { possiblyDispatched: true });
-    case 'rejected':
-      if (result.status === 401 || result.status === 403)
-        throw failure('failed', 'authentication', {
-          possiblyDispatched: false,
-        });
-      if (result.status === 400 || result.status === 422)
-        throw failure('failed', 'provider', { possiblyDispatched: false });
-      if (result.error === 'invalid_idempotent_request')
-        throw failure('failed', 'provider', { possiblyDispatched: false });
-      throw failure('retry', 'provider', { possiblyDispatched: true });
-  }
 }
 
 async function withEmailCredential<T>(

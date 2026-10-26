@@ -80,10 +80,8 @@ export {
   type ApplicationSealedSecret,
   type ApplicationSecretEnvelope,
 } from './security/application-secret-envelope.js';
-export {
-  createEmailSendNotificationExecutorRegistration,
-  EmailSendNotificationExecutorError,
-} from './email/executor.js';
+export { createEmailSendNotificationExecutorRegistration } from './email/executor.js';
+export { EmailSendNotificationExecutorError } from './email/failure.js';
 export type {
   EmailSendNotificationExecutorDependencies,
   EmailSendNotificationExecutorTelemetry,
