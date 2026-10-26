@@ -41,6 +41,6 @@
     "drizzle-orm": "0.45.4",
     "ioredis": "6.0.0",
     "pg": "8.23.1",
-    "smtp-server": "3.19.23"
+    "smtp-server": "3.21.1"
   }
 }
