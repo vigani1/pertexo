@@ -1,4 +1,7 @@
-import { utf8ByteLength } from '@pertexo/workflow-model';
+import {
+  utf8ByteLength,
+  withoutHiddenCharacters,
+} from '@pertexo/workflow-model';
 import { EMAIL_SEND_NOTIFICATION_LIMITS } from '../validation.js';
 
 // File references carry no name (ADR 075), so an unnamed attachment is named
@@ -39,21 +42,13 @@ export function defaultAttachmentFilename(
   return extension === undefined ? stem : `${stem}.${extension}`;
 }
 
-function isControl(character: string): boolean {
-  const code = character.codePointAt(0) ?? 0;
-  return code < 32 || (code >= 127 && code <= 159);
-}
-
 /**
- * The name recipients see: no path separators or control characters, at most
- * 255 UTF-8 bytes with the extension kept. Undefined when nothing usable is left.
+ * The name recipients see: no path separators, control or format characters,
+ * at most 255 UTF-8 bytes with the extension kept. Undefined when nothing
+ * usable is left.
  */
 export function sanitizeAttachmentFilename(value: string): string | undefined {
-  const cleaned = Array.from(value)
-    .filter((character) => character !== '/' && character !== '\\')
-    .filter((character) => !isControl(character))
-    .join('')
-    .trim();
+  const cleaned = withoutHiddenCharacters(value.replace(/[\\/]/gu, '')).trim();
   if (cleaned === '' || /^\.+$/u.test(cleaned)) return undefined;
   const limit = EMAIL_SEND_NOTIFICATION_LIMITS.maxAttachmentFilenameBytes;
   if (utf8ByteLength(cleaned) <= limit) return cleaned;

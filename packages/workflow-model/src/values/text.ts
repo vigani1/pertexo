@@ -24,6 +24,17 @@ export function utf8ByteLength(
   return bytes;
 }
 
+const HIDDEN_CHARACTERS = /[\p{Cc}\p{Cf}]/gu;
+
+/**
+ * Drops control and format characters from a name people will read. Format
+ * characters include bidi overrides, which can show `report\u202Efdp.txt` as
+ * `reporttxt.pdf`.
+ */
+export function withoutHiddenCharacters(value: string): string {
+  return value.replace(HIDDEN_CHARACTERS, '');
+}
+
 export function isWellFormed(value: string): boolean {
   return value.isWellFormed();
 }
