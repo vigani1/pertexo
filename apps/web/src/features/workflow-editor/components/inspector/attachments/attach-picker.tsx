@@ -23,7 +23,6 @@ import {
   fileFieldsOf,
   propertyPath,
 } from '../../../model/inspector/input-mappings/schema';
-import { useEditorStore } from '../../../model/state/context';
 
 type Choice = Readonly<{
   key: string;
@@ -181,6 +180,7 @@ function StepTitle({
  */
 export function AttachPicker({
   triggerRef,
+  workflow,
   graph,
   nodeId,
   definitions,
@@ -190,6 +190,8 @@ export function AttachPicker({
 }: Readonly<{
   /** Takes focus when the last attachment is removed. */
   triggerRef?: Ref<HTMLButtonElement>;
+  /** The whole workflow, for its Form's file questions. */
+  workflow: GraphLevel;
   graph: GraphLevel;
   nodeId: string;
   definitions: readonly NodeDefinitionCatalogItem[];
@@ -205,7 +207,7 @@ export function AttachPicker({
   };
   const choices = attachChoices(
     {
-      workflow: useEditorStore((state) => state.graph),
+      workflow,
       graph,
       nodeId,
       definitions,

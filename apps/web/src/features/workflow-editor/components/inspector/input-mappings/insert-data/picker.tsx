@@ -23,7 +23,6 @@ import { findDefinition } from '../../../../model/graph/adapter';
 import type { GraphLevel } from '../../../../model/graph/scopes';
 import { directPredecessorOptions } from '../../../../model/inspector/input-mappings/draft';
 import { formFilesToRead } from '../../../../model/inspector/input-mappings/form-files';
-import { useEditorStore } from '../../../../model/state/context';
 import {
   CallbackInputChoices,
   FieldList,
@@ -49,6 +48,7 @@ export function InsertDataPicker({
   disabled,
   onInsert,
   allowFailure = true,
+  workflow,
 }: Readonly<{
   /** The level the step is on: the workflow, or the body it's in. */
   allowFailure?: boolean;
@@ -60,6 +60,8 @@ export function InsertDataPicker({
   definitions: readonly NodeDefinitionCatalogItem[];
   disabled: boolean;
   onInsert: (source: InsertedSource, fieldName: string) => void;
+  /** The whole workflow, whose Form's files a step that reads a file is offered. */
+  workflow?: GraphLevel;
 }>) {
   const [open, setOpen] = useState(false);
   const sourceIds = new Set(
@@ -80,12 +82,10 @@ export function InsertDataPicker({
       ? callbackTargetNodes(graph, nodeId)
       : [];
   const sources = graph.nodes.filter((node) => sourceIds.has(node.id));
-  const toRead = formFilesToRead(
-    useEditorStore((state) => state.graph),
-    graph,
-    nodeId,
-    definition?.inputSchema,
-  );
+  const toRead =
+    workflow === undefined
+      ? undefined
+      : formFilesToRead(workflow, graph, nodeId, definition?.inputSchema);
   function pick(source: InsertedSource, fieldName: string) {
     setOpen(false);
     onInsert(source, fieldName);
