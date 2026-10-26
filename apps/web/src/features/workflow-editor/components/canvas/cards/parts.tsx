@@ -11,8 +11,10 @@ import {
 import { use, type ReactNode } from 'react';
 import {
   StepTile,
+  TimedOutGlyph,
   type StepPresentation,
 } from '@/features/catalog/presentation.public';
+import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
 import { sampleStateLabel } from '@/features/workflow-publish/step-samples.public';
 import { formatByteLength } from '@/lib/format/bytes';
 import { cn } from '@/lib/utils';
@@ -172,6 +174,7 @@ export function Mark({
  * A branching step's ports, one labelled row each, as they're wired:
  * "true → Ask finance", "branch-02 ← Pull incidents", or the bare port
  * while nothing is linked. Handles sit on the card's edge beside them.
+ * Timed out keeps its amber hourglass, apart from success and failure.
  */
 export function PortRows({
   title,
@@ -190,25 +193,33 @@ export function PortRows({
       className="mt-2.5 flex flex-col gap-1.5"
       aria-label={output ? 'Outputs' : 'Inputs'}
     >
-      {ports.map((port) => (
-        <li key={port} className="relative flex min-w-0 items-center">
-          <Mark>{portLinkLabel(port, side, links[port])}</Mark>
-          <Handle
-            id={port}
-            type={output ? 'source' : 'target'}
-            position={output ? Position.Right : Position.Left}
-            role="img"
-            aria-label={`${title}: ${output ? 'output' : 'input'} ${portName(port)}`}
-            className={cn(
-              handleClass,
-              output ? '!-right-3' : '!-left-3',
-              port === 'false' || port === 'default'
-                ? '!border-secondary'
-                : undefined,
-            )}
-          />
-        </li>
-      ))}
+      {ports.map((port) => {
+        const timedOut = output && port === TIMED_OUT_PORT;
+        return (
+          <li key={port} className="relative flex min-w-0 items-center">
+            <Mark tone={timedOut ? 'warning' : 'neutral'}>
+              {timedOut ? <TimedOutGlyph className="size-3.5" /> : null}
+              {portLinkLabel(port, side, links[port])}
+            </Mark>
+            <Handle
+              id={port}
+              type={output ? 'source' : 'target'}
+              position={output ? Position.Right : Position.Left}
+              role="img"
+              aria-label={`${title}: ${output ? 'output' : 'input'} ${portName(port)}`}
+              className={cn(
+                handleClass,
+                output ? '!-right-3' : '!-left-3',
+                port === 'false' || port === 'default'
+                  ? '!border-secondary'
+                  : undefined,
+                timedOut &&
+                  '!border-warning !shadow-[0_0_8px_color-mix(in_srgb,var(--warning)_45%,transparent)]',
+              )}
+            />
+          </li>
+        );
+      })}
     </ul>
   );
 }

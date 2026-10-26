@@ -44,6 +44,7 @@ interface RunEdgeData extends Record<string, unknown> {
   active: boolean;
   branch?: string;
   skipped: boolean;
+  timedOut: boolean;
 }
 
 type RunNode = Node<RunNodeData, 'runNode'>;
@@ -205,6 +206,7 @@ export function RunGraphView({
           tone: edge.tone,
           active: edge.active,
           skipped: edge.skipped,
+          timedOut: edge.timedOut,
           ...(edge.branch === undefined ? {} : { branch: edge.branch }),
         },
       })),
@@ -367,7 +369,10 @@ function WorkflowRunEdge({
           x={labelX}
           y={labelY - 6}
           textAnchor="middle"
-          className="fill-subtle-foreground font-mono text-[11px]"
+          className={cn(
+            'font-mono text-[11px]',
+            data.timedOut ? 'fill-warning' : 'fill-subtle-foreground',
+          )}
         >
           {data.branch}
         </text>

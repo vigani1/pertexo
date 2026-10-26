@@ -2,6 +2,24 @@ import type {
   PendingTaskSummary,
   PendingTaskListQuery,
 } from '@pertexo/contracts';
+import { formatTimeSpan } from '@/lib/format/time';
+
+type TaskWindow = Pick<
+  PendingTaskSummary,
+  'status' | 'onExpiry' | 'createdAt' | 'expiresAt'
+>;
+
+/**
+ * "Timed out after 7 days" for a request nobody answered whose step carried
+ * on along Timed out; undefined for any other request.
+ */
+export function timedOutAfter(task: TaskWindow): string | undefined {
+  if (task.status !== 'expired' || task.onExpiry !== 'continue')
+    return undefined;
+  const seconds =
+    (Date.parse(task.expiresAt) - Date.parse(task.createdAt)) / 1000;
+  return `Timed out after ${formatTimeSpan(seconds)}`;
+}
 export function parseTaskSearch(
   value: Record<string, unknown>,
   defaultKind: 'all' | 'approval' = 'all',
@@ -62,8 +80,10 @@ export function taskStatusLabel(status: PendingTaskSummary['status']) {
  * that ended by itself (expired, canceled) reads as its status.
  */
 export function taskOutcome(
-  task: Pick<PendingTaskSummary, 'status' | 'completedByName'>,
+  task: TaskWindow & Pick<PendingTaskSummary, 'completedByName'>,
 ) {
+  const timedOut = timedOutAfter(task);
+  if (timedOut !== undefined) return timedOut;
   const verb = OUTCOME_VERBS[task.status];
   return verb === undefined || task.completedByName === null
     ? taskStatusLabel(task.status)
@@ -87,14 +107,18 @@ export function blockedLabel(reason: PendingTaskSummary['blockedReason']) {
   }
 }
 
-export function blockedSentence(reason: PendingTaskSummary['blockedReason']) {
-  switch (reason) {
+export function blockedSentence(
+  task: Pick<PendingTaskSummary, 'blockedReason' | 'onExpiry'>,
+) {
+  switch (task.blockedReason) {
     case 'starter':
       return 'The person who started this run cannot decide. Another eligible member needs to respond.';
     case 'audience':
       return 'Your current role or member identity is not in this request’s audience.';
     case 'expired':
-      return 'This request expired. The step follows its failure path.';
+      return task.onExpiry === 'continue'
+        ? 'Nobody responded in time, so the run continued on its Timed out path.'
+        : 'This request expired, so its step failed. A failure route takes over if the workflow has one.';
     case 'run_closed':
       return 'This run was canceled, finished, or reached its deadline. It cannot accept a decision.';
     case 'resolved':

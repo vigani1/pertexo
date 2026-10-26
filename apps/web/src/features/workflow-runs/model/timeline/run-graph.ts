@@ -1,4 +1,5 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
+import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
 import type { StatusTone } from '@/components/ui/status';
 import type { RunTimelineRow, RunTimelineStepStatus } from './runs';
 import { describeStep, portName } from '@/features/catalog/presentation.public';
@@ -31,6 +32,8 @@ export type GraphLink = Readonly<{
   branch?: string;
   /** The run didn't take this path: its target was skipped. */
   skipped: boolean;
+  /** The path an Approval or Request input takes when nobody responds. */
+  timedOut: boolean;
 }>;
 
 // When one step ran several times, the map shows the most telling status.
@@ -136,6 +139,7 @@ export function projectRunGraph(
         ? {}
         : { branch: portName(edge.source.port) }),
       skipped: target?.status === 'skipped',
+      timedOut: edge.source.port === TIMED_OUT_PORT,
     };
   });
   return { nodes, edges };

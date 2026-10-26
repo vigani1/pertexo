@@ -47,7 +47,7 @@ export function InputResponse({
         </section>
       )}
       {!task.canRespond && task.status === 'pending' ? (
-        <Notice>{blockedSentence(task.blockedReason)}</Notice>
+        <Notice>{blockedSentence(task)}</Notice>
       ) : null}
       {task.status === 'pending' ? (
         <FormResponse

@@ -23,7 +23,7 @@ export function DecisionForm({
     <div className="flex flex-col gap-4">
       {/* A recorded decision already says how the task ended. */}
       {!task.canRespond && task.output === null ? (
-        <Notice>{blockedSentence(task.blockedReason)}</Notice>
+        <Notice>{blockedSentence(task)}</Notice>
       ) : null}
       {task.status === 'pending' ? (
         <>

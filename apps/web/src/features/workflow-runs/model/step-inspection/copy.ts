@@ -139,6 +139,8 @@ export function storyEntryReason(entry: StepStoryEntry): string | undefined {
   if (code === undefined) return undefined;
   const join = joinReasons[code];
   if (join !== undefined) return join;
+  if (code === 'pending_task.timed_out')
+    return 'Nobody responded in time, so the run continued on Timed out.';
   if (code === 'unsafe_possible_dispatch')
     return 'Not retried: it may already have reached the service, and trying again could do it twice.';
   if (code === 'canceled' || entry.outcome !== 'failed') return undefined;

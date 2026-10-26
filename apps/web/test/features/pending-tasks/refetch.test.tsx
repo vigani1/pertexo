@@ -33,6 +33,7 @@ function summary() {
     status: 'pending',
     createdAt: new Date(Date.now() - 3_600_000).toISOString(),
     expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+    onExpiry: 'fail',
     completedAt: null,
     completedByName: null,
     canRespond: true,

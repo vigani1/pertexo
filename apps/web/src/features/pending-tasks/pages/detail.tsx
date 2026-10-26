@@ -13,8 +13,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { taskQueryOptions } from '../data/tasks.queries';
 import type { TaskScope } from '../data/tasks.api';
-import { taskStatusLabel, taskTone } from '../model/presentation';
+import {
+  taskStatusLabel,
+  taskTone,
+  timedOutAfter,
+} from '../model/presentation';
 import { DecisionForm } from '../components/decision-form';
+import type { PendingTaskDetail } from '@pertexo/contracts';
+import { TimedOutGlyph } from '@/features/catalog/presentation.public';
+import { useNow } from '@/lib/hooks/use-now';
 export function TaskDetailPage({
   scope,
   taskId,
@@ -27,7 +34,6 @@ export function TaskDetailPage({
       loading={<Skeleton className="h-48 w-full" />}
     >
       {({ task }) => {
-        const waiting = task.status === 'pending';
         return (
           <div className="flex max-w-3xl flex-col gap-8">
             <PageHeader>
@@ -51,13 +57,7 @@ export function TaskDetailPage({
                   {task.title}
                 </PageHeaderTitle>
                 <PageHeaderMeta>
-                  <Status tone={taskTone(task.status)}>
-                    {taskStatusLabel(task.status)}
-                  </Status>
-                  <span title={formatDateTime(task.expiresAt)}>
-                    {waiting ? 'expires' : 'was due'}{' '}
-                    {formatRelativeTime(task.expiresAt)}
-                  </span>
+                  <TaskStatusLine task={task} />
                 </PageHeaderMeta>
               </div>
             </PageHeader>
@@ -119,5 +119,50 @@ export function TaskDetailPage({
         );
       }}
     </QueryView>
+  );
+}
+
+/**
+ * Where the request stands: its status, then a calm countdown while it
+ * waits, "Timed out after 7 days" once its run moved on without an answer,
+ * or when it was due.
+ */
+function TaskStatusLine({ task }: Readonly<{ task: PendingTaskDetail }>) {
+  // The countdown reads "in 2 days"; a minute's tick keeps it honest.
+  const nowMs = useNow({
+    intervalMs: 60_000,
+    enabled: task.status === 'pending',
+  });
+  const timedOut = timedOutAfter(task);
+  const due = (
+    <span title={formatDateTime(task.expiresAt)}>
+      {task.status === 'pending' ? 'Expires' : 'Was due'}{' '}
+      {formatRelativeTime(task.expiresAt, nowMs, 'long')}
+    </span>
+  );
+  if (timedOut !== undefined)
+    return (
+      <>
+        <span className="inline-flex items-center gap-1.5 text-[0.8rem] leading-none font-semibold text-warning">
+          <TimedOutGlyph />
+          {timedOut}
+        </span>
+        {due}
+      </>
+    );
+  return (
+    <>
+      <Status tone={taskTone(task.status)}>
+        {taskStatusLabel(task.status)}
+      </Status>
+      {task.status === 'pending' ? (
+        <span className="inline-flex items-center gap-1.5">
+          <TimedOutGlyph className="size-3.5 text-subtle-foreground" />
+          {due}
+        </span>
+      ) : (
+        due
+      )}
+    </>
   );
 }

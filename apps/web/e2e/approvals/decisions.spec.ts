@@ -25,6 +25,7 @@ const task = {
   status: 'pending',
   createdAt: '2026-10-15T08:00:00.000Z',
   expiresAt: '2026-10-22T08:00:00.000Z',
+  onExpiry: 'fail',
   completedAt: null,
   completedByName: null,
   output: null,

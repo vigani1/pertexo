@@ -22,7 +22,7 @@ import type { NodeConfig } from '../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { ConfigJsonEditor } from '../fields/config-json-editor';
 import { TaskTextField } from './text';
-import { ExpiryField } from './expiry';
+import { TaskExpiry } from './expiry';
 import { AudienceField } from './audience';
 import { StarterDecisionField } from './starter-decision';
 import { FormFields } from './fields';
@@ -133,7 +133,14 @@ export function HumanFormSetup({
       {kind === 'core.request_input' ? (
         <FormFields fields={captured.fields} form={form} />
       ) : null}
-      <ExpiryField seconds={captured.expiresAfterSeconds} form={form} />
+      <TaskExpiry
+        node={node}
+        graph={graph}
+        form={form}
+        kind={kind}
+        seconds={captured.expiresAfterSeconds}
+        onExpiry={captured.onExpiry}
+      />
       <AudienceField
         purpose={kind === 'core.approval' ? 'approval' : 'input_request'}
         scope={scope}

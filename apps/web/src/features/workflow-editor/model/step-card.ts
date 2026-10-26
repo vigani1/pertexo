@@ -1,4 +1,4 @@
-import { isRecord } from '@pertexo/workflow-model';
+import { isRecord, pendingTaskOutputPorts } from '@pertexo/workflow-model';
 import type {
   NodeDefinitionCatalogItem,
   PreviewRunSummary,
@@ -27,7 +27,8 @@ const STARTER_PORTS = 2;
  * ports their setup names (Switch cases, Parallel branches, the branches of
  * the Parallel a Merge joins), Switch's default, and any port already
  * linked; before the setup names any, the first few, so a new step can
- * still be wired. Other steps draw every port.
+ * still be wired. An Approval or Request input draws Timed out only when it
+ * continues there. Other steps draw every port.
  */
 export function shownPorts(
   node: WorkflowNode,
@@ -38,6 +39,14 @@ export function shownPorts(
   const ports =
     definition?.ports[side] ??
     (side === 'inputs' ? Object.keys(node.inputMappings) : []);
+  const taskPorts =
+    side === 'outputs' ? pendingTaskOutputPorts(node) : undefined;
+  if (taskPorts !== undefined) {
+    // A Timed out link left from before the step stopped offering it stays
+    // drawn, so it can be seen and removed.
+    const linked = new Set(Object.keys(portLinks(node, level, side, noTitles)));
+    return ports.filter((port) => taskPorts.includes(port) || linked.has(port));
+  }
   if (definition === undefined || ports.length <= 2) return ports;
   const configured = configuredPorts(node, definition, level, side);
   if (configured === undefined) return ports;
