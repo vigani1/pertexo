@@ -22,13 +22,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
-import { findDefinition, stepTitle } from '../../../model/graph/adapter';
-import type { WorkflowNode, GraphLevel } from '../../../model/graph/scopes';
+import { findDefinition, stepTitle } from '../../../../model/graph/adapter';
+import type { WorkflowNode, GraphLevel } from '../../../../model/graph/scopes';
 import {
   outputFieldsOf,
   type OutputField,
-} from '../../../model/inspector/input-mappings/schema';
-import { propertyPath } from '../../../model/inspector/input-mappings/schema';
+} from '../../../../model/inspector/input-mappings/schema';
+import { propertyPath } from '../../../../model/inspector/input-mappings/schema';
 
 export type InsertedSource =
   | Readonly<{ kind: 'expression'; expression: string }>
