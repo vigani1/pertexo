@@ -318,6 +318,30 @@ describe('Read file with Excel workbooks', () => {
     ]);
   });
 
+  it('explains a header repeated by a merged title and points to Header row', async () => {
+    const bytes = workbook({
+      sharedStrings: ['Quarterly report', 'sku', 'qty', 'A-1'],
+      sheets: [
+        {
+          name: 'Sheet1',
+          rows:
+            row(1, text('A1', 0)) +
+            row(2, text('A2', 1) + text('B2', 2)) +
+            row(3, text('A3', 3) + number('B3', 4)),
+          after: '<mergeCells count="1"><mergeCell ref="A1:C1"/></mergeCells>',
+        },
+      ],
+    });
+    await expect(readWorkbook(bytes)).rejects.toMatchObject({
+      diagnostic: { reason: 'duplicate_header', column: 2, merged: true },
+      errorSummary:
+        'Header column 2 repeats a column name because it is part of a merged area, and every cell of a merged area reads its top-left value. A title merged across the columns is the usual cause: set Header row to the row that holds the column names.',
+    });
+    expect(await rows(bytes, { headerRow: 2 })).toEqual([
+      { sku: 'A-1', qty: 4 },
+    ]);
+  });
+
   it('accepts a header-only sheet and namespace-prefixed parts', async () => {
     const prefixed = workbook({
       sharedStrings: ['only'],

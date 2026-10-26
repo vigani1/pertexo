@@ -46,7 +46,9 @@ export function describeFileInputFailure(
     case 'blank_header':
       return `Header column ${String(diagnostic.column)} is blank. Give every column a name and upload the corrected file.`;
     case 'duplicate_header':
-      return `Header column ${String(diagnostic.column)} repeats a column name. Use unique names and upload the corrected file.`;
+      return diagnostic.merged === true
+        ? `Header column ${String(diagnostic.column)} repeats a column name because it is part of a merged area, and every cell of a merged area reads its top-left value. A title merged across the columns is the usual cause: set Header row to the row that holds the column names.`
+        : `Header column ${String(diagnostic.column)} repeats a column name. Use unique names and upload the corrected file.`;
     case 'csv_columns':
       return `CSV record ${String(diagnostic.record)} has ${String(diagnostic.actual)} ${diagnostic.actual === 1 ? 'column' : 'columns'}; the header has ${String(diagnostic.expected)}. Check the delimiter and quoting, then upload the corrected file.`;
     case 'spreadsheet_too_large':

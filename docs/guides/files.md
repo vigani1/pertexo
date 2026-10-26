@@ -229,7 +229,9 @@ How cells read:
 
 Headers follow the CSV rule: every column with data needs a nonblank, unique
 name. A blank header between named columns, or data under no header, fails
-with the column number.
+with the column number. A title merged across the columns above the table
+repeats in every column it covers, so reading it as the header fails and says
+so: set **Header row** to the row with the column names.
 
 How it works: the worker opens the workbook's zip directory before inflating
 anything and refuses a workbook with more than 1,000 parts or 100 MB

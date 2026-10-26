@@ -64,8 +64,9 @@ export async function* readXlsxRecords<T>(
       continue;
     }
     if (row.index > config.headerRow) break;
+    const own = new Set(row.cells.keys());
     merges.fill(row);
-    headers = headerNames(row);
+    headers = headerNames(row, own);
     merges.narrow(headers.length);
   }
   if (headers === undefined)
@@ -97,15 +98,31 @@ function dataRow(
   );
 }
 
-/** Header names are the cells' text, up to the last named column. */
-function headerNames(row: SheetRow): readonly string[] {
+/**
+ * Header names are the cells' text, up to the last named column. A repeat
+ * that a merged area filled in says so: the merge rule, not the person's
+ * names, made it.
+ */
+function headerNames(
+  row: SheetRow,
+  own: ReadonlySet<number>,
+): readonly string[] {
   const width = Math.max(...row.cells.keys());
-  return admitHeaders(
-    Array.from(
-      { length: width },
-      (_, index) => row.cells.get(index + 1)?.text ?? '',
-    ),
+  const names = Array.from(
+    { length: width },
+    (_, index) => row.cells.get(index + 1)?.text ?? '',
   );
+  try {
+    return admitHeaders(names);
+  } catch (error) {
+    if (
+      error instanceof FileInputFailure &&
+      error.diagnostic.reason === 'duplicate_header' &&
+      !own.has(error.diagnostic.column)
+    )
+      throw new FileInputFailure({ ...error.diagnostic, merged: true });
+    throw error;
+  }
 }
 
 /**
