@@ -2,6 +2,7 @@ import { eventCoordinationPolicySchema } from '../event-coordination/contract.js
 import { formRedirectUrlSchema } from './links.js';
 import { storageTextSchema } from '../../values/json/text.js';
 import { inspectJsonValue } from '../../values/json/canonical.js';
+import { FORM_FILE_LIMITS, formFileGroupSchema } from './files.js';
 import { z } from 'zod';
 
 export const FORM_LIMITS = Object.freeze({
@@ -56,6 +57,30 @@ export const formFieldSchema = z
       })
       .strict(),
     choices.extend({ type: z.literal('select') }).strict(),
+    field
+      .extend({
+        type: z.literal('file'),
+        accept: z
+          .array(formFileGroupSchema)
+          .min(1, 'Choose at least one kind of file.')
+          .refine(
+            (groups) => new Set(groups).size === groups.length,
+            'Choose each kind of file once.',
+          ),
+        maxFiles: z
+          .number()
+          .int()
+          .min(1)
+          .max(FORM_FILE_LIMITS.maxFiles)
+          .default(FORM_FILE_LIMITS.defaultMaxFiles),
+        maxBytes: z
+          .number()
+          .int()
+          .min(1)
+          .max(FORM_FILE_LIMITS.maxBytes, 'Keep each file within 10 MB.')
+          .default(FORM_FILE_LIMITS.defaultMaxBytes),
+      })
+      .strict(),
     choices
       .extend({
         type: z.literal('multi_select'),
