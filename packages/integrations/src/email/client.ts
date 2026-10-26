@@ -1,8 +1,16 @@
+import type {
+  NodeArtifactRuntime,
+  NodeVerifiedByteSource,
+} from '@pertexo/node-sdk/server';
 import { z } from 'zod';
 import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 
 import type { SecureHttpClient, SecureHttpRequest } from '../http/secure.js';
 import { EMAIL_SEND_NOTIFICATION_LIMITS } from './validation.js';
+import {
+  encodeMessageWithAttachments,
+  type ResendAttachment,
+} from './attachments/encode.js';
 
 export const RESEND_API_ENDPOINT = 'https://api.resend.com/emails' as const;
 
@@ -30,6 +38,11 @@ export type ResendClient = Readonly<{
       subject: string;
       text: string;
       unsubscribeUrl?: string;
+      /** Verified files inlined into a body spooled through `spool`. */
+      attachments?: Readonly<{
+        files: readonly ResendAttachment[];
+        spool: NonNullable<NodeArtifactRuntime['spool']>;
+      }>;
       idempotencyKey: string;
       sensitiveValues?: readonly string[];
       timeoutMillis: number;
@@ -44,22 +57,29 @@ export function createResendClient(
 ): ResendClient {
   return Object.freeze({
     sendNotification: async (input) => {
-      const body = new TextEncoder().encode(
-        JSON.stringify({
-          from: input.fromEmail,
-          to: [input.toEmail],
-          subject: input.subject,
-          text: input.text,
-          ...(input.unsubscribeUrl === undefined
-            ? {}
-            : {
-                headers: {
-                  'List-Unsubscribe': `<${input.unsubscribeUrl}>`,
-                  'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-                },
-              }),
-        }),
-      );
+      const message = {
+        from: input.fromEmail,
+        to: [input.toEmail],
+        subject: input.subject,
+        text: input.text,
+        ...(input.unsubscribeUrl === undefined
+          ? {}
+          : {
+              headers: {
+                'List-Unsubscribe': `<${input.unsubscribeUrl}>`,
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+              },
+            }),
+      };
+      const body: Uint8Array | NodeVerifiedByteSource =
+        input.attachments === undefined || input.attachments.files.length === 0
+          ? new TextEncoder().encode(JSON.stringify(message))
+          : await encodeMessageWithAttachments({
+              message,
+              attachments: input.attachments.files,
+              spool: input.attachments.spool,
+              signal: input.signal ?? new AbortController().signal,
+            });
       const request: SecureHttpRequest = {
         url: RESEND_API_ENDPOINT,
         method: 'POST',
@@ -125,7 +145,8 @@ export function createResendClient(
           response.body.fill(0);
         }
       } finally {
-        body.fill(0);
+        if (body instanceof Uint8Array) body.fill(0);
+        else await body.release();
       }
     },
   });

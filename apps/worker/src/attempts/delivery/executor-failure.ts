@@ -28,6 +28,8 @@ const dataExecutorSummaryCodes = new Set([
   'file.create_columns',
   'file.create_size',
   'file.create_storage',
+  'email.too_many_attachments',
+  'email.attachments_too_large',
 ]);
 
 /** Admit executor diagnostics before private failure text reaches persistence. */

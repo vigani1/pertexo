@@ -30,7 +30,11 @@ describe('email.send_notification@1', () => {
       resourceClass: 'io',
       integration: { providerKey: 'email', operationKey: 'send_notification' },
       connectionRequirements: ['resend_api_key'],
-      capabilities: ['external_http', 'side_effect_disclosure'],
+      capabilities: [
+        'external_http',
+        'side_effect_disclosure',
+        'artifact_input',
+      ],
     });
     expect(providerEmailMailboxSchema.parse('Local@Example.COM')).toBe(
       'Local@example.com',
