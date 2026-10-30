@@ -17,13 +17,15 @@ describe('core.validate registry execution', () => {
     if (executor === undefined)
       throw new Error('Validate executor is not registered');
     await expect(
-      executor.execute({
+      registry.execute({
+        definition: CORE_VALIDATE_DEFINITION,
+        executor: CORE_VALIDATE_EXECUTOR,
         config: { rules: [] },
         input: {},
         connectionRefs: {},
         signal: new AbortController().signal,
       }),
-    ).rejects.toBeInstanceOf(Error);
+    ).rejects.toMatchObject({ code: 'invalid_config' });
     const controller = new AbortController();
     controller.abort();
     await expect(

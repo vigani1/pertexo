@@ -18,6 +18,10 @@ import {
   type SecureHttpRequest,
 } from '../../../src/server.js';
 import {
+  httpRequestConfigSchema,
+  httpRequestInputSchema,
+} from '../../../src/http-request/validation.js';
+import {
   connectionId,
   encoder,
   config,
@@ -109,10 +113,23 @@ describe('http.request@1 server executor', () => {
     },
   );
   it.each([
-    ['invalid config', { config: config({ method: 'TRACE' }) }],
-    ['malformed URL', { config: config({ url: 'not-a-url' }) }],
-    ['invalid input', { input: { body: { encoding: 'utf8' } } }],
-    ['unknown config field', { config: config({ unknown: true }) }],
+    ['an unsupported method', { method: 'TRACE' }],
+    ['a malformed URL', { url: 'not-a-url' }],
+    ['an unknown field', { unknown: true }],
+  ])(
+    'refuses a config with %s at its definition schema',
+    (_name, overrides) => {
+      expect(httpRequestConfigSchema.safeParse(config(overrides)).success).toBe(
+        false,
+      );
+    },
+  );
+  it('refuses an incomplete request body at its definition schema', () => {
+    expect(
+      httpRequestInputSchema.safeParse({ body: { encoding: 'utf8' } }).success,
+    ).toBe(false);
+  });
+  it.each([
     [
       'input above its bound',
       { input: { body: { encoding: 'utf8', value: 'x'.repeat(1_048_577) } } },

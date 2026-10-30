@@ -16,9 +16,9 @@ import {
 } from './definition.js';
 import {
   resolvedSlackBotTokenCredentialSchema,
-  slackSendMessageConfigSchema,
-  slackSendMessageInputSchema,
   slackSendMessageOutputSchema,
+  type SlackSendMessageConfig,
+  type SlackSendMessageInput,
   type SlackSendMessageOutput,
 } from './validation.js';
 import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
@@ -141,16 +141,9 @@ async function execute(
   dependencies: SlackSendMessageExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
 ): Promise<SlackSendMessageOutput> {
-  let config;
-  let input;
-  try {
-    // Executors are also callable as isolated adapter boundaries, so they
-    // retain fail-closed parsing even though createNodeRegistry parses first.
-    config = slackSendMessageConfigSchema.parse(invocation.config);
-    input = slackSendMessageInputSchema.parse(invocation.input);
-  } catch {
-    throw failure('failed', 'configuration', { possiblyDispatched: false });
-  }
+  // The registry has already parsed both against the definition's schemas.
+  const config = invocation.config as SlackSendMessageConfig;
+  const input = invocation.input as SlackSendMessageInput;
   const runtime = invocation.runtime;
   const connections = runtime?.connections;
   const connectionId =

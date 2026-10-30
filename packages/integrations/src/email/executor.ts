@@ -22,10 +22,10 @@ import {
   RESEND_API_KEY_CONNECTION_SLOT,
 } from './definition.js';
 import {
-  emailSendNotificationConfigSchema,
-  emailSendNotificationInputSchema,
   emailSendNotificationOutputSchema,
   resolvedResendApiKeyCredentialSchema,
+  type EmailSendNotificationConfig,
+  type EmailSendNotificationInput,
   type EmailSendNotificationOutput,
 } from './validation.js';
 
@@ -114,16 +114,9 @@ async function execute(
   dependencies: EmailSendNotificationExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
 ): Promise<EmailSendNotificationOutput> {
-  let config;
-  let input;
-  try {
-    // Executors are also callable as isolated adapter boundaries, so they
-    // retain fail-closed parsing even though createNodeRegistry parses first.
-    config = emailSendNotificationConfigSchema.parse(invocation.config);
-    input = emailSendNotificationInputSchema.parse(invocation.input);
-  } catch {
-    throw failure('failed', 'configuration', { possiblyDispatched: false });
-  }
+  // The registry has already parsed both against the definition's schemas.
+  const config = invocation.config as EmailSendNotificationConfig;
+  const input = invocation.input as EmailSendNotificationInput;
   const runtime = invocation.runtime;
   const connections = runtime?.connections;
   const connectionId =

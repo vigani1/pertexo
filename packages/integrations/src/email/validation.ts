@@ -129,6 +129,12 @@ export const resolvedResendApiKeyCredentialSchema = z
 
 export type EmailAttachment = z.output<typeof emailAttachmentSchema>;
 export type EmailSentAttachment = z.output<typeof emailSentAttachmentSchema>;
+export type EmailSendNotificationConfig = z.output<
+  typeof emailSendNotificationConfigSchema
+>;
+export type EmailSendNotificationInput = z.output<
+  typeof emailSendNotificationInputSchema
+>;
 export type EmailSendNotificationOutput = z.output<
   typeof emailSendNotificationOutputSchema
 >;

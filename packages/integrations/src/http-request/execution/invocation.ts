@@ -9,12 +9,7 @@ import { HTTP_SIDE_EFFECT_CLASS } from '../../http/outcome-policy.js';
 
 import { errorNameIs, safeInstanceOf } from '../../http/unknown-error.js';
 import { HTTP_REQUEST_CONNECTION_SLOT } from '../definition.js';
-import {
-  httpRequestConfigSchema,
-  httpRequestInputSchema,
-  type HttpRequestConfig,
-  type HttpRequestInput,
-} from '../validation.js';
+import type { HttpRequestConfig, HttpRequestInput } from '../validation.js';
 
 import { encodeMultipart } from '../multipart/encode.js';
 import { readRequestBody } from '../read-body.js';
@@ -39,17 +34,11 @@ export type RequestMaterial = PreparedBody &
 export function prepareInvocation(
   invocation: NodeExecutionInvocation<unknown, unknown>,
 ) {
-  let configured: HttpRequestConfig;
-  let mapped: HttpRequestInput;
-  try {
-    // Executors are also callable as isolated adapter boundaries, so they
-    // retain fail-closed parsing even though createNodeRegistry parses first.
-    configured = httpRequestConfigSchema.parse(invocation.config);
-    mapped = httpRequestInputSchema.parse(invocation.input);
-  } catch {
-    throw failedConfiguration();
-  }
-  const { config, input } = fillPlaceholders(configured, mapped);
+  // The registry has already parsed both against the definition's schemas.
+  const { config, input } = fillPlaceholders(
+    invocation.config as HttpRequestConfig,
+    invocation.input as HttpRequestInput,
+  );
   const runtime = invocation.runtime;
   if (runtime === undefined) throw failedConfiguration();
   const connections = runtime.connections;

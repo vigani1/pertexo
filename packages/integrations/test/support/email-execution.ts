@@ -66,7 +66,7 @@ export function invocation(value: NodeExecutionRuntime) {
   return {
     config: { timeoutMillis: 10_000 },
     input: {
-      toEmail: 'Recipient@Example.COM',
+      toEmail: 'Recipient@example.com',
       subject: 'Deployment complete',
       text: 'Production is healthy.',
     },
