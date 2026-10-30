@@ -14,7 +14,13 @@ export const DATA_TABLE_EXECUTORS: readonly NodeExecutorRegistration[] =
     executor: { key: `core.table_${operation}`, version: 1 },
     execute: async (invocation) => {
       const runtime = invocation.runtime?.dataTables;
-      if (runtime === undefined) throw new NodeDataTableFailure('not_found');
+      // A wiring gap of ours, not a table the user got wrong.
+      if (runtime === undefined)
+        throw new NodeExecutorFailure({
+          kind: 'failed',
+          errorKind: 'internal',
+          possiblyDispatched: false,
+        });
       const { table, columnBindings } = invocation.config as DataTableConfig;
       const command = {
         ...(invocation.input as object),

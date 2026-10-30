@@ -57,9 +57,7 @@ it('turns missing tables and quota failures into closed safe configuration codes
     kind: 'failed',
   });
 });
-// nodes-15: a step run without the data-table capability is reported as
-// "table not found", blaming the user's table for a platform wiring gap.
-it.fails(
+it(
   'reports a missing data-table capability as an internal failure, not a missing table',
   async () => {
     await expect(
