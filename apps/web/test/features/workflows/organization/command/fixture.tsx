@@ -11,7 +11,7 @@ import {
 import { capabilitiesForRole } from '@pertexo/workflow-model';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook } from '@testing-library/react';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, http, type JsonBodyType } from 'msw';
 import { mockServer } from '../../../../support/mock-server';
 import { testFetch } from '../../../../support/render-app';
 import {
@@ -36,7 +36,7 @@ export function workspaceAs(
   return {
     ...workspace,
     role,
-    capabilities: capabilitiesForRole(role),
+    capabilities: [...capabilitiesForRole(role)],
     ...overrides,
   };
 }
@@ -99,7 +99,7 @@ export type SentCommand = Readonly<{
   signal: AbortSignal;
 }>;
 
-export type CommandServer = {
+export interface CommandServer {
   /** Every organization command that reached the server, in order. */
   sent: SentCommand[];
   /** Identity and workspace reads, counted for freshness checks. */
@@ -108,7 +108,7 @@ export type CommandServer = {
   answers: Answer[];
   /** The workspace list each discovery read returns, in order; then the last. */
   discoveries: (readonly AccessibleWorkspace[])[];
-};
+}
 
 /**
  * Serves the person, their workspaces and the organization commands over
@@ -123,7 +123,7 @@ export function serveCommands(
     answers: [],
     discoveries,
   };
-  async function answer(request: Request, fallback: unknown) {
+  async function answer(request: Request, fallback: JsonBodyType) {
     server.sent.push({
       path: new URL(request.url).pathname,
       key: request.headers.get('idempotency-key'),
@@ -172,7 +172,7 @@ export function problem(status: number, code: string, detail = 'private') {
 }
 
 /** An answer the test releases when it chooses. */
-export function deferred(body: unknown = receipt) {
+export function deferred(body: JsonBodyType = receipt) {
   let release!: () => void;
   const answer = new Promise<Response>((done) => {
     release = () => {

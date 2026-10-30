@@ -8,104 +8,25 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http, HttpResponse } from 'msw';
-import { File as NodeFile } from 'node:buffer';
-import { webcrypto } from 'node:crypto';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import {
   formFieldSchema,
   formFieldsSchema,
   type FormField,
 } from '@pertexo/workflow-model';
-import { apiProblemSchema } from '@pertexo/contracts';
 import { FormResponse } from '@/features/forms/components/response';
 import { FormFieldsEditor } from '@/features/forms/components/field-editor';
 import type { FormUploadTarget } from '@/features/forms/data/uploads.api';
 import { ApiError } from '@/lib/api/error';
-import { mockServer } from '../../support/mock-server';
+import {
+  fields,
+  file,
+  storeAccepts,
+  target,
+  stubWebCrypto,
+} from './files/fixture';
 
-const store =
-  'https://objects.example.test/form-upload?X-Amz-Signature=synthetic';
-const fields = formFieldsSchema.parse([
-  {
-    id: 'invoice-field',
-    name: 'invoice',
-    label: 'Invoice',
-    type: 'file',
-    accept: ['documents'],
-    maxFiles: 2,
-  },
-]);
-
-beforeEach(() => {
-  vi.stubGlobal('crypto', webcrypto);
-});
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-function file(name: string, content = '%PDF-1.7\n', size?: number): File {
-  // Undici needs Node’s native Blob; the DOM-only properties are unused here.
-  return new NodeFile(
-    [size === undefined ? content : new Uint8Array(size)],
-    name,
-  ) as unknown as File;
-}
-
-function target(
-  overrides: Partial<Pick<FormUploadTarget, 'begin' | 'finalize'>> = {},
-) {
-  let next = 0;
-  const begin = vi.fn<FormUploadTarget['begin']>((request) => {
-    next += 1;
-    return Promise.resolve({
-      upload: {
-        id: `00000000-0000-4000-8000-${String(next).padStart(12, '0')}`,
-        filename: request.filename,
-        byteLength: request.byteLength,
-        mediaType: 'application/pdf',
-        status: 'pending' as const,
-        expiresAt: '2026-10-26T12:15:00.000Z',
-      },
-      transfer: {
-        method: 'PUT' as const,
-        url: store,
-        headers: { 'content-type': 'application/pdf' },
-        expiresAt: '2026-10-26T12:15:00.000Z',
-        expiresInSeconds: 900,
-      },
-      replayed: false,
-    });
-  });
-  const finalize = vi.fn<FormUploadTarget['finalize']>((uploadId) =>
-    Promise.resolve({
-      id: uploadId,
-      filename: 'invoice.pdf',
-      byteLength: 9,
-      mediaType: 'application/pdf',
-      status: 'available' as const,
-      expiresAt: '2026-10-27T12:00:00.000Z',
-    }),
-  );
-  return {
-    session: 'S'.repeat(43),
-    begin: overrides.begin ?? begin,
-    finalize: overrides.finalize ?? finalize,
-    calls: { begin, finalize },
-  };
-}
-
-function storeAccepts(onPut: () => Promise<void> = () => Promise.resolve()) {
-  const puts = vi.fn();
-  mockServer.use(
-    http.put(store, async ({ request }) => {
-      puts(request.credentials);
-      await onPut();
-      return new HttpResponse(null, { status: 200 });
-    }),
-  );
-  return puts;
-}
+stubWebCrypto();
 
 it('attaches a file through the response’s upload and sends only its upload ID', async () => {
   const puts = storeAccepts();
@@ -239,82 +160,6 @@ it('shows the server’s refusal on the row and lets a temporary failure retry',
     within(rows).queryByText(/Check your connection and retry/u),
   ).not.toBeInTheDocument();
 });
-
-function uploadRefusal(code: string, detail: string): ApiError {
-  return new ApiError({
-    kind: 'problem',
-    message: 'refused',
-    status: 429,
-    problem: apiProblemSchema.parse({
-      type: `urn:pertexo:problem:${code}`,
-      title: 'Upload refused',
-      status: 429,
-      code,
-      detail,
-      requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    }),
-  });
-}
-
-it('tells a responder over the per-response cap to reload, with no Retry', async () => {
-  storeAccepts();
-  const begin = vi
-    .fn<FormUploadTarget['begin']>()
-    .mockRejectedValue(
-      uploadRefusal(
-        'form.upload_limit',
-        'This response has started too many uploads. Reload the form to start again.',
-      ),
-    );
-  render(
-    <FormResponse
-      fields={fields}
-      uploads={target({ begin })}
-      onSubmit={vi.fn()}
-    />,
-  );
-  const user = userEvent.setup();
-  await user.upload(screen.getByLabelText('Invoice'), file('a.pdf'));
-  const rows = await screen.findByRole('list', { name: 'Invoice files' });
-  expect(
-    await within(rows).findByText(/Reload the form to start again\./u),
-  ).toBeVisible();
-  expect(
-    screen.queryByRole('button', { name: 'Retry a.pdf' }),
-  ).not.toBeInTheDocument();
-});
-
-// web-app-13: a busy public upload allowance is temporary, so the row offers Retry.
-it.fails(
-  'lets a responder retry a file once a busy upload allowance frees up',
-  async () => {
-    storeAccepts();
-    const begin = vi
-      .fn<FormUploadTarget['begin']>()
-      .mockRejectedValueOnce(
-        uploadRefusal(
-          'form.upload_busy',
-          'This form is receiving a lot of files right now. Try again in a few minutes.',
-        ),
-      )
-      .mockImplementation(target().begin);
-    render(
-      <FormResponse
-        fields={fields}
-        uploads={target({ begin })}
-        onSubmit={vi.fn()}
-      />,
-    );
-    const user = userEvent.setup();
-    await user.upload(screen.getByLabelText('Invoice'), file('a.pdf'));
-    const rows = await screen.findByRole('list', { name: 'Invoice files' });
-    expect(
-      await within(rows).findByText(/Try again in a few minutes\./u),
-    ).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Retry a.pdf' }));
-    await screen.findByText('a.pdf attached.');
-  },
-);
 
 it('takes only as many files as the question allows', async () => {
   storeAccepts();

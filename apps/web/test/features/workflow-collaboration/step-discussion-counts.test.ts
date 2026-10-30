@@ -48,9 +48,7 @@ it('counts open discussions per step across the hundred most recent', async () =
     workflowId,
   };
 
-  const counts = await new QueryClient().fetchQuery(
-    stepDiscussionsQuery(scope),
-  );
+  const counts = await new QueryClient().query(stepDiscussionsQuery(scope));
 
   expect(Object.fromEntries(counts)).toEqual({ check: 50, notify: 50 });
   expect(new Set(limits)).toEqual(new Set(['20']));

@@ -86,9 +86,9 @@ describe('workspace destinations by role', () => {
       const offered = names(within(nav).getAllByRole('link')).filter(
         (name) => name !== 'Home',
       );
-      expect(
-        offered.map((name) => name?.replace(/\d+.*$/u, '').trim()),
-      ).toEqual([...spine]);
+      expect(offered.map((name) => name.replace(/\d+.*$/u, '').trim())).toEqual(
+        [...spine],
+      );
       await userEvent
         .setup()
         .click(within(nav).getByRole('button', { name: 'Search' }));
