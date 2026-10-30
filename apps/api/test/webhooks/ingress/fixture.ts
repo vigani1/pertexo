@@ -7,6 +7,7 @@ import { RateLimitModule } from '../../../src/platform/rate-limit/module.js';
 import type { RateLimitConsumer } from '../../../src/platform/rate-limit/admission.js';
 
 import type { WebhookTriggerDatabase } from '@pertexo/database/testing';
+import type { StructuredLogger } from '@pertexo/observability';
 
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import Fastify from 'fastify';
@@ -38,8 +39,11 @@ export function createIngressFixture() {
     );
   });
 
-  async function setupPreflight(reference = verification) {
-    const fixture = setup({ reference: reference });
+  async function setupPreflight(
+    reference = verification,
+    logger?: StructuredLogger,
+  ) {
+    const fixture = setup({ reference: reference, logger });
     const consume = vi
       .fn<RateLimitConsumer['consume']>()
       .mockResolvedValue({ allowed: true });
@@ -71,12 +75,15 @@ export function createIngressFixture() {
     },
     includeTraceparent = true,
     telemetryOverrides = {},
+    logger,
   }: Readonly<{
     reference?: typeof verification | undefined;
     acceptanceError?: Error | undefined;
     acceptance?: { runId: string; replayed: boolean } | undefined;
     includeTraceparent?: boolean | undefined;
     telemetryOverrides?: Partial<WebhookIngressTelemetry> | undefined;
+    /** Where ingress reports failures it turns into a safe 503. */
+    logger?: StructuredLogger | undefined;
   }> = {}) {
     const database = {
       readResponse: vi
@@ -132,6 +139,7 @@ export function createIngressFixture() {
       encryption,
       checkpointFactory: () => ({ checkpoint: {} }),
       telemetry,
+      ...(logger === undefined ? {} : { logger }),
     };
     registerWebhookIngress(application, dependencies);
     return {

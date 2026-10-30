@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { afterEach, expect, it } from 'vitest';
+import type { StructuredLogger } from '@pertexo/observability';
+import { afterEach, expect, it, vi } from 'vitest';
 import {
   callbackWaitConfigSchema,
   type CallbackWaitConfig,
@@ -253,4 +254,60 @@ it('refuses oversized or malformed input without accepting the callback', async 
     ).statusCode,
   ).toBe(400);
   expect(f.retained).toEqual([]);
+});
+// api-03: an outage behind callback ingress must reach the logs with its cause.
+it.fails('logs the cause when a callback cannot be read', async () => {
+  const keys = createCallbackTokenKeys({
+    origin: 'https://example.test',
+    keys: {
+      current: { version: '1', key: Buffer.alloc(32, 71).toString('base64') },
+      previous: [],
+    },
+  });
+  const failure = new Error('callback read failed');
+  const store: CallbackStore = {
+    prepare: () => Promise.resolve([]),
+    resolve: () => Promise.reject(failure),
+    respond: () => Promise.resolve(),
+    keysInUse: async function* () {
+      yield* await Promise.resolve([]);
+    },
+    close: () => Promise.resolve(),
+  };
+  const logger = {
+    debug: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+    info: vi.fn(),
+    trace: vi.fn(),
+    warn: vi.fn(),
+  } satisfies StructuredLogger;
+  const dependencies = {
+    store,
+    keys,
+    rateLimitConsumer: {
+      consume: () => Promise.resolve({ allowed: true as const }),
+    },
+    logger,
+  };
+  const app = Fastify();
+  registerCallbackIngress(app, dependencies);
+  close.push(async () => {
+    await app.close();
+    keys.close();
+  });
+  const token = keys.material(
+    { id: '01a10000-0000-7000-8000-000000000009' },
+    '1',
+  ).token;
+  const response = await app.inject({
+    method: 'POST',
+    url: `/hooks/${token}/resume`,
+    headers: { 'content-type': 'application/json' },
+    payload: '{}',
+  });
+  expect(response.statusCode).toBe(503);
+  expect(response.json()).toMatchObject({ code: 'callback.unavailable' });
+  expect(logger.error).toHaveBeenCalledOnce();
+  expect(logger.error.mock.calls[0]).toContain(failure);
 });
