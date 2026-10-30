@@ -36,7 +36,7 @@ import { CsvExportAdmission } from '../platform/http/csv/admission.js';
 import { decodeCsvDownloadRequest } from '../platform/http/csv/request.js';
 import { sendCsvDownload } from '../platform/http/csv/response.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { GovernanceGuard } from './guard.js';
+import { GovernanceManageGuard, GovernanceGuard } from './guard.js';
 import type { GovernanceStore } from '@pertexo/database/governance';
 import { GOVERNANCE_STORE } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
@@ -45,7 +45,7 @@ import { resourceFailure } from '../problems/context/normalize.js';
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 @UseInterceptors(domainErrors(resourceFailure))
 @Controller('v1/workspaces/:workspaceId/governance')
-@UseGuards(SessionAuthenticationGuard, GovernanceGuard)
+@UseGuards(SessionAuthenticationGuard)
 @RateLimit('authenticated_read')
 export class GovernanceController {
   constructor(
@@ -60,6 +60,7 @@ export class GovernanceController {
     };
   }
   @Get('audit')
+  @UseGuards(GovernanceGuard)
   @Header('Cache-Control', 'private, no-store')
   list(
     @Req() request: Request,
@@ -76,6 +77,7 @@ export class GovernanceController {
     );
   }
   @Get('settings')
+  @UseGuards(GovernanceGuard)
   @Header('Cache-Control', 'private, no-store')
   settings(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
     return withRequestOperationSignal(request, (signal) =>
@@ -86,7 +88,7 @@ export class GovernanceController {
     );
   }
   @Put('settings')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(GovernanceManageGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   @Header('Cache-Control', 'private, no-store')
   configure(
@@ -105,6 +107,7 @@ export class GovernanceController {
     );
   }
   @Post('audit/export')
+  @UseGuards(GovernanceGuard)
   @HttpCode(200)
   @RateLimit('data_table_export')
   async exportCsv(
