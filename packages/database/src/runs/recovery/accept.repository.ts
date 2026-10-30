@@ -4,7 +4,7 @@ import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { prepareStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import { nodeRuns, runEvents } from '../../schema/runs/execution.js';
-import { readRecoveryMetadata, readRecoveryValues } from './records.queries.js';
+import { readRecoveryEvidence } from './records.queries.js';
 import { WorkflowRecoveryUnavailableError } from './errors.js';
 import {
   acceptWorkflowRun,
@@ -163,28 +163,15 @@ async function prepareRecoveryEvidence(
   await transaction.db.execute(
     sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
   );
-  const metadata = await readRecoveryMetadata(
-    transaction,
-    input.sourceRunId,
-    'locked',
-  );
-  if ('kind' in metadata)
-    throw new WorkflowRecoveryUnavailableError(metadata.reason);
-  if (metadata.run.workflowVersionId !== input.workflowVersionId)
-    throw new WorkflowRecoveryUnavailableError('version_unavailable');
-  const candidate = input.prepareRecovery(metadata);
-  if (candidate.kind === 'refused')
-    throw new WorkflowRecoveryUnavailableError(candidate.reason);
-  const values = await readRecoveryValues(
-    transaction,
-    input.sourceRunId,
-    candidate.nodeRunIds,
-  );
-  if ('kind' in values)
-    throw new WorkflowRecoveryUnavailableError(values.reason);
-  const prepared = candidate.complete(values);
-  if (prepared.kind === 'refused')
-    throw new WorkflowRecoveryUnavailableError(prepared.reason);
+  const evidence = await readRecoveryEvidence(transaction, {
+    runId: input.sourceRunId,
+    mode: 'locked',
+    prepareRecovery: input.prepareRecovery,
+    workflowVersionId: input.workflowVersionId,
+  });
+  if (evidence.kind === 'refused')
+    throw new WorkflowRecoveryUnavailableError(evidence.reason);
+  const { metadata, candidate, prepared } = evidence;
   const preview = prepared.preview;
   if (preview.nodeRunId !== input.nodeRunId)
     throw new WorkflowRecoveryUnavailableError('evidence_unavailable');

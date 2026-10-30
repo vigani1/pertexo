@@ -36,7 +36,10 @@ import {
   lockReplaySource,
   lockReplayVersion,
 } from '../commands/replay.repository.js';
-import type { WorkflowRecoveryMetadata } from './contract.js';
+import type {
+  WorkflowRecoveryMetadata,
+  WorkflowRecoveryPreparation,
+} from './contract.js';
 import {
   readWorkflowRunFailedSteps,
   runInputInTransaction,
@@ -44,8 +47,49 @@ import {
 
 const maximumAttemptRecords = 1_000;
 
+const refused = (reason: RecoveryRefused['reason']) =>
+  ({ kind: 'refused', reason }) as const;
+
+/**
+ * The evidence chain a recovery preview and its acceptance share, so a preview
+ * offers only what acceptance would take. Acceptance names the version it was
+ * offered; a preview reads whichever the run has.
+ */
+export async function readRecoveryEvidence(
+  transaction: WorkspaceTransaction,
+  input: Readonly<{
+    runId: string;
+    mode: 'snapshot' | 'locked';
+    prepareRecovery: WorkflowRecoveryPreparation;
+    workflowVersionId?: string;
+  }>,
+) {
+  const metadata = await readRecoveryMetadata(
+    transaction,
+    input.runId,
+    input.mode,
+  );
+  if ('kind' in metadata) return metadata;
+  if (
+    input.workflowVersionId !== undefined &&
+    metadata.run.workflowVersionId !== input.workflowVersionId
+  )
+    return refused('version_unavailable');
+  const candidate = input.prepareRecovery(metadata);
+  if (candidate.kind === 'refused') return candidate;
+  const values = await readRecoveryValues(
+    transaction,
+    input.runId,
+    candidate.nodeRunIds,
+  );
+  if ('kind' in values) return values;
+  const prepared = candidate.complete(values);
+  if (prepared.kind === 'refused') return prepared;
+  return { kind: 'ready' as const, metadata, candidate, prepared };
+}
+
 /** Snapshot reads never reserve; command reads hold source details against retirement. */
-export async function readRecoveryMetadata(
+async function readRecoveryMetadata(
   transaction: WorkspaceTransaction,
   runId: string,
   mode: 'snapshot' | 'locked',
@@ -195,7 +239,7 @@ async function readVersion(
   return Object.freeze(row.workflow);
 }
 
-export async function readRecoveryValues(
+async function readRecoveryValues(
   transaction: WorkspaceTransaction,
   runId: string,
   nodeRunIds: readonly string[],
