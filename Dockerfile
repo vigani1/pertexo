@@ -33,7 +33,8 @@ ARG SOURCE_COMMIT=unknown
 LABEL org.opencontainers.image.source="https://github.com/vigani1/pertexo" \
   org.opencontainers.image.revision=$SOURCE_COMMIT
 ENV PERTEXO_API_UPSTREAM=http://api:3000 \
-  NGINX_ENVSUBST_FILTER=^PERTEXO_API_UPSTREAM$
+  NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 \
+  NGINX_ENVSUBST_FILTER='^(PERTEXO_API_UPSTREAM|NGINX_LOCAL_RESOLVERS)$'
 COPY --from=build --chown=101:101 /workspace/apps/web/dist /usr/share/nginx/html
 COPY --chown=101:101 apps/web/deployment/nginx.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 8080

@@ -151,8 +151,9 @@ serve `dist/` from `/usr/share/nginx/html`, and retain the template's distinct
 wiring remains deployment-owned.
 
 The root Dockerfile's `web` target supplies that runtime with pinned,
-unprivileged nginx. It renders only `PERTEXO_API_UPSTREAM` through the standard
-nginx template entrypoint. Expose it behind the trusted TLS front proxy: the
+unprivileged nginx. It renders only `PERTEXO_API_UPSTREAM` and the container's
+own DNS resolvers through the standard nginx template entrypoint, so a restarted
+API is found again at its new address. Expose it behind the trusted TLS front proxy: the
 template preserves that proxy's HTTP/HTTPS scheme, with a direct-HTTP fallback.
 The image can run with a read-only root and writable `/tmp` and
 `/etc/nginx/conf.d` mounts; the single-server stack supplies those mounts.
