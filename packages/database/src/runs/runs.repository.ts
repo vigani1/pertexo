@@ -16,10 +16,7 @@ import {
   recoverWorkflowRunInTransaction,
   allocateRecoveryIdentity,
 } from './recovery/accept.repository.js';
-import {
-  readRecoveryMetadata,
-  readRecoveryValues,
-} from './recovery/records.queries.js';
+import { readRecoveryEvidence } from './recovery/records.queries.js';
 import {
   WorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,
@@ -78,26 +75,16 @@ export function createWorkflowRunDatabase(
       false,
     recovery: async (input: WorkflowRecoveryPreviewInput) => {
       return withResourceRunRead(pool, input, async (transaction) => {
-        const metadata = await readRecoveryMetadata(
-          transaction,
-          input.runId,
-          'snapshot',
+        const evidence = await readRecoveryEvidence(transaction, {
+          runId: input.runId,
+          mode: 'snapshot',
+          prepareRecovery: input.prepareRecovery,
+        });
+        if (evidence.kind === 'refused') return evidence;
+        const seed = evidence.prepared.seed(
+          allocateRecoveryIdentity(evidence.candidate.nodeRunIds),
         );
-        if ('kind' in metadata) return metadata;
-        const candidate = input.prepareRecovery(metadata);
-        if (candidate.kind === 'refused') return candidate;
-        const values = await readRecoveryValues(
-          transaction,
-          input.runId,
-          candidate.nodeRunIds,
-        );
-        if ('kind' in values) return values;
-        const prepared = candidate.complete(values);
-        if (prepared.kind === 'refused') return prepared;
-        const seed = prepared.seed(
-          allocateRecoveryIdentity(candidate.nodeRunIds),
-        );
-        return seed.kind === 'refused' ? seed : prepared.preview;
+        return seed.kind === 'refused' ? seed : evidence.prepared.preview;
       }).then((result) => {
         if (result === undefined) throw new WorkflowRunNotFoundError();
         return result;
