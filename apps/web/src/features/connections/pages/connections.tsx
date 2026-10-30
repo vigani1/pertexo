@@ -1,3 +1,4 @@
+import { isWorkspaceBrowsable } from '@/features/workspaces/availability.public';
 import { LooseThread } from '@/components/patterns/states/thread-illustrations';
 import {
   FailedReadState,
@@ -172,13 +173,14 @@ function ConnectionsSession({
   onSearchChange,
 }: ConnectionsPageProps) {
   const canRead = workspace.capabilities.includes('connection:read');
+  const canBrowse = canRead && isWorkspaceBrowsable(workspace);
   const canTest = workspace.capabilities.includes('connection:use');
   const canManage = workspace.capabilities.includes('connection:manage');
   const canReadUsage = workspace.capabilities.includes('workflow:read');
   const cache = useQueryClient();
   useEffect(() => {
     const queryKey = connectionKeys.scope(user.id, workspace.id);
-    if (!canRead || workspace.status !== 'active') {
+    if (!canBrowse) {
       void cache.cancelQueries({ queryKey }).then(() => {
         cache.removeQueries({ queryKey });
       });
@@ -189,16 +191,16 @@ function ConnectionsSession({
         cache.removeQueries({ queryKey, predicate });
       });
     }
-  }, [cache, canRead, canReadUsage, user.id, workspace.id, workspace.status]);
+  }, [cache, canBrowse, canReadUsage, user.id, workspace.id]);
   const connections = useInfiniteQuery({
     ...connectionsInfiniteQueryOptions(apiClient, user.id, workspace.id),
-    enabled: canRead && workspace.status === 'active',
+    enabled: canBrowse,
   });
   const scope = { apiClient, userId: user.id, workspaceId: workspace.id };
   const items = connections.data?.pages.flatMap((page) => page.items) ?? [];
   const counts = countByStatus(items);
 
-  if (!canRead || workspace.status !== 'active')
+  if (!canBrowse)
     return (
       <UnavailablePage
         heading="Connections"
@@ -288,7 +290,12 @@ function ConnectionsSession({
         scope={scope}
         connectionId={search.connection}
         placeholder={items.find((item) => item.id === search.connection)}
-        permissions={{ canTest, canManage, canReadUsage }}
+        permissions={{
+          canTest,
+          canManage,
+          canReadUsage,
+          canFollow: workspace.status === 'active',
+        }}
         onClose={() => {
           onSearchChange(withoutLens);
         }}

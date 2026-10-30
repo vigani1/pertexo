@@ -5,6 +5,7 @@ export function NotificationPreferencesRoute() {
   return (
     <NotificationPreferencesPage
       key={`${user.id}:${workspace.id}`}
+      paused={workspace.status !== 'active'}
       scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
     />
   );

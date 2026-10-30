@@ -220,11 +220,13 @@ export function WorkflowVersionsPage({
                 onRestore: (version) => {
                   setOverlay({ kind: 'restore', version });
                 },
-                onExport: workspace.capabilities.includes('workflow:read')
-                  ? (version) => {
-                      setOverlay({ kind: 'export', version });
-                    }
-                  : undefined,
+                onExport:
+                  workspace.status === 'active' &&
+                  workspace.capabilities.includes('workflow:read')
+                    ? (version) => {
+                        setOverlay({ kind: 'export', version });
+                      }
+                    : undefined,
                 onDuplicate:
                   workflow !== undefined &&
                   canDuplicateWorkflow(workspace, workflow)

@@ -123,8 +123,9 @@ Row-level security enforces everything; the API capability only decides what
 to show:
 
 - The API role reads threads only through the existing eligibility function:
-  active workspace, active user, active eligible membership, and the actor is
-  the session's user.
+  active or suspended workspace (ADR 013/027: a suspended one reads but does
+  not change), active user, active eligible membership, and the actor is the
+  session's user.
 - Read rows are the actor's own; the API may insert and raise them, never
   lower them.
 - The worker may only insert events, within its tenant context.

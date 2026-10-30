@@ -1,10 +1,11 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
+import { heldCapabilities } from '../../model/workspace-availability';
 import { Link } from '@tanstack/react-router';
 
 export function WorkspaceAccess({
   workspace,
 }: Readonly<{ workspace: AccessibleWorkspace }>) {
-  const granted = new Set<string>(workspace.capabilities);
+  const granted = new Set<string>(heldCapabilities(workspace));
   const canSeeTeam = granted.has('member:read');
   return (
     <div className="flex flex-col gap-3">

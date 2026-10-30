@@ -12,6 +12,7 @@ import { DiscussionComment } from './comment';
 import { CommentComposer } from './composer';
 import { DiscussionFeedback } from './command-feedback';
 interface DiscussionProps {
+  paused?: boolean | undefined;
   scope: CollaborationScope;
   threadId: string;
   anchor: string | undefined;
@@ -53,28 +54,32 @@ export function WorkflowDiscussion(props: DiscussionProps) {
             <DiscussionComment
               key={comment.id}
               scope={scope}
+              paused={props.paused}
               comment={comment}
               highlighted={comment.id === anchor}
               onDeleted={onLatest}
             />
           ))}
       </ol>
-      {thread.status === 'resolved' ? (
+      {!props.paused && thread.status === 'resolved' ? (
         <p className="text-sm text-muted-foreground">
           Reopen this discussion to reply. Your unfinished reply is kept.
         </p>
       ) : null}
-      <CommentComposer
-        scope={scope}
-        target={{ kind: 'reply', threadId }}
-        onSaved={onLatest}
-        disabled={thread.status === 'resolved'}
-      />
+      {props.paused ? null : (
+        <CommentComposer
+          scope={scope}
+          target={{ kind: 'reply', threadId }}
+          onSaved={onLatest}
+          disabled={thread.status === 'resolved'}
+        />
+      )}
     </section>
   );
 }
 function DiscussionHeader({
   scope,
+  paused,
   threadId,
   anchor,
   steps,
@@ -103,26 +108,28 @@ function DiscussionHeader({
         </Notice>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={command.pending || command.uncertain}
-          onClick={() =>
-            void command.send({
-              kind: 'status',
-              threadId,
-              body: {
-                status: thread.status === 'open' ? 'resolved' : 'open',
-                expectedRevision: thread.revision,
-              },
-            })
-          }
-        >
-          {thread.status === 'open'
-            ? 'Resolve discussion'
-            : 'Reopen discussion'}
-        </Button>
+        {paused ? null : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={command.pending || command.uncertain}
+            onClick={() =>
+              void command.send({
+                kind: 'status',
+                threadId,
+                body: {
+                  status: thread.status === 'open' ? 'resolved' : 'open',
+                  expectedRevision: thread.revision,
+                },
+              })
+            }
+          >
+            {thread.status === 'open'
+              ? 'Resolve discussion'
+              : 'Reopen discussion'}
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={onClose}>
           Back to discussions
         </Button>

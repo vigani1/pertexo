@@ -26,9 +26,12 @@ let sequence = 0;
 
 export function WorkflowPresenceProvider({
   scope,
+  paused = false,
   children,
 }: {
   scope: CollaborationScope;
+  /** A suspended workspace still shows who's here but records nothing new. */
+  paused?: boolean;
   children: ReactNode;
 }) {
   const state = useRef(VIEWING_PRESENCE);
@@ -50,6 +53,7 @@ export function WorkflowPresenceProvider({
     renew.current?.();
   }, []);
   useEffect(() => {
+    if (paused) return;
     const controller = new AbortController();
     const heartbeat = () => {
       if (document.visibilityState !== 'visible') return;
@@ -84,7 +88,7 @@ export function WorkflowPresenceProvider({
       document.removeEventListener('visibilitychange', heartbeat);
       window.removeEventListener('online', heartbeat);
     };
-  }, [stableScope, cache]);
+  }, [stableScope, cache, paused]);
   const value = useMemo(
     () => ({ scope: stableScope, tabId, report }),
     [stableScope, report],

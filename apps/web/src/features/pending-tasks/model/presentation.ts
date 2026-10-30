@@ -101,6 +101,8 @@ export function blockedLabel(reason: PendingTaskSummary['blockedReason']) {
       return 'Expired';
     case 'run_closed':
       return 'The run has ended';
+    case 'workspace_suspended':
+      return 'Paused while the workspace is suspended';
     case 'resolved':
     case null:
       return undefined;
@@ -121,6 +123,8 @@ export function blockedSentence(
         : 'This request expired, so its step failed. A failure route takes over if the workflow has one.';
     case 'run_closed':
       return 'This run was canceled, finished, or reached its deadline. It cannot accept a decision.';
+    case 'workspace_suspended':
+      return 'This workspace is suspended, so nobody can respond until it is reactivated.';
     case 'resolved':
       return 'This task already has a final result.';
     case null:

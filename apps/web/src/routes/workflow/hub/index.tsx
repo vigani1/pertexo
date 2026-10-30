@@ -48,6 +48,7 @@ export function WorkflowHubRoute() {
     >
       <WorkflowPresenceProvider
         key={`${user.id}:${workspace.id}:${workflowId}`}
+        paused={workspace.status !== 'active'}
         scope={{
           apiClient,
           userId: user.id,

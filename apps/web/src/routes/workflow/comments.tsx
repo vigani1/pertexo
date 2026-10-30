@@ -25,6 +25,7 @@ export function WorkflowCommentsRoute() {
   return (
     <WorkflowHubTabFrame tab="comments">
       <WorkflowCommentsPage
+        paused={workspace.status !== 'active'}
         scope={{
           apiClient,
           userId: user.id,

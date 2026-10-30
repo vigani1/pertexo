@@ -96,7 +96,9 @@ export function WorkflowRowMenu({
         ) : null}
         <WorkflowHubLinks params={params} canReadRuns={can('run:read')} />
         <DropdownMenuSeparator />
-        {can('workflow:read') && actions.onExport !== undefined ? (
+        {can('workflow:read') &&
+        workspace.status === 'active' &&
+        actions.onExport !== undefined ? (
           <DropdownMenuItem onClick={() => actions.onExport?.(workflow)}>
             Export saved draft…
           </DropdownMenuItem>

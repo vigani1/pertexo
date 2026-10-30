@@ -306,18 +306,16 @@ test('Usage forgets denied activity across windows, transient failures and fresh
   await expect(page.getByText('Fresh activity', { exact: true })).toBeVisible();
 });
 
-test('Usage leaves capacity unread in suspended workspaces and roles without artifact access', async ({
+test('Usage leaves capacity unread for roles without artifact access', async ({
   page,
 }) => {
   const { requests } = await install(page, {
-    state: 'suspended',
+    state: 'active',
     capabilities: ['workspace:read', 'run:read'],
   });
   await page.goto(`/w/${workspaceId}/settings/usage`);
   await expect(
-    page.getByText(
-      'Current capacity is available only for an active workspace.',
-    ),
+    page.getByText('You need access to runs and files to see capacity.'),
   ).toBeVisible();
   await expect(page.getByText('Workflow cccc…cccc')).toBeVisible();
   await expect(page.getByText('Daily intake', { exact: true })).toHaveCount(0);

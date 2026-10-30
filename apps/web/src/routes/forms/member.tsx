@@ -10,6 +10,7 @@ export function MemberFormRoute() {
   return (
     <FormPage
       key={`${user.id}:${workspace.id}:${workflowId}`}
+      paused={workspace.status !== 'active'}
       scope={memberFormScope({
         apiClient,
         userId: user.id,

@@ -230,7 +230,11 @@ export function InboxPage({
     <div className="flex flex-col gap-8">
       <InboxHeader
         filter={filter}
-        canMarkAll={cut !== undefined && (unreadCount ?? 0) > 0}
+        canMarkAll={
+          workspace.status === 'active' &&
+          cut !== undefined &&
+          (unreadCount ?? 0) > 0
+        }
         marking={markAll.isPending}
         views={views}
         kindFilter={
@@ -247,6 +251,7 @@ export function InboxPage({
         scope={scope}
         threads={threads}
         filter={filter}
+        canMark={workspace.status === 'active'}
         markAllFailed={markAll.isError}
       />
     </div>
@@ -258,11 +263,14 @@ function InboxThreadResults({
   scope,
   threads,
   filter,
+  canMark,
   markAllFailed,
 }: Readonly<{
   scope: InboxScope;
   threads: UseInfiniteQueryResult<InfiniteData<WorkspaceInboxListResponse>>;
   filter: WorkspaceInboxFilter;
+  /** Opening a notice still reads it, but a suspended workspace records nothing. */
+  canMark: boolean;
   markAllFailed: boolean;
 }>) {
   const markRead = useMarkThreadReadMutation(scope);
@@ -296,7 +304,7 @@ function InboxThreadResults({
                     markRead.variables.threadId === thread.id
                   }
                   onRead={() => {
-                    if (thread.unread)
+                    if (canMark && thread.unread)
                       markRead.mutate({
                         threadId: thread.id,
                         revision: thread.revision,

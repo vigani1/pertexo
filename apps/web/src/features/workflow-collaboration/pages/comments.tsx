@@ -12,6 +12,8 @@ interface Search {
 }
 interface PageProps {
   scope: CollaborationScope;
+  /** A suspended workspace shows its discussions but takes no new words. */
+  paused?: boolean | undefined;
   steps: readonly { id: string; label: string }[];
   search: Search;
   onNavigate: (search: Search) => void;
@@ -32,6 +34,7 @@ export function WorkflowCommentsPage(props: PageProps) {
         <WorkflowDiscussion
           key={search.thread}
           scope={scope}
+          paused={props.paused}
           threadId={search.thread}
           anchor={search.comment}
           steps={steps}
@@ -46,9 +49,17 @@ export function WorkflowCommentsPage(props: PageProps) {
     </div>
   );
 }
-function ThreadOverview({ scope, steps, search, onNavigate }: PageProps) {
+function ThreadOverview({
+  scope,
+  paused = false,
+  steps,
+  search,
+  onNavigate,
+}: PageProps) {
   const [status, setStatus] = useState<'all' | 'open' | 'resolved'>('open');
-  const [creating, setCreating] = useState(search.step !== undefined);
+  const [creating, setCreating] = useState(
+    !paused && search.step !== undefined,
+  );
   const filter =
     search.step === undefined
       ? { status, scope: 'all' as const }
@@ -56,7 +67,7 @@ function ThreadOverview({ scope, steps, search, onNavigate }: PageProps) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
-        {creating ? null : (
+        {creating || paused ? null : (
           <Button
             onClick={() => {
               setCreating(true);

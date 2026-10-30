@@ -117,7 +117,6 @@ describe('workspace Usage', () => {
     });
   });
   it.each([
-    { state: 'suspended', caps: undefined },
     // Only someone who can restore a workspace being deleted can open it.
     {
       state: 'pending_deletion',
@@ -132,15 +131,12 @@ describe('workspace Usage', () => {
   ] as const)(
     'does not read capacity in a $state workspace, while activity remains available',
     async ({ state, caps }) => {
-      const { reads } = install({
-        state,
-        ...(caps === undefined ? {} : { caps }),
-      });
+      const { reads } = install({ state, caps });
       renderApp(path);
       await screen.findByText('Daily intake', {}, coldStart);
       expect(
         screen.getByText(
-          'Current capacity is available only for an active workspace.',
+          'Current capacity isn’t available for a workspace being deleted.',
         ),
       ).toBeVisible();
       expect(reads()).toBe(0);

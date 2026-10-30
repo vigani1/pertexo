@@ -17,7 +17,7 @@ export function TokenResults({
   onRevoke,
 }: Readonly<{
   query: UseInfiniteQueryResult<InfiniteData<ApiTokenListResponse>>;
-  onRevoke: (token: ApiTokenMetadata) => void;
+  onRevoke?: (token: ApiTokenMetadata) => void;
 }>) {
   return (
     <>
@@ -39,7 +39,7 @@ export function TokenResults({
         {(data) => (
           <TokenList
             tokens={data.pages.flatMap((page) => page.items)}
-            onRevoke={onRevoke}
+            {...(onRevoke === undefined ? {} : { onRevoke })}
           />
         )}
       </QueryView>

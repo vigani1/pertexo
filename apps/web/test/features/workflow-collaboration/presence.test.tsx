@@ -252,3 +252,34 @@ it('reuses the current tab lease and increases its sequence after route remount'
   expect(sequences.at(-1)).toBeGreaterThan(sequences[0] ?? 0);
   expect(screen.queryByText('Also in another tab')).not.toBeInTheDocument();
 });
+
+it('shows who is here without announcing anything while paused', async () => {
+  const methods: (string | undefined)[] = [];
+  const fetch = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+    methods.push(init?.method);
+    return Promise.resolve(
+      new Response(JSON.stringify({ items: [], serverTime: new Date(0) }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+  });
+  const scope = {
+    apiClient: createApiClient({
+      fetch,
+      readCsrfToken: () =>
+        'csrf-token-for-component-tests-12345678901234567890',
+    }),
+    userId,
+    workspaceId,
+    workflowId,
+  };
+  renderInRouter(
+    <WorkflowPresenceProvider scope={scope} paused>
+      <span>Page</span>
+    </WorkflowPresenceProvider>,
+  );
+
+  await screen.findByText('Page');
+  expect(methods).not.toContain('PUT');
+});
