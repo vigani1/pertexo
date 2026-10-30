@@ -50,7 +50,7 @@ export function registerRejectsLegacyPrimarySlotInstead(): void {
     });
     await expect(
       nodeAttemptStore.complete(healthCompletion(lease)),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
     expect(await readHealth(connection.connectionId)).toMatchObject({
       status: 'active',
       health_revision: '1',

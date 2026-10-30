@@ -23,6 +23,7 @@ import {
   workspaceA,
   withHealthApi,
 } from '../run.fixture.js';
+import { NodeAttemptStateCorruptError } from '../../../../src/attempts/errors.js';
 
 export function registerSBeforeDispatchForbidsEvidence(): void {
   it.each(['rotate', 'revoke'] as const)(
@@ -37,7 +38,7 @@ export function registerSBeforeDispatchForbidsEvidence(): void {
       ).rejects.toBeInstanceOf(NodeAttemptConnectionFenceError);
       await expect(
         nodeAttemptStore.complete(healthCompletion(lease)),
-      ).rejects.toThrow();
+      ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
       const rows = await asOwner(workspaceA, (client) =>
         client.query(
           'select id from app.connection_health_observations where workspace_id=$1 and attempt_id=$2',

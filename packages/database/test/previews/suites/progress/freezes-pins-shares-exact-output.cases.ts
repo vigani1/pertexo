@@ -16,6 +16,7 @@ import {
   complete,
   runId,
 } from './fixture.js';
+import { WorkflowNotFoundError } from '../../../../src/authoring/workflows/errors.js';
 
 export function registerFreezesPinsSharesExactOutput(): void {
   it('freezes pins and shares their exact output with every case after the pin is removed', async () => {
@@ -194,7 +195,7 @@ export function registerFreezesPinsSharesExactOutput(): void {
       );
       await expect(
         database.workflowTestSuites.get({ ...f.scope, ...accepted }),
-      ).rejects.toThrow();
+      ).rejects.toBeInstanceOf(WorkflowNotFoundError);
       await complete(runId(first, 0), { amount: 1 });
       await due(accepted.suiteId);
       await scanner.scan(25);

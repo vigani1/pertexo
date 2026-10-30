@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 
 import { seams, ids, claim, scannerWithClaims, scanInput } from './fixture.js';
+import { ZodError } from 'zod';
 
 export function registerPerformsNoClaimWorkPre(): void {
   it('performs no claim work for a pre-aborted scan', async () => {
@@ -21,7 +22,7 @@ export function registerPerformsNoClaimWorkPre(): void {
     const valid = claim(ids.triggerTwo, ids.leaseTwo);
     const { queries, scanner } = scannerWithClaims([malformed, valid]);
 
-    await expect(scanner.scanDue(scanInput)).rejects.toThrow();
+    await expect(scanner.scanDue(scanInput)).rejects.toBeInstanceOf(ZodError);
     expect(
       queries.filter(([text]) =>
         text.includes('release_trigger_schedule_claim'),

@@ -14,6 +14,7 @@ import {
   identity,
   purgeTestWorkspace,
 } from '../../support/workflow-authoring.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
 
 describe('shared draft step samples', () => {
   it('copies bounded JSON, lists metadata without values, and keeps payload out of receipts/audits', async () => {
@@ -239,7 +240,7 @@ describe('shared draft step samples', () => {
     await authoring.stepSamples.put(paste(f));
     await expect(
       authoring.stepSamples.get({ ...f.scope, workspaceId: otherWorkspaceId }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
     await save(f, { ...f.graph, nodes: [] });
     expect((await authoring.stepSamples.get(f.scope)).sample).toBeNull();
   });

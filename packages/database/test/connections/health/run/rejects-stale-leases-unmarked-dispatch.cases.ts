@@ -19,6 +19,7 @@ import {
   readAcceptedHealthExecution,
   withHealthWriteFailure,
 } from '../run.fixture.js';
+import { NodeAttemptStateCorruptError } from '../../../../src/attempts/errors.js';
 
 export function registerRejectsStaleLeasesUnmarkedDispatch(): void {
   it('rejects stale leases and unmarked dispatch without committing evidence/outcome', async () => {
@@ -26,7 +27,7 @@ export function registerRejectsStaleLeasesUnmarkedDispatch(): void {
     const lease = await claimHealthAttempt(connection);
     await expect(
       nodeAttemptStore.complete(healthCompletion(lease)),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
     await markHealthDispatched(lease, connection);
     await expect(
       nodeAttemptStore.complete(
@@ -48,7 +49,9 @@ export function registerRejectsStaleLeasesUnmarkedDispatch(): void {
     const connection = await createHealthConnection();
     const other = await createHealthConnection();
     const lease = await claimHealthAttempt(connection);
-    await expect(markHealthDispatched(lease, other)).rejects.toThrow();
+    await expect(markHealthDispatched(lease, other)).rejects.toThrow(
+      'Connection dispatch published binding mismatch',
+    );
     await markHealthDispatched(lease, connection);
     const dispatched = await asOwner(workspaceA, (client) =>
       client.query<{

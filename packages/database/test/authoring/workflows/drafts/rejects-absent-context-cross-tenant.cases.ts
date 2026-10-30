@@ -15,6 +15,7 @@ import {
   workflowId,
   workspaceId,
 } from '../../../support/workflow-authoring.js';
+import { ZodError } from 'zod';
 
 export function registerRejectsAbsentContextCrossTenant(): void {
   it('rejects absent-context and cross-tenant writes for every publication relation', async () => {
@@ -155,7 +156,7 @@ export function registerRejectsAbsentContextCrossTenant(): void {
         name: 'Invalid graph',
         workspaceId,
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(ZodError);
     await expect(
       saveCurrentDraft(authoring, {
         actorId,
@@ -164,7 +165,7 @@ export function registerRejectsAbsentContextCrossTenant(): void {
         workflowId,
         workspaceId,
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(ZodError);
 
     const corrupted = await authoring.createWorkflow({
       actorId,
@@ -198,6 +199,6 @@ export function registerRejectsAbsentContextCrossTenant(): void {
     });
     await expect(
       authoring.getDraft(workspaceId, corrupted.workflowId, actorId),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(ZodError);
   });
 }

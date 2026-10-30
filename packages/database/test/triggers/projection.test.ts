@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { workflowTriggerProjection } from '../../src/triggers/reconciliation/projection.js';
+import { ZodError } from 'zod';
 
 const node = (
   id: string,
@@ -90,7 +91,7 @@ describe('workflow trigger projection', () => {
         ],
         edges: [],
       }),
-    ).toThrow();
+    ).toThrow(ZodError);
   });
 
   it('rejects an oversized Schedule recurrence before materialization', () => {
@@ -108,7 +109,7 @@ describe('workflow trigger projection', () => {
         ],
         edges: [],
       }),
-    ).toThrow();
+    ).toThrow(ZodError);
   });
 
   it.each([
@@ -149,7 +150,7 @@ describe('workflow trigger projection', () => {
         nodes: [node('webhook', 'core.webhook', { secret: 'not-graph-state' })],
         edges: [],
       }),
-    ).toThrow();
+    ).toThrow(ZodError);
     expect(() =>
       workflowTriggerProjection({
         settings: {},
@@ -162,6 +163,6 @@ describe('workflow trigger projection', () => {
         ],
         edges: [],
       }),
-    ).toThrow();
+    ).toThrow(ZodError);
   });
 });

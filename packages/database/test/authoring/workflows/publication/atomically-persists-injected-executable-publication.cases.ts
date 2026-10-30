@@ -12,6 +12,7 @@ import {
   randomUUID,
   workspaceId,
 } from '../../../support/workflow-authoring.js';
+import { ZodError } from 'zod';
 
 export function registerAtomicallyPersistsInjectedExecutablePublication(): void {
   it('atomically persists an injected executable publication projection', async () => {
@@ -158,7 +159,7 @@ export function registerAtomicallyPersistsInjectedExecutablePublication(): void 
           idempotencyKey: 'publish-v2-corrupt-matching-graph',
           requestHash: 'b'.repeat(64),
         }),
-      ).rejects.toThrow();
+      ).rejects.toBeInstanceOf(ZodError);
       await expect(
         queryAsOwner<{ versions: string }>(
           `select count(*)::text versions from app.workflow_versions

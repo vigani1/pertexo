@@ -137,7 +137,7 @@ describe('trigger repository construction ownership', () => {
         limit: 1,
         maxAttempts: 3,
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow('claim statement failed');
     expect(queries.at(-1)).toBe('rollback');
     expect(queries).not.toContain('commit');
     expect(releaseClient).toHaveBeenCalledWith(undefined);

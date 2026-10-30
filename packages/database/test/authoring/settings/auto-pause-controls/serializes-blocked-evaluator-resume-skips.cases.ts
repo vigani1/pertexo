@@ -85,14 +85,14 @@ export function registerSerializesBlockedEvaluatorResumeSkips(): void {
         expectedPauseRevision: '0',
         idempotencyKey: randomUUID(),
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(WorkflowPauseRevisionConflictError);
     await expect(
       controls().resumeWorkflow({
         ...scope,
         expectedPauseRevision: '9223372036854775808',
         idempotencyKey: randomUUID(),
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(WorkflowPauseRevisionConflictError);
     await expect(
       controls().resumeWorkflow({
         ...scope,

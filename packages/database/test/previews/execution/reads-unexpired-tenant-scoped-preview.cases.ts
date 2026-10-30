@@ -15,6 +15,7 @@ import {
   input,
   ownerWorkspaceQuery,
 } from './fixture.js';
+import { hasPostgresCode } from './fixture.js';
 
 export function registerReadsUnexpiredTenantScopedPreview(): void {
   it('reads only an unexpired tenant-scoped preview and its stored output', async () => {
@@ -101,7 +102,7 @@ export function registerReadsUnexpiredTenantScopedPreview(): void {
           .update(previewAttempts)
           .set({ providerIdempotencyKey: 'changed' })
           .where(eq(previewAttempts.id, attemptId)),
-      ).rejects.toThrow();
+      ).rejects.toSatisfy((error: unknown) => hasPostgresCode(error, '42501'));
     });
   });
 }

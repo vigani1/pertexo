@@ -220,6 +220,6 @@ export function registerAppliesArchiveStateAtReconciliation(): void {
         actorId: randomUUID(),
         workflowId,
       }),
-    ).rejects.toBeInstanceOf(Error);
+    ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
   });
 }
