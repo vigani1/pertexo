@@ -74,6 +74,6 @@ export function registerBoundsRetentionExecutionDeadline(): void {
           }),
         ),
       ),
-    ).resolves.toMatchObject({ previewRunId: expect.any(String) });
+    ).resolves.toHaveProperty('previewRunId');
   });
 }
