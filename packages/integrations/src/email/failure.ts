@@ -4,6 +4,7 @@ import {
 } from '@pertexo/node-sdk/server';
 
 import { SECURE_HTTP_ERROR_CODE } from '../http/secure.js';
+import { providerFailure } from '../providers/failure.js';
 import { inspectSecureHttpError } from '../http/secure-error.js';
 import { safeInstanceOf } from '../http/unknown-error.js';
 import type { ResendApiResult } from './client.js';
@@ -12,34 +13,7 @@ export class EmailSendNotificationExecutorError extends NodeExecutorFailure {
   public override readonly name = 'EmailSendNotificationExecutorError';
 }
 
-export function failure(
-  kind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown',
-  errorKind:
-    | 'authentication'
-    | 'canceled'
-    | 'configuration'
-    | 'internal'
-    | 'network'
-    | 'provider'
-    | 'rate_limit'
-    | 'timeout',
-  {
-    possiblyDispatched,
-    retryAfterMillis,
-  }: Readonly<{
-    possiblyDispatched: boolean;
-    retryAfterMillis?: number | undefined;
-  }>,
-) {
-  return new EmailSendNotificationExecutorError({
-    kind,
-    errorKind,
-    possiblyDispatched,
-    ...(retryAfterMillis === undefined
-      ? {}
-      : { minimumRetryDelayMillis: Math.min(retryAfterMillis, 60_000) }),
-  });
-}
+export const failure = providerFailure(EmailSendNotificationExecutorError);
 
 export function credentialFailure(runtime: NodeExecutionRuntime | undefined) {
   return !(runtime?.providerDispatchUnresolved ?? false)

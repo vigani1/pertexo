@@ -36,8 +36,12 @@ export {
   NodeSdkError,
   ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
+  MAXIMUM_RETRY_DELAY_MILLIS,
+  NODE_EXECUTOR_ERROR_KINDS,
+  NODE_EXECUTOR_FAILURE_KINDS,
   type NodeErrorCode,
   type NodeExecutorErrorKind,
+  type NodeExecutorFailureKind,
   type NodeExecutorFailureOutcome,
 } from './execution/errors.js';
 export { describeNodeRefusal } from './execution/refusal.js';

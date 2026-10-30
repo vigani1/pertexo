@@ -116,8 +116,7 @@ describe('an invalid credential after an earlier unresolved dispatch', () => {
     ).rejects.toMatchObject(expected);
   });
 
-  // nodes-04: email reports this as `authentication`, unlike Slack and HTTP.
-  it.fails('leaves the earlier email call uncertain', async () => {
+  it('leaves the earlier email call uncertain', async () => {
     await expect(
       providers.email.lookupFails(new ProviderCredentialInvalidError(), true),
     ).rejects.toMatchObject(expected);

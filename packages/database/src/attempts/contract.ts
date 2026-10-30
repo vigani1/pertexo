@@ -1,4 +1,8 @@
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type {
+  NodeExecutorErrorKind,
+  NodeExecutorFailureKind,
+} from '@pertexo/node-sdk/server';
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type { WorkflowNodeFailureValue } from '@pertexo/workflow-model';
 
@@ -90,17 +94,9 @@ export type NodeAttemptCompletion =
     }>
   | Readonly<{
       status: 'executor_failure';
-      failureKind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown';
+      failureKind: NodeExecutorFailureKind;
       minimumRetryDelayMillis?: number;
-      errorKind:
-        | 'authentication'
-        | 'canceled'
-        | 'configuration'
-        | 'internal'
-        | 'network'
-        | 'provider'
-        | 'rate_limit'
-        | 'timeout';
+      errorKind: NodeExecutorErrorKind;
       possiblyDispatched: boolean;
       safeErrorCode: string;
       errorSummary?: string;
