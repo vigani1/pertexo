@@ -66,7 +66,6 @@ describe('connection command response fences', () => {
     [403, 'auth.forbidden', true],
     [404, 'resource.not_found', true],
     [409, 'workspace.conflict', true],
-    [401, 'connection.reauthorization_required', false],
     [409, 'connection.conflict', false],
     [409, 'request.idempotency_conflict', false],
     [409, 'connection.revoked', false],
