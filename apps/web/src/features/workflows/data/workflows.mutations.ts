@@ -5,6 +5,7 @@ import {
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/contract';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
@@ -169,12 +170,19 @@ function renameError(error: unknown): InlineRenameError {
   };
 }
 
+type HeldRename = WorkflowRenameAttempt & CommandKey;
+
+const RENAME_WINDOW_ENDED: InlineRenameError = {
+  kind: 'other',
+  message: RETRY_WINDOW_ENDED,
+};
+
 type RenameState =
   | Readonly<{ kind: 'idle'; error?: InlineRenameError }>
   | Readonly<{ kind: 'sending' }>
   | Readonly<{
       kind: 'uncertain';
-      attempt: WorkflowRenameAttempt;
+      attempt: HeldRename;
       error: InlineRenameError;
     }>;
 
@@ -203,6 +211,9 @@ export function useWorkflowRename({
   const [state, setState] = useState<RenameState>({ kind: 'idle' });
   const inFlight = useRef(false);
   const detailKey = workflowKeys.detail(userId, workspaceId, workflowId);
+  const expired = useResendExpired(
+    state.kind === 'uncertain' ? state.attempt : undefined,
+  );
 
   async function reloadLatest(): Promise<boolean> {
     try {
@@ -213,7 +224,7 @@ export function useWorkflowRename({
     }
   }
 
-  async function send(attempt: WorkflowRenameAttempt): Promise<boolean> {
+  async function send(attempt: HeldRename): Promise<boolean> {
     if (inFlight.current) return false;
     inFlight.current = true;
     setState({ kind: 'sending' });
@@ -254,18 +265,20 @@ export function useWorkflowRename({
 
   return {
     pending: state.kind === 'sending',
-    error: state.kind === 'sending' ? undefined : state.error,
-    retryAvailable: state.kind === 'uncertain',
+    error: expired
+      ? RENAME_WINDOW_ENDED
+      : state.kind === 'sending'
+        ? undefined
+        : state.error,
+    retryAvailable: state.kind === 'uncertain' && !expired,
     start: (name, expectedNameRevision) =>
-      state.kind === 'idle'
-        ? send({
-            name,
-            expectedNameRevision,
-            idempotencyKey: crypto.randomUUID(),
-          })
+      state.kind === 'idle' || (state.kind === 'uncertain' && expired)
+        ? send({ name, expectedNameRevision, ...newCommandKey() })
         : Promise.resolve(false),
     retry: () =>
-      state.kind === 'uncertain' ? send(state.attempt) : Promise.resolve(false),
+      state.kind === 'uncertain' && canResend(state.attempt)
+        ? send(state.attempt)
+        : Promise.resolve(false),
     reloadLatest,
     dismiss: () => {
       if (state.kind === 'uncertain') setState({ kind: 'idle' });

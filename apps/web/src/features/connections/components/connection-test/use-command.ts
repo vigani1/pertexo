@@ -5,7 +5,12 @@ import type {
   ConnectionTestResponse,
 } from '@pertexo/contracts';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { connectionCommandError } from '../../model/connection-errors';
 import {
   useTestConnectionMutation,
@@ -49,7 +54,9 @@ export function useConnectionTest(
 ): ConnectionTest {
   const notifications = useNotifications();
   const mutation = useTestConnectionMutation(scope);
-  const attempt = useRef<TestConnectionCommand | undefined>(undefined);
+  const attempt = useRef<(TestConnectionCommand & CommandKey) | undefined>(
+    undefined,
+  );
   const [targetName, setTargetName] = useState('This connection');
 
   async function send(command: TestConnectionCommand, name: string) {
@@ -73,15 +80,12 @@ export function useConnectionTest(
       previous !== undefined &&
       mutation.isError &&
       isUnconfirmedCommand(mutation.error) &&
+      canResend(previous) &&
       previous.connectionId === connection.id &&
       JSON.stringify(previous.request) === JSON.stringify(request);
-    const command: TestConnectionCommand = repeat
+    const command = repeat
       ? previous
-      : {
-          connectionId: connection.id,
-          request,
-          idempotencyKey: crypto.randomUUID(),
-        };
+      : { connectionId: connection.id, request, ...newCommandKey() };
     attempt.current = command;
     setTargetName(connection.name);
     void send(command, connection.name);

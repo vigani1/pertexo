@@ -12,6 +12,7 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
+import { RETRY_WINDOW_ENDED, canResend } from '@/lib/api/commands/contract';
 import {
   freezeWorkflowOrganizationAttempt,
   type WorkflowOrganizationAttempt,
@@ -52,6 +53,12 @@ export type WorkflowOrganizationCommand = State &
     reset: () => void;
   }>;
 
+/** A sent command and when it was first sent, for an exact retry. */
+type Held = Readonly<{
+  command: WorkflowOrganizationAttempt;
+  createdAt: number;
+}>;
+
 const idle: State = { pending: false, retryAvailable: false, denied: false };
 
 function uncertain(error: unknown) {
@@ -75,7 +82,7 @@ export function useWorkflowOrganizationCommand({
   const [state, setState] = useState<State>(idle);
   const owner = useRef<symbol | undefined>(undefined);
   const request = useRef<AbortController | undefined>(undefined);
-  const attempt = useRef<WorkflowOrganizationAttempt | undefined>(undefined);
+  const attempt = useRef<Held | undefined>(undefined);
   const denied = useRef(false);
   const workspaceId = workspace.id;
   const currentAllowed = allowed(workspace, requiredRole);
@@ -135,7 +142,7 @@ export function useWorkflowOrganizationCommand({
     retire,
   ]);
 
-  const send = (frozen: WorkflowOrganizationAttempt) =>
+  const send = (held: Held) =>
     sendOrganizationCommand(
       {
         apiClient,
@@ -151,7 +158,7 @@ export function useWorkflowOrganizationCommand({
         retire,
         setState,
       },
-      frozen,
+      held,
     );
 
   return {
@@ -178,11 +185,18 @@ export function useWorkflowOrganizationCommand({
         setState({ ...idle, error: 'The organization command is invalid.' });
         return;
       }
-      attempt.current = frozen;
-      await send(frozen);
+      const held = { command: frozen, createdAt: Date.now() };
+      attempt.current = held;
+      await send(held);
     },
     retry: async () => {
-      if (attempt.current !== undefined) await send(attempt.current);
+      const held = attempt.current;
+      if (held === undefined) return;
+      if (canResend(held)) await send(held);
+      else {
+        attempt.current = undefined;
+        setState({ ...idle, error: RETRY_WINDOW_ENDED });
+      }
     },
     reset: () => {
       // A reread is not evidence that an outstanding command did not commit.
@@ -234,7 +248,7 @@ type OrganizationCommandContext = Readonly<{
   queryClient: QueryClient;
   owner: RefObject<symbol | undefined>;
   request: RefObject<AbortController | undefined>;
-  attempt: RefObject<WorkflowOrganizationAttempt | undefined>;
+  attempt: RefObject<Held | undefined>;
   denied: RefObject<boolean>;
   currentAllowed: boolean;
   retire: () => void;
@@ -255,7 +269,7 @@ async function sendOrganizationCommand(
     retire,
     setState,
   }: OrganizationCommandContext,
-  frozen: WorkflowOrganizationAttempt,
+  held: Held,
 ) {
   const token = owner.current;
   const organizationRequestBlocked =
@@ -290,7 +304,7 @@ async function sendOrganizationCommand(
     if (!(await verify())) return;
     const result = await sendWorkflowOrganizationCommand(
       apiClient,
-      frozen,
+      held.command,
       controller.signal,
     );
     if (!current() || !(await verify()) || !current()) return;
@@ -301,7 +315,7 @@ async function sendOrganizationCommand(
       'items' in result &&
       !authorityLost &&
       result.items.some((item) => item.status === 'outcome_unknown');
-    attempt.current = retryAvailable ? frozen : undefined;
+    attempt.current = retryAvailable ? held : undefined;
     denied.current = authorityLost;
     if (authorityLost)
       clearOrganizationQueries(queryClient, userId, workspaceId);
@@ -324,7 +338,7 @@ async function sendOrganizationCommand(
       return;
     }
     const retryAvailable = uncertain(error);
-    attempt.current = retryAvailable ? frozen : undefined;
+    attempt.current = retryAvailable ? held : undefined;
     setState({
       pending: false,
       retryAvailable,

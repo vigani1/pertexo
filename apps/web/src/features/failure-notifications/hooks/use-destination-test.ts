@@ -1,4 +1,9 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { useRef } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import type { TestPhase } from '@/features/connections/provider.public';
@@ -10,8 +15,8 @@ import {
 type Command = Readonly<{
   destinationId: string;
   expectedVersion: number;
-  idempotencyKey: string;
-}>;
+}> &
+  CommandKey;
 const UNKNOWN_CODES = new Set([
   'connection.test.timed_out',
   'connection.test.network_failed',
@@ -51,13 +56,16 @@ export function useDestinationTest(
   }
   function run() {
     if (mutation.isPending) return;
+    // Past its window a held test is forgotten; a test may simply run again.
     const command =
-      phase === 'unsure' && attempt.current !== undefined
+      phase === 'unsure' &&
+      attempt.current !== undefined &&
+      canResend(attempt.current)
         ? attempt.current
         : {
             destinationId: destination.id,
             expectedVersion: destination.currentVersion,
-            idempotencyKey: crypto.randomUUID(),
+            ...newCommandKey(),
           };
     attempt.current = command;
     void send(command);

@@ -1,4 +1,10 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { WorkflowSummary } from '@pertexo/contracts';
@@ -30,7 +36,7 @@ export function useRunWorkflow({
   const notifications = useNotifications();
   const [pendingId, setPendingId] = useState<string>();
   const busy = useRef(false);
-  const unconfirmed = useRef(new Map<string, string>());
+  const unconfirmed = useRef(new Map<string, CommandKey>());
   // The list, in one workspace, that a start's answer may still act on.
   const owner = useRef<symbol | undefined>(undefined);
 
@@ -44,11 +50,20 @@ export function useRunWorkflow({
 
   async function run(workflow: WorkflowSummary): Promise<void> {
     if (busy.current) return;
+    const held = unconfirmed.current.get(workflow.id);
+    if (held !== undefined && !canResend(held)) {
+      unconfirmed.current.delete(workflow.id);
+      notifications.error({
+        title: `We couldn’t confirm whether ${workflow.name} started`,
+        description: RETRY_WINDOW_ENDED,
+      });
+      return;
+    }
     const runOwner = owner.current;
     busy.current = true;
-    const idempotencyKey =
-      unconfirmed.current.get(workflow.id) ?? crypto.randomUUID();
-    unconfirmed.current.set(workflow.id, idempotencyKey);
+    const command = held ?? newCommandKey();
+    unconfirmed.current.set(workflow.id, command);
+    const { idempotencyKey } = command;
     setPendingId(workflow.id);
     try {
       const { run: started } = await startWorkflowRun(
