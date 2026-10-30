@@ -3,7 +3,7 @@ import {
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
 } from '@pertexo/node-sdk/server';
-import { boundedUtilityResult, refuseUtility } from './result.js';
+import { boundedUtilityResult } from './result.js';
 import { transformText } from './text/execute.js';
 import { formatNumber } from './number/execute.js';
 import { transformCrypto } from './crypto/execute.js';
@@ -37,10 +37,13 @@ function utilityExecutor(
             possiblyDispatched: false,
           });
         if (error instanceof NodeExecutorFailure) throw error;
-        return refuseUtility(
-          'invalid_data',
-          'This data could not be transformed. Check the format and size of the input.',
-        );
+        // Bad input has its own refusal above, so this is a defect of ours;
+        // telling the user to check their data would only mislead them.
+        throw new NodeExecutorFailure({
+          kind: 'failed',
+          errorKind: 'internal',
+          possiblyDispatched: false,
+        });
       }
     },
   });
