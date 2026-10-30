@@ -92,8 +92,8 @@ function sendThroughDeployedSettings(
 
 describe('a relay that needs a login', () => {
   // ops-02: the parser freezes `auth`, and nodemailer writes onto it from a socket
-  // callback, so every sign-up kills the worker with an uncaught TypeError.
-  it.fails.each(['starttls', 'implicit'] as const)(
+  // callback, which would kill the worker with an uncaught TypeError on every sign-up.
+  it.each(['starttls', 'implicit'] as const)(
     'gets the login and the message over %s from settings an operator wrote',
     async (tls) => {
       const relay = await startRelay(tls === 'implicit');
