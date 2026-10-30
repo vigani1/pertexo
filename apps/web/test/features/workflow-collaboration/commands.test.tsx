@@ -1,5 +1,5 @@
 import { getRequestUrl } from '../../support/request';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { WorkflowCommentsPage } from '@/features/workflow-collaboration/public';
@@ -288,4 +288,67 @@ it('mentions someone by typing @ and their name, as Slack does', async () => {
       },
     ]);
   });
+});
+it('offers Edit and Delete only on the comments the person wrote', async () => {
+  const otherAuthor = '33333333-3333-4333-8333-333333333333';
+  const comment = (id: string, authorId: string, authorName: string) => ({
+    id,
+    threadId,
+    authorId,
+    authorName,
+    body: `${authorName}’s note`,
+    revision: 1,
+    createdAt: '2026-10-18T10:00:00.000Z',
+    editedAt: null,
+    mentions: [],
+  });
+  const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(() =>
+    Promise.resolve(
+      json({
+        thread: {
+          id: threadId,
+          workflowId,
+          stepId: null,
+          stepLabel: null,
+          status: 'open',
+          revision: 1,
+          createdBy: otherAuthor,
+          createdAt: '2026-10-18T10:00:00.000Z',
+          updatedAt: '2026-10-18T10:00:00.000Z',
+          commentCount: 2,
+          preview: 'Grace’s note',
+        },
+        comments: [
+          comment('44444444-4444-4444-8444-444444444444', otherAuthor, 'Grace'),
+          comment(commentId, userId, 'Ada'),
+        ],
+        nextCursor: null,
+      }),
+    ),
+  );
+  renderInRouter(
+    <WorkflowDiscussion
+      scope={scopeFor(fetch)}
+      threadId={threadId}
+      anchor={undefined}
+      steps={[]}
+      onClose={vi.fn()}
+      onLatest={vi.fn()}
+    />,
+  );
+  const others = (await screen.findByText('Grace’s note')).closest(
+    '[id^="comment-"]',
+  );
+  const own = screen.getByText('Ada’s note').closest('[id^="comment-"]');
+  if (!(others instanceof HTMLElement) || !(own instanceof HTMLElement))
+    throw new Error('Comments are missing');
+  expect(
+    within(own).getByRole('button', { name: 'Edit comment' }),
+  ).toBeVisible();
+  expect(
+    within(own).getByRole('button', { name: 'Delete comment' }),
+  ).toBeVisible();
+  expect(
+    within(others).queryByRole('button', { name: /comment$/u }),
+  ).toBeNull();
 });
