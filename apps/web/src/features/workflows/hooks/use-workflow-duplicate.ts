@@ -33,8 +33,8 @@ import {
 import {
   isDuplicateAccessLoss,
   observeDuplicateAccessLoss,
-  verifyDuplicateAuthority,
 } from '../model/duplicate/access-loss';
+import { useDuplicateAuthority } from './use-duplicate-authority';
 
 type DuplicateAttempt = WorkflowDuplicateAttempt &
   CommandKey & {
@@ -379,34 +379,4 @@ function retireDuplicateRequest({
 }: Pick<DuplicateCommandContext, 'request' | 'attempt'>) {
   request.current?.abort();
   attempt.current = undefined;
-}
-
-function useDuplicateAuthority({
-  apiClient,
-  userId,
-  workspaceId,
-  retire,
-}: Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  retire: () => void;
-}>) {
-  return useCallback(
-    async (signal: AbortSignal) => {
-      if (
-        !(await verifyDuplicateAuthority(
-          apiClient,
-          userId,
-          workspaceId,
-          signal,
-        ))
-      ) {
-        retire();
-        return false;
-      }
-      return true;
-    },
-    [apiClient, userId, workspaceId, retire],
-  );
 }
