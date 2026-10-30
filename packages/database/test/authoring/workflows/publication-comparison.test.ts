@@ -7,6 +7,7 @@ import {
   type GraphValidationResult,
 } from '@pertexo/workflow-model';
 import { EMPTY_DEFINITION_CATALOG } from '@pertexo/workflow-model/server';
+import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.queries.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 
@@ -30,10 +31,12 @@ async function compare(
     published = true,
     draftGraph = graph,
     liveGraph = graph,
+    compile,
   }: Readonly<{
     published?: boolean | undefined;
     draftGraph?: typeof graph | undefined;
     liveGraph?: typeof graph | undefined;
+    compile?: (() => never) | undefined;
   }> = {},
 ) {
   const client = {
@@ -57,10 +60,13 @@ async function compare(
         rows: published ? [[versionId, 3, checksum, liveGraph]] : [],
       }),
   } as unknown as PoolClient;
-  const compiler = vi.fn(() => ({
-    checksum: currentChecksum,
-    executableJson: { graph },
-  }));
+  const compiler = vi.fn(
+    compile ??
+      (() => ({
+        checksum: currentChecksum,
+        executableJson: { graph },
+      })),
+  );
   const store = createWorkflowAuthoringReadStore({
     requireReader: () =>
       Promise.resolve(folderScope(workspaceId, 'owner', [], [])),
@@ -135,5 +141,37 @@ describe('current publication comparison', () => {
     const unpublished = await compare(valid, checksum, { published: false });
     expect(unpublished.result?.currentPublication).toBeNull();
     expect(unpublished.compiler).not.toHaveBeenCalled();
+  });
+
+  // audit-1030 follow-up 2: a draft the compiler refuses no longer opens.
+  it.fails('reads a draft the compiler refuses as not matching', async () => {
+    const opened = await compare(valid, checksum, {
+      compile: () => {
+        throw new WorkflowEngineError(
+          'executable_invalid',
+          'Switch config is invalid',
+        );
+      },
+    });
+
+    expect(opened.result?.validation.ok).toBe(true);
+    expect(opened.result?.draft.revision).toBe(1);
+    expect(opened.result?.currentPublication).toEqual({
+      versionId,
+      versionNumber: 3,
+      matchesDraft: false,
+    });
+  });
+
+  it('lets a compiler failure that is not a refusal through', async () => {
+    const failure = new Error('The executable catalog is unavailable');
+
+    await expect(
+      compare(valid, checksum, {
+        compile: () => {
+          throw failure;
+        },
+      }),
+    ).rejects.toBe(failure);
   });
 });
