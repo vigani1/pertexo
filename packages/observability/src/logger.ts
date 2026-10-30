@@ -2,7 +2,7 @@ import { context, isSpanContextValid, trace } from '@opentelemetry/api';
 import pino from 'pino';
 import type { DestinationStream, Logger as PinoLogger } from 'pino';
 import type { ObservabilityConfig } from './config.js';
-import { SECRET_NAMES, safeFields, errorValue } from './logging/redaction.js';
+import { safeFields, errorValue } from './logging/redaction.js';
 
 export { redactLogText, redactCredentialFields } from './logging/redaction.js';
 export type LogFields = Readonly<Record<string, unknown>>;
@@ -19,33 +19,6 @@ export interface StructuredLogger {
 }
 
 const eventNamePattern = /^[a-z][a-z0-9_.:-]{0,127}$/u;
-
-const SECRET_PATHS = SECRET_NAMES.flatMap((name) => [
-  name,
-  `*.${name}`,
-  `*.*.${name}`,
-  `*.*.*.${name}`,
-]);
-
-const REDACT_PATHS = [
-  ...SECRET_PATHS,
-  'authorization',
-  'Authorization',
-  'cookie',
-  'set-cookie',
-  'headers.authorization',
-  'headers.Authorization',
-  'headers.cookie',
-  'headers.set-cookie',
-  'req.headers.authorization',
-  'req.headers.Authorization',
-  'req.headers.cookie',
-  'req.headers.set-cookie',
-  'request.headers.authorization',
-  'request.headers.Authorization',
-  'request.headers.cookie',
-  'request.headers.set-cookie',
-];
 
 type LogMethod = 'debug' | 'error' | 'fatal' | 'info' | 'trace' | 'warn';
 
@@ -128,10 +101,6 @@ export function createStructuredLogger(
     },
     errorKey: 'err',
     level: config.logLevel,
-    redact: {
-      censor: '[Redacted]',
-      paths: REDACT_PATHS,
-    },
     serializers: {
       err: pino.stdSerializers.errWithCause,
     },

@@ -24,7 +24,7 @@ const REDACTED = '[Redacted]';
 
 const TRUNCATED = '[Truncated]';
 
-export const SECRET_NAMES = [
+const SECRET_NAMES = [
   'accessToken',
   'apiKey',
   'api_key',
