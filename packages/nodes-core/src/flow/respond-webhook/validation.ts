@@ -7,9 +7,9 @@ import { z } from 'zod';
 export const CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA = z
   .object({
     bodyType: z.enum(['json', 'text']).optional(),
-    textContentType: z
-      .enum(['text/plain', 'text/csv', 'application/xml'])
-      .optional(),
+    // Only types a browser can't run: XML can carry XHTML, SVG or a stylesheet,
+    // and `/hooks` shares the app's origin.
+    textContentType: z.enum(['text/plain', 'text/csv']).optional(),
   })
   .strict();
 export const CORE_RESPOND_WEBHOOK_INPUT_SCHEMA = z

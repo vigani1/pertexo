@@ -32,11 +32,10 @@ export function WebhookResponseSetup({
             label: 'Text format',
             kind: 'string',
             required: true,
-            options: ['text/plain', 'text/csv', 'application/xml'],
+            options: ['text/plain', 'text/csv'],
             optionLabels: {
               'text/plain': 'Plain text',
               'text/csv': 'CSV',
-              'application/xml': 'XML',
             },
           }}
         />

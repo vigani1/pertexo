@@ -6,6 +6,7 @@ import { CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA } from '../../src/flow/respond-webho
 describe('what a Respond to webhook step may ask a browser to do', () => {
   it.each([
     'text/html',
+    'application/xml',
     'application/xhtml+xml',
     'image/svg+xml',
     'text/xml',
