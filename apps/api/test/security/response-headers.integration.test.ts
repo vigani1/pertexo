@@ -26,8 +26,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       await stack.close();
     }, 60_000);
 
-    // sec-04: /hooks and /v1/auth reach the API without passing nginx.
-    it.fails.each([
+    it.each([
       ['GET', '/v1/auth/capabilities'],
       ['GET', '/v1/auth/verify-email?token=not-a-real-token'],
       ['POST', '/hooks/not-a-real-endpoint-key'],

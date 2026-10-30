@@ -36,8 +36,7 @@ const EFFECTIVE = {
 };
 
 describe('the policy the production web server sends', () => {
-  // sec-04: frame-ancestors alone lets any injected script run.
-  it.fails.each(Object.entries(EFFECTIVE))(
+  it.each(Object.entries(EFFECTIVE))(
     'blocks script that did not ship with the app on %s',
     (_name, block) => {
       const [policy] = policiesIn(block);

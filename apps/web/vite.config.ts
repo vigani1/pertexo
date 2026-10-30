@@ -1,4 +1,5 @@
 import { initializeAppearance } from './src/lib/appearance/bootstrap.ts';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
@@ -18,6 +19,15 @@ if (
   throw new Error('PERTEXO_API_PROXY_TARGET must be an HTTP(S) origin');
 }
 
+// A file rather than an inline script, so the production policy can forbid inline
+// script. Blocking and in the head, it still runs before the first paint, and its
+// hashed name makes every visit after the first come from the browser's cache.
+const appearanceScript = `(${initializeAppearance.toString()})()`;
+const appearanceFile = `assets/appearance-${createHash('sha256')
+  .update(appearanceScript)
+  .digest('hex')
+  .slice(0, 8)}.js`;
+
 const logger = createLogger();
 const logError = logger.error.bind(logger);
 // Proxy outages must not print a Secret URL credential or its query string.
@@ -33,12 +43,25 @@ export default defineConfig({
   plugins: [
     {
       name: 'appearance-before-paint',
+      configureServer(server) {
+        server.middlewares.use(`/${appearanceFile}`, (_request, response) => {
+          response.setHeader('content-type', 'text/javascript');
+          response.end(appearanceScript);
+        });
+      },
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: appearanceFile,
+          source: appearanceScript,
+        });
+      },
       transformIndexHtml: {
-        order: 'pre',
+        order: 'post',
         handler: () => [
           {
             tag: 'script',
-            children: `(${initializeAppearance.toString()})()`,
+            attrs: { src: `/${appearanceFile}` },
             injectTo: 'head',
           },
         ],

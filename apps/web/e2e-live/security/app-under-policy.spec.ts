@@ -69,7 +69,6 @@ test('signing back in works under the policy', async ({ page }) => {
 test('the pages carry a policy that stops injected script', async ({
   page,
 }) => {
-  test.fail(true, 'sec-04: frame-ancestors is the whole policy today');
   const response = await page.goto('/login');
   const policy = response?.headers()['content-security-policy'] ?? '';
   expect(policy).toMatch(/script-src[^;]*'self'/u);
@@ -85,7 +84,6 @@ test('the pages carry a policy that stops injected script', async ({
 });
 
 test('the shipped scripts carry the same policy', async ({ page, request }) => {
-  test.fail(true, 'sec-04: /assets/ sets its own headers and drops the policy');
   await page.goto('/login');
   const script = await page
     .locator('script[src^="/assets/"]')
