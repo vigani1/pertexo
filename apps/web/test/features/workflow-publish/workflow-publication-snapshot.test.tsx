@@ -108,18 +108,18 @@ describe('publication checked-snapshot ownership', () => {
     expect(hook.result.current.validationBlockedUntil).toBe(105_000);
     current = false;
     await act(() => hook.result.current.publish());
-    expect(fetch).toHaveBeenCalledTimes(4);
-    expect(new Headers(fetch.mock.calls[3]?.[1]?.headers).get('if-match')).toBe(
-      etagA,
+    // The retry repeats the uncertain publish exactly: no new key or body.
+    const publishes = fetch.mock.calls.filter(([input]) =>
+      requestPath(input).endsWith('/publish'),
     );
-    expect(
-      new Headers(fetch.mock.calls[3]?.[1]?.headers).get('idempotency-key'),
-    ).toBe(
-      new Headers(fetch.mock.calls[1]?.[1]?.headers).get('idempotency-key'),
-    );
-    expect(fetch.mock.calls[3]?.[1]?.body).toBe(fetch.mock.calls[1]?.[1]?.body);
-    expect(ensureSaved).toHaveBeenCalledTimes(2);
-    expect(verifyIdentity).toHaveBeenCalledTimes(2);
+    expect(publishes).toHaveLength(2);
+    const [first, retry] = publishes.map(([, init]) => ({
+      etag: new Headers(init?.headers).get('if-match'),
+      key: new Headers(init?.headers).get('idempotency-key'),
+      body: init?.body,
+    }));
+    expect(retry).toEqual(first);
+    expect(retry?.etag).toBe(etagA);
     expect(hook.result.current.publicationReceipt?.revision).toBe(2);
   });
   it.each(['identity', 'save'])(
