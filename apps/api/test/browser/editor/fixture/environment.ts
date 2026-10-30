@@ -46,6 +46,7 @@ export const scenario = z
     'curated-templates',
     'callable',
     'email-attachments',
+    'product',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 
@@ -82,7 +83,8 @@ export const controlledHttpScenario =
   scenario === 'webhook-controlled-http' ||
   scenario === 'failure-routing' ||
   scenario === 'artifact-inputs' ||
-  scenario === 'http-pagination';
+  scenario === 'http-pagination' ||
+  scenario === 'product';
 
 export const browserEvidenceSchema = z.strictObject({
   runId: z.uuid(),
@@ -142,4 +144,5 @@ const EDITOR_JOURNEY_PATHS = {
   spreadsheets: 'editor/spreadsheets.spec.ts',
   'webhook-controlled-http': 'editor/webhook-controlled-http.spec.ts',
   'email-attachments': 'editor/email-attachments.spec.ts',
+  product: 'editor/product',
 } satisfies Record<Exclude<typeof scenario, 'artifact-inputs'>, string>;
