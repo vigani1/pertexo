@@ -64,7 +64,7 @@ export async function resolveIngressReference(
         telemetry.delivery('rate_limited');
       });
       reply.header('retry-after', String(error.retryAfterSeconds));
-      await problem(reply, 429, 'webhook.rate_limited', requestId);
+      await problem(reply, 'webhook.rate_limited', requestId);
       return;
     }
     throw error;

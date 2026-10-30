@@ -40,14 +40,14 @@ export async function prepareWebhookRequest(
     record(() => {
       telemetry.delivery('invalid_request');
     });
-    await problem(reply, 400, 'webhook.invalid_json', requestId);
+    await problem(reply, 'webhook.invalid_json', requestId);
     return;
   }
   if (body.byteLength > MAX_BODY) {
     record(() => {
       telemetry.delivery('invalid_request');
     });
-    await problem(reply, 413, 'webhook.payload_too_large', requestId);
+    await problem(reply, 'webhook.payload_too_large', requestId);
     return;
   }
   const contentType = singleHeader(request, 'content-type');
@@ -62,7 +62,7 @@ export async function prepareWebhookRequest(
     record(() => {
       telemetry.delivery('invalid_request');
     });
-    await problem(reply, 415, 'webhook.unsupported_media_type', requestId);
+    await problem(reply, 'webhook.unsupported_media_type', requestId);
     return;
   }
   const timestamp = singleHeader(request, 'x-pertexo-timestamp');

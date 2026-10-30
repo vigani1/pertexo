@@ -1,4 +1,3 @@
-import { API_PROBLEM_MANIFEST } from '@pertexo/contracts';
 import { toProblem } from '../../problems/registry.js';
 import { hasHttpStatus } from '../../platform/http/problems/status.js';
 import { randomUUID } from 'node:crypto';
@@ -52,15 +51,9 @@ export function registerCallbackIngress(
         error instanceof StoredExecutionValueInvalidError ||
         hasHttpStatus(error, 413)
       ) {
-        await problem(reply, 413, 'webhook.payload_too_large', requestId);
+        await problem(reply, 'webhook.payload_too_large', requestId);
       } else if (error instanceof CallbackResponseError) {
-        const mapped = toProblem(error);
-        await problem(
-          reply,
-          API_PROBLEM_MANIFEST[mapped.code].status,
-          mapped.code,
-          requestId,
-        );
+        await problem(reply, toProblem(error).code, requestId);
       } else {
         // This Fastify scope bypasses the Nest problem filter, which logs the rest.
         record(() => {
@@ -70,7 +63,7 @@ export function registerCallbackIngress(
             error,
           );
         });
-        await problem(reply, 503, 'callback.unavailable', requestId);
+        await problem(reply, 'callback.unavailable', requestId);
       }
     });
     scope.addHook('onRequest', (_request, reply, next) => {
@@ -92,7 +85,7 @@ export function registerCallbackIngress(
       reply: FastifyReply,
     ) => {
       reply.header('allow', 'POST, OPTIONS');
-      await problem(reply, 405, 'webhook.method_not_allowed', randomUUID());
+      await problem(reply, 'webhook.method_not_allowed', randomUUID());
     };
     scope.get(
       '/hooks/:endpointKey/resume',
@@ -113,7 +106,7 @@ async function receive(
     parseRequestId(request.headers['x-request-id']) ?? randomUUID();
   const token = (request.params as { endpointKey: string }).endpointKey;
   const rejectAuthentication = () =>
-    problem(reply, 401, 'webhook.authentication_failed', requestId);
+    problem(reply, 'webhook.authentication_failed', requestId);
   if (!/^[A-Za-z0-9_-]{43}$/u.test(token)) {
     await rejectAuthentication();
     return;
@@ -128,12 +121,12 @@ async function receive(
       }),
     );
   } catch {
-    await problem(reply, 503, 'request.rate_limit_unavailable', requestId);
+    await problem(reply, 'request.rate_limit_unavailable', requestId);
     return;
   }
   if (!admitted.allowed) {
     reply.header('retry-after', String(admitted.retryAfterSeconds));
-    await problem(reply, 429, 'request.rate_limited', requestId);
+    await problem(reply, 'request.rate_limited', requestId);
     return;
   }
   const callback = await dependencies.store.resolve(hash, signal);
@@ -143,12 +136,12 @@ async function receive(
   }
   const keys = dependencies.keys;
   if (keys === undefined) {
-    await problem(reply, 503, 'callback.unavailable', requestId);
+    await problem(reply, 'callback.unavailable', requestId);
     return;
   }
   const material = keys.material(callback, callback.keyVersion);
   if (callbackTokenHash(material.token) !== hash) {
-    await problem(reply, 503, 'callback.unavailable', requestId);
+    await problem(reply, 'callback.unavailable', requestId);
     return;
   }
   const authentication = callback.config.authentication;
@@ -251,7 +244,7 @@ async function readCallbackBody(
     !(body instanceof Uint8Array) ||
     body.byteLength > WEBHOOK_BODY_MAX_BYTES
   ) {
-    await problem(reply, 413, 'webhook.payload_too_large', requestId);
+    await problem(reply, 'webhook.payload_too_large', requestId);
     return;
   }
   const contentType = singleHeader(request, 'content-type');
@@ -260,7 +253,7 @@ async function readCallbackBody(
       ? undefined
       : webhookMediaType(contentType, body.byteLength);
   if (mediaType === undefined || headerPresent(request, 'content-encoding')) {
-    await problem(reply, 415, 'webhook.unsupported_media_type', requestId);
+    await problem(reply, 'webhook.unsupported_media_type', requestId);
     return;
   }
   if (!verifyCallbackRequest(request, body, callback, keys)) {
@@ -269,7 +262,7 @@ async function readCallbackBody(
   }
   const parsed = parseWebhookBody(mediaType, body);
   if (!parsed.ok) {
-    await problem(reply, 400, parsed.problem, requestId);
+    await problem(reply, parsed.problem, requestId);
     return;
   }
 
