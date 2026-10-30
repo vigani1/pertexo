@@ -128,4 +128,42 @@ describe('current operational notice episodes', () => {
       { limits: ['queue', 'artifact_bytes'], occurrenceCount: 2 },
     ]);
   });
+  it('notices every paused workflow once when they span more than one page', async () => {
+    const f = await seedNoticeWorkspace();
+    const run = await seedFailure(f.workspaceId, f.workflowId);
+    // More than the 100 subjects one observation pass reads.
+    await queryAsOwner(
+      `insert into app.workflows(id,workspace_id,name,created_by,trigger_pause_state,
+         trigger_paused_at,trigger_pause_reason,trigger_pause_failures,trigger_pause_last_run_id)
+       select gen_random_uuid(),$1,'Paused '||n,$2,'paused',clock_timestamp(),
+         'consecutive_failures',3,$3
+       from generate_series(1,150) n`,
+      [f.workspaceId, f.scope.actorId, run],
+      f.workspaceId,
+    );
+    const fold = observer();
+    const paused = async () =>
+      (
+        await queryAsOwner<{ threads: number; repeated: number }>(
+          `select count(*)::int threads,
+             count(*) filter (where occurrence_count<>1)::int repeated
+           from app.workspace_inbox_threads
+           where workspace_id=$1 and notice_kind='workflow_auto_paused' and active`,
+          [f.workspaceId],
+          f.workspaceId,
+        )
+      )[0];
+
+    await expect
+      .poll(
+        async () => {
+          await fold.observeCurrent?.();
+          return (await paused())?.threads;
+        },
+        { timeout: 30_000, interval: 0 },
+      )
+      .toBe(150);
+    for (let pass = 0; pass < 4; pass += 1) await fold.observeCurrent?.();
+    expect(await paused()).toEqual({ threads: 150, repeated: 0 });
+  }, 60_000);
 });
