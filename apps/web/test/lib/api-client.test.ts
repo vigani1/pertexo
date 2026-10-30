@@ -95,6 +95,38 @@ describe('browser API transport', () => {
       expect(call[1]?.body).toBe('{"name":"Example"}');
     }
   });
+  it.each(['DELETE', 'PATCH', 'POST', 'PUT'] as const)(
+    'sends the session CSRF token on every %s',
+    async (method) => {
+      const fetch = fetchMock(new Response(null, { status: 204 }));
+      const client = createApiClient({ fetch, readCsrfToken: () => csrfToken });
+
+      await client.request({
+        path: '/v1/examples',
+        method,
+        response: { kind: 'empty' },
+      });
+
+      const headers = new Headers(fetch.mock.calls[0]?.[1]?.headers);
+      expect(headers.get('x-csrf-token')).toBe(csrfToken);
+    },
+  );
+  it.each(['GET', 'HEAD'] as const)(
+    'sends no CSRF token on a %s read',
+    async (method) => {
+      const fetch = fetchMock(new Response(null, { status: 204 }));
+      const client = createApiClient({ fetch, readCsrfToken: () => csrfToken });
+
+      await client.request({
+        path: '/v1/examples',
+        method,
+        response: { kind: 'empty' },
+      });
+
+      const headers = new Headers(fetch.mock.calls[0]?.[1]?.headers);
+      expect(headers.get('x-csrf-token')).toBeNull();
+    },
+  );
   it('accepts an empty 204 response without parsing JSON', async () => {
     const fetch = fetchMock(new Response(null, { status: 204 }));
     const client = createApiClient({ fetch, readCsrfToken: () => csrfToken });
