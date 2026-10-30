@@ -5,7 +5,6 @@ import { setImmediate } from 'node:timers/promises';
 import { parse, CsvError, type Options } from 'csv-parse';
 import {
   FileInputFailure,
-  NodeExecutorFailure,
   type JsonValue,
 } from '@pertexo/node-sdk/server';
 import { convertCsvValue } from '../conversion.js';
@@ -116,7 +115,9 @@ export async function* readCsvRecords<T>(
     if (headers === undefined)
       throw new FileInputFailure({ reason: 'csv_empty' });
   } catch (error) {
-    if (signal.aborted || error instanceof NodeExecutorFailure) throw error;
+    // Only the parser's own errors describe the file's contents; a failed
+    // read of the stored file passes through unchanged, as in the JSON reader.
+    if (signal.aborted || !(error instanceof CsvError)) throw error;
     const mismatch = columnMismatch(error, headers);
     if (mismatch !== undefined)
       throw new FileInputFailure({
@@ -124,12 +125,9 @@ export async function* readCsvRecords<T>(
         record: count + 2,
         ...mismatch,
       });
-    if (error instanceof CsvError && error.code === 'CSV_MAX_RECORD_SIZE')
+    if (error.code === 'CSV_MAX_RECORD_SIZE')
       throw new FileInputFailure({ reason: 'value_size' });
-    const line =
-      error instanceof CsvError && typeof error.lines === 'number'
-        ? error.lines
-        : undefined;
+    const line = typeof error.lines === 'number' ? error.lines : undefined;
     throw new FileInputFailure({
       reason: 'csv_syntax',
       ...(line === undefined ? {} : { line }),
@@ -142,11 +140,10 @@ export async function* readCsvRecords<T>(
 }
 
 function columnMismatch(
-  error: unknown,
+  error: CsvError,
   headers: readonly string[] | undefined,
 ) {
   if (
-    error instanceof CsvError &&
     error.code === 'CSV_RECORD_INCONSISTENT_FIELDS_LENGTH' &&
     headers !== undefined &&
     Array.isArray(error.record)
