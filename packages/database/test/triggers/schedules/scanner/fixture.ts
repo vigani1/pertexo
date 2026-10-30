@@ -216,8 +216,6 @@ export function completion(statements: readonly RecordedStatement[]) {
   };
 }
 
-export const eligibilityCheck = 'published_version_id';
-
 export function hourlyClaim(
   policy: 'catch_up_once' | 'skip',
   observedAt: string,
