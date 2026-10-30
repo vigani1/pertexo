@@ -31,6 +31,32 @@ export function registerRedactsPublicFormCapabilityHeadersConfiguration(): void 
     );
   });
 
+  it('redacts credential headers and secret fields at any depth and in any case', () => {
+    const capture = captureDestination();
+    const logger = createStructuredLogger(testConfig(), capture.destination);
+    logger.info('request.received', {
+      AUTHORIZATION: 'top-authorization-secret',
+      'Set-Cookie': 'top-cookie-secret',
+      req: { headers: { COOKIE: 'request-cookie-secret' } },
+      response: { headers: { 'set-cookie': 'response-cookie-secret' } },
+      a: { b: { c: { d: { e: { Password: 'deep-password-secret' } } } } },
+      provider: { CLIENT_SECRET: 'snake-client-secret' },
+      attempt: { sessionToken: 'session-token-secret' },
+    });
+    const written = JSON.stringify(capture.records);
+    for (const secret of [
+      'top-authorization-secret',
+      'top-cookie-secret',
+      'request-cookie-secret',
+      'response-cookie-secret',
+      'deep-password-secret',
+      'snake-client-secret',
+      'session-token-secret',
+    ])
+      expect(written).not.toContain(secret);
+    expect(written).toContain('"event":"request.received"');
+  });
+
   it('redacts URL-only webhook credentials in paths, URLs and errors', () => {
     const secret = 'a'.repeat(43);
     for (const text of [
