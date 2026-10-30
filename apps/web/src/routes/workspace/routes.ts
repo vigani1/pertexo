@@ -12,6 +12,7 @@ import {
   sanitizeRunSearch,
 } from '@/features/workflow-runs/search.public';
 import { parseWorkflowListSearch } from '@/features/workflows/list-search.public';
+import { isWorkspaceOpenable } from '@/features/workspaces/availability.public';
 import { parseTeamSearch } from '@/features/workspaces/search.public';
 import { pageTitle } from '../root/page-title';
 import {
@@ -28,7 +29,7 @@ import { WorkspaceBootPage } from '../root/status/pages';
 function assertWorkspaceOpenable(
   workspace: AccessibleWorkspace | null,
 ): asserts workspace is AccessibleWorkspace {
-  if (workspace === null)
+  if (workspace === null || !isWorkspaceOpenable(workspace))
     notFound({
       routeId: rootRoute.id,
       data: { kind: 'workspace' },

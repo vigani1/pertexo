@@ -4,10 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Status } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 import { WorkspaceMark } from '../shell/workspace-mark';
-import {
-  roleName,
-  workspaceAvailability,
-} from '../../model/workspace-availability';
+import { workspaceAvailability } from '../../model/workspace-availability';
+import { ROLE_NAMES } from '../../model/workspace-roles';
 
 /**
  * One workspace: its monogram in a thread ring, name, your role, its state
@@ -50,7 +48,7 @@ export function WorkspaceCard({
           {workspace.name}
         </span>
         <span className="flex flex-wrap items-center gap-2">
-          <Badge variant="muted">{roleName(workspace.role)}</Badge>
+          <Badge variant="muted">{ROLE_NAMES[workspace.role]}</Badge>
           <Status tone={availability.tone}>{availability.status}</Status>
         </span>
       </span>

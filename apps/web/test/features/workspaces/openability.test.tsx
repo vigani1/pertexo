@@ -65,25 +65,22 @@ beforeEach(() => {
 
 describe('which workspaces can be opened', () => {
   // web-app-02: the picker blocks a suspended workspace the banner invites in.
-  it.fails(
-    'opens a suspended workspace from the picker, with its banner',
-    async () => {
-      listWorkspaces([suspended, active(otherId, 'Field Team')]);
-      const app = renderApp('/workspaces');
-      const entry = await screen.findByRole('button', {
-        name: /Control Operations/u,
-      });
-      expect(entry).toBeEnabled();
-      expect(entry).not.toHaveTextContent('Contact support');
-      await userEvent.setup().click(entry);
-      await waitFor(() => {
-        expect(app.router.state.location.pathname).toMatch(
-          new RegExp(`^/w/${workspaceId}`, 'u'),
-        );
-      });
-      expect(await screen.findByText(suspendedBanner)).toBeVisible();
-    },
-  );
+  it('opens a suspended workspace from the picker, with its banner', async () => {
+    listWorkspaces([suspended, active(otherId, 'Field Team')]);
+    const app = renderApp('/workspaces');
+    const entry = await screen.findByRole('button', {
+      name: /Control Operations/u,
+    });
+    expect(entry).toBeEnabled();
+    expect(entry).not.toHaveTextContent('Contact support');
+    await userEvent.setup().click(entry);
+    await waitFor(() => {
+      expect(app.router.state.location.pathname).toMatch(
+        new RegExp(`^/w/${workspaceId}`, 'u'),
+      );
+    });
+    expect(await screen.findByText(suspendedBanner)).toBeVisible();
+  });
 
   it('shows the suspended banner on a suspended workspace’s pages', async () => {
     listWorkspaces([suspended]);
@@ -92,26 +89,23 @@ describe('which workspaces can be opened', () => {
   });
 
   // web-app-02 + web-app-08: landing skips a suspended workspace.
-  it.fails('lands on the only workspace when it is suspended', async () => {
+  it('lands on the only workspace when it is suspended', async () => {
     listWorkspaces([suspended]);
     const app = renderApp('/');
     await expectLandedOn(app, `/w/${workspaceId}`);
   });
 
   // web-app-02 + web-app-08: landing skips a remembered suspended workspace.
-  it.fails(
-    'lands on the remembered workspace when it is suspended',
-    async () => {
-      rememberWorkspace(workspaceId);
-      listWorkspaces([
-        active(otherId, 'Field Team'),
-        suspended,
-        active(thirdId, 'Back Office'),
-      ]);
-      const app = renderApp('/');
-      await expectLandedOn(app, `/w/${workspaceId}`);
-    },
-  );
+  it('lands on the remembered workspace when it is suspended', async () => {
+    rememberWorkspace(workspaceId);
+    listWorkspaces([
+      active(otherId, 'Field Team'),
+      suspended,
+      active(thirdId, 'Back Office'),
+    ]);
+    const app = renderApp('/');
+    await expectLandedOn(app, `/w/${workspaceId}`);
+  });
 
   it('lands on the workspace remembered by the same person', async () => {
     rememberWorkspace(workspaceId);
@@ -145,37 +139,31 @@ describe('which workspaces can be opened', () => {
   });
 
   // web-app-02: a deep link opens what the picker and landing keep closed.
-  it.fails(
-    'keeps a deep link out of a workspace being deleted that the person can’t restore',
-    async () => {
-      listWorkspaces([beingDeleted(workspaceId, 'Control Operations')]);
-      renderApp(`/w/${workspaceId}/workflows`);
-      expect(
-        await screen.findByRole('heading', {
-          name: 'This workspace isn’t available',
-        }),
-      ).toBeVisible();
-    },
-  );
+  it('keeps a deep link out of a workspace being deleted that the person can’t restore', async () => {
+    listWorkspaces([beingDeleted(workspaceId, 'Control Operations')]);
+    renderApp(`/w/${workspaceId}/workflows`);
+    expect(
+      await screen.findByRole('heading', {
+        name: 'This workspace isn’t available',
+      }),
+    ).toBeVisible();
+  });
 
   // web-app-02: the switcher links to every workspace, whatever its status.
-  it.fails(
-    'offers the switcher only the workspaces that can be opened',
-    async () => {
-      listWorkspaces([
-        workspace,
-        { ...active(otherId, 'Field Team'), status: 'suspended' },
-        beingDeleted(thirdId, 'Old Ops'),
-      ]);
-      renderApp(`/w/${workspaceId}/workflows`);
-      await screen.findByRole('heading', { name: 'Workflows' });
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: /Switch workspace/u }));
-      expect(
-        await screen.findByRole('menuitem', { name: /Field Team/u }),
-      ).toHaveAttribute('href', `/w/${otherId}`);
-      expect(document.querySelector(`a[href="/w/${thirdId}"]`)).toBeNull();
-    },
-  );
+  it('offers the switcher only the workspaces that can be opened', async () => {
+    listWorkspaces([
+      workspace,
+      { ...active(otherId, 'Field Team'), status: 'suspended' },
+      beingDeleted(thirdId, 'Old Ops'),
+    ]);
+    renderApp(`/w/${workspaceId}/workflows`);
+    await screen.findByRole('heading', { name: 'Workflows' });
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /Switch workspace/u }));
+    expect(
+      await screen.findByRole('menuitem', { name: /Field Team/u }),
+    ).toHaveAttribute('href', `/w/${otherId}`);
+    expect(document.querySelector(`a[href="/w/${thirdId}"]`)).toBeNull();
+  });
 });
