@@ -151,4 +151,53 @@ integrationDescribe('ArtifactStore S3 integration', () => {
       store.close();
     }
   });
+
+  it('purges every object a workspace stored and leaves other workspaces alone', async () => {
+    const config = parseArtifactStoreConfig(process.env);
+    const store = createArtifactStore(config);
+    const workspaceId = randomUUID();
+    const body = Buffer.from('workspace purge fixture');
+    const metadata = (identity: {
+      artifactId: string;
+      workspaceId: string;
+    }) => ({
+      ...identity,
+      byteLength: body.byteLength,
+      mediaType: 'text/plain; charset=utf-8',
+      sha256: createHash('sha256').update(body).digest('hex'),
+    });
+    const owned = [randomUUID(), randomUUID()].map((artifactId) => ({
+      artifactId,
+      workspaceId,
+    }));
+    const neighbour = { artifactId: randomUUID(), workspaceId: randomUUID() };
+
+    try {
+      for (const identity of [...owned, neighbour])
+        await store.put({ ...metadata(identity), body: Readable.from([body]) });
+
+      // Each page deletes what it listed; the purge is done once a page
+      // finds nothing left under the workspace.
+      let deleted = 0;
+      let completed = false;
+      for (let page = 0; page < 5 && !completed; page += 1) {
+        const result = await store.purgeWorkspacePage({
+          workspaceId,
+          maxObjects: 100,
+        });
+        deleted += result.deletedCount;
+        completed = result.completed;
+      }
+      expect(completed).toBe(true);
+      expect(deleted).toBeGreaterThanOrEqual(owned.length);
+
+      for (const identity of owned)
+        await expect(store.head(identity)).resolves.toBeNull();
+      await expect(store.head(neighbour)).resolves.toEqual(metadata(neighbour));
+    } finally {
+      for (const identity of [...owned, neighbour])
+        await store.delete(identity).catch(() => undefined);
+      store.close();
+    }
+  });
 });
