@@ -1,7 +1,10 @@
 import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  postgresFailure,
+  rethrowQueryFailure,
+} from '../../platform/query-errors.js';
 import { workflowOrganizationState } from '../../schema/authoring/organization.js';
 import { workflowTemplateOrigins } from '../../schema/authoring/template-origin.js';
 import { workflows } from '../../schema/authoring/workflows.js';
@@ -58,12 +61,8 @@ export function createWorkflowTemplateOriginReader(
           .catch(rethrowQueryFailure);
       } catch (error) {
         // Missing/incompatible storage is unsupported projection, never authoritative null.
-        const originStorageUnavailable =
-          typeof error === 'object' &&
-          error !== null &&
-          'code' in error &&
-          ['42P01', '42703', '42501'].includes(String(error.code));
-        if (originStorageUnavailable)
+        const { code } = postgresFailure(error);
+        if (code === '42P01' || code === '42703' || code === '42501')
           throw new WorkflowTemplateOriginUnavailableError();
         throw error;
       }

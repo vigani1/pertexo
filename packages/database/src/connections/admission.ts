@@ -69,25 +69,6 @@ export function parseRequestMetadata(input: RequestMetadata): Readonly<{
   });
 }
 
-export function databaseConstraint(
-  error: unknown,
-  constraint: string,
-): boolean {
-  try {
-    if (error === null || typeof error !== 'object') return false;
-    const code: unknown = Reflect.get(error, 'code');
-    const actualConstraint: unknown = Reflect.get(error, 'constraint');
-    return (
-      code === '23505' &&
-      typeof actualConstraint === 'string' &&
-      actualConstraint.length <= 128 &&
-      actualConstraint === constraint
-    );
-  } catch {
-    return false;
-  }
-}
-
 const durableConnectionSnapshotSchema = z
   .object({
     id: z.uuid(),

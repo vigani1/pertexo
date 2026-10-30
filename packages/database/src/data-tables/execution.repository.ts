@@ -21,7 +21,10 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../platform/pool/runtime.js';
-import { rethrowQueryFailure } from '../platform/query-errors.js';
+import {
+  postgresFailure,
+  rethrowQueryFailure,
+} from '../platform/query-errors.js';
 import { dataTableWriteReceipts as receipts } from '../schema/data-tables.js';
 import type { WorkerDataTablesStore } from './contract.js';
 import { readQuotas, requireTable } from './definitions.queries.js';
@@ -144,12 +147,10 @@ export function createWorkerDataTablesStore(
       ).catch((error: unknown) => {
         if (error instanceof ExecutionCapabilityExpiredError)
           throw new DataTableError('attempt_expired', error.message);
+        const { code } = postgresFailure(error);
         const transientStorageFailure =
-          typeof error === 'object' &&
-          error !== null &&
-          'code' in error &&
-          typeof error.code === 'string' &&
-          (/^(?:08|40)/u.test(error.code) ||
+          code !== undefined &&
+          (/^(?:08|40)/u.test(code) ||
             [
               '53300',
               '57P01',
@@ -159,7 +160,7 @@ export function createWorkerDataTablesStore(
               'ECONNREFUSED',
               'ETIMEDOUT',
               'EPIPE',
-            ].includes(error.code));
+            ].includes(code));
         if (transientStorageFailure)
           throw new DataTableError(
             'unavailable',

@@ -1,7 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import {
+  isUniqueConstraintFailure,
+  rethrowQueryFailure,
+} from '../../../platform/query-errors.js';
 import { workspaceInvitations as invitations } from '../../../schema/foundation.js';
 
 import { generatePersistedId } from '../../../platform/persisted-id.js';
@@ -9,7 +12,6 @@ import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
 
 import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
-import { readIdentityDatabaseErrorCode } from '../../support.js';
 import { withTenantScopedClient } from '../../transactions.js';
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import { normalizeEmail } from '../input.js';
@@ -106,7 +108,7 @@ export async function createWorkspaceInvitation(
           .returning(invitationSelection)
           .catch(rethrowQueryFailure);
       } catch (error: unknown) {
-        if (readIdentityDatabaseErrorCode(error) === '23505')
+        if (isUniqueConstraintFailure(error))
           throw new WorkspaceInvitationCommandConflictError(
             'duplicate_pending',
             'A pending invitation already exists for this recipient',

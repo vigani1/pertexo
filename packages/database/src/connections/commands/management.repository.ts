@@ -1,7 +1,11 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  isUniqueConstraintFailure,
+  postgresFailure,
+  rethrowQueryFailure,
+} from '../../platform/query-errors.js';
 import {
   connectionEvents,
   connections,
@@ -17,7 +21,6 @@ import {
 } from '../../platform/idempotency/repository.js';
 import {
   connectionCommand,
-  databaseConstraint,
   decodeDurableConnectionReplay,
   parseRequestMetadata,
   serializeConnectionSnapshot,
@@ -166,7 +169,11 @@ async function persistCreatedConnection(
       },
     }).catch(rethrowQueryFailure);
   } catch (error: unknown) {
-    if (databaseConstraint(error, 'connections_active_name_provider_unique'))
+    if (
+      isUniqueConstraintFailure(error) &&
+      postgresFailure(error).constraint ===
+        'connections_active_name_provider_unique'
+    )
       throw new ConnectionConflictError(
         'An active connection already uses this provider and name',
       );

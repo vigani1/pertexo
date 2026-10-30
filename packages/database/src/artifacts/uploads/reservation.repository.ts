@@ -1,4 +1,7 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import {
+  postgresFailure,
+  rethrowQueryFailure,
+} from '../../platform/query-errors.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -38,16 +41,8 @@ export type ArtifactUploadReservation = Readonly<{
 const storedUploadSchema = z.object({ artifactId: z.uuid() }).strict();
 
 function isCapacityExceeded(error: unknown): boolean {
-  try {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      Reflect.get(error, 'code') === 'P0001' &&
-      Reflect.get(error, 'detail') === 'artifact_capacity_exceeded'
-    );
-  } catch {
-    return false;
-  }
+  const { code, detail } = postgresFailure(error);
+  return code === 'P0001' && detail === 'artifact_capacity_exceeded';
 }
 
 export async function loadArtifact(

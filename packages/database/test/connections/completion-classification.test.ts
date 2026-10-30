@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { classifyConnectionTestCompletion } from '../../src/connections/connection-tests/results.repository.js';
-import {
-  databaseConstraint,
-  decodeDurableConnectionReplay,
-} from '../../src/connections/admission.js';
+import { decodeDurableConnectionReplay } from '../../src/connections/admission.js';
 
 const secretVersionId = '11111111-1111-4111-8111-111111111111';
 const outcomes = [
@@ -47,28 +44,6 @@ describe('connection test completion classification', () => {
         providerKey: 'http',
       }),
     ).toThrow();
-  });
-
-  it('inspects named database constraints without invoking hostile fields', () => {
-    expect(
-      databaseConstraint(
-        {
-          code: '23505',
-          constraint: 'connections_active_name_provider_unique',
-        },
-        'connections_active_name_provider_unique',
-      ),
-    ).toBe(true);
-    expect(
-      databaseConstraint(
-        Object.defineProperty({}, 'code', {
-          get: () => {
-            throw new Error('hostile getter');
-          },
-        }),
-        'connections_active_name_provider_unique',
-      ),
-    ).toBe(false);
   });
 
   it.each([
