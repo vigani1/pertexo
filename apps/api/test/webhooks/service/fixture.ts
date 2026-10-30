@@ -1,7 +1,4 @@
-import type {
-  WebhookTriggerDatabase,
-  WebhookVerificationReference,
-} from '@pertexo/database/testing';
+import type { WebhookTriggerDatabase } from '@pertexo/database/testing';
 
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { expect, vi } from 'vitest';
@@ -31,10 +28,10 @@ export const input = {
 export function setup(original: boolean) {
   const generated: Buffer[] = [];
   let materialValue = 1;
-  const rotateSecret = vi.fn().mockResolvedValue(health);
+  const result = { trigger: health, replayed: !original };
   const provision = vi
     .fn<WebhookTriggerDatabase['provision']>()
-    .mockResolvedValue(health);
+    .mockResolvedValue(result);
   const database = {
     configureAuthentication: vi
       .fn<WebhookTriggerDatabase['configureAuthentication']>()
@@ -42,20 +39,14 @@ export function setup(original: boolean) {
     provision,
     rotateEndpoint: vi
       .fn<WebhookTriggerDatabase['rotateEndpoint']>()
-      .mockResolvedValue(health),
-    rotateSecret,
+      .mockResolvedValue(result),
+    rotateSecret: vi
+      .fn<WebhookTriggerDatabase['rotateSecret']>()
+      .mockResolvedValue(result),
     getHealth: vi
       .fn<WebhookTriggerDatabase['getHealth']>()
       .mockResolvedValue([health]),
-    resolveVerification: vi
-      .fn<WebhookTriggerDatabase['resolveVerification']>()
-      .mockImplementation(() => {
-        const rotated = rotateSecret.mock.calls.at(-1)?.[0] as
-          { secret?: { id: string } } | undefined;
-        return Promise.resolve(
-          original ? verification(rotated?.secret?.id ?? 'unused') : null,
-        );
-      }),
+    resolveVerification: vi.fn<WebhookTriggerDatabase['resolveVerification']>(),
     consumeIngressLimit: vi.fn().mockResolvedValue(undefined),
     acceptVerifiedDelivery: vi.fn(),
     readResponse: vi
@@ -119,26 +110,4 @@ export function sealedEnvelope() {
 export function expectWiped(buffers: readonly Uint8Array[]): void {
   for (const buffer of buffers)
     expect(Array.from(buffer)).toEqual(Array.from(new Uint8Array(32)));
-}
-
-function verification(secretVersionId: string): WebhookVerificationReference {
-  return {
-    endpointId: '11111111-1111-4111-8111-111111111111',
-    endpointKeyHash: 'a'.repeat(64),
-    workspaceId: input.workspaceId,
-    triggerId: input.triggerId,
-    workflowId: input.workflowId,
-    workflowVersionId: health.workflowVersionId,
-    nodeId: health.nodeId,
-    databaseTime: new Date('2026-08-25T12:00:00.000Z'),
-    authentication: { mode: 'signed', allowedOrigins: [] },
-    currentSecret: {
-      id: secretVersionId,
-      kmsKeyReference: 'key',
-      encryptedDataKey: 'encrypted-key',
-      ciphertext: 'sealed',
-      nonce: 'nonce',
-      authTag: 'tag',
-    },
-  };
 }

@@ -104,7 +104,10 @@ export function provisionWebhook(
   return command(pool, input, async (client) => {
     const operation = 'webhook.trigger.provision';
     if (await claimWebhookCommand(client, input, operation))
-      return oneHealth(client, input.workspaceId, input.triggerId);
+      return {
+        trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+        replayed: true,
+      };
     const db = drizzle(client);
     const trigger = await db
       .select({
@@ -158,7 +161,10 @@ export function provisionWebhook(
       .catch(rethrowQueryFailure);
     await refreshWorkflowActivation(client, input.workspaceId, row.workflow_id);
     await completeWebhookCommand(client, input, operation);
-    return oneHealth(client, input.workspaceId, input.triggerId);
+    return {
+      trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+      replayed: false,
+    };
   });
 }
 
@@ -169,7 +175,10 @@ export function rotateWebhookEndpoint(
   return command(pool, input, async (client) => {
     const operation = 'webhook.trigger.endpoint.rotate';
     if (await claimWebhookCommand(client, input, operation))
-      return oneHealth(client, input.workspaceId, input.triggerId);
+      return {
+        trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+        replayed: true,
+      };
     const result = await drizzle(client)
       .update(endpoints)
       .set({
@@ -187,7 +196,10 @@ export function rotateWebhookEndpoint(
       .catch(rethrowQueryFailure);
     if (result.length !== 1) throw new WebhookTriggerNotFoundError();
     await completeWebhookCommand(client, input, operation);
-    return oneHealth(client, input.workspaceId, input.triggerId);
+    return {
+      trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+      replayed: false,
+    };
   });
 }
 
@@ -204,7 +216,10 @@ export function rotateWebhookSecret(
         .digest('hex'),
     };
     if (await claimWebhookCommand(client, keyedCommand, operation))
-      return oneHealth(client, input.workspaceId, input.triggerId);
+      return {
+        trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+        replayed: true,
+      };
     const db = drizzle(client);
     const endpoint = await db
       .select({
@@ -243,6 +258,9 @@ export function rotateWebhookSecret(
       )
       .catch(rethrowQueryFailure);
     await completeWebhookCommand(client, keyedCommand, operation);
-    return oneHealth(client, input.workspaceId, input.triggerId);
+    return {
+      trigger: await oneHealth(client, input.workspaceId, input.triggerId),
+      replayed: false,
+    };
   });
 }
