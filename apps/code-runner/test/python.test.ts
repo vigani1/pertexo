@@ -244,4 +244,16 @@ return {"total": input["amount"] * _vars["RATE"], "zone": zoneinfo.ZoneInfo("Eur
       output: true,
     });
   });
+  it('fails fast when the runtime floods its diagnostic stream past the log limit', async () => {
+    // Each invalid escape makes CPython print a SyntaxWarning to stderr, so
+    // a thousand of them write well over the 64 KiB log limit.
+    const flood = Array.from(
+      { length: 1000 },
+      (_, line) => `v${String(line)} = "\\d"`,
+    );
+    expect(await execute(`${flood.join('\n')}\nreturn True`)).toMatchObject({
+      kind: 'failed',
+      code: 'code.output_invalid',
+    });
+  });
 });
