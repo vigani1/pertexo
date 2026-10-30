@@ -57,7 +57,7 @@ it.each(cases)('agrees with submission on %s = %j', (column, text) => {
 });
 
 // web-app-12: the field check skips a blank optional value that submit refuses.
-it.fails.each(['amount', 'day', 'meta', 'done'] as const)(
+it.each(['amount', 'day', 'meta', 'done'] as const)(
   'flags a whitespace-only optional %s before the row is sent',
   (column) => {
     const draft = { ...valid, [column]: '  ' };
