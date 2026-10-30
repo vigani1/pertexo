@@ -40,6 +40,16 @@ function persistence() {
 }
 
 describe('workspace usage capacity use case', () => {
+  // api-13: both capabilities come from one membership read.
+  it.fails('reads membership once for both capabilities', async () => {
+    const authorization = access();
+    await new GetUsageCapacityUseCase(persistence(), authorization).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+    });
+    expect(authorization.findAccess).toHaveBeenCalledOnce();
+  });
+
   it('returns exact capacity only after both capability authorizations', async () => {
     const store = persistence();
     const authorization = access();
@@ -53,7 +63,6 @@ describe('workspace usage capacity use case', () => {
       signal,
     });
     expect(result).toEqual(usageCapacitySnapshot());
-    expect(authorization.findAccess).toHaveBeenCalledTimes(2);
     expect(store.usageCapacity).toHaveBeenCalledExactlyOnceWith({
       workspaceId,
       signal,

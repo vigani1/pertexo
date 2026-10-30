@@ -50,6 +50,24 @@ describe('draft workflow test boundary', () => {
       f.useCase.prepare({ ...input, authorizedWorkspace }),
     ).resolves.toEqual(preparation);
   });
+  // api-13: the run capabilities come from one membership read, not one each.
+  it.fails('reads membership at most once beyond the guard proof', async () => {
+    const f = fixture();
+    const authorizedWorkspace = await authorizeWorkspace({
+      actor,
+      routeWorkspaceId: workspaceId,
+      access: f.access,
+      capability: 'workflow:update',
+    });
+    f.access.findAccess.mockClear();
+    f.store.prepare.mockResolvedValue({
+      draftRevision: 1,
+      samples: [],
+      effectfulSteps: [],
+    });
+    await f.useCase.prepare({ ...input, authorizedWorkspace });
+    expect(f.access.findAccess.mock.calls.length).toBeLessThanOrEqual(1);
+  });
   it('passes an explicit effects acknowledgement and frozen pin/revision expectations to transactional admission', async () => {
     const f = fixture();
     const request = {
