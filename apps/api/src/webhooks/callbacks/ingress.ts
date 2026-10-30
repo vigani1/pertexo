@@ -8,7 +8,12 @@ import { callbackTokenHash, redactText } from '@pertexo/integrations/server';
 import type { StructuredLogger } from '@pertexo/observability';
 import { AbuseRateLimitPolicy } from '@pertexo/rate-limit';
 import type { ApiCallbackRuntime } from '../../platform/webhooks/callback-runtime.module.js';
-import type { RateLimitConsumer } from '../../platform/rate-limit/admission.js';
+import {
+  admitRateLimit,
+  type RateLimitConsumer,
+  type RateLimitMetricRecorder,
+} from '../../platform/rate-limit/admission.js';
+import { createRateLimitMetricRecorder } from '../../platform/rate-limit/metrics.js';
 import {
   parseRequestId,
   withRequestOperationSignal,
@@ -35,6 +40,7 @@ export function registerCallbackIngress(
   fastify: FastifyInstance,
   dependencies: Dependencies,
 ): void {
+  const rateLimitMetrics = createRateLimitMetricRecorder();
   void fastify.register((scope, _options, done) => {
     scope.removeAllContentTypeParsers();
     scope.addContentTypeParser(
@@ -72,7 +78,7 @@ export function registerCallbackIngress(
     });
     const handle = (request: FastifyRequest, reply: FastifyReply) =>
       withRequestOperationSignal(request, (signal) =>
-        receive(request, reply, dependencies, signal),
+        receive(request, reply, { dependencies, rateLimitMetrics, signal }),
       );
     scope.post(
       '/hooks/:endpointKey/resume',
@@ -99,8 +105,15 @@ export function registerCallbackIngress(
 async function receive(
   request: FastifyRequest,
   reply: FastifyReply,
-  dependencies: Dependencies,
-  signal: AbortSignal,
+  {
+    dependencies,
+    rateLimitMetrics,
+    signal,
+  }: Readonly<{
+    dependencies: Dependencies;
+    rateLimitMetrics: RateLimitMetricRecorder;
+    signal: AbortSignal;
+  }>,
 ): Promise<void> {
   const requestId =
     parseRequestId(request.headers['x-request-id']) ?? randomUUID();
@@ -112,19 +125,19 @@ async function receive(
     return;
   }
   const hash = callbackTokenHash(token);
-  let admitted;
-  try {
-    admitted = await dependencies.rateLimitConsumer.consume(
-      policy.evaluate('callback_ingress', {
-        clientAddress: request.ip,
-        tokenId: hash,
-      }),
-    );
-  } catch {
+  const admitted = await admitRateLimit(
+    dependencies.rateLimitConsumer,
+    rateLimitMetrics,
+    policy.evaluate('callback_ingress', {
+      clientAddress: request.ip,
+      tokenId: hash,
+    }),
+  );
+  if (admitted.kind === 'unavailable') {
     await problem(reply, 'request.rate_limit_unavailable', requestId);
     return;
   }
-  if (!admitted.allowed) {
+  if (admitted.kind === 'limited') {
     reply.header('retry-after', String(admitted.retryAfterSeconds));
     await problem(reply, 'request.rate_limited', requestId);
     return;
