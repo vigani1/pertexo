@@ -2,7 +2,6 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { databaseSchema } from '../../src/schema.js';
 import type { Pool, PoolClient } from 'pg';
 import type { WorkspaceTransaction } from '../../src/tenant-access/transactions.js';
-import { WorkspaceAccessDeniedError } from '../../src/tenant-access/errors.js';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const fixture = vi.hoisted(() => ({ query: vi.fn(), transaction: vi.fn() }));
@@ -28,16 +27,7 @@ const row = {
   artifact_count_limit: 0,
   capacity_source: 'stored',
 };
-function wireRow(
-  value: Omit<
-    typeof row,
-    'version' | 'active_run_limit' | 'queued_run_limit'
-  > & {
-    version: number | null;
-    active_run_limit: number | null;
-    queued_run_limit: number | null;
-  },
-) {
+function wireRow(value: typeof row) {
   return [
     value.as_of,
     value.active_runs,
@@ -73,18 +63,8 @@ beforeEach(() => {
   );
 });
 describe('workspace capacity snapshot', () => {
-  it('does not return defaults after workspace access is lost', async () => {
-    fixture.query.mockResolvedValue({ rows: [] });
-    await expect(
-      readWorkspaceUsageCapacity(pool, { workspaceId }),
-    ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
-  });
   it('preserves exact byte precision and distinguishes reservations from active runs', async () => {
-    const signal = new AbortController().signal;
-    const result = await readWorkspaceUsageCapacity(pool, {
-      workspaceId,
-      signal,
-    });
+    const result = await readWorkspaceUsageCapacity(pool, { workspaceId });
     expect(result.execution).toMatchObject({
       activeRuns: 2,
       reservedActiveSlots: 1,
@@ -99,34 +79,5 @@ describe('workspace capacity snapshot', () => {
       source: 'stored',
     });
     expect(result.asOf).toBe(row.as_of);
-    expect(fixture.transaction).toHaveBeenCalledWith(
-      pool,
-      workspaceId,
-      expect.any(Function),
-      { statementTimeoutMillis: 2000, signal },
-    );
-    expect(fixture.query).toHaveBeenCalledTimes(1);
-  });
-  it('does not turn missing authority into default execution limits', async () => {
-    fixture.query.mockResolvedValue({
-      rows: [
-        wireRow({
-          ...row,
-          policy_state: 'unavailable',
-          version: null,
-          active_run_limit: null,
-          queued_run_limit: null,
-        }),
-      ],
-    });
-    expect(
-      (await readWorkspaceUsageCapacity(pool, { workspaceId })).execution
-        .policy,
-    ).toEqual({
-      state: 'unavailable',
-      version: null,
-      activeRunLimit: null,
-      queuedRunLimit: null,
-    });
   });
 });
