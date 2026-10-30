@@ -109,7 +109,7 @@ export function registerRejectsActorWhoIsNot(): void {
   });
 
   // db-runs-02: ADR 013 step 3 restores a deleted workspace to `suspended`.
-  it.fails('restores during the recovery period and not after it', async () => {
+  it('restores during the recovery period and not after it', async () => {
     await change({ commandType: 'deletion_restored' });
     const restored = await asOwner(
       'select status, purge_after, deletion_reason from app.workspaces where id=$1',

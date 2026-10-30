@@ -13,7 +13,7 @@ import {
 
 export function registerRevokesTokensOnWorkspaceDeletion(): void {
   // db-runs-02: ADR 013 step 2 revokes API keys; step 3 restores to `suspended`.
-  it.fails(
+  it(
     'revokes API tokens on deletion so a restore does not revive them',
     async () => {
       const owner = await createOwner();

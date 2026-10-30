@@ -39,9 +39,11 @@ recorded purpose, owner, retention period, and legal approval before collection.
 
 ## Deletion And Backups
 
-Workspace deletion has a 30-day recovery window before purge. Purge removes
-serving data explicitly across PostgreSQL, objects, encrypted secrets, indexes,
-and external subscriptions. Backup copies are beyond serving use and become
+Workspace deletion has a 30-day recovery window before purge. The request
+revokes the workspace's sessions and API tokens; a restore brings the workspace
+back `suspended` and revives neither, and an operator lifts the suspension. Purge
+removes serving data explicitly across PostgreSQL, objects, encrypted secrets,
+indexes, and external subscriptions. Backup copies are beyond serving use and become
 ineligible for recovery through normal encrypted rotation at 35 days. This
 applies to automated PostgreSQL backups, WAL archives, snapshots, manual recovery
 points, tenant-object versions, and cross-region copies. Lifecycle removal is
