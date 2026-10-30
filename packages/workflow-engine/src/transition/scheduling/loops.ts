@@ -125,7 +125,6 @@ export function recordBranchDisposition(
 export interface LoopAdmission {
   readonly loop: LoopState;
   readonly admittedOrdinals: readonly number[];
-  readonly remainingIterationBudget: number;
 }
 
 export function createLoopState(input: {
@@ -185,10 +184,8 @@ export function createLoopState(input: {
   };
 }
 
-export function admitLoopIterations(
-  loop: LoopState,
-  remainingIterationBudget: number,
-): LoopAdmission {
+/** Admits iterations up to the loop's concurrency; the run budget was spent when the loop started. */
+export function admitLoopIterations(loop: LoopState): LoopAdmission {
   const active = [...loop.activeOrdinals].sort((a, b) => a - b);
   const terminal = [...loop.terminalOrdinals].sort((a, b) => a - b);
   const all = [...active, ...terminal];
@@ -218,7 +215,6 @@ export function admitLoopIterations(
       nextOrdinal: loop.nextOrdinal + admittedOrdinals.length,
     },
     admittedOrdinals,
-    remainingIterationBudget,
   };
 }
 
