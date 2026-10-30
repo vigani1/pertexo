@@ -18,10 +18,24 @@ const logicalHost = new URL(controlledActionUrl).hostname;
 const publicTestAddress = '8.8.8.8';
 const maximumBytes = 4_096;
 
+/** Answers 500 and echoes what it was sent, so a failure view can be checked for secrets. */
+const explodingRoute = /^\/exploded\?order=[a-z0-9-]+$/u;
+
 const isOwnedRoute = (incoming: IncomingMessage): boolean =>
   (incoming.method === 'POST' && incoming.url === '/effect') ||
   (incoming.method === 'GET' &&
-    /^\/pages\?page=[123]$/u.test(incoming.url ?? ''));
+    (/^\/pages\?page=[123]$/u.test(incoming.url ?? '') ||
+      explodingRoute.test(incoming.url ?? '')));
+
+function answerExploded(incoming: IncomingMessage, outgoing: ServerResponse) {
+  outgoing.writeHead(500, { 'content-type': 'application/json' });
+  outgoing.end(
+    JSON.stringify({
+      error: 'upstream exploded',
+      sentAuthorization: incoming.headers.authorization,
+    }),
+  );
+}
 
 /** One owned real server; only this test transport can map the logical target. */
 export function createEditorControlledHttpTarget(
@@ -92,6 +106,10 @@ export function createEditorControlledHttpTarget(
     void (async () => {
       try {
         if (!authorizeRequest(incoming, outgoing)) return;
+        if (explodingRoute.test(incoming.url ?? '')) {
+          answerExploded(incoming, outgoing);
+          return;
+        }
         if (incoming.method === 'GET') {
           const page = Number(
             new URL(incoming.url ?? '', controlledActionUrl).searchParams.get(
@@ -154,7 +172,8 @@ export function createEditorControlledHttpTarget(
       input.method === 'GET' &&
       input.url.origin === new URL(controlledActionUrl).origin &&
       input.url.hash === '' &&
-      /^\/pages\?page=[123]$/u.test(input.url.pathname + input.url.search) &&
+      (/^\/pages\?page=[123]$/u.test(input.url.pathname + input.url.search) ||
+        explodingRoute.test(input.url.pathname + input.url.search)) &&
       input.body === undefined;
     const isEffect =
       input.url.href === controlledActionUrl &&
