@@ -32,8 +32,11 @@ system and tests.
   Zustand store. Never mirror that draft into multiple authoritative stores.
 - Keep credentials and secrets out of browser code and `VITE_*` variables.
   Use the Better Auth session cookie and CSRF contract, not the old app's auth code.
-- Keep semantic theme tokens and locally served fonts. Reuse old design only;
-  do not copy its backend assumptions or entire feature modules.
+- Keep semantic theme tokens and locally served fonts. Pick a token by its role,
+  not its current color. If no token fits the role, add one for light and dark
+  in `src/styles/globals.css` instead of reusing the nearest-looking one.
+- Reuse old design only; do not copy its backend assumptions or entire feature
+  modules.
 - Put outgoing endpoint calls in feature-local `data/*.api.ts`; keep generic transport
   in `lib/api`. Never add fetch calls to presentation components or store setters.
 - Preserve opaque ETags, serialized draft saves and stable idempotency keys where
