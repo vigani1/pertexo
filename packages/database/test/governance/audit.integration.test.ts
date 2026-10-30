@@ -135,7 +135,7 @@ it('records settings once, rejects stale saves and applies workspace retention b
       [workspaceId],
       workspaceId,
     ),
-  ).rejects.toThrow();
+  ).rejects.toMatchObject({ constraint: 'workspaces_audit_retention_valid' });
   await store.configure({
     ...scope(),
     expectedRevision: result.revision,

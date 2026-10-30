@@ -108,7 +108,10 @@ export function registerAllowsOneConcurrentReplacementSame(): void {
           bindingDigest: activeBinding,
         },
       }),
-    ).rejects.toBeDefined();
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'workspace_invitation_intents_binding_unique',
+    });
     await expect(
       identityDatabase.readInvitationAcceptance(
         replacementWorkspace.id,

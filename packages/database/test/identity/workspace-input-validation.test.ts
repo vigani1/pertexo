@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
+import { ZodError } from 'zod';
 
 import { createUserStore } from '../../src/tenant-access/users/repository.js';
 
@@ -21,7 +22,7 @@ describe('identity input admission', () => {
         query,
       } as unknown as Pool);
 
-      await expect(store.createUser(input)).rejects.toThrow();
+      await expect(store.createUser(input)).rejects.toBeInstanceOf(ZodError);
       expect(query).not.toHaveBeenCalled();
     },
   );

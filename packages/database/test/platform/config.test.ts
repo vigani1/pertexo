@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ZodError } from 'zod';
 
 import {
   parseDatabaseConfig,
@@ -28,8 +29,8 @@ describe('database configuration', () => {
   it('rejects non-PostgreSQL URLs and invalid workspace IDs', () => {
     expect(() =>
       parseDatabaseConfig({ connectionString: 'https://example.com' }),
-    ).toThrow();
-    expect(() => parseWorkspaceId('not-a-workspace-id')).toThrow();
+    ).toThrow(ZodError);
+    expect(() => parseWorkspaceId('not-a-workspace-id')).toThrow(ZodError);
   });
 
   it.each([
@@ -49,7 +50,7 @@ describe('database configuration', () => {
         connectionString: 'postgresql://runtime:secret@localhost/pertexo',
         ...override,
       }),
-    ).toThrow();
+    ).toThrow(ZodError);
   });
 
   it.each([
@@ -69,7 +70,7 @@ describe('database configuration', () => {
           'postgresql://runtime:secret@localhost/pertexo',
         [key]: value,
       }),
-    ).toThrow();
+    ).toThrow(ZodError);
   });
 
   it('parses the migration role boundary', () => {
@@ -103,7 +104,7 @@ describe('database configuration', () => {
           'postgresql://migration:secret@localhost/pertexo',
         [key]: value,
       }),
-    ).toThrow();
+    ).toThrow(ZodError);
   });
 
   it('parses a dedicated conservative maintenance pool', () => {
@@ -181,7 +182,9 @@ describe('database configuration', () => {
         idleTimeoutMillis: 4567,
         max: 3,
       });
-      expect(() => parser({ ...environment, [poolKey]: '11' })).toThrow();
+      expect(() => parser({ ...environment, [poolKey]: '11' })).toThrow(
+        ZodError,
+      );
     },
   );
 });

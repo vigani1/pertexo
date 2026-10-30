@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ZodError } from 'zod';
 
 import { classifyConnectionTestCompletion } from '../../src/connections/connection-tests/results.repository.js';
 import { decodeDurableConnectionReplay } from '../../src/connections/admission.js';
@@ -43,7 +44,7 @@ describe('connection test completion classification', () => {
         workspaceId: '22222222-2222-4222-8222-222222222222',
         providerKey: 'http',
       }),
-    ).toThrow();
+    ).toThrow(ZodError);
   });
 
   it.each([

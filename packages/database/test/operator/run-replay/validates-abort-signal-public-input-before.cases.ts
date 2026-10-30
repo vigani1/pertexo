@@ -24,7 +24,7 @@ export function registerValidatesAbortSignalPublicInputBefore(): void {
     const fixture = storeWith();
     await expect(
       fixture.store.replay({ ...replayInput(), signal: {} as AbortSignal }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(TypeError);
     expect(mocks.consumeInboxMessage).not.toHaveBeenCalled();
   });
 

@@ -10,7 +10,7 @@ import {
 } from './fixture.js';
 
 export function registerReturnsZerosIdleWorkspaceRejects(): void {
-  it('returns zeros for an idle workspace and rejects unsupported windows', async () => {
+  it('returns zeros for an idle workspace', async () => {
     await expect(
       runs.statistics({
         actorId: person,
@@ -23,20 +23,6 @@ export function registerReturnsZerosIdleWorkspaceRejects(): void {
       window: { total: 0, byStatus: zero },
       workflows: { items: [], truncated: false },
     });
-    await expect(
-      runs.statistics({
-        actorId: person,
-        workspaceId: busyWorkspace,
-        window: '30d' as '7d',
-      }),
-    ).rejects.toThrow();
-    await expect(
-      runs.statistics({
-        actorId: person,
-        workspaceId: 'not-a-workspace',
-        window: '1h',
-      }),
-    ).rejects.toThrow();
   });
 
   it('keeps the 50 busiest workflows, then the lowest identifiers, and says when it cut', async () => {

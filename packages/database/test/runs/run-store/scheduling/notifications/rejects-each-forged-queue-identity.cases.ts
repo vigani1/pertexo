@@ -1,4 +1,5 @@
 import { it, expect } from 'vitest';
+import { ZodError } from 'zod';
 
 import {
   asOwner,
@@ -169,7 +170,9 @@ export function registerRejectsEachForgedQueueIdentity(): void {
             [workspaceA, first.intent_id],
           ),
         );
-        await expect(deliveryStore.claimDelivery(claimInput)).rejects.toThrow();
+        await expect(
+          deliveryStore.claimDelivery(claimInput),
+        ).rejects.toBeInstanceOf(ZodError);
         await assertUnclaimed();
       } finally {
         await asOwner(workspaceA, (client) =>

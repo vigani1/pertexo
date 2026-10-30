@@ -50,7 +50,7 @@ export function registerKeepsRetainedRunReadsAvailable(): void {
             emptyGraph,
             idempotencyKey: randomUUID(),
           }),
-        ).rejects.toThrow();
+        ).rejects.toBeInstanceOf(WorkflowNotFoundError);
       }
     } finally {
       await queryAsOwner(

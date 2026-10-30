@@ -184,7 +184,12 @@ describe('privileged two-factor recovery with application grants', () => {
       "insert into app.system_mail_deliveries(id,purpose,expires_at,payload_ciphertext,payload_nonce,payload_tag,payload_key_version) values($1,'two_factor_disabled',$2,'sealed','nonce','tag','v1')",
       [prepared.id, prepared.expiresAt],
     );
-    await expect(store.disable(user.email, () => prepared)).rejects.toThrow();
+    await expect(
+      store.disable(user.email, () => prepared),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'system_mail_deliveries_pkey',
+    });
     expect(
       (
         await admin.query(

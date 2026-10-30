@@ -1,4 +1,5 @@
 import { it, expect } from 'vitest';
+import { ZodError } from 'zod';
 
 import {
   FailureNotificationContextSchema,
@@ -145,7 +146,7 @@ export function registerPreservesOneQueuedTimeoutIntent(): void {
           selected.rows[0]?.context,
         );
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(ZodError);
     await expect(
       asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query(
