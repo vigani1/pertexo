@@ -2,13 +2,13 @@ import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { runAdmissionError } from '@/features/workflow-runs/commands.public';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { sampleErrorDetail } from '../../model/testing/samples';
-import { isApiError, type ApiError } from '@/lib/api/error';
+import { isApiError, UserFacingError, type ApiError } from '@/lib/api/error';
 
 export function parseCommandJson(value: string, message: string): unknown {
   try {
     return JSON.parse(value) as unknown;
   } catch (cause) {
-    throw new Error(message, { cause });
+    throw new UserFacingError(message, { cause });
   }
 }
 
@@ -21,7 +21,7 @@ export function commandErrorMessage(error: unknown, action: string): string {
   if (admissionError !== undefined) return admissionError;
   const sampleDetail = sampleErrorDetail(error);
   if (sampleDetail !== undefined) return sampleDetail;
-  if (error instanceof Error && !isApiError(error)) return error.message;
+  if (error instanceof UserFacingError) return error.message;
   if (
     isApiError(error) &&
     error.problem?.code === 'workflow.validation_unavailable'

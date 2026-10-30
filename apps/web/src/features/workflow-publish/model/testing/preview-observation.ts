@@ -5,6 +5,7 @@ import type {
 import type { StatusTone } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import { getWorkflowNodePreview } from '../../data/node-test.api';
+import { UserFacingError } from '@/lib/api/error';
 
 export const previewTerminalStatuses: ReadonlySet<PreviewRunSummary['status']> =
   new Set(['succeeded', 'failed', 'canceled', 'timed_out', 'outcome_unknown']);
@@ -30,7 +31,7 @@ export async function observePreview(
     if (previewTerminalStatuses.has(response.preview.status))
       return response.preview;
   }
-  throw new Error(
+  throw new UserFacingError(
     'The test is still running. Check its status again in a moment.',
   );
 }

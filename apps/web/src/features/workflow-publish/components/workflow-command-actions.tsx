@@ -20,6 +20,7 @@ import { emptyDraftHint } from '../model/publication/readiness';
 import type { WorkflowValidationTarget } from '../model/validation/target';
 import type { PublicationReceipt } from '../data/mutations/use-workflow-publication';
 import type { WorkflowCommandSession } from '../hooks/use-workflow-command-session';
+import { UserFacingError } from '@/lib/api/error';
 
 function usePublishedFormEntry({
   apiClient,
@@ -218,7 +219,9 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
               staleTime: 0,
             });
             if (reviewed.publishedVersionId === null)
-              throw new Error('No published version is available to review.');
+              throw new UserFacingError(
+                'No published version is available to review.',
+              );
             model.runSubmission.clearPublicationConflict();
             return reviewed.publishedVersionId;
           },

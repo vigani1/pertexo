@@ -2,7 +2,7 @@ import type { WorkflowValidateResponse } from '@pertexo/contracts';
 import { useCallback, useRef, useState, type RefObject } from 'react';
 import { retryAfterSeconds } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/error';
+import { isApiError, UserFacingError } from '@/lib/api/error';
 import { useNow } from '@/lib/hooks/use-now';
 import { validateWorkflow } from '../workflow-publish.api';
 import { commandErrorMessage } from './command-utils';
@@ -138,7 +138,7 @@ export function useWorkflowDraftValidation({
 
   function assertValidationAvailable() {
     if (validationDeadline.current > Date.now())
-      throw new Error(
+      throw new UserFacingError(
         'Checking is temporarily unavailable. Wait before trying again.',
       );
   }

@@ -13,6 +13,14 @@ type ApiErrorOptions = Readonly<{
   cause?: unknown;
 }>;
 
+/**
+ * A deliberate refusal whose message is written for people. Any other `Error`
+ * is internal, and its message never reaches the screen.
+ */
+export class UserFacingError extends Error {
+  public override readonly name = 'UserFacingError';
+}
+
 export class ApiError extends Error {
   public readonly kind: ApiErrorKind;
   public readonly status: number | undefined;
