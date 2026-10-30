@@ -59,7 +59,7 @@ function secrets() {
   return parseEnv(
     execFileSync(
       process.execPath,
-      ['infrastructure/single-server/generate-secrets.mjs'],
+      ['infrastructure/single-server/generate-secrets.mjs', '--encryption=kms'],
       { encoding: 'utf8' },
     ),
   );

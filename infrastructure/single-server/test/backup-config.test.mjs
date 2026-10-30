@@ -18,10 +18,9 @@ test('backup tools receive dedicated S3 credentials without KMS or mail secrets'
     ARTIFACT_STORE_REGION: 'us-east-1',
     BACKUP_STORE_ACCESS_KEY_ID: 'backup-key',
     BACKUP_STORE_SECRET_ACCESS_KEY: 'backup-secret',
-    BACKUP_STORE_ENDPOINT:
-      'https://namespace.compat.objectstorage.eu-frankfurt-1.oraclecloud.com',
+    BACKUP_STORE_ENDPOINT: 'https://s3.backup-provider.example.test',
     BACKUP_STORE_BUCKET: 'backups',
-    BACKUP_STORE_REGION: 'eu-frankfurt-1',
+    BACKUP_STORE_REGION: 'eu-central-1',
     AWS_SECRET_ACCESS_KEY: 'must-not-reach-rclone',
   };
   const run = (changes) =>
