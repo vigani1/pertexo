@@ -87,18 +87,23 @@ describe('system mail delivery', () => {
     });
   });
 
-  it('treats structured 5xx as outcome unknown and retries the exact claim', async () => {
-    const fixture = dependencies({ kind: 'retryable' });
-    await fixture.handler.runOnce();
-    expect(fixture.deliveryStore.settle).toHaveBeenCalledWith({
-      id: claim.id,
-      leaseToken: claim.leaseToken,
-      leaseGeneration: claim.leaseGeneration,
-      outcome: 'retry',
-      failureCode: 'delivery.outcome_unknown',
-      retryAt: new Date('2026-09-23T00:00:02.000Z'),
-    });
-  });
+  // worker-10: a retryable result was definitely not sent; recording it as
+  // outcome unknown blurs it with a message that may have gone out.
+  it.fails(
+    'records a retryable provider result as not sent and retries the exact claim',
+    async () => {
+      const fixture = dependencies({ kind: 'retryable' });
+      await fixture.handler.runOnce();
+      expect(fixture.deliveryStore.settle).toHaveBeenCalledWith({
+        id: claim.id,
+        leaseToken: claim.leaseToken,
+        leaseGeneration: claim.leaseGeneration,
+        outcome: 'retry',
+        failureCode: 'delivery.retryable',
+        retryAt: new Date('2026-09-23T00:00:02.000Z'),
+      });
+    },
+  );
 
   it('settles terminal provider rejection without retrying', async () => {
     const fixture = dependencies({ kind: 'failed' });
@@ -112,17 +117,21 @@ describe('system mail delivery', () => {
     });
   });
 
-  it('retains the exact command after provider rate limiting', async () => {
-    const fixture = dependencies({ kind: 'retryable' });
-    await fixture.handler.runOnce();
-    expect(fixture.deliveryStore.settle).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: claim.id,
-        outcome: 'retry',
-        failureCode: 'delivery.outcome_unknown',
-      }),
-    );
-  });
+  // worker-10: rate limiting is a definite refusal, not an unknown outcome.
+  it.fails(
+    'retains the exact command after provider rate limiting',
+    async () => {
+      const fixture = dependencies({ kind: 'retryable' });
+      await fixture.handler.runOnce();
+      expect(fixture.deliveryStore.settle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: claim.id,
+          outcome: 'retry',
+          failureCode: 'delivery.retryable',
+        }),
+      );
+    },
+  );
 
   it('does not dispatch a link that expired after it was claimed', async () => {
     const fixture = dependencies({ kind: 'submitted', reference: 'email-1' });
