@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { workspaceRoleSchema } from '../identity/membership.js';
 const id = z.uuid().overwrite((value) => value.toLowerCase());
 const access = z.enum(['viewer', 'editor']);
+export const FOLDER_GRANT_LIMIT = 100;
 export const folderPrincipalSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('member'), userId: id, access }).strict(),
   z
@@ -23,7 +24,7 @@ export const folderSharingRequestSchema = z
       .max(Number.MAX_SAFE_INTEGER),
     grants: z
       .array(folderPrincipalSchema)
-      .max(100)
+      .max(FOLDER_GRANT_LIMIT)
       .refine(
         (grants) =>
           new Set(
@@ -42,10 +43,10 @@ export const folderSharingResponseSchema = z
     folderId: id,
     revision: z.number().int().positive(),
     mode: z.enum(['workspace', 'restricted']),
-    grants: z.array(folderPrincipalSchema).max(100),
+    grants: z.array(folderPrincipalSchema).max(FOLDER_GRANT_LIMIT),
     labels: z
       .record(id, z.string())
-      .refine((labels) => Object.keys(labels).length <= 100)
+      .refine((labels) => Object.keys(labels).length <= FOLDER_GRANT_LIMIT)
       .optional(),
   })
   .strict();

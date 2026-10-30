@@ -302,6 +302,14 @@ export class ConnectionConflictError extends Error {
   public override readonly name = 'ConnectionConflictError';
 }
 
+/** A stored share list is longer than the write path can ever make it. */
+export class ConnectionSharingCorruptError extends Error {
+  public override readonly name = 'ConnectionSharingCorruptError';
+  public constructor() {
+    super('Connection shares exceed the supported bound');
+  }
+}
+
 export class ConnectionIdempotencyConflictError extends Error {
   public override readonly name = 'ConnectionIdempotencyConflictError';
 }

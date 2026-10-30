@@ -30,3 +30,7 @@ export type {
 export type { PreviewDeliveryReconciliationResult } from './reconciliation/contract.js';
 export { createWorkflowTestSuiteScanner } from './suites/scanner.repository.js';
 export type { WorkflowTestSuiteScanner } from './suites/contract.js';
+export {
+  PREVIEW_EXECUTION_TIMEOUT_MAX_MS,
+  PREVIEW_RETENTION_MAX_MS,
+} from './runs/acceptance/limits.js';

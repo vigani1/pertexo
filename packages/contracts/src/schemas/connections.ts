@@ -461,6 +461,7 @@ export type SlackChannelLookupResponse = z.output<
 >;
 
 const sharingMemberId = z.uuid().overwrite((value) => value.toLowerCase());
+export const CONNECTION_SHARE_LIMIT = 100;
 export const connectionSharingRequestSchema = z
   .object({
     mode: z.enum(['workspace', 'restricted']),
@@ -471,7 +472,7 @@ export const connectionSharingRequestSchema = z
       .max(Number.MAX_SAFE_INTEGER),
     userIds: z
       .array(sharingMemberId)
-      .max(100)
+      .max(CONNECTION_SHARE_LIMIT)
       .refine((ids) => new Set(ids).size === ids.length),
   })
   .strict()
@@ -493,7 +494,7 @@ export const connectionSharingResponseSchema = z
           })
           .strict(),
       )
-      .max(100),
+      .max(CONNECTION_SHARE_LIMIT),
   })
   .strict();
 export const connectionSharingCommandResponseSchema =

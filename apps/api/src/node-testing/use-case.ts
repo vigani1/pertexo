@@ -10,6 +10,10 @@ import {
   WorkflowRevisionConflictError,
   type WorkflowDraftRecord,
 } from '@pertexo/database/authoring';
+import {
+  PREVIEW_EXECUTION_TIMEOUT_MAX_MS,
+  PREVIEW_RETENTION_MAX_MS,
+} from '@pertexo/database/previews';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
   type ExpressionEvaluator,
@@ -33,8 +37,6 @@ import {
 } from './validation.js';
 import { previewAcceptanceResponse } from './previews/response.js';
 import {
-  PREVIEW_RETENTION_MS,
-  PREVIEW_EXECUTION_TIMEOUT_MS,
   validationInputFields,
   digest,
   previewExecutionIdentity,
@@ -241,9 +243,9 @@ export class TestWorkflowNodeUseCase {
             })}`,
           }
         : {}),
-      expiresAt: new Date(acceptedAt.getTime() + PREVIEW_RETENTION_MS),
+      expiresAt: new Date(acceptedAt.getTime() + PREVIEW_RETENTION_MAX_MS),
       executionDeadlineAt: new Date(
-        acceptedAt.getTime() + PREVIEW_EXECUTION_TIMEOUT_MS,
+        acceptedAt.getTime() + PREVIEW_EXECUTION_TIMEOUT_MAX_MS,
       ),
       ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
       ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
