@@ -106,6 +106,7 @@ describe('identity/workspace telemetry', () => {
       'workspace.ownership_transfer',
       'workspace.request_deletion',
       'workspace.restore',
+      'workspace.reactivate',
     ]);
   });
 

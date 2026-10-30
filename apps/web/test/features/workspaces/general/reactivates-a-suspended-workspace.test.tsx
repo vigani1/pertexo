@@ -52,8 +52,7 @@ async function pressReactivate(actor: UserEvent) {
 }
 
 describe('reactivating a workspace', () => {
-  // audit-1030 follow-up 1: nothing can lift a restore's `suspended` today.
-  it.fails('lifts the suspension for someone who may manage it', async () => {
+  it('lifts the suspension for someone who may manage it', async () => {
     const server = suspendedUntilReactivated();
     const keys: (string | null)[] = [];
     mockServer.use(
@@ -74,39 +73,30 @@ describe('reactivating a workspace', () => {
     expect(screen.queryByRole('button', button)).not.toBeInTheDocument();
     expect(keys).toEqual([expect.any(String)]);
   });
+  it('retries an unconfirmed reactivation with its first key', async () => {
+    const server = suspendedUntilReactivated();
+    const keys: (string | null)[] = [];
+    mockServer.use(
+      http.post(reactivateUrl, ({ request }) => {
+        keys.push(request.headers.get('idempotency-key'));
+        if (keys.length === 1) return HttpResponse.error();
+        server.accepted = true;
+        return HttpResponse.json(lifecycleChange('reactivated'));
+      }),
+    );
+    renderApp(`/w/${workspaceId}/settings`, { strict: true });
+    const actor = userEvent.setup();
 
-  // audit-1030 follow-up 1: a new key would be refused once the first landed.
-  it.fails(
-    'retries an unconfirmed reactivation with its first key',
-    async () => {
-      const server = suspendedUntilReactivated();
-      const keys: (string | null)[] = [];
-      mockServer.use(
-        http.post(reactivateUrl, ({ request }) => {
-          keys.push(request.headers.get('idempotency-key'));
-          if (keys.length === 1) return HttpResponse.error();
-          server.accepted = true;
-          return HttpResponse.json(lifecycleChange('reactivated'));
-        }),
-      );
-      renderApp(`/w/${workspaceId}/settings`, { strict: true });
-      const actor = userEvent.setup();
+    await pressReactivate(actor);
+    await actor.click(await screen.findByRole('button', { name: 'Try again' }));
 
-      await pressReactivate(actor);
-      await actor.click(
-        await screen.findByRole('button', { name: 'Try again' }),
-      );
-
-      await waitFor(() => {
-        expect(screen.queryByText(suspendedBanner)).not.toBeInTheDocument();
-      });
-      expect(keys).toHaveLength(2);
-      expect(keys[1]).toBe(keys[0]);
-    },
-  );
-
-  // audit-1030 follow-up 1: another tab may have moved the workspace on.
-  it.fails('says so when the workspace changed meanwhile', async () => {
+    await waitFor(() => {
+      expect(screen.queryByText(suspendedBanner)).not.toBeInTheDocument();
+    });
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).toBe(keys[0]);
+  });
+  it('says so when the workspace changed meanwhile', async () => {
     mockServer.use(
       ...identityHandlers(suspended),
       http.post(reactivateUrl, () =>

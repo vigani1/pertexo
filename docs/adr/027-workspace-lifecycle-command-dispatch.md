@@ -63,7 +63,8 @@ accepts a caller-selected purge deadline. Restore uses a canonical server-owned
 reason because its public endpoint has no request body. Authorization is checked
 when the API creates the intent and checked again under the workspace lifecycle
 lock before append. Restore returns the workspace to `suspended` and never
-reactivates sessions, keys, connections, triggers, runs, or subscriptions.
+reactivates sessions, keys, connections, triggers, runs, or subscriptions. The
+workspace owner lifts the suspension with a separate Reactivate command.
 
 Deployment keeps the lifecycle-command worker stopped during regional restore
 until the restore-before-serve reconciliation gate has completed. Normal command

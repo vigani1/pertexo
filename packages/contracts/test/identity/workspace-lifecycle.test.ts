@@ -16,8 +16,7 @@ type DocumentedOperation = Readonly<{
 }>;
 
 describe('workspace lifecycle contract', () => {
-  // audit-1030 follow-up 1: the response can't name a reactivation yet.
-  it.fails('answers a reactivation in the shape of a restore', () => {
+  it('answers a reactivation in the shape of a restore', () => {
     expect(
       workspaceLifecycleChangeResponseSchema.parse({
         workspaceId,
@@ -36,9 +35,7 @@ describe('workspace lifecycle contract', () => {
       }).success,
     ).toBe(false);
   });
-
-  // audit-1030 follow-up 1: the route isn't documented yet.
-  it.fails('documents reactivation as a session command with a key', () => {
+  it('documents reactivation as a session command with a key', () => {
     const paths = identityWorkspaceOpenApiDocument.paths as unknown as Readonly<
       Record<string, DocumentedOperation>
     >;

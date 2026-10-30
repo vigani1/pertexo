@@ -13,6 +13,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import {
+  reactivateWorkspace,
   requestWorkspaceDeletion,
   restoreWorkspaceDeletion,
 } from '../../workspaces.api';
@@ -20,12 +21,13 @@ import { accessibleWorkspacesQueryOptions } from '../../workspaces.queries';
 
 type LifecycleIntent =
   | Readonly<{ command: 'request-deletion'; reason: string }>
-  | Readonly<{ command: 'restore' }>;
+  | Readonly<{ command: 'restore' }>
+  | Readonly<{ command: 'reactivate' }>;
 
 type LifecycleAttempt = Readonly<{ intent: LifecycleIntent }> & CommandKey;
 
 /**
- * Deletion and restore requests. An unconfirmed request keeps its exact
+ * Deletion, restore and reactivation requests. An unconfirmed request keeps its exact
  * reason and key until it is retried or dismissed.
  */
 export function useWorkspaceLifecycleCommand({
@@ -63,17 +65,23 @@ export function useWorkspaceLifecycleCommand({
   }, [apiClient, userId, workspaceId]);
 
   const mutation = useMutation({
-    mutationFn: (current: LifecycleAttempt) =>
-      current.intent.command === 'request-deletion'
-        ? requestWorkspaceDeletion(apiClient, workspaceId, {
-            reason: current.intent.reason,
-            idempotencyKey: current.idempotencyKey,
-          })
-        : restoreWorkspaceDeletion(
+    mutationFn: ({ intent, idempotencyKey }: LifecycleAttempt) => {
+      switch (intent.command) {
+        case 'request-deletion':
+          return requestWorkspaceDeletion(apiClient, workspaceId, {
+            reason: intent.reason,
+            idempotencyKey,
+          });
+        case 'restore':
+          return restoreWorkspaceDeletion(
             apiClient,
             workspaceId,
-            current.idempotencyKey,
-          ),
+            idempotencyKey,
+          );
+        case 'reactivate':
+          return reactivateWorkspace(apiClient, workspaceId, idempotencyKey);
+      }
+    },
     onMutate: () => owner.current,
     onSuccess: async (completed, _attempt, submissionOwner) => {
       if (owner.current !== submissionOwner) return;
@@ -139,20 +147,31 @@ export function useWorkspaceLifecycleCommand({
   };
 }
 
+const COMMAND_WORDS: Readonly<
+  Record<
+    LifecycleIntent['command'],
+    Readonly<{ subject: string; doing: string }>
+  >
+> = {
+  'request-deletion': {
+    subject: 'the deletion request',
+    doing: 'requesting deletion',
+  },
+  restore: { subject: 'the restore', doing: 'restoring the workspace' },
+  reactivate: {
+    subject: 'the reactivation',
+    doing: 'reactivating the workspace',
+  },
+};
+
 function lifecycleCommandError(
   error: unknown,
   command: LifecycleIntent['command'],
 ): string {
-  const subject =
-    command === 'request-deletion' ? 'the deletion request' : 'the restore';
+  const { subject, doing } = COMMAND_WORDS[command];
   if (isUnconfirmedCommand(error))
     return `We couldn’t confirm whether ${subject} went through. Try again — it’s the same request, so it can’t run twice.`;
   if (isApiError(error) && error.status === 409)
     return 'The workspace changed meanwhile. Reload the page to see where it stands.';
-  return describeCommandError(
-    error,
-    command === 'request-deletion'
-      ? 'requesting deletion'
-      : 'restoring the workspace',
-  );
+  return describeCommandError(error, doing);
 }

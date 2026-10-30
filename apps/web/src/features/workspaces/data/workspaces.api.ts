@@ -358,6 +358,22 @@ export function restoreWorkspaceDeletion(
   });
 }
 
+export function reactivateWorkspace(
+  apiClient: ApiClient,
+  workspaceId: string,
+  idempotencyKey: string,
+): Promise<WorkspaceLifecycleChangeResponse> {
+  return apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/reactivate`,
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    response: {
+      kind: 'json',
+      decode: (value) => decodeLifecycleChange(value, workspaceId),
+    },
+  });
+}
+
 function decodeLifecycleChange(value: unknown, workspaceId: string) {
   const change = workspaceLifecycleChangeResponseSchema.parse(value);
   if (change.workspaceId !== workspaceId)

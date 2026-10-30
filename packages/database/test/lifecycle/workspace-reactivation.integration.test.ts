@@ -118,8 +118,7 @@ beforeAll(async () => {
 afterAll(afterAllFixture2);
 
 describe('reactivating a suspended workspace', () => {
-  // audit-1030 follow-up 1: nothing can lift a restore's `suspended` today.
-  it.fails('makes it active, with one audit row and a receipt', async () => {
+  it('makes it active, with one audit row and a receipt', async () => {
     await deleteAndRestore();
 
     const receipt = await change({ commandType: REACTIVATED });
@@ -146,9 +145,7 @@ describe('reactivating a suspended workspace', () => {
       },
     ]);
   });
-
-  // audit-1030 follow-up 1: a retried request must replay, not hit its refusal.
-  it.fails('replays a retry with the same key', async () => {
+  it('replays a retry with the same key', async () => {
     await deleteAndRestore();
     const auditsBefore = (await reactivationAudits()).length;
     const idempotencyKeyHash = 'b'.repeat(64);
@@ -173,9 +170,7 @@ describe('reactivating a suspended workspace', () => {
       change({ commandType: 'deletion_requested', idempotencyKeyHash }),
     ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
   });
-
-  // audit-1030 follow-up 1: ADR 013 step 3 keeps these off until re-enabled.
-  it.fails('changes only the workspace status', async () => {
+  it('changes only the workspace status', async () => {
     await deleteAndRestore();
     await asOwner(
       `insert into app.auth_sessions(id,user_id,token,expires_at)
@@ -219,9 +214,7 @@ describe('reactivating a suspended workspace', () => {
       expect(await workspaceStatus()).toBe('suspended');
     },
   );
-
-  // audit-1030 follow-up 1: only Restore may leave `pending_deletion`.
-  it.fails('refuses a workspace scheduled for deletion', async () => {
+  it('refuses a workspace scheduled for deletion', async () => {
     await putWorkspaceIn('pending_deletion');
 
     await expect(change({ commandType: REACTIVATED })).rejects.toMatchObject({

@@ -67,6 +67,7 @@ export function registerDocumentsAllPublicRouteTemplatesRequest(): void {
       '/v1/workspaces/{workspaceId}/sso/directory/workspaces/{targetWorkspaceId}/unlink',
       '/v1/workspaces',
       '/v1/workspaces/{workspaceId}/deletion',
+      '/v1/workspaces/{workspaceId}/reactivate',
       '/v1/workspaces/{workspaceId}/members',
       '/v1/workspaces/{workspaceId}',
       '/v1/workspaces/{workspaceId}/members/{userId}/role',

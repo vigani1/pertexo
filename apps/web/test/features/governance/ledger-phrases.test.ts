@@ -20,9 +20,7 @@ it('names everyday actions instead of reading out their codes', () => {
     'recorded “schedule admission throttled”',
   );
 });
-
-// audit-1030 follow-up 1: the new audit row would read out its code.
-it.fails('names a workspace reactivation', () => {
+it('names a workspace reactivation', () => {
   expect(auditActionWords('workspace.reactivated')).toBe(
     'reactivated the workspace',
   );

@@ -1,7 +1,7 @@
 export type WorkspaceLifecycleCommandType =
-  'deletion_requested' | 'deletion_restored';
+  'deletion_requested' | 'deletion_restored' | 'reactivated';
 
-/** The receipt of one deletion or restore request. */
+/** The receipt of one deletion, restore or reactivation request. */
 export type WorkspaceLifecycleOperation = Readonly<{
   id: string;
   workspaceId: string;

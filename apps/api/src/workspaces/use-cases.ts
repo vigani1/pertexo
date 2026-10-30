@@ -298,6 +298,30 @@ export class WorkspaceLifecycleUseCase {
     );
   }
 
+  public async reactivate(
+    input: WorkspaceLifecycleInput,
+  ): Promise<WorkspaceLifecycleChangeResponse> {
+    return this.telemetry.measure(
+      IDENTITY_WORKSPACE_OPERATION.workspaceReactivate,
+      async () => {
+        await this.authorize(
+          input,
+          'workspace:manage',
+          LIFECYCLE_VISIBLE_STATUSES,
+        );
+        const operation =
+          await this.persistence.requestWorkspaceLifecycleOperation({
+            workspaceId: input.routeWorkspaceId,
+            actorUserId: input.actor.actorId,
+            commandType: 'reactivated',
+            reason: 'Workspace reactivated',
+            idempotencyKey: input.idempotencyKey,
+          });
+        return toWorkspaceLifecycleChangeResponse(operation);
+      },
+    );
+  }
+
   private authorize(
     input: Readonly<{
       actor: ActorContext;

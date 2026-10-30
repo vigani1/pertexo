@@ -9,7 +9,7 @@ import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceLifecycleCommand } from '../../data/mutations/lifecycle/use-command';
 import { WorkspaceDeletionDialog } from './workspace-deletion-dialog';
-import { WorkspaceRestoreDialog } from './workspace-lifecycle-dialog';
+import { WorkspaceLifecycleDialog } from './workspace-lifecycle-dialog';
 
 type LifecycleChange = WorkspaceLifecycleChangeResponse['change'];
 
@@ -52,9 +52,17 @@ const COMPLETED: Readonly<Record<LifecycleChange, string>> = {
     'The workspace is scheduled for deletion. Restore it within 30 days of the request to keep it.',
   deletion_restored:
     'The workspace is back, suspended. Triggers and integrations stay off until you reconnect them.',
+  reactivated:
+    'The workspace is active again. Triggers and connections stay off until you turn them back on, and revoked API tokens stay revoked.',
 };
 
-/** Delete or restore the workspace; what the request did stays until dismissed. */
+const COMPLETED_LABEL: Readonly<Record<LifecycleChange, string>> = {
+  deletion_requested: 'Deletion request',
+  deletion_restored: 'Restore request',
+  reactivated: 'Reactivation',
+};
+
+/** Delete, restore or reactivate the workspace; what the request did stays until dismissed. */
 export function WorkspaceLifecycleControls({
   apiClient,
   workspace,
@@ -67,26 +75,26 @@ export function WorkspaceLifecycleControls({
   onCompleted: () => void | Promise<void>;
 }>) {
   const [completed, setCompleted] = useState<LifecycleChange>();
+  const target = { apiClient, workspaceId: workspace.id, userId };
+  const onChanged = (change: LifecycleChange) => {
+    setCompleted(change);
+    return onCompleted();
+  };
   const command = useWorkspaceLifecycleCommand({
-    apiClient,
-    workspaceId: workspace.id,
-    userId,
-    onCompleted: (change) => {
-      setCompleted(change);
-      return onCompleted();
-    },
+    ...target,
+    onCompleted: onChanged,
   });
-  const pendingDeletion = workspace.status === 'pending_deletion';
+  // Separate state, so a failed reactivation doesn't show in the deletion dialog.
+  const reactivation = useWorkspaceLifecycleCommand({
+    ...target,
+    onCompleted: onChanged,
+  });
 
   if (completed !== undefined)
     return (
       <Notice
         tone="success"
-        aria-label={
-          completed === 'deletion_requested'
-            ? 'Deletion request'
-            : 'Restore request'
-        }
+        aria-label={COMPLETED_LABEL[completed]}
         action={
           <Button
             type="button"
@@ -103,38 +111,63 @@ export function WorkspaceLifecycleControls({
         {COMPLETED[completed]}
       </Notice>
     );
-  return (
-    <DangerAction
-      title={pendingDeletion ? 'Restore workspace' : 'Delete workspace'}
-      description={
-        pendingDeletion
-          ? 'It’s scheduled for deletion within 30 days of the request. Restoring brings it back suspended; integrations stay off until they’re reconnected.'
-          : 'Access and triggers stop straight away. You can restore it for 30 days; after that it’s gone for good.'
-      }
-    >
-      {pendingDeletion ? (
-        <WorkspaceRestoreDialog
-          workspaceName={workspace.name}
-          pending={command.pending}
-          retryAvailable={command.retryAvailable}
-          error={command.error}
-          onDismissUncertain={command.dismissUncertain}
-          onRestore={() => command.start({ command: 'restore' })}
-          onRetry={command.retry}
+  if (workspace.status === 'pending_deletion')
+    return (
+      <DangerAction
+        title="Restore workspace"
+        description="It’s scheduled for deletion within 30 days of the request. Restoring brings it back suspended, and an owner can then reactivate it; integrations stay off until they’re reconnected."
+      >
+        <WorkspaceLifecycleDialog
+          {...commandProps(command)}
+          title={`Restore ${workspace.name}?`}
+          description="This cancels the deletion. The workspace comes back suspended: people can sign in and look around, and an owner can then reactivate it. Triggers and integrations stay off until their connections are reconnected."
+          action="Restore workspace"
+          pendingLabel="Restoring…"
+          onConfirm={() => command.start({ command: 'restore' })}
         />
-      ) : (
+      </DangerAction>
+    );
+  return (
+    <>
+      {workspace.status === 'suspended' ? (
+        <DangerAction
+          title="Reactivate workspace"
+          description="Lets people make changes and start runs again. Triggers and connections stay off until you turn them back on, and revoked API tokens stay revoked."
+        >
+          <WorkspaceLifecycleDialog
+            {...commandProps(reactivation)}
+            title={`Reactivate ${workspace.name}?`}
+            description="This lifts the suspension, so people can make changes and start runs again. Triggers and connections stay off until you turn them back on, and revoked API tokens stay revoked."
+            action="Reactivate workspace"
+            pendingLabel="Reactivating…"
+            onConfirm={() => reactivation.start({ command: 'reactivate' })}
+          />
+        </DangerAction>
+      ) : null}
+      <DangerAction
+        title="Delete workspace"
+        description="Access and triggers stop straight away. You can restore it for 30 days; after that it’s gone for good."
+      >
         <WorkspaceDeletionDialog
           workspaceName={workspace.name}
-          pending={command.pending}
-          retryAvailable={command.retryAvailable}
-          error={command.error}
-          onDismissUncertain={command.dismissUncertain}
+          {...commandProps(command)}
           onRequest={(reason) =>
             command.start({ command: 'request-deletion', reason })
           }
-          onRetry={command.retry}
         />
-      )}
-    </DangerAction>
+      </DangerAction>
+    </>
   );
+}
+
+function commandProps(
+  command: ReturnType<typeof useWorkspaceLifecycleCommand>,
+) {
+  return {
+    pending: command.pending,
+    retryAvailable: command.retryAvailable,
+    error: command.error,
+    onDismissUncertain: command.dismissUncertain,
+    onRetry: command.retry,
+  };
 }
