@@ -1,3 +1,4 @@
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { workflowRunValues } from '../../schema/runs/values.js';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -9,7 +10,6 @@ import {
   type DatabaseRuntime,
 } from '../../platform/pool/runtime.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
-import { withWorkspaceWriteClient } from '../../attempts/transactions.repository.js';
 import {
   lockCapabilityExecution,
   assertCapabilityExecution,
@@ -24,10 +24,9 @@ export function createRunValuesStore(
   return {
     close: () => lease.close(),
     save: (input) =>
-      withWorkspaceWriteClient(
+      withTenantScopedClient(
         lease.pool,
-        input.workspaceId,
-        input.signal,
+        { workspaceId: input.workspaceId },
         async (client): Promise<RunValues> => {
           await lockCapabilityExecution(client, input);
           await assertCapabilityExecution(client, input);
@@ -87,6 +86,7 @@ export function createRunValuesStore(
           await assertCapabilityExecution(client, input);
           return Object.freeze(Object.fromEntries(values));
         },
+        { signal: input.signal },
       ),
   };
 }

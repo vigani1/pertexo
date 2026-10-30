@@ -1,3 +1,4 @@
+import { withTenantScopedClient } from '../../../tenant-access/transactions.js';
 import type { PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
@@ -12,7 +13,6 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '../../../platform/pool/runtime.js';
-import { withWorkspaceWriteClient } from '../../../attempts/transactions.repository.js';
 import { serializeStoredExecutionValue } from '../../../platform/stored-execution-value.js';
 import { wakeWorkflowRun } from '../../calls/wakeup.repository.js';
 import { wakeTaskAncestors } from '../responses/respond.repository.js';
@@ -41,11 +41,11 @@ export function createCallbackStore(
   return {
     close: () => lease.close(),
     prepare: (input) =>
-      withWorkspaceWriteClient(
+      withTenantScopedClient(
         lease.pool,
-        input.workspaceId,
-        input.signal,
+        { workspaceId: input.workspaceId },
         (client) => prepareCallbacks(client, input),
+        { signal: input.signal },
       ),
     resolve: async (tokenHash, signal) => {
       signal.throwIfAborted();
@@ -70,11 +70,11 @@ export function createCallbackStore(
       } while (after !== null);
     },
     respond: (input) =>
-      withWorkspaceWriteClient(
+      withTenantScopedClient(
         lease.pool,
-        input.callback.workspaceId,
-        input.signal,
+        { workspaceId: input.callback.workspaceId },
         (client) => respondCallback(client, input),
+        { signal: input.signal },
       ),
   };
 }

@@ -1,3 +1,4 @@
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { attemptControl, runAbortReason } from '../queries/control.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -10,10 +11,6 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import { NodeAttemptReconciliationRequiredError } from '../errors.js';
 import type { NodeAttemptControl, NodeAttemptRunStore } from '../contract.js';
-import {
-  assertNotAborted,
-  withWorkspaceWriteClient,
-} from '../transactions.repository.js';
 
 export async function heartbeatNodeAttempt(
   pool: Pool,
@@ -24,11 +21,9 @@ export async function heartbeatNodeAttempt(
     control: NodeAttemptControl;
   }>
 > {
-  assertNotAborted(input.signal);
-  return withWorkspaceWriteClient(
+  return withTenantScopedClient(
     pool,
-    input.lease.workspaceId,
-    input.signal,
+    { workspaceId: input.lease.workspaceId },
     async (client) => {
       const lease = input.lease;
       const result = await drizzle(client)
@@ -78,5 +73,6 @@ export async function heartbeatNodeAttempt(
         control: attemptControl(row.abortReason),
       });
     },
+    { signal: input.signal },
   );
 }

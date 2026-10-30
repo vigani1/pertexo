@@ -1,3 +1,4 @@
+import { withTenantScopedReadClient } from '../../tenant-access/transactions.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { nodeRuns, nodeAttempts } from '../../schema/runs/execution.js';
@@ -13,10 +14,6 @@ import type {
   NodeAttemptStoredInputs,
 } from '../contract.js';
 import { attemptControl } from '../queries/control.js';
-import {
-  assertNotAborted,
-  withWorkspaceReadClient,
-} from '../transactions.repository.js';
 import {
   parseStoredExecutionValue,
   storedExecutionValuesEqual,
@@ -82,11 +79,9 @@ export async function loadNodeAttemptInputs(
   pool: Pool,
   input: Parameters<NodeAttemptRunStore['loadInputs']>[0],
 ): Promise<NodeAttemptStoredInputs> {
-  assertNotAborted(input.signal);
-  return withWorkspaceReadClient(
+  return withTenantScopedReadClient(
     pool,
-    input.lease.workspaceId,
-    input.signal,
+    { workspaceId: input.lease.workspaceId },
     async (client) => {
       const current = await readLeasedInputs(client, input);
       const row = current[0];
@@ -140,6 +135,7 @@ export async function loadNodeAttemptInputs(
         checkpoint: row.schedulerState,
       });
     },
+    { signal: input.signal },
   );
 }
 

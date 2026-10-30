@@ -1,3 +1,4 @@
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts } from '../../schema/runs/execution.js';
@@ -23,21 +24,15 @@ import {
   completeReceipt,
   validateDelivery,
 } from '../completion/receipts.repository.js';
-import {
-  assertNotAborted,
-  withWorkspaceWriteClient,
-} from '../transactions.repository.js';
 
 export async function claimNodeAttemptDelivery(
   pool: Pool,
   input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
 ): Promise<NodeAttemptClaimResult> {
-  assertNotAborted(input.signal);
   try {
-    return await withWorkspaceWriteClient(
+    return await withTenantScopedClient(
       pool,
-      input.workspaceId,
-      input.signal,
+      { workspaceId: input.workspaceId },
       async (client) => {
         await validateDelivery(client, input);
         const receipt = await claimReceipt(
@@ -138,6 +133,7 @@ export async function claimNodeAttemptDelivery(
         });
         return Object.freeze({ kind: 'claimed' as const, lease });
       },
+      { signal: input.signal },
     );
   } catch (error: unknown) {
     if (error instanceof DeliveryMismatch)

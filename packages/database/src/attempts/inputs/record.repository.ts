@@ -1,3 +1,4 @@
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -8,7 +9,6 @@ import {
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import type { NodeAttemptRunStore } from '../contract.js';
-import { withWorkspaceWriteClient } from '../transactions.repository.js';
 import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 
 type RecordInputRequest = Parameters<
@@ -38,10 +38,9 @@ export async function recordNodeAttemptInput(
     return { recorded: false };
   }
   try {
-    return await withWorkspaceWriteClient(
+    return await withTenantScopedClient(
       pool,
-      lease.workspaceId,
-      signal,
+      { workspaceId: lease.workspaceId },
       async (client) => {
         const result = await drizzle(client)
           .update(nodeRuns)
@@ -80,6 +79,7 @@ export async function recordNodeAttemptInput(
           .catch(rethrowQueryFailure);
         return { recorded: result.length === 1 };
       },
+      { signal: signal },
     );
   } catch {
     return { recorded: false };

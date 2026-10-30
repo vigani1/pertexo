@@ -1,3 +1,4 @@
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { publishesSlackBinding } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -20,21 +21,15 @@ import {
   NodeAttemptReconciliationRequiredError,
 } from '../errors.js';
 import type { NodeAttemptRunStore } from '../contract.js';
-import {
-  assertNotAborted,
-  withWorkspaceWriteClient,
-} from '../transactions.repository.js';
 import { isConnectionFenceCurrent } from '../../connections/runtime/dispatch.repository.js';
 
 export async function markNodeAttemptDispatched(
   pool: Pool,
   input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
 ): Promise<Readonly<{ dispatchedAt: Date }>> {
-  assertNotAborted(input.signal);
-  return withWorkspaceWriteClient(
+  return withTenantScopedClient(
     pool,
-    input.lease.workspaceId,
-    input.signal,
+    { workspaceId: input.lease.workspaceId },
     async (client) => {
       if (input.connectionFence !== undefined) {
         const current = await isConnectionFenceCurrent(
@@ -147,6 +142,7 @@ export async function markNodeAttemptDispatched(
       await persistSlackDispatch(client, input);
       return Object.freeze({ dispatchedAt: new Date(dispatchedAt) });
     },
+    { signal: input.signal },
   );
 }
 

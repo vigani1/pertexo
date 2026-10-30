@@ -1,3 +1,4 @@
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
@@ -19,10 +20,6 @@ import type {
 import { auditMismatch, validateDelivery } from './receipts.repository.js';
 import { applyNodeAttemptCompletion } from './outcomes.repository.js';
 import {
-  assertNotAborted,
-  withWorkspaceWriteClient,
-} from '../transactions.repository.js';
-import {
   serializeStoredExecutionValue,
   StoredExecutionValueInvalidError,
 } from '../../platform/stored-execution-value.js';
@@ -31,7 +28,6 @@ export async function completeNodeAttempt(
   pool: Pool,
   input: Parameters<NodeAttemptRunStore['complete']>[0],
 ): Promise<CompleteNodeAttemptResult> {
-  assertNotAborted(input.signal);
   let serializedOutput: string | null = null;
   if (
     input.outcome.status === 'succeeded' ||
@@ -49,10 +45,9 @@ export async function completeNodeAttempt(
     }
   }
   try {
-    return await withWorkspaceWriteClient(
+    return await withTenantScopedClient(
       pool,
-      input.lease.workspaceId,
-      input.signal,
+      { workspaceId: input.lease.workspaceId },
       async (client) => {
         await drizzle(client)
           .execute(
@@ -88,6 +83,7 @@ export async function completeNodeAttempt(
           controlActive: (run[0]?.abortReason ?? null) !== null,
         });
       },
+      { signal: input.signal },
     );
   } catch (error: unknown) {
     if (error instanceof DeliveryMismatch)
