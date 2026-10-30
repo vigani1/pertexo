@@ -1,100 +1,66 @@
-import { assertSessionIdentity } from '@/features/auth/session/identity.public';
-import { resetCommandMocks } from './setup';
-
-import { sendWorkflowOrganizationCommand } from '@/features/workflows/data/organization/api';
-
 import { workflowKeys } from '@/features/workflows/data/workflows.queries';
-
-import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
-
+import { workspaceKeys } from '@/features/workspaces/data/workspaces.queries';
 import { ApiError } from '@/lib/api/error';
-
-import { apiProblemSchema } from '@pertexo/contracts';
-
 import { act, waitFor } from '@testing-library/react';
-
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
+import { describe, expect, it } from 'vitest';
 import { secondWorkflowId, userId, workspaceId } from '../../list/fixtures';
-
 import {
   deferred,
-  network,
+  problem,
   receipt,
-  session,
+  serveCommands,
   setup,
+  signalSessionChange,
   single,
   workspace,
 } from './fixture';
 
-vi.mock('@/features/auth/session/sync.public', () => ({
-  subscribeSessionChanges: (listener: () => void) => {
-    session.listener = listener;
-    return session.unsubscribe;
-  },
-}));
-
-vi.mock('@/features/auth/session/identity.public', async (original) => ({
-  ...(await original<object>()),
-  assertSessionIdentity: vi.fn(),
-}));
-
-vi.mock('@/features/workspaces/queries.public', () => ({
-  getAllAccessibleWorkspaces: vi.fn(),
-}));
-
-vi.mock('@/features/workflows/data/organization/api', async (original) => ({
-  ...(await original<object>()),
-  sendWorkflowOrganizationCommand: vi.fn(),
-}));
-
-beforeEach(resetCommandMocks);
-
 describe('ephemeral organization command lifetime', () => {
   it('reauthorizes a retry from fresh discovery rather than cached role', async () => {
+    const server = serveCommands();
+    server.answers.push('network');
     const f = setup();
-    vi.mocked(sendWorkflowOrganizationCommand).mockRejectedValueOnce(network());
     await act(() => f.result.current.start(single));
-    vi.mocked(getAllAccessibleWorkspaces).mockResolvedValueOnce([
-      { ...workspace, role: 'viewer' },
-    ]);
+    server.discoveries = [[{ ...workspace, role: 'viewer' }]];
     await act(() => f.result.current.retry());
     expect(f.result.current.denied).toBe(true);
     expect(f.result.current.retryAvailable).toBe(false);
     expect(f.result.current.result).toBeUndefined();
-    expect(sendWorkflowOrganizationCommand).toHaveBeenCalledTimes(1);
+    expect(server.sent).toHaveLength(1);
   });
   it('ignores double submission and concurrent retry during authority/mutation work', async () => {
-    const f = setup();
+    const server = serveCommands();
     const pending = deferred();
-    vi.mocked(sendWorkflowOrganizationCommand).mockReturnValueOnce(
-      pending.promise,
-    );
+    server.answers.push(pending.answer);
+    const f = setup();
     let first: Promise<void> | undefined;
     act(() => {
       first = f.result.current.start(single);
     });
     await waitFor(() => {
-      expect(sendWorkflowOrganizationCommand).toHaveBeenCalledOnce();
+      expect(server.sent).toHaveLength(1);
     });
     expect(f.result.current.pending).toBe(true);
     await act(async () => {
       await f.result.current.start(single);
       await f.result.current.retry();
     });
-    expect(sendWorkflowOrganizationCommand).toHaveBeenCalledOnce();
+    expect(server.sent).toHaveLength(1);
     await act(async () => {
-      pending.resolve(receipt);
+      pending.release();
       await first;
     });
   });
-  it.each([401, 403, 404])(
+  it.each([
+    [401, 'auth.unauthenticated'],
+    [403, 'auth.forbidden'],
+    [404, 'resource.not_found'],
+  ] as const)(
     'retires mutation status %i rather than retrying stale authority',
-    async (status) => {
+    async (status, code) => {
+      const server = serveCommands();
+      server.answers.push(problem(status, code));
       const f = setup();
-      vi.mocked(sendWorkflowOrganizationCommand).mockRejectedValueOnce(
-        new ApiError({ kind: 'problem', status, message: 'private' }),
-      );
       await act(() => f.result.current.start(single));
       expect(f.result.current.denied).toBe(true);
       act(() => {
@@ -102,7 +68,7 @@ describe('ephemeral organization command lifetime', () => {
       });
       await act(() => f.result.current.retry());
       expect(f.result.current.denied).toBe(true);
-      expect(sendWorkflowOrganizationCommand).toHaveBeenCalledOnce();
+      expect(server.sent).toHaveLength(1);
     },
   );
   it.each([
@@ -114,27 +80,24 @@ describe('ephemeral organization command lifetime', () => {
   ] as const)(
     'aborts %s ownership and never installs a late reply',
     async (event) => {
-      const f = setup();
+      const server = serveCommands();
       const pending = deferred();
-      vi.mocked(sendWorkflowOrganizationCommand).mockReturnValueOnce(
-        pending.promise,
-      );
+      server.answers.push(pending.answer);
+      const f = setup();
       let task: Promise<void> | undefined;
       act(() => {
         task = f.result.current.start(single);
       });
       await waitFor(() => {
-        expect(sendWorkflowOrganizationCommand).toHaveBeenCalledOnce();
+        expect(server.sent).toHaveLength(1);
       });
-      const signal = vi.mocked(sendWorkflowOrganizationCommand).mock
-        .calls[0]?.[2];
+      const signal = server.sent[0]?.signal;
       act(() => {
-        if (event === 'session') session.listener?.();
+        if (event === 'session') signalSessionChange();
         if (event === 'cache-role')
-          f.queryClient.setQueryData(
-            ['identity', userId, 'accessible-workspaces'],
-            [{ ...workspace, role: 'viewer' }],
-          );
+          f.queryClient.setQueryData(workspaceKeys.accessible(userId), [
+            { ...workspace, role: 'viewer' },
+          ]);
         if (event === 'cache-error') {
           const query = f.queryClient.getQueryCache().build(f.queryClient, {
             queryKey: workflowKeys.scope(userId, workspaceId),
@@ -154,7 +117,7 @@ describe('ephemeral organization command lifetime', () => {
       });
       expect(signal?.aborted).toBe(true);
       await act(async () => {
-        pending.resolve(receipt);
+        pending.release();
         await task;
       });
       expect(f.result.current.result).toBeUndefined();
@@ -167,31 +130,18 @@ describe('ephemeral organization command lifetime', () => {
     },
   );
   it('rejects role loss after acceptance before exposing a historical result', async () => {
+    serveCommands([[workspace], [{ ...workspace, status: 'suspended' }]]);
     const f = setup();
-    vi.mocked(getAllAccessibleWorkspaces)
-      .mockResolvedValueOnce([workspace])
-      .mockResolvedValueOnce([{ ...workspace, status: 'suspended' }]);
     await act(() => f.result.current.start(single));
     expect(f.result.current.denied).toBe(true);
     expect(f.result.current.result).toBeUndefined();
   });
   it('uses fixed conflict copy and permits a genuinely new intent without replaying the old key', async () => {
-    const f = setup();
-    vi.mocked(sendWorkflowOrganizationCommand).mockRejectedValueOnce(
-      new ApiError({
-        kind: 'problem',
-        status: 409,
-        message: 'private',
-        problem: apiProblemSchema.parse({
-          type: 'urn:pertexo:problem:workflow.folder_not_empty',
-          title: 'Conflict',
-          status: 409,
-          code: 'workflow.folder_not_empty',
-          detail: 'private-body',
-          requestId: 'test-conflict',
-        }),
-      }),
+    const server = serveCommands();
+    server.answers.push(
+      problem(409, 'workflow.folder_not_empty', 'private-body'),
     );
+    const f = setup();
     await act(() => f.result.current.start(single));
     expect(f.result.current.error).toContain('child folders');
     expect(f.result.current.error).not.toContain('private');
@@ -199,12 +149,14 @@ describe('ephemeral organization command lifetime', () => {
     await act(() =>
       f.result.current.start({ ...single, idempotencyKey: 'new-intent' }),
     );
-    expect(
-      vi.mocked(sendWorkflowOrganizationCommand).mock.calls[1]?.[1]
-        .idempotencyKey,
-    ).toBe('new-intent');
+    expect(server.sent.map(({ key }) => key)).toEqual([
+      'single-key',
+      'new-intent',
+    ]);
+    expect(f.result.current.result).toEqual(receipt);
   });
   it('rejects malformed or foreign attempts before any authority request or send', async () => {
+    const server = serveCommands();
     const f = setup();
     await act(() =>
       f.result.current.start({ ...single, workspaceId: secondWorkflowId }),
@@ -215,8 +167,8 @@ describe('ephemeral organization command lifetime', () => {
         body: { folderId: null, expectedOrganizationRevision: 0 },
       }),
     );
-    expect(assertSessionIdentity).not.toHaveBeenCalled();
-    expect(sendWorkflowOrganizationCommand).not.toHaveBeenCalled();
+    expect(server.reads.identity).toBe(0);
+    expect(server.sent).toHaveLength(0);
     expect(f.result.current.error).toContain('invalid');
   });
 });
