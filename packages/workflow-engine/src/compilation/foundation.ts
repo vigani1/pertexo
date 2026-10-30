@@ -164,8 +164,10 @@ export function registerExecutableIdentity(
 
 function withControls(graph: WorkflowExecutableGraph): ExecutionNode[] {
   return graph.nodes.flatMap((node): ExecutionNode[] => {
+    // Only a new compilation refuses a setup the schemas reject. A version
+    // published before that keeps verifying, as a step without a control
+    // setup, and that step fails on its own when it runs.
     const inspected = inspectControlNodeConfig(node);
-    if (inspected.kind === 'invalid') fail(inspected.message);
     return [
       inspected.kind === 'valid'
         ? Object.freeze({ ...node, control: inspected.value })

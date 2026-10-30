@@ -220,6 +220,12 @@ export const workflowProblems = [
 ];
 
 const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
+  'Switch config is invalid':
+    'A Switch step’s cases aren’t set up correctly. Open the step and review its cases.',
+  'Parallel config is invalid':
+    'A Parallel step’s branches aren’t set up correctly. Open the step and review its branches.',
+  'Merge config is invalid':
+    'A Merge step’s setup isn’t complete. Choose its Parallel step and when it continues.',
   'workflow edge source port is not configured':
     'A step has a link from an output its setup doesn’t define: a Switch case, a Parallel branch or a Timed out path. Add it in the step’s setup, or remove the link.',
   'Merge must reference a pinned Parallel node':

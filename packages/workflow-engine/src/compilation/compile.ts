@@ -100,6 +100,8 @@ function compileExecutableGraph(
     }
   }
   const index = graphValidationIndex(graph);
+  const [controlIssue] = index.controlIssues;
+  if (controlIssue !== undefined) fail(controlIssue);
   assertGraphPorts(graph, catalog, index);
   assertBranchesDoNotReconverge(graph, index);
   return {

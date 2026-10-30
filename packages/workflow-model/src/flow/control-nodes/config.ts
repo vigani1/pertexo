@@ -1,5 +1,3 @@
-import type { z } from 'zod';
-
 import { mergeConfigSchema, type MergeConfig } from './merge.js';
 import { parallelConfigSchema, type ParallelConfig } from './parallel.js';
 import { switchConfigSchema, type SwitchConfig } from './switch.js';
@@ -31,33 +29,21 @@ export function inspectControlNodeConfig(
       const parsed = switchConfigSchema.safeParse(node.config);
       return parsed.success
         ? { kind: 'valid', value: { kind: 'switch', config: parsed.data } }
-        : invalid('Switch', parsed.error);
+        : { kind: 'invalid', message: 'Switch config is invalid' };
     }
     case 'core.parallel': {
       const parsed = parallelConfigSchema.safeParse(node.config);
       return parsed.success
         ? { kind: 'valid', value: { kind: 'parallel', config: parsed.data } }
-        : invalid('Parallel', parsed.error);
+        : { kind: 'invalid', message: 'Parallel config is invalid' };
     }
     case 'core.merge': {
       const parsed = mergeConfigSchema.safeParse(node.config);
       return parsed.success
         ? { kind: 'valid', value: { kind: 'merge', config: parsed.data } }
-        : invalid('Merge', parsed.error);
+        : { kind: 'invalid', message: 'Merge config is invalid' };
     }
     default:
       return { kind: 'none' };
   }
-}
-
-function invalid(
-  label: string,
-  error: z.ZodError,
-): ControlNodeConfigInspection {
-  const issue = error.issues[0];
-  const path = issue?.path.join('.') ?? '';
-  return {
-    kind: 'invalid',
-    message: `${label} config is invalid${path === '' ? '' : ` at ${path}`}: ${issue?.message ?? 'unknown issue'}`,
-  };
 }
