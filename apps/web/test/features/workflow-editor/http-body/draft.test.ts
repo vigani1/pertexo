@@ -210,10 +210,43 @@ describe('HTTP body draft', () => {
         graph,
         node.id,
       );
-      expect(result.value).toBeUndefined();
-      expect(result.error).toBe(
-        'Known part data already fills 10 MB before form headers. Use smaller files or split them into separate uploads.',
+      expect(result).not.toHaveProperty('value');
+      expect(result).toMatchObject({
+        error:
+          'Known part data already fills 10 MB before form headers. Use smaller files or split them into separate uploads.',
+      });
+    }
+  });
+  it('gives every refused form its own reason', () => {
+    const text = newFormPart('text');
+    const refused = [
+      // A part without a name.
+      [{ ...text, name: '' }],
+      // A text part holding a number.
+      [
+        {
+          ...text,
+          name: 'message',
+          source: {
+            id: text.inputKey,
+            destinationKey: text.inputKey,
+            kind: 'literal' as const,
+            literalJson: '42',
+          },
+        },
+      ],
+    ];
+    for (const parts of refused) {
+      const result = validateBodyDraft(
+        { mode: 'multipart', parts },
+        graph,
+        node.id,
       );
+      expect(result).not.toHaveProperty('value');
+      expect(result).toMatchObject({
+        error:
+          'Finish the form parts before saving. Each part needs a name and a matching value.',
+      });
     }
   });
   it('refuses unsupported stored metadata and explicitly clears the form without altering other setup', () => {
