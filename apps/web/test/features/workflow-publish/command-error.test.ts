@@ -79,3 +79,13 @@ it('shows the same definite admission refusal for manual starts and step recover
     'This workflow is already running. Try again shortly.',
   );
 });
+// web-editor-04: only deliberate refusals carry their own words to people.
+it.fails.each([
+  new TypeError('crypto.randomUUID is not a function'),
+  new RangeError('Invalid time value'),
+  new Error('Cannot read properties of undefined (reading "etag")'),
+])('keeps an internal failure ($name) out of the message', (error) => {
+  expect(commandErrorMessage(error, 'publishing')).toBe(
+    'Publishing didn’t work. Try again.',
+  );
+});
