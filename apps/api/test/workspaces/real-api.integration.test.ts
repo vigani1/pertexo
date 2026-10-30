@@ -6,6 +6,7 @@ import { registerAuthorsPublishesWorkflowThroughRealAuthRLS } from './real-api/c
 import { registerStartsReplaysReadsCancelsStreamsDurableWorkflow } from './real-api/cases/run-lifecycle.cases.js';
 import { registerEnforcesCSRFAtomicallyCreatesOwnerMembershipCorrelated } from './real-api/cases/workspace-creation.cases.js';
 import { registerConditionallyRenamesWorkspaceSafelyReconcilesLostAcknowledgements } from './real-api/cases/workspace-lifecycle.cases.js';
+import { registerReactivatesSuspendedWorkspace } from './real-api/cases/workspace-reactivation.cases.js';
 import { registerServesPrivateCurrentUserProjectionBoundedAuthorized } from './real-api/cases/member-projections.cases.js';
 import { registerAcceptsDeliveredInvitationOnceRotatesRecipientSession } from './real-api/cases/invitations.cases.js';
 describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
@@ -16,6 +17,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
   registerConditionallyRenamesWorkspaceSafelyReconcilesLostAcknowledgements(
     caseFixture,
   );
+  registerReactivatesSuspendedWorkspace(caseFixture);
   registerServesPrivateCurrentUserProjectionBoundedAuthorized(caseFixture);
   registerAcceptsDeliveredInvitationOnceRotatesRecipientSession(caseFixture);
 });
