@@ -77,7 +77,7 @@ describe('reviewed browser-safe curated templates', () => {
       );
       expect(
         verifyCuratedTemplateManifest(descriptor.manifest, origin(descriptor)),
-      ).toEqual({ ok: true, descriptor });
+      ).toEqual({ ok: true, descriptor, manifest: descriptor.manifest });
       expect(descriptor.setupTargets.length).toBeLessThanOrEqual(16);
       expect(Object.isFrozen(descriptor.manifest.graph.nodes[0]?.config)).toBe(
         true,

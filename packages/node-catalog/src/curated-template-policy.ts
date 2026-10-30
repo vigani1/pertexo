@@ -2,11 +2,7 @@ import {
   verifyCuratedTemplateManifest,
   type CuratedTemplateSetupTarget,
 } from '@pertexo/templates';
-import {
-  type WorkflowGraph,
-  type WorkflowNode,
-  workflowPortableManifestSchema,
-} from '@pertexo/workflow-model';
+import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import { resolvePlatformNodeDefinition } from './catalog.js';
 
 function nodesIn(graph: WorkflowGraph): readonly WorkflowNode[] {
@@ -21,21 +17,16 @@ export function validateRegisteredCuratedTemplateSetup(
   manifest: unknown,
   origin: unknown,
 ): boolean {
-  try {
-    const verified = verifyCuratedTemplateManifest(manifest, origin);
-    if (!verified.ok) return false;
-    const parsed = workflowPortableManifestSchema.parse(manifest);
-    const nodes = nodesIn(parsed.graph);
-    for (const target of verified.descriptor.setupTargets) {
-      const matching = nodes.filter((node) => node.id === target.nodeId);
-      const node = matching[0];
-      if (matching.length !== 1 || node === undefined) return false;
-      if (!targetSetupIsValid(node, target)) return false;
-    }
-    return true;
-  } catch {
-    return false;
+  const verified = verifyCuratedTemplateManifest(manifest, origin);
+  if (!verified.ok) return false;
+  const nodes = nodesIn(verified.manifest.graph);
+  for (const target of verified.descriptor.setupTargets) {
+    const matching = nodes.filter((node) => node.id === target.nodeId);
+    const node = matching[0];
+    if (matching.length !== 1 || node === undefined) return false;
+    if (!targetSetupIsValid(node, target)) return false;
   }
+  return true;
 }
 
 function targetSetupIsValid(
