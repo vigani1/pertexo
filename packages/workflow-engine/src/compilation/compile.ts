@@ -27,7 +27,7 @@ import {
   compareOrdinal,
   fail,
   freezeExecutable,
-  normalizeError,
+  readUntrusted,
   registerExecutableIdentity,
   validateGlobals,
 } from './foundation.js';
@@ -112,14 +112,22 @@ function compileExecutableGraph(
   };
 }
 
-function buildBoundary(input: {
+/**
+ * Compiles a graph that the publication use case has already validated against
+ * each node's versioned config schema. This module owns executable identity;
+ * config-schema execution remains at the injected registry seam.
+ */
+export function buildWorkflowExecutable(input: {
   readonly graph: unknown;
   readonly catalog: unknown;
 }): CompiledWorkflowExecutable {
-  const catalog = parseNodeCatalog(input.catalog);
-  validateGlobals(BASELINE_RUNTIME_POLICIES, catalog);
-  const graph = parseWorkflowGraphForPublish(input.graph, {
-    definitions: catalog.definitions.map(({ definition }) => definition),
+  const { catalog, graph } = readUntrusted(() => {
+    const catalog = parseNodeCatalog(input.catalog);
+    validateGlobals(BASELINE_RUNTIME_POLICIES, catalog);
+    const graph = parseWorkflowGraphForPublish(input.graph, {
+      definitions: catalog.definitions.map(({ definition }) => definition),
+    });
+    return { catalog, graph };
   });
   if (graph.callable?.result.kind === 'expression') {
     const inspected = inspectExpression(graph.callable.result.expression);
@@ -140,20 +148,4 @@ function buildBoundary(input: {
       checksum: computeWorkflowExecutableChecksum(normalizedEnvelope),
     }),
   );
-}
-
-/**
- * Compiles a graph that the publication use case has already validated against
- * each node's versioned config schema. This module owns executable identity;
- * config-schema execution remains at the injected registry seam.
- */
-export function buildWorkflowExecutable(input: {
-  readonly graph: unknown;
-  readonly catalog: unknown;
-}): CompiledWorkflowExecutable {
-  try {
-    return buildBoundary(input);
-  } catch (error) {
-    normalizeError(error);
-  }
 }

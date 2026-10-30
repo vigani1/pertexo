@@ -7,13 +7,13 @@ import {
   BASELINE_RUNTIME_POLICIES,
   fail,
   globalPolicies,
-  normalizeError,
+  readUntrusted,
 } from './foundation.js';
 
 export function composeExecutableCatalog(
   nodeCatalogInput: unknown,
 ): NodeCatalog {
-  try {
+  return readUntrusted(() => {
     const nodeCatalog = parseNodeCatalog(nodeCatalogInput);
     if (nodeCatalog.policies.some(({ key }) => key.startsWith('engine.')))
       fail('node catalog must not declare engine runtime policies');
@@ -25,7 +25,5 @@ export function composeExecutableCatalog(
         ...globalPolicies(BASELINE_RUNTIME_POLICIES),
       ],
     });
-  } catch (error) {
-    normalizeError(error);
-  }
+  });
 }

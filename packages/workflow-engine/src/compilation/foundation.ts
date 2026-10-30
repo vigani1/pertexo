@@ -231,7 +231,20 @@ export function fail(message: string): never {
   throw new WorkflowEngineError('executable_invalid', message);
 }
 
-export function normalizeError(error: unknown): never {
+/**
+ * Runs a read of caller-supplied input. Whatever that read throws, even a
+ * hostile non-Error value, becomes executable_invalid. Failures outside such
+ * reads are engine defects and keep their own error.
+ */
+export function readUntrusted<T>(read: () => T): T {
+  try {
+    return read();
+  } catch (error) {
+    normalizeError(error);
+  }
+}
+
+function normalizeError(error: unknown): never {
   let isEngineError = false;
   try {
     isEngineError = error instanceof WorkflowEngineError;

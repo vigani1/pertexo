@@ -7,7 +7,7 @@ import {
   type WorkflowExecutable,
   fail,
   freezeExecutable,
-  normalizeError,
+  readUntrusted,
   registerExecutableIdentity,
   validateGlobals,
 } from './foundation.js';
@@ -24,6 +24,13 @@ import {
 } from './validation.js';
 
 export function parseBoundary(input: {
+  readonly envelope: unknown;
+  readonly catalog: unknown;
+}): WorkflowExecutable {
+  return readUntrusted(() => readBoundary(input));
+}
+
+function readBoundary(input: {
   readonly envelope: unknown;
   readonly catalog: unknown;
 }): WorkflowExecutable {
@@ -50,11 +57,7 @@ export function parseWorkflowExecutable(input: {
   readonly envelope: unknown;
   readonly catalog: unknown;
 }): VerifiedWorkflowExecutable {
-  try {
-    return freezeExecutable(parseBoundary(input)) as VerifiedWorkflowExecutable;
-  } catch (error) {
-    normalizeError(error);
-  }
+  return freezeExecutable(parseBoundary(input)) as VerifiedWorkflowExecutable;
 }
 
 /** Parses a stored executable against the served catalog and checks its checksum. */
