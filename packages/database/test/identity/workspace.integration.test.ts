@@ -6,6 +6,7 @@ import { registerSerializesConcurrentRenamesAuthorizesAgainst } from './workspac
 import { registerListsActiveWorkspaceMembersBounded } from './workspace/membership/lists-active-workspace-members-bounded.cases.js';
 import { registerChangesExistingMemberRoleOnce } from './workspace/membership/changes-existing-member-role-once.cases.js';
 import { registerSerializesSameRevisionRoleChanges } from './workspace/membership/serializes-same-revision-role-changes.cases.js';
+import { registerForbidsRoleTransitionsOutsidePolicy } from './workspace/membership/forbids-role-transitions-outside-policy.cases.js';
 import { registerRollsBackRoleSessionAudit } from './workspace/membership/rolls-back-role-session-audit.cases.js';
 import { registerSerializesRoleChangeBehindDeletion } from './workspace/membership/serializes-role-change-behind-deletion.cases.js';
 import { registerSerializesDuplicateWorkspaceSlugsLeaves } from './workspace/commands/serializes-duplicate-workspace-slugs-leaves.cases.js';
@@ -23,6 +24,7 @@ import { registerExpiresSealedAttemptsBeforeReinviting } from './workspace/invit
 import { registerRetiresEvidenceLeftBehindBy } from './workspace/invitations/expiration/retires-evidence-left-behind-by.cases.js';
 import { registerExpiresResolverSelectedInvitationSupersedes } from './workspace/invitations/expiration/expires-resolver-selected-invitation-supersedes.cases.js';
 import { registerAcceptsOnceRotatesSessionsAtomically } from './workspace/invitations/acceptance/accepts-once-rotates-sessions-atomically.cases.js';
+import { registerMarksOtherAccountProofWrong } from './workspace/invitations/acceptance/marks-other-account-proof-wrong.cases.js';
 import { registerRechecksActiveUserStatusUnder } from './workspace/invitations/acceptance/rechecks-active-user-status-under.cases.js';
 import { registerSerializesAcceptanceAgainstRevocationSo } from './workspace/invitations/acceptance/serializes-acceptance-against-revocation-so.cases.js';
 beforeAll(beforeAllFixture1);
@@ -37,6 +39,8 @@ describe('identity/workspace persistence', () => {
   registerChangesExistingMemberRoleOnce();
 
   registerSerializesSameRevisionRoleChanges();
+
+  registerForbidsRoleTransitionsOutsidePolicy();
 
   registerRollsBackRoleSessionAudit();
 
@@ -71,6 +75,8 @@ describe('identity/workspace persistence', () => {
   registerExpiresResolverSelectedInvitationSupersedes();
 
   registerAcceptsOnceRotatesSessionsAtomically();
+
+  registerMarksOtherAccountProofWrong();
 
   registerRechecksActiveUserStatusUnder();
 
