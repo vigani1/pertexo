@@ -51,6 +51,7 @@
     "@nestjs/testing": "11.2.7",
     "@opentelemetry/sdk-node": "0.223.0",
     "@types/pg": "8.23.1",
+    "fast-check": "4.10.2",
     "xml-crypto": "6.4.0"
   }
 }
