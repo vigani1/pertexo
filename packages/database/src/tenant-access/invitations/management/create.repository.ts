@@ -11,10 +11,12 @@ import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
 
-import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
+import {
+  canInviteWorkspaceRole,
+  canonicalEmail,
+} from '@pertexo/workflow-model';
 import { withTenantScopedClient } from '../../transactions.js';
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
-import { normalizeEmail } from '../input.js';
 import type { InvitationStore } from './contract.js';
 import {
   claimInvitationCommand,
@@ -33,7 +35,7 @@ export async function createWorkspaceInvitation(
   const actorUserId = raw.actorUserId;
   const invitationId = raw.invitationId ?? generatePersistedId();
   const deliveryAttemptId = raw.deliveryAttemptId ?? generatePersistedId();
-  const email = normalizeEmail(raw.email);
+  const email = canonicalEmail(raw.email);
   const role = raw.role;
   const tokenDigest = raw.tokenDigest;
   const sealed = raw.sealedToken;

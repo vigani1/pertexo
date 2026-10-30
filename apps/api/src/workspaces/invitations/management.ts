@@ -1,3 +1,4 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 import {
   applicationError,
@@ -90,7 +91,7 @@ export class WorkspaceInvitationManagementUseCase {
       actorUserId: input.actor.actorId,
       invitationId,
       deliveryAttemptId,
-      email: request.email.normalize('NFKC').toLowerCase(),
+      email: canonicalEmail(request.email),
       role: request.role,
       tokenDigest: digestSha256Hex(token.secret, this.crypto),
       sealedToken: await protector.seal(

@@ -54,6 +54,9 @@ export const users = appSchema.table(
       sql`((status)::text = ANY (ARRAY[('active'::character varying)::text, ('suspended'::character varying)::text, ('deleted'::character varying)::text]))`,
     ),
     uniqueIndex('users_email_lower_unique').on(sql`lower((email)::text)`),
+    index('users_email_canonical_idx').on(
+      sql`lower(normalize((email)::text,NFKC))`,
+    ),
   ],
 );
 export const workspaces = appSchema.table(

@@ -1,3 +1,4 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import {
@@ -148,7 +149,7 @@ function primaryEmails(
     if (typeof entry !== 'object' || entry === null) return [];
     const value: unknown = Reflect.get(entry, 'value');
     return typeof value === 'string' && Reflect.get(entry, 'primary') === true
-      ? [{ value: value.toLowerCase(), record: entry }]
+      ? [{ value: canonicalEmail(value), record: entry }]
       : [];
   });
 }

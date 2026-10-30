@@ -98,51 +98,45 @@ describe('durable social sign-in proof', () => {
 
 describe('social sign-in email matching', () => {
   // db-runs-10: one email rule (trim, then NFKC, then lowercase) for every match.
-  it.fails(
-    'matches the provider address to the account after trim, NFKC and lowercase',
-    async () => {
-      const { user, commands, proof } = await setup();
-      const result = await commands.complete({
-        ...proof,
-        identity: {
-          ...proof.identity,
-          email: ` ${fullWidth(user.email.toUpperCase())} `,
-        },
-      });
+  it('matches the provider address to the account after trim, NFKC and lowercase', async () => {
+    const { user, commands, proof } = await setup();
+    const result = await commands.complete({
+      ...proof,
+      identity: {
+        ...proof.identity,
+        email: ` ${fullWidth(user.email.toUpperCase())} `,
+      },
+    });
 
-      expect(result.kind).toBe('signed_in');
-      expect(
-        await db.asAdmin(
-          'select user_id from app.auth_accounts where provider_id=$1 and account_id=$2',
-          [proof.provider, proof.identity.accountId],
-        ),
-      ).toEqual([{ user_id: user.id }]);
-    },
-  );
+    expect(result.kind).toBe('signed_in');
+    expect(
+      await db.asAdmin(
+        'select user_id from app.auth_accounts where provider_id=$1 and account_id=$2',
+        [proof.provider, proof.identity.accountId],
+      ),
+    ).toEqual([{ user_id: user.id }]);
+  });
 
   // db-runs-10: stored identities keep matching after the shared rule lands.
-  it.fails(
-    'keeps an account stored before the shared rule reachable by its canonical address',
-    async () => {
-      const { user, commands, proof } = await setup();
-      await db.asAdmin('update app.users set email=$2 where id=$1', [
-        user.id,
-        fullWidth(user.email),
-      ]);
-      const result = await commands.complete({
-        ...proof,
-        identity: { ...proof.identity, email: user.email },
-      });
+  it('keeps an account stored before the shared rule reachable by its canonical address', async () => {
+    const { user, commands, proof } = await setup();
+    await db.asAdmin('update app.users set email=$2 where id=$1', [
+      user.id,
+      fullWidth(user.email),
+    ]);
+    const result = await commands.complete({
+      ...proof,
+      identity: { ...proof.identity, email: user.email },
+    });
 
-      expect(result.kind).toBe('signed_in');
-      expect(
-        await db.asAdmin(
-          'select user_id from app.auth_accounts where provider_id=$1 and account_id=$2',
-          [proof.provider, proof.identity.accountId],
-        ),
-      ).toEqual([{ user_id: user.id }]);
-    },
-  );
+    expect(result.kind).toBe('signed_in');
+    expect(
+      await db.asAdmin(
+        'select user_id from app.auth_accounts where provider_id=$1 and account_id=$2',
+        [proof.provider, proof.identity.accountId],
+      ),
+    ).toEqual([{ user_id: user.id }]);
+  });
 });
 
 /** The same address in full-width forms, which NFKC folds back to ASCII. */

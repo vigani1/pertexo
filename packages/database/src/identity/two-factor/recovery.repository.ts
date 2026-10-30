@@ -14,6 +14,7 @@ import { insertSystemMail } from '../../platform/mail/repository.js';
 import type { SystemMailInput } from '../../platform/mail/contract.js';
 import { authTwoFactors } from '../../schema/authentication.js';
 import { users } from '../../schema/foundation.js';
+import { canonicalEmailSql } from '../canonical-email.js';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { recordIdentitySecurityFact } from '../facts.repository.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
@@ -41,7 +42,12 @@ export function createTwoFactorRecoveryStore(
               enabled: users.twoFactorEnabled,
             })
             .from(users)
-            .where(sql`lower(${users.email}) = ${email}`)
+            .where(
+              eq(
+                canonicalEmailSql(users.email),
+                canonicalEmailSql(sql.param(email)),
+              ),
+            )
             .for('update');
           if (user === undefined) return { status: 'not_found', email };
           const removed = await db

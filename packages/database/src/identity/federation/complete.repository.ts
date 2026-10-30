@@ -1,3 +1,4 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { authSignInAttempts } from '../../schema/identity/sign-in.js';
@@ -61,7 +62,10 @@ export async function completeSocialSignIn(
   if (account === undefined) {
     if (!(await hasSignInMethodCapacity(client, user.id)))
       return { kind: 'failed' };
-    if (input.identity.email?.toLowerCase() !== user.email.toLowerCase())
+    if (
+      input.identity.email === null ||
+      canonicalEmail(input.identity.email) !== canonicalEmail(user.email)
+    )
       return { kind: 'failed' };
     await db
       .insert(authAccounts)

@@ -1,5 +1,6 @@
 import type { BetterAuthOptions } from 'better-auth';
 import { authenticationProviderSchema } from '@pertexo/contracts';
+import { canonicalEmail } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { verifyProviderIdToken } from 'better-auth/oauth2';
 
@@ -81,8 +82,9 @@ export function betterAuthSocialProviders(
       );
       if (accountId === undefined) return undefined;
       const email = z
-        .email()
-        .max(320)
+        .string()
+        .transform(canonicalEmail)
+        .pipe(z.email().max(320))
         .nullable()
         .safeParse(profile.user.email ?? null);
       if (!email.success) return undefined;
