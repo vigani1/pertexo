@@ -235,8 +235,7 @@ function advanceLoopIterations(
   )) {
     assertLoopInvocations(loop, state.invocations);
     if (loop.terminalStatus !== undefined) continue;
-    const admission = admitLoopIterations(loop, state.remainingIterationBudget);
-    state.remainingIterationBudget = admission.remainingIterationBudget;
+    const admission = admitLoopIterations(loop);
     state.loops.set(loop.controlInvocationKey, admission.loop);
     for (const ordinal of admission.admittedOrdinals) {
       const iterationPath = [

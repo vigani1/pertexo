@@ -51,16 +51,12 @@ export { deriveReadyNodes, parseSchedulerGraph };
 export type { SchedulerGraph, WorkflowObservation };
 export type { ReadyNodeDecision } from '../../src/transition/scheduling/readiness.js';
 export {
-  admitLoopIterations,
   completeLoopIteration,
   createLoopState,
   recordBranchDisposition,
   settleJoin,
 } from '../../src/transition/scheduling/loops.js';
-export type {
-  JoinDecision,
-  LoopAdmission,
-} from '../../src/transition/scheduling/loops.js';
+export type { JoinDecision } from '../../src/transition/scheduling/loops.js';
 export {
   decideRetry,
   ENGINE_RETRY_POLICY,
