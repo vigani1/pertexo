@@ -124,48 +124,45 @@ describe('workspace settings', () => {
     expect(commands[0]).toEqual(commands[1]);
   });
   // web-app-04: the rename resends its held key after any delay.
-  it.fails(
-    'refuses to resend an uncertain rename once its 24-hour receipt window has passed',
-    async () => {
-      const commands: { key: string | null }[] = [];
-      mockServer.use(
-        http.get('http://pertexo.test/v1/users/me', () =>
-          HttpResponse.json(user),
-        ),
-        http.get('http://pertexo.test/v1/workspaces', () =>
-          HttpResponse.json({ items: [workspace], nextCursor: null }),
-        ),
-        http.patch(
-          `http://pertexo.test/v1/workspaces/${workspaceId}`,
-          ({ request }) => {
-            commands.push({ key: request.headers.get('idempotency-key') });
-            return HttpResponse.error();
-          },
-        ),
+  it('refuses to resend an uncertain rename once its 24-hour receipt window has passed', async () => {
+    const commands: { key: string | null }[] = [];
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        HttpResponse.json(user),
+      ),
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({ items: [workspace], nextCursor: null }),
+      ),
+      http.patch(
+        `http://pertexo.test/v1/workspaces/${workspaceId}`,
+        ({ request }) => {
+          commands.push({ key: request.headers.get('idempotency-key') });
+          return HttpResponse.error();
+        },
+      ),
+    );
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      renderApp(`/w/${workspaceId}/settings`);
+      const actor = userEvent.setup();
+      await actor.click(
+        await screen.findByRole('button', { name: 'Rename workspace' }),
       );
-      vi.useFakeTimers({ toFake: ['Date'] });
-      try {
-        renderApp(`/w/${workspaceId}/settings`);
-        const actor = userEvent.setup();
-        await actor.click(
-          await screen.findByRole('button', { name: 'Rename workspace' }),
-        );
-        const input = screen.getByLabelText('Workspace name');
-        await actor.clear(input);
-        await actor.type(input, 'Late name');
-        await actor.click(screen.getByRole('button', { name: 'Save' }));
-        await screen.findByRole('alert');
-        // The server forgets an idempotency key after 24 hours.
-        vi.setSystemTime(Date.now() + 24 * 60 * 60 * 1000 + 60_000);
-        const retry = screen.queryByRole('button', { name: 'Try again' });
-        if (retry !== null) await actor.click(retry);
-        expect(await screen.findByText(/24-hour/u)).toBeVisible();
-        expect(commands).toHaveLength(1);
-      } finally {
-        vi.useRealTimers();
-      }
-    },
-  );
+      const input = screen.getByLabelText('Workspace name');
+      await actor.clear(input);
+      await actor.type(input, 'Late name');
+      await actor.click(screen.getByRole('button', { name: 'Save' }));
+      await screen.findByRole('alert');
+      // The server forgets an idempotency key after 24 hours.
+      vi.setSystemTime(Date.now() + 24 * 60 * 60 * 1000 + 60_000);
+      const retry = screen.queryByRole('button', { name: 'Try again' });
+      if (retry !== null) await actor.click(retry);
+      expect(await screen.findByText(/24-hour/u)).toBeVisible();
+      expect(commands).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('refreshes a revision conflict and requires explicit reapplication with a new key', async () => {
     let authoritative = workspace;
     const commands: { body: unknown; key: string | null }[] = [];

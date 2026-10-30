@@ -6,12 +6,16 @@ import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { workflowKeys } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { commandWebhook, setScheduleEnabled } from '../workflow-settings.api';
 import { workflowSettingsKeys } from '../workflow-settings.queries';
 import {
   settingsCommandError,
-  isUncertainSettingsCommand,
-  unresolvedCommandMessage,
   useCommandAttemptKeys,
 } from './settings-command';
 
@@ -45,8 +49,8 @@ export function useScheduleCommand({
     const scope = `schedule:${triggerId}`;
     commands.resolveObserved(scope, String(observedEnabled));
     const attempt = commands.begin(scope, String(enabled));
-    if (attempt === undefined) {
-      setError(unresolvedCommandMessage);
+    if (attempt.kind === 'refused') {
+      setError(attempt.message);
       return false;
     }
     pendingRef.current = true;
@@ -59,7 +63,7 @@ export function useScheduleCommand({
         workflowId,
         triggerId,
         enabled,
-        idempotencyKey: attempt.key,
+        idempotencyKey: attempt.idempotencyKey,
       });
       commands.complete(scope, String(enabled));
       await queryClient.invalidateQueries({
@@ -71,7 +75,7 @@ export function useScheduleCommand({
       });
       return true;
     } catch (cause) {
-      if (!isUncertainSettingsCommand(cause))
+      if (!isUnconfirmedCommand(cause))
         commands.complete(scope, String(enabled));
       setError(
         settingsCommandError(
@@ -115,8 +119,8 @@ type WebhookCommandAttempt = Readonly<{
   endpointKey: string;
   authentication?: WebhookAuthentication;
   intent: string;
-  idempotencyKey: string;
-}>;
+}> &
+  CommandKey;
 
 export type UncertainWebhookCommand = Readonly<{
   triggerId: string;
@@ -159,8 +163,8 @@ export function useWebhookCommand({
     const scope = `webhook:${triggerId}`;
     const intent = `${command}:${endpointKey.trim()}:${authentication === undefined ? '' : JSON.stringify(authentication)}`;
     const attempt = commands.begin(scope, intent);
-    if (attempt === undefined) {
-      setError({ triggerId, message: unresolvedCommandMessage });
+    if (attempt.kind === 'refused') {
+      setError({ triggerId, message: attempt.message });
       return 'blocked' satisfies WebhookCommandOutcome;
     }
     return dispatch({
@@ -169,7 +173,8 @@ export function useWebhookCommand({
       endpointKey: endpointKey.trim(),
       ...(authentication === undefined ? {} : { authentication }),
       intent,
-      idempotencyKey: attempt.key,
+      idempotencyKey: attempt.idempotencyKey,
+      createdAt: attempt.createdAt,
     });
   }
 
@@ -177,6 +182,10 @@ export function useWebhookCommand({
     const attempt = unresolvedAttemptRef.current;
     if (locked.current || attempt === undefined)
       return 'blocked' satisfies WebhookCommandOutcome;
+    if (!canResend(attempt)) {
+      setError({ triggerId: attempt.triggerId, message: RETRY_WINDOW_ENDED });
+      return 'blocked' satisfies WebhookCommandOutcome;
+    }
     return dispatch(attempt);
   }
 
@@ -231,7 +240,7 @@ export function useWebhookCommand({
         response.replayed ? 'complete' : 'updated'
       ) satisfies WebhookCommandOutcome;
     } catch (cause) {
-      if (isUncertainSettingsCommand(cause)) {
+      if (isUnconfirmedCommand(cause)) {
         unresolvedAttemptRef.current = attempt;
         setUnresolvedAttempt({
           triggerId: attempt.triggerId,

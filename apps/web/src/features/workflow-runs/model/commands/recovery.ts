@@ -2,7 +2,8 @@ import {
   workflowRecoveryUnavailableProblemSchema,
   type WorkflowRecoveryPreview,
 } from '@pertexo/contracts';
-import { isUnconfirmedRunCommand, runAdmissionError } from './run';
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import { runAdmissionError } from './run';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 export type EligibleRecovery = Extract<
@@ -45,7 +46,7 @@ export function recoveryRefusal(reason: Refusal): string {
 export function recoveryError(cause: unknown): string {
   const admissionError = runAdmissionError(cause);
   if (admissionError !== undefined) return admissionError;
-  if (isUnconfirmedRunCommand(cause))
+  if (isUnconfirmedCommand(cause))
     return 'We couldn’t confirm whether the new run started. Retry the same request to check its acceptance; earlier steps will not run again.';
   if (isApiError(cause)) {
     const problem = workflowRecoveryUnavailableProblemSchema.safeParse(

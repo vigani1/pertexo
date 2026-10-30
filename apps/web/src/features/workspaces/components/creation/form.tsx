@@ -6,6 +6,7 @@ import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
+import { newCommandKey } from '@/lib/api/commands/contract';
 import type { WorkspaceCreationCommand } from '../../data/mutations/use-workspace-creation';
 
 type Field = 'name' | 'slug';
@@ -173,7 +174,7 @@ export function WorkspaceCreationForm({
       return;
     }
     const parsed = workspaceCreateRequestSchema.parse({ name, slug });
-    void command.start({ body: parsed, idempotencyKey: crypto.randomUUID() });
+    void command.start({ body: parsed, ...newCommandKey() });
   }
 
   return (

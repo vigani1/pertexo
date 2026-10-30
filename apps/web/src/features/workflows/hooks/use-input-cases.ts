@@ -1,5 +1,5 @@
 import { useCaseOwner } from './use-case-owner';
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import { canResend, isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { useCallback, useState } from 'react';
 import {
   useInfiniteQuery,
@@ -307,9 +307,9 @@ async function sendInputCase(
   if (token === undefined) return false;
   const attempt = retry
     ? retainedRef.current
-    : { command, until: Date.now() + 86_400_000 };
+    : { command, createdAt: Date.now() };
   if (attempt === undefined) return false;
-  if (Date.now() >= attempt.until) {
+  if (!canResend(attempt)) {
     setError(
       'The 24-hour recovery window has ended. Inspect current cases before making another change; this retry can no longer guarantee the original result.',
     );

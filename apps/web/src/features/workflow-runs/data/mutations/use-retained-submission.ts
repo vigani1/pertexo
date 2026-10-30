@@ -1,18 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNow } from '@/lib/hooks/use-now';
 import {
-  isUnconfirmedRunCommand,
-  RUN_COMMAND_WINDOW_MS,
-  RUN_COMMAND_EXPIRED_MESSAGE,
-} from '../../model/commands/run';
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
+import { RUN_COMMAND_EXPIRED_MESSAGE } from '../../model/commands/run';
 import type { ApiClient } from '@/lib/api/client';
 type Attempt<Intent> = Readonly<{
   intent: Intent;
   normalized: string;
-  key: string;
-  createdAt: number;
   owner: symbol;
-}>;
+}> &
+  CommandKey;
 /** A retained command is one deliberate intent, even when its response is lost. */
 export function useRetainedSubmission<Intent>({
   apiClient,
@@ -40,14 +41,9 @@ export function useRetainedSubmission<Intent>({
   const attempt = useRef<Attempt<Intent> | undefined>(undefined);
   const [inFlight, setInFlight] = useState<symbol>();
   const [error, setError] = useState<string>();
-  const [unconfirmed, setUnconfirmed] = useState(false);
-  const [expiresAt, setExpiresAt] = useState<number>();
-  const now = useNow({
-    intervalMs: 1_000,
-    enabled: unconfirmed,
-    untilMs: expiresAt,
-  });
-  const expired = unconfirmed && expiresAt !== undefined && now >= expiresAt;
+  const [held, setHeld] = useState<CommandKey>();
+  const unconfirmed = held !== undefined;
+  const expired = useResendExpired(held);
   useEffect(() => {
     const current = Symbol('run-command');
     owner.current = current;
@@ -68,15 +64,14 @@ export function useRetainedSubmission<Intent>({
     setInFlight(submission);
     setError(undefined);
     attempt.current = command;
-    setExpiresAt(command.createdAt + RUN_COMMAND_WINDOW_MS);
     let accepted: string;
     try {
-      accepted = await send(command.intent, command.key);
+      accepted = await send(command.intent, command.idempotencyKey);
     } catch (cause) {
       if (owner.current !== currentOwner) return false;
-      const uncertain = unconfirmed || isUnconfirmedRunCommand(cause);
+      const uncertain = unconfirmed || isUnconfirmedCommand(cause);
       if (!uncertain) attempt.current = undefined;
-      setUnconfirmed(uncertain);
+      setHeld(uncertain ? command : undefined);
       setError(describeError(cause));
       return false;
     } finally {
@@ -85,7 +80,7 @@ export function useRetainedSubmission<Intent>({
     }
     if (owner.current !== currentOwner) return false;
     attempt.current = undefined;
-    setUnconfirmed(false);
+    setHeld(undefined);
     onAccepted(accepted);
     return true;
   }
@@ -95,8 +90,7 @@ export function useRetainedSubmission<Intent>({
       attempt.current.owner !== owner.current
     ) {
       attempt.current = undefined;
-      setUnconfirmed(false);
-      setExpiresAt(undefined);
+      setHeld(undefined);
     }
     if (active.current !== undefined || attempt.current !== undefined)
       return Promise.resolve(false);
@@ -105,8 +99,7 @@ export function useRetainedSubmission<Intent>({
     return submit({
       intent: structuredClone(intent),
       normalized: normalize(intent),
-      key: crypto.randomUUID(),
-      createdAt: Date.now(),
+      ...newCommandKey(),
       owner: currentOwner,
     });
   }
@@ -120,7 +113,7 @@ export function useRetainedSubmission<Intent>({
       );
       return Promise.resolve(false);
     }
-    if (Date.now() >= current.createdAt + RUN_COMMAND_WINDOW_MS) {
+    if (!canResend(current)) {
       setError(RUN_COMMAND_EXPIRED_MESSAGE);
       return Promise.resolve(false);
     }

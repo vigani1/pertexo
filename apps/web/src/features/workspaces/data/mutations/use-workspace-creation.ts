@@ -23,15 +23,19 @@ import {
 } from '@/features/auth/session/identity.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
+import {
   accessibleWorkspacesQueryOptions,
   workspaceKeys,
 } from '../workspaces.queries';
 import { createWorkspace } from '../workspaces.api';
 
-type WorkspaceCreationAttempt = Readonly<{
-  body: WorkspaceCreateRequest;
-  idempotencyKey: string;
-}>;
+type WorkspaceCreationAttempt = Readonly<{ body: WorkspaceCreateRequest }> &
+  CommandKey;
 
 type State =
   | Readonly<{ kind: 'idle'; error?: CreationError }>
@@ -64,20 +68,30 @@ function creationMutation(apiClient: ApiClient) {
   });
 }
 
+/** Idle, or holding a creation whose retry window has ended. */
+function canStart(state: State): boolean {
+  return (
+    state.kind === 'idle' ||
+    (state.kind === 'uncertain' && !canResend(state.attempt))
+  );
+}
+
 /** What the form reads from the command's state. */
-function describeState(state: State) {
+function describeState(state: State, expired: boolean) {
+  const held = state.kind === 'uncertain' && !expired;
   return {
     created: state.kind === 'created',
-    error:
-      state.kind === 'idle' ||
-      state.kind === 'uncertain' ||
-      state.kind === 'created'
+    error: expired
+      ? { message: RETRY_WINDOW_ENDED }
+      : state.kind === 'idle' ||
+          state.kind === 'uncertain' ||
+          state.kind === 'created'
         ? state.error
         : undefined,
-    locked: state.kind === 'executing' || state.kind === 'uncertain',
+    locked: state.kind === 'executing' || held,
     pending: state.kind === 'executing',
     refreshPending: state.kind === 'created' && state.refreshing,
-    retryAvailable: state.kind === 'uncertain',
+    retryAvailable: held,
   };
 }
 
@@ -98,6 +112,9 @@ export function useWorkspaceCreation({
   const owner = useRef<symbol | undefined>(undefined);
   const inFlight = useRef(false);
   const mutation = useMutation(creationMutation(apiClient));
+  const expired = useResendExpired(
+    state.kind === 'uncertain' ? state.attempt : undefined,
+  );
 
   useEffect(() => {
     const scope = Symbol('workspace-creation');
@@ -174,14 +191,12 @@ export function useWorkspaceCreation({
   }
 
   return {
-    ...describeState(state),
+    ...describeState(state, expired),
     start: (attempt: WorkspaceCreationAttempt) =>
-      stateRef.current.kind === 'idle'
-        ? execute(attempt)
-        : Promise.resolve(false),
+      canStart(stateRef.current) ? execute(attempt) : Promise.resolve(false),
     retry: () => {
       const current = stateRef.current;
-      return current.kind === 'uncertain'
+      return current.kind === 'uncertain' && canResend(current.attempt)
         ? execute(current.attempt)
         : Promise.resolve(false);
     },

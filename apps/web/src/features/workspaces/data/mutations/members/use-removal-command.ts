@@ -1,5 +1,6 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
+import { newCommandKey } from '@/lib/api/commands/contract';
 import { removeWorkspaceMember } from '../../workspaces.api';
 import { useMemberCommand, type MemberCommandAttempt } from './use-command';
 
@@ -47,7 +48,7 @@ export function useMemberRemovalCommand(
         member,
         targetUserId: member.userId,
         expectedRoleRevision: member.roleRevision,
-        idempotencyKey: crypto.randomUUID(),
+        ...newCommandKey(),
       }),
   };
 }

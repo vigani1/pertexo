@@ -1,4 +1,10 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
@@ -71,7 +77,9 @@ export function useWorkflowLifecycleCommand({
   workflowId: string;
 }>) {
   const queryClient = useQueryClient();
-  const commandRef = useRef<WorkflowLifecycleCommand | undefined>(undefined);
+  const commandRef = useRef<
+    (WorkflowLifecycleCommand & CommandKey) | undefined
+  >(undefined);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<
     Readonly<{ message: string; exactRetry: boolean }> | undefined
@@ -82,12 +90,17 @@ export function useWorkflowLifecycleCommand({
     expectedLifecycleRevision: number,
   ): Promise<boolean> {
     if (pending) return false;
+    if (commandRef.current !== undefined && !canResend(commandRef.current)) {
+      commandRef.current = undefined;
+      setError({ message: RETRY_WINDOW_ENDED, exactRetry: false });
+      return false;
+    }
     const exactCommand =
       commandRef.current ??
       (commandRef.current = {
         command,
         expectedLifecycleRevision,
-        idempotencyKey: crypto.randomUUID(),
+        ...newCommandKey(),
       });
     setPending(true);
     setError(undefined);

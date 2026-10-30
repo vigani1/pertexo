@@ -34,7 +34,7 @@ export function useCaseOwner({
   const ownerRef = useRef<symbol | undefined>(undefined);
   const controllerRef = useRef<AbortController | undefined>(undefined);
   const retainedRef = useRef<
-    Readonly<{ command: InputCaseCommand; until: number }> | undefined
+    Readonly<{ command: InputCaseCommand; createdAt: number }> | undefined
   >(undefined);
   const previousWrite = useRef(canWrite);
   const retire = useCallback(() => {

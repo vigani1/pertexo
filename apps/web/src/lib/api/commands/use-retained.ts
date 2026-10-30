@@ -2,14 +2,16 @@ import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { describeCommandError } from '../error-copy';
-import { COMMAND_RETRY_WINDOW_MS, isUnconfirmedCommand } from './contract';
-import { useNow } from '../../hooks/use-now';
-type Command<Input> = Readonly<{
-  body: Input;
-  key: string;
-  createdAt: number;
-  uncertain: boolean;
-}>;
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from './contract';
+import { useResendExpired } from './use-resend-window';
+type Command<Input> = Readonly<{ body: Input; uncertain: boolean }> &
+  CommandKey;
 /** Exact commands survive ambiguous responses only within the server receipt window. */
 export function useRetainedCommand<Input, Output>(
   execute: (body: Input, key: string) => Promise<Output>,
@@ -18,26 +20,22 @@ export function useRetainedCommand<Input, Output>(
 ) {
   const intent = useRef<Command<Input> | undefined>(undefined);
   const busy = useRef(false);
-  const [uncertainSince, setUncertainSince] = useState<number>();
-  const uncertain = uncertainSince !== undefined;
-  const until =
-    uncertainSince === undefined
-      ? undefined
-      : uncertainSince + COMMAND_RETRY_WINDOW_MS;
-  const now = useNow({ intervalMs: 1000, enabled: uncertain, untilMs: until });
-  const expired = until !== undefined && now >= until;
+  const [held, setHeld] = useState<CommandKey>();
+  const uncertain = held !== undefined;
+  const expired = useResendExpired(held);
   const mutation = useMutation({
-    mutationFn: (command: Command<Input>) => execute(command.body, command.key),
+    mutationFn: (command: Command<Input>) =>
+      execute(command.body, command.idempotencyKey),
     retry: false,
     onSuccess: async (result, command) => {
       intent.current = undefined;
-      setUncertainSince(undefined);
+      setHeld(undefined);
       await onSuccess?.(result, command.body);
     },
     onError: (error, command) => {
       if (command.uncertain || isUnconfirmedCommand(error)) {
         intent.current = { ...command, uncertain: true };
-        setUncertainSince(command.createdAt);
+        setHeld(command);
       } else intent.current = undefined;
     },
   });
@@ -47,13 +45,12 @@ export function useRetainedCommand<Input, Output>(
     if (
       retained !== undefined &&
       (canonicalJson(retained.body) !== canonicalJson(body) ||
-        Date.now() >= retained.createdAt + COMMAND_RETRY_WINDOW_MS)
+        !canResend(retained))
     )
       return;
     const command = retained ?? {
       body: structuredClone(body),
-      key: crypto.randomUUID(),
-      createdAt: Date.now(),
+      ...newCommandKey(),
       uncertain: false,
     };
     intent.current = command;
@@ -67,11 +64,7 @@ export function useRetainedCommand<Input, Output>(
     }
   }
   function errorMessage(): string | undefined {
-    if (expired)
-      return (
-        options.expiredMessage ??
-        'This request’s 24-hour retry window has ended. Check its result before starting again.'
-      );
+    if (expired) return options.expiredMessage ?? RETRY_WINDOW_ENDED;
     if (uncertain)
       return 'We couldn’t confirm the result. Retry the same action before changing anything.';
     if (mutation.isError)

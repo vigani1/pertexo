@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
+import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import {
   clearFailureNotificationPolicy,
   setFailureNotificationPolicy,
@@ -8,8 +9,6 @@ import {
 import { workflowSettingsKeys } from '../workflow-settings.queries';
 import {
   settingsCommandError,
-  isUncertainSettingsCommand,
-  unresolvedCommandMessage,
   useCommandAttemptKeys,
 } from './settings-command';
 
@@ -41,8 +40,8 @@ export function useFailureNotificationCommands({
     const scope = `policy:${workflowId}`;
     const intent = clear ? 'clear' : `destination:${destinationId}`;
     const attempt = commands.begin(scope, intent);
-    if (attempt === undefined) {
-      setError(unresolvedCommandMessage);
+    if (attempt.kind === 'refused') {
+      setError(attempt.message);
       return false;
     }
     pendingRef.current = true;
@@ -54,7 +53,7 @@ export function useFailureNotificationCommands({
           apiClient,
           workspaceId,
           workflowId,
-          attempt.key,
+          attempt.idempotencyKey,
         );
       else
         await setFailureNotificationPolicy({
@@ -62,12 +61,12 @@ export function useFailureNotificationCommands({
           workspaceId,
           workflowId,
           destinationId,
-          idempotencyKey: attempt.key,
+          idempotencyKey: attempt.idempotencyKey,
         });
       commands.complete(scope, intent);
       return true;
     } catch (cause) {
-      if (!isUncertainSettingsCommand(cause)) commands.complete(scope, intent);
+      if (!isUnconfirmedCommand(cause)) commands.complete(scope, intent);
       setError(
         settingsCommandError(
           cause,

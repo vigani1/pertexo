@@ -1,4 +1,11 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import type { WorkspaceLifecycleChangeResponse } from '@pertexo/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -15,10 +22,7 @@ type LifecycleIntent =
   | Readonly<{ command: 'request-deletion'; reason: string }>
   | Readonly<{ command: 'restore' }>;
 
-type LifecycleAttempt = Readonly<{
-  intent: LifecycleIntent;
-  idempotencyKey: string;
-}>;
+type LifecycleAttempt = Readonly<{ intent: LifecycleIntent }> & CommandKey;
 
 /**
  * Deletion and restore requests. An unconfirmed request keeps its exact
@@ -39,7 +43,10 @@ export function useWorkspaceLifecycleCommand({
 }>) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
-  const [retryAvailable, setRetryAvailable] = useState(false);
+  // The unconfirmed attempt a retry resends, in state so its window shows.
+  const [held, setHeld] = useState<LifecycleAttempt>();
+  const expired = useResendExpired(held);
+  const retryAvailable = held !== undefined && !expired;
   const attempt = useRef<LifecycleAttempt | undefined>(undefined);
   const owner = useRef<symbol | undefined>(undefined);
   const activeSubmission = useRef<symbol | undefined>(undefined);
@@ -86,7 +93,7 @@ export function useWorkspaceLifecycleCommand({
     const submission = Symbol('workspace-lifecycle-submission');
     activeSubmission.current = submission;
     setError(undefined);
-    setRetryAvailable(false);
+    setHeld(undefined);
     attempt.current = current;
     try {
       await mutation.mutateAsync(current);
@@ -95,7 +102,7 @@ export function useWorkspaceLifecycleCommand({
       if (owner.current !== submissionOwner) return false;
       const uncertain = isUnconfirmedCommand(cause);
       if (!uncertain) attempt.current = undefined;
-      setRetryAvailable(uncertain);
+      setHeld(uncertain ? current : undefined);
       setError(lifecycleCommandError(cause, current.intent.command));
       return false;
     } finally {
@@ -106,23 +113,25 @@ export function useWorkspaceLifecycleCommand({
 
   function start(intent: LifecycleIntent) {
     if (mutation.isPending || retryAvailable) return Promise.resolve(false);
-    return submit({ intent, idempotencyKey: crypto.randomUUID() });
+    return submit({ intent, ...newCommandKey() });
   }
 
   function retry() {
     const current = attempt.current;
-    return current === undefined ? Promise.resolve(false) : submit(current);
+    return current === undefined || !canResend(current)
+      ? Promise.resolve(false)
+      : submit(current);
   }
 
   function dismissUncertain() {
     attempt.current = undefined;
-    setRetryAvailable(false);
+    setHeld(undefined);
     setError(undefined);
   }
 
   return {
     dismissUncertain,
-    error,
+    error: expired ? RETRY_WINDOW_ENDED : error,
     pending: mutation.isPending,
     retry,
     retryAvailable,

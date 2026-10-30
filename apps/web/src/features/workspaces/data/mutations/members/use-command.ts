@@ -1,4 +1,10 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import type { WorkspaceMember } from '@pertexo/contracts';
 import {
   useMutation,
@@ -18,8 +24,8 @@ export type MemberCommandAttempt = Readonly<{
   member: WorkspaceMember;
   targetUserId: string;
   expectedRoleRevision: number;
-  idempotencyKey: string;
-}>;
+}> &
+  CommandKey;
 
 /** A sentence about one member; `freshSignIn` offers signing in again. */
 export type MemberCommandFeedback = Readonly<{
@@ -44,6 +50,14 @@ type CommandState<Attempt> =
       phase: 'request' | 'reconciliation';
     }>
   | Readonly<{ kind: 'uncertain'; attempt: Attempt; message: string }>;
+
+/** Idle, or holding a command whose retry window has ended. */
+function canStart(state: CommandState<MemberCommandAttempt>): boolean {
+  return (
+    state.kind === 'idle' ||
+    (state.kind === 'uncertain' && !canResend(state.attempt))
+  );
+}
 
 /** The sentences a member command uses about its target. */
 export type MemberCommandCopy = Readonly<{
@@ -93,6 +107,9 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
   const inFlight = useRef(false);
   const [state, setState] = useState<CommandState<Attempt>>({ kind: 'idle' });
   const stateRef = useRef<CommandState<Attempt>>(state);
+  const expired = useResendExpired(
+    state.kind === 'uncertain' ? state.attempt : undefined,
+  );
   const membersKey = workspaceMemberKeys.list(
     input.actorUserId,
     input.workspaceId,
@@ -159,21 +176,24 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
       state.kind === 'executing' || state.kind === 'uncertain'
         ? state.attempt
         : undefined,
-    error: state.kind === 'uncertain' ? state.message : undefined,
+    error: expired
+      ? RETRY_WINDOW_ENDED
+      : state.kind === 'uncertain'
+        ? state.message
+        : undefined,
     feedback: state.kind === 'idle' ? state.feedback : undefined,
-    locked: state.kind !== 'idle',
+    locked:
+      state.kind === 'executing' || (state.kind === 'uncertain' && !expired),
     pending: state.kind === 'executing',
-    retryAvailable: state.kind === 'uncertain',
+    retryAvailable: state.kind === 'uncertain' && !expired,
     /** Sends a new command; nothing starts while another is unresolved. */
     start: (attempt: Attempt) =>
-      stateRef.current.kind === 'idle'
-        ? execute(attempt)
-        : Promise.resolve(false),
+      canStart(stateRef.current) ? execute(attempt) : Promise.resolve(false),
     retry: () => {
       const current = stateRef.current;
-      return current.kind !== 'uncertain'
-        ? Promise.resolve(false)
-        : execute(current.attempt);
+      return current.kind === 'uncertain' && canResend(current.attempt)
+        ? execute(current.attempt)
+        : Promise.resolve(false);
     },
     /** Gives up on an unconfirmed command and reloads the real members. */
     dismiss: () => {

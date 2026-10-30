@@ -1,4 +1,10 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
@@ -18,7 +24,7 @@ export function useAutoPauseCommand(
 ) {
   const queryClient = useQueryClient();
   const attempt = useRef<
-    Readonly<{ command: AutoPauseCommand; key: string }> | undefined
+    (Readonly<{ command: AutoPauseCommand }> & CommandKey) | undefined
   >(undefined);
   const sending = useRef(false);
   const [pending, setPending] = useState(false);
@@ -34,7 +40,13 @@ export function useAutoPauseCommand(
       JSON.stringify(current.command) !== JSON.stringify(command)
     )
       return false;
-    const request = current ?? { command, key: crypto.randomUUID() };
+    if (current !== undefined && !canResend(current)) {
+      attempt.current = undefined;
+      setUnconfirmed(false);
+      setProblem(RETRY_WINDOW_ENDED);
+      return false;
+    }
+    const request = current ?? { command, ...newCommandKey() };
     attempt.current = request;
     sending.current = true;
     setPending(true);
@@ -46,7 +58,7 @@ export function useAutoPauseCommand(
         workspaceId,
         workflowId,
         command: request.command,
-        key: request.key,
+        key: request.idempotencyKey,
       });
       attempt.current = undefined;
       setUnconfirmed(false);
