@@ -103,8 +103,11 @@ describe('Redis rate-limit runtime protocol ownership', () => {
   it('destroys a real socket after a stalled QUIT without reconnecting', async () => {
     const fixture = await startProtocolFixture();
     fixtures.push(fixture);
+    // One timeout bounds both the consume round trip and the stalled QUIT.
+    // A second leaves a loaded runner room for the real TCP round trip while
+    // the fixture, which never answers QUIT, still forces the close timeout.
     const runtime = new RedisRateLimitRuntime(fixture.url, {
-      operationTimeoutMs: 100,
+      operationTimeoutMs: 1_000,
     });
 
     await expect(runtime.consume(decision)).resolves.toEqual({ allowed: true });
