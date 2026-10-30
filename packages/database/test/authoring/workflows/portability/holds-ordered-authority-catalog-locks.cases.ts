@@ -65,7 +65,7 @@ export function registerHoldsOrderedAuthorityCatalogLocks(): void {
         writer = owner.query(sql, queryValues);
         await waitForPostgresLock(application);
         await hold.release();
-        await operation;
+        await expect(operation).resolves.toHaveProperty('workflowId');
         await writer;
         await owner.query('rollback');
       } catch (error) {
