@@ -699,8 +699,9 @@ drift from graph/history/form state.
 - One save in flight per editor. Debounce 1 s after a completed edit transaction
   (live-applied inspector edits land here too, so a busy session stays well
   inside the draft-save limit); coalesce drag updates into one history/save
-  transaction on gesture end. Manual Save flushes and awaits acknowledgment. Test with fake
-  clocks; tune debounce from interaction evidence, not throughout components.
+  transaction on gesture end. Manual Save flushes and awaits acknowledgment.
+  Test with fake clocks; tune debounce from interaction evidence, not throughout
+  components.
 - Undo/redo changes the working graph, not the last server ETag. Bound history
   (initially 100 coherent transactions) and profile representative large graphs;
   do not clone the entire graph on each pointer movement.
@@ -861,10 +862,11 @@ Do not create a stream per node or a global event bus.
   snapshot. Subscribe from cursor zero on first mount; reconnect from the
   in-memory cursor. Avoid claiming gap-free snapshot/event merging without a
   cursor-bearing contract.
-- Backoff with jitter and a cap on reconnect delay/attempt burst; respect auth,
-  forbidden and rate-limit responses. Show reconnecting/degraded state. On
-  stream loss use bounded visible-view polling; stop redundant polling once
-  healthy.
+- `lib/api/stream-reconnect.ts` owns the stop rules and backoff for every live
+  stream; features word its reasons. Backoff has jitter and a cap on reconnect
+  delay/attempt burst, and respects auth, forbidden and rate-limit responses.
+  Show reconnecting/degraded state. On stream loss use bounded visible-view
+  polling; stop redundant polling once healthy.
 - A pending or accepted Workflow Call also refreshes its visible parent snapshot
   every two seconds: acceptance actions update lineage between parent transition
   events. Query owns that snapshot; polling stops for terminal parents and is
@@ -1577,13 +1579,15 @@ browser-safe model for this generic JSON rule; ESLint still rejects other model
 exports and all backend/feature imports there. Forms and workspace variables
 share the same algorithm instead of carrying another sorted-JSON implementation.
 
-The pure `lib/api/commands/contract.ts` owns the shared command retry window and
-uncertain-outcome classification. The run-command model re-exports its existing
-names; neither pure command consumers nor shared transport depend on React
-hooks. `lib/api/workspace-scope.ts` names the authenticated
-client/user/workspace tuple used by both file uploads and variable mappings.
-Generic inspector props call it `workspaceScope`; file-only body controls keep
-their upload vocabulary.
+The pure `lib/api/commands/contract.ts` owns the shared command retry window
+(`newCommandKey`, `canResend`, `RETRY_WINDOW_ENDED`) and uncertain-outcome
+classification, and `use-resend-window.ts` re-renders when a held command's
+window ends. Every hook that keeps a key for an exact retry uses them; a hook
+keeps only its own failure mapping. Neither pure command consumers nor shared
+transport depend on React hooks. `lib/api/workspace-scope.ts` names the
+authenticated client/user/workspace tuple used by both file uploads and variable
+mappings. Generic inspector props call it `workspaceScope`; file-only body
+controls keep their upload vocabulary.
 
 F35’s webhook Test panel lives in workflow-publish and composes into the generic
 node test panel through children. Its bounded temporary listener uses the
