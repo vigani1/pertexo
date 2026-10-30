@@ -696,9 +696,10 @@ failed and uncertain outcome. It keeps the acknowledged graph/tag, current edit
 generation and in-flight snapshot identity. No independent `isDirty` flags that
 drift from graph/history/form state.
 
-- One save in flight per editor. Initially debounce 800 ms after a completed
-  edit transaction; coalesce drag updates into one history/save transaction on
-  gesture end. Manual Save flushes and awaits acknowledgment. Test with fake
+- One save in flight per editor. Debounce 1 s after a completed edit transaction
+  (live-applied inspector edits land here too, so a busy session stays well
+  inside the draft-save limit); coalesce drag updates into one history/save
+  transaction on gesture end. Manual Save flushes and awaits acknowledgment. Test with fake
   clocks; tune debounce from interaction evidence, not throughout components.
 - Undo/redo changes the working graph, not the last server ETag. Bound history
   (initially 100 coherent transactions) and profile representative large graphs;
