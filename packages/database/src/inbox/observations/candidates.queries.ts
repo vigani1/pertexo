@@ -1,6 +1,6 @@
 import { entitlementInEffect } from '../../runs/queries/entitlement-effect.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { and, eq, notExists, sql } from 'drizzle-orm';
+import { and, eq, notExists, sql, type SQLWrapper } from 'drizzle-orm';
 import { union } from 'drizzle-orm/pg-core';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -35,6 +35,8 @@ export type Candidate = Readonly<{ workspace_id: string; subject_id: string }> &
       }
     | { notice_kind: Exclude<Kind, 'limit_approaching'>; capacity_limit: null }
   );
+type CandidateSource = ReturnType<typeof mentionCandidates>;
+
 function workflowCandidates(db: Pick<NodePgDatabase, 'select'>) {
   const paused = db
     .select({
@@ -77,14 +79,18 @@ function workflowCandidates(db: Pick<NodePgDatabase, 'select'>) {
         eq(pendingRunTasks.status, 'pending'),
       ),
     );
-  return union(paused, connection, review, approval);
+  return [paused, connection, review, approval];
 }
+/** The workspace itself as a notice's subject, named apart from its workspace column. */
+const workspaceSubject = (workspaceId: SQLWrapper) =>
+  sql<string>`${workspaceId}`.as('subject_id');
+
 function capacityCandidates(db: Pick<NodePgDatabase, 'select'>) {
   const full = db
     .select({
       workspace_id: capacity.workspaceId,
       notice_kind: kind('limit_reached'),
-      subject_id: capacity.workspaceId,
+      subject_id: workspaceSubject(capacity.workspaceId),
       capacity_limit: noLimit,
     })
     .from(capacity)
@@ -95,7 +101,7 @@ function capacityCandidates(db: Pick<NodePgDatabase, 'select'>) {
     .select({
       workspace_id: counter.workspaceId,
       notice_kind: kind('limit_reached'),
-      subject_id: counter.workspaceId,
+      subject_id: workspaceSubject(counter.workspaceId),
       capacity_limit: noLimit,
     })
     .from(counter)
@@ -115,11 +121,11 @@ function capacityCandidates(db: Pick<NodePgDatabase, 'select'>) {
     .select({
       workspace_id: warning.workspace_id,
       notice_kind: kind('limit_approaching'),
-      subject_id: warning.workspace_id,
+      subject_id: workspaceSubject(warning.workspace_id),
       capacity_limit: warning.capacity_limit,
     })
     .from(warning);
-  return union(full, queued, approaching);
+  return [full, queued, approaching];
 }
 function mentionCandidates(db: Pick<NodePgDatabase, 'select'>) {
   return db
@@ -155,6 +161,41 @@ function mentionCandidates(db: Pick<NodePgDatabase, 'select'>) {
       ),
     );
 }
+const ATTENTION_PAGE_SIZE = 100;
+
+/**
+ * One source's next page. A source is keyed by workspace and id, so this walks its
+ * index and stops; the union then only sorts a page per source, not every subject.
+ */
+function sourcePage(
+  db: Pick<NodePgDatabase, 'select'>,
+  after: Candidate | undefined,
+) {
+  return (candidates: CandidateSource) => {
+    const source = candidates.as('source');
+    const key = sql`coalesce(${source.capacity_limit},'')`;
+    return db
+      .select({
+        workspace_id: source.workspace_id,
+        notice_kind: source.notice_kind,
+        subject_id: source.subject_id,
+        capacity_limit: source.capacity_limit,
+      })
+      .from(source)
+      .innerJoin(workspaces, eq(workspaces.id, source.workspace_id))
+      .where(
+        and(
+          eq(workspaces.status, 'active'),
+          after === undefined
+            ? undefined
+            : sql`${source.workspace_id}>=${after.workspace_id}::uuid and (${source.workspace_id},${source.notice_kind},${source.subject_id},${key})>(${after.workspace_id}::uuid,${after.notice_kind}::varchar,${after.subject_id}::uuid,${after.capacity_limit ?? ''}::varchar)`,
+        ),
+      )
+      .orderBy(source.workspace_id, source.notice_kind, source.subject_id, key)
+      .limit(ATTENTION_PAGE_SIZE);
+  };
+}
+
 export async function readAttentionCandidates(
   pool: Pool,
   after: Candidate | undefined,
@@ -174,13 +215,17 @@ export async function readAttentionCandidates(
     .where(
       sql`${thread.noticeKind}<>'workflow_failure' and ${thread.active} and (${thread.noticeKind}<>'workflow_mention' or ${thread.latestOccurredAt}<=clock_timestamp()-${NOTICE_WINDOW_SQL})`,
     );
-  const subjects = union(
-    workflowCandidates(db),
-    mentionCandidates(db),
-    capacityCandidates(db),
+  const page = sourcePage(db, after);
+  // Every source selects the same columns; only the table behind them differs.
+  const sources = [
+    ...workflowCandidates(db),
+    ...capacityCandidates(db),
     existing,
+  ] as unknown as readonly CandidateSource[];
+  const subjects = union(
+    page(mentionCandidates(db)),
+    ...(sources.map(page) as [ReturnType<typeof page>]),
   ).as('subject');
-  const key = sql`coalesce(${subjects.capacity_limit},'')`;
   const found = await db
     .select({
       workspace_id: subjects.workspace_id,
@@ -189,22 +234,13 @@ export async function readAttentionCandidates(
       capacity_limit: subjects.capacity_limit,
     })
     .from(subjects)
-    .innerJoin(workspaces, eq(workspaces.id, subjects.workspace_id))
-    .where(
-      and(
-        eq(workspaces.status, 'active'),
-        after === undefined
-          ? undefined
-          : sql`(${subjects.workspace_id},${subjects.notice_kind},${subjects.subject_id},${key})>(${after.workspace_id}::uuid,${after.notice_kind}::varchar,${after.subject_id}::uuid,${after.capacity_limit ?? ''}::varchar)`,
-      ),
-    )
     .orderBy(
       subjects.workspace_id,
       subjects.notice_kind,
       subjects.subject_id,
-      key,
+      sql`coalesce(${subjects.capacity_limit},'')`,
     )
-    .limit(100)
+    .limit(ATTENTION_PAGE_SIZE)
     .catch(rethrowQueryFailure);
   // The union fixes the capacity key for limit_approaching and null for all other kinds.
   return found as Candidate[];
