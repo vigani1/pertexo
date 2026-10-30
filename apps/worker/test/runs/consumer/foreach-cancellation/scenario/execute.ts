@@ -23,7 +23,7 @@ export function createForEachScenario(options: ForEachScenarioContext) {
     stopWorkers,
     eraseRedisAndRestart,
   } = options;
-  const runFixture = async (mode: ForEachScenarioMode) => {
+  const verifyScenario = async (mode: ForEachScenarioMode) => {
     let structuredKind:
       Parameters<typeof acceptStructuredForEachRun>[0] | undefined;
     if (mode === 'condition_complete') {
@@ -147,5 +147,5 @@ export function createForEachScenario(options: ForEachScenarioContext) {
       eraseRedisAndRestart,
     });
   };
-  return runFixture;
+  return verifyScenario;
 }

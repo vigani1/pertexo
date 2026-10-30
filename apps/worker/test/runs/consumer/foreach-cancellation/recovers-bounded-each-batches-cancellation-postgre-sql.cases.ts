@@ -215,7 +215,9 @@ export function registerRecoversBoundedEachBatchesCancellationPostgreSQL(): void
         workers = await startWorkers();
       };
 
-      const runFixture = createForEachScenario({
+      // Each scenario runs a workflow through fresh workers and asserts its
+      // checkpoint, batches and final run state against PostgreSQL.
+      const verifyScenario = createForEachScenario({
         ownedProducer,
         ownedCoordinatorQueue,
         ownedAttemptQueue,
@@ -224,14 +226,14 @@ export function registerRecoversBoundedEachBatchesCancellationPostgreSQL(): void
       });
 
       await ownedProducer.waitUntilReady(5_000);
-      await runFixture('serial_complete');
-      await runFixture('condition_complete');
-      await runFixture('switch_complete');
-      await runFixture('nested_complete');
-      await runFixture('complete');
-      await runFixture('cancel_between_batches');
-      await runFixture('cancel_running');
-      await runFixture('deadline_running');
+      await verifyScenario('serial_complete');
+      await verifyScenario('condition_complete');
+      await verifyScenario('switch_complete');
+      await verifyScenario('nested_complete');
+      await verifyScenario('complete');
+      await verifyScenario('cancel_between_batches');
+      await verifyScenario('cancel_running');
+      await verifyScenario('deadline_running');
     } finally {
       const errors: unknown[] = [];
       const activeWorkers = workers;
