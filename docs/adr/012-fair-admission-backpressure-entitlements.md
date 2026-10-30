@@ -64,8 +64,8 @@ V1 endpoint classes and one-minute defaults are:
 
 | Endpoint class | Dimensions and limits | Backend failure |
 | --- | --- | --- |
-| `identity_start` | client address 10; normalized origin 30 | fail closed |
-| `identity_callback` | client address 30; normalized origin 60 | fail closed |
+| `identity_start` | client address 10; account named in the request 10 | fail closed |
+| `identity_callback` | client address 30 | fail closed |
 | `authenticated_read` | actor 600; workspace 1,200 when scoped | fail open |
 | `ordinary_mutation` | actor 120; workspace 300 when scoped | fail closed |
 | `workflow_compile` | actor 30; workspace 60 | fail closed |
@@ -85,8 +85,9 @@ Fresh idempotency keys do not change limiter keys.
 The API enforces request limits after authentication/authorization guards but
 before controller work, so actor identity is authoritative and expensive KMS,
 provider, compilation, count, and queue operations have not begun. Identity
-routes use the effective client address and normalized `Origin`; an absent or
-invalid origin maps to a fixed sentinel rather than bypassing the dimension.
+routes use the effective client address and, where the request names one, the
+account. They used a per-origin counter until 2026-10-31, but every browser shares
+one origin, so a few addresses could lock everyone out of signing in.
 Forwarded addresses are accepted only when the application is configured to
 trust exactly one ingress hop, and deployed networking must restrict that hop to
 the load balancer. Direct deployments trust no forwarded headers. This ingress

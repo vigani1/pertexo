@@ -28,7 +28,7 @@ export type RateLimitEndpointClass =
 export type RateLimitFailureMode = 'open' | 'closed';
 export type RateLimitDimensionKind =
   | 'client_address'
-  | 'origin'
+  | 'account'
   | 'actor'
   | 'workspace'
   | 'connection'
@@ -37,7 +37,8 @@ export type RateLimitDimensionKind =
 
 export type RateLimitSubject = Readonly<{
   clientAddress?: string;
-  origin?: string;
+  /** The address a sign-in or reset names, in lowercase. */
+  account?: string;
   actorId?: string;
   workspaceId?: string;
   connectionId?: string;
@@ -132,14 +133,16 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
     failureMode: 'closed',
     dimensions: [
       { kind: 'client_address', subject: 'clientAddress', limit: 10 },
-      { kind: 'origin', subject: 'origin', limit: 30 },
+      // Not per site: every browser shares one origin, so a few addresses could
+      // lock everyone out. Per account, many addresses can't guess one password
+      // or flood one mailbox, and the worst they cost is that one account's sign-in.
+      { kind: 'account', subject: 'account', limit: 10, optional: true },
     ],
   },
   identity_callback: {
     failureMode: 'closed',
     dimensions: [
       { kind: 'client_address', subject: 'clientAddress', limit: 30 },
-      { kind: 'origin', subject: 'origin', limit: 60 },
     ],
   },
   data_table_export: {
@@ -237,7 +240,7 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
 
 const SUBJECT_LABELS: Readonly<Record<keyof RateLimitSubject, string>> = {
   clientAddress: 'client address',
-  origin: 'origin',
+  account: 'account',
   actorId: 'actor',
   workspaceId: 'workspace',
   connectionId: 'connection',
