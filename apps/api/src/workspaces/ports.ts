@@ -112,7 +112,7 @@ export type WorkspaceRenamePersistenceResult = Omit<
 > &
   Readonly<{ workspace: WorkspacePersistenceRecord }>;
 
-/** The receipt of a deletion or restore request, applied when submitted. */
+/** The receipt of a lifecycle request, applied when submitted. */
 export type WorkspaceLifecycleOperationRecord = Pick<
   Awaited<
     ReturnType<IdentityWorkspaceDatabase['requestWorkspaceLifecycleOperation']>

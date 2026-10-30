@@ -1,0 +1,2 @@
+ALTER TABLE "app"."workspace_lifecycle_operations" DROP CONSTRAINT "workspace_lifecycle_operations_command_valid";--> statement-breakpoint
+ALTER TABLE "app"."workspace_lifecycle_operations" ADD CONSTRAINT "workspace_lifecycle_operations_command_valid" CHECK (((command_type)::text = ANY (ARRAY[('deletion_requested'::character varying)::text, ('deletion_restored'::character varying)::text, ('reactivated'::character varying)::text])));

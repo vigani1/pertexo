@@ -41,7 +41,8 @@ recorded purpose, owner, retention period, and legal approval before collection.
 
 Workspace deletion has a 30-day recovery window before purge. The request
 revokes the workspace's sessions and API tokens; a restore brings the workspace
-back `suspended` and revives neither, and an operator lifts the suspension. Purge
+back `suspended` and revives neither, and the workspace owner lifts the suspension
+with Reactivate, which leaves tokens revoked and triggers and connections off. Purge
 removes serving data explicitly across PostgreSQL, objects, encrypted secrets,
 indexes, and external subscriptions. Backup copies are beyond serving use and become
 ineligible for recovery through normal encrypted rotation at 35 days. This

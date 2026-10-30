@@ -109,6 +109,7 @@ const PHRASES: Readonly<Record<string, Phrase>> = {
     tone: 'canceled',
   },
   'workspace.deletion_restored': { words: 'kept the workspace' },
+  'workspace.reactivated': { words: 'reactivated the workspace' },
   'workspace.governance_changed': {
     words: 'changed publishing approval or audit retention',
   },

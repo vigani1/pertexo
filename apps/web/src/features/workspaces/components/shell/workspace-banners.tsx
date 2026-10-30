@@ -43,9 +43,23 @@ export function WorkspaceBanners({
     );
   if (workspace.status === 'suspended')
     banners.push(
-      <Notice key="suspended" tone="warning">
+      <Notice
+        key="suspended"
+        tone="warning"
+        action={
+          canManage ? (
+            <Link
+              to="/w/$workspaceId/settings"
+              params={{ workspaceId: workspace.id }}
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
+              Reactivate
+            </Link>
+          ) : undefined
+        }
+      >
         This workspace is suspended. You can look around, but runs and changes
-        are paused.
+        are paused.{canManage ? '' : ' An owner can reactivate it.'}
       </Notice>,
     );
   if (banners.length === 0) return null;

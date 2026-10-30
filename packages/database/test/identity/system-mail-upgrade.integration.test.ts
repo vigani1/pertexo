@@ -127,6 +127,7 @@ it('preserves mail identities through the rename and old messages through subseq
       '0055_task_timeout_output.sql',
       '0056_unsent_public_form_uploads.sql',
       '0057_users_canonical_email_index.sql',
+      '0058_workspace_reactivation.sql',
     ]);
     const after = await catalog('app.system_mail_deliveries');
     expect(after.relation).toEqual(before.relation);

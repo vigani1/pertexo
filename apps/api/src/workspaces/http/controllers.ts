@@ -281,6 +281,30 @@ export class WorkspaceController {
       ...traceFields(traceId),
     });
   }
+
+  @Post(':workspaceId/reactivate')
+  @RateLimit('ordinary_mutation')
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    CsrfProtectionGuard,
+    WorkspaceManageGuard,
+  )
+  public async reactivate(
+    @Req() request: IdentityWorkspaceRequest,
+    @Param() params: unknown,
+  ) {
+    const { workspaceId } = workspaceIdParamSchema.parse(params);
+    const actor = lifecycleActorFrom(request, workspaceId);
+    return this.lifecycle.reactivate({
+      actor,
+      ...guardAuthorization(request),
+      idempotencyKey: requestIdempotencyKey(request.headers),
+      routeWorkspaceId: workspaceId,
+      requestId: actor.requestId,
+      ...traceFields(actor.traceId),
+    });
+  }
 }
 
 function guardAuthorization(

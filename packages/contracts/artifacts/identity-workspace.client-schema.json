@@ -1380,7 +1380,8 @@
           "type": "string",
           "enum": [
             "deletion_requested",
-            "deletion_restored"
+            "deletion_restored",
+            "reactivated"
           ]
         },
         "occurredAt": {

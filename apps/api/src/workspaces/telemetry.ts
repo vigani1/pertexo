@@ -19,6 +19,7 @@ export const IDENTITY_WORKSPACE_OPERATION = Object.freeze({
   workspaceOwnershipTransfer: 'workspace.ownership_transfer',
   workspaceRequestDeletion: 'workspace.request_deletion',
   workspaceRestore: 'workspace.restore',
+  workspaceReactivate: 'workspace.reactivate',
 } as const);
 
 export const IDENTITY_WORKSPACE_METRIC_NAME = Object.freeze({

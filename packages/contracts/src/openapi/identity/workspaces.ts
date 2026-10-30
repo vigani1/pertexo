@@ -243,6 +243,24 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
         },
       },
     },
+    '/v1/workspaces/{workspaceId}/reactivate': {
+      post: {
+        operationId: 'reactivateWorkspace',
+        security: [{ cookieSession: [] }],
+        parameters: lifecycleParameters(),
+        responses: {
+          '200': jsonResponse(
+            'Workspace reactivated',
+            'WorkspaceLifecycleChangeResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '409': responseReference('Conflict'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
     '/v1/workspaces/{workspaceId}/members': {
       get: {
         operationId: 'listWorkspaceMembers',

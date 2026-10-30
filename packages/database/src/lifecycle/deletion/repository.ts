@@ -188,9 +188,38 @@ async function applyDeletionSideEffects(
   );
 }
 
+type WorkspaceLifecycleState = Readonly<{
+  status: string;
+  restorable: boolean;
+}>;
+
+const COMMANDS: Readonly<
+  Record<
+    WorkspaceLifecycleCommandType,
+    Readonly<{
+      auditAction: string;
+      appliesTo: (current: WorkspaceLifecycleState) => boolean;
+    }>
+  >
+> = {
+  deletion_requested: {
+    auditAction: 'workspace.deletion_requested',
+    appliesTo: ({ status }) => status === 'active' || status === 'suspended',
+  },
+  deletion_restored: {
+    auditAction: 'workspace.deletion_restored',
+    appliesTo: ({ status, restorable }) =>
+      status === 'pending_deletion' && restorable,
+  },
+  reactivated: {
+    auditAction: 'workspace.reactivated',
+    appliesTo: ({ status }) => status === 'suspended',
+  },
+};
+
 /**
- * Requests deletion of a workspace or restores it, in the caller's
- * workspace-scoped transaction. Deletion takes effect at once and the
+ * Requests deletion of a workspace, restores it or lifts its suspension, in the
+ * caller's workspace-scoped transaction. Deletion takes effect at once and the
  * workspace is purged after the recovery period; a repeated request with the
  * same idempotency key returns its first receipt.
  */
@@ -236,11 +265,7 @@ export async function changeWorkspaceLifecycle(
   const prior = await readExistingOperation(client, change);
   if (prior !== undefined) return prior;
 
-  if (
-    change.commandType === 'deletion_requested'
-      ? current.status !== 'active' && current.status !== 'suspended'
-      : current.status !== 'pending_deletion' || !current.restorable
-  )
+  if (!COMMANDS[change.commandType].appliesTo(current))
     throw new WorkspaceLifecycleConflictError(
       'invalid_state',
       'Workspace lifecycle transition is not valid',
@@ -265,8 +290,8 @@ export async function changeWorkspaceLifecycle(
       change.workspaceId,
       change.actorUserId,
     );
-  } else {
-    // A restore revives nothing by itself (ADR 013): an operator lifts the suspension.
+  } else if (change.commandType === 'deletion_restored') {
+    // A restore revives nothing by itself (ADR 013): the owner lifts the suspension.
     await db
       .update(workspaces)
       .set({
@@ -279,16 +304,20 @@ export async function changeWorkspaceLifecycle(
       })
       .where(eq(workspaces.id, change.workspaceId))
       .catch(rethrowQueryFailure);
+  } else {
+    // Only the status moves: what deletion stopped stays off until re-enabled.
+    await db
+      .update(workspaces)
+      .set({ status: 'active', updatedAt: sql`clock_timestamp()` })
+      .where(eq(workspaces.id, change.workspaceId))
+      .catch(rethrowQueryFailure);
   }
 
   await appendAuditFact(client, {
     id: change.operationId,
     workspaceId: change.workspaceId,
     actorId: change.actorUserId,
-    action:
-      change.commandType === 'deletion_requested'
-        ? 'workspace.deletion_requested'
-        : 'workspace.deletion_restored',
+    action: COMMANDS[change.commandType].auditAction,
     targetType: 'workspace',
     targetId: change.workspaceId,
   });

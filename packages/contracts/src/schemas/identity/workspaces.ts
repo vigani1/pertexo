@@ -334,11 +334,11 @@ export const accessibleWorkspacesResponseSchema = z
     nextCursor: workspaceIdentifierSchema.nullable(),
   })
   .strict();
-/** Deletion and restore finish inside the request; a retry with the same key replays it. */
+/** Lifecycle changes finish inside the request; a retry with the same key replays it. */
 export const workspaceLifecycleChangeResponseSchema = z
   .object({
     workspaceId: workspaceIdentifierSchema,
-    change: z.enum(['deletion_requested', 'deletion_restored']),
+    change: z.enum(['deletion_requested', 'deletion_restored', 'reactivated']),
     occurredAt: z.iso.datetime(),
   })
   .strict();

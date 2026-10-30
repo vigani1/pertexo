@@ -125,58 +125,51 @@ export function registerReactivatesSuspendedWorkspace(
     });
     expect(runs.statusCode, runs.payload).toBe(200);
   });
+  it('reactivates through a fresh sign-in, refuses a missing CSRF token and replays a retry', async () => {
+    const { workspaceId } = await deleteAndRestore('Reactivation Proof');
+    const cookies = await login();
+    const url = `/v1/workspaces/${workspaceId}/reactivate`;
+    const key = `reactivate-${randomUUID()}`;
 
-  // audit-1030 follow-up 1: nothing can lift a restore's `suspended` today.
-  it.fails(
-    'reactivates through a fresh sign-in, refuses a missing CSRF token and replays a retry',
-    async () => {
-      const { workspaceId } = await deleteAndRestore('Reactivation Proof');
-      const cookies = await login();
-      const url = `/v1/workspaces/${workspaceId}/reactivate`;
-      const key = `reactivate-${randomUUID()}`;
+    const missingCsrf = await caseFixture.application.inject({
+      method: 'POST',
+      url,
+      headers: { cookie: cookies.cookieHeader, 'idempotency-key': key },
+    });
+    expectProblem(missingCsrf, 403, 'auth.forbidden');
+    const unauthenticated = await caseFixture.application.inject({
+      method: 'POST',
+      url,
+      headers: { 'idempotency-key': key },
+    });
+    expectProblem(unauthenticated, 401, 'auth.unauthenticated');
+    expect(await workspaceStatus(workspaceId)).toBe('suspended');
 
-      const missingCsrf = await caseFixture.application.inject({
-        method: 'POST',
-        url,
-        headers: { cookie: cookies.cookieHeader, 'idempotency-key': key },
-      });
-      expectProblem(missingCsrf, 403, 'auth.forbidden');
-      const unauthenticated = await caseFixture.application.inject({
-        method: 'POST',
-        url,
-        headers: { 'idempotency-key': key },
-      });
-      expectProblem(unauthenticated, 401, 'auth.unauthenticated');
-      expect(await workspaceStatus(workspaceId)).toBe('suspended');
+    const reactivated = await reactivate(workspaceId, cookies, key);
+    expect(reactivated.statusCode, reactivated.payload).toBe(200);
+    expect(reactivated.json()).toEqual({
+      workspaceId,
+      change: 'reactivated',
+      occurredAt: expect.any(String) as string,
+    });
+    expect(await workspaceStatus(workspaceId)).toBe('active');
+    expect(await reactivationAudits(workspaceId)).toHaveLength(1);
 
-      const reactivated = await reactivate(workspaceId, cookies, key);
-      expect(reactivated.statusCode, reactivated.payload).toBe(200);
-      expect(reactivated.json()).toEqual({
-        workspaceId,
-        change: 'reactivated',
-        occurredAt: expect.any(String) as string,
-      });
-      expect(await workspaceStatus(workspaceId)).toBe('active');
-      expect(await reactivationAudits(workspaceId)).toHaveLength(1);
+    const retry = await reactivate(workspaceId, cookies, key);
+    expect(retry.statusCode, retry.payload).toBe(200);
+    expect(retry.json()).toEqual(reactivated.json());
+    expect(await reactivationAudits(workspaceId)).toHaveLength(1);
 
-      const retry = await reactivate(workspaceId, cookies, key);
-      expect(retry.statusCode, retry.payload).toBe(200);
-      expect(retry.json()).toEqual(reactivated.json());
-      expect(await reactivationAudits(workspaceId)).toHaveLength(1);
-
-      // Reactivating signs nobody out, and the workspace takes work again.
-      const created = await caseFixture.application.inject({
-        method: 'POST',
-        url: `/v1/workspaces/${workspaceId}/workflows`,
-        headers: mutationHeaders(cookies),
-        payload: { name: 'Allowed once active' },
-      });
-      expect(created.statusCode, created.payload).toBe(201);
-    },
-  );
-
-  // audit-1030 follow-up 1: the route doesn't exist yet, so this reads 404.
-  it.fails('refuses every role but owner', async () => {
+    // Reactivating signs nobody out, and the workspace takes work again.
+    const created = await caseFixture.application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/workflows`,
+      headers: mutationHeaders(cookies),
+      payload: { name: 'Allowed once active' },
+    });
+    expect(created.statusCode, created.payload).toBe(201);
+  });
+  it('refuses every role but owner', async () => {
     const { workspaceId } = await deleteAndRestore('Reactivation Roles');
     for (const role of ['admin', 'builder', 'operator', 'viewer']) {
       const userId = randomUUID();
@@ -201,9 +194,7 @@ export function registerReactivatesSuspendedWorkspace(
     expect(await workspaceStatus(workspaceId)).toBe('suspended');
     expect(await reactivationAudits(workspaceId)).toEqual([]);
   });
-
-  // audit-1030 follow-up 1: the route doesn't exist yet, so this reads 404.
-  it.fails('refuses a workspace that is not suspended', async () => {
+  it('refuses a workspace that is not suspended', async () => {
     const creator = await ownerSession();
     const active = await createWorkspace(creator, 'Reactivation Active');
     expectProblem(await reactivate(active, creator), 409, 'workspace.conflict');

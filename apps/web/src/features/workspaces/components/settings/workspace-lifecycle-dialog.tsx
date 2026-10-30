@@ -8,22 +8,28 @@ import {
 } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 
-/** Restoring cancels the deletion; the dialog says what stays off afterwards. */
-export function WorkspaceRestoreDialog({
-  workspaceName,
+/** Confirms a change that brings the workspace back and says what stays off. */
+export function WorkspaceLifecycleDialog({
+  title,
+  description,
+  action,
+  pendingLabel,
   pending,
   error,
   retryAvailable,
   onDismissUncertain,
-  onRestore,
+  onConfirm,
   onRetry,
 }: Readonly<{
-  workspaceName: string;
+  title: string;
+  description: string;
+  action: string;
+  pendingLabel: string;
   pending: boolean;
   error: string | undefined;
   retryAvailable: boolean;
   onDismissUncertain: () => void;
-  onRestore: () => Promise<boolean>;
+  onConfirm: () => Promise<boolean>;
   onRetry: () => Promise<boolean>;
 }>) {
   const [open, setOpen] = useState(false);
@@ -42,14 +48,14 @@ export function WorkspaceRestoreDialog({
         onOpenChange: setOpen,
         locked: pending || retryAvailable,
       }}
-      title={`Restore ${workspaceName}?`}
-      description="This cancels the deletion. The workspace comes back suspended: people can sign in and look around, but triggers and integrations stay off until their connections are reconnected."
+      title={title}
+      description={description}
       trigger={
         <Button type="button" variant="default">
-          Restore workspace
+          {action}
         </Button>
       }
-      onSubmit={confirmationRetry?.onRetry ?? (() => send(onRestore))}
+      onSubmit={confirmationRetry?.onRetry ?? (() => send(onConfirm))}
       submitDisabled={pending}
       footer={
         <ConfirmationFooter>
@@ -76,11 +82,9 @@ export function WorkspaceRestoreDialog({
             type="submit"
             variant="primary"
             pending={pending}
-            pendingLabel="Restoring…"
+            pendingLabel={pendingLabel}
           >
-            {confirmationRetry === undefined
-              ? 'Restore workspace'
-              : 'Try again'}
+            {confirmationRetry === undefined ? action : 'Try again'}
           </ProgressButton>
         </ConfirmationFooter>
       }

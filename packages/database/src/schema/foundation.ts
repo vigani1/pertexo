@@ -685,7 +685,7 @@ export const workspaceLifecycleOperations = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'workspace_lifecycle_operations_command_valid',
-      sql`((command_type)::text = ANY (ARRAY[('deletion_requested'::character varying)::text, ('deletion_restored'::character varying)::text]))`,
+      sql`((command_type)::text = ANY (ARRAY[('deletion_requested'::character varying)::text, ('deletion_restored'::character varying)::text, ('reactivated'::character varying)::text]))`,
     ),
     check(
       'workspace_lifecycle_operations_idempotency_hash_valid',

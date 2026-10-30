@@ -69,7 +69,8 @@ Workspace deletion follows this exact lifecycle:
    new runs, queues idempotent connection/provider revocation, cancels queued
    runs, and durably cancels active runs with a bounded drain period.
 3. Restore before `purge_after` returns the workspace to `suspended`; connections
-   and triggers remain disabled until explicitly re-enabled.
+   and triggers remain disabled until explicitly re-enabled. The workspace owner
+   lifts the suspension with Reactivate, which changes only the status.
 4. At the deadline, `purging` performs resumable explicit deletion of tenant
    rows, object bytes and metadata, encrypted secret versions, indexes, and
    external subscriptions. Trigger endpoints are already disabled; purge removes

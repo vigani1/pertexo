@@ -27,7 +27,9 @@ export function workspace() {
 
 function operation(
   commandType:
-    'deletion_requested' | 'deletion_restored' = 'deletion_requested',
+    | 'deletion_requested'
+    | 'deletion_restored'
+    | 'reactivated' = 'deletion_requested',
 ) {
   return {
     id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -65,8 +67,10 @@ export function persistence() {
     requestWorkspaceLifecycleOperation: vi
       .fn()
       .mockImplementation(
-        (input: { commandType: 'deletion_requested' | 'deletion_restored' }) =>
-          Promise.resolve(operation(input.commandType)),
+        (input: {
+          commandType:
+            'deletion_requested' | 'deletion_restored' | 'reactivated';
+        }) => Promise.resolve(operation(input.commandType)),
       ),
   };
 }
