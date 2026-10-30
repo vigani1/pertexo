@@ -208,5 +208,5 @@ function announcement(row: UploadRow | undefined): string {
   if (row === undefined) return '';
   return row.phase === 'ready'
     ? `${row.name} attached.`
-    : `${row.name} not attached. ${row.error ?? ''}`;
+    : `${row.name} not attached. ${row.phase === 'failed' ? row.error : ''}`;
 }

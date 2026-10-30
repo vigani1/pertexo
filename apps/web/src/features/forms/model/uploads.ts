@@ -1,20 +1,29 @@
 import { isApiError } from '@/lib/api/error';
 import { retryAfterSeconds } from '@/lib/api/error-copy';
 
-/** A file's way through the upload: check, reserve, send, verify, then ready. */
-export type UploadPhase =
-  'checking' | 'reserving' | 'sending' | 'verifying' | 'ready' | 'failed';
+/**
+ * A file's way through the upload: check, reserve, send, verify, then ready.
+ * Only a ready file has an ID, and only a failed one a reason.
+ */
+export type UploadState = Readonly<
+  | { phase: 'checking' | 'reserving' | 'sending' | 'verifying' }
+  | { phase: 'ready'; uploadId: string }
+  | {
+      phase: 'failed';
+      error: string;
+      /** Whether the same file may simply be tried again. */
+      retryable: boolean;
+    }
+>;
 
 export type UploadRow = Readonly<{
   key: string;
   name: string;
   size: number;
-  phase: UploadPhase;
-  uploadId?: string | undefined;
-  error?: string | undefined;
-  /** Whether the same file may simply be tried again. */
-  retryable: boolean;
-}>;
+}> &
+  UploadState;
+
+export type UploadPhase = UploadState['phase'];
 
 export function phaseLabel(phase: UploadPhase): string {
   switch (phase) {
@@ -57,6 +66,12 @@ export function uploadFailure(
     return {
       message: error.problem?.detail ?? 'This file can’t be attached here.',
       retryable: false,
+    };
+  if (code === 'form.upload_busy')
+    return {
+      message:
+        error.problem?.detail ?? 'Too many uploads right now. Retry soon.',
+      retryable: true,
     };
   if (code === 'form.changed')
     return {

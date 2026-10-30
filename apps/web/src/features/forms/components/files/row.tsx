@@ -47,12 +47,12 @@ export function FileRow({
             {formatByteLength(row.size)}
           </span>
           {' · '}
-          {failed ? row.error : phaseLabel(row.phase)}
+          {'error' in row ? row.error : phaseLabel(row.phase)}
         </p>
       </div>
       <UploadRing phase={row.phase} />
       <div className="flex shrink-0 items-center">
-        {failed && row.retryable ? (
+        {row.phase === 'failed' && row.retryable ? (
           <Button
             type="button"
             variant="ghost"

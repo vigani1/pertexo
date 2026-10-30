@@ -46,12 +46,15 @@ export const formsProblems = [
     ),
   ),
   errorRegistration(FormUploadLimitError, (error) =>
-    applicationError('form.upload_limit', {
-      safeDetail:
-        error.reason === 'response'
-          ? 'This response has started too many uploads. Reload the form to start again.'
-          : 'This form is receiving a lot of files right now. Try again in a few minutes.',
-    }),
+    error.reason === 'response'
+      ? applicationError('form.upload_limit', {
+          safeDetail:
+            'This response has started too many uploads. Reload the form to start again.',
+        })
+      : applicationError('form.upload_busy', {
+          safeDetail:
+            'This form is receiving a lot of files right now. Try again in a few minutes.',
+        }),
   ),
 ];
 

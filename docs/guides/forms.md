@@ -106,7 +106,8 @@ removed by the ordinary cleanup: after an hour for a public link and after a
 day for members and Request input. A sent response's files stay for as long as
 its run keeps its data. Public-link files that nobody has sent yet share 100 MiB
 per workspace, so a stranger can't fill the workspace's storage; past that,
-new public uploads get "Try again in a few minutes" (`form.upload_limit`).
+new public uploads get "Try again in a few minutes" (`form.upload_busy`) and a
+Retry button.
 Members' uploads aren't affected. Regenerating or turning off the public link
 also stops unfinished uploads from being finalized. Files are not
 virus-checked; treat them as untrusted, as for any [file](files.md).
