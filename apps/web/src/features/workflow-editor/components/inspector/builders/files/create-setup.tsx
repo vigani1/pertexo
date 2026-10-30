@@ -15,6 +15,7 @@ import { ColumnOrder } from './column-order';
 import { FormatTiles, type FileFormat } from './format-tiles';
 import { SheetGrid } from './sheet-grid';
 import { SheetTabs } from './sheet-tabs';
+import { FILE_LIMIT_COPY } from '../../../../model/inspector/file-limit-copy';
 
 const CREATE_FORMATS = ['json', 'csv', 'xlsx', 'text'] as const;
 
@@ -42,8 +43,8 @@ export function CreateFileSetup({
         />
         <FieldDescription>
           {pages
-            ? 'Stream pages into a file up to 10 MB, including headers and quoting.'
-            : 'Create a file up to 1 MB from inline data. Choose From pages for larger CSV, Excel or JSON files.'}
+            ? `Stream pages into a file up to ${FILE_LIMIT_COPY.file}, including headers and quoting.`
+            : `Create a file up to ${FILE_LIMIT_COPY.inline} from inline data. Choose From pages for larger CSV, Excel or JSON files.`}
         </FieldDescription>
       </Field>
       {format === 'text' ? null : <DataSource config={config} form={form} />}

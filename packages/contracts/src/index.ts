@@ -363,6 +363,7 @@ export {
   type WorkflowCommentList,
   type WorkflowCommentDetail,
   type WorkflowCommentCommandResult,
+  workflowCommentStepIdSchema,
 } from './schemas/workflows/collaboration/comments.js';
 export {
   workflowPresenceQuerySchema,

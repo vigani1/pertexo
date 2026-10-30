@@ -79,6 +79,11 @@ export function presenceQuery(scope: CollaborationScope, tabId: string) {
     retry: false,
   });
 }
+const STEP_COUNT_THREADS = 100;
+const STEP_COUNT_PAGES = Math.ceil(
+  STEP_COUNT_THREADS / COLLABORATION_LIMITS.page,
+);
+
 /** Open discussions per step, read from the first pages of open threads. */
 export function stepDiscussionsQuery(scope: CollaborationScope) {
   return queryOptions({
@@ -86,9 +91,9 @@ export function stepDiscussionsQuery(scope: CollaborationScope) {
     queryFn: async ({ signal }) => {
       const counts = new Map<string, number>();
       let after: string | null = null;
-      // Five pages reach the hundred most recent open threads; a canvas
+      // These pages reach the hundred most recent open threads; a canvas
       // with more open discussions than that has bigger problems.
-      for (let page = 0; page < 5; page += 1) {
+      for (let page = 0; page < STEP_COUNT_PAGES; page += 1) {
         const threads = await readThreads(
           scope,
           { status: 'open', scope: 'all' },

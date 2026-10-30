@@ -21,6 +21,7 @@ import {
   paginationModes,
   paginationValue,
 } from '../../../model/inspector/http-pagination/draft';
+import { FILE_LIMIT_COPY } from '../../../model/inspector/file-limit-copy';
 
 export function HttpPaginationSetup({
   schema,
@@ -200,8 +201,8 @@ function PaginationFields({
         />
         <FieldDescription>
           {value.outputMode === 'pages'
-            ? 'Up to 10 MB / 100,000 items in 64 KB JSON-array files (at most 1,000 records each, 256 files). Map pages to For Each; Read file each page as inline data. pageCount counts stored files; fetchedPageCount counts API requests.'
-            : 'Results are in items. The combined output must fit 1 MB.'}{' '}
+            ? `Up to ${FILE_LIMIT_COPY.file} / ${FILE_LIMIT_COPY.records} items in ${FILE_LIMIT_COPY.pageBytes} JSON-array files (at most ${FILE_LIMIT_COPY.pageRecords} records each, ${FILE_LIMIT_COPY.pages} files). Map pages to For Each; Read file each page as inline data. pageCount counts stored files; fetchedPageCount counts API requests.`
+            : `Results are in items. The combined output must fit ${FILE_LIMIT_COPY.inline}.`}{' '}
           Each provider page must fit the inline limit. A retry starts again
           from the first page.
         </FieldDescription>

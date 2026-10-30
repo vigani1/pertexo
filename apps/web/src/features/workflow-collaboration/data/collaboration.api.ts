@@ -1,4 +1,5 @@
 import {
+  COLLABORATION_LIMITS,
   workflowCommentListSchema,
   workflowCommentDetailSchema,
   workflowCommentCommandResultSchema,
@@ -27,7 +28,7 @@ export function readThreads(
   const query = new URLSearchParams({
     status: filter.status,
     scope: filter.scope,
-    limit: '20',
+    limit: String(COLLABORATION_LIMITS.page),
   });
   if (filter.stepId !== undefined) query.set('stepId', filter.stepId);
   if (after !== null) query.set('after', after);
@@ -53,7 +54,9 @@ export function readDiscussion({
   anchor: string | undefined;
   signal: AbortSignal;
 }>) {
-  const query = new URLSearchParams({ limit: '20' });
+  const query = new URLSearchParams({
+    limit: String(COLLABORATION_LIMITS.page),
+  });
   if (before !== null) query.set('before', before);
   else if (anchor !== undefined) query.set('anchor', anchor);
   return scope.apiClient.request({

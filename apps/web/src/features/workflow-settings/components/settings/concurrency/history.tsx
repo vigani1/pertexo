@@ -1,4 +1,7 @@
-import type { WorkflowConcurrencySettings } from '@pertexo/contracts';
+import {
+  WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX,
+  type WorkflowConcurrencySettings,
+} from '@pertexo/contracts';
 import { Status } from '@/components/ui/status';
 import { formatDateTime } from '@/lib/format/time';
 const labels = {
@@ -44,9 +47,10 @@ export function SkipHistory({
           ))}
         </ul>
       )}
-      {items.length === 20 ? (
+      {items.length === WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX ? (
         <p className="text-xs text-muted-foreground">
-          Showing the latest 20. Usage includes all retained skips.
+          Showing the latest {WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX}. Usage
+          includes all retained skips.
         </p>
       ) : null}
     </section>

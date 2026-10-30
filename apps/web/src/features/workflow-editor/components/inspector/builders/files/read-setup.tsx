@@ -15,12 +15,13 @@ import { SchemaField } from '../../fields/schema';
 import { FormatTiles, type FileFormat } from './format-tiles';
 import { SheetGrid } from './sheet-grid';
 import { SheetTabs } from './sheet-tabs';
+import { FILE_LIMIT_COPY } from '../../../../model/inspector/file-limit-copy';
 
 const READ_FORMATS = ['json', 'csv', 'xlsx'] as const;
 const FORMAT_GUIDANCE: Readonly<Record<string, string>> = {
-  json: 'JSON saved as UTF-8. For files over 1 MB, use pages; split files over 10 MB.',
-  csv: 'CSV saved as UTF-8. For files over 1 MB, use pages; split files over 10 MB.',
-  xlsx: 'An Excel workbook (.xlsx): one sheet, up to 1 MB inline or 10 MB as pages. Save .xls or macro-enabled .xlsm files as .xlsx first.',
+  json: `JSON saved as UTF-8. For files over ${FILE_LIMIT_COPY.inline}, use pages; split files over ${FILE_LIMIT_COPY.file}.`,
+  csv: `CSV saved as UTF-8. For files over ${FILE_LIMIT_COPY.inline}, use pages; split files over ${FILE_LIMIT_COPY.file}.`,
+  xlsx: `An Excel workbook (.xlsx): one sheet, up to ${FILE_LIMIT_COPY.inline} inline or ${FILE_LIMIT_COPY.file} as pages. Save .xls or macro-enabled .xlsm files as .xlsx first.`,
 };
 
 export function ReadFileSetup({
@@ -128,8 +129,8 @@ function OutputMode({
       />
       <FieldDescription>
         {config.outputMode === 'pages'
-          ? 'For files up to 10 MB or 100,000 records. The data arrives as pages of up to 1,000 records: loop over pages with For each, then read each page.'
-          : `For files up to 1 MB, roughly 5,000 short rows. ${config.format === 'json' ? 'JSON gives its value.' : 'Each row becomes one item, keyed by the header.'}`}
+          ? `For files up to ${FILE_LIMIT_COPY.file} or ${FILE_LIMIT_COPY.records} records. The data arrives as pages of up to ${FILE_LIMIT_COPY.pageRecords} records: loop over pages with For each, then read each page.`
+          : `For files up to ${FILE_LIMIT_COPY.inline}, roughly 5,000 short rows. ${config.format === 'json' ? 'JSON gives its value.' : 'Each row becomes one item, keyed by the header.'}`}
       </FieldDescription>
     </Field>
   );

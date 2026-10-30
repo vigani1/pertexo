@@ -5,6 +5,11 @@ import { isStorageText } from '@pertexo/workflow-model';
 
 const id = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(2147483647);
+export const workflowCommentStepIdSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .refine(isStorageText);
 export const workflowCommentBodySchema = z
   .object({
     body: z
@@ -25,13 +30,7 @@ export const workflowCommentBodySchema = z
   .strict();
 export const workflowCommentCreateSchema = workflowCommentBodySchema
   .extend({
-    stepId: z
-      .string()
-      .min(1)
-      .max(128)
-      .refine(isStorageText)
-      .nullable()
-      .default(null),
+    stepId: workflowCommentStepIdSchema.nullable().default(null),
   })
   .strict();
 export const workflowCommentEditSchema = workflowCommentBodySchema
@@ -51,10 +50,10 @@ export const workflowCommentListQuerySchema = z
       .int()
       .min(1)
       .max(COLLABORATION_LIMITS.page)
-      .default(20),
+      .default(COLLABORATION_LIMITS.page),
     status: z.enum(['all', 'open', 'resolved']).default('open'),
     scope: z.enum(['all', 'workflow', 'step']).default('all'),
-    stepId: z.string().min(1).max(128).refine(isStorageText).optional(),
+    stepId: workflowCommentStepIdSchema.optional(),
   })
   .strict()
   .refine(
