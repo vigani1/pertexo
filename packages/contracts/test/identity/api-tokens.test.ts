@@ -86,8 +86,7 @@ describe('API token contracts', () => {
     ).toBe(true);
   });
 
-  // nodes-16: status and revokedAt are independent fields today.
-  it.fails.each([
+  it.each([
     ['revoked', null],
     ['active', revokedAt],
     ['expired', revokedAt],

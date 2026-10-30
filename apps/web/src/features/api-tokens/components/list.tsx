@@ -168,7 +168,6 @@ function TokenEnd({
         {`${nowMs >= end ? 'Expired' : 'Expires'} ${formatRelativeTime(token.expiresAt, nowMs)}`}
       </time>
     );
-  if (token.revokedAt === null) return <span>No longer usable</span>;
   return (
     <time dateTime={token.revokedAt} title={formatDateTime(token.revokedAt)}>
       {`Revoked ${formatRelativeTime(token.revokedAt, nowMs)}`}

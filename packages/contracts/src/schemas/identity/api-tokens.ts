@@ -42,25 +42,32 @@ export const apiTokenCreateRequestSchema = z
       .default(API_TOKEN_DEFAULT_LIFETIME_DAYS),
   })
   .strict();
-const apiTokenStatusSchema = z.enum([
-  'active',
-  'expired',
-  'revoked',
-  'membership_changed',
+const apiTokenMetadataFields = {
+  id: z.uuid(),
+  workspaceId: z.uuid(),
+  name: z.string().min(1).max(128),
+  scopes,
+  createdAt: z.iso.datetime(),
+  expiresAt: z.iso.datetime(),
+  lastUsedAt: z.iso.datetime().nullable(),
+};
+// A token has a revocation time exactly when it is revoked.
+export const apiTokenMetadataSchema = z.discriminatedUnion('status', [
+  z
+    .object({
+      ...apiTokenMetadataFields,
+      status: z.literal('revoked'),
+      revokedAt: z.iso.datetime(),
+    })
+    .strict(),
+  z
+    .object({
+      ...apiTokenMetadataFields,
+      status: z.enum(['active', 'expired', 'membership_changed']),
+      revokedAt: z.null(),
+    })
+    .strict(),
 ]);
-export const apiTokenMetadataSchema = z
-  .object({
-    id: z.uuid(),
-    workspaceId: z.uuid(),
-    name: z.string().min(1).max(128),
-    scopes,
-    status: apiTokenStatusSchema,
-    createdAt: z.iso.datetime(),
-    expiresAt: z.iso.datetime(),
-    revokedAt: z.iso.datetime().nullable(),
-    lastUsedAt: z.iso.datetime().nullable(),
-  })
-  .strict();
 export const apiTokenCreateResponseSchema = z.discriminatedUnion('replayed', [
   z
     .object({
