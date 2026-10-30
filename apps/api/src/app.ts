@@ -124,6 +124,7 @@ export async function createApiApplication(
         ...callbackRuntime,
         rateLimitConsumer:
           application.get<RateLimitConsumer>(RATE_LIMIT_CONSUMER),
+        logger: dependencies.logger,
       });
     if (webhookRuntime !== undefined) {
       registerWebhookIngress(fastifyInstance, webhookRuntime.ingress);

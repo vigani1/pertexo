@@ -5,6 +5,7 @@ import {
 import type { ApiConfig } from '../../../src/platform/config/api.js';
 import { createApiWebhookRuntime } from '../../../src/platform/webhooks/runtime.module.js';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
+import { silentLogger } from '../../support/silent-logger.js';
 
 /** Actual runtime, with test-owned authenticated wrapping instead of AWS KMS. */
 export function createEditorWebhookRuntime(
@@ -15,6 +16,7 @@ export function createEditorWebhookRuntime(
     { kmsKeyReference: 'owned-editor-webhook', region: 'us-east-1' },
     database,
     {
+      logger: silentLogger,
       databaseOverride: undefined,
       runtime: undefined,
       factories: {

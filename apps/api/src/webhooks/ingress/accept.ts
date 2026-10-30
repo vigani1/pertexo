@@ -160,6 +160,7 @@ export async function admitIngressDelivery(
       accepted: result,
       waiter: responseWaiter,
       telemetry: telemetry,
+      logger: dependencies.logger,
     });
   } catch (error) {
     await rejectAcceptance(error, reply, {

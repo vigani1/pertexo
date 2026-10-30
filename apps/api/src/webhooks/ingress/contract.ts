@@ -10,6 +10,7 @@ import type {
 } from '@pertexo/database/triggers';
 import type { InitialCheckpointFactory } from '@pertexo/database/runs';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import type { StructuredLogger } from '@pertexo/observability';
 
 import type { RejectedAttempt } from '../management/delivery-log.js';
 
@@ -21,6 +22,8 @@ export type WebhookIngressDependencies = Readonly<{
   encryption: WebhookTriggerEnvelopeEncryption;
   checkpointFactory: InitialCheckpointFactory;
   telemetry?: WebhookIngressTelemetry;
+  /** This Fastify scope bypasses the Nest problem filter, which logs the rest. */
+  logger: StructuredLogger;
 }>;
 
 export type WebhookMethod = 'GET' | 'POST';

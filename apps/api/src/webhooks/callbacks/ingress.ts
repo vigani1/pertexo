@@ -6,6 +6,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { CallbackResponseError } from '@pertexo/database/runs';
 import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
 import { callbackTokenHash, redactText } from '@pertexo/integrations/server';
+import type { StructuredLogger } from '@pertexo/observability';
 import { AbuseRateLimitPolicy } from '@pertexo/rate-limit';
 import type { ApiCallbackRuntime } from '../../platform/webhooks/callback-runtime.module.js';
 import type { RateLimitConsumer } from '../../platform/rate-limit/admission.js';
@@ -13,7 +14,7 @@ import {
   parseRequestId,
   withRequestOperationSignal,
 } from '../../platform/http/index.js';
-import { problem } from '../ingress/reply.js';
+import { problem, record } from '../ingress/reply.js';
 import {
   WEBHOOK_BODY_MAX_BYTES,
   parseWebhookBody,
@@ -29,7 +30,7 @@ import {
 import { verifyCallbackRequest } from './authentication.js';
 
 type Dependencies = Pick<ApiCallbackRuntime, 'store' | 'keys'> &
-  Readonly<{ rateLimitConsumer: RateLimitConsumer }>;
+  Readonly<{ rateLimitConsumer: RateLimitConsumer; logger: StructuredLogger }>;
 const policy = new AbuseRateLimitPolicy();
 export function registerCallbackIngress(
   fastify: FastifyInstance,
@@ -60,7 +61,17 @@ export function registerCallbackIngress(
           mapped.code,
           requestId,
         );
-      } else await problem(reply, 503, 'callback.unavailable', requestId);
+      } else {
+        // This Fastify scope bypasses the Nest problem filter, which logs the rest.
+        record(() => {
+          dependencies.logger.error(
+            'callback.ingress_failed',
+            { requestId },
+            error,
+          );
+        });
+        await problem(reply, 503, 'callback.unavailable', requestId);
+      }
     });
     scope.addHook('onRequest', (_request, reply, next) => {
       reply.header('cache-control', 'no-store');

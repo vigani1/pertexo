@@ -1,3 +1,4 @@
+import type { StructuredLogger } from '@pertexo/observability';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { WebhookResponseWaiter } from './wait.js';
@@ -17,11 +18,13 @@ export async function replyToAcceptedWebhook(
     accepted,
     waiter,
     telemetry,
+    logger,
   }: Readonly<{
     workspaceId: string;
     accepted: Acceptance;
     waiter: WebhookResponseWaiter;
     telemetry: WebhookIngressTelemetry;
+    logger: StructuredLogger;
   }>,
 ): Promise<void> {
   const receipt = { runId: accepted.runId, replayed: accepted.replayed };
@@ -51,11 +54,20 @@ export async function replyToAcceptedWebhook(
           .send({ code: 'webhook.workflow_failed' });
         return;
       }
-    } catch {
+    } catch (error: unknown) {
       // Admission already committed. A failed wait must not report rejection or retry execution.
       record(() => {
         telemetry.health('degraded');
       });
+      // A sender that hung up ended its own wait; that is not a failure.
+      if (!request.raw.socket.destroyed)
+        record(() => {
+          logger.error(
+            'webhook.response_wait_failed',
+            { workspaceId, runId: accepted.runId },
+            error,
+          );
+        });
     }
   }
   if (!request.raw.socket.destroyed) await reply.code(202).send(receipt);

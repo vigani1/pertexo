@@ -266,6 +266,7 @@ async function createFixture(): Promise<FixtureResourceOwner> {
             encryption,
             checkpointFactory: (projection) =>
               createInitialCheckpoint(projection, { catalog }),
+            logger,
           },
           close: () => Promise.resolve(),
         },

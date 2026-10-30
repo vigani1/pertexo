@@ -80,6 +80,13 @@ export function registerWebhookIngress(
       record(() => {
         telemetry.health('degraded');
       });
+      record(() => {
+        dependencies.logger.error(
+          'webhook.ingress_failed',
+          { requestId },
+          error,
+        );
+      });
       await problem(reply, 503, 'webhook.unavailable', requestId);
     });
     scope.removeAllContentTypeParsers();
@@ -222,21 +229,29 @@ async function acceptWebhook(
 export function createWebhookPreflight(
   dependencies: Pick<
     WebhookIngressDependencies,
-    'database' | 'telemetry' | 'testEvents'
+    'database' | 'telemetry' | 'testEvents' | 'logger'
   >,
 ): (request: FastifyRequest, reply: FastifyReply) => Promise<void> {
   const telemetry = dependencies.telemetry ?? createWebhookIngressTelemetry();
   return async (request, reply) => {
     try {
       await preflightWebhook(request, reply, dependencies, telemetry);
-    } catch {
+    } catch (error: unknown) {
+      const requestId = randomUUID();
       record(() => {
         telemetry.delivery('unavailable');
       });
       record(() => {
         telemetry.health('degraded');
       });
-      await problem(reply, 503, 'webhook.unavailable', randomUUID());
+      record(() => {
+        dependencies.logger.error(
+          'webhook.preflight_failed',
+          { requestId },
+          error,
+        );
+      });
+      await problem(reply, 503, 'webhook.unavailable', requestId);
     }
   };
 }

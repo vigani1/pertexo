@@ -19,6 +19,7 @@ import {
 } from '../../../src/webhooks/ingress/register.js';
 import type { WebhookIngressTelemetry } from '../../../src/webhooks/ingress/telemetry.js';
 import { currentSecret, previousSecret, verification } from './environment.js';
+import { silentLogger } from '../../support/silent-logger.js';
 
 export function createIngressFixture() {
   const applications: FastifyInstance[] = [];
@@ -75,7 +76,7 @@ export function createIngressFixture() {
     },
     includeTraceparent = true,
     telemetryOverrides = {},
-    logger,
+    logger = silentLogger,
   }: Readonly<{
     reference?: typeof verification | undefined;
     acceptanceError?: Error | undefined;
@@ -139,7 +140,7 @@ export function createIngressFixture() {
       encryption,
       checkpointFactory: () => ({ checkpoint: {} }),
       telemetry,
-      ...(logger === undefined ? {} : { logger }),
+      logger,
     };
     registerWebhookIngress(application, dependencies);
     return {

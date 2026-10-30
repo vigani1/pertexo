@@ -167,7 +167,11 @@ async function acquireFeatureRuntimes(
     runtimes.webhookRuntime = await createApiWebhookRuntime(
       config.webhooks,
       config.database,
-      { databaseOverride: undefined, runtime: runtimes.databaseRuntime },
+      {
+        logger: dependencies.logger,
+        databaseOverride: undefined,
+        runtime: runtimes.databaseRuntime,
+      },
     );
 
   runtimes.scheduleRuntime = dependencies.scheduleRuntime;

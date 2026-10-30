@@ -6,6 +6,7 @@ import {
 } from '@pertexo/database/triggers';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { createWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
+import type { StructuredLogger } from '@pertexo/observability';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
@@ -36,14 +37,16 @@ export async function createApiWebhookRuntime(
   config: NonNullable<ApiConfig['webhooks']>,
   databaseConfig: ApiConfig['database'],
   {
+    logger,
     databaseOverride,
     runtime,
     factories = {},
   }: Readonly<{
+    logger: StructuredLogger;
     databaseOverride?: WebhookTriggerDatabase | undefined;
     runtime?: DatabaseRuntime | undefined;
     factories?: ApiWebhookRuntimeFactories | undefined;
-  }> = {},
+  }>,
 ): Promise<ApiWebhookRuntime> {
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   let database: WebhookTriggerDatabase | undefined;
@@ -88,6 +91,7 @@ export async function createApiWebhookRuntime(
         testEvents: acquiredTests,
         database: acquiredDatabase,
         encryption: acquiredEnvelope.encryption,
+        logger,
         checkpointFactory: initialCheckpointFactory({ catalog }),
       }),
       close: () => {
