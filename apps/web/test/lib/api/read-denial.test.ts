@@ -17,7 +17,7 @@ async function failRead(key: readonly unknown[], error: Error) {
     denied,
   });
   await queryClient
-    .fetchQuery({
+    .query({
       queryKey: key,
       queryFn: () => Promise.reject(error),
       retry: false,
