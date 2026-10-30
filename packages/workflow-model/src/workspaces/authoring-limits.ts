@@ -6,6 +6,12 @@ export const PROMOTION_LIMITS = Object.freeze({
   page: 50,
 });
 
+/** How many people a restricted connection can be shared with. */
+export const CONNECTION_SHARE_LIMIT = 100;
+
+/** How many members and groups a restricted folder can list. */
+export const FOLDER_GRANT_LIMIT = 100;
+
 export const COLLABORATION_LIMITS = Object.freeze({
   body: 8000,
   mentions: 20,
