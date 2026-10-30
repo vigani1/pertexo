@@ -3,6 +3,7 @@ import {
   type PortableIssue,
   type WorkflowGraph,
   type WorkflowNode,
+  PortableJsonError,
   type WorkflowPortableManifest,
   workflowPortableManifestSchema,
 } from '@pertexo/workflow-model';
@@ -108,37 +109,54 @@ function restoreTarget(
   return true;
 }
 
-/** Exact reviewed literal-only delta. Ordinary catalog/binding/authority admission still required. */
+/**
+ * Exact reviewed literal-only delta. Ordinary catalog/binding/authority
+ * admission still required. A verified result carries the parsed manifest,
+ * setup values included, so callers don't parse it again.
+ */
 export function verifyCuratedTemplateManifest(
   manifest: unknown,
   origin: unknown,
 ):
-  | { readonly ok: true; readonly descriptor: CuratedWorkflowTemplate }
-  | { readonly ok: false; readonly issues: readonly PortableIssue[] } {
-  try {
-    const request = workflowTemplateOriginRequestSchema.safeParse(origin);
-    if (!request.success) return invalid('template_origin_invalid');
-    const descriptor = CURATED_WORKFLOW_TEMPLATES.find(
-      (candidate) =>
-        candidate.templateId === request.data.templateId &&
-        candidate.templateVersion === request.data.templateVersion &&
-        candidate.baseManifestDigest === request.data.baseManifestDigest,
-    );
-    if (descriptor === undefined) return invalid('template_origin_unknown');
-    const parsed = workflowPortableManifestSchema.safeParse(manifest);
-    if (!parsed.success)
-      return invalid('template_manifest_invalid', 'manifest');
-    for (const target of descriptor.setupTargets) {
-      if (!restoreTarget(parsed.data, descriptor.manifest, target))
-        return invalid('template_setup_invalid', 'manifest');
+  | {
+      readonly ok: true;
+      readonly descriptor: CuratedWorkflowTemplate;
+      readonly manifest: WorkflowPortableManifest;
     }
-    if (
-      canonicalWorkflowPortableJson(parsed.data) !==
-      canonicalWorkflowPortableJson(descriptor.manifest)
-    )
-      return invalid('template_manifest_mismatch', 'manifest');
-    return { ok: true, descriptor };
-  } catch {
+  | { readonly ok: false; readonly issues: readonly PortableIssue[] } {
+  const request = workflowTemplateOriginRequestSchema.safeParse(origin);
+  if (!request.success) return invalid('template_origin_invalid');
+  const descriptor = CURATED_WORKFLOW_TEMPLATES.find(
+    (candidate) =>
+      candidate.templateId === request.data.templateId &&
+      candidate.templateVersion === request.data.templateVersion &&
+      candidate.baseManifestDigest === request.data.baseManifestDigest,
+  );
+  if (descriptor === undefined) return invalid('template_origin_unknown');
+  const parsed = readManifest(manifest);
+  if (parsed === undefined)
     return invalid('template_manifest_invalid', 'manifest');
+  // Setup values are put back to the reviewed ones on a copy, for comparison.
+  const restored = structuredClone(parsed);
+  for (const target of descriptor.setupTargets) {
+    if (!restoreTarget(restored, descriptor.manifest, target))
+      return invalid('template_setup_invalid', 'manifest');
+  }
+  if (
+    canonicalWorkflowPortableJson(restored) !==
+    canonicalWorkflowPortableJson(descriptor.manifest)
+  )
+    return invalid('template_manifest_mismatch', 'manifest');
+  return { ok: true, descriptor, manifest: parsed };
+}
+
+/** A caller's manifest, or nothing when it is malformed, hostile or over its bounds. */
+function readManifest(manifest: unknown): WorkflowPortableManifest | undefined {
+  try {
+    const parsed = workflowPortableManifestSchema.safeParse(manifest);
+    return parsed.success ? parsed.data : undefined;
+  } catch (error) {
+    if (error instanceof PortableJsonError) return undefined;
+    throw error;
   }
 }
