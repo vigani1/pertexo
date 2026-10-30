@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/error';
+import { isApiError, UserFacingError } from '@/lib/api/error';
 import { isUncertainOutcome } from '@/lib/api/error-copy';
 import {
   getWorkflowDraft,
@@ -86,11 +86,11 @@ export function useEditorSavePipeline({
 
   const ensureSaved = useCallback(async (): Promise<SavedDraftIdentity> => {
     if (paused)
-      throw new Error(
+      throw new UserFacingError(
         'The editor is paused until your account is verified again.',
       );
     if (store.getState().inspectorScratch)
-      throw new Error(
+      throw new UserFacingError(
         'Finish or discard the unfinished edit in the step panel first.',
       );
     await verifyOwner();
@@ -98,7 +98,7 @@ export function useEditorSavePipeline({
     await verifyOwner();
     const state = store.getState();
     if (state.saveStatus !== 'clean')
-      throw new Error(
+      throw new UserFacingError(
         state.saveStatus === 'conflict'
           ? 'This draft changed elsewhere. Review the change before continuing.'
           : 'Your latest changes aren’t saved yet. Try again in a moment.',

@@ -9,7 +9,7 @@ import {
 } from '@pertexo/contracts';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { isApiError } from '@/lib/api/error';
+import { isApiError, UserFacingError } from '@/lib/api/error';
 import { commandErrorMessage } from '../data/mutations/command-utils';
 import type { WorkflowTestScope } from '../data/workflow-tests/api';
 import { workflowTestsKey } from '../data/workflow-tests/queries';
@@ -97,7 +97,7 @@ export function useTestSuites({
       const value = await prepareSuite(scope, await signal());
       if (!commandIsLive(lifetime.current)) return;
       if (saved.revision !== value.draftRevision)
-        throw new Error('The saved draft changed. Prepare again.');
+        throw new UserFacingError('The saved draft changed. Prepare again.');
       setPreparation(value);
     } catch (cause) {
       if (commandIsLive(lifetime.current))

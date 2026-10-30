@@ -11,7 +11,7 @@ import {
 } from '@pertexo/contracts';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { isApiError } from '@/lib/api/error';
+import { isApiError, UserFacingError } from '@/lib/api/error';
 import {
   prepareWorkflowTest,
   startWorkflowTest,
@@ -100,7 +100,9 @@ export function useWorkflowTests({
       const result = await prepareWorkflowTest(scope, await signal());
       if (!commandIsLive(lifetime.current)) return;
       if (result.draftRevision !== saved.revision)
-        throw new Error('The saved draft changed. Save and prepare again.');
+        throw new UserFacingError(
+          'The saved draft changed. Save and prepare again.',
+        );
       setPreparation(result);
     } catch (error) {
       if (commandIsLive(lifetime.current))

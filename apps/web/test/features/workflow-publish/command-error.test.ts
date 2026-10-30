@@ -80,7 +80,7 @@ it('shows the same definite admission refusal for manual starts and step recover
   );
 });
 // web-editor-04: only deliberate refusals carry their own words to people.
-it.fails.each([
+it.each([
   new TypeError('crypto.randomUUID is not a function'),
   new RangeError('Invalid time value'),
   new Error('Cannot read properties of undefined (reading "etag")'),
