@@ -31,17 +31,14 @@ export function registerUpdatesMatchingRowsAtomically(): void {
 
     expect(updated.affected).toBe(2);
     const rows = (await store.find({ ...scope(), tableId: f.id, query })).rows;
-    expect(
-      rows
-        .map(({ revision, values }) => ({ revision, values }))
-        .toSorted((left, right) =>
-          String(left.values.key).localeCompare(String(right.values.key)),
-        ),
-    ).toEqual([
-      { revision: 2, values: { key: 'a', amount: 1, active: false } },
-      { revision: 2, values: { key: 'b', amount: 2, active: false } },
-      { revision: 1, values: { key: 'c', amount: 3, active: true } },
-    ]);
+    expect(rows.map(({ revision, values }) => ({ revision, values }))).toEqual(
+      expect.arrayContaining([
+        { revision: 2, values: { key: 'a', amount: 1, active: false } },
+        { revision: 2, values: { key: 'b', amount: 2, active: false } },
+        { revision: 1, values: { key: 'c', amount: 3, active: true } },
+      ]),
+    );
+    expect(rows).toHaveLength(3);
     // Stored cell JSON: each `false` is one byte longer than `true`.
     expect((await store.list(scope())).quotas.storedBytes).toBe(before + 2);
   });
