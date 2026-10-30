@@ -819,22 +819,22 @@ reject these useful conflicts. Unknown future codes or malformed shapes become a
 safe protocol error; do not cast them into the closed union. Branch on code, not
 translated title/detail text.
 
-| Situation                                        | Owner and user behavior                                                      |
-| ------------------------------------------------ | ---------------------------------------------------------------------------- |
-| Invalid form input / recognized field errors     | Form: inline errors, retain values, focus correction                         |
-| `auth.unauthenticated`                           | Auth lifecycle: freeze writes, recover login safely, prevent redirect storms |
-| `connection.reauthorization_required` (also 401) | Connection feature: reconnect that credential; **do not log out the user**   |
-| Permission denied / missing resource             | Route or feature: explicit forbidden/not-found state, no guessed data        |
-| `workflow.revision_conflict` (412)               | Save coordinator: preserve local graph and resolve conflict                  |
-| Lifecycle / idempotency conflict (409)           | Command-specific recovery; never a generic automatic retry                   |
-| Preconditions missing (428)                      | Treat as client integration failure, not “try harder”                        |
-| Semantic validation (422 or validation report)   | Feature: issue list with node/field navigation and stale-report tracking     |
-| Rate limit / unavailable service                 | Local feedback, bounded Retry-After; no request storm                        |
-| Background refetch failure                       | Keep last good data with stale/retry notice; do not blank the screen         |
-| Foreground required-data failure                 | Route/section boundary with a working Query + Router retry                   |
-| Canceled read                                    | Silent; it is usually navigation, not an error toast                         |
-| Uncertain mutation outcome                       | Preserve intent; reconcile or retry the same keyed command as allowed        |
-| Unexpected render failure                        | Nearest suitable error boundary; safe message and diagnostic correlation     |
+| Situation                                      | Owner and user behavior                                                      |
+| ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| Invalid form input / recognized field errors   | Form: inline errors, retain values, focus correction                         |
+| `auth.unauthenticated`                         | Auth lifecycle: freeze writes, recover login safely, prevent redirect storms |
+| A connection whose credential needs replacing  | Connection feature: its `reauthorization_required` status; never a logout    |
+| Permission denied / missing resource           | Route or feature: explicit forbidden/not-found state, no guessed data        |
+| `workflow.revision_conflict` (412)             | Save coordinator: preserve local graph and resolve conflict                  |
+| Lifecycle / idempotency conflict (409)         | Command-specific recovery; never a generic automatic retry                   |
+| Preconditions missing (428)                    | Treat as client integration failure, not “try harder”                        |
+| Semantic validation (422 or validation report) | Feature: issue list with node/field navigation and stale-report tracking     |
+| Rate limit / unavailable service               | Local feedback, bounded Retry-After; no request storm                        |
+| Background refetch failure                     | Keep last good data with stale/retry notice; do not blank the screen         |
+| Foreground required-data failure               | Route/section boundary with a working Query + Router retry                   |
+| Canceled read                                  | Silent; it is usually navigation, not an error toast                         |
+| Uncertain mutation outcome                     | Preserve intent; reconcile or retry the same keyed command as allowed        |
+| Unexpected render failure                      | Nearest suitable error boundary; safe message and diagnostic correlation     |
 
 One visible notification owner per failure. Critical save/auth/conflict problems
 stay inline; a transient toast alone is inadequate. Do not toast every autosave
@@ -1312,7 +1312,7 @@ in the same slice that introduces them:
 | Boundary            | Proof                                                                                                                                                                                  |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Transport           | Valid success/204, malformed JSON/schema, common and extended problems, missing ETag, abort/timeout, safe fallback, CSRF and credential handling                                       |
-| Session/scope       | Sign-in return, login/logout, expired session, two identities/workspaces, late response after logout, connection 401 does not log out user                                             |
+| Session/scope       | Sign-in return, login/logout, expired session, two identities/workspaces, late response after logout, only `auth.unauthenticated` signs the user out                                   |
 | Queries/routes      | Loader/component share request/key, cursor filters, back/forward/deep link, empty/forbidden/not-found/stale/error and working retry                                                    |
 | Forms               | Required/transformed input, field/path errors, unapplied edits, keyboard/focus, secret values absent from caches/logs                                                                  |
 | Graph adapter       | Round-trip schema-valid fields and unsupported definitions without data loss, stable IDs, no canvas-only fields, structural invalidity rejected                                        |

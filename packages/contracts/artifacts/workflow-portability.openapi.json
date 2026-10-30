@@ -496,7 +496,6 @@
               "connection.not_configured",
               "webhook.not_configured",
               "connection.conflict",
-              "connection.reauthorization_required",
               "connection.revoked",
               "provider.unavailable",
               "webhook.authentication_failed",

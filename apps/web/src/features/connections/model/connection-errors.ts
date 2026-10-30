@@ -38,8 +38,6 @@ const SPECIFIC_PROBLEMS: Readonly<
 > = {
   'connection.revoked': (_command, name) =>
     `${name} was revoked, so it can’t be used or changed.`,
-  'connection.reauthorization_required': (_command, name) =>
-    `${name} needs a new credential. Replace it, then test again.`,
   'connection.conflict': (command, name) =>
     command === 'rotate'
       ? 'Someone replaced this credential meanwhile. Close this and start again from the latest version.'
