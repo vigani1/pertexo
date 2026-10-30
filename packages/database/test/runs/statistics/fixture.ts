@@ -4,6 +4,7 @@ import { Pool, type PoolClient } from 'pg';
 
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
+import { createWorkspaceDatabase } from '../../../src/testing.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 
 import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
@@ -39,6 +40,10 @@ export const runtimePool = new Pool({ connectionString: runtimeUrl, max: 1 });
 
 export const runs = createWorkflowRunDatabase(
   parseDatabaseConfig({ connectionString: runtimeUrl, max: 2 }),
+);
+
+export const workspaceDatabase = createWorkspaceDatabase(
+  parseDatabaseConfig({ connectionString: runtimeUrl, max: 1 }),
 );
 
 export const person = randomUUID();
@@ -192,7 +197,8 @@ export async function beforeAllFixture1() {
 export async function beforeEachFixture2() {
   await inWorkspace('owner', busyWorkspace, {
     text: `truncate table app.workflow_runs, app.workflow_versions, app.workflows,
-       app.workspace_memberships, app.workspaces, app.users cascade`,
+       app.workspace_memberships, app.workspaces, app.users, app.artifacts,
+       app.workspace_artifact_capacity cascade`,
   });
   await seedWorkspaces();
 }
@@ -200,6 +206,7 @@ export async function beforeEachFixture2() {
 export async function afterAllFixture3() {
   const closed = await Promise.allSettled([
     runs.close(),
+    workspaceDatabase.close(),
     ownerPool.end(),
     runtimePool.end(),
   ]);
