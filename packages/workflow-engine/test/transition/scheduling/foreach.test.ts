@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import type { WorkflowCheckpoint } from '../../../src/index.js';
 import {
-  admitLoopIterations,
-  completeLoopIteration,
+  advanceWorkflow,
   createLoopState,
   invocationKey,
 } from '../../support/engine.js';
+import { startStructuredLoop } from '../../support/transition/model.js';
 
 const scope = {
   controlInvocationKey: 'loop-control',
@@ -16,28 +17,39 @@ const scope = {
 } as const;
 
 describe('bounded ForEach scheduling', () => {
-  it('pins a collection reference and admits canonical bounded batches', () => {
-    const loop = createLoopState({
-      ...scope,
-      loopId: 'loop',
-      collection: {
-        kind: 'artifact',
-        artifactId: '00000000-0000-4000-8000-000000000101',
-      },
-      collectionChecksum: 'sha256:abc',
+  it('admits canonical bounded batches and spends the run budget once at loop start', () => {
+    const { declared, schedulerState } = startStructuredLoop({
+      bodyNodeCount: 1,
       collectionSize: 4,
-      maxIterations: 4,
       maxConcurrency: 2,
-      remainingIterationBudget: 10,
+      reserveBudget: 6,
     });
-    const first = admitLoopIterations(loop, 10);
-    expect(first.admittedOrdinals).toEqual([0, 1]);
-    expect(
-      admitLoopIterations(
-        completeLoopIteration(first.loop, 1),
-        first.remainingIterationBudget,
-      ).admittedOrdinals,
-    ).toEqual([2]);
+    expect(runningOrdinals(declared.checkpoint)).toEqual([0, 1]);
+    expect(declared.checkpoint.remainingIterationBudget).toBe(6);
+    const second = declared.checkpoint.invocations.find(
+      ({ iterationPath, status }) =>
+        status === 'running' && iterationPath?.[0]?.ordinal === 1,
+    );
+    if (second === undefined) throw new Error('iteration 1 was not admitted');
+    const next = advanceWorkflow({
+      checkpoint: declared.checkpoint,
+      schedulerState,
+      occurredAt: '2026-08-20T10:02:00.000Z',
+      maximumAdmissions: 16,
+      observations: [
+        {
+          kind: 'loop_iteration_completed',
+          loopId: 'loop',
+          controlInvocationKey: required(declared.checkpoint.loops[0])
+            .controlInvocationKey,
+          invocationKey: second.invocationKey,
+          ordinal: 1,
+          status: 'succeeded',
+        },
+      ],
+    });
+    expect(runningOrdinals(next.checkpoint)).toEqual([0, 2]);
+    expect(next.checkpoint.remainingIterationBudget).toBe(6);
   });
 
   it('rejects an over-limit collection before admitting any iteration', () => {
@@ -58,24 +70,15 @@ describe('bounded ForEach scheduling', () => {
     ).toThrow(expect.objectContaining({ code: 'loop_limit_exceeded' }));
   });
 
-  it('completes an empty collection without admissions', () => {
-    const loop = createLoopState({
-      ...scope,
-      loopId: 'empty',
-      collection: {
-        kind: 'inline',
-        attemptId: '00000000-0000-4000-8000-000000000104',
-      },
-      collectionChecksum: 'sha256:empty',
+  it('completes an empty collection without admissions or budget', () => {
+    const { declared } = startStructuredLoop({
+      bodyNodeCount: 1,
       collectionSize: 0,
-      maxIterations: 10,
-      maxConcurrency: 2,
-      remainingIterationBudget: 10,
+      maxConcurrency: 1,
+      reserveBudget: 10,
     });
-    expect(admitLoopIterations(loop, 10)).toMatchObject({
-      admittedOrdinals: [],
-      remainingIterationBudget: 10,
-    });
+    expect(runningOrdinals(declared.checkpoint)).toEqual([]);
+    expect(declared.checkpoint.remainingIterationBudget).toBe(10);
   });
 
   it('rejects nested expansion when the pinned run-wide budget is exhausted', () => {
@@ -123,3 +126,17 @@ describe('bounded ForEach scheduling', () => {
     ).not.toBe(invocationKey(input));
   });
 });
+
+function runningOrdinals(checkpoint: WorkflowCheckpoint): readonly number[] {
+  return checkpoint.invocations
+    .filter(({ status }) => status === 'running')
+    .flatMap(({ iterationPath }) =>
+      iterationPath?.[0] === undefined ? [] : [iterationPath[0].ordinal],
+    )
+    .sort((left, right) => left - right);
+}
+
+function required<T>(value: T | undefined): T {
+  if (value === undefined) throw new Error('loop state is missing');
+  return value;
+}
