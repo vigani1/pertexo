@@ -56,6 +56,14 @@ export async function startWebhookPeer(transport) {
     checkpointFactory: () => {
       throw new Error('Transport peer must not execute work');
     },
+    logger: {
+      debug: () => undefined,
+      error: () => undefined,
+      fatal: () => undefined,
+      info: () => undefined,
+      trace: () => undefined,
+      warn: () => undefined,
+    },
   };
   registerWebhookIngress(server, dependencies);
   server.register((scope, _options, done) => {
@@ -78,8 +86,10 @@ export async function startWebhookPeer(transport) {
     {
       module: ProbeModule,
       imports: [
-        RateLimitModule.register('redis://unused', {
+        RateLimitModule.register({
           consume: async () => ({ allowed: true }),
+          acquireExclusiveSlot: async () => null,
+          close: async () => undefined,
         }),
       ],
       controllers: [WebhookPreflightController],

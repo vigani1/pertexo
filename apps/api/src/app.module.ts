@@ -1,17 +1,15 @@
-import type { ApiCallbackRuntime } from './platform/webhooks/callback-runtime.module.js';
 import 'reflect-metadata';
 
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import type {
-  DatabaseRuntime,
-  WorkspaceDatabase,
-} from '@pertexo/database/platform';
-import type {
   StructuredLogger,
   TelemetryLifecycle,
 } from '@pertexo/observability';
 
+import type { WorkspaceDatabase } from '@pertexo/database/platform';
+
+import type { ApiRuntimeSet } from './platform/application/contract.js';
 import type { ApiConfig } from './platform/config/api.js';
 import { ConnectionsModule } from './connections/index.js';
 import { CatalogModule } from './catalog/index.js';
@@ -36,48 +34,24 @@ import type {
   HttpErrorLogger,
 } from './platform/http/problem-details.filter.js';
 import { ObservabilityModule } from './platform/observability/module.js';
-import {
-  ConnectionRuntimeModule,
-  type ApiConnectionRuntime,
-} from './platform/connections/runtime.module.js';
-import {
-  IdentityRuntimeModule,
-  type ApiIdentityRuntime,
-} from './platform/identity/runtime.module.js';
-import {
-  WorkflowRuntimeModule,
-  type ApiWorkflowRuntime,
-} from './platform/workflow/runtime.module.js';
-import type { ApiWebhookRuntime } from './platform/webhooks/runtime.module.js';
+import { ConnectionRuntimeModule } from './platform/connections/runtime.module.js';
+import { IdentityRuntimeModule } from './platform/identity/runtime.module.js';
+import { WorkflowRuntimeModule } from './platform/workflow/runtime.module.js';
 import { WebhookModule } from './webhooks/module.js';
-import type { ApiScheduleRuntime } from './platform/schedules/runtime.module.js';
 import { ScheduleModule } from './schedules/module.js';
-import type { ApiNotificationRuntime } from './platform/notifications/runtime.module.js';
 import { NotificationsModule } from './notifications/module.js';
-import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
 import { RateLimitModule } from './platform/rate-limit/module.js';
 import { APPLICATION_ERROR_MAPPERS } from './application-errors.js';
 import {
   ArtifactRuntimeModule,
   DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
-  type ApiArtifactRuntime,
 } from './platform/artifacts/runtime.module.js';
 
-export type ApiModuleDependencies = Readonly<{
-  database?: WorkspaceDatabase;
-  databaseRuntime?: DatabaseRuntime;
-  identityRuntime?: ApiIdentityRuntime;
-  connectionRuntime?: ApiConnectionRuntime;
-  workflowRuntime?: ApiWorkflowRuntime;
-  webhookRuntime?: ApiWebhookRuntime;
-  callbackRuntime?: ApiCallbackRuntime;
-  scheduleRuntime?: ApiScheduleRuntime;
-  notificationRuntime?: ApiNotificationRuntime;
-  artifactRuntime?: ApiArtifactRuntime;
-  rateLimitConsumer?: RateLimitConsumer;
-  logger: StructuredLogger;
-  telemetry: TelemetryLifecycle;
-}>;
+export type ApiModuleDependencies = ApiRuntimeSet &
+  Readonly<{
+    logger: StructuredLogger;
+    telemetry: TelemetryLifecycle;
+  }>;
 
 @Module({
   controllers: [LiveController, ReadyController],
@@ -90,16 +64,6 @@ export class AppModule {
     config: ApiConfig,
     dependencies: ApiModuleDependencies,
   ): DynamicModule {
-    const databaseOptions =
-      dependencies.database === undefined
-        ? {
-            ...(dependencies.databaseRuntime === undefined
-              ? {}
-              : { runtime: dependencies.databaseRuntime }),
-          }
-        : {
-            database: dependencies.database,
-          };
     const httpErrorLogger: HttpErrorLogger = Object.freeze({
       log: (entry: HttpErrorLogEntry): void => {
         logHttpError(dependencies.logger, entry.severity, {
@@ -120,10 +84,7 @@ export class AppModule {
       },
     });
 
-    const admissionModule = RateLimitModule.register(
-      config.redisUrl,
-      dependencies.rateLimitConsumer,
-    );
+    const admissionModule = RateLimitModule.register(dependencies.rateLimit);
     const identityModule =
       dependencies.identityRuntime === undefined
         ? undefined
@@ -163,7 +124,7 @@ export class AppModule {
       module: AppModule,
       imports: [
         ApiLifecycleModule,
-        DatabaseModule.register(config.database, databaseOptions),
+        DatabaseModule.register(dependencies.database),
         ...featureModules,
         ObservabilityModule.register(
           dependencies.logger,
