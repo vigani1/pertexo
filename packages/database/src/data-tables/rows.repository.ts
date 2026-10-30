@@ -18,6 +18,7 @@ import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   isUniqueConstraintFailure,
+  postgresFailure,
   queryFailure,
   rethrowQueryFailure,
 } from '../platform/query-errors.js';
@@ -115,33 +116,54 @@ export async function mutateRows(
       const patch = validateDataTableValues(table.columns, command.values, {
         partial: true,
       });
-      const outputs = [];
-      for (const row of old) {
+      const updates = old.map((row) => {
         const values = validateDataTableValues(table.columns, {
           ...dataTableValuesSchema.parse(JSON.parse(row.values)),
           ...patch,
         });
         const text = normalizedJson(values);
         byteDelta += utf8ByteLength(text) - utf8ByteLength(row.values);
+        return {
+          id: row.id,
+          revision: row.revision + 1,
+          values,
+          text,
+          keyValue: keyValue(table, values),
+        };
+      });
+      const [first] = updates;
+      if (first !== undefined)
         await db
           .update(tableRows)
           .set({
-            values: text,
-            keyValue: keyValue(table, values),
+            values: sql`batch.values_json`,
+            keyValue: sql`batch.key_value`,
             revision: sql`${tableRows.revision}+1`,
           })
+          .from(
+            sql`unnest(${sql.param(updates.map(({ id }) => id))}::uuid[],${sql.param(updates.map(({ text }) => text))}::text[],${sql.param(updates.map((update) => update.keyValue))}::text[]) as batch(id,values_json,key_value)`,
+          )
           .where(
             and(
               eq(tableRows.workspaceId, workspaceId),
               eq(tableRows.tableId, table.id),
-              eq(tableRows.id, row.id),
+              sql`${tableRows.id}=batch.id`,
             ),
           )
-          .catch((error: unknown) => rowKeyConflict(error, table, values));
-        if (command.operation === 'upsert')
-          outputs.push({ id: row.id, revision: row.revision + 1, values });
-      }
-      result = boundedResult(outputs, old.length);
+          // Only a patch that names the key can clash, and it gives every row that key.
+          .catch((error: unknown) =>
+            rowKeyConflict(error, table, first.values),
+          );
+      result = boundedResult(
+        command.operation === 'upsert'
+          ? updates.map(({ id, revision, values }) => ({
+              id,
+              revision,
+              values,
+            }))
+          : [],
+        old.length,
+      );
     }
   }
   if (result.affected === 0) return result;
@@ -154,15 +176,15 @@ export async function mutateRows(
   return result;
 }
 export function translateTableConstraint(caught: unknown): never {
-  const error = queryFailure(caught);
-  if (isUniqueConstraintFailure(error))
+  const { code, constraint } = postgresFailure(caught);
+  if (code === '23505')
     throw new DataTableError(
       'key_conflict',
-      error.constraint === 'workspace_data_tables_name'
+      constraint === 'workspace_data_tables_name'
         ? 'A table with this name already exists. Choose another name.'
         : 'Another row already uses this unique key.',
     );
-  throw error;
+  throw queryFailure(caught);
 }
 
 /** Names the clash, since the person writing the row sent this key. */
@@ -171,9 +193,8 @@ function rowKeyConflict(
   table: DataTableDefinition,
   values: DataTableValues,
 ): never {
-  const error = queryFailure(caught);
-  if (!isUniqueConstraintFailure(error) || table.keyColumn === null)
-    throw error;
+  if (!isUniqueConstraintFailure(caught) || table.keyColumn === null)
+    throw queryFailure(caught);
   const key = values[table.keyColumn];
   const shown =
     typeof key === 'string'
