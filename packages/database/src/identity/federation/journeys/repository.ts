@@ -20,7 +20,6 @@ import { FederationConflictError } from '../management/errors.js';
 import type { FederationScope } from '../management/contract.js';
 import { readEligibleAuthenticationSession } from '../sessions/authority.repository.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
-import { queryFailure } from '../../../platform/query-errors.js';
 import {
   readFederationProvider,
   findFederationAttempt,
@@ -244,10 +243,9 @@ export class OrganizationSignInCommands {
     return withPlatformTransaction(this.input.pool, (client) =>
       completeFederationJourney(client, input, this.input.sessionTtlSeconds),
     ).catch((error: unknown) => {
-      const cause = queryFailure(error);
       const proofRefused =
         error instanceof SignInProofRejectedError ||
-        isUniqueConstraintFailure(cause);
+        isUniqueConstraintFailure(error);
       if (proofRefused) return { kind: 'failed' } as const;
       throw error;
     });

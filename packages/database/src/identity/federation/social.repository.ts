@@ -6,7 +6,6 @@ import { isUniqueConstraintFailure } from '../../platform/query-errors.js';
 import { SignInProofRejectedError } from './accounts/rejection.js';
 import type { Pool } from 'pg';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
-import { queryFailure } from '../../platform/query-errors.js';
 import { completeSocialSignIn } from './complete.repository.js';
 import type {
   ProvenSocialSignIn,
@@ -73,9 +72,7 @@ export class SocialSignInCommands {
     }).catch((error: unknown) => {
       if (error instanceof SignInProofRejectedError)
         return { kind: 'failed' } as const;
-      const cause = queryFailure(error);
-      const uniqueConstraintFailure = isUniqueConstraintFailure(cause);
-      if (uniqueConstraintFailure) return { kind: 'failed' } as const;
+      if (isUniqueConstraintFailure(error)) return { kind: 'failed' } as const;
       throw error;
     });
   }

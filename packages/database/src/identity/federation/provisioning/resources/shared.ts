@@ -41,8 +41,8 @@ export async function withDirectoryConstraintErrors<T>(
   try {
     return await operation();
   } catch (error: unknown) {
-    const uniqueConstraintFailure = isUniqueConstraintFailure(error);
-    if (uniqueConstraintFailure) throw new DirectoryError('uniqueness');
+    if (isUniqueConstraintFailure(error))
+      throw new DirectoryError('uniqueness');
     throw error;
   }
 }

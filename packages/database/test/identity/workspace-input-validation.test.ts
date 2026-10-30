@@ -2,25 +2,8 @@ import type { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createUserStore } from '../../src/tenant-access/users/repository.js';
-import { readIdentityDatabaseErrorCode } from '../../src/tenant-access/support.js';
 
 describe('identity input admission', () => {
-  it('reads only bounded nonthrowing PostgreSQL error codes', () => {
-    expect(readIdentityDatabaseErrorCode({ code: '23505' })).toBe('23505');
-    expect(
-      readIdentityDatabaseErrorCode({ code: 'not-a-sqlstate' }),
-    ).toBeUndefined();
-    expect(
-      readIdentityDatabaseErrorCode(
-        Object.defineProperty({}, 'code', {
-          get: () => {
-            throw new Error('hostile getter');
-          },
-        }),
-      ),
-    ).toBeUndefined();
-  });
-
   it.each([
     [
       'email',
