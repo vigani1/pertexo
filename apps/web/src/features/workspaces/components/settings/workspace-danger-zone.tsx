@@ -9,7 +9,7 @@ import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceLifecycleCommand } from '../../data/mutations/lifecycle/use-command';
 import { WorkspaceDeletionDialog } from './workspace-deletion-dialog';
-import { WorkspaceRestoreDialog } from './workspace-restore-dialog';
+import { WorkspaceRestoreDialog } from './workspace-lifecycle-dialog';
 
 type LifecycleChange = WorkspaceLifecycleChangeResponse['change'];
 
