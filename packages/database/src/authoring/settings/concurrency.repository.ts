@@ -4,6 +4,7 @@ import { and, asc, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { entitlementPolicyState } from '../../runs/queries/entitlement-effect.js';
 import { workflowConcurrencyPolicies } from '../../schema/authoring/concurrency.js';
 import { workflows } from '../../schema/authoring/workflows.js';
 import {
@@ -85,7 +86,7 @@ async function readEntitlement(client: PoolClient, workspaceId: string) {
       asOf: sql<string>`to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
       state: sql<
         WorkflowConcurrencySettings['workspacePolicyState']
-      >`case when ${version.version} is null then 'unavailable' when ${version.status}='suspended' then 'suspended' when ${version.effectiveAt}>clock_timestamp() then 'not_yet_effective' when ${version.expiresAt}<=clock_timestamp() then 'expired' else 'active' end`,
+      >`case when ${version.version} is null then 'unavailable' else ${entitlementPolicyState(version, sql`clock_timestamp()`)} end`,
       maximum: version.activeRunLimit,
     })
     .from(workspaces)

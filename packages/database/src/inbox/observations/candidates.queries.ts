@@ -1,3 +1,4 @@
+import { entitlementInEffect } from '../../runs/queries/entitlement-effect.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { and, eq, notExists, sql } from 'drizzle-orm';
 import { union } from 'drizzle-orm/pg-core';
@@ -107,7 +108,7 @@ function capacityCandidates(db: Pick<NodePgDatabase, 'select'>) {
       ),
     )
     .where(
-      sql`${counter.queuedRuns}>=${entitlement.queuedRunLimit} and ${entitlement.status}='active' and ${entitlement.effectiveAt}<=clock_timestamp() and (${entitlement.expiresAt} is null or ${entitlement.expiresAt}>clock_timestamp())`,
+      sql`${counter.queuedRuns}>=${entitlement.queuedRunLimit} and ${entitlementInEffect(entitlement, sql`clock_timestamp()`)}`,
     );
   const warning = capacityWarningCandidates(db).as('warning');
   const approaching = db
