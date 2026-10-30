@@ -151,7 +151,9 @@ export const runDetailRoute = createRoute({
   loader: async ({
     context,
     params,
-  }): Promise<Readonly<{ found: boolean; run?: RunCrumb }>> => {
+  }): Promise<
+    Readonly<{ found: false }> | Readonly<{ found: true; run: RunCrumb }>
+  > => {
     const { workflowRunQueryOptions } =
       await import('@/features/workflow-runs/queries.public');
 
@@ -162,10 +164,10 @@ export const runDetailRoute = createRoute({
       workflowRunQueryOptions(apiClient, user.id, workspace.id, runId.data),
     );
     const { found } = await prefetchResource(context, [read]);
-    if (!found) return { found };
+    if (!found) return { found: false };
     const { run } = await read;
     return {
-      found,
+      found: true,
       run: {
         id: run.id,
         workflowId: run.workflowId,
