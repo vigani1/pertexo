@@ -16,7 +16,7 @@ import {
   reactivateWorkspace,
   requestWorkspaceDeletion,
   restoreWorkspaceDeletion,
-} from '../../workspaces.api';
+} from '../../workspace-lifecycle.api';
 import { accessibleWorkspacesQueryOptions } from '../../workspaces.queries';
 
 type LifecycleIntent =
