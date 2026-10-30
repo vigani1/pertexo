@@ -1,6 +1,6 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 
-import { CORE_PARALLEL_BRANCH_PORTS } from '../parallel/validation.js';
+import { PARALLEL_BRANCH_PORTS } from '@pertexo/workflow-model';
 import { CORE_BOUNDED_JSON_POLICY } from '../../policies.js';
 import {
   CORE_MERGE_CONFIG_SCHEMA,
@@ -32,7 +32,7 @@ export const CORE_MERGE_MANIFEST: NodeManifest = Object.freeze({
     runtimeOnlySemantics: [MERGE_LEDGER_SEMANTICS],
   }),
   ports: Object.freeze({
-    inputs: CORE_PARALLEL_BRANCH_PORTS,
+    inputs: PARALLEL_BRANCH_PORTS,
     outputs: Object.freeze(['out']),
   }),
   credentialRequirements: Object.freeze([]),

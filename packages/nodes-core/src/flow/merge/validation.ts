@@ -1,17 +1,9 @@
+import {
+  mergeConfigSchema,
+  parallelBranchPortSchema,
+} from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-import { CORE_PARALLEL_BRANCH_PORT_SCHEMA } from '../parallel/validation.js';
-
-const joinPolicySchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('all') }).strict(),
-  z.object({ kind: z.literal('any') }).strict(),
-  z
-    .object({
-      kind: z.literal('count'),
-      count: z.number().int().min(1).max(16),
-    })
-    .strict(),
-]);
 const settledBranchLedgerEntrySchema = z
   .object({
     disposition: z.enum([
@@ -25,27 +17,15 @@ const settledBranchLedgerEntrySchema = z
   })
   .strict();
 
-export const CORE_MERGE_CONFIG_SCHEMA = z
-  .object({
-    parallelNodeId: z
-      .string()
-      .min(1)
-      .max(128)
-      .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]*$/u),
-    policy: joinPolicySchema,
-  })
-  .strict();
+export const CORE_MERGE_CONFIG_SCHEMA = mergeConfigSchema;
 export const CORE_MERGE_INPUT_SCHEMA = z
   .object({
     ledger: z
-      .partialRecord(
-        CORE_PARALLEL_BRANCH_PORT_SCHEMA,
-        settledBranchLedgerEntrySchema,
-      )
+      .partialRecord(parallelBranchPortSchema, settledBranchLedgerEntrySchema)
       .refine((ledger) => Object.keys(ledger).length > 0, {
         message: 'Merge ledger must not be empty',
       }),
-    selectedBranchIds: z.array(CORE_PARALLEL_BRANCH_PORT_SCHEMA).max(16),
+    selectedBranchIds: z.array(parallelBranchPortSchema).max(16),
   })
   .strict()
   .superRefine(({ ledger, selectedBranchIds }, context) => {
@@ -81,8 +61,8 @@ export const CORE_MERGE_INPUT_SCHEMA = z
 /** What each selected branch produced, keyed by branch; bookkeeping stays internal. */
 export const CORE_MERGE_OUTPUT_SCHEMA = z
   .object({
-    branches: z.partialRecord(CORE_PARALLEL_BRANCH_PORT_SCHEMA, z.json()),
-    selectedBranchIds: z.array(CORE_PARALLEL_BRANCH_PORT_SCHEMA).max(16),
+    branches: z.partialRecord(parallelBranchPortSchema, z.json()),
+    selectedBranchIds: z.array(parallelBranchPortSchema).max(16),
   })
   .strict()
   .describe('Core merge node output');
