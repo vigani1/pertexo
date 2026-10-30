@@ -6,11 +6,7 @@ import {
   composeExecutableCatalog,
   parseWorkflowExecutable,
 } from '../src/index.js';
-import {
-  advanceWorkflow,
-  deriveReadyNodes,
-  parseSchedulerGraph,
-} from './support/engine.js';
+import { deriveReadyNodes } from './support/engine.js';
 import { branchPathHasPrefix } from '../src/scope.js';
 import {
   boundedPolicy,
@@ -18,11 +14,6 @@ import {
   jsonataPolicy,
   nodeCatalog,
 } from './support/executable-workflow.js';
-import {
-  chainGraph,
-  checkpoint,
-  occurredAt,
-} from './support/advance-workflow.js';
 
 function recreateCatalog(
   catalog: NodeCatalog,
@@ -163,21 +154,15 @@ describe('expanded public workflow-engine boundaries', () => {
     ).toBe(true);
   });
 
-  it('preserves disabled graph nodes and normalizes invalid graph failures', () => {
-    const disabledGraph = structuredClone(chainGraph);
-    const disabledNode = disabledGraph.nodes[0];
-    if (disabledNode === undefined) throw new Error('node fixture is missing');
-    Object.assign(disabledNode, { disabled: true });
-    expect(parseSchedulerGraph(disabledGraph).nodes[0]).toMatchObject({
-      id: 'a',
-      disabled: true,
-    });
-
-    const invalidGraph = structuredClone(chainGraph);
+  it('refuses an edge to a missing node at compile time', () => {
+    const invalidGraph = structuredClone(graph());
     Object.assign(invalidGraph.edges[0].target, { nodeId: 'missing' });
-    expect(() => parseSchedulerGraph(invalidGraph)).toThrow(
-      expect.objectContaining({ code: 'graph_invalid' }),
-    );
+    expect(() =>
+      buildWorkflowExecutable({
+        graph: invalidGraph,
+        catalog: baselineCatalog(),
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
   it('normalizes non-Error failures raised while reading hostile public input', () => {
@@ -210,34 +195,7 @@ describe('expanded public workflow-engine boundaries', () => {
         () => buildWorkflowExecutable({ graph: graph(), catalog: hostile }),
         name,
       ).toThrow('executable processing failed');
-      expect(() => parseSchedulerGraph(hostile), name).toThrow(
-        expect.objectContaining({
-          code: 'graph_invalid',
-          message: 'graph input could not be inspected safely at $',
-        }),
-      );
     }
-  });
-
-  it('uses the direct graph route and rejects ambiguous testing inputs', () => {
-    expect(
-      advanceWorkflow({
-        checkpoint: checkpoint(),
-        graph: chainGraph,
-        occurredAt,
-        maximumAdmissions: 1,
-      }).attempts.map(({ nodeId }) => nodeId),
-    ).toEqual(['a']);
-
-    expect(() =>
-      advanceWorkflow({
-        checkpoint: checkpoint(),
-        graph: chainGraph,
-        schedulerState: parseSchedulerGraph(chainGraph),
-        occurredAt,
-        maximumAdmissions: 1,
-      }),
-    ).toThrow('provide graph or schedulerState, not both');
   });
 
   it('leaves malformed Merge pair metadata unpaired at the public testing seam', () => {
