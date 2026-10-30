@@ -1,33 +1,13 @@
 import type { DynamicModule, Provider } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import type {
-  DatabaseReadiness,
   DatabaseConfig,
   DatabaseRuntime,
   WorkspaceDatabase,
 } from '@pertexo/database/platform';
 import { createWorkspaceDatabase } from '@pertexo/database/platform';
-import {} from '@pertexo/workflow-engine';
 
 export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
-
-export class NestWorkspaceDatabase implements WorkspaceDatabase {
-  public constructor(private readonly database: WorkspaceDatabase) {}
-
-  public withWorkspace: WorkspaceDatabase['withWorkspace'] = (
-    workspaceId,
-    operation,
-    options,
-  ) => this.database.withWorkspace(workspaceId, operation, options);
-
-  public checkReadiness(): Promise<DatabaseReadiness> {
-    return this.database.checkReadiness();
-  }
-
-  public close(): ReturnType<WorkspaceDatabase['close']> {
-    return this.database.close();
-  }
-}
 
 type DatabaseModuleOptions = Readonly<{
   database?: WorkspaceDatabase;
@@ -40,13 +20,11 @@ function createDatabaseProvider(
 ): Provider {
   return {
     provide: WORKSPACE_DATABASE,
-    useFactory: (): NestWorkspaceDatabase =>
-      new NestWorkspaceDatabase(
-        options.database ??
-          createWorkspaceDatabase(
-            config,
-            options.runtime === undefined ? {} : { runtime: options.runtime },
-          ),
+    useFactory: (): WorkspaceDatabase =>
+      options.database ??
+      createWorkspaceDatabase(
+        config,
+        options.runtime === undefined ? {} : { runtime: options.runtime },
       ),
   };
 }
