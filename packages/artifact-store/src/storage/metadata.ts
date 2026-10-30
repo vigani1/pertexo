@@ -54,10 +54,6 @@ export const DIRECT_UPLOAD_UNHOISTABLE_HEADERS = new Set([
   ...USER_METADATA_KEYS.map((key) => `x-amz-meta-${key}`),
 ]);
 
-export function workspacePrefix(workspaceId: string): string {
-  return `workspaces/${workspaceId}/`;
-}
-
 export function isNotFound(error: unknown): boolean {
   try {
     if (typeof error !== 'object' || error === null) {
