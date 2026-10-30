@@ -1,5 +1,6 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { LinkProps } from '@tanstack/react-router';
+import { WORKSPACE_PLACES, canOpenPlace } from './places';
 
 export type SettingsDestination = Readonly<{
   to: Extract<
@@ -15,6 +16,7 @@ export type SettingsDestination = Readonly<{
     | '/w/$workspaceId/settings/api-tokens'
   >;
   label: string;
+  capability?: AccessibleWorkspace['capabilities'][number];
   exact?: boolean;
 }>;
 
@@ -27,36 +29,27 @@ export type SettingsGroup = Readonly<{
 export function settingsGroups(
   workspace: AccessibleWorkspace,
 ): readonly SettingsGroup[] {
-  const can = (capability: (typeof workspace.capabilities)[number]) =>
-    workspace.capabilities.includes(capability);
-  const shared: SettingsDestination[] = [
-    { to: '/w/$workspaceId/settings', label: 'General', exact: true },
+  const shared: readonly SettingsDestination[] = [
+    { ...WORKSPACE_PLACES.settings, label: 'General', exact: true },
+    WORKSPACE_PLACES.usage,
+    WORKSPACE_PLACES.variables,
+    WORKSPACE_PLACES.alerts,
+    WORKSPACE_PLACES.promotion,
+    WORKSPACE_PLACES.audit,
+    WORKSPACE_PLACES.sso,
   ];
-  if (can('run:read'))
-    shared.push({ to: '/w/$workspaceId/settings/usage', label: 'Usage' });
-  shared.push({ to: '/w/$workspaceId/settings/variables', label: 'Variables' });
-  if (can('workflow:update'))
-    shared.push(
-      { to: '/w/$workspaceId/settings/alerts', label: 'Alerts' },
-      { to: '/w/$workspaceId/settings/promotion', label: 'Promotion' },
-    );
-  if (can('audit:read'))
-    shared.push({ to: '/w/$workspaceId/settings/audit', label: 'Audit log' });
-  if (can('member:read'))
-    shared.push({
-      to: '/w/$workspaceId/settings/sso',
-      label: 'Single sign-on',
-    });
   return [
-    { label: 'Workspace', destinations: shared },
+    {
+      label: 'Workspace',
+      destinations: shared.filter((destination) =>
+        canOpenPlace(workspace, destination),
+      ),
+    },
     {
       label: 'You',
       destinations: [
-        {
-          to: '/w/$workspaceId/settings/notifications',
-          label: 'Notifications',
-        },
-        { to: '/w/$workspaceId/settings/api-tokens', label: 'API tokens' },
+        WORKSPACE_PLACES.notifications,
+        WORKSPACE_PLACES.apiTokens,
       ],
     },
   ];

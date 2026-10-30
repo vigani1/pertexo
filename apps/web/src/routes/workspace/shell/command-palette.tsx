@@ -4,17 +4,10 @@ import { useNavigate } from '@tanstack/react-router';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { workflowRunIdentifierSchema } from '@pertexo/contracts';
 import {
-  BellIcon,
-  GaugeIcon,
-  HomeIcon,
-  KeyRoundIcon,
   LayoutGridIcon,
   LogOutIcon,
-  PlugIcon,
   SunMoonIcon,
   ShieldCheckIcon,
-  SlidersHorizontalIcon,
-  UsersIcon,
   WavesIcon,
   WorkflowIcon,
 } from 'lucide-react';
@@ -34,6 +27,10 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { AppearanceChoice } from '@/components/patterns/appearance/choice';
+import {
+  WORKSPACE_PLACES,
+  canOpenPlace,
+} from '@/features/workspaces/places.public';
 import { useWorkspaceScope } from './use-workspace-scope';
 
 export function WorkspaceCommandPalette({
@@ -65,7 +62,7 @@ export function WorkspaceCommandPalette({
     enabled: open && can('workflow:read') && typed !== '',
   });
 
-  const places = workspacePlaces({ can, navigate, workspaceId });
+  const places = workspacePlaces({ workspace, navigate });
 
   const shown =
     typed === ''
@@ -178,126 +175,73 @@ export function WorkspaceCommandPalette({
 }
 
 function workspacePlaces({
-  can,
+  workspace,
   navigate,
-  workspaceId,
 }: Readonly<{
-  can: (capability: AccessibleWorkspace['capabilities'][number]) => boolean;
+  workspace: AccessibleWorkspace;
   navigate: ReturnType<typeof useNavigate>;
-  workspaceId: string;
 }>): CommandItem[] {
-  return [
-    ...(can('run:read')
-      ? [
-          {
-            id: 'usage',
-            label: 'Usage',
-            keywords: 'capacity retained activity limits',
-            icon: <GaugeIcon />,
-            onSelect: () =>
-              void navigate({
-                to: '/w/$workspaceId/settings/usage',
-                params: { workspaceId },
-                search: { window: '24h' },
-              }),
-          },
-        ]
-      : []),
+  const params = { workspaceId: workspace.id };
+  const items: readonly (CommandItem & Parameters<typeof canOpenPlace>[1])[] = [
     {
-      id: 'home',
-      label: 'Home',
-      icon: <HomeIcon />,
-      onSelect: () =>
-        void navigate({ to: '/w/$workspaceId', params: { workspaceId } }),
-    },
-    {
-      id: 'workflows',
-      label: 'Workflows',
-      icon: <WorkflowIcon />,
+      ...WORKSPACE_PLACES.usage,
+      id: 'usage',
+      keywords: 'capacity retained activity limits',
       onSelect: () =>
         void navigate({
-          to: '/w/$workspaceId/workflows',
-          params: { workspaceId },
+          to: WORKSPACE_PLACES.usage.to,
+          params,
+          search: { window: '24h' },
         }),
     },
-    ...(can('run:read')
-      ? [
-          {
-            id: 'runs',
-            label: 'Runs',
-            icon: <WavesIcon />,
-            onSelect: () =>
-              void navigate({
-                to: '/w/$workspaceId/runs',
-                params: { workspaceId },
-              }),
-          },
-        ]
-      : []),
-    ...(can('connection:read')
-      ? [
-          {
-            id: 'connections',
-            label: 'Connections',
-            icon: <PlugIcon />,
-            onSelect: () =>
-              void navigate({
-                to: '/w/$workspaceId/connections',
-                params: { workspaceId },
-              }),
-          },
-        ]
-      : []),
-    ...(can('member:read')
-      ? [
-          {
-            id: 'team',
-            label: 'Team',
-            keywords: 'members invitations roles',
-            icon: <UsersIcon />,
-            onSelect: () =>
-              void navigate({
-                to: '/w/$workspaceId/team',
-                params: { workspaceId },
-              }),
-          },
-        ]
-      : []),
-    ...(can('workflow:update')
-      ? [
-          {
-            id: 'alerts',
-            label: 'Alerts',
-            keywords: 'failure notifications destinations',
-            icon: <BellIcon />,
-            onSelect: () =>
-              void navigate({
-                to: '/w/$workspaceId/settings/alerts',
-                params: { workspaceId },
-              }),
-          },
-        ]
-      : []),
     {
+      ...WORKSPACE_PLACES.home,
+      id: 'home',
+      onSelect: () => void navigate({ to: WORKSPACE_PLACES.home.to, params }),
+    },
+    {
+      ...WORKSPACE_PLACES.workflows,
+      id: 'workflows',
+      onSelect: () =>
+        void navigate({ to: WORKSPACE_PLACES.workflows.to, params }),
+    },
+    {
+      ...WORKSPACE_PLACES.runs,
+      id: 'runs',
+      onSelect: () => void navigate({ to: WORKSPACE_PLACES.runs.to, params }),
+    },
+    {
+      ...WORKSPACE_PLACES.connections,
+      id: 'connections',
+      onSelect: () =>
+        void navigate({ to: WORKSPACE_PLACES.connections.to, params }),
+    },
+    {
+      ...WORKSPACE_PLACES.team,
+      id: 'team',
+      keywords: 'members invitations roles',
+      onSelect: () => void navigate({ to: WORKSPACE_PLACES.team.to, params }),
+    },
+    {
+      ...WORKSPACE_PLACES.alerts,
+      id: 'alerts',
+      keywords: 'failure notifications destinations',
+      onSelect: () => void navigate({ to: WORKSPACE_PLACES.alerts.to, params }),
+    },
+    {
+      ...WORKSPACE_PLACES.settings,
       id: 'settings',
       label: 'Workspace settings',
-      icon: <SlidersHorizontalIcon />,
       onSelect: () =>
-        void navigate({
-          to: '/w/$workspaceId/settings',
-          params: { workspaceId },
-        }),
+        void navigate({ to: WORKSPACE_PLACES.settings.to, params }),
     },
     {
+      ...WORKSPACE_PLACES.apiTokens,
       id: 'api-tokens',
-      label: 'API tokens',
       keywords: 'scripts automation personal access',
-      icon: <KeyRoundIcon />,
       onSelect: () =>
-        void navigate({
-          to: '/w/$workspaceId/settings/api-tokens',
-          params: { workspaceId },
-        }),
+        void navigate({ to: WORKSPACE_PLACES.apiTokens.to, params }),
     },
   ];
+  return items.filter((item) => canOpenPlace(workspace, item));
 }
