@@ -151,36 +151,30 @@ test('deploy.sh refuses anything shaped like a shell command', (t) => {
 });
 
 // docs-deps-product-17, ops-09
-it(
-  'the changelog says what each release changed and how to upgrade to it',
-  () => {
-    const changelog = readFileSync('CHANGELOG.md', 'utf8');
-    const releases = changelog.match(
-      /^## \[?v\d+\.\d+\.\d+\]?.*\d{4}-\d{2}-\d{2}.*$/gmu,
-    );
-    assert.ok(releases?.length > 0, 'at least one dated version heading');
-    const first = changelog.slice(changelog.indexOf(releases[0]));
-    const entry = first.slice(0, first.indexOf('\n## ', 1) + 1 || undefined);
-    assert.match(entry, /^### Upgrad/mu);
-  },
-);
+it('the changelog says what each release changed and how to upgrade to it', () => {
+  const changelog = readFileSync('CHANGELOG.md', 'utf8');
+  const releases = changelog.match(
+    /^## \[?v\d+\.\d+\.\d+\]?.*\d{4}-\d{2}-\d{2}.*$/gmu,
+  );
+  assert.ok(releases?.length > 0, 'at least one dated version heading');
+  const first = changelog.slice(changelog.indexOf(releases[0]));
+  const entry = first.slice(0, first.indexOf('\n## ', 1) + 1 || undefined);
+  assert.match(entry, /^### Upgrad/mu);
+});
 
 // docs-deps-product-17: "one version until launch" ends with the first outside user.
-it(
-  'the upgrade page says how to move between releases and what can go wrong',
-  () => {
-    const page = readFileSync('docs/operations/upgrading.md', 'utf8');
-    assert.match(page, /CHANGELOG\.md/u);
-    assert.match(page, /deploy\.sh latest/u);
-    assert.match(page, /deploy\.sh v\d+\.\d+\.\d+/u);
-    // The rule a stranger needs before their first upgrade.
-    assert.match(page, /back ?up/iu);
-    assert.match(page, /schema|migration/iu);
-    assert.match(page, /roll ?back/iu);
-    assert.ok(
-      readFileSync('docs/operations/single-server.md', 'utf8').includes(
-        'upgrading.md',
-      ),
-    );
-  },
-);
+it('the upgrade page says how to move between releases and what can go wrong', () => {
+  const page = readFileSync('docs/operations/upgrading.md', 'utf8');
+  assert.match(page, /CHANGELOG\.md/u);
+  assert.match(page, /deploy\.sh latest/u);
+  assert.match(page, /deploy\.sh v\d+\.\d+\.\d+/u);
+  // The rule a stranger needs before their first upgrade.
+  assert.match(page, /back ?up/iu);
+  assert.match(page, /schema|migration/iu);
+  assert.match(page, /roll ?back/iu);
+  assert.ok(
+    readFileSync('docs/operations/single-server.md', 'utf8').includes(
+      'upgrading.md',
+    ),
+  );
+});
