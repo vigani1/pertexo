@@ -3,10 +3,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { setImmediate } from 'node:timers/promises';
 import { parse, CsvError, type Options } from 'csv-parse';
-import {
-  FileInputFailure,
-  type JsonValue,
-} from '@pertexo/node-sdk/server';
+import { FileInputFailure, type JsonValue } from '@pertexo/node-sdk/server';
 import { convertCsvValue } from '../conversion.js';
 import { admitHeaders } from '../headers.js';
 import type { CoreReadFileConfig } from '../validation.js';
