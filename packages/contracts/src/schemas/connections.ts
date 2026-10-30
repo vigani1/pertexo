@@ -1,4 +1,5 @@
 import { signingKeyCredentialSchema } from '@pertexo/node-sdk';
+import { CONNECTION_SHARE_LIMIT } from '@pertexo/workflow-model';
 export { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { utf8ByteLength } from './shared/text.js';
@@ -461,7 +462,6 @@ export type SlackChannelLookupResponse = z.output<
 >;
 
 const sharingMemberId = z.uuid().overwrite((value) => value.toLowerCase());
-export const CONNECTION_SHARE_LIMIT = 100;
 export const connectionSharingRequestSchema = z
   .object({
     mode: z.enum(['workspace', 'restricted']),

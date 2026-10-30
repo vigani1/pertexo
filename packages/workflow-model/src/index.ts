@@ -385,6 +385,8 @@ export {
 export {
   PROMOTION_LIMITS,
   COLLABORATION_LIMITS,
+  CONNECTION_SHARE_LIMIT,
+  FOLDER_GRANT_LIMIT,
 } from './workspaces/authoring-limits.js';
 
 export { AUDIT_RETENTION_MIN_DAYS } from './workspaces/governance.js';

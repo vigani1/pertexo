@@ -10,7 +10,7 @@ import {
 } from '../../schema/foundation.js';
 import type { ConnectionSharingDatabase } from './contract.js';
 
-import { CONNECTION_SHARE_LIMIT } from '@pertexo/contracts';
+import { CONNECTION_SHARE_LIMIT } from '@pertexo/workflow-model';
 import type { ConnectionSharing } from '@pertexo/contracts';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';

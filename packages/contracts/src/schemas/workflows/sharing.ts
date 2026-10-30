@@ -1,8 +1,8 @@
+import { FOLDER_GRANT_LIMIT } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { workspaceRoleSchema } from '../identity/membership.js';
 const id = z.uuid().overwrite((value) => value.toLowerCase());
 const access = z.enum(['viewer', 'editor']);
-export const FOLDER_GRANT_LIMIT = 100;
 export const folderPrincipalSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('member'), userId: id, access }).strict(),
   z

@@ -11,7 +11,7 @@ import { authOrganizationWorkspaces } from '../../../schema/identity/federation/
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
 import type { PoolClient } from 'pg';
-import { FOLDER_GRANT_LIMIT } from '@pertexo/contracts';
+import { FOLDER_GRANT_LIMIT } from '@pertexo/workflow-model';
 import type {
   FolderSharing,
   FolderSharingRequest,
