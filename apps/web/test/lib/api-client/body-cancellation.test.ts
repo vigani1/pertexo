@@ -5,7 +5,7 @@ import { createApiClient } from '../../../src/lib/api/client';
 import { readBrowserCsrfToken } from '../../../src/lib/api/transport/csrf';
 
 import {
-  apiErrorFrom,
+  expectApiError,
   commonProblem,
   csrfToken,
   fetchMock,
@@ -47,7 +47,7 @@ describe('browser API transport', () => {
         fetch,
         readCsrfToken: () => undefined,
       });
-      const request = apiErrorFrom(
+      const request = expectApiError(
         client.request({
           path: '/v1/examples',
           signal: canceled.signal,
@@ -77,7 +77,7 @@ describe('browser API transport', () => {
         readCsrfToken: () => undefined,
       });
 
-      await apiErrorFrom(
+      await expectApiError(
         client.request({
           path: '/v1/examples',
           response: { kind: 'json', decode: (value) => value },
@@ -107,7 +107,7 @@ describe('browser API transport', () => {
       return Promise.resolve(hanging);
     });
     const client = createApiClient({ fetch, readCsrfToken: () => undefined });
-    const timed = apiErrorFrom(
+    const timed = expectApiError(
       client.request({
         path: '/v1/examples',
         timeoutMs: 25,
@@ -159,7 +159,7 @@ describe('browser API transport', () => {
       }),
       readCsrfToken: () => undefined,
     });
-    const timed = apiErrorFrom(
+    const timed = expectApiError(
       client.request({
         path: '/v1/examples',
         timeoutMs: 25,
@@ -196,7 +196,7 @@ describe('browser API transport', () => {
       }),
     ];
 
-    for (const request of requests) await apiErrorFrom(request, 'protocol');
+    for (const request of requests) await expectApiError(request, 'protocol');
     expect(fetch).not.toHaveBeenCalled();
   });
   it('opens a same-origin event stream with an explicit resume cursor', async () => {
@@ -228,7 +228,7 @@ describe('browser API transport', () => {
       fetch: fetchMock(problemResponse(commonProblem())),
       readCsrfToken: () => undefined,
     });
-    await apiErrorFrom(
+    await expectApiError(
       problemClient.stream({
         path: '/v1/events',
         response: { kind: 'stream', mediaType: 'text/event-stream' },
@@ -240,7 +240,7 @@ describe('browser API transport', () => {
       fetch: fetchMock(jsonResponse({ events: [] })),
       readCsrfToken: () => undefined,
     });
-    await apiErrorFrom(
+    await expectApiError(
       mediaClient.stream({
         path: '/v1/events',
         response: { kind: 'stream', mediaType: 'text/event-stream' },
