@@ -21,7 +21,7 @@ export type ApiRateLimit = Pick<
   'consume' | 'acquireExclusiveSlot' | 'close'
 >;
 
-export const RATE_LIMIT_CONCURRENCY = Symbol('RATE_LIMIT_CONCURRENCY');
+const RATE_LIMIT_CONCURRENCY = Symbol('RATE_LIMIT_CONCURRENCY');
 const RATE_LIMIT_METRICS = Symbol('RATE_LIMIT_METRICS');
 
 @Module({})
