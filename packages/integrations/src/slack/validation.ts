@@ -51,6 +51,12 @@ export const resolvedSlackBotTokenCredentialSchema = z
   .strict()
   .readonly();
 
+export type SlackSendMessageConfig = z.output<
+  typeof slackSendMessageConfigSchema
+>;
+export type SlackSendMessageInput = z.output<
+  typeof slackSendMessageInputSchema
+>;
 export type SlackSendMessageOutput = z.output<
   typeof slackSendMessageOutputSchema
 >;

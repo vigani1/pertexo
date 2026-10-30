@@ -9,10 +9,7 @@ import {
   CoreValidateExecutionAbortedError,
   evaluateCoreValidate,
 } from './semantics.js';
-import {
-  CORE_VALIDATE_CONFIG_SCHEMA,
-  CORE_VALIDATE_INPUT_SCHEMA,
-} from './validation.js';
+import type { CoreValidateConfig, CoreValidateInput } from './validation.js';
 
 export const coreValidateExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_VALIDATE_EXECUTOR,
@@ -20,8 +17,8 @@ export const coreValidateExecutor: NodeExecutorRegistration = Object.freeze({
     try {
       return Promise.resolve(
         evaluateCoreValidate(
-          CORE_VALIDATE_CONFIG_SCHEMA.parse(invocation.config),
-          CORE_VALIDATE_INPUT_SCHEMA.parse(invocation.input),
+          invocation.config as CoreValidateConfig,
+          invocation.input as CoreValidateInput,
           invocation.signal,
         ),
       );
