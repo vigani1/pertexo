@@ -71,6 +71,11 @@ export const formUploads = appSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .default(sql`clock_timestamp()`),
+    /** Set when a form submission takes the file; unsent public files have a cap. */
+    submittedAt: timestamp('submitted_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
   },
   (table) => [
     primaryKey({ columns: [table.workspaceId, table.artifactId] }),
@@ -92,5 +97,8 @@ export const formUploads = appSchema.table(
       sql`session_hash ~ '^[0-9a-f]{64}$' AND (capability_hash IS NULL OR capability_hash ~ '^[0-9a-f]{64}$')`,
     ),
     index('form_uploads_session_idx').on(table.workspaceId, table.sessionHash),
+    index('form_uploads_unsent_public_idx')
+      .on(table.workspaceId)
+      .where(sql`capability_hash IS NOT NULL AND submitted_at IS NULL`),
   ],
 );

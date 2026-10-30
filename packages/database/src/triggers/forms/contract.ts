@@ -69,5 +69,7 @@ export type PreparedFormEvent =
         submittedBy: string | null;
         submittedAt: string;
       }>;
+      /** The responder's uploads the values took, marked sent on acceptance. */
+      uploadIds: readonly string[];
       coordination?: PreparedEventCoordination;
     }>;
