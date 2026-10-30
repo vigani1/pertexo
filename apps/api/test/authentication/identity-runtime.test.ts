@@ -1,6 +1,6 @@
 import * as identityStores from '@pertexo/database/tenant-access';
 import type { IdentityWorkspaceDatabase } from '@pertexo/database/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ApiIdentityConfig } from '../../src/platform/config/identity.js';
 import { createApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
@@ -41,8 +41,43 @@ function identityDatabase(
   } as unknown as IdentityWorkspaceDatabase;
 }
 
+/** Lets the real store be built and records how often its close runs. */
+function ownedClose(
+  factory:
+    | 'createIdentityWorkspaceDatabase'
+    | 'createApiTokenDatabase'
+    | 'createDirectoryStore',
+) {
+  const original = identityStores[factory] as (...arguments_: unknown[]) => {
+    close(): Promise<void>;
+  };
+  let close: ReturnType<typeof vi.fn> | undefined;
+  vi.spyOn(identityStores, factory).mockImplementation(((
+    ...arguments_: unknown[]
+  ) => {
+    const store = original(...arguments_);
+    const closeStore = vi.fn(() => store.close());
+    close = closeStore;
+    // The stores are frozen; shadow close on an object that inherits the rest.
+    return Object.defineProperty(
+      Object.create(store) as typeof store,
+      'close',
+      {
+        value: closeStore,
+      },
+    );
+  }) as never);
+  return () => {
+    if (close === undefined) throw new Error(`${factory} was never called`);
+    return close;
+  };
+}
+
 describe('identity runtime composition', () => {
   const federationClose = vi.fn<() => Promise<void>>();
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   beforeEach(() => {
     federationClose.mockReset().mockResolvedValue(undefined);
     vi.spyOn(identityStores, 'createFederationManagementStore').mockReturnValue(
@@ -74,11 +109,18 @@ describe('identity runtime composition', () => {
   });
 
   it('owns and closes the production database resources when none are injected', async () => {
+    const closes = [
+      ownedClose('createIdentityWorkspaceDatabase'),
+      ownedClose('createApiTokenDatabase'),
+      ownedClose('createDirectoryStore'),
+    ];
     const runtime = await createApiIdentityRuntime(
       identityConfig,
       databaseConfig,
     );
     await runtime.close();
+    for (const close of closes) expect(close()).toHaveBeenCalledOnce();
+    expect(federationClose).toHaveBeenCalledOnce();
   });
 
   it('forwards the clock through the public runtime', async () => {
