@@ -7,11 +7,13 @@ import { registerChecksRetainedFileOwnersBefore } from './folders/checks-retaine
 import { registerOmitsHiddenWorkflowIdentitiesVariable } from './folders/omits-hidden-workflow-identities-variable.cases.js';
 import { registerKeepsRetainedRunReadsAvailable } from './folders/keeps-retained-run-reads-available.cases.js';
 import { registerRefusesUnlinkedOrganizationGroups } from './folders/refuses-unlinked-organization-groups.cases.js';
+import { registerReplacesFolderGrantLists } from './folders/replaces-folder-grant-lists.cases.js';
 beforeAll(beforeAllFixture1, 30_000);
 afterAll(afterAllFixture2);
 registerOmitsInaccessibleWorkflowsRetainedRun();
 registerFencesGrantEditsAudienceReviews();
 registerChecksRetainedFileOwnersBefore();
 registerRefusesUnlinkedOrganizationGroups();
+registerReplacesFolderGrantLists();
 registerOmitsHiddenWorkflowIdentitiesVariable();
 registerKeepsRetainedRunReadsAvailable();
