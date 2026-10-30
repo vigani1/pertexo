@@ -190,6 +190,22 @@ export {
 } from './flow/pending-tasks/approval.js';
 
 export {
+  SWITCH_CASE_PORTS,
+  switchConfigSchema,
+  switchScalarSchema,
+  type SwitchConfig,
+} from './flow/control-nodes/switch.js';
+export {
+  PARALLEL_BRANCH_PORTS,
+  parallelBranchPortSchema,
+  parallelConfigSchema,
+  type ParallelConfig,
+} from './flow/control-nodes/parallel.js';
+export {
+  mergeConfigSchema,
+  type MergeConfig,
+} from './flow/control-nodes/merge.js';
+export {
   PENDING_TASK_LIMITS,
   taskAudienceSchema,
   type TaskAudience,
