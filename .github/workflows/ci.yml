@@ -182,6 +182,9 @@ jobs:
             shard: 1/2
           - group: worker-2
             shard: 2/2
+          # Real faults against real processes; they stop Postgres, Redis and
+          # the object store, so nothing else shares their compose project.
+          - group: faults
     env:
       # Tests that own their fixtures expect the project suffix `-integration`.
       COMPOSE_PROJECT_NAME:
@@ -248,6 +251,9 @@ jobs:
         run:
           pnpm --filter @pertexo/worker exec vitest run --config
           vitest.integration.config.ts --shard="$SHARD"
+      - name: Fault tests
+        if: matrix.group == 'faults'
+        run: pnpm --filter @pertexo/worker test:fault
       - name: Qualify pinned beta storage
         if: matrix.group == 'services'
         run: node infrastructure/single-server/storage/qualify.mjs
