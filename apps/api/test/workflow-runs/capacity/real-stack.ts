@@ -332,11 +332,19 @@ export async function publishGraph(
   );
   const savedBody = await saved.text();
   expect(saved.status, savedBody).toBe(200);
-  const published = await owner.send('POST', `${path}/publish`, undefined, {
-    'if-match': String(saved.headers.get('etag')),
-  });
-  const publishedBody = await published.text();
-  expect(published.status, publishedBody).toBe(200);
+  // The API asks for a retry when validation is saturated on a busy machine.
+  for (let tries = 1; ; tries += 1) {
+    const published = await owner.send('POST', `${path}/publish`, undefined, {
+      'if-match': String(saved.headers.get('etag')),
+    });
+    const publishedBody = await published.text();
+    if (published.status === 503 && tries < 5) {
+      await delay(1_000);
+      continue;
+    }
+    expect(published.status, publishedBody).toBe(200);
+    break;
+  }
   return { path, workflowId: workflow.id };
 }
 
