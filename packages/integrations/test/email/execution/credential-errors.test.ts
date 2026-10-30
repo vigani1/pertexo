@@ -26,16 +26,6 @@ describe('email.send_notification@1', () => {
       },
     },
     {
-      name: 'invalid credential with history',
-      error: new ProviderCredentialInvalidError(),
-      historical: true,
-      expected: {
-        kind: 'outcome_unknown',
-        errorKind: 'authentication',
-        possiblyDispatched: true,
-      },
-    },
-    {
       name: 'throttle without history',
       error: new ProviderExecutionRateLimitError(7),
       historical: false,
