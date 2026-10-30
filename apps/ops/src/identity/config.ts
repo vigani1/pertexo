@@ -1,3 +1,4 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
@@ -33,7 +34,10 @@ export function parseTwoFactorRecoveryConfig(
 ) {
   try {
     if (args.length !== 2 || args[0] !== '--email') throw new TypeError();
-    const email = z.email().max(320).parse(args[1]).toLowerCase();
+    const email = z
+      .email()
+      .max(320)
+      .parse(canonicalEmail(args[1] ?? ''));
     const values = environmentSchema.parse(environment);
     const deployed =
       values.NODE_ENV === 'production' || values.NODE_ENV === 'staging';

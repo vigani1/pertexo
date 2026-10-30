@@ -204,6 +204,9 @@ importers:
       '@pertexo/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@pertexo/workflow-model':
+        specifier: workspace:*
+        version: link:../../packages/workflow-model
       zod:
         specifier: 4.6.7
         version: 4.6.7

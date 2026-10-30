@@ -1,3 +1,4 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
 import { createHash, randomBytes } from 'node:crypto';
 
 import { authenticationReturnPathSchema } from '@pertexo/contracts';
@@ -151,7 +152,7 @@ export class OwnedEmailProofs {
     if (
       purpose === 'change_old' &&
       (newEmail === undefined ||
-        newEmail.toLowerCase() === user.email.toLowerCase())
+        canonicalEmail(newEmail) === canonicalEmail(user.email))
     )
       throw new TypeError('An email change needs a different address');
     const prepared = this.mail.prepareProof?.(mailInput);

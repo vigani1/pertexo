@@ -1,3 +1,4 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
 import SCIMMY from 'scimmy';
 import { z } from 'zod';
 import {
@@ -50,19 +51,19 @@ export function parseDirectoryUser(input: unknown): DirectoryUserValues {
     const chosen = user.emails.findIndex((entry) => entry.primary);
     const primary = user.emails[chosen < 0 ? 0 : chosen];
     if (primary === undefined) throw new DirectoryError('invalid_value');
-    const canonicalEmail = (
+    const canonicalEntry = (
       entry: z.infer<typeof email>,
       { isPrimary }: Readonly<{ isPrimary: boolean }>,
     ) => ({
-      value: entry.value.toLowerCase(),
+      value: canonicalEmail(entry.value),
       primary: isPrimary,
       ...(entry.type === undefined ? {} : { type: entry.type }),
     });
     const emails = [
-      canonicalEmail(primary, { isPrimary: true }),
+      canonicalEntry(primary, { isPrimary: true }),
       ...user.emails
         .filter((entry) => entry !== primary)
-        .map((entry) => canonicalEmail(entry, { isPrimary: false })),
+        .map((entry) => canonicalEntry(entry, { isPrimary: false })),
     ] as const;
     if (new Set(emails.map((entry) => entry.value)).size !== emails.length)
       throw new DirectoryError('invalid_value');

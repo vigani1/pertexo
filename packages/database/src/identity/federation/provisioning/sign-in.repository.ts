@@ -1,3 +1,4 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
 import { authAccounts } from '../../../schema/authentication.js';
 import { authDirectoryUsers } from '../../../schema/identity/federation/directory/users.js';
 import { authDirectoryMemberships } from '../../../schema/identity/federation/directory/sources.js';
@@ -48,7 +49,7 @@ export async function directorySignInCandidate(
       and(
         eq(directoryUsers.organizationId, organizationId),
         or(
-          eq(directoryUsers.loginEmail, email.toLowerCase()),
+          eq(directoryUsers.loginEmail, canonicalEmail(email)),
           inArray(directoryUsers.userId, accounts),
         ),
       ),

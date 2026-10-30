@@ -1,3 +1,4 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
 import type { DirectoryUser } from '../contract.js';
 import { authDirectoryGroupMembers } from '../../../../schema/identity/federation/directory/members.js';
 import { authDirectoryUsers } from '../../../../schema/identity/federation/directory/users.js';
@@ -70,7 +71,7 @@ export function createDirectoryUser(
           organizationId: principal.organizationId,
           userName: values.userName,
           normalizedUserName: values.userName.toLowerCase(),
-          loginEmail: values.profile.emails[0].value.toLowerCase(),
+          loginEmail: canonicalEmail(values.profile.emails[0].value),
           externalId: values.externalId,
           active: values.active,
           profile: values.profile,
@@ -114,7 +115,7 @@ export function changeDirectoryUser(
         .set({
           userName: values.userName,
           normalizedUserName: values.userName.toLowerCase(),
-          loginEmail: values.profile.emails[0].value.toLowerCase(),
+          loginEmail: canonicalEmail(values.profile.emails[0].value),
           externalId: values.externalId,
           active: values.active,
           profile: values.profile,

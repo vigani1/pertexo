@@ -117,6 +117,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0054_form_uploads.sql',
       '0055_task_timeout_output.sql',
       '0056_unsent_public_form_uploads.sql',
+      '0057_users_canonical_email_index.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

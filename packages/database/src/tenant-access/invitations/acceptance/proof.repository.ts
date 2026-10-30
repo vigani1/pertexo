@@ -1,3 +1,4 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
 import { and, eq, getTableName, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -93,8 +94,7 @@ export async function recordInvitationAcceptanceProof(
       if (!['pending', 'verified', 'wrong_account'].includes(current.status))
         return null;
       const matches =
-        current.recipient_email.normalize('NFKC').toLowerCase() ===
-        normalizedEmail;
+        canonicalEmail(current.recipient_email) === normalizedEmail;
       await db
         .update(intents)
         .set({

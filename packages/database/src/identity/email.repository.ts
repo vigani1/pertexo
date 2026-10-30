@@ -1,3 +1,5 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
+import { canonicalEmailSql } from './canonical-email.js';
 import { readIdentityEmailChangeEligibility } from './federation/sessions/authority.repository.js';
 import { randomUUID } from 'node:crypto';
 
@@ -44,7 +46,7 @@ export class EmailProofCommands {
         .for('update');
       const proofUserChanged =
         current?.status !== 'active' ||
-        current.email.toLowerCase() !== user.email.toLowerCase() ||
+        canonicalEmail(current.email) !== canonicalEmail(user.email) ||
         current.emailVerified !== (purpose === 'change_old');
       if (proofUserChanged) return false;
       if (purpose === 'change_old') {
@@ -83,7 +85,10 @@ export class EmailProofCommands {
           isNull(authEmailProofs.consumedAt),
           gt(authEmailProofs.expiresAt, sql`clock_timestamp()`),
           eq(users.status, 'active'),
-          sql`lower(${users.email}) = lower(${authEmailProofs.email})`,
+          eq(
+            canonicalEmailSql(users.email),
+            canonicalEmailSql(authEmailProofs.email),
+          ),
         ),
       );
     return proof;
@@ -131,7 +136,7 @@ async function consumeProof(
   const proofUnavailable =
     !row?.usable ||
     row.proof.userId !== userId ||
-    row.proof.email.toLowerCase() !== user.email.toLowerCase();
+    canonicalEmail(row.proof.email) !== canonicalEmail(user.email);
   if (proofUnavailable) return 'invalid';
   const proof = row.proof;
   if (proof.purpose !== 'initial_verification') {

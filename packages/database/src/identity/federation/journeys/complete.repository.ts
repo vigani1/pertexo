@@ -1,3 +1,4 @@
+import { canonicalEmail } from '@pertexo/workflow-model';
 import type { CompleteFederationJourney } from './contract.js';
 import { authAccounts, authSessions } from '../../../schema/authentication.js';
 import { authFederationAttempts } from '../../../schema/identity/federation/journeys.js';
@@ -100,7 +101,7 @@ export async function completeFederationJourney(
   if (linked === undefined) {
     if (!(await hasSignInMethodCapacity(client, user.id)))
       throw new SignInProofRejectedError();
-    if (user.email.toLowerCase() !== input.identity.email)
+    if (canonicalEmail(user.email) !== canonicalEmail(input.identity.email))
       throw new SignInProofRejectedError();
     await drizzle(client)
       .insert(authAccounts)

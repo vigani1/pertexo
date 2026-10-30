@@ -13,7 +13,3 @@ export const sealedToken = z
     keyVersion: z.string().min(1).max(64),
   })
   .strict();
-
-export function normalizeEmail(value: string): string {
-  return value.trim().normalize('NFKC').toLowerCase();
-}

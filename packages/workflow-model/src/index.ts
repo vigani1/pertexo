@@ -397,6 +397,7 @@ export {
   API_TOKEN_MAX_LIFETIME_DAYS,
   API_TOKEN_ACTIVE_LIMIT,
   apiTokenCredentialSchema,
+  canonicalEmail,
 } from './workspaces/identity-policy.js';
 
 export { CORE_WEBHOOK_CONFIG_SCHEMA } from './triggers/webhook.js';

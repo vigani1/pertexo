@@ -1,6 +1,8 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { canonicalEmail } from '@pertexo/workflow-model';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { users } from '../../../schema/foundation.js';
+import { canonicalEmailSql } from '../../canonical-email.js';
 import { authAccounts } from '../../../schema/authentication.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
@@ -25,7 +27,7 @@ export async function resolveVerifiedSignInUser(
 ): Promise<SignInUser | undefined> {
   const email = input.identity.email;
   if (email === null || !input.identity.emailVerified) return undefined;
-  const normalizedEmail = email.toLowerCase();
+  const normalizedEmail = canonicalEmail(email);
   // Serializes first sign-in through different providers for the same address.
   await drizzle(client)
     .execute(
@@ -50,7 +52,15 @@ export async function resolveVerifiedSignInUser(
     return user;
   }
   const [existing] = await userQuery(client)
-    .where(sql`lower(${users.email})=lower(${normalizedEmail})`)
+    .where(
+      eq(
+        canonicalEmailSql(users.email),
+        canonicalEmailSql(sql.param(normalizedEmail)),
+      ),
+    )
+    // Stored addresses may collide under the rule; an exact owner comes first.
+    .orderBy(sql`${users.email}=${normalizedEmail} desc`, asc(users.id))
+    .limit(1)
     .for('update')
     .catch(rethrowQueryFailure);
   if (existing !== undefined) return existing;
