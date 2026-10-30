@@ -169,7 +169,7 @@ export function registerKeepsSharedSourceFirstRun(): void {
   });
 
   it('purges suites and their copied case values with the workspace', async () => {
-    const steps = await purgeTestWorkspace(workspaceId, { pageSize: 2 });
+    const steps = await purgeTestWorkspace(workspaceId, { pageSize: 50 });
     expect(steps).toContain('workflow_test_suites');
     expect(
       await query(
