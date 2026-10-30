@@ -56,9 +56,12 @@ describe('AdvanceWorkflow branching', () => {
           {
             id: 'parallel',
             definition: { key: 'core.parallel', version: 1 },
-            config: {
-              branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
-              maxConcurrency: 1,
+            control: {
+              kind: 'parallel',
+              config: {
+                branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
+                maxConcurrency: 1,
+              },
             },
             sideEffectClass: 'safe',
           },

@@ -9,7 +9,7 @@ import {
 } from '@pertexo/workflow-model';
 import type {
   WorkflowExecutableGraph,
-  WorkflowExecutableNode,
+  ExecutionNode,
 } from '../compilation/foundation.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import { configuredScopedOutputPorts } from '../transition/scheduling/readiness.js';
@@ -33,7 +33,7 @@ import {
 export function callDeclarationObservations(
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   checkpoint: WorkflowCheckpoint,
-  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
+  nodes: ReadonlyMap<string, ExecutionNode>,
 ): Readonly<{
   intents: readonly WorkflowCallIntent[];
   observations: readonly WorkflowObservation[];
@@ -128,7 +128,7 @@ function parseCallOutcome(value: JsonValue): WorkflowCallOutcome {
 export function callOutcomeObservations(
   input: unknown,
   checkpoint: WorkflowCheckpoint,
-  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
+  nodes: ReadonlyMap<string, ExecutionNode>,
   graph: WorkflowExecutableGraph,
 ): readonly WorkflowObservation[] {
   let bounded: JsonValue;
@@ -193,7 +193,7 @@ function assertCallOutcomeScope(
     graph,
   }: Readonly<{
     checkpoint: WorkflowCheckpoint;
-    nodes: ReadonlyMap<string, WorkflowExecutableNode>;
+    nodes: ReadonlyMap<string, ExecutionNode>;
     graph: WorkflowExecutableGraph;
   }>,
 ): void {

@@ -51,7 +51,7 @@ describe('scheduler executable projection', () => {
       };
     }
 
-    const projected = projectSchedulerState(graph);
+    const projected = projectSchedulerState(graph, new Map());
 
     expect(bodyReads).toBe(12);
     expect(projected.structuredBodies).toHaveLength(12);

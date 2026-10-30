@@ -3,7 +3,6 @@ import fc from 'fast-check';
 import { invocationKey } from '../../../src/index.js';
 import {
   advanceWorkflow,
-  configuredParallelOutputPorts,
   decideRetry,
   type WorkflowObservation,
 } from '../../support/engine.js';
@@ -19,26 +18,6 @@ import {
 } from '../../support/transition/model.js';
 
 describe('bounded workflow state-machine model', () => {
-  it('fails closed for malformed or unsupported generated Parallel projections', () => {
-    expect(
-      configuredParallelOutputPorts({
-        definition: { key: 'core.parallel', version: 4 },
-        config: { branches: [{ id: 'branch-01' }, { id: 'branch-02' }] },
-      }),
-    ).toBeUndefined();
-    expect(
-      configuredParallelOutputPorts({
-        definition: { key: 'core.parallel', version: 1 },
-        config: { branches: 'branch-01' },
-      }),
-    ).toBeUndefined();
-    expect(
-      configuredParallelOutputPorts({
-        definition: { key: 'core.parallel', version: 1 },
-        config: { branches: [null, { id: 'branch-02' }] },
-      }),
-    ).toBeUndefined();
-  });
   it('exhaustively preserves deterministic and monotonic transition invariants for every four-node DAG', () => {
     for (let mask = 0; mask < 1 << FOUR_NODE_EDGES.length; mask += 1) {
       const schedulerState = graphForMask(mask);

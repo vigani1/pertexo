@@ -3,8 +3,10 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import { buildWorkflowExecutable } from '../compilation/compile.js';
-import { executableNodes } from '../compilation/graph.js';
-import type { WorkflowExecutableGraph } from '../compilation/foundation.js';
+import {
+  executionNodes,
+  type WorkflowExecutableGraph,
+} from '../compilation/foundation.js';
 import { createCheckpoint } from '../checkpoint/create-and-parse.js';
 import { testStepDisposition, type WorkflowTestPins } from './policy.js';
 import { validWorkflowTestPin } from './pins.js';
@@ -19,7 +21,7 @@ export function buildWorkflowTestExecutable(
 ) {
   const executable = buildWorkflowExecutable(input);
   const test = { pinnedNodeIds: Object.keys(input.pins) };
-  const nodes = executableNodes(executable.envelope.graph);
+  const nodes = executionNodes(executable);
   const candidates = (function unpinnedSteps(
     graph: WorkflowExecutableGraph,
   ): WorkflowExecutableGraph['nodes'] {

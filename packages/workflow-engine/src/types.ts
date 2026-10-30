@@ -3,6 +3,7 @@ import type {
   JsonValue,
   ApprovalConfig,
   InputRequestConfig,
+  MergeConfig,
   TaskContext,
   WorkflowCallPin,
   WorkflowNodeFailureValue,
@@ -80,10 +81,7 @@ export interface BranchLedgerEntry {
   readonly output?: OutputReference;
 }
 
-export type JoinPolicy =
-  | { readonly kind: 'all' }
-  | { readonly kind: 'any' }
-  | { readonly kind: 'count'; readonly count: number };
+export type JoinPolicy = MergeConfig['policy'];
 
 /** Source facts consumed by the deterministic workflow transition engine. */
 export type WorkflowObservation =

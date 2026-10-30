@@ -15,7 +15,7 @@ import {
 } from '@pertexo/workflow-model';
 import type {
   WorkflowExecutableGraph,
-  WorkflowExecutableNode,
+  ExecutionNode,
 } from '../compilation/foundation.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import { normalizeBoundedEngineJson } from '../compilation/validation.js';
@@ -43,7 +43,7 @@ export function taskDeclarationObservations(
   completedItems: readonly JsonValue[],
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   invocations: ReadonlyMap<string, InvocationState>,
-  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
+  nodes: ReadonlyMap<string, ExecutionNode>,
 ): Readonly<{
   intents: readonly PendingTaskIntent[];
   observations: readonly WorkflowObservation[];
@@ -173,7 +173,7 @@ function parseTaskOutcome(value: JsonValue): PendingTaskOutcome {
 export function taskOutcomeObservations(
   input: unknown,
   checkpoint: WorkflowCheckpoint,
-  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
+  nodes: ReadonlyMap<string, ExecutionNode>,
   graph: WorkflowExecutableGraph,
 ): readonly WorkflowObservation[] {
   let bounded: JsonValue;
@@ -223,7 +223,7 @@ export function taskOutcomeObservations(
   return observations;
 }
 
-function pendingTaskSetup(node: WorkflowExecutableNode) {
+function pendingTaskSetup(node: ExecutionNode) {
   if (isCallbackWaitNode(node))
     return {
       kind: 'callback' as const,
@@ -248,7 +248,7 @@ function assertTaskOutcomeScope(
     graph,
   }: Readonly<{
     checkpoint: WorkflowCheckpoint;
-    nodes: ReadonlyMap<string, WorkflowExecutableNode>;
+    nodes: ReadonlyMap<string, ExecutionNode>;
     graph: WorkflowExecutableGraph;
   }>,
 ): void {
@@ -281,7 +281,7 @@ function assertTaskOutcomeScope(
 function taskResultObservations(
   fact: PendingTaskOutcome,
   owner: InvocationState,
-  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
+  nodes: ReadonlyMap<string, ExecutionNode>,
 ): readonly WorkflowObservation[] {
   const node = nodes.get(fact.nodeId);
   const inputRequest =
@@ -320,7 +320,7 @@ function settledTaskOutcome(
   {
     node,
     timedOut,
-  }: Readonly<{ node: WorkflowExecutableNode | undefined; timedOut: boolean }>,
+  }: Readonly<{ node: ExecutionNode | undefined; timedOut: boolean }>,
 ): WorkflowObservation {
   let reasonCode: string | undefined;
   if (timedOut) reasonCode = 'pending_task.timed_out';
@@ -373,7 +373,7 @@ function selectedTaskPort(
   {
     node,
     timedOut,
-  }: Readonly<{ node: WorkflowExecutableNode | undefined; timedOut: boolean }>,
+  }: Readonly<{ node: ExecutionNode | undefined; timedOut: boolean }>,
 ): string | undefined {
   const ports =
     node === undefined ? undefined : configuredBranchOutputPorts(node);

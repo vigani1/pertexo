@@ -6,7 +6,10 @@ import {
   type StepRetrySettings,
   WORKFLOW_FAILURE_PORT,
 } from '@pertexo/workflow-model';
-import { assertAuthenticExecutableIdentity } from '../compilation/foundation.js';
+import {
+  assertAuthenticExecutableIdentity,
+  executionNodes,
+} from '../compilation/foundation.js';
 import { assertCheckpointMatchesExecutable } from '../checkpoint/matches-executable.js';
 import {
   decideRetry,
@@ -111,7 +114,12 @@ export function selectRecoveryPrefix(
     return { kind: 'refused', reason: 'unsupported_graph' };
   if (!sourceEvidenceComplete(source))
     return { kind: 'refused', reason: 'evidence_unavailable' };
-  assertCheckpointMatchesExecutable(source.checkpoint, executable, graph.nodes);
+  // A decision tree has no loop bodies, so these are the graph's own steps.
+  assertCheckpointMatchesExecutable(
+    source.checkpoint,
+    executable,
+    executionNodes(executable),
+  );
   const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
   const records = new Map(source.nodes.map((node) => [node.nodeId, node]));
   const invocations = new Map(

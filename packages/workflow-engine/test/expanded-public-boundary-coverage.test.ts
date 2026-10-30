@@ -6,7 +6,6 @@ import {
   composeExecutableCatalog,
   parseWorkflowExecutable,
 } from '../src/index.js';
-import { deriveReadyNodes } from './support/engine.js';
 import { branchPathHasPrefix } from '../src/scope.js';
 import {
   boundedPolicy,
@@ -196,30 +195,5 @@ describe('expanded public workflow-engine boundaries', () => {
         name,
       ).toThrow('executable processing failed');
     }
-  });
-
-  it('leaves malformed Merge pair metadata unpaired at the public testing seam', () => {
-    const decisions = (config: Readonly<Record<string, unknown>> | undefined) =>
-      deriveReadyNodes({
-        graph: {
-          deriveReadiness: true,
-          nodes: [
-            {
-              id: 'merge',
-              definition: { key: 'core.merge', version: 1 },
-              ...(config === undefined ? {} : { config }),
-              sideEffectClass: 'safe',
-            },
-          ],
-          edges: [],
-        },
-        workflowVersionId: '00000000-0000-4000-8000-000000000001',
-        invocations: [],
-      });
-
-    expect(decisions(undefined).map(({ nodeId }) => nodeId)).toEqual(['merge']);
-    expect(
-      decisions({ parallelNodeId: 42 }).map(({ nodeId }) => nodeId),
-    ).toEqual(['merge']);
   });
 });

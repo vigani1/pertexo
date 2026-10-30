@@ -1,9 +1,6 @@
 import { advanceWorkflowFromSchedulerState } from '../../src/transition/advance.js';
 import { parseCheckpoint } from '../../src/checkpoint/create-and-parse.js';
-import {
-  configuredParallelOutputPorts,
-  deriveReadyNodes,
-} from '../../src/transition/scheduling/readiness.js';
+import { deriveReadyNodes } from '../../src/transition/scheduling/readiness.js';
 import { parseSchedulerGraph, type SchedulerGraph } from './scheduler-graph.js';
 import type {
   WorkflowObservation,
@@ -50,7 +47,7 @@ export function advanceWorkflow(
   });
 }
 
-export { configuredParallelOutputPorts, deriveReadyNodes, parseSchedulerGraph };
+export { deriveReadyNodes, parseSchedulerGraph };
 export type { SchedulerGraph, WorkflowObservation };
 export type { ReadyNodeDecision } from '../../src/transition/scheduling/readiness.js';
 export {

@@ -21,9 +21,12 @@ describe('transition-local scheduler node lookup', () => {
               id: 'parallel',
               sideEffectClass: 'safe',
               definition: { key: 'core.parallel', version: 1 },
-              config: {
-                maxConcurrency: 1,
-                branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
+              control: {
+                kind: 'parallel',
+                config: {
+                  maxConcurrency: 1,
+                  branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
+                },
               },
             },
           ],

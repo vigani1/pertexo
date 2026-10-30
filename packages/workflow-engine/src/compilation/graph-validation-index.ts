@@ -1,12 +1,15 @@
-import type {
-  WorkflowEdge,
-  WorkflowGraph,
-  WorkflowNode,
+import {
+  inspectControlNodeConfig,
+  type ControlNodeConfig,
+  type WorkflowEdge,
+  type WorkflowGraph,
+  type WorkflowNode,
 } from '@pertexo/workflow-model';
-import { isCoreMergeDefinition } from '../core-definition-identities.js';
+import { fail } from './foundation.js';
 
 export type GraphValidationIndex = Readonly<{
   nodesById: ReadonlyMap<string, WorkflowNode>;
+  controls: ReadonlyMap<string, ControlNodeConfig>;
   incomingByNode: ReadonlyMap<string, readonly WorkflowEdge[]>;
   incomingByNodePort: ReadonlyMap<string, readonly WorkflowEdge[]>;
   outgoingByNodePort: ReadonlyMap<string, readonly WorkflowEdge[]>;
@@ -53,14 +56,22 @@ export function graphValidationIndex(
     );
     adjacency.get(edge.source.nodeId)?.push(edge.target.nodeId);
   }
+  const controls = new Map<string, ControlNodeConfig>();
   for (const node of graph.nodes) {
-    if (!isCoreMergeDefinition(node.definition)) continue;
-    const parallelNodeId = node.config.parallelNodeId;
-    if (typeof parallelNodeId === 'string')
-      appendIndexValue(mergesByParallelNode, parallelNodeId, node);
+    const inspected = inspectControlNodeConfig(node);
+    if (inspected.kind === 'invalid') fail(inspected.message);
+    if (inspected.kind === 'none') continue;
+    controls.set(node.id, inspected.value);
+    if (inspected.value.kind === 'merge')
+      appendIndexValue(
+        mergesByParallelNode,
+        inspected.value.config.parallelNodeId,
+        node,
+      );
   }
   return {
     nodesById,
+    controls,
     incomingByNode,
     incomingByNodePort,
     outgoingByNodePort,

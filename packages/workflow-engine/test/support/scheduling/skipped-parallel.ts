@@ -4,22 +4,29 @@ import type {
   IterationScopePart,
 } from '../../../src/index.js';
 import { invocationKey } from '../../../src/index.js';
+import type { SchedulerState } from '../../../src/transition/scheduling/policy.js';
 
 export { runBypass } from './bypass.js';
 export const workflowVersionId = '00000000-0000-4000-8000-000000000601';
 
 export const occurredAt = '2026-09-06T00:00:00.000Z';
 
-export function pairedSchedulerGraph(extraPredecessor = false) {
+export function pairedSchedulerGraph(extraPredecessor = false): SchedulerState {
   return {
     deriveReadiness: true as const,
     nodes: [
       {
         id: 'parallel',
         definition: { key: 'core.parallel', version: 1 },
-        config: {
-          branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
-          maxConcurrency: 1,
+        control: {
+          kind: 'parallel',
+          config: {
+            branches: [
+              { id: 'branch-01' as const },
+              { id: 'branch-02' as const },
+            ],
+            maxConcurrency: 1,
+          },
         },
         sideEffectClass: 'safe' as const,
       },
@@ -31,9 +38,12 @@ export function pairedSchedulerGraph(extraPredecessor = false) {
       {
         id: 'merge',
         definition: { key: 'core.merge', version: 1 },
-        config: {
-          parallelNodeId: 'parallel',
-          policy: { kind: 'all' as const },
+        control: {
+          kind: 'merge',
+          config: {
+            parallelNodeId: 'parallel',
+            policy: { kind: 'all' as const },
+          },
         },
         sideEffectClass: 'safe' as const,
       },
@@ -69,7 +79,7 @@ export function pairedSchedulerGraph(extraPredecessor = false) {
         target: { nodeId: 'after', port: 'in' },
       },
     ],
-  } as const;
+  };
 }
 
 export function scopedInvocation(

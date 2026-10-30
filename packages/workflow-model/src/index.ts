@@ -206,6 +206,11 @@ export {
   type MergeConfig,
 } from './flow/control-nodes/merge.js';
 export {
+  inspectControlNodeConfig,
+  type ControlNodeConfig,
+  type ControlNodeConfigInspection,
+} from './flow/control-nodes/config.js';
+export {
   PENDING_TASK_LIMITS,
   taskAudienceSchema,
   type TaskAudience,
