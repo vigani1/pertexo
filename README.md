@@ -153,8 +153,9 @@ map. `pnpm db:migrate` applies the migration history. Databases from before the
 final reset baseline must be recreated; the runner refuses the old history.
 
 `pnpm install` configures the pre-push hook. Every push runs `pnpm prepush`:
-formatting, typecheck, and lint and unit tests for the packages changed since
-`origin/main`. CI runs everything on the pull request.
+formatting, typecheck, and lint for the packages changed since `origin/main`; a
+docs-only push checks formatting alone. CI runs everything on the pull request,
+except that a docs-only pull request skips the heavy jobs.
 
 ## Deployment
 

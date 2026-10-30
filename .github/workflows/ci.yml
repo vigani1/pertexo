@@ -58,7 +58,47 @@ env:
   WORKER_TRIGGER_INTEGRATION: 'true'
 
 jobs:
+  # Pushes and scheduled runs always run everything; a pull request that only
+  # touches docs skips the heavy jobs, and `ci-passed` still reports its result.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - name: Classify the change
+        id: classify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          code=true
+          if [ "$EVENT_NAME" = pull_request ]; then
+            files=$(gh api --paginate "repos/$REPOSITORY/pulls/$PULL_REQUEST/files" --jq '.[].filename')
+            if ! printf '%s\n' "$files" | grep -qvE '^docs/|\.md$'; then code=false; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+  docs:
+    needs: changes
+    if: needs.changes.outputs.code == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Format
+        run: pnpm format:check
+
   check:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -87,6 +127,8 @@ jobs:
 
   unit:
     name: unit (${{ matrix.group }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -120,6 +162,8 @@ jobs:
 
   integration:
     name: integration (${{ matrix.group }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -220,6 +264,8 @@ jobs:
   # on separate runners; one long sequential job had grown past 25 minutes.
   browser:
     name: browser (${{ matrix.suite }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     # Keep browser OS dependencies stable across ubuntu-latest image rollouts.
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -338,7 +384,7 @@ jobs:
           path: apps/web/test-results/
           if-no-files-found: ignore
 
-  # Branch protection requires `e2e`; it passes only when every browser leg did.
+  # Every browser leg must pass; `ci-passed` reports this result.
   e2e:
     if: ${{ !cancelled() }}
     needs: browser
@@ -348,9 +394,11 @@ jobs:
       - name: Require every browser leg
         env:
           BROWSER_RESULT: ${{ needs.browser.result }}
-        run: test "$BROWSER_RESULT" = success
+        run: test "$BROWSER_RESULT" = success -o "$BROWSER_RESULT" = skipped
 
   image:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -451,6 +499,8 @@ jobs:
           docker logout ghcr.io
 
   security:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -465,3 +515,25 @@ jobs:
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: moderate
+
+  # The one required check. A skipped matrix never reports its per-leg names, so
+  # branch protection can't require them directly.
+  ci-passed:
+    if: ${{ !cancelled() }}
+    needs: [changes, docs, check, unit, integration, e2e, image, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every job
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do
+            case "$result" in
+              success | skipped) ;;
+              *)
+                echo "A required job finished as $result: $RESULTS"
+                exit 1
+                ;;
+            esac
+          done

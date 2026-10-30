@@ -4,5 +4,10 @@ set -eu
 repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
 
-echo "Running Pertexo pre-push checks (format, typecheck, and lint and unit tests for changed packages)..."
-exec pnpm prepush
+# Tests run in CI; this catches what would fail it within minutes.
+if git diff --name-only origin/main...HEAD 2>/dev/null | grep -qvE '^docs/|\.md$'; then
+  echo "Running Pertexo pre-push checks (format, typecheck, and lint for changed packages)..."
+  exec pnpm prepush
+fi
+echo "Only docs changed: running the format check..."
+exec pnpm format:check

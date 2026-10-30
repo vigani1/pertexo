@@ -22,9 +22,11 @@ follow the README's [Local Development](./README.md#local-development) section;
 every terminal that runs a pnpm process needs `.env` loaded.
 
 Install dependencies with `pnpm install`; it configures the pre-push hook, which
-runs `pnpm prepush` (formatting, typecheck, and lint and unit tests for changed
-packages). CI runs every suite on the pull request. Run `pnpm test:integration`
-locally when PostgreSQL, Redis, queue, object-store or HTTP behavior changes.
+runs `pnpm prepush` (formatting, typecheck, and lint for changed packages; a
+docs-only push checks formatting alone). CI runs every suite on the pull
+request, so run the tests for what you changed before pushing. Run
+`pnpm test:integration` locally when PostgreSQL, Redis, queue, object-store or
+HTTP behavior changes.
 
 Pull requests explain the behavior being changed, the tests that prove it and
 any migration impact. When code moves or is deleted, the description lists what
