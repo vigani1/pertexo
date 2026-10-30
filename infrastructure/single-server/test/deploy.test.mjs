@@ -12,6 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
+import { it } from './support/it.mjs';
 
 const oldCommit = 'a'.repeat(40);
 const newCommit = 'b'.repeat(40);
@@ -47,6 +48,23 @@ function fixture(t) {
   }
   const log = join(directory, 'commands.jsonl');
   writeFileSync(join(bin, 'git'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  // The host's architecture, however the script chooses to ask for it.
+  writeFileSync(
+    join(bin, 'uname'),
+    `#!/bin/sh
+if [ "$1" = -m ]; then
+  case "$FIXTURE_HOST_ARCH" in amd64) echo x86_64 ;; *) echo aarch64 ;; esac
+  exit 0
+fi
+exec ${execFileSync('sh', ['-c', 'command -v uname'], { encoding: 'utf8' }).trim()} "$@"
+`,
+    { mode: 0o755 },
+  );
+  writeFileSync(
+    join(bin, 'dpkg'),
+    '#!/bin/sh\necho "${FIXTURE_HOST_ARCH:-arm64}"\n',
+    { mode: 0o755 },
+  );
   writeFileSync(
     join(bin, 'docker'),
     `#!/usr/bin/env python3
@@ -54,8 +72,15 @@ import os, sys, json
 args=sys.argv[1:]
 with open(os.environ['FIXTURE_LOG'],'a') as log:
  log.write(json.dumps({'args':args,'commit':os.environ.get('SERVICE_VERSION')})+'\\n')
+host=os.environ.get('FIXTURE_HOST_ARCH','arm64')
+if args[0]=='version' or args[0]=='info' or args[:2]==['system','info']:
+ print({'amd64':'x86_64','arm64':'aarch64'}[host] if 'Architecture' in ' '.join(args) else host); sys.exit(0)
 if args[-1]=='/bootstrap.sh' and os.environ.get('FIXTURE_SETUP_FAIL')=='true': sys.exit(1)
-if args[0]=='image': print(('amd64' if os.environ.get('FIXTURE_REVISION_BAD')=='true' else 'arm64')+' '+os.environ['SERVICE_VERSION'])
+if args[0]=='image':
+ arch='amd64' if os.environ.get('FIXTURE_REVISION_BAD')=='true' else os.environ.get('FIXTURE_IMAGE_ARCH',host)
+ revision=os.environ['SERVICE_VERSION']
+ template=args[args.index('--format')+1] if '--format' in args else '{{.Architecture}} {{index .Config.Labels "org.opencontainers.image.revision"}}'
+ print(template.replace('{{.Architecture}}',arch).replace('{{.Os}}','linux').replace('{{index .Config.Labels "org.opencontainers.image.revision"}}',revision))
 if 'infrastructure/single-server/encryption/verify.mjs' in args and os.environ.get('FIXTURE_ENCRYPTION_FAIL')=='true': sys.exit(1)
 if 'infrastructure/single-server/storage/prepare.mjs' in args and 'ghcr.io/vigani1/pertexo:${oldCommit}' in args and os.environ.get('FIXTURE_OLD_CONFIG_REJECTED')=='true': sys.exit(1)
 if 'logs' in args: print(os.environ['FIXTURE_MIGRATION_LOG'])
@@ -169,6 +194,50 @@ test('migration failure leaves serving stopped and retains the uncertainty fence
 test('incorrect image architecture fails before serving is stopped', (t) => {
   const f = fixture(t);
   assert.equal(f.run({ FIXTURE_REVISION_BAD: 'true' }).status, 1);
+  assert.equal(
+    f.commands().some((c) => c.args.includes('stop')),
+    false,
+  );
+});
+it('accepts ARM images on an ARM server', (t) => {
+  const f = fixture(t);
+  const result = f.run({ FIXTURE_HOST_ARCH: 'arm64' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    readFileSync(join(f.state, 'current'), 'utf8').trim(),
+    newCommit,
+  );
+});
+// ops-05, docs-deps-product-05: common.sh compares the image to the literal arm64.
+it.fails('accepts x86 images on an x86 server', (t) => {
+  const f = fixture(t);
+  const result = f.run({ FIXTURE_HOST_ARCH: 'amd64' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    readFileSync(join(f.state, 'current'), 'utf8').trim(),
+    newCommit,
+  );
+});
+// ops-05: an image for another architecture is a broken install, whichever it is.
+it.fails('refuses ARM images on an x86 server before stopping serving', (t) => {
+  const f = fixture(t);
+  const result = f.run({
+    FIXTURE_HOST_ARCH: 'amd64',
+    FIXTURE_IMAGE_ARCH: 'arm64',
+  });
+  assert.equal(result.status, 1);
+  assert.equal(
+    f.commands().some((c) => c.args.includes('stop')),
+    false,
+  );
+});
+test('refuses x86 images on an ARM server before stopping serving', (t) => {
+  const f = fixture(t);
+  const result = f.run({
+    FIXTURE_HOST_ARCH: 'arm64',
+    FIXTURE_IMAGE_ARCH: 'amd64',
+  });
+  assert.equal(result.status, 1);
   assert.equal(
     f.commands().some((c) => c.args.includes('stop')),
     false,
