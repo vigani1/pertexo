@@ -32,7 +32,7 @@ release and copies selected mail credentials only to the worker's private
 configuration. SMTP settings do not go to API, migration or ops. Configuration
 validation does not connect to the relay or prove its credentials. Deploy and
 then request a verification or reset link for your own account; verify receipt
-and invitation delivery before allowing real users. The owner configures the
+and invitation delivery before allowing real users. You configure the
 provider's sending-domain verification, SPF, DKIM and DMARC records and any
 host outbound-network rules. Portability does not mean running your own mail
 server or guaranteeing deliverability.
@@ -44,10 +44,10 @@ lost, or a worker crashes while a dispatch is unresolved, SMTP cannot promise
 deduplication. Pertexo leaves account mail `reconciliation_required` and
 invitation attempts `unknown`; it never blindly resends them. A person can
 request another account link. An unresolved invitation keeps the existing
-resend restriction and requires operator reconciliation of its provider outcome.
-Do not clear unknown records merely to enable resend; confirm acceptance or
-nonacceptance with the relay operator first. No new reconciliation UI or command
-is included in this feature.
+resend restriction until you've established what the relay did. Do not clear
+unknown records merely to enable resend; confirm acceptance or nonacceptance with
+the relay operator first. Today that means asking the relay and leaving the row:
+[operator commands](operator-commands.md) cover run attempts, not mail.
 
 To change transport, stop workers and establish outcomes for all unresolved
 commands before changing the private environment and deploying. This includes
@@ -57,8 +57,7 @@ after definite nonacceptance. Keep the sender
 addresses authorized at the new provider. Do not switch an unresolved Resend
 command to SMTP and assume its Message-ID prevents duplicate delivery. Restores
 remain fenced and stopped; supply mail credentials separately from backups and
-verify the selected relay before reopening serving. Actual mail accounts and
-real-server launch remain beta slice 6.
+verify the selected relay before reopening serving.
 
 ### Personal notification email upgrades
 

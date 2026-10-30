@@ -8,8 +8,8 @@ Nothing here changes application behaviour.
 
 ## Outcome
 
-Pertexo runs on one Oracle Cloud Always Free ARM server (4 CPUs, 24 GB memory,
-200 GB disk) at an HTTPS address, with the following:
+Pertexo runs on any one Linux server with Docker, x86-64 or ARM64, at an HTTPS
+address, with the following:
 
 - one command to deploy, roll back, back up and restore;
 - nightly off-server backups;
@@ -32,9 +32,9 @@ Recorded in ADR 071 (slice 1):
 
 Implementation can start before these exist; the first launch can't.
 
-1. **Oracle Cloud Always Free account.**
-   - An Ubuntu 24.04 ARM (Ampere A1) instance.
-   - The VCN security list open for 22, 80 and 443.
+1. **A server.**
+   - Any Linux server with Docker, x86-64 or ARM64, of the size the runbook states.
+   - Its firewall open for 22, 80 and 443.
 2. **An address.** A DuckDNS name works for a private test (`<name>.duckdns.org`
    with `files.<name>.duckdns.org`). Emailing anyone but the owner needs a real
    domain (about €10 a year), because the selected mail provider needs authorized sending-domain DNS.
@@ -96,7 +96,9 @@ Logs use the json-file driver with size rotation.
     `worker` reach storage by the same name and certificate.
   - Storage allows CORS only from `https://<app host>`.
   - A setup step creates the bucket.
-- **ARM.**
+- **ARM.** Since 2026-10-31 every merged commit publishes `amd64` and `arm64`
+  images under one tag, and `deploy.sh` checks them against the server's own
+  architecture. The notes here record how ARM publishing started.
   - The Dockerfile already installs both `amd64` and `arm64` security patches.
   - Images are built natively on GitHub's `ubuntu-24.04-arm` runner, free for
     public repositories. CI keeps building `amd64`.
@@ -125,8 +127,8 @@ adapter and its stored format remain unchanged.
 
 Backups preserve user metadata and content type. They do not depend on provider
 version IDs: Pertexo's artifact identities and immutable object keys remain the
-existing authority. Oracle backup endpoint, bucket, region and dedicated S3
-credentials are owner-supplied in slice 6, using the same Oracle account.
+existing authority. The backup endpoint, bucket, region and dedicated S3
+credentials are owner-supplied in slice 6, from any S3-compatible store.
 
 ## Settings
 
@@ -216,7 +218,7 @@ self-managed encryption qualification restores retained connection/webhook
 secrets under two private key versions, verifies separately supplied keys and
 rejects wrong/missing keys before serving. Recovery payloads contain no master
 keys or private env files. The real
-Oracle endpoint, installed timer and owner restore drill remain slice 6.
+backup endpoint, installed timer and owner restore drill remain slice 6.
 
 Slice 5 adds manual-only main dispatch with a full commit SHA, verifies the latest
 successful main push CI run and its native ARM publisher, and sends only a
@@ -252,8 +254,8 @@ deployment is configured here; those remain owner-assisted slice 6.
      unattended upgrades), first launch, deploy, rollback and `ops` commands.
 4. **Backups.**
    - `backup.sh`: nightly `pg_dump` (custom format, superuser) and an exact-metadata
-     streaming copy of the bucket using the existing AWS SDK to Oracle Object
-     Storage through its S3 API. Pinned rclone uploads database files, compares
+     streaming copy of the bucket using the existing AWS SDK to any S3-compatible
+     store. Pinned rclone uploads database files, compares
      downloaded bytes and removes expired recovery points. Each recovery point has its own dated prefix. Pause serving
      writers and public storage ingress while capturing the matching database
      and objects, then resume them even if backup fails. Publish a completion
@@ -283,7 +285,8 @@ deployment is configured here; those remain owner-assisted slice 6.
 
 - Terraform or anything on AWS beyond the KMS key.
 - Several servers, previews, autoscaling or a managed database.
-- Uptime alerts.
+- A hosted uptime or metrics service. `check.sh` alerts from the server itself, and
+  the runbook points to an outside monitor.
 - Any change to application rules, schemas or stored formats.
 
 ## Done when

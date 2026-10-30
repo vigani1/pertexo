@@ -67,7 +67,7 @@ describe('the operator commands page', () => {
     );
   });
 
-  it.fails.each(commandTypes)(
+  it.each(commandTypes)(
     '%s has a heading, says when to use it, and its example parses',
     (type) => {
       const section = sectionFor(readPage(), type);
@@ -84,7 +84,7 @@ describe('the operator commands page', () => {
     },
   );
 
-  it.fails(
+  it(
     'says how to find the fields an operator needs from the database',
     () => {
       const page = readPage();

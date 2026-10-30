@@ -1,9 +1,10 @@
-# Production Data Policy Inputs
+# Production Data Policy
 
 ## Status
 
-These are operated launch inputs for engineering controls, not legal advice,
-legal certification, or a claim of regulatory compliance.
+What the software does with data today on a [single-server install](single-server.md):
+engineering defaults, not legal advice, legal certification or a claim of regulatory
+compliance. Whoever runs an install decides whether these suit their data and law.
 
 ## Retention
 
@@ -14,7 +15,7 @@ legal certification, or a claim of regulatory compliance.
 | Preview runs | 7 days |
 | Run and trigger summaries | 90 days |
 | Audit and security events | 365 days, subject to approved legal policy |
-| Recoverable encrypted tenant backup material | 35 days |
+| Off-server backups (database dump and file copies) | 14 days |
 
 Idempotency and replay records remain at least as long as their operation's
 retry or replay window.
@@ -44,14 +45,16 @@ revokes the workspace's sessions and API tokens; a restore brings the workspace
 back `suspended` and revives neither, and the workspace owner lifts the suspension
 with Reactivate, which leaves tokens revoked and triggers and connections off. Purge
 removes serving data explicitly across PostgreSQL, objects, encrypted secrets,
-indexes, and external subscriptions. Backup copies are beyond serving use and become
-ineligible for recovery through normal encrypted rotation at 35 days. This
-applies to automated PostgreSQL backups, WAL archives, snapshots, manual recovery
-points, tenant-object versions, and cross-region copies. Lifecycle removal is
-asynchronous; inventory records the logical expiry and actual deletion lag.
-Manual copies require an owner and expiry, and untracked copies are prohibited.
-Shared KMS keys follow their own controlled lifecycle and are not evidence that
-retained ciphertext still exists.
+indexes, and external subscriptions. A deleted workspace stays in backups until they
+expire: `backup.sh` removes each recovery point older than 14 days, the next time it runs.
+So purged data can stay recoverable for up to 14 days afterward.
+
+Recovery points are private but **not encrypted by the scripts**. They hold full database
+dumps, including run history and personal data, and copies of files. Keep the bucket private
+and use your storage provider's encryption at rest. Encrypted connection credentials stay
+encrypted inside the dump, and their keys are never copied into a backup. Any copy you make
+by hand is yours to track and delete. Shared KMS keys follow their own controlled lifecycle
+and are not evidence that retained ciphertext still exists.
 
 A restored database carries its own record of workspace deletion commands.
 Restoring an older backup can bring back a workspace whose later deletion is

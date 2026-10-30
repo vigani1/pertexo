@@ -24,8 +24,8 @@ monorepo with its own execution engine, API, worker and web app.
   limits, automatic pausing of workflows that keep failing, connection health
   checks and a failure inbox.
 - **Secure by default.** Row-level security scopes every query to one workspace.
-  Connection credentials are envelope-encrypted with a managed key, webhooks are
-  signed and five roles decide who can do what.
+  Connection credentials are envelope-encrypted, webhooks are signed and five
+  roles decide who can do what.
 - **Work together.** Discuss workflows and steps, mention teammates privately,
   and see advisory viewing/editing presence while draft revision checks keep
   concurrent saves safe. See [collaboration](docs/guides/collaboration.md).
@@ -76,6 +76,29 @@ packages/
 Decisions are recorded as [ADRs](./docs/adr);
 [ADR 069](./docs/adr/069-architecture-reset.md) takes precedence over superseded
 ones, and [CONTEXT.md](./CONTEXT.md) is the glossary.
+
+## Try it on your machine
+
+**Not for production:** this is for looking around on one machine. It listens
+only on this machine, over plain HTTP, with development settings and no mail.
+With Docker and a checkout of this repository, one command starts everything:
+
+```sh
+docker compose -f infrastructure/quickstart/compose.yaml up -d --wait
+```
+
+Open <http://127.0.0.1:8484> and sign up. There's no mail here, so your
+verification link goes to the log: find it with
+`docker compose -f infrastructure/quickstart/compose.yaml logs api`. Open that
+link, then sign in. Invitations and other email don't work in this mode.
+
+Secrets are generated on the first start and kept with your data, so it all
+survives a restart. `down` stops it, and `down -v` deletes everything. Set
+`QUICKSTART_PORT` to use another port, or `PERTEXO_VERSION` for another release.
+It needs about 4 GB of free memory and pulls about 2.5 GB of images the first
+time.
+
+For a real server, follow [the runbook](./docs/operations/single-server.md).
 
 ## Stack
 
@@ -159,11 +182,12 @@ except that a docs-only pull request skips the heavy jobs.
 
 ## Deployment
 
-A private beta runs on one server with Docker Compose, deployed from GitHub
-after CI passes, with nightly off-server backups.
-[ADR 071](./docs/adr/071-single-server-beta.md) records that choice and the
-[runbook](./docs/operations/single-server.md) covers setup, deploys, rollback
-and restore. Paid hosting targets AWS, as recorded in
+Pertexo runs on one Linux server, x86-64 or ARM64, with Docker Compose and
+nightly off-server backups. [The runbook](./docs/operations/single-server.md)
+takes you from an empty server to a working install, and
+[Upgrading](./docs/operations/upgrading.md) covers releases and the
+[changelog](./CHANGELOG.md). [ADR 071](./docs/adr/071-single-server-beta.md)
+records that choice. Paid hosting targets AWS, as recorded in
 [ADR 015](./docs/adr/015-production-slo-region-and-recovery.md) and
 [ADR 028](./docs/adr/028-ecs-deployment-manifest.md).
 

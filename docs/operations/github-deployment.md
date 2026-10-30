@@ -1,11 +1,14 @@
 # Deploying from GitHub
 
-## Manual GitHub deployment (configure in slice 6)
+Optional, and only for someone running their own fork: `deploy.sh` on the server does the
+same thing by hand.
+
+## Manual GitHub deployment
 
 The `Deploy beta` workflow runs only through `workflow_dispatch` from `main`.
 Supply a full lowercase 40-character main commit SHA. It verifies ancestry and
 queries the latest push run of `ci.yml` for that exact SHA; the entire run and
-`publish-arm-images` job must have succeeded. A PR check, scheduled run, pending
+`publish-images` job must have succeeded. A PR check, scheduled run, pending
 publisher or previous successful run followed by a failed retry is insufficient.
 No deployment follows a push automatically.
 
@@ -16,7 +19,7 @@ older image; release images, Compose and configuration parsers come from the
 selected immutable commit. The dispatcher delegates ancestry, image identity,
 locking, migration and health checks to the same `deploy.sh` used manually.
 
-Generate a dedicated Ed25519 SSH key without a passphrase on a trusted owner
+Generate a dedicated Ed25519 SSH key without a passphrase on a trusted
 machine. Store its private half only as repository Actions secret
 `BETA_SSH_PRIVATE_KEY`. Restrict the public half in the `pertexo` login's
 mode-600 `~/.ssh/authorized_keys`:
@@ -25,7 +28,7 @@ mode-600 `~/.ssh/authorized_keys`:
 restrict,command="/opt/pertexo/repository/infrastructure/single-server/dispatch.sh" ssh-ed25519 <public-key> pertexo-github-beta
 ```
 
-Keep a separate owner key for interactive maintenance. The `restrict` option
+Keep a separate key for interactive maintenance. The `restrict` option
 blocks forwarding, PTY allocation and user SSH rc execution; the forced command
 accepts only `deploy <full-SHA>`. See the
 [OpenSSH authorized-key documentation](https://man.openbsd.org/sshd#AUTHORIZED_KEYS_FILE_FORMAT).
@@ -33,8 +36,8 @@ Do not enable user-controlled environment loading or accept deployment path and
 shell startup environment variables in sshd.
 
 Set repository secrets `BETA_SSH_HOST` (DNS name or IP) and `BETA_SSH_USER`
-(`pertexo`). Retrieve the server's public host key through the trusted Oracle
-console or an already verified owner session. Compare its fingerprint through
+(`pertexo`). Retrieve the server's public host key through your provider's trusted
+console or an already verified session. Compare its fingerprint through
 that trusted channel, then put its known_hosts line, with the same host name
 used by `BETA_SSH_HOST`, in `BETA_SSH_KNOWN_HOSTS`. Hashed known_hosts entries also
 work. Do not trust a fresh key scan over the deployment connection as the source
@@ -49,9 +52,6 @@ send step after CI verification. Workflow deployments serialize without
 canceling a running command; the server operation lock also excludes backups,
 restore and operator mutations.
 
-During first launch, run the workflow and inspect its health result and server
-logs, then complete the HTTPS smoke and restore drill. A failed SSH session is
-not proof of rollback: inspect `state/current` and any migration/restore fence
-before retrying. Configuring these secrets, installing the authorized key and
-making the first real connection need the owner's accounts and remain slice 6.
-After a stable week, automatic deployment may be proposed in a separate PR.
+Run the workflow once and inspect its health result and server logs. A failed SSH
+session is not proof of rollback: inspect `state/current` and any migration/restore
+fence before retrying.

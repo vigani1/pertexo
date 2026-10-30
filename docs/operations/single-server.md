@@ -1,40 +1,292 @@
-# Single-server beta
+# Run Pertexo on your own server
 
-Implementation is in progress under [the plan](../feature-plans/single-server-beta.md)
-and ADR 071. RustFS replaces SeaweedFS after real-provider qualification. First launch and provider smoke tests require the
-owner's accounts (slice 6).
+This page takes you from an empty server to a working, backed-up install, in order.
+It works on any Linux server with Docker, x86-64 or ARM64. Everything after
+[Monitoring and alerts](#monitoring-and-alerts) is reference for later.
 
-## Prepare Ubuntu 24.04 ARM
+To look around first, the [quick try](../../README.md#try-it-on-your-machine) runs on your
+own machine in one command. It isn't for production.
 
-Use one Ampere A1 instance and attach its persistent disk. Allow TCP 22 only
-from the operator's address; allow public TCP 80 and 443 in the Oracle VCN
-security list. Do not expose database, Redis or storage administration ports.
+You'll end up with eight containers on one server: Caddy, the web app, the API, a
+worker, a Code runner, PostgreSQL, Redis and S3-compatible file storage. One server
+means no failover: a reboot or maintenance is downtime.
 
-Install Docker Engine and the Compose plugin using the
-[official Ubuntu repository instructions](https://docs.docker.com/engine/install/ubuntu/).
-Check `uname -m` returns `aarch64` and `docker compose version` succeeds. Use a
-dedicated `pertexo` Unix login with SSH keys and access to Docker. Docker access
-is equivalent to root; do not grant it to application users. Disable password
-and root SSH login after verifying a second key-authenticated session.
+Other pages: [Upgrading](upgrading.md), [Operator commands](operator-commands.md),
+[Recovery](recovery.md), [Encryption keys](encryption-keys.md),
+[System mail](system-mail.md), [Deploying from GitHub](github-deployment.md).
 
-Oracle Ubuntu images can also have iptables REJECT rules. Inspect
-`sudo iptables -L INPUT --line-numbers -n`, insert ACCEPT rules for TCP 80 and
-443 **before** the REJECT rule, and persist them with `netfilter-persistent`.
-Keep the SSH rule while changing the firewall. Docker-published ports can
-bypass UFW, so only Caddy publishes ports in Compose; verify from outside the
-server that 3000, 5432, 6379, 9000, 9001 and storage administration are closed.
-Enable Ubuntu unattended security upgrades and plan for reboot downtime.
+## 1. Prepare a server
 
-Create `/opt/pertexo`, owned by the deployment login, mode 700. Clone the
-repository into `/opt/pertexo/repository`. Leave that checkout for control
-scripts; `deploy.sh` extracts each chosen commit into `releases/<commit>`.
-Persistent Compose volumes belong to the stable `pertexo-beta` project. Never
-run `down -v` on a serving installation.
+You need one server with at least:
+
+- 2 vCPUs
+- 4 GB of memory
+- 40 GB of disk
+
+The memory leaves room for the Code runner's default ceiling of 2,912 MiB, a limit
+that isn't reserved while idle, plus about 1 GB for everything else. These sizes are
+a starting point, not a load-tested promise: watch memory and disk once real work
+runs, and allow more for lots of files or long retention.
+
+Use a recent Linux with cgroup v2; Ubuntu 24.04 is what this is tested on. Then:
+
+1. Install Docker Engine and the Compose plugin using
+   [Docker's instructions](https://docs.docker.com/engine/install/), plus `git` and
+   `curl`. Check that `docker compose version` works.
+2. Allow inbound TCP 80 and 443 from anywhere, and 22 only from your own address.
+   Use your provider's network firewall if it has one. Some server images also ship
+   host firewall rules that reject traffic: check `sudo iptables -L INPUT -n`, and
+   keep your SSH rule while changing it. Docker-published ports can bypass UFW, so
+   only Caddy publishes ports here.
+3. Create a dedicated login. Docker access is equivalent to root, so don't give it to
+   application users. Use SSH keys, and disable password and root SSH login after
+   checking a second session works. Turn on unattended security upgrades.
+4. Create the install's private directory and clone the repository into it:
+
+```sh
+sudo useradd --create-home --shell /bin/bash pertexo
+sudo usermod -aG docker pertexo
+sudo install -d -o pertexo -g pertexo -m 700 /opt/pertexo
+sudo -iu pertexo git clone https://github.com/vigani1/pertexo.git /opt/pertexo/repository
+```
+
+Run everything below as the `pertexo` login. The checkout holds the control scripts;
+`deploy.sh` extracts each release into `/opt/pertexo/releases/<commit>`. Data lives in
+Docker volumes of the `pertexo-beta` Compose project, so never run `down -v` on a
+serving install.
+
+## 2. Point DNS at it
+
+Pick two names, one for the app and one for files, and point both at the server with
+A (and AAAA) records, for example `app.example.com` and `files.example.com`. They must
+be different: uploaded files are served from their own origin so they can't act as the
+app. Caddy gets public HTTPS certificates for both on the first deploy, which needs
+these records in place and ports 80 and 443 open.
+
+## 3. Configure
+
+Create the settings file and add generated secrets to it. A fresh server has no Node,
+so the generator runs in a container:
+
+```sh
+cd /opt/pertexo
+install -m 600 repository/infrastructure/single-server/.env.production.example .env.production
+docker run --rm --read-only --network none --user "$(id -u)" \
+  -v "$PWD/repository/infrastructure/single-server/generate-secrets.mjs:/generate-secrets.mjs:ro" \
+  --entrypoint node ghcr.io/vigani1/pertexo:stable /generate-secrets.mjs >> .env.production
+```
+
+Do this once. **Never rerun the generator over installed keys:** a new encryption key
+makes every stored credential unreadable. Save the file, or at least its encryption
+keys and their versions, in your password manager. The database and files alone can't
+restore encrypted credentials. The generator uses self-managed encryption keys; for
+AWS KMS, see [Encryption keys](encryption-keys.md).
+
+Then edit `.env.production` and fill in:
+
+| Setting | Value |
+| --- | --- |
+| `PUBLIC_WEB_ORIGIN` | `https://app.example.com` |
+| `ARTIFACT_STORE_ENDPOINT` | `https://files.example.com` |
+| `AUTH_MAIL_FROM`, `INVITATION_EMAIL_FROM` | Addresses your mail provider lets you send from |
+| `AUTH_MAIL_EMAIL_API_KEY`, `INVITATION_EMAIL_API_KEY` | Your Resend API key, or see below for SMTP |
+
+Mail is required: nobody can sign in until they've verified their address. To use any
+SMTP server instead of Resend, delete those two API key lines and set
+`SYSTEM_MAIL_TRANSPORT=smtp` and the `SYSTEM_MAIL_SMTP_*` settings. Both are described
+in [System mail](system-mail.md). Your provider also has to verify your sending domain.
+
+Both origins must be HTTPS on port 443, and the artifact endpoint must be the public
+name: it's embedded in the links browsers use. API and worker reach files through that
+same name. The private network is `172.30.42.0/24`, so a server with an overlapping
+network needs that changed. Secure cookies, durable mail and production mode are fixed
+in Compose. Keep the real file out of Git; the scripts read it as data, never as a
+script.
+
+## 4. Deploy
+
+```sh
+/opt/pertexo/repository/infrastructure/single-server/deploy.sh latest
+```
+
+The first run takes a few minutes. `latest` is the newest [release](upgrading.md);
+`deploy.sh v1.2.3` or a full 40-character commit also work. The script holds a lock,
+pulls images for this server's architecture, checks their revision and validates your
+settings with the application's own parsers before stopping anything. It then starts
+the data services, runs the migration, starts the app, and waits until a request gets
+through Caddy and nginx to the API. `Healthy release: <commit>` means all of that
+worked. If it stops, see [Troubleshooting](#troubleshooting).
+
+Images are public, so no registry password is needed.
+
+## 5. Create the first account
+
+Open `https://app.example.com` (your app host) and sign up with your own address. Open
+the verification link from the mail, then sign in and create your first workspace.
+
+The first account to verify its address owns the install. After that, sign-up is closed:
+new people need an invitation (`AUTH_SIGN_UP_MODE=invitation`, the default). Set
+`AUTH_SIGN_UP_MODE=open` in `.env.production` and deploy again only if you really want
+anyone who can reach the server to create an account and run workflows on it.
+
+If no mail arrives, check the worker's log (see
+[Logs and operator commands](#logs-and-operator-commands)) and your provider's dashboard.
+The verification link can't be fetched any other way.
+
+## 6. Smoke check
+
+Before inviting anyone, check these by hand:
+
+1. `https://app.example.com` loads with a valid certificate, and so does a sign-in in a
+   second browser.
+2. A workflow with a webhook trigger and a Code step, published, runs when you send
+   the webhook shown under **Triggers**, and the run succeeds.
+3. A file step or upload stores a file, and it downloads with the same bytes.
+4. An invitation to a second address arrives, and that person can join.
+5. From outside the server, ports 3000, 5432, 6379, 9000 and 9001 are closed.
+6. `/opt/pertexo/repository/infrastructure/single-server/check.sh` prints
+   `All checks passed` (it will mention backups until the next step is done).
+
+## 7. Set up backups
+
+Backups go to a private bucket on any S3-compatible store, off this server. Create the
+bucket and a dedicated account that can list, read, write and delete only in it. Add
+to `.env.production`:
+
+```dotenv
+BACKUP_STORE_ENDPOINT=https://s3.example.net
+BACKUP_STORE_REGION=us-east-1
+BACKUP_STORE_BUCKET=your-backup-bucket
+BACKUP_STORE_ACCESS_KEY_ID=
+BACKUP_STORE_SECRET_ACCESS_KEY=
+```
+
+The endpoint must differ from your artifact endpoint. Take one backup by hand, then
+turn on the nightly timer:
+
+```sh
+/opt/pertexo/repository/infrastructure/single-server/backup.sh
+sudo install -m 644 /opt/pertexo/repository/infrastructure/single-server/systemd/backup.service /etc/systemd/system/pertexo-backup.service
+sudo install -m 644 /opt/pertexo/repository/infrastructure/single-server/systemd/backup.timer /etc/systemd/system/pertexo-backup.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now pertexo-backup.timer
+systemctl list-timers pertexo-backup.timer
+```
+
+A backup runs at 03:00 UTC, and a missed one runs when the host returns. **The app stops
+for the length of each backup**, because the database and files have to match. Plan for
+that; its length grows with your data. It resumes on its own, even if the backup fails.
+
+Each `pertexo-beta/<YYYYMMDDTHHMMSSZ>/` prefix contains `database.dump`, `release.txt`,
+`objects.count`, `SHA256SUMS`, `objects/` and a `COMPLETE` marker published last. Only
+completed points are usable, and a new point never overwrites an existing prefix.
+Retention deletes known dated prefixes older than 14 days, including incomplete attempts,
+using the point's date rather than the file's. An empty artifact catalog is valid.
+
+**These backups aren't encrypted by the scripts**, and they hold run history and personal
+data. Keep the bucket private and turn on your provider's encryption at rest. Keep the
+settings file and encryption keys separately: the backup alone can't recover encrypted
+credentials. A deleted workspace stays in the backups until they expire.
+
+A backup you haven't restored is a hope. Practise once on a spare machine with
+[Recovery](recovery.md).
+
+The operation lock excludes deploy, restore and `run_ops`. Do not run direct Compose
+mutations or database or storage commands during a backup.
+
+## Monitoring and alerts
+
+A health check on a timer tells you about the problems a one-server install really has.
+Turn it on:
+
+1. Add a webhook to `.env.production`. Slack, Discord and Mattermost webhooks work as
+   they are; anything else gets JSON with `text` and `content` fields.
+
+   ```dotenv
+   ALERT_WEBHOOK_URL=https://hooks.example.com/your-webhook
+   ```
+
+2. Install the timer:
+
+   ```sh
+   sudo install -m 644 /opt/pertexo/repository/infrastructure/single-server/systemd/check.service /etc/systemd/system/pertexo-check.service
+   sudo install -m 644 /opt/pertexo/repository/infrastructure/single-server/systemd/check.timer /etc/systemd/system/pertexo-check.timer
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now pertexo-check.timer
+   ```
+
+Every five minutes `check.sh` looks at the following, and sends one alert per problem,
+again every six hours while it lasts. With no webhook it only writes to the journal
+(`journalctl -u pertexo-check.service`). It stays quiet during a deploy or backup.
+
+| Problem | Setting (default) |
+| --- | --- |
+| The disk holding the install or Docker's data is nearly full | `ALERT_DISK_PERCENT` (90) |
+| The last completed backup is too old, or there isn't one | `ALERT_BACKUP_MAX_AGE_HOURS` (30) |
+| Runs queued or running with no change for too long: stuck work | `ALERT_STUCK_MINUTES` (30) |
+| A service has stopped | |
+| Readiness fails: `/health/ready` also proves the database can store new data | |
+| The app can't reach the API through the proxy, which means 502s for signed-in people | |
+
+A long-running step or a full concurrency queue can also trigger the stuck-work alert, so
+treat it as a prompt to look. See [Operator commands](operator-commands.md) for what to do.
+
+Two things it can't tell you, and what to use for each:
+
+- **The server is down, so nothing can send an alert.** Point a free outside uptime monitor
+  at `https://app.example.com/v1/workspaces`, expecting status 401: that answer comes from
+  the API through the whole path. If yours can only expect 200, use `https://app.example.com/`,
+  which only proves the web tier.
+- **Backups quietly stopped running.** Create a check at a dead-man switch service such as
+  healthchecks.io and set `BACKUP_HEARTBEAT_URL` to its address. `backup.sh` requests it
+  on success and `<url>/fail` on failure, and the service tells you when neither arrives.
+
+Containers rotate logs at 10 MB, keeping three files. Metrics are optional:
+`OTEL_EXPORTER_OTLP_ENDPOINT` sends them to a collector, and
+[Observability alerts](observability-alerts.md) describes the rules for those who run one.
+
+## Troubleshooting
+
+Start with `check.sh` and [the logs](#logs-and-operator-commands).
+
+| What you see | What it means, and what to do |
+| --- | --- |
+| `A mode-600 .env.production is required` | Run `chmod 600 /opt/pertexo/.env.production`. |
+| `Image architecture/revision mismatch` | There's no image for this server's architecture at that commit. Use a release. |
+| `manifest unknown` on pull | That commit's images were never published. Use a release, or check its CI run. |
+| `Another operation is running` | A deploy, backup, restore or operator command holds the lock. Wait for it. |
+| `Storage setup failed before migration` | The storage service isn't working. Read `compose logs storage`. |
+| `Migration failed: serving remains stopped` | Read `compose logs migration`, fix the cause and deploy again. Don't remove `state/migration-fence`. |
+| `Unhealthy release: fix forward` | The app didn't come up after a migration. Read the logs, then deploy again or deploy a fix. |
+| `Unhealthy release returned to <commit>` | The new release failed, and the old one is serving again. |
+| Deploy times out on the app, or HTTPS fails in the browser | Caddy couldn't get a certificate. Check DNS and that ports 80 and 443 are open from outside, read `compose logs proxy`, then deploy again. |
+| 502 for signed-in people | `check.sh` says which part failed. Read `compose logs api web`. |
+| No mail arrives | Read `compose logs worker`, then your provider's dashboard and your sending domain's records. |
+| A run stays `running` or `queued` | See [Operator commands](operator-commands.md). |
+| `Restore or migration is incomplete` | Finish it: see [Recovery](recovery.md), or deploy the fix for the migration. |
+| Out of disk | Remove old releases under `releases/` that are neither current nor previous, and run `docker image prune`. Postgres needs free space before it accepts writes again. |
+
+## Logs and operator commands
+
+Select the recorded release before using Compose, so images match the running version.
+Use a shell you can throw away, since the scripts turn on `set -e`, which closes it on
+the first failed command:
+
+```sh
+bash
+export PERTEXO_BETA_ROOT=/opt/pertexo
+source /opt/pertexo/repository/infrastructure/single-server/common.sh
+select_release "$(cat /opt/pertexo/state/current)"
+compose ps
+compose logs --tail 100 api worker proxy
+```
+
+For audited changes to stuck or uncertain work, use `run_ops` as described in
+[Operator commands](operator-commands.md). Never run it as the bootstrap superuser.
 
 ## Worker file scratch
 
-Set `ARTIFACT_SCRATCH_DIRECTORY=/var/lib/pertexo/artifact-scratch` in the
-installation environment when updating an existing beta. Each worker container has its own disk-backed volume mounted at
+Each worker container has its own disk-backed volume mounted at
 `/var/lib/pertexo/artifact-scratch` (`ARTIFACT_SCRATCH_DIRECTORY`). The image
 creates it for UID 10001 with mode 0700; spool files use 0600. Do not replace it
 with tmpfs, share it between workers or include it in backups. Files are
@@ -80,7 +332,6 @@ Single sign-on**, after setting the private API `AUTH_FEDERATION_KEY` and its
 version. The fresh-install generator includes them. Its public callback is
 `https://<app host>/v1/auth/federation/oidc/callback`. Back up the encryption key
 separately; restoring only the database cannot restore encrypted provider secrets.
-SAML and directory provisioning follow in the remaining F28 slices.
 
 Keep `/v1/auth/*` routed directly from Caddy to the API: codes, state and email
 proofs must never enter nginx request/error logs. Preserve Caddy's full-URI,
@@ -120,149 +371,3 @@ only services you mean to expose to workflows.
 `pnpm dev` starts the development-only separate-process runner, which is weaker
 than the deployed container and must not be used for untrusted production code.
 The runtime and isolation decision is [ADR 082](../adr/082-isolated-code-tasks.md).
-
-## Configure once
-
-Copy `infrastructure/single-server/.env.production.example` to
-`/opt/pertexo/.env.production`, mode 600. Use Node 24 to run the generator on a
-trusted machine, or run it with the pinned runtime image and a read-only bind
-mount of the source file. Append its output once, without displaying it in
-shared terminals or logs. Choose encryption explicitly:
-
-- `node infrastructure/single-server/generate-secrets.mjs --encryption=kms`
-  (the default): supply the KMS reference and region; use the AWS credential
-  chain, with an IAM role or privately supplied credentials.
-- `node infrastructure/single-server/generate-secrets.mjs --encryption=self-managed`:
-  generate a private 32-byte master key and version `1`, with no AWS encryption
-  credentials. Save the key and its version in your password manager.
-
-Fill the owner-supplied public origins and your selected system mail credentials. Keep the real
-environment outside Git. Never rerun the generator over installed keys.
-Regenerating keys makes retained credentials unreadable. Public development
-keys are refused in production, including in previous keys.
-
-`PUBLIC_WEB_ORIGIN` and `ARTIFACT_STORE_ENDPOINT` must be distinct HTTPS origins
-on port 443. Point both DNS names at the server before launch. Caddy obtains
-public certificates; private network aliases make API and worker reach files
-through that same public name and certificate. The ephemeral pinned `rc` client
-creates the bucket, restricts its CORS to the app and binds separate application
-credentials to a bucket-only policy. The console is disabled and Caddy blocks
-public admin paths. Do not put an internal hostname
-in the artifact endpoint: it is embedded in browser presigned links.
-
-The private subnet is `172.30.42.0/24`; select a server without an overlapping
-network. Secure cookies, durable mail and production mode are fixed in Compose.
-Optional provider pairs and previous application key rings are read from the
-same environment. OTLP is optional for this beta; logs remain active. The paid
-ECS definitions still supply their collector endpoint.
-
-Generated configuration is placed in the private `/opt/pertexo/state`
-directory. Compose reads dotenv as data; scripts never source the secret file.
-
-## Deploy and recover a release
-
-After every CI gate and ARM publication succeeds for a main commit:
-
-```sh
-/opt/pertexo/repository/infrastructure/single-server/deploy.sh <full-40-character-commit>
-```
-
-The command holds an exclusive operation lock, fetches main, verifies commit
-ancestry, pulls both immutable commit tags, checks ARM/revision labels and
-validates deployed configuration with the actual application parsers. It starts
-private data services, stops serving writers and public ingress, completes the
-one-shot migration, and waits for API, worker and web health before recording
-`state/current`.
-
-If the release applied no migration and fails health, it returns to the previous
-release automatically. If migration changed the database, failed partway through,
-or an earlier attempt has an unresolved migration fence, it leaves serving
-stopped and requires a forward fix. Do not remove `state/migration-fence` to
-force rollback. The fence persists across retries; a second attempt seeing the
-migration head does not make a changed database safe for the older image.
-
-Use an approved earlier commit with the same schema for an intentional rollback
-through the same command. Never roll an image back across a schema change.
-A successful command confirms container health, not an external HTTPS smoke
-run. Check Caddy logs and perform the owner-assisted smoke tests before inviting
-any beta users.
-
-Images must be readable by the server. Commit-tagged packages are currently
-publicly readable; if registry visibility changes, resolve it before deployment.
-No registry password is embedded in this stack.
-
-## Logs and operator commands
-
-Select the recorded release before using Compose so images match the running
-version:
-
-```sh
-export PERTEXO_BETA_ROOT=/opt/pertexo
-source /opt/pertexo/repository/infrastructure/single-server/common.sh
-select_release "$(cat /opt/pertexo/state/current)"
-compose ps
-compose logs --tail 100 api worker proxy
-run_ops \
-  -e OPERATOR_COMMAND_TYPE=operator.status \
-  -e OPERATOR_COMMAND_ID=<new-uuid> \
-  -e OPERATOR_ACTOR_REF=<operator-reference> \
-  -e OPERATOR_WORKSPACE_ID=<workspace-uuid> \
-  -e OPERATOR_REASON='Investigate beta workflow'
-```
-
-The ops CLI receives command fields as environment variables. Refer to the
-existing operator runbooks for mutation commands, dry-run fields and evidence;
-never run it as the bootstrap superuser. Containers rotate json-file logs at
-10 MB with three retained files each.
-
-
-## Nightly recovery points
-
-Before first launch, create a private Oracle Object Storage backup bucket in the
-owner's Oracle account and supply its S3 compatibility HTTPS endpoint, region,
-bucket and dedicated credentials in `BACKUP_STORE_*`. Keep these separate from
-RustFS's application credentials. The backup account must list, read, write and
-delete objects only in this backup bucket; neither anonymous reads nor public
-writes are needed. The endpoint must differ from the public artifact endpoint.
-The local checks use disposable S3 servers; they do not prove Oracle access.
-
-Run a capture manually before installing the timer:
-
-```sh
-/opt/pertexo/repository/infrastructure/single-server/backup.sh
-```
-
-The operation lock excludes deploy, restore and `run_ops`. The command refuses
-an unresolved migration or restore. It pauses API, worker and public ingress,
-captures a custom-format PostgreSQL dump as the bootstrap superuser (including
-all rows behind RLS, ownership and grants), and streams artifacts with their
-exact metadata using the existing AWS SDK. Rclone uploads the database and
-manifest files and downloads both object sets to compare bytes. The previously
-running services resume even when capture fails. Expect downtime proportional
-to capture size; retention runs after serving resumes. Do not run direct
-Compose mutation or database/storage commands concurrently.
-
-Each `pertexo-beta/<YYYYMMDDTHHMMSSZ>/` prefix contains `database.dump`,
-`release.txt`, `objects.count`, `SHA256SUMS`, `objects/` and a `COMPLETE` marker
-published last. Only completed points are usable. A new point never overwrites
-an existing prefix. Retention deletes known dated prefixes older than 14 days,
-including incomplete attempts, using the point date rather than artifact mtime.
-An empty artifact catalog is valid. Backup files are private, not encrypted by
-these scripts: keep the bucket private and enable the provider's at-rest
-protection. Preserve the production environment and required encryption keys separately;
-the database and object copy alone cannot recover encrypted credentials.
-
-Install the repository's units under their operational names:
-
-```sh
-sudo install -m 644 /opt/pertexo/repository/infrastructure/single-server/systemd/backup.service /etc/systemd/system/pertexo-backup.service
-sudo install -m 644 /opt/pertexo/repository/infrastructure/single-server/systemd/backup.timer /etc/systemd/system/pertexo-backup.timer
-sudo systemctl daemon-reload
-sudo systemctl enable --now pertexo-backup.timer
-systemctl list-timers pertexo-backup.timer
-journalctl -u pertexo-backup.service --since yesterday
-```
-
-Capture runs at 03:00 UTC; a missed timer runs after the host returns. Failures
-are visible in the journal. This plan adds no uptime or backup alert service.
-
