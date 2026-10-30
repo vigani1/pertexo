@@ -22,7 +22,10 @@ import {
   assertNotAborted,
   withWorkspaceWriteClient,
 } from '../transactions.repository.js';
-import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
+import {
+  serializeStoredExecutionValue,
+  StoredExecutionValueInvalidError,
+} from '../../platform/stored-execution-value.js';
 
 export async function completeNodeAttempt(
   pool: Pool,
@@ -39,8 +42,10 @@ export async function completeNodeAttempt(
         kind: 'inline',
         value: input.outcome.output,
       });
-    } catch {
-      throw new NodeAttemptOutputInvalidError();
+    } catch (error: unknown) {
+      if (error instanceof StoredExecutionValueInvalidError)
+        throw new NodeAttemptOutputInvalidError({ cause: error });
+      throw error;
     }
   }
   try {

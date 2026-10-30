@@ -35,8 +35,11 @@ export class NodeAttemptStateCorruptError extends Error {
 
 export class NodeAttemptOutputInvalidError extends Error {
   public override readonly name = 'NodeAttemptOutputInvalidError';
-  public constructor() {
-    super('Node attempt output violates the inline execution-value contract');
+  public constructor(options?: ErrorOptions) {
+    super(
+      'Node attempt output violates the inline execution-value contract',
+      options,
+    );
   }
 }
 
