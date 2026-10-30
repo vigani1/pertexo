@@ -12,6 +12,7 @@ import { federationSettingsQueryOptions } from '../data/settings.queries';
 import type { FederationScope } from '../data/settings.api';
 import { CreateOrganization } from '../components/organization/create';
 import { OrganizationPanel } from '../components/organization/panel';
+import { whoCan } from '@/features/workspaces/roles.public';
 export function FederationSettingsPage({
   scope,
   workspace,
@@ -35,7 +36,8 @@ export function FederationSettingsPage({
   if (!allowed)
     return (
       <Notice>
-        Only workspace owners and admins can read organization sign-in settings.
+        Only workspace {whoCan('member:read')} can read organization sign-in
+        settings.
       </Notice>
     );
   const editableFor = (snapshot: FederationSettings) =>

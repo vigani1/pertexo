@@ -2,6 +2,7 @@ import type { ApiProblemCode } from '@pertexo/contracts';
 import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError, isForbidden } from '@/lib/api/error-copy';
+import { refusalWhoCan } from '@/features/workspaces/roles.public';
 
 type ConnectionCommand = 'create' | 'rotate' | 'revoke' | 'test';
 
@@ -25,9 +26,9 @@ const UNCERTAIN: Readonly<Record<ConnectionCommand, (name: string) => string>> =
   };
 
 const FORBIDDEN: Readonly<Record<ConnectionCommand, string>> = {
-  create: 'Your role can’t add connections. Admins and owners can.',
-  rotate: 'Your role can’t replace credentials. Admins and owners can.',
-  revoke: 'Your role can’t revoke connections. Admins and owners can.',
+  create: `Your role can’t add connections. ${refusalWhoCan('connection:manage')}`,
+  rotate: `Your role can’t replace credentials. ${refusalWhoCan('connection:manage')}`,
+  revoke: `Your role can’t revoke connections. ${refusalWhoCan('connection:manage')}`,
   test: 'Your role can’t test connections.',
 };
 

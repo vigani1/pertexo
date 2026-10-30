@@ -1,4 +1,5 @@
 import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import { refusalWhoCan } from '@/features/workspaces/roles.public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 
@@ -46,6 +47,6 @@ export function destinationCommandError(
   )
     return 'This request was already used with different details. Try again.';
   if (isApiError(error) && (error.status === 403 || error.status === 404))
-    return 'Your role can’t change alert destinations. Admins and owners can.';
+    return `Your role can’t change alert destinations. ${refusalWhoCan('connection:manage')}`;
   return describeCommandError(error, ACTIONS[command]);
 }

@@ -13,6 +13,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { canEditOrganization, type OrganizationOperation } from './editing';
 import { WorkflowFolderPicker } from './folders/picker';
+import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
 
 type OrganizationFieldsProps = Readonly<{
   workspace: AccessibleWorkspace;
@@ -152,7 +153,7 @@ export function OrganizationFields({
           <Notice>
             {operation === 'replace_tags'
               ? 'Tag replacement requires an editor and active workflows. Archived tags are detached only through admin cleanup.'
-              : 'Moving active workflows requires an editor. Only owners and admins may move archived workflows.'}
+              : `Moving active workflows requires an editor. Only ${ADMINISTRATORS} may move archived workflows.`}
           </Notice>
         ) : null}
         <ProgressButton

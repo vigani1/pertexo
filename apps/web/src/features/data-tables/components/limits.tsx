@@ -19,6 +19,8 @@ import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { sendTableCommand, type TableScope } from '../data/tables.api';
 import { tableKeys } from '../data/tables.queries';
 import { TableCommandFeedback } from './command-feedback';
+import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
+import { sentenceStart } from '@/lib/format/sentence';
 export function DataTableLimits({
   scope,
   quotas,
@@ -62,8 +64,8 @@ export function DataTableLimits({
       <DialogContent>
         <DialogTitle>Data table limits</DialogTitle>
         <DialogDescription>
-          Owners and admins can raise these bounded defaults. Limits cannot be
-          below current use.
+          {sentenceStart(ADMINISTRATORS)} can raise these bounded defaults.
+          Limits cannot be below current use.
         </DialogDescription>
         <form
           className="mt-5 grid gap-4"

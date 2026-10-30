@@ -1,4 +1,6 @@
+import { sentenceStart } from '@/lib/format/sentence';
 import {
+  ADMINISTRATIVE_ROLES,
   ROLES,
   hasCapability,
   rolesForCapability as rolesAllowedTo,
@@ -111,6 +113,31 @@ const ROLE_PLURALS: Readonly<Record<WorkspaceRole, string>> = {
   viewer: 'viewers',
 };
 
+function listRoles(roles: readonly WorkspaceRole[]): string {
+  const names = roles.map((role) => ROLE_PLURALS[role]);
+  const last = names.pop() ?? 'owners';
+  return names.length === 0 ? last : `${names.join(', ')} and ${last}`;
+}
+
+/** Who holds a capability, as the policy grants it: "owners and admins". */
+export function whoCan(capability: Capability): string {
+  return listRoles(rolesAllowedTo(capability));
+}
+
+/** Who the administrative rules name, such as who always keeps shared access. */
+export const ADMINISTRATORS = listRoles(ADMINISTRATIVE_ROLES);
+
+/** The end of a refusal, nearest role first: "Admins and owners can." */
+export function refusalWhoCan(
+  capability: Capability,
+  role?: WorkspaceRole,
+): string {
+  const others = rolesAllowedTo(capability).filter(
+    (candidate) => candidate !== role,
+  );
+  return `${sentenceStart(listRoles([...others].reverse()))} can.`;
+}
+
 /**
  * A forbidden state in words: the person's role, what it can't do and who
  * can, e.g. "Your role (Operator) can’t manage connections. Admins and
@@ -121,13 +148,7 @@ export function roleLimitSentence(
   capability: Capability,
   action: string,
 ): string {
-  const allowed = [...rolesAllowedTo(capability)]
-    .filter((candidate) => candidate !== role)
-    .reverse()
-    .map((candidate) => ROLE_PLURALS[candidate]);
-  const last = allowed.pop() ?? 'owners';
-  const who = allowed.length === 0 ? last : `${allowed.join(', ')} and ${last}`;
-  return `Your role (${ROLE_NAMES[role]}) can’t ${action}. ${who.charAt(0).toUpperCase()}${who.slice(1)} can.`;
+  return `Your role (${ROLE_NAMES[role]}) can’t ${action}. ${refusalWhoCan(capability, role)}`;
 }
 
 /** Roles this person may give others, by invitation or role change. */

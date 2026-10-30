@@ -17,6 +17,8 @@ import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { MemberManagement } from './management';
+import { whoCan } from '../../model/workspace-roles';
+import { sentenceStart } from '@/lib/format/sentence';
 
 type MembersQuery = UseInfiniteQueryResult<
   InfiniteData<WorkspaceMembersResponse>
@@ -52,8 +54,9 @@ export function MembersPanel({
           <Empty>
             <EmptyTitle>No members to show</EmptyTitle>
             <EmptyDescription>
-              Nobody else can see this workspace yet. Owners and admins can
-              invite people from here.
+              Nobody else can see this workspace yet.{' '}
+              {sentenceStart(whoCan('member:manage'))} can invite people from
+              here.
             </EmptyDescription>
           </Empty>
         }

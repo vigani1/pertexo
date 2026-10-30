@@ -18,6 +18,7 @@ import { AuditEntry } from '../components/entry';
 import { auditQueryOptions } from '../data/audit.queries';
 import { exportAudit, type GovernanceScope } from '../data/audit.api';
 import { auditActionWords } from '../model/ledger';
+import { whoCan } from '@/features/workspaces/roles.public';
 
 /** Who changed what, read as sentences, newest first and grouped by day. */
 export function AuditPage({
@@ -44,7 +45,7 @@ export function AuditPage({
           <PageHeaderTitle>Audit log</PageHeaderTitle>
         </PageHeader>
         <Notice>
-          Only workspace owners and admins can read the audit log.
+          Only workspace {whoCan('audit:read')} can read the audit log.
         </Notice>
       </div>
     );

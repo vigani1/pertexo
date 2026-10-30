@@ -40,7 +40,8 @@ import {
 } from '../data/connections.queries';
 import { connectionAccessLost } from '../model/connection-access';
 import type { ConnectionsSearch } from '../model/connections-search';
-import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { roleLimitSentence, whoCan } from '@/features/workspaces/roles.public';
+import { sentenceStart } from '@/lib/format/sentence';
 
 function countByStatus(items: readonly ConnectionResponse[]) {
   let active = 0;
@@ -125,7 +126,7 @@ function ConnectionsBody({
           <EmptyDescription>
             {canManage
               ? 'Pick a service above. Workflows can use a connection as soon as it’s saved.'
-              : 'Admins and owners can connect Slack, HTTPS APIs and email here.'}
+              : `${sentenceStart(whoCan('connection:manage'))} can connect Slack, HTTPS APIs and email here.`}
           </EmptyDescription>
         </Empty>
       }

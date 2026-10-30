@@ -23,6 +23,7 @@ import {
   validOrganizationSelection,
   type OrganizationOperation,
 } from './editing';
+import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
 
 export type Props = Readonly<{
   apiClient: ApiClient;
@@ -143,7 +144,7 @@ export function useOrganizationEdit({
         setReadError(
           operation === 'replace_tags'
             ? 'Tags can be replaced only on active workflows by an editor.'
-            : 'Only owners and admins may move archived workflows.',
+            : `Only ${ADMINISTRATORS} may move archived workflows.`,
         );
         return;
       }

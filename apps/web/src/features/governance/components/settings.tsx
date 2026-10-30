@@ -6,6 +6,8 @@ import type { GovernanceScope } from '../data/audit.api';
 import { governanceQueryOptions } from '../data/audit.queries';
 import { PublicationPolicy } from './publication-policy';
 import { AuditRetention } from './retention';
+import { whoCan } from '@/features/workspaces/roles.public';
+import { sentenceStart } from '@/lib/format/sentence';
 
 export function GovernanceSettings({
   scope,
@@ -31,7 +33,7 @@ export function GovernanceSettings({
           </SettingsSection>
           <SettingsSection
             title="Audit retention"
-            description="Owners and admins can keep events for 30 to 2,555 days. Run data retention is separate."
+            description={`${sentenceStart(whoCan('governance:manage'))} can keep events for 30 to 2,555 days. Run data retention is separate.`}
           >
             <AuditRetention
               scope={scope}
