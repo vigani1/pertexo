@@ -27,12 +27,25 @@ const isOwnedRoute = (incoming: IncomingMessage): boolean =>
     (/^\/pages\?page=[123]$/u.test(incoming.url ?? '') ||
       explodingRoute.test(incoming.url ?? '')));
 
-function answerExploded(incoming: IncomingMessage, outgoing: ServerResponse) {
-  outgoing.writeHead(500, { 'content-type': 'application/json' });
+function answerRead(incoming: IncomingMessage, outgoing: ServerResponse) {
+  if (explodingRoute.test(incoming.url ?? '')) {
+    outgoing.writeHead(500, { 'content-type': 'application/json' });
+    outgoing.end(
+      JSON.stringify({
+        error: 'upstream exploded',
+        sentAuthorization: incoming.headers.authorization,
+      }),
+    );
+    return;
+  }
+  const page = Number(
+    new URL(incoming.url ?? '', controlledActionUrl).searchParams.get('page'),
+  );
+  outgoing.writeHead(200, { 'content-type': 'application/json' });
   outgoing.end(
     JSON.stringify({
-      error: 'upstream exploded',
-      sentAuthorization: incoming.headers.authorization,
+      data: [{ id: page }],
+      next: page < 3 ? `?page=${String(page + 1)}` : null,
     }),
   );
 }
@@ -106,23 +119,8 @@ export function createEditorControlledHttpTarget(
     void (async () => {
       try {
         if (!authorizeRequest(incoming, outgoing)) return;
-        if (explodingRoute.test(incoming.url ?? '')) {
-          answerExploded(incoming, outgoing);
-          return;
-        }
         if (incoming.method === 'GET') {
-          const page = Number(
-            new URL(incoming.url ?? '', controlledActionUrl).searchParams.get(
-              'page',
-            ),
-          );
-          outgoing.writeHead(200, { 'content-type': 'application/json' });
-          outgoing.end(
-            JSON.stringify({
-              data: [{ id: page }],
-              next: page < 3 ? `?page=${String(page + 1)}` : null,
-            }),
-          );
+          answerRead(incoming, outgoing);
           return;
         }
         const content = await readEffectBody(incoming, outgoing);
