@@ -35,3 +35,11 @@ export class WorkflowTagConflictError extends Error {
     super('Workflow organization command conflicts');
   }
 }
+
+/** A stored grant list is longer than the write path can ever make it. */
+export class FolderSharingCorruptError extends Error {
+  public override readonly name = 'FolderSharingCorruptError';
+  public constructor() {
+    super('Folder grants exceed the supported bound');
+  }
+}

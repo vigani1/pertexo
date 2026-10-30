@@ -10,6 +10,7 @@ import {
 } from '../../schema/foundation.js';
 import type { ConnectionSharingDatabase } from './contract.js';
 
+import { CONNECTION_SHARE_LIMIT } from '@pertexo/contracts';
 import type { ConnectionSharing } from '@pertexo/contracts';
 import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
@@ -23,6 +24,7 @@ import { connectionCommand } from '../admission.js';
 import { requireConnectionManager } from '../authority.queries.js';
 import {
   ConnectionNotFoundError,
+  ConnectionSharingCorruptError,
   ConnectionSharingRevisionConflictError,
 } from '../contract.js';
 
@@ -69,10 +71,10 @@ async function readSharing(
       ),
     )
     .orderBy(connectionShares.userId)
-    .limit(101)
+    .limit(CONNECTION_SHARE_LIMIT + 1)
     .catch(rethrowQueryFailure);
-  if (members.length > 100)
-    throw new Error('Connection shares exceed the supported bound');
+  if (members.length > CONNECTION_SHARE_LIMIT)
+    throw new ConnectionSharingCorruptError();
   return {
     connectionId,
     mode: row.accessMode,
