@@ -1,7 +1,7 @@
 import type {
   WorkflowTemplateOrigin,
   WorkflowTemplateOriginRequest,
-} from '@pertexo/templates';
+} from '@pertexo/workflow-model';
 import type {
   GraphValidationResult,
   PortableConnectionBinding,

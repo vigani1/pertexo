@@ -13,7 +13,7 @@ import type {
   WorkflowDefinitionCatalog,
   WorkflowAuthoringValidationOptions,
 } from '@pertexo/workflow-model/server';
-import type { WorkflowTemplateOriginRequest } from '@pertexo/templates';
+import type { WorkflowTemplateOriginRequest } from '@pertexo/workflow-model';
 
 /** Compiles a graph into the executable a published version stores. */
 export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{

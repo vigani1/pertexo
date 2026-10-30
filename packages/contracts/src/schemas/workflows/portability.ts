@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { workflowTemplateOriginRequestSchema } from '@pertexo/templates';
+import { workflowTemplateOriginRequestSchema } from '@pertexo/workflow-model';
 import {
   portableConnectionBindingSchema,
   portableConnectionSlotSchema,
