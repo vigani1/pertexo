@@ -28,18 +28,6 @@ type RateLimitRequest = Readonly<{
   authorizedWorkspace?: unknown;
 }>;
 
-function origin(request: RateLimitRequest): string {
-  const raw =
-    firstRequestHeader(request.headers, 'origin') ??
-    firstRequestHeader(request.headers, 'referer');
-  if (raw === undefined) return 'unknown-origin';
-  try {
-    return new URL(raw).origin;
-  } catch {
-    return 'invalid-origin';
-  }
-}
-
 function objectString(value: unknown, key: string): string | undefined {
   if (typeof value !== 'object' || value === null || !(key in value)) {
     return undefined;
@@ -58,7 +46,6 @@ function subject(request: RateLimitRequest): RateLimitSubject {
     request.apiTokenActor?.actorId ?? request.identitySession?.userId;
   return {
     ...(request.ip === undefined ? {} : { clientAddress: request.ip }),
-    origin: origin(request),
     ...(formId === undefined ? {} : { formId }),
     ...(actorId === undefined ? {} : { actorId }),
     ...(request.apiTokenActor === undefined

@@ -12,7 +12,7 @@ function subject(
   return Object.fromEntries(
     Object.entries({
       clientAddress: '203.0.113.8',
-      origin: 'https://app.example.test',
+      account: 'someone@example.test',
       actorId,
       workspaceId,
       connectionId,
@@ -56,16 +56,10 @@ describe('abuse rate-limit policy', () => {
         'closed',
         [
           ['client_address', 10],
-          ['origin', 30],
+          ['account', 10],
         ],
       ],
-      identity_callback: [
-        'closed',
-        [
-          ['client_address', 30],
-          ['origin', 60],
-        ],
-      ],
+      identity_callback: ['closed', [['client_address', 30]]],
       data_table_export: [
         'closed',
         [
@@ -160,7 +154,7 @@ describe('abuse rate-limit policy', () => {
     ).toEqual(expected);
   });
 
-  it('binds identity start to normalized origin and client address', () => {
+  it('binds identity start to the client address and the account it names', () => {
     expect(
       policy.evaluate('identity_start', subject({ actorId: undefined })),
     ).toEqual({
@@ -170,9 +164,9 @@ describe('abuse rate-limit policy', () => {
       dimensions: [
         { kind: 'client_address', identifier: '203.0.113.8', limit: 10 },
         {
-          kind: 'origin',
-          identifier: 'https://app.example.test',
-          limit: 30,
+          kind: 'account',
+          identifier: 'someone@example.test',
+          limit: 10,
         },
       ],
     });

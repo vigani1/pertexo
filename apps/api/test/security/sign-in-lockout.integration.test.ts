@@ -45,8 +45,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       await stack.flushRedis();
     });
 
-    // sec-03: every browser shares one origin bucket, 30 starts a minute.
-    it.fails(
+    it(
       'lets a stranger sign in after three addresses use up their limits',
       async () => {
         await lockoutAttempt();
@@ -64,8 +63,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       60_000,
     );
 
-    // sec-03: the same bucket also stops password resets.
-    it.fails(
+    it(
       'lets a stranger ask for a password reset after the same attack',
       async () => {
         await lockoutAttempt();
@@ -83,8 +81,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       60_000,
     );
 
-    // sec-03: and new accounts.
-    it.fails(
+    it(
       'lets a stranger sign up after the same attack, where sign-up is open',
       async () => {
         await lockoutAttempt();
@@ -103,8 +100,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       60_000,
     );
 
-    // sec-03: identity_callback has the same shared bucket, 60 a minute.
-    it.fails(
+    it(
       'keeps email links and SSO returns working after two addresses use up theirs',
       async () => {
         const visit = (from: string) =>
@@ -164,8 +160,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       ).toBeLessThanOrEqual(30);
     }, 60_000);
 
-    // sec-03: guessing one account must not cost the people on other accounts.
-    it.fails(
+    it(
       'lets another account sign in while one account is being guessed from everywhere',
       async () => {
         for (let octet = 150; octet < 190; octet++)

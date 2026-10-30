@@ -57,7 +57,6 @@ function context(
   handler: () => void,
   request: TestRequest = {
     ip: '203.0.113.9',
-    headers: { origin: 'https://app.example.test/path' },
     params: { workspaceId, connectionId },
     identitySession: { userId: actorId },
   },
@@ -281,42 +280,6 @@ describe('rate-limit interceptor', () => {
     expect(consume).not.toHaveBeenCalled();
     expect(recorder.record).not.toHaveBeenCalled();
   });
-
-  it.each([
-    [
-      { referer: 'https://fallback.example.test/page' },
-      'https://fallback.example.test',
-    ],
-    [{ origin: 'not a URL' }, 'invalid-origin'],
-    [undefined, 'unknown-origin'],
-  ] as const)(
-    'normalizes request origin %j to %s',
-    async (headers, expected) => {
-      const consume = vi.fn().mockResolvedValue({ allowed: true });
-      const interceptor = new RateLimitInterceptor(
-        new Reflector(),
-        new HttpRateLimitAdmission({ consume }, metrics()),
-      );
-
-      await interceptor.intercept(
-        context(identityStartHandler, {
-          ip: '203.0.113.9',
-          ...(headers === undefined ? {} : { headers }),
-        }),
-        { handle: () => of('called') },
-      );
-
-      expect(consume).toHaveBeenCalledWith(
-        expect.objectContaining({
-          // Vitest's asymmetric matcher is intentionally dynamic at this boundary.
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          dimensions: expect.arrayContaining([
-            { kind: 'origin', identifier: expected, limit: 30 },
-          ]),
-        }),
-      );
-    },
-  );
 
   it('prefers authorized workspace scope over route parameters', async () => {
     const consume = vi.fn().mockResolvedValue({ allowed: true });

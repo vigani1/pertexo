@@ -170,7 +170,7 @@ async function dispatchBetterAuthRequest(
     admission.metrics,
     rateLimitPolicy.evaluate(endpointClass, {
       clientAddress: request.ip,
-      origin: request.headers.origin ?? publicOrigin,
+      ...namedAccount(request.body),
     }),
   );
   if (admitted.kind === 'unavailable') {
@@ -202,6 +202,15 @@ async function dispatchBetterAuthRequest(
     sessionCookie,
     requestId,
   });
+}
+
+/** Which account a request is about, if it names one; `better-auth` checks the rest. */
+function namedAccount(body: unknown): { account: string } | undefined {
+  if (typeof body !== 'object' || body === null) return undefined;
+  const email: unknown = Reflect.get(body, 'email');
+  if (typeof email !== 'string') return undefined;
+  const account = email.trim().toLowerCase();
+  return account === '' ? undefined : { account };
 }
 
 function authenticationRequest(
