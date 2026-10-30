@@ -1,13 +1,10 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { auditEvents } from '../../../schema/foundation.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import type { PoolClient } from 'pg';
 
 import {
   claimCommand,
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
-import { generatePersistedId } from '../../../platform/persisted-id.js';
 
 import type {
   WorkflowInputCaseResult,
@@ -51,20 +48,16 @@ export async function mutate(
       await workflow(client, input, { write: true });
       await lockInputCaseQuota(client, input.workspaceId);
       const result = await work(client);
-      await drizzle(client)
-        .insert(auditEvents)
-        .values({
-          id: generatePersistedId(),
-          workspaceId: input.workspaceId,
-          actorUserId: input.actorId,
-          action: `workflow.input_case.${kind}`,
-          targetType: 'workflow_input_case',
-          targetId: result.caseId,
-          requestId: input.requestId ?? null,
-          traceId: input.traceId ?? null,
-          metadata: { workflowId: input.workflowId, revision: result.revision },
-        })
-        .catch(rethrowQueryFailure);
+      await appendAuditFact(client, {
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        action: `workflow.input_case.${kind}`,
+        targetType: 'workflow_input_case',
+        targetId: result.caseId,
+        requestId: input.requestId ?? null,
+        traceId: input.traceId ?? null,
+        metadata: { workflowId: input.workflowId, revision: result.revision },
+      });
       await completeCommand(client, command, result);
       return Object.freeze({ ...result, replayed: false });
     },

@@ -1,9 +1,9 @@
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import { workflowRuns } from '../../../schema/runs/execution.js';
 import { pendingRunTasks } from '../../../schema/runs/pending-task.js';
 import { workflowCalls } from '../../../schema/runs/calls.js';
-import { auditEvents } from '../../../schema/foundation.js';
 import { users } from '../../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { and, eq, sql } from 'drizzle-orm';
@@ -21,7 +21,6 @@ import {
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
 import { serializeStoredExecutionValue } from '../../../platform/stored-execution-value.js';
-import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { wakeWorkflowRun } from '../../calls/wakeup.repository.js';
 import type { Role } from '@pertexo/workflow-model';
 import {
@@ -140,26 +139,22 @@ export async function respondToTask(
     )
     .catch(rethrowQueryFailure);
   if (changed.rowCount !== 1) throw new PendingTaskDecisionError('expired');
-  await db
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorId,
-      action:
-        input.kind === 'approval'
-          ? 'pending_task.decided'
-          : 'pending_task.submitted',
-      targetType: 'pending_task',
-      targetId: input.taskId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata:
-        input.kind === 'approval'
-          ? { runId, decision: status }
-          : { runId, status },
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    action:
+      input.kind === 'approval'
+        ? 'pending_task.decided'
+        : 'pending_task.submitted',
+    targetType: 'pending_task',
+    targetId: input.taskId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata:
+      input.kind === 'approval'
+        ? { runId, decision: status }
+        : { runId, status },
+  });
   await completeCommand(client, command, {
     taskId: input.taskId,
     status,

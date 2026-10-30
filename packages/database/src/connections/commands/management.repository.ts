@@ -11,7 +11,6 @@ import {
   connections,
   connectionSecretVersions,
 } from '../../schema/connections.js';
-import { auditEvents } from '../../schema/foundation.js';
 
 import type { Pool } from 'pg';
 import {
@@ -146,20 +145,16 @@ async function persistCreatedConnection(
             metadata: { providerKey, authType, secretVersionId },
           })
           .catch(rethrowQueryFailure);
-        await db
-          .insert(auditEvents)
-          .values({
-            id: generatePersistedId(),
-            workspaceId,
-            actorUserId: actorId,
-            action: 'connection.created',
-            targetType: 'connection',
-            targetId: connectionId,
-            requestId: metadata.requestId,
-            traceId: metadata.traceId,
-            metadata: { providerKey, authType, secretVersionId },
-          })
-          .catch(rethrowQueryFailure);
+        await appendAuditFact(client, {
+          workspaceId,
+          actorId: actorId,
+          action: 'connection.created',
+          targetType: 'connection',
+          targetId: connectionId,
+          requestId: metadata.requestId,
+          traceId: metadata.traceId,
+          metadata: { providerKey, authType, secretVersionId },
+        });
         await completeCommand(
           client,
           command,

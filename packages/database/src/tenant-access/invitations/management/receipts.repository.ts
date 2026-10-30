@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -13,7 +14,6 @@ import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import {
   workspaceInvitationDeliveryAttempts as attempts,
-  auditEvents,
   workspaces,
 } from '../../../schema/foundation.js';
 import { outboxEvents } from '../../../schema/transport.js';
@@ -160,18 +160,14 @@ export async function recordAudit(
     traceId?: string;
   }>,
 ): Promise<void> {
-  await drizzle(client)
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorUserId,
-      action: input.action,
-      targetType: 'workspace_invitation',
-      targetId: input.invitationId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: { revision: input.revision, role: input.role },
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorUserId,
+    action: input.action,
+    targetType: 'workspace_invitation',
+    targetId: input.invitationId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata: { revision: input.revision, role: input.role },
+  });
 }

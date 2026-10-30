@@ -137,12 +137,17 @@ export async function recoverWorkflowRunInTransaction(
     runId: accepted.runId,
     ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
     ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-    metadata: sql`jsonb_build_object('sourceRunId',${input.sourceRunId}::text,
-      'workflowId',${metadata.run.workflowId}::text,'workflowVersionId',${metadata.run.workflowVersionId}::text,
-      'targetNodeRunId',${preview.nodeRunId}::text,'targetNodeId',${preview.nodeId}::text,
-      'reusedCount',${preview.reusedCount}::integer,'effectRisk',${preview.effectRisk}::text,
-      'acknowledgePossibleEffects',${input.acknowledgePossibleEffects ?? false}::boolean,
-      'acknowledgeUnknownOutcome',${input.acknowledgeUnknownOutcome ?? false}::boolean)`,
+    metadata: {
+      sourceRunId: input.sourceRunId,
+      workflowId: metadata.run.workflowId,
+      workflowVersionId: metadata.run.workflowVersionId,
+      targetNodeRunId: preview.nodeRunId,
+      targetNodeId: preview.nodeId,
+      reusedCount: preview.reusedCount,
+      effectRisk: preview.effectRisk,
+      acknowledgePossibleEffects: input.acknowledgePossibleEffects ?? false,
+      acknowledgeUnknownOutcome: input.acknowledgeUnknownOutcome ?? false,
+    },
   });
   return {
     run: await requireWorkflowRunRecord(transaction, accepted.runId),

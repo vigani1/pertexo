@@ -1,7 +1,7 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { and, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { apiTokens } from '../../schema/identity/api-tokens.js';
-import { auditEvents } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { API_TOKEN_ACTIVE_LIMIT } from '@pertexo/workflow-model';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
@@ -85,20 +85,15 @@ async function recordTokenAudit(
   tokenId: string,
   action: string,
 ): Promise<void> {
-  await drizzle(client)
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.ownerUserId,
-      action,
-      targetType: 'api_token',
-      targetId: tokenId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: sql`'{}'::jsonb`,
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.ownerUserId,
+    action,
+    targetType: 'api_token',
+    targetId: tokenId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+  });
 }
 
 export function createApiTokenDatabase(

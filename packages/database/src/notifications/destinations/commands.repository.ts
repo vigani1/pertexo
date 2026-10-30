@@ -1,16 +1,14 @@
+import type { AuditMetadata } from '../../governance/audit/events.repository.js';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import type { Role } from '@pertexo/workflow-model';
 import {
   ADMINISTRATIVE_ROLES,
   WORKFLOW_EDITOR_ROLES,
 } from '@pertexo/workflow-model';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { auditEvents } from '../../schema/foundation.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
 import type {
@@ -129,21 +127,17 @@ export async function audit(
   }: Readonly<{
     action: string;
     target: DestinationAuditTarget;
-    metadata: Readonly<Record<string, unknown>>;
+    metadata: AuditMetadata;
   }>,
 ): Promise<void> {
-  await drizzle(client)
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorId,
-      action,
-      targetType: target.type,
-      targetId: target.id,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata,
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    action,
+    targetType: target.type,
+    targetId: target.id,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata,
+  });
 }

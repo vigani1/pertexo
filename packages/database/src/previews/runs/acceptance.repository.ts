@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { requireTransactionConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
 import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
 
@@ -15,7 +16,6 @@ import {
 
 import { serializeStoredExecutionValue } from '../../platform/stored-execution-value.js';
 import {
-  auditEvents,
   idempotencyRecords,
   previewAttempts,
   previewRuns,
@@ -311,10 +311,9 @@ async function recordAcceptedPreview(
     sample,
   }: Readonly<{ previewRunId: string; sample: PreviewSample }>,
 ): Promise<void> {
-  await transaction.db.insert(auditEvents).values({
-    id: uuidv7(),
+  await appendAuditFact(transaction, {
     workspaceId: transaction.workspaceId,
-    actorUserId: input.actorUserId,
+    actorId: input.actorUserId,
     action: 'preview.execution_accepted',
     targetType: 'preview-run',
     targetId: previewRunId,

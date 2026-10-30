@@ -1,5 +1,5 @@
 import { workflows } from '../../schema/authoring/workflows.js';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { readWorkflowRunAcceptanceReplay } from './acceptance/replay.repository.js';
 import { lockRunAcceptanceCommand } from './lock-acceptance.repository.js';
 import {
@@ -82,7 +82,10 @@ export async function startInTransaction(
     },
     actorId: input.actorId,
     auditAction: 'workflow.run.started',
-    auditMetadata: sql`jsonb_build_object('workflowId', ${input.workflowId}::text, 'workflowVersionId', ${projection.id}::text)`,
+    auditMetadata: {
+      workflowId: input.workflowId,
+      workflowVersionId: projection.id,
+    },
     ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
     ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
   });

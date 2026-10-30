@@ -1,7 +1,7 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowForms } from '../../schema/triggers/forms.js';
-import { auditEvents } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
@@ -88,20 +88,16 @@ export async function changeFormAccess(
     .catch(rethrowQueryFailure);
   const changed = result[0];
   if (changed === undefined) throw new Error('Form access write missing');
-  await db
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorId,
-      action: 'form.access_changed',
-      targetType: 'workflow',
-      targetId: input.workflowId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: { access: changed.access, revision: changed.revision },
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    action: 'form.access_changed',
+    targetType: 'workflow',
+    targetId: input.workflowId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata: { access: changed.access, revision: changed.revision },
+  });
   await completeCommand(client, command, changed);
   return changed;
 }

@@ -75,7 +75,7 @@ it('exposes only typed membership origin metadata, never arbitrary source text',
 
 // db-runs-06: a typed fact a writer records reaches the audit view; the
 // operator status lookup records whether the command existed.
-it.fails('projects the operator status lookup found fact', () => {
+it('projects the operator status lookup found fact', () => {
   for (const found of [true, false])
     expect(
       projectAuditMetadata({ actorRef: 'operator@example.test', found }),

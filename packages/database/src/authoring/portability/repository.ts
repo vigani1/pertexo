@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -7,7 +8,6 @@ import { lockArtifactReferences } from '../../artifacts/references/repository.js
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { workflowTemplateOrigins } from '../../schema/authoring/template-origin.js';
 import { workflowDrafts, workflows } from '../../schema/authoring/workflows.js';
-import { auditEvents } from '../../schema/foundation.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
 
@@ -318,18 +318,14 @@ async function persistImportedWorkflow(
         },
       })
       .catch(rethrowQueryFailure);
-  await db
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorId,
-      action: 'workflow.imported',
-      targetType: 'workflow',
-      targetId: destinationId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: { revision: 1 },
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    action: 'workflow.imported',
+    targetType: 'workflow',
+    targetId: destinationId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata: { revision: 1 },
+  });
 }

@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -6,10 +7,8 @@ import {
   claimCommand,
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
-import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { workflowTriggers } from '../../../schema/authoring/workflows.js';
-import { auditEvents } from '../../../schema/foundation.js';
 import { triggerSchedules } from '../../../schema/triggers/schedules.js';
 
 import { ScheduleTriggerError } from '../errors.js';
@@ -116,22 +115,18 @@ export async function recordScheduleCommandAudit(
   input: SetEnabledInput,
   identity: ScheduleCommandIdentity,
 ): Promise<void> {
-  await drizzle(client)
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorId,
-      action: input.enabled
-        ? 'schedule_trigger.enabled'
-        : 'schedule_trigger.disabled',
-      targetType: 'schedule_trigger',
-      targetId: identity.triggerId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: { workflowId: identity.workflowId },
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    action: input.enabled
+      ? 'schedule_trigger.enabled'
+      : 'schedule_trigger.disabled',
+    targetType: 'schedule_trigger',
+    targetId: identity.triggerId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata: { workflowId: identity.workflowId },
+  });
 }
 
 export async function completeScheduleCommand(

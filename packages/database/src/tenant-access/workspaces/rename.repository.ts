@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -5,7 +6,6 @@ import type { Pool } from 'pg';
 import { z } from 'zod';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
-  auditEvents,
   users,
   workspaceMemberships,
   workspaces,
@@ -16,7 +16,6 @@ import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import { commandRevisionSchema } from '../command-keys.js';
 import type {
   IdentityWorkspaceDatabase,
@@ -167,20 +166,21 @@ export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
             if (changedWorkspace === undefined)
               throw new Error('Workspace rename returned no record');
             renamed = workspaceRecord(changedWorkspace);
-            await db
-              .insert(auditEvents)
-              .values({
-                id: generatePersistedId(),
-                workspaceId,
-                actorUserId,
-                action: 'workspace.renamed',
-                targetType: 'workspace',
-                targetId: workspaceId,
-                requestId: raw.requestId ?? null,
-                traceId: raw.traceId ?? null,
-                metadata: sql`${JSON.stringify({ fromName: currentWorkspace.name, toName: renamed.name, fromRevision: currentWorkspace.revision, toRevision: renamed.revision })}::jsonb`,
-              })
-              .catch(rethrowQueryFailure);
+            await appendAuditFact(client, {
+              workspaceId,
+              actorId: actorUserId,
+              action: 'workspace.renamed',
+              targetType: 'workspace',
+              targetId: workspaceId,
+              requestId: raw.requestId ?? null,
+              traceId: raw.traceId ?? null,
+              metadata: {
+                fromName: currentWorkspace.name,
+                toName: renamed.name,
+                fromRevision: currentWorkspace.revision,
+                toRevision: renamed.revision,
+              },
+            });
           }
           const result = Object.freeze({
             workspace: renamed,

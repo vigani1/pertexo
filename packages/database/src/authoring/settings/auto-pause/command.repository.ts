@@ -1,14 +1,11 @@
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import type { Role } from '@pertexo/workflow-model';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 import {
   claimCommand,
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
-import { generatePersistedId } from '../../../platform/persisted-id.js';
-import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { auditEvents } from '../../../schema/foundation.js';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import type {
   AutoPauseCommandResult,
@@ -75,20 +72,16 @@ export function command<T>(
       });
     const { settings, audit } = await options.apply(client, workspace);
     if (audit !== undefined)
-      await drizzle(client)
-        .insert(auditEvents)
-        .values({
-          id: generatePersistedId(),
-          workspaceId,
-          actorUserId: actorId,
-          action: audit.action,
-          targetType: audit.targetType,
-          targetId: options.resourceId,
-          requestId: input.requestId ?? null,
-          traceId: input.traceId ?? null,
-          metadata: { settings },
-        })
-        .catch(rethrowQueryFailure);
+      await appendAuditFact(client, {
+        workspaceId,
+        actorId: actorId,
+        action: audit.action,
+        targetType: audit.targetType,
+        targetId: options.resourceId,
+        requestId: input.requestId ?? null,
+        traceId: input.traceId ?? null,
+        metadata: { settings },
+      });
     await completeCommand(client, identity, settings);
     return Object.freeze({ settings, replayed: false });
   });

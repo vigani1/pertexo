@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { and, eq, exists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -9,12 +10,10 @@ import {
   workflows,
   workflowVersions,
 } from '../../../schema/authoring/workflows.js';
-import { auditEvents } from '../../../schema/foundation.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
 
-import { generatePersistedId } from '../../../platform/persisted-id.js';
 import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   RestoreWorkflowVersionInput,
@@ -163,24 +162,20 @@ async function restoreWorkflowVersion(
       sourceVersion.graphJson,
     );
 
-    await db
-      .insert(auditEvents)
-      .values({
-        id: generatePersistedId(),
-        workspaceId,
-        actorUserId: actorId,
-        action: 'workflow.version_restored',
-        targetType: 'workflow',
-        targetId: workflowId,
-        requestId: input.requestId ?? null,
-        traceId: input.traceId ?? null,
-        metadata: {
-          previousRevision: currentDraft.revision,
-          revision: restoredDraft.revision,
-          sourceVersionId: sourceVersion.id,
-        },
-      })
-      .catch(rethrowQueryFailure);
+    await appendAuditFact(client, {
+      workspaceId,
+      actorId: actorId,
+      action: 'workflow.version_restored',
+      targetType: 'workflow',
+      targetId: workflowId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: {
+        previousRevision: currentDraft.revision,
+        revision: restoredDraft.revision,
+        sourceVersionId: sourceVersion.id,
+      },
+    });
     return restoredDraft;
   });
 }

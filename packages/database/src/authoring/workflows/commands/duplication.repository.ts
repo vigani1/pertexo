@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import {
   EMPTY_WORKFLOW_GRAPH,
   InvalidWorkflowGraphError,
@@ -20,7 +21,6 @@ import {
   workflows,
   workflowVersions,
 } from '../../../schema/authoring/workflows.js';
-import { auditEvents } from '../../../schema/foundation.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 
@@ -248,22 +248,18 @@ async function persistDuplicate(
     .insert(workflowTemplateOrigins)
     .select(origin)
     .catch(rethrowQueryFailure);
-  await db
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorId,
-      action: 'workflow.duplicated',
-      targetType: 'workflow',
-      targetId: destinationId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: {
-        sourceWorkflowId: input.workflowId,
-        source: input.source,
-        revision: 1,
-      },
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    action: 'workflow.duplicated',
+    targetType: 'workflow',
+    targetId: destinationId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata: {
+      sourceWorkflowId: input.workflowId,
+      source: input.source,
+      revision: 1,
+    },
+  });
 }

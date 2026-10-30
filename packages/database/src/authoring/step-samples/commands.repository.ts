@@ -1,7 +1,7 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowStepSamples } from '../../schema/authoring/step-samples.js';
-import { auditEvents } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { utf8ByteLength } from '@pertexo/workflow-model';
@@ -106,27 +106,23 @@ export async function mutateStepSample(
         sampleId: receiptSampleId,
         removed: source === 'remove',
       };
-      await db
-        .insert(auditEvents)
-        .values({
-          id: generatePersistedId(),
-          workspaceId: input.workspaceId,
-          actorUserId: input.actorId,
-          action:
-            source === 'remove'
-              ? 'workflow.sample.removed'
-              : 'workflow.sample.saved',
-          targetType: 'workflow_step_sample',
-          targetId: receipt.sampleId,
-          requestId: input.requestId ?? null,
-          traceId: input.traceId ?? null,
-          metadata: {
-            workflowId: input.workflowId,
-            nodeId: input.nodeId,
-            sourceKind: source === 'remove' ? 'remove' : source.kind,
-          },
-        })
-        .catch(rethrowQueryFailure);
+      await appendAuditFact(client, {
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        action:
+          source === 'remove'
+            ? 'workflow.sample.removed'
+            : 'workflow.sample.saved',
+        targetType: 'workflow_step_sample',
+        targetId: receipt.sampleId,
+        requestId: input.requestId ?? null,
+        traceId: input.traceId ?? null,
+        metadata: {
+          workflowId: input.workflowId,
+          nodeId: input.nodeId,
+          sourceKind: source === 'remove' ? 'remove' : source.kind,
+        },
+      });
       await completeCommand(client, command, receipt);
       return { ...receipt, replayed: false };
     },

@@ -1,3 +1,5 @@
+import type { AuditMetadata } from '../../governance/audit/events.repository.js';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { isAdministrativeRole } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -6,7 +8,6 @@ import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
-  auditEvents,
   users,
   workspaceMemberships,
   workspaces,
@@ -18,7 +19,6 @@ import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
 
 import { DirectoryManagedMembershipError } from '../errors.js';
 import { withTenantScopedClient } from '../transactions.js';
@@ -136,23 +136,19 @@ export async function recordMemberCommandAudit(
       | 'workspace.ownership_transferred';
     requestId: string | undefined;
     traceId: string | undefined;
-    metadata: Readonly<Record<string, string | number>>;
+    metadata: AuditMetadata;
   }>,
 ): Promise<void> {
-  await drizzle(client)
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorUserId,
-      action: input.action,
-      targetType: 'workspace_member',
-      targetId: input.targetUserId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: input.metadata,
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorUserId,
+    action: input.action,
+    targetType: 'workspace_member',
+    targetId: input.targetUserId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata: input.metadata,
+  });
 }
 
 /** The participants a command was admitted with, as locked. */
