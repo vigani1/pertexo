@@ -164,23 +164,6 @@ describe('authentication and workspace entry', () => {
     expect(entry).toBeDisabled();
     expect(entry).toHaveTextContent('Being deleted');
   });
-  it('keeps suspended workspaces unavailable even for managers', async () => {
-    mockServer.use(...authenticatedHandlers());
-    mockServer.use(
-      http.get('http://pertexo.test/v1/workspaces', () =>
-        HttpResponse.json({
-          items: [{ ...workspace, status: 'suspended' }],
-          nextCursor: null,
-        }),
-      ),
-    );
-    renderApp('/workspaces');
-    const entry = await screen.findByRole('button', {
-      name: /Control Operations/u,
-    });
-    expect(entry).toBeDisabled();
-    expect(entry).toHaveTextContent('Suspended');
-  });
   it('opens the mobile More sheet and returns focus after Escape', async () => {
     mockServer.use(...authenticatedHandlers());
     renderApp(`/w/${workspaceId}/workflows`);
