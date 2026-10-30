@@ -10,6 +10,10 @@ import {
   useBetterAuthRealApi,
 } from '../../../support/better-auth/real-api.support.js';
 
+type ApiFixtureOptions = NonNullable<
+  Parameters<typeof useBetterAuthRealApi>[1]
+>;
+
 const authorizations = new Map<
   string,
   Parameters<SocialProviderGateway['authorize']>[0]
@@ -42,10 +46,13 @@ export const gateway: SocialProviderGateway = {
   },
 };
 
-export function createSocialSignInFixture() {
+export function createSocialSignInFixture(
+  options: Pick<ApiFixtureOptions, 'signUpMode'> = {},
+) {
   const providerFixture = useSocialProviderGateway(gateway);
 
   const api = useBetterAuthRealApi('social', {
+    ...options,
     databasePoolMax: 1,
     socialProviders: {
       google: { clientId: 'fixture-client', clientSecret: 'fixture-secret' },
