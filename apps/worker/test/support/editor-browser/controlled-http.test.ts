@@ -60,6 +60,20 @@ describe('owned controlled HTTP transport', () => {
     });
   });
 
+  it('counts only requests for its own routes, not a probe of its port', async () => {
+    const owned = target();
+    await owned.start();
+    const origin = `http://127.0.0.1:${String(owned.port())}`;
+
+    expect((await fetch(`${origin}/`)).status).toBe(404);
+    expect(owned.observe()).toMatchObject({ requests: 0, effects: 0 });
+
+    expect((await fetch(`${origin}/effect`, { method: 'POST' })).status).toBe(
+      401,
+    );
+    expect(owned.observe()).toMatchObject({ requests: 1, effects: 0 });
+  });
+
   it('serves three authenticated JSON pages without recording effects', async () => {
     const owned = target();
     await owned.start();
