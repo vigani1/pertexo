@@ -128,7 +128,12 @@ export function useShellCrumbs(
         // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- Special crumbs need route-specific data; remaining routes use declarative metadata.
         switch (match.routeId) {
           case `${SHELL}/runs/$runId`:
-            return [{ kind: 'run', run: match.loaderData?.run }];
+            return [
+              {
+                kind: 'run',
+                run: match.loaderData?.found ? match.loaderData.run : undefined,
+              },
+            ];
           case SETTINGS_HUB:
             return [{ kind: 'settings' }];
           case `${SETTINGS_HUB}/settings/usage/trends`:
