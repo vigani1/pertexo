@@ -128,7 +128,7 @@ test('self-managed generation works at both production boundaries without AWS co
   assert.equal(secrets.CONNECTION_SELF_MANAGED_KEY_VERSION, '1');
 });
 // ops-06, docs-deps-product-06: the default asks a self-hoster for an AWS KMS key.
-it.fails(
+it(
   'with no options, generates what a self-hoster needs and no AWS',
   () => {
     const secrets = parseEnv(

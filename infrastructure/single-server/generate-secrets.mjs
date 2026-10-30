@@ -1,12 +1,12 @@
 import { randomBytes } from 'node:crypto';
 
-const option = process.argv[2] ?? '--encryption=kms';
+const option = process.argv[2] ?? '--encryption=self-managed';
 if (
   process.argv.length > 3 ||
   !['--encryption=kms', '--encryption=self-managed'].includes(option)
 )
   throw new Error(
-    'usage: generate-secrets.mjs [--encryption=kms|--encryption=self-managed]',
+    'usage: generate-secrets.mjs [--encryption=self-managed|--encryption=kms]',
   );
 const mode = option.slice('--encryption='.length);
 process.stderr.write(
