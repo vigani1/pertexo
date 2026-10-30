@@ -86,44 +86,58 @@ export const DEFAULT_CODE_SETTINGS: CodeSettings = Object.freeze({
   pythonPackages: Object.freeze([]),
 });
 
+const settingShape = codeSettingsSchema.shape;
+const environmentNumber = (setting: z.ZodNumber, fallback: number) =>
+  z.coerce.number().pipe(setting).default(fallback);
+const environmentPackages = <T extends z.ZodType>(setting: T) =>
+  z
+    .string()
+    .default('[]')
+    .transform((text, context): unknown => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        context.addIssue({
+          code: 'custom',
+          message: 'must be a JSON array of package names',
+        });
+        return z.NEVER;
+      }
+    })
+    .pipe(setting);
+const codeEnvironmentSchema = z.object({
+  CODE_STEPS_ENABLED: z
+    .enum(['true', 'false'])
+    .default(DEFAULT_CODE_SETTINGS.enabled ? 'true' : 'false'),
+  CODE_RUNNER_MEMORY_MB: environmentNumber(
+    settingShape.memoryMiB,
+    DEFAULT_CODE_SETTINGS.memoryMiB,
+  ),
+  CODE_RUNNER_MAX_SECONDS: environmentNumber(
+    settingShape.maximumSeconds,
+    DEFAULT_CODE_SETTINGS.maximumSeconds,
+  ),
+  CODE_RUNNER_CONCURRENCY: environmentNumber(
+    settingShape.concurrency,
+    DEFAULT_CODE_SETTINGS.concurrency,
+  ),
+  CODE_RUNNER_PACKAGES: environmentPackages(settingShape.extraPackages),
+  CODE_RUNNER_PYTHON_PACKAGES: environmentPackages(settingShape.pythonPackages),
+});
+
 /** Parse administrator input at each process's configuration boundary. */
 export function parseCodeSettings(
   environment: Readonly<Record<string, unknown>>,
 ): CodeSettings {
-  const raw = z
-    .object({
-      CODE_STEPS_ENABLED: z.enum(['true', 'false']).default('true'),
-      CODE_RUNNER_MEMORY_MB: z.coerce
-        .number()
-        .int()
-        .min(32)
-        .max(1_024)
-        .default(128),
-      CODE_RUNNER_MAX_SECONDS: z.coerce
-        .number()
-        .int()
-        .min(1)
-        .max(300)
-        .default(30),
-      CODE_RUNNER_CONCURRENCY: z.coerce
-        .number()
-        .int()
-        .min(1)
-        .max(16)
-        .default(2),
-      CODE_RUNNER_PACKAGES: z.string().default('[]'),
-      CODE_RUNNER_PYTHON_PACKAGES: z.string().default('[]'),
-    })
-    .parse(environment);
-  const extra: unknown = JSON.parse(raw.CODE_RUNNER_PACKAGES);
-  return codeSettingsSchema.parse({
+  const raw = codeEnvironmentSchema.parse(environment);
+  return {
     enabled: raw.CODE_STEPS_ENABLED === 'true',
     memoryMiB: raw.CODE_RUNNER_MEMORY_MB,
     maximumSeconds: raw.CODE_RUNNER_MAX_SECONDS,
     concurrency: raw.CODE_RUNNER_CONCURRENCY,
-    extraPackages: extra,
-    pythonPackages: JSON.parse(raw.CODE_RUNNER_PYTHON_PACKAGES) as unknown,
-  });
+    extraPackages: raw.CODE_RUNNER_PACKAGES,
+    pythonPackages: raw.CODE_RUNNER_PYTHON_PACKAGES,
+  };
 }
 
 export function codeContainerLimits(settings: CodeSettings) {
