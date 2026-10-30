@@ -2,7 +2,6 @@ import { CANONICAL_JSON_MAX_DEPTH } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
 import {
-  NODE_TEST_JSON_MAX_DEPTH,
   nodeTestExecuteAcceptedResponseSchema,
   nodeTestRequestSchema,
   nodeValidationResponseSchema,
@@ -48,10 +47,8 @@ const preview = {
 };
 
 describe('node-testing public contracts', () => {
-  it('keeps the browser preflight depth identical to canonical server JSON', () => {
-    expect(NODE_TEST_JSON_MAX_DEPTH).toBe(CANONICAL_JSON_MAX_DEPTH);
-  });
-
+  // The browser preflight accepts exactly the depth the server's canonical
+  // JSON accepts.
   it.each([
     ['array', nestedArray],
     ['object', nestedObject],
@@ -62,13 +59,13 @@ describe('node-testing public contracts', () => {
         nodeTestRequestSchema.safeParse({
           mode: 'validate',
           expectedRevision: 4,
-          sampleInput: nest(NODE_TEST_JSON_MAX_DEPTH),
+          sampleInput: nest(CANONICAL_JSON_MAX_DEPTH),
         }).success,
       ).toBe(true);
       const result = nodeTestRequestSchema.safeParse({
         mode: 'validate',
         expectedRevision: 4,
-        sampleInput: nest(NODE_TEST_JSON_MAX_DEPTH + 1),
+        sampleInput: nest(CANONICAL_JSON_MAX_DEPTH + 1),
       });
       expect(result.success).toBe(false);
       if (!result.success)
@@ -216,7 +213,7 @@ describe('node-testing public contracts', () => {
       mode: 'validate',
       expectedRevision: 4,
       sampleInput: {
-        first: nestedArray(NODE_TEST_JSON_MAX_DEPTH),
+        first: nestedArray(CANONICAL_JSON_MAX_DEPTH),
         later: laterBranch,
       },
     });
@@ -326,7 +323,7 @@ describe('node-testing public contracts', () => {
     };
     const sampleInput = projected.oneOf[0]?.properties.sampleInput;
     expect(sampleInput).toMatchObject({
-      'x-pertexo-runtime-max-depth': NODE_TEST_JSON_MAX_DEPTH,
+      'x-pertexo-runtime-max-depth': CANONICAL_JSON_MAX_DEPTH,
     });
     expect(
       typeof (sampleInput as Readonly<Record<string, unknown>> | undefined)
