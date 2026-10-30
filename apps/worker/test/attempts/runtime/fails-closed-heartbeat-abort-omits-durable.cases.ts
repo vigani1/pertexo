@@ -12,7 +12,7 @@ import {
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 
 import { expect, it, vi } from 'vitest';
-import { type PreparedNodeAttempt } from '../../../src/testing.js';
+import type { PreparedNodeAttempt } from '../../../src/testing.js';
 
 import {
   STORED_CHECKPOINT,

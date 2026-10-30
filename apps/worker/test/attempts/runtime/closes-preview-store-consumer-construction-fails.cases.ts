@@ -5,7 +5,7 @@ import type {
 import type { RunEventNotificationPublisher } from '@pertexo/queue';
 
 import { expect, it, vi } from 'vitest';
-import { type PreviewAttemptRunStore } from '../../../src/testing.js';
+import type { PreviewAttemptRunStore } from '../../../src/testing.js';
 import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 export function registerClosesPreviewStoreConsumerConstructionFails(): void {

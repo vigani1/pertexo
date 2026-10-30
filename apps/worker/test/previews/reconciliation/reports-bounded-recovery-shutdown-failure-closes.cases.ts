@@ -5,7 +5,7 @@ import {
 
 import { expect, it, vi } from 'vitest';
 
-import { type MaintenanceRuntimeFactories } from '../../../src/maintenance/runtime.js';
+import type { MaintenanceRuntimeFactories } from '../../../src/maintenance/runtime.js';
 import {
   maintenanceRuntime,
   idleConnectionHealth,

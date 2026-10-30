@@ -65,4 +65,3 @@ export type StreamRunEventsInput = GetWorkflowRunInput &
     abortStream(reason?: unknown): void;
     signal: AbortSignal;
   }>;
-

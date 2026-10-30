@@ -8,7 +8,7 @@ import {
   createPreviewReconciliationHandler,
   type PreviewReconciliationStore,
 } from '../../../src/previews/reconciliation.js';
-import { type MaintenanceRuntimeFactories } from '../../../src/maintenance/runtime.js';
+import type { MaintenanceRuntimeFactories } from '../../../src/maintenance/runtime.js';
 import {
   delivery,
   routedDelivery,

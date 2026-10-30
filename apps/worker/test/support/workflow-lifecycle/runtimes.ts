@@ -6,9 +6,10 @@ import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
-import {
-  createTriggerRuntime,
-  type TriggerRuntime,
+import type {
+  createTriggerRuntime} from '../../../src/triggers/runtime.js';
+import type {
+  TriggerRuntime,
 } from '../../../src/triggers/runtime.js';
 import type { createRedisTestNamespace } from '../infrastructure/redis-test-namespace.js';
 import type { createLifecycleResourceOwners } from './ownership.js';

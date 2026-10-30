@@ -10,7 +10,7 @@ import {
 import { Queue } from 'bullmq';
 
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
+import type { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { coordinatorFixture } from './consumer.js';
 
 const {

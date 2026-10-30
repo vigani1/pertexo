@@ -1,6 +1,6 @@
 import type { QueueConsumer } from '@pertexo/queue';
 import { expect, it, vi } from 'vitest';
-import { type CoordinatorCompositionFactories } from '../../../src/runs/runtime.js';
+import type { CoordinatorCompositionFactories } from '../../../src/runs/runtime.js';
 import { runtimeOptions, runtimeDependencies } from './fixture.js';
 import { testCoordinatorRuntime } from '../../support/runtime-factories.js';
 

@@ -2,7 +2,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { expect, it, vi } from 'vitest';
 
-import { type MaintenanceRuntimeFactories } from '../../../src/maintenance/runtime.js';
+import type { MaintenanceRuntimeFactories } from '../../../src/maintenance/runtime.js';
 import { idleConnectionHealth } from './fixture.js';
 import { testMaintenanceRuntime } from '../../support/runtime-factories.js';
 

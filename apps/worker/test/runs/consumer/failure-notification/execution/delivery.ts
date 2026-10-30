@@ -15,7 +15,7 @@ import { Queue } from 'bullmq';
 
 import { expect } from 'vitest';
 import { createProviderFailureNotificationDelivery } from '../../../../../src/notifications/failure-delivery.js';
-import { createMaintenanceRuntime } from '../../../../../src/maintenance/runtime.js';
+import type { createMaintenanceRuntime } from '../../../../../src/maintenance/runtime.js';
 import { WorkerDrainState } from '../../../../../src/runtime/shutdown/drain-state.js';
 import {
   createFailureNotificationDispatcher,
