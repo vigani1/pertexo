@@ -54,7 +54,7 @@ export function registerKeepsStepSOwnReasonIt(): void {
         heartbeat: vi.fn(),
         loadInputs: vi.fn().mockResolvedValue({
           checkpoint: STORED_CHECKPOINT,
-          abortRequested: false,
+          control: { kind: 'none' },
           completedNodeOutputs: [],
           runInput: null,
         }),
@@ -92,7 +92,7 @@ export function registerKeepsStepSOwnReasonIt(): void {
       heartbeat: vi.fn(),
       loadInputs: vi.fn().mockResolvedValue({
         checkpoint: STORED_CHECKPOINT,
-        abortRequested: false,
+        control: { kind: 'none' },
         completedNodeOutputs: [],
         runInput: null,
       }),
@@ -159,7 +159,7 @@ export function registerKeepsStepSOwnReasonIt(): void {
       heartbeat: vi.fn(),
       loadInputs: vi.fn().mockResolvedValue({
         checkpoint: STORED_CHECKPOINT,
-        abortRequested: false,
+        control: { kind: 'none' },
         completedNodeOutputs: [],
         runInput: null,
       }),

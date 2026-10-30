@@ -6,7 +6,7 @@ import { claimDispatchAttempt } from '../fixture.js';
 // worker-01: the abort decision is one tagged value, so a reason can never be
 // missing from an abort. Cancellation wins over a passed deadline.
 export function registerReportsAbortControlOnce(): void {
-  it.fails.each([
+  it.each([
     { control: undefined, expected: { kind: 'none' } },
     { control: 'canceled', expected: { kind: 'abort', reason: 'canceled' } },
     { control: 'timed_out', expected: { kind: 'abort', reason: 'timed_out' } },

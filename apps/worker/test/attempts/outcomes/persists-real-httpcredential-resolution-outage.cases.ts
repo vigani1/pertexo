@@ -156,8 +156,7 @@ export function registerPersistsRealHTTPCredentialResolutionOutage(): void {
         .fn<NodeAttemptRunStore['heartbeat']>()
         .mockResolvedValue({
           leaseExpiresAt: new Date('2026-08-21T00:02:00.000Z'),
-          abortRequested: true,
-          abortReason,
+          control: { kind: 'abort', reason: abortReason },
         });
       const store = {
         claimDelivery: vi
@@ -168,7 +167,7 @@ export function registerPersistsRealHTTPCredentialResolutionOutage(): void {
         heartbeat,
         loadInputs: vi.fn().mockResolvedValue({
           checkpoint: STORED_CHECKPOINT,
-          abortRequested: false,
+          control: { kind: 'none' },
           completedNodeOutputs: [],
           runInput: null,
         }),

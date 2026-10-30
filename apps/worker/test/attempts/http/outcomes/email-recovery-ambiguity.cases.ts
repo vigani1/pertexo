@@ -60,7 +60,7 @@ export function registerEmailRecoveryAmbiguity(): void {
             await requestControl(result.lease.runId);
         },
         afterHeartbeat: (result) => {
-          if (entryPath === 'heartbeat' && result.abortRequested)
+          if (entryPath === 'heartbeat' && result.control.kind === 'abort')
             durableAbort.resolve();
           return Promise.resolve();
         },

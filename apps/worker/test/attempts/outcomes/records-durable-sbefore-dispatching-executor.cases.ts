@@ -36,8 +36,7 @@ export function registerRecordsDurableSBeforeDispatchingExecutor(): void {
         heartbeat: vi.fn(),
         loadInputs: vi.fn().mockResolvedValue({
           checkpoint: STORED_CHECKPOINT,
-          abortRequested: true,
-          abortReason,
+          control: { kind: 'abort', reason: abortReason },
           completedNodeOutputs: [],
           runInput: null,
         }),
@@ -98,8 +97,7 @@ export function registerRecordsDurableSBeforeDispatchingExecutor(): void {
         .fn<NodeAttemptRunStore['heartbeat']>()
         .mockResolvedValue({
           leaseExpiresAt: new Date('2026-08-21T00:02:00.000Z'),
-          abortRequested: true,
-          abortReason,
+          control: { kind: 'abort', reason: abortReason },
         });
       const markDispatched = vi.fn<NodeAttemptRunStore['markDispatched']>();
       const store = executionStore({
@@ -160,7 +158,7 @@ export function registerRecordsDurableSBeforeDispatchingExecutor(): void {
         heartbeat: vi.fn(),
         loadInputs: vi.fn().mockResolvedValue({
           checkpoint: STORED_CHECKPOINT,
-          abortRequested: false,
+          control: { kind: 'none' },
           completedNodeOutputs: [],
           runInput: null,
         }),

@@ -49,7 +49,7 @@ function storeWith(
 ) {
   return {
     loadInputs: vi.fn().mockResolvedValue({
-      abortRequested: false,
+      control: { kind: 'none' },
       completedNodeOutputs: [],
       runInput: null,
       checkpoint: checkpoint(),
@@ -268,7 +268,7 @@ describe('loadAttemptInputs', () => {
   it('passes stored values through without a checkpoint projection', async () => {
     const store = storeWith({ runInput: { order: 7 } });
     await expect(loadAttemptInputs(store, request(lease()))).resolves.toEqual({
-      abortRequested: false,
+      control: { kind: 'none' },
       completedNodeOutputs: [],
       runInput: { order: 7 },
     });

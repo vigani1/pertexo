@@ -12,6 +12,7 @@ import type {
   NodeAttemptRunStore,
   NodeAttemptStoredInputs,
 } from '../contract.js';
+import { attemptControl } from '../queries/control.js';
 import {
   assertNotAborted,
   withWorkspaceReadClient,
@@ -133,8 +134,7 @@ export async function loadNodeAttemptInputs(
           row.variableSetRevision,
         ),
         completedNodeOutputs,
-        abortRequested: row.abortRequested,
-        ...(row.abortReason === null ? {} : { abortReason: row.abortReason }),
+        control: attemptControl(row.abortReason),
         ...(row.deadlineAt === null ? {} : { deadlineAt: row.deadlineAt }),
         ...(resumeOutput === undefined ? {} : { resumeOutput }),
         checkpoint: row.schedulerState,

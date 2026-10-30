@@ -51,7 +51,7 @@ export function registerCommitsResumedWaitOutputOptionalTrace(): void {
           heartbeat: vi.fn(),
           loadInputs: vi.fn().mockResolvedValue({
             checkpoint: STORED_CHECKPOINT,
-            abortRequested: false,
+            control: { kind: 'none' },
             completedNodeOutputs: [],
             resumeOutput: { resumed: true },
             runInput: null,
@@ -147,7 +147,7 @@ export function registerCommitsResumedWaitOutputOptionalTrace(): void {
       heartbeat: vi.fn(),
       loadInputs: vi.fn().mockResolvedValue({
         checkpoint: STORED_CHECKPOINT,
-        abortRequested: false,
+        control: { kind: 'none' },
         completedNodeOutputs: [],
         runInput: { hello: 'world' },
       }),

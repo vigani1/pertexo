@@ -153,8 +153,7 @@ export function registerDoesNotReopenDispatchPermissionAfter(): void {
       complete,
       loadInputs: vi.fn().mockResolvedValue({
         checkpoint: STORED_CHECKPOINT,
-        abortRequested: true,
-        abortReason: 'canceled',
+        control: { kind: 'abort', reason: 'canceled' },
         completedNodeOutputs: [],
         runInput: null,
       }),

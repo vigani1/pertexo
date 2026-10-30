@@ -85,7 +85,7 @@ export async function completeNodeAttempt(
           row,
           receipt: receiptRow,
           serializedOutput,
-          controlActive: run[0]?.abortRequested ?? false,
+          controlActive: (run[0]?.abortReason ?? null) !== null,
         });
       },
     );

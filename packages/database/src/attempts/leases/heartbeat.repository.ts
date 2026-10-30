@@ -1,4 +1,4 @@
-import { runAbortState } from '../queries/control.js';
+import { attemptControl, runAbortReason } from '../queries/control.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -9,7 +9,7 @@ import {
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { Pool } from 'pg';
 import { NodeAttemptReconciliationRequiredError } from '../errors.js';
-import type { NodeAttemptRunStore } from '../contract.js';
+import type { NodeAttemptControl, NodeAttemptRunStore } from '../contract.js';
 import {
   assertNotAborted,
   withWorkspaceWriteClient,
@@ -21,8 +21,7 @@ export async function heartbeatNodeAttempt(
 ): Promise<
   Readonly<{
     leaseExpiresAt: Date;
-    abortRequested: boolean;
-    abortReason?: 'canceled' | 'timed_out';
+    control: NodeAttemptControl;
   }>
 > {
   assertNotAborted(input.signal);
@@ -69,15 +68,14 @@ export async function heartbeatNodeAttempt(
           leaseExpiresAt: sql<Date>`${nodeAttempts.leaseExpiresAt}`.mapWith(
             nodeAttempts.leaseExpiresAt,
           ),
-          ...runAbortState,
+          abortReason: runAbortReason,
         })
         .catch(rethrowQueryFailure);
       const row = result[0];
       if (row === undefined) throw new NodeAttemptReconciliationRequiredError();
       return Object.freeze({
         leaseExpiresAt: row.leaseExpiresAt,
-        abortRequested: row.abortRequested,
-        ...(row.abortReason === null ? {} : { abortReason: row.abortReason }),
+        control: attemptControl(row.abortReason),
       });
     },
   );
