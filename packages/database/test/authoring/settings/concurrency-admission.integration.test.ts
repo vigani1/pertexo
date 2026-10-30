@@ -7,6 +7,7 @@ import { registerReservationRecoveryReplacesTransportIdentity } from './concurre
 import { registerSkipsWorkspaceLifecycleLockBefore } from './concurrency-admission/skips-workspace-lifecycle-lock-before.cases.js';
 import { registerExpiresCommandReceiptsAfterTwenty } from './concurrency-admission/expires-command-receipts-after-twenty.cases.js';
 import { registerExplainsWorkspaceCapacityBlockers } from './concurrency-admission/explains-workspace-capacity-blockers.cases.js';
+import { registerAgreesOnEntitlementEffect } from './concurrency-admission/agrees-on-entitlement-effect.cases.js';
 installExecutionAcceptanceFixture();
 describe('current workflow concurrency and ordered production admission', () => {
   registerPersistsAcceptanceTicketsOnceExact();
@@ -18,4 +19,6 @@ describe('current workflow concurrency and ordered production admission', () => 
   registerSkipsWorkspaceLifecycleLockBefore();
 
   registerExpiresCommandReceiptsAfterTwenty();
+
+  registerAgreesOnEntitlementEffect();
 });
