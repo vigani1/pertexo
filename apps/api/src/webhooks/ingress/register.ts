@@ -64,14 +64,14 @@ export function registerWebhookIngress(
         record(() => {
           telemetry.delivery('invalid_request');
         });
-        await problem(reply, 413, 'webhook.payload_too_large', requestId);
+        await problem(reply, 'webhook.payload_too_large', requestId);
         return;
       }
       if (hasHttpStatus(error, 415)) {
         record(() => {
           telemetry.delivery('invalid_request');
         });
-        await problem(reply, 415, 'webhook.unsupported_media_type', requestId);
+        await problem(reply, 'webhook.unsupported_media_type', requestId);
         return;
       }
       record(() => {
@@ -87,7 +87,7 @@ export function registerWebhookIngress(
           error,
         );
       });
-      await problem(reply, 503, 'webhook.unavailable', requestId);
+      await problem(reply, 'webhook.unavailable', requestId);
     });
     scope.removeAllContentTypeParsers();
     scope.addContentTypeParser(
@@ -196,7 +196,7 @@ async function acceptWebhook(
     record(() => {
       telemetry.delivery('invalid_request');
     });
-    await problem(reply, 400, parsed.problem, requestId);
+    await problem(reply, parsed.problem, requestId);
     return;
   }
   const requestData = {
@@ -251,7 +251,7 @@ export function createWebhookPreflight(
           error,
         );
       });
-      await problem(reply, 503, 'webhook.unavailable', requestId);
+      await problem(reply, 'webhook.unavailable', requestId);
     }
   };
 }

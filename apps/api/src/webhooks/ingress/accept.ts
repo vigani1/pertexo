@@ -69,7 +69,7 @@ export async function captureIngressTestEvent(
       error instanceof WebhookTestEventError &&
       error.reason === 'value_invalid'
     )
-      await problem(reply, 413, 'webhook.payload_too_large', requestId);
+      await problem(reply, 'webhook.payload_too_large', requestId);
     else throw error;
   }
   return;
@@ -107,7 +107,7 @@ export async function admitIngressDelivery(
     record(() => {
       telemetry.delivery('invalid_request');
     });
-    await problem(reply, 400, 'request.invalid', requestId);
+    await problem(reply, 'request.invalid', requestId);
     return;
   }
   const query = rawWebhookQuery(request);

@@ -127,7 +127,7 @@ export async function authenticateIngressRequest(
       telemetry.delivery('invalid_request');
     });
     reply.header('allow', 'POST');
-    await problem(reply, 405, 'webhook.method_not_allowed', requestId);
+    await problem(reply, 'webhook.method_not_allowed', requestId);
     return;
   }
   const origin = singleHeader(request, 'origin');

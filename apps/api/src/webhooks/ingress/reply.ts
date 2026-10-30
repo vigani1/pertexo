@@ -35,7 +35,7 @@ export async function rejectAcceptance(
   }>,
 ): Promise<void> {
   if (error instanceof EventCoordinationUnavailableError) {
-    await problem(reply, 503, 'trigger.coordination_unavailable', requestId);
+    await problem(reply, 'trigger.coordination_unavailable', requestId);
     return;
   }
   if (
@@ -46,7 +46,7 @@ export async function rejectAcceptance(
     record(() => {
       telemetry.delivery('invalid_request');
     });
-    await problem(reply, 400, 'request.invalid', requestId);
+    await problem(reply, 'request.invalid', requestId);
     return;
   }
   if (error instanceof WebhookDeliveryReplayMismatchError) {
@@ -57,7 +57,7 @@ export async function rejectAcceptance(
     record(() => {
       telemetry.deduplication('conflict');
     });
-    await problem(reply, 409, 'webhook.idempotency_conflict', requestId);
+    await problem(reply, 'webhook.idempotency_conflict', requestId);
     return;
   }
   if (error instanceof WorkspaceRunQuotaExceededError) {
@@ -66,7 +66,7 @@ export async function rejectAcceptance(
       telemetry.delivery('rate_limited');
     });
     reply.header('retry-after', String(error.retryAfterSeconds));
-    await problem(reply, 429, 'webhook.rate_limited', requestId);
+    await problem(reply, 'webhook.rate_limited', requestId);
     return;
   }
   if (error instanceof WebhookWorkflowPausedError) {
@@ -75,7 +75,7 @@ export async function rejectAcceptance(
     record(() => {
       telemetry.delivery('paused');
     });
-    await problem(reply, 423, 'webhook.workflow_paused', requestId);
+    await problem(reply, 'webhook.workflow_paused', requestId);
     return;
   }
   if (
@@ -97,7 +97,7 @@ export async function authenticationFailed(
   record(() => {
     telemetry.delivery('authentication_failed');
   });
-  await problem(reply, 401, 'webhook.authentication_failed', requestId);
+  await problem(reply, 'webhook.authentication_failed', requestId);
 }
 
 export function record(operation: () => void): void {
@@ -110,13 +110,10 @@ export function record(operation: () => void): void {
 
 export async function problem(
   reply: FastifyReply,
-  status: number,
   code: ApiProblemCode,
   requestId: string,
 ): Promise<void> {
   const definition = API_PROBLEM_MANIFEST[code];
-  if (definition.status !== status)
-    throw new Error('Webhook problem status does not match its manifest');
   await reply.code(definition.status).type('application/problem+json').send({
     type: definition.type,
     title: definition.title,
