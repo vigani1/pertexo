@@ -4,14 +4,14 @@ import {
   CURATED_WORKFLOW_TEMPLATES,
   verifyCuratedTemplateManifest,
   validateCuratedTemplateSetupValue,
-  workflowTemplateOriginRequestSchema,
-  workflowTemplateOriginSchema,
   type CuratedWorkflowTemplate,
 } from '../src/index.js';
 import {
   canonicalWorkflowPortableJson,
   portableManifestDigest,
   workflowPortableManifestSchema,
+  workflowTemplateOriginRequestSchema,
+  workflowTemplateOriginSchema,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 
