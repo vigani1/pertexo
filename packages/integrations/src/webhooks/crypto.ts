@@ -80,13 +80,12 @@ function encryptionContext(
 export function webhookTriggerSecretAssociatedData(
   context: WebhookTriggerSecretContext,
 ): Uint8Array {
-  const parsed = contextSchema.parse(context);
   return new TextEncoder().encode(
     [
       'pertexo:webhook-trigger-secret',
-      parsed.workspaceId,
-      parsed.triggerId,
-      parsed.secretVersionId,
+      context.workspaceId,
+      context.triggerId,
+      context.secretVersionId,
     ].join('\u0000'),
   );
 }
@@ -101,7 +100,7 @@ export class AwsKmsWebhookEnvelopeKeyProvider implements WebhookEnvelopeKeyProvi
     this.core = new AwsKmsEnvelopeKeyProviderCore(
       client,
       keyReference,
-      (context) => encryptionContext(contextSchema.parse(context)),
+      encryptionContext,
       failure,
     );
   }
@@ -111,10 +110,7 @@ export class AwsKmsWebhookEnvelopeKeyProvider implements WebhookEnvelopeKeyProvi
     signal?: AbortSignal,
   ): Promise<GeneratedWebhookEnvelopeKey> {
     try {
-      return await this.core.generateDataKey(
-        contextSchema.parse(context),
-        signal,
-      );
+      return await this.core.generateDataKey(context, signal);
     } catch {
       throw failure();
     }
@@ -130,7 +126,7 @@ export class AwsKmsWebhookEnvelopeKeyProvider implements WebhookEnvelopeKeyProvi
       return await this.core.decryptDataKey(
         encryptedDataKey,
         keyReference,
-        contextSchema.parse(context),
+        context,
         signal,
       );
     } catch {
