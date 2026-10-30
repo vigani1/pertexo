@@ -1,7 +1,10 @@
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
-import rootConfig, { readabilityRules } from '../../eslint.config.mjs';
+import rootConfig, {
+  readabilityRules,
+  testIntegrity,
+} from '../../eslint.config.mjs';
 
 // Lazy code loads through one module, so a chunk that a deployment removed
 // shows the update notice instead of reloading the page or crashing it.
@@ -50,6 +53,7 @@ export default tseslint.config(
   ...rootConfig,
   // Root globs do not match paths relative to this local configuration.
   { files: ['src/**/*.{ts,tsx}'], rules: readabilityRules },
+  { files: ['test/**/*.{ts,tsx}'], ...testIntegrity },
   {
     files: ['test/**/*.{ts,tsx}', 'e2e/**/*.ts', 'e2e-live/**/*.ts'],
     rules: {
