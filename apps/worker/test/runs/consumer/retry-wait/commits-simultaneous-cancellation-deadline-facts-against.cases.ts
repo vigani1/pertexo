@@ -10,7 +10,6 @@ import { Queue } from 'bullmq';
 
 import { expect, it } from 'vitest';
 import { createCoordinatorRuntime } from '../../../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../../src/attempts/delivery/runtime.js';
 
 import {
   acceptWaitRun,
@@ -30,6 +29,7 @@ import {
   workerUrl,
   workspaceId,
 } from './fixture.js';
+import { testNodeAttemptRuntime } from '../../../support/runtime-factories.js';
 
 export function registerCommitsSimultaneousCancellationDeadlineFactsAgainst(): void {
   it('commits simultaneous cancellation and deadline facts against a genuinely suspended Wait', async () => {
@@ -58,7 +58,7 @@ export function registerCommitsSimultaneousCancellationDeadlineFactsAgainst(): v
       maximumAdmissions: 1,
       redisUrl,
     });
-    const attempts = await createNodeAttemptRuntime(
+    const attempts = await testNodeAttemptRuntime(
       {
         database,
         heartbeatIntervalMillis: 1_000,

@@ -1,13 +1,13 @@
 import { JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { expect, it, vi } from 'vitest';
 
-import { createTriggerRuntime } from '../../../src/triggers/runtime.js';
 import { dependencies, options } from './fixture.js';
+import { testTriggerRuntime } from '../../support/runtime-factories.js';
 
 export function registerOwnsTriggerLifecycleConsumerPollsPostgreSQL(): void {
   it('owns the trigger lifecycle consumer and polls PostgreSQL without overlap', async () => {
     const selected = dependencies();
-    const runtime = await createTriggerRuntime(options, {
+    const runtime = await testTriggerRuntime(options, {
       ...selected,
       checkpointFactory: () => ({ checkpoint: {} }),
     });
@@ -57,7 +57,7 @@ export function registerOwnsTriggerLifecycleConsumerPollsPostgreSQL(): void {
           deferred: 0,
           maxLagSeconds: 3,
         });
-      const runtime = await createTriggerRuntime(options, {
+      const runtime = await testTriggerRuntime(options, {
         ...selected,
         checkpointFactory: () => ({ checkpoint: {} }),
       });
@@ -98,7 +98,7 @@ export function registerOwnsTriggerLifecycleConsumerPollsPostgreSQL(): void {
     const startupFailure = new Error('redis schema incompatible');
 
     await expect(
-      createTriggerRuntime(options, {
+      testTriggerRuntime(options, {
         ...selected,
         checkpointFactory: () => ({ checkpoint: {} }),
         consumerFactory: () => {
@@ -112,7 +112,7 @@ export function registerOwnsTriggerLifecycleConsumerPollsPostgreSQL(): void {
 
   it('uses the public queue handler for reconciliation deliveries', async () => {
     const selected = dependencies();
-    const runtime = await createTriggerRuntime(options, {
+    const runtime = await testTriggerRuntime(options, {
       ...selected,
       checkpointFactory: () => ({ checkpoint: {} }),
     });
@@ -143,7 +143,7 @@ export function registerOwnsTriggerLifecycleConsumerPollsPostgreSQL(): void {
 
   it('rejects jobs from outside the trigger lifecycle contract', async () => {
     const selected = dependencies();
-    const runtime = await createTriggerRuntime(options, {
+    const runtime = await testTriggerRuntime(options, {
       ...selected,
       checkpointFactory: () => ({ checkpoint: {} }),
     });

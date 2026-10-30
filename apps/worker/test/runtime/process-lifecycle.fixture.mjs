@@ -1,7 +1,24 @@
-import { NestFactory } from '@nestjs/core';
+import { Test } from '@nestjs/testing';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 import { createWorkerApplication } from '../../dist/app.js';
+import { WORKSPACE_INBOX_RUNTIME } from '../../dist/notifications/inbox-runtime.js';
+import { WORKSPACE_DATABASE } from '../../dist/platform/database/module.js';
+import { RETENTION_RUNTIME } from '../../dist/retention/runtime.js';
+import { WorkerReadiness } from '../../dist/runtime/health/readiness.js';
+import { WorkerReadinessMonitor } from '../../dist/runtime/health/readiness-monitor.js';
+import { WorkerDrainState } from '../../dist/runtime/shutdown/drain-state.js';
 import { WorkerProcessShutdown } from '../../dist/runtime/shutdown/process.js';
+import {
+  COORDINATOR_RUNTIME,
+  MAINTENANCE_RUNTIME,
+  NODE_ATTEMPT_RUNTIME,
+  OUTBOX_DISPATCHER,
+  TRANSPORT_METRICS,
+  TRIGGER_RUNTIME,
+} from '../../dist/transport/module.js';
+import { OutboxDispatcher } from '../../dist/transport/outbox/dispatch/runtime.js';
+import { createOwnedOutboxDispatcher } from '../../dist/transport/providers/dispatcher.js';
+import { WORKFLOW_AUTO_PAUSE_RUNTIME } from '../../dist/workflows/auto-pause-runtime.js';
 import process from 'node:process';
 import { clearInterval, setInterval } from 'node:timers';
 
@@ -162,31 +179,62 @@ const config = {
 try {
   const application = await createWorkerApplication(
     config,
+    { logger, telemetry },
     {
-      database,
-      dispatcherDatabase,
-      logger,
-      queueProducer,
-      readinessMarker,
-      telemetry,
-      workspaceInboxRuntime: {
-        start: () => undefined,
-        checkReadiness: () => Promise.resolve(),
-        close: () => Promise.resolve(),
+      applicationContext: async (module, options) => {
+        const builder = Test.createTestingModule({ imports: [module] });
+        const idle = {
+          start: () => undefined,
+          checkReadiness: () => Promise.resolve(),
+          close: () => Promise.resolve(),
+        };
+        for (const [token, value] of [
+          [WORKSPACE_DATABASE, database],
+          [WORKSPACE_INBOX_RUNTIME, idle],
+          // Every runtime is composed; only an active fixture holds a consumer open.
+          [
+            COORDINATOR_RUNTIME,
+            idleRuntime(mode === 'active' ? activeConsumer : idleConsumer),
+          ],
+          [NODE_ATTEMPT_RUNTIME, idleRuntime()],
+          [MAINTENANCE_RUNTIME, idleRuntime()],
+          [TRIGGER_RUNTIME, idleRuntime()],
+          [WORKFLOW_AUTO_PAUSE_RUNTIME, idleRuntime()],
+          [RETENTION_RUNTIME, idleRuntime()],
+        ])
+          builder.overrideProvider(token).useValue(value);
+        builder.overrideProvider(OUTBOX_DISPATCHER).useFactory({
+          inject: [WorkerDrainState, TRANSPORT_METRICS],
+          factory: (drainState, metrics) =>
+            createOwnedOutboxDispatcher(
+              config,
+              {},
+              {
+                drainState,
+                metrics,
+                factories: {
+                  database: () => dispatcherDatabase,
+                  producer: () => queueProducer,
+                  dispatcher: (selected, producer, input) =>
+                    new OutboxDispatcher(selected, producer, input),
+                },
+              },
+            ),
+        });
+        builder.overrideProvider(WorkerReadinessMonitor).useFactory({
+          inject: [WorkerReadiness],
+          factory: (readiness) =>
+            new WorkerReadinessMonitor(readiness, logger, {
+              marker: readinessMarker,
+              failClosed: undefined,
+              operationTimeoutMillis:
+                config.outboxDispatcher.operationTimeoutMillis,
+            }),
+        });
+        builder.setLogger(options.logger);
+        const testing = await builder.compile();
+        return testing.init();
       },
-      // Every runtime is composed; only an active fixture holds a consumer open.
-      coordinatorRuntime: idleRuntime(
-        mode === 'active' ? activeConsumer : idleConsumer,
-      ),
-      nodeAttemptRuntime: idleRuntime(),
-      maintenanceRuntime: idleRuntime(),
-      triggerRuntime: idleRuntime(),
-      workflowAutoPauseRuntime: idleRuntime(),
-      retentionRuntime: idleRuntime(),
-    },
-    {
-      applicationContext: (module, options) =>
-        NestFactory.createApplicationContext(module, options),
       databaseRuntime: createDatabaseRuntime,
       callbackStore: () => ({
         async *keysInUse() {

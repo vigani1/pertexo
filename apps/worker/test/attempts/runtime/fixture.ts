@@ -14,12 +14,12 @@ import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 import type { FactoryProvider } from '@nestjs/common';
 import { vi } from 'vitest';
 import {
-  createNodeAttemptRuntime,
   type NodeAttemptExecutionEngine,
   type NodeAttemptRuntime,
 } from '../../../src/testing.js';
 
 import type { WorkerConfig } from '../../../src/config/worker.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 export const STORED_CHECKPOINT = createCheckpoint({
   workflowVersionId: '33333333-3333-4333-8333-333333333333',
@@ -128,7 +128,7 @@ export async function capturedHandler(
   Readonly<{ handler: QueueJobHandler; runtime: NodeAttemptRuntime }>
 > {
   let handler: QueueJobHandler | undefined;
-  const runtime = await createNodeAttemptRuntime(
+  const runtime = await testNodeAttemptRuntime(
     {
       database,
       heartbeatIntervalMillis: 10,

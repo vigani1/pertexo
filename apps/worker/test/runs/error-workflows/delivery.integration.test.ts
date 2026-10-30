@@ -17,12 +17,12 @@ import {
   type WorkflowNode,
 } from '@pertexo/workflow-model';
 import { createCoordinatorRuntime } from '../../../dist/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../dist/attempts/delivery/runtime.js';
 import { createMaintenanceRuntime } from '../../../dist/maintenance/runtime.js';
 import { WorkerDrainState } from '../../../dist/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../dist/transport/outbox/dispatch/runtime.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 function graph(errorTrigger: boolean): WorkflowGraph {
   const node = (id: string, key: string): WorkflowNode => ({
@@ -122,7 +122,7 @@ describe.runIf(fixture.enabled)(
           redisUrl: fixture.redisUrl,
         });
         owners.push(() => coordinator.close());
-        const attempts = await createNodeAttemptRuntime(
+        const attempts = await testNodeAttemptRuntime(
           {
             database: config(fixture.workerUrl, 6),
             heartbeatIntervalMillis: 1_000,

@@ -21,11 +21,11 @@ import {
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 const qualified = fixture.enabled ? describe : describe.skip;
 qualified('workspace table steps through the real worker', () => {
@@ -136,7 +136,7 @@ qualified('workspace table steps through the real worker', () => {
       owners.push(() => coordinator.close());
       let lost = false;
       let firstReceipt: unknown;
-      const attempts = await createNodeAttemptRuntime(
+      const attempts = await testNodeAttemptRuntime(
         {
           database: config(fixture.workerUrl, 6),
           heartbeatIntervalMillis: 1000,

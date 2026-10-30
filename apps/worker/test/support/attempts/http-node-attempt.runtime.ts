@@ -21,7 +21,6 @@ import { Queue } from 'bullmq';
 
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
 
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import {
   databaseUrl,
@@ -33,6 +32,7 @@ import {
 import type { HttpNodeAttemptProofRuntimeOptions } from './http-node-attempt/runtime/contract.js';
 import { createHttpProofProviders } from './http-node-attempt/runtime/providers.js';
 import { createHttpProofResourceOwners } from './http-node-attempt/runtime/ownership.js';
+import { testNodeAttemptRuntime } from '../runtime-factories.js';
 
 export { type HttpNodeAttemptProofRuntimeOptions } from './http-node-attempt/runtime/contract.js';
 export async function createHttpNodeAttemptProofRuntime(
@@ -243,7 +243,7 @@ export async function createHttpNodeAttemptProofRuntime(
       transfer(baseRunStore);
       own('node attempt run store', injectedRunStore, (store) => store.close());
     }
-    const attemptsPromise = createNodeAttemptRuntime(
+    const attemptsPromise = testNodeAttemptRuntime(
       {
         database: parseDatabaseConfig({
           connectionString: databaseUrl(workerUrl),

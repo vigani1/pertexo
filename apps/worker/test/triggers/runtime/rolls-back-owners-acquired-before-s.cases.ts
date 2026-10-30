@@ -2,11 +2,9 @@ import type { ScheduleTriggerScanner } from '@pertexo/database/testing';
 
 import { expect, it, vi } from 'vitest';
 
-import {
-  createTriggerRuntime,
-  type TriggerCompositionFactories,
-} from '../../../src/triggers/runtime.js';
+import { type TriggerCompositionFactories } from '../../../src/triggers/runtime.js';
 import { dependencies, options } from './fixture.js';
+import { testTriggerRuntime } from '../../support/runtime-factories.js';
 
 export function registerRollsBackOwnersAcquiredBeforeS(): void {
   it.each([
@@ -64,7 +62,7 @@ export function registerRollsBackOwnersAcquiredBeforeS(): void {
       } as unknown as TriggerCompositionFactories;
 
       await expect(
-        createTriggerRuntime(
+        testTriggerRuntime(
           options,
           {
             checkpointFactory: () => ({
@@ -102,7 +100,7 @@ export function registerRollsBackOwnersAcquiredBeforeS(): void {
           active -= 1;
         }
       });
-      const runtime = await createTriggerRuntime(
+      const runtime = await testTriggerRuntime(
         { ...options, pollIntervalMillis: 10 },
         {
           ...selected,
@@ -153,7 +151,7 @@ export function registerRollsBackOwnersAcquiredBeforeS(): void {
     selected.logger.error.mockImplementation(() => {
       throw new Error('logger unavailable');
     });
-    const runtime = await createTriggerRuntime(
+    const runtime = await testTriggerRuntime(
       { ...options, pollIntervalMillis: 10 },
       {
         ...selected,
@@ -183,7 +181,7 @@ export function registerRollsBackOwnersAcquiredBeforeS(): void {
         Awaited<ReturnType<ScheduleTriggerScanner['scanDue']>>
       >();
     vi.mocked(selected.scanner.scanDue).mockReturnValue(scan.promise);
-    const runtime = await createTriggerRuntime(
+    const runtime = await testTriggerRuntime(
       { ...options, backgroundTaskShutdownTimeoutMillis: 5 },
       {
         ...selected,

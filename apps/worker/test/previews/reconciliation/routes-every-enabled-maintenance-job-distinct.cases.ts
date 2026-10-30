@@ -8,16 +8,14 @@ import {
   createPreviewReconciliationHandler,
   type PreviewReconciliationStore,
 } from '../../../src/previews/reconciliation.js';
-import {
-  createMaintenanceRuntime,
-  type MaintenanceRuntimeFactories,
-} from '../../../src/maintenance/runtime.js';
+import { type MaintenanceRuntimeFactories } from '../../../src/maintenance/runtime.js';
 import {
   delivery,
   routedDelivery,
   idleConnectionHealth,
   idleErrorWorkflows,
 } from './fixture.js';
+import { testMaintenanceRuntime } from '../../support/runtime-factories.js';
 
 export function registerRoutesEveryEnabledMaintenanceJobDistinct(): void {
   it('routes every enabled maintenance job to its distinct handler', async () => {
@@ -64,7 +62,7 @@ export function registerRoutesEveryEnabledMaintenanceJobDistinct(): void {
         handler: vi.fn(() => ({ handle: handles.errorWorkflow })),
       },
     } as unknown as MaintenanceRuntimeFactories;
-    const runtime = await createMaintenanceRuntime(
+    const runtime = await testMaintenanceRuntime(
       {
         database: parseDatabaseConfig({
           connectionString:
@@ -129,7 +127,7 @@ export function registerRoutesEveryEnabledMaintenanceJobDistinct(): void {
       connectionHealth: idleConnectionHealth,
       errorWorkflows: idleErrorWorkflows,
     } as unknown as MaintenanceRuntimeFactories;
-    const runtime = await createMaintenanceRuntime(
+    const runtime = await testMaintenanceRuntime(
       {
         database: parseDatabaseConfig({
           connectionString:

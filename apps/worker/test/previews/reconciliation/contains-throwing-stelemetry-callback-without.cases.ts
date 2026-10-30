@@ -10,8 +10,8 @@ import {
   createPreviewReconciliationHandler,
   mapPreviewReconciliationError,
 } from '../../../src/previews/reconciliation.js';
-import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
 import { delivery, maintenanceRuntime, idleStores } from './fixture.js';
+import { testMaintenanceRuntime } from '../../support/runtime-factories.js';
 
 export function registerContainsThrowingSTelemetryCallbackWithout(): void {
   it.each(['reconciliation', 'terminal'] as const)(
@@ -71,7 +71,7 @@ export function registerContainsThrowingSTelemetryCallbackWithout(): void {
     const store = { close, reconcile: vi.fn() };
 
     await expect(
-      createMaintenanceRuntime(
+      testMaintenanceRuntime(
         {
           database: parseDatabaseConfig({
             connectionString:
@@ -95,7 +95,7 @@ export function registerContainsThrowingSTelemetryCallbackWithout(): void {
       .fn()
       .mockResolvedValue({ abortedJobs: 0, forced: false });
     const storeClose = vi.fn().mockResolvedValue(undefined);
-    const runtime = await createMaintenanceRuntime(
+    const runtime = await testMaintenanceRuntime(
       {
         database: parseDatabaseConfig({
           connectionString:
@@ -217,7 +217,7 @@ export function registerContainsThrowingSTelemetryCallbackWithout(): void {
   it('is ready without failure-notification delivery', async () => {
     vi.useFakeTimers();
     try {
-      const runtime = await createMaintenanceRuntime(
+      const runtime = await testMaintenanceRuntime(
         {
           database: parseDatabaseConfig({
             connectionString:

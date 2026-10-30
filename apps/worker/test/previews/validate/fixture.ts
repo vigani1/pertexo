@@ -5,7 +5,6 @@ import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 
 import { describe, vi } from 'vitest';
 
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { createPlatformPreviewNodeInvoker } from '../../../src/previews/runtime.js';
 import {
   databaseUrl,
@@ -13,6 +12,7 @@ import {
   workerTransportIntegrationEnabled,
   workerUrl,
 } from '../../support/previews/consumer.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 export const describeIntegration = workerTransportIntegrationEnabled
   ? describe
@@ -47,7 +47,7 @@ export async function createValidateRuntime() {
   const writeArtifact = vi.fn(() =>
     Promise.reject(new Error('Validate preview must not write an artifact')),
   );
-  const runtime = await createNodeAttemptRuntime(
+  const runtime = await testNodeAttemptRuntime(
     {
       database: parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),

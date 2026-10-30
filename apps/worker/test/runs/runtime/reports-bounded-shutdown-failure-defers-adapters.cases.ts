@@ -7,7 +7,6 @@ import {
   type QueueConsumerOptions,
 } from '@pertexo/queue';
 import { expect, it, vi } from 'vitest';
-import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
 import {
   WORKSPACE_ID,
   RUN_ID,
@@ -15,6 +14,7 @@ import {
   runtimeOptions,
   runtimeDependencies,
 } from './fixture.js';
+import { testCoordinatorRuntime } from '../../support/runtime-factories.js';
 
 export function registerReportsBoundedShutdownFailureDefersAdapters(): void {
   it('reports a bounded shutdown failure and defers adapters until raw scanning settles', async () => {
@@ -38,7 +38,7 @@ export function registerReportsBoundedShutdownFailureDefersAdapters(): void {
         .fn<NonNullable<QueueConsumer['waitUntilReady']>>()
         .mockResolvedValue(undefined),
     } satisfies QueueConsumer;
-    const runtime = await createCoordinatorRuntime(
+    const runtime = await testCoordinatorRuntime(
       runtimeOptions({ backgroundTaskShutdownTimeoutMillis: 5 }),
       runtimeDependencies(consumer, blockingScanner, idleScanner),
     );
@@ -80,7 +80,7 @@ export function registerReportsBoundedShutdownFailureDefersAdapters(): void {
         .fn<NonNullable<RunAdvanceStore['close']>>()
         .mockResolvedValue(undefined),
     } satisfies RunAdvanceStore;
-    const runtime = await createCoordinatorRuntime(
+    const runtime = await testCoordinatorRuntime(
       {
         database: {
           connectionString:

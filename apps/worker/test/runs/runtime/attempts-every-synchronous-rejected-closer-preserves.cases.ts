@@ -1,7 +1,7 @@
 import type { QueueConsumer } from '@pertexo/queue';
 import { expect, it, vi } from 'vitest';
-import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
 import { runtimeOptions, runtimeDependencies } from './fixture.js';
+import { testCoordinatorRuntime } from '../../support/runtime-factories.js';
 
 export function registerAttemptsEverySynchronousRejectedCloserPreserves(): void {
   it('attempts every synchronous or rejected closer and preserves all failures', async () => {
@@ -13,7 +13,7 @@ export function registerAttemptsEverySynchronousRejectedCloserPreserves(): void 
       runStore: new Error('run store close failed'),
       callStore: new Error('call store close failed'),
     };
-    const runtime = await createCoordinatorRuntime(runtimeOptions(), {
+    const runtime = await testCoordinatorRuntime(runtimeOptions(), {
       callStore: {
         performActions: vi.fn(),
         close: vi.fn().mockRejectedValue(failures.callStore),
@@ -95,7 +95,7 @@ export function registerAttemptsEverySynchronousRejectedCloserPreserves(): void 
       publish: vi.fn().mockResolvedValue(undefined),
       resync: vi.fn().mockResolvedValue(undefined),
     };
-    const runtime = await createCoordinatorRuntime(
+    const runtime = await testCoordinatorRuntime(
       {
         database: {
           connectionString:
@@ -183,7 +183,7 @@ export function registerAttemptsEverySynchronousRejectedCloserPreserves(): void 
           .fn<NonNullable<QueueConsumer['waitUntilReady']>>()
           .mockResolvedValue(undefined),
       } satisfies QueueConsumer;
-      const runtime = await createCoordinatorRuntime(
+      const runtime = await testCoordinatorRuntime(
         runtimeOptions({ backgroundTaskShutdownTimeoutMillis: 100 }),
         runtimeDependencies(
           consumer,

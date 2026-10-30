@@ -1,10 +1,8 @@
 import type { QueueConsumer } from '@pertexo/queue';
 import { expect, it, vi } from 'vitest';
-import {
-  createCoordinatorRuntime,
-  type CoordinatorCompositionFactories,
-} from '../../../src/runs/runtime.js';
+import { type CoordinatorCompositionFactories } from '../../../src/runs/runtime.js';
 import { runtimeOptions, runtimeDependencies } from './fixture.js';
+import { testCoordinatorRuntime } from '../../support/runtime-factories.js';
 
 export function registerRollsBackEveryOwnerAcquiredBefore(): void {
   it.each([
@@ -118,7 +116,7 @@ export function registerRollsBackEveryOwnerAcquiredBefore(): void {
       } as unknown as CoordinatorCompositionFactories;
 
       await expect(
-        createCoordinatorRuntime(runtimeOptions(), {}, factories),
+        testCoordinatorRuntime(runtimeOptions(), {}, factories),
       ).rejects.toBe(constructionFailure);
       expect(new Set(closed)).toEqual(new Set(expectedClosed));
       expect(closed).toHaveLength(expectedClosed.length);
@@ -146,7 +144,7 @@ export function registerRollsBackEveryOwnerAcquiredBefore(): void {
         .fn<NonNullable<QueueConsumer['waitUntilReady']>>()
         .mockResolvedValue(undefined),
     } satisfies QueueConsumer;
-    const runtime = await createCoordinatorRuntime(
+    const runtime = await testCoordinatorRuntime(
       runtimeOptions(),
       runtimeDependencies(consumer, due, deadline),
     );
@@ -198,7 +196,7 @@ export function registerRollsBackEveryOwnerAcquiredBefore(): void {
       trace: vi.fn(),
       warn: vi.fn(),
     };
-    const runtime = await createCoordinatorRuntime(
+    const runtime = await testCoordinatorRuntime(
       runtimeOptions({ dueWakeupPollIntervalMillis: 10 }),
       { ...runtimeDependencies(consumer, due, deadline), logger },
     );

@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
-import { createNodeAttemptRuntime } from '../../../src/testing.js';
 
 import { database } from './fixture.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 export function registerCleansEveryTransferredResourceCapabilityConstruction(): void {
   it('cleans every transferred resource when capability construction fails and preserves cleanup errors', async () => {
@@ -13,7 +13,7 @@ export function registerCleansEveryTransferredResourceCapabilityConstruction(): 
     const closeReader = vi.fn().mockRejectedValue(cleanup);
     const closeNotifications = vi.fn().mockResolvedValue(undefined);
 
-    const result = await createNodeAttemptRuntime(
+    const result = await testNodeAttemptRuntime(
       {
         artifactStore: {} as never,
         connectionEncryption: {} as never,
@@ -92,7 +92,7 @@ export function registerCleansEveryTransferredResourceCapabilityConstruction(): 
       order.push('store');
       throw storeFailure;
     });
-    const runtime = await createNodeAttemptRuntime(
+    const runtime = await testNodeAttemptRuntime(
       {
         database,
         heartbeatIntervalMillis: 10,
@@ -159,7 +159,7 @@ export function registerCleansEveryTransferredResourceCapabilityConstruction(): 
   it('rechecks the terminal fence after an in-flight capability readiness probe', async () => {
     const readiness = Promise.withResolvers<undefined>();
     const capabilityClose = vi.fn().mockResolvedValue(undefined);
-    const runtime = await createNodeAttemptRuntime(
+    const runtime = await testNodeAttemptRuntime(
       {
         artifactStore: {} as never,
         database,

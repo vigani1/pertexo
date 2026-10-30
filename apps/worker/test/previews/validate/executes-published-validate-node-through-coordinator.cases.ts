@@ -10,7 +10,6 @@ import { JOB_NAME, QUEUE_NAME, createQueueProducer } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { expect, it } from 'vitest';
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 
 import {
   acceptWorkflowDelivery,
@@ -25,6 +24,7 @@ import {
   workflowVersionId,
 } from '../../support/previews/consumer.js';
 import { validateConfigInput } from './fixture.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 export function registerExecutesPublishedValidateNodeThroughCoordinator(): void {
   it('executes a published Validate node through coordinator and attempt workers', async () => {
@@ -50,7 +50,7 @@ export function registerExecutesPublishedValidateNodeThroughCoordinator(): void 
       maximumAdmissions: 1,
       redisUrl,
     });
-    const attempts = await createNodeAttemptRuntime(
+    const attempts = await testNodeAttemptRuntime(
       {
         database,
         heartbeatIntervalMillis: 200,

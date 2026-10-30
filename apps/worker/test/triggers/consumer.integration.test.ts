@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createTriggerRuntime } from '../../src/triggers/runtime.js';
 import { createRedisTestNamespace } from '../support/infrastructure/redis-test-namespace.js';
 import { runWithCleanup } from '../support/infrastructure/test-operation.js';
+import { testTriggerRuntime } from '../support/runtime-factories.js';
 
 const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 const describeIntegration = enabled ? describe : describe.skip;
@@ -114,7 +115,7 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
     let producer: ReturnType<typeof createQueueProducer> | undefined;
     await runWithCleanup(
       async () => {
-        runtime = await createTriggerRuntime(
+        runtime = await testTriggerRuntime(
           {
             batchSize: 1,
             database: {

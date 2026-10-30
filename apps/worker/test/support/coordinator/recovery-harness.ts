@@ -27,6 +27,7 @@ import {
   type waitForAttemptOutbox,
   type AcceptedRun,
 } from './runs.js';
+import { testNodeAttemptRuntime } from '../runtime-factories.js';
 
 type RecoveryAttempt = Awaited<ReturnType<typeof waitForAttemptOutbox>>;
 type RecoveryRuntimeCapabilities = NonNullable<
@@ -96,7 +97,7 @@ export async function createCoordinatorRecoveryHarness(input: {
         maximumAdmissions: 10,
         redisUrl,
       });
-      attempts = await createNodeAttemptRuntime(
+      attempts = await testNodeAttemptRuntime(
         {
           database: input.database,
           heartbeatIntervalMillis: 1_000,

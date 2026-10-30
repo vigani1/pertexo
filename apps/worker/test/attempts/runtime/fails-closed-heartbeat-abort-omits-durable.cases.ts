@@ -12,10 +12,7 @@ import {
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 
 import { expect, it, vi } from 'vitest';
-import {
-  createNodeAttemptRuntime,
-  type PreparedNodeAttempt,
-} from '../../../src/testing.js';
+import { type PreparedNodeAttempt } from '../../../src/testing.js';
 
 import {
   STORED_CHECKPOINT,
@@ -28,6 +25,7 @@ import {
   lease,
   capturedHandler,
 } from './fixture.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 export function registerFailsClosedHeartbeatAbortOmitsDurable(): void {
   it('rejects executor-controlled success without durable dispatch evidence', async () => {
@@ -161,7 +159,7 @@ export function registerFailsClosedHeartbeatAbortOmitsDurable(): void {
       publish: vi.fn<NonNullable<RunEventNotificationPublisher['publish']>>(),
       resync: vi.fn<NonNullable<RunEventNotificationPublisher['resync']>>(),
     } satisfies RunEventNotificationPublisher;
-    const runtime = await createNodeAttemptRuntime(
+    const runtime = await testNodeAttemptRuntime(
       {
         database: {
           connectionString:

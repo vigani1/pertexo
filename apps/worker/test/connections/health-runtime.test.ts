@@ -16,7 +16,7 @@ import {
   type ConnectionHealthObservationStore,
 } from '../../src/connections/health-runtime.js';
 import { maintenanceDeliveryHandler } from '../../src/maintenance/delivery-handler.js';
-import { createMaintenanceRuntime } from '../../src/maintenance/runtime.js';
+import { testMaintenanceRuntime } from '../support/runtime-factories.js';
 
 const data = {
   workspaceId: '11111111-1111-4111-8111-111111111111',
@@ -105,7 +105,7 @@ describe('independent durable health command worker', () => {
       waitUntilReady: () => Promise.resolve(),
       close: vi.fn().mockResolvedValue({ kind: 'closed' }),
     };
-    const runtime = await createMaintenanceRuntime(
+    const runtime = await testMaintenanceRuntime(
       {
         database: {
           connectionString: 'postgresql://worker:unused@localhost/db',
