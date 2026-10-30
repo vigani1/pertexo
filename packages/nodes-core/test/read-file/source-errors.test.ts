@@ -28,8 +28,7 @@ describe('file readers and source failures', () => {
     ).rejects.toBe(readFailure);
   });
 
-  // nodes-07: the CSV reader reports any source failure as csv_syntax.
-  it.fails('passes a CSV source failure through unchanged', async () => {
+  it('passes a CSV source failure through unchanged', async () => {
     await expect(
       drain(
         readCsvRecords(
