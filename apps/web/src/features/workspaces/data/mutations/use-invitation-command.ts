@@ -204,17 +204,14 @@ export function useInvitationCommand(input: InvitationCommandInput) {
     state.kind === 'executing' || state.kind === 'uncertain'
       ? state.attempt
       : undefined;
+  const stateMessage = state.kind === 'executing' ? undefined : state.message;
   return {
     activeAttempt,
     locked:
       state.kind === 'executing' || (state.kind === 'uncertain' && !expired),
     pending: state.kind === 'executing',
     retryAvailable: state.kind === 'uncertain' && !expired,
-    message: expired
-      ? RETRY_WINDOW_ENDED
-      : state.kind === 'uncertain' || state.kind === 'idle'
-        ? state.message
-        : undefined,
+    message: expired ? RETRY_WINDOW_ENDED : stateMessage,
     create: (email: string, role: ManagedRole) =>
       canStart(stateRef.current)
         ? execute({ kind: 'create', email, role, ...newCommandKey() })

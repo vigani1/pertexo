@@ -171,16 +171,14 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
     }
   }
 
+  const uncertainMessage =
+    state.kind === 'uncertain' ? state.message : undefined;
   return {
     activeAttempt:
       state.kind === 'executing' || state.kind === 'uncertain'
         ? state.attempt
         : undefined,
-    error: expired
-      ? RETRY_WINDOW_ENDED
-      : state.kind === 'uncertain'
-        ? state.message
-        : undefined,
+    error: expired ? RETRY_WINDOW_ENDED : uncertainMessage,
     feedback: state.kind === 'idle' ? state.feedback : undefined,
     locked:
       state.kind === 'executing' || (state.kind === 'uncertain' && !expired),

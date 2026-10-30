@@ -3,7 +3,7 @@ import type {
   WebhookAuthentication,
 } from '@pertexo/contracts';
 import { useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { workflowKeys } from '@/features/workflows/queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -127,6 +127,22 @@ export type UncertainWebhookCommand = Readonly<{
   command: WebhookCommand;
 }>;
 
+function refreshWebhooks(
+  queryClient: QueryClient,
+  userId: string,
+  workspaceId: string,
+  workflowId: string,
+) {
+  return Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: workflowSettingsKeys.webhooks(userId, workspaceId, workflowId),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: workflowKeys.scope(userId, workspaceId),
+    }),
+  ]);
+}
+
 export function useWebhookCommand({
   apiClient,
   userId,
@@ -215,18 +231,7 @@ export function useWebhookCommand({
         });
       }
       try {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: workflowSettingsKeys.webhooks(
-              userId,
-              workspaceId,
-              workflowId,
-            ),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: workflowKeys.scope(userId, workspaceId),
-          }),
-        ]);
+        await refreshWebhooks(queryClient, userId, workspaceId, workflowId);
       } catch {
         setError({
           triggerId: attempt.triggerId,

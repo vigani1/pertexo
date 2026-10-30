@@ -116,10 +116,26 @@ describe('workspace Usage', () => {
       expect(seen.some((query) => query.get('window') === '7d')).toBe(true);
     });
   });
-  it.each(['suspended', 'pending_deletion'])(
-    'does not read capacity in a %s workspace, while activity remains available',
-    async (state) => {
-      const { reads } = install({ state });
+  it.each([
+    { state: 'suspended', caps: undefined },
+    // Only someone who can restore a workspace being deleted can open it.
+    {
+      state: 'pending_deletion',
+      caps: [
+        'workspace:read',
+        'run:read',
+        'artifact:read',
+        'workflow:read',
+        'workspace:manage',
+      ],
+    },
+  ] as const)(
+    'does not read capacity in a $state workspace, while activity remains available',
+    async ({ state, caps }) => {
+      const { reads } = install({
+        state,
+        ...(caps === undefined ? {} : { caps }),
+      });
       renderApp(path);
       await screen.findByText('Daily intake', {}, coldStart);
       expect(

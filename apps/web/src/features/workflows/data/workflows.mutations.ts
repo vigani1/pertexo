@@ -263,13 +263,10 @@ export function useWorkflowRename({
     }
   }
 
+  const stateError = state.kind === 'sending' ? undefined : state.error;
   return {
     pending: state.kind === 'sending',
-    error: expired
-      ? RENAME_WINDOW_ENDED
-      : state.kind === 'sending'
-        ? undefined
-        : state.error,
+    error: expired ? RENAME_WINDOW_ENDED : stateError,
     retryAvailable: state.kind === 'uncertain' && !expired,
     start: (name, expectedNameRevision) =>
       state.kind === 'idle' || (state.kind === 'uncertain' && expired)

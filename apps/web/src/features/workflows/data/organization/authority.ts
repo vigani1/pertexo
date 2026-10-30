@@ -1,6 +1,6 @@
 import {
   matchQuery,
-  type Query,
+  type QueryCacheNotifyEvent,
   type QueryClient,
   type QueryKey,
 } from '@tanstack/react-query';
@@ -131,10 +131,10 @@ export function observeAuthority({
         inScope && isApiError(failure) && failure.status === 401;
       if (sessionLost) retire();
     }
-    const { data, status } = event.query.state;
+    const data: unknown = event.query.state.data;
     const discoveryRevoked =
       discovery &&
-      status === 'success' &&
+      event.query.state.status === 'success' &&
       !allowed(
         (data as readonly AccessibleWorkspace[]).find(
           (item) => item.id === workspaceId,
@@ -150,7 +150,11 @@ export function observeAuthority({
   });
 }
 
-function authorityReadScope(query: Query, userId: string, workspaceId: string) {
+function authorityReadScope(
+  query: QueryCacheNotifyEvent['query'],
+  userId: string,
+  workspaceId: string,
+) {
   const matches = (queryKey: QueryKey) => matchQuery({ queryKey }, query);
   return {
     inScope: matches(workspaceReadScope(userId, workspaceId)),

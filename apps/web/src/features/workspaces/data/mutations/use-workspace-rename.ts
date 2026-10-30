@@ -168,8 +168,12 @@ export function useWorkspaceRename({
     mutation,
     transition,
     onChanged,
+    onReloaded,
     onAccessLost,
+    stateRef,
+    inFlight,
   };
+  const reloadLatest = () => reloadLatestName(context);
 
   async function execute(attempt: WorkspaceRenameAttempt) {
     const scope = owner.current;
@@ -202,36 +206,6 @@ export function useWorkspaceRename({
     }
   }
 
-  async function reloadLatest() {
-    const current = stateRef.current;
-    const scope = owner.current;
-    const renameReloadBlocked =
-      current.kind !== 'idle' ||
-      current.error?.kind !== 'conflict' ||
-      scope === undefined ||
-      inFlight.current;
-    if (renameReloadBlocked) return false;
-    inFlight.current = true;
-    try {
-      await queryClient.invalidateQueries({
-        queryKey: workspaceKeys.accessible(userId),
-      });
-      await queryClient.query(
-        accessibleWorkspacesQueryOptions(apiClient, userId),
-      );
-      if (owner.current !== scope) return false;
-      transition({ kind: 'idle', error: CONFLICT });
-      onReloaded();
-      return true;
-    } catch {
-      if (owner.current === scope)
-        transition({ kind: 'idle', error: RELOAD_FAILED });
-      return false;
-    } finally {
-      inFlight.current = false;
-    }
-  }
-
   async function refreshAccepted() {
     const current = stateRef.current;
     const scope = owner.current;
@@ -249,13 +223,10 @@ export function useWorkspaceRename({
     }
   }
 
+  const stateError = state.kind === 'executing' ? undefined : state.error;
   return {
     accepted: state.kind === 'accepted',
-    error: expired
-      ? WINDOW_ENDED
-      : state.kind === 'executing'
-        ? undefined
-        : state.error,
+    error: expired ? WINDOW_ENDED : stateError,
     pending: state.kind === 'executing',
     retryAvailable: state.kind === 'uncertain' && !expired,
     reloadLatest,
@@ -290,8 +261,52 @@ type RenameContext = Readonly<{
   }>;
   transition: (state: State) => void;
   onChanged: (name: string) => void;
+  onReloaded: () => void;
   onAccessLost: () => void;
+  stateRef: Readonly<{ current: State }>;
+  inFlight: { current: boolean };
 }>;
+
+/** After a conflict: loads the newer name so people can choose between them. */
+async function reloadLatestName({
+  queryClient,
+  apiClient,
+  userId,
+  owner,
+  transition,
+  onReloaded,
+  stateRef,
+  inFlight,
+}: RenameContext) {
+  const current = stateRef.current;
+  const scope = owner.current;
+  const renameReloadBlocked =
+    current.kind !== 'idle' ||
+    current.error?.kind !== 'conflict' ||
+    scope === undefined ||
+    inFlight.current;
+  if (renameReloadBlocked) return false;
+  inFlight.current = true;
+  try {
+    await queryClient.invalidateQueries({
+      queryKey: workspaceKeys.accessible(userId),
+    });
+    await queryClient.query(
+      accessibleWorkspacesQueryOptions(apiClient, userId),
+    );
+    if (owner.current !== scope) return false;
+    transition({ kind: 'idle', error: CONFLICT });
+    onReloaded();
+    return true;
+  } catch {
+    if (owner.current === scope)
+      transition({ kind: 'idle', error: RELOAD_FAILED });
+    return false;
+  } finally {
+    inFlight.current = false;
+  }
+}
+
 async function loseRenameAccess(
   { queryClient, owner, transition, onAccessLost }: RenameContext,
   scope: symbol,
