@@ -1,0 +1,293 @@
+# Quick try: NOT FOR PRODUCTION. It listens only on this machine, over plain HTTP, with
+# development settings: mail links go to the API's log and files share the app's origin.
+# For a real server, follow docs/operations/single-server.md.
+#
+#   docker compose -f infrastructure/quickstart/compose.yaml up -d --wait
+#
+# QUICKSTART_PORT changes the port. PERTEXO_VERSION picks a release or a full commit.
+name: pertexo-quickstart
+x-service: &service
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: '3' }
+# Every service reads the secrets generated on first start, from one small volume.
+x-load-secrets:
+  &load-secrets [
+    sh,
+    -c,
+    'set -a; . /quickstart/secrets.env; set +a; exec "$$@"',
+    --,
+  ]
+x-code-settings: &code-settings
+  CODE_STEPS_ENABLED: 'true'
+  CODE_RUNNER_MEMORY_MB: '128'
+  CODE_RUNNER_MAX_SECONDS: '30'
+  CODE_RUNNER_CONCURRENCY: '2'
+  CODE_RUNNER_PACKAGES: '[]'
+  CODE_RUNNER_PYTHON_PACKAGES: '[]'
+x-environment: &environment
+  NODE_ENV: development
+  SERVICE_VERSION: ${PERTEXO_VERSION:-stable}
+  PUBLIC_WEB_ORIGIN: http://127.0.0.1:${QUICKSTART_PORT:-8484}
+  ARTIFACT_STORE_ENDPOINT: http://127.0.0.1:${QUICKSTART_PORT:-8484}
+  ARTIFACT_STORE_REGION: us-east-1
+  ARTIFACT_STORE_BUCKET: pertexo-artifacts
+  ARTIFACT_STORE_FORCE_PATH_STYLE: 'true'
+x-runtime: &runtime
+  <<: *service
+  image: ghcr.io/vigani1/pertexo:${PERTEXO_VERSION:-stable}
+  read_only: true
+  tmpfs: [/tmp]
+  stop_grace_period: 1m
+services:
+  secrets:
+    image: ghcr.io/vigani1/pertexo:${PERTEXO_VERSION:-stable}
+    restart: 'no'
+    # The volume starts out root's, and every other service here has to read it.
+    user: '0'
+    network_mode: none
+    read_only: true
+    tmpfs: [/tmp]
+    entrypoint: [sh, /secrets.sh]
+    volumes:
+      - secrets:/quickstart
+      - ./secrets.sh:/secrets.sh:ro
+      - ../single-server/generate-secrets.mjs:/generate-secrets.mjs:ro
+  # Files are presigned for this one address, and the API and worker must reach them
+  # there too. Sharing the proxy's network is what makes 127.0.0.1 mean the proxy for
+  # all three. Production gives them a public name instead.
+  proxy:
+    <<: *service
+    image: caddy:2.11.7-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f
+    ports:
+      - 127.0.0.1:${QUICKSTART_PORT:-8484}:${QUICKSTART_PORT:-8484}
+    environment:
+      QUICKSTART_PORT: ${QUICKSTART_PORT:-8484}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+  web:
+    <<: *service
+    image: ghcr.io/vigani1/pertexo-web:${PERTEXO_VERSION:-stable}
+    read_only: true
+    tmpfs: [/tmp, '/etc/nginx/conf.d:uid=101,gid=101,mode=0755']
+    environment:
+      PERTEXO_API_UPSTREAM: http://proxy:13000
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  api:
+    <<: *runtime
+    network_mode: service:proxy
+    entrypoint: *load-secrets
+    command: [node, apps/api/dist/main.js]
+    environment:
+      <<: [*environment, *code-settings]
+      PORT: '13000'
+      AUTH_MAIL_MODE: local
+    volumes: [secrets:/quickstart:ro]
+    depends_on:
+      proxy: { condition: service_started }
+      migration: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      storage-setup: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:13000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 36
+      start_period: 15s
+  worker:
+    <<: *runtime
+    network_mode: service:proxy
+    entrypoint: *load-secrets
+    command:
+      [
+        /bin/sh,
+        -c,
+        'export WORKER_INSTANCE_ID=$$HOSTNAME; exec node
+        apps/worker/dist/main.js',
+      ]
+    environment:
+      <<: [*environment, *code-settings]
+      NODE_OPTIONS: '--max-old-space-size=384'
+      ARTIFACT_SCRATCH_DIRECTORY: /var/lib/pertexo/artifact-scratch
+      CODE_RUNNER_SOCKET: /run/pertexo-code/runner.sock
+    volumes:
+      - secrets:/quickstart:ro
+      - code-socket:/run/pertexo-code
+      - type: volume
+        target: /var/lib/pertexo/artifact-scratch
+    depends_on:
+      proxy: { condition: service_started }
+      migration: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      storage-setup: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'test -f /tmp/pertexo-worker-ready && test ! -f
+          /tmp/pertexo-worker-not-ready && kill -0 1',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 36
+      start_period: 15s
+  # The same isolation as production: Code steps are the one thing to try here that
+  # runs what someone typed.
+  code-runner:
+    <<: *service
+    image: ghcr.io/vigani1/pertexo:${PERTEXO_VERSION:-stable}
+    command: [node, apps/code-runner/dist/main.js]
+    user: '0:10001'
+    network_mode: none
+    ipc: none
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=16m,mode=0700']
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, KILL]
+    oom_score_adj: -1000
+    mem_limit: 2912m
+    memswap_limit: 2912m
+    cpus: '2'
+    pids_limit: 48
+    stop_grace_period: 10s
+    environment:
+      <<: *code-settings
+      NODE_ENV: production
+      NODE_OPTIONS: '--max-old-space-size=80'
+    volumes: [code-socket:/run/pertexo-code]
+    healthcheck:
+      test: [CMD-SHELL, 'test -f /tmp/pertexo-code-runner-ready && kill -0 1']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+  migration:
+    image: ghcr.io/vigani1/pertexo:${PERTEXO_VERSION:-stable}
+    restart: 'no'
+    read_only: true
+    tmpfs: [/tmp]
+    entrypoint: *load-secrets
+    command: [node, packages/database/dist/migrate.js]
+    environment:
+      NODE_ENV: development
+    volumes: [secrets:/quickstart:ro]
+    depends_on:
+      postgres: { condition: service_healthy }
+  postgres:
+    <<: *service
+    image: postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
+    entrypoint: *load-secrets
+    command:
+      [
+        docker-entrypoint.sh,
+        postgres,
+        -c,
+        shared_preload_libraries=pg_stat_statements,
+        -c,
+        compute_query_id=on,
+        -c,
+        pg_stat_statements.max=20000,
+      ]
+    environment:
+      POSTGRES_DB: pertexo
+      POSTGRES_USER: postgres
+      POSTGRES_OWNER_USER: pertexo_owner
+      POSTGRES_MIGRATION_USER: pertexo_migration
+      POSTGRES_APP_USER: pertexo_app
+      POSTGRES_MAINTENANCE_USER: pertexo_maintenance
+    volumes:
+      - secrets:/quickstart:ro
+      - postgres-data:/var/lib/postgresql
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    depends_on:
+      secrets: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d pertexo']
+      interval: 5s
+      timeout: 3s
+      retries: 24
+    stop_grace_period: 1m
+  redis:
+    <<: *service
+    image: redis:8.2.8-alpine@sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103
+    entrypoint:
+      [
+        sh,
+        -c,
+        '. /quickstart/secrets.env; exec docker-entrypoint.sh redis-server
+        --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
+        --requirepass "$$REDIS_PASSWORD"',
+      ]
+    volumes:
+      - secrets:/quickstart:ro
+      - redis-data:/data
+    depends_on:
+      secrets: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          '. /quickstart/secrets.env; REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli
+          ping | grep -q PONG',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  storage:
+    <<: *service
+    image: rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
+    entrypoint: *load-secrets
+    command: [/entrypoint.sh, /data]
+    environment:
+      RUSTFS_CONSOLE_ENABLE: 'false'
+      RUSTFS_REGION: us-east-1
+    volumes:
+      - secrets:/quickstart:ro
+      - storage-data:/data
+    depends_on:
+      secrets: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:9000/health]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+    stop_grace_period: 1m
+  storage-setup:
+    image: rustfs/rc:v0.1.36@sha256:ab024bfebee49a750ce886b4c70963ccd9ddaa03f491704a90710641d7a26699
+    restart: 'no'
+    read_only: true
+    tmpfs: [/tmp]
+    entrypoint:
+      [
+        /bin/sh,
+        -c,
+        '. /quickstart/secrets.env; RC_CONFIG_DIR=/tmp/rc
+        RC_HOST_internal=http://$$RUSTFS_ACCESS_KEY:$$RUSTFS_SECRET_KEY@storage:9000
+        exec rc bucket create --quiet --ignore-existing
+        internal/pertexo-artifacts',
+      ]
+    volumes: [secrets:/quickstart:ro]
+    depends_on:
+      storage: { condition: service_healthy }
+volumes:
+  secrets:
+  postgres-data:
+  redis-data:
+  storage-data:
+  caddy-data:
+  caddy-config:
+  code-socket:

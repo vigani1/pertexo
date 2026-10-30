@@ -128,46 +128,43 @@ test('self-managed generation works at both production boundaries without AWS co
   assert.equal(secrets.CONNECTION_SELF_MANAGED_KEY_VERSION, '1');
 });
 // ops-06, docs-deps-product-06: the default asks a self-hoster for an AWS KMS key.
-it(
-  'with no options, generates what a self-hoster needs and no AWS',
-  () => {
-    const secrets = parseEnv(
-      execFileSync(
-        process.execPath,
-        ['infrastructure/single-server/generate-secrets.mjs'],
-        { encoding: 'utf8' },
-      ),
-    );
-    assert.equal(secrets.CONNECTION_ENCRYPTION_MODE, 'self-managed');
-    assert.equal(
-      Buffer.from(secrets.CONNECTION_SELF_MANAGED_KEY, 'base64').length,
-      32,
-    );
-    const environment = {
-      ...secrets,
-      NODE_ENV: 'production',
-      ARTIFACT_SCRATCH_DIRECTORY: '/var/lib/pertexo/artifact-scratch',
-      AUTH_MAIL_MODE: 'durable',
-      SESSION_COOKIE_SECURE: 'true',
-      PUBLIC_WEB_ORIGIN: 'https://app.example.test',
-      AUTH_MAIL_FROM: 'security@example.test',
-      AUTH_MAIL_EMAIL_API_KEY: 'fixture-mail',
-      INVITATION_EMAIL_API_KEY: 'fixture-mail',
-      INVITATION_EMAIL_FROM: 'invites@example.test',
-      TRUST_PROXY_CIDRS: '172.30.42.0/24',
-      ARTIFACT_STORE_ENDPOINT: 'https://files.example.test',
-      ARTIFACT_STORE_REGION: 'us-east-1',
-      ARTIFACT_STORE_BUCKET: 'artifacts',
-      ARTIFACT_STORE_FORCE_PATH_STYLE: 'true',
-      WORKER_INSTANCE_ID: 'fixture',
-    };
-    assert.equal(parseApiConfig(environment).connections.mode, 'self-managed');
-    assert.equal(
-      parseWorkerConfig(environment).connectionEncryption.mode,
-      'self-managed',
-    );
-  },
-);
+it('with no options, generates what a self-hoster needs and no AWS', () => {
+  const secrets = parseEnv(
+    execFileSync(
+      process.execPath,
+      ['infrastructure/single-server/generate-secrets.mjs'],
+      { encoding: 'utf8' },
+    ),
+  );
+  assert.equal(secrets.CONNECTION_ENCRYPTION_MODE, 'self-managed');
+  assert.equal(
+    Buffer.from(secrets.CONNECTION_SELF_MANAGED_KEY, 'base64').length,
+    32,
+  );
+  const environment = {
+    ...secrets,
+    NODE_ENV: 'production',
+    ARTIFACT_SCRATCH_DIRECTORY: '/var/lib/pertexo/artifact-scratch',
+    AUTH_MAIL_MODE: 'durable',
+    SESSION_COOKIE_SECURE: 'true',
+    PUBLIC_WEB_ORIGIN: 'https://app.example.test',
+    AUTH_MAIL_FROM: 'security@example.test',
+    AUTH_MAIL_EMAIL_API_KEY: 'fixture-mail',
+    INVITATION_EMAIL_API_KEY: 'fixture-mail',
+    INVITATION_EMAIL_FROM: 'invites@example.test',
+    TRUST_PROXY_CIDRS: '172.30.42.0/24',
+    ARTIFACT_STORE_ENDPOINT: 'https://files.example.test',
+    ARTIFACT_STORE_REGION: 'us-east-1',
+    ARTIFACT_STORE_BUCKET: 'artifacts',
+    ARTIFACT_STORE_FORCE_PATH_STYLE: 'true',
+    WORKER_INSTANCE_ID: 'fixture',
+  };
+  assert.equal(parseApiConfig(environment).connections.mode, 'self-managed');
+  assert.equal(
+    parseWorkerConfig(environment).connectionEncryption.mode,
+    'self-managed',
+  );
+});
 test('KMS stays available for those who choose it', () => {
   assert.equal(generated('kms').CONNECTION_ENCRYPTION_MODE, 'kms');
 });

@@ -1,0 +1,26 @@
+# The quick try's one address: the same routes as production's Caddyfile, with files on
+# the app's own origin and no HTTPS. Not for production.
+{
+	admin off
+	auto_https off
+}
+
+:{$QUICKSTART_PORT} {
+	handle /v1/auth/* {
+		reverse_proxy 127.0.0.1:13000
+	}
+	handle /hooks/* {
+		reverse_proxy 127.0.0.1:13000
+	}
+	handle /v1/notifications/unsubscribe/one-click {
+		reverse_proxy 127.0.0.1:13000
+	}
+	handle /pertexo-artifacts/* {
+		reverse_proxy storage:9000
+	}
+	handle {
+		reverse_proxy web:8080 {
+			flush_interval -1
+		}
+	}
+}
