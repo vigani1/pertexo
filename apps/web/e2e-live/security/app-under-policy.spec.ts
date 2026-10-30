@@ -2,7 +2,6 @@ import { expect, type Page } from '@playwright/test';
 import {
   addSingleStep,
   createEditorWorkflow,
-  publishSingleStep,
 } from '../support/authoring/single-step';
 import { test } from '../support/browser-fixture';
 import {
@@ -43,7 +42,11 @@ test('the first person signs up and builds in the editor without a policy violat
   const path = await createEditorWorkflow(page, workspaceId, 'Under policy');
   await addSingleStep(page, path, /^Set fields\b/u, 'Fill in');
   await expect(page.locator('.react-flow__node')).toHaveCount(1);
-  await publishSingleStep(page, path);
+  // Far enough to draw the review; the publish request itself isn't a page.
+  await page.getByRole('button', { name: 'Publish v1', exact: true }).click();
+  await expect(
+    page.getByRole('dialog', { name: 'Publish v1', exact: true }),
+  ).toBeVisible();
 
   expect(violations).toEqual([]);
 });
