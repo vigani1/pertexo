@@ -132,7 +132,7 @@ export function expectLoopBudgetConserved(
   );
   expect(loop.nextOrdinal).toBeLessThanOrEqual(collectionSize);
 }
-export function successfulRun(
+export function verifySuccessfulRun(
   schedulerState: SchedulerGraph,
   nodeCount: number,
 ): WorkflowCheckpoint {

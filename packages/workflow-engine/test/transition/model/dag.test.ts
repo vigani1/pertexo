@@ -15,7 +15,7 @@ import {
   modelRuns,
   graphForMask,
   freshCheckpoint,
-  successfulRun,
+  verifySuccessfulRun,
 } from '../../support/transition/model.js';
 
 describe('bounded workflow state-machine model', () => {
@@ -42,14 +42,17 @@ describe('bounded workflow state-machine model', () => {
   it('exhaustively preserves deterministic and monotonic transition invariants for every four-node DAG', () => {
     for (let mask = 0; mask < 1 << FOUR_NODE_EDGES.length; mask += 1) {
       const schedulerState = graphForMask(mask);
-      successfulRun(schedulerState, FOUR_NODE_IDS.length);
+      verifySuccessfulRun(schedulerState, FOUR_NODE_IDS.length);
     }
   });
   it('uses a seeded shrinkable budget for larger legal DAGs and terminal replay', () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 0x7fff }), (mask) => {
         const schedulerState = graphForMask(mask, SIX_NODE_IDS);
-        const terminal = successfulRun(schedulerState, SIX_NODE_IDS.length);
+        const terminal = verifySuccessfulRun(
+          schedulerState,
+          SIX_NODE_IDS.length,
+        );
         const replay = advanceWorkflow({
           checkpoint: terminal,
           schedulerState,
