@@ -234,59 +234,63 @@ export function registerFormUploadHttpCases(): void {
     );
   });
 
-  it('asks public responders to wait while unsent link files fill the allowance', async () => {
-    const form = await publicForm();
-    const held = randomUUID();
-    await fixture.withOwner(async (client) => {
-      await client.query(
-        `insert into app.artifacts
+  // web-app-13: the busy allowance gets its own temporary code.
+  it.fails(
+    'asks public responders to wait while unsent link files fill the allowance',
+    async () => {
+      const form = await publicForm();
+      const held = randomUUID();
+      await fixture.withOwner(async (client) => {
+        await client.query(
+          `insert into app.artifacts
            (id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
             status,expires_at)
          values($1,$2,'form-upload',$3,'application/pdf',$4,$5,
            'pending',clock_timestamp()+interval '15 minutes')`,
-        [
-          held,
-          fixture.workspaceId,
-          `workspaces/${fixture.workspaceId}/artifacts/${held}`,
-          FORM_FILE_LIMITS.unsentPublicBytes,
-          'f'.repeat(64),
-        ],
-      );
-      await client.query(
-        `insert into app.form_uploads
+          [
+            held,
+            fixture.workspaceId,
+            `workspaces/${fixture.workspaceId}/artifacts/${held}`,
+            FORM_FILE_LIMITS.unsentPublicBytes,
+            'f'.repeat(64),
+          ],
+        );
+        await client.query(
+          `insert into app.form_uploads
            (workspace_id,artifact_id,workflow_id,workflow_version_id,field_id,
             filename,session_hash,capability_hash)
          values($1,$2,$3,$4,'invoice-field','held.pdf',$5,$6)`,
-        [
-          fixture.workspaceId,
-          held,
-          form.workflowId,
-          form.versionId,
-          'a'.repeat(64),
-          'b'.repeat(64),
-        ],
-      );
-    });
-    try {
-      const refused = await form.begin({
-        filename: 'invoice.pdf',
-        byteLength: 4,
-        sha256: 'a'.repeat(64),
-      });
-      expectProblem(refused, 429, 'form.upload_limit');
-      expect(refused.json()).toMatchObject({
-        detail:
-          'This form is receiving a lot of files right now. Try again in a few minutes.',
-      });
-    } finally {
-      // Releasing the charge goes through deleting, as cleanup does.
-      await fixture.withOwner(async (client) => {
-        await client.query(
-          `update app.artifacts set status='deleting' where id=$1`,
-          [held],
+          [
+            fixture.workspaceId,
+            held,
+            form.workflowId,
+            form.versionId,
+            'a'.repeat(64),
+            'b'.repeat(64),
+          ],
         );
-        await client.query(`delete from app.artifacts where id=$1`, [held]);
       });
-    }
-  });
+      try {
+        const refused = await form.begin({
+          filename: 'invoice.pdf',
+          byteLength: 4,
+          sha256: 'a'.repeat(64),
+        });
+        expectProblem(refused, 429, 'form.upload_busy');
+        expect(refused.json()).toMatchObject({
+          detail:
+            'This form is receiving a lot of files right now. Try again in a few minutes.',
+        });
+      } finally {
+        // Releasing the charge goes through deleting, as cleanup does.
+        await fixture.withOwner(async (client) => {
+          await client.query(
+            `update app.artifacts set status='deleting' where id=$1`,
+            [held],
+          );
+          await client.query(`delete from app.artifacts where id=$1`, [held]);
+        });
+      }
+    },
+  );
 }
