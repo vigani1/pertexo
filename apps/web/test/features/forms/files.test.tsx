@@ -234,6 +234,10 @@ it('shows the server’s refusal on the row and lets a temporary failure retry',
   await within(rows).findByText(/Check your connection and retry/u);
   await user.click(screen.getByRole('button', { name: 'Retry b.pdf' }));
   await screen.findByText('b.pdf attached.');
+  // A retried file drops its old failure.
+  expect(
+    within(rows).queryByText(/Check your connection and retry/u),
+  ).not.toBeInTheDocument();
 });
 
 function uploadRefusal(code: string, detail: string): ApiError {
