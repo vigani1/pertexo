@@ -1,4 +1,5 @@
 import {
+  DataTableError,
   dataTableCsvValue,
   validateDataTableValues,
   type DataTableColumn,
@@ -30,61 +31,42 @@ export function readTableValues(
   );
 }
 
+/** The words a field uses when the shared check refuses its type. */
+const FIELD_PROBLEMS: Readonly<
+  Partial<Record<DataTableColumn['type'], string>>
+> = {
+  number: 'Enter a number.',
+  boolean: 'Choose true or false.',
+  date: 'Use a date like 2026-10-19.',
+  json: 'Enter valid JSON.',
+};
+
 /**
- * What each field says is wrong before the row is sent, by column name. The
- * server still checks the whole row, such as its size.
+ * What each field says is wrong before the row is sent, by column name: the
+ * shared check submitting would run, one column at a time. The server still
+ * checks the whole row, such as its size.
  */
 export function tableValueErrors(
   columns: readonly DataTableColumn[],
   draft: Readonly<Record<string, string>>,
 ): Record<string, string | undefined> {
   return Object.fromEntries(
-    columns.map((column) => {
-      const text = draft[column.name] ?? '';
-      if (text.trim() === '')
-        return [column.name, column.required ? 'Enter a value.' : undefined];
-      switch (column.type) {
-        case 'number':
-          return [
-            column.name,
-            Number.isFinite(Number(text)) ? undefined : 'Enter a number.',
-          ];
-        case 'boolean':
-          return [
-            column.name,
-            text === 'true' || text === 'false'
-              ? undefined
-              : 'Choose true or false.',
-          ];
-        case 'date':
-          return [
-            column.name,
-            isCalendarDay(text) ? undefined : 'Use a date like 2026-10-19.',
-          ];
-        case 'json':
-          return [column.name, isJson(text) ? undefined : 'Enter valid JSON.'];
-        case 'text':
-          return [column.name, undefined];
-      }
-    }),
+    columns.map((column) => [column.name, fieldProblem(column, draft)]),
   );
 }
 
-function isCalendarDay(text: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/u.test(text)) return false;
-  // A day past the month's end rolls over, so it no longer reads the same.
-  const day = new Date(`${text}T00:00:00Z`);
-  return (
-    !Number.isNaN(day.getTime()) && day.toISOString().slice(0, 10) === text
-  );
-}
-
-function isJson(text: string): boolean {
+function fieldProblem(
+  column: DataTableColumn,
+  draft: Readonly<Record<string, string>>,
+): string | undefined {
+  const text = draft[column.name] ?? '';
   try {
-    JSON.parse(text);
-    return true;
-  } catch {
-    return false;
+    readTableValues([column], { [column.name]: text });
+    return undefined;
+  } catch (cause) {
+    if (!(cause instanceof DataTableError)) throw cause;
+    if (column.required && text.trim() === '') return 'Enter a value.';
+    return FIELD_PROBLEMS[column.type] ?? cause.message;
   }
 }
 
