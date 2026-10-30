@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import {
   config,
@@ -12,7 +12,7 @@ export function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
   it('registers an injected identity runtime and owns its close lifecycle', async () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const selectedIdentityRuntime = identityRuntime(close, true);
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
     });
@@ -32,7 +32,7 @@ export function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
 
   it('fails a composed protected route closed before application work when the limiter is unavailable', async () => {
     const selectedIdentityRuntime = identityRuntime(undefined, true);
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       rateLimitConsumer: {
@@ -65,7 +65,7 @@ export function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
   it.each([false, true])(
     'registers all discovery routes with authentication=%s',
     async (authenticated) => {
-      applicationFixture.application = await createApiApplication(config, {
+      applicationFixture.application = await createTestApiApplication(config, {
         ...dependencies(),
         identityRuntime: identityRuntime(undefined, authenticated),
       });
@@ -98,7 +98,7 @@ export function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
       changed: true,
       replayed: false,
     });
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: identityRuntime(
         vi.fn().mockResolvedValue(undefined),
@@ -148,7 +148,7 @@ export function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
   });
 
   it('lists every integration', async () => {
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: identityRuntime(undefined, true),
     });
@@ -179,7 +179,7 @@ export function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
   });
 
   it('rejects unsupported catalog query fields with problem details', async () => {
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: identityRuntime(undefined, true),
     });

@@ -1,39 +1,49 @@
 import {
+  createWebhookTestEventStore,
+  createWebhookTriggerDatabase,
+} from '@pertexo/database/triggers';
+import { initialCheckpointFactory } from '@pertexo/execution';
+import {
   WebhookTriggerEnvelopeEncryption,
   type WebhookTriggerSecretContext,
 } from '@pertexo/integrations/server';
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
+import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import type { ApiConfig } from '../../../src/platform/config/api.js';
-import { createApiWebhookRuntime } from '../../../src/platform/webhooks/runtime.module.js';
+import type { ApiWebhookRuntime } from '../../../src/platform/webhooks/runtime.module.js';
+import { WebhookManagementService } from '../../../src/webhooks/management/service.js';
+import { WebhookTestEventService } from '../../../src/webhooks/test-events/service.js';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { silentLogger } from '../../support/silent-logger.js';
 
-/** Actual runtime, with test-owned authenticated wrapping instead of AWS KMS. */
+/** Real stores and services, with test-owned authenticated wrapping instead of AWS KMS. */
 export function createEditorWebhookRuntime(
-  database: ApiConfig['database'],
+  databaseConfig: ApiConfig['database'],
   masterKey: Uint8Array,
-) {
-  return createApiWebhookRuntime(
-    { kmsKeyReference: 'owned-editor-webhook', region: 'us-east-1' },
-    database,
-    {
-      logger: silentLogger,
-      databaseOverride: undefined,
-      runtime: undefined,
-      factories: {
-        envelope: () => {
-          const keys =
-            createEditorBrowserEnvelopeKeys<WebhookTriggerSecretContext>(
-              masterKey,
-              'webhook',
-            );
-          return {
-            encryption: new WebhookTriggerEnvelopeEncryption(keys),
-            close: () => {
-              keys.close();
-            },
-          };
-        },
+): Promise<ApiWebhookRuntime> {
+  const keys = createEditorBrowserEnvelopeKeys<WebhookTriggerSecretContext>(
+    masterKey,
+    'webhook',
+  );
+  const encryption = new WebhookTriggerEnvelopeEncryption(keys);
+  const database = createWebhookTriggerDatabase(databaseConfig);
+  const testEvents = createWebhookTestEventStore(databaseConfig);
+  const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
+  return Promise.resolve(
+    Object.freeze({
+      service: new WebhookManagementService(database, encryption),
+      testService: new WebhookTestEventService(testEvents, encryption),
+      ingress: Object.freeze({
+        database,
+        testEvents,
+        encryption,
+        checkpointFactory: initialCheckpointFactory({ catalog }),
+        logger: silentLogger,
+      }),
+      close: async () => {
+        keys.close();
+        await Promise.all([database.close(), testEvents.close()]);
       },
-    },
+    }),
   );
 }

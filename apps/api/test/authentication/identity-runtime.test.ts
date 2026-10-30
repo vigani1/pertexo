@@ -41,6 +41,12 @@ function identityDatabase(
   } as unknown as IdentityWorkspaceDatabase;
 }
 
+function createsIdentityDatabase(database: IdentityWorkspaceDatabase) {
+  vi.spyOn(identityStores, 'createIdentityWorkspaceDatabase').mockReturnValue(
+    database,
+  );
+}
+
 /** Lets the real store be built and records how often its close runs. */
 function ownedClose(
   factory:
@@ -91,10 +97,10 @@ describe('identity runtime composition', () => {
   });
 
   it('composes Better Auth as the one session authority', async () => {
+    createsIdentityDatabase(identityDatabase());
     const runtime = await createApiIdentityRuntime(
       identityConfig,
       databaseConfig,
-      { persistence: { database: identityDatabase() } },
     );
 
     expect(runtime.betterAuth).toBeDefined();
@@ -123,24 +129,12 @@ describe('identity runtime composition', () => {
     expect(federationClose).toHaveBeenCalledOnce();
   });
 
-  it('forwards the clock through the public runtime', async () => {
-    const clock = { now: () => new Date('2026-08-20T12:00:00.000Z') };
-    const runtime = await createApiIdentityRuntime(
-      identityConfig,
-      databaseConfig,
-      { clock, persistence: { database: identityDatabase() } },
-    );
-
-    expect(runtime.dependencies.clock).toBe(clock);
-    await runtime.close();
-  });
-
-  it('closes an injected database once however often it is closed', async () => {
+  it('closes its database once however often it is closed', async () => {
     const databaseClose = vi.fn().mockResolvedValue(undefined);
+    createsIdentityDatabase(identityDatabase(databaseClose));
     const runtime = await createApiIdentityRuntime(
       identityConfig,
       databaseConfig,
-      { persistence: { database: identityDatabase(databaseClose) } },
     );
 
     await Promise.all([runtime.close(), runtime.close()]);
@@ -152,10 +146,10 @@ describe('identity runtime composition', () => {
     const databaseClose = vi.fn(() => {
       throw new Error('synchronous database close');
     });
+    createsIdentityDatabase(identityDatabase(databaseClose));
     const runtime = await createApiIdentityRuntime(
       identityConfig,
       databaseConfig,
-      { persistence: { database: identityDatabase(databaseClose) } },
     );
 
     await expect(runtime.close()).rejects.toThrow(
@@ -167,19 +161,17 @@ describe('identity runtime composition', () => {
 
   it('closes the acquired database when later composition fails', async () => {
     const databaseClose = vi.fn().mockResolvedValue(undefined);
-    const compositionFailure = new Error('telemetry construction failed');
+    const compositionFailure = new Error('stored secrets could not be read');
+    createsIdentityDatabase(identityDatabase(databaseClose));
+    vi.mocked(identityStores.createFederationManagementStore).mockReturnValue({
+      checkStoredSecrets: vi.fn().mockRejectedValue(compositionFailure),
+      close: federationClose,
+    } as unknown as ReturnType<
+      typeof identityStores.createFederationManagementStore
+    >);
 
     await expect(
-      createApiIdentityRuntime(identityConfig, databaseConfig, {
-        persistence: {
-          databaseFactory: () => identityDatabase(databaseClose),
-        },
-        telemetry: {
-          factory: () => {
-            throw compositionFailure;
-          },
-        },
-      }),
+      createApiIdentityRuntime(identityConfig, databaseConfig),
     ).rejects.toBe(compositionFailure);
     expect(databaseClose).toHaveBeenCalledOnce();
     expect(federationClose).toHaveBeenCalledOnce();

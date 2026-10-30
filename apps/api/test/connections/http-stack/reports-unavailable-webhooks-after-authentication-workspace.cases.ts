@@ -1,7 +1,7 @@
 import { connectionResponseSchema } from '@pertexo/contracts';
 
 import { expect, it } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import {
   workspaceId,
@@ -26,7 +26,7 @@ import {
 
 export function registerReportsUnavailableWebhooksAfterAuthenticationWorkspace(): void {
   it('reports unavailable webhooks only after authentication and workspace authorization', async () => {
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       database,
       identityRuntime: identityRuntime(),
       logger,

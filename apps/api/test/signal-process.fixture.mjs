@@ -1,6 +1,6 @@
 import process from 'node:process';
 
-import { createApiApplication } from '../dist/app.js';
+import { assembleApiApplication } from '../dist/app.js';
 
 const events = (event) =>
   process.stdout.write(`${JSON.stringify({ event })}\n`);
@@ -27,7 +27,7 @@ const logger = {
   trace: () => undefined,
   warn: () => undefined,
 };
-const application = await createApiApplication(
+const application = await assembleApiApplication(
   {
     database: {
       connectionString: 'postgresql://unused',
@@ -50,11 +50,14 @@ const application = await createApiApplication(
     redisUrl: 'redis://unused',
     trustedProxyCidrs: [],
   },
+  { logger, telemetry },
   {
     database,
-    logger,
-    rateLimitConsumer: { consume: () => Promise.resolve({ allowed: true }) },
-    telemetry,
+    rateLimit: {
+      consume: () => Promise.resolve({ allowed: true }),
+      acquireExclusiveSlot: () => Promise.resolve(null),
+      close: () => Promise.resolve(),
+    },
   },
 );
 await application.listen({ host: '127.0.0.1', port: 0 });

@@ -5,7 +5,7 @@ import {
   createWorkspaceDatabase,
 } from '@pertexo/database/testing';
 
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 import { createApiIdentityRuntime } from '../../../src/platform/identity/runtime.module.js';
 import { Pool, type PoolClient } from 'pg';
 
@@ -55,15 +55,11 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
     const identityConfig = apiConfig().identity;
     if (identityConfig === undefined)
       throw new Error('Workflow lifecycle identity configuration is missing');
-    // The runtime takes ownership as soon as construction starts and also
-    // closes these dependencies if its own construction fails.
-    resources.transfer(identityDatabase);
     const identityRuntime = resources.acquire(
       'identity runtime',
       await createApiIdentityRuntime(
         identityConfig,
         workflowLifecycleDatabaseConfig,
-        { persistence: { database: identityDatabase } },
       ),
       (runtime) => runtime.close(),
     );
@@ -151,7 +147,7 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
 
     const application = resources.acquire(
       'API application',
-      await createApiApplication(apiConfig(), {
+      await createTestApiApplication(apiConfig(), {
         database: borrowedWorkspaceDatabase(workspaceDatabase),
         identityRuntime: {
           ...identityRuntime,

@@ -230,23 +230,21 @@ export function useConnectionHealthFixture(
     redisUrl: redis.toString(),
     connections: {
       config: { kmsKeyReference: 'owned-health-fixture', region: 'us-east-1' },
-      overrides: {
-        encryption: { value: new ConnectionEnvelopeEncryption(keys) },
-        clients: {
-          slackFactory: () =>
-            createSlackClient(
-              createConnectionHealthSlackTransport(controlOrigin),
-            ),
-          http: {
-            execute: () =>
-              Promise.reject(new Error('HTTP outside health fixture')),
-          },
-          email: {
-            sendNotification: () =>
-              Promise.reject(new Error('Email outside health fixture')),
-          },
+      // The control origin is known only once the worker has started.
+      services: () => ({
+        encryption: { encryption: new ConnectionEnvelopeEncryption(keys) },
+        slack: createSlackClient(
+          createConnectionHealthSlackTransport(controlOrigin),
+        ),
+        http: {
+          execute: () =>
+            Promise.reject(new Error('HTTP outside health fixture')),
         },
-      },
+        email: {
+          sendNotification: () =>
+            Promise.reject(new Error('Email outside health fixture')),
+        },
+      }),
     },
     afterMigration: async (databaseUrl) => {
       const ready = phase(worker, 'worker-ready');

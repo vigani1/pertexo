@@ -1,22 +1,41 @@
-import type { ApiConnectionDatabase } from '@pertexo/database/connections';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/integrations/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  createApiConnectionRuntime,
-  type ApiConnectionRuntimeOverrides,
-} from '../../src/platform/connections/runtime.module.js';
+import { createApiConnectionRuntime } from '../../src/platform/connections/runtime.module.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
-import type {
-  ConnectionEmailClient,
-  ConnectionHttpClient,
-  ConnectionSecretEncryptionPort,
-  ConnectionSlackClient,
-} from '../../src/connections/index.js';
+
+const outside = vi.hoisted(() => ({
+  database: vi.fn(),
+  destination: vi.fn(),
+  encryption: vi.fn(),
+  telemetry: vi.fn(),
+  http: vi.fn(),
+  slack: vi.fn(),
+  email: vi.fn(),
+}));
+
+vi.mock('@pertexo/database/connections', async (original) => ({
+  ...(await original<object>()),
+  createConnectionDatabase: outside.database,
+}));
+vi.mock('@pertexo/database/notifications', async (original) => ({
+  ...(await original<object>()),
+  createFailureNotificationDestinationDatabase: outside.destination,
+}));
+vi.mock('@pertexo/integrations/server', async (original) => ({
+  ...(await original<object>()),
+  createConnectionEnvelopeEncryption: outside.encryption,
+  createNodeSecureHttpClient: outside.http,
+  createSlackClient: outside.slack,
+  createResendClient: outside.email,
+}));
+vi.mock('../../src/connections/index.js', async (original) => ({
+  ...(await original<object>()),
+  createConnectionTelemetry: outside.telemetry,
+}));
 
 const config = {
   kmsKeyReference: 'alias/pertexo-connections',
@@ -26,30 +45,23 @@ const databaseConfig = {} as DatabaseConfig;
 const identityRuntime = {
   dependencies: { authorization: {} },
 } as ApiIdentityRuntime;
-const encryption = {} as ConnectionSecretEncryptionPort;
-const httpClient = {} as ConnectionHttpClient;
-const slackClient = {} as ConnectionSlackClient;
-const emailClient = {} as ConnectionEmailClient;
-const telemetry = {
-  measure: <T>(_operation: string, work: () => Promise<T>): Promise<T> =>
-    work(),
+const options = {
+  identityRuntime,
+  applicationSecret: 'fixture-application-secret',
 };
 
-function database(close: () => Promise<void> | void): ApiConnectionDatabase {
-  return { close } as unknown as ApiConnectionDatabase;
-}
-
-function destinationDatabase(close: () => Promise<void> | void) {
-  return { close } as unknown as ReturnType<
-    NonNullable<
-      NonNullable<
-        ApiConnectionRuntimeOverrides['persistence']
-      >['destinationDatabaseFactory']
-    >
-  >;
-}
-
 describe('API connection runtime ownership', () => {
+  beforeEach(() => {
+    for (const service of Object.values(outside)) service.mockReset();
+    outside.database.mockReturnValue({ close: vi.fn() });
+    outside.destination.mockReturnValue({ close: vi.fn() });
+    outside.encryption.mockReturnValue({ encryption: {}, close: vi.fn() });
+    outside.telemetry.mockReturnValue({});
+    outside.http.mockReturnValue({});
+    outside.slack.mockReturnValue({});
+    outside.email.mockReturnValue({});
+  });
+
   it('defers every close and aggregates synchronous and asynchronous failures in owner order', async () => {
     const databaseFailure = new Error('database close failed');
     const destinationFailure = new Error('destination close failed');
@@ -61,30 +73,17 @@ describe('API connection runtime ownership', () => {
     const encryptionClose = vi.fn(() => {
       throw encryptionFailure;
     });
-    const runtime = await createApiConnectionRuntime(config, databaseConfig, {
-      identityRuntime: identityRuntime,
-      applicationSecret: 'fixture-application-secret',
-      overrides: {
-        persistence: {
-          database: database(databaseClose),
-          destinationDatabaseFactory: () =>
-            destinationDatabase(destinationClose),
-        },
-        encryption: {
-          factory: () =>
-            ({
-              encryption,
-              close: encryptionClose,
-            }) as unknown as AwsConnectionEnvelopeEncryptionRuntime,
-        },
-        telemetry: { value: telemetry },
-        clients: {
-          http: httpClient,
-          slack: slackClient,
-          email: emailClient,
-        },
-      },
+    outside.database.mockReturnValue({ close: databaseClose });
+    outside.destination.mockReturnValue({ close: destinationClose });
+    outside.encryption.mockReturnValue({
+      encryption: {},
+      close: encryptionClose,
     });
+    const runtime = await createApiConnectionRuntime(
+      config,
+      databaseConfig,
+      options,
+    );
 
     const first = runtime.close();
     const second = runtime.close();
@@ -102,104 +101,61 @@ describe('API connection runtime ownership', () => {
   });
 
   it.each([
-    ['destination database', ['database']],
-    ['encryption', ['database', 'destination']],
-    ['telemetry', ['database', 'destination', 'encryption']],
-    ['HTTP client', ['database', 'destination', 'encryption']],
-    ['Slack client', ['database', 'destination', 'encryption']],
-    ['email client', ['database', 'destination', 'encryption']],
+    ['destination database', 'destination', ['database']],
+    ['encryption', 'encryption', ['database', 'destination']],
+    ['telemetry', 'telemetry', ['database', 'destination', 'encryption']],
+    ['HTTP client', 'http', ['database', 'destination', 'encryption']],
+    ['Slack client', 'slack', ['database', 'destination', 'encryption']],
+    ['email client', 'email', ['database', 'destination', 'encryption']],
   ] as const)(
     'closes every acquired owner when %s construction fails',
-    async (stage, expectedClosed) => {
+    async (stage, service, expectedClosed) => {
       const constructionFailure = new Error(`${stage} construction failed`);
       const closed: string[] = [];
-      const connectionDatabase = database(() => {
-        closed.push('database');
+      outside.database.mockReturnValue({
+        close: () => {
+          closed.push('database');
+        },
       });
-      const overrides: ApiConnectionRuntimeOverrides = {
-        persistence: {
-          database: connectionDatabase,
-          destinationDatabaseFactory: () => {
-            if (stage === 'destination database') throw constructionFailure;
-            return destinationDatabase(() => {
-              closed.push('destination');
-            });
-          },
+      outside.destination.mockReturnValue({
+        close: () => {
+          closed.push('destination');
         },
-        encryption: {
-          factory: () => {
-            if (stage === 'encryption') throw constructionFailure;
-            return {
-              encryption,
-              close: () => {
-                closed.push('encryption');
-              },
-            } as AwsConnectionEnvelopeEncryptionRuntime;
-          },
+      });
+      outside.encryption.mockReturnValue({
+        encryption: {},
+        close: () => {
+          closed.push('encryption');
         },
-        telemetry: {
-          factory: () => {
-            if (stage === 'telemetry') throw constructionFailure;
-            return telemetry;
-          },
-        },
-        clients: {
-          httpFactory: () => {
-            if (stage === 'HTTP client') throw constructionFailure;
-            return httpClient;
-          },
-          slackFactory: () => {
-            if (stage === 'Slack client') throw constructionFailure;
-            return slackClient;
-          },
-          emailFactory: () => {
-            if (stage === 'email client') throw constructionFailure;
-            return emailClient;
-          },
-        },
-      };
+      });
+      outside[service].mockImplementation(() => {
+        throw constructionFailure;
+      });
 
       await expect(
-        createApiConnectionRuntime(config, databaseConfig, {
-          identityRuntime: identityRuntime,
-          applicationSecret: 'fixture-application-secret',
-          overrides: overrides,
-        }),
+        createApiConnectionRuntime(config, databaseConfig, options),
       ).rejects.toBe(constructionFailure);
       expect(closed).toEqual(expectedClosed);
     },
   );
 
-  it('preserves construction and cleanup failures without closing injected encryption', async () => {
+  it('preserves construction and cleanup failures', async () => {
     const constructionFailure = new Error('email construction failed');
     const cleanupFailure = new Error('database cleanup failed');
     const destinationClose = vi.fn();
-    const injectedEncryptionClose = vi.fn();
-    const injectedEncryption = {
-      ...encryption,
-      close: injectedEncryptionClose,
-    } as ConnectionSecretEncryptionPort & { close(): void };
+    outside.database.mockReturnValue({
+      close: () => Promise.reject(cleanupFailure),
+    });
+    outside.destination.mockReturnValue({ close: destinationClose });
+    outside.email.mockImplementation(() => {
+      throw constructionFailure;
+    });
 
-    const failure = await createApiConnectionRuntime(config, databaseConfig, {
-      identityRuntime: identityRuntime,
-      applicationSecret: 'fixture-application-secret',
-      overrides: {
-        persistence: {
-          database: database(() => Promise.reject(cleanupFailure)),
-          destinationDatabaseFactory: () =>
-            destinationDatabase(destinationClose),
-        },
-        encryption: { value: injectedEncryption },
-        telemetry: { value: telemetry },
-        clients: {
-          http: httpClient,
-          slack: slackClient,
-          emailFactory: () => {
-            throw constructionFailure;
-          },
-        },
-      },
-    }).catch((error: unknown) => error);
+    const failure = await createApiConnectionRuntime(
+      config,
+      databaseConfig,
+      options,
+    ).catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(AggregateError);
     expect((failure as AggregateError).errors).toEqual([
@@ -207,47 +163,28 @@ describe('API connection runtime ownership', () => {
       cleanupFailure,
     ]);
     expect(destinationClose).toHaveBeenCalledOnce();
-    expect(injectedEncryptionClose).not.toHaveBeenCalled();
   });
 
   it('passes a shared database runtime to both lease factories and closes each returned lease once', async () => {
     const sharedRuntime = {} as DatabaseRuntime;
     const databaseClose = vi.fn();
     const destinationClose = vi.fn();
-    const databaseFactory = vi.fn(
-      (_config: DatabaseConfig, selectedRuntime?: DatabaseRuntime) => {
-        expect(selectedRuntime).toBe(sharedRuntime);
-        return database(databaseClose);
-      },
-    );
-    const destinationFactory = vi.fn(
-      (_config: DatabaseConfig, selectedRuntime?: DatabaseRuntime) => {
-        expect(selectedRuntime).toBe(sharedRuntime);
-        return destinationDatabase(destinationClose);
-      },
-    );
+    outside.database.mockReturnValue({ close: databaseClose });
+    outside.destination.mockReturnValue({ close: destinationClose });
     const runtime = await createApiConnectionRuntime(config, databaseConfig, {
-      identityRuntime: identityRuntime,
-      applicationSecret: 'fixture-application-secret',
-      overrides: {
-        persistence: {
-          databaseFactory,
-          destinationDatabaseFactory: destinationFactory,
-        },
-        encryption: { value: encryption },
-        telemetry: { value: telemetry },
-        clients: {
-          http: httpClient,
-          slack: slackClient,
-          email: emailClient,
-        },
-      },
+      ...options,
       runtime: sharedRuntime,
     });
 
     await runtime.close();
-    expect(databaseFactory).toHaveBeenCalledOnce();
-    expect(destinationFactory).toHaveBeenCalledOnce();
+    expect(outside.database).toHaveBeenCalledExactlyOnceWith(
+      databaseConfig,
+      sharedRuntime,
+    );
+    expect(outside.destination).toHaveBeenCalledExactlyOnceWith(
+      databaseConfig,
+      sharedRuntime,
+    );
     expect(databaseClose).toHaveBeenCalledOnce();
     expect(destinationClose).toHaveBeenCalledOnce();
   });

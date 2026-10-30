@@ -3,7 +3,7 @@ import type { Role } from '@pertexo/workflow-model';
 
 import type { ApiIdentityRuntime } from '../../../src/platform/identity/runtime.module.js';
 
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 import {
   createApiPlatformFixture,
   createStubIdentityRuntime,
@@ -65,7 +65,7 @@ export const mutationHeaders = {
 };
 
 const applicationFixture: {
-  application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+  application: Awaited<ReturnType<typeof createTestApiApplication>> | undefined;
 } = { application: undefined };
 
 export async function start(
@@ -77,7 +77,7 @@ export async function start(
   const baseRuntime = createStubApiWorkflowRuntime(
     identity.dependencies.authorization,
   );
-  applicationFixture.application = await createApiApplication(config, {
+  applicationFixture.application = await createTestApiApplication(config, {
     database,
     identityRuntime: identity,
     workflowRuntime: {

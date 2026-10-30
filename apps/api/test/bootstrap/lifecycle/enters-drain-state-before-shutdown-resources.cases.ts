@@ -1,7 +1,7 @@
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type { TelemetryLifecycle } from '@pertexo/observability';
 import { expect, it, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
 
@@ -22,7 +22,7 @@ export function registerEntersDrainStateBeforeShutdownResources(): void {
       return Promise.resolve();
     });
     const selectedDatabase: WorkspaceDatabase = { ...database, close };
-    const selectedApplication = await createApiApplication(
+    const selectedApplication = await createTestApiApplication(
       config,
       dependencies(selectedDatabase),
     );
@@ -51,7 +51,7 @@ export function registerEntersDrainStateBeforeShutdownResources(): void {
         ]),
       );
       const lifecycle: {
-        application?: Awaited<ReturnType<typeof createApiApplication>>;
+        application?: Awaited<ReturnType<typeof createTestApiApplication>>;
         drain?: ApiDrainState;
       } = {};
       const closeOwner = (label: string) =>
@@ -82,7 +82,7 @@ export function registerEntersDrainStateBeforeShutdownResources(): void {
         start: vi.fn(),
         shutdown: telemetryClose,
       };
-      applicationFixture.application = await createApiApplication(config, {
+      applicationFixture.application = await createTestApiApplication(config, {
         ...dependencies(selectedDatabase, selectedTelemetry),
         identityRuntime: selectedIdentity,
         workflowRuntime: selectedWorkflow,
@@ -123,7 +123,7 @@ export function registerEntersDrainStateBeforeShutdownResources(): void {
       start: vi.fn(),
       shutdown,
     };
-    applicationFixture.application = await createApiApplication(
+    applicationFixture.application = await createTestApiApplication(
       config,
       dependencies(database, selectedTelemetry),
     );

@@ -23,7 +23,6 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             previous: [],
           },
         },
-        overrides: {},
       },
     });
 

@@ -9,6 +9,7 @@ import type {
   WorkspaceDatabase,
 } from '@pertexo/database/testing';
 import type { TelemetryLifecycle } from '@pertexo/observability';
+import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import { vi } from 'vitest';
 import type { createApiApplication } from '../../src/app.js';
 import { IdentityError } from '../../src/identity/index.js';
@@ -20,7 +21,11 @@ import type { ApiArtifactRuntime } from '../../src/platform/artifacts/runtime.mo
 import type { ApiIdentityConfig } from '../../src/platform/config/identity.js';
 import type { BetterAuthRuntime } from '../../src/authentication/index.js';
 
-import { createApiPlatformFixture } from '../support/api-platform.fixture.js';
+import type { ApiWorkflowRuntime } from '../../src/platform/workflow/runtime.module.js';
+import {
+  createApiPlatformFixture,
+  createStubApiWorkflowRuntime,
+} from '../support/api-platform.fixture.js';
 
 export const { config, database, logger, rateLimitConsumer, telemetry } =
   createApiPlatformFixture('0000_rls_probe.sql');
@@ -190,6 +195,23 @@ export function workflowAuthoringDatabase(
     transitionWorkflowLifecycle: () => Promise.reject(new Error('not used')),
     renameWorkflow: () => Promise.reject(new Error('not used')),
     close,
+  };
+}
+
+/** The stub runtime with the real node-testing routes behind `persistence`. */
+export function nodeTestingWorkflowRuntime(
+  authorization: IdentityWorkspaceDependencies['authorization'],
+  persistence: WorkflowAuthoringDatabase,
+): ApiWorkflowRuntime {
+  const expressionEvaluator = new JsonataEvaluator();
+  return {
+    ...createStubApiWorkflowRuntime(authorization),
+    nodeTestingDependencies: {
+      persistence,
+      authorization,
+      expressionEvaluator,
+    },
+    close: () => expressionEvaluator.shutdown(),
   };
 }
 

@@ -5,7 +5,7 @@ import type {
 } from '@pertexo/database/testing';
 
 import { expect, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 import type { ConnectionDependencies } from '../../../src/connections/index.js';
 import type { IdentityWorkspaceDependencies } from '../../../src/workspaces/index.js';
 import type { ApiConnectionRuntime } from '../../../src/platform/connections/runtime.module.js';
@@ -350,13 +350,13 @@ export const destinationPayload = {
 } as const;
 
 export const applicationFixture: {
-  application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+  application: Awaited<ReturnType<typeof createTestApiApplication>> | undefined;
 } = { application: undefined };
 
 export async function start(role: Role = 'owner') {
   const identity = identityRuntime(role);
   const connection = connectionRuntime(identity.dependencies.authorization);
-  applicationFixture.application = await createApiApplication(config, {
+  applicationFixture.application = await createTestApiApplication(config, {
     database,
     identityRuntime: identity,
     workflowRuntime: createStubApiWorkflowRuntime(

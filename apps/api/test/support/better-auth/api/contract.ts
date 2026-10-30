@@ -7,7 +7,7 @@ import type { StructuredLogger } from '@pertexo/observability';
 import type { createApiApplication } from '../../../../src/app.js';
 import type { ApiConfig } from '../../../../src/platform/config/api.js';
 
-import type { ApiConnectionRuntimeOverrides } from '../../../../src/platform/connections/runtime.module.js';
+import type { FixtureConnectionServices } from '../../connection-runtime.js';
 import type { ApiWebhookRuntime } from '../../../../src/platform/webhooks/runtime.module.js';
 
 export type Browser = Readonly<{
@@ -55,7 +55,8 @@ export type ApiFixtureOptions = Readonly<{
   logger?: StructuredLogger;
   connections?: Readonly<{
     config: NonNullable<ApiConfig['connections']>;
-    overrides: ApiConnectionRuntimeOverrides;
+    /** Replaces KMS and the providers; left out, the real runtime is used. */
+    services?: () => FixtureConnectionServices;
   }>;
   afterMigration?: (databaseUrl: (base: string) => string) => Promise<void>;
   beforeClose?: () => Promise<void>;

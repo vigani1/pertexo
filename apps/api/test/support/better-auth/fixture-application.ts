@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 
 import {
-  createApiApplication,
-  type ApiApplicationDependencies,
-} from '../../../src/app.js';
+  createTestApiApplication,
+  type TestApiParts,
+} from '../api-application.js';
 import type { ApiConfig } from '../../../src/platform/config/api.js';
 import { createApiScheduleRuntime } from '../../../src/platform/schedules/runtime.module.js';
 import type { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';
@@ -18,7 +18,7 @@ export async function createBetterAuthFixtureApplication({
   createSchedules = createApiScheduleRuntime,
 }: Readonly<{
   config: ApiConfig;
-  dependencies: ApiApplicationDependencies;
+  dependencies: TestApiParts;
   owner: FixtureResourceOwner;
   schedules?: boolean | undefined;
   createSchedules?: typeof createApiScheduleRuntime | undefined;
@@ -36,7 +36,7 @@ export async function createBetterAuthFixtureApplication({
     fixtureRateLimiter(config.redisUrl, owner);
   const application = owner.acquire(
     'API application',
-    await createApiApplication(config, {
+    await createTestApiApplication(config, {
       ...dependencies,
       rateLimitConsumer,
       ...(scheduleRuntime === undefined ? {} : { scheduleRuntime }),

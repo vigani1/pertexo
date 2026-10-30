@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import type { ApiWebhookRuntime } from '../../../src/platform/webhooks/runtime.module.js';
 import type { WebhookManagementService } from '../../../src/webhooks/management/service.js';
@@ -22,7 +22,7 @@ import {
 export function registerMapsUserRemovedAfterAuthenticationSafe(): void {
   it('maps a user removed after authentication to safe profile problem details', async () => {
     const selectedIdentityRuntime = identityRuntime(undefined, true);
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: {
         ...selectedIdentityRuntime,
@@ -81,7 +81,7 @@ export function registerMapsUserRemovedAfterAuthenticationSafe(): void {
         worstCaseLoopIterations: 0,
       },
     });
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentity,
       workflowRuntime: {
@@ -162,7 +162,7 @@ export function registerMapsUserRemovedAfterAuthenticationSafe(): void {
     const identityClose = vi.fn().mockResolvedValue(undefined);
     const workflowClose = vi.fn().mockResolvedValue(undefined);
     const selectedIdentityRuntime = identityRuntime(identityClose);
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       workflowRuntime: createStubApiWorkflowRuntime(
@@ -204,7 +204,7 @@ export function registerMapsUserRemovedAfterAuthenticationSafe(): void {
       },
       close: webhookClose,
     } as unknown as ApiWebhookRuntime;
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       webhookRuntime,

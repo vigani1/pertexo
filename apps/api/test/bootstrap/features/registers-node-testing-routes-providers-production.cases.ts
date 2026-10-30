@@ -1,7 +1,7 @@
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
 
 import { expect, it, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import {
   GetPreviewRunUseCase,
@@ -16,51 +16,21 @@ import {
   identityRuntime,
   betterAuthIdentityConfig,
   betterAuthIdentityRuntime,
+  nodeTestingWorkflowRuntime,
   workflowAuthoringDatabase,
   applicationFixture,
 } from '../fixture.js';
 
 export function registerRegistersNodeTestingRoutesProvidersProduction(): void {
-  it('registers node-testing routes and providers with the production workflow runtime', async () => {
+  it('registers node-testing routes and providers from the workflow runtime', async () => {
     const selectedIdentityRuntime = identityRuntime();
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
-      workflowOverrides: {
-        authoring: { database: workflowAuthoringDatabase() },
-        persistence: {
-          runs: {
-            canRead: () => Promise.resolve(true),
-            start: () => Promise.reject(new Error('not used')),
-            recovery: () => Promise.reject(new Error('not exercised')),
-            recover: () => Promise.reject(new Error('not exercised')),
-            replay: () => Promise.reject(new Error('not used')),
-            get: () => Promise.resolve(undefined),
-            list: () => Promise.resolve({ items: [] }),
-            readVariables: () => Promise.resolve({ revision: 0, values: {} }),
-            readInput: () => Promise.resolve(undefined),
-            readNodeRunDiagnostics: () => Promise.resolve(undefined),
-            readNodeRunOutput: () => Promise.resolve(undefined),
-            readNodeRunInput: () => Promise.resolve(undefined),
-            stepHealth: () => Promise.resolve(undefined),
-            stepRuns: () => Promise.resolve(undefined),
-            statistics: () => Promise.reject(new Error('not used')),
-            usageTrends: () => Promise.reject(new Error('not used')),
-            usageCapacity: () => Promise.reject(new Error('not used')),
-            cancel: () => Promise.reject(new Error('not used')),
-          },
-        },
-        streaming: {
-          streamer: {
-            stream: () => ({
-              async *[Symbol.asyncIterator]() {
-                await Promise.resolve();
-                yield { id: 1, event: 'run.queued', data: '{}' };
-              },
-            }),
-          },
-        },
-      },
+      workflowRuntime: nodeTestingWorkflowRuntime(
+        selectedIdentityRuntime.dependencies.authorization,
+        workflowAuthoringDatabase(),
+      ),
     });
     await applicationFixture.application.init();
 
@@ -92,50 +62,13 @@ export function registerRegistersNodeTestingRoutesProvidersProduction(): void {
     );
     const getDraft = vi.fn().mockRejectedValue(new Error('not used'));
     const acceptPreview = vi.fn().mockRejectedValue(new Error('not used'));
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
-      workflowOverrides: {
-        authoring: {
-          database: {
-            ...workflowAuthoringDatabase(),
-            getDraft,
-            acceptPreview,
-          },
-        },
-        persistence: {
-          runs: {
-            canRead: () => Promise.resolve(true),
-            start: () => Promise.reject(new Error('not used')),
-            recovery: () => Promise.reject(new Error('not exercised')),
-            recover: () => Promise.reject(new Error('not exercised')),
-            replay: () => Promise.reject(new Error('not used')),
-            get: () => Promise.resolve(undefined),
-            list: () => Promise.resolve({ items: [] }),
-            readVariables: () => Promise.resolve({ revision: 0, values: {} }),
-            readInput: () => Promise.resolve(undefined),
-            readNodeRunDiagnostics: () => Promise.resolve(undefined),
-            readNodeRunOutput: () => Promise.resolve(undefined),
-            readNodeRunInput: () => Promise.resolve(undefined),
-            stepHealth: () => Promise.resolve(undefined),
-            stepRuns: () => Promise.resolve(undefined),
-            statistics: () => Promise.reject(new Error('not used')),
-            usageTrends: () => Promise.reject(new Error('not used')),
-            usageCapacity: () => Promise.reject(new Error('not used')),
-            cancel: () => Promise.reject(new Error('not used')),
-          },
-        },
-        streaming: {
-          streamer: {
-            stream: () => ({
-              async *[Symbol.asyncIterator]() {
-                await Promise.resolve();
-                yield { id: 1, event: 'run.queued', data: '{}' };
-              },
-            }),
-          },
-        },
-      },
+      workflowRuntime: nodeTestingWorkflowRuntime(
+        selectedIdentityRuntime.dependencies.authorization,
+        { ...workflowAuthoringDatabase(), getDraft, acceptPreview },
+      ),
     });
     const csrf = 'c'.repeat(32);
     const payload = `{"mode":"validate","expectedRevision":1,"sampleInput":${'['.repeat(10_000)}null${']'.repeat(10_000)}}`;
@@ -158,7 +91,7 @@ export function registerRegistersNodeTestingRoutesProvidersProduction(): void {
 
   it('mounts Better Auth on the public web origin', async () => {
     const selected = betterAuthIdentityRuntime();
-    applicationFixture.application = await createApiApplication(
+    applicationFixture.application = await createTestApiApplication(
       {
         ...config,
         identity: betterAuthIdentityConfig('https://app.example.test'),
@@ -210,7 +143,7 @@ export function registerRegistersNodeTestingRoutesProvidersProduction(): void {
     };
 
     await expect(
-      createApiApplication(config, {
+      createTestApiApplication(config, {
         ...dependencies(incompatibleDatabase),
         identityRuntime: selectedIdentityRuntime,
         workflowRuntime: createStubApiWorkflowRuntime(

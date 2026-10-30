@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import type { WorkflowInputCaseDatabase } from '@pertexo/database/authoring';
 import { createApiWorkflowMetadataRuntime } from '../../../src/platform/workflow/metadata-runtime.js';
@@ -9,11 +9,11 @@ const config = parseDatabaseConfig({
     'postgresql://pertexo_app:unused@127.0.0.1:1/pertexo_test_f07_no_connection',
   max: 1,
 });
-const testAuthoring = {
-  databaseFactory: () => {
-    throw new Error('Unused explicit test authoring factory');
-  },
-};
+const createInputCases = vi.hoisted(() => vi.fn());
+vi.mock('@pertexo/database/authoring', async (original) => ({
+  ...(await original<object>()),
+  createWorkflowInputCaseDatabase: createInputCases,
+}));
 function inputCases() {
   return {
     close: vi.fn().mockResolvedValue(undefined),
@@ -25,11 +25,11 @@ function inputCases() {
   } satisfies WorkflowInputCaseDatabase;
 }
 describe('organization metadata runtime ownership', () => {
+  beforeEach(() => {
+    createInputCases.mockReset().mockReturnValue(inputCases());
+  });
   it('composes the organization stores without querying', async () => {
-    const runtime = await createApiWorkflowMetadataRuntime(
-      config,
-      testAuthoring,
-    );
+    const runtime = await createApiWorkflowMetadataRuntime(config, {});
     try {
       expect(Object.keys(runtime.organization).sort()).toEqual([
         'batches',
@@ -38,18 +38,15 @@ describe('organization metadata runtime ownership', () => {
         'reader',
         'tags',
       ]);
-      expect(runtime.inputCases).toBeUndefined();
     } finally {
       await runtime.close();
       await runtime.close();
     }
   });
-  it('owns supplied input cases once and returns one shared close promise', async () => {
+  it('owns its input cases once and returns one shared close promise', async () => {
     const cases = inputCases();
-    const runtime = await createApiWorkflowMetadataRuntime(config, {
-      ...testAuthoring,
-      inputCasePersistence: cases,
-    });
+    createInputCases.mockReturnValue(cases);
+    const runtime = await createApiWorkflowMetadataRuntime(config, {});
     expect(runtime.inputCases).toBe(cases);
     const first = runtime.close(),
       second = runtime.close();
@@ -61,10 +58,8 @@ describe('organization metadata runtime ownership', () => {
     const cases = inputCases(),
       failure = new Error('owned close failure');
     cases.close.mockRejectedValue(failure);
-    const runtime = await createApiWorkflowMetadataRuntime(config, {
-      ...testAuthoring,
-      inputCasePersistence: cases,
-    });
+    createInputCases.mockReturnValue(cases);
+    const runtime = await createApiWorkflowMetadataRuntime(config, {});
     await expect(runtime.close()).rejects.toBe(failure);
   });
 });

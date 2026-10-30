@@ -19,7 +19,7 @@ import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import { Pool } from 'pg';
 import { vi } from 'vitest';
-import { createApiApplication } from '../../../../src/app.js';
+import { createTestApiApplication } from '../../../support/api-application.js';
 import { createInitialCheckpoint } from '@pertexo/execution';
 import type { ApiConfig } from '../../../../src/platform/config/api.js';
 import {
@@ -83,7 +83,7 @@ export let testEvents!: ReturnType<typeof createWebhookTestEventStore>;
 
 export let ingressDatabase!: WebhookTriggerDatabase;
 
-export let application!: Awaited<ReturnType<typeof createApiApplication>>;
+export let application!: Awaited<ReturnType<typeof createTestApiApplication>>;
 
 let fixtureOwner: FixtureResourceOwner | undefined;
 
@@ -174,11 +174,9 @@ async function createFixture(): Promise<FixtureResourceOwner> {
           },
         },
         apiConfig,
-        { persistence: { database: identity } },
       ),
       (runtime) => runtime.close(),
     );
-    resources.transfer(identity);
     authoring = resources.acquire(
       'workflow authoring database',
       createCoreWorkflowAuthoringDatabase(apiConfig),
@@ -253,7 +251,7 @@ async function createFixture(): Promise<FixtureResourceOwner> {
     consume.mockImplementation((decision) => rateLimiter.consume(decision));
     application = resources.acquire(
       'API application',
-      await createApiApplication(config, {
+      await createTestApiApplication(config, {
         database: workspaceDatabase,
         rateLimitConsumer: { consume },
         identityRuntime,
