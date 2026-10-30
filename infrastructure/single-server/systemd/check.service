@@ -1,0 +1,12 @@
+[Unit]
+Description=Check the Pertexo server and alert its operator
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pertexo
+UMask=0077
+Environment=PERTEXO_BETA_ROOT=/opt/pertexo
+ExecStart=/opt/pertexo/repository/infrastructure/single-server/check.sh

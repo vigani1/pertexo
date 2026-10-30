@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-[[ $# == 1 ]] || { echo 'usage: deploy.sh <full-commit>' >&2; exit 64; }
+[[ $# == 1 ]] || { echo 'usage: deploy.sh <vX.Y.Z | latest | full-commit>' >&2; exit 64; }
 source "$(dirname "$0")/common.sh"
-check_commit "$1"
+check_release_name "$1"
 operation_lock
 [[ ! -f "$BETA_STATE_DIR/restore-fence" ]] || { echo 'Restore is incomplete; use a fresh stack' >&2; exit 1; }
 require_no_ops
-prepare_release "$1"
+commit=$(resolve_release "$1")
+prepare_release "$commit"
 previous=''
 [[ ! -f "$BETA_STATE_DIR/current" ]] || previous=$(cat "$BETA_STATE_DIR/current")
 compose up -d --wait --wait-timeout 120 postgres redis storage
@@ -40,13 +41,14 @@ fi
 if ! verify_encryption; then
   echo 'Encryption verification failed: serving remains stopped; correct the configured keys' >&2; exit 1
 fi
-if ! compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}"; then
+if ! compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}" || ! wait_for_app; then
   compose stop "${runtime_services[@]}"
   if [[ $no_migration == true && -n "$previous" && "$previous" != "$commit" ]]; then
     select_release "$previous"
     validate_rollback_configuration
     verify_encryption
     compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}"
+    wait_for_app
     echo "Unhealthy release returned to $previous" >&2
   else
     echo 'Unhealthy release: fix forward; serving remains stopped' >&2

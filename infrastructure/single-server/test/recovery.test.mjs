@@ -53,6 +53,7 @@ fail=os.environ.get('FAIL_AT','')
 if fail=='encryption/verify.mjs':
  if 'infrastructure/single-server/encryption/verify.mjs' in args: sys.exit(1)
 elif fail and any(fail in arg for arg in args): sys.exit(1)
+if args[0]=='version': print('arm64')
 if args[0]=='image': print('arm64 ${commit}')
 if 'infrastructure/single-server/backup/prepare.mjs' in args:
  (root/'state/source-bucket').write_text('artifacts')
