@@ -13,6 +13,12 @@ import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
+import {
   duplicateWorkflow,
   getWorkflowDuplicateDraft,
   type WorkflowDuplicateAttempt,
@@ -30,9 +36,10 @@ import {
   verifyDuplicateAuthority,
 } from '../model/duplicate/access-loss';
 
-type DuplicateAttempt = WorkflowDuplicateAttempt & {
-  result?: Readonly<{ workflowId: string }>;
-};
+type DuplicateAttempt = WorkflowDuplicateAttempt &
+  CommandKey & {
+    result?: Readonly<{ workflowId: string }>;
+  };
 
 type WorkflowDuplicateOptions = Readonly<{
   apiClient: ApiClient;
@@ -177,15 +184,26 @@ export function useWorkflowDuplicate({
       if (state.kind !== 'ready') return;
       const command: DuplicateAttempt = {
         body: { name, source },
-        idempotencyKey: crypto.randomUUID(),
+        ...newCommandKey(),
         ...(state.draft === undefined ? {} : { etag: state.draft.etag }),
       };
       attempt.current = command;
       void send(command);
     },
     retry: () => {
-      if (state.kind === 'uncertain' && attempt.current !== undefined)
-        void send(attempt.current);
+      const current = attempt.current;
+      if (state.kind !== 'uncertain' || current === undefined) return;
+      // An accepted copy only needs its access re-verified.
+      if (current.result !== undefined || canResend(current))
+        void send(current);
+      else {
+        attempt.current = undefined;
+        setState((previous) => ({
+          ...previous,
+          kind: 'ready',
+          error: RETRY_WINDOW_ENDED,
+        }));
+      }
     },
   };
 }

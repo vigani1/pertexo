@@ -1,5 +1,11 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
-import { useRef } from 'react';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
+import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { WorkflowErrorSettingsRequest } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
@@ -16,9 +22,10 @@ export function useErrorWorkflowCommand(
 ) {
   const cache = useQueryClient();
   const intent = useRef<
-    Readonly<{ body: WorkflowErrorSettingsRequest; key: string }> | undefined
+    (Readonly<{ body: WorkflowErrorSettingsRequest }> & CommandKey) | undefined
   >(undefined);
   const sending = useRef(false);
+  const [windowEnded, setWindowEnded] = useState(false);
   const queryKey = errorWorkflowKey(userId, workspaceId, workflowId);
   const mutation = useMutation({
     mutationFn: (request: NonNullable<typeof intent.current>) =>
@@ -27,7 +34,7 @@ export function useErrorWorkflowCommand(
         workspaceId,
         workflowId,
         body: request.body,
-        key: request.key,
+        key: request.idempotencyKey,
       }),
     onSuccess: () => {
       intent.current = undefined;
@@ -50,9 +57,16 @@ export function useErrorWorkflowCommand(
         JSON.stringify(intent.current.body) !== JSON.stringify(body))
     )
       return false;
-    const request = intent.current ?? { body, key: crypto.randomUUID() };
+    if (intent.current !== undefined && !canResend(intent.current)) {
+      intent.current = undefined;
+      mutation.reset();
+      setWindowEnded(true);
+      return false;
+    }
+    const request = intent.current ?? { body, ...newCommandKey() };
     intent.current = request;
     sending.current = true;
+    setWindowEnded(false);
     try {
       await mutation.mutateAsync(request);
       return true;
@@ -79,7 +93,7 @@ export function useErrorWorkflowCommand(
       return 'The change could not be confirmed. Retry the same change before editing it.';
     return describeCommandError(mutation.error, 'saving the error workflow');
   }
-  const problem = errorMessage();
+  const problem = windowEnded ? RETRY_WINDOW_ENDED : errorMessage();
   return {
     send,
     pending: mutation.isPending,

@@ -25,15 +25,19 @@ import {
 } from '@/features/auth/session/identity.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
+import {
   accessibleWorkspacesQueryOptions,
   workspaceKeys,
 } from '../workspaces.queries';
 import { renameWorkspace } from '../workspaces.api';
 
-type WorkspaceRenameAttempt = Readonly<{
-  body: WorkspaceRenameRequest;
-  idempotencyKey: string;
-}>;
+type WorkspaceRenameAttempt = Readonly<{ body: WorkspaceRenameRequest }> &
+  CommandKey;
 
 type State =
   | Readonly<{ kind: 'idle'; error?: RenameError }>
@@ -50,6 +54,20 @@ type State =
       refreshing: boolean;
       error?: RenameError;
     }>;
+
+const WINDOW_ENDED: RenameError = {
+  kind: 'other',
+  message: RETRY_WINDOW_ENDED,
+};
+
+/** Idle, or holding a rename whose retry window has ended. */
+function canStart(state: State): boolean {
+  return (
+    state.kind === 'idle' ||
+    (state.kind === 'uncertain' && !canResend(state.attempt))
+  );
+}
+
 /** Whether the signed-in person is still the one who started the rename. */
 async function checkSession(
   apiClient: ApiClient,
@@ -125,6 +143,9 @@ export function useWorkspaceRename({
   const stateRef = useRef(state);
   const owner = useRef<symbol | undefined>(undefined);
   const inFlight = useRef(false);
+  const expired = useResendExpired(
+    state.kind === 'uncertain' ? state.attempt : undefined,
+  );
 
   useEffect(() => {
     const scope = Symbol('workspace-rename');
@@ -230,18 +251,20 @@ export function useWorkspaceRename({
 
   return {
     accepted: state.kind === 'accepted',
-    error: state.kind === 'executing' ? undefined : state.error,
+    error: expired
+      ? WINDOW_ENDED
+      : state.kind === 'executing'
+        ? undefined
+        : state.error,
     pending: state.kind === 'executing',
-    retryAvailable: state.kind === 'uncertain',
+    retryAvailable: state.kind === 'uncertain' && !expired,
     reloadLatest,
     refreshPending: state.kind === 'accepted' && state.refreshing,
     start: (attempt: WorkspaceRenameAttempt) =>
-      stateRef.current.kind === 'idle'
-        ? execute(attempt)
-        : Promise.resolve(false),
+      canStart(stateRef.current) ? execute(attempt) : Promise.resolve(false),
     retry: () => {
       const current = stateRef.current;
-      return current.kind === 'uncertain'
+      return current.kind === 'uncertain' && canResend(current.attempt)
         ? execute(current.attempt)
         : Promise.resolve(false);
     },

@@ -1,4 +1,10 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -41,7 +47,7 @@ export function useConcurrencyCommand(
 ) {
   const cache = useQueryClient();
   const attempt = useRef<
-    | Readonly<{ body: WorkflowConcurrencySettingsRequest; key: string }>
+    | (Readonly<{ body: WorkflowConcurrencySettingsRequest }> & CommandKey)
     | undefined
   >(undefined);
   const sending = useRef(false);
@@ -58,7 +64,13 @@ export function useConcurrencyCommand(
         JSON.stringify(attempt.current.body) !== JSON.stringify(body))
     )
       return false;
-    const request = attempt.current ?? { body, key: crypto.randomUUID() };
+    if (attempt.current !== undefined && !canResend(attempt.current)) {
+      attempt.current = undefined;
+      setUnconfirmed(false);
+      setProblem(RETRY_WINDOW_ENDED);
+      return false;
+    }
+    const request = attempt.current ?? { body, ...newCommandKey() };
     attempt.current = request;
     sending.current = true;
     setPending(true);
@@ -70,7 +82,7 @@ export function useConcurrencyCommand(
         workspaceId,
         workflowId,
         body: request.body,
-        key: request.key,
+        key: request.idempotencyKey,
       });
       attempt.current = undefined;
       setUnconfirmed(false);

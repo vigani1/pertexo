@@ -1,4 +1,10 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { useCallback, useRef, useState } from 'react';
 import type { WorkflowImportRequest } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
@@ -10,11 +16,10 @@ import { workflowKeys } from '../workflows.queries';
 import { workflowOrganizationKeys } from '../organization/queries';
 import type { usePortabilityLifetime } from '../../components/portability/use-lifetime';
 
-interface Attempt {
+type Attempt = CommandKey & {
   body: WorkflowImportRequest;
-  key: string;
   workflowId?: string;
-}
+};
 export interface WorkflowImportCommandState {
   kind: 'editable' | 'sending' | 'uncertain' | 'confirmed';
   error?: string;
@@ -53,7 +58,7 @@ export function useWorkflowImportCommand(
           apiClient,
           workspaceId,
           body: command.body,
-          idempotencyKey: command.key,
+          idempotencyKey: command.idempotencyKey,
           signal: request.signal,
         });
         command.workflowId = result.workflowId;
@@ -104,13 +109,20 @@ export function useWorkflowImportCommand(
     clear,
     start: (body: WorkflowImportRequest) => {
       if (state.kind !== 'editable' || busy.current || lifetime.denied) return;
-      const command = { body: structuredClone(body), key: crypto.randomUUID() };
+      const command = { body: structuredClone(body), ...newCommandKey() };
       attempt.current = command;
       void send(command);
     },
     retry: () => {
-      if (state.kind === 'uncertain' && attempt.current !== undefined)
-        void send(attempt.current);
+      const current = attempt.current;
+      if (state.kind !== 'uncertain' || current === undefined) return;
+      // An accepted import only needs its access re-verified.
+      if (current.workflowId !== undefined || canResend(current))
+        void send(current);
+      else {
+        attempt.current = undefined;
+        setState({ kind: 'editable', error: RETRY_WINDOW_ENDED });
+      }
     },
   };
 }

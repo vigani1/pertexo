@@ -2,11 +2,13 @@ import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { FederationSettings } from '@pertexo/contracts';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
-import { useNow } from '@/lib/hooks/use-now';
 import {
-  COMMAND_RETRY_WINDOW_MS,
+  canResend,
   isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
 } from '@/lib/api/commands/contract';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { isApiError } from '@/lib/api/error';
 import {
@@ -15,11 +17,7 @@ import {
   type FederationScope,
 } from './settings.api';
 import { federationSettingsQueryOptions } from './settings.queries';
-type Intent = Readonly<{
-  operation: FederationCommand;
-  key: string;
-  createdAt: number;
-}>;
+type Intent = Readonly<{ operation: FederationCommand }> & CommandKey;
 /** Provider secrets stay in this mounted form's memory, never in Query's mutation cache. */
 export function useFederationCommand(
   scope: FederationScope,
@@ -30,23 +28,10 @@ export function useFederationCommand(
     busy = useRef(false),
     intent = useRef<Intent | undefined>(undefined);
   const [error, setError] = useState<string>(),
-    [uncertainSince, setUncertainSince] = useState<number>();
-  const until =
-    uncertainSince === undefined
-      ? undefined
-      : uncertainSince + COMMAND_RETRY_WINDOW_MS;
-  const now = useNow({
-      intervalMs: 1000,
-      enabled: uncertainSince !== undefined,
-      untilMs: until,
-    }),
-    expired = until !== undefined && now >= until;
+    [held, setHeld] = useState<Intent>();
+  const expired = useResendExpired(held);
   async function execute(command: Intent): Promise<boolean> {
-    if (
-      busy.current ||
-      Date.now() >= command.createdAt + COMMAND_RETRY_WINDOW_MS
-    )
-      return false;
+    if (busy.current || !canResend(command)) return false;
     busy.current = true;
     const attempt = requests.begin();
     setError(undefined);
@@ -54,12 +39,12 @@ export function useFederationCommand(
       const result = await applyFederationCommand(
         scope,
         command.operation,
-        command.key,
+        command.idempotencyKey,
         attempt.signal,
       );
       if (!attempt.isCurrent()) return false;
       intent.current = undefined;
-      setUncertainSince(undefined);
+      setHeld(undefined);
       cache.setQueryData(
         federationSettingsQueryOptions(scope).queryKey,
         result,
@@ -69,13 +54,13 @@ export function useFederationCommand(
     } catch (cause: unknown) {
       if (!attempt.isCurrent()) return false;
       if (isUnconfirmedCommand(cause)) {
-        setUncertainSince(command.createdAt);
+        setHeld(command);
         setError(
           'The result could not be confirmed. Retry this exact request before changing the form.',
         );
       } else {
         intent.current = undefined;
-        setUncertainSince(undefined);
+        setHeld(undefined);
         setError(
           isApiError(cause) &&
             [
@@ -96,7 +81,7 @@ export function useFederationCommand(
   }
   return {
     pending: requests.pending,
-    uncertain: uncertainSince !== undefined,
+    uncertain: held !== undefined,
     expired,
     error: expired
       ? 'The request retry window ended. Check settings before starting a new request.'
@@ -105,8 +90,7 @@ export function useFederationCommand(
       if (intent.current !== undefined) return Promise.resolve(false);
       const command = {
         operation: structuredClone(operation),
-        key: crypto.randomUUID(),
-        createdAt: Date.now(),
+        ...newCommandKey(),
       };
       intent.current = command;
       return execute(command);

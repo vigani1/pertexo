@@ -1,4 +1,11 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { isUnauthenticated } from '@/features/auth/session/identity.public';
@@ -37,10 +44,13 @@ export function useLeaveWorkspaceCommand({
   const queryClient = useQueryClient();
   const owner = useRef<symbol | undefined>(undefined);
   const activeSubmission = useRef<symbol | undefined>(undefined);
-  const key = useRef<string | undefined>(undefined);
+  const attempt = useRef<CommandKey | undefined>(undefined);
+  // `held` is the unconfirmed attempt a retry resends.
   const [failure, setFailure] = useState<
-    Readonly<{ message: string; uncertain: boolean }> | undefined
+    Readonly<{ message: string; held?: CommandKey }> | undefined
   >();
+  const expired = useResendExpired(failure?.held);
+  const retryAvailable = failure?.held !== undefined && !expired;
   useEffect(() => {
     const currentOwner = Symbol('workspace-leave');
     owner.current = currentOwner;
@@ -52,8 +62,8 @@ export function useLeaveWorkspaceCommand({
     };
   }, [apiClient, workspaceId]);
   const mutation = useMutation({
-    mutationFn: (idempotencyKey: string) =>
-      leaveWorkspace(apiClient, workspaceId, idempotencyKey),
+    mutationFn: (current: CommandKey) =>
+      leaveWorkspace(apiClient, workspaceId, current.idempotencyKey),
     onMutate: () => owner.current,
     onSuccess: (_result, _key, submissionOwner) =>
       finish({ confirmed: true, submissionOwner }),
@@ -72,16 +82,16 @@ export function useLeaveWorkspaceCommand({
     if (owner.current === submissionOwner) await onLeft(confirmed);
   }
 
-  async function send(idempotencyKey: string): Promise<boolean> {
+  async function send(current: CommandKey): Promise<boolean> {
     const submissionOwner = owner.current;
     if (submissionOwner === undefined || activeSubmission.current !== undefined)
       return false;
     const submission = Symbol('workspace-leave-submission');
     activeSubmission.current = submission;
-    key.current = idempotencyKey;
+    attempt.current = current;
     setFailure(undefined);
     try {
-      await mutation.mutateAsync(idempotencyKey);
+      await mutation.mutateAsync(current);
       return true;
     } catch (cause) {
       if (owner.current !== submissionOwner) return false;
@@ -89,9 +99,12 @@ export function useLeaveWorkspaceCommand({
         await finish({ confirmed: false, submissionOwner });
         return false;
       }
-      const uncertain = isUnconfirmedCommand(cause);
-      if (!uncertain) key.current = undefined;
-      setFailure({ message: leaveFailure(cause), uncertain });
+      const message = leaveFailure(cause);
+      if (isUnconfirmedCommand(cause)) setFailure({ message, held: current });
+      else {
+        attempt.current = undefined;
+        setFailure({ message });
+      }
       return false;
     } finally {
       if (activeSubmission.current === submission)
@@ -101,16 +114,16 @@ export function useLeaveWorkspaceCommand({
 
   return {
     pending: mutation.isPending,
-    error: failure?.message,
-    retryAvailable: failure?.uncertain ?? false,
+    error: expired ? RETRY_WINDOW_ENDED : failure?.message,
+    retryAvailable,
     start: () =>
-      (failure?.uncertain ?? false)
-        ? Promise.resolve(false)
-        : send(crypto.randomUUID()),
+      retryAvailable ? Promise.resolve(false) : send(newCommandKey()),
     retry: () =>
-      key.current === undefined ? Promise.resolve(false) : send(key.current),
+      attempt.current === undefined || !canResend(attempt.current)
+        ? Promise.resolve(false)
+        : send(attempt.current),
     dismiss: () => {
-      key.current = undefined;
+      attempt.current = undefined;
       setFailure(undefined);
     },
   };

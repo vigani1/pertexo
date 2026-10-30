@@ -1,4 +1,11 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import type { WorkspaceInvitation } from '@pertexo/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -18,19 +25,15 @@ import {
 } from '../workspaces.api';
 import { workspaceInvitationKeys } from '../workspaces.queries';
 
-type Attempt =
-  | Readonly<{
-      kind: 'create';
-      email: string;
-      role: ManagedRole;
-      idempotencyKey: string;
-    }>
+type Attempt = (
+  | Readonly<{ kind: 'create'; email: string; role: ManagedRole }>
   | Readonly<{
       kind: 'resend' | 'revoke';
       invitation: WorkspaceInvitation;
       expectedRevision: number;
-      idempotencyKey: string;
-    }>;
+    }>
+) &
+  CommandKey;
 type State =
   | Readonly<{ kind: 'idle'; message?: string }>
   | Readonly<{ kind: 'executing'; attempt: Attempt }>
@@ -46,6 +49,14 @@ export type InvitationOutcome =
 export type InvitationCommand = ReturnType<typeof useInvitationCommand>;
 
 const STOPPED: InvitationOutcome = { kind: 'stopped' };
+
+/** Idle, or holding a command whose retry window has ended. */
+function canStart(state: State): boolean {
+  return (
+    state.kind === 'idle' ||
+    (state.kind === 'uncertain' && !canResend(state.attempt))
+  );
+}
 
 function subject(attempt: Attempt): string {
   if (attempt.kind === 'create') return `the invitation to ${attempt.email}`;
@@ -95,6 +106,9 @@ export function useInvitationCommand(input: InvitationCommandInput) {
   const stateRef = useRef(state);
   const owner = useRef<symbol | undefined>(undefined);
   const inFlight = useRef(false);
+  const expired = useResendExpired(
+    state.kind === 'uncertain' ? state.attempt : undefined,
+  );
   const invitationsKey = workspaceInvitationKeys.list(
     input.userId,
     input.workspaceId,
@@ -192,36 +206,34 @@ export function useInvitationCommand(input: InvitationCommandInput) {
       : undefined;
   return {
     activeAttempt,
-    locked: state.kind !== 'idle',
+    locked:
+      state.kind === 'executing' || (state.kind === 'uncertain' && !expired),
     pending: state.kind === 'executing',
-    retryAvailable: state.kind === 'uncertain',
-    message:
-      state.kind === 'uncertain' || state.kind === 'idle'
+    retryAvailable: state.kind === 'uncertain' && !expired,
+    message: expired
+      ? RETRY_WINDOW_ENDED
+      : state.kind === 'uncertain' || state.kind === 'idle'
         ? state.message
         : undefined,
     create: (email: string, role: ManagedRole) =>
-      stateRef.current.kind === 'idle'
-        ? execute({
-            kind: 'create',
-            email,
-            role,
-            idempotencyKey: crypto.randomUUID(),
-          })
+      canStart(stateRef.current)
+        ? execute({ kind: 'create', email, role, ...newCommandKey() })
         : Promise.resolve(STOPPED),
     change: (invitation: WorkspaceInvitation, kind: 'resend' | 'revoke') =>
-      stateRef.current.kind === 'idle'
+      canStart(stateRef.current)
         ? execute({
             kind,
             invitation,
             expectedRevision: invitation.revision,
-            idempotencyKey: crypto.randomUUID(),
+            ...newCommandKey(),
           })
         : Promise.resolve(STOPPED),
-    retry: () => {
+    retry: (): Promise<InvitationOutcome> => {
       const current = stateRef.current;
-      return current.kind === 'uncertain'
-        ? execute(current.attempt)
-        : Promise.resolve(STOPPED);
+      if (current.kind !== 'uncertain') return Promise.resolve(STOPPED);
+      if (canResend(current.attempt)) return execute(current.attempt);
+      transition({ kind: 'idle', message: RETRY_WINDOW_ENDED });
+      return Promise.resolve({ kind: 'failed', message: RETRY_WINDOW_ENDED });
     },
     dismiss: () => {
       transition({ kind: 'idle' });

@@ -8,27 +8,25 @@ import {
 import type { ApiClient } from '@/lib/api/client';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
 import { ApiError, isApiError } from '@/lib/api/error';
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { commandErrorMessage } from './command-utils';
 
 type RunAttempt = Readonly<{
   intent: RunIntent;
   normalizedIntent: string;
-  idempotencyKey: string;
-  recoveryUntil: number;
-}>;
-
-// Read only during an explicit command, never during render.
-function runRecoveryClock() {
-  return Date.now();
-}
+}> &
+  CommandKey;
 
 function createRunAttempt(intent: RunIntent): RunAttempt {
   return {
     intent: { ...intent, value: structuredClone(intent.value) },
     normalizedIntent: normalizeRunIntent(intent),
-    idempotencyKey: crypto.randomUUID(),
-    recoveryUntil: runRecoveryClock() + 24 * 60 * 60 * 1000,
+    ...newCommandKey(),
   };
 }
 
@@ -101,7 +99,7 @@ export function useWorkflowRunSubmission({
     if (retryBlockedByCommand) return false;
     if (attempt.current === undefined) return false;
     if (isSessionPaused()) return false;
-    if (runRecoveryClock() >= attempt.current.recoveryUntil) {
+    if (!canResend(attempt.current)) {
       setError(
         'The 24-hour recovery window has ended. Check run history before deciding whether to start another run; retrying can no longer guarantee the original result.',
       );

@@ -1,5 +1,6 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
+import { newCommandKey } from '@/lib/api/commands/contract';
 import type { ManagedRole } from '../../../model/workspace-roles';
 import { changeWorkspaceMemberRole } from '../../workspaces.api';
 import { useMemberCommand, type MemberCommandAttempt } from './use-command';
@@ -49,7 +50,7 @@ export function useMemberRoleCommand(
         targetUserId: member.userId,
         role,
         expectedRoleRevision: member.roleRevision,
-        idempotencyKey: crypto.randomUUID(),
+        ...newCommandKey(),
       }),
   };
 }
