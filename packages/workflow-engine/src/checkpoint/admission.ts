@@ -1,6 +1,7 @@
 import { jsonStringByteLength } from '@pertexo/workflow-model';
 
 import { WorkflowEngineError } from '../errors.js';
+import { hasExactFields } from '../exact-fields.js';
 
 import { types as nodeTypes } from 'node:util';
 
@@ -26,25 +27,8 @@ export function assertExactKeys(
   required: readonly string[],
   optional: readonly string[] = [],
 ): void {
-  const allowed = new Set([...required, ...optional]);
-  const ownNames = Object.getOwnPropertyNames(value);
   assertCheckpoint(
-    ownNames.every((key) => allowed.has(key)) &&
-      required.every((key) => {
-        const descriptor = Object.getOwnPropertyDescriptor(value, key);
-        return (
-          descriptor !== undefined &&
-          descriptor.enumerable &&
-          'value' in descriptor
-        );
-      }) &&
-      optional.every((key) => {
-        const descriptor = Object.getOwnPropertyDescriptor(value, key);
-        return (
-          descriptor === undefined ||
-          (descriptor.enumerable && 'value' in descriptor)
-        );
-      }),
+    hasExactFields(value, required, optional),
     'checkpoint contains missing or unknown fields',
   );
 }
