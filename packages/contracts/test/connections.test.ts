@@ -16,6 +16,7 @@ import {
   slackChannelLookupQuerySchema,
   slackChannelLookupResponseSchema,
 } from '../src/schemas/connections.js';
+import { API_PROBLEM_MANIFEST } from '../src/errors/api-problem.js';
 
 const connection = {
   id: '00000000-0000-4000-8000-000000000001',
@@ -327,3 +328,17 @@ describe('connection public contracts', () => {
     ]);
   });
 });
+
+// web-app-01: no endpoint sends a connection 401, so the contract drops it.
+it.fails(
+  'answers 401 only for a signed-out session or a refused public webhook',
+  () => {
+    const unauthorized = Object.entries(API_PROBLEM_MANIFEST)
+      .filter(([, problem]) => problem.status === 401)
+      .map(([code]) => code);
+    expect(unauthorized.sort()).toEqual([
+      'auth.unauthenticated',
+      'webhook.authentication_failed',
+    ]);
+  },
+);
