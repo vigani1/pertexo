@@ -283,7 +283,7 @@ jobs:
             journeys: >-
               usage failure-routing error-workflows approvals variables
               notifications artifact-inputs webhook-responses code
-              organization-saml schedule form-uploads
+              organization-saml schedule form-uploads security
           - suite: live-2
             journeys: >-
               workflow-concurrency connection-health input-cases callable
@@ -349,6 +349,7 @@ jobs:
           journey() {
             case "$1" in
               usage) USAGE_BROWSER_INTEGRATION=true live test/browser/usage.integration.test.ts ;;
+              security) SECURITY_BROWSER_INTEGRATION=true live test/browser/security/real-web.integration.test.ts ;;
               organization-saml)
                 EDITOR_BROWSER_INTEGRATION=true EDITOR_BROWSER_CASE=organization-saml EDITOR_BROWSER_OWNED_FIXTURE=true \
                   live test/browser/editor/federation/saml.integration.test.ts ;;
