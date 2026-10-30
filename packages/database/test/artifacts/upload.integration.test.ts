@@ -10,6 +10,7 @@ import { registerRejectsHTTPUnsafeMediaType } from './upload/rejects-httpunsafe-
 import { registerAppliesSharedCapabilityPolicyArtifact } from './upload/applies-shared-capability-policy-artifact.cases.js';
 import { registerFinalizesExactMetadataSupportsNested } from './upload/finalizes-exact-metadata-supports-nested.cases.js';
 import { registerRejectsFinalizationAfterExpiryDuring } from './upload/rejects-finalization-after-expiry-during.cases.js';
+import { registerCancelsBlockedFinalization } from './upload/cancels-blocked-finalization.cases.js';
 beforeAll(beforeAllFixture1);
 beforeEach(beforeEachFixture2);
 afterEach(afterEachFixture3);
@@ -22,4 +23,6 @@ describe('artifact upload database authority', () => {
   registerFinalizesExactMetadataSupportsNested();
 
   registerRejectsFinalizationAfterExpiryDuring();
+
+  registerCancelsBlockedFinalization();
 });
