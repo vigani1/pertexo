@@ -362,13 +362,6 @@ export const READS_CLOSED_TODAY: readonly Read[] = [
     refusal: FORBIDDEN,
   },
   {
-    name: 'the directory sync settings',
-    as: 'owner',
-    path: (world) => `${root(world)}/sso/directory`,
-    shows: answers,
-    refusal: FORBIDDEN,
-  },
-  {
     name: 'the API tokens',
     as: 'owner',
     path: (world) => `${root(world)}/api-tokens`,

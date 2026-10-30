@@ -149,7 +149,7 @@ export function registerAcceptsReviewedFoldCommandsAt(): void {
     await expect(threads(workspaceId)).resolves.toEqual([]);
   });
 
-  it('shows threads only to eligible readers of an active workspace', async () => {
+  it('shows threads only to eligible readers of a workspace that can be browsed', async () => {
     const { workspaceId, first, members } = await seed();
     const other = await seed();
     await fail(workspaceId, first);
@@ -181,9 +181,19 @@ export function registerAcceptsReviewedFoldCommandsAt(): void {
       members.admin,
     ]);
     await expect(visible(members.admin)).resolves.toEqual([]);
+    // A suspended workspace reads but does not change (ADR 013/027).
     await asAdmin("update app.workspaces set status='suspended' where id=$1", [
       workspaceId,
     ]);
+    await expect(visible(members.owner)).resolves.toHaveLength(1);
+    await asAdmin(
+      `update app.workspaces set status='pending_deletion',
+         deletion_requested_at=clock_timestamp(),
+         deletion_requested_by=created_by, deletion_reason='Closing',
+         purge_after=clock_timestamp()+interval '30 days'
+       where id=$1`,
+      [workspaceId],
+    );
     await expect(visible(members.owner)).resolves.toEqual([]);
   });
 
