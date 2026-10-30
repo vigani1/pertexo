@@ -24,6 +24,7 @@ import {
 
 import { mockServer } from '../../support/mock-server';
 
+import { coldStart } from '../../support/fixtures/run';
 import { definitions, openByKeyboard, openEditor } from './for-each/fixture';
 
 describe('For each on the canvas', () => {
@@ -141,7 +142,12 @@ describe('building a For each body', { timeout: 30_000 }, () => {
       ).toBeVisible();
       await event.click(screen.getByRole('button', { name: 'Close issues' }));
       openByKeyboard(screen.getByLabelText('Each order, For each'));
-      const items = await screen.findByLabelText('Maximum items');
+      // The lazy inspector can take longer than one step's wait to start.
+      const items = await screen.findByLabelText(
+        'Maximum items',
+        {},
+        coldStart,
+      );
       fireEvent.change(items, { target: { value: '-' } });
       await event.click(screen.getByRole('button', { name: /\d+ issues?/u }));
       await event.click(
@@ -158,13 +164,20 @@ describe('building a For each body', { timeout: 30_000 }, () => {
         screen.getByRole('tab', { name: 'Setup', hidden: true }),
       ).toHaveAttribute('aria-selected', 'true');
       await event.click(screen.getByRole('button', { name: 'Stay' }));
-      expect(screen.getByRole('tab', { name: 'Setup' })).toHaveAttribute(
+      // Each dialog transition settles before the panel behind it is read.
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('dialog', {
+            name: 'Discard the unfinished edit?',
+          }),
+        ).not.toBeInTheDocument();
+      });
+      expect(await screen.findByRole('tab', { name: 'Setup' })).toHaveAttribute(
         'aria-selected',
         'true',
       );
-      expect(items).toBeVisible();
-      expect(items).toHaveValue('-');
-      expect(screen.getByLabelText('Label')).toHaveValue('Each order');
+      expect(await screen.findByLabelText('Maximum items')).toHaveValue('-');
+      expect(await screen.findByLabelText('Label')).toHaveValue('Each order');
       expect(saved.graph).toBeUndefined();
       await event.click(screen.getByRole('button', { name: /\d+ issues?/u }));
       await event.click(
@@ -177,7 +190,7 @@ describe('building a For each body', { timeout: 30_000 }, () => {
       );
       await waitFor(() => {
         expect(screen.getByLabelText(control)).toHaveFocus();
-      });
+      }, coldStart);
       expect(screen.getByLabelText(control)).toHaveValue(value);
     },
   );
