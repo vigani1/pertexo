@@ -24,8 +24,23 @@ const run = {
   status: 'completed',
   conclusion: 'success',
 };
+// The job that makes the final image tags, whatever CI calls it, so renaming it in
+// ci.yml without updating the verifier fails here rather than on the first deploy.
+const publisher = () => {
+  const { jobs } = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
+  const publishing = Object.entries(jobs).filter(
+    ([, definition]) => definition.permissions?.packages === 'write',
+  );
+  const [name, definition] = publishing.find(
+    ([candidate]) =>
+      !publishing.some(([, other]) =>
+        [other.needs ?? []].flat().includes(candidate),
+      ),
+  );
+  return definition.name ?? name;
+};
 const job = {
-  name: 'publish-arm-images',
+  name: publisher(),
   head_sha: commit,
   status: 'completed',
   conclusion: 'success',

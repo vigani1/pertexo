@@ -495,6 +495,36 @@ jobs:
           done
           docker logout ghcr.io
 
+  # The operator's whole life with the single-server stack, through the real scripts
+  # and a real stack on each architecture we publish. Too slow for every PR, and an
+  # image never waits for it: it tells us about main soon enough to fix forward.
+  self-host-drill:
+    name: self-host-drill (${{ matrix.runner }})
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Use the Docker Hub mirror
+        uses: ./.github/actions/docker-mirror
+      - name: Build the images once
+        run: node infrastructure/single-server/test/drill/build-images.mjs
+      - name: Web tier
+        run: node --test infrastructure/single-server/test/drill/proxy.test.mjs
+      - name: Real deploy, backup and restore
+        run: node --test infrastructure/single-server/test/drill/stack.test.mjs
+      - name: Quick try
+        run:
+          node --test
+          infrastructure/single-server/test/drill/quickstart.test.mjs
+
   security:
     needs: changes
     if: needs.changes.outputs.code == 'true'
