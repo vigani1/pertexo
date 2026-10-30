@@ -194,20 +194,16 @@ export function registerKeepsReviewedMigrationsIdempotentAfter(): void {
       async () => barrier,
       { signal: controller.signal },
     );
-    const failedBeforeCallback = concurrentDatabase.withWorkspace(
-      'not-a-workspace-id',
-      () => Promise.reject(new Error('callback must not run')),
+    const failedParticipant = concurrentDatabase.withWorkspace(workspaceA, () =>
+      Promise.reject(new Error('participant failed')),
     );
 
     try {
-      await expect(failedBeforeCallback).rejects.toThrow();
+      await expect(failedParticipant).rejects.toThrow('participant failed');
     } finally {
       controller.abort();
       releaseBarrier();
-      const outcomes = await Promise.allSettled([
-        waiting,
-        failedBeforeCallback,
-      ]);
+      const outcomes = await Promise.allSettled([waiting, failedParticipant]);
       expect(outcomes.every(({ status }) => status === 'rejected')).toBe(true);
       await concurrentDatabase.close();
     }

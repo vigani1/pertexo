@@ -62,7 +62,9 @@ describe('transport persistence input boundary', () => {
         payload: {},
         payloadChecksum: 'not-a-checksum',
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(
+      'outbox payload checksum does not match its canonical JSON',
+    );
   });
 
   it('canonicalizes object keys when hashing a payload', () => {

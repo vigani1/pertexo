@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { WorkspaceAccessDeniedError } from '../../../../src/tenant-access/errors.js';
 import { useIdentityCommandDatabase } from '../../command.support.js';
 import {
   createDirectoryCredential,
@@ -102,7 +103,7 @@ describe('directory ownership and command receipts', () => {
         credentialId: first.credential.id,
         idempotencyKey: randomUUID(),
       }),
-    ).rejects.toBeDefined();
+    ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
     await revokeDirectoryCredential(f.pool, {
       ...f.scope,
       actorId: replacement.id,

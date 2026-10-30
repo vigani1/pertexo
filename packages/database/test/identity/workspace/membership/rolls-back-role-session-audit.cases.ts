@@ -46,7 +46,7 @@ export function registerRollsBackRoleSessionAudit(): void {
         idempotencyKey,
         requestId: 'x'.repeat(129),
       }),
-    ).rejects.toBeDefined();
+    ).rejects.toMatchObject({ code: '22001' });
     const unchanged = await identityDatabase.listWorkspaceMembers(
       commandWorkspace.id,
       ownerUserId,

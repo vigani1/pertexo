@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
+import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
 import { useIdentityCommandDatabase } from '../command.support.js';
 const db = useIdentityCommandDatabase('oidc_manage');
 const key = () => randomUUID();
@@ -71,7 +72,7 @@ describe('organization federation management', () => {
     ).resolves.toHaveProperty('canManage', false);
     await expect(
       db.federation().settings({ ...scope, actorId: builder.id }),
-    ).rejects.toBeDefined();
+    ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
     const sealSecret = vi.fn(() => ({ ciphertext: 'never' }));
     await expect(
       db.federation().createProvider({

@@ -158,7 +158,7 @@ it('distinguishes the fixed empty snapshot from a missing historical revision', 
         ).toEqual({});
         await expect(
           readVariableSetValues(drizzle(client), workspaceId, 999_999),
-        ).rejects.toThrow();
+        ).rejects.toThrow('Workspace variable revision is missing');
       },
     );
   } finally {

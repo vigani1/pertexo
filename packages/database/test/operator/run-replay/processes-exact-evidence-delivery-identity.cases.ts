@@ -21,7 +21,7 @@ export function registerProcessesExactEvidenceDeliveryIdentity(): void {
         ...fixture.input,
         signal: {} as AbortSignal,
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(TypeError);
     expect(mocks.consumeInboxMessage).toHaveBeenCalledOnce();
   });
 

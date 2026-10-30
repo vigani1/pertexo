@@ -37,7 +37,7 @@ export function registerDistinguishesBusyDueBoundaryTerminal(): void {
         recoverySeconds: 30,
         maxAttempts: 3,
       });
-      await expect(claim).rejects.toThrow();
+      await expect(claim).rejects.toThrow('Intent credential pin is missing');
       await expect(claim).rejects.not.toBeInstanceOf(
         FailureNotificationStateError,
       );

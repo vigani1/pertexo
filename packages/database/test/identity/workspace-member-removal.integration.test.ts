@@ -202,7 +202,7 @@ describe('workspace member removal (ADR 042)', () => {
     };
     await expect(
       database.identity().removeWorkspaceMember(failing),
-    ).rejects.toBeDefined();
+    ).rejects.toMatchObject({ code: '22001' });
     await expect(membership(workspaceId, target.id)).resolves.toMatchObject({
       status: 'active',
       role_revision: 1,

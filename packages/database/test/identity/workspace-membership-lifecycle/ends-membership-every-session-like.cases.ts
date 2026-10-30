@@ -78,7 +78,7 @@ export function registerEndsMembershipEverySessionLike(): void {
     };
     await expect(
       database.identity().leaveWorkspace(failing),
-    ).rejects.toBeDefined();
+    ).rejects.toMatchObject({ code: '22001' });
     await expect(membership(workspaceId, leaver)).resolves.toMatchObject({
       status: 'active',
       role_revision: 1,

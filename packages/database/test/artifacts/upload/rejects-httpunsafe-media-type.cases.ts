@@ -32,7 +32,10 @@ export function registerRejectsHTTPUnsafeMediaType(): void {
           sha256: 'a'.repeat(64),
           workspaceId,
         }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({
+        code: '23514',
+        constraint: 'artifacts_media_type_format',
+      });
       await expect(readCapacity()).resolves.toEqual({
         chargedBytes: 0,
         chargedCount: 0,
