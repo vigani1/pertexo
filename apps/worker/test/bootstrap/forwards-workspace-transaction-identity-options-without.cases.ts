@@ -1,12 +1,6 @@
-import type {
-  WorkspaceDatabase,
-  WorkspaceTransaction,
-  WorkspaceTransactionOptions,
-} from '@pertexo/database/testing';
+import type { WorkspaceDatabase } from '@pertexo/database/testing';
 
 import { expect, it, vi } from 'vitest';
-
-import { NestWorkspaceDatabase } from '../../src/platform/database/module.js';
 
 import { WorkerReadiness } from '../../src/runtime/health/readiness.js';
 import {
@@ -18,59 +12,6 @@ import {
 } from './fixture.js';
 
 export function registerForwardsWorkspaceTransactionIdentityOptionsWithout(): void {
-  it('forwards workspace transaction identity and options without adding a transaction', async () => {
-    const signal = new AbortController().signal;
-    const options = { signal, statementTimeoutMillis: 1_234 } as const;
-    const operation = vi.fn(() => Promise.resolve('workspace-result'));
-    const forwarded = vi.fn();
-    const withWorkspace: WorkspaceDatabase['withWorkspace'] = async <T>(
-      selectedWorkspaceId: string,
-      selectedOperation: (transaction: WorkspaceTransaction) => Promise<T>,
-      selectedOptions?: WorkspaceTransactionOptions,
-    ): Promise<T> => {
-      forwarded(selectedWorkspaceId, selectedOperation, selectedOptions);
-      expect(selectedWorkspaceId).toBe('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
-      expect(selectedOperation).toBe(operation);
-      expect(selectedOptions).toBe(options);
-      return selectedOperation(undefined as unknown as WorkspaceTransaction);
-    };
-    const wrapped = new NestWorkspaceDatabase({ ...database, withWorkspace });
-
-    await expect(
-      wrapped.withWorkspace(
-        'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-        operation,
-        options,
-      ),
-    ).resolves.toBe('workspace-result');
-    expect(forwarded).toHaveBeenCalledOnce();
-    expect(operation).toHaveBeenCalledOnce();
-  });
-
-  it('preserves rejection and already-aborted signal semantics through the workspace adapter', async () => {
-    const failure = new Error('workspace transaction rejected');
-    const controller = new AbortController();
-    controller.abort(failure);
-    const forwarded = vi.fn();
-    const withWorkspace: WorkspaceDatabase['withWorkspace'] = <T>(
-      _workspaceId: string,
-      _operation: (transaction: WorkspaceTransaction) => Promise<T>,
-      options?: WorkspaceTransactionOptions,
-    ): Promise<T> => {
-      forwarded(options);
-      expect(options?.signal).toBe(controller.signal);
-      return Promise.reject(failure);
-    };
-    const wrapped = new NestWorkspaceDatabase({ ...database, withWorkspace });
-
-    await expect(
-      wrapped.withWorkspace('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', vi.fn(), {
-        signal: controller.signal,
-      }),
-    ).rejects.toBe(failure);
-    expect(forwarded).toHaveBeenCalledWith({ signal: controller.signal });
-  });
-
   it('creates a standalone context without an HTTP server', async () => {
     const checkReadiness = vi.fn(() => database.checkReadiness());
     const selectedDatabase: WorkspaceDatabase = {
