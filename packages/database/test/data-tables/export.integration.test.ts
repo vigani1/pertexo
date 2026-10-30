@@ -119,11 +119,10 @@ it('keeps a one-connection API pool available while several export consumers are
     });
     const definition = list.tables.find((entry) => entry.id === table.id);
     if (definition === undefined) throw new Error('Missing table');
-    await store.write({
+    const written = await store.write({
       ...scope(),
       tableId: table.id,
       idempotencyKey: randomUUID(),
-      signal: AbortSignal.timeout(3000),
       command: {
         operation: 'update',
         table: definition.name,
@@ -135,11 +134,14 @@ it('keeps a one-connection API pool available while several export consumers are
         },
       },
     });
+    expect(written.affected).toBe(600);
   } finally {
     clearTimeout(readyTimeout);
     release.resolve(undefined);
-    await Promise.all(downloads);
+    // Settle without throwing so a failure above is the one reported.
+    await Promise.allSettled(downloads);
   }
+  await Promise.all(downloads);
 });
 
 it('bounds wide-row batches by bytes while fetching more than sixteen rows', async () => {
