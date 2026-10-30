@@ -78,9 +78,11 @@ export interface DataTablesStore {
       Readonly<{
         tableId: string;
         command: Exclude<DataTableCommand, { operation: 'find' }>;
-        rowId?: string;
-        expectedRevision?: number;
-      }>,
+      }> &
+      (
+        | Readonly<{ rowId?: undefined; expectedRevision?: undefined }>
+        | Readonly<{ rowId: string; expectedRevision: number }>
+      ),
   ): Promise<DataTableWriteReceipt>;
   importRows(
     input: DataTableScope &

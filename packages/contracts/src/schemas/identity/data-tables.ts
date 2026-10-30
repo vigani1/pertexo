@@ -53,18 +53,16 @@ export const dataTableRemovedSchema = z
 export const dataTableRemoveSchema = z
   .object({ expectedRevision: z.number().int().positive() })
   .strict();
-export const dataTableWriteSchema = z
-  .object({
-    command: dataTableWriteCommandSchema,
-    rowId: z.uuid().optional(),
-    expectedRevision: z.number().int().positive().optional(),
-  })
-  .strict()
-  .refine(
-    (input) =>
-      (input.rowId === undefined) === (input.expectedRevision === undefined),
-    'Row edits need the current revision',
-  );
+export const dataTableWriteSchema = z.union([
+  z.object({ command: dataTableWriteCommandSchema }).strict(),
+  z
+    .object({
+      command: dataTableWriteCommandSchema,
+      rowId: z.uuid(),
+      expectedRevision: z.number().int().positive(),
+    })
+    .strict(),
+]);
 export const dataTableImportedSchema = z
   .object({
     affected: z.number().int().nonnegative().max(DATA_TABLE_LIMITS.batchRows),

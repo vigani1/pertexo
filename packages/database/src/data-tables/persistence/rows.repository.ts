@@ -53,7 +53,7 @@ export function writeTableRows(
               ? undefined
               : {
                   rowId: input.rowId,
-                  expectedRevision: input.expectedRevision ?? 0,
+                  expectedRevision: input.expectedRevision,
                 },
         });
         return {
