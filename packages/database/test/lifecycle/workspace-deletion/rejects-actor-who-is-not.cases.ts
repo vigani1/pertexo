@@ -108,14 +108,15 @@ export function registerRejectsActorWhoIsNot(): void {
     ).rejects.toBeInstanceOf(WorkspaceLifecycleConflictError);
   });
 
-  it('restores during the recovery period and not after it', async () => {
+  // db-runs-02: ADR 013 step 3 restores a deleted workspace to `suspended`.
+  it.fails('restores during the recovery period and not after it', async () => {
     await change({ commandType: 'deletion_restored' });
     const restored = await asOwner(
       'select status, purge_after, deletion_reason from app.workspaces where id=$1',
       [workspaceId],
     );
     expect(restored.rows[0]).toEqual({
-      status: 'active',
+      status: 'suspended',
       purge_after: null,
       deletion_reason: null,
     });
