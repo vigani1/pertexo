@@ -37,7 +37,31 @@ describe('paged CSV parser bounds and cleanup', () => {
     ).resolves.toHaveLength(1);
     await expect(
       collect(Buffer.from('a'.repeat(65536) + '\nx\n')),
-    ).rejects.toMatchObject({ possiblyDispatched: false });
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      possiblyDispatched: false,
+      safeErrorCode: 'file.pages_record',
+    });
+  });
+  it('refuses one quoted field over a page before reading the rest of the file', async () => {
+    let supplied = 0;
+    async function* source() {
+      yield await Promise.resolve(Buffer.from('name\n"'));
+      for (let i = 0; i < 32; i++) {
+        supplied += 65_536;
+        yield Buffer.alloc(65_536, 'a');
+      }
+      yield Buffer.from('"\n');
+    }
+    const rows = readCsvRecords(source(), config, signal, {
+      maxRecordSize: FILE_PAGE_LIMITS.bytes,
+      accept: encodeFilePageRecord,
+    });
+    await expect(rows.next()).rejects.toMatchObject({
+      safeErrorCode: 'execution.file_input',
+      diagnostic: { reason: 'value_size' },
+    });
+    expect(supplied).toBeLessThan(4 * FILE_PAGE_LIMITS.bytes);
   });
   it('closes the source and makes bounded progress when the consumer stops after one row', async () => {
     let supplied = 0,
