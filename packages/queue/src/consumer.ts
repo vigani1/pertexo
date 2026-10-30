@@ -29,7 +29,6 @@ export {
   QueueJobTimeoutError,
   QueueConsumerDrainError,
 } from './consumption/errors.js';
-export { BullMqQueueConsumer } from './consumption/runtime.js';
 /**
  * Explicit policy seam for a handler that has already made the authoritative
  * PostgreSQL decision that this delivery must not be retried by BullMQ.

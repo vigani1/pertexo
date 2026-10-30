@@ -8,6 +8,7 @@ export function bounded<T>(
     const timeout = setTimeout(() => {
       resolve(TIMED_OUT);
     }, timeoutMs);
+    timeout.unref();
     operation.then(
       (value) => {
         clearTimeout(timeout);
