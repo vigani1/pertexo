@@ -142,9 +142,7 @@ describe('current publication comparison', () => {
     expect(unpublished.result?.currentPublication).toBeNull();
     expect(unpublished.compiler).not.toHaveBeenCalled();
   });
-
-  // audit-1030 follow-up 2: a draft the compiler refuses no longer opens.
-  it.fails('reads a draft the compiler refuses as not matching', async () => {
+  it('reads a draft the compiler refuses as not matching', async () => {
     const opened = await compare(valid, checksum, {
       compile: () => {
         throw new WorkflowEngineError(

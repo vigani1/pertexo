@@ -20,6 +20,7 @@ import {
 import { admitWorkflowAuthoring } from '../admission.queries.js';
 
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
+import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { canReadWorkflow } from './authority.js';
 import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';
 
@@ -108,12 +109,7 @@ export function validateAuthoringDraft(
               matchesDraft:
                 validation.ok &&
                 draft.compatibility.compatible &&
-                variant.executableCompiler(
-                  parseWorkflowGraphForPublish(
-                    draft.graphJson,
-                    variant.definitionCatalog,
-                  ),
-                ).checksum === live.checksum &&
+                compilesToChecksum(variant, draft.graphJson, live.checksum) &&
                 sameWorkflowNotes(
                   draft.graphJson,
                   parseWorkflowGraphDraft(live.graphJson),
@@ -123,6 +119,34 @@ export function validateAuthoringDraft(
     },
     options.signal,
   );
+}
+
+/**
+ * The draft's schemas accept setups the compiler refuses. Publishing reports
+ * those; here it only means the draft can't be what is published.
+ */
+function compilesToChecksum(
+  {
+    executableCompiler,
+    definitionCatalog,
+  }: WorkflowAuthoringReadContext['catalogs'],
+  graphJson: unknown,
+  checksum: string,
+): boolean {
+  try {
+    return (
+      executableCompiler(
+        parseWorkflowGraphForPublish(graphJson, definitionCatalog),
+      ).checksum === checksum
+    );
+  } catch (error) {
+    if (
+      error instanceof WorkflowEngineError &&
+      error.code === 'executable_invalid'
+    )
+      return false;
+    throw error;
+  }
 }
 
 export function readAuthoringDraft(
