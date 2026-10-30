@@ -23,9 +23,9 @@ export function useHttpBodyDraft(
     equals: (left, right) => JSON.stringify(left) === JSON.stringify(right),
     parse: (text) => {
       const result = validateBodyDraft(text, graph, form.nodeId);
-      return result.value === undefined
-        ? { ok: false, error: result.error ?? 'Finish the form parts.' }
-        : { ok: true, value: result.value };
+      return result.ok
+        ? { ok: true, value: result.value }
+        : { ok: false, error: result.error };
     },
     commit: (next) => {
       form.commit((current) => applyBodyValue(next, current), coalesce.current);

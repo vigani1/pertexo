@@ -43,8 +43,7 @@ describe('email attachments in the inspector', () => {
       graph,
       'email',
     );
-    expect(checked.errors).toEqual({});
-    if (checked.mapping?.kind !== 'expression')
+    if (!checked.ok || checked.mapping?.kind !== 'expression')
       throw new Error('Expected a list expression');
     const value: unknown = await jsonata(checked.mapping.expression).evaluate({
       nodeOutputs: { create: { file: file(10) } },
@@ -90,6 +89,7 @@ describe('email attachments in the inspector', () => {
       graph,
       'email',
     );
+    if (!checked.ok) throw new Error('Expected a mapping');
     expect(checked.mapping).toEqual({
       kind: 'literal',
       value: [
@@ -104,7 +104,7 @@ describe('email attachments in the inspector', () => {
   it('removes the mapping when no files are left, as for an old email step', () => {
     expect(
       checkAttachments({ mode: 'files', rows: [] }, graph, 'email'),
-    ).toEqual({ mapping: undefined, errors: {} });
+    ).toEqual({ ok: true, mapping: undefined });
     expect(attachmentsDraft(undefined)).toEqual({ mode: 'files', rows: [] });
   });
 
@@ -116,7 +116,10 @@ describe('email attachments in the inspector', () => {
     } as const;
     const draft = attachmentsDraft(whole);
     expect(draft.mode).toBe('list');
-    expect(checkAttachments(draft, graph, 'email').mapping).toEqual(whole);
+    expect(checkAttachments(draft, graph, 'email')).toEqual({
+      ok: true,
+      mapping: whole,
+    });
     expect(
       attachmentsDraft({
         kind: 'expression',
@@ -133,10 +136,12 @@ describe('email attachments in the inspector', () => {
       graph,
       'email',
     );
-    expect(checked.mapping).toBeUndefined();
-    expect(checked.errors[empty.id]).toBe(
-      'Choose a file from an earlier step or upload one.',
-    );
+    expect(checked).toEqual({
+      ok: false,
+      rowErrors: {
+        [empty.id]: 'Choose a file from an earlier step or upload one.',
+      },
+    });
   });
 
   it('refuses an eleventh file', () => {
@@ -144,12 +149,12 @@ describe('email attachments in the inspector', () => {
       newAttachment({ kind: 'literal', value: file(3) }),
     );
     expect(
-      checkAttachments({ mode: 'files', rows: eleven }, graph, 'email').error,
-    ).toBe('An email can carry at most 10 files.');
+      checkAttachments({ mode: 'files', rows: eleven }, graph, 'email'),
+    ).toEqual({ ok: false, error: 'An email can carry at most 10 files.' });
     expect(
       checkAttachments({ mode: 'files', rows: eleven.slice(1) }, graph, 'email')
-        .mapping,
-    ).toBeDefined();
+        .ok,
+    ).toBe(true);
   });
 
   it('measures known files after base64 and counts mapped ones for later', () => {
