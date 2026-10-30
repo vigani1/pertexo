@@ -19,6 +19,19 @@
   one stored format, one validation of each input at the boundary.
 - **Lean, not minimal:** complete, correct behavior without speculative
   machinery.
+- **Illegal states can't be written:** use tagged unions, not optional fields
+  that must agree with each other (a failed result always carries its error).
+- **No hidden coupling:** when two places must agree (a path shape, a constant,
+  an order), share the definition or let a check or test enforce it.
+- **A wrapper earns its place:** it hides a detail, adds a rule or is a
+  deliberate seam for an outside service. A wrapper that only forwards or
+  renames goes; call the thing directly.
+- **One change, one place:** if a product change has to touch many unrelated
+  files, move the boundary instead of editing everywhere.
+- **One reason to change per file.** The 400-line lint limit is a prompt to
+  look, not the rule itself.
+- **Keep errors specific:** don't swallow or blur them into a generic failure;
+  turn them into safe messages once, at the boundary.
 - **Rules live in TypeScript; the database stores.** PostgreSQL keeps tables,
   constraints, workspace isolation, transactions, queue claiming, capacity
   counters and the checkpoint version check.
