@@ -106,7 +106,7 @@ it('resumes the reference check where its continuation left off', async () => {
 
 // api-11: continuations follow the shared opaque-cursor rule, which accepts
 // only the one canonical encoding of a cursor.
-it.fails('refuses a continuation that is not canonically encoded', async () => {
+it('refuses a continuation that is not canonically encoded', async () => {
   const { service, store } = fixture();
   store.usage.mockResolvedValueOnce({
     items: [],
