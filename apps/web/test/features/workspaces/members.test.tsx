@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 
 import { HttpResponse, http } from 'msw';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   api,
@@ -137,6 +137,46 @@ describe('team: invitations', () => {
     });
     expect(commandRequests[0]?.key).toBeTruthy();
   });
+  // web-app-04: the invitation command resends its held key after any delay.
+  it.fails(
+    'refuses to resend an uncertain invitation once its 24-hour receipt window has passed',
+    async () => {
+      const commandRequests: (string | null)[] = [];
+      mockServer.use(
+        ...identityHandlers(ownerWorkspace),
+        membersOf(() => [member(firstMemberId, 'Ada Operator', 'viewer')]),
+        noInvitations(),
+        http.post(`${api}/invitations`, ({ request }) => {
+          commandRequests.push(request.headers.get('idempotency-key'));
+          return HttpResponse.error();
+        }),
+      );
+      vi.useFakeTimers({ toFake: ['Date'] });
+      try {
+        const browser = userEvent.setup();
+        renderApp(`/w/${workspaceId}/team`);
+        await browser.click(
+          await screen.findByRole('button', { name: 'Invite people' }),
+        );
+        await browser.type(
+          lens().getByLabelText('Email addresses'),
+          'late@example.test',
+        );
+        await browser.click(
+          lens().getByRole('button', { name: 'Send invitation' }),
+        );
+        await lens().findByRole('alert');
+        // The server forgets an idempotency key after 24 hours.
+        vi.setSystemTime(Date.now() + 24 * 60 * 60 * 1000 + 60_000);
+        const retry = lens().queryByRole('button', { name: 'Try again' });
+        if (retry !== null) await browser.click(retry);
+        expect(await screen.findByText(/24-hour/u)).toBeVisible();
+        expect(commandRequests).toHaveLength(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
   it('sends several invitations one by one and reports each address', async () => {
     const sent: unknown[] = [];
     mockServer.use(
