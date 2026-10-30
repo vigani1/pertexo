@@ -40,6 +40,7 @@ export const formUploadsCase =
 
 export const controlledHttp =
   process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http' ||
+  process.env.EDITOR_BROWSER_CASE === 'product' ||
   process.env.EDITOR_BROWSER_CASE === 'failure-routing' ||
   artifactInputs ||
   paginationCase;

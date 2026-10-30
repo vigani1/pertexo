@@ -88,4 +88,6 @@ const editorOutcomeChecks: Record<
   'email-attachments': verifyEditorEmailAttachmentsOutcome,
   'run-recovery': verifyEditorRunRecoveryOutcome,
   'nested-conflict': verifyEditorNestedOutcome,
+  // These specs assert what the browser and its webhook senders see.
+  product: () => undefined,
 };

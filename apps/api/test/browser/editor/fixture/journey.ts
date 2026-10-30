@@ -44,13 +44,22 @@ export function registerEditorBrowserJourney(
   fixture: ReturnType<typeof createEditorBrowserFixture>,
 ): void {
   const { api, identityProvider } = fixture;
-  it(`executes the owned real-browser scenario: ${scenario}`, async () => {
-    const apiOrigin = await prepareEditorPrerequisites(api);
-    const context = { fixture, api, apiOrigin, identityProvider };
-    const mailServer = createEditorControlServer(context);
-    await runEditorBrowserJourney(context, mailServer);
-    await verifyEditorBrowserOutcome(context);
-  }, 180_000);
+  it(
+    `executes the owned real-browser scenario: ${scenario}`,
+    async () => {
+      const apiOrigin = await prepareEditorPrerequisites(api);
+      const context = { fixture, api, apiOrigin, identityProvider };
+      const mailServer = createEditorControlServer(context);
+      await runEditorBrowserJourney(context, mailServer);
+      await verifyEditorBrowserOutcome(context);
+    },
+    journeyTimeoutMillis(),
+  );
+}
+
+function journeyTimeoutMillis() {
+  // The product journey is several specs, each with its own sign-up.
+  return scenario === 'product' ? 480_000 : 180_000;
 }
 
 async function prepareEditorPrerequisites(api: EditorBrowserApi) {
