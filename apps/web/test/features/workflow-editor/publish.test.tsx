@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
 
@@ -22,6 +22,7 @@ import {
   etagB,
   manualDefinition,
   mappingDefinition,
+  numericDefinition,
   runDetailHandlers,
   runId,
   runSummary,
@@ -295,5 +296,37 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     expect(within(lens).getByText('Added:')).toBeInTheDocument();
     expect(within(lens).getByText('Links between steps')).toBeVisible();
     expect(within(lens).getByText('1 added, 0 removed')).toBeVisible();
+  });
+  it('refuses to publish while a step has an unfinished edit, without asking the server', async () => {
+    let publishes = 0;
+    mockServer.use(
+      ...editorHandlers(() => undefined, {
+        graph: graphWithNumericConfig({ count: 4, requiredCount: 1 }),
+        definitions: [numericDefinition],
+      }),
+    );
+    mockServer.use(
+      validHandler(),
+      http.post(`${workflowApi}/publish`, () => {
+        publishes += 1;
+        return HttpResponse.json({}, { status: 500 });
+      }),
+    );
+    renderApp(editorPath);
+    const event = userEvent.setup();
+    fireEvent.click((await findCanvas()).getByText('Numbers'));
+    const count = await screen.findByLabelText('Count');
+    fireEvent.change(count, { target: { value: '-' } });
+    fireEvent.blur(count);
+    expect(screen.getByText('Count must be a number.')).toBeVisible();
+    await event.click(screen.getByRole('button', { name: 'Publish v1' }));
+    const lens = await screen.findByRole('dialog', { name: /Publish/u });
+    await event.click(within(lens).getByRole('button', { name: 'Publish v1' }));
+    expect(
+      await screen.findByText(
+        'Finish or discard the unfinished edit in the step panel first.',
+      ),
+    ).toBeVisible();
+    expect(publishes).toBe(0);
   });
 });
