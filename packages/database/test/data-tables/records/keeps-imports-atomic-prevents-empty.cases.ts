@@ -1,7 +1,6 @@
 import { withTenantScopedReadClient } from '../../../src/tenant-access/transactions.js';
 import { randomUUID } from 'node:crypto';
 import { it, expect } from 'vitest';
-import { DataTableError } from '@pertexo/node-sdk';
 
 import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
 import {
@@ -140,7 +139,7 @@ export function registerKeepsImportsAtomicPreventsEmpty(): void {
     ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
   });
 
-  it('enforces race-safe row and byte quotas and refuses limits below current use', async () => {
+  it('enforces a race-safe row quota and refuses each limit below current use', async () => {
     const isolated = await identity.createWorkspaceWithOwner({
       id: randomUUID(),
       name: 'Table quotas',
@@ -182,21 +181,53 @@ export function registerKeepsImportsAtomicPreventsEmpty(): void {
       results.filter((result) => result.status === 'fulfilled'),
     ).toHaveLength(1);
     expect(
-      results.filter((result) => result.status === 'rejected'),
-    ).toHaveLength(1);
+      results.flatMap((result) =>
+        result.status === 'rejected' ? [result.reason as unknown] : [],
+      ),
+    ).toEqual([expect.objectContaining({ code: 'quota_exceeded' })]);
     const list = await store.list(s);
     expect(list.tables[0]?.rowCount).toBe(1);
     expect(list.quotas.storedBytes).toBeGreaterThan(0);
+    const inUse = {
+      tableLimit: 2,
+      columnLimit: columns.length,
+      rowLimit: 2,
+      byteLimit: 65536,
+    };
+    await store.configure({ ...s, idempotencyKey: randomUUID(), ...inUse });
+    await store.write({
+      ...s,
+      tableId: f.id,
+      idempotencyKey: randomUUID(),
+      command: {
+        operation: 'insert',
+        table: 'Bounded',
+        values: { key: 'c', amount: 1 },
+      },
+    });
+    await store.create({
+      ...s,
+      idempotencyKey: randomUUID(),
+      name: 'Second',
+      columns,
+    });
+    for (const below of [
+      { tableLimit: 1 },
+      { columnLimit: columns.length - 1 },
+      { rowLimit: 1 },
+    ])
+      await expect(
+        store.configure({
+          ...s,
+          idempotencyKey: randomUUID(),
+          ...inUse,
+          ...below,
+        }),
+        JSON.stringify(below),
+      ).rejects.toMatchObject({ code: 'quota_exceeded' });
     await expect(
-      store.configure({
-        ...s,
-        idempotencyKey: randomUUID(),
-        tableLimit: 2,
-        columnLimit: 2,
-        rowLimit: 1,
-        byteLimit: 65536,
-      }),
-    ).rejects.toBeInstanceOf(DataTableError);
+      store.configure({ ...s, idempotencyKey: randomUUID(), ...inUse }),
+    ).resolves.toMatchObject(inUse);
     await purgeTestWorkspace(isolated.id);
     const retained = await queryAsOwner(
       'select id from app.workspace_data_tables where workspace_id=$1',
