@@ -109,7 +109,8 @@ async function send(
         if (isFinished()) return;
         if (config.auth === undefined) void dispatch();
         else
-          connection.login(config.auth, (error) => {
+          // Nodemailer writes onto what it's given, and the parsed settings are frozen.
+          connection.login({ ...config.auth }, (error) => {
             if (error) failure(error);
             else void dispatch();
           });
