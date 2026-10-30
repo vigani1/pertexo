@@ -1,3 +1,4 @@
+import { withTenantScopedReadClient } from '../../tenant-access/transactions.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts } from '../../schema/runs/execution.js';
@@ -13,10 +14,6 @@ import type {
   NodeAttemptRunStore,
 } from '../contract.js';
 import {
-  assertNotAborted,
-  withWorkspaceReadClient,
-} from '../transactions.repository.js';
-import {
   parseStoredExecutionValue,
   storedExecutionValuesEqual,
 } from '../../platform/stored-execution-value.js';
@@ -25,11 +22,9 @@ export async function readNodeAttemptLoopDeclaration(
   pool: Pool,
   input: Parameters<NodeAttemptRunStore['readLoopDeclaration']>[0],
 ): Promise<NodeAttemptLoopDeclaration | undefined> {
-  assertNotAborted(input.signal);
-  return withWorkspaceReadClient(
+  return withTenantScopedReadClient(
     pool,
-    input.lease.workspaceId,
-    input.signal,
+    { workspaceId: input.lease.workspaceId },
     async (client) => {
       const declaration = await drizzle(client)
         .select({
@@ -69,6 +64,7 @@ export async function readNodeAttemptLoopDeclaration(
         output: stored.value,
       });
     },
+    { signal: input.signal },
   );
 }
 
@@ -77,12 +73,10 @@ export async function readNodeAttemptOutputs(
   pool: Pool,
   input: Parameters<NodeAttemptRunStore['readAttemptOutputs']>[0],
 ): Promise<readonly NodeAttemptStoredOutput[]> {
-  assertNotAborted(input.signal);
   if (input.attemptIds.length === 0) return Object.freeze([]);
-  return withWorkspaceReadClient(
+  return withTenantScopedReadClient(
     pool,
-    input.lease.workspaceId,
-    input.signal,
+    { workspaceId: input.lease.workspaceId },
     async (client) => {
       const rows = await drizzle(client)
         .select({ attemptId: nodeAttempts.id, output: nodeAttempts.outputRef })
@@ -117,6 +111,7 @@ export async function readNodeAttemptOutputs(
         }),
       );
     },
+    { signal: input.signal },
   );
 }
 
@@ -124,11 +119,9 @@ export async function listNodeRunOutcomes(
   pool: Pool,
   input: Parameters<NodeAttemptRunStore['listNodeOutcomes']>[0],
 ): Promise<readonly NodeRunOutcome[]> {
-  assertNotAborted(input.signal);
-  return withWorkspaceReadClient(
+  return withTenantScopedReadClient(
     pool,
-    input.lease.workspaceId,
-    input.signal,
+    { workspaceId: input.lease.workspaceId },
     async (client) => {
       const rows = await drizzle(client)
         .select({
@@ -156,6 +149,7 @@ export async function listNodeRunOutcomes(
         ),
       );
     },
+    { signal: input.signal },
   );
 }
 
@@ -164,13 +158,11 @@ export async function readNodeRunOutputs(
   pool: Pool,
   input: Parameters<NodeAttemptRunStore['readNodeOutputs']>[0],
 ): Promise<readonly NodeRunStoredOutput[]> {
-  assertNotAborted(input.signal);
   const keys = [...new Set(input.invocationKeys)];
   if (keys.length === 0) return Object.freeze([]);
-  return withWorkspaceReadClient(
+  return withTenantScopedReadClient(
     pool,
-    input.lease.workspaceId,
-    input.signal,
+    { workspaceId: input.lease.workspaceId },
     async (client) => {
       const rows = await drizzle(client)
         .select({
@@ -200,5 +192,6 @@ export async function readNodeRunOutputs(
         }),
       );
     },
+    { signal: input.signal },
   );
 }

@@ -1,3 +1,4 @@
+import { withTenantScopedClient } from '../../../tenant-access/transactions.js';
 import { and, eq, exists, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -14,7 +15,6 @@ import {
   type DatabaseRuntime,
 } from '../../../platform/pool/runtime.js';
 import type { DatabaseConfig } from '../../../config.js';
-import { withWorkspaceWriteClient } from '../../../attempts/transactions.repository.js';
 import { NodeAttemptReconciliationRequiredError } from '../../../attempts/errors.js';
 import type { NodeWebhookResponseReceipt } from '@pertexo/node-sdk';
 import type { WebhookResponseStore, WriteWebhookResponse } from './contract.js';
@@ -33,10 +33,9 @@ function writeWebhookResponse(
   pool: Pool,
   input: WriteWebhookResponse,
 ): Promise<NodeWebhookResponseReceipt> {
-  return withWorkspaceWriteClient(
+  return withTenantScopedClient(
     pool,
-    input.workspaceId,
-    input.signal,
+    { workspaceId: input.workspaceId },
     async (client) => {
       // Run → node/attempt → response is also completion's lock order.
       const db = drizzle(client);
@@ -159,6 +158,7 @@ function writeWebhookResponse(
         throw new NodeAttemptReconciliationRequiredError();
       return { outcome: 'responded', statusCode: response.statusCode };
     },
+    { signal: input.signal },
   );
 }
 

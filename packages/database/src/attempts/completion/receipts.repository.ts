@@ -1,3 +1,4 @@
+import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import type { NodeAttemptRunStore } from '../contract.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -18,7 +19,6 @@ import {
 } from '../errors.js';
 import { attemptJobPayloadSchema } from '../validation/delivery.js';
 import type { NodeAttemptDelivery } from '../contract.js';
-import { withWorkspaceWriteClient } from '../transactions.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 
 export const nodeAttemptConsumerName = 'node-attempt-worker';
@@ -138,17 +138,22 @@ export async function auditMismatch(
   delivery: NodeAttemptDelivery,
   signal: AbortSignal,
 ): Promise<never> {
-  await withWorkspaceWriteClient(pool, workspaceId, signal, async (client) => {
-    await drizzle(client)
-      .insert(transportSecurityAuditFacts)
-      .values({
-        id: generatePersistedId(),
-        workspaceId,
-        factType: 'inbox_checksum_mismatch',
-        consumerName: nodeAttemptConsumerName,
-        messageId: delivery.outboxEventId,
-      })
-      .catch(rethrowQueryFailure);
-  });
+  await withTenantScopedClient(
+    pool,
+    { workspaceId },
+    async (client) => {
+      await drizzle(client)
+        .insert(transportSecurityAuditFacts)
+        .values({
+          id: generatePersistedId(),
+          workspaceId,
+          factType: 'inbox_checksum_mismatch',
+          consumerName: nodeAttemptConsumerName,
+          messageId: delivery.outboxEventId,
+        })
+        .catch(rethrowQueryFailure);
+    },
+    { signal: signal },
+  );
   throw new NodeAttemptDeliveryMismatchError();
 }

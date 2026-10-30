@@ -1,3 +1,4 @@
+import { withTenantScopedClient } from '../tenant-access/transactions.js';
 import {
   bindDataTableCommand,
   DataTableError,
@@ -14,7 +15,6 @@ import {
   lockCapabilityExecution,
 } from '../attempts/dispatch/fence.repository.js';
 import { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
-import { withWorkspaceWriteClient } from '../attempts/transactions.repository.js';
 import type { DatabaseConfig } from '../config.js';
 import { appendAuditFact } from '../governance/audit/events.repository.js';
 import {
@@ -38,10 +38,9 @@ export function createWorkerDataTablesStore(
   return {
     close: () => lease.close(),
     execute: (input) =>
-      withWorkspaceWriteClient(
+      withTenantScopedClient(
         lease.pool,
-        input.workspaceId,
-        input.signal,
+        { workspaceId: input.workspaceId },
         async (client) => {
           await lockCapabilityExecution(client, input);
           if (input.command.operation === 'find') {
@@ -144,6 +143,7 @@ export function createWorkerDataTablesStore(
           });
           return result;
         },
+        { signal: input.signal },
       ).catch((error: unknown) => {
         if (error instanceof ExecutionCapabilityExpiredError)
           throw new DataTableError('attempt_expired', error.message);
