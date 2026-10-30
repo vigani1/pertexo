@@ -68,7 +68,7 @@ export function useStepPlacement({
     target: QuickAddTarget,
   ) {
     const state = store.getState();
-    if (state.saveStatus === 'conflict') return;
+    if (state.save.status === 'conflict') return;
     const { graph } = state;
     const { from, loopId } = target;
     let scope: ScopePath = [];

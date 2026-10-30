@@ -162,7 +162,7 @@ describe('editor history', () => {
     expect(store.getState().graph.nodes[0]?.label).toBe('Name');
     store.getState().undo();
     expect(store.getState().graph).toBe(start);
-    expect(store.getState().saveStatus).toBe('dirty');
+    expect(store.getState().save.status).toBe('dirty');
   });
   it('forgets inspector scratch when the inspected step goes away', () => {
     const start: WorkflowGraphContract = {

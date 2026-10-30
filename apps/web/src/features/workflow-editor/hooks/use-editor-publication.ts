@@ -55,7 +55,7 @@ export function useEditorPublication({
   const graph = useEditorStore((state) => state.graph);
   const generation = useEditorStore((state) => state.generation);
   const revision = useEditorStore((state) => state.revision);
-  const saveStatus = useEditorStore((state) => state.saveStatus);
+  const saveStatus = useEditorStore((state) => state.save.status);
   const inspectorScratch = useEditorStore((state) => state.inspectorScratch);
   const commandSession = useWorkflowCommandSession({
     apiClient,
@@ -69,7 +69,7 @@ export function useEditorPublication({
       const current = store.getState();
       const savedDraftIsCurrent =
         !verification.isPaused() &&
-        current.saveStatus === 'clean' &&
+        current.save.status === 'clean' &&
         !current.inspectorScratch &&
         current.etag === saved.etag &&
         current.generation === saved.generation &&

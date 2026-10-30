@@ -24,7 +24,7 @@ export function useEditorWorkflowTests({
 }>) {
   const revision = useEditorStore((state) => state.revision);
   const graph = useEditorStore((state) => state.graph);
-  const saveStatus = useEditorStore((state) => state.saveStatus);
+  const saveStatus = useEditorStore((state) => state.save.status);
   const scratch = useEditorStore((state) => state.inspectorScratch);
   const tests = useWorkflowTests({
     scope: { apiClient, userId, workspaceId: workspace.id, workflowId },

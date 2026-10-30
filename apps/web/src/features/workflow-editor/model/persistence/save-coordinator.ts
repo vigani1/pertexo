@@ -54,8 +54,8 @@ export function createSaveCoordinator(
     const current = store.getState();
     if (
       destroyed ||
-      current.saveStatus === 'clean' ||
-      current.saveStatus === 'conflict'
+      current.save.status === 'clean' ||
+      current.save.status === 'conflict'
     )
       return;
     const snapshot = {
@@ -119,18 +119,18 @@ export function createSaveCoordinator(
     cancelTimer();
     if (active !== null) {
       await active;
-      if (isDestroyed() || store.getState().saveStatus !== 'dirty') return;
+      if (isDestroyed() || store.getState().save.status !== 'dirty') return;
     }
     active = performSave().finally(() => {
       active = null;
     });
     await active;
-    if (!isDestroyed() && store.getState().saveStatus === 'dirty')
+    if (!isDestroyed() && store.getState().save.status === 'dirty')
       await flush();
   }
 
   function schedule() {
-    if (destroyed || store.getState().saveStatus === 'conflict') return;
+    if (destroyed || store.getState().save.status === 'conflict') return;
     cancelTimer();
     timer = window.setTimeout(() => void flush(), debounceMs);
   }

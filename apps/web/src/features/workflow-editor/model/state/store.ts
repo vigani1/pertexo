@@ -9,15 +9,18 @@ import {
 } from '../persistence/editor-history';
 import { indexGraph } from '../graph/scopes';
 
-type SaveStatus =
-  'clean' | 'dirty' | 'saving' | 'conflict' | 'failed' | 'uncertain';
-
 type EditorConflict = Readonly<{
   local: WorkflowGraphContract;
   remote: WorkflowGraphContract;
   remoteEtag: string;
   remoteRevision: number;
 }>;
+
+/** Where saving stands; a failure always has its reason, a conflict both drafts. */
+type SaveState =
+  | Readonly<{ status: 'clean' | 'dirty' | 'saving' }>
+  | Readonly<{ status: 'failed' | 'uncertain'; error: string }>
+  | Readonly<{ status: 'conflict'; conflict: EditorConflict }>;
 
 /** Consecutive live edits of one field within this window undo together. */
 export const EDIT_COALESCE_WINDOW_MS = 2_000;
@@ -37,10 +40,19 @@ export type EditorState = Readonly<{
   inspectorScratch: boolean;
   lastEdit: Readonly<{ key: string; at: number }> | null;
   history: EditorHistory;
-  saveStatus: SaveStatus;
-  saveError: string | null;
-  conflict: EditorConflict | null;
+  save: SaveState;
+  /** A resolved conflict's drafts, kept so people can still compare them. */
+  comparison: EditorConflict | null;
 }>;
+
+/** The conflict on screen: the unresolved one, else the one kept for comparison. */
+export function shownConflict(
+  state: Pick<EditorState, 'save' | 'comparison'>,
+): EditorConflict | null {
+  return state.save.status === 'conflict'
+    ? state.save.conflict
+    : state.comparison;
+}
 
 export type EditorActions = Readonly<{
   transact: (
@@ -82,7 +94,7 @@ export function createEditorStore(
     /** Undo or redo: the graph moves through history and is saved again. */
     const travel = (step: typeof undoHistory) => {
       const current = get();
-      if (current.saveStatus === 'conflict') return;
+      if (current.save.status === 'conflict') return;
       const result = step(current.history, current.graph);
       if (result === null) return;
       set({
@@ -90,8 +102,7 @@ export function createEditorStore(
         history: result.history,
         generation: current.generation + 1,
         lastEdit: null,
-        saveStatus: 'dirty',
-        saveError: null,
+        save: { status: 'dirty' },
         ...pruneSelection(result.graph, current),
       });
     };
@@ -107,12 +118,12 @@ export function createEditorStore(
       inspectorScratch: false,
       lastEdit: null,
       history: emptyEditorHistory,
-      saveStatus: 'clean',
-      saveError: null,
-      conflict: null,
+      save: { status: 'clean' },
+      comparison: null,
       transact: (next, options = {}) => {
         const current = get();
-        if (next === current.graph || current.saveStatus === 'conflict') return;
+        if (next === current.graph || current.save.status === 'conflict')
+          return;
         const at = clock.now();
         const coalesce =
           options.coalesceKey !== undefined &&
@@ -128,8 +139,7 @@ export function createEditorStore(
             options.coalesceKey === undefined
               ? null
               : { key: options.coalesceKey, at },
-          saveStatus: 'dirty',
-          saveError: null,
+          save: { status: 'dirty' },
           ...pruneSelection(next, current),
         });
       },
@@ -169,7 +179,7 @@ export function createEditorStore(
         travel(redoHistory);
       },
       beginSave: () => {
-        set({ saveStatus: 'saving', saveError: null });
+        set({ save: { status: 'saving' } });
       },
       acceptSave: (etag, revision, savedGeneration, savedAt) => {
         const current = get();
@@ -177,32 +187,35 @@ export function createEditorStore(
           etag,
           revision,
           savedAt: savedAt ?? current.savedAt,
-          saveStatus:
-            current.generation === savedGeneration ? 'clean' : 'dirty',
-          saveError: null,
+          save: {
+            status: current.generation === savedGeneration ? 'clean' : 'dirty',
+          },
         });
       },
-      reportFailure: (saveError, uncertain) => {
-        set({ saveStatus: uncertain ? 'uncertain' : 'failed', saveError });
+      reportFailure: (error, uncertain) => {
+        set({ save: { status: uncertain ? 'uncertain' : 'failed', error } });
       },
       reportConflict: (conflict) => {
-        set({ saveStatus: 'conflict', conflict, saveError: null });
+        set({ save: { status: 'conflict', conflict }, comparison: null });
       },
       discardLocalAndUseRemote: () => {
-        const conflict = get().conflict;
+        const conflict = shownConflict(get());
         if (conflict === null) return;
         set({
           ...adoptRemote(conflict, get().generation),
-          conflict: null,
+          comparison: null,
         });
       },
       acceptRemoteForReview: () => {
-        const conflict = get().conflict;
+        const conflict = shownConflict(get());
         if (conflict === null) return;
-        set(adoptRemote(conflict, get().generation));
+        set({
+          ...adoptRemote(conflict, get().generation),
+          comparison: conflict,
+        });
       },
       dismissConflictComparison: () => {
-        if (get().saveStatus !== 'conflict') set({ conflict: null });
+        if (get().save.status !== 'conflict') set({ comparison: null });
       },
     };
   });
@@ -220,8 +233,7 @@ function adoptRemote(conflict: EditorConflict, generation: number) {
     selectedNodeIds: [],
     selectedEdgeIds: [],
     inspectorScratch: false,
-    saveStatus: 'clean',
-    saveError: null,
+    save: { status: 'clean' },
   } as const;
 }
 

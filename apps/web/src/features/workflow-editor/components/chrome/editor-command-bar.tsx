@@ -46,9 +46,9 @@ export function EditorCommandBar({
   const graph = useEditorStore((state) => state.graph);
   const duplicateBlocked = useEditorStore(
     (state) =>
-      state.saveStatus !== 'clean' ||
+      state.save.status !== 'clean' ||
       state.inspectorScratch ||
-      state.conflict !== null,
+      state.comparison !== null,
   );
   const moreRef = useRef<HTMLButtonElement>(null);
   const contractRef = useRef<HTMLButtonElement>(null);

@@ -2,7 +2,10 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import { addDefinitionNode } from '@/features/workflow-editor/model/graph/commands';
-import { createEditorStore } from '@/features/workflow-editor/model/state/store';
+import {
+  createEditorStore,
+  shownConflict,
+} from '@/features/workflow-editor/model/state/store';
 import { createSaveCoordinator } from '@/features/workflow-editor/model/persistence/save-coordinator';
 
 import type { WorkflowDraftSnapshot } from '@/features/workflow-editor/data/workflow-editor.api';
@@ -70,12 +73,12 @@ describe('workflow editor save coordinator', () => {
       );
       store.getState().transact(one);
       await coordinator.flush();
-      expect(store.getState().saveStatus).toBe('failed');
+      expect(store.getState().save.status).toBe('failed');
       await vi.advanceTimersByTimeAsync(2_900);
       expect(save).toHaveBeenCalledTimes(1);
       await vi.advanceTimersByTimeAsync(200);
       expect(save).toHaveBeenCalledTimes(2);
-      expect(store.getState().saveStatus).toBe('clean');
+      expect(store.getState().save.status).toBe('clean');
       coordinator.destroy();
     } finally {
       vi.useRealTimers();
@@ -124,7 +127,7 @@ describe('workflow editor save coordinator', () => {
         expect(save).toHaveBeenCalledTimes(1);
         await vi.advanceTimersByTimeAsync(resumesBy - before);
         expect(save).toHaveBeenCalledTimes(2);
-        expect(store.getState().saveStatus).toBe('clean');
+        expect(store.getState().save.status).toBe('clean');
         coordinator.destroy();
       } finally {
         vi.useRealTimers();
@@ -170,7 +173,7 @@ describe('workflow editor save coordinator', () => {
     resolveFirst?.(snapshot(one, etagB, 2));
     await flushing;
     expect(saves).toEqual([one, two]);
-    expect(store.getState().saveStatus).toBe('clean');
+    expect(store.getState().save.status).toBe('clean');
     expect(store.getState().graph).toBe(two);
     coordinator.destroy();
   });
@@ -243,8 +246,8 @@ describe('workflow editor save coordinator', () => {
       message: () => 'failed',
     });
     await coordinator.flush();
-    expect(store.getState().saveStatus).toBe('conflict');
-    expect(store.getState().conflict).toEqual({
+    expect(store.getState().save.status).toBe('conflict');
+    expect(shownConflict(store.getState())).toEqual({
       local,
       remote,
       remoteEtag: etagB,
@@ -253,8 +256,8 @@ describe('workflow editor save coordinator', () => {
     store.getState().acceptRemoteForReview();
     expect(store.getState().graph).toBe(remote);
     expect(store.getState().etag).toBe(etagB);
-    expect(store.getState().saveStatus).toBe('clean');
-    expect(store.getState().conflict).toEqual({
+    expect(store.getState().save.status).toBe('clean');
+    expect(shownConflict(store.getState())).toEqual({
       local,
       remote,
       remoteEtag: etagB,
@@ -268,9 +271,9 @@ describe('workflow editor save coordinator', () => {
     );
     store.getState().transact(reapplied);
     expect(store.getState().etag).toBe(etagB);
-    expect(store.getState().conflict?.local).toBe(local);
+    expect(shownConflict(store.getState())?.local).toBe(local);
     store.getState().dismissConflictComparison();
-    expect(store.getState().conflict).toBeNull();
+    expect(shownConflict(store.getState())).toBeNull();
     coordinator.destroy();
   });
 });
@@ -298,9 +301,9 @@ describe('workflow editor conflicts and uncertain saves', () => {
       message: () => 'failed',
     });
     await coordinator.flush();
-    expect(store.getState().saveStatus).toBe('clean');
+    expect(store.getState().save.status).toBe('clean');
     expect(store.getState().etag).toBe(etagB);
-    expect(store.getState().conflict).toBeNull();
+    expect(shownConflict(store.getState())).toBeNull();
     coordinator.destroy();
   });
 
@@ -328,7 +331,7 @@ describe('workflow editor conflicts and uncertain saves', () => {
       message: () => 'uncertain',
     });
     await coordinator.flush();
-    expect(store.getState().saveStatus).toBe('clean');
+    expect(store.getState().save.status).toBe('clean');
     expect(store.getState().etag).toBe(etagB);
     coordinator.destroy();
   });

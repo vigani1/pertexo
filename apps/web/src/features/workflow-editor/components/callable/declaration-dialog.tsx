@@ -26,7 +26,9 @@ export function DeclarationDialog({
   finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
 }>) {
   const store = useEditorStoreApi();
-  const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
+  const inConflict = useEditorStore(
+    (state) => state.save.status === 'conflict',
+  );
   const [session, setSession] = useState<Readonly<{
     graph: WorkflowGraphContract;
     discard: boolean;
@@ -72,7 +74,7 @@ export function DeclarationDialog({
             onClose={requestClose}
             onApply={(next) => {
               const current = store.getState();
-              if (!editable || current.saveStatus === 'conflict') return;
+              if (!editable || current.save.status === 'conflict') return;
               // Other graph edits remain owned by the editor; this form changes only its declaration.
               const { callable: _callable, ...ordinaryGraph } = current.graph;
               current.transact(

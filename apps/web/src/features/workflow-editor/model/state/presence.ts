@@ -21,7 +21,8 @@ export function editorPresenceSource({
         listener({
           editing,
           dirty:
-            editing && (state.saveStatus !== 'clean' || state.inspectorScratch),
+            editing &&
+            (state.save.status !== 'clean' || state.inspectorScratch),
           baseRevision: state.revision,
         });
       };
