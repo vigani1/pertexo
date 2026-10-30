@@ -57,22 +57,19 @@ it('turns missing tables and quota failures into closed safe configuration codes
     kind: 'failed',
   });
 });
-it(
-  'reports a missing data-table capability as an internal failure, not a missing table',
-  async () => {
-    await expect(
-      createCoreNodeRegistry().execute({
-        definition: { key: 'core.table_insert', version: 1 },
-        executor: { key: 'core.table_insert', version: 1 },
-        config: { table: 'Orders' },
-        input: { values: { key: 'a' } },
-        signal: new AbortController().signal,
-        runtime: scope,
-      }),
-    ).rejects.toMatchObject({
-      kind: 'failed',
-      errorKind: 'internal',
-      possiblyDispatched: false,
-    });
-  },
-);
+it('reports a missing data-table capability as an internal failure, not a missing table', async () => {
+  await expect(
+    createCoreNodeRegistry().execute({
+      definition: { key: 'core.table_insert', version: 1 },
+      executor: { key: 'core.table_insert', version: 1 },
+      config: { table: 'Orders' },
+      input: { values: { key: 'a' } },
+      signal: new AbortController().signal,
+      runtime: scope,
+    }),
+  ).rejects.toMatchObject({
+    kind: 'failed',
+    errorKind: 'internal',
+    possiblyDispatched: false,
+  });
+});
