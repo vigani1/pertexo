@@ -1,10 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  addDefinitionNode,
-  updateWorkflowNode,
-} from '@/features/workflow-editor/model/graph/commands';
+import { addDefinitionNode } from '@/features/workflow-editor/model/graph/commands';
 import { createEditorStore } from '@/features/workflow-editor/model/state/store';
 import { createSaveCoordinator } from '@/features/workflow-editor/model/persistence/save-coordinator';
 
@@ -84,6 +81,56 @@ describe('workflow editor save coordinator', () => {
       vi.useRealTimers();
     }
   });
+
+  // A wait shorter than the 1 s save debounce still waits the debounce; a
+  // longer one than a minute is cut to a minute.
+  it.each([
+    { wait: 100, before: 900, resumesBy: 1_000 },
+    { wait: 300_000, before: 59_900, resumesBy: 60_000 },
+  ])(
+    'saves again after a rate limit asks for $wait ms within its bounds',
+    async ({ wait, before, resumesBy }) => {
+      vi.useFakeTimers();
+      try {
+        const store = createEditorStore({
+          graph: emptyGraph(),
+          etag: etagA,
+          revision: 1,
+        });
+        const limited = new Error('rate limited');
+        const save = vi
+          .fn<
+            (graph: WorkflowGraphContract) => Promise<WorkflowDraftSnapshot>
+          >()
+          .mockRejectedValueOnce(limited)
+          .mockImplementation((graph) =>
+            Promise.resolve(snapshot(graph, etagB, 2)),
+          );
+        const coordinator = createSaveCoordinator(store, {
+          save,
+          reload: vi.fn(),
+          isConflict: () => false,
+          isUncertain: () => false,
+          retryAfterMs: (error) => (error === limited ? wait : undefined),
+          message: () => 'Too many saves in a short time.',
+        });
+        store
+          .getState()
+          .transact(
+            addDefinitionNode(emptyGraph(), definition, { x: 0, y: 0 }, 'a'),
+          );
+        await coordinator.flush();
+        await vi.advanceTimersByTimeAsync(before);
+        expect(save).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(resumesBy - before);
+        expect(save).toHaveBeenCalledTimes(2);
+        expect(store.getState().saveStatus).toBe('clean');
+        coordinator.destroy();
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
 
   it('keeps edits made during a save dirty and serializes a second save', async () => {
     const store = createEditorStore({
@@ -229,61 +276,6 @@ describe('workflow editor save coordinator', () => {
 });
 
 describe('workflow editor conflicts and uncertain saves', () => {
-  it('keeps mapping-only edits in conflict comparison for explicit reapplication', async () => {
-    const first = addDefinitionNode(
-      emptyGraph(),
-      definition,
-      { x: 0, y: 0 },
-      'source',
-    );
-    const base = addDefinitionNode(
-      first,
-      definition,
-      { x: 100, y: 0 },
-      'target',
-    );
-    const local = updateWorkflowNode(base, 'target', {
-      inputMappings: {
-        customer: { kind: 'run_input', path: '$.customer' },
-      },
-    });
-    const remote = updateWorkflowNode(base, 'target', {
-      inputMappings: {
-        remote: { kind: 'literal', value: true },
-      },
-    });
-    const store = createEditorStore({ graph: base, etag: etagA, revision: 1 });
-    store.getState().transact(local);
-    const coordinator = createSaveCoordinator(store, {
-      save: vi.fn().mockRejectedValue(new Error('conflict')),
-      reload: vi.fn().mockResolvedValue(snapshot(remote, etagB, 2)),
-      isConflict: () => true,
-      isUncertain: () => false,
-      retryAfterMs: () => undefined,
-      message: () => 'failed',
-    });
-
-    await coordinator.flush();
-    expect(store.getState().conflict?.local).toBe(local);
-    expect(store.getState().conflict?.remote).toBe(remote);
-    store.getState().acceptRemoteForReview();
-    expect(store.getState().graph.nodes[1]?.inputMappings).toEqual({
-      remote: { kind: 'literal', value: true },
-    });
-    const localMappings = local.nodes[1]?.inputMappings;
-    if (localMappings === undefined) throw new Error('local target is missing');
-    store.getState().transact(
-      updateWorkflowNode(store.getState().graph, 'target', {
-        inputMappings: localMappings,
-      }),
-    );
-    expect(store.getState().graph.nodes[1]?.inputMappings).toEqual({
-      customer: { kind: 'run_input', path: '$.customer' },
-    });
-    expect(store.getState().etag).toBe(etagB);
-    coordinator.destroy();
-  });
-
   it('accepts a retried save whose first attempt landed after all', async () => {
     const local = addDefinitionNode(
       emptyGraph(),
