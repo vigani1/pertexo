@@ -1,10 +1,12 @@
 import {
+  DATA_TABLE_JSON_LIMITS,
   dataTableValueSchema,
   dataTableValuesSchema,
   dataTableValueStructuralSchema,
   dataTableValuesStructuralSchema,
 } from '@pertexo/node-sdk';
 import {
+  CANONICAL_JSON_MAX_DEPTH,
   workflowGraphSchema,
   workflowGraphStructuralSchema,
   workflowPortableManifestSchema,
@@ -12,12 +14,11 @@ import {
 } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-import {
-  boundedNodeTestJsonInputSchema,
-  NODE_TEST_JSON_MAX_DEPTH,
-} from '../schemas/shared/bounded-json-input.js';
+import { boundedNodeTestJsonInputSchema } from '../schemas/shared/bounded-json-input.js';
 
 type JsonSchema = Record<string, unknown>;
+
+const DATA_TABLE_VALUE_DESCRIPTION = `Runtime validation checks JSON depth (${String(DATA_TABLE_JSON_LIMITS.depth)}), members (${DATA_TABLE_JSON_LIMITS.members.toLocaleString('en-US')}) and bytes (${String(DATA_TABLE_JSON_LIMITS.bytes / 1_024)} KiB) before recursive parsing.`;
 
 const structuralWorkflowGraph = z.toJSONSchema(workflowGraphStructuralSchema, {
   target: 'draft-2020-12',
@@ -45,8 +46,8 @@ rewriteSelfReferences(recursiveJsonValue);
 const boundedJsonInputProjection = Object.freeze({
   $ref: '#/$defs/jsonValue',
   $defs: Object.freeze({ jsonValue: recursiveJsonValue }),
-  description: `JSON input. Runtime validation rejects values deeper than ${String(NODE_TEST_JSON_MAX_DEPTH)} containers before recursive schema parsing.`,
-  'x-pertexo-runtime-max-depth': NODE_TEST_JSON_MAX_DEPTH,
+  description: `JSON input. Runtime validation rejects values deeper than ${String(CANONICAL_JSON_MAX_DEPTH)} containers before recursive schema parsing.`,
+  'x-pertexo-runtime-max-depth': CANONICAL_JSON_MAX_DEPTH,
 });
 
 function replaceObject(target: JsonSchema, source: JsonSchema): void {
@@ -145,8 +146,7 @@ export function projectContractSchema(
             { target: 'draft-2020-12', reused: 'inline' },
           ),
         );
-        jsonSchema.description =
-          'Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing.';
+        jsonSchema.description = DATA_TABLE_VALUE_DESCRIPTION;
       }
       if (Object.is(zodSchema, boundedNodeTestJsonInputSchema))
         replaceObject(jsonSchema, boundedJsonInputProjection);

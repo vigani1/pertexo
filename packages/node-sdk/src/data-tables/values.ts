@@ -1,6 +1,6 @@
 import {
   DataTableError,
-  DATA_TABLE_LIMITS,
+  DATA_TABLE_JSON_LIMITS,
   type DataTableNewColumn,
   type DataTableValues,
   type DataTableQuery,
@@ -42,11 +42,7 @@ export function validateDataTableValues(
       configurable: true,
     });
   }
-  const checked = inspectBoundedJson(result, {
-    bytes: DATA_TABLE_LIMITS.rowBytes,
-    depth: 32,
-    members: 8_000,
-  });
+  const checked = inspectBoundedJson(result, DATA_TABLE_JSON_LIMITS);
   if (!checked.ok)
     throw new DataTableError(
       'invalid_values',
