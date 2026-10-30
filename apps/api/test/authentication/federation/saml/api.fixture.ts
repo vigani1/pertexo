@@ -31,12 +31,19 @@ export const encryption = {
   },
   previous: [],
 };
-export function useSamlApi(suite: string) {
+export function useSamlApi(
+  suite: string,
+  options: Pick<
+    NonNullable<Parameters<typeof useBetterAuthRealApi>[1]>,
+    'signUpMode'
+  > = {},
+) {
   let material: SigningMaterial;
   beforeAll(() => {
     material = signingMaterial();
   });
   const api = useBetterAuthRealApi(suite, {
+    ...options,
     publicWebOrigin: samlOrigin,
     secureCookies: true,
     federationEncryption: encryption,
