@@ -39,7 +39,7 @@ export function fetchMock(response: Response) {
   return vi.fn<typeof globalThis.fetch>().mockResolvedValue(response);
 }
 
-export async function apiErrorFrom(
+export async function expectApiError(
   promise: Promise<unknown>,
   kind: ApiError['kind'],
 ): Promise<ApiError> {

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '../../src/lib/api/client';
 
 import {
-  apiErrorFrom,
+  expectApiError,
   commonProblem,
   csrfToken,
   fetchMock,
@@ -125,7 +125,7 @@ describe('browser API transport', () => {
         fetch: fetchMock(response),
         readCsrfToken: () => undefined,
       });
-      const error = await apiErrorFrom(
+      const error = await expectApiError(
         client.request({
           path: '/v1/examples',
           response: {
@@ -150,7 +150,7 @@ describe('browser API transport', () => {
       readCsrfToken: () => undefined,
     });
 
-    const error = await apiErrorFrom(
+    const error = await expectApiError(
       client.request({
         path: '/v1/examples',
         response: { kind: 'json', decode: (value) => value },
@@ -176,7 +176,7 @@ describe('browser API transport', () => {
       readCsrfToken: () => undefined,
     });
 
-    const error = await apiErrorFrom(
+    const error = await expectApiError(
       client.request({
         path: '/v1/workspaces/a/workflows/b/draft',
         response: { kind: 'json', decode: (value) => value },
@@ -205,7 +205,7 @@ describe('browser API transport', () => {
       readCsrfToken: () => undefined,
     });
 
-    const error = await apiErrorFrom(
+    const error = await expectApiError(
       client.request({
         path: '/v1/workspaces/a/workflows/b/draft',
         response: {
@@ -240,7 +240,7 @@ describe('browser API transport', () => {
       readCsrfToken: () => undefined,
     });
 
-    const error = await apiErrorFrom(
+    const error = await expectApiError(
       client.request({
         path: '/v1/examples',
         response: { kind: 'json', decode: (value) => value },
@@ -259,7 +259,7 @@ describe('browser API transport', () => {
       fetch: unusedFetch,
       readCsrfToken: () => undefined,
     });
-    await apiErrorFrom(
+    await expectApiError(
       client.request({
         path: '/v1/examples',
         signal: canceled.signal,
@@ -282,7 +282,7 @@ describe('browser API transport', () => {
       fetch: hangingFetch,
       readCsrfToken: () => undefined,
     });
-    const timedRequest = apiErrorFrom(
+    const timedRequest = expectApiError(
       timedClient.request({
         path: '/v1/examples',
         timeoutMs: 25,
@@ -300,7 +300,7 @@ describe('browser API transport', () => {
         .mockRejectedValue(new Error('private network detail')),
       readCsrfToken: () => undefined,
     });
-    const networkError = await apiErrorFrom(
+    const networkError = await expectApiError(
       networkClient.request({
         path: '/v1/examples',
         response: { kind: 'json', decode: (value) => value },
