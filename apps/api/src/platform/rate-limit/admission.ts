@@ -37,6 +37,47 @@ function recordMetric(
   }
 }
 
+export type RateLimitOutcome =
+  | Readonly<{ kind: 'admitted' }>
+  | Readonly<{ kind: 'limited'; retryAfterSeconds: number }>
+  | Readonly<{ kind: 'unavailable'; cause: unknown }>;
+
+/**
+ * The one admission decision: records the metric and honours the policy's
+ * failure mode. Each transport turns the outcome into its own problem shape.
+ */
+export async function admitRateLimit(
+  consumer: RateLimitConsumer,
+  metrics: RateLimitMetricRecorder,
+  decision: ReturnType<AbuseRateLimitPolicy['evaluate']>,
+): Promise<RateLimitOutcome> {
+  const { endpointClass, failureMode } = decision;
+  let result: DistributedRateLimitResult;
+  try {
+    result = await consumer.consume(decision);
+  } catch (cause: unknown) {
+    recordMetric(metrics, {
+      endpointClass,
+      failureMode,
+      outcome: 'backend_error',
+    });
+    return failureMode === 'open'
+      ? { kind: 'admitted' }
+      : { kind: 'unavailable', cause };
+  }
+  if (!result.allowed) {
+    recordMetric(metrics, {
+      endpointClass,
+      failureMode,
+      outcome: 'limited',
+      limitedDimension: result.limitedDimension,
+    });
+    return { kind: 'limited', retryAfterSeconds: result.retryAfterSeconds };
+  }
+  recordMetric(metrics, { endpointClass, failureMode, outcome: 'allowed' });
+  return { kind: 'admitted' };
+}
+
 export class HttpRateLimitAdmission {
   public constructor(
     private readonly consumer: RateLimitConsumer,
@@ -47,40 +88,23 @@ export class HttpRateLimitAdmission {
     endpointClass: RateLimitEndpointClass,
     subject: RateLimitSubject,
   ): Promise<void> {
-    const decision = this.policy.evaluate(endpointClass, subject);
-    let result: DistributedRateLimitResult;
-    try {
-      result = await this.consumer.consume(decision);
-    } catch {
-      recordMetric(this.metrics, {
-        endpointClass,
-        failureMode: decision.failureMode,
-        outcome: 'backend_error',
-      });
-      if (decision.failureMode === 'open') return;
-      return throwApplicationError(
+    const outcome = await admitRateLimit(
+      this.consumer,
+      this.metrics,
+      this.policy.evaluate(endpointClass, subject),
+    );
+    if (outcome.kind === 'unavailable')
+      throwApplicationError(
         applicationError('request.rate_limit_unavailable', {
+          cause: outcome.cause,
           details: { retryAfterSeconds: 1 },
         }),
       );
-    }
-    if (!result.allowed) {
-      recordMetric(this.metrics, {
-        endpointClass,
-        failureMode: decision.failureMode,
-        outcome: 'limited',
-        limitedDimension: result.limitedDimension,
-      });
-      return throwApplicationError(
+    if (outcome.kind === 'limited')
+      throwApplicationError(
         applicationError('request.rate_limited', {
-          details: { retryAfterSeconds: result.retryAfterSeconds },
+          details: { retryAfterSeconds: outcome.retryAfterSeconds },
         }),
       );
-    }
-    recordMetric(this.metrics, {
-      endpointClass,
-      failureMode: decision.failureMode,
-      outcome: 'allowed',
-    });
   }
 }

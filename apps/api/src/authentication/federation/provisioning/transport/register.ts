@@ -17,7 +17,11 @@ import {
   type RateLimitEndpointClass,
   type RateLimitSubject,
 } from '@pertexo/rate-limit';
-import type { RateLimitConsumer } from '../../../../platform/rate-limit/admission.js';
+import {
+  admitRateLimit,
+  type RateLimitConsumer,
+} from '../../../../platform/rate-limit/admission.js';
+import { createRateLimitMetricRecorder } from '../../../../platform/rate-limit/metrics.js';
 import { dispatchDirectoryRequest } from './dispatch.js';
 import { directoryFailure, sendDirectoryError } from './errors.js';
 
@@ -34,6 +38,7 @@ export function registerDirectoryTransport(
     publicOrigin: string;
   }>,
 ): void {
+  const metrics = createRateLimitMetricRecorder();
   fastify.register((scoped, _options, done) => {
     const jsonParser = scoped.getDefaultJsonParser('error', 'error');
     scoped.removeContentTypeParser('application/json');
@@ -60,28 +65,30 @@ export function registerDirectoryTransport(
       subject: RateLimitSubject,
       reply: Parameters<typeof sendDirectoryError>[0],
     ): Promise<boolean> {
-      try {
-        const result = await input.rateLimitConsumer.consume(
-          policy.evaluate(endpoint, subject),
-        );
-        if (result.allowed) return true;
+      const admitted = await admitRateLimit(
+        input.rateLimitConsumer,
+        metrics,
+        policy.evaluate(endpoint, subject),
+      );
+      if (admitted.kind === 'admitted') return true;
+      if (admitted.kind === 'limited') {
         reply.header(
           'retry-after',
-          String(Math.max(1, result.retryAfterSeconds)),
+          String(Math.max(1, admitted.retryAfterSeconds)),
         );
         sendDirectoryError(
           reply,
           429,
           'Too many provisioning requests. Retry after the indicated delay.',
         );
-      } catch {
-        reply.header('retry-after', '1');
-        sendDirectoryError(
-          reply,
-          503,
-          'Provisioning admission is temporarily unavailable.',
-        );
+        return false;
       }
+      reply.header('retry-after', '1');
+      sendDirectoryError(
+        reply,
+        503,
+        'Provisioning admission is temporarily unavailable.',
+      );
       return false;
     }
     const options: RouteShorthandOptions = {

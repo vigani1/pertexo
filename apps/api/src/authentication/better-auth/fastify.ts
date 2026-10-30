@@ -15,7 +15,12 @@ import {
   AbuseRateLimitPolicy,
   type RateLimitEndpointClass,
 } from '@pertexo/rate-limit';
-import type { RateLimitConsumer } from '../../platform/rate-limit/interceptor.js';
+import {
+  admitRateLimit,
+  type RateLimitConsumer,
+  type RateLimitMetricRecorder,
+} from '../../platform/rate-limit/admission.js';
+import { createRateLimitMetricRecorder } from '../../platform/rate-limit/metrics.js';
 import type { BetterAuthRuntime } from './runtime.js';
 import { isProviderFormCallback } from '../journeys/form-callback.js';
 import { TWO_FACTOR_VERIFICATION_PATHS } from './two-factor.js';
@@ -66,6 +71,7 @@ export function registerBetterAuthHandler(
   }>,
 ): void {
   const origin = new URL(input.publicOrigin).origin;
+  const metrics = createRateLimitMetricRecorder();
   const config = {
     rateLimit: { start: 'identity_start', callback: 'identity_callback' },
   } as const;
@@ -86,6 +92,7 @@ export function registerBetterAuthHandler(
       sessionCookie: input.sessionCookie,
       admission: {
         consumer: input.rateLimitConsumer,
+        metrics,
         policies: config.rateLimit,
       },
     });
@@ -117,6 +124,7 @@ type AuthenticationDispatch = Readonly<{
   }>;
   admission: Readonly<{
     consumer: RateLimitConsumer;
+    metrics: RateLimitMetricRecorder;
     policies: AuthenticationRateLimits;
   }>;
 }>;
@@ -157,14 +165,15 @@ async function dispatchBetterAuthRequest(
     isUnsafeMethod(request.method) && !providerFormCallback
       ? admission.policies.start
       : admission.policies.callback;
-  const decision = rateLimitPolicy.evaluate(endpointClass, {
-    clientAddress: request.ip,
-    origin: request.headers.origin ?? publicOrigin,
-  });
-  let allowed: Awaited<ReturnType<RateLimitConsumer['consume']>>;
-  try {
-    allowed = await admission.consumer.consume(decision);
-  } catch {
+  const admitted = await admitRateLimit(
+    admission.consumer,
+    admission.metrics,
+    rateLimitPolicy.evaluate(endpointClass, {
+      clientAddress: request.ip,
+      origin: request.headers.origin ?? publicOrigin,
+    }),
+  );
+  if (admitted.kind === 'unavailable') {
     reply.header('retry-after', '1');
     sendProblem(reply, {
       requestId,
@@ -174,8 +183,11 @@ async function dispatchBetterAuthRequest(
     });
     return;
   }
-  if (!allowed.allowed) {
-    reply.header('retry-after', String(Math.max(1, allowed.retryAfterSeconds)));
+  if (admitted.kind === 'limited') {
+    reply.header(
+      'retry-after',
+      String(Math.max(1, admitted.retryAfterSeconds)),
+    );
     sendProblem(reply, {
       requestId,
       status: 429,
