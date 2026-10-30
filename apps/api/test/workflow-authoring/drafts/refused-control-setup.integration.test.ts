@@ -63,45 +63,40 @@ describeIntegration('a draft whose control setup the schemas refuse', () => {
   afterEach(async () => {
     await closeWorkflowLifecycleApiFixture(fixture);
   });
+  it('still opens on a published workflow and reads as not matching it', async () => {
+    const { application, ids, workspaceId } = fixture;
+    const owner = await fixture.login('owner');
+    const base = `/v1/workspaces/${workspaceId}/workflows/${ids.published}`;
+    const current = await application.inject({
+      method: 'GET',
+      url: `${base}/draft`,
+      headers: { cookie: owner.cookieHeader },
+    });
+    expect(current.statusCode, current.body).toBe(200);
+    const saved = await application.inject({
+      method: 'PUT',
+      url: `${base}/draft`,
+      headers: mutationHeaders(owner, {
+        'if-match': String(current.headers.etag),
+      }),
+      payload: { graph: refusedSwitchGraph },
+    });
+    expect(saved.statusCode, saved.body).toBe(200);
 
-  // audit-1030 follow-up 2: the comparison's compile throws, so this reads 422.
-  it.fails(
-    'still opens on a published workflow and reads as not matching it',
-    async () => {
-      const { application, ids, workspaceId } = fixture;
-      const owner = await fixture.login('owner');
-      const base = `/v1/workspaces/${workspaceId}/workflows/${ids.published}`;
-      const current = await application.inject({
-        method: 'GET',
-        url: `${base}/draft`,
-        headers: { cookie: owner.cookieHeader },
-      });
-      expect(current.statusCode, current.body).toBe(200);
-      const saved = await application.inject({
-        method: 'PUT',
-        url: `${base}/draft`,
-        headers: mutationHeaders(owner, {
-          'if-match': String(current.headers.etag),
-        }),
-        payload: { graph: refusedSwitchGraph },
-      });
-      expect(saved.statusCode, saved.body).toBe(200);
+    const opened = await application.inject({
+      method: 'POST',
+      url: `${base}/validate`,
+      headers: mutationHeaders(owner),
+      payload: {},
+    });
 
-      const opened = await application.inject({
-        method: 'POST',
-        url: `${base}/validate`,
-        headers: mutationHeaders(owner),
-        payload: {},
-      });
-
-      expect(opened.statusCode, opened.body).toBe(200);
-      expect(opened.json()).toMatchObject({
-        currentPublication: {
-          versionId: ids.publishedVersion,
-          versionNumber: 4,
-          matchesDraft: false,
-        },
-      });
-    },
-  );
+    expect(opened.statusCode, opened.body).toBe(200);
+    expect(opened.json()).toMatchObject({
+      currentPublication: {
+        versionId: ids.publishedVersion,
+        versionNumber: 4,
+        matchesDraft: false,
+      },
+    });
+  });
 });
