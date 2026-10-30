@@ -28,37 +28,23 @@ export type ApiArtifactRuntime = Readonly<{
   close(): Promise<void>;
 }>;
 
-export type ApiArtifactRuntimeOverrides = Readonly<{
-  database?: ArtifactUploadDatabase;
-  databaseFactory?: typeof createArtifactUploadDatabase;
-  formUploads?: FormUploadDatabase;
-  store?: ArtifactStore;
-}>;
-
 export function createApiArtifactRuntime(
   config: NonNullable<ApiConfig['artifacts']>,
   databaseConfig: DatabaseConfig,
   {
     identityRuntime,
-    overrides = {},
     databaseRuntime,
   }: Readonly<{
     identityRuntime: ApiIdentityRuntime;
-    overrides?: ApiArtifactRuntimeOverrides | undefined;
     databaseRuntime?: DatabaseRuntime | undefined;
   }>,
 ): ApiArtifactRuntime {
-  const store = overrides.store ?? createArtifactStore(config);
+  const store = createArtifactStore(config);
   let database: ArtifactUploadDatabase;
   let formUploads: FormUploadDatabase;
   try {
-    database =
-      overrides.database ??
-      overrides.databaseFactory?.(databaseConfig, databaseRuntime) ??
-      createArtifactUploadDatabase(databaseConfig, databaseRuntime);
-    formUploads =
-      overrides.formUploads ??
-      createFormUploadDatabase(databaseConfig, databaseRuntime);
+    database = createArtifactUploadDatabase(databaseConfig, databaseRuntime);
+    formUploads = createFormUploadDatabase(databaseConfig, databaseRuntime);
   } catch (error: unknown) {
     closeStore(store, error);
     throw error;

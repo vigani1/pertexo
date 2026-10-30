@@ -73,7 +73,7 @@ describe('API runtime acquisition', () => {
   it('builds identity features only when identity is configured', async () => {
     const runtimes = await acquireApiRuntimes(
       { ...config, identity: undefined } as unknown as ApiConfig,
-      { logger: silentLogger, telemetry: {} as never },
+      { logger: silentLogger },
     );
     expect(runtimes.identityRuntime).toBeUndefined();
     expect(runtimes.workflowRuntime).toBeUndefined();
@@ -91,10 +91,7 @@ describe('API runtime acquisition', () => {
     created.connection.mockRejectedValue(failure);
 
     await expect(
-      acquireApiRuntimes(config, {
-        logger: silentLogger,
-        telemetry: {} as never,
-      }),
+      acquireApiRuntimes(config, { logger: silentLogger }),
     ).rejects.toBe(failure);
     expect(identityClose).toHaveBeenCalledOnce();
     expect(workflowClose).toHaveBeenCalledOnce();
@@ -114,7 +111,6 @@ describe('API runtime acquisition', () => {
 
     const error = await acquireApiRuntimes(config, {
       logger: silentLogger,
-      telemetry: {} as never,
     }).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(AggregateError);

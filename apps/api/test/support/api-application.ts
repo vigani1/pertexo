@@ -15,10 +15,7 @@ import type { ApiRateLimit } from '../../src/platform/rate-limit/module.js';
 import { createApiCallbackRuntime } from '../../src/platform/webhooks/callback-runtime.module.js';
 import { createApiWorkflowRuntime } from '../../src/platform/workflow/runtime.module.js';
 
-export type TestApiParts = Pick<
-  ApiApplicationDependencies,
-  'logger' | 'telemetry'
-> &
+export type TestApiParts = ApiApplicationDependencies &
   Omit<ApiRuntimeSet, 'database' | 'rateLimit'> &
   Readonly<{
     database: WorkspaceDatabase;
@@ -36,8 +33,9 @@ export async function createTestApiApplication(
   { logger, telemetry, database, rateLimitConsumer, ...supplied }: TestApiParts,
 ) {
   const rateLimit = testRateLimit(config, rateLimitConsumer);
-  const runtimes: { -readonly [Key in keyof TestRuntimes]: TestRuntimes[Key] } =
-    { ...supplied, database, rateLimit };
+  const runtimes: {
+    -readonly [Key in keyof ApiRuntimeSet]: ApiRuntimeSet[Key];
+  } = { ...supplied, database, rateLimit };
   try {
     const identityRuntime = supplied.identityRuntime;
     if (identityRuntime !== undefined) {
@@ -60,8 +58,6 @@ export async function createTestApiApplication(
   }
   return assembleApiApplication(config, { logger, telemetry }, runtimes);
 }
-
-type TestRuntimes = ApiRuntimeSet;
 
 function testRateLimit(
   config: ApiConfig,

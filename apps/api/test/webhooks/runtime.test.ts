@@ -2,6 +2,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
+import type * as Integrations from '@pertexo/integrations/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createApiWebhookRuntime } from '../../src/platform/webhooks/runtime.module.js';
@@ -42,9 +43,9 @@ describe('API webhook runtime ownership', () => {
   });
 
   it('composes the real local envelope without creating an AWS client', async () => {
-    const actual = await vi.importActual<
-      typeof import('@pertexo/integrations/server')
-    >('@pertexo/integrations/server');
+    const actual = await vi.importActual<typeof Integrations>(
+      '@pertexo/integrations/server',
+    );
     outside.envelope.mockImplementation(
       actual.createWebhookTriggerEnvelopeEncryption,
     );

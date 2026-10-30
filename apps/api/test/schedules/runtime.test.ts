@@ -100,7 +100,6 @@ describe('API schedule runtime ownership', () => {
     outside.database.mockReturnValue(database(close));
     const runtime = await createApiScheduleRuntime(
       databaseConfig,
-      undefined,
       sharedRuntime,
     );
 
