@@ -63,6 +63,11 @@ export type AcceptVerifiedWebhookDeliveryInput = Readonly<{
   signal?: AbortSignal;
 }>;
 
+export type WebhookCommandResult = Readonly<{
+  trigger: WorkflowTriggerHealth;
+  replayed: boolean;
+}>;
+
 export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
   readResponse(input: WebhookResponseScope): Promise<WebhookResponseSnapshot>;
   configureAuthentication(
@@ -72,13 +77,7 @@ export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
         endpointKeyHash: string;
         secret: SealedWebhookTriggerSecret;
       }>,
-  ): Promise<
-    Readonly<{
-      trigger: WorkflowTriggerHealth;
-      replayed: boolean;
-      rotated: boolean;
-    }>
-  >;
+  ): Promise<WebhookCommandResult & Readonly<{ rotated: boolean }>>;
   provision(
     input: Command &
       Readonly<{
@@ -86,17 +85,17 @@ export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
         endpointKeyHash: string;
         secret: SealedWebhookTriggerSecret;
       }>,
-  ): Promise<WorkflowTriggerHealth>;
+  ): Promise<WebhookCommandResult>;
   rotateEndpoint(
     input: Command & Readonly<{ endpointKeyHash: string }>,
-  ): Promise<WorkflowTriggerHealth>;
+  ): Promise<WebhookCommandResult>;
   rotateSecret(
     input: Command &
       Readonly<{
         endpointKeyHash: string;
         secret: SealedWebhookTriggerSecret;
       }>,
-  ): Promise<WorkflowTriggerHealth>;
+  ): Promise<WebhookCommandResult>;
   getHealth(
     input: Readonly<{
       workspaceId: string;

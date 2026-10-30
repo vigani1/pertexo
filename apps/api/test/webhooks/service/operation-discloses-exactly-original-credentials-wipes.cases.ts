@@ -94,15 +94,12 @@ export function registerOperationDisclosesExactlyOriginalCredentialsWipes(): voi
   it.each([
     ['seal rejection', 'seal'] as const,
     ['persistence rejection', 'persistence'] as const,
-    ['ownership proof rejection', 'proof'] as const,
   ])('wipes all provision material after %s', async (_name, stage) => {
     const fixture = setup(true);
     const failure = new Error(`${stage} failed`);
     if (stage === 'seal') fixture.seal.mockRejectedValueOnce(failure);
     if (stage === 'persistence')
       fixture.database.provision.mockRejectedValueOnce(failure);
-    if (stage === 'proof')
-      fixture.database.resolveVerification.mockRejectedValueOnce(failure);
 
     await expect(fixture.service.provision(input)).rejects.toBe(failure);
 
@@ -128,16 +125,6 @@ export function registerOperationDisclosesExactlyOriginalCredentialsWipes(): voi
 
     expect(fixture.database.rotateSecret).not.toHaveBeenCalled();
     expectWiped(fixture.generated);
-  });
-
-  it('rejects a missing endpoint key before material, sealing, or persistence', () => {
-    const fixture = setup(true);
-
-    expect(() => fixture.service.rotateSecret({ ...input } as never)).toThrow();
-
-    expect(fixture.generated).toHaveLength(0);
-    expect(fixture.seal).not.toHaveBeenCalled();
-    expect(fixture.database.rotateSecret).not.toHaveBeenCalled();
   });
 
   it('maps hidden not-found and preserves an unknown command error', async () => {

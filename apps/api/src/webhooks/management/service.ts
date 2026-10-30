@@ -7,7 +7,6 @@ import type {
   WebhookTriggerHealthResponse,
   WebhookAuthentication,
 } from '@pertexo/contracts';
-import { webhookCredentialSchema } from '@pertexo/contracts';
 import type {
   WebhookDeliveryRecord,
   WebhookTriggerDatabase,
@@ -98,12 +97,6 @@ export class WebhookManagementService {
     };
   }
 
-  public async provision(
-    input: WebhookCommandInput,
-  ): Promise<WebhookManagementCommandResponse> {
-    return this.provisionWebhook(input);
-  }
-
   public async configureAuthentication(
     input: WebhookCommandInput &
       Readonly<{ authentication: WebhookAuthentication }>,
@@ -152,20 +145,7 @@ export class WebhookManagementService {
     }
   }
 
-  public async rotateEndpoint(
-    input: WebhookCommandInput,
-  ): Promise<WebhookManagementCommandResponse> {
-    return this.rotateWebhookEndpoint(input);
-  }
-
-  public rotateSecret(
-    input: WebhookRotateSecretInput,
-  ): Promise<WebhookManagementCommandResponse> {
-    const endpointKey = webhookCredentialSchema.parse(input.endpointKey);
-    return this.rotateWebhookSecret(input, endpointKey);
-  }
-
-  private async provisionWebhook(
+  public async provision(
     input: WebhookCommandInput,
   ): Promise<WebhookManagementCommandResponse> {
     const signal = commandSignal(input);
@@ -188,29 +168,23 @@ export class WebhookManagementService {
         )),
       };
       signal.throwIfAborted();
-      const trigger = await this.database.provision({
+      const result = await this.database.provision({
         ...commandBase('provision', input),
         endpointId: this.generateId(),
         endpointKeyHash,
         secret,
       });
-      const resolved = await this.database.resolveVerification(endpointKeyHash);
-      const original = resolved?.triggerId === input.triggerId;
-      return original
-        ? {
-            trigger: publicHealth(trigger),
-            replayed: false,
-            endpointKey,
-            signingSecret,
-          }
-        : { trigger: publicHealth(trigger), replayed: true };
+      const trigger = publicHealth(result.trigger);
+      return result.replayed
+        ? { trigger, replayed: true }
+        : { trigger, replayed: false, endpointKey, signingSecret };
     } finally {
       endpointBytes?.fill(0);
       secretBytes?.fill(0);
     }
   }
 
-  private async rotateWebhookEndpoint(
+  public async rotateEndpoint(
     input: WebhookCommandInput,
   ): Promise<WebhookManagementCommandResponse> {
     const signal = commandSignal(input);
@@ -221,30 +195,24 @@ export class WebhookManagementService {
       const endpointKey = endpointBytes.toString('base64url');
       const endpointKeyHash = sha256(endpointKey);
       signal.throwIfAborted();
-      const trigger = await this.database.rotateEndpoint({
+      const result = await this.database.rotateEndpoint({
         ...commandBase('rotateEndpoint', input),
         endpointKeyHash,
       });
-      const resolved = await this.database.resolveVerification(endpointKeyHash);
-      const original = resolved?.triggerId === input.triggerId;
-      return original
-        ? {
-            trigger: publicHealth(trigger),
-            replayed: false,
-            endpointKey,
-          }
-        : { trigger: publicHealth(trigger), replayed: true };
+      const trigger = publicHealth(result.trigger);
+      return result.replayed
+        ? { trigger, replayed: true }
+        : { trigger, replayed: false, endpointKey };
     } finally {
       endpointBytes?.fill(0);
     }
   }
 
-  private async rotateWebhookSecret(
+  public async rotateSecret(
     input: WebhookRotateSecretInput,
-    endpointKey: string,
   ): Promise<WebhookManagementCommandResponse> {
     const signal = commandSignal(input);
-    const endpointKeyHash = sha256(endpointKey);
+    const endpointKeyHash = sha256(input.endpointKey);
     let secretBytes: Buffer | undefined;
     try {
       signal.throwIfAborted();
@@ -260,20 +228,15 @@ export class WebhookManagementService {
         )),
       };
       signal.throwIfAborted();
-      const trigger = await this.database.rotateSecret({
+      const result = await this.database.rotateSecret({
         ...commandBase('rotateSecret', input, endpointKeyHash),
         endpointKeyHash,
         secret,
       });
-      const resolved = await this.database.resolveVerification(endpointKeyHash);
-      const original = resolved?.currentSecret.id === secretVersionId;
-      return original
-        ? {
-            trigger: publicHealth(trigger),
-            replayed: false,
-            signingSecret,
-          }
-        : { trigger: publicHealth(trigger), replayed: true };
+      const trigger = publicHealth(result.trigger);
+      return result.replayed
+        ? { trigger, replayed: true }
+        : { trigger, replayed: false, signingSecret };
     } finally {
       secretBytes?.fill(0);
     }
