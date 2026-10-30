@@ -107,12 +107,14 @@ export function ApiTokensPage({
         )}
         {workspace.status === 'active' ? null : (
           <Notice tone="warning">
-            New tokens need an active workspace. Existing tokens cannot
-            authenticate while this workspace is inactive; you can still revoke
-            them here.
+            Creating and revoking tokens need an active workspace. Existing
+            tokens cannot authenticate while this workspace is inactive.
           </Notice>
         )}
-        <TokenResults query={query} onRevoke={setRevoking} />
+        <TokenResults
+          query={query}
+          {...(workspace.status === 'active' ? { onRevoke: setRevoking } : {})}
+        />
       </div>
       {!creating || first === undefined ? null : (
         <CreateTokenDialog

@@ -15,11 +15,13 @@ import { CommentComposer } from './composer';
 import { DiscussionFeedback } from './command-feedback';
 export function DiscussionComment({
   scope,
+  paused = false,
   comment,
   highlighted,
   onDeleted,
 }: {
   scope: CollaborationScope;
+  paused?: boolean | undefined;
   comment: WorkflowComment;
   highlighted: boolean;
   onDeleted: () => void;
@@ -77,7 +79,7 @@ export function DiscussionComment({
                 .join(', ')}
             </p>
           ) : null}
-          {comment.authorId !== scope.userId ? null : (
+          {paused || comment.authorId !== scope.userId ? null : (
             <div className="flex gap-2">
               <Button
                 type="button"

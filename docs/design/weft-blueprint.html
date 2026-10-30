@@ -1031,7 +1031,7 @@ pre.code .k{color:var(--lav)} pre.code .v{color:var(--ice)} pre.code .c{color:va
         <li><b>One or more:</b> a grid of workspaces. Each has a monogram in a thread ring (colour derived from the name), the name, a role chip, a status glyph and a “Last opened” tag. The last tile is + New workspace.</li>
       </ul></section>
       <section><h4>States</h4><ul>
-        <li><b>Suspended:</b> disabled, with the reason written out (“Suspended. Contact support.”).</li>
+        <li><b>Suspended:</b> opens for browsing with its banner: pages read, runs and changes are paused, and the owner can reactivate it.</li>
         <li><b>pending_deletion:</b> owners see “Scheduled for deletion” with Restore. Everyone else sees “Being deleted”. The deadline date isn't available yet. <span class="t gap">needs API</span></li>
         <li><b>Uncertain create:</b> keep today's recovery logic, but say “We're not sure it went through. Check again.” instead of “Retry same workspace / Dismiss attempt”.</li>
       </ul></section>
@@ -1528,6 +1528,7 @@ pre.code .k{color:var(--lav)} pre.code .v{color:var(--ice)} pre.code .c{color:va
         <li><b>Delete workspace:</b> type the workspace name to confirm, give a reason, and see the explanation: “Access and triggers stop now. You can restore it for 30 days.”</li>
         <li>After confirming, an operation card with a live edge while the deletion is pending, then a global banner, “Scheduled for deletion · Restore”, on every page for owners. The exact purge date: <span class="t gap">needs API</span>. Fallback: “within 30 days of the request”.</li>
         <li><b>Restore</b> explains that integrations stay off until they're reconnected. Raw operation UUIDs and error codes move into Details.</li>
+        <li><b>Reactivate workspace</b> lifts a restored workspace's suspension for the owner; triggers and connections stay off until they're turned back on, and revoked API tokens stay revoked.</li>
       </ul></section>
     </div>
   </article>

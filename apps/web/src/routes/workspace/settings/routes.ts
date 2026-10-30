@@ -1,3 +1,4 @@
+import { holdsCapability } from '@/features/workspaces/availability.public';
 import { parsePromotionSearch } from '@/features/workflow-promotions/search.public';
 import { parseFederationSearch } from '@/features/federation/search.public';
 import { parseAuditSearch } from '@/features/governance/search.public';
@@ -33,7 +34,7 @@ export const alertsRoute = createRoute({
     const { apiClient, queryClient, user, workspace } = context;
     const can = (capability: (typeof workspace.capabilities)[number]) =>
       workspace.capabilities.includes(capability);
-    if (!can('workflow:update')) return;
+    if (!holdsCapability(workspace, 'workflow:update')) return;
     warmPrefetches(context, [
       queryClient.query(
         failureNotificationDestinationsQueryOptions(

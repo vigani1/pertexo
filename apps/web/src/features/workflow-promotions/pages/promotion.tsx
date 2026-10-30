@@ -1,3 +1,7 @@
+import {
+  isWorkspaceBrowsable,
+  holdsCapability,
+} from '@/features/workspaces/availability.public';
 import { usePromotionApply } from '../data/promotions.mutations';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { PromotionActionFields } from '../components/action-fields';
@@ -44,9 +48,8 @@ export function WorkflowPromotionPage({
   selected,
   onSelect,
 }: PromotionPageProps) {
-  const allowed =
-    workspace.capabilities.includes('workflow:update') &&
-    workspace.status === 'active';
+  const allowed = canReadPromotion(workspace);
+  const paused = workspace.status !== 'active';
   const settings = useQuery({
     ...promotionSettingsQuery(scope),
     enabled: allowed,
@@ -98,10 +101,10 @@ export function WorkflowPromotionPage({
             scope={scope}
             workspaceName={workspace.name}
             snapshot={snapshot}
-            disabled={busy}
+            disabled={busy || paused}
             onChange={clearReview}
           />
-          {snapshot.target?.status === 'available' ? (
+          {snapshot.target?.status === 'available' && !paused ? (
             <SettingsSection
               title={`Promote to ${snapshot.target.name}`}
               description="Select exact published versions, check target setup and review the differences before applying."
@@ -272,3 +275,10 @@ type ReviewInput = Readonly<{
   body: WorkflowPromotionPreviewRequest;
   linkRevision: number;
 }>;
+
+function canReadPromotion(workspace: AccessibleWorkspace): boolean {
+  return (
+    holdsCapability(workspace, 'workflow:update') &&
+    isWorkspaceBrowsable(workspace)
+  );
+}

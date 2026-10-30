@@ -1,3 +1,4 @@
+import { isWorkspaceBrowsable } from '@/features/workspaces/availability.public';
 import { Link } from '@tanstack/react-router';
 import { ChartLineIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -65,7 +66,7 @@ export function UsagePage({
   const canReadCapacity =
     canReadRuns &&
     workspace.capabilities.includes('artifact:read') &&
-    workspace.status === 'active';
+    isWorkspaceBrowsable(workspace);
   const capacity = useQuery({
     ...usageCapacityQueryOptions(apiClient, user.id, workspace.id),
     enabled: canReadCapacity,
@@ -128,8 +129,8 @@ export function UsagePage({
         ) : (
           <SettingsSection title="Current capacity">
             <Notice>
-              {workspace.status !== 'active'
-                ? 'Current capacity is available only for an active workspace.'
+              {!isWorkspaceBrowsable(workspace)
+                ? 'Current capacity isn’t available for a workspace being deleted.'
                 : 'You need access to runs and files to see capacity.'}
             </Notice>
           </SettingsSection>

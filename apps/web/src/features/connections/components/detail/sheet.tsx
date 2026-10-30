@@ -47,6 +47,7 @@ export type ConnectionPermissions = Readonly<{
   canTest: boolean;
   canManage: boolean;
   canReadUsage?: boolean;
+  canFollow?: boolean;
 }>;
 
 function ConnectionState({
@@ -168,12 +169,19 @@ function DetailBody({
             connectionId={connection.id}
             canRead={permissions.canReadUsage ?? false}
           />
-          <Separator />
-          <NoticeSubjectActions
-            scope={scope}
-            subject={{ subjectKind: 'connection', subjectId: connection.id }}
-            name={connection.name}
-          />
+          {permissions.canFollow === false ? null : (
+            <>
+              <Separator />
+              <NoticeSubjectActions
+                scope={scope}
+                subject={{
+                  subjectKind: 'connection',
+                  subjectId: connection.id,
+                }}
+                name={connection.name}
+              />
+            </>
+          )}
           {/* Last, after everything it would stop. */}
           {permissions.canManage && connection.status !== 'revoked' ? (
             <>

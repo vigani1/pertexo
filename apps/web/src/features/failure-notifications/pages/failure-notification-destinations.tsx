@@ -1,3 +1,4 @@
+import { holdsCapability } from '@/features/workspaces/availability.public';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type {
   AccessibleWorkspace,
@@ -188,7 +189,7 @@ export function FailureNotificationDestinationsPage({
 }>) {
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
     workspace.capabilities.includes(capability);
-  const canRead = can('workflow:update');
+  const canRead = holdsCapability(workspace, 'workflow:update');
   const canManage = can('connection:manage');
   const scope = { apiClient, userId: user.id, workspaceId: workspace.id };
   const destinations = useQuery({

@@ -37,6 +37,7 @@ import {
   workspaceRenameResponseSchema,
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
+import { withCurrentCapabilities } from '../model/workspace-availability';
 import { collectPages, searchParams } from '@/lib/api/pagination';
 
 export function createWorkspace(
@@ -89,7 +90,10 @@ function getAccessibleWorkspacesPage(
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     response: {
       kind: 'json',
-      decode: (value) => accessibleWorkspacesResponseSchema.parse(value),
+      decode: (value) => {
+        const page = accessibleWorkspacesResponseSchema.parse(value);
+        return { ...page, items: page.items.map(withCurrentCapabilities) };
+      },
     },
   });
 }

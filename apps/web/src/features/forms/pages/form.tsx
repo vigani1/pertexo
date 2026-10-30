@@ -35,7 +35,14 @@ function formUnavailable(error: unknown) {
   );
 }
 
-export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
+export function FormPage({
+  scope,
+  paused = false,
+}: Readonly<{
+  scope: FormScope;
+  /** A suspended workspace shows its form to members but takes no responses. */
+  paused?: boolean;
+}>) {
   const query = useQuery(formQueryOptions(scope));
   // One response session per page: its uploads and its submission share it.
   const [session] = useState(newUploadSession);
@@ -77,6 +84,7 @@ export function FormPage({ scope }: Readonly<{ scope: FormScope }>) {
           schema={schema}
           uploads={formUploadTarget(scope, schema.versionId, session)}
           reload={reload}
+          paused={paused}
         />
       )}
     </QueryView>
@@ -136,7 +144,9 @@ function PublishedForm({
   schema,
   uploads,
   reload,
+  paused,
 }: Readonly<{
+  paused: boolean;
   command: SubmissionCommand;
   schema: FormSchemaResponse;
   uploads: FormUploadTarget;
@@ -157,10 +167,16 @@ function PublishedForm({
           </p>
         )}
       </header>
+      {paused ? (
+        <Notice tone="warning">
+          This workspace is suspended, so this form can’t take responses until
+          it’s reactivated.
+        </Notice>
+      ) : null}
       <FormResponse
         fields={form.fields}
         pending={command.pending}
-        disabled={command.uncertain || changed}
+        disabled={command.uncertain || changed || paused}
         submitLabel="Send response"
         uploads={uploads}
         onSubmit={(values) => command.send({ versionId, values })}

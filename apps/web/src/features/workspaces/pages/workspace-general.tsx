@@ -142,21 +142,25 @@ export function WorkspaceGeneralPage({
           <WorkspaceAccess workspace={workspace} />
         </SettingsSection>
 
-        <DangerZone>
-          {canManage ? (
-            <WorkspaceLifecycleControls
-              apiClient={apiClient}
-              workspace={workspace}
-              userId={user.id}
-              onCompleted={onWorkspaceChanged}
-            />
-          ) : null}
-          <WorkspaceLeave
-            apiClient={apiClient}
-            workspace={workspace}
-            onLeft={onLeft}
-          />
-        </DangerZone>
+        {canManage || workspace.status === 'active' ? (
+          <DangerZone>
+            {canManage ? (
+              <WorkspaceLifecycleControls
+                apiClient={apiClient}
+                workspace={workspace}
+                userId={user.id}
+                onCompleted={onWorkspaceChanged}
+              />
+            ) : null}
+            {workspace.status === 'active' ? (
+              <WorkspaceLeave
+                apiClient={apiClient}
+                workspace={workspace}
+                onLeft={onLeft}
+              />
+            ) : null}
+          </DangerZone>
+        ) : null}
       </div>
     </div>
   );

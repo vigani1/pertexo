@@ -17,7 +17,7 @@ export function TokenList({
   onRevoke,
 }: Readonly<{
   tokens: readonly ApiTokenMetadata[];
-  onRevoke: (token: ApiTokenMetadata) => void;
+  onRevoke?: (token: ApiTokenMetadata) => void;
 }>) {
   const nowMs = useNow({ intervalMs: 60_000 });
   return (
@@ -58,7 +58,7 @@ export function TokenList({
                   {status.label}
                 </p>
               </div>
-              {token.status === 'revoked' ? null : (
+              {token.status === 'revoked' || onRevoke === undefined ? null : (
                 <Button
                   type="button"
                   variant="ghost"

@@ -1,3 +1,4 @@
+import { holdsCapability } from '@/features/workspaces/availability.public';
 import { useState } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
@@ -78,7 +79,7 @@ function useAlertChoices({
 }>) {
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
     workspace.capabilities.includes(capability);
-  const enabled = can('workflow:update');
+  const enabled = holdsCapability(workspace, 'workflow:update');
   const destinations = useQuery({
     ...failureNotificationDestinationsQueryOptions(
       apiClient,

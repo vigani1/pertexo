@@ -15,8 +15,11 @@ import { whoCan } from '@/features/workspaces/roles.public';
 import { sentenceStart } from '@/lib/format/sentence';
 export function NotificationPreferencesPage({
   scope,
+  paused = false,
 }: {
   scope: WorkspaceApiScope;
+  /** A suspended workspace shows the choices but can't change them. */
+  paused?: boolean;
 }) {
   const query = useQuery(notificationPreferencesQueryOptions(scope));
   return (
@@ -41,18 +44,20 @@ export function NotificationPreferencesPage({
                 current={describePersonalChoice(data)}
                 note="Immediate messages are grouped within a minute. Hourly digests arrive at the next hour; daily ones in your time zone. New changes only."
               >
-                <NotificationScheduleEditor
-                  scope={scope}
-                  snapshot={data}
-                  target="personal"
-                />
+                {paused ? null : (
+                  <NotificationScheduleEditor
+                    scope={scope}
+                    snapshot={data}
+                    target="personal"
+                  />
+                )}
               </ScheduleCard>
               <ScheduleCard
                 title="Workspace default"
                 current={`Members get: ${describeSchedule(data.defaults).toLowerCase()}, unless they choose their own.`}
                 note={`${sentenceStart(whoCan('notification:manage_defaults'))} set it for everyone who hasn't chosen.`}
               >
-                {data.canManageDefaults ? (
+                {data.canManageDefaults && !paused ? (
                   <NotificationScheduleEditor
                     scope={scope}
                     snapshot={data}
