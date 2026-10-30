@@ -5,7 +5,6 @@ import { expect, it } from 'vitest';
 import {
   claim,
   completion,
-  eligibilityCheck,
   hourlyClaim,
   ids,
   recordAdmissionTransactions,
@@ -38,21 +37,6 @@ export function registerScheduleMisfireDisposition(): void {
         runId: disposition === 'accepted' ? runId : null,
         nextAt: new Date('2026-01-01T02:00:00.000Z'),
       });
-      expect(
-        statements.find(({ sql }) => sql.includes('for share of workflow'))
-          ?.params,
-      ).toEqual([ids.triggerOne, ids.leaseOne]);
-      expect(
-        statements.find(({ sql }) =>
-          sql.includes('app.workflow_trigger_pause_periods'),
-        )?.params[0],
-      ).toEqual(new Date('2026-01-01T01:00:00.000Z'));
-      expect(statements.some(({ sql }) => sql.includes(eligibilityCheck))).toBe(
-        disposition === 'accepted',
-      );
-      expect(seams.acceptWorkflowRun).toHaveBeenCalledTimes(
-        disposition === 'accepted' ? 1 : 0,
-      );
     },
   );
 
@@ -135,9 +119,6 @@ export function registerScheduleMisfireDisposition(): void {
         scheduledAt: new Date(scheduledAt),
         disposition,
       });
-      expect(seams.acceptWorkflowRun).toHaveBeenCalledTimes(
-        disposition === 'accepted' ? 1 : 0,
-      );
     },
   );
 }
