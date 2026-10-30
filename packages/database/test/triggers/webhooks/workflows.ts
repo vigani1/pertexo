@@ -150,7 +150,7 @@ export async function provisionWebhook(workflowIdInput: string) {
   const ids = await workflowTriggerIds(workflowIdInput);
   const endpointKeyHash = hash(`endpoint-${randomUUID()}`);
   const endpointId = randomUUID();
-  const health = await webhook.provision({
+  const { trigger: health } = await webhook.provision({
     workspaceId,
     workflowId: workflowIdInput,
     actorId,

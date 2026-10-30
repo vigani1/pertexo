@@ -199,7 +199,7 @@ export function registerAppliesArchiveStateAtReconciliation(): void {
     ).resolves.toMatchObject([
       { id: triggerId, status: 'configuration_required', endpointReady: false },
     ]);
-    const health = await webhook.provision({
+    const { trigger: health } = await webhook.provision({
       workspaceId,
       workflowId,
       actorId,

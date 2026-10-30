@@ -55,10 +55,12 @@ export function registerBindsEveryWebhookMutationReplay(): void {
       ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
     }
     await expect(webhook.provision(provision)).resolves.toMatchObject({
-      id: ids.webhookId,
+      trigger: { id: ids.webhookId },
+      replayed: false,
     });
     await expect(webhook.provision(provision)).resolves.toMatchObject({
-      id: ids.webhookId,
+      trigger: { id: ids.webhookId },
+      replayed: true,
     });
 
     const endpointKeyHash = hash(randomUUID());
@@ -81,10 +83,10 @@ export function registerBindsEveryWebhookMutationReplay(): void {
       ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
     }
     await expect(webhook.rotateEndpoint(rotateEndpoint)).resolves.toMatchObject(
-      { id: ids.webhookId },
+      { trigger: { id: ids.webhookId }, replayed: false },
     );
     await expect(webhook.rotateEndpoint(rotateEndpoint)).resolves.toMatchObject(
-      { id: ids.webhookId },
+      { trigger: { id: ids.webhookId }, replayed: true },
     );
 
     const rotateSecret = {
@@ -107,10 +109,12 @@ export function registerBindsEveryWebhookMutationReplay(): void {
       ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
     }
     await expect(webhook.rotateSecret(rotateSecret)).resolves.toMatchObject({
-      id: ids.webhookId,
+      trigger: { id: ids.webhookId },
+      replayed: false,
     });
     await expect(webhook.rotateSecret(rotateSecret)).resolves.toMatchObject({
-      id: ids.webhookId,
+      trigger: { id: ids.webhookId },
+      replayed: true,
     });
   });
 }
