@@ -87,9 +87,15 @@ export async function publishNext(page: Page, version: number) {
   await expect(dialog.getByRole('button', { name, exact: true })).toBeEnabled();
   const shown = await dialog.innerText();
   await dialog.getByRole('button', { name, exact: true }).click();
-  await expect(
-    page.getByText(`v${String(version)} is live`, { exact: true }),
-  ).toBeVisible();
+  // A saturated validator refuses and offers a retry; a person presses it.
+  const live = page.getByText(`v${String(version)} is live`, { exact: true });
+  const again = dialog.getByRole('button', { name: 'Try again', exact: true });
+  for (let tries = 0; tries < 5; tries += 1) {
+    await expect(live.or(again).first()).toBeVisible();
+    if (await live.isVisible()) break;
+    await again.click();
+  }
+  await expect(live).toBeVisible();
   return shown;
 }
 

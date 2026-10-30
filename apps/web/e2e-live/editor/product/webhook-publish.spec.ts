@@ -182,8 +182,14 @@ test('the publish dialog warns when a webhook step goes, and the endpoint then r
   await removeStep(page, live.path, live.webhookId);
   await addStep(page, live.path, /^Manual\b/u, 'Start by hand');
   const dialogText = await publishNext(page, 2);
-  expect(dialogText).toContain(STEP);
-  expect(dialogText).toMatch(/stop|retire|no longer/iu);
+  // The change list also names the step, so the warning must share its line.
+  expect(
+    dialogText
+      .split('\n')
+      .some(
+        (line) => line.includes(STEP) && /stop|retire|no longer/iu.test(line),
+      ),
+  ).toBe(true);
 
   await expect
     .poll(async () => (await sendSigned(hookUrl, live.secret)).status)
