@@ -29,6 +29,7 @@ import { registerChargesPendingAvailableDeletingArtifacts } from './statistics/c
 import { registerExcludesTestsListsAllHistory } from './statistics/excludes-tests-lists-all-history.cases.js';
 import { registerReturnsZerosIdleWorkspaceRejects } from './statistics/returns-zeros-idle-workspace-rejects.cases.js';
 import { registerCountsLogicalTriggerSkipsSeparately } from './statistics/counts-logical-trigger-skips-separately.cases.js';
+import { registerObservesStoragePerWorkspace } from './statistics/observes-storage-per-workspace.cases.js';
 beforeAll(beforeAllFixture1);
 beforeEach(beforeEachFixture2);
 afterAll(afterAllFixture3);
@@ -36,6 +37,8 @@ describe('ADR 057 current capacity authority', () => {
   registerScalarReadInheritsBoundedStatement();
 
   registerChargesPendingAvailableDeletingArtifacts();
+
+  registerObservesStoragePerWorkspace();
 });
 describe('workspace run statistics', () => {
   registerExcludesTestsListsAllHistory();
