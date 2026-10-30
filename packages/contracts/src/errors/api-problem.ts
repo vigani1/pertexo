@@ -121,7 +121,6 @@ export const API_PROBLEM_CODES = [
   'connection.not_configured',
   'webhook.not_configured',
   'connection.conflict',
-  'connection.reauthorization_required',
   'connection.revoked',
   'provider.unavailable',
   'webhook.authentication_failed',
@@ -528,12 +527,6 @@ const apiProblemDetails = {
     title: 'Connection conflict',
     severity: 'info',
     exposeDetail: true,
-  },
-  'connection.reauthorization_required': {
-    status: 401,
-    title: 'Connection reauthorization required',
-    severity: 'info',
-    exposeDetail: false,
   },
   'connection.revoked': {
     status: 409,

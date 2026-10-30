@@ -41,8 +41,8 @@ system and tests.
   in `lib/api`. Never add fetch calls to presentation components or store setters.
 - Preserve opaque ETags, serialized draft saves and stable idempotency keys where
   the endpoint requires them. Keep local edits on conflict or uncertain outcome.
-- Decode endpoint-specific problem extensions; a connection reauthorization 401
-  is not a user-session logout. One visible feedback owner per failure.
+- Decode endpoint-specific problem extensions; only `auth.unauthenticated`
+  ends the user's session. One visible feedback owner per failure.
 - Treat missing API discovery/callback contracts as explicit slice prerequisites,
   not permission to invent endpoints or copy legacy types. Add mechanical import
   rules and behavior tests with the feature, not documentation-only enforcement.

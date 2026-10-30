@@ -330,15 +330,12 @@ describe('connection public contracts', () => {
 });
 
 // web-app-01: no endpoint sends a connection 401, so the contract drops it.
-it.fails(
-  'answers 401 only for a signed-out session or a refused public webhook',
-  () => {
-    const unauthorized = Object.entries(API_PROBLEM_MANIFEST)
-      .filter(([, problem]) => problem.status === 401)
-      .map(([code]) => code);
-    expect(unauthorized.sort()).toEqual([
-      'auth.unauthenticated',
-      'webhook.authentication_failed',
-    ]);
-  },
-);
+it('answers 401 only for a signed-out session or a refused public webhook', () => {
+  const unauthorized = Object.entries(API_PROBLEM_MANIFEST)
+    .filter(([, problem]) => problem.status === 401)
+    .map(([code]) => code);
+  expect(unauthorized.sort()).toEqual([
+    'auth.unauthenticated',
+    'webhook.authentication_failed',
+  ]);
+});
