@@ -4,7 +4,11 @@ import { isApiError } from '@/lib/api/error';
 import { digestFile, transferFile } from '@/features/artifacts/public';
 import type { FormUploadTarget } from '../data/uploads.api';
 import { chosenFileProblem, type FileField } from '../model/files';
-import { uploadFailure, type UploadRow } from '../model/uploads';
+import {
+  uploadFailure,
+  type UploadRow,
+  type UploadState,
+} from '../model/uploads';
 
 interface Entry {
   readonly field: FileField;
@@ -42,11 +46,13 @@ export function useFormUploads(target: FormUploadTarget | undefined) {
     };
   }, []);
 
-  function update(entry: Entry, patch: Partial<UploadRow>) {
+  function update(entry: Entry, state: UploadState) {
     change((previous) => ({
       ...previous,
       [entry.field.name]: (previous[entry.field.name] ?? []).map((row) =>
-        row.key === entry.key ? { ...row, ...patch } : row,
+        row.key === entry.key
+          ? { key: row.key, name: row.name, size: row.size, ...state }
+          : row,
       ),
     }));
   }
@@ -55,13 +61,15 @@ export function useFormUploads(target: FormUploadTarget | undefined) {
     entry.controller?.abort();
     const controller = new AbortController();
     entry.controller = controller;
-    const show = (change: Partial<UploadRow>) => {
-      if (!controller.signal.aborted) update(entry, change);
+    const show = (state: UploadState) => {
+      if (!controller.signal.aborted) update(entry, state);
     };
     try {
       if (target === undefined) throw new UploadsUnavailableError();
-      await upload(target, entry, controller.signal, show);
-      show({ phase: 'ready', uploadId: entry.uploadId });
+      show({
+        phase: 'ready',
+        uploadId: await upload(target, entry, controller.signal, show),
+      });
     } catch (error) {
       if (controller.signal.aborted) return;
       const failure =
@@ -97,7 +105,6 @@ export function useFormUploads(target: FormUploadTarget | undefined) {
               name: file.name,
               size: file.size,
               phase: 'checking',
-              retryable: false,
             }
           : {
               key: entry.key,
@@ -148,40 +155,46 @@ export function useFormUploads(target: FormUploadTarget | undefined) {
     ),
     uploadIds: (field: FormField): readonly string[] =>
       (rows[field.name] ?? []).flatMap((row) =>
-        row.phase === 'ready' && row.uploadId !== undefined
-          ? [row.uploadId]
-          : [],
+        row.phase === 'ready' ? [row.uploadId] : [],
       ),
   };
 }
 
-/** Finished earlier but the reply was lost: finalizing again is safe. */
+/**
+ * Finished earlier but the reply was lost: finalizing again is safe. Returns
+ * the finished upload's ID.
+ */
 async function alreadyFinished(
   target: FormUploadTarget,
   entry: Entry,
   signal: AbortSignal,
-): Promise<boolean> {
-  if (entry.uploadId === undefined) return false;
+): Promise<string | undefined> {
+  const { uploadId } = entry;
+  if (uploadId === undefined) return undefined;
   try {
-    await target.finalize(entry.uploadId, signal);
-    return true;
+    await target.finalize(uploadId, signal);
+    return uploadId;
   } catch (error) {
     if (isApiError(error) && error.problem?.code === 'artifact.conflict')
-      return false;
+      return undefined;
     throw error;
   }
 }
 
-/** Check, reserve, send and verify one file; an exact retry reuses its key. */
+/**
+ * Check, reserve, send and verify one file, returning its upload ID; an exact
+ * retry reuses its key.
+ */
 async function upload(
   target: FormUploadTarget,
   entry: Entry,
   signal: AbortSignal,
-  show: (change: Partial<UploadRow>) => void,
-): Promise<void> {
-  show({ phase: 'checking', error: undefined, retryable: false });
+  show: (state: UploadState) => void,
+): Promise<string> {
+  show({ phase: 'checking' });
   entry.sha256 ??= await digestFile(entry.file, signal);
-  if (await alreadyFinished(target, entry, signal)) return;
+  const finished = await alreadyFinished(target, entry, signal);
+  if (finished !== undefined) return finished;
   show({ phase: 'reserving' });
   const reservation = await target.begin(
     {
@@ -193,9 +206,11 @@ async function upload(
     entry.idempotencyKey,
     signal,
   );
-  entry.uploadId = reservation.upload.id;
-  show({ phase: 'sending', uploadId: entry.uploadId });
+  const uploadId = reservation.upload.id;
+  entry.uploadId = uploadId;
+  show({ phase: 'sending' });
   await transferFile(entry.file, reservation.transfer, signal);
   show({ phase: 'verifying' });
-  await target.finalize(entry.uploadId, signal);
+  await target.finalize(uploadId, signal);
+  return uploadId;
 }

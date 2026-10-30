@@ -9,13 +9,10 @@ it('keeps the per-response upload cap a 429 problem', () => {
 });
 
 // web-app-13: a busy public upload allowance has its own temporary code.
-it.fails(
-  'names a busy public upload allowance with its own 429 problem',
-  () => {
-    const code = apiProblemCodeSchema.parse('form.upload_busy');
-    expect(API_PROBLEM_MANIFEST[code]).toMatchObject({
-      status: 429,
-      exposeDetail: true,
-    });
-  },
-);
+it('names a busy public upload allowance with its own 429 problem', () => {
+  const code = apiProblemCodeSchema.parse('form.upload_busy');
+  expect(API_PROBLEM_MANIFEST[code]).toMatchObject({
+    status: 429,
+    exposeDetail: true,
+  });
+});

@@ -11,13 +11,10 @@ it('tells a responder over the per-response cap to reload the form', () => {
 });
 
 // web-app-13: the busy allowance is temporary, so it gets its own code.
-it.fails(
-  'tells a responder to try again later while unsent public files fill the allowance',
-  () => {
-    expect(toProblem(new FormUploadLimitError('unsent_public'))).toMatchObject({
-      code: 'form.upload_busy',
-      safeDetail:
-        'This form is receiving a lot of files right now. Try again in a few minutes.',
-    });
-  },
-);
+it('tells a responder to try again later while unsent public files fill the allowance', () => {
+  expect(toProblem(new FormUploadLimitError('unsent_public'))).toMatchObject({
+    code: 'form.upload_busy',
+    safeDetail:
+      'This form is receiving a lot of files right now. Try again in a few minutes.',
+  });
+});

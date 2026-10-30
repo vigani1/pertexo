@@ -53,8 +53,9 @@ the field lives there.
   through the existing abandoned-upload cleanup (24 hours, or 1 hour through a
   public link). The workspace's storage quota applies, and over-quota uploads
   fail with the existing quota problem. Unsent public-link files also share a
-  100 MiB allowance per workspace (`form.upload_limit`), so strangers can't
-  fill the quota before cleanup.
+  100 MiB allowance per workspace, so strangers can't fill the quota before
+  cleanup. Past it, new public uploads get the temporary `form.upload_busy`
+  (retryable); `form.upload_limit` stays the per-response cap.
 - **Type checks** use extension plus a magic-number sniff for the allowed groups.
   A mismatch is rejected as `form.file_type_not_allowed`. Files are not
   virus-scanned; the guide says so, as the files guide already does.

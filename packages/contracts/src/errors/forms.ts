@@ -41,6 +41,13 @@ export const formProblems = {
     severity: 'info',
     exposeDetail: true,
   },
+  // Temporary: unsent public-link files fill the workspace's allowance.
+  'form.upload_busy': {
+    status: 429,
+    title: 'Uploads are busy',
+    severity: 'info',
+    exposeDetail: true,
+  },
   'form.required': {
     status: 409,
     title: 'Use the workflow form',

@@ -54,33 +54,30 @@ it('tells a responder over the per-response cap to reload, with no Retry', async
 });
 
 // web-app-13: a busy public upload allowance is temporary, so the row offers Retry.
-it.fails(
-  'lets a responder retry a file once a busy upload allowance frees up',
-  async () => {
-    storeAccepts();
-    const begin = vi
-      .fn<FormUploadTarget['begin']>()
-      .mockRejectedValueOnce(
-        uploadRefusal(
-          'form.upload_busy',
-          'This form is receiving a lot of files right now. Try again in a few minutes.',
-        ),
-      )
-      .mockImplementation(target().begin);
-    render(
-      <FormResponse
-        fields={fields}
-        uploads={target({ begin })}
-        onSubmit={vi.fn()}
-      />,
-    );
-    const user = userEvent.setup();
-    await user.upload(screen.getByLabelText('Invoice'), file('a.pdf'));
-    const rows = await screen.findByRole('list', { name: 'Invoice files' });
-    expect(
-      await within(rows).findByText(/Try again in a few minutes\./u),
-    ).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Retry a.pdf' }));
-    await screen.findByText('a.pdf attached.');
-  },
-);
+it('lets a responder retry a file once a busy upload allowance frees up', async () => {
+  storeAccepts();
+  const begin = vi
+    .fn<FormUploadTarget['begin']>()
+    .mockRejectedValueOnce(
+      uploadRefusal(
+        'form.upload_busy',
+        'This form is receiving a lot of files right now. Try again in a few minutes.',
+      ),
+    )
+    .mockImplementation(target().begin);
+  render(
+    <FormResponse
+      fields={fields}
+      uploads={target({ begin })}
+      onSubmit={vi.fn()}
+    />,
+  );
+  const user = userEvent.setup();
+  await user.upload(screen.getByLabelText('Invoice'), file('a.pdf'));
+  const rows = await screen.findByRole('list', { name: 'Invoice files' });
+  expect(
+    await within(rows).findByText(/Try again in a few minutes\./u),
+  ).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Retry a.pdf' }));
+  await screen.findByText('a.pdf attached.');
+});
