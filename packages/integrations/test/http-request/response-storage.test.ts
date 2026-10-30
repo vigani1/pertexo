@@ -18,6 +18,12 @@ it.each(['GET', 'POST'] as const)(
   async (method) => {
     let requests = 0;
     const server = createServer((request, response) => {
+      // Other software probes new local ports (T3 Code's desktop app sends
+      // `GET /`). Those aren't requests the executor made.
+      if (request.url !== '/effect') {
+        response.writeHead(404).end();
+        return;
+      }
       requests++;
       request.resume();
       response

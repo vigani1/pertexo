@@ -18,6 +18,12 @@ describe('one owned post-acceptance loss proxy', () => {
   ) {
     const calls: { body: string; key: string | undefined }[] = [];
     const server = createServer((incoming, outgoing) => {
+      // Other software probes new local ports (T3 Code's desktop app sends
+      // `GET /`). Those aren't requests the proxy forwarded.
+      if (incoming.method !== 'POST') {
+        outgoing.writeHead(404).end();
+        return;
+      }
       let body = '';
       incoming.on('data', (chunk: Buffer) => {
         body += chunk.toString();

@@ -61,6 +61,12 @@ export function registerReclaimsEnqueueBeforeMarkBullRedelivery(): void {
     );
     try {
       const provider = createServer((request, response) => {
+        // Other software probes new local ports (T3 Code's desktop app sends
+        // `GET /`). A probe must neither count nor take the first-request drop.
+        if (request.method !== 'POST' || request.url !== '/safe-effect') {
+          response.writeHead(404).end();
+          return;
+        }
         providerRequests += 1;
         const key = String(request.headers['idempotency-key']);
         acceptedProviderEffects.add(key);

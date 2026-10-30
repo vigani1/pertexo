@@ -36,6 +36,12 @@ describe.runIf(fixture.enabled)(
         let received: { url: string; secret: string } | undefined;
         let receiverError: unknown;
         const destination = createServer((request, response) => {
+          // Other software probes new local ports (T3 Code's desktop app sends
+          // `GET /`). A probe carries no callback, so it isn't a receiver error.
+          if (request.method !== 'POST') {
+            response.writeHead(404).end();
+            return;
+          }
           void (async () => {
             const query = new URL(request.url ?? '/', 'http://127.0.0.1')
               .searchParams;

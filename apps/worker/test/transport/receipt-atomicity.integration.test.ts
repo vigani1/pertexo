@@ -136,7 +136,13 @@ describeIntegration(
         'unsafe provider ambiguity proof',
       );
       try {
-        const provider = createServer((request) => {
+        const provider = createServer((request, response) => {
+          // Other software probes new local ports (T3 Code's desktop app sends
+          // `GET /`). Those aren't requests the provider consumer made.
+          if (request.method !== 'POST' || request.url !== '/unsafe') {
+            response.writeHead(404).end();
+            return;
+          }
           providerRequests += 1;
           request.socket.destroy();
         });

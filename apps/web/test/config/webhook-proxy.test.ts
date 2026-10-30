@@ -13,6 +13,12 @@ it('forwards local webhook bodies and preflight, redacting credential URLs on up
     body: string;
   }[] = [];
   const upstream = createHttpServer((request, response) => {
+    // Other software probes new local ports (T3 Code's desktop app sends
+    // `GET /`). Those aren't requests the proxy forwarded.
+    if (request.url?.startsWith('/hooks/') !== true) {
+      response.writeHead(404).end();
+      return;
+    }
     const chunks: Buffer[] = [];
     request.on('data', (chunk: Buffer) => chunks.push(chunk));
     request.on('end', () => {
