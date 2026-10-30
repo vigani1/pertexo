@@ -1,13 +1,15 @@
-import type { Role } from '@pertexo/workflow-model';
-
+import type { ApiTokenScope } from '@pertexo/contracts';
 import { expect, it } from 'vitest';
 
+import { createAutomationActorContext } from '../../../src/authorization/index.js';
+import { WorkflowRunNotFoundError } from '../../../src/workflow-runs/access/authorize.js';
 import {
   GetWorkflowRunUseCase,
   ListWorkflowRunsUseCase,
 } from '../../../src/workflow-runs/use-cases.js';
 
 import {
+  actorId,
   workspaceId,
   workflowId,
   runId,
@@ -145,58 +147,68 @@ export function registerPassesExactRunValuePairThrough(): void {
     expect(fixture.list).toHaveBeenCalledTimes(2);
   });
 
-  it('omits workflow metadata and rejects name filtering at a run-only policy seam', async () => {
-    const fixture = persistence();
-    fixture.get.mockImplementation((input) =>
-      Promise.resolve({
-        run: {
-          ...run(),
-          workflowName: input.includeWorkflowName ? 'Operations' : null,
-        },
-        nodes: [],
-      }),
-    );
-    fixture.list.mockImplementation((input) =>
-      Promise.resolve({
-        items: [
-          {
+  it.each([
+    { scopes: ['run:read'] as const, workflowName: null },
+    {
+      scopes: ['run:read', 'workflow:read'] as const,
+      workflowName: 'Operations',
+    },
+  ])(
+    'shows workflow names to a token only with workflow:read ($scopes)',
+    async ({ scopes, workflowName }) => {
+      const fixture = persistence();
+      fixture.get.mockImplementation((input) =>
+        Promise.resolve({
+          run: {
             ...run(),
             workflowName: input.includeWorkflowName ? 'Operations' : null,
           },
-        ],
-      }),
-    );
-    const runOnlyPolicy = (_role: Role, capability: string) =>
-      capability === 'run:read';
-    const access = authorization();
-    const detail = await new GetWorkflowRunUseCase(
-      fixture.store,
-      access,
-      runOnlyPolicy,
-    ).execute({ actor, routeWorkspaceId: workspaceId, runId });
-    expect(detail.run.workflowName).toBeNull();
-    expect(fixture.get).toHaveBeenCalledWith(
-      expect.objectContaining({ includeWorkflowName: false }),
-    );
+          nodes: [],
+        }),
+      );
+      fixture.list.mockImplementation((input) =>
+        Promise.resolve({
+          items: [
+            {
+              ...run(),
+              workflowName: input.includeWorkflowName ? 'Operations' : null,
+            },
+          ],
+        }),
+      );
+      const token = tokenActor(scopes);
+      const access = authorization('owner');
 
-    const listUseCase = new ListWorkflowRunsUseCase(
-      fixture.store,
-      access,
-      runOnlyPolicy,
-    );
+      const detail = await new GetWorkflowRunUseCase(
+        fixture.store,
+        access,
+      ).execute({ actor: token, routeWorkspaceId: workspaceId, runId });
+      expect(detail.run.workflowName).toBe(workflowName);
+
+      await expect(
+        new ListWorkflowRunsUseCase(fixture.store, access).execute({
+          actor: token,
+          routeWorkspaceId: workspaceId,
+        }),
+      ).resolves.toMatchObject({
+        items: [expect.objectContaining({ workflowName })],
+      });
+    },
+  );
+
+  it('hides that a workflow name matched from a token without workflow:read', async () => {
+    const fixture = persistence();
     await expect(
-      listUseCase.execute({ actor, routeWorkspaceId: workspaceId }),
-    ).resolves.toMatchObject({
-      items: [expect.objectContaining({ workflowName: null })],
-    });
-    await expect(
-      listUseCase.execute({
-        actor,
+      new ListWorkflowRunsUseCase(
+        fixture.store,
+        authorization('owner'),
+      ).execute({
+        actor: tokenActor(['run:read']),
         routeWorkspaceId: workspaceId,
         workflowNamePrefix: 'Oper',
       }),
-    ).rejects.toBeInstanceOf(Error);
-    expect(fixture.list).toHaveBeenCalledTimes(1);
+    ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
+    expect(fixture.list).not.toHaveBeenCalled();
   });
 
   it('preserves fractional run-history boundaries through the use-case seam', async () => {
@@ -215,5 +227,15 @@ export function registerPassesExactRunValuePairThrough(): void {
         createdAtBefore: '2026-08-21T00:00:00.000900Z',
       }),
     );
+  });
+}
+
+function tokenActor(scopes: readonly ApiTokenScope[]) {
+  return createAutomationActorContext({
+    actorId,
+    workspaceId,
+    tokenId: '99999999-9999-4999-8999-999999999999',
+    requestId: 'request-token',
+    scopes,
   });
 }

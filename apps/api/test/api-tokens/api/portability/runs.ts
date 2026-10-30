@@ -2,7 +2,10 @@ import { randomUUID, createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { expect } from 'vitest';
 import {
+  apiTokenCreateResponseSchema,
   workflowPublishResponseSchema,
+  workflowRunListResponseSchema,
+  workflowRunResponseSchema,
   workflowRunStartResponseSchema,
 } from '@pertexo/contracts';
 import type { createAutomationApiFixture } from '../fixture.js';
@@ -125,6 +128,11 @@ export async function qualifyCredentialRuns(
     (await api.send('GET', `${base}/runs/${started.run.id}`, { headers }))
       .statusCode,
   ).toBe(200);
+  await verifyWorkflowNamesNeedWorkflowRead(
+    caseFixture,
+    evidence,
+    started.run.id,
+  );
   expect(
     (
       await api.send('POST', `${base}/runs/${started.run.id}/cancel`, {
@@ -135,4 +143,55 @@ export async function qualifyCredentialRuns(
   ).toBe(200);
 
   return { payload, started };
+}
+
+/** automation.md: `run:read`; also `workflow:read` for workflow names. */
+async function verifyWorkflowNamesNeedWorkflowRead(
+  caseFixture: ReturnType<typeof createAutomationApiFixture>,
+  { base, browser, headers }: TokenWorkspace,
+  runId: string,
+) {
+  const { api } = caseFixture;
+  const issued = await api.send('POST', `${base}/api-tokens`, {
+    browser,
+    headers: { 'idempotency-key': randomUUID() },
+    payload: { name: 'Run reader', scopes: ['run:read'] },
+  });
+  expect(issued.statusCode).toBe(201);
+  const runReader = apiTokenCreateResponseSchema.parse(issued.json());
+  if (runReader.replayed) throw new Error('First creation replayed');
+  const runOnly = { authorization: `Bearer ${runReader.secret}` };
+
+  const named = async (
+    tokenHeaders: Readonly<Record<string, string>>,
+  ): Promise<readonly (string | null | undefined)[]> => {
+    const detail = await api.send('GET', `${base}/runs/${runId}`, {
+      headers: tokenHeaders,
+    });
+    expect(detail.statusCode).toBe(200);
+    const list = await api.send('GET', `${base}/runs`, {
+      headers: tokenHeaders,
+    });
+    expect(list.statusCode).toBe(200);
+    return [
+      workflowRunResponseSchema.parse(detail.json()).run.workflowName,
+      ...workflowRunListResponseSchema
+        .parse(list.json())
+        .items.filter((item) => item.id === runId)
+        .map((item) => item.workflowName),
+    ];
+  };
+  expect(await named(headers)).toEqual([
+    'Pure script workflow',
+    'Pure script workflow',
+  ]);
+  expect(await named(runOnly)).toEqual([null, null]);
+
+  const probe = await api.send(
+    'GET',
+    `${base}/runs?workflowNamePrefix=${encodeURIComponent('Pure')}`,
+    { headers: runOnly },
+  );
+  expect(probe.statusCode).toBe(404);
+  expect(probe.json<{ code: string }>().code).toBe('resource.not_found');
 }
