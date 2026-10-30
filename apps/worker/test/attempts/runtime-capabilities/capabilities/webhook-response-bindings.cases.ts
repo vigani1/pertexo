@@ -207,19 +207,29 @@ export function registerWebhookResponseBindings(): void {
       monitorLockWaits: false,
       role: 'worker',
     });
-    const runtime = await createOwnedCapabilities(
-      { database: databaseConfig },
-      {
-        artifactStore: { put: vi.fn() },
-        connectionEncryption: { open: vi.fn() },
-        databaseRuntime,
-        providerRateLimiter: {
-          consume: vi.fn().mockResolvedValue({ allowed: true }),
+    const borrowing = () =>
+      createOwnedCapabilities(
+        { database: databaseConfig },
+        {
+          artifactStore: { put: vi.fn() },
+          connectionEncryption: { open: vi.fn() },
+          databaseRuntime,
+          providerRateLimiter: {
+            consume: vi.fn().mockResolvedValue({ allowed: true }),
+          },
         },
-      },
+      );
+    try {
+      await (await borrowing()).close();
+      // A borrowed runtime stays open for the rest of the process, so the
+      // next capabilities can still acquire it.
+      const next = await borrowing();
+      await next.close();
+    } finally {
+      await databaseRuntime.close();
+    }
+    await expect(borrowing()).rejects.toThrow(
+      'Database runtime is closed and cannot be acquired',
     );
-
-    await runtime.close();
-    await databaseRuntime.close();
   });
 }

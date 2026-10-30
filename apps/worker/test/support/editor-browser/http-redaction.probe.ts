@@ -1,4 +1,4 @@
-import { it } from 'vitest';
+import { expect, it } from 'vitest';
 import { createEditorControlledHttpTarget } from './controlled-http.js';
 
 // Intentionally fails in a child Vitest reporter; raw inputs are never literals
@@ -26,6 +26,9 @@ it('deliberate secret-bearing dispatch failure', async () => {
       body: Buffer.from('{}'),
       timeoutMillis: 1_000,
     });
+    // The owned target refuses every dispatch, so its error is what fails
+    // this probe. Reaching here would fail it without the parent's marker.
+    expect.unreachable('The owned HTTP target accepted a dispatch');
   } finally {
     await target.close();
   }

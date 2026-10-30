@@ -134,6 +134,14 @@ export function registerReturnsValidatedChildOutputThroughOrdinaryRun(
       });
       await settled(workers, childId, 'canceled');
       await settled(workers, accepted.runId, 'failed');
+      const parentRun = await runs.get({
+        actorId: fixture.actorId,
+        workspaceId: fixture.workspaceId,
+        runId: accepted.runId,
+      });
+      expect(
+        parentRun?.nodes.find((node) => node.nodeId === 'call')?.status,
+      ).toBe('failed');
       await noLoans();
     } finally {
       await workers.close();
