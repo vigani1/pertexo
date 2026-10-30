@@ -42,6 +42,7 @@ export default defineConfig({
     command: `pnpm build && pnpm preview --port ${String(webPort)} --strictPort`,
     url: webOrigin,
     reuseExistingServer: false,
-    timeout: 60_000,
+    // Starting includes a full typecheck and a production build.
+    timeout: 180_000,
   },
 });
