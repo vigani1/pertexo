@@ -5,167 +5,13 @@ import {
   classifySecureHttpResponse,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-  type HttpExecutionErrorKind,
-  type HttpOutcomeDecision,
-  type HttpSideEffectClass,
 } from '../../src/server.js';
-
-const CLASSES = [
-  'safe',
-  'idempotent_with_key',
-  'unsafe',
-] as const satisfies readonly HttpSideEffectClass[];
-
-function retryDecision(
-  errorKind: HttpExecutionErrorKind,
-  sideEffectClass: HttpSideEffectClass,
-): HttpOutcomeDecision {
-  return {
-    kind: 'retry',
-    errorKind,
-    reuseProviderKey: sideEffectClass === 'idempotent_with_key',
-  };
-}
-
-function definiteRetryDecision(
-  errorKind: HttpExecutionErrorKind,
-  sideEffectClass: HttpSideEffectClass,
-): HttpOutcomeDecision {
-  return sideEffectClass === 'unsafe'
-    ? { kind: 'failed', errorKind }
-    : retryDecision(errorKind, sideEffectClass);
-}
-
-function ambiguousDecision(
-  errorKind: 'network' | 'provider' | 'timeout',
-  sideEffectClass: HttpSideEffectClass,
-): HttpOutcomeDecision {
-  return sideEffectClass === 'unsafe'
-    ? { kind: 'outcome_unknown', errorKind }
-    : retryDecision(errorKind, sideEffectClass);
-}
-
-const RESPONSE_CASES = [
-  {
-    name: 'successful lower bound',
-    status: 200,
-    expected: () => ({ kind: 'succeeded' as const }),
-  },
-  {
-    name: 'successful upper bound',
-    status: 299,
-    expected: () => ({ kind: 'succeeded' as const }),
-  },
-  {
-    name: 'provider refusal',
-    status: 400,
-    expected: () => ({
-      kind: 'failed' as const,
-      errorKind: 'provider' as const,
-    }),
-  },
-  {
-    name: 'unauthorized',
-    status: 401,
-    expected: () => ({
-      kind: 'failed' as const,
-      errorKind: 'authentication' as const,
-    }),
-  },
-  {
-    name: 'forbidden',
-    status: 403,
-    expected: () => ({
-      kind: 'failed' as const,
-      errorKind: 'authentication' as const,
-    }),
-  },
-  {
-    name: 'request timeout',
-    status: 408,
-    expected: (sideEffectClass: HttpSideEffectClass) =>
-      definiteRetryDecision('timeout', sideEffectClass),
-  },
-  {
-    name: 'too early',
-    status: 425,
-    expected: (sideEffectClass: HttpSideEffectClass) =>
-      definiteRetryDecision('timeout', sideEffectClass),
-  },
-  {
-    name: 'rate limited',
-    status: 429,
-    expected: (sideEffectClass: HttpSideEffectClass) =>
-      definiteRetryDecision('rate_limit', sideEffectClass),
-  },
-  {
-    name: 'server failure lower bound',
-    status: 500,
-    expected: (sideEffectClass: HttpSideEffectClass) =>
-      ambiguousDecision('provider', sideEffectClass),
-  },
-  {
-    name: 'server failure upper bound',
-    status: 599,
-    expected: (sideEffectClass: HttpSideEffectClass) =>
-      ambiguousDecision('provider', sideEffectClass),
-  },
-  {
-    name: 'non-HTTP status',
-    status: 600,
-    expected: () => ({
-      kind: 'failed' as const,
-      errorKind: 'provider' as const,
-    }),
-  },
-] as const;
-
-function terminalErrorKind(
-  code: (typeof SECURE_HTTP_ERROR_CODE)[keyof typeof SECURE_HTTP_ERROR_CODE],
-): HttpExecutionErrorKind {
-  if (
-    code === SECURE_HTTP_ERROR_CODE.dnsFailed ||
-    code === SECURE_HTTP_ERROR_CODE.networkFailed
-  )
-    return 'network';
-  if (code === SECURE_HTTP_ERROR_CODE.timedOut) return 'timeout';
-  if (code === SECURE_HTTP_ERROR_CODE.canceled) return 'canceled';
-  if (code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed) return 'internal';
-  return 'configuration';
-}
-
-function expectedErrorDecision(
-  code: (typeof SECURE_HTTP_ERROR_CODE)[keyof typeof SECURE_HTTP_ERROR_CODE],
-  classification: 'ambiguous' | 'definite_failure',
-  possiblyDispatched: boolean,
-  sideEffectClass: HttpSideEffectClass,
-): HttpOutcomeDecision {
-  if (code === SECURE_HTTP_ERROR_CODE.canceled)
-    return sideEffectClass === 'unsafe' && possiblyDispatched
-      ? { kind: 'outcome_unknown', errorKind: 'provider' }
-      : { kind: 'canceled', errorKind: 'canceled' };
-  if (classification === 'ambiguous')
-    return ambiguousDecision(
-      code === SECURE_HTTP_ERROR_CODE.timedOut ? 'timeout' : 'network',
-      sideEffectClass,
-    );
-  if (code === SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed)
-    return possiblyDispatched
-      ? definiteRetryDecision('provider', sideEffectClass)
-      : retryDecision('provider', sideEffectClass);
-  if (code === SECURE_HTTP_ERROR_CODE.dnsFailed)
-    return possiblyDispatched
-      ? definiteRetryDecision('network', sideEffectClass)
-      : retryDecision('network', sideEffectClass);
-  if (
-    code === SECURE_HTTP_ERROR_CODE.networkFailed ||
-    code === SECURE_HTTP_ERROR_CODE.timedOut
-  )
-    return possiblyDispatched
-      ? definiteRetryDecision(terminalErrorKind(code), sideEffectClass)
-      : retryDecision(terminalErrorKind(code), sideEffectClass);
-  return { kind: 'failed', errorKind: terminalErrorKind(code) };
-}
+import {
+  CLASSES,
+  ERROR_CASES,
+  RESPONSE_CASES,
+  expectedFor,
+} from './outcome-cases.js';
 
 describe('ADR 007 HTTP outcome policy', () => {
   it.each(CLASSES)('accepts 2xx truth for %s operations', (sideEffectClass) => {
@@ -333,59 +179,46 @@ describe('ADR 007 HTTP outcome policy', () => {
     );
   });
 
-  it('classifies every admitted response family exactly for every side-effect policy', () => {
-    for (const { name, status, expected } of RESPONSE_CASES)
-      for (const sideEffectClass of CLASSES) {
-        const decision = classifySecureHttpResponse(status, sideEffectClass, {
-          providerKeyPresent: sideEffectClass === 'idempotent_with_key',
-        });
-        expect({ name, sideEffectClass, decision }).toEqual({
-          name,
+  it.each(RESPONSE_CASES)(
+    'classifies HTTP status %i for every side-effect class',
+    (status, ...row) => {
+      for (const sideEffectClass of CLASSES)
+        expect({
           sideEffectClass,
-          decision: {
-            ...expected(sideEffectClass),
-            ...(status === 429 && sideEffectClass !== 'unsafe'
-              ? { minimumRetryDelayMillis: 1000 }
-              : {}),
-          },
+          decision: classifySecureHttpResponse(status, sideEffectClass, {
+            providerKeyPresent: sideEffectClass === 'idempotent_with_key',
+          }),
+        }).toEqual({
+          sideEffectClass,
+          decision: expectedFor(row, sideEffectClass),
         });
-      }
+    },
+  );
+
+  it('has a decision for every secure-client error code', () => {
+    expect(new Set(ERROR_CASES.map(([code]) => code))).toEqual(
+      new Set(Object.values(SECURE_HTTP_ERROR_CODE)),
+    );
+    expect(ERROR_CASES).toHaveLength(
+      Object.values(SECURE_HTTP_ERROR_CODE).length * 4,
+    );
   });
 
-  it('classifies every secure-client error state exactly without widening the vocabulary', () => {
-    for (const code of Object.values(SECURE_HTTP_ERROR_CODE))
+  it.each(ERROR_CASES)(
+    'classifies %s (%s, possibly dispatched: %s) for every side-effect class',
+    (code, classification, possiblyDispatched, ...row) => {
       for (const sideEffectClass of CLASSES)
-        for (const [classification, possiblyDispatched] of [
-          ['definite_failure', false],
-          ['definite_failure', true],
-          ['ambiguous', false],
-          ['ambiguous', true],
-        ] as const) {
-          const decision = classifySecureHttpError(
-            new SecureHttpError(code, classification, {
-              possiblyDispatched,
-            }),
+        expect({
+          sideEffectClass,
+          decision: classifySecureHttpError(
+            new SecureHttpError(code, classification, { possiblyDispatched }),
             sideEffectClass,
             { providerKeyPresent: sideEffectClass === 'idempotent_with_key' },
-          );
-          expect({
-            code,
-            sideEffectClass,
-            classification,
-            possiblyDispatched,
-            decision,
-          }).toEqual({
-            code,
-            sideEffectClass,
-            classification,
-            possiblyDispatched,
-            decision: expectedErrorDecision(
-              code,
-              classification,
-              possiblyDispatched,
-              sideEffectClass,
-            ),
-          });
-        }
-  });
+          ),
+        }).toEqual({
+          sideEffectClass,
+          decision: expectedFor(row, sideEffectClass),
+        });
+    },
+  );
 });
