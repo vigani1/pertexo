@@ -108,7 +108,7 @@ if 'logs' in args: print('Database already at migration head.')
 }
 
 // ops-09, docs-deps-product-17: a self-hoster has to pick a 40-character SHA and hope.
-it.fails('deploy.sh installs a release by its version tag', (t) => {
+it('deploy.sh installs a release by its version tag', (t) => {
   const f = fixture(t);
   const result = f.deploy('v0.9.0');
   assert.equal(result.status, 0, result.stderr);
@@ -116,7 +116,7 @@ it.fails('deploy.sh installs a release by its version tag', (t) => {
 });
 
 // ops-09: version order, so v0.10.0 is newer than v0.9.0, and an untagged tip is no release.
-it.fails('deploy.sh latest installs the newest release', (t) => {
+it('deploy.sh latest installs the newest release', (t) => {
   const f = fixture(t);
   const result = f.deploy('latest');
   assert.equal(result.status, 0, result.stderr);
@@ -151,7 +151,7 @@ test('deploy.sh refuses anything shaped like a shell command', (t) => {
 });
 
 // docs-deps-product-17, ops-09
-it.fails(
+it(
   'the changelog says what each release changed and how to upgrade to it',
   () => {
     const changelog = readFileSync('CHANGELOG.md', 'utf8');
@@ -166,7 +166,7 @@ it.fails(
 );
 
 // docs-deps-product-17: "one version until launch" ends with the first outside user.
-it.fails(
+it(
   'the upgrade page says how to move between releases and what can go wrong',
   () => {
     const page = readFileSync('docs/operations/upgrading.md', 'utf8');

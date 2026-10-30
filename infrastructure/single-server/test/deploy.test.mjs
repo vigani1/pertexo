@@ -209,7 +209,7 @@ it('accepts ARM images on an ARM server', (t) => {
   );
 });
 // ops-05, docs-deps-product-05: common.sh compares the image to the literal arm64.
-it.fails('accepts x86 images on an x86 server', (t) => {
+it('accepts x86 images on an x86 server', (t) => {
   const f = fixture(t);
   const result = f.run({ FIXTURE_HOST_ARCH: 'amd64' });
   assert.equal(result.status, 0, result.stderr);
@@ -219,7 +219,7 @@ it.fails('accepts x86 images on an x86 server', (t) => {
   );
 });
 // ops-05: an image for another architecture is a broken install, whichever it is.
-it.fails('refuses ARM images on an x86 server before stopping serving', (t) => {
+it('refuses ARM images on an x86 server before stopping serving', (t) => {
   const f = fixture(t);
   const result = f.run({
     FIXTURE_HOST_ARCH: 'amd64',

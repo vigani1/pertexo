@@ -9,8 +9,36 @@ config="$beta_root/.env.production"
 if [[ ! -f "$config" || $(stat -c %a "$config") != 600 ]]; then
   echo 'A mode-600 .env.production is required' >&2; exit 1
 fi
+# Scripts never source the secret file: this reads one plain setting from it, and
+# the process environment wins. Prints nothing when it isn't set.
+config_value() {
+  local name=$1 line
+  if [[ -n ${!name+set} ]]; then printf '%s\n' "${!name}"; return; fi
+  line=$(grep -E "^$name=" "$config" | tail -n 1) || true
+  line=${line#*=}
+  line=${line#[\"\']}
+  printf '%s\n' "${line%[\"\']}"
+}
 check_commit() {
   [[ $1 =~ ^[0-9a-f]{40}$ ]] || { echo 'A full lowercase commit SHA is required' >&2; exit 64; }
+}
+release_tag_pattern='^v[0-9]+\.[0-9]+\.[0-9]+$'
+check_release_name() {
+  [[ $1 == latest || $1 =~ $release_tag_pattern || $1 =~ ^[0-9a-f]{40}$ ]] || {
+    echo 'A version such as v1.2.3, latest, or a full lowercase commit SHA is required' >&2; exit 64
+  }
+}
+# Prints the commit a checked release name stands for. Tags only name commits:
+# prepare_release still applies its ancestry and image checks to the result.
+resolve_release() {
+  local repository="$beta_root/repository" tag=$1 tags
+  if [[ $tag =~ ^[0-9a-f]{40}$ ]]; then printf '%s\n' "$tag"; return; fi
+  git -C "$repository" fetch --quiet --force --tags origin
+  if [[ $tag == latest ]]; then
+    tags=$(git -C "$repository" tag --list 'v*' --sort=-version:refname)
+    tag=$(grep -m 1 -E "$release_tag_pattern" <<< "$tags") || { echo 'No release has been published yet' >&2; exit 1; }
+  fi
+  git -C "$repository" rev-parse --verify --quiet "refs/tags/$tag^{commit}" || { echo "No such release: $tag" >&2; exit 1; }
 }
 select_release() {
   check_commit "$1"
@@ -27,6 +55,21 @@ select_release() {
 compose() {
   docker compose --project-name pertexo-beta --env-file "$config" --env-file "$BETA_STATE_DIR/hosts.env" \
     -f "$release/infrastructure/single-server/compose.yaml" "$@"
+}
+
+# The path a signed-in browser takes: through Caddy and nginx to the API. Container
+# health can't see a break in it, and only the API answers this request with a 401.
+app_reaches_api() {
+  compose exec -T api node -e "fetch(process.env.PUBLIC_WEB_ORIGIN + '/v1/workspaces', { redirect: 'manual', signal: AbortSignal.timeout(5000) }).then((response) => { if (response.status !== 401) throw new Error('The app answered ' + response.status + ' instead of reaching the API'); process.exit(0); }).catch((error) => { console.error(error.cause?.message ?? error.message); process.exit(1); })"
+}
+# Two seconds apart, by default long enough for a new server's first HTTPS certificate.
+wait_for_app() {
+  local attempts=${1:-60} attempt
+  for ((attempt = 1; attempt < attempts; attempt++)); do
+    if app_reaches_api 2>/dev/null; then return 0; fi
+    sleep 2
+  done
+  app_reaches_api
 }
 
 operation_lock() {
@@ -85,13 +128,18 @@ prepare_release() {
     if ! git -C "$repository" archive "$commit" | tar -x -C "$staging"; then
       rm -rf "$staging"; exit 1
     fi
+    # Released sources are public, and containers read them as their own users
+    # (Postgres its init scripts, the ops image the verifier). The umask above is
+    # for state, and the private root keeps other logins out of both.
+    chmod -R a+rX "$staging"
     mv "$staging" "$beta_root/releases/$commit"
   fi
   select_release "$commit"
+  host_architecture=$(docker version --format '{{.Server.Arch}}')
   for image in pertexo pertexo-web; do
     reference="ghcr.io/vigani1/$image:$commit"
     docker pull "$reference"
-    [[ $(docker image inspect --format '{{.Architecture}} {{index .Config.Labels "org.opencontainers.image.revision"}}' "$reference") == "arm64 $commit" ]] || { echo 'Image architecture/revision mismatch' >&2; exit 1; }
+    [[ $(docker image inspect --format '{{.Architecture}} {{index .Config.Labels "org.opencontainers.image.revision"}}' "$reference") == "$host_architecture $commit" ]] || { echo "Image architecture/revision mismatch: this server needs $host_architecture images of $commit" >&2; exit 1; }
   done
   select_encryption_release
   # An installed verifier keeps older KMS rollbacks from bypassing retained-key checks.

@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the Pertexo server every five minutes
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=true
+Unit=pertexo-check.service
+
+[Install]
+WantedBy=timers.target
