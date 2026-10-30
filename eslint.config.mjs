@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import eslint from '@eslint/js';
+import vitest from '@vitest/eslint-plugin';
 import tseslint from 'typescript-eslint';
 
 const nodeGlobals = Object.fromEntries(
@@ -98,6 +99,36 @@ const readableWorkspaces = [
     (name) => `apps/${name}`,
   ),
 ];
+
+/**
+ * A test must assert something. Assertions may live in `verify…` or
+ * `qualify…` helpers, and Testing Library's `findBy…`/`getBy…` queries fail
+ * the test when nothing matches.
+ */
+export const testIntegrity = {
+  plugins: { vitest },
+  rules: {
+    'vitest/expect-expect': [
+      'error',
+      {
+        assertFunctionNames: [
+          'expect',
+          'expect*',
+          '*.expect*',
+          'assert*',
+          'verify*',
+          'qualify*',
+          '*.findBy*',
+          '*.getBy*',
+          'findBy*',
+          'getBy*',
+        ],
+      },
+    ],
+    'vitest/no-focused-tests': 'error',
+    'vitest/no-identical-title': 'error',
+  },
+};
 
 export const readabilityRules = {
   'no-nested-ternary': 'error',
@@ -698,6 +729,10 @@ export default tseslint.config(
       (workspace) => `${workspace}/test/**/*.{ts,tsx}`,
     ),
     rules: { 'max-lines-per-function': 'off' },
+  },
+  {
+    files: ['apps/*/test/**/*.{ts,tsx}', 'packages/*/test/**/*.{ts,tsx}'],
+    ...testIntegrity,
   },
   {
     // Declarative protocol, schema, retention and OpenAPI tables stay together,
