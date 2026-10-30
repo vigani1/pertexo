@@ -11,6 +11,7 @@ import { authOrganizationWorkspaces } from '../../../schema/identity/federation/
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { canonicalOutboxPayloadChecksum } from '../../../outbox/events.repository.js';
 import type { PoolClient } from 'pg';
+import { FOLDER_GRANT_LIMIT } from '@pertexo/contracts';
 import type {
   FolderSharing,
   FolderSharingRequest,
@@ -19,7 +20,10 @@ import type {
 import { RESOURCE_ADMINISTRATORS } from '../../../tenant-access/resources/policy.js';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
-import { WorkflowFolderConflictError } from '../errors.js';
+import {
+  FolderSharingCorruptError,
+  WorkflowFolderConflictError,
+} from '../errors.js';
 import type { OrganizationScope } from '../commands.repository.js';
 import { runOrganizationCommand } from '../commands.repository.js';
 
@@ -76,11 +80,10 @@ export async function readFolderSharing(
     )
     .where(and(eq(p.workspaceId, scope.workspaceId), eq(p.folderId, folderId)))
     .orderBy(asc(p.id))
-    .limit(101)
+    .limit(FOLDER_GRANT_LIMIT + 1)
     .catch(rethrowQueryFailure);
   const grants = rows.map(({ principal }) => principal);
-  if (grants.length > 100)
-    throw new Error('Folder grants exceed the supported bound');
+  if (grants.length > FOLDER_GRANT_LIMIT) throw new FolderSharingCorruptError();
   return {
     folderId,
     revision: folder.revision,
@@ -185,19 +188,21 @@ export async function replaceFolderSharing(
           ),
         )
         .catch(rethrowQueryFailure);
-      for (const grant of request.grants)
+      if (request.grants.length > 0)
         await db
           .insert(workflowFolderGrants)
-          .values({
-            id: sql`uuidv7()`,
-            workspaceId: scope.workspaceId,
-            folderId: input.folderId,
-            userId: grant.kind === 'member' ? grant.userId : null,
-            organizationId:
-              grant.kind === 'group' ? grant.organizationId : null,
-            groupId: grant.kind === 'group' ? grant.groupId : null,
-            access: grant.access,
-          })
+          .values(
+            request.grants.map((grant) => ({
+              id: sql`uuidv7()`,
+              workspaceId: scope.workspaceId,
+              folderId: input.folderId,
+              userId: grant.kind === 'member' ? grant.userId : null,
+              organizationId:
+                grant.kind === 'group' ? grant.organizationId : null,
+              groupId: grant.kind === 'group' ? grant.groupId : null,
+              access: grant.access,
+            })),
+          )
           .catch(rethrowQueryFailure);
       await db
         .update(workflowFolders)

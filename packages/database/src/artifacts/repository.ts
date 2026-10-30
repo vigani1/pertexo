@@ -1,4 +1,4 @@
-import { and, asc, eq, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
 import { artifactLinks, artifacts, previewRuns } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import type {
@@ -37,13 +37,6 @@ function exactMetadataMatches(
 }
 
 export async function createPendingArtifact(
-  transaction: WorkspaceTransaction,
-  input: CreatePendingArtifactInput,
-): Promise<ArtifactRecord> {
-  return insertPendingArtifact(transaction, input);
-}
-
-async function insertPendingArtifact(
   transaction: WorkspaceTransaction,
   parsed: CreatePendingArtifactInput,
 ): Promise<ArtifactRecord> {
@@ -100,7 +93,7 @@ export async function createPendingPreviewArtifact(
     throw new ArtifactLifecycleConflictError(
       'Preview artifact retention exceeds its owner',
     );
-  const artifact = await insertPendingArtifact(transaction, input);
+  const artifact = await createPendingArtifact(transaction, input);
   await transaction.db.insert(artifactLinks).values({
     artifactId: artifact.id,
     ownerId: input.previewRunId,
@@ -186,23 +179,20 @@ export async function claimDueUnfinalizedArtifacts(
     .for('update', { skipLocked: true });
   if (due.length === 0) return Object.freeze([]);
 
-  const claimed: ArtifactRecord[] = [];
-  for (const candidate of due) {
-    const rows = await transaction.db
-      .update(artifacts)
-      .set({
-        status: ARTIFACT_STATUS.deleting,
-        updatedAt: sql`clock_timestamp()`,
-      })
-      .where(
-        and(
-          eq(artifacts.id, candidate.id),
-          eq(artifacts.status, ARTIFACT_STATUS.pending),
-        ),
-      )
-      .returning();
-    if (rows[0] !== undefined) claimed.push(rows[0]);
-  }
+  // The rows stay locked and pending until this transaction ends.
+  const claimed = await transaction.db
+    .update(artifacts)
+    .set({
+      status: ARTIFACT_STATUS.deleting,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      inArray(
+        artifacts.id,
+        due.map(({ id }) => id),
+      ),
+    )
+    .returning();
   return Object.freeze(claimed);
 }
 
