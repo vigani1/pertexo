@@ -171,6 +171,6 @@ export function registerConditionallyRenamesWorkspaceSafelyReconcilesLostAcknowl
     });
     expect(
       (await workspaceAggregate(primaryWorkspaceId)).workspace,
-    ).toMatchObject({ status: 'active', deletionReason: null });
+    ).toMatchObject({ status: 'suspended', deletionReason: null });
   });
 }

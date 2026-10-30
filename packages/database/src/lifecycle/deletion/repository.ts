@@ -4,6 +4,7 @@ import type {
   WorkspaceLifecycleChange,
 } from './contract.js';
 import { connections } from '../../schema/connections.js';
+import { apiTokens } from '../../schema/identity/api-tokens.js';
 import { webhookTriggerEndpoints } from '../../schema/triggers/endpoints.js';
 import { triggerSchedules } from '../../schema/triggers/schedules.js';
 import {
@@ -23,7 +24,7 @@ import {
 } from '../../schema/foundation.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { and, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 
 import { requestActiveRunCancellations } from '../../runs/commands/cancel-active.repository.js';
@@ -42,6 +43,13 @@ async function applyDeletionSideEffects(
   actorUserId: string,
 ): Promise<void> {
   const db = drizzle(client);
+  await db
+    .update(apiTokens)
+    .set({ revokedAt: sql`clock_timestamp()` })
+    .where(
+      and(eq(apiTokens.workspaceId, workspaceId), isNull(apiTokens.revokedAt)),
+    )
+    .catch(rethrowQueryFailure);
   await db
     .update(connections)
     .set({
@@ -258,10 +266,11 @@ export async function changeWorkspaceLifecycle(
       change.actorUserId,
     );
   } else {
+    // A restore revives nothing by itself (ADR 013): an operator lifts the suspension.
     await db
       .update(workspaces)
       .set({
-        status: 'active',
+        status: 'suspended',
         deletionRequestedAt: null,
         deletionRequestedBy: null,
         deletionReason: null,
