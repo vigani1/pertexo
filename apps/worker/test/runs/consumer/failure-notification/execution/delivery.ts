@@ -34,6 +34,7 @@ import {
   workspaceId,
 } from '../fixture.js';
 import type { FailureNotificationScenario } from './contract.js';
+import { testMaintenanceRuntime } from '../../../../support/runtime-factories.js';
 
 export async function qualifyRecoveredNotificationDelivery(
   scenario: FailureNotificationScenario,
@@ -107,7 +108,7 @@ export async function qualifyRecoveredNotificationDelivery(
       },
       workerId: 'failure-notification-integration-worker',
     });
-    runtime = await createMaintenanceRuntime(
+    runtime = await testMaintenanceRuntime(
       {
         database: parseDatabaseConfig({
           connectionString: databaseUrl(workerUrl),
@@ -159,7 +160,7 @@ export async function qualifyRecoveredNotificationDelivery(
         reconstructionErrors,
         'Failure notification runtime reconstruction drain failed',
       );
-    runtime = await createMaintenanceRuntime(
+    runtime = await testMaintenanceRuntime(
       {
         database: parseDatabaseConfig({
           connectionString: databaseUrl(workerUrl),

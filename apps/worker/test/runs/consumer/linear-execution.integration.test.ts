@@ -8,13 +8,13 @@ import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
 import { coordinatorFixture } from '../../support/coordinator/consumer.js';
 import {
   acceptRun,
   waitForAttemptOutbox,
   waitForCoordinatorOutbox,
 } from '../../support/coordinator/runs.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 const {
   databaseUrl,
@@ -62,7 +62,7 @@ describeIntegration('Linear node execution resilience', () => {
       maximumAdmissions: 1,
       redisUrl,
     });
-    const attempts = await createNodeAttemptRuntime(
+    const attempts = await testNodeAttemptRuntime(
       {
         database,
         heartbeatIntervalMillis: 1_000,

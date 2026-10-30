@@ -13,12 +13,12 @@ import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import { createCoordinatorRuntime } from '../../../dist/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../dist/attempts/delivery/runtime.js';
 import { WorkerDrainState } from '../../../dist/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../dist/transport/outbox/dispatch/runtime.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
 import { runWithCleanup } from '../../support/infrastructure/test-operation.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 function graph(
   maximumAttempts: number,
@@ -92,7 +92,7 @@ function graph(
             redisUrl: fixture.redisUrl,
           });
           owners.push(() => coordinator.close());
-          const attempts = await createNodeAttemptRuntime(
+          const attempts = await testNodeAttemptRuntime(
             {
               database: config(fixture.workerUrl, 4),
               heartbeatIntervalMillis: 1_000,

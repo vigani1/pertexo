@@ -5,15 +5,13 @@ import {
 
 import { expect, it, vi } from 'vitest';
 
-import {
-  createMaintenanceRuntime,
-  type MaintenanceRuntimeFactories,
-} from '../../../src/maintenance/runtime.js';
+import { type MaintenanceRuntimeFactories } from '../../../src/maintenance/runtime.js';
 import {
   maintenanceRuntime,
   idleConnectionHealth,
   idleErrorWorkflows,
 } from './fixture.js';
+import { testMaintenanceRuntime } from '../../support/runtime-factories.js';
 
 export function registerReportsBoundedRecoveryShutdownFailureCloses(): void {
   it('reports a bounded recovery shutdown failure and closes stores after late settlement', async () => {
@@ -101,7 +99,7 @@ export function registerReportsBoundedRecoveryShutdownFailureCloses(): void {
       connectionHealth: idleConnectionHealth,
       errorWorkflows: idleErrorWorkflows,
     } as unknown as MaintenanceRuntimeFactories;
-    const runtime = await createMaintenanceRuntime(
+    const runtime = await testMaintenanceRuntime(
       {
         backgroundTaskShutdownTimeoutMillis: 5,
         database: parseDatabaseConfig({

@@ -15,12 +15,12 @@ import {
 } from '@pertexo/workflow-model';
 import { expect, it } from 'vitest';
 import { createCoordinatorRuntime } from '../../../../dist/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../../dist/attempts/delivery/runtime.js';
 import { WorkerDrainState } from '../../../../dist/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../../dist/transport/outbox/dispatch/runtime.js';
 import { coordinatorFixture as fixture } from '../../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../../support/coordinator/workflows.js';
 import { node, output, links, graph } from './fixture.js';
+import { testNodeAttemptRuntime } from '../../../support/runtime-factories.js';
 
 export function registerExecutesEveryPinnedTransformTwoBody(): void {
   it('executes every pinned transform in two body invocations and retains existing v1 nodes', async () => {
@@ -55,7 +55,7 @@ export function registerExecutesEveryPinnedTransformTwoBody(): void {
         redisUrl: fixture.redisUrl,
       });
       owners.push(() => coordinator.close());
-      const attempts = await createNodeAttemptRuntime(
+      const attempts = await testNodeAttemptRuntime(
         {
           database: config(fixture.workerUrl, 6),
           heartbeatIntervalMillis: 1_000,

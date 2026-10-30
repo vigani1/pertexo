@@ -10,10 +10,15 @@ import type {
   TelemetryLifecycle,
 } from '@pertexo/observability';
 import { vi } from 'vitest';
-import { createWorkerApplication as constructWorkerApplication } from '../../src/app.js';
-import { emptyCallbackStore } from '../support/callback-store.js';
-import { createDatabaseRuntime } from '@pertexo/database/platform';
-import { NestFactory } from '@nestjs/core';
+import {
+  createWorkerApplication as constructWorkerApplication,
+  type WorkerApplicationDependencies,
+} from '../../src/app.js';
+import type { WorkerConfig } from '../../src/config/worker.js';
+import {
+  workerTestFactories,
+  type WorkerTestServices,
+} from '../support/worker-application.js';
 import type { CoordinatorRuntime } from '../../src/runs/runtime.js';
 import type { NodeAttemptRuntime } from '../../src/attempts/delivery/runtime.js';
 import type { MaintenanceRuntime } from '../../src/maintenance/runtime.js';
@@ -22,14 +27,19 @@ import type { RetentionRuntime } from '../../src/retention/runtime.js';
 import type { WorkflowAutoPauseRuntime } from '../../src/workflows/auto-pause-runtime.js';
 
 export function createWorkerApplication(
-  ...[config, dependencies]: Parameters<typeof constructWorkerApplication>
+  config: WorkerConfig,
+  {
+    logger: selectedLogger,
+    telemetry,
+    ...services
+  }: Pick<WorkerApplicationDependencies, 'logger' | 'telemetry'> &
+    WorkerTestServices,
 ) {
-  return constructWorkerApplication(config, dependencies, {
-    applicationContext: (module, options) =>
-      NestFactory.createApplicationContext(module, options),
-    databaseRuntime: createDatabaseRuntime,
-    callbackStore: emptyCallbackStore,
-  });
+  return constructWorkerApplication(
+    config,
+    { logger: selectedLogger, telemetry },
+    workerTestFactories(config, selectedLogger, services),
+  );
 }
 
 export const database: WorkspaceDatabase = {

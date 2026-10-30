@@ -1,12 +1,10 @@
 import type { FactoryProvider } from '@nestjs/common';
 import { expect, it, vi } from 'vitest';
-import {
-  createNodeAttemptRuntime,
-  type NodeAttemptRuntimeOptions,
-} from '../../../src/testing.js';
+import { type NodeAttemptRuntimeOptions } from '../../../src/testing.js';
 import { nodeAttemptRuntimeProvider } from '../../../src/transport/providers/node-attempts.js';
 import type { WorkerConfig } from '../../../src/config/worker.js';
 import { database, providerConfig, providerFactory } from './fixture.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 export function registerComposesProductionPreviewAttemptsThroughOne(): void {
   it('composes production and preview attempts through one shared runtime and transfers preview ownership', async () => {
@@ -110,7 +108,7 @@ export function registerComposesProductionPreviewAttemptsThroughOne(): void {
       const fallback = { artifacts: vi.fn() };
       const override = { artifacts: vi.fn() };
       let selectedCapabilities: unknown;
-      const runtime = await createNodeAttemptRuntime(
+      const runtime = await testNodeAttemptRuntime(
         {
           database,
           heartbeatIntervalMillis: 10,

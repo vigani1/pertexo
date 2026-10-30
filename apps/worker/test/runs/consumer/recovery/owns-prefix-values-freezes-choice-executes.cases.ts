@@ -23,7 +23,6 @@ import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import { expect, it } from 'vitest';
 import { createCoordinatorRuntime } from '../../../../dist/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../../dist/attempts/delivery/runtime.js';
 import { WorkerDrainState } from '../../../../dist/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../../dist/transport/outbox/dispatch/runtime.js';
 import { coordinatorFixture as fixture } from '../../../support/coordinator/consumer.js';
@@ -31,6 +30,7 @@ import { insertCompiledWorkflow } from '../../../support/coordinator/workflows.j
 import { graph, closeOwned } from './fixture.js';
 import { createScriptedRecoveryRegistry } from './execution/registry.js';
 import { assertDispatchedRecovery } from './execution/effects.js';
+import { testNodeAttemptRuntime } from '../../../support/runtime-factories.js';
 
 export function registerOwnsPrefixValuesFreezesChoiceExecutes(): void {
   it('owns prefix values, freezes the choice, executes only the suffix and deduplicates after source retirement', async () => {
@@ -69,7 +69,7 @@ export function registerOwnsPrefixValuesFreezesChoiceExecutes(): void {
         redisUrl: fixture.redisUrl,
       });
       owners.push(() => coordinator.close());
-      const attempts = await createNodeAttemptRuntime(
+      const attempts = await testNodeAttemptRuntime(
         {
           database: config(fixture.workerUrl, 6),
           heartbeatIntervalMillis: 1_000,

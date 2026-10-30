@@ -12,6 +12,7 @@ import {
 } from '../../../src/triggers/runtime.js';
 import type { createRedisTestNamespace } from '../infrastructure/redis-test-namespace.js';
 import type { createLifecycleResourceOwners } from './ownership.js';
+import { testTriggerRuntime } from '../runtime-factories.js';
 
 function noOpScanner() {
   return {
@@ -60,7 +61,7 @@ export function createLifecycleRuntimes(
       'trigger reconciliation database',
       createWorkflowTriggerReconciliationDatabase(workerConfig),
     );
-    const runtimePromise = createTriggerRuntime(
+    const runtimePromise = testTriggerRuntime(
       {
         batchSize: 10,
         database: workerConfig,

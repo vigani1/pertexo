@@ -13,7 +13,6 @@ import {
 import { Queue } from 'bullmq';
 
 import { expect, it, vi } from 'vitest';
-import { createCoordinatorRuntime } from '../../../../src/runs/runtime.js';
 
 import {
   createCoordinatorDispatcher,
@@ -31,6 +30,7 @@ import {
   workspaceId,
 } from './fixture.js';
 import { seedDueWakeups } from './seed.js';
+import { testCoordinatorRuntime } from '../../../support/runtime-factories.js';
 
 export function registerRecoversDueRetryWaitWorkThrough(): void {
   it('recovers due retry and Wait work through SQL, Redis outage, BullMQ, and fresh coordination', async () => {
@@ -138,7 +138,7 @@ export function registerRecoversDueRetryWaitWorkThrough(): void {
       maximumAdmissions: 2,
       redisUrl,
     };
-    const beforeDue = await createCoordinatorRuntime(runtimeOptions, {
+    const beforeDue = await testCoordinatorRuntime(runtimeOptions, {
       advance,
     });
     try {
@@ -167,7 +167,7 @@ export function registerRecoversDueRetryWaitWorkThrough(): void {
     await new Promise<void>((resolve) =>
       setTimeout(resolve, Math.max(0, Date.parse(dueAt) - Date.now() + 25)),
     );
-    const afterClaim = await createCoordinatorRuntime(runtimeOptions, {
+    const afterClaim = await testCoordinatorRuntime(runtimeOptions, {
       advance,
     });
     try {

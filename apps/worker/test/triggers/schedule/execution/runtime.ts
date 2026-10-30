@@ -17,6 +17,7 @@ import {
   registerResource,
   transferResource,
 } from '../fixture.js';
+import { testTriggerRuntime } from '../../../support/runtime-factories.js';
 
 export async function startScheduleQualification(
   context: Readonly<{
@@ -34,7 +35,7 @@ export async function startScheduleQualification(
     process.env.PERTEXO_Q11_OPERATION_TIMING === '1',
   );
   const runtime = registerResource(
-    await createTriggerRuntime(
+    await testTriggerRuntime(
       {
         batchSize: 10,
         database: workerConfig,

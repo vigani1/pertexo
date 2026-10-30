@@ -13,7 +13,6 @@ import {
 import { createEditorBrowserEnvelopeKeys } from '../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { createConnectionHealthSlackTransport } from '../../../../infrastructure/testing/connection-health-slack-transport.mjs';
 import { createCoordinatorRuntime } from '../../src/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../src/attempts/delivery/runtime.js';
 import { createWorkerNodeRuntimeCapabilities } from '../../src/attempts/execution/runtime-capabilities.js';
 import { createMaintenanceRuntime } from '../../src/maintenance/runtime.js';
 import { OutboxDispatcher } from '../../src/transport/outbox/dispatch/runtime.js';
@@ -25,6 +24,7 @@ import {
 } from '../support/editor-browser/lifetime.js';
 import { configSchema } from './health-worker/configuration.js';
 import { captureAbandonedHealthClaim } from './health-worker/abandonment.js';
+import { testNodeAttemptRuntime } from '../support/runtime-factories.js';
 
 if (process.env.REDIS_URL === undefined || process.send === undefined)
   throw new Error('Owned health worker needs Redis and IPC');
@@ -283,7 +283,7 @@ async function construct(
   const client = createSlackClient(
     createConnectionHealthSlackTransport(raw.controlOrigin),
   );
-  const attempts = await createNodeAttemptRuntime(
+  const attempts = await testNodeAttemptRuntime(
     {
       database,
       redisUrl: namespace.redisUrl,

@@ -6,8 +6,6 @@ import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
-import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
-
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 
 import type { createCuratedTemplateQualificationTransports } from '../curated-templates/controlled-transports.js';
@@ -43,6 +41,7 @@ import { configureEditorWorker } from './execution/configuration.js';
 import { startEditorCoordinator } from './execution/coordinator.js';
 import { createEditorCapabilities } from './execution/capabilities.js';
 import { editorAttemptDependencies } from './execution/attempt-dependencies.js';
+import { testNodeAttemptRuntime } from '../runtime-factories.js';
 
 export const redisUrl = process.env.REDIS_URL;
 
@@ -281,7 +280,7 @@ async function constructRuntimes(
     httpTarget ??
     state.resendMailbox
   )?.httpClient;
-  const attempts = await createNodeAttemptRuntime(
+  const attempts = await testNodeAttemptRuntime(
     {
       database,
       heartbeatIntervalMillis: 1_000,

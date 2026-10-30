@@ -5,6 +5,7 @@ import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 
 import { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
 import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 const databaseUrl = process.env.FOR_EACH_DATABASE_URL;
 const maintenanceDatabaseUrl = process.env.FOR_EACH_MAINTENANCE_DATABASE_URL;
@@ -79,7 +80,7 @@ try {
     maximumAdmissions: 10,
     redisUrl,
   });
-  attempts = await createNodeAttemptRuntime(
+  attempts = await testNodeAttemptRuntime(
     {
       database,
       heartbeatIntervalMillis: 1_000,

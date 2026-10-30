@@ -22,6 +22,7 @@ import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime
 import { coordinatorFixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
 import { acceptManualFixtureRun } from '../../support/attempts/manual-start.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 export const fixture = coordinatorFixture;
 export const node = (id: string, key: string): WorkflowNode => ({
@@ -184,7 +185,7 @@ export async function runtime(
       maximumAdmissions: 10,
       redisUrl: fixture.redisUrl,
     });
-    attempts = await createNodeAttemptRuntime(
+    attempts = await testNodeAttemptRuntime(
       {
         database,
         heartbeatIntervalMillis: 200,

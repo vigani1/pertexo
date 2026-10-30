@@ -5,10 +5,8 @@ import type {
 import type { RunEventNotificationPublisher } from '@pertexo/queue';
 
 import { expect, it, vi } from 'vitest';
-import {
-  createNodeAttemptRuntime,
-  type PreviewAttemptRunStore,
-} from '../../../src/testing.js';
+import { type PreviewAttemptRunStore } from '../../../src/testing.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 export function registerClosesPreviewStoreConsumerConstructionFails(): void {
   it('closes the preview store when consumer construction fails', async () => {
@@ -82,7 +80,7 @@ export function registerClosesPreviewStoreConsumerConstructionFails(): void {
     } satisfies RunEventNotificationPublisher;
 
     await expect(
-      createNodeAttemptRuntime(
+      testNodeAttemptRuntime(
         {
           database: {
             connectionString:

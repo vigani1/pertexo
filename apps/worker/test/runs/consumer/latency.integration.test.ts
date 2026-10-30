@@ -17,11 +17,11 @@ import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createCoordinatorRuntime } from '../../../dist/runs/runtime.js';
-import { createNodeAttemptRuntime } from '../../../dist/attempts/delivery/runtime.js';
 import { WorkerDrainState } from '../../../dist/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../dist/transport/outbox/dispatch/runtime.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
+import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 
 const enabled = fixture.enabled && process.env.F09_LATENCY_SAMPLE === 'true';
 const describeMeasurement = enabled ? describe : describe.skip;
@@ -159,7 +159,7 @@ describeMeasurement('Real dispatcher step latency (opt-in measurement)', () => {
         redisUrl: fixture.redisUrl,
       });
       owners.push(() => coordinator.close());
-      const attempts = await createNodeAttemptRuntime(
+      const attempts = await testNodeAttemptRuntime(
         {
           database: config(fixture.workerUrl, 6),
           heartbeatIntervalMillis: 1_000,

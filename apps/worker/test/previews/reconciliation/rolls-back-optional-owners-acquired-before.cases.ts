@@ -2,11 +2,9 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { expect, it, vi } from 'vitest';
 
-import {
-  createMaintenanceRuntime,
-  type MaintenanceRuntimeFactories,
-} from '../../../src/maintenance/runtime.js';
+import { type MaintenanceRuntimeFactories } from '../../../src/maintenance/runtime.js';
 import { idleConnectionHealth } from './fixture.js';
+import { testMaintenanceRuntime } from '../../support/runtime-factories.js';
 
 export function registerRollsBackOptionalOwnersAcquiredBefore(): void {
   it.each([
@@ -139,7 +137,7 @@ export function registerRollsBackOptionalOwnersAcquiredBefore(): void {
       } as unknown as MaintenanceRuntimeFactories;
 
       await expect(
-        createMaintenanceRuntime(
+        testMaintenanceRuntime(
           {
             database: parseDatabaseConfig({
               connectionString:

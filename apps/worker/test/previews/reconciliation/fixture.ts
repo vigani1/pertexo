@@ -5,8 +5,7 @@ import {
 } from '@pertexo/database/testing';
 import { jobIdForOutboxEvent, JOB_NAME } from '@pertexo/queue';
 import { vi } from 'vitest';
-
-import { createMaintenanceRuntime } from '../../../src/maintenance/runtime.js';
+import { testMaintenanceRuntime } from '../../support/runtime-factories.js';
 
 export function delivery() {
   const data = {
@@ -30,7 +29,7 @@ export function maintenanceRuntime(
   failureNotificationStore: FailureNotificationStore,
   backgroundTaskShutdownTimeoutMillis: number,
 ) {
-  return createMaintenanceRuntime(
+  return testMaintenanceRuntime(
     {
       backgroundTaskShutdownTimeoutMillis,
       database: parseDatabaseConfig({
