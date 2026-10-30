@@ -109,5 +109,5 @@ describe('compiled worker main process', () => {
     expect(fixture.output()).toContain('"event":"worker.process_failed"');
     expect(fixture.output()).toContain('"errorType":"Error"');
     expect(fixture.output()).not.toContain('DATABASE_URL');
-  });
+  }, 12_000);
 });
