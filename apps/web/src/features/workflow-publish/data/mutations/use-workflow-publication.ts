@@ -1,4 +1,10 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import type { PublicationReview } from '@pertexo/contracts';
 import { requestPublicationReview } from '../reviews/api';
 import { publicationReviewKeys } from '../reviews/queries';
@@ -16,7 +22,8 @@ import {
 type PublicationCommand =
   Readonly<{ kind: 'publish' }> | Readonly<{ kind: 'review'; note: string }>;
 type PublishAttempt = SavedDraft &
-  Readonly<{ idempotencyKey: string; command: PublicationCommand }>;
+  Readonly<{ command: PublicationCommand }> &
+  CommandKey;
 
 export type PublicationReceipt = SavedDraft &
   Readonly<{
@@ -96,6 +103,16 @@ export function useWorkflowPublication({
   ): Promise<PublishResult> {
     const publishOwner = owner.current;
     if (publishStage !== undefined || publishOwner === undefined) return failed;
+    if (
+      publishAttempt.current !== undefined &&
+      !canResend(publishAttempt.current)
+    ) {
+      publishAttempt.current = undefined;
+      setPublishRecoveryPending(false);
+      setRecoveryCommand(undefined);
+      setPublishError(RETRY_WINDOW_ENDED);
+      return failed;
+    }
     let dispatched = false;
     setPublishError(undefined);
     try {
@@ -245,7 +262,7 @@ async function preparePublicationAttempt(
     );
     return 'blocked';
   }
-  return { ...saved, idempotencyKey: crypto.randomUUID(), command };
+  return { ...saved, ...newCommandKey(), command };
 }
 
 async function dispatchPublication(

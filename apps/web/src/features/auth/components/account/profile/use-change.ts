@@ -1,4 +1,10 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import type { UserProfileResponse } from '@pertexo/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -11,8 +17,8 @@ import { accountCommandFailure } from '../../../model/account/failure';
 type NameAttempt = Readonly<{
   displayName: string;
   expectedRevision: number;
-  idempotencyKey: string;
-}>;
+}> &
+  CommandKey;
 type NameState =
   | Readonly<{ kind: 'idle'; conflict?: boolean; failure?: string }>
   | Readonly<{ kind: 'saving'; attempt: NameAttempt }>
@@ -77,12 +83,14 @@ export function useDisplayNameChange(
       void send({
         displayName,
         expectedRevision,
-        idempotencyKey: crypto.randomUUID(),
+        ...newCommandKey(),
       });
     },
-    /** Sends the unconfirmed command again, exactly. */
+    /** Sends the unconfirmed command again, exactly, within its window. */
     retry: () => {
-      if (state.kind === 'unconfirmed') void send(state.attempt);
+      if (state.kind !== 'unconfirmed') return;
+      if (canResend(state.attempt)) void send(state.attempt);
+      else setState({ kind: 'idle', failure: RETRY_WINDOW_ENDED });
     },
     /** Gives up on an unconfirmed change and reloads the real name. */
     dismiss: () => {

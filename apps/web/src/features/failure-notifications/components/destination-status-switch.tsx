@@ -1,5 +1,11 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
-import { useRef } from 'react';
+import {
+  RETRY_WINDOW_ENDED,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
+import { useState } from 'react';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -12,10 +18,7 @@ import {
 } from '../data/failure-notifications.mutations';
 
 type DestinationStatus = FailureNotificationDestinationResponse['status'];
-type StatusCommand = Readonly<{
-  status: DestinationStatus;
-  idempotencyKey: string;
-}>;
+type StatusCommand = Readonly<{ status: DestinationStatus }> & CommandKey;
 
 /**
  * The Enabled switch. It shows the requested state while saving; an
@@ -36,25 +39,27 @@ export function DestinationStatusSwitch({
 }>) {
   const notifications = useNotifications();
   const mutation = useSetFailureNotificationDestinationStatusMutation(scope);
-  const attempt = useRef<StatusCommand | undefined>(undefined);
+  // The unconfirmed command a retry resends.
+  const [held, setHeld] = useState<StatusCommand>();
+  const expired = useResendExpired(held);
 
   async function send(command: StatusCommand) {
-    attempt.current = command;
+    setHeld(undefined);
     try {
       const destination = await mutation.mutateAsync({
         destinationId,
         ...command,
       });
-      attempt.current = undefined;
       notifications.success({
         title: `Alerts to ${label} turned ${destination.status === 'enabled' ? 'on' : 'off'}`,
       });
-    } catch {
+    } catch (error) {
       // The switch shows the failure and offers the exact retry.
+      if (isUnconfirmedCommand(error)) setHeld(command);
     }
   }
 
-  const uncertain = mutation.isError && isUnconfirmedCommand(mutation.error);
+  const uncertain = held !== undefined && !expired;
   const requested = mutation.isPending ? mutation.variables.status : status;
 
   return (
@@ -70,7 +75,7 @@ export function DestinationStatusSwitch({
           onCheckedChange={(checked) => {
             void send({
               status: checked ? 'enabled' : 'disabled',
-              idempotencyKey: crypto.randomUUID(),
+              ...newCommandKey(),
             });
           }}
         />
@@ -87,8 +92,7 @@ export function DestinationStatusSwitch({
                 size="xs"
                 variant="default"
                 onClick={() => {
-                  const command = attempt.current;
-                  if (command !== undefined) void send(command);
+                  void send(held);
                 }}
               >
                 Try again
@@ -96,10 +100,12 @@ export function DestinationStatusSwitch({
             ) : undefined
           }
         >
-          {destinationCommandError(
-            mutation.error,
-            mutation.variables.status === 'enabled' ? 'enable' : 'disable',
-          )}
+          {expired
+            ? RETRY_WINDOW_ENDED
+            : destinationCommandError(
+                mutation.error,
+                mutation.variables.status === 'enabled' ? 'enable' : 'disable',
+              )}
         </Notice>
       ) : null}
     </div>

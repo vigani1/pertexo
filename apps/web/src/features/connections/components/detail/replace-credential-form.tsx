@@ -5,7 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { connectionCommandError } from '../../model/connection-errors';
 import {
   useRotateConnectionMutation,
@@ -35,7 +40,10 @@ export function ReplaceCredentialForm({
   const [baseVersion, setBaseVersion] = useState(connection.secretVersionId);
   const { mutation, clearSensitiveState } = useRotateConnectionMutation(scope);
   const attempt = useRef<
-    | Readonly<{ signature: string; command: RotateConnectionCommand }>
+    | Readonly<{
+        signature: string;
+        command: RotateConnectionCommand & CommandKey;
+      }>
     | undefined
   >(undefined);
 
@@ -59,14 +67,15 @@ export function ReplaceCredentialForm({
       attempt.current = undefined;
     }
     const signature = JSON.stringify(value);
+    const held = attempt.current;
     const command =
-      attempt.current?.signature === signature
-        ? attempt.current.command
+      held?.signature === signature && canResend(held.command)
+        ? held.command
         : {
             connectionId: connection.id,
             expectedSecretVersionId: expectedVersion,
             credential: value,
-            idempotencyKey: crypto.randomUUID(),
+            ...newCommandKey(),
           };
     attempt.current = { signature, command };
     try {

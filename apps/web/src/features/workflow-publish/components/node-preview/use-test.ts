@@ -1,4 +1,9 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import type {
   NodeValidationResponse,
   PreviewRunSummary,
@@ -21,12 +26,12 @@ import {
 } from '../../data/node-test.api';
 
 type TestAttempt = Readonly<{
-  idempotencyKey: string;
   nodeId: string;
   expectedRevision: number;
   source: NodeTestInputSource;
   expectedSampleId: string | null;
-}>;
+}> &
+  CommandKey;
 
 const INPUT_ERROR = 'Sample input must be valid JSON, like {"amount": 1240}.';
 
@@ -113,6 +118,9 @@ export function useNodeTest(options: NodeTestOptions) {
     const { controller, isCurrent } = begin('run');
     let accepted = false;
     try {
+      // Past its window a held test is forgotten; the person asked for a new one.
+      if (attempt.current !== undefined && !canResend(attempt.current))
+        attempt.current = undefined;
       if (attempt.current === undefined) setRecoveryPending(false);
       const command =
         attempt.current ?? (await newNodeTestAttempt(context, input));
@@ -267,7 +275,7 @@ async function newNodeTestAttempt(
 ): Promise<TestAttempt> {
   const { revision } = await ensureSaved();
   return {
-    idempotencyKey: crypto.randomUUID(),
+    ...newCommandKey(),
     nodeId,
     expectedRevision: revision,
     expectedSampleId,

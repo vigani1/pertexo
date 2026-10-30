@@ -1,7 +1,12 @@
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { useId, useRef, useState } from 'react';
 import {
   ConfirmDialog,
@@ -203,7 +208,10 @@ function useAddConnectionForm({
     useCreateConnectionMutation(scope);
   const test = useConnectionTest(scope, { toastOnPass: false });
   const attempt = useRef<
-    | Readonly<{ signature: string; command: CreateConnectionCommand }>
+    | Readonly<{
+        signature: string;
+        command: CreateConnectionCommand & CommandKey;
+      }>
     | undefined
   >(undefined);
   const name =
@@ -267,10 +275,11 @@ function useAddConnectionForm({
     }
     const body = toCreateRequest(name.trim(), credential.draft);
     const signature = JSON.stringify(body);
+    const held = attempt.current;
     const command =
-      attempt.current?.signature === signature
-        ? attempt.current.command
-        : { request: body, idempotencyKey: crypto.randomUUID() };
+      held?.signature === signature && canResend(held.command)
+        ? held.command
+        : { request: body, ...newCommandKey() };
     attempt.current = { signature, command };
     let connection: ConnectionResponse;
     try {

@@ -1,4 +1,9 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { usableConnections } from '../model/destination-copy';
 import { useId, useRef, useState } from 'react';
 import type {
@@ -292,8 +297,9 @@ function useDestinationForm({
   const create = useCreateFailureNotificationDestinationMutation(scope);
   const append = useAppendFailureNotificationDestinationVersionMutation(scope);
   const mutation = editing ? append : create;
-  const attempt =
-    useRef<Readonly<{ signature: string; key: string }>>(undefined);
+  const attempt = useRef<Readonly<{ signature: string }> & CommandKey>(
+    undefined,
+  );
   const errorsFor = (next: DestinationValues) =>
     destinationErrors(next.kind, next.connectionId, next.target, connections);
 
@@ -322,11 +328,13 @@ function useDestinationForm({
       values.target,
     );
     const signature = JSON.stringify({ config, expectedVersion });
-    const key =
-      attempt.current?.signature === signature
-        ? attempt.current.key
-        : crypto.randomUUID();
-    attempt.current = { signature, key };
+    const held = attempt.current;
+    const command =
+      held?.signature === signature && canResend(held)
+        ? held
+        : { signature, ...newCommandKey() };
+    attempt.current = command;
+    const key = command.idempotencyKey;
     let saved: FailureNotificationDestinationResponse;
     try {
       saved =

@@ -1,4 +1,9 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import { useRef, useState, type SyntheticEvent } from 'react';
 import { workflowCreateRequestSchema } from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -24,7 +29,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { useCreateWorkflow } from '../../data/workflows.mutations';
 import { ExampleCards } from '../templates/example-cards';
 
-type Attempt = Readonly<{ name: string; idempotencyKey: string }>;
+type Attempt = Readonly<{ name: string }> & CommandKey;
 
 function createErrorMessage(error: unknown): string {
   if (isUnconfirmedCommand(error))
@@ -84,9 +89,9 @@ export function NewWorkflowSheet({
     if (!validation.submit({ name: nameProblem(name) })) return;
     const parsed = workflowCreateRequestSchema.parse({ name });
     const current =
-      attempt.current?.name === parsed.name
+      attempt.current?.name === parsed.name && canResend(attempt.current)
         ? attempt.current
-        : { name: parsed.name, idempotencyKey: crypto.randomUUID() };
+        : { name: parsed.name, ...newCommandKey() };
     attempt.current = current;
     let created: Awaited<ReturnType<typeof mutation.mutateAsync>>;
     try {

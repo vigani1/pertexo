@@ -1,6 +1,12 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  canResend,
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/contract';
 import type { FormValues } from '@pertexo/workflow-model';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PendingTaskDecisionRequest } from '@pertexo/contracts';
 import { describeCommandError } from '@/lib/api/error-copy';
@@ -17,18 +23,19 @@ export function useTaskResponse(
 ) {
   const cache = useQueryClient();
   const intent = useRef<
-    Readonly<{ body: TaskResponse; key: string }> | undefined
+    (Readonly<{ body: TaskResponse }> & CommandKey) | undefined
   >(undefined);
   const busy = useRef(false);
+  const [windowEnded, setWindowEnded] = useState(false);
   const mutation = useMutation({
     mutationFn: (command: NonNullable<typeof intent.current>) =>
       'values' in command.body
         ? submitTask(scope, taskId, {
             values: command.body.values,
-            key: command.key,
+            key: command.idempotencyKey,
             session,
           })
-        : decideTask(scope, taskId, command.body, command.key),
+        : decideTask(scope, taskId, command.body, command.idempotencyKey),
     retry: false,
     onSuccess: (result) => {
       intent.current = undefined;
@@ -59,12 +66,19 @@ export function useTaskResponse(
       JSON.stringify(intent.current.body) !== JSON.stringify(body)
     )
       return;
+    if (intent.current !== undefined && !canResend(intent.current)) {
+      intent.current = undefined;
+      mutation.reset();
+      setWindowEnded(true);
+      return;
+    }
     const command = intent.current ?? {
       body: structuredClone(body),
-      key: crypto.randomUUID(),
+      ...newCommandKey(),
     };
     intent.current = command;
     busy.current = true;
+    setWindowEnded(false);
     try {
       await mutation.mutateAsync(command);
     } catch {
@@ -79,6 +93,7 @@ export function useTaskResponse(
       : 'decision';
   const uncertain = mutation.isError && isUnconfirmedCommand(mutation.error);
   function errorMessage(): string | undefined {
+    if (windowEnded) return RETRY_WINDOW_ENDED;
     if (!mutation.isError) return undefined;
     if (uncertain)
       return `We couldn’t confirm the ${responseName}. Retry the same ${responseName} to recover the result before changing anything.`;
