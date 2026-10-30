@@ -220,12 +220,9 @@ export class DataTablesController {
       this.tables.store.write({
         ...this.scope(request, workspace),
         command: input.command,
-        ...(input.rowId === undefined
-          ? {}
-          : {
-              rowId: input.rowId,
-              expectedRevision: input.expectedRevision ?? 0,
-            }),
+        ...('rowId' in input
+          ? { rowId: input.rowId, expectedRevision: input.expectedRevision }
+          : {}),
         tableId,
         idempotencyKey: requestIdempotencyKey(request.headers),
         signal,
