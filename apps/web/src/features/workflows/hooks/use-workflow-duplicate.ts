@@ -13,7 +13,6 @@ import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
-  RETRY_WINDOW_ENDED,
   canResend,
   newCommandKey,
   type CommandKey,
@@ -29,6 +28,7 @@ import {
   duplicateFailureState,
   type DuplicatePhase,
   type DuplicateState,
+  duplicateWindowEnded,
 } from '../model/duplicate/state';
 import {
   isDuplicateAccessLoss,
@@ -198,11 +198,7 @@ export function useWorkflowDuplicate({
         void send(current);
       else {
         attempt.current = undefined;
-        setState((previous) => ({
-          ...previous,
-          kind: 'ready',
-          error: RETRY_WINDOW_ENDED,
-        }));
+        setState(duplicateWindowEnded);
       }
     },
   };

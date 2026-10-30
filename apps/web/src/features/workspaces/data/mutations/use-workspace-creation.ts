@@ -79,15 +79,10 @@ function canStart(state: State): boolean {
 /** What the form reads from the command's state. */
 function describeState(state: State, expired: boolean) {
   const held = state.kind === 'uncertain' && !expired;
+  const stateError = state.kind === 'executing' ? undefined : state.error;
   return {
     created: state.kind === 'created',
-    error: expired
-      ? { message: RETRY_WINDOW_ENDED }
-      : state.kind === 'idle' ||
-          state.kind === 'uncertain' ||
-          state.kind === 'created'
-        ? state.error
-        : undefined,
+    error: expired ? { message: RETRY_WINDOW_ENDED } : stateError,
     locked: state.kind === 'executing' || held,
     pending: state.kind === 'executing',
     refreshPending: state.kind === 'created' && state.refreshing,

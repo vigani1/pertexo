@@ -1,4 +1,7 @@
-import { isUnconfirmedCommand } from '@/lib/api/commands/contract';
+import {
+  RETRY_WINDOW_ENDED,
+  isUnconfirmedCommand,
+} from '@/lib/api/commands/contract';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 
@@ -50,4 +53,9 @@ export function duplicateFailureState(
       ? 'The saved source changed. This retry did not create a copy; an older copy may still exist if its receipt expired. Check existing workflows, read the current saved draft, then confirm a new copy explicitly.'
       : describeCommandError(error, 'duplicating this workflow'),
   };
+}
+
+/** A held copy past its retry window: the form is free again, and says why. */
+export function duplicateWindowEnded(current: DuplicateState): DuplicateState {
+  return { ...current, kind: 'ready', error: RETRY_WINDOW_ENDED };
 }

@@ -8,7 +8,7 @@ import {
 import type { PublicationReview } from '@pertexo/contracts';
 import { requestPublicationReview } from '../reviews/api';
 import { publicationReviewKeys } from '../reviews/queries';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { publishWorkflow } from '../workflow-publish.api';
@@ -71,7 +71,7 @@ export function useWorkflowPublication({
   const [publishError, setPublishError] = useState<string>();
   const [publicationReceipt, setPublicationReceipt] =
     useState<PublicationReceipt>();
-  const [publishRecoveryPending, setPublishRecoveryPending] = useState(false);
+  // The kind of unconfirmed command a retry would resend, if any.
   const [recoveryCommand, setRecoveryCommand] =
     useState<PublicationCommand['kind']>();
   const publishAttempt = useRef<PublishAttempt | undefined>(undefined);
@@ -98,17 +98,19 @@ export function useWorkflowPublication({
     };
   }, [apiClient, userId, workspaceId, workflowId, resetValidation]);
 
+  // Resending a held attempt needs no fresh check.
+  function assertCheckable() {
+    if (publishAttempt.current === undefined)
+      draftValidation.assertValidationAvailable();
+  }
+
   async function publish(
     command: PublicationCommand = { kind: 'publish' },
   ): Promise<PublishResult> {
     const publishOwner = owner.current;
     if (publishStage !== undefined || publishOwner === undefined) return failed;
-    if (
-      publishAttempt.current !== undefined &&
-      !canResend(publishAttempt.current)
-    ) {
+    if (heldAttemptExpired(publishAttempt.current)) {
       publishAttempt.current = undefined;
-      setPublishRecoveryPending(false);
       setRecoveryCommand(undefined);
       setPublishError(RETRY_WINDOW_ENDED);
       return failed;
@@ -119,8 +121,7 @@ export function useWorkflowPublication({
       setPublishStage('saving');
       await verifyIdentity();
       if (owner.current !== publishOwner) return failed;
-      if (publishAttempt.current === undefined)
-        draftValidation.assertValidationAvailable();
+      assertCheckable();
       const prepared =
         publishAttempt.current ??
         (await preparePublicationAttempt(
@@ -138,8 +139,7 @@ export function useWorkflowPublication({
       if (prepared === undefined) return failed;
       if (prepared === 'blocked') return { kind: 'blocked' };
       if (owner.current !== publishOwner) return failed;
-      if (publishAttempt.current === undefined)
-        draftValidation.assertValidationAvailable();
+      assertCheckable();
       if (
         newPublicationDraftChanged(
           publishAttempt.current,
@@ -158,24 +158,12 @@ export function useWorkflowPublication({
       const result = await dispatchPublication(scope, workflowId, prepared);
       if (owner.current !== publishOwner) return failed;
       publishAttempt.current = undefined;
-      setPublishRecoveryPending(false);
-      if (result.kind === 'review_requested') {
-        void queryClient.invalidateQueries({
-          queryKey: publicationReviewKeys.scope(scope),
-        });
-        return result;
-      }
-      const receipt = result.receipt;
-      setPublicationReceipt(receipt);
-      void queryClient.invalidateQueries({
-        queryKey: workflowPublishKeys.latestVersion(
-          userId,
-          workspaceId,
-          workflowId,
-        ),
-      });
+      setRecoveryCommand(undefined);
+      invalidateAfterPublication(queryClient, scope, workflowId, result);
+      if (result.kind === 'review_requested') return result;
+      setPublicationReceipt(result.receipt);
       onPublicationAccepted?.();
-      return { kind: 'published', receipt };
+      return result;
     } catch (error) {
       if (owner.current !== publishOwner) return failed;
       const failure = publicationFailure({
@@ -184,7 +172,6 @@ export function useWorkflowPublication({
         attempt: publishAttempt.current,
       });
       publishAttempt.current = failure.attempt;
-      setPublishRecoveryPending(failure.attempt !== undefined);
       setRecoveryCommand(failure.attempt?.command.kind);
       if (failure.invalidateReviews)
         void queryClient.invalidateQueries({
@@ -207,7 +194,7 @@ export function useWorkflowPublication({
     publishStage,
     publishPending: publishStage !== undefined,
     publishError,
-    publishRecoveryPending,
+    publishRecoveryPending: recoveryCommand !== undefined,
     recoveryCommand,
     clearPublishError: () => {
       setPublishError(undefined);
@@ -263,6 +250,28 @@ async function preparePublicationAttempt(
     return 'blocked';
   }
   return { ...saved, ...newCommandKey(), command };
+}
+
+function invalidateAfterPublication(
+  queryClient: QueryClient,
+  scope: Parameters<typeof publicationReviewKeys.scope>[0],
+  workflowId: string,
+  result: Extract<PublishResult, { kind: 'published' | 'review_requested' }>,
+) {
+  void queryClient.invalidateQueries({
+    queryKey:
+      result.kind === 'review_requested'
+        ? publicationReviewKeys.scope(scope)
+        : workflowPublishKeys.latestVersion(
+            scope.userId,
+            scope.workspaceId,
+            workflowId,
+          ),
+  });
+}
+
+function heldAttemptExpired(attempt: PublishAttempt | undefined): boolean {
+  return attempt !== undefined && !canResend(attempt);
 }
 
 async function dispatchPublication(

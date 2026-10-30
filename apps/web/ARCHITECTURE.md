@@ -1582,12 +1582,13 @@ share the same algorithm instead of carrying another sorted-JSON implementation.
 The pure `lib/api/commands/contract.ts` owns the shared command retry window
 (`newCommandKey`, `canResend`, `RETRY_WINDOW_ENDED`) and uncertain-outcome
 classification, and `use-resend-window.ts` re-renders when a held command's
-window ends. Every hook that keeps a key for an exact retry uses them; a hook
-keeps only its own failure mapping. Neither pure command consumers nor shared
-transport depend on React hooks. `lib/api/workspace-scope.ts` names the
-authenticated client/user/workspace tuple used by both file uploads and variable
-mappings. Generic inspector props call it `workspaceScope`; file-only body
-controls keep their upload vocabulary.
+window ends. Hooks that keep a key for an exact retry use them and keep only
+their own failure mapping; only commands whose repeat is harmless or bounded
+(file uploads, invitation acceptance, token revoke) don't. Neither pure command
+consumers nor shared transport depend on React hooks.
+`lib/api/workspace-scope.ts` names the authenticated client/user/workspace tuple
+used by both file uploads and variable mappings. Generic inspector props call it
+`workspaceScope`; file-only body controls keep their upload vocabulary.
 
 F35’s webhook Test panel lives in workflow-publish and composes into the generic
 node test panel through children. Its bounded temporary listener uses the
