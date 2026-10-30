@@ -206,9 +206,7 @@ describe('workflow portability application authority and exact commands', () => 
         authorizedWorkspace,
         request: { manifest: boundManifest, bindings },
       });
-      expect(f.authorization.findAccess).toHaveBeenCalledTimes(
-        capability === 'workflow:create' ? 1 : 2,
-      );
+      expect(f.authorization.findAccess).toHaveBeenCalledOnce();
       expect(f.persistence.previewWorkflowImport).toHaveBeenCalledWith(
         expect.objectContaining({
           traceId: 'portable-trace',
@@ -222,16 +220,18 @@ describe('workflow portability application authority and exact commands', () => 
     'denies %s before persistence when binding connection-read authority is lost',
     async (operation) => {
       const f = fixture('builder');
-      f.authorization.findAccess.mockResolvedValueOnce({
-        actorId,
-        workspaceId,
-        role: 'builder',
-        membershipStatus: 'active',
-        workspaceStatus: 'active',
+      const authorizedWorkspace = await authorizeWorkspace({
+        actor: context.actor,
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:create',
+        access: f.authorization,
+        disclosure: 'not_found',
       });
+      f.authorization.findAccess.mockClear();
       f.authorization.findAccess.mockResolvedValueOnce(undefined);
       const input = {
         ...context,
+        authorizedWorkspace,
         idempotencyKey: 'binding-authority',
         request: {
           manifest: boundManifest,
@@ -247,7 +247,7 @@ describe('workflow portability application authority and exact commands', () => 
       await expect(f[operation].execute(input)).rejects.toMatchObject({
         code: 'resource.not_found',
       });
-      expect(f.authorization.findAccess).toHaveBeenCalledTimes(2);
+      expect(f.authorization.findAccess).toHaveBeenCalledOnce();
       expect(f.persistence.previewWorkflowImport).not.toHaveBeenCalled();
       expect(f.persistence.importWorkflow).not.toHaveBeenCalled();
     },

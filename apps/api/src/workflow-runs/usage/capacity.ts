@@ -4,7 +4,7 @@ import {
 } from '@pertexo/contracts';
 
 import {
-  authorizeWorkspaceOperation,
+  authorizeWorkspaceCapabilities,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type {
@@ -22,20 +22,18 @@ export class GetUsageCapacityUseCase {
   public async execute(
     input: WorkflowRunApplicationInput & Readonly<{ signal?: AbortSignal }>,
   ): Promise<UsageCapacityResponse> {
-    for (const capability of ['run:read', 'artifact:read'] as const) {
-      await authorizeWorkspaceOperation({
-        actor: input.actor,
-        routeWorkspaceId: input.routeWorkspaceId,
-        capability,
-        access: this.authorization,
-        disclosure: 'not_found',
-        allowedWorkspaceStatuses: ['active'],
-        ...(input.signal === undefined ? {} : { signal: input.signal }),
-        ...(input.authorizedWorkspace?.capability !== capability
-          ? {}
-          : { authorizedWorkspace: input.authorizedWorkspace }),
-      });
-    }
+    await authorizeWorkspaceCapabilities({
+      actor: input.actor,
+      routeWorkspaceId: input.routeWorkspaceId,
+      capabilities: ['run:read', 'artifact:read'],
+      access: this.authorization,
+      disclosure: 'not_found',
+      allowedWorkspaceStatuses: ['active'],
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
+      ...(input.authorizedWorkspace === undefined
+        ? {}
+        : { authorizedWorkspace: input.authorizedWorkspace }),
+    });
     return usageCapacityResponseSchema.parse(
       await this.persistence.usageCapacity({
         workspaceId: input.routeWorkspaceId,

@@ -8,7 +8,7 @@ import {
 } from '@pertexo/contracts';
 import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import {
-  authorizeWorkspaceOperation,
+  authorizeWorkspaceCapabilities,
   commandCredential,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
@@ -59,26 +59,19 @@ class PortabilityAuthority {
     capability: 'workflow:read' | 'workflow:create',
     bindingCount = 0,
   ): Promise<void> {
-    const authority = {
+    await authorizeWorkspaceCapabilities({
       actor: input.actor,
       routeWorkspaceId: input.routeWorkspaceId,
       access: this.authorization,
-      disclosure: 'not_found' as const,
-      allowedWorkspaceStatuses: ['active'] as const,
+      disclosure: 'not_found',
+      allowedWorkspaceStatuses: ['active'],
       ...(input.signal === undefined ? {} : { signal: input.signal }),
-    };
-    await authorizeWorkspaceOperation({
-      ...authority,
-      capability,
-      ...(input.authorizedWorkspace?.capability === capability
-        ? { authorizedWorkspace: input.authorizedWorkspace }
-        : {}),
+      ...(input.authorizedWorkspace === undefined
+        ? {}
+        : { authorizedWorkspace: input.authorizedWorkspace }),
+      capabilities:
+        bindingCount > 0 ? [capability, 'connection:read'] : [capability],
     });
-    if (bindingCount > 0)
-      await authorizeWorkspaceOperation({
-        ...authority,
-        capability: 'connection:read',
-      });
   }
   protected context(input: Input) {
     return {

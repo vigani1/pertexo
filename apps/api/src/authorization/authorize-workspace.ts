@@ -206,4 +206,31 @@ export async function authorizeWorkspaceOperation(
   });
 }
 
+/**
+ * Authorizes every capability from one membership read. A proof from the
+ * route guard still covers the capability it was issued for.
+ */
+export async function authorizeWorkspaceCapabilities({
+  capabilities,
+  access,
+  authorizedWorkspace,
+  ...input
+}: Omit<AuthorizeWorkspaceOperationInput, 'capability'> &
+  Readonly<{
+    capabilities: readonly AuthorizationCapability[];
+  }>): Promise<void> {
+  let membership: Promise<WorkspaceAccess | undefined> | undefined;
+  const readOnce: WorkspaceAccessLookup = (query) =>
+    (membership ??= findAccess(access, query));
+  for (const capability of capabilities)
+    await authorizeWorkspaceOperation({
+      ...input,
+      capability,
+      access: readOnce,
+      ...(authorizedWorkspace?.capability === capability
+        ? { authorizedWorkspace }
+        : {}),
+    });
+}
+
 export type { WorkspaceStatus };

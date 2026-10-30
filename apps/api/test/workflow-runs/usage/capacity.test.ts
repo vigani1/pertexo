@@ -41,7 +41,7 @@ function persistence() {
 
 describe('workspace usage capacity use case', () => {
   // api-13: both capabilities come from one membership read.
-  it.fails('reads membership once for both capabilities', async () => {
+  it('reads membership once for both capabilities', async () => {
     const authorization = access();
     await new GetUsageCapacityUseCase(persistence(), authorization).execute({
       actor,
