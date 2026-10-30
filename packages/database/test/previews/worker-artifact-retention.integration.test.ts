@@ -129,6 +129,17 @@ describe('preview artifact retention lifecycle', () => {
       },
       workerId: claimedPreview.workerId,
     });
+
+    const deliveries = await scopedQuery<{ job_name: string }>(
+      `select job_name from app.outbox_events
+       where workspace_id=$1 and aggregate_id=$2 order by job_name`,
+      [workspaceId, accepted.previewRunId],
+    );
+    // Retention removes previews; the ordinary worker gets only execution work.
+    expect(deliveries.rows).toEqual([
+      { job_name: 'execute-preview-attempt' },
+      { job_name: 'reconcile-preview-attempt' },
+    ]);
   });
   it('deletes one quiesced preview artifact under maintenance without an open transaction', async () => {
     const previewDeadline = new Date(Date.now() + 1_500);
