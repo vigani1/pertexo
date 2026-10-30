@@ -45,10 +45,12 @@ modules in Zapier and Make. Pertexo does it inside its own file steps, as n8n do
 - **Safety, decided before parsing:** check the archive's entry count and each
   entry's uncompressed size from the zip directory before inflating anything.
   Reject a workbook whose total uncompressed size exceeds 100 MB, or with more
-  than 1,000 entries, as `file.spreadsheet_too_large`. Stream-inflate with the
+  than 1,000 entries, as `execution.file_input` with diagnostic reason
+  `spreadsheet_too_large`. Stream-inflate with the
   same caps enforced. Cap at 256 sheets and 1,000,000 cells read per run step.
   Reject macros-enabled (`.xlsm`) and legacy `.xls` files as
-  `file.unsupported_spreadsheet` with a hint to save as `.xlsx`. External links
+  `execution.file_input` with diagnostic reason `unsupported_spreadsheet` and a
+  hint to save as `.xlsx`. External links
   and embedded objects are ignored, never fetched.
 - **Library:** one well-maintained library with no open advisories, a permissive
   licence and streaming read, that runs in the worker (Node only, never in the
