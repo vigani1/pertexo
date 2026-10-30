@@ -61,8 +61,7 @@ describe('SAML response parsing given hostile input', () => {
     );
   });
 
-  // Found by this fuzz (no audit ID): invalid UTF-8 escapes as the decoder's TypeError.
-  it.fails('decodes or refuses any encoded response', () => {
+  it('decodes or refuses any encoded response', () => {
     fc.assert(
       fc.property(
         fc.oneof(

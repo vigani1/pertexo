@@ -1,3 +1,5 @@
+import { isUtf8 } from 'node:buffer';
+
 import { SAML_LIMITS } from '@pertexo/contracts';
 import { DOMParser } from '@xmldom/xmldom';
 
@@ -168,8 +170,9 @@ export function decodeResponse(value: string): string {
   const buffer = Buffer.from(value, 'base64');
   if (
     buffer.length > SAML_LIMITS.xmlBytes ||
-    buffer.toString('base64') !== value
+    buffer.toString('base64') !== value ||
+    !isUtf8(buffer)
   )
     return invalidSaml();
-  return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+  return new TextDecoder().decode(buffer);
 }
