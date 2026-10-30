@@ -67,6 +67,15 @@
 - Tests check behavior, not structure, against the real code: mock only
   outside services, and never copy the code's logic into the test. Production
   code has no test hooks.
+- Write a test from the goal, not the code: decide what a caller, user or
+  stored row should show (the plan, guide or bug report) before reading the
+  implementation. Assert outcomes (returned values, saved rows, HTTP
+  responses, what the screen shows), never which internal functions ran.
+- A test must fail when the behavior it guards breaks: for every fix, see the
+  new test fail without the fix, then pass with it.
+- If a test looks wrong, stop and say why. Never edit, skip or delete a test
+  just to get a pass; a loosened or removed assertion needs a reason from the
+  plan in its commit message.
 - Tests and checks never disturb a live session or running service: use
   isolated browser contexts, ports and compose projects.
 - `pnpm check` runs the static checks (format, build, lint, typecheck,
@@ -86,7 +95,9 @@
   guideline skills) apply to `apps/web`; follow `apps/web/AGENTS.md` there.
 - `tdd` only when the user asks for test-first work. `code-review` only when the
   user asks for a review. Do not use `grill-with-docs`.
-- Do not use subagents unless the user asks.
+- Do not use subagents unless the user asks. When work is split across
+  agents, a different agent writes the tests than the code they check, from
+  the plan and without seeing the implementation.
 
 ## Git discipline
 
