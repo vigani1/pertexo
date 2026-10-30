@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
+import { workspaceKeys } from './workspace-keys';
 import {
   getAllAccessibleWorkspaces,
   getWorkspaceMembersPage,
@@ -14,10 +15,7 @@ export const workspaceInvitationKeys = {
   list: (userId: string, workspaceId: string) =>
     ['identity', userId, 'workspace', workspaceId, 'invitations'] as const,
 };
-export const workspaceKeys = {
-  accessible: (userId: string) =>
-    ['identity', userId, 'accessible-workspaces'] as const,
-};
+export { workspaceKeys };
 
 export function accessibleWorkspacesQueryOptions(
   apiClient: ApiClient,
