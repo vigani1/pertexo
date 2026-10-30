@@ -1,7 +1,12 @@
 import type { PoolClient } from 'pg';
 import { WorkspaceAccessDeniedError } from '../errors.js';
-import { rolesForCapability, type Role } from '@pertexo/workflow-model';
 import {
+  BROWSABLE_WORKSPACE_STATUSES,
+  rolesForCapability,
+  type Role,
+} from '@pertexo/workflow-model';
+import {
+  lockBrowsableWorkspaceAuthority,
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from '../workspaces/authority.queries.js';
@@ -16,24 +21,27 @@ export async function authorizeWorkflowResource(
   {
     capability,
     locking,
+    browsing = false,
     roles = rolesForCapability(capability),
   }: Readonly<{
     capability: WorkflowResourceCapability;
     locking: boolean;
+    /** A read a suspended workspace still allows (ADR 013/027). */
+    browsing?: boolean | undefined;
     roles?: readonly Role[] | undefined;
   }>,
 ): Promise<boolean> {
   try {
     const role = locking
-      ? await lockWorkspaceAuthority(
-          client,
-          input.workspaceId,
-          input.actorId,
-          roles,
-        )
+      ? await (
+          browsing ? lockBrowsableWorkspaceAuthority : lockWorkspaceAuthority
+        )(client, input.workspaceId, input.actorId, roles)
       : await readWorkspaceAuthority(client, input.workspaceId, {
           actorId: input.actorId,
           roles,
+          ...(browsing
+            ? { allowedStatuses: BROWSABLE_WORKSPACE_STATUSES }
+            : {}),
         });
     return await workflowAccessible(
       client,

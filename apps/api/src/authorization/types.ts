@@ -2,12 +2,13 @@ import type { IdentityWorkspaceDatabase } from '@pertexo/database/tenant-access'
 import type { ApiTokenScope } from '@pertexo/contracts';
 import {
   AUTHORIZATION_CAPABILITIES,
+  BROWSABLE_WORKSPACE_STATUSES,
   ROLES,
   type AuthorizationCapability,
   type Role,
 } from '@pertexo/workflow-model';
 
-export { AUTHORIZATION_CAPABILITIES, ROLES };
+export { AUTHORIZATION_CAPABILITIES, BROWSABLE_WORKSPACE_STATUSES, ROLES };
 export type { AuthorizationCapability };
 
 export const MEMBERSHIP_STATUSES = Object.freeze([

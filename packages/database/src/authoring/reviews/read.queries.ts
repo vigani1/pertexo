@@ -12,7 +12,7 @@ import {
   workflowConnectionReferences,
 } from '../../tenant-access/resources/connections/bindings.queries.js';
 import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { readBrowsableFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import type { PoolClient } from 'pg';
 import type { PublicationReview } from '@pertexo/contracts';
@@ -50,7 +50,7 @@ export async function readReviewRow(
       workspaceId: input.workspaceId,
       actorId: row.requestedBy,
     };
-    const resources = await readFolderScope(client, requester);
+    const resources = await readBrowsableFolderScope(client, requester);
     const canPublish = await workflowAccessible(client, resources, {
       workspaceId: input.workspaceId,
       workflowId: row.workflowId,

@@ -5,6 +5,7 @@ import {
 
 import {
   authorizeWorkspaceCapabilities,
+  BROWSABLE_WORKSPACE_STATUSES,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type {
@@ -28,7 +29,7 @@ export class GetUsageCapacityUseCase {
       capabilities: ['run:read', 'artifact:read'],
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active'],
+      allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
       ...(input.signal === undefined ? {} : { signal: input.signal }),
       ...(input.authorizedWorkspace === undefined
         ? {}

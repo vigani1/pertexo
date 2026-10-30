@@ -196,13 +196,14 @@ export function readWorkflowFailureNotificationPolicy(
   return transaction(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, {
       manage: false,
+      browsing: true,
     });
     const workflowId = input.workflowId;
     if (
       !(await authorizeWorkflowResource(
         client,
         { ...input, workflowId },
-        { capability: 'workflow:read', locking: true },
+        { capability: 'workflow:read', locking: true, browsing: true },
       ))
     )
       throw destinationError('not_found', 'Workflow is not visible');

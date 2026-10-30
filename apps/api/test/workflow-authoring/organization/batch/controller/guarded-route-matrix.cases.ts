@@ -12,7 +12,10 @@ import { expect, it } from 'vitest';
 import { WorkflowFoldersController } from '../../../../../src/workflow-authoring/organization/folders/controller.js';
 import { WorkflowOrganizationBatchesController } from '../../../../../src/workflow-authoring/organization/batch/controller.js';
 
-import { WorkflowReadGuard } from '../../../../../src/workflow-authoring/http/guards.js';
+import {
+  WorkflowParticipantGuard,
+  WorkflowReadGuard,
+} from '../../../../../src/workflow-authoring/http/guards.js';
 import {
   SessionAuthenticationGuard,
   CsrfProtectionGuard,
@@ -50,7 +53,7 @@ export function registerGuardedRouteMatrix(): void {
       expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(route.path);
       expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
         SessionAuthenticationGuard,
-        WorkflowReadGuard,
+        route.method === 'list' ? WorkflowReadGuard : WorkflowParticipantGuard,
         ...(route.method === 'list' ? [] : [CsrfProtectionGuard]),
       ]);
       expect(Reflect.getMetadata(HEADERS_METADATA, handler)).toEqual([

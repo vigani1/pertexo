@@ -5,7 +5,7 @@ import { createWorkflowTestStore } from '../../previews/workflows/repository.js'
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
-import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
+import { lockBrowsableWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
 import { createWorkflowCollaborationStore } from '../collaboration/repository.js';
 import { createWorkflowPromotionStore } from '../promotion/repository.js';
 import { createPublicationReviewStore } from '../reviews/repository.js';
@@ -114,7 +114,7 @@ async function requireWorkspaceReader(
   actorId: string,
 ): Promise<FolderScope> {
   try {
-    const role = await lockWorkspaceAuthority(
+    const role = await lockBrowsableWorkspaceAuthority(
       client,
       workspaceId,
       actorId,

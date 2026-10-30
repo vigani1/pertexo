@@ -1,6 +1,7 @@
 import { parseIdentityMetadata } from '@pertexo/workflow-model';
 import {
   authorizeWorkspaceOperation,
+  BROWSABLE_WORKSPACE_STATUSES,
   capabilitiesForRole,
   type ActorContext,
   type AuthorizedWorkspaceContext,
@@ -149,6 +150,7 @@ export class ListWorkspaceMembersUseCase {
           capability: 'member:read',
           access: this.authorization,
           disclosure: 'forbidden',
+          allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
           ...(input.authorizedWorkspace === undefined
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),

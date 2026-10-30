@@ -13,9 +13,15 @@ export async function visibleTransactionArtifactIds(
   transaction: Pick<WorkspaceTransaction, 'db'>,
   actor: ResourceActor,
   ids: readonly string[],
+  workspaceStatuses?: readonly string[],
 ): Promise<ReadonlySet<string>> {
   if (ids.length === 0) return new Set();
-  const scope = await readTransactionFolderScope(transaction, actor);
+  const scope = await readTransactionFolderScope(
+    transaction,
+    actor,
+    undefined,
+    workspaceStatuses,
+  );
   if (!scope.permits(null, 'workflow:read')) return new Set();
   const owners = artifactReferenceOwnersSql(
     sql`${actor.workspaceId}`,
@@ -38,6 +44,12 @@ export function visibleArtifactIds(
   client: PoolClient,
   actor: ResourceActor,
   ids: readonly string[],
+  workspaceStatuses?: readonly string[],
 ) {
-  return visibleTransactionArtifactIds({ db: drizzle(client) }, actor, ids);
+  return visibleTransactionArtifactIds(
+    { db: drizzle(client) },
+    actor,
+    ids,
+    workspaceStatuses,
+  );
 }

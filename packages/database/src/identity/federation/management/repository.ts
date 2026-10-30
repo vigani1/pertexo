@@ -5,7 +5,10 @@ import { authOrganizations } from '../../../schema/identity/federation/organizat
 import { and, asc, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
+import {
+  ADMINISTRATIVE_ROLES,
+  BROWSABLE_WORKSPACE_STATUSES,
+} from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { findCommandResult } from '../../../platform/idempotency/repository.js';
 
@@ -103,6 +106,9 @@ function read<T>(
         readWorkspaceAuthority(scoped, scope.workspaceId, {
           actorId: scope.actorId,
           roles: ADMINISTRATIVE_ROLES,
+          ...(ownerOnly
+            ? {}
+            : { allowedStatuses: BROWSABLE_WORKSPACE_STATUSES }),
         }),
       );
       if (ownerOnly && role !== 'owner')

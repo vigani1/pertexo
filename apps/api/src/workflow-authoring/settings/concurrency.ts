@@ -7,6 +7,7 @@ import type { WorkflowConcurrencyDatabase } from '@pertexo/database/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
+  BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
 import { parseRequestBody } from '../../platform/http/index.js';
@@ -68,7 +69,10 @@ export class WorkflowConcurrencyUseCase {
       capability,
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active'],
+      allowedWorkspaceStatuses:
+        capability === 'workflow:read'
+          ? BROWSABLE_WORKSPACE_STATUSES
+          : ['active'],
       ...(input.signal === undefined ? {} : { signal: input.signal }),
       ...(input.authorizedWorkspace === undefined
         ? {}

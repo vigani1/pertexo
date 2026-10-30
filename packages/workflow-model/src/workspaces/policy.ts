@@ -7,6 +7,12 @@ export const ROLES = Object.freeze([
   'viewer',
 ] as const);
 export type Role = (typeof ROLES)[number];
+
+/** A suspended workspace reads but does not change (ADR 013/027). */
+export const BROWSABLE_WORKSPACE_STATUSES = Object.freeze([
+  'active',
+  'suspended',
+] as const);
 export const DELEGATED_ROLES = Object.freeze(
   ROLES.filter((role) => role !== 'owner'),
 );

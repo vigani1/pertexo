@@ -86,11 +86,14 @@ function readForm(
       ...(input.actorId === undefined ? {} : { actorId: input.actorId }),
     },
     async (client) => {
-      await authorizeForm(client, input, { grant, write: false });
+      // A member still reads a suspended workspace's form; the public never does.
+      const browsing = grant === undefined;
+      await authorizeForm(client, input, { grant, write: false, browsing });
       const { version, nodeId, form } = await readFormVersion(
         client,
         input,
         'read',
+        { browsing },
       );
       if (grant !== undefined && grant.nodeId !== nodeId)
         throw new FormUnavailableError();
@@ -173,6 +176,7 @@ function readFormHistory(
           grant: undefined,
           write: false,
           manage: true,
+          browsing: true,
         });
       } catch (error) {
         if (!(error instanceof FormUnavailableError)) throw error;
@@ -197,8 +201,12 @@ function readManagedFormAccess(
         grant: undefined,
         write: false,
         manage: true,
+        browsing: true,
       });
-      await readFormVersion(client, input, 'read', { allowPaused: true });
+      await readFormVersion(client, input, 'read', {
+        allowPaused: true,
+        browsing: true,
+      });
       return readFormAccess(client, input);
     },
     input.signal === undefined ? {} : { signal: input.signal },

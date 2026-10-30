@@ -22,7 +22,13 @@ async function lockAuthorizedActor(
   client: PoolClient,
   workspaceId: string,
   actorUserId: string,
-  strength: 'update' | 'share' = 'update',
+  {
+    strength = 'update',
+    workspaceStatuses = ['active'],
+  }: Readonly<{
+    strength?: 'update' | 'share';
+    workspaceStatuses?: readonly string[];
+  }> = {},
 ): Promise<Role> {
   const db = drizzle(client);
   const workspace = await db
@@ -31,7 +37,7 @@ async function lockAuthorizedActor(
     .where(eq(workspaces.id, workspaceId))
     .for(strength)
     .catch(rethrowQueryFailure);
-  if (workspace[0]?.status !== 'active')
+  if (!workspaceStatuses.includes(workspace[0]?.status ?? ''))
     throw new WorkspaceInvitationCommandConflictError(
       'actor_inactive',
       'The workspace is not active',

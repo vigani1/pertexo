@@ -47,7 +47,9 @@ function readPromotionSettings(
       initial.targetWorkspaceId,
     );
     const source = await inWorkspace(sourceScope, async (client) => {
-      await requirePromotionAuthority(client, input);
+      await requirePromotionAuthority(client, input, 'workflow:update', {
+        browsing: true,
+      });
       const link = await readPromotionLink(client, input.workspaceId);
       if (
         link.revision !== initial.revision ||

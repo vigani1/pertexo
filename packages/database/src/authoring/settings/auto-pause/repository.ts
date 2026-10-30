@@ -2,6 +2,7 @@ import {
   ROLES,
   WORKFLOW_EDITOR_ROLES,
   type Role,
+  BROWSABLE_WORKSPACE_STATUSES,
 } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -64,9 +65,11 @@ async function readWorkflowPauseSettings(
   return transact(workspaceId, actorId, async (client) => {
     const workspace = await lockWorkspace(client, workspaceId, {
       exclusive: false,
+      statuses: BROWSABLE_WORKSPACE_STATUSES,
     });
     await lockWorkflowAuthoringAuthority(client, workspaceId, {
       actorId,
+      browsing: true,
       roles: ROLES,
       resource: {
         workflowId,
@@ -89,9 +92,11 @@ async function readWorkspacePauseSettings(
   return transact(workspaceId, actorId, async (client) => {
     const workspace = await lockWorkspace(client, workspaceId, {
       exclusive: false,
+      statuses: BROWSABLE_WORKSPACE_STATUSES,
     });
     await lockWorkflowAuthoringAuthority(client, workspaceId, {
       actorId,
+      browsing: true,
       roles: ROLES,
     });
     return {

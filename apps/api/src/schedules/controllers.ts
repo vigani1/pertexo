@@ -29,7 +29,11 @@ import {
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { requestIdempotencyKey } from '../platform/http/index.js';
-import { ScheduleReadGuard, ScheduleUpdateGuard } from './guards.js';
+import {
+  SchedulePreviewGuard,
+  ScheduleReadGuard,
+  ScheduleUpdateGuard,
+} from './guards.js';
 import { ScheduleManagementService } from './service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../problems/context/normalize.js';
@@ -98,7 +102,11 @@ export class ScheduleManagementController {
   @Post('schedules/preview')
   @HttpCode(200)
   @RateLimit('workflow_compile')
-  @UseGuards(SessionAuthenticationGuard, ScheduleReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    SchedulePreviewGuard,
+    CsrfProtectionGuard,
+  )
   public preview(
     @Req() request: Request,
     @Param() params: unknown,

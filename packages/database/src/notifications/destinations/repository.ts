@@ -279,6 +279,7 @@ function readNotificationDestination(
   return transact(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, {
       manage: false,
+      browsing: true,
     });
     return readFailureNotificationDestination(
       client,
@@ -295,6 +296,7 @@ function listNotificationDestinations(
   return transact(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, {
       manage: false,
+      browsing: true,
     });
     const result = await destinationRecords(drizzle(client))
       .where(eq(destination.workspaceId, input.workspaceId))

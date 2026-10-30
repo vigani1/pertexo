@@ -46,6 +46,7 @@ export async function authorizeWebhookTriggerReader(
       {
         capability: 'workflow:read',
         locking: false,
+        browsing: true,
         roles: WORKFLOW_EDITOR_ROLES,
       },
     ))

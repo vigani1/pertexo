@@ -29,6 +29,7 @@ export function createWorkflowStepSampleStore(
       async (client) => {
         await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
           actorId: input.actorId,
+          browsing: !write,
           roles: rolesForCapability(
             write ? 'workflow:update' : 'workflow:read',
           ),
@@ -40,6 +41,7 @@ export function createWorkflowStepSampleStore(
         if (!write)
           await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
             actorId: input.actorId,
+            browsing: true,
             roles: rolesForCapability('run:read'),
           });
         return work(client);

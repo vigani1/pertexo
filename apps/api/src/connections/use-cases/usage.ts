@@ -24,7 +24,10 @@ import {
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
-import { authorizeWorkspaceOperation } from '../../authorization/index.js';
+import {
+  authorizeWorkspaceOperation,
+  BROWSABLE_WORKSPACE_STATUSES,
+} from '../../authorization/index.js';
 import { authorizeConnectionOperation } from '../authorization.js';
 import { InvalidConnectionCursorError } from '../cursor.js';
 import { ConnectionReadGuard } from '../http/guards.js';
@@ -96,7 +99,7 @@ export class ListConnectionUsageUseCase {
       capability: 'workflow:read',
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active'],
+      allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
     });
     const page = await this.persistence.listConnectionUsage({
       workspaceId: input.routeWorkspaceId,

@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0058_workspace_reactivation.sql';
+export const EXPECTED_MIGRATION_HEAD = '0059_suspended_inbox.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

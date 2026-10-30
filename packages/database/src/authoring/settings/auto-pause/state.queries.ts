@@ -36,7 +36,10 @@ export type WorkflowRow = Awaited<ReturnType<typeof lockWorkflow>>;
 export async function lockWorkspace(
   client: PoolClient,
   workspaceId: string,
-  { exclusive }: Readonly<{ exclusive: boolean }>,
+  {
+    exclusive,
+    statuses = ['active'],
+  }: Readonly<{ exclusive: boolean; statuses?: readonly string[] }>,
 ) {
   const db = drizzle(client);
   const key = `auto-pause-workspace:${workspaceId}`;
@@ -50,7 +53,12 @@ export async function lockWorkspace(
   const [row] = await db
     .select(workspaceProjection)
     .from(workspaces)
-    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.status, 'active')))
+    .where(
+      and(
+        eq(workspaces.id, workspaceId),
+        sql`${workspaces.status}=any(${sql.param(statuses)}::text[])`,
+      ),
+    )
     .for(exclusive ? 'no key update' : 'share')
     .catch(rethrowQueryFailure);
   if (row === undefined)

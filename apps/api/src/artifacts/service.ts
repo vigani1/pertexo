@@ -8,6 +8,7 @@ import {
 
 import {
   authorizeWorkspaceOperation,
+  BROWSABLE_WORKSPACE_STATUSES,
   type AuthorizationCapability,
 } from '../authorization/index.js';
 import {
@@ -208,6 +209,9 @@ export class ArtifactService {
       ...(authorizedWorkspace === undefined ? {} : { authorizedWorkspace }),
       capability,
       routeWorkspaceId: input.routeWorkspaceId,
+      ...(capability === 'artifact:read'
+        ? { allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES }
+        : {}),
     });
   }
 

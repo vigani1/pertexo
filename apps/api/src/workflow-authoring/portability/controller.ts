@@ -16,7 +16,10 @@ import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/a
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { WorkflowCreateGuard, WorkflowReadGuard } from '../http/guards.js';
+import {
+  WorkflowCreateGuard,
+  WorkflowParticipantGuard,
+} from '../http/guards.js';
 import {
   ExportWorkflowUseCase,
   ImportWorkflowUseCase,
@@ -48,7 +51,7 @@ export class WorkflowPortabilityController {
   @RateLimit('workflow_compile')
   @UseGuards(
     AutomationAuthenticationGuard,
-    WorkflowReadGuard,
+    WorkflowParticipantGuard,
     CsrfProtectionGuard,
   )
   public async export(

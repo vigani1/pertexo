@@ -13,7 +13,10 @@ import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from '../../../tenant-access/workspaces/authority.queries.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import {
+  rolesForCapability,
+  BROWSABLE_WORKSPACE_STATUSES,
+} from '@pertexo/workflow-model';
 import { respondToTask } from './respond.repository.js';
 import { inspectAudience } from './inspect-audience.queries.js';
 import { listTasks, projectTask, readTaskRow } from './records.repository.js';
@@ -33,6 +36,7 @@ export function createPendingTaskStore(
           const role = await readWorkspaceAuthority(client, input.workspaceId, {
             actorId: input.actorId,
             roles: rolesForCapability('run:read'),
+            allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
           });
           return listTasks(
             client,
@@ -51,6 +55,7 @@ export function createPendingTaskStore(
           const role = await readWorkspaceAuthority(client, input.workspaceId, {
             actorId: input.actorId,
             roles: rolesForCapability('run:read'),
+            allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
           });
           return projectTask(
             await readTaskRow(client, input, {
@@ -122,6 +127,7 @@ export function createPendingTaskStore(
           await readWorkspaceAuthority(client, input.workspaceId, {
             actorId: input.actorId,
             roles: rolesForCapability('workflow:update'),
+            allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
           });
           return readWorkspacePeople(client, input);
         },

@@ -32,7 +32,7 @@ import {
   throwApplicationError,
 } from '../platform/http/index.js';
 import {
-  ACTIVE_WORKFLOW_CAPABILITY,
+  authorizeWorkflowRead,
   type AuthoringPersistence,
   revisionConflict,
   authorize,
@@ -79,7 +79,7 @@ export class ListWorkflowsUseCase {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.list,
       async () => {
-        await authorize(input, ACTIVE_WORKFLOW_CAPABILITY, this.authorization);
+        await authorizeWorkflowRead(input, this.authorization);
         const page = await this.persistence.listWorkflows({
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,
@@ -132,7 +132,7 @@ export class GetWorkflowUseCase {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.list,
       async () => {
-        await authorize(input, ACTIVE_WORKFLOW_CAPABILITY, this.authorization);
+        await authorizeWorkflowRead(input, this.authorization);
         if (input.include === 'templateOrigin') {
           if (this.persistence.getWorkflowWithTemplateOrigin === undefined)
             return throwApplicationError(
@@ -178,7 +178,7 @@ export class GetWorkflowDraftUseCase {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.draftGet,
       async () => {
-        await authorize(input, ACTIVE_WORKFLOW_CAPABILITY, this.authorization);
+        await authorizeWorkflowRead(input, this.authorization);
         const draft = await this.persistence.getDraft(
           input.routeWorkspaceId,
           input.workflowId,
@@ -260,7 +260,7 @@ export class ValidateWorkflowDraftUseCase {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.validate,
       async () => {
-        await authorize(input, ACTIVE_WORKFLOW_CAPABILITY, this.authorization);
+        await authorizeWorkflowRead(input, this.authorization);
         const result = await this.persistence.validateDraft(
           input.routeWorkspaceId,
           input.workflowId,
@@ -292,7 +292,7 @@ export class ListWorkflowVersionsUseCase {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.versionsList,
       async () => {
-        await authorize(input, ACTIVE_WORKFLOW_CAPABILITY, this.authorization);
+        await authorizeWorkflowRead(input, this.authorization);
         const page = await this.persistence.listVersions({
           workspaceId: input.routeWorkspaceId,
           workflowId: input.workflowId,

@@ -7,7 +7,7 @@ import {
   workflowDrafts,
   workflowVersions,
 } from '../schema/authoring/workflows.js';
-import { readFolderScope } from '../tenant-access/resources/facts.queries.js';
+import { readBrowsableFolderScope } from '../tenant-access/resources/facts.queries.js';
 import { workflowScopeSql } from '../tenant-access/resources/scope.queries.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
@@ -47,7 +47,7 @@ async function readUsageWorkflow(
   input: Parameters<WorkspaceVariablesStore['usage']>[0],
 ) {
   const cursor = input.after;
-  const resources = await readFolderScope(client, input);
+  const resources = await readBrowsableFolderScope(client, input);
   const db = drizzle(client);
   const later = alias(workflows, 'later');
   const [workflow] = await db

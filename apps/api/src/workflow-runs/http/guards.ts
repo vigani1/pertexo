@@ -1,3 +1,4 @@
+import { BROWSABLE_WORKSPACE_STATUSES } from '../../authorization/index.js';
 import { capabilityGuard } from '../../workspaces/http/guards.js';
 
 import { WORKFLOW_RUN_AUTHORIZATION } from '../tokens.js';
@@ -5,7 +6,10 @@ import { WORKFLOW_RUN_AUTHORIZATION } from '../tokens.js';
 export const UsageCapacityArtifactReadGuard = capabilityGuard(
   WORKFLOW_RUN_AUTHORIZATION,
   'artifact:read',
-  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+  {
+    disclosure: 'not_found',
+    allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
+  },
 );
 
 export const WorkflowRunReadGuard = capabilityGuard(

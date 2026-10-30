@@ -22,7 +22,11 @@ import {
   CsrfProtectionGuard,
 } from '../../workspaces/index.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { WorkflowReadGuard, WorkflowUpdateGuard } from '../http/guards.js';
+import {
+  WorkflowParticipantGuard,
+  WorkflowReadGuard,
+  WorkflowUpdateGuard,
+} from '../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowOrganizationCommandsUseCase } from './commands.js';
 import { WorkflowOrganizationReadsUseCase } from './reads.js';
@@ -63,7 +67,11 @@ export class WorkflowOrganizationController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(201)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public createTag(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -82,7 +90,11 @@ export class WorkflowOrganizationController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public renameTag(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -102,7 +114,11 @@ export class WorkflowOrganizationController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public deleteTag(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -164,7 +180,11 @@ export class WorkflowOrganizationController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public favorite(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,

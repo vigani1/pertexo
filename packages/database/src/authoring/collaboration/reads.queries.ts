@@ -103,7 +103,9 @@ export function collaborationReads(
         input.workspaceId,
         input.actorId,
         async (client) => {
-          await requireCollaborationAuthority(client, input);
+          await requireCollaborationAuthority(client, input, 'share', {
+            browsing: true,
+          });
           const found = await drizzle(client)
             .select(threadProjection)
             .from(workflowCommentThreads)
@@ -137,7 +139,9 @@ export function collaborationReads(
         input.workspaceId,
         input.actorId,
         async (client) => {
-          await requireCollaborationAuthority(client, input);
+          await requireCollaborationAuthority(client, input, 'share', {
+            browsing: true,
+          });
           const db = drizzle(client);
           const [thread] = await db
             .select(threadProjection)
@@ -201,7 +205,9 @@ export function collaborationReads(
         input.workspaceId,
         input.actorId,
         async (client) => {
-          await requireCollaborationAuthority(client, input);
+          await requireCollaborationAuthority(client, input, 'share', {
+            browsing: true,
+          });
           return readWorkspacePeople(client, input);
         },
         input.signal,

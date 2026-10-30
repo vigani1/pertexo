@@ -50,7 +50,7 @@ export async function authorizeScheduleReader(
     !(await authorizeWorkflowResource(
       client,
       { workspaceId, actorId, workflowId },
-      { capability: 'workflow:read', locking: false },
+      { capability: 'workflow:read', locking: false, browsing: true },
     ))
   )
     throw new ScheduleTriggerError('not_found');

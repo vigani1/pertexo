@@ -262,11 +262,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
           workspaceId,
         ]);
       const current = await api.signIn(email);
-      expectProblem(
-        await api.send('GET', route, { browser: current }),
-        404,
-        'resource.not_found',
-      );
+      const suspended = await api.send('GET', route, { browser: current });
+      expect(suspended.statusCode, suspended.payload).toBe(200);
     });
   },
 );

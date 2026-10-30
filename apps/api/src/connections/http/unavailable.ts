@@ -5,10 +5,7 @@ import {
   throwApplicationError,
 } from '../../platform/http/application-error.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import {
-  ConnectionReadGuard,
-  FailureNotificationWorkflowEditGuard,
-} from './guards.js';
+import { ConnectionReadGuard, FailureNotificationReadGuard } from './guards.js';
 
 @Controller('v1/workspaces/:workspaceId')
 @RateLimit('authenticated_read')
@@ -20,7 +17,7 @@ export class UnconfiguredConnectionsController {
   }
 
   @Get('failure-notification-destinations')
-  @UseGuards(SessionAuthenticationGuard, FailureNotificationWorkflowEditGuard)
+  @UseGuards(SessionAuthenticationGuard, FailureNotificationReadGuard)
   public destinations(): never {
     return throwApplicationError(applicationError('connection.not_configured'));
   }

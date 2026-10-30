@@ -23,7 +23,7 @@ import {
   withActorScopedClient,
   withTenantScopedClient,
 } from '../transactions.js';
-import { lockWorkspaceAuthority } from '../workspaces/authority.queries.js';
+import { lockBrowsableWorkspaceAuthority } from '../workspaces/authority.queries.js';
 
 type MemberStore = Pick<
   IdentityWorkspaceDatabase,
@@ -152,7 +152,7 @@ async function listWorkspaceMembers(
     pool,
     { workspaceId, actorId },
     async (client): Promise<WorkspaceMembersPage> => {
-      await lockWorkspaceAuthority(
+      await lockBrowsableWorkspaceAuthority(
         client,
         workspaceId,
         actorId,

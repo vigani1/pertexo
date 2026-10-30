@@ -37,9 +37,10 @@ import {
 } from '../platform/http/index.js';
 import { prepareSseResponse } from '../platform/http/sse-response.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
+import { BROWSABLE_WORKSPACE_STATUSES } from '../authorization/index.js';
 import { createStreamAuthorizationLifetime } from '../workflow-runs/events/sse-authorization-lifetime.js';
 
-import { NotificationReadGuard } from './guards.js';
+import { NotificationChangeGuard, NotificationReadGuard } from './guards.js';
 import { writeInboxHintStream } from './hint-stream.js';
 import type {
   InboxHintSource,
@@ -119,7 +120,7 @@ export class NotificationsController {
   @RateLimit('ordinary_mutation')
   @UseGuards(
     SessionAuthenticationGuard,
-    NotificationReadGuard,
+    NotificationChangeGuard,
     CsrfProtectionGuard,
   )
   public async readAll(
@@ -141,7 +142,7 @@ export class NotificationsController {
   @RateLimit('ordinary_mutation')
   @UseGuards(
     SessionAuthenticationGuard,
-    NotificationReadGuard,
+    NotificationChangeGuard,
     CsrfProtectionGuard,
   )
   public async read(
@@ -185,7 +186,7 @@ export class NotificationsController {
             .actor,
           routeWorkspaceId: workspaceId,
           capability: 'workspace:read',
-          allowedWorkspaceStatuses: ['active'],
+          allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
           sessionExpiresAt: authenticatedSession(request).expiresAt,
           reauthorizeSession: sessionReauthorization(request),
           abortStream: (reason?: unknown) => {

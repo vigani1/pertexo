@@ -7,7 +7,10 @@ import {
 } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
-import type { Role } from '@pertexo/workflow-model';
+import {
+  BROWSABLE_WORKSPACE_STATUSES,
+  type Role,
+} from '@pertexo/workflow-model';
 import { WorkspaceAccessDeniedError } from '../errors.js';
 
 /** Ordered current authority fence shared by workspace commands. Call only inside the same tenant transaction as the protected work. */
@@ -80,6 +83,21 @@ export function lockWorkspaceAuthority(
     actorId,
     roles,
     locking: true,
+  });
+}
+
+/** The same fence for a read a suspended workspace still allows (ADR 013/027). */
+export function lockBrowsableWorkspaceAuthority(
+  client: PoolClient,
+  workspaceId: string,
+  actorId: string,
+  roles: readonly Role[],
+): Promise<Role> {
+  return workspaceAuthority(client, workspaceId, {
+    actorId,
+    roles,
+    locking: true,
+    allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
   });
 }
 

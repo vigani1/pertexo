@@ -115,8 +115,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         });
 
       for (const entry of READS_CLOSED_TODAY)
-        // audit-1030 follow-up: read guards allow only `active` here (ADR 013/027).
-        it.fails(`shows ${entry.name}`, async () => {
+        it(`shows ${entry.name}`, async () => {
           expectShown(entry, await read(entry), world);
         });
 
@@ -202,8 +201,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
     });
 
     describe('after a real delete and restore', () => {
-      // audit-1030 follow-up: this is the 404 behind the banner's "look around".
-      it.fails('lists the workflows that were there', async () => {
+      it('lists the workflows that were there', async () => {
         const email = `restored-${crypto.randomUUID()}@example.test`;
         await api.signUp(email, '/workspaces');
         const first = await api.signIn(email);

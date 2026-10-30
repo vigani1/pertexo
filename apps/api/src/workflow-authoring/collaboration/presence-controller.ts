@@ -18,7 +18,7 @@ import {
   SessionAuthenticationGuard,
 } from '../../workspaces/index.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { WorkflowReadGuard } from '../http/guards.js';
+import { WorkflowParticipantGuard, WorkflowReadGuard } from '../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowCollaborationUseCase } from './use-case.js';
 import { collaborationOperation, presenceParamsSchema } from './http.js';
@@ -49,7 +49,7 @@ export class WorkflowPresenceController {
   @Put(':tabId')
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkflowParticipantGuard, CsrfProtectionGuard)
   async heartbeat(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -67,7 +67,7 @@ export class WorkflowPresenceController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(204)
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkflowParticipantGuard, CsrfProtectionGuard)
   async leave(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,

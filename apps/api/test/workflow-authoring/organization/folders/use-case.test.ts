@@ -211,7 +211,7 @@ describe('folder use-case boundary', () => {
         }
       });
 
-      it('fences route mismatch, missing membership and suspended workspace', async () => {
+      it('fences route mismatch, missing membership and an unavailable workspace', async () => {
         for (const condition of ['route', 'member', 'workspace'] as const) {
           const f = setup();
           if (condition === 'member')
@@ -219,7 +219,9 @@ describe('folder use-case boundary', () => {
           if (condition === 'workspace')
             f.authorization.findAccess.mockResolvedValueOnce({
               ...f.access,
-              workspaceStatus: 'suspended',
+              // Only the listing reads, and a suspended workspace still reads.
+              workspaceStatus:
+                operation.method === 'list' ? 'pending_deletion' : 'suspended',
             });
           await expect(
             f.invoke(

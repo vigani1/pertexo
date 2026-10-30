@@ -18,6 +18,7 @@ import { requestIdempotencyKey } from '../../platform/http/index.js';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
+  WorkspaceInvitationReadGuard,
   WorkspaceMemberManageGuard,
 } from '../http/guards.js';
 import { WorkspaceInvitationManagementUseCase } from './management.js';
@@ -41,7 +42,7 @@ export class WorkspaceInvitationsController {
 
   @Get(':workspaceId/invitations')
   @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, WorkspaceMemberManageGuard)
+  @UseGuards(SessionAuthenticationGuard, WorkspaceInvitationReadGuard)
   public async list(
     @Req() request: IdentityWorkspaceRequest,
     @Param() params: unknown,

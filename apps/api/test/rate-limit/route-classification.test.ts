@@ -73,6 +73,7 @@ const routes: readonly (readonly [
   [WorkspaceController, 'rename', 'ordinary_mutation'],
   [WorkspaceController, 'requestDeletion', 'ordinary_mutation'],
   [WorkspaceController, 'restore', 'ordinary_mutation'],
+  [WorkspaceController, 'reactivate', 'ordinary_mutation'],
   [UnconfiguredConnectionsController, 'connections', 'authenticated_read'],
   [UnconfiguredConnectionsController, 'destinations', 'authenticated_read'],
   [ConnectionsController, 'list', 'authenticated_read'],

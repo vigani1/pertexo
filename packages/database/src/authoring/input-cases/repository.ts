@@ -42,6 +42,7 @@ export function createWorkflowInputCaseDatabase(
       async (client) => {
         await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
           actorId: input.actorId,
+          browsing: !write,
           roles: rolesForCapability(
             write ? 'workflow:update' : 'workflow:read',
           ),

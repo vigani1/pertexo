@@ -31,7 +31,7 @@ import { workflowDuplicateRequestSchema } from '@pertexo/contracts';
 import {
   WorkflowCreateGuard,
   WorkflowPublishGuard,
-  WorkflowReadGuard,
+  WorkflowParticipantGuard,
   WorkflowUpdateGuard,
 } from './guards.js';
 import { parseStrongIfMatch } from './preconditions.js';
@@ -105,7 +105,7 @@ export class WorkflowLifecycleController {
   @HttpCode(201)
   @UseGuards(
     SessionAuthenticationGuard,
-    WorkflowReadGuard,
+    WorkflowParticipantGuard,
     WorkflowCreateGuard,
     CsrfProtectionGuard,
   )

@@ -118,7 +118,9 @@ export function registerAppliesSharedCapabilityPolicyArtifact(): void {
         [workspaceId],
       );
     });
-    await expect(database.getMetadata(identity)).rejects.toBeInstanceOf(
+    // A suspended workspace reads but does not change (ADR 013/027).
+    await expect(database.getMetadata(identity)).resolves.not.toBeNull();
+    await expect(database.getForUpload(identity)).rejects.toBeInstanceOf(
       ArtifactUploadNotFoundError,
     );
 

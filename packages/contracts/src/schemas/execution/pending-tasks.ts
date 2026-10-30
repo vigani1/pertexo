@@ -67,7 +67,14 @@ export const pendingTaskSummarySchema = z
     completedByName: z.string().max(256).nullable(),
     canRespond: z.boolean(),
     blockedReason: z
-      .enum(['starter', 'audience', 'expired', 'resolved', 'run_closed'])
+      .enum([
+        'starter',
+        'audience',
+        'expired',
+        'resolved',
+        'run_closed',
+        'workspace_suspended',
+      ])
       .nullable(),
   })
   .strict();

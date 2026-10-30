@@ -31,9 +31,11 @@ export async function readFolderSharing(
   client: PoolClient,
   scope: OrganizationScope,
   folderId: string,
+  { browsing = false }: Readonly<{ browsing?: boolean }> = {},
 ): Promise<FolderSharing> {
   await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
     actorId: scope.actorId,
+    browsing,
     roles: RESOURCE_ADMINISTRATORS,
   });
   const db = drizzle(client);

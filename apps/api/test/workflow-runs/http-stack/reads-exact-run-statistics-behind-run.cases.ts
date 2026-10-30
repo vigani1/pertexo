@@ -122,7 +122,7 @@ export function registerReadsExactRunStatisticsBehindRun(): void {
     );
   });
 
-  it.each(['suspended', 'pending_deletion', 'deleted'] as const)(
+  it.each(['pending_deletion', 'deleted'] as const)(
     'denies capacity without persistence for a %s workspace',
     async (status) => {
       const { application, fixture } = await start('viewer', status);

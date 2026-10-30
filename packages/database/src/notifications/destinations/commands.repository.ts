@@ -10,7 +10,10 @@ import {
   completeCommand,
 } from '../../platform/idempotency/repository.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
-import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
+import {
+  lockBrowsableWorkspaceAuthority,
+  lockWorkspaceAuthority,
+} from '../../tenant-access/workspaces/authority.queries.js';
 import type {
   CommandMetadata,
   DestinationAuditTarget,
@@ -103,13 +106,21 @@ export async function authorize(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
-  { manage }: Readonly<{ manage: boolean }>,
+  {
+    manage,
+    browsing = false,
+  }: Readonly<{ manage: boolean; browsing?: boolean }>,
 ): Promise<void> {
   const roles: readonly Role[] = manage
     ? ADMINISTRATIVE_ROLES
     : WORKFLOW_EDITOR_ROLES;
   try {
-    await lockWorkspaceAuthority(client, workspaceId, actorId, roles);
+    await (browsing ? lockBrowsableWorkspaceAuthority : lockWorkspaceAuthority)(
+      client,
+      workspaceId,
+      actorId,
+      roles,
+    );
   } catch (error) {
     if (error instanceof WorkspaceAccessDeniedError)
       throw destinationError('not_found', 'Destination is not visible');

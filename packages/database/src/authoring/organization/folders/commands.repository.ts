@@ -39,7 +39,7 @@ export function createWorkflowFolderDatabase(
     },
     readSharing: (input) => {
       return session.transact(input, (client, scope) =>
-        readFolderSharing(client, scope, input.folderId),
+        readFolderSharing(client, scope, input.folderId, { browsing: true }),
       );
     },
     replaceSharing: (input) => {

@@ -9,6 +9,7 @@ import {
 import type { IdentityWorkspaceRequest } from '../../src/workspaces/types.js';
 import { ScheduleManagementController } from '../../src/schedules/controllers.js';
 import {
+  SchedulePreviewGuard,
   ScheduleReadGuard,
   ScheduleUpdateGuard,
 } from '../../src/schedules/guards.js';
@@ -229,7 +230,7 @@ describe('schedule management controller public seam', () => {
       ]);
     expect(guards(reflector, 'preview')).toEqual([
       SessionAuthenticationGuard,
-      ScheduleReadGuard,
+      SchedulePreviewGuard,
       CsrfProtectionGuard,
     ]);
     for (const method of ['enable', 'disable'] as const)
