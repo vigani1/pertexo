@@ -7,9 +7,16 @@ export function apiTokenStatus(
   membershipRevision: number,
   now: Date,
 ): ApiTokenMetadata['status'] {
-  if (row.revokedAt !== null) {
-    return 'revoked';
-  }
+  return row.revokedAt === null
+    ? unrevokedTokenStatus(row, membershipRevision, now)
+    : 'revoked';
+}
+
+function unrevokedTokenStatus(
+  row: ApiTokenRow,
+  membershipRevision: number,
+  now: Date,
+) {
   if (row.membershipRevision !== membershipRevision) {
     return 'membership_changed';
   }
@@ -24,15 +31,24 @@ export function apiTokenMetadata(
   membershipRevision: number,
   now: Date,
 ): ApiTokenMetadata {
-  return {
+  const fields = {
     id: row.id,
     workspaceId: row.workspaceId,
     name: row.name,
     scopes: [...row.scopes],
-    status: apiTokenStatus(row, membershipRevision, now),
     createdAt: row.createdAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),
-    revokedAt: row.revokedAt?.toISOString() ?? null,
     lastUsedAt: row.lastUsedAt?.toISOString() ?? null,
   };
+  return row.revokedAt === null
+    ? {
+        ...fields,
+        status: unrevokedTokenStatus(row, membershipRevision, now),
+        revokedAt: null,
+      }
+    : {
+        ...fields,
+        status: 'revoked',
+        revokedAt: row.revokedAt.toISOString(),
+      };
 }
