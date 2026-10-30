@@ -5,51 +5,8 @@ export type TransportErrorClass =
 
 export type TransportLeaseEvent = 'attempt_exhausted' | 'expired' | 'reclaimed';
 
-export type TransportJob =
-  | {
-      readonly jobName: 'start-error-workflow';
-      readonly queueName: 'maintenance';
-    }
-  | {
-      readonly jobName: 'advance-workflow-run';
-      readonly queueName: 'workflow-coordinator';
-    }
-  | {
-      readonly jobName: 'execute-node-attempt';
-      readonly queueName: 'node-attempts';
-    }
-  | {
-      readonly jobName: 'execute-preview-attempt';
-      readonly queueName: 'node-attempts';
-    }
-  | {
-      readonly jobName: 'reconcile-preview-attempt';
-      readonly queueName: 'maintenance';
-    }
-  | {
-      readonly jobName: 'reconcile-unknown-outcome';
-      readonly queueName: 'maintenance';
-    }
-  | {
-      readonly jobName: 'replay-workflow-run';
-      readonly queueName: 'maintenance';
-    }
-  | {
-      readonly jobName: 'reconcile-workflow-triggers';
-      readonly queueName: 'trigger-lifecycle';
-    }
-  | {
-      readonly jobName: 'deliver-run-failure-notification';
-      readonly queueName: 'maintenance';
-    }
-  | {
-      readonly jobName: 'deliver-workspace-invitation';
-      readonly queueName: 'maintenance';
-    }
-  | {
-      readonly jobName: 'apply-connection-health-observation';
-      readonly queueName: 'maintenance';
-    };
+/** The queue package owns job names and routing; callers keep these bounded. */
+export type TransportJob = Readonly<{ jobName: string; queueName: string }>;
 
 export type TransportPublishMeasurement = TransportJob &
   (

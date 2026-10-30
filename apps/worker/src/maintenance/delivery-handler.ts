@@ -95,9 +95,14 @@ export function maintenanceDeliveryHandler(
       case JOB_NAME.executeNodeAttempt:
       case JOB_NAME.executePreviewAttempt:
       case JOB_NAME.reconcileWorkflowTriggers:
-      default:
         throw new InvalidQueueDeliveryError(
           `Maintenance cannot handle ${delivery.name}`,
+        );
+      default:
+        // A new job fails the build here rather than every delivery at runtime.
+        delivery satisfies never;
+        throw new InvalidQueueDeliveryError(
+          'Maintenance cannot handle an unknown job',
         );
     }
   };

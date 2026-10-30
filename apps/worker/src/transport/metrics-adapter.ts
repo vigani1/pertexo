@@ -11,7 +11,7 @@ import type {
   QueueStallObservation,
 } from '@pertexo/queue';
 
-import { transportJobForObservation } from './job.js';
+import { transportJobForName } from './job.js';
 
 function transportErrorClass(
   failureClass: QueueHandlerFailureClass,
@@ -36,12 +36,12 @@ export function createQueueMetricsObserver(
     },
     handlerStarted(observation: QueueHandlerObservation): void {
       metrics.addActiveConcurrency({
-        ...transportJobForObservation(observation),
+        ...transportJobForName(observation.jobName),
         delta: 1,
       });
     },
     handlerFinished(observation: QueueHandlerFinishedObservation): void {
-      const job = transportJobForObservation(observation);
+      const job = transportJobForName(observation.jobName);
       try {
         if (observation.outcome === 'completed') {
           metrics.recordHandlerFinished({
