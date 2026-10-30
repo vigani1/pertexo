@@ -59,7 +59,7 @@ export async function completeWebhookCommand(
 export async function insertSecret(
   client: PoolClient,
   input: Command,
-  secretInput: SealedWebhookTriggerSecret,
+  secret: SealedWebhookTriggerSecret,
 ): Promise<{
   id: string;
   kmsKeyReference: string;
@@ -68,7 +68,6 @@ export async function insertSecret(
   nonce: string;
   authTag: string;
 }> {
-  const secret = secretInput;
   await drizzle(client)
     .insert(secrets)
     .values({

@@ -48,47 +48,46 @@ export async function acceptPreviewRun(
   transaction: WorkspaceTransaction,
   input: AcceptPreviewRunInput,
 ): Promise<AcceptedPreviewRun> {
-  const parsed = input;
-  await assertPreviewActor(transaction, parsed.actorUserId);
+  await assertPreviewActor(transaction, input.actorUserId);
   const resources = await assertPreviewWorkflow(
     transaction,
-    parsed.actorUserId,
-    parsed.workflowId,
+    input.actorUserId,
+    input.workflowId,
     'workflow:update',
   );
   await transaction.db.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`preview:${transaction.workspaceId}:${parsed.scope}:${parsed.keyHash}`},0))`,
+    sql`select pg_advisory_xact_lock(hashtextextended(${`preview:${transaction.workspaceId}:${input.scope}:${input.keyHash}`},0))`,
   );
-  const existing = await readExistingAcceptance(transaction, parsed);
+  const existing = await readExistingAcceptance(transaction, input);
   if (existing !== null) return existing;
 
   const now = new Date();
-  assertPreviewDeadlines(parsed, now);
+  assertPreviewDeadlines(input, now);
   const draftGraph = await assertAdmission(
     transaction,
-    parsed.workflowId,
-    parsed.draftRevision,
+    input.workflowId,
+    input.draftRevision,
   );
   const sample = await resolvePreviewSample(
     transaction,
     {
-      workflowId: parsed.workflowId,
-      nodeId: parsed.nodeId,
-      ...(parsed.expectedSampleId === undefined
+      workflowId: input.workflowId,
+      nodeId: input.nodeId,
+      ...(input.expectedSampleId === undefined
         ? {}
-        : { expectedSampleId: parsed.expectedSampleId }),
+        : { expectedSampleId: input.expectedSampleId }),
     },
     draftGraph,
   );
   const resolvedInput =
     sample === undefined
-      ? await resolveInput(transaction, parsed.workflowId, parsed.input, now)
+      ? await resolveInput(transaction, input.workflowId, input.input, now)
       : {
           priorPreviewRunId: null,
           stored: serializeStoredExecutionValue({ kind: 'inline', value: {} }),
         };
 
-  await assertPreviewInputAuthority(transaction, parsed, {
+  await assertPreviewInputAuthority(transaction, input, {
     resources,
     sample,
     resolvedInput,
@@ -117,14 +116,14 @@ export async function acceptPreviewRun(
     .values({
       id: idempotencyRecordId,
       workspaceId: transaction.workspaceId,
-      operation: parsed.operation,
-      scope: parsed.scope,
-      keyHash: parsed.keyHash,
-      requestHash: parsed.requestHash,
+      operation: input.operation,
+      scope: input.scope,
+      keyHash: input.keyHash,
+      requestHash: input.requestHash,
       status: 'in_progress',
       resourceId: previewRunId,
       resultRef: {},
-      expiresAt: parsed.expiresAt,
+      expiresAt: input.expiresAt,
     })
     .onConflictDoNothing({
       target: [
@@ -136,23 +135,23 @@ export async function acceptPreviewRun(
     })
     .returning({ id: idempotencyRecords.id });
   if (claims.length === 0) {
-    const raced = await readExistingAcceptance(transaction, parsed);
+    const raced = await readExistingAcceptance(transaction, input);
     if (raced === null) throw new PreviewAcceptanceCorruptError();
     return raced;
   }
 
-  const insertedRun = await insertAcceptedPreviewRun(transaction, parsed, {
+  const insertedRun = await insertAcceptedPreviewRun(transaction, input, {
     previewRunId,
     sample,
     resolvedInput,
   });
   if (dispatch.kind === 'execution')
-    await persistPreviewAttempt(transaction, parsed, {
+    await persistPreviewAttempt(transaction, input, {
       previewRunId,
       previewAttemptId: dispatch.previewAttemptId,
       outboxEventId: dispatch.outboxEventId,
     });
-  await recordAcceptedPreview(transaction, parsed, { previewRunId, sample });
+  await recordAcceptedPreview(transaction, input, { previewRunId, sample });
   const completedClaims = await transaction.db
     .update(idempotencyRecords)
     .set({ resultRef, status: 'completed', updatedAt: sql`now()` })
@@ -169,7 +168,7 @@ export async function acceptPreviewRun(
     acceptedAt: insertedRun.acceptedAt,
     completedAt: insertedRun.completedAt,
     duplicate: false,
-    expiresAt: parsed.expiresAt,
+    expiresAt: input.expiresAt,
     outboxEventId,
     previewAttemptId,
     previewRunId,
@@ -181,24 +180,23 @@ export async function acceptPreviewRun(
   });
 }
 
-type ParsedPreviewInput = AcceptPreviewRunInput;
 type PreviewSample = Awaited<ReturnType<typeof resolvePreviewSample>>;
-function assertPreviewDeadlines(parsed: ParsedPreviewInput, now: Date): void {
+function assertPreviewDeadlines(input: AcceptPreviewRunInput, now: Date): void {
   if (
-    parsed.expiresAt.getTime() <= now.getTime() ||
-    parsed.expiresAt.getTime() - now.getTime() > PREVIEW_RETENTION_MAX_MS
+    input.expiresAt.getTime() <= now.getTime() ||
+    input.expiresAt.getTime() - now.getTime() > PREVIEW_RETENTION_MAX_MS
   )
     throw new PreviewAdmissionDeniedError('retention');
   const invalidDeadline =
-    parsed.executionDeadlineAt.getTime() <= now.getTime() ||
-    parsed.executionDeadlineAt.getTime() - now.getTime() >
+    input.executionDeadlineAt.getTime() <= now.getTime() ||
+    input.executionDeadlineAt.getTime() - now.getTime() >
       PREVIEW_EXECUTION_TIMEOUT_MAX_MS ||
-    parsed.executionDeadlineAt.getTime() > parsed.expiresAt.getTime();
+    input.executionDeadlineAt.getTime() > input.expiresAt.getTime();
   if (invalidDeadline) throw new PreviewAdmissionDeniedError('deadline');
 }
 async function assertPreviewInputAuthority(
   transaction: WorkspaceTransaction,
-  parsed: ParsedPreviewInput,
+  input: AcceptPreviewRunInput,
   {
     resources,
     sample,
@@ -213,34 +211,34 @@ async function assertPreviewInputAuthority(
     await requireTransactionConnectionBindings(
       transaction,
       connectionScope(
-        { workspaceId: transaction.workspaceId, actorId: parsed.actorUserId },
+        { workspaceId: transaction.workspaceId, actorId: input.actorUserId },
         resources.role,
         'connection:use',
       ),
-      Object.entries(parsed.executableNode.connectionRefs ?? {}).map(
+      Object.entries(input.executableNode.connectionRefs ?? {}).map(
         ([slot, id]) => ({
           id,
-          path: `$.nodes.${parsed.nodeId}.connectionRefs.${slot}`,
+          path: `$.nodes.${input.nodeId}.connectionRefs.${slot}`,
         }),
       ),
     );
     await lockActorArtifactReferences(
       transaction,
-      parsed.actorUserId,
+      input.actorUserId,
       JSON.parse(resolvedInput.stored),
       resolvedInput.priorPreviewRunId ?? undefined,
     );
     await lockActorArtifactReferences(
       transaction,
-      parsed.actorUserId,
-      parsed.executableNode,
+      input.actorUserId,
+      input.executableNode,
       resolvedInput.priorPreviewRunId ?? undefined,
     );
   }
 }
 async function insertAcceptedPreviewRun(
   transaction: WorkspaceTransaction,
-  parsed: ParsedPreviewInput,
+  input: AcceptPreviewRunInput,
   {
     previewRunId,
     sample,
@@ -256,35 +254,35 @@ async function insertAcceptedPreviewRun(
     .values({
       id: previewRunId,
       workspaceId: transaction.workspaceId,
-      workflowId: parsed.workflowId,
-      draftRevision: parsed.draftRevision,
-      draftFingerprint: parsed.draftFingerprint,
-      nodeId: parsed.nodeId,
-      definitionKey: parsed.definitionKey,
-      definitionVersion: parsed.definitionVersion,
-      executorKey: parsed.executorKey,
-      executorVersion: parsed.executorVersion,
-      executionDeadlineAt: parsed.executionDeadlineAt,
-      actorUserId: parsed.actorUserId,
-      idempotencyKeyHash: parsed.keyHash,
-      requestHash: parsed.requestHash,
-      requestId: parsed.requestId ?? null,
+      workflowId: input.workflowId,
+      draftRevision: input.draftRevision,
+      draftFingerprint: input.draftFingerprint,
+      nodeId: input.nodeId,
+      definitionKey: input.definitionKey,
+      definitionVersion: input.definitionVersion,
+      executorKey: input.executorKey,
+      executorVersion: input.executorVersion,
+      executionDeadlineAt: input.executionDeadlineAt,
+      actorUserId: input.actorUserId,
+      idempotencyKeyHash: input.keyHash,
+      requestHash: input.requestHash,
+      requestId: input.requestId ?? null,
       traceId:
-        parsed.traceId ??
-        (parsed.traceparent === undefined
+        input.traceId ??
+        (input.traceparent === undefined
           ? null
-          : parsed.traceparent.slice(3, 35)),
-      providerKey: sample === undefined ? (parsed.providerKey ?? null) : null,
-      operationKey: sample === undefined ? (parsed.operationKey ?? null) : null,
-      executableNodeJson: parsed.executableNode,
+          : input.traceparent.slice(3, 35)),
+      providerKey: sample === undefined ? (input.providerKey ?? null) : null,
+      operationKey: sample === undefined ? (input.operationKey ?? null) : null,
+      executableNodeJson: input.executableNode,
       variableSetRevision: await captureWorkspaceVariableRevision(transaction),
       inputRef: sql`${resolvedInput.stored}::json`,
       priorPreviewRunId: resolvedInput.priorPreviewRunId,
-      sideEffectClass: sample === undefined ? parsed.sideEffectClass : 'safe',
-      mayContactProvider: sample === undefined && parsed.mayContactProvider,
+      sideEffectClass: sample === undefined ? input.sideEffectClass : 'safe',
+      mayContactProvider: sample === undefined && input.mayContactProvider,
       mayCauseExternalSideEffect:
-        sample === undefined && parsed.mayCauseExternalSideEffect,
-      dryRun: sample === undefined ? parsed.dryRun : 'not_supported',
+        sample === undefined && input.mayCauseExternalSideEffect,
+      dryRun: sample === undefined ? input.dryRun : 'not_supported',
       status:
         sample === undefined ? PREVIEW_STATUS.queued : PREVIEW_STATUS.succeeded,
       pinnedSampleId: sample?.id ?? null,
@@ -293,8 +291,8 @@ async function insertAcceptedPreviewRun(
           ? null
           : sql`${serializeStoredExecutionValue(sample.output)}::json`,
       completedAt: sample === undefined ? null : sql`clock_timestamp()`,
-      traceparent: parsed.traceparent ?? null,
-      expiresAt: parsed.expiresAt,
+      traceparent: input.traceparent ?? null,
+      expiresAt: input.expiresAt,
     })
     .returning({
       acceptedAt: previewRuns.createdAt,
@@ -307,7 +305,7 @@ async function insertAcceptedPreviewRun(
 }
 async function recordAcceptedPreview(
   transaction: WorkspaceTransaction,
-  parsed: ParsedPreviewInput,
+  input: AcceptPreviewRunInput,
   {
     previewRunId,
     sample,
@@ -316,29 +314,29 @@ async function recordAcceptedPreview(
   await transaction.db.insert(auditEvents).values({
     id: uuidv7(),
     workspaceId: transaction.workspaceId,
-    actorUserId: parsed.actorUserId,
+    actorUserId: input.actorUserId,
     action: 'preview.execution_accepted',
     targetType: 'preview-run',
     targetId: previewRunId,
-    requestId: parsed.requestId ?? null,
-    traceId: parsed.traceId ?? null,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
     metadata: {
-      workflowId: parsed.workflowId,
-      nodeId: parsed.nodeId,
-      sideEffectClass: sample === undefined ? parsed.sideEffectClass : 'safe',
-      mayContactProvider: sample === undefined && parsed.mayContactProvider,
+      workflowId: input.workflowId,
+      nodeId: input.nodeId,
+      sideEffectClass: sample === undefined ? input.sideEffectClass : 'safe',
+      mayContactProvider: sample === undefined && input.mayContactProvider,
       mayCauseExternalSideEffect:
-        sample === undefined && parsed.mayCauseExternalSideEffect,
+        sample === undefined && input.mayCauseExternalSideEffect,
       ...(sample === undefined ? {} : { pinnedSampleId: sample.id }),
-      dryRun: sample === undefined ? parsed.dryRun : 'not_supported',
-      expiresAt: parsed.expiresAt.toISOString(),
+      dryRun: sample === undefined ? input.dryRun : 'not_supported',
+      expiresAt: input.expiresAt.toISOString(),
     },
   });
 }
 
 async function persistPreviewAttempt(
   transaction: WorkspaceTransaction,
-  parsed: ParsedPreviewInput,
+  input: AcceptPreviewRunInput,
   {
     previewRunId,
     previewAttemptId,
@@ -354,8 +352,8 @@ async function persistPreviewAttempt(
     workspaceId: transaction.workspaceId,
     previewRunId,
     status: PREVIEW_STATUS.queued,
-    sideEffectClass: parsed.sideEffectClass,
-    providerIdempotencyKey: parsed.providerIdempotencyKey ?? null,
+    sideEffectClass: input.sideEffectClass,
+    providerIdempotencyKey: input.providerIdempotencyKey ?? null,
   });
 
   const payload = {
@@ -363,9 +361,9 @@ async function persistPreviewAttempt(
     outboxEventId,
     previewRunId,
     previewAttemptId,
-    ...(parsed.traceparent === undefined
+    ...(input.traceparent === undefined
       ? {}
-      : { traceparent: parsed.traceparent }),
+      : { traceparent: input.traceparent }),
   } as const;
 
   await insertOutboxEvent(transaction, {

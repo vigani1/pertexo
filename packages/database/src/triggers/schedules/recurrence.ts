@@ -285,11 +285,10 @@ function greatestCronOccurrence(
 }
 
 export function resolveScheduleObservation(
-  recurrenceInput: ScheduleRecurrence,
+  recurrence: ScheduleRecurrence,
   anchorAt: Date,
   observedAt: Date,
 ): ScheduleObservation {
-  const recurrence = recurrenceInput;
   if (
     !Number.isFinite(anchorAt.getTime()) ||
     !Number.isFinite(observedAt.getTime())

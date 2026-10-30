@@ -74,13 +74,12 @@ export function createOperatorRunReplayStore(
     replay: (input: Input) =>
       replayRequest(input, { database, checkpointFactory }),
     fail: async (input: Parameters<OperatorRunReplayStore['fail']>[0]) => {
-      const parsed = input;
-      await database.withWorkspace(parsed.workspaceId, async (transaction) => {
+      await database.withWorkspace(input.workspaceId, async (transaction) => {
         const failed = await transaction.db
           .update(operatorRunReplayRequests)
           .set({
             status: 'failed',
-            safeErrorCode: parsed.safeErrorCode,
+            safeErrorCode: input.safeErrorCode,
             completedAt: sql`clock_timestamp()`,
           })
           .where(
@@ -89,16 +88,16 @@ export function createOperatorRunReplayStore(
                 operatorRunReplayRequests.workspaceId,
                 transaction.workspaceId,
               ),
-              eq(operatorRunReplayRequests.commandId, parsed.commandId),
+              eq(operatorRunReplayRequests.commandId, input.commandId),
               eq(operatorRunReplayRequests.status, 'pending'),
             ),
           )
           .returning({ commandId: operatorRunReplayRequests.commandId });
         // A request already settled keeps its first outcome.
         if (failed.length === 1)
-          await settleCommand(transaction, parsed.commandId, 'failed', {
+          await settleCommand(transaction, input.commandId, 'failed', {
             outcome: 'replay_failed',
-            safeErrorCode: parsed.safeErrorCode,
+            safeErrorCode: input.safeErrorCode,
           });
       });
     },
@@ -115,13 +114,12 @@ async function replayRequest(
   context: ReplayContext,
 ): ReturnType<OperatorRunReplayStore['replay']> {
   const { database, checkpointFactory } = context;
-  const parsed = input;
-  parsed.signal?.throwIfAborted();
-  const consumed = await consumeInboxMessage(database, parsed.workspaceId, {
+  input.signal?.throwIfAborted();
+  const consumed = await consumeInboxMessage(database, input.workspaceId, {
     message: {
       consumerName: 'operator-run-replay',
-      messageId: parsed.delivery.outboxEventId,
-      payloadChecksum: parsed.delivery.payloadChecksum,
+      messageId: input.delivery.outboxEventId,
+      payloadChecksum: input.delivery.payloadChecksum,
     },
     operation: async (transaction) => {
       const [row] = await transaction.db
@@ -136,20 +134,20 @@ async function replayRequest(
         .where(
           and(
             eq(outboxEvents.workspaceId, transaction.workspaceId),
-            eq(outboxEvents.id, parsed.delivery.outboxEventId),
+            eq(outboxEvents.id, input.delivery.outboxEventId),
           ),
         );
       const payload = payloadSchema.safeParse(row?.payload);
       const invalidDelivery =
         row === undefined ||
         !payload.success ||
-        row.aggregateId !== parsed.commandId ||
+        row.aggregateId !== input.commandId ||
         row.aggregateType !== 'operator-command' ||
         row.jobName !== 'replay-workflow-run' ||
-        row.payloadChecksum !== parsed.delivery.payloadChecksum ||
+        row.payloadChecksum !== input.delivery.payloadChecksum ||
         canonicalOutboxPayloadChecksum(payload.data) !== row.payloadChecksum ||
-        payload.data.commandId !== parsed.commandId ||
-        payload.data.outboxEventId !== parsed.delivery.outboxEventId ||
+        payload.data.commandId !== input.commandId ||
+        payload.data.outboxEventId !== input.delivery.outboxEventId ||
         payload.data.workspaceId !== transaction.workspaceId;
       if (invalidDelivery) throw new OperatorRunReplayMismatchError();
 
@@ -174,7 +172,7 @@ async function replayRequest(
         .where(
           and(
             eq(operatorRunReplayRequests.workspaceId, transaction.workspaceId),
-            eq(operatorRunReplayRequests.commandId, parsed.commandId),
+            eq(operatorRunReplayRequests.commandId, input.commandId),
           ),
         );
       if (request?.status !== 'pending')
@@ -194,11 +192,11 @@ async function replayRequest(
           : { validateInput: initial.validateInput }),
         keyHash: request.requestFingerprint,
         operation: 'workflow.run.accept',
-        replayCommandId: parsed.commandId,
+        replayCommandId: input.commandId,
         replaySourceRunId: request.sourceRunId,
         requestHash: request.requestFingerprint,
         runInput: request.runInput,
-        scope: `operator:${parsed.commandId}`,
+        scope: `operator:${input.commandId}`,
         triggerType: 'replay',
         workflowId: request.workflowId,
         workflowVersionId: request.workflowVersionId,
@@ -213,19 +211,19 @@ async function replayRequest(
         .where(
           and(
             eq(operatorRunReplayRequests.workspaceId, transaction.workspaceId),
-            eq(operatorRunReplayRequests.commandId, parsed.commandId),
+            eq(operatorRunReplayRequests.commandId, input.commandId),
             eq(operatorRunReplayRequests.status, 'pending'),
           ),
         )
         .returning({ commandId: operatorRunReplayRequests.commandId });
       if (completed.length !== 1) throw new OperatorRunReplayMismatchError();
-      await settleCommand(transaction, parsed.commandId, 'completed', {
+      await settleCommand(transaction, input.commandId, 'completed', {
         outcome: 'replay_created',
         resultRunId: accepted.runId,
       });
       return accepted.runId;
     },
-    options: parsed.signal === undefined ? {} : { signal: parsed.signal },
+    options: input.signal === undefined ? {} : { signal: input.signal },
   });
   return consumed.status === 'duplicate'
     ? Object.freeze({ kind: 'duplicate' as const })

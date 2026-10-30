@@ -111,11 +111,10 @@ export async function readWorkflowStepHealth(
   pool: Pool,
   input: ReadWorkflowStepHealthInput,
 ): Promise<WorkflowStepHealthPage | undefined> {
-  const parsed = input;
-  return withResourceWorkflowRead(pool, parsed, async (transaction) => {
-    if (!(await workflowExists(transaction, parsed.workflowId)))
+  return withResourceWorkflowRead(pool, input, async (transaction) => {
+    if (!(await workflowExists(transaction, input.workflowId)))
       return undefined;
-    const recent = recentRuns(transaction, parsed.workflowId);
+    const recent = recentRuns(transaction, input.workflowId);
     const [summary] = await transaction.db
       .with(recent)
       .select({
@@ -159,11 +158,10 @@ export async function readWorkflowStepRuns(
   pool: Pool,
   input: ReadWorkflowStepRunsInput,
 ): Promise<readonly WorkflowStepRunRecord[] | undefined> {
-  const parsed = input;
-  return withResourceWorkflowRead(pool, parsed, async (transaction) => {
-    if (!(await workflowExists(transaction, parsed.workflowId)))
+  return withResourceWorkflowRead(pool, input, async (transaction) => {
+    if (!(await workflowExists(transaction, input.workflowId)))
       return undefined;
-    const recent = recentRuns(transaction, parsed.workflowId);
+    const recent = recentRuns(transaction, input.workflowId);
     const result = await transaction.db
       .with(recent)
       .select({
@@ -185,7 +183,7 @@ export async function readWorkflowStepRuns(
         and(
           eq(nodeRuns.workspaceId, transaction.workspaceId),
           eq(nodeRuns.workflowRunId, recent.id),
-          eq(nodeRuns.nodeId, parsed.nodeId),
+          eq(nodeRuns.nodeId, input.nodeId),
         ),
       )
       .where(isNull(nodeRuns.reusedSourceRunId))
@@ -195,7 +193,7 @@ export async function readWorkflowStepRuns(
         desc(nodeRuns.createdAt),
         desc(nodeRuns.id),
       )
-      .limit(parsed.limit);
+      .limit(input.limit);
     return Object.freeze(
       result.map((row) => {
         return Object.freeze({

@@ -96,8 +96,7 @@ export function createWorkflowDuplicationStore(
   context: WorkflowAuthoringWriteContext,
 ): Pick<WorkflowAuthoringDatabase, 'duplicateWorkflow'> {
   return {
-    duplicateWorkflow: async (rawInput) => {
-      const input = rawInput;
+    duplicateWorkflow: async (input) => {
       return context.transact(
         input.workspaceId,
         input.actorId,

@@ -108,17 +108,16 @@ export async function claimPreviewDelivery(
     workspaceId: string;
   }>,
 ): Promise<PreviewClaimResult> {
-  const parsed = input;
   try {
     return await withTenantScopedClient(
       pool,
-      { workspaceId: parsed.workspaceId },
+      { workspaceId: input.workspaceId },
       async (client): Promise<PreviewClaimResult> => {
         await validatePreviewDelivery(client, {
           delivery: input.delivery,
-          previewAttemptId: parsed.previewAttemptId,
-          previewRunId: parsed.previewRunId,
-          workspaceId: parsed.workspaceId,
+          previewAttemptId: input.previewAttemptId,
+          previewRunId: input.previewRunId,
+          workspaceId: input.workspaceId,
         });
 
         // A prior claim may have crashed before completing business work;
@@ -128,18 +127,18 @@ export async function claimPreviewDelivery(
           (await claimPreviewReceipt(
             client,
             previewConsumerName,
-            parsed.workspaceId,
+            input.workspaceId,
             input.delivery,
           )) === 'completed'
         )
           return Object.freeze({ kind: 'duplicate' });
 
-        const state = await lockPreviewClaimState(client, parsed);
+        const state = await lockPreviewClaimState(client, input);
         if (TERMINAL_PREVIEW_STATUSES.has(state.attemptStatus)) {
           await completePreviewReceipt(
             client,
             previewConsumerName,
-            parsed.workspaceId,
+            input.workspaceId,
             input.delivery,
           );
           return Object.freeze({ kind: 'duplicate' });
@@ -161,14 +160,14 @@ export async function claimPreviewDelivery(
         if (state.runDeadlineExpired) {
           await terminalizeExpiredPreview(client, {
             delivery: input.delivery,
-            previewAttemptId: parsed.previewAttemptId,
-            previewRunId: parsed.previewRunId,
-            workspaceId: parsed.workspaceId,
+            previewAttemptId: input.previewAttemptId,
+            previewRunId: input.previewRunId,
+            workspaceId: input.workspaceId,
           });
           return Object.freeze({ kind: 'duplicate' });
         }
 
-        const { claimedRow, lease } = await claimPreviewLease(client, parsed);
+        const { claimedRow, lease } = await claimPreviewLease(client, input);
         // The lease and its reconciliation wake-up commit together. Redis is
         // only delivery acceleration: an unpublished delayed outbox row
         // remains authoritative through queue loss or worker termination.
@@ -176,12 +175,12 @@ export async function claimPreviewDelivery(
           attemptFenceToken: lease.attemptFenceToken,
           availableAt: claimedRow.leaseExpiresAt,
           jobName: 'reconcile-preview-attempt',
-          previewAttemptId: parsed.previewAttemptId,
-          previewRunId: parsed.previewRunId,
+          previewAttemptId: input.previewAttemptId,
+          previewRunId: input.previewRunId,
           ...(lease.traceparent === undefined
             ? {}
             : { traceparent: lease.traceparent }),
-          workspaceId: parsed.workspaceId,
+          workspaceId: input.workspaceId,
         });
         return Object.freeze({ kind: 'claimed', lease });
       },
@@ -196,7 +195,7 @@ export async function claimPreviewDelivery(
       // is written in its own transaction because the business transaction
       // above rolled back with the failure.
       await auditPreviewDeliveryMismatch(pool, previewConsumerName, {
-        workspaceId: parsed.workspaceId,
+        workspaceId: input.workspaceId,
         delivery: input.delivery,
         signal: input.signal ?? new AbortController().signal,
       });

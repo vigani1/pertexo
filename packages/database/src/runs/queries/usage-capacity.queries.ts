@@ -48,10 +48,9 @@ export async function readWorkspaceUsageCapacity(
   pool: Pool,
   input: WorkspaceUsageCapacityInput,
 ): Promise<WorkspaceUsageCapacityRecord> {
-  const parsed = input;
   return withWorkspaceReadTransaction(
     pool,
-    parsed.workspaceId,
+    input.workspaceId,
     async (transaction) => {
       const [row] = await capacityQuery(transaction);
       if (row === undefined) throw new WorkspaceAccessDeniedError();
@@ -80,7 +79,7 @@ export async function readWorkspaceUsageCapacity(
     },
     {
       statementTimeoutMillis: 2_000,
-      ...(parsed.signal === undefined ? {} : { signal: parsed.signal }),
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
     },
   );
 }

@@ -56,24 +56,23 @@ export async function acceptWorkflowRun(
   input: AcceptWorkflowRunInput,
   preparation?: PreparedWorkflowRunAcceptance,
 ): Promise<AcceptedWorkflowRun> {
-  const parsed = input;
   const preparedRunInput =
-    parsed.runInput === undefined
+    input.runInput === undefined
       ? null
       : prepareStoredExecutionValue({
           kind: 'inline',
-          value: parsed.runInput,
+          value: input.runInput,
         });
   const storedRunInputJson = preparedRunInput?.json ?? null;
   const { initialCheckpointJson, initialCheckpointHash } =
-    prepareWorkflowRunAcceptanceInput(parsed);
-  const existing = await readExistingAcceptance(transaction, parsed, {
+    prepareWorkflowRunAcceptanceInput(input);
+  const existing = await readExistingAcceptance(transaction, input, {
     kind: 'exact_initial_checkpoint',
     hash: initialCheckpointHash,
   });
   if (existing !== null) return existing;
-  await requireFormAdmission(transaction, parsed, preparedRunInput?.value);
-  parsed.validateInput?.(
+  await requireFormAdmission(transaction, input, preparedRunInput?.value);
+  input.validateInput?.(
     preparedRunInput?.value.kind === 'inline'
       ? preparedRunInput.value.value
       : undefined,
@@ -82,9 +81,9 @@ export async function acceptWorkflowRun(
 
   const prepared =
     preparation ??
-    (await prepareWorkflowRunAcceptance(transaction, parsed.workflowId));
+    (await prepareWorkflowRunAcceptance(transaction, input.workflowId));
   const sourceOrigin =
-    parsed.replaySourceRunId === undefined
+    input.replaySourceRunId === undefined
       ? false
       : ((
           await transaction.db
@@ -93,14 +92,14 @@ export async function acceptWorkflowRun(
             .where(
               and(
                 eq(workflowRuns.workspaceId, transaction.workspaceId),
-                eq(workflowRuns.id, parsed.replaySourceRunId),
+                eq(workflowRuns.id, input.replaySourceRunId),
               ),
             )
             .limit(1)
         )[0]?.origin ?? false);
   const variableSetRevision = await variableRevisionForAcceptance(
     transaction,
-    parsed.replaySourceRunId,
+    input.replaySourceRunId,
     prepared.variableSetRevision,
   );
   const idempotencyRecordId = generatePersistedId();
@@ -116,10 +115,10 @@ export async function acceptWorkflowRun(
     .values({
       id: idempotencyRecordId,
       workspaceId: transaction.workspaceId,
-      operation: parsed.operation,
-      scope: parsed.scope,
-      keyHash: parsed.keyHash,
-      requestHash: parsed.requestHash,
+      operation: input.operation,
+      scope: input.scope,
+      keyHash: input.keyHash,
+      requestHash: input.requestHash,
       status: IDEMPOTENCY_STATUS.inProgress,
       resourceId: runId,
       resultRef: {},
@@ -135,7 +134,7 @@ export async function acceptWorkflowRun(
     .returning({ id: idempotencyRecords.id });
 
   if (insertedClaim.length === 0) {
-    const racedAcceptance = await readExistingAcceptance(transaction, parsed, {
+    const racedAcceptance = await readExistingAcceptance(transaction, input, {
       kind: 'exact_initial_checkpoint',
       hash: initialCheckpointHash,
     });
@@ -143,14 +142,14 @@ export async function acceptWorkflowRun(
     return racedAcceptance;
   }
 
-  const insertedRun = await insertAcceptedWorkflowRun(transaction, parsed, {
+  const insertedRun = await insertAcceptedWorkflowRun(transaction, input, {
     prepared,
     runId,
     storedRunInputJson,
     variableSetRevision,
     sourceOrigin,
   });
-  await persistRunStart(transaction, parsed, {
+  await persistRunStart(transaction, input, {
     runId,
     outboxEventId,
     initialCheckpointJson,

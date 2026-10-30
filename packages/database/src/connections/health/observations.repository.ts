@@ -172,13 +172,12 @@ export async function applyConnectionHealthObservation(
   database: WorkspaceDatabase,
   input: ApplyConnectionHealthObservationInput,
 ): Promise<ConnectionHealthApplicationResult> {
-  const parsed = input;
-  parsed.signal?.throwIfAborted();
-  const consumed = await consumeInboxMessage(database, parsed.workspaceId, {
+  input.signal?.throwIfAborted();
+  const consumed = await consumeInboxMessage(database, input.workspaceId, {
     message: {
       consumerName: 'connection-health-worker',
-      messageId: parsed.delivery.outboxEventId,
-      payloadChecksum: parsed.delivery.payloadChecksum,
+      messageId: input.delivery.outboxEventId,
+      payloadChecksum: input.delivery.payloadChecksum,
     },
     operation: async (transaction) => {
       const [row] = await transaction.db
@@ -193,7 +192,7 @@ export async function applyConnectionHealthObservation(
         .where(
           and(
             eq(outboxEvents.workspaceId, transaction.workspaceId),
-            eq(outboxEvents.id, parsed.delivery.outboxEventId),
+            eq(outboxEvents.id, input.delivery.outboxEventId),
           ),
         );
       if (row === undefined) {
@@ -203,7 +202,7 @@ export async function applyConnectionHealthObservation(
           .where(
             and(
               eq(observations.workspaceId, transaction.workspaceId),
-              eq(observations.id, parsed.observationId),
+              eq(observations.id, input.observationId),
             ),
           );
         if (remaining.length !== 0) throw new InboxReceiptUnavailableError();
@@ -214,20 +213,20 @@ export async function applyConnectionHealthObservation(
       const payload = payloadSchema.safeParse(row.payload);
       const invalidDelivery =
         !payload.success ||
-        row.aggregate_id !== parsed.observationId ||
+        row.aggregate_id !== input.observationId ||
         row.aggregate_type !== 'connection-health-observation' ||
         row.job_name !== 'apply-connection-health-observation' ||
-        row.payload_checksum !== parsed.delivery.payloadChecksum ||
+        row.payload_checksum !== input.delivery.payloadChecksum ||
         canonicalOutboxPayloadChecksum(payload.data) !== row.payload_checksum ||
         payload.data.workspaceId !== transaction.workspaceId ||
-        payload.data.outboxEventId !== parsed.delivery.outboxEventId ||
-        payload.data.observationId !== parsed.observationId;
+        payload.data.outboxEventId !== input.delivery.outboxEventId ||
+        payload.data.observationId !== input.observationId;
       if (invalidDelivery) throw new InboxReceiptUnavailableError();
-      return applyObservation(transaction, parsed);
+      return applyObservation(transaction, input);
     },
     options: {
       lockWorkspace: true,
-      ...(parsed.signal === undefined ? {} : { signal: parsed.signal }),
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
     },
   });
   if (consumed.status === 'duplicate')

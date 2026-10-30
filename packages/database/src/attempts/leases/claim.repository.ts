@@ -30,10 +30,9 @@ import {
 
 export async function claimNodeAttemptDelivery(
   pool: Pool,
-  inputValue: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
+  input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
 ): Promise<NodeAttemptClaimResult> {
-  assertNotAborted(inputValue.signal);
-  const input = inputValue;
+  assertNotAborted(input.signal);
   try {
     return await withWorkspaceWriteClient(
       pool,

@@ -32,10 +32,9 @@ type MemberStore = Pick<
 
 async function listAccessibleWorkspaces(
   pool: Pool,
-  actorIdInput: string,
+  actorId: string,
   input: Readonly<{ limit?: number; after?: string }> = {},
 ): Promise<AccessibleWorkspacesPage> {
-  const actorId = actorIdInput;
   const after = input.after;
   const limit = input.limit ?? 50;
   return withActorScopedClient(pool, actorId, async (client) => {
@@ -93,12 +92,10 @@ async function listAccessibleWorkspaces(
 
 async function findWorkspaceAccess(
   pool: Pool,
-  actorIdInput: string,
-  workspaceIdInput: string,
+  actorId: string,
+  workspaceId: string,
   options: Readonly<{ signal?: AbortSignal }> = {},
 ): Promise<WorkspaceAccessRecord | null> {
-  const actorId = actorIdInput;
-  const workspaceId = workspaceIdInput;
   return withTenantScopedClient(
     pool,
     { workspaceId },
@@ -139,15 +136,13 @@ async function findWorkspaceAccess(
 
 async function listWorkspaceMembers(
   pool: Pool,
-  workspaceIdInput: string,
-  actorIdInput: string,
+  workspaceId: string,
+  actorId: string,
   input: Readonly<{
     limit?: number;
     after?: Readonly<{ createdAt: string; userId: string }>;
   }> = {},
 ): Promise<WorkspaceMembersPage> {
-  const workspaceId = workspaceIdInput;
-  const actorId = actorIdInput;
   const limit = input.limit ?? 50;
   const afterUserId =
     input.after === undefined ? undefined : input.after.userId;

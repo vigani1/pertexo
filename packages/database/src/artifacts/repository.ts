@@ -83,28 +83,27 @@ export async function createPendingPreviewArtifact(
   transaction: WorkspaceTransaction,
   input: CreatePendingPreviewArtifactInput,
 ): Promise<ArtifactRecord> {
-  const parsed = input;
   const [owner] = await transaction.db
     .select({ expiresAt: previewRuns.expiresAt })
     .from(previewRuns)
     .where(
       and(
         eq(previewRuns.workspaceId, transaction.workspaceId),
-        eq(previewRuns.id, parsed.previewRunId),
+        eq(previewRuns.id, input.previewRunId),
       ),
     );
   if (owner === undefined)
     throw new ArtifactLifecycleConflictError(
       'Preview artifact owner is unavailable',
     );
-  if (parsed.expiresAt.getTime() > owner.expiresAt.getTime())
+  if (input.expiresAt.getTime() > owner.expiresAt.getTime())
     throw new ArtifactLifecycleConflictError(
       'Preview artifact retention exceeds its owner',
     );
-  const artifact = await insertPendingArtifact(transaction, parsed);
+  const artifact = await insertPendingArtifact(transaction, input);
   await transaction.db.insert(artifactLinks).values({
     artifactId: artifact.id,
-    ownerId: parsed.previewRunId,
+    ownerId: input.previewRunId,
     ownerKind: 'preview_run',
     workspaceId: transaction.workspaceId,
   });
@@ -115,11 +114,9 @@ export async function finalizeArtifactUpload(
   transaction: WorkspaceTransaction,
   input: FinalizeArtifactInput,
 ): Promise<ArtifactRecord> {
-  const parsed = input;
   if (
-    parsed.workspaceId !== transaction.workspaceId ||
-    parsed.storageKey !==
-      artifactStorageKey(parsed.workspaceId, parsed.artifactId)
+    input.workspaceId !== transaction.workspaceId ||
+    input.storageKey !== artifactStorageKey(input.workspaceId, input.artifactId)
   ) {
     throw new ArtifactFinalizeConflictError();
   }
@@ -127,11 +124,11 @@ export async function finalizeArtifactUpload(
   const locked = await transaction.db
     .select()
     .from(artifacts)
-    .where(eq(artifacts.id, parsed.artifactId))
+    .where(eq(artifacts.id, input.artifactId))
     .for('update');
   const artifact = locked[0];
   if (artifact === undefined) throw new ArtifactMetadataNotFoundError();
-  if (!exactMetadataMatches(artifact, parsed)) {
+  if (!exactMetadataMatches(artifact, input)) {
     throw new ArtifactFinalizeConflictError();
   }
   if (artifact.status === ARTIFACT_STATUS.available) return artifact;
@@ -159,7 +156,7 @@ export async function finalizeArtifactUpload(
     })
     .where(
       and(
-        eq(artifacts.id, parsed.artifactId),
+        eq(artifacts.id, input.artifactId),
         eq(artifacts.status, ARTIFACT_STATUS.pending),
       ),
     )
@@ -175,7 +172,6 @@ export async function claimDueUnfinalizedArtifacts(
   transaction: WorkspaceTransaction,
   input: ClaimDueUnfinalizedArtifactsInput,
 ): Promise<readonly ArtifactRecord[]> {
-  const parsed = input;
   const due = await transaction.db
     .select({ id: artifacts.id })
     .from(artifacts)
@@ -186,7 +182,7 @@ export async function claimDueUnfinalizedArtifacts(
       ),
     )
     .orderBy(asc(artifacts.expiresAt), asc(artifacts.id))
-    .limit(parsed.limit)
+    .limit(input.limit)
     .for('update', { skipLocked: true });
   if (due.length === 0) return Object.freeze([]);
 
@@ -214,11 +210,10 @@ export async function claimDueUnfinalizedArtifact(
   transaction: WorkspaceTransaction,
   input: ClaimDueUnfinalizedArtifactInput,
 ): Promise<ArtifactRecord> {
-  const parsed = input;
   const locked = await transaction.db
     .select()
     .from(artifacts)
-    .where(eq(artifacts.id, parsed.artifactId))
+    .where(eq(artifacts.id, input.artifactId))
     .for('update');
   const artifact = locked[0];
   if (artifact === undefined) throw new ArtifactMetadataNotFoundError();
@@ -246,7 +241,7 @@ export async function claimDueUnfinalizedArtifact(
     })
     .where(
       and(
-        eq(artifacts.id, parsed.artifactId),
+        eq(artifacts.id, input.artifactId),
         eq(artifacts.status, ARTIFACT_STATUS.pending),
       ),
     )
@@ -262,11 +257,10 @@ export async function completeArtifactRemoval(
   transaction: WorkspaceTransaction,
   input: CompleteArtifactRemovalInput,
 ): Promise<ArtifactRecord> {
-  const parsed = input;
   const locked = await transaction.db
     .select()
     .from(artifacts)
-    .where(eq(artifacts.id, parsed.artifactId))
+    .where(eq(artifacts.id, input.artifactId))
     .for('update');
   const artifact = locked[0];
   if (artifact === undefined) throw new ArtifactMetadataNotFoundError();
@@ -286,7 +280,7 @@ export async function completeArtifactRemoval(
     })
     .where(
       and(
-        eq(artifacts.id, parsed.artifactId),
+        eq(artifacts.id, input.artifactId),
         eq(artifacts.status, ARTIFACT_STATUS.deleting),
       ),
     )

@@ -17,8 +17,7 @@ export async function claimOutboxBatch(
   pool: Pool,
   input: ClaimOutboxBatchInput,
 ): Promise<ClaimOutboxBatchResult> {
-  const parsed = input;
-  if (parsed.enabledJobNames.length === 0) {
+  if (input.enabledJobNames.length === 0) {
     return Object.freeze({ events: Object.freeze([]), exhaustedCount: 0 });
   }
   const client = await pool.connect();
@@ -36,7 +35,7 @@ export async function claimOutboxBatch(
     await drizzle(client)
       .execute(sql`select app.recover_due_workflow_run_active_admissions(100)`)
       .catch(rethrowQueryFailure);
-    const claim = await leaseFairOutboxBatch(client, parsed);
+    const claim = await leaseFairOutboxBatch(client, input);
     transactionState = 'committing';
     releaseError = true;
     await client.query('commit');

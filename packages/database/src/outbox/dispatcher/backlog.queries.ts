@@ -12,8 +12,7 @@ export async function observeOutboxBacklog(
   pool: Pool,
   input: ObserveOutboxBacklogInput,
 ): Promise<OutboxBacklogSnapshot> {
-  const parsed = input;
-  if (parsed.enabledJobNames.length === 0) return Object.freeze({ backlog: 0 });
+  if (input.enabledJobNames.length === 0) return Object.freeze({ backlog: 0 });
   const [row] = await drizzle(pool)
     .select({
       backlog: sql<number>`count(*)::integer`,
@@ -26,7 +25,7 @@ export async function observeOutboxBacklog(
       and(
         isNull(outboxEvents.publishedAt),
         isNull(outboxEvents.failedAt),
-        inArray(outboxEvents.jobName, parsed.enabledJobNames),
+        inArray(outboxEvents.jobName, input.enabledJobNames),
         lte(outboxEvents.availableAt, sql`clock_timestamp()`),
         or(
           isNull(outboxEvents.leaseExpiresAt),

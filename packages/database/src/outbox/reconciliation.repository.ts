@@ -49,14 +49,13 @@ export async function reconcileUnknownOutcomeEvidence(
     workspaceId: string;
   }>,
 ): Promise<UnknownOutcomeReconciliationResult> {
-  const parsed = input;
-  parsed.signal?.throwIfAborted();
+  input.signal?.throwIfAborted();
 
-  const consumed = await consumeInboxMessage(database, parsed.workspaceId, {
+  const consumed = await consumeInboxMessage(database, input.workspaceId, {
     message: {
       consumerName: 'unknown-outcome-reconciler',
-      messageId: parsed.delivery.outboxEventId,
-      payloadChecksum: parsed.delivery.payloadChecksum,
+      messageId: input.delivery.outboxEventId,
+      payloadChecksum: input.delivery.payloadChecksum,
     },
     operation: async (transaction) => {
       const [row] = await transaction.db
@@ -71,7 +70,7 @@ export async function reconcileUnknownOutcomeEvidence(
         .where(
           and(
             eq(outboxEvents.workspaceId, transaction.workspaceId),
-            eq(outboxEvents.id, parsed.delivery.outboxEventId),
+            eq(outboxEvents.id, input.delivery.outboxEventId),
           ),
         );
       let payload: z.output<typeof payloadSchema>;
@@ -83,15 +82,15 @@ export async function reconcileUnknownOutcomeEvidence(
       if (row === undefined)
         throw new UnknownOutcomeReconciliationMismatchError();
       const invalidDelivery =
-        row.aggregateId !== parsed.attemptId ||
+        row.aggregateId !== input.attemptId ||
         row.aggregateType !== 'node-attempt' ||
         row.jobName !== 'reconcile-unknown-outcome' ||
-        row.payloadChecksum !== parsed.delivery.payloadChecksum ||
+        row.payloadChecksum !== input.delivery.payloadChecksum ||
         canonicalOutboxPayloadChecksum(payload) !== row.payloadChecksum ||
         payload.workspaceId !== transaction.workspaceId ||
-        payload.attemptId !== parsed.attemptId ||
-        payload.evidenceCommandId !== parsed.evidenceCommandId ||
-        payload.outboxEventId !== parsed.delivery.outboxEventId;
+        payload.attemptId !== input.attemptId ||
+        payload.evidenceCommandId !== input.evidenceCommandId ||
+        payload.outboxEventId !== input.delivery.outboxEventId;
       if (invalidDelivery)
         throw new UnknownOutcomeReconciliationMismatchError();
 
@@ -116,15 +115,15 @@ export async function reconcileUnknownOutcomeEvidence(
             ),
             eq(
               operatorUnknownOutcomeEvidence.commandId,
-              parsed.evidenceCommandId,
+              input.evidenceCommandId,
             ),
-            eq(operatorUnknownOutcomeEvidence.attemptId, parsed.attemptId),
+            eq(operatorUnknownOutcomeEvidence.attemptId, input.attemptId),
           ),
         );
       if (evidence?.status !== 'outcome_unknown')
         throw new UnknownOutcomeReconciliationStateError();
     },
-    options: parsed.signal === undefined ? {} : { signal: parsed.signal },
+    options: input.signal === undefined ? {} : { signal: input.signal },
   });
   return Object.freeze({ kind: consumed.status });
 }

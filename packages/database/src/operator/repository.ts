@@ -203,11 +203,10 @@ async function readOperatorCommand(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['getCommand']>[0],
 ): ReturnType<OperatorCommandDatabase['getCommand']> {
-  const parsed = input;
   return withOperatorTransaction(
     context,
-    parsed.workspaceId,
-    parsed.signal,
+    input.workspaceId,
+    input.signal,
     async (tx) => {
       const [row] = await tx.db
         .select()
@@ -215,7 +214,7 @@ async function readOperatorCommand(
         .where(
           and(
             eq(operatorCommands.workspaceId, tx.workspaceId),
-            eq(operatorCommands.id, parsed.commandId),
+            eq(operatorCommands.id, input.commandId),
           ),
         );
       await tx.db.insert(auditEvents).values({
@@ -223,12 +222,12 @@ async function readOperatorCommand(
         workspaceId: tx.workspaceId,
         action: 'operator.command_status',
         targetType: 'operator-command',
-        targetId: parsed.commandId,
+        targetId: input.commandId,
         requestId: generatePersistedId(),
         metadata: {
-          actorRef: parsed.actorRef,
+          actorRef: input.actorRef,
           found: row !== undefined,
-          reason: parsed.reason,
+          reason: input.reason,
         },
       });
       return row === undefined ? null : commandRecord(row);
@@ -240,13 +239,12 @@ async function redispatchOperatorOutbox(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['redispatchFailedOutbox']>[0],
 ): ReturnType<OperatorCommandDatabase['redispatchFailedOutbox']> {
-  const parsed = input;
   const result = await runOperatorCommand(context, {
-    ...parsed,
+    ...input,
     commandType: 'outbox.redispatch',
-    material: { outboxEventId: parsed.outboxEventId },
-    target: { type: 'outbox-event', id: parsed.outboxEventId },
-    decide: (transaction) => redispatchFailedOutbox(transaction, parsed),
+    material: { outboxEventId: input.outboxEventId },
+    target: { type: 'outbox-event', id: input.outboxEventId },
+    decide: (transaction) => redispatchFailedOutbox(transaction, input),
   });
   return Object.freeze({
     commandId: result.commandId,
@@ -260,17 +258,16 @@ async function reconcileOperatorAttempt(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['reconcileAttempt']>[0],
 ): ReturnType<OperatorCommandDatabase['reconcileAttempt']> {
-  const parsed = input;
   return runOperatorCommand(context, {
-    ...parsed,
+    ...input,
     commandType: 'attempt.reconcile',
     material: {
-      action: parsed.action,
-      expectedFence: parsed.expectedFenceToken,
-      targetId: parsed.attemptId,
+      action: input.action,
+      expectedFence: input.expectedFenceToken,
+      targetId: input.attemptId,
     },
-    target: { type: 'operator-command-target', id: parsed.attemptId },
-    decide: (transaction) => reconcileAttempt(transaction, parsed),
+    target: { type: 'operator-command-target', id: input.attemptId },
+    decide: (transaction) => reconcileAttempt(transaction, input),
   });
 }
 
@@ -278,13 +275,12 @@ async function resumeOperatorRun(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['resumeDueWork']>[0],
 ): ReturnType<OperatorCommandDatabase['resumeDueWork']> {
-  const parsed = input;
   return runOperatorCommand(context, {
-    ...parsed,
+    ...input,
     commandType: 'due-work.resume',
-    material: { targetId: parsed.runId },
-    target: { type: 'operator-command-target', id: parsed.runId },
-    decide: (transaction) => resumeDueWork(transaction, parsed),
+    material: { targetId: input.runId },
+    target: { type: 'operator-command-target', id: input.runId },
+    decide: (transaction) => resumeDueWork(transaction, input),
   });
 }
 
@@ -292,13 +288,12 @@ async function cancelOperatorRun(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['cancelRun']>[0],
 ): ReturnType<OperatorCommandDatabase['cancelRun']> {
-  const parsed = input;
   return runOperatorCommand(context, {
-    ...parsed,
+    ...input,
     commandType: 'run.cancel',
-    material: { targetId: parsed.runId },
-    target: { type: 'operator-command-target', id: parsed.runId },
-    decide: (transaction) => cancelRun(transaction, parsed),
+    material: { targetId: input.runId },
+    target: { type: 'operator-command-target', id: input.runId },
+    decide: (transaction) => cancelRun(transaction, input),
   });
 }
 
@@ -306,24 +301,23 @@ async function recordOperatorOutcomeEvidence(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['recordUnknownOutcomeEvidence']>[0],
 ): ReturnType<OperatorCommandDatabase['recordUnknownOutcomeEvidence']> {
-  const parsed = input;
   const evidenceRef = serializeBoundedPlainJson(
-    parsed.evidenceRef,
+    input.evidenceRef,
     4096,
     'Unknown outcome evidence',
   );
   return runOperatorCommand(context, {
-    ...parsed,
+    ...input,
     dryRun: false,
     commandType: 'unknown-outcome.record-evidence',
     material: {
-      evidenceKind: parsed.evidenceKind,
+      evidenceKind: input.evidenceKind,
       evidenceRef: JSON.parse(evidenceRef),
-      targetId: parsed.attemptId,
+      targetId: input.attemptId,
     },
-    target: { type: 'operator-command-target', id: parsed.attemptId },
+    target: { type: 'operator-command-target', id: input.attemptId },
     decide: (transaction) =>
-      recordUnknownOutcomeEvidence(transaction, { ...parsed, evidenceRef }),
+      recordUnknownOutcomeEvidence(transaction, { ...input, evidenceRef }),
   });
 }
 
@@ -331,13 +325,12 @@ async function retryOperatorTriggerReconciliation(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['retryTriggerReconciliation']>[0],
 ): ReturnType<OperatorCommandDatabase['retryTriggerReconciliation']> {
-  const parsed = input;
   return runOperatorCommand(context, {
-    ...parsed,
+    ...input,
     commandType: 'trigger.reconcile',
-    material: { workflowId: parsed.workflowId },
-    target: { type: 'workflow', id: parsed.workflowId },
-    decide: (transaction) => retryTriggerReconciliation(transaction, parsed),
+    material: { workflowId: input.workflowId },
+    target: { type: 'workflow', id: input.workflowId },
+    decide: (transaction) => retryTriggerReconciliation(transaction, input),
   });
 }
 
@@ -345,25 +338,24 @@ async function replayOperatorRun(
   context: OperatorTransactionContext,
   input: Parameters<OperatorCommandDatabase['replayRun']>[0],
 ): ReturnType<OperatorCommandDatabase['replayRun']> {
-  const parsed = input;
   const runInput = serializeBoundedPlainJson(
-    parsed.runInput,
+    input.runInput,
     65_536,
     'Operator replay input',
   );
   return runOperatorCommand(context, {
-    ...parsed,
+    ...input,
     commandType: 'run.replay',
     material: {
       runInput: JSON.parse(runInput),
-      sourceRunId: parsed.sourceRunId,
-      workflowVersionId: parsed.workflowVersionId,
+      sourceRunId: input.sourceRunId,
+      workflowVersionId: input.workflowVersionId,
     },
-    target: { type: 'workflow-run', id: parsed.sourceRunId },
-    auditMetadata: { workflowVersionId: parsed.workflowVersionId },
+    target: { type: 'workflow-run', id: input.sourceRunId },
+    auditMetadata: { workflowVersionId: input.workflowVersionId },
     decide: (transaction, fingerprint) =>
       requestRunReplay(transaction, {
-        ...parsed,
+        ...input,
         runInput,
         requestFingerprint: fingerprint,
       }),

@@ -65,11 +65,10 @@ export async function readWorkflowRunStatistics(
   pool: Pool,
   input: WorkflowRunStatisticsDatabaseInput,
 ): Promise<WorkflowRunStatisticsRecord> {
-  const parsed = input;
   return withRetainedResourceRead(
     pool,
-    parsed,
-    (transaction) => readInTransaction(transaction, parsed),
+    input,
+    (transaction) => readInTransaction(transaction, input),
     WORKFLOW_RUN_STATISTICS_STATEMENT_TIMEOUT_MILLIS,
   );
 }

@@ -19,13 +19,9 @@ import { selectIntent } from './state.queries.js';
 
 export async function readInvitationAcceptance(
   pool: Pool,
-  workspaceIdInput: Parameters<AcceptanceStore['readInvitationAcceptance']>[0],
-  bindingDigestInput: Parameters<
-    AcceptanceStore['readInvitationAcceptance']
-  >[1],
+  workspaceId: Parameters<AcceptanceStore['readInvitationAcceptance']>[0],
+  bindingDigest: Parameters<AcceptanceStore['readInvitationAcceptance']>[1],
 ): ReturnType<AcceptanceStore['readInvitationAcceptance']> {
-  const workspaceId = workspaceIdInput;
-  const bindingDigest = bindingDigestInput;
   return withPlatformTransaction(pool, async (client) => {
     const intent = await withWorkspaceScope(client, { workspaceId }, (scoped) =>
       selectIntent(
@@ -124,17 +120,10 @@ export async function recordInvitationAcceptanceProof(
 
 export async function abandonInvitationAcceptance(
   pool: Pool,
-  workspaceIdInput: Parameters<
-    AcceptanceStore['abandonInvitationAcceptance']
-  >[0],
-  intentIdInput: Parameters<AcceptanceStore['abandonInvitationAcceptance']>[1],
-  bindingDigestInput: Parameters<
-    AcceptanceStore['abandonInvitationAcceptance']
-  >[2],
+  workspaceId: Parameters<AcceptanceStore['abandonInvitationAcceptance']>[0],
+  intentId: Parameters<AcceptanceStore['abandonInvitationAcceptance']>[1],
+  bindingDigest: Parameters<AcceptanceStore['abandonInvitationAcceptance']>[2],
 ): ReturnType<AcceptanceStore['abandonInvitationAcceptance']> {
-  const workspaceId = workspaceIdInput;
-  const intentId = intentIdInput;
-  const bindingDigest = bindingDigestInput;
   return withTenantScopedClient(pool, { workspaceId }, async (client) => {
     const updated = await drizzle(client)
       .update(intents)

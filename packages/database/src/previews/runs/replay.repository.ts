@@ -21,22 +21,21 @@ export async function resolvePreviewReplay(
   input: ResolvePreviewReplayInput,
   now: Date = new Date(),
 ): Promise<PreviewReplayRecord | null> {
-  const parsed = input;
-  await assertPreviewActor(transaction, parsed.actorUserId);
+  await assertPreviewActor(transaction, input.actorUserId);
   if (
     !(await previewWorkflowVisible(
       transaction,
-      parsed.actorUserId,
-      parsed.workflowId,
+      input.actorUserId,
+      input.workflowId,
       'workflow:update',
     ))
   )
     return null;
   const existing = await readExistingAcceptance(transaction, {
-    keyHash: parsed.keyHash,
+    keyHash: input.keyHash,
     operation: 'preview.execute',
-    requestHash: parsed.requestHash,
-    scope: `${parsed.actorUserId}:${parsed.workflowId}`,
+    requestHash: input.requestHash,
+    scope: `${input.actorUserId}:${input.workflowId}`,
   });
   if (existing === null) return null;
   const rows = await transaction.db
@@ -76,7 +75,7 @@ export async function resolvePreviewReplay(
     .limit(1);
   const replay = rows[0];
   if (replay === undefined) return null;
-  if (replay.workflowId !== parsed.workflowId)
+  if (replay.workflowId !== input.workflowId)
     throw new PreviewAcceptanceCorruptError();
   const {
     outputRef,

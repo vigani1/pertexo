@@ -79,10 +79,9 @@ function reconcileCompletedNodeOutputs(
 
 export async function loadNodeAttemptInputs(
   pool: Pool,
-  inputValue: Parameters<NodeAttemptRunStore['loadInputs']>[0],
+  input: Parameters<NodeAttemptRunStore['loadInputs']>[0],
 ): Promise<NodeAttemptStoredInputs> {
-  assertNotAborted(inputValue.signal);
-  const input = inputValue;
+  assertNotAborted(input.signal);
   return withWorkspaceReadClient(
     pool,
     input.lease.workspaceId,

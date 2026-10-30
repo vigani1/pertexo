@@ -30,7 +30,6 @@ export async function requestWorkflowRunCancellation(
     requestedAt: Date;
   }>
 > {
-  const parsed = input;
   const [row] = await transaction.db
     .select({
       cancel_reason: workflowRuns.cancelReason,
@@ -42,7 +41,7 @@ export async function requestWorkflowRunCancellation(
     .where(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
-        eq(workflowRuns.id, parsed.runId),
+        eq(workflowRuns.id, input.runId),
       ),
     )
     .for('update');
@@ -52,8 +51,8 @@ export async function requestWorkflowRunCancellation(
     throw new ExecutionStateConflictError('execution.run_terminal');
   if (row.cancel_requested_at !== null) {
     if (
-      row.cancel_requested_by !== parsed.actor ||
-      row.cancel_reason !== (parsed.reason ?? null)
+      row.cancel_requested_by !== input.actor ||
+      row.cancel_reason !== (input.reason ?? null)
     )
       throw new ExecutionStateConflictError(
         'execution.cancel_request_conflict',
@@ -70,14 +69,14 @@ export async function requestWorkflowRunCancellation(
     .update(workflowRuns)
     .set({
       cancelRequestedAt: sql`clock_timestamp()`,
-      cancelRequestedBy: parsed.actor,
-      cancelReason: parsed.reason ?? null,
+      cancelRequestedBy: input.actor,
+      cancelReason: input.reason ?? null,
       updatedAt: sql`clock_timestamp()`,
     })
     .where(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
-        eq(workflowRuns.id, parsed.runId),
+        eq(workflowRuns.id, input.runId),
       ),
     )
     .returning({
@@ -85,11 +84,11 @@ export async function requestWorkflowRunCancellation(
         workflowRuns.cancelRequestedAt,
       ),
     });
-  const eventSequence = await appendLockedRunEvent(transaction, parsed.runId, {
+  const eventSequence = await appendLockedRunEvent(transaction, input.runId, {
     type: RUN_EVENT_TYPE.cancelRequested,
     payload: {
-      actor: parsed.actor,
-      ...(parsed.reason == null ? {} : { reason: parsed.reason }),
+      actor: input.actor,
+      ...(input.reason == null ? {} : { reason: input.reason }),
     },
   });
   const cancellation = updated[0];

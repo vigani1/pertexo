@@ -303,14 +303,13 @@ export async function insertOutboxEvent(
   transaction: WorkspaceTransaction,
   input: OutboxEventInput,
 ): Promise<InsertedOutboxEvent> {
-  const parsed = input;
-  const canonicalPayload = canonicalJson(parsed.payload, OUTBOX_PAYLOAD_BYTES, {
+  const canonicalPayload = canonicalJson(input.payload, OUTBOX_PAYLOAD_BYTES, {
     maximumDatabaseBytes: OUTBOX_PAYLOAD_BYTES,
     label: 'outbox payload',
   });
   if (
     createHash('sha256').update(canonicalPayload).digest('hex') !==
-    parsed.payloadChecksum
+    input.payloadChecksum
   ) {
     throw new Error(
       'outbox payload checksum does not match its canonical JSON',
@@ -319,16 +318,16 @@ export async function insertOutboxEvent(
   const rows = await transaction.db
     .insert(outboxEvents)
     .values({
-      id: parsed.id,
+      id: input.id,
       workspaceId: transaction.workspaceId,
-      jobName: parsed.jobName,
-      aggregateType: parsed.aggregateType,
-      aggregateId: parsed.aggregateId,
+      jobName: input.jobName,
+      aggregateType: input.aggregateType,
+      aggregateId: input.aggregateId,
       payload: sql`${canonicalPayload}::jsonb`,
-      payloadChecksum: parsed.payloadChecksum,
-      ...(parsed.availableAt === undefined
+      payloadChecksum: input.payloadChecksum,
+      ...(input.availableAt === undefined
         ? {}
-        : { availableAt: parsed.availableAt }),
+        : { availableAt: input.availableAt }),
     })
     .returning({
       id: outboxEvents.id,
