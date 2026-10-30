@@ -10,7 +10,10 @@ import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/execution';
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import type { QueueHandlerContext } from '@pertexo/queue';
 import type { NodeAttemptOutcome } from '@pertexo/workflow-engine';
-import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import {
+  WorkflowEngineError,
+  type EngineErrorCode,
+} from '@pertexo/workflow-engine';
 
 import {
   describeNodeRefusal,
@@ -47,6 +50,14 @@ export {
   type NodeAttemptHandler,
   type NodeAttemptHandlerDependencies,
 } from './contract.js';
+
+// The step's input or setup can't work; each code becomes `execution.<code>`.
+const STEP_REFUSAL_CODES: ReadonlySet<EngineErrorCode> = new Set([
+  'attempt_invalid',
+  'variable_missing',
+  'expression_failed',
+  'expression_limit_exceeded',
+]);
 /**
  * Keeps the input the executor receives for the run page (ADR 052). It is
  * diagnostic: a store without it, a lost lease or a failed write records
@@ -128,7 +139,7 @@ async function executePreparedNodeAttempt(
     }
     if (
       error instanceof WorkflowEngineError &&
-      (error.code === 'attempt_invalid' || error.code === 'variable_missing')
+      STEP_REFUSAL_CODES.has(error.code)
     ) {
       // The step's input or setup can't work: a definite failure of the step
       // itself, so the coordinator decides it like any other and its failure

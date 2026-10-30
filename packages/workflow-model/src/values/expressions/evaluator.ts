@@ -1,6 +1,8 @@
-import { evaluatorMessageHandler, type Pending } from './worker-messages.js';
+import {
+  EvaluationProcess,
+  type ProcessEvaluation,
+} from './evaluation-process.js';
 import { lookupWorkspaceVariable } from '../variables/lookup.js';
-import { Worker } from 'node:worker_threads';
 import { inspectJsonValue } from '../json/canonical.js';
 import {
   EXPRESSION_POLICY,
@@ -12,54 +14,38 @@ import {
   type ExpressionEvaluator,
   type ExpressionRequest,
   type ExpressionResult,
-  type ExpressionWorkerFactory,
 } from './policy.js';
 
-const WORKER_RUNTIME_URL = new URL(
-  import.meta.url.endsWith('.ts')
-    ? './evaluation-thread.ts'
-    : './evaluation-thread.js',
-  import.meta.url,
-);
-
-function workerCleanupError(error: unknown): Error {
-  try {
-    if (error instanceof Error) return error;
-  } catch {
-    // Retain hostile termination failures only as opaque causes.
-  }
-  return new Error('Evaluator worker termination failed', { cause: error });
-}
+type Pending = Readonly<{
+  evaluation: ProcessEvaluation;
+  resolve: (result: ExpressionResult) => void;
+  onQueuedAbort: () => void;
+}>;
 
 export class JsonataEvaluator implements ExpressionEvaluator {
   readonly #maxActive: number;
   readonly #maxQueued: number;
   readonly #startupTimeoutMs: number;
-  readonly #workerFactory: ExpressionWorkerFactory;
   #active = 0;
-  #workerCreations = 0;
-  #peakWorkers = 0;
+  #processStarts = 0;
+  #peakProcesses = 0;
   #closed = false;
   #shutdownPromise: Promise<void> | undefined;
   readonly #queue: Pending[] = [];
-  readonly #workers = new Set<Worker>();
-  readonly #terminations = new WeakMap<Worker, Promise<void>>();
-  readonly #shutdownFinishes = new Map<Worker, () => void>();
+  readonly #processes = new Set<EvaluationProcess>();
+  /** Most recently used last, so a burst's extra processes are the ones that retire. */
+  readonly #idle: { process: EvaluationProcess; retire: NodeJS.Timeout }[] = [];
   constructor(
     options: {
       readonly maxActive?: number;
       readonly maxQueued?: number;
       readonly startupTimeoutMs?: number;
-      readonly workerFactory?: ExpressionWorkerFactory;
     } = {},
   ) {
     this.#maxActive = options.maxActive ?? EXPRESSION_POLICY.maxActive;
     this.#maxQueued = options.maxQueued ?? EXPRESSION_POLICY.maxQueued;
     this.#startupTimeoutMs =
       options.startupTimeoutMs ?? EXPRESSION_POLICY.startupTimeoutMs;
-    this.#workerFactory =
-      options.workerFactory ??
-      ((runtimeUrl, workerOptions) => new Worker(runtimeUrl, workerOptions));
     const invalidOptions =
       !Number.isSafeInteger(this.#maxActive) ||
       this.#maxActive < 1 ||
@@ -74,14 +60,14 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       throw new RangeError('evaluator pool options exceed policy v1 bounds');
   }
   diagnostics(): Readonly<{
-    isolation: 'bounded_one_shot_worker';
-    workerCreations: number;
-    peakWorkers: number;
+    isolation: 'bounded_process_pool';
+    processStarts: number;
+    peakProcesses: number;
   }> {
     return Object.freeze({
       isolation: JSONATA_EVALUATOR_DIAGNOSTICS.isolation,
-      workerCreations: this.#workerCreations,
-      peakWorkers: this.#peakWorkers,
+      processStarts: this.#processStarts,
+      peakProcesses: this.#peakProcesses,
     });
   }
   evaluate(request: ExpressionRequest): Promise<ExpressionResult> {
@@ -151,80 +137,43 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       );
     return new Promise((resolve) => {
       const pending: Pending = {
-        readsVariables:
-          validation.references.names.length > 0 ||
-          validation.references.dynamic,
-        request: {
-          ...request,
-          context,
+        evaluation: {
+          readsVariables:
+            validation.references.names.length > 0 ||
+            validation.references.dynamic,
+          request: { ...request, context },
+          startupTimeoutMs: this.#startupTimeoutMs,
         },
         resolve,
-        queuedAbort: undefined,
-      };
-      if (request.signal) {
-        pending.queuedAbort = () => {
+        onQueuedAbort: () => {
           const index = this.#queue.indexOf(pending);
-          if (index >= 0) {
-            this.#queue.splice(index, 1);
-            resolve(expressionError('canceled', 'queued evaluation canceled'));
-          }
-        };
-        request.signal.addEventListener('abort', pending.queuedAbort, {
-          once: true,
-        });
-      }
+          if (index < 0) return;
+          this.#queue.splice(index, 1);
+          resolve(expressionError('canceled', 'queued evaluation canceled'));
+        },
+      };
+      request.signal?.addEventListener('abort', pending.onQueuedAbort, {
+        once: true,
+      });
       this.#queue.push(pending);
       this.#drain();
     });
   }
   shutdown(): Promise<void> {
     this.#closed = true;
-    if (this.#shutdownPromise === undefined) {
-      for (const pending of this.#queue.splice(0)) {
-        if (pending.queuedAbort)
-          pending.request.signal?.removeEventListener(
-            'abort',
-            pending.queuedAbort,
-          );
-        pending.resolve(expressionError('canceled', 'evaluator shut down'));
-      }
-      this.#shutdownPromise = Promise.resolve().then(async () => {
-        for (const finish of this.#shutdownFinishes.values()) finish();
-        const outcomes = await Promise.allSettled(
-          [...this.#workers].map((worker) => this.#terminateWorker(worker)),
-        );
-        const failures = outcomes.flatMap((outcome) =>
-          outcome.status === 'rejected'
-            ? [workerCleanupError(outcome.reason)]
-            : [],
-        );
-        const firstFailure = failures[0];
-        if (failures.length === 1 && firstFailure !== undefined)
-          throw firstFailure;
-        if (failures.length > 1)
-          throw new AggregateError(failures, 'Evaluator shutdown failed');
-      });
-    }
+    this.#shutdownPromise ??= this.#stopEverything();
     return this.#shutdownPromise;
   }
-  #terminateWorker(worker: Worker): Promise<void> {
-    const existing = this.#terminations.get(worker);
-    if (existing !== undefined) return existing;
-    const termination = Promise.resolve()
-      .then(() => worker.terminate())
-      .then(() => undefined);
-    this.#terminations.set(worker, termination);
-    void termination.then(
-      () => {
-        this.#workers.delete(worker);
-        this.#shutdownFinishes.delete(worker);
-      },
-      () => {
-        this.#workers.delete(worker);
-        this.#shutdownFinishes.delete(worker);
-      },
-    );
-    return termination;
+  async #stopEverything(): Promise<void> {
+    for (const pending of this.#queue.splice(0)) {
+      pending.evaluation.request.signal?.removeEventListener(
+        'abort',
+        pending.onQueuedAbort,
+      );
+      pending.resolve(expressionError('canceled', 'evaluator shut down'));
+    }
+    for (const { retire } of this.#idle.splice(0)) clearTimeout(retire);
+    await Promise.all([...this.#processes].map((process) => process.stop()));
   }
   #drain(): void {
     while (
@@ -234,108 +183,70 @@ export class JsonataEvaluator implements ExpressionEvaluator {
     ) {
       const pending = this.#queue.shift();
       if (!pending) return;
-      if (pending.queuedAbort)
-        pending.request.signal?.removeEventListener(
-          'abort',
-          pending.queuedAbort,
-        );
-      if (pending.request.signal?.aborted) {
+      pending.evaluation.request.signal?.removeEventListener(
+        'abort',
+        pending.onQueuedAbort,
+      );
+      if (pending.evaluation.request.signal?.aborted) {
         pending.resolve(expressionError('canceled', 'evaluation canceled'));
         continue;
       }
       this.#active += 1;
-      try {
-        void this.#run(pending).finally(() => {
-          this.#active -= 1;
-          this.#drain();
-        });
-      } catch (cause: unknown) {
-        this.#active -= 1;
-        pending.resolve(
-          expressionError(
-            'evaluation_failed',
-            cause instanceof Error ? cause.message : 'worker setup failed',
-          ),
-        );
-      }
+      void this.#run(pending);
     }
   }
-  #run(pending: Pending): Promise<void> {
-    let complete!: () => void;
-    const completion = new Promise<void>((resolve) => {
-      complete = resolve;
-    });
-    const worker = this.#workerFactory(WORKER_RUNTIME_URL, {
-      resourceLimits: {
-        maxOldGenerationSizeMb: 32,
-        maxYoungGenerationSizeMb: 8,
-        stackSizeMb: 4,
-      },
-    });
-    this.#workerCreations += 1;
-    this.#workers.add(worker);
-    this.#peakWorkers = Math.max(this.#peakWorkers, this.#workers.size);
-    let settled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
-      void finish(
-        expressionError('evaluation_failed', 'evaluator startup timed out'),
+  async #run(pending: Pending): Promise<void> {
+    const result = await this.#evaluateInProcess(pending.evaluation);
+    // Freed first, so whoever reads this result can evaluate again at once.
+    this.#active -= 1;
+    pending.resolve(result);
+    this.#drain();
+  }
+  async #evaluateInProcess(
+    evaluation: ProcessEvaluation,
+  ): Promise<ExpressionResult> {
+    let process: EvaluationProcess;
+    try {
+      process = this.#acquireProcess();
+    } catch (cause: unknown) {
+      return expressionError(
+        'unavailable',
+        cause instanceof Error ? cause.message : 'evaluator setup failed',
       );
-    }, this.#startupTimeoutMs);
-    const finish = async (result: ExpressionResult): Promise<void> => {
-      if (settled) return;
-      settled = true;
-      if (timer) clearTimeout(timer);
-      pending.request.signal?.removeEventListener('abort', onAbort);
-      await this.#terminateWorker(worker).catch(() => undefined);
-      complete();
-      pending.resolve(result);
-    };
-    const onAbort = (): void => {
-      void finish(expressionError('canceled', 'evaluation canceled'));
-    };
-    this.#shutdownFinishes.set(worker, () => {
-      void finish(expressionError('canceled', 'evaluator shut down'));
+    }
+    const outcome = await process.run(evaluation);
+    if (outcome.reusable && !process.gone && !this.#closed)
+      this.#keepIdle(process);
+    return outcome.result;
+  }
+  #acquireProcess(): EvaluationProcess {
+    const idle = this.#idle.pop();
+    if (idle !== undefined) {
+      clearTimeout(idle.retire);
+      return idle.process;
+    }
+    const process = new EvaluationProcess(() => {
+      this.#forget(process);
     });
-    pending.request.signal?.addEventListener('abort', onAbort, { once: true });
-    worker.once('error', (cause: unknown) => {
-      void finish(
-        expressionError(
-          'evaluation_failed',
-          cause instanceof Error ? cause.message : 'worker failed',
-        ),
-      );
-    });
-    worker.once('exit', (code) => {
-      if (!settled)
-        void finish(
-          this.#closed
-            ? expressionError('canceled', 'evaluator shut down')
-            : expressionError(
-                'evaluation_failed',
-                `evaluator worker exited with code ${String(code)}`,
-              ),
-        );
-    });
-    worker.on(
-      'message',
-      evaluatorMessageHandler({
-        worker,
-        pending,
-        finish,
-        beginEvaluation: () => {
-          if (timer) clearTimeout(timer);
-          timer = setTimeout(() => {
-            void finish(
-              expressionError(
-                'timed_out',
-                `evaluation exceeded ${String(EXPRESSION_POLICY.timeoutMs)} ms`,
-              ),
-            );
-          }, EXPRESSION_POLICY.timeoutMs);
-        },
-      }),
-    );
-
-    return completion;
+    this.#processStarts += 1;
+    this.#processes.add(process);
+    this.#peakProcesses = Math.max(this.#peakProcesses, this.#processes.size);
+    return process;
+  }
+  #keepIdle(process: EvaluationProcess): void {
+    process.release();
+    const retire = setTimeout(() => {
+      this.#forget(process);
+      void process.stop();
+    }, EXPRESSION_POLICY.processIdleMs);
+    retire.unref();
+    this.#idle.push({ process, retire });
+  }
+  #forget(process: EvaluationProcess): void {
+    this.#processes.delete(process);
+    const index = this.#idle.findIndex((idle) => idle.process === process);
+    if (index < 0) return;
+    const [idle] = this.#idle.splice(index, 1);
+    if (idle !== undefined) clearTimeout(idle.retire);
   }
 }

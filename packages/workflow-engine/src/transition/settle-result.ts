@@ -11,6 +11,7 @@ export type CallableResultDecision =
         | 'callable_result_variable_missing'
         | 'callable_result_ambiguous'
         | 'callable_result_invalid'
+        | 'callable_result_timed_out'
         | 'callable_result_bounds';
     }>;
 

@@ -52,59 +52,49 @@ const MULTIPLIED_INPUT = `$uppercase($join([${Array.from(
 const CPU_BOMBS = ['$distinct([1..50000])', '$count($distinct([1..50000]))'];
 
 describe('an expression cannot take down its host process', () => {
-  // sec-01: V8 aborts the whole process on one oversized allocation in the thread.
-  it.fails(
-    'fails over-limit memory with an error and the host keeps working',
-    async () => {
-      const bombs = MEMORY_BOMBS.flatMap((expression) =>
-        Array.from({ length: 3 }, () => ({ expression })),
-      );
-      const outcome = await evaluateInRealProcess([
-        ...bombs,
-        { expression: MULTIPLIED_INPUT, runInput: { s: LARGE_VALUE } },
-        { expression: '1 + 1' },
-      ]);
+  it('fails over-limit memory with an error and the host keeps working', async () => {
+    const bombs = MEMORY_BOMBS.flatMap((expression) =>
+      Array.from({ length: 3 }, () => ({ expression })),
+    );
+    const outcome = await evaluateInRealProcess([
+      ...bombs,
+      { expression: MULTIPLIED_INPUT, runInput: { s: LARGE_VALUE } },
+      { expression: '1 + 1' },
+    ]);
 
-      expect(survived(outcome)).toBe('survived');
-      expect(outcome.evaluations).toHaveLength(bombs.length + 2);
-      for (const evaluation of outcome.evaluations.slice(0, -1))
-        expectClearFailure(evaluation);
-      expect(outcome.evaluations.at(-1)?.result).toMatchObject({
-        kind: 'value',
-        value: 2,
-      });
-    },
-    120_000,
-  );
+    expect(survived(outcome)).toBe('survived');
+    expect(outcome.evaluations).toHaveLength(bombs.length + 2);
+    for (const evaluation of outcome.evaluations.slice(0, -1))
+      expectClearFailure(evaluation);
+    expect(outcome.evaluations.at(-1)?.result).toMatchObject({
+      kind: 'value',
+      value: 2,
+    });
+  }, 120_000);
 
-  // sec-01: the crash takes every other evaluation in the process with it.
-  it.fails(
-    'keeps serving other evaluations while bombs run beside them',
-    async () => {
-      const outcome = await evaluateInRealProcess(
-        [
-          ...MEMORY_BOMBS.map((expression) => ({ expression })),
-          ...MEMORY_BOMBS.map((expression) => ({ expression })),
-          ...Array.from({ length: 12 }, (_, index) => ({
-            expression: `${String(index)} + 1000`,
-          })),
-        ],
-        { concurrently: true },
-      );
+  it('keeps serving other evaluations while bombs run beside them', async () => {
+    const outcome = await evaluateInRealProcess(
+      [
+        ...MEMORY_BOMBS.map((expression) => ({ expression })),
+        ...MEMORY_BOMBS.map((expression) => ({ expression })),
+        ...Array.from({ length: 12 }, (_, index) => ({
+          expression: `${String(index)} + 1000`,
+        })),
+      ],
+      { concurrently: true },
+    );
 
-      expect(survived(outcome)).toBe('survived');
-      const answers = outcome.evaluations.filter((item) =>
-        item.expression.endsWith('+ 1000'),
-      );
-      // They finish in whatever order the threads do.
-      expect(
-        answers
-          .map((item) => item.result.value)
-          .sort((a, b) => Number(a) - Number(b)),
-      ).toEqual(Array.from({ length: 12 }, (_, index) => index + 1000));
-    },
-    120_000,
-  );
+    expect(survived(outcome)).toBe('survived');
+    const answers = outcome.evaluations.filter((item) =>
+      item.expression.endsWith('+ 1000'),
+    );
+    // They finish in whatever order the threads do.
+    expect(
+      answers
+        .map((item) => item.result.value)
+        .sort((a, b) => Number(a) - Number(b)),
+    ).toEqual(Array.from({ length: 12 }, (_, index) => index + 1000));
+  }, 120_000);
 
   it('fails over-limit time with an error of its own', async () => {
     const outcome = await evaluateInRealProcess(

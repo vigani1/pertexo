@@ -1,121 +1,47 @@
 import { createHash } from 'node:crypto';
 
-import { Worker } from 'node:worker_threads';
-
 import { describe, expect, it } from 'vitest';
 import { canonicalJson } from '../../src/values/json/canonical.js';
 import { JsonataEvaluator } from '../../src/values/expressions/evaluator.js';
 import { JSONATA_EVALUATOR_DIAGNOSTICS } from '../../src/values/expressions/policy.js';
-import {
-  evaluators,
-  ControlledWorker,
-  required,
-} from '../support/expression-owner.js';
+import { evaluators } from '../support/expression-owner.js';
 describe('restricted JSONata policy v1', () => {
-  it('contains synchronous worker handoff failure and releases capacity', async () => {
-    const workers = [new ControlledWorker(), new ControlledWorker()];
-    required(workers[0]).postMessage = () => {
-      throw new Error('handoff failed');
-    };
-    let index = 0;
+  it('fails with a temporary error when no process can start, then recovers', async () => {
+    const evaluator = new JsonataEvaluator({ maxActive: 1 });
+    evaluators.push(evaluator);
+    const context = { runInput: null, nodeOutputs: {} };
+    const execPath = process.execPath;
+    process.execPath = '/nonexistent/node';
+    try {
+      for (let attempt = 0; attempt < 2; attempt += 1)
+        await expect(
+          evaluator.evaluate({ expression: '1', context }),
+        ).resolves.toMatchObject({ kind: 'error', code: 'unavailable' });
+    } finally {
+      process.execPath = execPath;
+    }
+    await expect(
+      evaluator.evaluate({ expression: '1', context }),
+    ).resolves.toMatchObject({ kind: 'value', value: 1 });
+  });
+  it('fails with a temporary error when a process starts too slowly', async () => {
     const evaluator = new JsonataEvaluator({
       maxActive: 1,
-      workerFactory: () => required(workers[index++]).asWorker(),
+      startupTimeoutMs: 1,
     });
     evaluators.push(evaluator);
-    const first = evaluator.evaluate({
-      expression: '1',
-      context: { runInput: null, nodeOutputs: {} },
-    });
-    required(workers[0]).emit('message', { ready: true });
-    required(workers[0]).termination.resolve(0);
-    await expect(first).resolves.toMatchObject({
-      kind: 'error',
-      code: 'evaluation_failed',
-    });
-    const second = evaluator.evaluate({
-      expression: '2',
-      context: { runInput: null, nodeOutputs: {} },
-    });
-    required(workers[1]).emit('message', { ready: true });
-    required(workers[1]).emit('message', { started: true });
-    required(workers[1]).emit('message', { ok: true, value: 2 });
-    required(workers[1]).termination.resolve(0);
-    await expect(second).resolves.toEqual({
-      kind: 'value',
-      value: 2,
-      canonicalBytes: 1,
-    });
-  });
-  it('returns typed failures and releases capacity after worker setup and startup failures', async () => {
-    const constructionFailure = new JsonataEvaluator({
-      maxActive: 1,
-      workerFactory: () => {
-        throw new Error('construction unavailable');
-      },
-    });
-    evaluators.push(constructionFailure);
-    for (let attempt = 0; attempt < 2; attempt += 1)
-      await expect(
-        constructionFailure.evaluate({
-          expression: '1',
-          context: { runInput: null, nodeOutputs: {} },
-        }),
-      ).resolves.toEqual(
-        expect.objectContaining({
-          kind: 'error',
-          code: 'evaluation_failed',
-        }),
-      );
-
-    const startupFailure = new JsonataEvaluator({
-      maxActive: 1,
-      startupTimeoutMs: 10,
-      workerFactory: () =>
-        new Worker('setInterval(() => {}, 1000)', { eval: true }),
-    });
-    evaluators.push(startupFailure);
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const result = await startupFailure.evaluate({
+      const result = await evaluator.evaluate({
         expression: '1',
         context: { runInput: null, nodeOutputs: {} },
       });
-      expect(result).toEqual(
-        expect.objectContaining({
-          kind: 'error',
-          code: 'evaluation_failed',
-        }),
-      );
+      expect(result).toMatchObject({ kind: 'error', code: 'unavailable' });
       if (result.kind !== 'error') throw new Error('expected startup failure');
       expect(result.message).toContain('startup');
     }
-    expect(startupFailure.diagnostics().workerCreations).toBe(2);
+    expect(evaluator.diagnostics().processStarts).toBe(2);
   });
-  it('terminates a worker that becomes ready but never starts evaluation', async () => {
-    const evaluator = new JsonataEvaluator({
-      maxActive: 1,
-      startupTimeoutMs: 10,
-      workerFactory: () =>
-        new Worker(
-          'const { parentPort } = require("node:worker_threads"); parentPort.postMessage({ ready: true }); parentPort.on("message", () => {});',
-          { eval: true },
-        ),
-    });
-    evaluators.push(evaluator);
-
-    const result = await evaluator.evaluate({
-      expression: '1',
-      context: { runInput: null, nodeOutputs: {} },
-    });
-    expect(result).toMatchObject({
-      kind: 'error',
-      code: 'evaluation_failed',
-    });
-    if (result.kind !== 'error') throw new Error('Expected evaluator failure');
-    expect(result.message).toContain('startup');
-    expect(evaluator.diagnostics().workerCreations).toBe(1);
-  });
-  it('is byte-deterministic across two workers and a pool restart', async () => {
+  it('is byte-deterministic across two processes and a pool restart', async () => {
     const request = {
       expression: '{"b": runInput.b, "a": runInput.a}',
       context: { runInput: { b: 2, a: 1 }, nodeOutputs: {} },
@@ -152,8 +78,8 @@ describe('restricted JSONata policy v1', () => {
         evaluatorPackageVersion: JSONATA_EVALUATOR_DIAGNOSTICS.libraryVersion,
         evaluations: 101,
         isolation: first.diagnostics().isolation,
-        workerCreations: first.diagnostics().workerCreations,
-        peakWorkers: first.diagnostics().peakWorkers,
+        processStarts: first.diagnostics().processStarts,
+        peakProcesses: first.diagnostics().peakProcesses,
         poolRestarted: true,
       }),
     );

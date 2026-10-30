@@ -9,11 +9,17 @@ const routableCodes = {
   network: ['execution.network'],
   provider: ['execution.provider'],
   rate_limit: ['execution.rate_limit'],
-  timeout: ['execution.timeout', 'code.timeout'],
+  timeout: [
+    'execution.timeout',
+    'execution.expression_timed_out',
+    'code.timeout',
+  ],
   configuration: [
     'execution.configuration',
     'execution.attempt_invalid',
     'execution.variable_missing',
+    'execution.expression_failed',
+    'execution.expression_limit_exceeded',
     'execution.file_input',
     'execution.loop_results_too_large',
     'execution.table_not_found',

@@ -6,6 +6,7 @@ import {
   PreviewMappingSourceError,
   resolveSingleNodePreviewInput,
   WorkflowEngineError,
+  type EngineErrorCode,
 } from '@pertexo/workflow-engine';
 import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
@@ -41,6 +42,13 @@ const previewExecutableNodeSchema = z
   .strict();
 
 /** Executes the pinned node through the platform registry. */
+const PREVIEW_ENGINE_REFUSALS: ReadonlyMap<EngineErrorCode, string> = new Map([
+  ['variable_missing', 'preview.variable_missing'],
+  ['expression_failed', 'preview.expression_failed'],
+  ['expression_limit_exceeded', 'preview.expression_limit_exceeded'],
+  ['attempt_invalid', 'preview.input_invalid'],
+]);
+
 export function createPlatformPreviewNodeInvoker(
   dependencies: Readonly<{
     registry: ReturnType<typeof createPlatformNodeRegistry>;
@@ -122,11 +130,6 @@ export function createPlatformPreviewNodeInvoker(
       return succeededWith(result.output);
     } catch (error: unknown) {
       try {
-        if (
-          error instanceof WorkflowEngineError &&
-          error.code === 'variable_missing'
-        )
-          return failedWith('preview.variable_missing');
         // Only a prior test of the mapped step can supply its output.
         if (error instanceof PreviewMappingSourceError)
           return failedWith(
@@ -146,16 +149,11 @@ export function createPlatformPreviewNodeInvoker(
           );
         if (error instanceof z.ZodError)
           return failedWith('preview.executable_invalid');
-        if (
-          error instanceof WorkflowEngineError &&
-          error.code === 'attempt_invalid'
-        )
-          return failedWith('preview.input_invalid');
-        if (
-          error instanceof WorkflowEngineError &&
-          error.code === 'attempt_aborted'
-        )
-          return canceledWith();
+        if (error instanceof WorkflowEngineError) {
+          if (error.code === 'attempt_aborted') return canceledWith();
+          const refusal = PREVIEW_ENGINE_REFUSALS.get(error.code);
+          if (refusal !== undefined) return failedWith(refusal);
+        }
       } catch {
         // Hostile rejections cannot claim a known executable/input contract.
       }

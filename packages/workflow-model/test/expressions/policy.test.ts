@@ -1,4 +1,3 @@
-import { Worker } from 'node:worker_threads';
 import jsonata from 'jsonata';
 import { describe, expect, it } from 'vitest';
 
@@ -8,44 +7,8 @@ import {
   JSONATA_EVALUATOR_DIAGNOSTICS,
   validateExpression,
 } from '../../src/values/expressions/policy.js';
-import { evaluators, ControlledWorker } from '../support/expression-owner.js';
+import { evaluators } from '../support/expression-owner.js';
 describe('restricted JSONata policy v1', () => {
-  it('executes the compiled and typechecked worker artifact', async () => {
-    const worker = new Worker(
-      new URL(
-        '../../dist/values/expressions/evaluation-thread.js',
-        import.meta.url,
-      ),
-    );
-    try {
-      const result = await new Promise<unknown>((resolve, reject) => {
-        worker.once('error', reject);
-        worker.on('message', (message: unknown) => {
-          if (
-            message !== null &&
-            typeof message === 'object' &&
-            Reflect.get(message, 'ready') === true
-          ) {
-            worker.postMessage({
-              expression: 'runInput.value + 1',
-              context: { runInput: { value: 1 }, nodeOutputs: {} },
-            });
-          } else if (
-            message !== null &&
-            typeof message === 'object' &&
-            Object.hasOwn(message, 'ok')
-          ) {
-            resolve(message);
-          }
-        });
-      });
-      expect(result).toEqual(
-        expect.objectContaining({ ok: true, missing: false, value: 2 }),
-      );
-    } finally {
-      await worker.terminate();
-    }
-  });
   it('keeps the pinned JSONata AST contract behind the policy boundary', () => {
     expect(JSONATA_EVALUATOR_DIAGNOSTICS.libraryVersion).toBe('2.2.2');
     expect(jsonata('runInput.name').ast()).toMatchObject({
@@ -200,15 +163,9 @@ describe('restricted JSONata policy v1', () => {
       '{"row":{"name":"Ada","qty":2,"address":{"zip":"10115","city":"Berlin"}},"keys":["zip","city"]}',
     );
   });
-  it('rejects accessor-bearing and hostile contexts before worker creation', async () => {
-    let workerCreations = 0;
+  it('rejects accessor-bearing and hostile contexts before any process starts', async () => {
     let getterCalls = 0;
-    const evaluator = new JsonataEvaluator({
-      workerFactory: () => {
-        workerCreations += 1;
-        return new ControlledWorker().asWorker();
-      },
-    });
+    const evaluator = new JsonataEvaluator();
     evaluators.push(evaluator);
     const topLevelGetter = {
       get runInput() {
@@ -257,8 +214,7 @@ describe('restricted JSONata policy v1', () => {
         message: 'invalid expression context',
       });
     expect(getterCalls).toBe(0);
-    expect(workerCreations).toBe(0);
-    expect(evaluator.diagnostics().workerCreations).toBe(0);
+    expect(evaluator.diagnostics().processStarts).toBe(0);
   });
   it('accepts null-prototype context records through the no-accessor contract', async () => {
     const evaluator = new JsonataEvaluator();

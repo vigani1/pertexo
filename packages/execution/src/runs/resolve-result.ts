@@ -10,7 +10,14 @@ import {
   validateCallableValue,
   type CallableDeclaration,
 } from '@pertexo/workflow-model';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
+import {
+  isTemporaryExpressionFailure,
+  type ExpressionEvaluator,
+} from '@pertexo/workflow-model/server';
+
+export class RunResultUnavailableError extends Error {
+  override readonly name = 'RunResultUnavailableError';
+}
 
 /** Read retained physical outputs only for the provisional success transition. */
 export async function resolveRunResult(
@@ -47,6 +54,14 @@ export async function resolveRunResult(
     signal,
   );
   signal.throwIfAborted();
+  // Not the workflow's fault: the advance is delivered again and can work then.
+  if (
+    resolution.kind === 'error' &&
+    resolution.expression !== undefined &&
+    resolution.expression.code !== 'timed_out' &&
+    isTemporaryExpressionFailure(resolution.expression)
+  )
+    throw new RunResultUnavailableError(resolution.expression.message);
   if (resolution.kind !== 'value')
     return { kind: 'invalid', reasonCode: resultResolutionFailure(resolution) };
   let prepared: ReturnType<typeof prepareStoredExecutionValue>;
@@ -115,6 +130,13 @@ function resultResolutionFailure(
     (resolution.code === 'variable_missing' ||
       resolution.expression?.code === 'variable_missing');
   if (variableMissing) return 'callable_result_variable_missing';
+  // A fixed reason, so it can't be read as "check your inputs". It doesn't retry
+  // like a step does: nothing bounds a redelivered advance that always times out.
+  if (
+    resolution.kind === 'error' &&
+    resolution.expression?.code === 'timed_out'
+  )
+    return 'callable_result_timed_out';
   if (resolution.kind === 'missing') return 'callable_result_missing';
   return 'callable_result_invalid';
 }
