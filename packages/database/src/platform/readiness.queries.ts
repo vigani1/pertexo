@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0059_suspended_inbox.sql';
+export const EXPECTED_MIGRATION_HEAD = '0060_write_probe.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
@@ -40,4 +40,18 @@ export async function checkDatabaseReadiness(
     postgresMajor: row.postgres_major,
     role: row.current_user,
   });
+}
+
+/**
+ * The database can still store new data. A full disk lets an update of an existing
+ * row commit while every insert fails, so this makes PostgreSQL extend a new file,
+ * and a read-only or recovering server refuses it outright.
+ */
+export async function checkDatabaseWrites(
+  pool: Pick<Pool, 'query'>,
+): Promise<void> {
+  // One simple-protocol call is one transaction, so nothing here stays half done.
+  await pool.query(
+    'TRUNCATE pertexo_internal.write_probe; INSERT INTO pertexo_internal.write_probe DEFAULT VALUES',
+  );
 }
