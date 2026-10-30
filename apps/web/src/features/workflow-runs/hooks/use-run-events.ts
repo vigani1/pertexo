@@ -1,9 +1,9 @@
 import {
-  streamWasHealthy,
-  classifyStreamFailure,
   TransientStreamDisconnect,
-  delay,
-} from '../model/live-stream';
+  streamWasHealthy,
+  waitToReconnect,
+} from '@/lib/api/stream-reconnect';
+import { runStreamRecovery } from '../model/live-stream';
 import type { WorkflowRunEvent } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -216,7 +216,7 @@ async function followRunEvents(options: RunEventSession) {
     } catch (error) {
       if (!options.isCurrent()) return;
       if (streamWasHealthy({ delivered, openedAt })) failures = 0;
-      const recovery = classifyStreamFailure(error, failures + 1);
+      const recovery = runStreamRecovery(error, failures + 1);
       if (recovery.kind === 'stop') {
         options.setRecovery(recovery.status, recovery.message);
         return;
@@ -229,7 +229,7 @@ async function followRunEvents(options: RunEventSession) {
         snapshotRetryNotBefore = nextSnapshotRetry;
       }
       const snapshotWait = snapshotRetryNotBefore - Date.now();
-      await delay(
+      await waitToReconnect(
         snapshotWait > 0
           ? Math.max(recovery.delayMs, snapshotWait)
           : recovery.delayMs,
@@ -258,7 +258,7 @@ async function refreshAfterFailures(
     }
     return 0;
   } catch (error) {
-    const recovery = classifyStreamFailure(error, failures);
+    const recovery = runStreamRecovery(error, failures);
     if (recovery.kind === 'stop') {
       options.setRecovery(recovery.status, recovery.message);
       return undefined;

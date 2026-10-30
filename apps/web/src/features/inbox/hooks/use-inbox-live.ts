@@ -1,6 +1,11 @@
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/error';
 import { decodeSseMessages, type SseMessage } from '@/lib/api/sse';
+import {
+  TransientStreamDisconnect,
+  classifyStreamFailure,
+  streamWasHealthy,
+  waitToReconnect,
+} from '@/lib/api/stream-reconnect';
 import { workspaceInboxStreamEventSchema } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -12,9 +17,6 @@ export type InboxLiveStatus = 'connecting' | 'live' | 'reconnecting' | 'paused';
 const INBOX_EVENTS = new Set(['inbox.ready', 'inbox.changed']);
 /** Hints arriving together cause one refetch. */
 const COALESCE_MS = 250;
-const MAX_RETRY_MS = 30_000;
-/** A stream open this long was healthy; its drop starts a fresh backoff. */
-const HEALTHY_STREAM_MS = 30_000;
 
 /** An inbox event with valid, content-free data; anything else is ignored. */
 function isInboxHint(message: SseMessage): boolean {
@@ -25,43 +27,6 @@ function isInboxHint(message: SseMessage): boolean {
   } catch {
     return false;
   }
-}
-
-/** Access or the stream contract changed; retrying would not help. */
-function stopsLiveUpdates(error: unknown): boolean {
-  if (!isApiError(error)) return false;
-  if (error.status === 401 || error.status === 403 || error.status === 404)
-    return true;
-  // A gateway answering for a restarting API sends a 5xx without problem
-  // details; that passes, so only an unreadable non-5xx answer is final.
-  return (
-    error.kind === 'protocol' &&
-    (error.status === undefined || error.status < 500)
-  );
-}
-
-function retryDelay(error: unknown, failures: number): number {
-  if (
-    isApiError(error) &&
-    error.status === 429 &&
-    error.retryAfterMs !== undefined
-  )
-    return Math.min(300_000, error.retryAfterMs);
-  const base = Math.min(MAX_RETRY_MS, 1_000 * 2 ** Math.min(failures, 5));
-  // Jitter keeps many tabs from reconnecting in step after an outage.
-  return base / 2 + Math.random() * (base / 2);
-}
-
-function wait(durationMs: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = window.setTimeout(done, durationMs);
-    function done() {
-      window.clearTimeout(timer);
-      signal.removeEventListener('abort', done);
-      resolve();
-    }
-    signal.addEventListener('abort', done, { once: true });
-  });
 }
 
 /**
@@ -110,6 +75,7 @@ export function useInboxLive({
       let failures = 0;
       while (!signal.aborted) {
         let openedAt: number | undefined;
+        let delivered = false;
         try {
           report(failures === 0 ? 'connecting' : 'reconnecting');
           stream = await openInboxEvents(apiClient, workspaceId, signal);
@@ -120,27 +86,27 @@ export function useInboxLive({
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (signal.aborted) return;
             // A ready event also closes the gap between loading and listening.
-            if (isInboxHint(message)) refresh();
+            if (isInboxHint(message)) {
+              delivered = true;
+              refresh();
+            }
           }
-          throw new Error('The inbox stream closed.');
+          throw new TransientStreamDisconnect('The inbox stream closed.');
         } catch (error: unknown) {
           // Cancellation may arrive while opening or reading the stream awaits I/O.
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           if (signal.aborted) return;
-          if (stopsLiveUpdates(error)) {
+          if (streamWasHealthy({ delivered, openedAt })) failures = 0;
+          failures += 1;
+          const recovery = classifyStreamFailure(error, failures);
+          if (recovery.kind === 'stop') {
             report('paused');
             return;
           }
-          if (
-            openedAt !== undefined &&
-            Date.now() - openedAt >= HEALTHY_STREAM_MS
-          )
-            failures = 0;
-          failures += 1;
           report('reconnecting');
           // Whatever arrived while disconnected shows up now.
           refresh();
-          await wait(retryDelay(error, failures), signal);
+          await waitToReconnect(recovery.delayMs, signal);
         } finally {
           stream?.close();
           stream = undefined;
