@@ -12,43 +12,44 @@ export type WorkspaceAvailability = Readonly<{
   action?: string;
 }>;
 
-const ROLE_NAMES: Record<AccessibleWorkspace['role'], string> = {
-  owner: 'Owner',
-  admin: 'Admin',
-  builder: 'Builder',
-  operator: 'Operator',
-  viewer: 'Viewer',
-};
-
-export function roleName(role: AccessibleWorkspace['role']): string {
-  return ROLE_NAMES[role];
+/**
+ * The one rule for opening a workspace, shared by the picker, landing,
+ * switcher and deep links. A suspended (for example restored) workspace can be
+ * browsed (ADR 013/027); one being deleted only by someone who can restore it.
+ */
+export function isWorkspaceOpenable(workspace: AccessibleWorkspace): boolean {
+  return (
+    workspace.status !== 'pending_deletion' ||
+    workspace.capabilities.includes('workspace:manage')
+  );
 }
 
 /** How a workspace card reads and whether it opens, in words. */
 export function workspaceAvailability(
   workspace: AccessibleWorkspace,
 ): WorkspaceAvailability {
+  const openable = isWorkspaceOpenable(workspace);
   if (workspace.status === 'suspended')
     return {
-      openable: false,
+      openable,
       tone: 'canceled',
       status: 'Suspended',
-      note: 'Contact support to restore access.',
+      note: 'Runs and changes are paused.',
     };
   if (workspace.status === 'pending_deletion')
-    return workspace.capabilities.includes('workspace:manage')
+    return openable
       ? {
-          openable: true,
+          openable,
           tone: 'attention',
           status: 'Scheduled for deletion',
           note: 'You can still restore it.',
           action: 'Restore',
         }
       : {
-          openable: false,
+          openable,
           tone: 'attention',
           status: 'Being deleted',
           note: 'An owner scheduled this workspace for deletion.',
         };
-  return { openable: true, tone: 'success', status: 'Active' };
+  return { openable, tone: 'success', status: 'Active' };
 }

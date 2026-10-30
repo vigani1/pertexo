@@ -1,5 +1,6 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { QueryClient } from '@tanstack/react-query';
+import { isWorkspaceOpenable } from './workspace-availability';
 
 // A per-browser convenience: open the workspace someone used last. Storage can
 // be missing or blocked, so every access is guarded and failure is harmless.
@@ -68,14 +69,6 @@ export function readLastWorkspace(userId: string): string | undefined {
   return typeof workspaceId === 'string' ? workspaceId : undefined;
 }
 
-function isOpenable(workspace: AccessibleWorkspace): boolean {
-  return (
-    workspace.status === 'active' ||
-    (workspace.status === 'pending_deletion' &&
-      workspace.capabilities.includes('workspace:manage'))
-  );
-}
-
 /**
  * Where "/" should land: the last-used workspace when it's still openable,
  * the only workspace when there is exactly one, otherwise the picker.
@@ -86,7 +79,7 @@ export function landingWorkspace(
 ): AccessibleWorkspace | undefined {
   const lastId = readLastWorkspace(userId);
   const last = workspaces.find((workspace) => workspace.id === lastId);
-  if (last !== undefined && isOpenable(last)) return last;
-  const openable = workspaces.filter(isOpenable);
+  if (last !== undefined && isWorkspaceOpenable(last)) return last;
+  const openable = workspaces.filter(isWorkspaceOpenable);
   return openable.length === 1 ? openable[0] : undefined;
 }

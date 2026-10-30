@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { isWorkspaceOpenable } from '../../model/workspace-availability';
 import { WorkspaceMark } from './workspace-mark';
 
 const STATUS_LABEL: Partial<Record<AccessibleWorkspace['status'], string>> = {
@@ -39,7 +40,7 @@ export function WorkspaceSwitcher({
       <DropdownMenuContent align="start" className="w-72">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
-          {workspaces.map((candidate) => (
+          {workspaces.filter(isWorkspaceOpenable).map((candidate) => (
             <DropdownMenuLinkItem
               key={candidate.id}
               render={
