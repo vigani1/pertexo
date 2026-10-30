@@ -11,6 +11,7 @@ import { registerLoadsImmutablePersistedUpstreamValue } from './node-attempts/re
 import { registerKeepsHTTPSlackDispatchMarkers } from './node-attempts/dispatch/keeps-httpslack-dispatch-markers.cases.js';
 import { registerAtomicallySuspendsAttemptDatabaseTime } from './node-attempts/controls/atomically-suspends-attempt-database-time.cases.js';
 import { registerLetsOperatorRecordCommandsReplays } from './node-attempts/controls/lets-operator-record-commands-replays.cases.js';
+import { registerReportsAbortControlOnce } from './node-attempts/controls/reports-abort-control-once.cases.js';
 describe('Coordinator node-attempt persistence invariants', () => {
   registerLeasesAdmittedButUnstartedWork();
 
@@ -33,4 +34,6 @@ describe('Coordinator node-attempt persistence invariants', () => {
   registerAtomicallySuspendsAttemptDatabaseTime();
 
   registerLetsOperatorRecordCommandsReplays();
+
+  registerReportsAbortControlOnce();
 });
