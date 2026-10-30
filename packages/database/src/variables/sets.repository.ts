@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../governance/audit/events.repository.js';
 import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
@@ -8,7 +9,6 @@ import {
   workspaceVariables,
   workspaceVariableSetRevisions,
 } from '../schema/variables.js';
-import { auditEvents } from '../schema/foundation.js';
 import {
   canonicalJson,
   planWorkspaceVariableReplacement,
@@ -19,7 +19,6 @@ import {
   claimCommand,
   completeCommand,
 } from '../platform/idempotency/repository.js';
-import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   WorkspaceVariablesConflictError,
   type WorkspaceVariablesStore,
@@ -85,26 +84,22 @@ export async function replaceWorkspaceVariables(
       .returning({ revision: workspaceVariables.revision })
       .catch(rethrowQueryFailure);
     if (saved.length !== 1) throw new WorkspaceVariablesConflictError();
-    await db
-      .insert(auditEvents)
-      .values({
-        id: generatePersistedId(),
-        workspaceId: input.workspaceId,
-        actorUserId: input.actorId,
-        action: 'workspace.variables_changed',
-        targetType: 'workspace_variables',
-        targetId: input.workspaceId,
-        requestId: input.requestId ?? null,
-        traceId: input.traceId ?? null,
-        metadata: {
-          revision,
-          changedNames: names.slice(0, WORKSPACE_VARIABLE_LIMITS.count),
-          ...(names.length > WORKSPACE_VARIABLE_LIMITS.count
-            ? { changedCount: names.length, changedNamesTruncated: true }
-            : {}),
-        },
-      })
-      .catch(rethrowQueryFailure);
+    await appendAuditFact(client, {
+      workspaceId: input.workspaceId,
+      actorId: input.actorId,
+      action: 'workspace.variables_changed',
+      targetType: 'workspace_variables',
+      targetId: input.workspaceId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: {
+        revision,
+        changedNames: names.slice(0, WORKSPACE_VARIABLE_LIMITS.count),
+        ...(names.length > WORKSPACE_VARIABLE_LIMITS.count
+          ? { changedCount: names.length, changedNamesTruncated: true }
+          : {}),
+      },
+    });
   }
   const accepted = { revision, changed: names.length > 0 };
   await completeCommand(client, identity, accepted);

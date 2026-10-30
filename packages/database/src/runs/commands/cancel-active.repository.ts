@@ -89,7 +89,7 @@ export async function cancelInTransaction(
       runId: input.runId,
       ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
       ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-      metadata: sql`jsonb_build_object('reasonProvided', ${input.reason !== undefined}::boolean)`,
+      metadata: { reasonProvided: input.reason !== undefined },
     });
   }
   const run = await readWorkflowRunRecord(transaction, input.runId);

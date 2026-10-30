@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import type {
   WorkspaceLifecycleCommandType,
   WorkspaceLifecycleOperation,
@@ -20,7 +21,6 @@ import {
   users,
   workspaceMemberships,
   workspaceLifecycleOperations,
-  auditEvents,
 } from '../../schema/foundation.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -281,20 +281,17 @@ export async function changeWorkspaceLifecycle(
       .catch(rethrowQueryFailure);
   }
 
-  await db
-    .insert(auditEvents)
-    .values({
-      id: change.operationId,
-      workspaceId: change.workspaceId,
-      actorUserId: change.actorUserId,
-      action:
-        change.commandType === 'deletion_requested'
-          ? 'workspace.deletion_requested'
-          : 'workspace.deletion_restored',
-      targetType: 'workspace',
-      targetId: change.workspaceId,
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    id: change.operationId,
+    workspaceId: change.workspaceId,
+    actorId: change.actorUserId,
+    action:
+      change.commandType === 'deletion_requested'
+        ? 'workspace.deletion_requested'
+        : 'workspace.deletion_restored',
+    targetType: 'workspace',
+    targetId: change.workspaceId,
+  });
   const occurredAt = new Date();
   await drizzle(client, { schema: databaseSchema })
     .insert(workspaceLifecycleOperations)

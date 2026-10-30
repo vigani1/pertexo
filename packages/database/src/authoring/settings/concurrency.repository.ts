@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import type { WorkflowConcurrencySettings as ConcurrencySettings } from '@pertexo/contracts';
 import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import { and, asc, eq, gt, sql } from 'drizzle-orm';
@@ -7,11 +8,7 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { entitlementPolicyState } from '../../runs/queries/entitlement-effect.js';
 import { workflowConcurrencyPolicies } from '../../schema/authoring/concurrency.js';
 import { workflows } from '../../schema/authoring/workflows.js';
-import {
-  auditEvents,
-  usageEvents,
-  workspaces,
-} from '../../schema/foundation.js';
+import { usageEvents, workspaces } from '../../schema/foundation.js';
 import {
   workspaceExecutionEntitlements,
   workspaceExecutionEntitlementVersions,
@@ -22,7 +19,6 @@ import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import { RUN_SUMMARY_RETENTION_SQL } from '../../runs/data-policy.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
@@ -324,24 +320,20 @@ async function updateConcurrencySettings(
             },
           })
           .catch(rethrowQueryFailure);
-        await db
-          .insert(auditEvents)
-          .values({
-            id: generatePersistedId(),
-            workspaceId,
-            actorUserId: actorId,
-            action: 'workflow.concurrency_settings_changed',
-            targetType: 'workflow',
-            targetId: workflowId,
-            requestId: input.requestId ?? null,
-            traceId: input.traceId ?? null,
-            metadata: {
-              limit: current.limit,
-              revision: current.revision,
-              overflow: current.overflow,
-            },
-          })
-          .catch(rethrowQueryFailure);
+        await appendAuditFact(client, {
+          workspaceId,
+          actorId: actorId,
+          action: 'workflow.concurrency_settings_changed',
+          targetType: 'workflow',
+          targetId: workflowId,
+          requestId: input.requestId ?? null,
+          traceId: input.traceId ?? null,
+          metadata: {
+            limit: current.limit,
+            revision: current.revision,
+            overflow: current.overflow,
+          },
+        });
       }
       const result = settingsOf(current, entitlement);
       await completeCommand(client, identity, result);

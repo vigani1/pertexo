@@ -1,3 +1,4 @@
+import type { AuditMetadata } from '../governance/audit/events.repository.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import type { OperatorDecision } from './handlers/contract.js';
 import type {
@@ -117,7 +118,7 @@ export type CommandRequest = Readonly<{
   material: Readonly<Record<string, unknown>>;
   target: Readonly<{ type: string; id: string }>;
   /** Request facts every audit event of this command carries. */
-  auditMetadata?: Readonly<Record<string, unknown>>;
+  auditMetadata?: AuditMetadata;
   decide: (
     transaction: WorkspaceTransaction,
     requestFingerprint: string,

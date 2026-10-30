@@ -8,7 +8,7 @@ import type { AuditEvent } from '@pertexo/contracts';
 // Historical writers sometimes stored free text. Expose typed facts only, never
 // arbitrary strings under a familiar key (or a new writer's accidental payload).
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-const identityKeys = new Set([
+const IDENTITY_KEYS = [
   'workflowId',
   'versionId',
   'secretVersionId',
@@ -22,8 +22,8 @@ const identityKeys = new Set([
   'organizationId',
   'directoryUserId',
   'credentialId',
-]);
-const numberKeys = new Set([
+] as const;
+const NUMBER_KEYS = [
   'revision',
   'versionNumber',
   'affected',
@@ -37,16 +37,39 @@ const numberKeys = new Set([
   'columnLimit',
   'rowLimit',
   'byteLimit',
-]);
+] as const;
 const changedNamesSchema = workspaceVariableNameSchema
   .array()
   .max(WORKSPACE_VARIABLE_LIMITS.count * 2);
-const booleanKeys = new Set([
+const BOOLEAN_KEYS = [
   'reused',
   'dryRun',
+  'found',
   'changedNamesTruncated',
   'requirePublishApproval',
-]);
+] as const;
+/** Keys whose string values `allowedAuditString` checks. */
+type AuditStringKey =
+  | 'actorRef'
+  | 'operation'
+  | 'actorKind'
+  | 'source'
+  | 'status'
+  | 'role'
+  | 'fromRole'
+  | 'toRole';
+const identityKeys = new Set<string>(IDENTITY_KEYS);
+const numberKeys = new Set<string>(NUMBER_KEYS);
+const booleanKeys = new Set<string>(BOOLEAN_KEYS);
+
+/** The metadata keys the audit view shows. */
+export type AuditViewKey =
+  | (typeof IDENTITY_KEYS)[number]
+  | (typeof NUMBER_KEYS)[number]
+  | (typeof BOOLEAN_KEYS)[number]
+  | AuditStringKey
+  | 'changedNames';
+
 export function projectAuditMetadata(
   metadata: unknown,
 ): AuditEvent['metadata'] {

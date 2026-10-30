@@ -1,12 +1,11 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { connections } from '../../schema/connections.js';
-import { auditEvents } from '../../schema/foundation.js';
 import { idempotencyRecords as records } from '../../schema/runs/support.js';
 
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import { keyDigest, parseRequestMetadata } from '../admission.js';
 import { requireConnectionUser } from '../authority.queries.js';
 import type { MarkConnectionTestDispatchedInput } from '../contract.js';
@@ -117,20 +116,16 @@ export async function markConnectionTestDispatched(
         throw new ConnectionTestInProgressError(
           'Connection test dispatch ownership was lost',
         );
-      await db
-        .insert(auditEvents)
-        .values({
-          id: generatePersistedId(),
-          workspaceId,
-          actorUserId: actorId,
-          action: 'connection.test_dispatched',
-          targetType: 'connection',
-          targetId: connectionId,
-          requestId: metadata.requestId,
-          traceId: metadata.traceId,
-          metadata: { secretVersionId },
-        })
-        .catch(rethrowQueryFailure);
+      await appendAuditFact(client, {
+        workspaceId,
+        actorId: actorId,
+        action: 'connection.test_dispatched',
+        targetType: 'connection',
+        targetId: connectionId,
+        requestId: metadata.requestId,
+        traceId: metadata.traceId,
+        metadata: { secretVersionId },
+      });
     },
   }).catch(rethrowQueryFailure);
 }

@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import {
   changeDataTableDefinition,
   changeDataTableValues,
@@ -21,7 +22,6 @@ import {
   workspaceDataTableRows as tableRows,
   workspaceDataTables as tables,
 } from '../../schema/data-tables.js';
-import { auditEvents } from '../../schema/foundation.js';
 import type {
   DataTableDefinition,
   DataTableQuotas,
@@ -100,23 +100,19 @@ export async function editTableSchema(
     })
     .where(eq(quotas.workspaceId, input.workspaceId))
     .catch(rethrowQueryFailure);
-  await db
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorId,
-      action: 'data.table_schema_changed',
-      targetType: 'data_table',
-      targetId: table.id,
-      metadata: {
-        operation: input.change.operation,
-        revision: next.revision,
-        columns: next.columns.map(({ id, name }) => ({ id, name })),
-        keyColumn: next.keyColumn,
-      },
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    action: 'data.table_schema_changed',
+    targetType: 'data_table',
+    targetId: table.id,
+    metadata: {
+      operation: input.change.operation,
+      revision: next.revision,
+      columns: next.columns.map(({ id, name }) => ({ id, name })),
+      keyColumn: next.keyColumn,
+    },
+  });
   return { revision: next.revision };
 }
 

@@ -1,3 +1,4 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { readPolicy } from './error-policy.queries.js';
 import { and, asc, eq, gt, inArray, ne, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -6,7 +7,6 @@ import {
   workflowVersions,
 } from '../../schema/authoring/workflows.js';
 import { workflowErrorPolicies } from '../../schema/authoring/error-workflow.js';
-import { auditEvents } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
@@ -22,7 +22,6 @@ import {
   claimCommand,
   completeCommand,
 } from '../../platform/idempotency/repository.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
@@ -306,20 +305,16 @@ function updateErrorWorkflowSettings(
           },
         })
         .catch(rethrowQueryFailure);
-      await db
-        .insert(auditEvents)
-        .values({
-          id: generatePersistedId(),
-          workspaceId: input.workspaceId,
-          actorUserId: input.actorId,
-          action: 'workflow.error_policy_updated',
-          targetType: 'workflow',
-          targetId: input.workflowId,
-          requestId: input.requestId ?? null,
-          traceId: input.traceId ?? null,
-          metadata: { targetWorkflowId: settings.targetWorkflowId },
-        })
-        .catch(rethrowQueryFailure);
+      await appendAuditFact(client, {
+        workspaceId: input.workspaceId,
+        actorId: input.actorId,
+        action: 'workflow.error_policy_updated',
+        targetType: 'workflow',
+        targetId: input.workflowId,
+        requestId: input.requestId ?? null,
+        traceId: input.traceId ?? null,
+        metadata: { targetWorkflowId: settings.targetWorkflowId },
+      });
       await completeCommand(client, identity, settings);
       return { settings, replayed: false };
     },

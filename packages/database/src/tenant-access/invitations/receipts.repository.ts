@@ -1,10 +1,10 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   workspaceInvitations as invitations,
   workspaceInvitationDeliveryAttempts as attempts,
   workspaceInvitationAcceptanceIntents as intents,
-  auditEvents,
 } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { ROLES } from '@pertexo/workflow-model';
@@ -13,7 +13,6 @@ import { z } from 'zod';
 
 import { completeCommand } from '../../platform/idempotency/repository.js';
 import type { CommandIdentity } from '../../platform/idempotency/contract.js';
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { InvitationAcceptanceResult } from '../contract.js';
 
 /** Durable acceptance receipt stored on the intent and as the command's result. */
@@ -106,23 +105,19 @@ export async function recordAcceptedInvitation(
       ),
     )
     .catch(rethrowQueryFailure);
-  await db
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: receipt.workspaceId,
-      actorUserId,
-      action: 'workspace.invitation_accepted',
-      targetType: 'workspace_invitation',
-      targetId: invitationId,
-      requestId: input.requestId,
-      traceId: input.traceId,
-      metadata: {
-        invitationRevision: input.invitationRevision,
-        membershipCreated: receipt.membershipCreated,
-        role: receipt.role,
-      },
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: receipt.workspaceId,
+    actorId: actorUserId,
+    action: 'workspace.invitation_accepted',
+    targetType: 'workspace_invitation',
+    targetId: invitationId,
+    requestId: input.requestId,
+    traceId: input.traceId,
+    metadata: {
+      invitationRevision: input.invitationRevision,
+      membershipCreated: receipt.membershipCreated,
+      role: receipt.role,
+    },
+  });
   await completeCommand(client, input.command, receipt);
 }

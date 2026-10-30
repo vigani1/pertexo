@@ -1,11 +1,11 @@
-import { sql } from 'drizzle-orm';
+import { appendAuditFact } from '../governance/audit/events.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import { rethrowQueryFailure } from '../platform/query-errors.js';
-import { auditEvents, workspaces } from '../schema/foundation.js';
+import { workspaces } from '../schema/foundation.js';
 
 import type { DatabaseConfig } from '../config.js';
 
@@ -126,20 +126,16 @@ async function createWorkspaceWithOwner(
             traceId: input.traceId ?? null,
           },
         );
-        await db
-          .insert(auditEvents)
-          .values({
-            id: generatePersistedId(),
-            workspaceId: id,
-            actorUserId: ownerUserId,
-            action: 'workspace.created',
-            targetType: 'workspace',
-            targetId: id,
-            requestId: input.requestId ?? null,
-            traceId: input.traceId ?? null,
-            metadata: sql`${JSON.stringify(metadata)}::jsonb`,
-          })
-          .catch(rethrowQueryFailure);
+        await appendAuditFact(client, {
+          workspaceId: id,
+          actorId: ownerUserId,
+          action: 'workspace.created',
+          targetType: 'workspace',
+          targetId: id,
+          requestId: input.requestId ?? null,
+          traceId: input.traceId ?? null,
+          metadata: metadata,
+        });
         const insertedWorkspace = workspaceResult[0];
         if (insertedWorkspace === undefined)
           throw new Error('Workspace creation returned no record');

@@ -1,9 +1,10 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import { previewRuns } from '../../schema/runs/execution.js';
-import { auditEvents, usageEvents } from '../../schema/foundation.js';
+import { usageEvents } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { PreviewAttemptStateError } from '../errors.js';
 import type { PreviewStatus } from '../contract.js';
@@ -46,20 +47,20 @@ export async function appendPreviewTerminalFacts(
   if (run === undefined)
     throw new PreviewAttemptStateError('terminal_facts_run_missing');
   const { actorUserId, requestId, traceId, ...metadata } = run;
-  await db
-    .insert(auditEvents)
-    .values({
-      id: uuidv7(),
-      workspaceId: input.workspaceId,
-      actorUserId,
-      action: 'preview.execution_terminal',
-      targetType: 'preview-run',
-      targetId: input.previewRunId,
-      requestId,
-      traceId,
-      metadata: sql`${JSON.stringify({ status: input.status, ...metadata, previewAttemptId: input.previewAttemptId })}::jsonb`,
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: actorUserId,
+    action: 'preview.execution_terminal',
+    targetType: 'preview-run',
+    targetId: input.previewRunId,
+    requestId,
+    traceId,
+    metadata: {
+      status: input.status,
+      ...metadata,
+      previewAttemptId: input.previewAttemptId,
+    },
+  });
   await db
     .insert(usageEvents)
     .values({

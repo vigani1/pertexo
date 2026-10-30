@@ -1,10 +1,10 @@
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { workflows } from '../../../schema/authoring/workflows.js';
-import { auditEvents } from '../../../schema/foundation.js';
 import { outboxEvents } from '../../../schema/transport.js';
 
 import { planWorkflowLifecycleCommand } from '@pertexo/workflow-model';
@@ -140,29 +140,25 @@ async function transitionWorkflowLifecycle(
         });
       }
 
-      await drizzle(client)
-        .insert(auditEvents)
-        .values({
-          id: generatePersistedId(),
-          workspaceId,
-          actorUserId: actorId,
-          action:
-            command === 'archive' ? 'workflow.archived' : 'workflow.restored',
-          targetType: 'workflow',
-          targetId: workflowId,
-          requestId: requestId ?? null,
-          traceId: traceId ?? null,
-          metadata: {
-            activationStatus: workflow.activationStatus,
-            lifecycleRevision: workflow.lifecycleRevision,
-            lifecycleStatus: workflow.lifecycleStatus,
-            previousActivationStatus: current.activationStatus,
-            previousLifecycleRevision: current.lifecycleRevision,
-            previousLifecycleStatus: current.lifecycleStatus,
-            publishedVersionId: current.publishedVersionId,
-          },
-        })
-        .catch(rethrowQueryFailure);
+      await appendAuditFact(client, {
+        workspaceId,
+        actorId: actorId,
+        action:
+          command === 'archive' ? 'workflow.archived' : 'workflow.restored',
+        targetType: 'workflow',
+        targetId: workflowId,
+        requestId: requestId ?? null,
+        traceId: traceId ?? null,
+        metadata: {
+          activationStatus: workflow.activationStatus,
+          lifecycleRevision: workflow.lifecycleRevision,
+          lifecycleStatus: workflow.lifecycleStatus,
+          previousActivationStatus: current.activationStatus,
+          previousLifecycleRevision: current.lifecycleRevision,
+          previousLifecycleStatus: current.lifecycleStatus,
+          publishedVersionId: current.publishedVersionId,
+        },
+      });
     }
 
     await completeWorkflowCommand(client, claim, workflow);

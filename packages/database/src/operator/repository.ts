@@ -1,3 +1,5 @@
+import type { AuditMetadata } from '../governance/audit/events.repository.js';
+import { appendAuditFact } from '../governance/audit/events.repository.js';
 import type { Pool } from 'pg';
 import { and, eq, sql } from 'drizzle-orm';
 import type { DatabaseConfig } from '../config.js';
@@ -6,7 +8,6 @@ import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import { checkDatabaseReadiness } from '../platform/readiness.queries.js';
-import { auditEvents } from '../schema/foundation.js';
 import { operatorCommands } from '../schema/runs/operator.js';
 import {
   withWorkspaceTransaction,
@@ -106,10 +107,9 @@ function withOperatorTransaction<T>(
 function appendOperatorAudit(
   transaction: WorkspaceTransaction,
   request: CommandRequest,
-  metadata: Readonly<Record<string, unknown>>,
+  metadata: AuditMetadata,
 ): Promise<unknown> {
-  return transaction.db.insert(auditEvents).values({
-    id: generatePersistedId(),
+  return appendAuditFact(transaction, {
     workspaceId: transaction.workspaceId,
     action: `operator.${request.commandType.replaceAll('.', '_')}`,
     targetType: request.target.type,
@@ -217,8 +217,7 @@ async function readOperatorCommand(
             eq(operatorCommands.id, input.commandId),
           ),
         );
-      await tx.db.insert(auditEvents).values({
-        id: generatePersistedId(),
+      await appendAuditFact(tx, {
         workspaceId: tx.workspaceId,
         action: 'operator.command_status',
         targetType: 'operator-command',

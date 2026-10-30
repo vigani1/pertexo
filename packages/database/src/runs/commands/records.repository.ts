@@ -1,4 +1,5 @@
-import { auditEvents } from '../../schema/foundation.js';
+import type { AuditMetadata } from '../../governance/audit/events.repository.js';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import {
   workflowRunRecords,
   type WorkflowRunRow,
@@ -12,10 +13,8 @@ import {
   workflowRunReadQuery,
   runAdmissionBlockers,
 } from '../queries/admission.queries.js';
-import type { sql } from 'drizzle-orm';
 import { and, eq } from 'drizzle-orm';
 
-import { generatePersistedId } from '../../platform/persisted-id.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { acceptWorkflowRun } from './acceptance.repository.js';
 import type { AcceptWorkflowRunInput } from './acceptance/contract.js';
@@ -101,7 +100,7 @@ export async function acceptWorkflowRunWithAudit(
     acceptance: AcceptWorkflowRunInput;
     actorId: string;
     auditAction: string;
-    auditMetadata: ReturnType<typeof sql>;
+    auditMetadata: AuditMetadata;
     requestId?: string;
     traceId?: string;
   }>,
@@ -132,13 +131,12 @@ export async function insertWorkflowRunAudit(
     runId: string;
     requestId?: string;
     traceId?: string;
-    metadata: ReturnType<typeof sql>;
+    metadata: AuditMetadata;
   }>,
 ): Promise<void> {
-  await transaction.db.insert(auditEvents).values({
-    id: generatePersistedId(),
+  await appendAuditFact(transaction, {
     workspaceId: transaction.workspaceId,
-    actorUserId: input.actorId,
+    actorId: input.actorId,
     action: input.action,
     targetType: 'workflow_run',
     targetId: input.runId,

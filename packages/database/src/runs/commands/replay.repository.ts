@@ -65,7 +65,11 @@ export async function replayWorkflowRunInTransaction(
     },
     actorId: input.actorId,
     auditAction: 'workflow.run.replayed',
-    auditMetadata: sql`jsonb_build_object('sourceRunId', ${input.sourceRunId}::text, 'workflowId', ${source.workflowId}::text, 'workflowVersionId', ${projection.id}::text)`,
+    auditMetadata: {
+      sourceRunId: input.sourceRunId,
+      workflowId: source.workflowId,
+      workflowVersionId: projection.id,
+    },
     ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
     ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
   });

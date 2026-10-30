@@ -1,6 +1,8 @@
+import type { AuditMetadata } from '../../governance/audit/events.repository.js';
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaces, auditEvents } from '../../schema/foundation.js';
+import { workspaces } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 
@@ -21,7 +23,7 @@ export type OrganizationScope = Readonly<{
 export type OrganizationAudit = Readonly<{
   action: string;
   targetId: string;
-  metadata?: Readonly<Record<string, unknown>>;
+  metadata?: AuditMetadata;
 }>;
 
 export type OrganizationCommand<T> = Readonly<{
@@ -89,18 +91,14 @@ export async function runOrganizationCommand<T>(
   }
   await lockOrganization(client, scope.workspaceId);
   const { result, audit } = await command.apply();
-  await drizzle(client)
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: scope.workspaceId,
-      actorUserId: scope.actorId,
-      action: audit.action,
-      targetType: 'workflow_organization',
-      targetId: audit.targetId,
-      metadata: audit.metadata ?? {},
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: scope.workspaceId,
+    actorId: scope.actorId,
+    action: audit.action,
+    targetType: 'workflow_organization',
+    targetId: audit.targetId,
+    metadata: audit.metadata ?? {},
+  });
   await completeCommand(client, identity, result);
   return { result, replayed: false };
 }

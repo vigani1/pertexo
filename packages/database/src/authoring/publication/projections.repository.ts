@@ -1,9 +1,9 @@
+import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { workflowIntegrationUsage as integrationUsage } from '../../schema/authoring/integrations.js';
 import { workflows } from '../../schema/authoring/workflows.js';
-import { auditEvents } from '../../schema/foundation.js';
 import { outboxEvents } from '../../schema/transport.js';
 import { revokeRemovedFormAccess } from '../../triggers/forms/publication.repository.js';
 
@@ -135,23 +135,19 @@ export async function finalizePublication(
       payloadChecksum: canonicalOutboxPayloadChecksum(payload),
     })
     .catch(rethrowQueryFailure);
-  await db
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      actorUserId: input.actorId,
-      action: 'workflow.published',
-      targetType: 'workflow',
-      targetId: workflowId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: {
-        checksum: version.checksum,
-        reused,
-        versionId: version.id,
-        versionNumber: version.versionNumber,
-      },
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    action: 'workflow.published',
+    targetType: 'workflow',
+    targetId: workflowId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata: {
+      checksum: version.checksum,
+      reused,
+      versionId: version.id,
+      versionNumber: version.versionNumber,
+    },
+  });
 }

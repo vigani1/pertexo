@@ -1,9 +1,8 @@
+import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { generatePersistedId } from '../../../platform/persisted-id.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { workflows } from '../../../schema/authoring/workflows.js';
-import { auditEvents } from '../../../schema/foundation.js';
 
 import type { PoolClient } from 'pg';
 
@@ -104,25 +103,21 @@ async function applyRename(
   if (row === undefined)
     throw new WorkflowNameRevisionConflictError(current.nameRevision);
   const renamed = Object.freeze(row);
-  await drizzle(client)
-    .insert(auditEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: command.workspaceId,
-      actorUserId: command.actorId,
-      action: 'workflow.renamed',
-      targetType: 'workflow',
-      targetId: command.workflowId,
-      requestId: command.requestId,
-      traceId: command.traceId,
-      metadata: {
-        fromName: current.name,
-        toName: renamed.name,
-        fromNameRevision: current.nameRevision,
-        toNameRevision: renamed.nameRevision,
-      },
-    })
-    .catch(rethrowQueryFailure);
+  await appendAuditFact(client, {
+    workspaceId: command.workspaceId,
+    actorId: command.actorId,
+    action: 'workflow.renamed',
+    targetType: 'workflow',
+    targetId: command.workflowId,
+    requestId: command.requestId,
+    traceId: command.traceId,
+    metadata: {
+      fromName: current.name,
+      toName: renamed.name,
+      fromNameRevision: current.nameRevision,
+      toNameRevision: renamed.nameRevision,
+    },
+  });
   return renamed;
 }
 
