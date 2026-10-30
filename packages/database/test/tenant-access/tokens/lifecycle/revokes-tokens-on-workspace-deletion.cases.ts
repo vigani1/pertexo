@@ -49,4 +49,52 @@ export function registerRevokesTokensOnWorkspaceDeletion(): void {
     expect(workspace.rows).toEqual([{ status: 'suspended' }]);
     expect(await tokens.authenticate(credential)).toBeUndefined();
   });
+
+  // audit-1030 follow-up 1: reactivation lifts only the workspace's suspension.
+  it.fails(
+    'keeps revoked API tokens revoked after a reactivation',
+    async () => {
+      const owner = await createOwner();
+      const created = await tokens.create({
+        ...input(),
+        ...owner,
+        idempotencyKey: randomUUID(),
+      });
+      if (created.replayed)
+        throw new Error('First creation unexpectedly replayed');
+      const credential = parsed(created.secret);
+      const lifecycle = (
+        commandType: 'deletion_requested' | 'deletion_restored',
+      ) =>
+        identities.requestWorkspaceLifecycleOperation({
+          workspaceId: owner.workspaceId,
+          actorUserId: owner.ownerUserId,
+          commandType,
+          reason: 'Closing the workspace',
+          idempotencyKey: randomUUID(),
+        });
+      await lifecycle('deletion_requested');
+      await lifecycle('deletion_restored');
+
+      await identities.requestWorkspaceLifecycleOperation({
+        workspaceId: owner.workspaceId,
+        actorUserId: owner.ownerUserId,
+        commandType: 'reactivated' as never,
+        reason: 'Workspace reactivated',
+        idempotencyKey: randomUUID(),
+      });
+
+      const workspace = await admin.query<{ status: string }>(
+        'select status from app.workspaces where id=$1',
+        [owner.workspaceId],
+      );
+      expect(workspace.rows).toEqual([{ status: 'active' }]);
+      const revoked = await admin.query<{ revoked: boolean }>(
+        'select revoked_at is not null revoked from app.api_tokens where id=$1',
+        [created.token.id],
+      );
+      expect(revoked.rows).toEqual([{ revoked: true }]);
+      expect(await tokens.authenticate(credential)).toBeUndefined();
+    },
+  );
 }
