@@ -2,12 +2,7 @@ import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 import { apiProblemIssueSchema } from '../../errors/api-problem.js';
-import {
-  boundedNodeTestJsonInputSchema,
-  NODE_TEST_JSON_MAX_DEPTH,
-} from '../shared/bounded-json-input.js';
-
-export { NODE_TEST_JSON_MAX_DEPTH };
+import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js';
 
 const NODE_TEST_LIMITS = Object.freeze({
   validationIssues: 100,

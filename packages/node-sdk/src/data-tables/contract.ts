@@ -32,6 +32,12 @@ export const DATA_TABLE_LIMITS = Object.freeze({
   batchRows: 1_000,
   resultBytes: 1_048_576,
 });
+/** What a row or filter value may hold, checked before any recursive parse. */
+export const DATA_TABLE_JSON_LIMITS = Object.freeze({
+  bytes: DATA_TABLE_LIMITS.rowBytes,
+  depth: 32,
+  members: 8_000,
+});
 // A table's name is shown to people and finds the table for its steps, so
 // like n8n it may hold words with spaces; column names stay identifiers.
 export const DATA_TABLE_NAME_PATTERN =
@@ -102,11 +108,7 @@ export const dataTableValuesStructuralSchema = z.record(
   dataTableValueStructuralSchema,
 );
 const boundedTableJson = z.unknown().superRefine((value, context) => {
-  const checked = inspectBoundedJson(value, {
-    bytes: DATA_TABLE_LIMITS.rowBytes,
-    depth: 32,
-    members: 8_000,
-  });
+  const checked = inspectBoundedJson(value, DATA_TABLE_JSON_LIMITS);
   if (!checked.ok)
     context.addIssue({
       code: 'custom',

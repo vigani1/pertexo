@@ -2,7 +2,6 @@ import { CANONICAL_JSON_MAX_DEPTH } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
 import {
-  NODE_TEST_JSON_MAX_DEPTH,
   nodeTestExecuteAcceptedResponseSchema,
   nodeTestRequestSchema,
   nodeValidationResponseSchema,
@@ -48,11 +47,6 @@ const preview = {
 };
 
 describe('node-testing public contracts', () => {
-  // nodes-08: the coder deletes this together with the copied constant.
-  it('keeps the browser preflight depth identical to canonical server JSON', () => {
-    expect(NODE_TEST_JSON_MAX_DEPTH).toBe(CANONICAL_JSON_MAX_DEPTH);
-  });
-
   // The browser preflight accepts exactly the depth the server's canonical
   // JSON accepts.
   it.each([
