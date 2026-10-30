@@ -50,9 +50,11 @@ the field lives there.
   an upload-specific budget per form link and client (reuse the rate-limit
   admission, as `submit` does). A submission can only reference uploads begun
   through the same form link and session window. Unsubmitted uploads expire
-  through the existing abandoned-upload cleanup (24 hours or the existing
-  setting). The workspace's storage quota applies, and over-quota uploads fail
-  with the existing quota problem.
+  through the existing abandoned-upload cleanup (24 hours, or 1 hour through a
+  public link). The workspace's storage quota applies, and over-quota uploads
+  fail with the existing quota problem. Unsent public-link files also share a
+  100 MiB allowance per workspace (`form.upload_limit`), so strangers can't
+  fill the quota before cleanup.
 - **Type checks** use extension plus a magic-number sniff for the allowed groups.
   A mismatch is rejected as `form.file_type_not_allowed`. Files are not
   virus-scanned; the guide says so, as the files guide already does.

@@ -122,9 +122,11 @@ Uploads reuse the artifact transfer and its reservation, idempotency, capacity
 and cleanup. A `form-upload` artifact is bound in `form_uploads` to its
 published version or task, field, response session digest and the link
 capability digest or uploading member. A submission resolves only bound,
-available, unexpired uploads. Unsent files expire after one day; references in
-run input or an answered task retain them like any execution fact. Public
-uploads spend the form read budget and a per-client, per-link and per-workspace
-upload budget. Finalization verifies size and SHA-256 and sniffs the leading
+available, unexpired uploads. Unsent files expire after one day, or one hour
+through a public link; references in run input or an answered task retain them
+like any execution fact. Public uploads spend the form read budget and a
+per-client, per-link and per-workspace upload budget, and unsent public files
+share a 100 MiB allowance per workspace; acceptance marks a response's files
+sent. Finalization verifies size and SHA-256 and sniffs the leading
 bytes against the extension; files are still never scanned, parsed or rendered
 outside an explicit step.
