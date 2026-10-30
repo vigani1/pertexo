@@ -14,6 +14,7 @@ import type {
 import { describe, expect, it, vi } from 'vitest';
 
 import { createApiWebhookRuntime } from '../../src/platform/webhooks/runtime.module.js';
+import { silentLogger } from '../support/silent-logger.js';
 
 const config = {
   kmsKeyReference: 'alias/pertexo-webhooks',
@@ -47,7 +48,7 @@ describe('API webhook runtime ownership', () => {
         },
       },
       databaseConfig,
-      { databaseOverride: database(databaseClose) },
+      { logger: silentLogger, databaseOverride: database(databaseClose) },
     );
     const context = {
       workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -73,6 +74,7 @@ describe('API webhook runtime ownership', () => {
     });
     const databaseClose = vi.fn().mockRejectedValue(databaseFailure);
     const runtime = await createApiWebhookRuntime(config, databaseConfig, {
+      logger: silentLogger,
       databaseOverride: database(databaseClose),
       runtime: undefined,
       factories: { envelope: () => envelope(envelopeClose) },
@@ -99,6 +101,7 @@ describe('API webhook runtime ownership', () => {
 
     await expect(
       createApiWebhookRuntime(config, databaseConfig, {
+        logger: silentLogger,
         databaseOverride: database(databaseClose),
         runtime: undefined,
         factories: {
@@ -115,6 +118,7 @@ describe('API webhook runtime ownership', () => {
     const constructionFailure = new Error('envelope construction failed');
     const cleanupFailure = new Error('database cleanup failed');
     const failure = await createApiWebhookRuntime(config, databaseConfig, {
+      logger: silentLogger,
       databaseOverride: database(() => Promise.reject(cleanupFailure)),
       runtime: undefined,
       factories: {
@@ -143,6 +147,7 @@ describe('API webhook runtime ownership', () => {
 
     await expect(
       createApiWebhookRuntime(config, databaseConfig, {
+        logger: silentLogger,
         databaseOverride: database(databaseClose),
         runtime: undefined,
         factories: { envelope: () => invalidEnvelope },
@@ -163,6 +168,7 @@ describe('API webhook runtime ownership', () => {
       },
     ) as unknown as typeof createWebhookTriggerDatabase;
     const runtime = await createApiWebhookRuntime(config, databaseConfig, {
+      logger: silentLogger,
       databaseOverride: undefined,
       runtime: sharedRuntime,
       factories: {

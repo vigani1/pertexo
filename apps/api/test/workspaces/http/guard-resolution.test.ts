@@ -27,6 +27,7 @@ import type {
   WorkspaceAccess,
   WorkspaceAccessQuery,
 } from '../../../src/authorization/index.js';
+import { silentLogger } from '../../support/silent-logger.js';
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -173,6 +174,7 @@ const webhookModule = WebhookModule.register(
       checkpointFactory: () => {
         throw new Error('webhook business layer must not be called');
       },
+      logger: silentLogger,
     },
   },
   identityDependencies.authorization,

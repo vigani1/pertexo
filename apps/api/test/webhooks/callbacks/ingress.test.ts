@@ -15,6 +15,7 @@ import {
   type CallbackStore,
 } from '@pertexo/database/runs';
 import { registerCallbackIngress } from '../../../src/webhooks/callbacks/ingress.js';
+import { silentLogger } from '../../support/silent-logger.js';
 const close: (() => Promise<unknown>)[] = [];
 afterEach(async () => {
   for (const cleanup of close.splice(0).reverse()) await cleanup();
@@ -80,6 +81,7 @@ function fixture(authentication: CallbackWaitConfig['authentication']) {
         return { allowed: true };
       },
     },
+    logger: silentLogger,
   });
   close.push(async () => {
     await app.close();
@@ -256,7 +258,7 @@ it('refuses oversized or malformed input without accepting the callback', async 
   expect(f.retained).toEqual([]);
 });
 // api-03: an outage behind callback ingress must reach the logs with its cause.
-it.fails('logs the cause when a callback cannot be read', async () => {
+it('logs the cause when a callback cannot be read', async () => {
   const keys = createCallbackTokenKeys({
     origin: 'https://example.test',
     keys: {

@@ -22,6 +22,7 @@ import {
   seedWebhook,
   ownerQuery,
 } from './fixture.js';
+import { silentLogger } from '../../support/silent-logger.js';
 
 export function registerCapturesOneRealTestEventBefore(): void {
   it('captures one real test event before publication, across replicas, with authentication and pin fences', async () => {
@@ -69,6 +70,7 @@ export function registerCapturesOneRealTestEventBefore(): void {
         encryption,
         checkpointFactory: (projection) =>
           createInitialCheckpoint(projection, { catalog }),
+        logger: silentLogger,
       },
       authoring,
       apiPool,
@@ -85,6 +87,7 @@ export function registerCapturesOneRealTestEventBefore(): void {
         encryption,
         checkpointFactory: (projection) =>
           createInitialCheckpoint(projection, { catalog }),
+        logger: silentLogger,
       },
       seed: seedWebhook,
       query: ownerQuery,

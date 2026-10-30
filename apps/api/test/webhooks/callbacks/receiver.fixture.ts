@@ -4,6 +4,7 @@ import { createCallbackStore } from '@pertexo/database/runs';
 import { createCallbackTokenKeys } from '@pertexo/integrations/server';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { registerCallbackIngress } from '../../../src/webhooks/callbacks/ingress.js';
+import { silentLogger } from '../../support/silent-logger.js';
 
 const databaseUrl = process.env.CALLBACK_FIXTURE_DATABASE_URL;
 const redisUrl = process.env.CALLBACK_FIXTURE_REDIS_URL;
@@ -51,7 +52,12 @@ const shutdown = () => {
 process.once('SIGTERM', shutdown);
 process.once('disconnect', shutdown);
 try {
-  registerCallbackIngress(app, { store, keys, rateLimitConsumer: limits });
+  registerCallbackIngress(app, {
+    store,
+    keys,
+    rateLimitConsumer: limits,
+    logger: silentLogger,
+  });
   const origin = await app.listen({ port: 0, host: '127.0.0.1' });
   process.send({ origin });
 } catch (error) {

@@ -35,7 +35,7 @@ describe('webhook ingress failures', () => {
     expect(health).toHaveBeenCalledWith('degraded');
   });
 
-  it.fails('logs the cause of an unexpected acceptance failure', async () => {
+  it('logs the cause of an unexpected acceptance failure', async () => {
     const failure = new Error('connection terminated unexpectedly');
     const log = logger();
     const { application } = setup({
@@ -50,7 +50,7 @@ describe('webhook ingress failures', () => {
     expect(log.error.mock.calls[0]).toContain(failure);
   });
 
-  it.fails('logs the cause of an unexpected preflight failure', async () => {
+  it('logs the cause of an unexpected preflight failure', async () => {
     const failure = new Error('verification read failed');
     const log = logger();
     const fixture = await setupPreflight(undefined, log);
@@ -68,23 +68,20 @@ describe('webhook ingress failures', () => {
     expect(log.error.mock.calls[0]).toContain(failure);
   });
 
-  it.fails(
-    'logs the cause when the committed response cannot be read',
-    async () => {
-      const failure = new Error('response read failed');
-      const log = logger();
-      const f = setup({ logger: log });
-      f.database.acceptVerifiedDelivery.mockResolvedValue({
-        runId: '99999999-9999-4999-8999-999999999999',
-        replayed: false,
-        responseWaitSeconds: 1,
-      });
-      f.database.readResponse.mockRejectedValue(failure);
-      expect(
-        (await f.application.inject(request('{}', currentSecret))).statusCode,
-      ).toBe(202);
-      expect(log.error).toHaveBeenCalledOnce();
-      expect(log.error.mock.calls[0]).toContain(failure);
-    },
-  );
+  it('logs the cause when the committed response cannot be read', async () => {
+    const failure = new Error('response read failed');
+    const log = logger();
+    const f = setup({ logger: log });
+    f.database.acceptVerifiedDelivery.mockResolvedValue({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: false,
+      responseWaitSeconds: 1,
+    });
+    f.database.readResponse.mockRejectedValue(failure);
+    expect(
+      (await f.application.inject(request('{}', currentSecret))).statusCode,
+    ).toBe(202);
+    expect(log.error).toHaveBeenCalledOnce();
+    expect(log.error.mock.calls[0]).toContain(failure);
+  });
 });
