@@ -1,6 +1,7 @@
-import type { JsonValue } from '@pertexo/workflow-model';
+import { isRecord, type JsonValue } from '@pertexo/workflow-model';
 
 import { WorkflowEngineError } from './errors.js';
+import { hasExactFields } from './exact-fields.js';
 
 export function operationError(
   code:
@@ -26,7 +27,7 @@ export function record(
 export function isJsonRecord(
   value: unknown,
 ): value is Readonly<Record<string, JsonValue>> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  return isRecord(value);
 }
 
 export function exactKeys(
@@ -35,10 +36,6 @@ export function exactKeys(
   optional: readonly string[] = [],
   code: 'observation_invalid' | 'attempt_invalid' = 'observation_invalid',
 ): void {
-  const allowed = new Set([...required, ...optional]);
-  if (
-    !required.every((key) => Object.hasOwn(value, key)) ||
-    !Object.keys(value).every((key) => allowed.has(key))
-  )
+  if (!hasExactFields(value, required, optional))
     operationError(code, 'observation fields are invalid');
 }

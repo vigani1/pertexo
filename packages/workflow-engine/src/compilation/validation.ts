@@ -7,9 +7,11 @@ import type {
 } from '@pertexo/node-sdk';
 import {
   canonicalJson,
+  isRecord,
   normalizedJson,
   type JsonValue,
 } from '@pertexo/workflow-model';
+import { hasExactFields } from '../exact-fields.js';
 import type { SideEffectClass } from '../types.js';
 import {
   type ExecutableRuntimePolicies,
@@ -20,10 +22,8 @@ import {
 } from './foundation.js';
 
 export function record(value: unknown, label: string): Record<string, unknown> {
-  const invalidRecord =
-    value === null || typeof value !== 'object' || Array.isArray(value);
-  if (invalidRecord) fail(`${label} must be an object`);
-  return value as Record<string, unknown>;
+  if (!isRecord(value)) fail(`${label} must be an object`);
+  return value;
 }
 
 export function exactKeys(
@@ -31,11 +31,7 @@ export function exactKeys(
   required: readonly string[],
   optional: readonly string[] = [],
 ): void {
-  const allowed = new Set([...required, ...optional]);
-  if (
-    !required.every((key) => Object.hasOwn(value, key)) ||
-    !Object.keys(value).every((key) => allowed.has(key))
-  )
+  if (!hasExactFields(value, required, optional))
     fail('executable envelope contains missing or unknown fields');
 }
 
