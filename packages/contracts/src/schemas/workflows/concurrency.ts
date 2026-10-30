@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { createApiProblemSchema } from '../../errors/api-problem.js';
 
+/** How many recent skipped triggers one settings read returns. */
+export const WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX = 20;
+
 export const workflowConcurrencyRevisionSchema = z
   .number()
   .int()
@@ -33,7 +36,10 @@ export const workflowConcurrencySettingsSchema = z
       'unavailable',
     ]),
     overflow: z.enum(['queue', 'skip']),
-    recentSkips: z.array(workflowConcurrencySkipSchema).max(20).optional(),
+    recentSkips: z
+      .array(workflowConcurrencySkipSchema)
+      .max(WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX)
+      .optional(),
   })
   .strict();
 export const workflowConcurrencySettingsRequestSchema = z

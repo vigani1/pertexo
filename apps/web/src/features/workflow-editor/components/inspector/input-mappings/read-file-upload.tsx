@@ -1,6 +1,7 @@
 import { UploadFile, type FileUploadScope } from '@/features/artifacts/public';
 import type { WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
+import { FILE_LIMIT_COPY } from '../../../model/inspector/file-limit-copy';
 
 export function ReadFileUpload({
   scope,
@@ -24,8 +25,8 @@ export function ReadFileUpload({
       }
       description={
         node.config.outputMode === 'pages'
-          ? 'Up to 10 MB, or the lower storage limit. Using this file replaces the file mapping. Split larger files.'
-          : 'Inline reads support 1 MB. Choose Output pages on Setup for larger files up to 10 MB. Using this file replaces the file mapping.'
+          ? `Up to ${FILE_LIMIT_COPY.file}, or the lower storage limit. Using this file replaces the file mapping. Split larger files.`
+          : `Inline reads support ${FILE_LIMIT_COPY.inline}. Choose Output pages on Setup for larger files up to ${FILE_LIMIT_COPY.file}. Using this file replaces the file mapping.`
       }
       onUse={(reference) => {
         form.commit(

@@ -14,6 +14,7 @@ import {
   MappingValueEditor,
   type MappingSources,
 } from '../input-mappings/value-editor';
+import { FILE_LIMIT_COPY } from '../../../model/inspector/file-limit-copy';
 
 export function FormPart({
   part,
@@ -132,7 +133,7 @@ export function FormPart({
           disabled={!editable}
           label="Upload part file"
           useLabel="Use file for this part"
-          description="The entire request must fit in 10 MB including form headers. A full 10 MB file will not fit. Using a file replaces this part’s value; its original local filename is not saved."
+          description={`The entire request must fit in ${FILE_LIMIT_COPY.request} including form headers. A full ${FILE_LIMIT_COPY.request} file will not fit. Using a file replaces this part’s value; its original local filename is not saved.`}
           onUse={(reference) => {
             return onChange(
               {

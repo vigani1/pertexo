@@ -10,6 +10,7 @@ import {
 } from '../../../model/inspector/http-body';
 import { FormPart } from './part';
 import { focusFormPart } from './focus';
+import { FILE_LIMIT_COPY } from '../../../model/inspector/file-limit-copy';
 
 export function MultipartParts({
   parts,
@@ -37,9 +38,9 @@ export function MultipartParts({
   return (
     <>
       <p className="text-sm text-muted-foreground">
-        The whole request must fit in 10 MB, including form headers. A full 10
-        MB file will not fit. Split larger files into separate uploads accepted
-        by your destination.
+        The whole request must fit in {FILE_LIMIT_COPY.request}, including form
+        headers. A full {FILE_LIMIT_COPY.request} file will not fit. Split
+        larger files into separate uploads accepted by your destination.
       </p>
       <p className="text-xs text-subtle-foreground">
         {!validation.ok ? (

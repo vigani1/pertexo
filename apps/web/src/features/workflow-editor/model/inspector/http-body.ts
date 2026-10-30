@@ -14,6 +14,7 @@ import {
   validateInputMappingRows,
   type InputMappingDraftRow,
 } from './input-mappings/draft';
+import { FILE_LIMIT_COPY } from './file-limit-copy';
 
 export type HttpBodyValue = Readonly<{
   multipart: HttpMultipartConfig | undefined;
@@ -162,8 +163,7 @@ export function validateBodyDraft(
   if (knownBytes >= HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
     return {
       ok: false,
-      error:
-        'Known part data already fills 10 MB before form headers. Use smaller files or split them into separate uploads.',
+      error: `Known part data already fills ${FILE_LIMIT_COPY.request} before form headers. Use smaller files or split them into separate uploads.`,
       parts,
       knownBytes,
       unknownSize,
