@@ -456,7 +456,8 @@ bytes must match their extension.
 ## How long files stay
 
 An unreferenced finalized upload has the existing 30-day deadline; a form or
-Request input upload that was never sent has one day. A retained
+Request input upload that was never sent has one day, or one hour through a
+public form link. A retained
 draft, published version, input-case payload, execution fact or answered input
 request protects its file.
 Archiving a workflow keeps these references. Old input-case payloads stop keeping
