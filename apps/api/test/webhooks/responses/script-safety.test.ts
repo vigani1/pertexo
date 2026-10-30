@@ -45,8 +45,7 @@ function expectInert(headers: OutgoingHttpHeaders): void {
 }
 
 describe('a workflow response opened in a browser', () => {
-  // sec-02: a response stored as XML rendered as XHTML and ran on the app's origin.
-  it.fails.each(STORED_TYPES)(
+  it.each(STORED_TYPES)(
     'carries a policy that stops script for %s',
     async (contentType) => {
       expectInert((await reply(contentType)).headers);

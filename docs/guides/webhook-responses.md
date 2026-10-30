@@ -5,7 +5,7 @@ Pertexo saves the run. Execution happens on the worker.
 
 To return a workflow result, open the Webhook step’s **Setup**, choose **When
 the workflow responds**, and set a wait between 1 and 30 seconds (10 by default).
-Add a **Respond to webhook** step, choose JSON or text (plain text, CSV or XML), and map its `body`
+Add a **Respond to webhook** step, choose JSON or text (plain text or CSV), and map its `body`
 on **Inputs**. Map `statusCode` to change the default 200. Connect its outgoing
 link when more work should follow: replying does not end the run.
 
@@ -47,16 +47,20 @@ records the winning response status.
 Bodies are at most 1 MB in UTF-8, including JSON encoding. Normal engine/input
 limits still apply; mapping and settings overhead can reduce the usable body.
 Use a smaller response if it does not fit. Plain text cannot contain a null
-character; JSON can encode one. JSON/text only; no HTML, binary files,
-streaming or redirect responses.
+character; JSON can encode one. JSON, plain text and CSV only; no HTML, XML,
+binary files, streaming or redirect responses. Each of those could run script in
+the browser of someone who opens the link, on this app's address, or send them
+somewhere else. To answer a service that wants XML, send it as plain text if it
+accepts that.
 
 An optional mapped `headers` object accepts `content-language`, `retry-after`,
 `x-request-id`, `x-correlation-id` and non-reserved custom x- headers. Use at most
 16 headers with 1,024 ASCII characters per value. Names are case-insensitive and
 normalized to lowercase; duplicates and control characters are refused. Proxy,
 forwarding, security and Pertexo headers cannot be overridden. Pertexo generates
-Content-Type (with UTF-8 charset), `Cache-Control: no-store` and
-`X-Content-Type-Options: nosniff`. Set-Cookie, Content-Length, Location and
+Content-Type (with UTF-8 charset), `Cache-Control: no-store`,
+`X-Content-Type-Options: nosniff` and a `Content-Security-Policy` that keeps a
+browser from running anything in the response. Set-Cookie, Content-Length, Location and
 hop-by-hop headers are unavailable.
 
 Only an original webhook run with this mode enabled can reply. Manual runs,

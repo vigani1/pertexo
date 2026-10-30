@@ -45,7 +45,6 @@ for (const name of EXPECTED_TO_RUN_TODAY)
   test(`a ${name} response does not run script on the app's origin`, async ({
     page,
   }) => {
-    test.fail(true, 'sec-02: application/xml renders and runs on the origin');
     const { reached, title } = await openAsVictim(page, hooks[name]);
     expect(reached).toEqual([]);
     expect(title).not.toBe('PWNED');

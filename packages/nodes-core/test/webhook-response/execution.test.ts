@@ -74,7 +74,7 @@ describe('Respond to webhook', () => {
       'x-content-hash': 'sha256:example',
     });
   });
-  it.each(['text/csv', 'application/xml'] as const)(
+  it.each(['text/csv'] as const)(
     'sends exact %s text and normalized safe custom headers',
     async (textContentType) => {
       const f = fixture(

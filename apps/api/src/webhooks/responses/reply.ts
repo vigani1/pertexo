@@ -1,6 +1,7 @@
 import type { StructuredLogger } from '@pertexo/observability';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
+import { API_RESPONSE_SECURITY_HEADERS } from '../../platform/http/response-security.js';
 import type { WebhookResponseWaiter } from './wait.js';
 import type { WebhookIngressTelemetry } from '../ingress/telemetry.js';
 import { record } from '../ingress/reply.js';
@@ -37,13 +38,16 @@ export async function replyToAcceptedWebhook(
       if (request.raw.socket.destroyed) return;
       if (snapshot?.state === 'responded') {
         const response = snapshot.response;
-        reply
-          .header('cache-control', 'no-store')
-          .header('x-content-type-options', 'nosniff')
-          .type(`${response.contentType}; charset=utf-8`)
-          .code(response.statusCode);
         for (const [name, value] of Object.entries(response.headers))
           reply.header(name, value);
+        // After the workflow's headers: a row stored as XML before the step
+        // stopped offering it is still a page a browser would run, so this
+        // policy is what makes it safe.
+        reply
+          .headers(API_RESPONSE_SECURITY_HEADERS)
+          .header('cache-control', 'no-store')
+          .type(`${response.contentType}; charset=utf-8`)
+          .code(response.statusCode);
         await reply.send(response.body);
         return;
       }
