@@ -2,7 +2,7 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { XIcon } from 'lucide-react';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
 import type { useConnectionSharingEditor } from '../../hooks/use-sharing-editor';
-import { ROLE_NAMES } from '@/features/workspaces/roles.public';
+import { ADMINISTRATORS, ROLE_NAMES } from '@/features/workspaces/roles.public';
 import { SharingModeChoice } from '@/components/patterns/sharing/mode-choice';
 import {
   SharingAdministratorsEntry,
@@ -67,7 +67,7 @@ export function ConnectionSharingPanel({
         }}
         restricted={{
           label: 'Only people you choose',
-          hint: 'You, owners and admins always keep access.',
+          hint: `You, ${ADMINISTRATORS} always keep access.`,
         }}
         onChange={(mode) => {
           editor.update((value) => ({ ...value, mode }));

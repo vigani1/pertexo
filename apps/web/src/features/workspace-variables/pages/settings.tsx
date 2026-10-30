@@ -16,6 +16,7 @@ import { VariablesEditor } from '../components/editor';
 import { variableMatches, variableRows } from '../model/draft';
 import { Disclosure } from '@/components/ui/disclosure';
 import type { WorkspaceVariablesResponse } from '@pertexo/contracts';
+import { whoCan } from '@/features/workspaces/roles.public';
 
 function VariableFilter({
   value,
@@ -54,8 +55,8 @@ function ReadOnlyVariables({
   return (
     <>
       <Notice>
-        Only owners and admins in an active workspace can change shared
-        variables.
+        Only {whoCan('variable:manage')} in an active workspace can change
+        shared variables.
       </Notice>
       <dl className="divide-y divide-border">
         {variableRows(snapshot.values, snapshot.descriptions)

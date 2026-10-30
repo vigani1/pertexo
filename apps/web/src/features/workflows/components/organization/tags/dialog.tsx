@@ -16,6 +16,7 @@ import {
 import { useWorkflowOrganizationCommand } from '../../../hooks/use-workflow-organization-command';
 import { TagManagement } from './management';
 import { WorkflowTagCleanup } from './cleanup';
+import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
 
 type Props = Readonly<{
   apiClient: ApiClient;
@@ -33,7 +34,7 @@ export function WorkflowTagsDialog(props: Props) {
     return (
       <ActionDialog
         title="Tags"
-        description="Only owners and admins in an active workspace can manage tags."
+        description={`Only ${ADMINISTRATORS} in an active workspace can manage tags.`}
         locked={false}
         onClose={props.onClose}
         footer={

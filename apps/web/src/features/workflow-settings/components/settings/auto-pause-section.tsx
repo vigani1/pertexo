@@ -17,6 +17,7 @@ import type { Scope } from './auto-pause-fields';
 import { thresholdError } from './auto-pause-input';
 import { CommandProblem } from './auto-pause-fields';
 import { WorkspaceDefault } from './workspace-default';
+import { whoCan } from '@/features/workspaces/roles.public';
 
 function WorkflowRule({
   settings,
@@ -228,7 +229,8 @@ export function AutoPauseSection(scope: Scope) {
             {canManageWorkspace ? null : (
               <p className="text-sm text-muted-foreground">
                 Workspace default: {String(settings.workspaceThreshold)}{' '}
-                failures in a row. Only workspace owners can change it.
+                failures in a row. Only workspace {whoCan('workspace:manage')}{' '}
+                can change it.
               </p>
             )}
           </>

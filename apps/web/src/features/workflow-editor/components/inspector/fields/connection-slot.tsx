@@ -12,6 +12,8 @@ import { isUsableConnection } from '@/features/connections/queries.public';
 import { AddConnectionContext } from '../../../model/add-connection-context';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from './choice-select';
+import { whoCan } from '@/features/workspaces/roles.public';
+import { sentenceStart } from '@/lib/format/sentence';
 
 /**
  * Which workspace connection a step uses for one requirement. Only active
@@ -177,7 +179,9 @@ function ConnectionGuidance({
     return (
       <FieldDescription>
         There’s no active {label} in this workspace yet.
-        {canManage ? '' : ' Admins and owners can add one.'}
+        {canManage
+          ? ''
+          : ` ${sentenceStart(whoCan('connection:manage'))} can add one.`}
       </FieldDescription>
     );
   return null;

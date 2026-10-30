@@ -11,6 +11,8 @@ import {
   describePersonalChoice,
   describeSchedule,
 } from '../model/email-schedule';
+import { whoCan } from '@/features/workspaces/roles.public';
+import { sentenceStart } from '@/lib/format/sentence';
 export function NotificationPreferencesPage({
   scope,
 }: {
@@ -48,7 +50,7 @@ export function NotificationPreferencesPage({
               <ScheduleCard
                 title="Workspace default"
                 current={`Members get: ${describeSchedule(data.defaults).toLowerCase()}, unless they choose their own.`}
-                note="Owners and admins set it for everyone who hasn't chosen."
+                note={`${sentenceStart(whoCan('notification:manage_defaults'))} set it for everyone who hasn't chosen.`}
               >
                 {data.canManageDefaults ? (
                   <NotificationScheduleEditor

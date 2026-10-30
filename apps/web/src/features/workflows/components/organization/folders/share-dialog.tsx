@@ -2,7 +2,8 @@ import { XIcon } from 'lucide-react';
 import type { FolderPrincipal, WorkflowFolder } from '@pertexo/contracts';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { describeReadError } from '@/lib/api/error-copy';
-import { ROLE_NAMES } from '@/features/workspaces/roles.public';
+import { ADMINISTRATORS, ROLE_NAMES } from '@/features/workspaces/roles.public';
+import { sentenceStart } from '@/lib/format/sentence';
 import { SharingModeChoice } from '@/components/patterns/sharing/mode-choice';
 import {
   SharingAdministratorsEntry,
@@ -82,7 +83,7 @@ export function FolderShareDialog({
             }}
             restricted={{
               label: 'Only people you choose',
-              hint: 'Owners and admins always keep access.',
+              hint: `${sentenceStart(ADMINISTRATORS)} always keep access.`,
             }}
             onChange={(mode) => {
               editor.update((value) => ({ ...value, mode }));
