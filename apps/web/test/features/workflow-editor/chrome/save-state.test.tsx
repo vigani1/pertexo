@@ -76,3 +76,29 @@ it('says unsaved work waits for the connection while offline', () => {
   });
   expect(status).toHaveTextContent('Save unconfirmed');
 });
+
+it('gives a failed save its reason and drops it once a save succeeds', () => {
+  const graph = { nodes: [], edges: [], settings: {} };
+  const store = createEditorStore({ graph, etag: 'draft-1', revision: 1 });
+  render(
+    <EditorStoreContext value={store}>
+      <SaveState onRetry={vi.fn()} onReview={vi.fn()} />
+    </EditorStoreContext>,
+  );
+  const status = screen.getByRole('status');
+  act(() => {
+    store.getState().beginSave();
+    store.getState().reportFailure('Too many saves in a short time.', false);
+  });
+  expect(
+    screen.getByTitle('Too many saves in a short time.'),
+  ).toHaveTextContent('Couldn’t save');
+  act(() => {
+    store.getState().beginSave();
+    store
+      .getState()
+      .acceptSave('draft-2', 2, store.getState().generation, undefined);
+  });
+  expect(status).toHaveTextContent('Saved');
+  expect(screen.queryByTitle('Too many saves in a short time.')).toBeNull();
+});
