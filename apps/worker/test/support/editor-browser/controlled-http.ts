@@ -18,6 +18,11 @@ const logicalHost = new URL(controlledActionUrl).hostname;
 const publicTestAddress = '8.8.8.8';
 const maximumBytes = 4_096;
 
+const isOwnedRoute = (incoming: IncomingMessage): boolean =>
+  (incoming.method === 'POST' && incoming.url === '/effect') ||
+  (incoming.method === 'GET' &&
+    /^\/pages\?page=[123]$/u.test(incoming.url ?? ''));
+
 /** One owned real server; only this test transport can map the logical target. */
 export function createEditorControlledHttpTarget(
   authorizationValue: string,
@@ -38,14 +43,7 @@ export function createEditorControlledHttpTarget(
     incoming: IncomingMessage,
     outgoing: ServerResponse,
   ): boolean {
-    if (
-      stopped ||
-      !(
-        (incoming.method === 'POST' && incoming.url === '/effect') ||
-        (incoming.method === 'GET' &&
-          /^\/pages\?page=[123]$/u.test(incoming.url ?? ''))
-      )
-    ) {
+    if (stopped || !isOwnedRoute(incoming)) {
       outgoing.writeHead(404).end();
       return false;
     }
@@ -88,7 +86,9 @@ export function createEditorControlledHttpTarget(
   }
   const server = createServer((incoming, outgoing) => {
     const responseDisposed = () => stopped || outgoing.destroyed;
-    requests++;
+    // Other software on the machine probes new local ports (T3 Code's desktop
+    // app sends `GET /`). Those aren't requests a workflow step made.
+    if (isOwnedRoute(incoming)) requests++;
     void (async () => {
       try {
         if (!authorizeRequest(incoming, outgoing)) return;
@@ -287,6 +287,7 @@ export function createEditorControlledHttpTarget(
       });
       return startup;
     },
+    port: () => port,
     observe() {
       return {
         requests,
