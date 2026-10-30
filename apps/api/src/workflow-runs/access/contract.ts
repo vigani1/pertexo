@@ -1,8 +1,4 @@
 import type {
-  AuthorizationCapability,
-  AuthorizedWorkspaceContext,
-} from '../../authorization/index.js';
-import type {
   WorkflowRunApplicationInput,
   WorkflowRunRecord,
 } from '../ports.js';
@@ -70,7 +66,3 @@ export type StreamRunEventsInput = GetWorkflowRunInput &
     signal: AbortSignal;
   }>;
 
-export type CapabilityPolicy = (
-  role: AuthorizedWorkspaceContext['role'],
-  capability: AuthorizationCapability,
-) => boolean;

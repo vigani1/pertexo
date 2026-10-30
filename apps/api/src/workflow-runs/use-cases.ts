@@ -38,7 +38,6 @@ import type {
   GetWorkflowRunInput,
   ListWorkflowRunsInput,
   CancelWorkflowRunInput,
-  CapabilityPolicy,
 } from './access/contract.js';
 import { WorkflowRunNotFoundError, authorize } from './access/authorize.js';
 
@@ -117,7 +116,6 @@ export class GetWorkflowRunUseCase {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'get'>,
     private readonly authorization: WorkspaceAuthorizationSource,
-    private readonly capabilityPolicy: CapabilityPolicy = hasCapability,
   ) {}
 
   public async execute(
@@ -135,7 +133,7 @@ export class GetWorkflowRunUseCase {
       runId: input.runId,
       includeWorkflowName:
         credentialAllowsCapability(input.actor, 'workflow:read') &&
-        this.capabilityPolicy(authorization.role, 'workflow:read'),
+        hasCapability(authorization.role, 'workflow:read'),
     });
     if (result === undefined) throw new WorkflowRunNotFoundError();
     return toRunResponse(result);
@@ -146,7 +144,6 @@ export class ListWorkflowRunsUseCase {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'list'>,
     private readonly authorization: WorkspaceAuthorizationSource,
-    private readonly capabilityPolicy: CapabilityPolicy = hasCapability,
   ) {}
 
   public async execute(
@@ -161,7 +158,7 @@ export class ListWorkflowRunsUseCase {
     const context = normalizedCursorContext(input);
     const includeWorkflowName =
       credentialAllowsCapability(input.actor, 'workflow:read') &&
-      this.capabilityPolicy(authorization.role, 'workflow:read');
+      hasCapability(authorization.role, 'workflow:read');
     if (context.workflowNamePrefix !== undefined && !includeWorkflowName) {
       throw new WorkflowRunNotFoundError();
     }
