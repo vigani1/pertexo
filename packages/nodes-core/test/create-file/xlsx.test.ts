@@ -278,4 +278,15 @@ describe('Create file with Excel workbooks', () => {
     const { bytes } = await create({}, orders);
     expect(await readWorkbook(bytes)).toMatchObject({ kind: 'succeeded' });
   });
+
+  // Excel holds up to 32,767 characters in a cell; the writer and the reader
+  // must agree on that limit.
+  it('writes and reads back a cell at the 32,767-character limit', async () => {
+    const longest = 'x'.repeat(32_767);
+    const { bytes } = await create({}, [{ value: longest }]);
+    expect(await readWorkbook(bytes)).toMatchObject({
+      kind: 'succeeded',
+      output: [{ value: longest }],
+    });
+  });
 });
