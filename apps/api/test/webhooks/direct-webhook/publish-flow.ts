@@ -1,14 +1,17 @@
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
+import {
+  AuthoringValidationUnavailableError,
+  workflowDraftRepresentationTag,
+} from '@pertexo/workflow-model/server';
 import { expect } from 'vitest';
 
 import { issueBrowserSession } from '../support/browser-session.fixture.js';
 import { sha256 } from './fixture/encryption.js';
 import { reconciliation } from './fixture/lifecycle.js';
-import type {
-  seedWebhook} from './fixture.js';
+import type { seedWebhook } from './fixture.js';
 import {
   apiQuery,
   application,
@@ -57,6 +60,22 @@ export function webhookThenSet(value: number) {
   };
 }
 
+/** The validator refuses work on a saturated machine and asks for a retry, so the test retries. */
+async function publishRetryingValidation<T>(attempt: () => Promise<T>) {
+  for (let tries = 1; ; tries += 1) {
+    try {
+      return await attempt();
+    } catch (error) {
+      if (
+        tries === 5 ||
+        !(error instanceof AuthoringValidationUnavailableError)
+      )
+        throw error;
+      await delay(1_000);
+    }
+  }
+}
+
 /** Saves and publishes through the real authoring store; the worker's reconcile stays a separate step. */
 export async function publish(seeded: Seeded, graph: Graph) {
   const { actorId, workspaceId, workflowId } = seeded;
@@ -75,19 +94,21 @@ export async function publish(seeded: Seeded, graph: Graph) {
     expectedRevision: draft.revision,
     graphJson: parseWorkflowGraphDraft(graph),
   });
-  const label = randomUUID();
-  const published = await authoring.publishWorkflow({
-    actorId,
-    workspaceId,
-    workflowId,
-    representationTag: workflowDraftRepresentationTag({
+  const published = await publishRetryingValidation(() => {
+    const label = randomUUID();
+    return authoring.publishWorkflow({
+      actorId,
+      workspaceId,
       workflowId,
-      revision: saved.revision,
-      graph: saved.graphJson,
-      compatibilityFingerprint: saved.compatibility.fingerprint,
-    }),
-    idempotencyKey: `survives-publish-${label}`,
-    requestHash: sha256(`survives-publish-${label}`),
+      representationTag: workflowDraftRepresentationTag({
+        workflowId,
+        revision: saved.revision,
+        graph: saved.graphJson,
+        compatibilityFingerprint: saved.compatibility.fingerprint,
+      }),
+      idempotencyKey: `survives-publish-${label}`,
+      requestHash: sha256(`survives-publish-${label}`),
+    });
   });
   const versionId = published.version.id;
   return {
