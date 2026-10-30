@@ -30,18 +30,16 @@ function body(
   ordinal: number,
   status: InvocationState['status'],
 ): InvocationState {
-  return {
+  const identity = {
     invocationKey: key(nodeId, ordinal),
     nodeId,
-    status,
     attemptNumber: 1,
     branchPath: [],
     iterationPath: [{ loopNodeId: 'loop', ordinal }],
-    ...(status === 'succeeded' ? { output } : {}),
-    ...(status === 'waiting'
-      ? { resumeAt: occurredAt, waitKind: 'node_wait' as const }
-      : {}),
   };
+  return status === 'waiting'
+    ? { ...identity, status, resumeAt: occurredAt, waitKind: 'node_wait' }
+    : { ...identity, status, ...(status === 'succeeded' ? { output } : {}) };
 }
 
 function loop(overrides: Partial<LoopState> = {}): LoopState {

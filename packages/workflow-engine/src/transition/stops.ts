@@ -2,7 +2,7 @@ import { WorkflowEngineError } from '../errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { sameIterationPath } from '../scope.js';
 import { completeLoopIteration } from './scheduling/loops.js';
-import { assertNodeTransition } from './status.js';
+import { assertNodeTransition, invocationIdentity } from './status.js';
 import type { InvocationState, LoopState, EngineEventName } from '../types.js';
 import {
   isTerminalNodeStatus,
@@ -117,8 +117,10 @@ export function applyWorkflowStops(
       const control = invocations.get(loop.controlInvocationKey);
       if (control !== undefined && !isTerminalNodeStatus(control.status)) {
         const terminalStatus = loop.terminalStatus ?? controlStopStatus;
-        const { resumeAt: _resumeAt, waitKind: _waitKind, ...active } = control;
-        const stopped = { ...active, status: terminalStatus };
+        const stopped = {
+          ...invocationIdentity(control),
+          status: terminalStatus,
+        };
         invocations.set(control.invocationKey, stopped);
         eventDrafts.push(
           event(stoppedControlEvent(stopped.status), stoppedAt, {

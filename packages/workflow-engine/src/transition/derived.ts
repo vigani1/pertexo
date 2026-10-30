@@ -6,7 +6,7 @@ import {
   invocationKey as createInvocationKey,
   settleJoin,
 } from './scheduling/loops.js';
-import { assertNodeTransition } from './status.js';
+import { assertNodeTransition, invocationIdentity } from './status.js';
 import type { InvocationState } from '../types.js';
 import {
   assertLoopInvocations,
@@ -203,7 +203,10 @@ function completeExhaustedLoop(
   }
   if (parent.status === 'waiting') {
     assertNodeTransition(parent.status, 'succeeded');
-    const succeeded = { ...parent, status: 'succeeded' as const };
+    const succeeded = {
+      ...invocationIdentity(parent),
+      status: 'succeeded' as const,
+    };
     state.invocations.set(loop.controlInvocationKey, succeeded);
     state.eventDrafts.push(
       event('node.succeeded', input.occurredAt, { invocation: succeeded }),

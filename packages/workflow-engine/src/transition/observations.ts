@@ -3,7 +3,12 @@ import { WorkflowEngineError } from '../errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { recordBranchDisposition } from './scheduling/loops.js';
 import { sameOutputReference } from '../output-reference.js';
-import { assertNodeTransition, assertRunTransition } from './status.js';
+import {
+  assertNodeTransition,
+  assertRunTransition,
+  invocationIdentity,
+  resumedInvocation,
+} from './status.js';
 import type { InvocationState, WorkflowObservation } from '../types.js';
 import { applyLoopCompletion, applyLoopStart } from './loops.js';
 import {
@@ -146,7 +151,7 @@ function applyInvocationObservation(
     if (existing.waitKind === waitKind) return;
     assertNodeTransition(existing.status, 'waiting');
     state.invocations.set(existing.invocationKey, {
-      ...existing,
+      ...invocationIdentity(existing),
       status: 'waiting',
       waitKind,
     });
@@ -158,7 +163,7 @@ function applyInvocationObservation(
   if (observation.kind === 'wait') {
     assertNodeTransition(existing.status, 'waiting');
     state.invocations.set(existing.invocationKey, {
-      ...existing,
+      ...invocationIdentity(existing),
       status: 'waiting',
       resumeAt: observation.resumeAt,
       waitKind: observation.waitKind,
@@ -184,8 +189,7 @@ function applyInvocationObservation(
   }
   if (observation.kind === 'resume') {
     assertNodeTransition(existing.status, 'ready');
-    const { resumeAt: _, ...rest } = existing;
-    const resumed = { ...rest, status: 'ready' as const };
+    const resumed = resumedInvocation(existing);
     state.invocations.set(existing.invocationKey, resumed);
     if (!state.externalFactsArePersisted)
       state.eventDrafts.push(
@@ -234,8 +238,7 @@ function applyDueResumptions(
       );
     if (existing.status === 'ready' || existing.status === 'running') continue;
     assertNodeTransition(existing.status, 'ready');
-    const { resumeAt: _, ...rest } = existing;
-    const resumed = { ...rest, status: 'ready' as const };
+    const resumed = resumedInvocation(existing);
     state.invocations.set(existing.invocationKey, resumed);
     state.eventDrafts.push(
       event('node.ready', due.occurredAt, { invocation: resumed }),
@@ -323,9 +326,8 @@ function applyTerminalObservation(
       'ordinary waiting invocation must resume before terminal settlement',
     );
   assertNodeTransition(existing.status, observation.status);
-  const { waitKind: _waitKind, ...withoutWaitKind } = existing;
   const completed: InvocationState = {
-    ...withoutWaitKind,
+    ...invocationIdentity(existing),
     status: observation.status,
     ...(observation.output === undefined ? {} : { output: observation.output }),
   };

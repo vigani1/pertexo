@@ -3,7 +3,9 @@ import { isRecord } from '@pertexo/workflow-model';
 
 import {
   type InvocationState,
+  type InvocationWait,
   NODE_STATUSES,
+  type NodeStatus,
   type RunStatus,
   RUN_STATUSES,
   type BranchLedgerEntry,
@@ -14,6 +16,7 @@ import {
 
 import { invocationKey } from '../transition/scheduling/loops.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
+import { WorkflowEngineError } from '../errors.js';
 import { assertCanonicalTimestamp } from './identity.js';
 import { isInteger, assertCheckpoint, assertExactKeys } from './admission.js';
 
@@ -142,7 +145,7 @@ function parseInvocation(value: unknown): InvocationState {
     value.resumeAt === undefined || value.status === 'waiting',
     'resumeAt must exist only for a waiting invocation',
   );
-  const waitKind = parseInvocationWaitKind(value);
+  const wait = parseInvocationWait(value.status, value.waitKind, resumeAt);
   const output =
     value.output === undefined
       ? undefined
@@ -162,10 +165,8 @@ function parseInvocation(value: unknown): InvocationState {
   return {
     invocationKey: value.invocationKey,
     nodeId: value.nodeId,
-    status: value.status,
+    ...wait,
     attemptNumber: value.attemptNumber,
-    ...(resumeAt === undefined ? {} : { resumeAt }),
-    ...(waitKind === undefined ? {} : { waitKind }),
     ...(output === undefined ? {} : { output }),
     ...(failureHandling === undefined ? {} : { failureHandling }),
   };
@@ -318,21 +319,35 @@ export function parseLedger(value: unknown): readonly BranchLedgerEntry[] {
   );
 }
 
-function parseInvocationWaitKind(
-  value: Record<string, unknown>,
-): InvocationState['waitKind'] {
-  assertCheckpoint(
-    value.waitKind === undefined ||
-      ((value.status === 'waiting' || value.status === 'ready') &&
-        (value.waitKind === 'node_wait' ||
-          value.waitKind === 'retry_backoff' ||
-          ((value.waitKind === 'workflow_call' ||
-            value.waitKind === 'human_task') &&
-            value.status === 'waiting' &&
-            value.resumeAt === undefined))),
-    'waitKind must identify delayed work only',
-  );
-  return value.waitKind;
+function parseInvocationWait(
+  status: NodeStatus,
+  waitKind: unknown,
+  resumeAt: string | undefined,
+): InvocationWait {
+  const invalidWait = (): never => {
+    throw new WorkflowEngineError(
+      'checkpoint_invalid',
+      'waitKind must identify delayed work only',
+    );
+  };
+  if (waitKind === undefined)
+    return status === 'waiting' && resumeAt !== undefined
+      ? { status, resumeAt }
+      : { status };
+  if (waitKind === 'node_wait' || waitKind === 'retry_backoff') {
+    if (status === 'waiting')
+      return {
+        status,
+        waitKind,
+        ...(resumeAt === undefined ? {} : { resumeAt }),
+      };
+    return status === 'ready' ? { status, waitKind } : invalidWait();
+  }
+  return (waitKind === 'workflow_call' || waitKind === 'human_task') &&
+    status === 'waiting' &&
+    resumeAt === undefined
+    ? { status, waitKind }
+    : invalidWait();
 }
 
 function parseFailureHandling(

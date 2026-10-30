@@ -17,6 +17,7 @@ import { exactKeys, operationError, record } from '../operation-values.js';
 import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
+import { invocationIdentity } from '../transition/status.js';
 import type { WorkflowObservation } from '../types.js';
 
 type CheckpointInvocation = ReturnType<
@@ -138,7 +139,7 @@ export function mergeCoordinatorObservations(
     const invocation = projected.get(observation.invocationKey);
     if (invocation === undefined) continue;
     projected.set(observation.invocationKey, {
-      ...invocation,
+      ...invocationIdentity(invocation),
       status: observation.status,
       ...(observation.output === undefined
         ? {}
