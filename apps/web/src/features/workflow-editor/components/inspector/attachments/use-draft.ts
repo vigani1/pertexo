@@ -28,11 +28,11 @@ export function useAttachmentsDraft(
     equals: sameAttachments,
     parse: (text) => {
       const checked = checkAttachments(text, graph, form.nodeId);
-      if (checked.error !== undefined)
-        return { ok: false, error: checked.error };
-      if (Object.keys(checked.errors).length > 0)
-        return { ok: false, error: 'Finish the attachments.' };
-      return { ok: true, value: checked.mapping };
+      if (checked.ok) return { ok: true, value: checked.mapping };
+      return {
+        ok: false,
+        error: 'error' in checked ? checked.error : 'Finish the attachments.',
+      };
     },
     commit: (mapping) => {
       form.commit((current) => {
@@ -55,8 +55,8 @@ export function useAttachmentsDraft(
     text: draft.text,
     /** Shown once people leave an unfinished row, then until it's fixed. */
     shown: draft.error !== undefined,
-    rowErrors: checked.errors,
-    error: checked.error,
+    rowErrors: !checked.ok && 'rowErrors' in checked ? checked.rowErrors : {},
+    error: !checked.ok && 'error' in checked ? checked.error : undefined,
     change: draft.change,
     blur: draft.blur,
   } as const;

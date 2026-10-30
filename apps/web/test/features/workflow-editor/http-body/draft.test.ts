@@ -48,8 +48,7 @@ describe('HTTP body draft', () => {
       graph,
       node.id,
     );
-    expect(result.error).toBeUndefined();
-    if (result.value === undefined) throw new Error('Expected valid text part');
+    if (!result.ok) throw new Error(result.error);
     const updated = applyBodyValue(result.value, node);
     expect(updated.config).toMatchObject(node.config);
     expect(updated.inputMappings).toEqual({
@@ -78,7 +77,7 @@ describe('HTTP body draft', () => {
       node.id,
     );
     expect(result.knownBytes).toBe(4);
-    if (result.value === undefined) throw new Error('Expected multipart value');
+    if (!result.ok) throw new Error(result.error);
     const restored = bodyDraft(result.value);
     expect(restored.mode).toBe('multipart');
     if (restored.mode !== 'multipart') throw new Error('Multipart missing');
@@ -117,7 +116,7 @@ describe('HTTP body draft', () => {
       graph,
       node.id,
     );
-    expect(result.value).toBeUndefined();
+    expect(result.ok).toBe(false);
     for (const field of ['name', 'filename', 'contentType'] as const)
       expect(result.parts[part.inputKey]?.[field]).toBeTypeOf('string');
     expect(result.parts[part.inputKey]?.source).toBe(
@@ -153,8 +152,8 @@ describe('HTTP body draft', () => {
         },
         graph,
         node.id,
-      ).value,
-    ).toBeUndefined();
+      ).ok,
+    ).toBe(false);
     const dynamic = validateBodyDraft(
       {
         mode: 'multipart',
@@ -174,7 +173,8 @@ describe('HTTP body draft', () => {
       node.id,
     );
     expect(dynamic.unknownSize).toBe(true);
-    expect(dynamic.value?.inputMappings[part.inputKey]).toEqual({
+    if (!dynamic.ok) throw new Error(dynamic.error);
+    expect(dynamic.value.inputMappings[part.inputKey]).toEqual({
       kind: 'run_input',
       path: '$.message',
     });
@@ -198,7 +198,7 @@ describe('HTTP body draft', () => {
       graph,
       node.id,
     );
-    expect(below.error).toBeUndefined();
+    expect(below.ok).toBe(true);
     expect(below.knownBytes).toBe(2097152);
     for (const parts of [
       [ready(first, 10485760)],
@@ -262,7 +262,7 @@ describe('HTTP body draft', () => {
       graph,
       node.id,
     );
-    if (parsed.value === undefined) throw new Error('Expected valid form');
+    if (!parsed.ok) throw new Error(parsed.error);
     const stored: WorkflowNode = {
       ...node,
       ...applyBodyValue(parsed.value, node),

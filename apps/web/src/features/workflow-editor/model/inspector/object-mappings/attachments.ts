@@ -32,13 +32,12 @@ export type AttachmentsDraft =
   | Readonly<{ mode: 'files'; rows: readonly AttachmentDraft[] }>
   | Readonly<{ mode: 'list'; source: InputMappingDraftRow }>;
 
-export type AttachmentsCheck = Readonly<{
+export type AttachmentsCheck =
   /** The mapping to save; undefined removes it, as for an email without files. */
-  mapping?: ValueSource | undefined;
+  | Readonly<{ ok: true; mapping: ValueSource | undefined }>
   /** Why the draft can't be saved yet, by row. */
-  errors: Readonly<Record<string, string>>;
-  error?: string;
-}>;
+  | Readonly<{ ok: false; rowErrors: Readonly<Record<string, string>> }>
+  | Readonly<{ ok: false; error: string }>;
 
 export const ATTACHMENTS_KEY = 'attachments';
 
@@ -233,7 +232,8 @@ export function checkAttachments(
   });
   if (checked.inputMappings === undefined)
     return {
-      errors: Object.fromEntries(
+      ok: false,
+      rowErrors: Object.fromEntries(
         Object.entries(checked.errors).map(([id, error]) => [
           id,
           error.source ?? 'Choose where this file comes from.',
@@ -241,26 +241,26 @@ export function checkAttachments(
       ),
     };
   if (draft.mode === 'list')
-    return { mapping: checked.inputMappings[ATTACHMENTS_KEY], errors: {} };
-  const errors: Record<string, string> = {};
+    return { ok: true, mapping: checked.inputMappings[ATTACHMENTS_KEY] };
+  const rowErrors: Record<string, string> = {};
   for (const row of draft.rows)
     if (row.file.kind === 'literal' && literalFile(row) === undefined)
-      errors[row.id] = 'Choose a file from an earlier step or upload one.';
-  if (Object.keys(errors).length > 0) return { errors };
+      rowErrors[row.id] = 'Choose a file from an earlier step or upload one.';
+  if (Object.keys(rowErrors).length > 0) return { ok: false, rowErrors };
   if (draft.rows.length > EMAIL_SEND_NOTIFICATION_LIMITS.maxAttachments)
     return {
-      errors: {},
+      ok: false,
       error: `An email can carry at most ${String(EMAIL_SEND_NOTIFICATION_LIMITS.maxAttachments)} files.`,
     };
-  if (draft.rows.length === 0) return { mapping: undefined, errors: {} };
+  if (draft.rows.length === 0) return { ok: true, mapping: undefined };
   const mapping = listMapping(draft.rows, checked.inputMappings);
   return mapping === undefined
     ? {
-        errors: {},
+        ok: false,
         error:
           'Use a file, run input, earlier step output, variable or expression.',
       }
-    : { mapping, errors: {} };
+    : { ok: true, mapping };
 }
 
 export function sameAttachments(

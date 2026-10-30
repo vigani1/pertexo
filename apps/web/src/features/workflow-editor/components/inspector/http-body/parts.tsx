@@ -42,7 +42,7 @@ export function MultipartParts({
         by your destination.
       </p>
       <p className="text-xs text-subtle-foreground">
-        {validation.value === undefined ? (
+        {!validation.ok ? (
           'Finish the parts to see a size estimate.'
         ) : (
           <>
@@ -53,8 +53,7 @@ export function MultipartParts({
           </>
         )}
       </p>
-      {validation.error !== undefined &&
-      Object.keys(validation.parts).length === 0 ? (
+      {!validation.ok && Object.keys(validation.parts).length === 0 ? (
         <p role="alert" className="text-sm text-destructive">
           {validation.error}
         </p>

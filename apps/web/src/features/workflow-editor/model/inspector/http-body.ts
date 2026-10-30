@@ -36,13 +36,14 @@ export type PartErrors = Readonly<{
   contentType?: string;
   source?: string;
 }>;
-export type BodyValidation = Readonly<{
-  value?: HttpBodyValue;
-  error?: string;
-  parts: Readonly<Record<string, PartErrors>>;
-  knownBytes: number;
-  unknownSize: boolean;
-}>;
+/** A body that can't be saved always says why. */
+export type BodyValidation = Readonly<
+  ({ ok: true; value: HttpBodyValue } | { ok: false; error: string }) & {
+    parts: Readonly<Record<string, PartErrors>>;
+    knownBytes: number;
+    unknownSize: boolean;
+  }
+>;
 
 export function bodyValue(node: WorkflowNode): HttpBodyValue | undefined {
   if (node.config.multipart === undefined)
@@ -104,6 +105,7 @@ export function validateBodyDraft(
 ): BodyValidation {
   if (draft.mode === 'raw')
     return {
+      ok: true,
       value: { multipart: undefined, inputMappings: draft.mappings },
       parts: {},
       knownBytes: 0,
@@ -159,6 +161,7 @@ export function validateBodyDraft(
   }
   if (knownBytes >= HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
     return {
+      ok: false,
       error:
         'Known part data already fills 10 MB before form headers. Use smaller files or split them into separate uploads.',
       parts,
@@ -171,6 +174,7 @@ export function validateBodyDraft(
     Object.keys(parts).length > 0
   )
     return {
+      ok: false,
       error:
         'Finish the form parts before saving. Each part needs a name and a matching value.',
       parts,
@@ -178,6 +182,7 @@ export function validateBodyDraft(
       unknownSize,
     };
   return {
+    ok: true,
     value: { multipart: metadata.data, inputMappings: mappings.inputMappings },
     parts,
     knownBytes,
