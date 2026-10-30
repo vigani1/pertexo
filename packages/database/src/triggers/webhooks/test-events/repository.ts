@@ -20,6 +20,9 @@ import { testEventDraft } from './authority.queries.js';
 import { WebhookTestEventError } from './errors.js';
 import type { TestEventScope, WebhookTestEventStore } from './contract.js';
 
+const WORKSPACE_LISTENER_LIMIT = 10;
+const LISTENER_ATTEMPT_LIMIT = 60;
+
 const selection = {
   ...getTableColumns(listeners),
   expired: sql<boolean>`${listeners.expiresAt}<=clock_timestamp()`,
@@ -108,7 +111,7 @@ function startTestEventListener(
       .from(listeners)
       .where(eq(listeners.workspaceId, input.workspaceId))
       .catch(rethrowQueryFailure);
-    if (Number(quota[0]?.count) >= 10)
+    if (Number(quota[0]?.count) >= WORKSPACE_LISTENER_LIMIT)
       throw new WebhookTestEventError('limit_reached');
     const s = input.secret;
     const result = await db
@@ -275,7 +278,7 @@ async function consumeTestEventLimit(
           and(
             eq(listeners.workspaceId, reference.workspaceId),
             eq(listeners.id, reference.endpointId),
-            sql`${listeners.attempts}<60`,
+            sql`${listeners.attempts}<${LISTENER_ATTEMPT_LIMIT}`,
             sql`${listeners.expiresAt}>clock_timestamp()`,
             isNull(listeners.outputRef),
           ),
@@ -295,7 +298,7 @@ async function consumeTestEventLimit(
             and(
               eq(listeners.workspaceId, reference.workspaceId),
               eq(listeners.id, reference.endpointId),
-              sql`${listeners.attempts}>=60`,
+              sql`${listeners.attempts}>=${LISTENER_ATTEMPT_LIMIT}`,
               sql`${listeners.expiresAt}>clock_timestamp()`,
               isNull(listeners.outputRef),
             ),
@@ -303,7 +306,7 @@ async function consumeTestEventLimit(
           .catch(rethrowQueryFailure),
     );
     if (limited.length === 1)
-      throw new WebhookIngressRateLimitExceededError(60);
+      throw new WebhookIngressRateLimitExceededError(LISTENER_ATTEMPT_LIMIT);
     throw new WebhookTestEventError('unavailable');
   }
 }
