@@ -1,17 +1,10 @@
-import {
-  type NodeConnectionRuntime,
-  type NodeExecutionInvocation,
-  type NodeExecutionRuntime,
-  type NodeExecutorRegistration,
-  ProviderCredentialInvalidError,
-  ProviderExecutionRateLimitError,
+import type {
+  NodeConnectionRuntime,
+  NodeExecutionInvocation,
+  NodeExecutionRuntime,
+  NodeExecutorRegistration,
 } from '@pertexo/node-sdk/server';
 
-import {
-  errorNameIs,
-  safeInstanceOf,
-  safeNumberProperty,
-} from '../http/unknown-error.js';
 import type { ResendClient } from './client.js';
 import {
   classifyResult,
@@ -23,6 +16,7 @@ import {
 import { prepareAttachments } from './attachments/open.js';
 import { sentAttachments } from './attachments/plan.js';
 import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
+import { connectionLookupFailure } from '../providers/failure.js';
 import {
   EMAIL_SEND_NOTIFICATION_EXECUTOR,
   RESEND_API_KEY_CONNECTION_SLOT,
@@ -112,28 +106,7 @@ async function resolveEmailConnection(
       signal,
     });
   } catch (error: unknown) {
-    if (safeInstanceOf(error, ProviderExecutionRateLimitError)) {
-      if (runtime.providerDispatchUnresolved ?? false)
-        throw failure('outcome_unknown', 'provider', {
-          possiblyDispatched: true,
-        });
-      const retryAfterSeconds = safeNumberProperty(error, 'retryAfterSeconds');
-      if (retryAfterSeconds === undefined)
-        throw failure('retry', 'provider', { possiblyDispatched: false });
-      throw failure('retry', 'rate_limit', {
-        possiblyDispatched: false,
-        retryAfterMillis: retryAfterSeconds * 1_000,
-      });
-    }
-    if (safeInstanceOf(error, ProviderCredentialInvalidError))
-      throw credentialFailure(runtime);
-    if (runtime.providerDispatchUnresolved ?? false)
-      throw failure('outcome_unknown', 'provider', {
-        possiblyDispatched: true,
-      });
-    if (signal.aborted || errorNameIs(error, 'AbortError'))
-      throw failure('canceled', 'canceled', { possiblyDispatched: false });
-    throw failure('retry', 'provider', { possiblyDispatched: false });
+    throw connectionLookupFailure(error, { failure, runtime, signal });
   }
 }
 

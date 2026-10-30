@@ -1,3 +1,5 @@
+import { MAXIMUM_RETRY_DELAY_MILLIS } from '@pertexo/node-sdk/server';
+
 import { parseBoundedRetryAfterMillis } from './retry-after.js';
 import { SECURE_HTTP_ERROR_CODE, type SecureHttpError } from './secure.js';
 
@@ -60,7 +62,7 @@ export function classifySecureHttpResponse(
           ...decision,
           minimumRetryDelayMillis: parseBoundedRetryAfterMillis(
             headers['retry-after'],
-            60_000,
+            MAXIMUM_RETRY_DELAY_MILLIS,
           ),
         })
       : decision;

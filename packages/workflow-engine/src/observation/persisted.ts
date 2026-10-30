@@ -1,3 +1,7 @@
+import type {
+  NodeExecutorErrorKind,
+  NodeExecutorFailureKind,
+} from '@pertexo/node-sdk/server';
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { parseCheckpoint } from '../checkpoint/create-and-parse.js';
 
@@ -64,17 +68,9 @@ export type AttemptFailureObservation = Readonly<{
   readonly invocationKey: string;
   readonly attemptId: string;
   readonly attemptNumber: number;
-  readonly failureKind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown';
+  readonly failureKind: NodeExecutorFailureKind;
   readonly minimumRetryDelayMillis?: number;
-  readonly errorKind:
-    | 'authentication'
-    | 'canceled'
-    | 'configuration'
-    | 'internal'
-    | 'network'
-    | 'provider'
-    | 'rate_limit'
-    | 'timeout';
+  readonly errorKind: NodeExecutorErrorKind;
   readonly possiblyDispatched: boolean;
   readonly safeErrorCode: string;
 }>;

@@ -3,17 +3,11 @@ import {
   type NodeExecutionRuntime,
   type NodeExecutorRegistration,
   NodeExecutorFailure,
-  ProviderCredentialInvalidError,
-  ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 
 import { SECURE_HTTP_ERROR_CODE } from '../http/secure.js';
 import { inspectSecureHttpError } from '../http/secure-error.js';
-import {
-  errorNameIs,
-  safeInstanceOf,
-  safeNumberProperty,
-} from '../http/unknown-error.js';
+import { safeInstanceOf } from '../http/unknown-error.js';
 import type { SlackApiResult, SlackClient } from './client.js';
 import { classifySlackConnectionHealth } from './connection-health.js';
 import {
@@ -28,6 +22,10 @@ import {
   type SlackSendMessageOutput,
 } from './validation.js';
 import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
+import {
+  connectionLookupFailure,
+  providerFailure,
+} from '../providers/failure.js';
 
 const AUTH_ERRORS = new Set([
   'account_inactive',
@@ -73,34 +71,7 @@ const NOOP_TELEMETRY: SlackSendMessageExecutorTelemetry = Object.freeze({
   measure: (work: () => Promise<SlackSendMessageOutput>) => work(),
 });
 
-function failure(
-  kind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown',
-  errorKind:
-    | 'authentication'
-    | 'canceled'
-    | 'configuration'
-    | 'internal'
-    | 'network'
-    | 'provider'
-    | 'rate_limit'
-    | 'timeout',
-  {
-    possiblyDispatched,
-    retryAfterMillis,
-  }: Readonly<{
-    possiblyDispatched: boolean;
-    retryAfterMillis?: number | undefined;
-  }>,
-): SlackSendMessageExecutorError {
-  return new SlackSendMessageExecutorError({
-    kind,
-    errorKind,
-    possiblyDispatched,
-    ...(retryAfterMillis === undefined
-      ? {}
-      : { minimumRetryDelayMillis: Math.min(retryAfterMillis, 60_000) }),
-  });
-}
+const failure = providerFailure(SlackSendMessageExecutorError);
 
 function classifyResult(
   result: Exclude<SlackApiResult, { kind: 'succeeded' }>,
@@ -205,24 +176,11 @@ async function execute(
       signal: invocation.signal,
     });
   } catch (error: unknown) {
-    if (runtime.providerDispatchUnresolved ?? false)
-      throw failure('outcome_unknown', 'provider', {
-        possiblyDispatched: true,
-      });
-    if (safeInstanceOf(error, ProviderExecutionRateLimitError)) {
-      const retryAfterSeconds = safeNumberProperty(error, 'retryAfterSeconds');
-      if (retryAfterSeconds === undefined)
-        throw failure('retry', 'provider', { possiblyDispatched: false });
-      throw failure('retry', 'rate_limit', {
-        possiblyDispatched: false,
-        retryAfterMillis: retryAfterSeconds * 1_000,
-      });
-    }
-    if (safeInstanceOf(error, ProviderCredentialInvalidError))
-      throw failure('failed', 'authentication', { possiblyDispatched: false });
-    if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
-      throw failure('canceled', 'canceled', { possiblyDispatched: false });
-    throw failure('retry', 'provider', { possiblyDispatched: false });
+    throw connectionLookupFailure(error, {
+      failure,
+      runtime,
+      signal: invocation.signal,
+    });
   }
   return withSlackCredential(resolved, connectionId, async (credential) => {
     let result;

@@ -1,3 +1,8 @@
+import {
+  MAXIMUM_RETRY_DELAY_MILLIS,
+  NODE_EXECUTOR_ERROR_KINDS,
+  NODE_EXECUTOR_FAILURE_KINDS,
+} from '@pertexo/node-sdk/server';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import {
   isSafeExecutorErrorCode,
@@ -23,6 +28,10 @@ type OutcomeOutput = Extract<
   WorkflowObservation,
   { readonly kind: 'outcome' }
 >['output'];
+
+function includesValue(values: readonly string[], value: unknown): boolean {
+  return typeof value === 'string' && values.includes(value);
+}
 
 function isCanonicalTimestamp(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 35) return false;
@@ -79,32 +88,19 @@ function parseAttemptFailure(
     ],
     ['minimumRetryDelayMillis'],
   );
-  const failureKinds = ['failed', 'canceled', 'retry', 'outcome_unknown'];
-  const errorKinds = [
-    'authentication',
-    'canceled',
-    'configuration',
-    'internal',
-    'network',
-    'provider',
-    'rate_limit',
-    'timeout',
-  ];
   const invalidFailureIdentity =
     !isCanonicalTimestamp(observation.occurredAt) ||
     typeof observation.invocationKey !== 'string' ||
     !validAttempt(observation.attemptId, observation.attemptNumber) ||
-    typeof observation.failureKind !== 'string' ||
-    !failureKinds.includes(observation.failureKind) ||
-    typeof observation.errorKind !== 'string' ||
-    !errorKinds.includes(observation.errorKind) ||
+    !includesValue(NODE_EXECUTOR_FAILURE_KINDS, observation.failureKind) ||
+    !includesValue(NODE_EXECUTOR_ERROR_KINDS, observation.errorKind) ||
     typeof observation.possiblyDispatched !== 'boolean' ||
     !isSafeExecutorErrorCode(observation.safeErrorCode) ||
     (observation.minimumRetryDelayMillis !== undefined &&
       (typeof observation.minimumRetryDelayMillis !== 'number' ||
         !Number.isInteger(observation.minimumRetryDelayMillis) ||
         observation.minimumRetryDelayMillis < 0 ||
-        observation.minimumRetryDelayMillis > 60_000));
+        observation.minimumRetryDelayMillis > MAXIMUM_RETRY_DELAY_MILLIS));
   if (invalidFailureIdentity) {
     operationError('observation_invalid', 'attempt failure is invalid');
   }

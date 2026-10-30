@@ -5,18 +5,31 @@ import type {
   ExecutorIdentity,
 } from '../definitions/catalog.js';
 
-export type NodeExecutorErrorKind =
-  | 'authentication'
-  | 'canceled'
-  | 'configuration'
-  | 'internal'
-  | 'network'
-  | 'provider'
-  | 'rate_limit'
-  | 'timeout';
+export const NODE_EXECUTOR_FAILURE_KINDS = Object.freeze([
+  'failed',
+  'canceled',
+  'retry',
+  'outcome_unknown',
+] as const);
+export const NODE_EXECUTOR_ERROR_KINDS = Object.freeze([
+  'authentication',
+  'canceled',
+  'configuration',
+  'internal',
+  'network',
+  'provider',
+  'rate_limit',
+  'timeout',
+] as const);
+/** The longest wait before a retry, whether a service or a step asks for it. */
+export const MAXIMUM_RETRY_DELAY_MILLIS = 60_000;
+
+export type NodeExecutorFailureKind =
+  (typeof NODE_EXECUTOR_FAILURE_KINDS)[number];
+export type NodeExecutorErrorKind = (typeof NODE_EXECUTOR_ERROR_KINDS)[number];
 
 export type NodeExecutorFailureOutcome = Readonly<{
-  kind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown';
+  kind: NodeExecutorFailureKind;
   errorKind: NodeExecutorErrorKind;
   possiblyDispatched: boolean;
   minimumRetryDelayMillis?: number;
@@ -27,19 +40,15 @@ export type NodeExecutorFailureOutcome = Readonly<{
 
 const nodeExecutorFailureSchema = z
   .object({
-    kind: z.enum(['failed', 'canceled', 'retry', 'outcome_unknown']),
-    errorKind: z.enum([
-      'authentication',
-      'canceled',
-      'configuration',
-      'internal',
-      'network',
-      'provider',
-      'rate_limit',
-      'timeout',
-    ]),
+    kind: z.enum(NODE_EXECUTOR_FAILURE_KINDS),
+    errorKind: z.enum(NODE_EXECUTOR_ERROR_KINDS),
     possiblyDispatched: z.boolean(),
-    minimumRetryDelayMillis: z.number().int().min(0).max(60_000).optional(),
+    minimumRetryDelayMillis: z
+      .number()
+      .int()
+      .min(0)
+      .max(MAXIMUM_RETRY_DELAY_MILLIS)
+      .optional(),
     safeErrorCode: z
       .string()
       .min(1)

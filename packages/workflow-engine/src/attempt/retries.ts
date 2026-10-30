@@ -1,4 +1,9 @@
 import { createHash } from 'node:crypto';
+import {
+  MAXIMUM_RETRY_DELAY_MILLIS,
+  type NodeExecutorErrorKind,
+  type NodeExecutorFailureKind,
+} from '@pertexo/node-sdk/server';
 import type { StepRetrySettings } from '@pertexo/workflow-model';
 
 import type { SideEffectClass } from '../types.js';
@@ -14,7 +19,7 @@ export const ENGINE_RETRY_POLICY = Object.freeze({
   reference: Object.freeze({ key: 'engine.retry', version: 1 }),
   maximumAttempts: 3,
   baseDelayMs: 1_000,
-  maximumDelayMs: 60_000,
+  maximumDelayMs: MAXIMUM_RETRY_DELAY_MILLIS,
   retryableErrorCodes: Object.freeze([
     'rate_limit',
     'timeout',
@@ -45,17 +50,8 @@ export type AttemptObservation =
   | { readonly kind: 'ambiguous'; readonly possiblyDispatched: boolean }
   | {
       readonly kind: 'executor_failure';
-      readonly recommendation:
-        'failed' | 'canceled' | 'retry' | 'outcome_unknown';
-      readonly errorKind:
-        | 'authentication'
-        | 'canceled'
-        | 'configuration'
-        | 'internal'
-        | 'network'
-        | 'provider'
-        | 'rate_limit'
-        | 'timeout';
+      readonly recommendation: NodeExecutorFailureKind;
+      readonly errorKind: NodeExecutorErrorKind;
       readonly possiblyDispatched: boolean;
       readonly minimumRetryDelayMillis?: number;
     };
