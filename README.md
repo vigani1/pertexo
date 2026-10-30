@@ -189,7 +189,7 @@ submission server with verified STARTTLS or implicit TLS. Set
 `SYSTEM_MAIL_TRANSPORT=smtp` and the worker's `SYSTEM_MAIL_SMTP_*` settings;
 keep the existing mail senders and encryption keys. SMTP does not require Resend
 credentials. See
-[system mail operations](docs/operations/single-server.md#system-mail-resend-or-smtp)
+[system mail operations](docs/operations/system-mail.md#system-mail-resend-or-smtp)
 for configuration, delivery uncertainty and switching providers safely. Workflow
 Email steps and workspace Alerts still use their workspace Resend connections.
 

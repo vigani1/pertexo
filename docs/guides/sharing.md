@@ -153,7 +153,7 @@ and sharing revisions are part of the database backup. Restore them together; a
 workflow export is not a backup of its access rules. Forced workspace isolation
 remains in effect after restore. Supply encryption and callback token keys
 separately, as described in the
-[single-server recovery instructions](../operations/single-server.md#restore-drill-or-replacement-server).
+[single-server recovery instructions](../operations/recovery.md#restore-drill-or-replacement-server).
 
 The existing recovery qualification seeds restricted folders and connections and
 checks that their grants, identities, revisions and workspace fences survive the
