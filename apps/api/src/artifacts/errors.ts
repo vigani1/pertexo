@@ -11,8 +11,8 @@ export class ArtifactApiConflictError extends Error {
   }
 }
 export class ArtifactApiUnavailableError extends Error {
-  public constructor(message = 'Artifact storage is unavailable') {
-    super(message);
+  public constructor(cause: unknown) {
+    super('Artifact storage is unavailable', { cause });
     this.name = 'ArtifactApiUnavailableError';
   }
 }

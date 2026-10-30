@@ -83,12 +83,14 @@ export function storageFailure(
   error: unknown,
   source: 'database' | 'store',
 ): Error {
+  // A client that went away is not a storage outage.
+  if (error instanceof Error && error.name === 'AbortError') return error;
   if (source === 'store') {
     // Finalization also crosses the database catch, which accepts API errors.
     return error instanceof ArtifactIntegrityError ||
       error instanceof ArtifactNotFoundError
       ? new ArtifactApiConflictError()
-      : new ArtifactApiUnavailableError();
+      : new ArtifactApiUnavailableError(error);
   }
   if (
     error instanceof AuthorizationError ||
@@ -102,5 +104,5 @@ export function storageFailure(
     error instanceof ArtifactUploadConflictError
   )
     return error;
-  return new ArtifactApiUnavailableError();
+  return new ArtifactApiUnavailableError(error);
 }
