@@ -25,13 +25,14 @@ export function useSaveCoordinator({
     const unsubscribe = store.subscribe((state, previous) => {
       if (
         state.generation !== previous.generation &&
-        state.saveStatus === 'dirty'
+        state.save.status === 'dirty'
       )
         coordinator.schedule();
     });
     // A save that went unconfirmed while offline goes again on reconnect.
     const resume = () => {
-      if (store.getState().saveStatus === 'uncertain') void coordinator.flush();
+      if (store.getState().save.status === 'uncertain')
+        void coordinator.flush();
     };
     window.addEventListener('online', resume);
     return () => {

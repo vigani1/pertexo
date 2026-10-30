@@ -17,8 +17,8 @@ export function useLeaveGuard({
   const reasonFor = useCallback((): LeaveReason | undefined => {
     const state = store.getState();
     if (state.inspectorScratch) return 'unfinished';
-    if (state.saveStatus !== 'clean') return 'unsaved';
-    if (state.conflict !== null) return 'comparison';
+    if (state.save.status !== 'clean') return 'unsaved';
+    if (state.comparison !== null) return 'comparison';
     return undefined;
   }, [store]);
   const shouldBlock = useCallback(() => reasonFor() !== undefined, [reasonFor]);

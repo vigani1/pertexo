@@ -15,10 +15,9 @@ export function SaveState({
   onRetry,
   onReview,
 }: Readonly<{ onRetry: () => void; onReview: () => void }>) {
-  const saveStatus = useEditorStore((state) => state.saveStatus);
+  const save = useEditorStore((state) => state.save);
   const savedAt = useEditorStore((state) => state.savedAt);
   const scratch = useEditorStore((state) => state.inspectorScratch);
-  const saveError = useEditorStore((state) => state.saveError);
   const online = useOnlineStatus();
   return (
     <span
@@ -28,10 +27,10 @@ export function SaveState({
     >
       <span aria-hidden="true">·</span>
       <Sentence
-        status={scratch && saveStatus === 'clean' ? 'dirty' : saveStatus}
+        status={scratch && save.status === 'clean' ? 'dirty' : save.status}
         online={online}
         savedAt={savedAt}
-        error={saveError}
+        error={'error' in save ? save.error : null}
         onRetry={onRetry}
         onReview={onReview}
       />
@@ -47,7 +46,7 @@ function Sentence({
   onRetry,
   onReview,
 }: Readonly<{
-  status: EditorState['saveStatus'];
+  status: EditorState['save']['status'];
   online: boolean;
   savedAt: string | null;
   error: string | null;

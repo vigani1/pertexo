@@ -32,7 +32,7 @@ type SessionCommandBarProps = Readonly<{
     graph: WorkflowGraphContract;
     generation: number;
     revision: number;
-    saveStatus: ReturnType<EditorStore['getState']>['saveStatus'];
+    saveStatus: ReturnType<EditorStore['getState']>['save']['status'];
     inspectorScratch: boolean;
     triggersAvailable: boolean;
   }>;

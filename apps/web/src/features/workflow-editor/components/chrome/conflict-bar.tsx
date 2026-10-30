@@ -2,6 +2,7 @@ import { GitCompareArrowsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import { useEditorStore } from '../../model/state/context';
+import { shownConflict } from '../../model/state/store';
 
 /**
  * A draft conflict never blocks the canvas: an amber bar says what happened
@@ -11,8 +12,10 @@ import { useEditorStore } from '../../model/state/context';
 export function ConflictBar({
   onCompare,
 }: Readonly<{ onCompare: () => void }>) {
-  const conflict = useEditorStore((state) => state.conflict);
-  const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
+  const conflict = useEditorStore(shownConflict);
+  const inConflict = useEditorStore(
+    (state) => state.save.status === 'conflict',
+  );
   const keepMine = useEditorStore((state) => state.acceptRemoteForReview);
   const loadTheirs = useEditorStore((state) => state.discardLocalAndUseRemote);
   const dismiss = useEditorStore((state) => state.dismissConflictComparison);

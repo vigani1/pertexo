@@ -172,7 +172,9 @@ export function useCanvasEditing({
   onShortcuts: () => void;
 }>) {
   const store = useEditorStoreApi();
-  const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
+  const inConflict = useEditorStore(
+    (state) => state.save.status === 'conflict',
+  );
   const editable = canUpdate && !inConflict;
   const canvasRef = useRef<HTMLDivElement>(null);
   const { request, navigation } = actions;

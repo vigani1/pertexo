@@ -156,7 +156,7 @@ function HandlerChoices({
             disabled={!editable}
             onClick={() => {
               const state = store.getState();
-              if (state.saveStatus === 'conflict') return;
+              if (state.save.status === 'conflict') return;
               const next = linkWorkflowNodes(state.graph, {
                 source: source.id,
                 sourceHandle: WORKFLOW_FAILURE_PORT,

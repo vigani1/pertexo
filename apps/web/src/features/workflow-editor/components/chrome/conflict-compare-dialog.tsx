@@ -17,6 +17,7 @@ import {
   type GraphChange,
 } from '@/features/workflows/comparison.public';
 import { useEditorStore } from '../../model/state/context';
+import { shownConflict } from '../../model/state/store';
 import { adoptStepFrom } from '../../model/graph/copies';
 
 type Line = GraphChange;
@@ -31,8 +32,10 @@ export function ConflictCompareDialog({
   onOpenChange,
 }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
   const notifications = useNotifications();
-  const conflict = useEditorStore((state) => state.conflict);
-  const inConflict = useEditorStore((state) => state.saveStatus === 'conflict');
+  const conflict = useEditorStore(shownConflict);
+  const inConflict = useEditorStore(
+    (state) => state.save.status === 'conflict',
+  );
   const graph = useEditorStore((state) => state.graph);
   const transact = useEditorStore((state) => state.transact);
   if (conflict === null) return null;

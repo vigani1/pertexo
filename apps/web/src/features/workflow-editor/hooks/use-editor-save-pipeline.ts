@@ -97,9 +97,9 @@ export function useEditorSavePipeline({
     await flushSave();
     await verifyOwner();
     const state = store.getState();
-    if (state.saveStatus !== 'clean')
+    if (state.save.status !== 'clean')
       throw new UserFacingError(
-        state.saveStatus === 'conflict'
+        state.save.status === 'conflict'
           ? 'This draft changed elsewhere. Review the change before continuing.'
           : 'Your latest changes aren’t saved yet. Try again in a moment.',
       );

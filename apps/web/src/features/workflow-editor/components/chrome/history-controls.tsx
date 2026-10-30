@@ -8,9 +8,9 @@ import { useEditorStore } from '../../model/state/context';
 import { shortcut } from '@/lib/shortcut-keys';
 
 const canUndo = (state: EditorState) =>
-  state.history.past.length > 0 && state.saveStatus !== 'conflict';
+  state.history.past.length > 0 && state.save.status !== 'conflict';
 const canRedo = (state: EditorState) =>
-  state.history.future.length > 0 && state.saveStatus !== 'conflict';
+  state.history.future.length > 0 && state.save.status !== 'conflict';
 
 /** Undo and redo for the draft; the history holds whole edits, not keys. */
 export function HistoryControls({
