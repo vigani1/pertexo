@@ -1,4 +1,4 @@
-import { expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import {
   createCallbackTokenKeys,
   callbackTokenHash,
@@ -6,6 +6,15 @@ import {
 import type { CallbackStore } from '@pertexo/database/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createApiCallbackRuntime } from '../../../src/platform/webhooks/callback-runtime.module.js';
+
+const createCallbackStore = vi.hoisted(() => vi.fn());
+vi.mock('@pertexo/database/runs', async (original) => ({
+  ...(await original<object>()),
+  createCallbackStore,
+}));
+beforeEach(() => {
+  createCallbackStore.mockReset();
+});
 
 const callbackConfig = {
   origin: 'https://example.test',
@@ -54,21 +63,21 @@ it('refuses a wrong or missing restore key and closes the acquired store', async
     },
   ]) {
     const retained = store(tokenHash);
+    createCallbackStore.mockReturnValue(retained);
     await expect(
-      createApiCallbackRuntime(
-        { database, ...(callbacks === undefined ? {} : { callbacks }) },
-        undefined,
-        () => retained,
-      ),
+      createApiCallbackRuntime({
+        database,
+        ...(callbacks === undefined ? {} : { callbacks }),
+      }),
     ).rejects.toThrow(/callback/iu);
     expect(retained.close).toHaveBeenCalledOnce();
   }
   const retained = store(tokenHash);
-  const runtime = await createApiCallbackRuntime(
-    { database, callbacks: callbackConfig },
-    undefined,
-    () => retained,
-  );
+  createCallbackStore.mockReturnValue(retained);
+  const runtime = await createApiCallbackRuntime({
+    database,
+    callbacks: callbackConfig,
+  });
   await Promise.all([runtime.close(), runtime.close()]);
   expect(retained.close).toHaveBeenCalledOnce();
 });

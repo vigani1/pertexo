@@ -1,7 +1,7 @@
 import { request as httpRequest } from 'node:http';
 
 import { expect, it, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
 
@@ -83,7 +83,7 @@ export function registerClosesRealOpenSSERequestWithout(): void {
         },
       },
     };
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       workflowRuntime: selectedWorkflowRuntime,

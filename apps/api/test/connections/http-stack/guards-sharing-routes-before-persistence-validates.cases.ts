@@ -1,7 +1,7 @@
 import { ConnectionSharingRevisionConflictError } from '@pertexo/database/connections';
 
 import { expect, it } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import {
   actorId,
@@ -110,7 +110,7 @@ export function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
   );
 
   it('reports unconfigured connections only to an eligible workspace reader', async () => {
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       database,
       identityRuntime: identityRuntime(),
       logger,
@@ -146,7 +146,7 @@ export function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
   });
 
   it('reports disabled file storage after session, workspace, upload-role and CSRF checks', async () => {
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       database,
       identityRuntime: identityRuntime(),
       logger,
@@ -203,7 +203,7 @@ export function registerGuardsSharingRoutesBeforePersistenceValidates(): void {
   });
 
   it('keeps disabled-storage upload routes denied to viewers', async () => {
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       database,
       identityRuntime: identityRuntime('viewer'),
       logger,

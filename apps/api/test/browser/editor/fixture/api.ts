@@ -126,13 +126,13 @@ export function useEditorApiFixture(context: {
         kmsKeyReference: 'unused-pure-node-fixture',
         region: 'us-east-1',
       },
-      overrides: {
+      services: () => ({
         // Discovery/authorization/persistence are real. This pure-node gate
         // neither provisions credentials nor permits outbound provider calls.
         encryption:
           httpMaster === undefined
             ? {
-                value: {
+                encryption: {
                   seal: () =>
                     Promise.reject(
                       new Error(
@@ -147,34 +147,14 @@ export function useEditorApiFixture(context: {
                     ),
                 },
               }
-            : {
-                factory: () => {
-                  const keys =
-                    scenario === 'curated-templates'
-                      ? createCuratedTemplateEnvelopeContext<ConnectionSecretContext>(
-                          httpMaster.toString('hex'),
-                        )
-                      : createEditorBrowserEnvelopeKeys<ConnectionSecretContext>(
-                          httpMaster,
-                          'connection',
-                        );
-                  return {
-                    encryption: new ConnectionEnvelopeEncryption(keys),
-                    close: () => {
-                      keys.close();
-                    },
-                  };
-                },
-              },
-        clients: {
-          http: {
-            execute: () =>
-              Promise.reject(
-                new Error('Provider calls are outside the pure-node gate'),
-              ),
-          },
+            : connectionEnvelope(scenario, httpMaster),
+        http: {
+          execute: () =>
+            Promise.reject(
+              new Error('Provider calls are outside the pure-node gate'),
+            ),
         },
-      },
+      }),
     },
     logger: createStructuredLogger({
       environment: 'test',
@@ -242,4 +222,22 @@ export function useEditorApiFixture(context: {
     beforeDrop: recheckOwnership,
   });
   return api;
+}
+
+function connectionEnvelope(scenario: string, httpMaster: Buffer) {
+  const keys =
+    scenario === 'curated-templates'
+      ? createCuratedTemplateEnvelopeContext<ConnectionSecretContext>(
+          httpMaster.toString('hex'),
+        )
+      : createEditorBrowserEnvelopeKeys<ConnectionSecretContext>(
+          httpMaster,
+          'connection',
+        );
+  return {
+    encryption: new ConnectionEnvelopeEncryption(keys),
+    close: () => {
+      keys.close();
+    },
+  };
 }

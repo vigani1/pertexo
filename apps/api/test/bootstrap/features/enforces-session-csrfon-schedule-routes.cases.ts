@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import type { ApiScheduleRuntime } from '../../../src/platform/schedules/runtime.module.js';
 
@@ -65,7 +65,7 @@ export function registerEnforcesSessionCSRFOnScheduleRoutes(): void {
       checkReadiness: scheduleDatabase.checkReadiness,
       close: scheduleDatabase.close,
     } as ApiScheduleRuntime;
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: selectedIdentityRuntime,
       scheduleRuntime,

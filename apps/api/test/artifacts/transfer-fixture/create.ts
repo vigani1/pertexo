@@ -1,18 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import { createArtifactStore } from '@pertexo/artifact-store';
 import {
+  createArtifactUploadDatabase,
+  createFormUploadDatabase,
+} from '@pertexo/database/runs';
+import {
   createIdentityWorkspaceDatabase,
   createWorkspaceDatabase,
 } from '@pertexo/database/testing';
 
 import { Pool, type PoolClient } from 'pg';
 
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 import { createApiIdentityRuntime } from '../../../src/platform/identity/runtime.module.js';
-import {
-  createApiArtifactRuntime,
-  type ApiArtifactRuntime,
-} from '../../../src/platform/artifacts/runtime.module.js';
+import type { ApiArtifactRuntime } from '../../../src/platform/artifacts/runtime.module.js';
 
 import { issueBrowserSession } from '../../webhooks/support/browser-session.fixture.js';
 import {
@@ -180,22 +181,25 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
       throw new Error('Artifact integration config is incomplete');
     const identityRuntime = resources.acquire(
       'identity runtime',
-      await createApiIdentityRuntime(config.identity, config.database, {
-        persistence: { database: identityDatabase },
-      }),
+      await createApiIdentityRuntime(config.identity, config.database),
       (runtime) => runtime.close(),
     );
-    resources.transfer(identityDatabase);
-    const createdArtifactRuntime = createApiArtifactRuntime(
-      config.artifacts,
-      config.database,
-      { identityRuntime: identityRuntime, overrides: { store: apiStore } },
-    );
+    const uploads = createArtifactUploadDatabase(config.database);
+    const formUploads = createFormUploadDatabase(config.database);
     // S3Mock reports its own bucket region. The store remains real; this
     // fixture bypasses only the startup region probe.
     const runtime: ApiArtifactRuntime = Object.freeze({
-      ...createdArtifactRuntime,
+      dependencies: Object.freeze({
+        authorization: identityRuntime.dependencies.authorization,
+        database: uploads,
+        formUploads,
+        store: apiStore,
+      }),
       checkReadiness: () => Promise.resolve(),
+      close: async () => {
+        apiStore.close();
+        await Promise.all([uploads.close(), formUploads.close()]);
+      },
     });
     resources.acquire('artifact runtime', runtime, (selected) =>
       selected.close(),
@@ -203,7 +207,7 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
     resources.transfer(verificationStore);
     const application = resources.acquire(
       'API application',
-      await createApiApplication(config, {
+      await createTestApiApplication(config, {
         database: workspaceDatabase,
         identityRuntime,
         artifactRuntime: runtime,

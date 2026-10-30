@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import {
   config,
@@ -17,7 +17,7 @@ export function registerClosesIdentityArtifactRuntimesArtifactStartup(): void {
       new Error('artifact readiness failed'),
     );
     await expect(
-      createApiApplication(config, {
+      createTestApiApplication(config, {
         ...dependencies(),
         identityRuntime: selectedIdentity,
         artifactRuntime: selectedArtifacts,
@@ -29,7 +29,7 @@ export function registerClosesIdentityArtifactRuntimesArtifactStartup(): void {
 
   it('includes artifact readiness in health and closes its runtime once', async () => {
     const selectedArtifacts = artifactRuntime();
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: identityRuntime(),
       artifactRuntime: selectedArtifacts,

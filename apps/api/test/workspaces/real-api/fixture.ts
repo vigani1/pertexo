@@ -12,7 +12,7 @@ import {
 } from '@pertexo/database/testing';
 
 import { afterAll, beforeAll, expect } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 import {
   SESSION_AUTHORITY,
   type IdentitySessionAuthority,
@@ -43,7 +43,7 @@ export function createWorkspaceApiFixture() {
 
   const ownerEmail = `${randomUUID()}@example.test`;
 
-  let application: Awaited<ReturnType<typeof createApiApplication>>;
+  let application: Awaited<ReturnType<typeof createTestApiApplication>>;
 
   let identityDatabase: IdentityWorkspaceDatabase;
 
@@ -70,12 +70,10 @@ export function createWorkspaceApiFixture() {
       const identityConfig = config().identity;
       if (identityConfig === undefined)
         throw new Error('Identity integration configuration is missing');
-      owner.transfer(identityDatabase);
       const identityRuntime = owner.acquire(
         'identity runtime',
         await createApiIdentityRuntime(identityConfig, databaseConfig, {
           authenticationMail: mail,
-          persistence: { database: identityDatabase },
         }),
         (runtime) => runtime.close(),
       );
@@ -85,7 +83,7 @@ export function createWorkspaceApiFixture() {
       });
       application = owner.acquire(
         'API application',
-        await createApiApplication(config(), {
+        await createTestApiApplication(config(), {
           database: workspaceDatabase,
           identityRuntime: borrowedIdentityRuntime,
           logger,

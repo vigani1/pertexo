@@ -1,11 +1,12 @@
 import { expect, it, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import type { ApiScheduleRuntime } from '../../../src/platform/schedules/runtime.module.js';
 import type { ApiNotificationRuntime } from '../../../src/platform/notifications/runtime.module.js';
 import { WorkspaceInboxService } from '../../../src/notifications/service.js';
 
-import type { ScheduleManagementService } from '../../../src/schedules/service.js';
+import { ScheduleManagementService } from '../../../src/schedules/service.js';
+import { NOOP_SCHEDULE_TELEMETRY } from '../../../src/schedules/telemetry.js';
 import { createApiScheduleRuntime } from '../../../src/platform/schedules/runtime.module.js';
 import { createBetterAuthFixtureApplication } from '../../support/better-auth/fixture-application.js';
 import { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';
@@ -48,13 +49,16 @@ export function registerRegistersRequestedSchedulePreviewActualBetter(): void {
           },
           owner: owner,
           schedules: true,
-          createSchedules: async (selected) => {
-            const runtime = await createApiScheduleRuntime(
-              selected,
-              scheduleDatabase,
-            );
-            suppliedRuntime = { ...runtime, close: vi.fn(runtime.close) };
-            return suppliedRuntime;
+          createSchedules: () => {
+            suppliedRuntime = {
+              service: new ScheduleManagementService(
+                scheduleDatabase,
+                NOOP_SCHEDULE_TELEMETRY,
+              ),
+              checkReadiness: () => scheduleDatabase.checkReadiness(),
+              close: vi.fn(() => scheduleDatabase.close()),
+            };
+            return Promise.resolve(suppliedRuntime);
           },
         },
       );
@@ -198,7 +202,7 @@ export function registerRegistersRequestedSchedulePreviewActualBetter(): void {
       checkReadiness: hints.checkReadiness,
       close: vi.fn().mockResolvedValue(undefined),
     };
-    applicationFixture.application = await createApiApplication(config, {
+    applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
       identityRuntime: identityRuntime(
         vi.fn().mockResolvedValue(undefined),

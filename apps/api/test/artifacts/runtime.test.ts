@@ -1,18 +1,26 @@
-import { describe, expect, it, vi } from 'vitest';
-import { createArtifactUploadDatabase } from '@pertexo/database/runs';
-import { createDatabaseRuntime } from '@pertexo/database/platform';
+import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  createApiArtifactRuntime,
-  type ApiArtifactRuntimeOverrides,
-} from '../../src/platform/artifacts/runtime.module.js';
+import { createApiArtifactRuntime } from '../../src/platform/artifacts/runtime.module.js';
 import type { ApiConfig } from '../../src/platform/config/api.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
-import type {
-  ArtifactUploadDatabase,
-  ArtifactStore,
-} from '../../src/artifacts/index.js';
+
+const outside = vi.hoisted(() => ({
+  store: vi.fn(),
+  database: vi.fn(),
+  formUploads: vi.fn(),
+}));
+
+vi.mock('@pertexo/artifact-store', async (original) => ({
+  ...(await original<object>()),
+  createArtifactStore: outside.store,
+}));
+vi.mock('@pertexo/database/runs', async (original) => ({
+  ...(await original<object>()),
+  createArtifactUploadDatabase: outside.database,
+  createFormUploadDatabase: outside.formUploads,
+}));
 
 const config = {
   accessKeyId: 'artifacts',
@@ -25,6 +33,10 @@ const config = {
   secretAccessKey: 'secret',
 } satisfies NonNullable<ApiConfig['artifacts']>;
 
+const databaseConfig = parseDatabaseConfig({
+  connectionString: 'postgresql://unused',
+});
+
 const identityRuntime = {
   dependencies: {
     authorization: { findAccess: () => Promise.resolve(undefined) },
@@ -32,137 +44,96 @@ const identityRuntime = {
   close: vi.fn().mockResolvedValue(undefined),
 } as unknown as ApiIdentityRuntime;
 
-function database(): ArtifactUploadDatabase {
+function closable() {
   return {
-    beginUpload: vi.fn(),
-    getForUpload: vi.fn(),
-    finalizeUpload: vi.fn(),
-    getMetadata: vi.fn(),
     checkReadiness: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
   };
 }
 
-function store(): ArtifactStore {
-  return {
-    beginDirectUpload: vi.fn(),
-    validateDirectUpload: vi.fn(),
-    beginDirectDownload: vi.fn(),
-    checkReadiness: vi.fn().mockResolvedValue(undefined),
-    close: vi.fn(),
-    getStream: vi.fn(),
-  };
-}
-
-async function closeTestRuntimes(
-  runtime: ReturnType<typeof createApiArtifactRuntime> | undefined,
-  sharedRuntime: ReturnType<typeof createDatabaseRuntime>,
-): Promise<void> {
-  const failures: unknown[] = [];
-  try {
-    await runtime?.close();
-  } catch (error: unknown) {
-    failures.push(error);
-  }
-  try {
-    await sharedRuntime.close();
-  } catch (error: unknown) {
-    failures.push(error);
-  }
-  if (failures.length > 0)
-    throw new AggregateError(failures, 'Test runtime cleanup failed');
-}
-
 describe('API artifact runtime', () => {
-  it('forwards a real shared database runtime to the repository factory', async () => {
-    const databaseConfig = parseDatabaseConfig({
-      connectionString: 'postgresql://unused',
-    });
-    const sharedRuntime = createDatabaseRuntime(databaseConfig, {});
-    const databaseFactory = vi.fn(createArtifactUploadDatabase);
-    let runtime: ReturnType<typeof createApiArtifactRuntime> | undefined;
-    try {
-      runtime = createApiArtifactRuntime(config, databaseConfig, {
-        identityRuntime: identityRuntime,
-        overrides: { databaseFactory, store: store() },
-        databaseRuntime: sharedRuntime,
-      });
-      expect(databaseFactory).toHaveBeenCalledExactlyOnceWith(
-        databaseConfig,
-        sharedRuntime,
-      );
-    } finally {
-      await closeTestRuntimes(runtime, sharedRuntime);
-    }
+  beforeEach(() => {
+    outside.store.mockReset().mockReturnValue(closable());
+    outside.database.mockReset().mockReturnValue(closable());
+    outside.formUploads.mockReset().mockReturnValue(closable());
   });
 
-  it('closes injected owned resources once', async () => {
-    const selectedDatabase = database();
-    const selectedStore = store();
-    const runtime = createApiArtifactRuntime(
-      config,
-      { connectionString: 'postgresql://unused' } as never,
-      {
-        identityRuntime: identityRuntime,
-        overrides: { database: selectedDatabase, store: selectedStore },
-      },
+  it('forwards the shared database runtime to the repository factories', () => {
+    const sharedRuntime = {} as DatabaseRuntime;
+    createApiArtifactRuntime(config, databaseConfig, {
+      identityRuntime,
+      databaseRuntime: sharedRuntime,
+    });
+    expect(outside.database).toHaveBeenCalledExactlyOnceWith(
+      databaseConfig,
+      sharedRuntime,
     );
+    expect(outside.formUploads).toHaveBeenCalledExactlyOnceWith(
+      databaseConfig,
+      sharedRuntime,
+    );
+  });
+
+  it('checks and closes its owned resources once', async () => {
+    const store = closable();
+    const database = closable();
+    const formUploads = closable();
+    outside.store.mockReturnValue(store);
+    outside.database.mockReturnValue(database);
+    outside.formUploads.mockReturnValue(formUploads);
+    const runtime = createApiArtifactRuntime(config, databaseConfig, {
+      identityRuntime,
+    });
 
     await runtime.checkReadiness();
     await runtime.close();
     await runtime.close();
-    expect(selectedDatabase.checkReadiness).toHaveBeenCalledOnce();
-    expect(selectedStore.checkReadiness).toHaveBeenCalledOnce();
-    expect(selectedDatabase.close).toHaveBeenCalledOnce();
-    expect(selectedStore.close).toHaveBeenCalledOnce();
+    expect(database.checkReadiness).toHaveBeenCalledOnce();
+    expect(store.checkReadiness).toHaveBeenCalledOnce();
+    expect(database.close).toHaveBeenCalledOnce();
+    expect(formUploads.close).toHaveBeenCalledOnce();
+    expect(store.close).toHaveBeenCalledOnce();
   });
 
   it('closes the store even when database shutdown throws synchronously', async () => {
-    const selectedStore = store();
+    const store = closable();
     const failure = new Error('database close failed');
-    const selectedDatabase = {
-      ...database(),
+    outside.store.mockReturnValue(store);
+    outside.database.mockReturnValue({
+      ...closable(),
       close: () => {
         throw failure;
       },
-    };
-    const runtime = createApiArtifactRuntime(
-      config,
-      { connectionString: 'postgresql://unused' } as never,
-      {
-        identityRuntime: identityRuntime,
-        overrides: { database: selectedDatabase, store: selectedStore },
-      },
-    );
+    });
+    const runtime = createApiArtifactRuntime(config, databaseConfig, {
+      identityRuntime,
+    });
     const firstClose = runtime.close();
     const secondClose = runtime.close();
     expect(secondClose).toBe(firstClose);
     await expect(firstClose).rejects.toMatchObject({ errors: [failure] });
     await expect(secondClose).rejects.toMatchObject({ errors: [failure] });
-    expect(selectedStore.close).toHaveBeenCalledOnce();
+    expect(store.close).toHaveBeenCalledOnce();
   });
 
   it('aggregates database rejection and synchronous store close failure once', async () => {
     const databaseFailure = new Error('database close rejected');
     const storeFailure = new Error('store close failed');
-    const selectedDatabase = {
-      ...database(),
+    const database = {
+      ...closable(),
       close: vi.fn().mockRejectedValue(databaseFailure),
     };
-    const selectedStore = {
-      ...store(),
+    const store = {
+      ...closable(),
       close: vi.fn(() => {
         throw storeFailure;
       }),
     };
-    const runtime = createApiArtifactRuntime(
-      config,
-      { connectionString: 'postgresql://unused' } as never,
-      {
-        identityRuntime: identityRuntime,
-        overrides: { database: selectedDatabase, store: selectedStore },
-      },
-    );
+    outside.store.mockReturnValue(store);
+    outside.database.mockReturnValue(database);
+    const runtime = createApiArtifactRuntime(config, databaseConfig, {
+      identityRuntime,
+    });
 
     const firstClose = runtime.close();
     const secondClose = runtime.close();
@@ -173,49 +144,36 @@ describe('API artifact runtime', () => {
     await expect(secondClose).rejects.toMatchObject({
       errors: [databaseFailure, storeFailure],
     });
-    expect(selectedDatabase.close).toHaveBeenCalledOnce();
-    expect(selectedStore.close).toHaveBeenCalledOnce();
+    expect(database.close).toHaveBeenCalledOnce();
+    expect(store.close).toHaveBeenCalledOnce();
   });
 
   it('preserves both composition and store cleanup errors', () => {
     const composition = new Error('database construction failed');
     const cleanup = new Error('store close failed');
-    const selectedStore = store();
-    selectedStore.close = () => {
-      throw cleanup;
-    };
+    outside.store.mockReturnValue({
+      ...closable(),
+      close: () => {
+        throw cleanup;
+      },
+    });
+    outside.database.mockImplementation(() => {
+      throw composition;
+    });
     expect(() =>
-      createApiArtifactRuntime(
-        config,
-        { connectionString: 'postgresql://unused' } as never,
-        {
-          identityRuntime: identityRuntime,
-          overrides: {
-            databaseFactory: () => {
-              throw composition;
-            },
-            store: selectedStore,
-          },
-        },
-      ),
+      createApiArtifactRuntime(config, databaseConfig, { identityRuntime }),
     ).toThrow(expect.objectContaining({ errors: [composition, cleanup] }));
   });
 
   it('cleans the store when database composition fails', () => {
-    const selectedStore = store();
-    const overrides: ApiArtifactRuntimeOverrides = {
-      databaseFactory: () => {
-        throw new Error('database construction failed');
-      },
-      store: selectedStore,
-    };
+    const store = closable();
+    outside.store.mockReturnValue(store);
+    outside.database.mockImplementation(() => {
+      throw new Error('database construction failed');
+    });
     expect(() =>
-      createApiArtifactRuntime(
-        config,
-        { connectionString: 'postgresql://unused' } as never,
-        { identityRuntime: identityRuntime, overrides: overrides },
-      ),
+      createApiArtifactRuntime(config, databaseConfig, { identityRuntime }),
     ).toThrow('database construction failed');
-    expect(selectedStore.close).toHaveBeenCalledOnce();
+    expect(store.close).toHaveBeenCalledOnce();
   });
 });

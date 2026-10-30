@@ -1,19 +1,54 @@
 import { runPorts } from '../support/run-ports.js';
-import type {
-  DatabaseConfig,
-  WorkspaceDatabase,
-} from '@pertexo/database/platform';
-import type {
-  WorkflowAuthoringDatabase,
-  WorkflowInputCaseDatabase,
-} from '@pertexo/database/authoring';
-import type { JsonataEvaluator } from '@pertexo/workflow-model/server';
-import { describe, expect, it, vi } from 'vitest';
+import type { DatabaseConfig } from '@pertexo/database/platform';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { RunEventNotificationPublisher } from '../../src/workflow-runs/events/index.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/runtime.module.js';
 import { createApiWorkflowRuntime } from '../../src/platform/workflow/runtime.module.js';
-import type { WorkflowAuthoringTelemetry } from '../../src/workflow-authoring/index.js';
+
+const outside = vi.hoisted(() => ({
+  authoring: vi.fn(),
+  inputCases: vi.fn(),
+  events: vi.fn(),
+  runs: vi.fn(),
+  streamer: vi.fn(),
+  notifications: vi.fn(),
+  liveSource: vi.fn(),
+  evaluator: vi.fn(),
+  validator: vi.fn(),
+}));
+
+vi.mock('@pertexo/database/authoring', async (original) => ({
+  ...(await original<object>()),
+  createWorkflowAuthoringDatabase: outside.authoring,
+  createWorkflowInputCaseDatabase: outside.inputCases,
+}));
+vi.mock('@pertexo/database/platform', async (original) => ({
+  ...(await original<object>()),
+  createWorkspaceDatabase: outside.events,
+}));
+vi.mock('@pertexo/workflow-model/server', async (original) => ({
+  ...(await original<object>()),
+  JsonataEvaluator: function JsonataEvaluator() {
+    return outside.evaluator() as object;
+  },
+  WorkflowAuthoringValidator: function WorkflowAuthoringValidator() {
+    return outside.validator() as object;
+  },
+}));
+vi.mock('../../src/workflow-runs/index.js', async (original) => ({
+  ...(await original<object>()),
+  createPostgresWorkflowRunPersistence: outside.runs,
+  createWorkflowRunEventStreamer: outside.streamer,
+}));
+vi.mock('../../src/workflow-runs/events/index.js', async (original) => ({
+  ...(await original<object>()),
+  RedisRunEventPublisher: function RedisRunEventPublisher() {
+    return outside.notifications() as object;
+  },
+  RedisRunEventSource: function RedisRunEventSource() {
+    return outside.liveSource() as object;
+  },
+}));
 
 const databaseConfig: DatabaseConfig = {
   connectionString: 'postgresql://api:secret@localhost:5432/pertexo',
@@ -30,108 +65,76 @@ const identityRuntime = {
   dependencies: { authorization },
 } as unknown as ApiIdentityRuntime;
 const { persistence, streamer } = runPorts();
+const options = { redisUrl: 'redis://localhost:6379/0' };
 
-const telemetry: WorkflowAuthoringTelemetry = {
-  measure: <T>(_operation: never, work: () => Promise<T>): Promise<T> => work(),
-};
-
-function authoringDatabase(
-  close: () => Promise<void>,
-): WorkflowAuthoringDatabase {
-  return { close } as unknown as WorkflowAuthoringDatabase;
-}
-
-function eventDatabase(close: () => Promise<void>): WorkspaceDatabase {
-  return { close } as unknown as WorkspaceDatabase;
-}
-
-function notifications(
-  close: () => Promise<void>,
-): RunEventNotificationPublisher {
-  return {
-    publish: () => Promise.resolve({ receivers: 0 }),
-    resync: () => Promise.resolve({ receivers: 0 }),
-    close,
-  };
+function closes(close: () => unknown = vi.fn().mockResolvedValue(undefined)) {
+  return { close };
 }
 
 describe('API workflow runtime ownership', () => {
-  it('uses an explicitly owned case factory for an injected authoring adapter', async () => {
+  beforeEach(() => {
+    outside.authoring.mockReset().mockReturnValue(closes());
+    outside.inputCases.mockReset().mockReturnValue(closes());
+    outside.events.mockReset().mockReturnValue(closes());
+    outside.runs.mockReset().mockReturnValue({ ...closes(), persistence });
+    outside.streamer.mockReset().mockReturnValue(streamer);
+    outside.notifications.mockReset().mockReturnValue(closes());
+    outside.liveSource.mockReset().mockReturnValue({
+      subscribe: () => Promise.reject(new Error('unused')),
+    });
+    outside.evaluator
+      .mockReset()
+      .mockReturnValue({ shutdown: vi.fn().mockResolvedValue(undefined) });
+    outside.validator.mockReset().mockReturnValue({
+      validate: vi.fn().mockRejectedValue(new Error('not exercised')),
+      shutdown: vi.fn().mockResolvedValue(undefined),
+    });
+  });
+
+  it('builds case persistence from configuration and exposes it to authoring', async () => {
     const caseClose = vi.fn().mockResolvedValue(undefined);
-    const cases = { close: caseClose } as unknown as WorkflowInputCaseDatabase;
-    const factory = vi.fn(() => cases);
+    const cases = closes(caseClose);
+    outside.inputCases.mockReturnValue(cases);
     const runtime = await createApiWorkflowRuntime(
       databaseConfig,
       identityRuntime,
-      {
-        redisUrl: 'redis://unused',
-        overrides: {
-          authoring: {
-            database: authoringDatabase(() => Promise.resolve()),
-            inputCasePersistenceFactory: factory,
-            telemetry,
-          },
-          persistence: { runs: persistence },
-          streaming: { streamer },
-        },
-      },
+      options,
     );
-    expect(factory).toHaveBeenCalledWith(databaseConfig, {});
+    expect(outside.inputCases).toHaveBeenCalledWith(databaseConfig, {});
     expect(runtime.dependencies.inputCasePersistence).toBe(cases);
     await runtime.close();
     expect(caseClose).toHaveBeenCalledOnce();
   });
-  it('owns explicitly injected case persistence and closes it once even on shutdown failure', async () => {
+
+  it('closes case persistence once even on shutdown failure', async () => {
     const caseClose = vi.fn().mockRejectedValue(new Error('case close failed'));
     const close = vi.fn().mockResolvedValue(undefined);
-    const cases = { close: caseClose } as unknown as WorkflowInputCaseDatabase;
+    outside.inputCases.mockReturnValue(closes(caseClose));
+    outside.authoring.mockReturnValue(closes(close));
     const runtime = await createApiWorkflowRuntime(
       databaseConfig,
       identityRuntime,
-      {
-        redisUrl: 'redis://unused',
-        overrides: {
-          authoring: {
-            database: authoringDatabase(close),
-            inputCasePersistence: cases,
-            telemetry,
-          },
-          persistence: { runs: persistence },
-          streaming: { streamer },
-        },
-      },
+      options,
     );
-    expect(runtime.dependencies.inputCasePersistence).toBe(cases);
     const shuttingDown = runtime.close();
     expect(runtime.close()).toBe(shuttingDown);
     await expect(shuttingDown).rejects.toBeInstanceOf(AggregateError);
     expect(caseClose).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledOnce();
   });
+
   it('cleans up case persistence after later runtime construction fails', async () => {
     const caseClose = vi.fn().mockResolvedValue(undefined);
-    const cases = { close: caseClose } as unknown as WorkflowInputCaseDatabase;
+    outside.inputCases.mockReturnValue(closes(caseClose));
+    outside.runs.mockImplementation(() => {
+      throw new Error('runs failed');
+    });
     await expect(
-      createApiWorkflowRuntime(databaseConfig, identityRuntime, {
-        redisUrl: 'redis://unused',
-        overrides: {
-          authoring: {
-            database: authoringDatabase(() => Promise.resolve()),
-            inputCasePersistence: cases,
-            telemetry,
-          },
-          persistence: {
-            runsFactory: () => {
-              throw new Error('runs failed');
-            },
-            notifications: notifications(() => Promise.resolve()),
-          },
-          streaming: { streamer },
-        },
-      }),
+      createApiWorkflowRuntime(databaseConfig, identityRuntime, options),
     ).rejects.toThrow('runs failed');
     expect(caseClose).toHaveBeenCalledOnce();
   });
+
   it('drains one shared authoring owner before database disposal even when worker disposal fails', async () => {
     let rejectDrain: (reason: unknown) => void = () => {
       throw new Error('drain not initialized');
@@ -140,24 +143,13 @@ describe('API workflow runtime ownership', () => {
       rejectDrain = reject;
     });
     const shutdown = vi.fn(() => drain);
-    const validate = vi.fn().mockRejectedValue(new Error('not exercised'));
     const close = vi.fn().mockResolvedValue(undefined);
-    const databaseFactory = vi.fn(() => authoringDatabase(close));
+    outside.validator.mockReturnValue({ validate: vi.fn(), shutdown });
+    outside.authoring.mockReturnValue(closes(close));
     const runtime = await createApiWorkflowRuntime(
       databaseConfig,
       identityRuntime,
-      {
-        redisUrl: 'redis://unused',
-        overrides: {
-          authoring: {
-            databaseFactory,
-            telemetry,
-            authoringValidatorFactory: () => ({ validate, shutdown }),
-          },
-          persistence: { runs: persistence },
-          streaming: { streamer },
-        },
-      },
+      options,
     );
     const first = runtime.close();
     const failure = expect(first).rejects.toBeInstanceOf(AggregateError);
@@ -169,44 +161,15 @@ describe('API workflow runtime ownership', () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
-  it('cleans up the authoring owner after construction fails and never allocates it for an injected database', async () => {
+  it('cleans up the authoring owner after construction fails', async () => {
     const shutdown = vi.fn().mockResolvedValue(undefined);
-    const factory = vi.fn(() => ({
-      validate: vi.fn().mockRejectedValue(new Error('not exercised')),
-      shutdown,
-    }));
+    outside.validator.mockReturnValue({ validate: vi.fn(), shutdown });
+    outside.authoring.mockImplementation(() => {
+      throw new Error('construction failed');
+    });
     await expect(
-      createApiWorkflowRuntime(databaseConfig, identityRuntime, {
-        redisUrl: 'redis://unused',
-        overrides: {
-          authoring: {
-            databaseFactory: () => {
-              throw new Error('construction failed');
-            },
-            authoringValidatorFactory: factory,
-          },
-        },
-      }),
+      createApiWorkflowRuntime(databaseConfig, identityRuntime, options),
     ).rejects.toThrow('construction failed');
-    expect(shutdown).toHaveBeenCalledOnce();
-    const runtime = await createApiWorkflowRuntime(
-      databaseConfig,
-      identityRuntime,
-      {
-        redisUrl: 'redis://unused',
-        overrides: {
-          authoring: {
-            database: authoringDatabase(vi.fn().mockResolvedValue(undefined)),
-            telemetry,
-            authoringValidatorFactory: factory,
-          },
-          persistence: { runs: persistence },
-          streaming: { streamer },
-        },
-      },
-    );
-    await runtime.close();
-    expect(factory).toHaveBeenCalledOnce();
     expect(shutdown).toHaveBeenCalledOnce();
   });
 
@@ -219,33 +182,21 @@ describe('API workflow runtime ownership', () => {
     const runClose = vi.fn().mockRejectedValue(runFailure);
     const eventClose = vi.fn().mockResolvedValue(undefined);
     const notificationClose = vi.fn().mockResolvedValue(undefined);
-    const evaluatorShutdown = vi.fn().mockResolvedValue(undefined);
+    const evaluatorShutdowns: ReturnType<typeof vi.fn>[] = [];
+    outside.authoring.mockReturnValue(closes(authoringClose));
+    outside.runs.mockReturnValue({ persistence, close: runClose });
+    outside.events.mockReturnValue(closes(eventClose));
+    outside.notifications.mockReturnValue(closes(notificationClose));
+    outside.evaluator.mockImplementation(() => {
+      const shutdown = vi.fn().mockResolvedValue(undefined);
+      evaluatorShutdowns.push(shutdown);
+      return { shutdown };
+    });
 
     const runtime = await createApiWorkflowRuntime(
       databaseConfig,
       identityRuntime,
-      {
-        redisUrl: 'redis://localhost:6379/0',
-        overrides: {
-          authoring: {
-            databaseFactory: () => authoringDatabase(authoringClose),
-            telemetry,
-            expressionEvaluatorFactory: () =>
-              ({ shutdown: evaluatorShutdown }) as unknown as JsonataEvaluator,
-          },
-          persistence: {
-            notificationsFactory: () => notifications(notificationClose),
-            runsFactory: () => ({ persistence, close: runClose }),
-          },
-          streaming: {
-            databaseFactory: () => eventDatabase(eventClose),
-            liveSource: {
-              subscribe: () => Promise.reject(new Error('unused')),
-            },
-            streamerFactory: () => streamer,
-          },
-        },
-      },
+      options,
     );
 
     const firstClose = runtime.close();
@@ -259,7 +210,9 @@ describe('API workflow runtime ownership', () => {
     expect(runClose).toHaveBeenCalledOnce();
     expect(eventClose).toHaveBeenCalledOnce();
     expect(notificationClose).toHaveBeenCalledOnce();
-    expect(evaluatorShutdown).toHaveBeenCalledOnce();
+    expect(evaluatorShutdowns).not.toHaveLength(0);
+    for (const shutdown of evaluatorShutdowns)
+      expect(shutdown).toHaveBeenCalledOnce();
   });
 
   it('rolls back every acquired owner and preserves startup plus cleanup failures', async () => {
@@ -271,35 +224,17 @@ describe('API workflow runtime ownership', () => {
     const runClose = vi.fn().mockRejectedValue(undefined);
     const eventClose = vi.fn().mockResolvedValue(undefined);
     const notificationClose = vi.fn().mockResolvedValue(undefined);
+    outside.authoring.mockReturnValue(closes(authoringClose));
+    outside.runs.mockReturnValue({ persistence, close: runClose });
+    outside.events.mockReturnValue(closes(eventClose));
+    outside.notifications.mockReturnValue(closes(notificationClose));
+    outside.streamer.mockImplementation(() => {
+      throw startupFailure;
+    });
 
-    const construction = createApiWorkflowRuntime(
-      databaseConfig,
-      identityRuntime,
-      {
-        redisUrl: 'redis://localhost:6379/0',
-        overrides: {
-          authoring: {
-            databaseFactory: () => authoringDatabase(authoringClose),
-            telemetry,
-          },
-          persistence: {
-            notificationsFactory: () => notifications(notificationClose),
-            runsFactory: () => ({ persistence, close: runClose }),
-          },
-          streaming: {
-            databaseFactory: () => eventDatabase(eventClose),
-            liveSource: {
-              subscribe: () => Promise.reject(new Error('unused')),
-            },
-            streamerFactory: () => {
-              throw startupFailure;
-            },
-          },
-        },
-      },
-    );
-
-    await expect(construction).rejects.toMatchObject({
+    await expect(
+      createApiWorkflowRuntime(databaseConfig, identityRuntime, options),
+    ).rejects.toMatchObject({
       errors: [startupFailure, authoringFailure, undefined],
       message: 'Workflow runtime construction and cleanup failed',
     });

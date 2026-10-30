@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 import {
   createApiPlatformFixture,
   createStubIdentityRuntime,
@@ -15,7 +15,7 @@ const headers = {
   origin: 'https://app.example.test',
   'idempotency-key': 'unconfigured-invitations',
 };
-let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
+let application: Awaited<ReturnType<typeof createTestApiApplication>> | undefined;
 
 afterEach(async () => {
   await application?.close();
@@ -58,7 +58,7 @@ describe('unconfigured invitation issuance', () => {
     });
     const { config, ...platform } =
       createApiPlatformFixture('0000_baseline.sql');
-    application = await createApiApplication(config, {
+    application = await createTestApiApplication(config, {
       ...platform,
       identityRuntime: {
         ...identity,

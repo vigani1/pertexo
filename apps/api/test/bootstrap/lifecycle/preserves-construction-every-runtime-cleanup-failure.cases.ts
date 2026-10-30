@@ -1,87 +1,19 @@
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
 
 import { expect, it, vi } from 'vitest';
-import { createApiApplication } from '../../../src/app.js';
+import { createTestApiApplication } from '../../support/api-application.js';
 
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
 
-import { createStubApiWorkflowRuntime } from '../../support/api-platform.fixture.js';
 import {
   config,
   database,
   dependencies,
   identityRuntime,
-  betterAuthIdentityConfig,
   applicationFixture,
 } from '../fixture.js';
 
 export function registerPreservesConstructionEveryRuntimeCleanupFailure(): void {
-  it('preserves construction and every runtime cleanup failure', async () => {
-    const identityFailure = new Error('identity close failed');
-    const workflowFailure = new Error('workflow close failed');
-    const selectedIdentity = identityRuntime(
-      vi.fn().mockRejectedValue(identityFailure),
-    );
-    const selectedWorkflow = createStubApiWorkflowRuntime(
-      selectedIdentity.dependencies.authorization,
-      vi.fn().mockRejectedValue(workflowFailure),
-    );
-    const constructionFailure = new Error('connection construction failed');
-    const connectionOverrides = Object.defineProperty({}, 'persistence', {
-      enumerable: true,
-      get: () => {
-        throw constructionFailure;
-      },
-    });
-
-    const failure = await createApiApplication(
-      {
-        ...config,
-        identity: betterAuthIdentityConfig('https://app.example.test'),
-        connections: { kmsKeyReference: 'test-key', region: 'test-region' },
-      },
-      {
-        ...dependencies(),
-        connectionOverrides,
-        identityRuntime: selectedIdentity,
-        workflowRuntime: selectedWorkflow,
-      },
-    ).catch((error: unknown) => error);
-
-    expect(failure).toBeInstanceOf(AggregateError);
-    expect((failure as AggregateError).errors).toEqual([
-      constructionFailure,
-      identityFailure,
-      workflowFailure,
-    ]);
-  });
-
-  it('rejects artifact overrides when configured artifacts have no identity source', async () => {
-    await expect(
-      createApiApplication(
-        {
-          ...config,
-          artifacts: {
-            accessKeyId: 'artifacts',
-            bucket: 'artifacts-bucket',
-            endpoint: 'https://artifacts.example.test',
-            forcePathStyle: true,
-            maxObjectBytes: 100,
-            region: 'eu-central-1',
-            requestTimeoutMs: 1_000,
-            secretAccessKey: 'secret',
-          },
-        },
-        {
-          ...dependencies(),
-          artifactOverrides: {},
-        },
-      ),
-    ).rejects.toThrow(
-      'artifact overrides require configured artifact runtime creation',
-    );
-  });
-
   it('preserves readiness and cleanup failures when application close rejects', async () => {
     const startupFailure = new Error('database compatibility failed');
     const cleanupFailure = new Error('identity cleanup failed');
@@ -93,7 +25,7 @@ export function registerPreservesConstructionEveryRuntimeCleanupFailure(): void 
       vi.fn().mockRejectedValue(cleanupFailure),
     );
 
-    const failure = await createApiApplication(config, {
+    const failure = await createTestApiApplication(config, {
       ...dependencies(selectedDatabase),
       identityRuntime: selectedIdentity,
     }).catch((error: unknown) => error);
@@ -106,7 +38,7 @@ export function registerPreservesConstructionEveryRuntimeCleanupFailure(): void 
   });
 
   it('serves a stable bounded liveness response without dependency claims', async () => {
-    applicationFixture.application = await createApiApplication(
+    applicationFixture.application = await createTestApiApplication(
       config,
       dependencies(),
     );
@@ -129,7 +61,7 @@ export function registerPreservesConstructionEveryRuntimeCleanupFailure(): void 
       ...database,
       checkReadiness,
     };
-    applicationFixture.application = await createApiApplication(
+    applicationFixture.application = await createTestApiApplication(
       config,
       dependencies(selectedDatabase),
     );
@@ -159,7 +91,7 @@ export function registerPreservesConstructionEveryRuntimeCleanupFailure(): void 
         .mockResolvedValueOnce(readiness)
         .mockRejectedValue(new Error('secret database detail')),
     };
-    applicationFixture.application = await createApiApplication(
+    applicationFixture.application = await createTestApiApplication(
       config,
       dependencies(unavailableDatabase),
     );
@@ -194,13 +126,13 @@ export function registerPreservesConstructionEveryRuntimeCleanupFailure(): void 
     };
 
     await expect(
-      createApiApplication(config, dependencies(incompatibleDatabase)),
+      createTestApiApplication(config, dependencies(incompatibleDatabase)),
     ).rejects.toThrow('migration mismatch');
     expect(close).toHaveBeenCalledOnce();
   });
 
   it('becomes unready before graceful drain', async () => {
-    applicationFixture.application = await createApiApplication(
+    applicationFixture.application = await createTestApiApplication(
       config,
       dependencies(),
     );

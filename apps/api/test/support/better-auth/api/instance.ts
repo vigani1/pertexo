@@ -11,9 +11,11 @@ import {
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
+import { createApiConnectionRuntime } from '../../../../src/platform/connections/runtime.module.js';
 import { createApiIdentityRuntime } from '../../../../src/platform/identity/runtime.module.js';
 import { FixtureResourceOwner } from '../../../browser/harness/resource-owner.js';
 import { dropDisconnectedDatabase } from '../../disposable-database.js';
+import { createFixtureConnectionRuntime } from '../../connection-runtime.js';
 import { createBetterAuthFixtureApplication } from '../fixture-application.js';
 
 import { createApiNotificationRuntime } from '../../../../src/platform/notifications/runtime.module.js';
@@ -152,13 +154,33 @@ export function useBetterAuthRealApi(
         ? owner.acquire(
             'notification runtime',
             createApiNotificationRuntime(databaseConfig, config.redisUrl, {
-              overrides: {},
               runtime: undefined,
               mail: options.notificationMail,
             }),
             (runtime) => runtime.close(),
           )
         : undefined;
+    const connectionRuntime =
+      options.connections === undefined
+        ? undefined
+        : owner.acquire(
+            'connection runtime',
+            options.connections.services === undefined
+              ? await createApiConnectionRuntime(
+                  options.connections.config,
+                  databaseConfig,
+                  {
+                    identityRuntime,
+                    applicationSecret: identity.betterAuth.secret,
+                  },
+                )
+              : createFixtureConnectionRuntime(databaseConfig, {
+                  identityRuntime,
+                  applicationSecret: identity.betterAuth.secret,
+                  services: options.connections.services(),
+                }),
+            (runtime) => runtime.close(),
+          );
     application = await createBetterAuthFixtureApplication({
       config: config,
       dependencies: {
@@ -168,13 +190,12 @@ export function useBetterAuthRealApi(
         telemetry,
         ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
         ...(notificationRuntime === undefined ? {} : { notificationRuntime }),
-        ...(options.connections === undefined
-          ? {}
-          : { connectionOverrides: options.connections.overrides }),
+        ...(connectionRuntime === undefined ? {} : { connectionRuntime }),
       },
       owner: owner,
       schedules: options.schedules,
     });
+    if (connectionRuntime !== undefined) owner.transfer(connectionRuntime);
     if (webhookRuntime !== undefined) owner.transfer(webhookRuntime);
     if (notificationRuntime !== undefined) owner.transfer(notificationRuntime);
     await application.init();
