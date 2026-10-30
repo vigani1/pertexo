@@ -34,7 +34,10 @@ export function identityHandlers(currentWorkspace: unknown = workspace) {
 }
 
 export function lifecycleChange(
-  change: 'deletion_requested' | 'deletion_restored' = 'deletion_requested',
+  change:
+    | 'deletion_requested'
+    | 'deletion_restored'
+    | 'reactivated' = 'deletion_requested',
 ) {
   return { workspaceId, change, occurredAt: timestamp };
 }
