@@ -123,6 +123,38 @@ describe('inbox live updates', () => {
     },
   );
 
+  it('waits out a rate limit’s Retry-After before reconnecting', async () => {
+    vi.useFakeTimers();
+    const stream = vi
+      .fn<ApiClient['stream']>()
+      .mockRejectedValueOnce(
+        new ApiError({
+          kind: 'problem',
+          status: 429,
+          retryAfterMs: 20_000,
+          message: 'Too many requests',
+        }),
+      )
+      .mockResolvedValue(
+        openStream('event: inbox.ready\ndata: {"revision":null}\n\n'),
+      );
+    const apiClient = client(stream);
+    const { result } = renderHook(
+      () => useInboxLive({ apiClient, userId, workspaceId, enabled: true }),
+      { wrapper: wrapper(new QueryClient()) },
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(19_900);
+    });
+    expect(stream).toHaveBeenCalledOnce();
+    expect(result.current).toBe('reconnecting');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    expect(stream).toHaveBeenCalledTimes(2);
+    expect(result.current).toBe('live');
+  });
+
   it('stops when a successful answer is not an event stream', async () => {
     const stream = vi.fn(() =>
       Promise.reject(

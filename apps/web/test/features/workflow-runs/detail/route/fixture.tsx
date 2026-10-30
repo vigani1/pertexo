@@ -85,7 +85,7 @@ export function installRun({
   run: ReturnType<typeof fixtureRun>;
   nodes: readonly unknown[];
   events?: readonly Readonly<{ type: string }>[];
-  stream?: () => Response;
+  stream?: () => Response | undefined;
   input?: unknown;
   output?: unknown;
 }>) {
