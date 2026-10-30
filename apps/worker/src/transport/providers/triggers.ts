@@ -22,22 +22,18 @@ export function triggerRuntimeProvider(
     useFactory: async (
       observer: QueueConsumerObserver,
     ): Promise<TriggerRuntime> => {
-      if (dependencies.triggerRuntime !== undefined)
-        return dependencies.triggerRuntime;
-      return createTriggerRuntime(
-        {
-          ...config.triggerRuntime,
-          database: config.database,
-          ...(dependencies.databaseRuntime === undefined
-            ? {}
-            : { databaseRuntime: dependencies.databaseRuntime }),
-          observer,
-          redisUrl: config.redisUrl,
-        },
-        dependencies.logger === undefined
+      return createTriggerRuntime({
+        ...config.triggerRuntime,
+        database: config.database,
+        ...(dependencies.databaseRuntime === undefined
           ? {}
-          : { logger: dependencies.logger },
-      );
+          : { databaseRuntime: dependencies.databaseRuntime }),
+        observer,
+        redisUrl: config.redisUrl,
+        ...(dependencies.logger === undefined
+          ? {}
+          : { logger: dependencies.logger }),
+      });
     },
   };
 }

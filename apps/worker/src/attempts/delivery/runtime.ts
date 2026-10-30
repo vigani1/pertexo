@@ -1,13 +1,7 @@
 import type { CallbackKeyConfig } from '@pertexo/integrations/server';
 import type { WorkerCodeRunnerConfig } from '../code/client.js';
-import {
-  createNodeAttemptRunStore,
-  type NodeAttemptRunStore,
-} from '@pertexo/database/attempts';
-import {
-  createWorkflowExecutionReader,
-  type WorkflowExecutionReader,
-} from '@pertexo/database/runs';
+import { createNodeAttemptRunStore } from '@pertexo/database/attempts';
+import { createWorkflowExecutionReader } from '@pertexo/database/runs';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -52,7 +46,6 @@ import {
   type NodeAttemptExecutionEngine,
   type NodeAttemptHandler,
 } from './handler.js';
-import type { NodeExecutionCapabilityFactories } from '../execution/capabilities.js';
 import {
   createPreviewAttemptHandler,
   type PreviewAttemptRunStore,
@@ -109,83 +102,81 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   workerId: string;
 }>;
 
-export type NodeAttemptRuntimeDependencies = Readonly<{
-  capabilityFactory?: typeof createWorkerNodeRuntimeCapabilities;
-  consumerFactory?: typeof createQueueConsumer;
-  engine?: NodeAttemptExecutionEngine;
-  notifications?: RunEventNotificationPublisher;
-  reader?: WorkflowExecutionReader;
-  registry?: NodeExecutionRegistry;
-  runStore?: NodeAttemptRunStore;
-  runtimeCapabilities?: NodeExecutionCapabilityFactories;
-  previewTelemetry?: PreviewTelemetry;
-  previewHandlerFactory?: typeof createPreviewAttemptHandler;
+export type NodeAttemptRuntimeFactories = Readonly<{
+  capabilities: typeof createWorkerNodeRuntimeCapabilities;
+  consumer: typeof createQueueConsumer;
+  engine: (
+    options: NodeAttemptExecutionEngineOptions,
+  ) => NodeAttemptExecutionEngine;
+  notifications: (redisUrl: string) => RunEventNotificationPublisher;
+  previewHandler: typeof createPreviewAttemptHandler;
+  previewTelemetry: () => PreviewTelemetry;
+  reader: typeof createWorkflowExecutionReader;
+  registry: (httpRequest?: SecureHttpAddressPolicy) => NodeExecutionRegistry;
+  runStore: typeof createNodeAttemptRunStore;
 }>;
 
+const productionFactories: NodeAttemptRuntimeFactories = {
+  capabilities: createWorkerNodeRuntimeCapabilities,
+  consumer: createQueueConsumer,
+  engine: createNodeAttemptExecutionEngine,
+  notifications: (redisUrl) =>
+    new RedisRunEventNotificationPublisher({ redisUrl }),
+  previewHandler: createPreviewAttemptHandler,
+  previewTelemetry: createProductionPreviewTelemetry,
+  reader: createWorkflowExecutionReader,
+  registry: (httpRequest) =>
+    createPlatformNodeRegistry({
+      httpRequest: { httpClient: createNodeSecureHttpClient(httpRequest) },
+      httpRequestTelemetry: createHttpProviderTelemetry(),
+      slackSendMessageTelemetry: createSlackProviderTelemetry(),
+      emailSendNotificationTelemetry: createEmailProviderTelemetry(),
+    }),
+  runStore: createNodeAttemptRunStore,
+};
+
 interface ProductionNodeAttemptRuntime {
-  capabilityRuntime?: WorkerNodeRuntimeCapabilities;
+  capabilityRuntime: WorkerNodeRuntimeCapabilities;
   handler: NodeAttemptHandler;
-  runtimeCapabilities?: NodeExecutionCapabilityFactories;
 }
 
 async function createProductionNodeAttemptRuntime(
   options: NodeAttemptRuntimeOptions,
-  dependencies: NodeAttemptRuntimeDependencies,
+  factories: NodeAttemptRuntimeFactories,
   own: OwnNodeAttemptResource,
 ): Promise<ProductionNodeAttemptRuntime> {
-  const expressionEvaluator =
-    dependencies.engine === undefined ? new JsonataEvaluator() : undefined;
+  const expressionEvaluator = new JsonataEvaluator();
   own(
     'expression evaluator',
-    expressionEvaluator?.shutdown.bind(expressionEvaluator),
+    expressionEvaluator.shutdown.bind(expressionEvaluator),
   );
-  const engineOptions: NodeAttemptExecutionEngineOptions = {
+  const engine = factories.engine({
     catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
-    ...(expressionEvaluator === undefined ? {} : { expressionEvaluator }),
-  };
-  const engine =
-    dependencies.engine ?? createNodeAttemptExecutionEngine(engineOptions);
-  const registry =
-    dependencies.registry ??
-    createPlatformNodeRegistry({
-      httpRequest: {
-        httpClient: createNodeSecureHttpClient(options.httpRequest),
-      },
-      httpRequestTelemetry: createHttpProviderTelemetry(),
-      slackSendMessageTelemetry: createSlackProviderTelemetry(),
-      emailSendNotificationTelemetry: createEmailProviderTelemetry(),
-    });
-  const runStore =
-    dependencies.runStore ??
-    createNodeAttemptRunStore(options.database, options.databaseRuntime);
+    expressionEvaluator,
+  });
+  const registry = factories.registry(options.httpRequest);
+  const runStore = factories.runStore(
+    options.database,
+    options.databaseRuntime,
+  );
   own('node-attempt run store', runStore.close.bind(runStore));
-  const reader =
-    dependencies.reader ??
-    createWorkflowExecutionReader(options.database, options.databaseRuntime);
+  const reader = factories.reader(options.database, options.databaseRuntime);
   own('published workflow reader', reader.close.bind(reader));
-  const notifications =
-    dependencies.notifications ??
-    new RedisRunEventNotificationPublisher({ redisUrl: options.redisUrl });
+  const notifications = factories.notifications(options.redisUrl);
   own('run-event notifications', notifications.close.bind(notifications));
 
-  let capabilityRuntime: WorkerNodeRuntimeCapabilities | undefined;
-  let runtimeCapabilities = dependencies.runtimeCapabilities;
-  if (runtimeCapabilities === undefined)
-    capabilityRuntime = await (
-      dependencies.capabilityFactory ?? createWorkerNodeRuntimeCapabilities
-    )(
-      capabilityRuntimeOptions(options),
-      options.databaseRuntime === undefined
-        ? {}
-        : { databaseRuntime: options.databaseRuntime },
-    );
+  const capabilityRuntime = await factories.capabilities(
+    capabilityRuntimeOptions(options),
+    options.databaseRuntime === undefined
+      ? {}
+      : { databaseRuntime: options.databaseRuntime },
+  );
   own(
     'node runtime capabilities',
-    capabilityRuntime?.close.bind(capabilityRuntime),
+    capabilityRuntime.close.bind(capabilityRuntime),
   );
-  runtimeCapabilities ??= capabilityRuntime?.factories;
   return {
-    ...(capabilityRuntime === undefined ? {} : { capabilityRuntime }),
+    capabilityRuntime,
     handler: createNodeAttemptHandler({
       engine,
       heartbeatIntervalMillis: options.heartbeatIntervalMillis,
@@ -194,21 +185,20 @@ async function createProductionNodeAttemptRuntime(
       reader,
       registry,
       runStore,
-      ...(runtimeCapabilities === undefined ? {} : { runtimeCapabilities }),
+      runtimeCapabilities: capabilityRuntime.factories,
       workerId: options.workerId,
     }),
-    ...(runtimeCapabilities === undefined ? {} : { runtimeCapabilities }),
   };
 }
 
 export async function createNodeAttemptRuntime(
   options: NodeAttemptRuntimeOptions,
-  dependencies: NodeAttemptRuntimeDependencies = {},
+  overrides: Partial<NodeAttemptRuntimeFactories> = {},
 ): Promise<NodeAttemptRuntime> {
-  // Resources supplied through these close-capable ports transfer to this
-  // runtime immediately. Capability factory overrides are borrowed; only a
-  // capability runtime created here is owned. The consumer is the sole drain
-  // barrier; every other owner is released only after that barrier settles.
+  const factories = { ...productionFactories, ...overrides };
+  // Preview resources transfer to this runtime immediately. The consumer is
+  // the sole drain barrier; every other owner is released only after that
+  // barrier settles.
   // Same-phase releases remain concurrent so one independent cleanup cannot
   // prevent the others from being attempted.
   const ownedResources: OwnedNodeAttemptResource[] = [];
@@ -234,17 +224,15 @@ export async function createNodeAttemptRuntime(
   try {
     const production = await createProductionNodeAttemptRuntime(
       options,
-      dependencies,
+      factories,
       own,
     );
-    const { capabilityRuntime, runtimeCapabilities } = production;
+    const { capabilityRuntime } = production;
     const nodeHandler = production.handler;
-    const selectedPreviewCapabilities =
-      options.preview?.runtimeCapabilities ?? runtimeCapabilities;
     const previewHandler =
       options.preview === undefined
         ? undefined
-        : (dependencies.previewHandlerFactory ?? createPreviewAttemptHandler)({
+        : factories.previewHandler({
             heartbeatIntervalMillis:
               options.preview.heartbeatIntervalMillis ??
               options.heartbeatIntervalMillis,
@@ -253,15 +241,13 @@ export async function createNodeAttemptRuntime(
               options.preview.leaseDurationSeconds ??
               options.leaseDurationSeconds,
             runStore: options.preview.runStore,
-            telemetry:
-              dependencies.previewTelemetry ??
-              createProductionPreviewTelemetry(),
-            ...(selectedPreviewCapabilities === undefined
-              ? {}
-              : { runtimeCapabilities: selectedPreviewCapabilities }),
+            telemetry: factories.previewTelemetry(),
+            runtimeCapabilities:
+              options.preview.runtimeCapabilities ??
+              capabilityRuntime.factories,
             workerId: options.workerId,
           });
-    const consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
+    const consumer = factories.consumer({
       queueName: QUEUE_NAME.nodeAttempts,
       redisUrl: options.redisUrl,
       handler: queueHandler(nodeHandler, previewHandler),
@@ -279,7 +265,7 @@ export async function createNodeAttemptRuntime(
       consumer,
       checkReadiness: async (): Promise<void> => {
         assertNodeAttemptRuntimeOpen(lifecycle);
-        await capabilityRuntime?.checkReadiness();
+        await capabilityRuntime.checkReadiness();
         assertNodeAttemptRuntimeOpen(lifecycle);
       },
       close: (): Promise<void> => {

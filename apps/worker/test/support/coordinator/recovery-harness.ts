@@ -27,13 +27,14 @@ import {
   type waitForAttemptOutbox,
   type AcceptedRun,
 } from './runs.js';
-import { testNodeAttemptRuntime } from '../runtime-factories.js';
+import {
+  testNodeAttemptRuntime,
+  type TestNodeAttemptServices,
+} from '../runtime-factories.js';
 
 type RecoveryAttempt = Awaited<ReturnType<typeof waitForAttemptOutbox>>;
 type RecoveryRuntimeCapabilities = NonNullable<
-  NonNullable<
-    Parameters<typeof createNodeAttemptRuntime>[1]
-  >['runtimeCapabilities']
+  TestNodeAttemptServices['runtimeCapabilities']
 >;
 
 export interface CoordinatorRecoveryHarness {

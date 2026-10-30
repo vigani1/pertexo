@@ -1,16 +1,5 @@
 import type { DatabaseRuntime } from '@pertexo/database/platform';
-import type { OutboxDispatcherDatabase } from '@pertexo/database/outbox';
-import type {
-  StructuredLogger,
-  TransportMetrics,
-} from '@pertexo/observability';
-import type { QueueProducer } from '@pertexo/queue';
-
-import type { CoordinatorRuntime } from '../runs/runtime.js';
-import type { FailureNotificationDeliveryCapability } from '../notifications/failure-handler.js';
-import type { NodeAttemptRuntime } from '../attempts/delivery/runtime.js';
-import type { MaintenanceRuntime } from '../maintenance/runtime.js';
-import type { TriggerRuntime } from '../triggers/runtime.js';
+import type { StructuredLogger } from '@pertexo/observability';
 
 export const OUTBOX_DISPATCHER = Symbol('OUTBOX_DISPATCHER');
 export const QUEUE_CONSUMER_OBSERVER = Symbol('QUEUE_CONSUMER_OBSERVER');
@@ -21,15 +10,7 @@ export const MAINTENANCE_RUNTIME = Symbol('MAINTENANCE_RUNTIME');
 export const TRIGGER_RUNTIME = Symbol('TRIGGER_RUNTIME');
 
 export type TransportModuleDependencies = Readonly<{
-  coordinatorRuntime?: CoordinatorRuntime;
-  nodeAttemptRuntime?: NodeAttemptRuntime;
-  maintenanceRuntime?: MaintenanceRuntime;
-  triggerRuntime?: TriggerRuntime;
-  dispatcherDatabase?: OutboxDispatcherDatabase;
   databaseRuntime?: DatabaseRuntime;
   dispatcherDatabaseRuntime?: DatabaseRuntime;
-  queueProducer?: QueueProducer;
-  transportMetrics?: TransportMetrics;
-  failureNotificationDelivery?: FailureNotificationDeliveryCapability;
   logger?: StructuredLogger;
 }>;

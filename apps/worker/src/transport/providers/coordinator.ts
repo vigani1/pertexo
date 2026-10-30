@@ -22,32 +22,28 @@ export function coordinatorRuntimeProvider(
     useFactory: async (
       observer: QueueConsumerObserver,
     ): Promise<CoordinatorRuntime> => {
-      if (dependencies.coordinatorRuntime !== undefined)
-        return dependencies.coordinatorRuntime;
-      return createCoordinatorRuntime(
-        {
-          database: config.database,
-          maintenanceDatabase: config.dispatcherDatabase,
-          ...(dependencies.dispatcherDatabaseRuntime === undefined
-            ? {}
-            : {
-                maintenanceDatabaseRuntime:
-                  dependencies.dispatcherDatabaseRuntime,
-              }),
-          ...(dependencies.databaseRuntime === undefined
-            ? {}
-            : { databaseRuntime: dependencies.databaseRuntime }),
-          dueWakeupBatchSize: config.coordinator.dueWakeupBatchSize,
-          dueWakeupPollIntervalMillis:
-            config.coordinator.dueWakeupPollIntervalMillis,
-          maximumAdmissions: config.coordinator.maximumAdmissions,
-          observer,
-          redisUrl: config.redisUrl,
-        },
-        dependencies.logger === undefined
+      return createCoordinatorRuntime({
+        database: config.database,
+        maintenanceDatabase: config.dispatcherDatabase,
+        ...(dependencies.dispatcherDatabaseRuntime === undefined
           ? {}
-          : { logger: dependencies.logger },
-      );
+          : {
+              maintenanceDatabaseRuntime:
+                dependencies.dispatcherDatabaseRuntime,
+            }),
+        ...(dependencies.databaseRuntime === undefined
+          ? {}
+          : { databaseRuntime: dependencies.databaseRuntime }),
+        dueWakeupBatchSize: config.coordinator.dueWakeupBatchSize,
+        dueWakeupPollIntervalMillis:
+          config.coordinator.dueWakeupPollIntervalMillis,
+        maximumAdmissions: config.coordinator.maximumAdmissions,
+        observer,
+        redisUrl: config.redisUrl,
+        ...(dependencies.logger === undefined
+          ? {}
+          : { logger: dependencies.logger }),
+      });
     },
   };
 }

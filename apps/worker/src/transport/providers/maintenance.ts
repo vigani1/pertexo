@@ -33,12 +33,9 @@ const productionFactories: MaintenanceProviderFactories = {
 /** Which deliveries this worker can make: each needs its own configuration. */
 export function maintenanceDeliveries(
   config: WorkerConfig,
-  dependencies: TransportModuleDependencies,
 ): Readonly<{ notification: boolean; invitation: boolean }> {
   return {
-    notification:
-      dependencies.failureNotificationDelivery !== undefined ||
-      config.connectionEncryption !== undefined,
+    notification: config.connectionEncryption !== undefined,
     invitation: config.invitationDelivery !== undefined,
   };
 }
@@ -63,20 +60,14 @@ export async function createOwnedMaintenanceRuntime(
   observer: QueueConsumerObserver,
   factories: MaintenanceProviderFactories = productionFactories,
 ): Promise<MaintenanceRuntime> {
-  if (dependencies.maintenanceRuntime !== undefined)
-    return dependencies.maintenanceRuntime;
-
   let notificationStore: FailureNotificationStore | undefined;
   let invitationStore: WorkspaceInvitationDeliveryStore | undefined;
   let encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   const deliveryFactories = factories.notificationDelivery;
   try {
-    let failureNotificationDelivery = dependencies.failureNotificationDelivery;
+    let failureNotificationDelivery;
     const encryptionConfig = config.connectionEncryption;
-    if (
-      failureNotificationDelivery === undefined &&
-      encryptionConfig !== undefined
-    ) {
+    if (encryptionConfig !== undefined) {
       notificationStore = deliveryFactories.store(
         config.database,
         dependencies.databaseRuntime,
