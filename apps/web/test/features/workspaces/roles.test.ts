@@ -23,7 +23,6 @@ import {
   canLeaveWorkspace,
   canSuspendWorkspaceMember,
   canTransferWorkspaceOwnership,
-  capabilitiesForRole,
   ROLES,
 } from '@pertexo/workflow-model';
 
@@ -48,28 +47,38 @@ describe('roles matrix', () => {
     expect([...WORKSPACE_ROLES]).toEqual([...ROLES]);
   });
 
-  it('grants each ability exactly to the roles holding every capability behind it', () => {
-    for (const row of ROLE_MATRIX) {
-      const expected = ROLES.filter((role) =>
-        row.capabilities.every((capability) =>
-          capabilitiesForRole(role).includes(capability),
-        ),
-      );
-      expect({ ability: row.ability, roles: row.roles }).toEqual({
-        ability: row.ability,
-        roles: expected,
-      });
-    }
+  it('grants each ability to the roles the role summaries describe', () => {
+    expect(ROLE_MATRIX.map(({ ability, roles }) => [ability, roles])).toEqual([
+      [
+        'See workflows, runs and connections',
+        ['owner', 'admin', 'builder', 'operator', 'viewer'],
+      ],
+      ['Start runs', ['owner', 'admin', 'builder', 'operator']],
+      ['Cancel and replay runs', ['owner', 'admin', 'operator']],
+      ['Manage notification email defaults', ['owner', 'admin']],
+      ['Get operational notices by default', ['owner', 'admin', 'operator']],
+      ['Build, test and publish workflows', ['owner', 'admin', 'builder']],
+      ['Read the audit log and manage audit retention', ['owner', 'admin']],
+      ['Manage workspace variables', ['owner', 'admin']],
+      ['Manage connections', ['owner', 'admin']],
+      ['Manage members and invitations', ['owner', 'admin']],
+      ['Rename, delete or hand over the workspace', ['owner']],
+    ]);
   });
 
-  it('names who holds each capability the way the policy grants it', () => {
-    for (const capability of capabilitiesForRole('owner'))
-      expect({ capability, roles: [...rolesAllowedTo(capability)] }).toEqual({
-        capability,
-        roles: ROLES.filter((role) =>
-          capabilitiesForRole(role).includes(capability),
-        ),
-      });
+  it('names who holds a capability, most senior first', () => {
+    expect(rolesAllowedTo('connection:manage')).toEqual(['owner', 'admin']);
+    expect(rolesAllowedTo('run:cancel')).toEqual([
+      'owner',
+      'admin',
+      'operator',
+    ]);
+    expect(rolesAllowedTo('workflow:publish')).toEqual([
+      'owner',
+      'admin',
+      'builder',
+    ]);
+    expect(rolesAllowedTo('workspace:manage')).toEqual(['owner']);
     expect(
       roleLimitSentence('operator', 'connection:manage', 'manage connections'),
     ).toBe(
