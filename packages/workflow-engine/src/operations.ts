@@ -1,4 +1,3 @@
-import type { WorkflowExecutableNode } from './compilation/foundation.js';
 import type { WorkflowTestPolicy } from './testing/policy.js';
 import {
   testStepDisposition,
@@ -26,13 +25,16 @@ import {
   indexPersistedSuccessfulOutcomes,
   parseCompletedOutputItems,
 } from './observation/coordinator-output.js';
-import { executableNodes } from './compilation/graph.js';
 import {
   assertAuthenticExecutableIdentity,
+  executableControls,
   executableFailureRoutes,
+  executionNodes,
   type CompiledWorkflowExecutable,
+  type ExecutionNode,
   type WorkflowExecutableGraph,
 } from './compilation/foundation.js';
+import type { ControlNodeConfig } from '@pertexo/workflow-model';
 
 import type { WorkflowObservation } from './types.js';
 import { parseCheckpoint } from './checkpoint/create-and-parse.js';
@@ -75,6 +77,7 @@ export interface AdvanceWorkflowInput {
 
 export function projectSchedulerState(
   graph: WorkflowExecutableGraph,
+  controls: ReadonlyMap<string, ControlNodeConfig>,
 ): SchedulerState {
   const projectGraph = (graph: WorkflowExecutableGraph): SchedulerState => {
     const nodes = graph.nodes.map(
@@ -84,13 +87,17 @@ export function projectSchedulerState(
         config,
         disabled,
         sideEffectClass: pinnedSideEffectClass,
-      }) => ({
-        id,
-        definition,
-        config,
-        disabled,
-        sideEffectClass: pinnedSideEffectClass,
-      }),
+      }) => {
+        const control = controls.get(id);
+        return {
+          id,
+          definition,
+          config,
+          ...(control === undefined ? {} : { control }),
+          disabled,
+          sideEffectClass: pinnedSideEffectClass,
+        };
+      },
     );
     const edges = graph.edges.map(({ source, target }) => ({
       source: { nodeId: source.nodeId, port: source.port },
@@ -114,7 +121,10 @@ function schedulerState(
 ): SchedulerState {
   const routes = executableFailureRoutes(executable);
   return {
-    ...projectSchedulerState(executable.envelope.graph),
+    ...projectSchedulerState(
+      executable.envelope.graph,
+      executableControls(executable),
+    ),
     ...(routes.length === 0 ? {} : { failureRoutes: routes }),
   };
 }
@@ -145,7 +155,7 @@ export async function advanceWorkflow(
       'workflow_identity_invalid',
       'checkpoint workflow version does not match executable identity',
     );
-  const executableNodeList = executableNodes(input.executable.envelope.graph);
+  const executableNodeList = executionNodes(input.executable);
   const nodesById = new Map(executableNodeList.map((node) => [node.id, node]));
   const invocationsByKey = new Map(
     checkpoint.invocations.map((invocation) => [
@@ -246,7 +256,7 @@ function coordinateObservations({
 }: Readonly<{
   input: AdvanceWorkflowInput;
   checkpoint: ReturnType<typeof parseCheckpoint>;
-  nodesById: ReadonlyMap<string, WorkflowExecutableNode>;
+  nodesById: ReadonlyMap<string, ExecutionNode>;
   invocationsByKey: ReadonlyMap<
     string,
     ReturnType<typeof parseCheckpoint>['invocations'][number]

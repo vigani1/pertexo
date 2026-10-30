@@ -1,5 +1,5 @@
 import { isRecord, isHumanTaskDefinition } from '@pertexo/workflow-model';
-import type { WorkflowExecutableNode } from '../compilation/foundation.js';
+import type { ExecutionNode } from '../compilation/foundation.js';
 import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,
@@ -8,7 +8,7 @@ import type { WorkflowTestPins } from './policy.js';
 
 /** Branch selection is engine control data even when its output was pasted. */
 export function validWorkflowTestPin(
-  node: WorkflowExecutableNode,
+  node: ExecutionNode,
   pin: WorkflowTestPins[string],
 ): boolean {
   const branches = configuredBranchOutputPorts(node);

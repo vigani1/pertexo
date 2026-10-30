@@ -2,11 +2,10 @@ import { isPendingTaskNode } from '@pertexo/workflow-model';
 import { assertFailureCheckpoint } from '../failure-routing/checkpoint.js';
 import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import type { parseCheckpoint } from './create-and-parse.js';
-import { isCoreMergeDefinition } from '../core-definition-identities.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import type {
   CompiledWorkflowExecutable,
-  WorkflowExecutableNode,
+  ExecutionNode,
 } from '../compilation/foundation.js';
 import {
   configuredParallelOutputPorts,
@@ -25,19 +24,15 @@ type CheckpointLoop = ParsedCheckpoint['loops'][number];
 function assertCheckpointJoinIdentity(
   join: CheckpointJoin,
   checkpoint: ParsedCheckpoint,
-  nodesById: ReadonlyMap<string, WorkflowExecutableNode>,
+  nodesById: ReadonlyMap<string, ExecutionNode>,
 ): void {
   const merge = nodesById.get(join.joinId);
-  if (merge === undefined || !isCoreMergeDefinition(merge.definition))
+  if (merge?.control?.kind !== 'merge')
     operationError(
       'workflow_identity_invalid',
       'checkpoint join does not belong to a Merge node',
     );
-  const parallelNodeId = merge.config.parallelNodeId;
-  const parallel =
-    typeof parallelNodeId === 'string'
-      ? nodesById.get(parallelNodeId)
-      : undefined;
+  const parallel = nodesById.get(merge.control.config.parallelNodeId);
   const branchIds =
     parallel === undefined
       ? undefined
@@ -100,7 +95,7 @@ function assertInvocationBelongsToExecutable(
     checkpoint: ParsedCheckpoint;
     executable: CompiledWorkflowExecutable;
     nodeIds: ReadonlySet<string>;
-    nodesById: ReadonlyMap<string, WorkflowExecutableNode>;
+    nodesById: ReadonlyMap<string, ExecutionNode>;
   }>,
 ): void {
   const invalidInvocationIdentity = (): never =>
@@ -177,7 +172,7 @@ function assertInvocationIterationScopes(
 function assertCheckpointLoopIdentity(
   loop: CheckpointLoop,
   checkpoint: ParsedCheckpoint,
-  nodesById: ReadonlyMap<string, WorkflowExecutableNode>,
+  nodesById: ReadonlyMap<string, ExecutionNode>,
 ): void {
   const node = nodesById.get(loop.loopId);
   const controlIdentityMatches =
@@ -222,7 +217,7 @@ function assertCheckpointLoopIdentity(
 export function assertCheckpointMatchesExecutable(
   checkpoint: ParsedCheckpoint,
   executable: CompiledWorkflowExecutable,
-  allNodes: readonly WorkflowExecutableNode[],
+  allNodes: readonly ExecutionNode[],
 ): void {
   const nodeIds = new Set(allNodes.map(({ id }) => id));
   const nodesById = new Map(allNodes.map((node) => [node.id, node]));

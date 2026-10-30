@@ -88,7 +88,10 @@ export function assertGraphPorts(
     )
       fail('workflow edge source port is unavailable');
     const sourceNode = index.nodesById.get(edge.source.nodeId);
-    if (sourceNode !== undefined && !configuresOutputPort(sourceNode, edge))
+    if (
+      sourceNode !== undefined &&
+      !configuresOutputPort(sourceNode, edge, index)
+    )
       fail('workflow edge source port is not configured');
     if (!target.ports.inputs.includes(edge.target.port))
       fail('workflow edge target port is unavailable');
@@ -98,59 +101,31 @@ export function assertGraphPorts(
 function configuresOutputPort(
   node: WorkflowGraph['nodes'][number],
   edge: WorkflowEdge,
+  index: GraphValidationIndex,
 ): boolean {
   if (edge.source.port === WORKFLOW_FAILURE_PORT) return true;
   const taskPorts = pendingTaskOutputPorts(node);
   if (taskPorts !== undefined) return taskPorts.includes(edge.source.port);
-  const structured =
-    (node.definition.key === 'core.switch' && node.definition.version === 1) ||
-    isCoreParallelDefinition(node.definition);
+  const control = index.controls.get(node.id);
   return (
-    !structured ||
-    configuredStructuredOutputPorts(node).includes(edge.source.port)
+    (control?.kind !== 'switch' && control?.kind !== 'parallel') ||
+    structuredOutputPorts(node, index).includes(edge.source.port)
   );
 }
 
-function configuredBranchPorts(
+/** Ports that open a branch scope: Condition, Switch and Parallel outputs. */
+function structuredOutputPorts(
   node: WorkflowGraph['nodes'][number],
+  index: GraphValidationIndex,
 ): readonly string[] {
   if (node.definition.key === 'core.condition' && node.definition.version === 1)
     return ['false', 'true'];
-  if (node.definition.key !== 'core.switch' || node.definition.version !== 1)
-    return [];
-  const cases = node.config.cases;
-  if (!Array.isArray(cases)) return ['default'];
-  return [
-    ...cases.flatMap((item) => {
-      const invalidCase =
-        typeof item !== 'object' || item === null || Array.isArray(item);
-      if (invalidCase) return [];
-      const id = (item as Readonly<Record<string, unknown>>).id;
-      return typeof id === 'string' ? [id] : [];
-    }),
-    'default',
-  ];
-}
-
-function configuredParallelPorts(
-  node: WorkflowGraph['nodes'][number],
-): readonly string[] {
-  if (!isCoreParallelDefinition(node.definition)) return [];
-  const branches = node.config.branches;
-  if (!Array.isArray(branches)) return [];
-  return branches.flatMap((item) => {
-    const invalidBranch =
-      typeof item !== 'object' || item === null || Array.isArray(item);
-    if (invalidBranch) return [];
-    const id = (item as Readonly<Record<string, unknown>>).id;
-    return typeof id === 'string' ? [id] : [];
-  });
-}
-
-function configuredStructuredOutputPorts(
-  node: WorkflowGraph['nodes'][number],
-): readonly string[] {
-  return [...configuredBranchPorts(node), ...configuredParallelPorts(node)];
+  const control = index.controls.get(node.id);
+  if (control?.kind === 'switch')
+    return [...control.config.cases.map(({ id }) => id), 'default'];
+  if (control?.kind === 'parallel')
+    return control.config.branches.map(({ id }) => id);
+  return [];
 }
 
 export function assertBranchesDoNotReconverge(
@@ -180,7 +155,7 @@ export function assertBranchesDoNotReconverge(
   }
 
   for (const node of graph.nodes) {
-    const ports = configuredStructuredOutputPorts(node);
+    const ports = structuredOutputPorts(node, index);
     if (ports.length === 0) continue;
     if (
       isCoreParallelDefinition(node.definition) &&
@@ -267,15 +242,12 @@ function assertPairedMergeInputs(
     incoming.some(({ target }) => !ports.includes(target.port));
   if (mergeInputsMismatch)
     fail('paired Merge inputs must match every Parallel branch exactly once');
-  const policy = pairedMerge.config.policy;
-  const invalidCountPolicy =
-    typeof policy === 'object' &&
-    policy !== null &&
-    (policy as Readonly<Record<string, unknown>>).kind === 'count' &&
-    (typeof (policy as Readonly<Record<string, unknown>>).count !== 'number' ||
-      ((policy as Readonly<Record<string, unknown>>).count as number) >
-        ports.length);
-  if (invalidCountPolicy)
+  const control = index.controls.get(pairedMerge.id);
+  if (
+    control?.kind === 'merge' &&
+    control.config.policy.kind === 'count' &&
+    control.config.policy.count > ports.length
+  )
     fail('Merge count policy exceeds paired Parallel branches');
 }
 
@@ -283,10 +255,10 @@ function assertMergeParallel(
   merge: WorkflowGraph['nodes'][number],
   index: GraphValidationIndex,
 ): void {
-  const parallelNodeId = merge.config.parallelNodeId;
+  const control = index.controls.get(merge.id);
   const parallel =
-    typeof parallelNodeId === 'string'
-      ? index.nodesById.get(parallelNodeId)
+    control?.kind === 'merge'
+      ? index.nodesById.get(control.config.parallelNodeId)
       : undefined;
   if (
     !isCoreParallelDefinition(parallel?.definition) ||

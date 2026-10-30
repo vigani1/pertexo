@@ -54,8 +54,7 @@ describe('control-node config the scheduler can run', () => {
     ).toThrow(expect.objectContaining(refused));
   });
 
-  // engine-05: compile accepts Switch case IDs the scheduler can't route.
-  it.fails.each(['case-17', 'case-00', 'other'])(
+  it.each(['case-17', 'case-00', 'other'])(
     'refuses the Switch case ID %s at compile time',
     (id) => {
       expect(() =>
@@ -70,8 +69,7 @@ describe('control-node config the scheduler can run', () => {
     },
   );
 
-  // engine-05: compile accepts a Parallel concurrency the scheduler ignores.
-  it.fails.each([
+  it.each([
     ['zero', 0],
     ['above the branch count', 3],
     ['missing', undefined],
@@ -87,8 +85,7 @@ describe('control-node config the scheduler can run', () => {
     ).toThrow(expect.objectContaining(refused));
   });
 
-  // engine-05: compile accepts a Merge policy the scheduler can't settle.
-  it.fails.each([
+  it.each([
     ['unknown', { parallelNodeId: 'parallel', policy: { kind: 'some' } }],
     ['missing', { parallelNodeId: 'parallel' }],
   ])('refuses a Merge policy that is %s', (_, config) => {

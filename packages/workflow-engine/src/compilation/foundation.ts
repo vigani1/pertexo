@@ -8,7 +8,9 @@ import {
 } from '@pertexo/node-sdk';
 import {
   canonicalJson,
+  inspectControlNodeConfig,
   inspectWorkflowFailureRoutes,
+  type ControlNodeConfig,
   WORKFLOW_FAILURE_PORT,
   type WorkflowFailureRoute,
   type JsonValue,
@@ -96,9 +98,17 @@ export interface CompiledWorkflowExecutable {
 }
 export type ExecutionFailureRoute = WorkflowFailureRoute &
   Readonly<{ normalSuffixNodeIds: readonly string[] }>;
+/** A verified step with its parsed control setup; the stored executable keeps only its config. */
+export type ExecutionNode = WorkflowExecutableNode &
+  Readonly<{ control?: ControlNodeConfig }>;
+type VerifiedExecutableFacts = Readonly<{
+  failureRoutes: readonly ExecutionFailureRoute[];
+  nodes: readonly ExecutionNode[];
+  controls: ReadonlyMap<string, ControlNodeConfig>;
+}>;
 const authenticExecutableIdentities = new WeakMap<
   object,
-  readonly ExecutionFailureRoute[]
+  VerifiedExecutableFacts
 >();
 
 export function registerExecutableIdentity(
@@ -136,8 +146,35 @@ export function registerExecutableIdentity(
           });
         })
       : [];
-  authenticExecutableIdentities.set(value, Object.freeze(routes));
+  const nodes = withControls(value.envelope.graph);
+  authenticExecutableIdentities.set(
+    value,
+    Object.freeze({
+      failureRoutes: Object.freeze(routes),
+      nodes: Object.freeze(nodes),
+      controls: new Map(
+        nodes.flatMap(({ id, control }) =>
+          control === undefined ? [] : [[id, control] as const],
+        ),
+      ),
+    }),
+  );
   return value;
+}
+
+function withControls(graph: WorkflowExecutableGraph): ExecutionNode[] {
+  return graph.nodes.flatMap((node): ExecutionNode[] => {
+    const inspected = inspectControlNodeConfig(node);
+    if (inspected.kind === 'invalid') fail(inspected.message);
+    return [
+      inspected.kind === 'valid'
+        ? Object.freeze({ ...node, control: inspected.value })
+        : node,
+      ...(node.structured === undefined
+        ? []
+        : withControls(node.structured.body)),
+    ];
+  });
 }
 
 export function assertAuthenticExecutableIdentity(
@@ -150,10 +187,29 @@ export function assertAuthenticExecutableIdentity(
 export function executableFailureRoutes(
   value: CompiledWorkflowExecutable,
 ): readonly ExecutionFailureRoute[] {
-  const routes = authenticExecutableIdentities.get(value);
-  if (routes === undefined)
+  return verifiedFacts(value).failureRoutes;
+}
+
+/** Every step of a verified executable, loop bodies included, in graph order. */
+export function executionNodes(
+  value: CompiledWorkflowExecutable,
+): readonly ExecutionNode[] {
+  return verifiedFacts(value).nodes;
+}
+
+export function executableControls(
+  value: CompiledWorkflowExecutable,
+): ReadonlyMap<string, ControlNodeConfig> {
+  return verifiedFacts(value).controls;
+}
+
+function verifiedFacts(
+  value: CompiledWorkflowExecutable,
+): VerifiedExecutableFacts {
+  const facts = authenticExecutableIdentities.get(value);
+  if (facts === undefined)
     fail('workflow executable identity was not verified in this process');
-  return routes;
+  return facts;
 }
 
 export const token = (

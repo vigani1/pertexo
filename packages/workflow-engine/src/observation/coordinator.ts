@@ -5,7 +5,7 @@ import type { parseCheckpoint } from '../checkpoint/create-and-parse.js';
 import { executableEdges } from '../compilation/graph.js';
 import type {
   CompiledWorkflowExecutable,
-  WorkflowExecutableNode,
+  ExecutionNode,
 } from '../compilation/foundation.js';
 import { completedOutputReference } from './coordinator-output.js';
 import {
@@ -17,7 +17,7 @@ import { exactKeys, operationError, record } from '../operation-values.js';
 import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { invocationKey as createInvocationKey } from '../transition/scheduling/loops.js';
-import type { JoinPolicy, WorkflowObservation } from '../types.js';
+import type { WorkflowObservation } from '../types.js';
 
 type CheckpointInvocation = ReturnType<
   typeof parseCheckpoint
@@ -33,7 +33,7 @@ export function branchSelectionObservations({
   completedItems: readonly JsonValue[];
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>;
   invocations: ReadonlyMap<string, CheckpointInvocation>;
-  nodes: ReadonlyMap<string, WorkflowExecutableNode>;
+  nodes: ReadonlyMap<string, ExecutionNode>;
   test?: boolean | undefined;
 }>): readonly WorkflowObservation[] {
   const seen = new Map<string, string>();
@@ -125,7 +125,7 @@ export function mergeCoordinatorObservations(
   executable: CompiledWorkflowExecutable,
   checkpoint: ReturnType<typeof parseCheckpoint>,
   observations: readonly WorkflowObservation[],
-  nodes: ReadonlyMap<string, WorkflowExecutableNode>,
+  nodes: ReadonlyMap<string, ExecutionNode>,
 ): readonly WorkflowObservation[] {
   const projected = new Map(
     checkpoint.invocations.map((invocation) => [
@@ -155,14 +155,9 @@ export function mergeCoordinatorObservations(
   return [...nodes.values()]
     .filter(({ definition }) => isCoreMergeDefinition(definition))
     .flatMap((merge): WorkflowObservation[] => {
-      const parallelNodeId = merge.config.parallelNodeId;
-      const policy = merge.config.policy;
-      const invalidMergeConfig =
-        typeof parallelNodeId !== 'string' ||
-        typeof policy !== 'object' ||
-        policy === null;
-      if (invalidMergeConfig)
+      if (merge.control?.kind !== 'merge')
         operationError('workflow_identity_invalid', 'Merge config is invalid');
+      const { parallelNodeId, policy } = merge.control.config;
       const parallel = nodes.get(parallelNodeId);
       const branchIds =
         parallel === undefined
@@ -189,7 +184,7 @@ export function mergeCoordinatorObservations(
             joinInvocationKey,
             branchPath: parallelInvocation.branchPath ?? [],
             iterationPath: parallelInvocation.iterationPath ?? [],
-            policy: policy as JoinPolicy,
+            policy,
             branchIds,
             coordinatorDerived: true,
           };

@@ -6,6 +6,7 @@ import {
   invocationKey,
   type InvocationState,
 } from '../../../src/index.js';
+import { executionNodes } from '../../../src/compilation/foundation.js';
 import { mergeCoordinatorObservations } from '../../../src/observation/coordinator.js';
 import {
   nodeCatalog,
@@ -58,7 +59,7 @@ it('waits for a branch source to materialize before permanently recording its ar
     },
   });
   const nodes = new Map(
-    compiled.envelope.graph.nodes.map((node) => [node.id, node]),
+    executionNodes(compiled).map((node) => [node.id, node]),
   );
   const before = {
     ...checkpoint,

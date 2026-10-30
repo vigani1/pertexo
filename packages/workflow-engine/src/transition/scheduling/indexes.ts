@@ -2,7 +2,7 @@ import {
   isCoreMergeDefinition,
   isCoreParallelDefinition,
 } from '../../core-definition-identities.js';
-import type { SchedulerState } from './readiness.js';
+import { configuredPairedParallelId, type SchedulerState } from './policy.js';
 
 type SchedulerNode = SchedulerState['nodes'][number];
 
@@ -12,12 +12,6 @@ export interface SchedulerGraphIndexes {
   readonly mergeNodeIds: ReadonlySet<string>;
   readonly pairedMergeByParallel: ReadonlyMap<string, string>;
   readonly pairedParallelByMerge: ReadonlyMap<string, string>;
-}
-
-function configuredPairedParallelId(node: SchedulerNode): string | undefined {
-  if (!isCoreMergeDefinition(node.definition)) return undefined;
-  const parallelNodeId = node.config?.parallelNodeId;
-  return typeof parallelNodeId === 'string' ? parallelNodeId : undefined;
 }
 
 export function indexSchedulerGraph(

@@ -17,11 +17,14 @@ describe('AdvanceWorkflow branching', () => {
             {
               id: 'switch',
               definition: { key: 'core.switch', version: 1 },
-              config: {
-                cases: [
-                  { id: 'case-02', equals: 'first' },
-                  { id: 'case-01', equals: 'second' },
-                ],
+              control: {
+                kind: 'switch',
+                config: {
+                  cases: [
+                    { id: 'case-02', equals: 'first' },
+                    { id: 'case-01', equals: 'second' },
+                  ],
+                },
               },
               sideEffectClass: 'safe',
             },
@@ -154,9 +157,12 @@ describe('AdvanceWorkflow branching', () => {
             {
               id: 'parallel',
               definition: { key: 'core.parallel', version: 1 },
-              config: {
-                branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
-                maxConcurrency: 1,
+              control: {
+                kind: 'parallel',
+                config: {
+                  branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
+                  maxConcurrency: 1,
+                },
               },
               sideEffectClass: 'safe',
             },
@@ -227,9 +233,12 @@ describe('AdvanceWorkflow branching', () => {
             {
               id: 'parallel',
               definition: { key: 'core.parallel', version: 1 },
-              config: {
-                branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
-                maxConcurrency: 1,
+              control: {
+                kind: 'parallel',
+                config: {
+                  branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
+                  maxConcurrency: 1,
+                },
               },
               sideEffectClass: 'safe',
             },
