@@ -64,13 +64,15 @@ describe('Excel workbook safety', () => {
     ).rejects.toMatchObject(tooLarge);
   });
 
+  // Parsing a million cells takes about 3.5 s alone, too close to the 5 s
+  // default when other packages' tests share the machine.
   it('stops after 1,000,000 cells, empty ones included', async () => {
     const cells = '<c/>'.repeat(16);
     const rows = `<row>${cells}</row>`.repeat(62_501);
     await expect(
       readWorkbook(workbook({ sheets: [{ name: 'Sheet1', rows }] })),
     ).rejects.toMatchObject(tooLarge);
-  });
+  }, 30_000);
 
   it('counts merged-area fills toward the same cell budget', async () => {
     const names = Array.from({ length: 20 }, (_, index) => `c${String(index)}`);
