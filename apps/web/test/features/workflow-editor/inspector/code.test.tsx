@@ -7,27 +7,6 @@ import { CodeSetup } from '@/features/workflow-editor/components/inspector/code/
 import type { NodeFormApi } from '@/features/workflow-editor/model/inspector/node-form';
 import type { WorkflowNode } from '@/features/workflow-editor/model/graph/scopes';
 
-vi.mock('@/features/workflow-editor/components/inspector/code/field', () => ({
-  CodeField: ({
-    id,
-    value,
-    onChange,
-  }: {
-    id: string;
-    value: string;
-    onChange: (value: string) => void;
-  }) => (
-    <textarea
-      id={id}
-      aria-labelledby={`${id}-label`}
-      value={value}
-      onChange={(event) => {
-        onChange(event.target.value);
-      }}
-    />
-  ),
-}));
-
 function Setup({
   empty = false,
   editable = true,
@@ -73,9 +52,9 @@ describe('Code language choice', () => {
   it('defaults old steps to JavaScript and preserves code unless the language change is confirmed', async () => {
     render(<Setup />);
     const user = userEvent.setup();
-    expect(screen.getByRole('textbox', { name: 'JavaScript' })).toHaveValue(
-      'return input;',
-    );
+    expect(
+      await screen.findByRole('textbox', { name: 'JavaScript' }),
+    ).toHaveTextContent('return input;');
     await user.click(screen.getByRole('combobox', { name: 'Language' }));
     await user.click(await screen.findByRole('option', { name: 'Python' }));
     expect(
@@ -88,9 +67,9 @@ describe('Code language choice', () => {
     await user.click(screen.getByRole('combobox', { name: 'Language' }));
     await user.click(await screen.findByRole('option', { name: 'Python' }));
     await user.click(screen.getByRole('button', { name: 'Switch language' }));
-    expect(screen.getByRole('textbox', { name: 'Python' })).toHaveValue(
-      'return input;',
-    );
+    expect(
+      await screen.findByRole('textbox', { name: 'Python' }),
+    ).toHaveTextContent('return input;');
     expect(screen.getByLabelText('Saved configuration')).toHaveTextContent(
       '"language":"python"',
     );
