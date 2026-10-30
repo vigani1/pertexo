@@ -6,10 +6,12 @@ import { registerFencesGrantEditsAudienceReviews } from './folders/fences-grant-
 import { registerChecksRetainedFileOwnersBefore } from './folders/checks-retained-file-owners-before.cases.js';
 import { registerOmitsHiddenWorkflowIdentitiesVariable } from './folders/omits-hidden-workflow-identities-variable.cases.js';
 import { registerKeepsRetainedRunReadsAvailable } from './folders/keeps-retained-run-reads-available.cases.js';
+import { registerRefusesUnlinkedOrganizationGroups } from './folders/refuses-unlinked-organization-groups.cases.js';
 beforeAll(beforeAllFixture1, 30_000);
 afterAll(afterAllFixture2);
 registerOmitsInaccessibleWorkflowsRetainedRun();
 registerFencesGrantEditsAudienceReviews();
 registerChecksRetainedFileOwnersBefore();
+registerRefusesUnlinkedOrganizationGroups();
 registerOmitsHiddenWorkflowIdentitiesVariable();
 registerKeepsRetainedRunReadsAvailable();
