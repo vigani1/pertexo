@@ -9,6 +9,7 @@ import { registerCapturesVariablesOnPreviewAdmission } from './execution/capture
 import { registerKeepsSimultaneousFirstRequestsBehind } from './execution/keeps-simultaneous-first-requests-behind.cases.js';
 import { registerCopiesSuccessfulUnexpiredPriorOutput } from './execution/copies-successful-unexpired-prior-output.cases.js';
 import { registerReadsUnexpiredTenantScopedPreview } from './execution/reads-unexpired-tenant-scoped-preview.cases.js';
+import { registerBoundsRetentionExecutionDeadline } from './execution/bounds-retention-execution-deadline.cases.js';
 beforeAll(beforeAllFixture1);
 beforeEach(resetFixture);
 afterAll(afterAllFixture2);
@@ -20,4 +21,6 @@ describe('durable preview acceptance', () => {
   registerCopiesSuccessfulUnexpiredPriorOutput();
 
   registerReadsUnexpiredTenantScopedPreview();
+
+  registerBoundsRetentionExecutionDeadline();
 });
