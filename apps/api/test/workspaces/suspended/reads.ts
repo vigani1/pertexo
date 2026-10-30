@@ -1,0 +1,213 @@
+import { expect } from 'vitest';
+
+import type { Reply } from '../../support/better-auth/real-api.support.js';
+import type { World } from './world.js';
+
+type Refusal = Readonly<{ status: number; code: string }>;
+
+export type Read = Readonly<{
+  name: string;
+  /** The least role that holds the capability; the page opens for it. */
+  as: 'owner' | 'viewer';
+  path: (world: World) => string;
+  /** A read that takes its query in a body, as the data table rows do. */
+  query?: object;
+  shows: (body: never, world: World) => void;
+  refusal?: Refusal;
+}>;
+
+export const HIDDEN: Refusal = { status: 404, code: 'resource.not_found' };
+const FORBIDDEN: Refusal = { status: 403, code: 'auth.forbidden' };
+
+type Items = Readonly<{ items: readonly Readonly<{ id: string }>[] }>;
+
+const lists =
+  (select: (world: World) => string) => (body: Items, world: World) => {
+    expect(body.items.map(({ id }) => id)).toContain(select(world));
+  };
+const answers = (body: unknown) => {
+  expect(body).toBeTypeOf('object');
+};
+const root = ({ workspaceId }: World) => `/v1/workspaces/${workspaceId}`;
+const workflow = (world: World) =>
+  `${root(world)}/workflows/${world.workflowId}`;
+
+/** The reads a suspended workspace already answers. */
+export const READS_OPEN_TODAY: readonly Read[] = [
+  {
+    name: 'the run list',
+    as: 'viewer',
+    path: (world) => `${root(world)}/runs`,
+    shows: lists(({ runId }) => runId),
+  },
+  {
+    name: 'a run',
+    as: 'viewer',
+    path: (world) => `${root(world)}/runs/${world.runId}`,
+    shows: (body: { run: { id: string } }, world) => {
+      expect(body.run.id).toBe(world.runId);
+    },
+  },
+  {
+    name: 'the run statistics',
+    as: 'viewer',
+    path: (world) => `${root(world)}/run-statistics`,
+    shows: answers,
+  },
+  {
+    name: 'the usage trends',
+    as: 'viewer',
+    path: (world) => `${root(world)}/usage-trends?period=90d`,
+    shows: (body: { total: number }) => {
+      expect(body.total).toBeGreaterThan(0);
+    },
+  },
+  {
+    name: 'the variables',
+    as: 'viewer',
+    path: (world) => `${root(world)}/variables`,
+    shows: answers,
+  },
+  {
+    name: 'the data tables',
+    as: 'viewer',
+    path: (world) => `${root(world)}/data-tables`,
+    shows: (body: { tables: readonly { id: string }[] }, world) => {
+      expect(body.tables.map(({ id }) => id)).toContain(world.tableId);
+    },
+  },
+  {
+    name: "a data table's rows",
+    as: 'viewer',
+    path: (world) => `${root(world)}/data-tables/${world.tableId}/rows/query`,
+    query: { filters: [], limit: 10, offset: 0 },
+    shows: answers,
+  },
+  {
+    name: 'the audit log',
+    as: 'owner',
+    path: (world) => `${root(world)}/governance/audit`,
+    shows: answers,
+  },
+  {
+    name: 'the governance settings',
+    as: 'owner',
+    path: (world) => `${root(world)}/governance/settings`,
+    shows: answers,
+  },
+];
+
+/** The reads a suspended workspace refuses today, which ADR 013/027 opens. */
+export const READS_CLOSED_TODAY: readonly Read[] = [
+  {
+    name: 'the workflow list',
+    as: 'viewer',
+    path: (world) => `${root(world)}/workflows`,
+    shows: lists(({ workflowId }) => workflowId),
+  },
+  {
+    name: 'the workflow folders',
+    as: 'viewer',
+    path: (world) => `${root(world)}/workflow-folders`,
+    shows: answers,
+  },
+  {
+    name: 'the workflow tags',
+    as: 'viewer',
+    path: (world) => `${root(world)}/workflow-tags`,
+    shows: answers,
+  },
+  {
+    name: 'a workflow',
+    as: 'viewer',
+    path: workflow,
+    shows: (body: { workflow: { id: string } }, world) => {
+      expect(body.workflow.id).toBe(world.workflowId);
+    },
+  },
+  {
+    name: "a workflow's draft",
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/draft`,
+    shows: answers,
+  },
+  {
+    name: "a workflow's versions",
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/versions`,
+    shows: lists(({ versionId }) => versionId),
+  },
+  {
+    name: 'the connections',
+    as: 'viewer',
+    path: (world) => `${root(world)}/connections`,
+    shows: lists(({ connectionId }) => connectionId),
+  },
+  {
+    name: 'a connection',
+    as: 'viewer',
+    path: (world) => `${root(world)}/connections/${world.connectionId}`,
+    shows: (body: { id: string }, world) => {
+      expect(body.id).toBe(world.connectionId);
+    },
+  },
+  {
+    name: 'the members',
+    as: 'owner',
+    path: (world) => `${root(world)}/members`,
+    shows: (body: { items: readonly unknown[] }) => {
+      expect(body.items).toHaveLength(2);
+    },
+    refusal: FORBIDDEN,
+  },
+  {
+    name: 'the invitations',
+    as: 'owner',
+    path: (world) => `${root(world)}/invitations`,
+    shows: answers,
+    refusal: FORBIDDEN,
+  },
+  {
+    name: 'the usage capacity',
+    as: 'viewer',
+    path: (world) => `${root(world)}/usage-capacity`,
+    shows: answers,
+  },
+  {
+    name: 'the inbox',
+    as: 'viewer',
+    path: (world) => `${root(world)}/notifications`,
+    shows: answers,
+  },
+  {
+    name: 'the inbox summary',
+    as: 'viewer',
+    path: (world) => `${root(world)}/notifications/summary`,
+    shows: answers,
+  },
+  {
+    name: 'the inbox preferences',
+    as: 'viewer',
+    path: (world) => `${root(world)}/notifications/preferences`,
+    shows: answers,
+  },
+  {
+    name: 'the requests and approvals',
+    as: 'owner',
+    path: (world) => `${root(world)}/pending-tasks?view=all&status=all`,
+    shows: lists(({ taskId }) => taskId),
+  },
+  {
+    name: 'a request or approval',
+    as: 'viewer',
+    path: (world) => `${root(world)}/pending-tasks/${world.taskId}`,
+    shows: (body: { task: { id: string } }, world) => {
+      expect(body.task.id).toBe(world.taskId);
+    },
+  },
+];
+
+export function expectShown(read: Read, reply: Reply, world: World): void {
+  expect(reply.statusCode, reply.payload).toBe(200);
+  read.shows(reply.json<never>(), world);
+}
