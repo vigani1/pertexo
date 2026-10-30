@@ -61,6 +61,41 @@ export function registerRejectsDeferredQueueReadinessAfterClose(): void {
     vi.useRealTimers();
   });
 
+  it('bounds a stalled queue observation', async () => {
+    vi.useFakeTimers();
+    try {
+      const producer = createQueueProducer({
+        publishTimeoutMs: 25,
+        redisUrl: 'redis://localhost:6379/0',
+      });
+      mocks.queueInstances[0]?.getJobCountByTypes.mockReturnValue(
+        new Promise<number>(() => undefined),
+      );
+      const observing = expect(producer.observe()).rejects.toThrow(
+        /bounded timeout/iu,
+      );
+      await vi.advanceTimersByTimeAsync(25);
+      await observing;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('turns a non-Error observation failure into an Error keeping its cause', async () => {
+    const producer = createQueueProducer({
+      redisUrl: 'redis://localhost:6379/0',
+    });
+    // Redis client libraries can reject with a bare reply string.
+    const reply = "READONLY You can't write against a read only replica";
+    mocks.queueInstances[0]?.getJobCountByTypes.mockReturnValue(
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      Promise.reject(reply),
+    );
+    await expect(producer.observe()).rejects.toSatisfy(
+      (error) => error instanceof Error && error.cause === reply,
+    );
+  });
+
   it('reports an explicit unknown outcome and retains late settlement truth', async () => {
     vi.useFakeTimers();
     try {
