@@ -1,5 +1,6 @@
 import { looksLikeFormula } from '@pertexo/node-sdk';
 import type { JsonValue } from '@pertexo/node-sdk/server';
+import { SPREADSHEET_LIMITS } from '../../read-file/xlsx/limits.js';
 import { refuseFileCreation } from '../failure.js';
 
 export type SheetRow = Readonly<Record<string, JsonValue>>;
@@ -12,7 +13,6 @@ export type SheetRow = Readonly<Record<string, JsonValue>>;
 const SHEET_STYLES = Object.freeze({ header: 1, quoted: 2 });
 
 const MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
-const CELL_TEXT_LENGTH = 32_767;
 const CHUNK = 65_536;
 // XML can't hold these; Excel writes them, and carriage returns, as _xHHHH_.
 // eslint-disable-next-line no-control-regex
@@ -66,10 +66,10 @@ function cell(reference: string, value: JsonValue | undefined, row: number) {
   if (typeof value === 'boolean')
     return `<c r="${reference}" t="b"><v>${value ? '1' : '0'}</v></c>`;
   const text = typeof value === 'string' ? value : JSON.stringify(value);
-  if (text.length > CELL_TEXT_LENGTH)
+  if (text.length > SPREADSHEET_LIMITS.cellTextLength)
     refuseFileCreation(
       'data',
-      `Excel cells hold up to 32,767 characters; row ${String(row)} has a longer value. Shorten it, or choose CSV or JSON.`,
+      `Excel cells hold up to ${SPREADSHEET_LIMITS.cellTextLength.toLocaleString('en-US')} characters; row ${String(row)} has a longer value. Shorten it, or choose CSV or JSON.`,
     );
   return textCell(reference, text, false);
 }

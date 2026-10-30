@@ -31,7 +31,7 @@ export function boundedUtilityResult(value: unknown): JsonValue {
   } catch {
     return refuseUtility(
       'result_too_large',
-      'The result exceeds the retained step-data limits (256 KB, depth 64 and 10,000 members). Split the input into smaller batches.',
+      `The result exceeds the retained step-data limits (${String(STORED_EXECUTION_VALUE_LIMITS.inlineBytes / 1_024)} KB, depth ${String(STORED_EXECUTION_VALUE_LIMITS.depth)} and ${STORED_EXECUTION_VALUE_LIMITS.members.toLocaleString('en-US')} members). Split the input into smaller batches.`,
     );
   }
   try {
@@ -55,7 +55,7 @@ function assertRetainedResult(admitted: JsonValue): void {
       if (Array.isArray(item) && item.length > COLLECTION_MAX_ITEMS)
         refuseUtility(
           'too_many_items',
-          'A result list exceeds 4,998 items. Split the input into smaller batches.',
+          `A result list exceeds ${COLLECTION_MAX_ITEMS.toLocaleString('en-US')} items. Split the input into smaller batches.`,
         );
       for (const [key, child] of Object.entries<JsonValue>(item)) {
         if (!Array.isArray(item)) storedExecutionJsonStringBytes(key);
