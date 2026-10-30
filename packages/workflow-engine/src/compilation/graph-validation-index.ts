@@ -5,11 +5,11 @@ import {
   type WorkflowGraph,
   type WorkflowNode,
 } from '@pertexo/workflow-model';
-import { fail } from './foundation.js';
 
 export type GraphValidationIndex = Readonly<{
   nodesById: ReadonlyMap<string, WorkflowNode>;
   controls: ReadonlyMap<string, ControlNodeConfig>;
+  controlIssues: readonly string[];
   incomingByNode: ReadonlyMap<string, readonly WorkflowEdge[]>;
   incomingByNodePort: ReadonlyMap<string, readonly WorkflowEdge[]>;
   outgoingByNodePort: ReadonlyMap<string, readonly WorkflowEdge[]>;
@@ -57,10 +57,11 @@ export function graphValidationIndex(
     adjacency.get(edge.source.nodeId)?.push(edge.target.nodeId);
   }
   const controls = new Map<string, ControlNodeConfig>();
+  const controlIssues: string[] = [];
   for (const node of graph.nodes) {
     const inspected = inspectControlNodeConfig(node);
-    if (inspected.kind === 'invalid') fail(inspected.message);
-    if (inspected.kind === 'none') continue;
+    if (inspected.kind === 'invalid') controlIssues.push(inspected.message);
+    if (inspected.kind !== 'valid') continue;
     controls.set(node.id, inspected.value);
     if (inspected.value.kind === 'merge')
       appendIndexValue(
@@ -72,6 +73,7 @@ export function graphValidationIndex(
   return {
     nodesById,
     controls,
+    controlIssues,
     incomingByNode,
     incomingByNodePort,
     outgoingByNodePort,
