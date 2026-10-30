@@ -16,7 +16,7 @@ import {
   CsrfProtectionGuard,
 } from '../../../workspaces/index.js';
 import { RateLimit } from '../../../platform/rate-limit/metadata.js';
-import { WorkflowReadGuard } from '../../http/guards.js';
+import { WorkflowParticipantGuard } from '../../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../../types.js';
 import { WorkflowOrganizationBatchesUseCase } from './use-case.js';
 import { withWorkflowOrganizationRequest } from '../http.js';
@@ -34,7 +34,11 @@ export class WorkflowOrganizationBatchesController {
   @Post('workflows/organization/bulk')
   @Header('Cache-Control', 'private, no-store')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public bulk(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -53,7 +57,11 @@ export class WorkflowOrganizationBatchesController {
   @Post('workflow-tags/cleanup/detach')
   @Header('Cache-Control', 'private, no-store')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public cleanup(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,

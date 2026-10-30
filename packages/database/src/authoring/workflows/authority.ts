@@ -4,7 +4,10 @@ import type { WorkflowResourceCapability } from '../../tenant-access/resources/c
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/workflow-model';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
-import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
+import {
+  lockBrowsableWorkspaceAuthority,
+  lockWorkspaceAuthority,
+} from '../../tenant-access/workspaces/authority.queries.js';
 import { WorkflowNotFoundError } from './errors.js';
 
 /** Preserve authoring's non-disclosure contract at the shared authority fence. */
@@ -15,9 +18,12 @@ export async function lockWorkflowAuthoringAuthority(
     actorId,
     roles,
     resource,
+    browsing = false,
   }: Readonly<{
     actorId: string;
     roles: readonly Role[];
+    /** A read a suspended workspace still allows (ADR 013/027). */
+    browsing?: boolean | undefined;
     resource?:
       | Readonly<{
           workflowId: string;
@@ -27,12 +33,9 @@ export async function lockWorkflowAuthoringAuthority(
   }>,
 ): Promise<void> {
   try {
-    const role = await lockWorkspaceAuthority(
-      client,
-      workspaceId,
-      actorId,
-      roles,
-    );
+    const role = await (
+      browsing ? lockBrowsableWorkspaceAuthority : lockWorkspaceAuthority
+    )(client, workspaceId, actorId, roles);
     if (resource !== undefined) {
       const access = await readFolderScope(
         client,

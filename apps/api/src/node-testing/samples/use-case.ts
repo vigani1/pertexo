@@ -10,7 +10,10 @@ import type {
   SampleMetadata,
 } from '@pertexo/database/authoring';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/database/platform';
-import { authorizeWorkspaceOperation } from '../../authorization/index.js';
+import {
+  authorizeWorkspaceOperation,
+  BROWSABLE_WORKSPACE_STATUSES,
+} from '../../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import type { NodeTestUseCaseInput } from '../use-case.js';
 
@@ -96,7 +99,9 @@ export class StepSamplesUseCase {
         ? {}
         : { authorizedWorkspace: input.authorizedWorkspace }),
       capability: write ? 'workflow:update' : 'workflow:read',
-      allowedWorkspaceStatuses: ['active'],
+      allowedWorkspaceStatuses: write
+        ? ['active']
+        : BROWSABLE_WORKSPACE_STATUSES,
       disclosure: 'not_found',
     });
   }

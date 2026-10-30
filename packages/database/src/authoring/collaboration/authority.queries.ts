@@ -11,10 +11,17 @@ export async function requireCollaborationAuthority(
   client: PoolClient,
   input: CollaborationScope,
   lock: 'share' | 'update' = 'share',
-  { editing = false }: Readonly<{ editing?: boolean | undefined }> = {},
+  {
+    editing = false,
+    browsing = false,
+  }: Readonly<{
+    editing?: boolean | undefined;
+    browsing?: boolean | undefined;
+  }> = {},
 ) {
   await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
     actorId: input.actorId,
+    browsing,
     roles: rolesForCapability(editing ? 'workflow:update' : 'workflow:read'),
     resource: {
       workflowId: input.workflowId,

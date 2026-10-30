@@ -8,7 +8,10 @@ import {
 } from '../../schema/authoring/workflows.js';
 import { workflowErrorPolicies } from '../../schema/authoring/error-workflow.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import {
+  readBrowsableFolderScope,
+  readFolderScope,
+} from '../../tenant-access/resources/facts.queries.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import type { PoolClient } from 'pg';
@@ -161,9 +164,10 @@ function readErrorWorkflowSettings(
     async (client) => {
       await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
         actorId: input.actorId,
+        browsing: true,
         roles: rolesForCapability('workflow:read'),
       });
-      const access = await readFolderScope(client, input);
+      const access = await readBrowsableFolderScope(client, input);
       if (
         !(await workflowAccessible(client, access, {
           workspaceId: input.workspaceId,

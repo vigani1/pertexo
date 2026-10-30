@@ -15,6 +15,8 @@ import type { WorkflowPromotionStore } from '@pertexo/database/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
+  BROWSABLE_WORKSPACE_STATUSES,
+  type WorkspaceStatus,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
 import { parseRequestBody } from '../../platform/http/index.js';
@@ -31,7 +33,7 @@ export class WorkflowPromotionUseCase {
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
   async settings(input: Scope) {
-    await this.authorize(input, 'workflow:update');
+    await this.authorizeRead(input);
     return workflowPromotionSettingsSchema.parse(
       await this.store.settings(this.scope(input)),
     );
@@ -48,14 +50,14 @@ export class WorkflowPromotionUseCase {
     );
   }
   async candidates(input: Read) {
-    await this.authorize(input, 'workflow:update');
+    await this.authorizeRead(input);
     const query = workflowPromotionCandidatesQuerySchema.parse(input.request);
     return workflowPromotionCandidatesSchema.parse(
       await this.store.candidates({ ...this.scope(input), ...query }),
     );
   }
   async history(input: Read) {
-    await this.authorize(input, 'workflow:update');
+    await this.authorizeRead(input);
     const query = workflowPromotionPageQuerySchema.parse(input.request);
     return workflowPromotionHistorySchema.parse(
       await this.store.history({ ...this.scope(input), ...query }),
@@ -99,9 +101,17 @@ export class WorkflowPromotionUseCase {
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     };
   }
+  private authorizeRead(input: Scope) {
+    return this.authorize(
+      input,
+      'workflow:update',
+      BROWSABLE_WORKSPACE_STATUSES,
+    );
+  }
   private authorize(
     input: Scope,
     capability: 'workflow:update' | 'workflow:publish' | 'workspace:manage',
+    allowedWorkspaceStatuses: readonly WorkspaceStatus[] = ['active'],
   ) {
     return authorizeWorkspaceOperation({
       actor: input.actor,
@@ -109,7 +119,7 @@ export class WorkflowPromotionUseCase {
       capability,
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active'],
+      allowedWorkspaceStatuses,
       ...(input.signal === undefined ? {} : { signal: input.signal }),
       ...(input.authorizedWorkspace === undefined
         ? {}

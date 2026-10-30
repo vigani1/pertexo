@@ -305,7 +305,17 @@ export function registerEnforcesDestinationCapabilitiesActiveAuthority(): void {
         `update app.workspaces set status='suspended' where id=$1`,
         [workspaceA],
       );
-      await assertInactiveDenied();
+      // A suspended workspace still reads its destinations (ADR 013/027).
+      await expect(
+        connections.destinations.get({
+          workspaceId: workspaceA,
+          actorId: adminId,
+          destinationId,
+        }),
+      ).resolves.toMatchObject({ id: destinationId });
+      await expect(
+        connections.destinations.setStatus(adminReplayCommand),
+      ).rejects.toMatchObject({ code: 'not_found' });
     } finally {
       await authority
         .query(

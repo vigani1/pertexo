@@ -1,6 +1,7 @@
 import {
   authorizeWorkspace,
   authorizeWorkspaceOperation,
+  BROWSABLE_WORKSPACE_STATUSES,
   type ActorContext,
   type AuthorizedWorkspaceContext,
   type WorkspaceAuthorizationSource,
@@ -26,7 +27,10 @@ export async function authorizeConnectionOperation(
     capability,
     access,
     disclosure: 'not_found',
-    allowedWorkspaceStatuses: ['active'],
+    allowedWorkspaceStatuses:
+      capability === 'connection:read'
+        ? BROWSABLE_WORKSPACE_STATUSES
+        : ['active'],
     ...(input.authorizedWorkspace === undefined
       ? {}
       : { authorizedWorkspace: input.authorizedWorkspace }),

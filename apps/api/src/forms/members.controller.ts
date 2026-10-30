@@ -30,7 +30,12 @@ import {
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { FormMemberGuard, FormManageGuard } from './guards.js';
+import {
+  FormManageGuard,
+  FormManagerReadGuard,
+  FormMemberGuard,
+  FormReadGuard,
+} from './guards.js';
 import { FormService } from './service.js';
 import { optionalUploadSession } from '../artifacts/form-uploads/session.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
@@ -45,7 +50,7 @@ export class MemberFormsController {
   constructor(private readonly forms: FormService) {}
   @Get()
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(FormMemberGuard)
+  @UseGuards(FormReadGuard)
   read(@Req() request: FormRequest, @Param() params: unknown) {
     const scope = formParamsSchema.parse(params);
     return withRequestOperationSignal(request, (signal) =>
@@ -83,7 +88,7 @@ export class MemberFormsController {
   }
   @Get('events')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(FormManageGuard)
+  @UseGuards(FormManagerReadGuard)
   history(
     @Req() request: FormRequest,
     @Param() params: unknown,
@@ -102,7 +107,7 @@ export class MemberFormsController {
   }
   @Get('access')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(FormManageGuard)
+  @UseGuards(FormManagerReadGuard)
   access(@Req() request: FormRequest, @Param() params: unknown) {
     const scope = formParamsSchema.parse(params);
     return withRequestOperationSignal(request, (signal) =>

@@ -51,6 +51,29 @@ export function registerRejectsNameBeforePersistenceStorage(): void {
     expect(fixture.readStorageCalls()).toEqual(storageBefore);
   });
 
+  it('still reads an artifact while the workspace is suspended', async () => {
+    const owner = await fixture.login('owner');
+    const begun = await fixture.application.inject({
+      method: 'POST',
+      url: uploadUrl(fixture),
+      headers: mutationHeaders(owner, 'suspended-read'),
+      payload: requestMetadata(Buffer.from('suspended read')),
+    });
+    expect(begun.statusCode, begun.payload).toBe(201);
+    const artifactId = begun.json<{ artifact: { id: string } }>().artifact.id;
+    await fixture.setWorkspaceStatus('suspended');
+    try {
+      const metadata = await fixture.application.inject({
+        method: 'GET',
+        url: `/v1/workspaces/${fixture.workspaceId}/artifacts/${artifactId}`,
+        headers: { cookie: (await fixture.login('viewer')).cookieHeader },
+      });
+      expect(metadata.statusCode, metadata.payload).toBe(200);
+    } finally {
+      await fixture.setWorkspaceStatus('active');
+    }
+  });
+
   it('rejects uploads during pending deletion and restores state', async () => {
     const baseline = await fixture.readCapacity();
     const storageBefore = fixture.readStorageCalls();

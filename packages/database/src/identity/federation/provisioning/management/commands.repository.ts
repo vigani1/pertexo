@@ -6,7 +6,10 @@ import {
 import { asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '../../../../platform/query-errors.js';
-import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
+import {
+  ADMINISTRATIVE_ROLES,
+  BROWSABLE_WORKSPACE_STATUSES,
+} from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import {
   claimCommand,
@@ -48,6 +51,7 @@ export async function readDirectoryManagement<T>(
         readWorkspaceAuthority(scoped, scope.workspaceId, {
           actorId: scope.actorId,
           roles: ADMINISTRATIVE_ROLES,
+          allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
         }),
       );
       const preview = await organizationForWorkspace(client, scope.workspaceId);

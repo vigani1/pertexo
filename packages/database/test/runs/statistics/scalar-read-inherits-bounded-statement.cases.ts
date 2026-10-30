@@ -39,7 +39,17 @@ export function registerScalarReadInheritsBoundedStatement(): void {
     }
   });
 
-  it.each(['suspended', 'pending_deletion'])(
+  it('still returns a snapshot while the workspace is suspended', async () => {
+    await inWorkspace('owner', busyWorkspace, {
+      text: `update app.workspaces set status='suspended' where id=$1`,
+      values: [busyWorkspace],
+    });
+    await expect(
+      runs.usageCapacity({ workspaceId: busyWorkspace }),
+    ).resolves.toMatchObject({ execution: { activeRuns: 0 } });
+  });
+
+  it.each(['pending_deletion'])(
     'does not return a snapshot after workspace becomes %s',
     async (status) => {
       await inWorkspace('owner', busyWorkspace, {

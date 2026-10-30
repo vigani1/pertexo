@@ -205,6 +205,176 @@ export const READS_CLOSED_TODAY: readonly Read[] = [
       expect(body.task.id).toBe(world.taskId);
     },
   },
+  {
+    name: "a workflow's comments",
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/comments`,
+    shows: answers,
+  },
+  {
+    name: 'a comment thread',
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/comments/${world.threadId}`,
+    shows: answers,
+  },
+  {
+    name: 'who a comment can mention',
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/comments/people`,
+    shows: answers,
+  },
+  {
+    name: 'who else is on a workflow',
+    as: 'viewer',
+    path: (world) =>
+      `${workflow(world)}/presence?tabId=00000000-0000-4000-8000-000000000001`,
+    shows: answers,
+  },
+  {
+    name: "a workflow's input cases",
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/input-cases`,
+    shows: answers,
+  },
+  {
+    name: "a draft's pinned samples",
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/draft/samples`,
+    shows: answers,
+  },
+  {
+    name: "a workflow's concurrency",
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/concurrency`,
+    shows: answers,
+  },
+  {
+    name: "a workflow's error workflow",
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/error-workflow`,
+    shows: answers,
+  },
+  {
+    name: "a workflow's auto-pause",
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/auto-pause`,
+    shows: answers,
+  },
+  {
+    name: "a workflow's alert policy",
+    as: 'owner',
+    path: (world) => `${workflow(world)}/failure-notification-policy`,
+    shows: answers,
+  },
+  {
+    name: "a workflow's publication review",
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/publication-review`,
+    shows: answers,
+  },
+  {
+    name: 'a draft check',
+    as: 'viewer',
+    path: (world) => `${workflow(world)}/validate`,
+    query: {},
+    shows: answers,
+  },
+  {
+    name: 'a form',
+    as: 'viewer',
+    path: (world) => `${root(world)}/workflows/${world.formWorkflowId}/form`,
+    shows: answers,
+  },
+  {
+    name: "a form's access",
+    as: 'owner',
+    path: (world) =>
+      `${root(world)}/workflows/${world.formWorkflowId}/form/access`,
+    shows: answers,
+  },
+  {
+    name: "a form's events",
+    as: 'owner',
+    path: (world) =>
+      `${root(world)}/workflows/${world.formWorkflowId}/form/events`,
+    shows: answers,
+  },
+  {
+    name: "a tag's workflows",
+    as: 'owner',
+    path: (world) => `${root(world)}/workflow-tags/${world.tagId}/workflows`,
+    shows: answers,
+  },
+  {
+    name: 'who a folder can be shared with',
+    as: 'owner',
+    path: (world) => `${root(world)}/resource-sharing-principals?kind=member`,
+    shows: answers,
+  },
+  {
+    name: "a folder's sharing",
+    as: 'owner',
+    path: (world) =>
+      `${root(world)}/workflow-folders/${world.folderId}/sharing`,
+    shows: answers,
+  },
+  {
+    name: "a connection's usage",
+    as: 'viewer',
+    path: (world) => `${root(world)}/connections/${world.connectionId}/usage`,
+    shows: answers,
+  },
+  {
+    name: 'the workspace auto-pause',
+    as: 'viewer',
+    path: (world) => `${root(world)}/auto-pause`,
+    shows: answers,
+  },
+  {
+    name: 'the alert destinations',
+    as: 'owner',
+    path: (world) => `${root(world)}/failure-notification-destinations`,
+    shows: answers,
+  },
+  {
+    name: 'the promotion settings',
+    as: 'owner',
+    path: (world) => `${root(world)}/promotions/settings`,
+    shows: answers,
+  },
+  {
+    name: 'the promotion candidates',
+    as: 'owner',
+    path: (world) => `${root(world)}/promotions/candidates`,
+    shows: answers,
+  },
+  {
+    name: 'the promotion history',
+    as: 'owner',
+    path: (world) => `${root(world)}/promotions/history`,
+    shows: answers,
+  },
+  {
+    name: 'the single sign-on settings',
+    as: 'owner',
+    path: (world) => `${root(world)}/sso`,
+    shows: answers,
+    refusal: FORBIDDEN,
+  },
+  {
+    name: 'the directory sync settings',
+    as: 'owner',
+    path: (world) => `${root(world)}/sso/directory`,
+    shows: answers,
+    refusal: FORBIDDEN,
+  },
+  {
+    name: 'the API tokens',
+    as: 'owner',
+    path: (world) => `${root(world)}/api-tokens`,
+    shows: answers,
+    refusal: FORBIDDEN,
+  },
 ];
 
 export function expectShown(read: Read, reply: Reply, world: World): void {

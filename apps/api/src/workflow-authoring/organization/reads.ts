@@ -54,7 +54,9 @@ export class WorkflowOrganizationReadsUseCase {
   ) {}
 
   public async list(input: QueryInput) {
-    await authorizeWorkflowOrganization(input, this.authorization, 'read');
+    await authorizeWorkflowOrganization(input, this.authorization, 'read', {
+      reading: true,
+    });
     const query = workflowOrganizationListQuerySchema.parse(input.query);
     const context = workflowOrganizationContext(input);
     const filters = {
@@ -112,7 +114,9 @@ export class WorkflowOrganizationReadsUseCase {
   }
 
   public async get(input: QueryInput & Readonly<{ workflowId: string }>) {
-    await authorizeWorkflowOrganization(input, this.authorization, 'read');
+    await authorizeWorkflowOrganization(input, this.authorization, 'read', {
+      reading: true,
+    });
     const query = workflowGetQuerySchema.parse(input.query);
     if (
       query.include !== 'organization' &&
@@ -154,7 +158,9 @@ export class WorkflowOrganizationReadsUseCase {
   }
 
   public async listTags(input: QueryInput) {
-    await authorizeWorkflowOrganization(input, this.authorization, 'read');
+    await authorizeWorkflowOrganization(input, this.authorization, 'read', {
+      reading: true,
+    });
     const query = workflowTagListQuerySchema.parse(input.query);
     const context = workflowOrganizationContext(input);
     const cursorContext = {
@@ -185,7 +191,9 @@ export class WorkflowOrganizationReadsUseCase {
   public async listTagAssignments(
     input: QueryInput & Readonly<{ tagId: string }>,
   ) {
-    await authorizeWorkflowOrganization(input, this.authorization, 'admin');
+    await authorizeWorkflowOrganization(input, this.authorization, 'admin', {
+      reading: true,
+    });
     const query = workflowTagListQuerySchema.parse(input.query);
     const context = workflowOrganizationContext(input);
     const cursorContext = {

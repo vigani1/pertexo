@@ -28,7 +28,7 @@ import {
 } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { NotificationReadGuard } from '../guards.js';
+import { NotificationChangeGuard, NotificationReadGuard } from '../guards.js';
 import { NoticePreferencesService } from './service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { inboxFailure } from '../../problems/context/normalize.js';
@@ -54,7 +54,7 @@ export class NoticePreferencesController {
   }
   @Put('preferences')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(NotificationChangeGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   replace(
     @Req() request: Request,
@@ -76,7 +76,7 @@ export class NoticePreferencesController {
   }
   @Put('defaults')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(NotificationChangeGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   defaults(
     @Req() request: Request,
@@ -110,7 +110,7 @@ export class NoticePreferencesController {
   }
   @Put('subjects/:subjectKind/:subjectId')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(NotificationChangeGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   replaceSubscription(
     @Req() request: Request,

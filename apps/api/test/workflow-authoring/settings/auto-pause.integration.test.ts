@@ -272,8 +272,8 @@ integration('authenticated automatic pause HTTP controls (F26 slice 3)', () => {
       lifecycleRevision: 1,
     });
     await fixture.setWorkspaceStatus('suspended');
-    // Suspension revokes members' sessions (ADR 013); a fresh sign-in
-    // still finds the workflow hidden.
+    // Suspension revokes members' sessions (ADR 013); a fresh sign-in reads
+    // the settings, though nothing can change them.
     expectProblem(
       await fixture.application.inject({
         method: 'GET',
@@ -283,14 +283,11 @@ integration('authenticated automatic pause HTTP controls (F26 slice 3)', () => {
       401,
       'auth.unauthenticated',
     );
-    expectProblem(
-      await fixture.application.inject({
-        method: 'GET',
-        url,
-        headers: { cookie: (await fixture.login('owner')).cookieHeader },
-      }),
-      404,
-      'resource.not_found',
-    );
+    const suspended = await fixture.application.inject({
+      method: 'GET',
+      url,
+      headers: { cookie: (await fixture.login('owner')).cookieHeader },
+    });
+    expect(suspended.statusCode, suspended.payload).toBe(200);
   });
 });

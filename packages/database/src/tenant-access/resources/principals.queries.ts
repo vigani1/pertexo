@@ -9,7 +9,7 @@ import { users, workspaceMemberships } from '../../schema/foundation.js';
 import { authOrganizationWorkspaces } from '../../schema/identity/federation/organizations.js';
 import { authDirectoryGroups } from '../../schema/identity/federation/directory/groups.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { lockWorkspaceAuthority } from '../workspaces/authority.queries.js';
+import { lockBrowsableWorkspaceAuthority } from '../workspaces/authority.queries.js';
 import { RESOURCE_ADMINISTRATORS } from './policy.js';
 import type { ResourceActor } from './contract.js';
 
@@ -19,7 +19,7 @@ export async function readSharingPrincipals(
   actor: ResourceActor,
   input: SharingPrincipalsQuery,
 ): Promise<SharingPrincipals> {
-  await lockWorkspaceAuthority(
+  await lockBrowsableWorkspaceAuthority(
     client,
     actor.workspaceId,
     actor.actorId,

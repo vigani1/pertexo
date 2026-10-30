@@ -1,5 +1,6 @@
 import { sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { workspaces } from '../../../schema/foundation.js';
 import { pendingRunTasks } from '../../../schema/runs/pending-task.js';
 import { workflowRuns } from '../../../schema/runs/execution.js';
 export const task = alias(pendingRunTasks, 'task');
@@ -22,6 +23,7 @@ export function pendingTaskAudienceSql(actor: SQL, role: SQL): SQL {
 /** Current task/run state also gates Inbox context and mail. */
 export function pendingTaskBlockedSql(actor: SQL, role: SQL): SQL {
   return sql`case when ${task.status}='expired' then 'expired' when ${task.status}='canceled' then 'run_closed' when ${task.status} <> 'pending' then 'resolved'
+ when (select ${workspaces.status} from ${workspaces} where ${workspaces.id}=${task.workspaceId})<>'active' then 'workspace_suspended'
  when ${run.status} not in ('queued','running','waiting') or ${run.cancelRequestedAt} is not null or ${run.deadlineAt}<=clock_timestamp() then 'run_closed'
  when ${task.expiresAt} <= clock_timestamp() then 'expired'
  when ${starterExcludedSql(actor)} then 'starter'

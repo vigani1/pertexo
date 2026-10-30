@@ -74,7 +74,9 @@ export function collaborationPresence(
         input.workspaceId,
         input.actorId,
         async (client) => {
-          await requireCollaborationAuthority(client, input);
+          await requireCollaborationAuthority(client, input, 'share', {
+            browsing: true,
+          });
           return readPresence(client, input);
         },
         input.signal,

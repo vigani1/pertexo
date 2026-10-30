@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowFolders } from '../../../schema/authoring/organization.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import { folderProjection, type FolderRow } from './hierarchy.queries.js';
-import { readFolderScope } from '../../../tenant-access/resources/facts.queries.js';
+import { readBrowsableFolderScope } from '../../../tenant-access/resources/facts.queries.js';
 import { FOLDER_LIMIT, FOLDER_DEPTH_LIMIT } from '../limits.js';
 
 import { ROLES } from '@pertexo/workflow-model';
@@ -19,6 +19,7 @@ export function listFolders(
   return session.transact(input, async (client, scope) => {
     await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
       actorId: scope.actorId,
+      browsing: true,
       roles: ROLES,
     });
     // One statement derives the whole hierarchy. Count parity fails
@@ -43,7 +44,7 @@ export function listFolders(
       )
       .catch(rethrowQueryFailure);
     const row = result.rows[0];
-    const access = await readFolderScope(client, scope);
+    const access = await readBrowsableFolderScope(client, scope);
     const items = row?.items ?? [];
     const hierarchyCompatible =
       items.length <= FOLDER_LIMIT &&

@@ -23,6 +23,9 @@ export type World = Readonly<{
   runId: string;
   connectionId: string;
   tableId: string;
+  tagId: string;
+  folderId: string;
+  threadId: string;
   taskId: string;
   requestTaskId: string;
   formWorkflowId: string;
@@ -145,6 +148,28 @@ export async function seedWorld(api: Api): Promise<World> {
     }),
   );
 
+  const { tag } = await created<Readonly<{ tag: Readonly<{ id: string }> }>>(
+    api.send('POST', `${root}/workflow-tags`, {
+      browser: owner,
+      headers: apiHeaders(),
+      payload: { key: 'browsed' },
+    }),
+  );
+  const folder = await created<Readonly<{ folder: Readonly<{ id: string }> }>>(
+    api.send('POST', `${root}/workflow-folders`, {
+      browser: owner,
+      headers: apiHeaders(),
+      payload: { name: 'Browsed', parentId: null },
+    }),
+  );
+  const thread = await created<Readonly<{ threadId: string }>>(
+    api.send('POST', `${root}/workflows/${workflow.workflowId}/comments`, {
+      browser: owner,
+      headers: apiHeaders(),
+      payload: { body: 'Browsed', mentionUserIds: [] },
+    }),
+  );
+
   const formCapability = randomBytes(32).toString('base64url');
   const access = await api.send(
     'POST',
@@ -171,6 +196,9 @@ export async function seedWorld(api: Api): Promise<World> {
     runId,
     connectionId: connection.id,
     tableId: table.id,
+    tagId: tag.id,
+    folderId: folder.folder.id,
+    threadId: thread.threadId,
     taskId: await waitingHuman(api, world, 'approval'),
     requestTaskId: await waitingHuman(api, world, 'input_request'),
     formWorkflowId: form.workflowId,

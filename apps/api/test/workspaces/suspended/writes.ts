@@ -5,7 +5,7 @@ import type { World } from './world.js';
 
 type Write = Readonly<{
   name: string;
-  method: 'POST' | 'PUT';
+  method: 'POST' | 'PUT' | 'DELETE';
   path: (world: World) => string;
   headers?: (world: World) => Record<string, string>;
   payload?: (world: World) => object;
@@ -189,6 +189,115 @@ export const WRITES: readonly Write[] = [
     path: (world) =>
       `${root(world)}/workflows/${world.formWorkflowId}/form/access`,
     payload: () => ({ access: 'members', expectedRevision: 1 }),
+  },
+  {
+    name: 'renaming a tag',
+    method: 'POST',
+    path: (world) => `${root(world)}/workflow-tags/${world.tagId}/rename`,
+    payload: () => ({ key: 'refused', expectedRevision: 1 }),
+  },
+  {
+    name: 'deleting a tag',
+    method: 'POST',
+    path: (world) => `${root(world)}/workflow-tags/${world.tagId}/delete`,
+    payload: () => ({ expectedRevision: 1 }),
+  },
+  {
+    name: 'detaching tags in bulk',
+    method: 'POST',
+    path: (world) => `${root(world)}/workflow-tags/cleanup/detach`,
+    payload: () => ({ tagIds: [], workflowIds: [] }),
+  },
+  {
+    name: 'organizing workflows in bulk',
+    method: 'POST',
+    path: (world) => `${root(world)}/workflows/organization/bulk`,
+    payload: () => ({ workflowIds: [], changes: [] }),
+  },
+  {
+    name: 'renaming a folder',
+    method: 'POST',
+    path: (world) => `${root(world)}/workflow-folders/${world.folderId}/rename`,
+    payload: () => ({ name: 'Refused', expectedRevision: 1 }),
+  },
+  {
+    name: 'moving a folder',
+    method: 'POST',
+    path: (world) => `${root(world)}/workflow-folders/${world.folderId}/move`,
+    payload: () => ({ parentId: null, expectedRevision: 1 }),
+  },
+  {
+    name: 'deleting a folder',
+    method: 'POST',
+    path: (world) => `${root(world)}/workflow-folders/${world.folderId}/delete`,
+    payload: () => ({ expectedRevision: 1 }),
+  },
+  {
+    name: 'sharing a folder',
+    method: 'POST',
+    path: (world) =>
+      `${root(world)}/workflow-folders/${world.folderId}/sharing`,
+    payload: () => ({ mode: 'restricted', grants: [], expectedRevision: 1 }),
+  },
+  {
+    name: 'moving a workflow to a folder',
+    method: 'POST',
+    path: (world) => `${workflow(world)}/folder`,
+    payload: ({ folderId }) => ({ folderId, expectedRevision: 1 }),
+  },
+  {
+    name: 'exporting a workflow',
+    method: 'POST',
+    path: (world) => `${workflow(world)}/export`,
+    payload: () => ({}),
+  },
+  {
+    name: 'replying to a comment',
+    method: 'POST',
+    path: (world) => `${workflow(world)}/comments/${world.threadId}/replies`,
+    payload: () => ({ body: 'Refused', mentionUserIds: [] }),
+  },
+  {
+    name: 'resolving a comment',
+    method: 'PUT',
+    path: (world) => `${workflow(world)}/comments/${world.threadId}/status`,
+    payload: () => ({ status: 'resolved', expectedRevision: 1 }),
+  },
+  {
+    name: 'leaving a workflow',
+    method: 'DELETE',
+    path: (world) => `${workflow(world)}/presence/${randomUUID()}`,
+  },
+  {
+    name: 'previewing a schedule',
+    method: 'POST',
+    path: (world) => `${workflow(world)}/triggers/schedules/preview`,
+    payload: () => ({ cron: '0 9 * * *', timeZone: 'UTC' }),
+  },
+  {
+    name: 'setting an alert policy',
+    method: 'PUT',
+    path: (world) => `${workflow(world)}/failure-notification-policy`,
+    payload: ({ connectionId }) => ({ destinationId: connectionId }),
+  },
+  {
+    name: 'changing promotion settings',
+    method: 'PUT',
+    path: (world) => `${root(world)}/promotions/settings`,
+    payload: () => ({ targetWorkspaceId: null, expectedRevision: 0 }),
+  },
+  {
+    name: 'previewing a promotion',
+    method: 'POST',
+    path: (world) => `${root(world)}/promotions/preview`,
+    payload: () => ({ workflows: [] }),
+  },
+  {
+    name: 'leaving the workspace',
+    method: 'POST',
+    path: (world) => `${root(world)}/leave`,
+    payload: () => ({}),
+    forbidden: true,
   },
 ];
 

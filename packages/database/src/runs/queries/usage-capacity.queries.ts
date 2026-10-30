@@ -1,3 +1,4 @@
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { entitlementPolicyState } from './entitlement-effect.js';
 import {
   DEFAULT_ARTIFACT_BYTE_LIMIT,
@@ -11,7 +12,7 @@ import {
 import { workspaceExecutionAdmissionCounters } from '../../schema/runs/capacity/admission.js';
 import { workspaces } from '../../schema/foundation.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { withWorkspaceReadTransaction } from '../../tenant-access/transactions.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
@@ -138,6 +139,9 @@ function capacityQuery({ db, workspaceId }: WorkspaceTransaction) {
       eq(workspaceArtifactCapacity.workspaceId, workspaceId),
     )
     .where(
-      and(eq(workspaces.id, workspaceId), eq(workspaces.status, 'active')),
+      and(
+        eq(workspaces.id, workspaceId),
+        inArray(workspaces.status, BROWSABLE_WORKSPACE_STATUSES),
+      ),
     );
 }

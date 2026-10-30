@@ -69,7 +69,7 @@ describe('workspace usage capacity use case', () => {
     });
   });
 
-  it.each(['suspended', 'pending_deletion', 'deleted'] as const)(
+  it.each(['pending_deletion', 'deleted'] as const)(
     'does not read or disclose capacity in a %s workspace',
     async (status) => {
       const store = persistence();
@@ -82,6 +82,16 @@ describe('workspace usage capacity use case', () => {
       expect(store.usageCapacity).not.toHaveBeenCalled();
     },
   );
+
+  it('reads capacity in a suspended workspace, which can still be browsed', async () => {
+    const store = persistence();
+    await expect(
+      new GetUsageCapacityUseCase(store, access('suspended')).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+      }),
+    ).resolves.toEqual(usageCapacitySnapshot());
+  });
 
   it('does not read for an outsider or inactive membership', async () => {
     const store = persistence();

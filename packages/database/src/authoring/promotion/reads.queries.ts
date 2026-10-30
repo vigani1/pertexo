@@ -7,7 +7,7 @@ import {
 } from '../../schema/authoring/workflows.js';
 import { auditEvents, users } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { readBrowsableFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 
 import { requirePromotionAuthority } from './authority.queries.js';
@@ -29,8 +29,10 @@ function readPromotionCandidates(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await requirePromotionAuthority(client, input);
-      const resources = await readFolderScope(client, input);
+      await requirePromotionAuthority(client, input, 'workflow:update', {
+        browsing: true,
+      });
+      const resources = await readBrowsableFolderScope(client, input);
       if (input.workflowId !== undefined) {
         const result = await drizzle(client)
           .select({
@@ -125,8 +127,10 @@ function readPromotionHistory(
     input.workspaceId,
     input.actorId,
     async (client) => {
-      await requirePromotionAuthority(client, input);
-      const resources = await readFolderScope(client, input);
+      await requirePromotionAuthority(client, input, 'workflow:update', {
+        browsing: true,
+      });
+      const resources = await readBrowsableFolderScope(client, input);
       const result = await drizzle(client)
         .select({
           id: auditEvents.id,

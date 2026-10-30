@@ -37,6 +37,7 @@ import {
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import {
   ConnectionManageGuard,
+  FailureNotificationReadGuard,
   FailureNotificationWorkflowEditGuard,
 } from '../http/guards.js';
 import {
@@ -105,7 +106,7 @@ export class FailureNotificationDestinationsController {
 
   @Get('failure-notification-destinations')
   @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, FailureNotificationWorkflowEditGuard)
+  @UseGuards(SessionAuthenticationGuard, FailureNotificationReadGuard)
   public async list(
     @Req() request: ConnectionRequest,
     @Param() params: unknown,
@@ -118,7 +119,7 @@ export class FailureNotificationDestinationsController {
 
   @Get('failure-notification-destinations/:destinationId')
   @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, FailureNotificationWorkflowEditGuard)
+  @UseGuards(SessionAuthenticationGuard, FailureNotificationReadGuard)
   public async get(
     @Req() request: ConnectionRequest,
     @Param() params: unknown,
@@ -214,7 +215,7 @@ export class FailureNotificationDestinationsController {
 
   @Get('workflows/:workflowId/failure-notification-policy')
   @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, FailureNotificationWorkflowEditGuard)
+  @UseGuards(SessionAuthenticationGuard, FailureNotificationReadGuard)
   public async getPolicy(
     @Req() request: ConnectionRequest,
     @Param() params: unknown,

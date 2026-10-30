@@ -19,6 +19,8 @@ import {
 import type { WorkflowCollaborationStore } from '@pertexo/database/authoring';
 import {
   authorizeWorkspaceOperation,
+  BROWSABLE_WORKSPACE_STATUSES,
+  type WorkspaceStatus,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
@@ -40,7 +42,7 @@ export class WorkflowCollaborationUseCase {
   async list(input: Scope & { query: unknown }) {
     return workflowCommentListSchema.parse(
       await this.store.list({
-        ...(await this.scope(input)),
+        ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
         ...workflowCommentListQuerySchema.parse(input.query),
       }),
     );
@@ -48,7 +50,7 @@ export class WorkflowCollaborationUseCase {
   async read(input: Thread & { query: unknown }) {
     return workflowCommentDetailSchema.parse(
       await this.store.read({
-        ...(await this.scope(input)),
+        ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
         threadId: input.threadId,
         ...workflowCommentDetailQuerySchema.parse(input.query),
       }),
@@ -57,7 +59,7 @@ export class WorkflowCollaborationUseCase {
   async people(input: Scope & { query: unknown }) {
     return workspacePeoplePageSchema.parse(
       await this.store.people({
-        ...(await this.scope(input)),
+        ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
         ...workspacePeopleQuerySchema.parse(input.query),
       }),
     );
@@ -116,7 +118,7 @@ export class WorkflowCollaborationUseCase {
   async presence(input: Scope & { query: unknown }) {
     return workflowPresenceSchema.parse(
       await this.store.presence({
-        ...(await this.scope(input)),
+        ...(await this.scope(input, BROWSABLE_WORKSPACE_STATUSES)),
         ...workflowPresenceQuerySchema.parse(input.query),
       }),
     );
@@ -136,14 +138,17 @@ export class WorkflowCollaborationUseCase {
       tabId: input.tabId,
     });
   }
-  private async scope(input: Scope) {
+  private async scope(
+    input: Scope,
+    allowedWorkspaceStatuses: readonly WorkspaceStatus[] = ['active'],
+  ) {
     await authorizeWorkspaceOperation({
       actor: input.actor,
       routeWorkspaceId: input.routeWorkspaceId,
       capability: 'workflow:read',
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active'],
+      allowedWorkspaceStatuses,
       ...(input.authorizedWorkspace === undefined
         ? {}
         : { authorizedWorkspace: input.authorizedWorkspace }),

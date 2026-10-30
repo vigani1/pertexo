@@ -75,7 +75,7 @@ export function registerRevokesTokensOnWorkspaceDeletion(): void {
     await identities.requestWorkspaceLifecycleOperation({
       workspaceId: owner.workspaceId,
       actorUserId: owner.ownerUserId,
-      commandType: 'reactivated' as never,
+      commandType: 'reactivated',
       reason: 'Workspace reactivated',
       idempotencyKey: randomUUID(),
     });

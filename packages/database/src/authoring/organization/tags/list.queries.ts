@@ -25,6 +25,7 @@ export async function listTags(
   return session.transact(input, async (client, scope) => {
     await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
       actorId: scope.actorId,
+      browsing: true,
       roles: ROLES,
     });
     const rows = await drizzle(client)
@@ -52,6 +53,7 @@ export async function listTagAssignments(
   return session.transact(input, async (client, scope) => {
     await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
       actorId: scope.actorId,
+      browsing: true,
       roles: ADMINISTRATORS,
     });
     // Tag visibility and the assignment page share one statement snapshot.

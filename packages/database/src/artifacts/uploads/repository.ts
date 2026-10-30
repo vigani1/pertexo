@@ -1,4 +1,7 @@
-import { lockWorkspaceAuthority } from '../../tenant-access/workspaces/authority.queries.js';
+import {
+  lockBrowsableWorkspaceAuthority,
+  lockWorkspaceAuthority,
+} from '../../tenant-access/workspaces/authority.queries.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { visibleArtifactIds } from '../references/access.queries.js';
 import type { Pool, PoolClient } from 'pg';
@@ -10,7 +13,10 @@ import {
 } from '../../platform/pool/runtime.js';
 import { checkDatabaseReadiness } from '../../platform/readiness.queries.js';
 import type { DatabaseReadiness } from '../../platform/contract.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import {
+  BROWSABLE_WORKSPACE_STATUSES,
+  rolesForCapability,
+} from '@pertexo/workflow-model';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import type { ArtifactRecord } from '../contract.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
@@ -47,7 +53,11 @@ async function requireWorkspaceAccess(
     access === 'upload' ? 'artifact:upload' : 'artifact:read',
   );
   try {
-    await lockWorkspaceAuthority(client, workspaceId, actorId, roles);
+    await (
+      access === 'read'
+        ? lockBrowsableWorkspaceAuthority
+        : lockWorkspaceAuthority
+    )(client, workspaceId, actorId, roles);
   } catch (error) {
     if (error instanceof WorkspaceAccessDeniedError)
       throw new ArtifactUploadNotFoundError();
@@ -119,9 +129,14 @@ async function readUploadArtifact(
       );
       try {
         if (
-          !(await visibleArtifactIds(client, parsed, [parsed.artifactId])).has(
-            parsed.artifactId,
-          )
+          !(
+            await visibleArtifactIds(
+              client,
+              parsed,
+              [parsed.artifactId],
+              access === 'read' ? BROWSABLE_WORKSPACE_STATUSES : undefined,
+            )
+          ).has(parsed.artifactId)
         )
           return null;
         const artifact = await loadArtifact(

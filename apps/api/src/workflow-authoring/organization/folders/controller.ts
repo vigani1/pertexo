@@ -21,7 +21,10 @@ import {
   CsrfProtectionGuard,
 } from '../../../workspaces/index.js';
 import { RateLimit } from '../../../platform/rate-limit/metadata.js';
-import { WorkflowReadGuard } from '../../http/guards.js';
+import {
+  WorkflowParticipantGuard,
+  WorkflowReadGuard,
+} from '../../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../../types.js';
 import { WorkflowFoldersUseCase } from './use-case.js';
 import {
@@ -85,7 +88,11 @@ export class WorkflowFoldersController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public replaceSharing(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -105,7 +112,11 @@ export class WorkflowFoldersController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('authenticated_read')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public reviewMove(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -121,7 +132,11 @@ export class WorkflowFoldersController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(201)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public create(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -140,7 +155,11 @@ export class WorkflowFoldersController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public rename(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -160,7 +179,11 @@ export class WorkflowFoldersController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public move(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -180,7 +203,11 @@ export class WorkflowFoldersController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public delete(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -200,7 +227,11 @@ export class WorkflowFoldersController {
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
-  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowParticipantGuard,
+    CsrfProtectionGuard,
+  )
   public place(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,

@@ -6,7 +6,12 @@ export class PendingTaskDecisionError extends Error {
   override readonly name = 'PendingTaskDecisionError';
   constructor(
     readonly reason:
-      'resolved' | 'expired' | 'run_closed' | 'starter' | 'audience',
+      | 'resolved'
+      | 'expired'
+      | 'run_closed'
+      | 'starter'
+      | 'audience'
+      | 'workspace_suspended',
   ) {
     super('This task cannot be decided.');
   }

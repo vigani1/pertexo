@@ -117,11 +117,12 @@ describe.runIf(betterAuthIntegrationEnabled)(
         // Lifecycle transitions revoke prior sessions; use a fresh authenticated
         // viewer to exercise workspace authorization rather than session expiry.
         const currentViewer = await api.signIn(viewerEmail);
-        expectProblem(
-          await api.send('GET', route, { browser: currentViewer }),
-          404,
-          'resource.not_found',
-        );
+        const capacity = await api.send('GET', route, {
+          browser: currentViewer,
+        });
+        if (status === 'suspended')
+          expect(capacity.statusCode, capacity.payload).toBe(200);
+        else expectProblem(capacity, 404, 'resource.not_found');
         const activity = await api.send(
           'GET',
           `/v1/workspaces/${workspaceId}/run-statistics`,

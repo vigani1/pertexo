@@ -1,4 +1,7 @@
-import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import {
+  readBrowsableFolderScope,
+  readFolderScope,
+} from '../../tenant-access/resources/facts.queries.js';
 import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -46,6 +49,7 @@ export function createPublicationReviewStore(
             .catch(rethrowQueryFailure);
         await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
           actorId: input.actorId,
+          browsing: capability === 'workflow:read',
           roles: rolesForCapability(capability),
         });
         return work(client);
@@ -143,7 +147,9 @@ async function lockWorkflow(
     'workflowId' in identity
       ? eq(workflows.id, identity.workflowId)
       : eq(workflows.id, sql`(${reviewed})`);
-  const scope = await readFolderScope(client, input);
+  const scope = await (write
+    ? readFolderScope(client, input)
+    : readBrowsableFolderScope(client, input));
   const found = await db
     .select({ id: workflows.id })
     .from(workflows)

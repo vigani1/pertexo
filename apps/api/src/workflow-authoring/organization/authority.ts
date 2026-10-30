@@ -1,6 +1,7 @@
 import {
   AuthorizationError,
   authorizeWorkspaceOperation,
+  BROWSABLE_WORKSPACE_STATUSES,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
@@ -14,7 +15,13 @@ export async function authorizeWorkflowOrganization(
   input: WorkflowOrganizationInput,
   authorization: WorkspaceAuthorizationSource,
   role: 'read' | 'admin' | 'editor',
-  { fresh = false }: Readonly<{ fresh?: boolean | undefined }> = {},
+  {
+    fresh = false,
+    reading = false,
+  }: Readonly<{
+    fresh?: boolean | undefined;
+    reading?: boolean | undefined;
+  }> = {},
 ) {
   input.signal?.throwIfAborted();
   const access = await authorizeWorkspaceOperation({
@@ -23,7 +30,9 @@ export async function authorizeWorkflowOrganization(
     capability: role === 'editor' ? 'workflow:update' : 'workflow:read',
     access: authorization,
     disclosure: 'not_found',
-    allowedWorkspaceStatuses: ['active'],
+    allowedWorkspaceStatuses: reading
+      ? BROWSABLE_WORKSPACE_STATUSES
+      : ['active'],
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     ...(fresh || input.authorizedWorkspace === undefined
       ? {}

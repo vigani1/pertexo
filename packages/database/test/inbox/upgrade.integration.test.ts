@@ -119,6 +119,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0056_unsent_public_form_uploads.sql',
       '0057_users_canonical_email_index.sql',
       '0058_workspace_reactivation.sql',
+      '0059_suspended_inbox.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

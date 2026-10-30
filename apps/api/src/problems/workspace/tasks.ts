@@ -31,6 +31,10 @@ export const tasksProblems = [
         'pending_task.not_eligible',
         'Your current membership is not in this task’s allowed audience.',
       ],
+      workspace_suspended: [
+        'pending_task.not_eligible',
+        'This workspace is suspended, so nobody can respond until it is reactivated.',
+      ],
     } as const;
     const [code, safeDetail] = problems[error.reason];
     return applicationError(code, { safeDetail });

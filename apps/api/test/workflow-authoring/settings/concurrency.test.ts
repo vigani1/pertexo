@@ -107,7 +107,23 @@ describe('workflow concurrency application boundary', () => {
       expect(persistence.updateSettings).not.toHaveBeenCalled();
     },
   );
-  it.each(['suspended', 'pending_deletion'])(
+  it('reads but does not change a suspended workspace', async () => {
+    const { controls, authorization, persistence } = fixture();
+    authorization.findAccess.mockResolvedValue({
+      actorId,
+      workspaceId,
+      role: 'owner',
+      membershipStatus: 'active',
+      workspaceStatus: 'suspended',
+    });
+    await controls.read(readInput);
+    expect(persistence.readSettings).toHaveBeenCalledOnce();
+    await expect(
+      problemResult(controls.update(commandInput), authoringFailure),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    expect(persistence.updateSettings).not.toHaveBeenCalled();
+  });
+  it.each(['pending_deletion'])(
     'denies %s workspace even for owner',
     async (workspaceStatus) => {
       const { controls, authorization, persistence } = fixture();

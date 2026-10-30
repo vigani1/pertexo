@@ -15,6 +15,7 @@ import type {
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
+  BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import {
   applicationError,
@@ -152,7 +153,10 @@ export class WorkflowInputCasesUseCase {
       capability,
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active'],
+      allowedWorkspaceStatuses:
+        capability === 'workflow:read'
+          ? BROWSABLE_WORKSPACE_STATUSES
+          : ['active'],
       ...(input.signal === undefined ? {} : { signal: input.signal }),
       ...(input.authorizedWorkspace === undefined
         ? {}

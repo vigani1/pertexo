@@ -3829,7 +3829,8 @@
                   "audience",
                   "expired",
                   "resolved",
-                  "run_closed"
+                  "run_closed",
+                  "workspace_suspended"
                 ]
               },
               {
@@ -4029,7 +4030,8 @@
                       "audience",
                       "expired",
                       "resolved",
-                      "run_closed"
+                      "run_closed",
+                      "workspace_suspended"
                     ]
                   },
                   {
@@ -4328,7 +4330,8 @@
                       "audience",
                       "expired",
                       "resolved",
-                      "run_closed"
+                      "run_closed",
+                      "workspace_suspended"
                     ]
                   },
                   {
@@ -5064,7 +5067,8 @@
                           "audience",
                           "expired",
                           "resolved",
-                          "run_closed"
+                          "run_closed",
+                          "workspace_suspended"
                         ]
                       },
                       {
@@ -5363,7 +5367,8 @@
                           "audience",
                           "expired",
                           "resolved",
-                          "run_closed"
+                          "run_closed",
+                          "workspace_suspended"
                         ]
                       },
                       {
@@ -6109,7 +6114,8 @@
                         "audience",
                         "expired",
                         "resolved",
-                        "run_closed"
+                        "run_closed",
+                        "workspace_suspended"
                       ]
                     },
                     {
@@ -6359,7 +6365,8 @@
                           "audience",
                           "expired",
                           "resolved",
-                          "run_closed"
+                          "run_closed",
+                          "workspace_suspended"
                         ]
                       },
                       {
@@ -6658,7 +6665,8 @@
                           "audience",
                           "expired",
                           "resolved",
-                          "run_closed"
+                          "run_closed",
+                          "workspace_suspended"
                         ]
                       },
                       {

@@ -28,7 +28,7 @@ import {
 } from '../../schema/authoring/organization.js';
 import { workflows } from '../../schema/authoring/workflows.js';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import { readBrowsableFolderScope } from '../../tenant-access/resources/facts.queries.js';
 import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import { workflowActions } from '../../tenant-access/resources/workflows.queries.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
@@ -129,9 +129,10 @@ async function select(
   // Any active member reads organization, rechecked on every page.
   await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
     actorId: scope.actorId,
+    browsing: true,
     roles: ROLES,
   });
-  const access = await readFolderScope(client, scope);
+  const access = await readBrowsableFolderScope(client, scope);
   const filters = {
     ...input,
     view: input.view ?? 'all',

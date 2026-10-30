@@ -35,7 +35,12 @@ import type { AbortableRequest } from '../platform/http/request-operation-signal
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { optionalUploadSession } from '../artifacts/form-uploads/session.js';
-import { PendingTaskReadGuard, ApprovalAudienceGuard } from './guards.js';
+import {
+  ApprovalAudienceGuard,
+  ApprovalAudienceReadGuard,
+  PendingTaskReadGuard,
+  PendingTaskRespondGuard,
+} from './guards.js';
 import { PendingTaskService } from './service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../problems/context/normalize.js';
@@ -69,7 +74,7 @@ export class PendingTasksController {
   }
   @Get('audience')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(ApprovalAudienceGuard)
+  @UseGuards(ApprovalAudienceReadGuard)
   audience(
     @Req() request: TaskRequest,
     @Param() params: unknown,
@@ -126,7 +131,7 @@ export class PendingTasksController {
   @HttpCode(200)
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
-  @UseGuards(PendingTaskReadGuard, CsrfProtectionGuard)
+  @UseGuards(PendingTaskRespondGuard, CsrfProtectionGuard)
   decide(
     @Req() request: TaskRequest,
     @Param() params: unknown,
@@ -150,7 +155,7 @@ export class PendingTasksController {
   @HttpCode(200)
   @Header('Cache-Control', 'private, no-store')
   @RateLimit('ordinary_mutation')
-  @UseGuards(PendingTaskReadGuard, CsrfProtectionGuard)
+  @UseGuards(PendingTaskRespondGuard, CsrfProtectionGuard)
   submit(
     @Req() request: TaskRequest,
     @Param() params: unknown,

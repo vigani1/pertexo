@@ -1,7 +1,10 @@
 import { rethrowQueryFailure } from '../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import { rolesForCapability, type Role } from '@pertexo/workflow-model';
-import { lockWorkspaceAuthority } from '../tenant-access/workspaces/authority.queries.js';
+import {
+  lockBrowsableWorkspaceAuthority,
+  lockWorkspaceAuthority,
+} from '../tenant-access/workspaces/authority.queries.js';
 import { WorkspaceAccessDeniedError } from '../tenant-access/errors.js';
 import {
   connectionScope,
@@ -19,12 +22,11 @@ async function requireConnectionCapability(
   capability: 'connection:manage' | 'connection:read' | 'connection:use',
 ): Promise<Role> {
   try {
-    return await lockWorkspaceAuthority(
-      client,
-      workspaceId,
-      actorId,
-      rolesForCapability(capability),
-    );
+    return await (
+      capability === 'connection:read'
+        ? lockBrowsableWorkspaceAuthority
+        : lockWorkspaceAuthority
+    )(client, workspaceId, actorId, rolesForCapability(capability));
   } catch (error) {
     if (error instanceof WorkspaceAccessDeniedError)
       throw new ConnectionNotFoundError('Connection is not visible');

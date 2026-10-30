@@ -25,6 +25,7 @@ import {
 import { singleRequestHeader } from '../../platform/http/request-headers.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import {
+  WorkflowEditorReadGuard,
   WorkflowUpdateGuard,
   WorkflowPauseDefaultGuard,
 } from '../http/guards.js';
@@ -37,11 +38,12 @@ import { authoringFailure } from '../../problems/context/normalize.js';
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller('v1/workspaces/:workspaceId/promotions')
 @RateLimit('authenticated_read')
-@UseGuards(SessionAuthenticationGuard, WorkflowUpdateGuard)
+@UseGuards(SessionAuthenticationGuard)
 export class WorkflowPromotionController {
   constructor(private readonly controls: WorkflowPromotionUseCase) {}
   @Header('Cache-Control', 'private, no-store')
   @Get('settings')
+  @UseGuards(WorkflowEditorReadGuard)
   async settings(
     @Req() request: WorkflowAuthoringRequest,
     @Param('workspaceId') workspaceId: string,
@@ -54,7 +56,11 @@ export class WorkflowPromotionController {
   @Put('settings')
   @HttpCode(200)
   @RateLimit('ordinary_mutation')
-  @UseGuards(WorkflowPauseDefaultGuard, CsrfProtectionGuard)
+  @UseGuards(
+    WorkflowUpdateGuard,
+    WorkflowPauseDefaultGuard,
+    CsrfProtectionGuard,
+  )
   async setTarget(
     @Req() request: WorkflowAuthoringRequest,
     @Param('workspaceId') workspaceId: string,
@@ -71,6 +77,7 @@ export class WorkflowPromotionController {
   }
   @Header('Cache-Control', 'private, no-store')
   @Get('candidates')
+  @UseGuards(WorkflowEditorReadGuard)
   async candidates(
     @Req() request: WorkflowAuthoringRequest,
     @Param('workspaceId') workspaceId: string,
@@ -86,6 +93,7 @@ export class WorkflowPromotionController {
   }
   @Header('Cache-Control', 'private, no-store')
   @Get('history')
+  @UseGuards(WorkflowEditorReadGuard)
   async history(
     @Req() request: WorkflowAuthoringRequest,
     @Param('workspaceId') workspaceId: string,
@@ -103,7 +111,7 @@ export class WorkflowPromotionController {
   @Post('preview')
   @HttpCode(200)
   @RateLimit('workflow_compile')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkflowUpdateGuard, CsrfProtectionGuard)
   async preview(
     @Req() request: WorkflowAuthoringRequest,
     @Param('workspaceId') workspaceId: string,
@@ -121,7 +129,7 @@ export class WorkflowPromotionController {
   @Post('apply')
   @HttpCode(200)
   @RateLimit('workflow_compile')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkflowUpdateGuard, CsrfProtectionGuard)
   async apply(
     @Req() request: WorkflowAuthoringRequest,
     @Param('workspaceId') workspaceId: string,

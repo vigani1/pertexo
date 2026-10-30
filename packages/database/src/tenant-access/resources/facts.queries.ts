@@ -14,7 +14,10 @@ import { authDirectoryGroupMembers } from '../../schema/identity/federation/dire
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { WorkspaceTransaction } from '../transactions.js';
-import type { Role } from '@pertexo/workflow-model';
+import {
+  BROWSABLE_WORKSPACE_STATUSES,
+  type Role,
+} from '@pertexo/workflow-model';
 import type { ResourceActor } from './contract.js';
 import { folderScope, RESOURCE_ADMINISTRATORS } from './policy.js';
 
@@ -122,6 +125,19 @@ export async function readTransactionFolderScope(
     ? []
     : await matchingGrants(db, actor);
   return folderScope(actor.workspaceId, role, folders, grants);
+}
+
+/** The scope of a read a suspended workspace still allows (ADR 013/027). */
+export function readBrowsableFolderScope(
+  client: PoolClient,
+  actor: ResourceActor,
+) {
+  return readFolderScope(
+    client,
+    actor,
+    undefined,
+    BROWSABLE_WORKSPACE_STATUSES,
+  );
 }
 
 export function readFolderScope(

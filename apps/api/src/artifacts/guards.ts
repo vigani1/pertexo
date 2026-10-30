@@ -1,3 +1,4 @@
+import { BROWSABLE_WORKSPACE_STATUSES } from '../authorization/index.js';
 import { capabilityGuard } from '../workspaces/http/guards.js';
 
 import { ARTIFACT_AUTHORIZATION } from './tokens.js';
@@ -11,7 +12,10 @@ export const ArtifactUploadGuard = capabilityGuard(
 export const ArtifactReadGuard = capabilityGuard(
   ARTIFACT_AUTHORIZATION,
   'artifact:read',
-  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+  {
+    disclosure: 'not_found',
+    allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
+  },
 );
 
 /** Members who may send a form response: the same check as submitting it. */

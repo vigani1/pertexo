@@ -190,6 +190,7 @@ async function readConcurrencySettings(
     async (client) => {
       await lockWorkflowAuthoringAuthority(client, workspaceId, {
         actorId,
+        browsing: true,
         roles: ROLES,
         resource: { workflowId, capability: 'workflow:read' },
       });

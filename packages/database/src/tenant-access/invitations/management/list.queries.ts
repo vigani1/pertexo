@@ -1,3 +1,4 @@
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -21,7 +22,10 @@ export async function listWorkspaceInvitations(
     pool,
     { workspaceId, actorId: actorUserId },
     async (client) => {
-      await lockAuthorizedActor(client, workspaceId, actorUserId, 'share');
+      await lockAuthorizedActor(client, workspaceId, actorUserId, {
+        strength: 'share',
+        workspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
+      });
       await expireWorkspaceInvitations(client, { workspaceId });
       const afterId =
         input.after === undefined ? undefined : input.after.invitationId;

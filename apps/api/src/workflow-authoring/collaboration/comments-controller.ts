@@ -20,7 +20,7 @@ import {
 } from '../../workspaces/index.js';
 import { requestIdempotencyKey } from '../../platform/http/index.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
-import { WorkflowReadGuard } from '../http/guards.js';
+import { WorkflowParticipantGuard, WorkflowReadGuard } from '../http/guards.js';
 import type { WorkflowAuthoringRequest } from '../types.js';
 import { WorkflowCollaborationUseCase } from './use-case.js';
 import {
@@ -82,7 +82,7 @@ export class WorkflowCommentsController {
   }
   @Post('')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkflowParticipantGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   @HttpCode(201)
   async create(
@@ -105,7 +105,7 @@ export class WorkflowCommentsController {
   }
   @Post(':threadId/replies')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkflowParticipantGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   @HttpCode(201)
   async reply(
@@ -128,7 +128,7 @@ export class WorkflowCommentsController {
   }
   @Put(':threadId/comments/:commentId')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkflowParticipantGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
   async edit(
@@ -151,7 +151,7 @@ export class WorkflowCommentsController {
   }
   @Delete(':threadId/comments/:commentId')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkflowParticipantGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
   async remove(
@@ -174,7 +174,7 @@ export class WorkflowCommentsController {
   }
   @Put(':threadId/status')
   @Header('Cache-Control', 'private, no-store')
-  @UseGuards(CsrfProtectionGuard)
+  @UseGuards(WorkflowParticipantGuard, CsrfProtectionGuard)
   @RateLimit('ordinary_mutation')
   @HttpCode(200)
   async setStatus(

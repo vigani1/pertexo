@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowForms } from '../../schema/triggers/forms.js';
@@ -8,7 +8,10 @@ import {
 } from '../../schema/authoring/workflows.js';
 import { workspaces } from '../../schema/foundation.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import {
+  rolesForCapability,
+  BROWSABLE_WORKSPACE_STATUSES,
+} from '@pertexo/workflow-model';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { readFormDefinition } from './definition.js';
 import type { PoolClient } from 'pg';
@@ -22,10 +25,12 @@ export async function authorizeForm(
     grant,
     write,
     manage = false,
+    browsing = false,
   }: Readonly<{
     grant: PublicFormGrant | undefined;
     write: boolean;
     manage?: boolean | undefined;
+    browsing?: boolean | undefined;
   }>,
 ): Promise<void> {
   if (grant !== undefined) {
@@ -60,6 +65,7 @@ export async function authorizeForm(
         {
           capability: manage && write ? 'workflow:update' : 'workflow:read',
           locking: write,
+          browsing,
           roles: rolesForCapability(
             manage ? 'workflow:update' : 'workspace:read',
           ),
@@ -73,7 +79,13 @@ export async function readFormVersion(
   client: PoolClient,
   input: FormScope,
   locking: 'read' | 'share' | 'update',
-  { allowPaused = false }: Readonly<{ allowPaused?: boolean | undefined }> = {},
+  {
+    allowPaused = false,
+    browsing = false,
+  }: Readonly<{
+    allowPaused?: boolean | undefined;
+    browsing?: boolean | undefined;
+  }> = {},
 ) {
   // Lock before reading the version: a locked join waiting on a concurrent
   // publication re-checks against the old version row and finds no form.
@@ -86,7 +98,10 @@ export async function readFormVersion(
       workspaces,
       and(
         eq(workspaces.id, workflow.workspaceId),
-        eq(workspaces.status, 'active'),
+        inArray(
+          workspaces.status,
+          browsing ? BROWSABLE_WORKSPACE_STATUSES : ['active'],
+        ),
       ),
     )
     .where(

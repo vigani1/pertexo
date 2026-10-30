@@ -8,7 +8,10 @@ import {
 import { workspaceMemberships } from '../../schema/foundation.js';
 import { workflows } from '../../schema/authoring/workflows.js';
 import { connections } from '../../schema/connections.js';
-import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
+import {
+  readBrowsableFolderScope,
+  readFolderScope,
+} from '../../tenant-access/resources/facts.queries.js';
 import { workflowScopeSql } from '../../tenant-access/resources/scope.queries.js';
 import type { Pool, PoolClient } from 'pg';
 
@@ -25,7 +28,11 @@ import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from '../../tenant-access/workspaces/authority.queries.js';
-import { hasCapability, rolesForCapability } from '@pertexo/workflow-model';
+import {
+  hasCapability,
+  rolesForCapability,
+  BROWSABLE_WORKSPACE_STATUSES,
+} from '@pertexo/workflow-model';
 import {
   NoticeUnavailableError,
   type NoticePreferencesStore,
@@ -47,7 +54,9 @@ async function subjectExists(
   const visible =
     input.subjectKind === 'workflow'
       ? workflowScopeSql(
-          await readFolderScope(client, input),
+          await (locking
+            ? readFolderScope(client, input)
+            : readBrowsableFolderScope(client, input)),
           sql`${workflows.id}`,
         )
       : undefined;
@@ -110,6 +119,7 @@ function readPersonalPreferences(
       const role = await readWorkspaceAuthority(client, input.workspaceId, {
         actorId: input.actorId,
         roles: rolesForCapability('workspace:read'),
+        allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
       });
       return readNoticePreferences(client, input.workspaceId, {
         actorId: input.actorId,
@@ -190,6 +200,7 @@ function readPersonalSubscription(
       await readWorkspaceAuthority(client, input.workspaceId, {
         actorId: input.actorId,
         roles: rolesForCapability('run:read'),
+        allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
       });
       await subjectExists(client, input);
       const [found] = await drizzle(client)

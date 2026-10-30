@@ -24,6 +24,7 @@ import {
   CsrfProtectionGuard,
   requireSignInEvidence,
   SessionAuthenticationGuard,
+  WorkspaceMemberBrowseGuard,
   WorkspaceMembershipGuard,
 } from '../workspaces/http/guards.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
@@ -46,7 +47,7 @@ export class ApiTokenController {
   ) {}
   @Get()
   @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, WorkspaceMembershipGuard)
+  @UseGuards(SessionAuthenticationGuard, WorkspaceMemberBrowseGuard)
   public list(
     @Req() request: IdentityWorkspaceRequest,
     @Param() params: unknown,

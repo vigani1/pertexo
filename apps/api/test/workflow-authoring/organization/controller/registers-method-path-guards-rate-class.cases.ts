@@ -13,6 +13,7 @@ import { WorkflowTagConflictError } from '@pertexo/database/authoring';
 import { WorkflowOrganizationController } from '../../../../src/workflow-authoring/organization/controller.js';
 
 import {
+  WorkflowParticipantGuard,
   WorkflowReadGuard,
   WorkflowUpdateGuard,
 } from '../../../../src/workflow-authoring/http/guards.js';
@@ -49,7 +50,13 @@ export function registerRegistersMethodPathGuardsRateClass(): void {
       ]);
       expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
         SessionAuthenticationGuard,
-        route.name === 'replaceTags' ? WorkflowUpdateGuard : WorkflowReadGuard,
+        ...(route.name === 'replaceTags' ? [WorkflowUpdateGuard] : []),
+        ...(route.name !== 'replaceTags' && route.method === 'GET'
+          ? [WorkflowReadGuard]
+          : []),
+        ...(route.name !== 'replaceTags' && route.method !== 'GET'
+          ? [WorkflowParticipantGuard]
+          : []),
         ...(route.method === 'GET' ? [] : [CsrfProtectionGuard]),
       ]);
       expect(
