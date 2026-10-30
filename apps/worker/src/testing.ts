@@ -8,10 +8,9 @@ export type {
   NodeAttemptExecutionEngine,
   PreparedNodeAttempt,
 } from './attempts/delivery/handler.js';
-export {
-  createNodeAttemptRuntime,
-  type NodeAttemptRuntime,
-  type NodeAttemptRuntimeOptions,
+export type {
+  NodeAttemptRuntime,
+  NodeAttemptRuntimeOptions,
 } from './attempts/delivery/runtime.js';
 export { createWorkerNodeRuntimeCapabilities } from './attempts/execution/runtime-capabilities.js';
 export {
