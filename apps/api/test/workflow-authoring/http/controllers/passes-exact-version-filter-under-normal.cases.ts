@@ -38,7 +38,7 @@ export function registerPassesExactVersionFilterUnderNormal(): void {
           after: 'older-page',
         },
       ),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'ZodError' });
     expect(listVersions.execute).not.toHaveBeenCalled();
   });
 
@@ -131,7 +131,7 @@ export function registerPassesExactVersionFilterUnderNormal(): void {
           payload,
           { header: vi.fn() },
         ),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: 'WorkflowHeaderError' });
     }
     await expect(
       controller.duplicate(
@@ -140,7 +140,7 @@ export function registerPassesExactVersionFilterUnderNormal(): void {
         { ...payload, graph: body.graph },
         { header: vi.fn() },
       ),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'ZodError' });
     expect(duplicateWorkflow.execute).not.toHaveBeenCalled();
   });
 

@@ -148,7 +148,7 @@ describe('workspace usage capacity use case', () => {
         routeWorkspaceId: workspaceId,
         signal: abort.signal,
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'AbortError' });
     expect(store.usageCapacity).not.toHaveBeenCalled();
     store.usageCapacity.mockResolvedValue({
       ...usageCapacitySnapshot(),
@@ -159,6 +159,6 @@ describe('workspace usage capacity use case', () => {
         actor,
         routeWorkspaceId: workspaceId,
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'ZodError' });
   });
 });

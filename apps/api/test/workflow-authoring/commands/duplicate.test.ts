@@ -132,7 +132,10 @@ describe('workflow duplication application seam', () => {
   it('requires destination creation authority even when the actor can read the source', async () => {
     for (const role of ['viewer', 'operator'] as const) {
       const { useCase, duplicateWorkflow } = fixture(role);
-      await expect(useCase.execute(input)).rejects.toThrow();
+      await expect(useCase.execute(input)).rejects.toMatchObject({
+        name: 'AuthorizationError',
+        code: 'resource.not_found',
+      });
       expect(duplicateWorkflow).not.toHaveBeenCalled();
     }
   });
@@ -146,7 +149,7 @@ describe('workflow duplication application seam', () => {
           ...withoutTag,
           ...(representationTag === undefined ? {} : { representationTag }),
         }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: 'WorkflowHeaderError' });
     }
     for (const request of [
       { ...input.request, graph: {} },
@@ -154,7 +157,9 @@ describe('workflow duplication application seam', () => {
       { name: 'Copy', source: { kind: 'version' } },
       { name: 'Copy', source: { kind: 'version', versionId, graph: {} } },
     ])
-      await expect(useCase.execute({ ...input, request })).rejects.toThrow();
+      await expect(
+        useCase.execute({ ...input, request }),
+      ).rejects.toMatchObject({ name: 'ZodError' });
     expect(duplicateWorkflow).not.toHaveBeenCalled();
   });
 
@@ -164,7 +169,9 @@ describe('workflow duplication application seam', () => {
       workflowId: destinationId,
       graph: {},
     });
-    await expect(useCase.execute(input)).rejects.toThrow();
+    await expect(useCase.execute(input)).rejects.toMatchObject({
+      name: 'ZodError',
+    });
   });
 
   it('does not start persistence after the request has been cancelled', async () => {
@@ -173,7 +180,7 @@ describe('workflow duplication application seam', () => {
     controller.abort();
     await expect(
       useCase.execute({ ...input, signal: controller.signal }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'AbortError' });
     expect(duplicateWorkflow).not.toHaveBeenCalled();
   });
 });

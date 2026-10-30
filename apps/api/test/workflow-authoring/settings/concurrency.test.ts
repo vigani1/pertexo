@@ -142,7 +142,10 @@ describe('workflow concurrency application boundary', () => {
     });
     await expect(
       controls.update({ ...commandInput, routeWorkspaceId: workflowId }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
     expect(persistence.readSettings).not.toHaveBeenCalled();
     expect(persistence.updateSettings).not.toHaveBeenCalled();
   });
@@ -157,7 +160,7 @@ describe('workflow concurrency application boundary', () => {
     ])
       await expect(
         controls.update({ ...commandInput, request }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: 'ZodError' });
     expect(persistence.updateSettings).not.toHaveBeenCalled();
   });
   it('cancels before authorization and does not issue reads or writes', async () => {
@@ -165,10 +168,10 @@ describe('workflow concurrency application boundary', () => {
     const aborted = AbortSignal.abort();
     await expect(
       controls.read({ ...readInput, signal: aborted }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'AbortError' });
     await expect(
       controls.update({ ...commandInput, signal: aborted }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'AbortError' });
     expect(authorization.findAccess).not.toHaveBeenCalled();
     expect(persistence.readSettings).not.toHaveBeenCalled();
     expect(persistence.updateSettings).not.toHaveBeenCalled();

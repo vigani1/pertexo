@@ -220,7 +220,7 @@ export function registerSerializesDatesValidatorsPaginatesMetadataScopes(): void
     abort.abort();
     await expect(
       cases.list({ ...context, query: {}, signal: abort.signal }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'AbortError' });
     expect(persistence.getCase).not.toHaveBeenCalled();
     expect(persistence.listCases).not.toHaveBeenCalled();
   });

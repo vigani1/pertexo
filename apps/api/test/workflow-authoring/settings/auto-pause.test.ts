@@ -160,7 +160,7 @@ describe('workflow automatic pause application boundary', () => {
           idempotencyKey: 'invalid',
           request,
         }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: 'ZodError' });
     await expect(
       controls.resume({
         actor,
@@ -169,7 +169,7 @@ describe('workflow automatic pause application boundary', () => {
         idempotencyKey: 'invalid',
         request: { expectedPauseRevision: 9007199254740992 },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'ZodError' });
     expect(persistence.updateWorkflowSettings).not.toHaveBeenCalled();
     expect(persistence.resumeWorkflow).not.toHaveBeenCalled();
   });

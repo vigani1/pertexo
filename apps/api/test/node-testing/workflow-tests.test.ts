@@ -89,13 +89,19 @@ describe('draft workflow test boundary', () => {
           request: invalid,
           idempotencyKey: randomUUID(),
         }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: 'ZodError' });
     expect(f.store.start).not.toHaveBeenCalled();
   });
   it('requires edit authority even when a person can read normal run data', async () => {
     const f = fixture('viewer');
-    await expect(f.useCase.prepare(input)).rejects.toThrow();
-    await expect(f.useCase.list(input)).rejects.toThrow();
+    await expect(f.useCase.prepare(input)).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
+    await expect(f.useCase.list(input)).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
     expect(f.store.prepare).not.toHaveBeenCalled();
     expect(f.store.list).not.toHaveBeenCalled();
   });

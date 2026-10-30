@@ -148,6 +148,6 @@ describe('workflow run statistics use case', () => {
         actor,
         routeWorkspaceId: workspaceId,
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'ZodError' });
   });
 });

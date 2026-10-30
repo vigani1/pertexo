@@ -296,10 +296,11 @@ describe('workflow portability application authority and exact commands', () => 
   it.each(['viewer', 'operator'] as const)(
     'denies preview and creation for %s',
     async (role) => {
+      const hidden = { name: 'AuthorizationError', code: 'resource.not_found' };
       const f = fixture(role);
       await expect(
         f.preview.execute({ ...context, request: { manifest, bindings: [] } }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject(hidden);
       await expect(
         f.import.execute({
           ...context,
@@ -311,7 +312,7 @@ describe('workflow portability application authority and exact commands', () => 
             expectedCompatibilityFingerprint: fingerprint,
           },
         }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject(hidden);
       expect(f.persistence.previewWorkflowImport).not.toHaveBeenCalled();
       expect(f.persistence.importWorkflow).not.toHaveBeenCalled();
     },
