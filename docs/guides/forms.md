@@ -104,7 +104,7 @@ against the workspace's storage quota; a full workspace refuses new uploads
 with `workspace.quota_exceeded`. Files that are uploaded but never sent are
 removed by the ordinary cleanup: after an hour for a public link and after a
 day for members and Request input. A sent response's files stay for as long as
-its run keeps its data. Public-link files that nobody has sent yet share 100 MB
+its run keeps its data. Public-link files that nobody has sent yet share 100 MiB
 per workspace, so a stranger can't fill the workspace's storage; past that,
 new public uploads get "Try again in a few minutes" (`form.upload_limit`).
 Members' uploads aren't affected. Regenerating or turning off the public link
