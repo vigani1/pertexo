@@ -32,6 +32,11 @@
   look, not the rule itself.
 - **Keep errors specific:** don't swallow or blur them into a generic failure;
   turn them into safe messages once, at the boundary.
+- **Ask before hardening against the unlikely:** before adding complexity for a
+  race or security case that is unlikely to happen, explain the concrete
+  failure, how likely it is and what it costs, and get the user's agreement.
+  Security at real boundaries (sign-in, workspace isolation, input limits) is
+  not optional.
 - **Rules live in TypeScript; the database stores.** PostgreSQL keeps tables,
   constraints, workspace isolation, transactions, queue claiming, capacity
   counters and the checkpoint version check.
@@ -53,8 +58,20 @@
 - The folder names the area and the file names what it is. File names never
   repeat their folder. Actions are verbs (`start-run.ts`); storage is noun plus
   role (`runs.repository.ts`).
-- Validate input once where it enters. Inner layers trust typed values.
-- Tests check behavior, not structure. Production code has no test hooks.
+- Validate unknown input once, at the boundary that owns it, and pass typed
+  values inward. Don't repeat `typeof` or property-existence checks, and don't
+  re-check what a schema, constructor or type already guarantees.
+- Extract a helper used once only when it names a real concept
+  (`requireConfig`, `readMetadata`). The main function reads as the happy
+  path, with its helpers below it.
+- Tests check behavior, not structure, against the real code: mock only
+  outside services, and never copy the code's logic into the test. Production
+  code has no test hooks.
+- Tests and checks never disturb a live session or running service: use
+  isolated browser contexts, ports and compose projects.
+- `pnpm check` runs the static checks (format, build, lint, typecheck,
+  dependency, contract, schema and architecture). Before handoff, run it plus
+  the tests for every package you touched.
 - Comments explain why, not what.
 
 ## Agent skills
@@ -77,7 +94,7 @@
   before handoff.
 - Commit as the repository owner; do not add co-author trailers.
 - Use imperative Conventional Commit messages (`feat:`, `fix:`, `refactor:`,
-  `test:`, `docs:`, `ci:`, `chore:`, `revert:`).
+  `test:`, `docs:`, `ci:`, `chore:`, `revert:`); PR titles use the same form.
 - Make commits coherent and buildable. Keep renames and moves in separate
   commits from logic changes.
 - Never amend, squash, rebase, force-push or otherwise rewrite history unless
