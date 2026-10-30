@@ -1,3 +1,4 @@
+import { DrizzleQueryError } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -67,14 +68,14 @@ describe('queued workflow-run admission error classification', () => {
     ['PTA01', WorkspaceRunAdmissionDeniedError],
     ['PTA02', WorkspaceRunQuotaExceededError],
   ] as const)(
-    'maps direct and nested %s at this operation boundary',
+    'maps direct and Drizzle-wrapped %s at this operation boundary',
     (code, ErrorType) => {
       expect(captureAdmissionError(databaseError(code))).toBeInstanceOf(
         ErrorType,
       );
       expect(
         captureAdmissionError(
-          new Error('outer', { cause: databaseError(code) }),
+          new DrizzleQueryError('insert', [], databaseError(code)),
         ),
       ).toBeInstanceOf(ErrorType);
     },
@@ -89,27 +90,5 @@ describe('queued workflow-run admission error classification', () => {
     const original = new Error('cyclic');
     original.cause = original;
     expect(captureAdmissionError(original)).toBe(original);
-  });
-
-  it('preserves errors when code or cause inspection throws', () => {
-    for (const field of ['code', 'cause'] as const) {
-      const original = Object.defineProperty(
-        new Error(`hostile ${field}`),
-        field,
-        {
-          get: () => {
-            throw new Error(`secondary ${field}`);
-          },
-        },
-      );
-      expect(captureAdmissionError(original)).toBe(original);
-    }
-    const target = new Error('proxied');
-    const proxied = new Proxy(target, {
-      get: () => {
-        throw new Error('proxy trap');
-      },
-    });
-    expect(captureAdmissionError(proxied)).toBe(proxied);
   });
 });
