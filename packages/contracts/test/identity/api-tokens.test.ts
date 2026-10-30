@@ -3,7 +3,19 @@ import {
   apiTokenCreateRequestSchema,
   apiTokenCreateResponseSchema,
   apiTokenListQuerySchema,
+  apiTokenMetadataSchema,
 } from '../../src/schemas/identity/api-tokens.js';
+
+const metadata = {
+  id: '0194a800-0000-7000-8000-000000000001',
+  workspaceId: '0194a800-0000-7000-8000-000000000002',
+  name: 'Build runner',
+  scopes: ['run:read'],
+  createdAt: '2026-10-14T00:00:00.000Z',
+  expiresAt: '2026-10-15T00:00:00.000Z',
+  lastUsedAt: null,
+};
+const revokedAt = '2026-10-14T12:00:00.000Z';
 
 describe('API token contracts', () => {
   it('normalizes names and scope order with a finite default lifetime', () => {
@@ -58,6 +70,31 @@ describe('API token contracts', () => {
     ).toBe(false);
     expect(
       apiTokenCreateResponseSchema.safeParse({ token, replayed: false })
+        .success,
+    ).toBe(false);
+  });
+  // A token has a revocation time exactly when it is revoked.
+  it.each([
+    ['revoked', revokedAt],
+    ['active', null],
+    ['expired', null],
+    ['membership_changed', null],
+  ])('accepts %s token metadata with revokedAt %s', (status, at) => {
+    expect(
+      apiTokenMetadataSchema.safeParse({ ...metadata, status, revokedAt: at })
+        .success,
+    ).toBe(true);
+  });
+
+  // nodes-16: status and revokedAt are independent fields today.
+  it.fails.each([
+    ['revoked', null],
+    ['active', revokedAt],
+    ['expired', revokedAt],
+    ['membership_changed', revokedAt],
+  ])('refuses %s token metadata with revokedAt %s', (status, at) => {
+    expect(
+      apiTokenMetadataSchema.safeParse({ ...metadata, status, revokedAt: at })
         .success,
     ).toBe(false);
   });
