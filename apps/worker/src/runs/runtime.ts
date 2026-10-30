@@ -38,10 +38,7 @@ import {
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 
-import {
-  createCoordinatorTelemetry,
-  type CoordinatorTelemetry,
-} from './telemetry.js';
+import { createCoordinatorTelemetry } from './telemetry.js';
 import {
   createCoordinatorHandler,
   type CoordinatorHandler,
@@ -67,24 +64,13 @@ export type CoordinatorRuntimeOptions = Readonly<{
   maximumAdmissions: number;
   observer?: QueueConsumerObserver;
   redisUrl: string;
-}>;
-
-export type CoordinatorRuntimeDependencies = Readonly<{
-  /** Replaces `advanceRun` composed from the store and the engine. */
-  advance?: CoordinatorHandlerDependencies['advance'];
-  clock?: Readonly<{ now(): string }>;
-  consumerFactory?: typeof createQueueConsumer;
-  dueWakeupScanner?: DueNodeWakeupScanner;
-  testSuiteScanner?: WorkflowTestSuiteScanner;
-  deadlineWakeupScanner?: DeadlineWakeupScanner;
-  notifications?: RunEventNotificationPublisher;
-  runStore?: RunAdvanceStore;
-  callStore?: WorkflowCallStore;
-  telemetry?: CoordinatorTelemetry;
   logger?: StructuredLogger;
 }>;
 
 export type CoordinatorCompositionFactories = Readonly<{
+  advance: (
+    dependencies: Parameters<typeof advanceRun>[0],
+  ) => CoordinatorHandlerDependencies['advance'];
   consumer: typeof createQueueConsumer;
   deadlineScanner: typeof createDeadlineWakeupScanner;
   dueScanner: typeof createDueNodeWakeupScanner;
@@ -97,6 +83,7 @@ export type CoordinatorCompositionFactories = Readonly<{
 }>;
 
 const productionFactories: CoordinatorCompositionFactories = {
+  advance: (dependencies) => (input) => advanceRun(dependencies, input),
   consumer: createQueueConsumer,
   deadlineScanner: createDeadlineWakeupScanner,
   dueScanner: createDueNodeWakeupScanner,
@@ -108,10 +95,6 @@ const productionFactories: CoordinatorCompositionFactories = {
   telemetry: createCoordinatorTelemetry,
   traceRunner: createQueueTraceRunner,
 };
-
-function systemClock(): Readonly<{ now(): string }> {
-  return Object.freeze({ now: (): string => new Date().toISOString() });
-}
 
 function queueHandler(handler: CoordinatorHandler): QueueJobHandler {
   return async (delivery, context): Promise<void> => {
@@ -140,16 +123,16 @@ function queueHandler(handler: CoordinatorHandler): QueueJobHandler {
 
 export async function createCoordinatorRuntime(
   options: CoordinatorRuntimeOptions,
-  dependencies: CoordinatorRuntimeDependencies = {},
-  factories: CoordinatorCompositionFactories = productionFactories,
+  overrides: Partial<CoordinatorCompositionFactories> = {},
 ): Promise<CoordinatorRuntime> {
+  const factories = { ...productionFactories, ...overrides };
   const {
     dueWakeupBatchSize,
     dueWakeupPollIntervalMillis,
     backgroundTaskShutdownTimeoutMillis,
   } = coordinatorRuntimeSettings(options);
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
-  const telemetry = dependencies.telemetry ?? factories.telemetry();
+  const telemetry = factories.telemetry();
   const traceRunner = factories.traceRunner();
   let runStore: RunAdvanceStore | undefined;
   let callStore: WorkflowCallStore | undefined;
@@ -158,57 +141,50 @@ export async function createCoordinatorRuntime(
   let deadlineWakeupScanner: DeadlineWakeupScanner | undefined;
   let testSuiteScanner: WorkflowTestSuiteScanner | undefined;
   let consumer: QueueConsumer | undefined;
-  const { expressionEvaluator, expressionOwner } =
-    coordinatorExpression(dependencies);
+  const expressionEvaluator = new JsonataEvaluator();
+  const expressionOwner = { close: () => expressionEvaluator.shutdown() };
   try {
-    runStore =
-      dependencies.runStore ??
-      factories.runStore(options.database, options.databaseRuntime);
-    callStore =
-      dependencies.callStore ??
-      factories.callStore(
-        options.maintenanceDatabase,
-        options.maintenanceDatabaseRuntime,
-      );
-    notifications =
-      dependencies.notifications ?? factories.notifications(options.redisUrl);
-    dueWakeupScanner =
-      dependencies.dueWakeupScanner ??
-      factories.dueScanner(options.database, options.databaseRuntime);
-    deadlineWakeupScanner =
-      dependencies.deadlineWakeupScanner ??
-      factories.deadlineScanner(options.database, options.databaseRuntime);
-    testSuiteScanner =
-      dependencies.testSuiteScanner ??
-      (await factories.testSuiteScanner(
-        options.database,
-        options.maintenanceDatabase,
-        {
-          ...(options.databaseRuntime === undefined
-            ? {}
-            : { runtime: options.databaseRuntime }),
-          ...(options.maintenanceDatabaseRuntime === undefined
-            ? {}
-            : { maintenanceRuntime: options.maintenanceDatabaseRuntime }),
-        },
-      ));
-    const clock = dependencies.clock ?? systemClock();
-    const advanceDependencies = Object.freeze({
-      runs: runStore,
-      calls: callStore,
-      verification: { catalog },
-      maximumAdmissions: options.maximumAdmissions,
-      now: () => clock.now(),
-      ...(expressionEvaluator === undefined ? {} : { expressionEvaluator }),
-    });
+    runStore = factories.runStore(options.database, options.databaseRuntime);
+    callStore = factories.callStore(
+      options.maintenanceDatabase,
+      options.maintenanceDatabaseRuntime,
+    );
+    notifications = factories.notifications(options.redisUrl);
+    dueWakeupScanner = factories.dueScanner(
+      options.database,
+      options.databaseRuntime,
+    );
+    deadlineWakeupScanner = factories.deadlineScanner(
+      options.database,
+      options.databaseRuntime,
+    );
+    testSuiteScanner = await factories.testSuiteScanner(
+      options.database,
+      options.maintenanceDatabase,
+      {
+        ...(options.databaseRuntime === undefined
+          ? {}
+          : { runtime: options.databaseRuntime }),
+        ...(options.maintenanceDatabaseRuntime === undefined
+          ? {}
+          : { maintenanceRuntime: options.maintenanceDatabaseRuntime }),
+      },
+    );
     const handler = createCoordinatorHandler({
-      advance:
-        dependencies.advance ??
-        ((input) => advanceRun(advanceDependencies, input)),
+      advance: factories.advance(
+        Object.freeze({
+          runs: runStore,
+          calls: callStore,
+          verification: { catalog },
+          maximumAdmissions: options.maximumAdmissions,
+          now: () => new Date().toISOString(),
+          expressionEvaluator,
+        }),
+      ),
       notifications,
       telemetry,
     });
-    consumer = (dependencies.consumerFactory ?? factories.consumer)({
+    consumer = factories.consumer({
       queueName: QUEUE_NAME.workflowCoordinator,
       redisUrl: options.redisUrl,
       handler: queueHandler(handler),
@@ -260,7 +236,7 @@ export async function createCoordinatorRuntime(
       await suiteScanner.scan(Math.min(25, dueWakeupBatchSize), signal);
     },
     scanFailed: (error) => {
-      dependencies.logger?.error(
+      options.logger?.error(
         'coordinator.wakeup_scan_failed',
         { safeErrorCode: 'coordinator.wakeup_scan_failed' },
         error,
@@ -281,15 +257,4 @@ function coordinatorRuntimeSettings(options: CoordinatorRuntimeOptions) {
     dueWakeupPollIntervalMillis,
     backgroundTaskShutdownTimeoutMillis,
   };
-}
-
-function coordinatorExpression(dependencies: CoordinatorRuntimeDependencies) {
-  const expressionEvaluator =
-    dependencies.advance === undefined ? new JsonataEvaluator() : undefined;
-  const expressionOwner =
-    expressionEvaluator === undefined
-      ? undefined
-      : { close: () => expressionEvaluator.shutdown() };
-
-  return { expressionEvaluator, expressionOwner };
 }

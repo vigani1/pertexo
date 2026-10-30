@@ -25,10 +25,7 @@ import {
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import { createTriggerReconciliationHandler } from './handler.js';
-import {
-  createTriggerRuntimeTelemetry,
-  type TriggerRuntimeTelemetry,
-} from './telemetry.js';
+import { createTriggerRuntimeTelemetry } from './telemetry.js';
 import { initialCheckpointFactory } from '@pertexo/execution';
 import { reportDiagnostic } from '../runtime/polling.js';
 import {
@@ -50,9 +47,11 @@ export type TriggerRuntimeOptions = Readonly<{
   onTimeWindowSeconds: number;
   pollIntervalMillis: number;
   redisUrl: string;
+  logger?: StructuredLogger;
 }>;
 
 export type TriggerCompositionFactories = Readonly<{
+  checkpoints: () => InitialCheckpointFactory;
   consumer: typeof createQueueConsumer;
   reconciliation: typeof createWorkflowTriggerReconciliationDatabase;
   scanner: typeof createScheduleTriggerScanner;
@@ -62,6 +61,10 @@ export type TriggerCompositionFactories = Readonly<{
 }>;
 
 const productionFactories: TriggerCompositionFactories = {
+  checkpoints: () =>
+    initialCheckpointFactory({
+      catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
+    }),
   consumer: createQueueConsumer,
   reconciliation: createWorkflowTriggerReconciliationDatabase,
   scanner: createScheduleTriggerScanner,
@@ -70,57 +73,43 @@ const productionFactories: TriggerCompositionFactories = {
   traceRunner: createQueueTraceRunner,
 };
 
-export type TriggerRuntimeDependencies = Readonly<{
-  checkpointFactory?: InitialCheckpointFactory;
-  consumerFactory?: typeof createQueueConsumer;
-  reconciliation?: WorkflowTriggerReconciliationDatabase;
-  scanner?: ScheduleTriggerScanner;
-  coordination?: TriggerEventScanner;
-  logger?: StructuredLogger;
-  telemetry?: TriggerRuntimeTelemetry;
-}>;
-
 export async function createTriggerRuntime(
   options: TriggerRuntimeOptions,
-  dependencies: TriggerRuntimeDependencies = {},
-  factories: TriggerCompositionFactories = productionFactories,
+  overrides: Partial<TriggerCompositionFactories> = {},
 ): Promise<TriggerRuntime> {
+  const factories = { ...productionFactories, ...overrides };
   const backgroundTaskShutdownTimeoutMillis =
     options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
-  const checkpointFactory: InitialCheckpointFactory =
-    dependencies.checkpointFactory ??
-    initialCheckpointFactory({
-      catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
-    });
+  const checkpointFactory = factories.checkpoints();
   // Telemetry owns no closeable resources. Construct it before acquiring the
   // database and queue owners so constructor failure cannot strand them.
-  const telemetry = dependencies.telemetry ?? factories.telemetry();
+  const telemetry = factories.telemetry();
   const traceRunner = factories.traceRunner();
   let reconciliation: WorkflowTriggerReconciliationDatabase | undefined;
   let scanner: ScheduleTriggerScanner | undefined;
   let coordination: TriggerEventScanner | undefined;
   let consumer: QueueConsumer | undefined;
   try {
-    reconciliation =
-      dependencies.reconciliation ??
-      factories.reconciliation(options.database, options.databaseRuntime);
-    scanner =
-      dependencies.scanner ??
-      factories.scanner(
-        options.database,
-        options.database,
-        options.databaseRuntime === undefined
-          ? {}
-          : {
-              acceptance: options.databaseRuntime,
-              claim: options.databaseRuntime,
-            },
-      );
-    coordination =
-      dependencies.coordination ??
-      factories.coordination(options.database, options.databaseRuntime);
+    reconciliation = factories.reconciliation(
+      options.database,
+      options.databaseRuntime,
+    );
+    scanner = factories.scanner(
+      options.database,
+      options.database,
+      options.databaseRuntime === undefined
+        ? {}
+        : {
+            acceptance: options.databaseRuntime,
+            claim: options.databaseRuntime,
+          },
+    );
+    coordination = factories.coordination(
+      options.database,
+      options.databaseRuntime,
+    );
     const handler = createTriggerReconciliationHandler({ reconciliation });
-    consumer = (dependencies.consumerFactory ?? factories.consumer)({
+    consumer = factories.consumer({
       queueName: QUEUE_NAME.triggerLifecycle,
       redisUrl: options.redisUrl,
       handler: async (delivery, context) => {
@@ -198,7 +187,7 @@ export async function createTriggerRuntime(
         throw new AggregateError(failures, 'Trigger scan failed');
     },
     scanFailed: (error) => {
-      dependencies.logger?.error(
+      options.logger?.error(
         'trigger.scan_failed',
         { safeErrorCode: 'trigger.scan_failed' },
         error,

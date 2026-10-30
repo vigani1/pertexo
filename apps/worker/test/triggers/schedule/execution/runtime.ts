@@ -17,13 +17,14 @@ import {
   registerResource,
   transferResource,
 } from '../fixture.js';
-import { testTriggerRuntime } from '../../../support/runtime-factories.js';
+import {
+  testTriggerRuntime,
+  type TestTriggerServices,
+} from '../../../support/runtime-factories.js';
 
 export async function startScheduleQualification(
   context: Readonly<{
-    logger: NonNullable<
-      NonNullable<Parameters<typeof createTriggerRuntime>[1]>['logger']
-    >;
+    logger: NonNullable<TestTriggerServices['logger']>;
     scanResults: unknown[];
   }>,
 ) {

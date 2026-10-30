@@ -33,11 +33,8 @@ import {
  * encryption and invitations need invitation email; without them those
  * events wait in the outbox.
  */
-export function consumedJobNames(
-  config: WorkerConfig,
-  dependencies: TransportModuleDependencies,
-): readonly JobName[] {
-  const deliveries = maintenanceDeliveries(config, dependencies);
+export function consumedJobNames(config: WorkerConfig): readonly JobName[] {
+  const deliveries = maintenanceDeliveries(config);
   return Object.freeze(
     Object.values(JOB_NAME).filter((jobName) => {
       if (jobName === JOB_NAME.deliverRunFailureNotification)
@@ -104,20 +101,16 @@ export async function createOwnedOutboxDispatcher(
   let database: OutboxDispatcherDatabase | undefined;
   let producer: QueueProducer | undefined;
   try {
-    database =
-      dependencies.dispatcherDatabase ??
-      factories.database(
-        config.dispatcherDatabase,
-        dependencies.dispatcherDatabaseRuntime,
-      );
-    producer =
-      dependencies.queueProducer ??
-      factories.producer({ redisUrl: config.redisUrl });
+    database = factories.database(
+      config.dispatcherDatabase,
+      dependencies.dispatcherDatabaseRuntime,
+    );
+    producer = factories.producer({ redisUrl: config.redisUrl });
     return factories.dispatcher(database, producer, {
       drainState,
       options: {
         ...config.outboxDispatcher,
-        jobNames: consumedJobNames(config, dependencies),
+        jobNames: consumedJobNames(config),
       },
       metrics,
     });
@@ -138,13 +131,10 @@ export async function createOwnedOutboxDispatcher(
   }
 }
 
-export function transportMetricsProvider(
-  dependencies: TransportModuleDependencies,
-): Provider {
+export function transportMetricsProvider(): Provider {
   return {
     provide: TRANSPORT_METRICS,
-    useFactory: (): TransportMetrics =>
-      dependencies.transportMetrics ?? createTransportMetrics(),
+    useFactory: (): TransportMetrics => createTransportMetrics(),
   };
 }
 

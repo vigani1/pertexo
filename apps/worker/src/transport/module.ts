@@ -38,7 +38,7 @@ export class TransportModule {
     config: WorkerConfig,
     dependencies: TransportModuleDependencies = {},
   ): DynamicModule {
-    const metricsProvider = transportMetricsProvider(dependencies);
+    const metricsProvider = transportMetricsProvider();
     const observerProvider = queueObserverProvider();
     const provider = dispatcherProvider(config, dependencies);
     const providers: Provider[] = [

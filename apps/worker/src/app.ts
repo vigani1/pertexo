@@ -28,7 +28,10 @@ import {
   type WorkerModuleDependencies,
 } from './worker.module.js';
 
-export type WorkerApplicationDependencies = WorkerModuleDependencies;
+export type WorkerApplicationDependencies = Pick<
+  WorkerModuleDependencies,
+  'logger' | 'telemetry'
+>;
 
 export type WorkerApplicationCompositionFactories = Readonly<{
   applicationContext(
@@ -57,25 +60,18 @@ export async function createWorkerApplication(
   try {
     await verifyWorkerEncryption(config, factories.encryptionKeysRepository);
     await verifyWorkerCallbacks(config, factories.callbackStore);
-    databaseRuntime =
-      dependencies.databaseRuntime ??
-      (dependencies.database === undefined
-        ? factories.databaseRuntime(config.database, { role: 'worker' })
-        : undefined);
-    dispatcherDatabaseRuntime =
-      dependencies.dispatcherDatabaseRuntime ??
-      (dependencies.dispatcherDatabase === undefined
-        ? factories.databaseRuntime(config.dispatcherDatabase, {
-            role: 'dispatcher',
-          })
-        : undefined);
+    databaseRuntime = factories.databaseRuntime(config.database, {
+      role: 'worker',
+    });
+    dispatcherDatabaseRuntime = factories.databaseRuntime(
+      config.dispatcherDatabase,
+      { role: 'dispatcher' },
+    );
     application = await factories.applicationContext(
       WorkerModule.register(config, {
         ...dependencies,
-        ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
-        ...(dispatcherDatabaseRuntime === undefined
-          ? {}
-          : { dispatcherDatabaseRuntime }),
+        databaseRuntime,
+        dispatcherDatabaseRuntime,
       }),
       {
         abortOnError: false,

@@ -3,7 +3,6 @@ import 'reflect-metadata';
 
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
-import type { OutboxDispatcherDatabase } from '@pertexo/database/outbox';
 import type {
   DatabaseRuntime,
   WorkspaceDatabase,
@@ -17,21 +16,13 @@ import {
   createApplicationSecretEnvelope,
   createSystemMailClient,
 } from '@pertexo/integrations/server';
-import {
-  RedisWorkspaceInboxHintPublisher,
-  type QueueProducer,
-} from '@pertexo/queue';
+import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
-  TransportMetrics,
 } from '@pertexo/observability';
 
 import type { WorkerConfig } from './config/worker.js';
-import type { CoordinatorRuntime } from './runs/runtime.js';
-import type { NodeAttemptRuntime } from './attempts/delivery/runtime.js';
-import type { MaintenanceRuntime } from './maintenance/runtime.js';
-import type { TriggerRuntime } from './triggers/runtime.js';
 import { createSystemMailDeliveryHandler } from './mail/delivery.js';
 import {
   SYSTEM_MAIL_RUNTIME,
@@ -59,10 +50,7 @@ import {
   type RetentionRuntime,
 } from './retention/runtime.js';
 import { WorkerReadiness } from './runtime/health/readiness.js';
-import {
-  WorkerReadinessMonitor,
-  type WorkerReadinessMarker,
-} from './runtime/health/readiness-monitor.js';
+import { WorkerReadinessMonitor } from './runtime/health/readiness-monitor.js';
 import { WorkerResourceMonitor } from './runtime/health/resource-monitor.js';
 import { WorkerDrainState } from './runtime/shutdown/drain-state.js';
 import { WorkerProcessKeepalive } from './runtime/process-keepalive.js';
@@ -71,22 +59,10 @@ import { TransportModule } from './transport/module.js';
 import { OutboxDispatcherLifecycle } from './transport/lifecycle.js';
 
 export type WorkerModuleDependencies = Readonly<{
-  coordinatorRuntime?: CoordinatorRuntime;
-  nodeAttemptRuntime?: NodeAttemptRuntime;
-  maintenanceRuntime?: MaintenanceRuntime;
-  triggerRuntime?: TriggerRuntime;
-  database?: WorkspaceDatabase;
   databaseRuntime?: DatabaseRuntime;
-  dispatcherDatabase?: OutboxDispatcherDatabase;
   dispatcherDatabaseRuntime?: DatabaseRuntime;
-  queueProducer?: QueueProducer;
-  workspaceInboxRuntime?: WorkspaceInboxRuntime;
-  workflowAutoPauseRuntime?: WorkflowAutoPauseRuntime;
-  retentionRuntime?: RetentionRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
-  transportMetrics?: TransportMetrics;
-  readinessMarker?: WorkerReadinessMarker;
 }>;
 
 @Module({})
@@ -97,21 +73,15 @@ export class WorkerModule {
     config: WorkerConfig,
     dependencies: WorkerModuleDependencies,
   ): DynamicModule {
-    const databaseOptions =
-      dependencies.database === undefined
-        ? {
-            ...(dependencies.databaseRuntime === undefined
-              ? {}
-              : { runtime: dependencies.databaseRuntime }),
-          }
-        : {
-            database: dependencies.database,
-          };
-
     return {
       module: WorkerModule,
       imports: [
-        DatabaseModule.register(config.database, databaseOptions),
+        DatabaseModule.register(
+          config.database,
+          dependencies.databaseRuntime === undefined
+            ? {}
+            : { runtime: dependencies.databaseRuntime },
+        ),
         TransportModule.register(config, dependencies),
         ObservabilityModule.register(
           dependencies.logger,
@@ -126,7 +96,6 @@ export class WorkerModule {
         {
           provide: WORKSPACE_INBOX_RUNTIME,
           useFactory: (): WorkspaceInboxRuntime =>
-            dependencies.workspaceInboxRuntime ??
             createWorkspaceInboxRuntime(
               createWorkspaceInboxFoldStore(
                 config.database,
@@ -155,7 +124,6 @@ export class WorkerModule {
         {
           provide: RETENTION_RUNTIME,
           useFactory: (): RetentionRuntime =>
-            dependencies.retentionRuntime ??
             configuredRetentionRuntime(config, dependencies.logger),
         },
         {
@@ -163,8 +131,6 @@ export class WorkerModule {
           inject: [WorkerReadiness],
           useFactory: (readiness: WorkerReadiness): WorkerReadinessMonitor =>
             new WorkerReadinessMonitor(readiness, dependencies.logger, {
-              marker: dependencies.readinessMarker,
-              failClosed: undefined,
               operationTimeoutMillis:
                 config.outboxDispatcher.operationTimeoutMillis,
             }),

@@ -54,8 +54,6 @@ export function nodeAttemptRuntimeProvider(
     useFactory: async (
       observer: QueueConsumerObserver,
     ): Promise<NodeAttemptRuntime> => {
-      if (dependencies.nodeAttemptRuntime !== undefined)
-        return dependencies.nodeAttemptRuntime;
       const previewRunStore = factories.createPreviewRunStore(
         config.database,
         dependencies.databaseRuntime,

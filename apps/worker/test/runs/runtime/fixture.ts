@@ -1,6 +1,6 @@
 import type { QueueConsumer } from '@pertexo/queue';
 import { vi } from 'vitest';
-import type { createCoordinatorRuntime } from '../../../src/runs/runtime.js';
+import type { TestCoordinatorServices } from '../../support/runtime-factories.js';
 import type { CoordinatorRuntimeOptions } from '../../../src/runs/runtime.js';
 
 export const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
@@ -9,9 +9,7 @@ export const RUN_ID = '22222222-2222-4222-8222-222222222222';
 
 export const OUTBOX_EVENT_ID = '44444444-4444-4444-8444-444444444444';
 
-type RuntimeDependencies = NonNullable<
-  Parameters<typeof createCoordinatorRuntime>[1]
->;
+type RuntimeDependencies = TestCoordinatorServices;
 
 export function runtimeOptions(
   overrides: Partial<CoordinatorRuntimeOptions> = {},

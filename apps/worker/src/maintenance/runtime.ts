@@ -21,7 +21,6 @@ import {
 } from '@pertexo/queue';
 
 import { previewReconciliationFactories } from '../previews/reconciliation.js';
-import type { PreviewTelemetry } from '../previews/telemetry.js';
 import {
   unknownOutcomeReconciliationFactories,
   type UnknownOutcomeReconciliationStore,
@@ -91,21 +90,6 @@ type MaintenanceOptions = Readonly<{
   deliveryOwners?: readonly Owner[];
 }>;
 
-type MaintenanceDependencies = Readonly<{
-  connectionHealthStore?: ConnectionHealthObservationStore;
-  errorWorkflowStore?: ErrorWorkflowStore;
-  consumerFactory?: typeof createQueueConsumer;
-  reconciliationStore?: PreviewReconciliationStore & {
-    close?: () => Promise<void>;
-  };
-  previewTelemetry?: PreviewTelemetry;
-  failureNotificationStore?: FailureNotificationStore;
-  unknownOutcomeStore?: UnknownOutcomeReconciliationStore & {
-    close?: () => Promise<void>;
-  };
-  runReplayStore?: OperatorRunReplayStore;
-}>;
-
 // Each provider call gets 30 seconds; a failed one retries twice, 30 seconds
 // apart.
 const FAILURE_NOTIFICATION_DELIVERY = Object.freeze({
@@ -116,9 +100,9 @@ const FAILURE_NOTIFICATION_DELIVERY = Object.freeze({
 
 export async function createMaintenanceRuntime(
   options: MaintenanceOptions,
-  dependencies: MaintenanceDependencies = {},
-  factories: MaintenanceRuntimeFactories = productionFactories,
+  overrides: Partial<MaintenanceRuntimeFactories> = {},
 ): Promise<MaintenanceRuntime> {
+  const factories = { ...productionFactories, ...overrides };
   const shutdownTimeoutMillis =
     options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
   const traceRunner = factories.traceRunner();
@@ -134,47 +118,44 @@ export async function createMaintenanceRuntime(
   let consumer: QueueConsumer | undefined;
   let errorWorkflowStore: ErrorWorkflowStore | undefined;
   try {
-    connectionHealthStore =
-      dependencies.connectionHealthStore ??
-      factories.connectionHealth.store(
+    connectionHealthStore = factories.connectionHealth.store(
+      options.database,
+      options.databaseRuntime,
+    );
+    reconciliationStore = factories.preview.store(
+      options.database,
+      options.databaseRuntime,
+    );
+    if (options.failureNotificationDelivery !== undefined) {
+      failureNotificationStore = factories.notifications.store(
         options.database,
         options.databaseRuntime,
       );
-    reconciliationStore =
-      dependencies.reconciliationStore ??
-      factories.preview.store(options.database, options.databaseRuntime);
-    if (options.failureNotificationDelivery !== undefined) {
-      failureNotificationStore =
-        dependencies.failureNotificationStore ??
-        factories.notifications.store(
-          options.database,
-          options.databaseRuntime,
-        );
       failureNotification = factories.notifications.handler({
         store: failureNotificationStore,
         delivery: options.failureNotificationDelivery,
         ...FAILURE_NOTIFICATION_DELIVERY,
       });
     }
-    unknownOutcomeStore =
-      dependencies.unknownOutcomeStore ??
-      factories.unknownOutcome.store(options.database, options.databaseRuntime);
-    runReplayStore =
-      dependencies.runReplayStore ??
-      factories.replay.store(options.database, options.databaseRuntime);
+    unknownOutcomeStore = factories.unknownOutcome.store(
+      options.database,
+      options.databaseRuntime,
+    );
+    runReplayStore = factories.replay.store(
+      options.database,
+      options.databaseRuntime,
+    );
 
-    errorWorkflowStore =
-      dependencies.errorWorkflowStore ??
-      factories.errorWorkflows.store(options.database, options.databaseRuntime);
+    errorWorkflowStore = factories.errorWorkflows.store(
+      options.database,
+      options.databaseRuntime,
+    );
     const handlers: MaintenanceHandlers = {
       errorWorkflow: factories.errorWorkflows.handler(errorWorkflowStore),
       connectionHealth: factories.connectionHealth.handler(
         connectionHealthStore,
       ),
-      reconciliation: factories.preview.handler(
-        reconciliationStore,
-        dependencies.previewTelemetry,
-      ),
+      reconciliation: factories.preview.handler(reconciliationStore),
       unknownOutcome: factories.unknownOutcome.handler(unknownOutcomeStore),
       replay: factories.replay.handler(runReplayStore),
       ...(failureNotification === undefined ? {} : { failureNotification }),
@@ -182,7 +163,7 @@ export async function createMaintenanceRuntime(
         ? {}
         : { workspaceInvitation: options.workspaceInvitationDelivery }),
     };
-    consumer = (dependencies.consumerFactory ?? factories.consumer)({
+    consumer = factories.consumer({
       queueName: QUEUE_NAME.maintenance,
       redisUrl: options.redisUrl,
       handler: maintenanceDeliveryHandler(handlers),

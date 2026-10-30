@@ -57,7 +57,7 @@ describe('consumed job kinds', () => {
       JOB_NAME.deliverRunFailureNotification,
       JOB_NAME.deliverWorkspaceInvitation,
     ] as const;
-    expect(consumedJobNames(config(), {})).toEqual(
+    expect(consumedJobNames(config())).toEqual(
       Object.values(JOB_NAME).filter(
         (jobName) => !(deliveries as readonly string[]).includes(jobName),
       ),
@@ -72,7 +72,7 @@ describe('consumed job kinds', () => {
       INVITATION_TOKEN_KEY_VERSION: 'invite-v1',
       PUBLIC_WEB_ORIGIN: 'https://app.example.test',
     });
-    expect(consumedJobNames(configured, {})).toEqual(Object.values(JOB_NAME));
+    expect(consumedJobNames(configured)).toEqual(Object.values(JOB_NAME));
   });
 });
 

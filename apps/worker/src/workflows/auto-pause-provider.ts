@@ -18,8 +18,6 @@ export function configuredWorkflowAutoPauseRuntime(
     logger: StructuredLogger;
   }>,
 ): WorkflowAutoPauseRuntime {
-  if (dependencies.workflowAutoPauseRuntime !== undefined)
-    return dependencies.workflowAutoPauseRuntime;
   const { logger } = dependencies;
   return createWorkflowAutoPauseRuntime(
     createWorkflowTriggerPauseFoldStore(database, dependencies.databaseRuntime),

@@ -97,21 +97,6 @@ describe('preview maintenance provider ownership', () => {
     await result.close();
   });
 
-  it('returns an injected runtime without acquiring hidden dependencies', async () => {
-    const selectedRuntime = runtime();
-    const customRuntime = ownedFactories({});
-    await expect(
-      createOwnedMaintenanceRuntime(
-        config(),
-        { maintenanceRuntime: selectedRuntime },
-        observer,
-        customRuntime.factories,
-      ),
-    ).resolves.toBe(selectedRuntime);
-    expect(customRuntime.factories.notificationStore).not.toHaveBeenCalled();
-    expect(customRuntime.factories.runtime).not.toHaveBeenCalled();
-  });
-
   it('composes no failure notification delivery without connection encryption', async () => {
     const selected = ownedFactories({});
     const withoutEncryption = parseWorkerConfig(workerEnvironment);
@@ -129,27 +114,6 @@ describe('preview maintenance provider ownership', () => {
       }),
     );
     await result.close();
-  });
-
-  it('uses an injected delivery without acquiring store, encryption, or HTTP clients', async () => {
-    const selected = ownedFactories({});
-    const delivery = { deliver: vi.fn() };
-
-    const result = await createOwnedMaintenanceRuntime(
-      config(),
-      { failureNotificationDelivery: delivery },
-      observer,
-      selected.factories,
-    );
-
-    expect(result).toBe(selected.runtime);
-    expect(selected.factories.notificationStore).not.toHaveBeenCalled();
-    expect(selected.factories.encryption).not.toHaveBeenCalled();
-    expect(selected.factories.httpClient).not.toHaveBeenCalled();
-    expect(selected.factories.delivery).not.toHaveBeenCalled();
-    expect(selected.factories.runtime).toHaveBeenCalledWith(
-      expect.objectContaining({ failureNotificationDelivery: delivery }),
-    );
   });
 
   it.each([
