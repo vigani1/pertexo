@@ -8,7 +8,7 @@ import { withTenantScopedClient } from '../tenant-access/transactions.js';
 
 export async function withConnectionTransaction<T>(
   pool: Pool,
-  workspaceIdInput: string,
+  workspaceId: string,
   {
     actorId,
     operation,
@@ -19,7 +19,6 @@ export async function withConnectionTransaction<T>(
     options?: WorkspaceTransactionOptions | undefined;
   }>,
 ): Promise<T> {
-  const workspaceId = workspaceIdInput;
   return withTenantScopedClient(
     pool,
     actorId === undefined ? { workspaceId } : { workspaceId, actorId: actorId },

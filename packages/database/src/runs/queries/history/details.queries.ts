@@ -67,9 +67,8 @@ export async function readWorkflowRunInput(
   pool: Pool,
   input: ReadWorkflowRunInputInput,
 ): Promise<WorkflowRunData | undefined> {
-  const parsed = input;
-  return withResourceRunRead(pool, parsed, (transaction) =>
-    runInputInTransaction(transaction, parsed.runId),
+  return withResourceRunRead(pool, input, (transaction) =>
+    runInputInTransaction(transaction, input.runId),
   );
 }
 
@@ -81,12 +80,11 @@ export async function readWorkflowNodeRunInput(
   pool: Pool,
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<WorkflowRunData | undefined> {
-  const parsed = input;
-  return withResourceRunRead(pool, parsed, (transaction) =>
+  return withResourceRunRead(pool, input, (transaction) =>
     nodeRunValueInTransaction(
       transaction,
-      parsed.runId,
-      parsed.nodeRunId,
+      input.runId,
+      input.nodeRunId,
       'input',
     ),
   );
@@ -97,12 +95,11 @@ export async function readWorkflowNodeRunOutput(
   pool: Pool,
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<WorkflowRunData | undefined> {
-  const parsed = input;
-  return withResourceRunRead(pool, parsed, (transaction) =>
+  return withResourceRunRead(pool, input, (transaction) =>
     nodeRunValueInTransaction(
       transaction,
-      parsed.runId,
-      parsed.nodeRunId,
+      input.runId,
+      input.nodeRunId,
       'output',
     ),
   );
@@ -245,8 +242,7 @@ export async function readWorkflowRunVariables(
   pool: Pool,
   input: ReadWorkflowRunInputInput,
 ): Promise<WorkspaceVariableSnapshot | null | undefined> {
-  const parsed = input;
-  return withResourceRunRead(pool, parsed, async (transaction) => {
+  return withResourceRunRead(pool, input, async (transaction) => {
     const run = alias(workflowRuns, 'run');
     const [row] = await transaction.db
       .select({
@@ -257,7 +253,7 @@ export async function readWorkflowRunVariables(
       .where(
         and(
           eq(run.workspaceId, transaction.workspaceId),
-          eq(run.id, parsed.runId),
+          eq(run.id, input.runId),
         ),
       );
 
@@ -279,8 +275,7 @@ export async function readWorkflowNodeRunDiagnostics(
   pool: Pool,
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<CodeDiagnostics | null | undefined> {
-  const parsed = input;
-  return withResourceRunRead(pool, parsed, async (transaction) => {
+  return withResourceRunRead(pool, input, async (transaction) => {
     const node = alias(nodeRuns, 'node');
     const run = alias(workflowRuns, 'run');
     const attempt = alias(nodeAttempts, 'attempt');
@@ -307,8 +302,8 @@ export async function readWorkflowNodeRunDiagnostics(
       .where(
         and(
           eq(node.workspaceId, transaction.workspaceId),
-          eq(node.workflowRunId, parsed.runId),
-          eq(node.id, parsed.nodeRunId),
+          eq(node.workflowRunId, input.runId),
+          eq(node.id, input.nodeRunId),
         ),
       )
       .limit(1);

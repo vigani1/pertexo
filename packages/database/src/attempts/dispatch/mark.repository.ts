@@ -28,10 +28,9 @@ import { isConnectionFenceCurrent } from '../../connections/runtime/dispatch.rep
 
 export async function markNodeAttemptDispatched(
   pool: Pool,
-  inputValue: Parameters<NodeAttemptRunStore['markDispatched']>[0],
+  input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
 ): Promise<Readonly<{ dispatchedAt: Date }>> {
-  assertNotAborted(inputValue.signal);
-  const input = inputValue;
+  assertNotAborted(input.signal);
   return withWorkspaceWriteClient(
     pool,
     input.lease.workspaceId,

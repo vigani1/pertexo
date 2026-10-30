@@ -144,9 +144,8 @@ function exportPortableWorkflow(
 
 function previewPortableWorkflow(
   context: WorkflowAuthoringWriteContext,
-  rawInput: PreviewWorkflowImportInput,
+  input: PreviewWorkflowImportInput,
 ) {
-  const input = rawInput;
   return context.transact(
     input.workspaceId,
     input.actorId,
@@ -175,9 +174,8 @@ function previewPortableWorkflow(
 
 function importPortableWorkflow(
   context: WorkflowAuthoringWriteContext,
-  rawInput: ImportWorkflowInput,
+  input: ImportWorkflowInput,
 ) {
-  const input = rawInput;
   return context.transact(
     input.workspaceId,
     input.actorId,

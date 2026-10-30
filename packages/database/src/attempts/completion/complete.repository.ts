@@ -26,10 +26,9 @@ import { serializeStoredExecutionValue } from '../../platform/stored-execution-v
 
 export async function completeNodeAttempt(
   pool: Pool,
-  inputValue: Parameters<NodeAttemptRunStore['complete']>[0],
+  input: Parameters<NodeAttemptRunStore['complete']>[0],
 ): Promise<CompleteNodeAttemptResult> {
-  assertNotAborted(inputValue.signal);
-  const input = inputValue;
+  assertNotAborted(input.signal);
   let serializedOutput: string | null = null;
   if (
     input.outcome.status === 'succeeded' ||

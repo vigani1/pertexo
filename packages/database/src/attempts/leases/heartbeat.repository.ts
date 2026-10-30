@@ -17,7 +17,7 @@ import {
 
 export async function heartbeatNodeAttempt(
   pool: Pool,
-  inputValue: Parameters<NodeAttemptRunStore['heartbeat']>[0],
+  input: Parameters<NodeAttemptRunStore['heartbeat']>[0],
 ): Promise<
   Readonly<{
     leaseExpiresAt: Date;
@@ -25,8 +25,7 @@ export async function heartbeatNodeAttempt(
     abortReason?: 'canceled' | 'timed_out';
   }>
 > {
-  assertNotAborted(inputValue.signal);
-  const input = inputValue;
+  assertNotAborted(input.signal);
   return withWorkspaceWriteClient(
     pool,
     input.lease.workspaceId,

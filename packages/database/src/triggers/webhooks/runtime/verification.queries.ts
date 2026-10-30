@@ -17,11 +17,8 @@ import type {
 
 export async function resolveWebhookVerification(
   pool: Pool,
-  endpointKeyHashInput: Parameters<
-    WebhookTriggerDatabase['resolveVerification']
-  >[0],
+  endpointKeyHash: Parameters<WebhookTriggerDatabase['resolveVerification']>[0],
 ): ReturnType<WebhookTriggerDatabase['resolveVerification']> {
-  const endpointKeyHash = endpointKeyHashInput;
   const result = await drizzle(pool)
     .select({
       endpointId: sql<string>`resolution.endpoint_id`,

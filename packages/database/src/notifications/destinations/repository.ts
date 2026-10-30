@@ -221,7 +221,7 @@ function createNotificationDestination(
       manage: true,
     });
     const destinationId = input.destinationId;
-    const parsed = input.config;
+    const config = input.config;
     const operation = 'failure.notification.destination.create';
     const scope = input.actorId;
     const replay = await claimNotificationCommand(client, input, {
@@ -231,13 +231,13 @@ function createNotificationDestination(
     });
     if (replay.kind === 'replay')
       return decodeFailureNotificationDestinationReplay(replay.result);
-    await assertConnection(client, input.workspaceId, parsed);
+    await assertConnection(client, input.workspaceId, config);
     await drizzle(client)
       .insert(destination)
       .values({
         id: destinationId,
         workspaceId: input.workspaceId,
-        kind: parsed.kind,
+        kind: config.kind,
         status: 'enabled',
         currentConfigVersion: 1,
         createdBy: input.actorId,
@@ -247,7 +247,7 @@ function createNotificationDestination(
       workspaceId: input.workspaceId,
       destinationId,
       version: 1,
-      config: parsed,
+      config,
       actorId: input.actorId,
     });
     await audit(client, input, {
@@ -256,7 +256,7 @@ function createNotificationDestination(
         id: destinationId,
         type: 'failure_notification_destination',
       },
-      metadata: { kind: parsed.kind, version: 1 },
+      metadata: { kind: config.kind, version: 1 },
     });
     const created = await readFailureNotificationDestination(
       client,
@@ -329,19 +329,19 @@ function appendNotificationDestinationVersion(
       destinationId,
       { lock: true },
     );
-    const parsed = input.config;
+    const config = input.config;
     if (
       current.currentVersion !== input.expectedVersion ||
-      current.kind !== parsed.kind
+      current.kind !== config.kind
     )
       throw destinationError('conflict', 'Destination version conflict');
-    await assertConnection(client, input.workspaceId, parsed);
+    await assertConnection(client, input.workspaceId, config);
     const next = current.currentVersion + 1;
     await insertVersion(client, {
       workspaceId: input.workspaceId,
       destinationId: current.id,
       version: next,
-      config: parsed,
+      config,
       actorId: input.actorId,
     });
     await drizzle(client)

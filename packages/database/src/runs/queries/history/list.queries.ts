@@ -63,33 +63,32 @@ export async function readWorkflowRunListPage(
   pool: Pool,
   input: ListWorkflowRunsDatabaseInput,
 ): Promise<WorkflowRunListPage> {
-  const parsed = input;
-  return withRetainedResourceRead(pool, parsed, async (transaction) =>
+  return withRetainedResourceRead(pool, input, async (transaction) =>
     listWorkflowRunsInTransaction(transaction, {
-      limit: parsed.limit,
-      ...(parsed.runValueKey === undefined
+      limit: input.limit,
+      ...(input.runValueKey === undefined
         ? {}
         : {
-            runValueKey: parsed.runValueKey,
-            ...(parsed.runValue === undefined
+            runValueKey: input.runValueKey,
+            ...(input.runValue === undefined
               ? {}
-              : { runValue: parsed.runValue }),
+              : { runValue: input.runValue }),
           }),
-      ...(parsed.workflowId === undefined
+      ...(input.workflowId === undefined
         ? {}
-        : { workflowId: parsed.workflowId }),
-      ...(parsed.workflowNamePrefix === undefined
+        : { workflowId: input.workflowId }),
+      ...(input.workflowNamePrefix === undefined
         ? {}
-        : { workflowNamePrefix: parsed.workflowNamePrefix }),
-      includeWorkflowName: parsed.includeWorkflowName ?? false,
-      ...(parsed.status === undefined ? {} : { status: parsed.status }),
-      ...(parsed.createdAtFrom === undefined
+        : { workflowNamePrefix: input.workflowNamePrefix }),
+      includeWorkflowName: input.includeWorkflowName ?? false,
+      ...(input.status === undefined ? {} : { status: input.status }),
+      ...(input.createdAtFrom === undefined
         ? {}
-        : { createdAtFrom: parsed.createdAtFrom }),
-      ...(parsed.createdAtBefore === undefined
+        : { createdAtFrom: input.createdAtFrom }),
+      ...(input.createdAtBefore === undefined
         ? {}
-        : { createdAtBefore: parsed.createdAtBefore }),
-      ...(parsed.after === undefined ? {} : { after: parsed.after }),
+        : { createdAtBefore: input.createdAtBefore }),
+      ...(input.after === undefined ? {} : { after: input.after }),
     }),
   );
 }

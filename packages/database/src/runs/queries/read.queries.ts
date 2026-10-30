@@ -64,10 +64,9 @@ export async function readWorkflowRun(
   pool: Pool,
   input: GetWorkflowRunInput,
 ): Promise<WorkflowRunReadModel | undefined> {
-  const parsed = input;
-  return withResourceRunRead(pool, parsed, async (transaction) =>
-    readRunModel(transaction, parsed.runId, {
-      includeWorkflowName: parsed.includeWorkflowName ?? false,
+  return withResourceRunRead(pool, input, async (transaction) =>
+    readRunModel(transaction, input.runId, {
+      includeWorkflowName: input.includeWorkflowName ?? false,
     }),
   );
 }

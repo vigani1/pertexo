@@ -38,14 +38,10 @@ export { parseWorkspaceId } from './transactions/scope.js';
  */
 export async function withTenantScopedClient<T>(
   pool: Pool,
-  scopeInput: TenantTransactionScope,
+  scope: TenantTransactionScope,
   operation: (client: PoolClient) => Promise<T>,
   options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
-  const scope: TenantTransactionScope = {
-    ...scopeInput,
-    workspaceId: scopeInput.workspaceId,
-  };
   return runTransaction(pool, scope, {
     operation,
     options,
@@ -65,11 +61,10 @@ export async function withTenantScopedClient<T>(
  */
 export async function withActorScopedClient<T>(
   pool: Pool,
-  actorIdInput: string,
+  actorId: string,
   operation: (client: PoolClient) => Promise<T>,
   options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
-  const actorId = actorIdInput;
   return runTransaction(
     pool,
     { actorId, discoveryScope: 'workspace_memberships' },
@@ -89,14 +84,10 @@ export async function withActorScopedClient<T>(
 /** Internal worker seam for stable repeatable-read snapshots. */
 export async function withTenantScopedReadClient<T>(
   pool: Pool,
-  scopeInput: TenantTransactionScope,
+  scope: TenantTransactionScope,
   operation: (client: PoolClient) => Promise<T>,
   options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
-  const scope: TenantTransactionScope = {
-    ...scopeInput,
-    workspaceId: scopeInput.workspaceId,
-  };
   return runTransaction(pool, scope, {
     operation,
     options,

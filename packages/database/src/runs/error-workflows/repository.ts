@@ -23,8 +23,7 @@ export function createErrorWorkflowStore(
   const lease = acquireDatabasePool(config, runtime);
   return Object.freeze({
     close: () => lease.close(),
-    dispatch: async (raw) => {
-      const input = raw;
+    dispatch: async (input) => {
       await withTenantScopedClient(
         lease.pool,
         { workspaceId: input.workspaceId },

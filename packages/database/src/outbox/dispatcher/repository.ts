@@ -32,7 +32,6 @@ async function markPublished(
   eventId: string,
   leaseToken: string,
 ): Promise<boolean> {
-  const parsed = { id: eventId, leaseToken };
   const db = drizzle(pool);
   const published = db.$with('published').as(
     db
@@ -45,7 +44,7 @@ async function markPublished(
         lastErrorCode: null,
         updatedAt: sql`clock_timestamp()`,
       })
-      .where(currentLease(parsed.id, parsed.leaseToken))
+      .where(currentLease(eventId, leaseToken))
       .returning({
         workspaceId: outboxEvents.workspaceId,
         id: outboxEvents.id,
@@ -65,21 +64,20 @@ async function releaseOrFail(
   pool: Pool,
   input: ReleaseInput,
 ): Promise<ReleaseOutboxResult> {
-  const parsed = input;
   const db = drizzle(pool);
   const updated = db.$with('updated').as(
     db
       .update(outboxEvents)
       .set({
-        availableAt: sql`case when ${outboxEvents.publishAttempts}>=${parsed.maxAttempts} then ${outboxEvents.availableAt} else ${parsed.retryAt}::timestamptz end`,
-        failedAt: sql`case when ${outboxEvents.publishAttempts}>=${parsed.maxAttempts} then clock_timestamp() else null end`,
-        lastErrorCode: parsed.errorCode,
+        availableAt: sql`case when ${outboxEvents.publishAttempts}>=${input.maxAttempts} then ${outboxEvents.availableAt} else ${input.retryAt}::timestamptz end`,
+        failedAt: sql`case when ${outboxEvents.publishAttempts}>=${input.maxAttempts} then clock_timestamp() else null end`,
+        lastErrorCode: input.errorCode,
         leaseOwner: null,
         leaseToken: null,
         leaseExpiresAt: null,
         updatedAt: sql`clock_timestamp()`,
       })
-      .where(currentLease(parsed.id, parsed.leaseToken))
+      .where(currentLease(input.id, input.leaseToken))
       .returning({
         failed: sql<boolean>`${outboxEvents.failedAt} is not null`.as('failed'),
         workspaceId: outboxEvents.workspaceId,

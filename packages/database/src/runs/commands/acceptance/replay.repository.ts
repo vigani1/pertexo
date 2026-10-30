@@ -88,6 +88,5 @@ export async function readWorkflowRunAcceptanceReplay(
   transaction: WorkspaceTransaction,
   input: WorkflowRunAcceptanceReplayInput,
 ): Promise<AcceptedWorkflowRun | null> {
-  const parsed = input;
-  return readExistingAcceptance(transaction, parsed, { kind: 'request_only' });
+  return readExistingAcceptance(transaction, input, { kind: 'request_only' });
 }

@@ -44,46 +44,39 @@ export class ArtifactUploadNotFoundError extends Error {
 export function normalizeBeginInput(
   input: BeginArtifactUploadInput,
 ): NormalizedBeginArtifactUploadInput {
-  const parsed = input;
-  if (parsed.actor.workspaceId !== parsed.workspaceId)
+  if (input.actor.workspaceId !== input.workspaceId)
     throw new ArtifactUploadNotFoundError();
   return {
-    actorId: parsed.actor.actorId,
-    byteLength: parsed.byteLength,
-    idempotencyKey: parsed.idempotencyKey,
-    mediaType: parsed.mediaType,
-    sha256: parsed.sha256,
-    workspaceId: parsed.workspaceId,
+    actorId: input.actor.actorId,
+    byteLength: input.byteLength,
+    idempotencyKey: input.idempotencyKey,
+    mediaType: input.mediaType,
+    sha256: input.sha256,
+    workspaceId: input.workspaceId,
   };
 }
 
 export function normalizeIdentity(
   input: ArtifactUploadAuthorization,
 ): NormalizedArtifactIdentity {
-  const parsed = input;
-  if (parsed.actor.workspaceId !== parsed.identity.workspaceId)
+  if (input.actor.workspaceId !== input.identity.workspaceId)
     throw new ArtifactUploadNotFoundError();
   return {
-    actorId: parsed.actor.actorId,
-    artifactId: parsed.identity.artifactId,
-    workspaceId: parsed.identity.workspaceId,
+    actorId: input.actor.actorId,
+    artifactId: input.identity.artifactId,
+    workspaceId: input.identity.workspaceId,
   };
 }
 
 export function normalizeFinalizeInput(
   input: FinalizeArtifactUploadInput,
 ): NormalizedFinalizeArtifactUploadInput {
-  const parsed = {
-    actor: input.actor,
-    expectedMetadata: input.expectedMetadata,
-    identity: input.identity,
-  };
-  if (parsed.actor.workspaceId !== parsed.identity.workspaceId)
+  if (input.actor.workspaceId !== input.identity.workspaceId)
     throw new ArtifactUploadNotFoundError();
   return {
-    actorId: parsed.actor.actorId,
-    artifactId: parsed.identity.artifactId,
-    expectedMetadata: parsed.expectedMetadata,
-    workspaceId: parsed.identity.workspaceId,
+    actorId: input.actor.actorId,
+    artifactId: input.identity.artifactId,
+    expectedMetadata: input.expectedMetadata,
+    workspaceId: input.identity.workspaceId,
   };
 }

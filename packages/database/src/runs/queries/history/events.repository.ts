@@ -84,11 +84,10 @@ export async function appendLockedRunEvent(
   runId: string,
   event: RunEvent,
 ): Promise<number> {
-  const parsed = event;
   let normalizedPayload: unknown;
   try {
     normalizedPayload = JSON.parse(
-      serializeStoredExecutionJsonValue(parsed.payload),
+      serializeStoredExecutionJsonValue(event.payload),
     );
   } catch {
     throw new ExecutionStateConflictError('execution.event_payload_invalid');
@@ -120,7 +119,7 @@ export async function appendLockedRunEvent(
       sequence: sql<number>`coalesce(max(${runEvents.sequence}),0)+1`.as(
         'sequence',
       ),
-      type: sql<string>`${parsed.type}`.as('type'),
+      type: sql<string>`${event.type}`.as('type'),
       payload: sql`${serializedPayload}::jsonb`.as('payload'),
       createdAt: sql<Date>`now()`.as('created_at'),
     })
@@ -154,8 +153,7 @@ export async function readRunEventsAfter(
   transaction: WorkspaceTransaction,
   input: Readonly<ReadRunEvents>,
 ): Promise<RunEventPage> {
-  const parsed = input;
-  const { snapshot, page } = eventPage(transaction, parsed);
+  const { snapshot, page } = eventPage(transaction, input);
   // Drizzle cannot mark a CTE MATERIALIZED; retain the snapshot barrier around native reads.
   type PageRow = (typeof page)['_']['result'][number];
   type WireRow = Omit<PageRow, 'created_at'> &
@@ -175,9 +173,9 @@ export async function readRunEventsAfter(
       type: RunEventType;
     } => row.created_at !== null && row.sequence !== null && row.type !== null,
   );
-  const pageRows = eventRows.slice(0, parsed.limit);
+  const pageRows = eventRows.slice(0, input.limit);
   for (const [index, row] of pageRows.entries()) {
-    if (row.sequence !== parsed.afterSequence + index + 1)
+    if (row.sequence !== input.afterSequence + index + 1)
       throw new RunEventGapError();
   }
 
@@ -192,7 +190,7 @@ export async function readRunEventsAfter(
         }),
       ),
     ),
-    hasMore: eventRows.length > parsed.limit,
+    hasMore: eventRows.length > input.limit,
     highWaterSequence,
   });
 }

@@ -47,7 +47,6 @@ export async function consumeInboxMessage<T>(
     options?: InboxConsumeOptions | undefined;
   }>,
 ): Promise<InboxConsumeResult<T>> {
-  const parsed = message;
   const result = await database.withWorkspace(
     workspaceId,
     async (transaction) => {
@@ -58,10 +57,10 @@ export async function consumeInboxMessage<T>(
       const inserted = await transaction.db
         .insert(inboxReceipts)
         .values({
-          consumerName: parsed.consumerName,
-          messageId: parsed.messageId,
+          consumerName: message.consumerName,
+          messageId: message.messageId,
           workspaceId: transaction.workspaceId,
-          payloadChecksum: parsed.payloadChecksum,
+          payloadChecksum: message.payloadChecksum,
         })
         .onConflictDoNothing({
           target: [inboxReceipts.consumerName, inboxReceipts.messageId],
@@ -77,15 +76,15 @@ export async function consumeInboxMessage<T>(
           .from(inboxReceipts)
           .where(
             and(
-              eq(inboxReceipts.consumerName, parsed.consumerName),
-              eq(inboxReceipts.messageId, parsed.messageId),
+              eq(inboxReceipts.consumerName, message.consumerName),
+              eq(inboxReceipts.messageId, message.messageId),
             ),
           );
         const receipt = receipts[0];
         if (receipt?.completedAt == null) {
           throw new InboxReceiptUnavailableError();
         }
-        if (receipt.payloadChecksum !== parsed.payloadChecksum) {
+        if (receipt.payloadChecksum !== message.payloadChecksum) {
           return CHECKSUM_MISMATCH;
         }
         return Object.freeze({ status: 'duplicate' as const });
@@ -97,8 +96,8 @@ export async function consumeInboxMessage<T>(
         .set({ completedAt: sql`clock_timestamp()` })
         .where(
           and(
-            eq(inboxReceipts.consumerName, parsed.consumerName),
-            eq(inboxReceipts.messageId, parsed.messageId),
+            eq(inboxReceipts.consumerName, message.consumerName),
+            eq(inboxReceipts.messageId, message.messageId),
             eq(inboxReceipts.workspaceId, transaction.workspaceId),
           ),
         )
@@ -125,8 +124,8 @@ export async function consumeInboxMessage<T>(
         id: generatePersistedId(),
         workspaceId: transaction.workspaceId,
         factType: 'inbox_checksum_mismatch',
-        consumerName: parsed.consumerName,
-        messageId: parsed.messageId,
+        consumerName: message.consumerName,
+        messageId: message.messageId,
       });
     },
     options,

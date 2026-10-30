@@ -12,12 +12,10 @@ import { invitationSelection, lockAuthorizedActor } from './state.queries.js';
 
 export async function listWorkspaceInvitations(
   pool: Pool,
-  workspaceIdInput: Parameters<InvitationStore['listWorkspaceInvitations']>[0],
-  actorIdInput: Parameters<InvitationStore['listWorkspaceInvitations']>[1],
+  workspaceId: Parameters<InvitationStore['listWorkspaceInvitations']>[0],
+  actorUserId: Parameters<InvitationStore['listWorkspaceInvitations']>[1],
   input: Parameters<InvitationStore['listWorkspaceInvitations']>[2] = {},
 ): ReturnType<InvitationStore['listWorkspaceInvitations']> {
-  const workspaceId = workspaceIdInput;
-  const actorUserId = actorIdInput;
   const limit = input.limit ?? 50;
   return withTenantScopedClient(
     pool,
