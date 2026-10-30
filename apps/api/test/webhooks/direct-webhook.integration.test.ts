@@ -17,6 +17,7 @@ import { registerProvesAtomicAcceptanceExactReplayReplay } from './direct-webhoo
 import { registerReadsResumedRunRunningThroughAuthenticated } from './direct-webhook/reads-resumed-run-running-through-authenticated.cases.js';
 import { registerRefusesWebhooksOutsideActiveWorkspace } from './direct-webhook/refuses-webhooks-outside-active-workspace.cases.js';
 import { registerReturnsNoEndpointCredentialOnCompleted } from './direct-webhook/returns-no-endpoint-credential-on-completed.cases.js';
+import { registerNoSilentDedupe } from './direct-webhook/no-silent-dedupe.cases.js';
 import {
   registerStoresKeysAsHashes,
   registerSurvivesPublish,
@@ -53,4 +54,6 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   registerSurvivesPublish();
 
   registerStoresKeysAsHashes();
+
+  registerNoSilentDedupe();
 });
