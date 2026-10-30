@@ -33,7 +33,7 @@ export function registerDeniesRebindingOversizedJSONWrongCase(): void {
         ...command,
         request: { name: 'x', input: {}, workflowVersionId: versionId },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'ZodError' });
     await expect(
       cases.create({
         ...command,
@@ -43,10 +43,10 @@ export function registerDeniesRebindingOversizedJSONWrongCase(): void {
           workflowVersionId: versionId,
         },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'ZodError' });
     await expect(
       cases.delete({ ...command, representationTag: 'bad' }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'WorkflowHeaderError', code: 'invalid' });
     await expect(
       problemResult(
         cases.delete({

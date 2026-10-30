@@ -114,7 +114,7 @@ export function registerReusesGuardAuthorizationLifecycleOperations(): void {
           request: { name: 'Operations', slug: 'operations' },
           metadata,
         }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: 'IdentityMetadataValidationError' });
       expect(store.createWorkspaceWithOwner).not.toHaveBeenCalled();
     }
   });

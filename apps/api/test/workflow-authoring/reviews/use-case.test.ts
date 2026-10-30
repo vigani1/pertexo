@@ -91,7 +91,7 @@ it('lets a builder request the exact representation and trims its bounded note a
       request: { note: '', graph: {} },
       idempotencyKey: 'invalid',
     }),
-  ).rejects.toThrow();
+  ).rejects.toMatchObject({ name: 'ZodError' });
   expect(f.store.request).toHaveBeenCalledTimes(1);
 });
 it.each(['builder', 'operator', 'viewer'] as const)(

@@ -39,7 +39,10 @@ export function registerAuthorizesBeforeTouchingDatabaseObjectStore(): void {
         },
         idempotencyKey: randomUUID(),
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'auth.forbidden',
+    });
     expect(deps.database.beginUpload).not.toHaveBeenCalled();
     expect(deps.store.beginDirectUpload).not.toHaveBeenCalled();
   });

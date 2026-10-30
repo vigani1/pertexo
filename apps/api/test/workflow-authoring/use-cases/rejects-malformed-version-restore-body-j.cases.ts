@@ -119,7 +119,7 @@ export function registerRejectsMalformedVersionRestoreBodyJ(): void {
           request,
           idempotencyKey: 'key',
         }),
-      ).rejects.toBeInstanceOf(Error);
+      ).rejects.toMatchObject({ name: 'ZodError' });
       expect(store.transitionWorkflowLifecycle).not.toHaveBeenCalled();
     },
   );

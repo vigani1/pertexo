@@ -103,7 +103,10 @@ describe('connection usage read', () => {
         new ListConnectionUsageUseCase({ listConnectionUsage }, access).execute(
           { actor, routeWorkspaceId: workspaceId, connectionId },
         ),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({
+        name: 'AuthorizationError',
+        code: 'resource.not_found',
+      });
       expect(listConnectionUsage).not.toHaveBeenCalled();
     },
   );

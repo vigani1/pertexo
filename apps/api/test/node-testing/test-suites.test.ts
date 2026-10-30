@@ -79,18 +79,32 @@ describe('draft suite boundary', () => {
           request: body,
           idempotencyKey: randomUUID(),
         }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: 'ZodError' });
     expect(f.store.start).not.toHaveBeenCalled();
   });
   it('requires editor and run permissions for all reports and commands', async () => {
     const f = fixture('viewer');
-    await expect(f.useCase.prepare(input)).rejects.toThrow();
-    await expect(f.useCase.list(input)).rejects.toThrow();
-    await expect(f.useCase.get({ ...input, suiteId })).rejects.toThrow();
+    await expect(f.useCase.prepare(input)).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
+    await expect(f.useCase.list(input)).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
+    await expect(f.useCase.get({ ...input, suiteId })).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
     await expect(
       f.useCase.report({ ...input, suiteId, ordinal: 0 }),
-    ).rejects.toThrow();
-    await expect(f.useCase.cancel({ ...input, suiteId })).rejects.toThrow();
+    ).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
+    await expect(f.useCase.cancel({ ...input, suiteId })).rejects.toMatchObject(
+      { name: 'AuthorizationError', code: 'resource.not_found' },
+    );
     expect(f.store.prepare).not.toHaveBeenCalled();
     expect(f.store.report).not.toHaveBeenCalled();
     expect(f.store.cancel).not.toHaveBeenCalled();
@@ -102,6 +116,6 @@ describe('draft suite boundary', () => {
     });
     await expect(
       f.useCase.report({ ...input, suiteId, ordinal: 0 }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ name: 'ZodError' });
   });
 });

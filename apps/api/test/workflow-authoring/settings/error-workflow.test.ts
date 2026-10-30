@@ -97,7 +97,7 @@ describe('error workflow Settings boundary', () => {
       const f = fixture();
       await expect(
         f.controls.update({ ...input, request, idempotencyKey: 'invalid' }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: 'ZodError' });
       expect(f.persistence.updateSettings).not.toHaveBeenCalled();
     },
   );

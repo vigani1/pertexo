@@ -187,7 +187,7 @@ export function registerAcceptsTypedApplicationCommandsAllSeven(): void {
           { workspaceId, destinationId },
           body,
         ),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ name: 'ZodError' });
       expect(database.get).not.toHaveBeenCalled();
       expect(connectionTests.startConnectionTest).not.toHaveBeenCalled();
     },
