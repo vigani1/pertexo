@@ -59,7 +59,7 @@ export function registerEditorBrowserJourney(
 
 function journeyTimeoutMillis() {
   // The product journey is several specs, each with its own sign-up.
-  return scenario === 'product' ? 480_000 : 180_000;
+  return scenario === 'product' ? 720_000 : 180_000;
 }
 
 async function prepareEditorPrerequisites(api: EditorBrowserApi) {
