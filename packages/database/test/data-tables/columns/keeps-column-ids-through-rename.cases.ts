@@ -8,6 +8,7 @@ import {
 } from '../../support/workflow-authoring.js';
 
 import { store, scope, create, current, edit, rows } from './fixture.js';
+import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
 
 export function registerKeepsColumnIDsThroughRename(): void {
   it('keeps column IDs through rename, rewrites every row and charges exact bytes', async () => {
@@ -189,7 +190,7 @@ export function registerKeepsColumnIDsThroughRename(): void {
         change: { operation: 'set_key', columnId: null },
         idempotencyKey: randomUUID(),
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
     await store.configure({
       ...scope(),
       tableLimit: 20,

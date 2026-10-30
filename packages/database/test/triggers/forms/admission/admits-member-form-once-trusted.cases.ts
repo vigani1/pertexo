@@ -206,7 +206,7 @@ export function registerAdmitsMemberFormOnceTrusted(): void {
         values: { amount: 1 },
         idempotencyKey: 'removed',
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(FormUnavailableError);
     expect(
       (
         await admin.query(

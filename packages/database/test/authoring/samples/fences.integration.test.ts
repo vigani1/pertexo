@@ -14,6 +14,8 @@ import {
   waitForPostgresLock,
 } from '../../support/workflow-authoring.js';
 import { fixture, paste, testIntent } from './support.js';
+import { PreviewAdmissionDeniedError } from '../../../src/previews/errors.js';
+import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
 
 describe('pinned sample admission fences', () => {
   it('rechecks authority for reads, writes and accepted-test receipts', async () => {
@@ -28,9 +30,15 @@ describe('pinned sample admission fences', () => {
       workspaceId,
     );
     try {
-      await expect(authoring.stepSamples.get(f.scope)).rejects.toThrow();
-      await expect(authoring.stepSamples.put(command)).rejects.toThrow();
-      await expect(authoring.acceptPreview(intent)).rejects.toThrow();
+      await expect(authoring.stepSamples.get(f.scope)).rejects.toBeInstanceOf(
+        WorkflowNotFoundError,
+      );
+      await expect(authoring.stepSamples.put(command)).rejects.toBeInstanceOf(
+        WorkflowNotFoundError,
+      );
+      await expect(authoring.acceptPreview(intent)).rejects.toStrictEqual(
+        new PreviewAdmissionDeniedError('actor'),
+      );
     } finally {
       await queryAsOwner(
         "update app.workspace_memberships set status='active' where workspace_id=$1 and user_id=$2",

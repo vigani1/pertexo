@@ -24,6 +24,7 @@ import {
   complete,
   runId,
 } from './fixture.js';
+import { WorkflowNotFoundError } from '../../../../src/authoring/workflows/errors.js';
 
 export function registerRequiresExactEffectAcknowledgementAccepts(): void {
   it('requires exact effect acknowledgement and accepts only one concurrent start', async () => {
@@ -101,7 +102,7 @@ export function registerRequiresExactEffectAcknowledgementAccepts(): void {
         workspaceId: otherWorkspaceId,
         ...accepted,
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
     await expect(
       database.workflowTestSuites.report({
         ...f.scope,
@@ -109,7 +110,7 @@ export function registerRequiresExactEffectAcknowledgementAccepts(): void {
         ...accepted,
         ordinal: 0,
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
     await database.workflowTestSuites.cancel({ ...f.scope, ...accepted });
     await database.workflowTestSuites.cancel({ ...f.scope, ...accepted });
     await complete(runId(first, 0), {}, 'canceled');

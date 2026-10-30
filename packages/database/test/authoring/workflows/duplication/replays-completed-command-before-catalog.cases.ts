@@ -12,6 +12,7 @@ import {
   workspaceId,
 } from '../../../support/workflow-authoring.js';
 import { source, command, facts, commandFacts } from './fixture.js';
+import { WorkflowDefinitionPlacementError } from '../../../../src/authoring/workflows/errors.js';
 
 export function registerReplaysCompletedCommandBeforeCatalog(): void {
   it('replays a completed command before catalog admission while new copies cannot grandfather removed definitions', async () => {
@@ -48,7 +49,7 @@ export function registerReplaysCompletedCommandBeforeCatalog(): void {
             { scopedWorkflowId: original.workflowId, scopedActorId: actorId },
           ),
         }),
-      ).rejects.toThrow();
+      ).rejects.toBeInstanceOf(WorkflowDefinitionPlacementError);
       expect(await commandFacts()).toEqual(before);
     } finally {
       await Promise.all([current.close(), removed.close()]);

@@ -50,7 +50,7 @@ describe.skipIf(!organizationFixtureEnabled)(
           workspaceId: scope.workspace,
           actorId: scope.actor,
         }),
-      ).rejects.toThrow();
+      ).rejects.toThrow('Workflow folder hierarchy is incompatible');
     });
 
     it('executes strict folder CRUD, member reads and shared placement CAS', async () => {

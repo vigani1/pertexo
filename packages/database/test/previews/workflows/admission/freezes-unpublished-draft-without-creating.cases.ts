@@ -16,6 +16,7 @@ import {
   fixture,
   command,
 } from './fixture.js';
+import { WorkflowNotFoundError } from '../../../../src/authoring/workflows/errors.js';
 
 export function registerFreezesUnpublishedDraftWithoutCreating(): void {
   it('freezes an unpublished draft without creating a publication and uses ordinary capacity', async () => {
@@ -170,7 +171,7 @@ export function registerFreezesUnpublishedDraftWithoutCreating(): void {
         workspaceId: otherWorkspaceId,
         ...accepted,
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
     await database.workflowTests.cancel({ ...f.scope, ...accepted });
     await database.workflowTests.cancel({ ...f.scope, ...accepted });
     const events = await query<{ type: string }>(

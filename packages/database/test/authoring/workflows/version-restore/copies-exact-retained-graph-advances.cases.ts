@@ -137,7 +137,7 @@ export function registerCopiesExactRetainedGraphAdvances(): void {
         ...(await restoreInput(fixture)),
         representationTag: '',
       }),
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(WorkflowRevisionConflictError);
     expect(await restoreFacts(fixture.workflowId)).toEqual(before);
   });
 
