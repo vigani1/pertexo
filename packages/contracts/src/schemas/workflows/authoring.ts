@@ -1,7 +1,7 @@
 export * from './sharing.js';
 import { z } from 'zod';
-import { workflowTemplateOriginSchema } from '@pertexo/templates';
-export type { WorkflowTemplateOrigin } from '@pertexo/templates';
+import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
+export type { WorkflowTemplateOrigin } from '@pertexo/workflow-model';
 export * from './auto-pause.js';
 export * from './concurrency.js';
 export * from './organization.js';

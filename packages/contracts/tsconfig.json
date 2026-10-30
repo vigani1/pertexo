@@ -17,9 +17,6 @@
   },
   "references": [
     {
-      "path": "../templates/tsconfig.json"
-    },
-    {
       "path": "../workflow-model/tsconfig.json"
     },
     {

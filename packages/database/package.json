@@ -78,7 +78,6 @@
     "@pertexo/contracts": "workspace:*",
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/nodes-core": "workspace:*",
-    "@pertexo/templates": "workspace:*",
     "@pertexo/workflow-engine": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "cron-parser": "5.10.2",
@@ -90,6 +89,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@pertexo/templates": "workspace:*",
     "@types/pg": "8.23.1",
     "drizzle-kit": "0.31.11"
   }

@@ -7,7 +7,7 @@ import {
   primaryKey,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { WorkflowTemplateOrigin } from '@pertexo/templates';
+import type { WorkflowTemplateOrigin } from '@pertexo/workflow-model';
 import { appSchema } from '../namespace.js';
 import { workflows } from './workflows.js';
 

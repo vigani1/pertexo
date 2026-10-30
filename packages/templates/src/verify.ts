@@ -6,6 +6,7 @@ import {
   PortableJsonError,
   type WorkflowPortableManifest,
   workflowPortableManifestSchema,
+  workflowTemplateOriginRequestSchema,
 } from '@pertexo/workflow-model';
 
 import {
@@ -14,7 +15,6 @@ import {
   type CuratedWorkflowTemplate,
 } from './catalog.js';
 import { isCuratedHttpsEndpoint } from './https-endpoint.js';
-import { workflowTemplateOriginRequestSchema } from './origin.js';
 
 type ValidationResult =
   | { readonly ok: true }

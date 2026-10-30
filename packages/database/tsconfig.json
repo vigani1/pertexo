@@ -25,9 +25,6 @@
       "path": "../workflow-engine/tsconfig.json"
     },
     {
-      "path": "../templates/tsconfig.json"
-    },
-    {
       "path": "../workflow-model/tsconfig.json"
     }
   ]
