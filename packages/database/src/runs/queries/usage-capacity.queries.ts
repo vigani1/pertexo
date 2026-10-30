@@ -1,4 +1,9 @@
-import { workspaceArtifactCapacity } from '../../schema/transport.js';
+import { entitlementPolicyState } from './entitlement-effect.js';
+import {
+  DEFAULT_ARTIFACT_BYTE_LIMIT,
+  DEFAULT_ARTIFACT_COUNT_LIMIT,
+  workspaceArtifactCapacity,
+} from '../../schema/transport.js';
 import {
   workspaceExecutionEntitlementVersions,
   workspaceExecutionEntitlements,
@@ -91,14 +96,14 @@ function capacityQuery({ db, workspaceId }: WorkspaceTransaction) {
       active_runs: sql<number>`current_runs.active_runs`,
       queued_runs: sql<number>`current_runs.queued_runs`,
       reserved_active_slots: sql<number>`current_runs.reserved_active_slots`,
-      policy_state: sql<PolicyState>`case when ${workspaceExecutionEntitlementVersions.version} is null or ${workspaceExecutionAdmissionCounters.workspaceId} is null then 'unavailable' when ${workspaceExecutionEntitlementVersions.status}<>'active' then 'suspended' when ${workspaceExecutionEntitlementVersions.effectiveAt}>transaction_timestamp() then 'not_yet_effective' when ${workspaceExecutionEntitlementVersions.expiresAt}<=transaction_timestamp() then 'expired' else 'active' end`,
+      policy_state: sql<PolicyState>`case when ${workspaceExecutionEntitlementVersions.version} is null or ${workspaceExecutionAdmissionCounters.workspaceId} is null then 'unavailable' else ${entitlementPolicyState(workspaceExecutionEntitlementVersions, sql`transaction_timestamp()`)} end`,
       version: workspaceExecutionEntitlementVersions.version,
       active_run_limit: workspaceExecutionEntitlementVersions.activeRunLimit,
       queued_run_limit: workspaceExecutionEntitlementVersions.queuedRunLimit,
       charged_bytes: sql<string>`coalesce(${workspaceArtifactCapacity.chargedBytes},0)::text`,
-      byte_limit: sql<string>`coalesce(${workspaceArtifactCapacity.byteLimit},1073741824)::text`,
+      byte_limit: sql<string>`coalesce(${workspaceArtifactCapacity.byteLimit},${sql.raw(String(DEFAULT_ARTIFACT_BYTE_LIMIT))})::text`,
       charged_count: sql<number>`coalesce(${workspaceArtifactCapacity.chargedCount},0)`,
-      artifact_count_limit: sql<number>`coalesce(${workspaceArtifactCapacity.artifactCountLimit},1000)`,
+      artifact_count_limit: sql<number>`coalesce(${workspaceArtifactCapacity.artifactCountLimit},${sql.raw(String(DEFAULT_ARTIFACT_COUNT_LIMIT))})`,
       capacity_source: sql<
         'default' | 'stored'
       >`case when ${workspaceArtifactCapacity.workspaceId} is null then 'default' else 'stored' end`,

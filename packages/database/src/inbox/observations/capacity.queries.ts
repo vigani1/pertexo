@@ -1,3 +1,4 @@
+import { entitlementInEffect } from '../../runs/queries/entitlement-effect.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { PoolClient } from 'pg';
 import type { WorkspaceCapacityLimit } from '@pertexo/contracts';
@@ -38,7 +39,7 @@ function approaching(
 ): SQL<boolean> {
   return sql`coalesce((${available}) and (${limit})>0 and (${used})::numeric*5>=(${limit})::numeric*4,false)`;
 }
-const effective = sql`${counter.workspaceId} is not null and ${entitlement.status}='active' and ${entitlement.effectiveAt}<=statement_timestamp() and (${entitlement.expiresAt} is null or ${entitlement.expiresAt}>statement_timestamp())`;
+const effective = sql`${counter.workspaceId} is not null and ${entitlementInEffect(entitlement, sql`statement_timestamp()`)}`;
 function metrics(active: SQL, queued: SQL) {
   return {
     active: approaching(active, entitlement.activeRunLimit, effective),

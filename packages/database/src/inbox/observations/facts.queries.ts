@@ -1,3 +1,4 @@
+import { entitlementInEffect } from '../../runs/queries/entitlement-effect.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { readCommentMentionSource } from './mentions.queries.js';
 import {
@@ -227,7 +228,7 @@ async function readLimitReachedFact(
 ): Promise<AttentionFact> {
   const [row] = await drizzle(client)
     .select({
-      queue: sql<boolean>`coalesce(${entitlement.status}='active' and ${entitlement.effectiveAt}<=clock_timestamp() and (${entitlement.expiresAt} is null or ${entitlement.expiresAt}>clock_timestamp()) and counts.queued_runs>=${entitlement.queuedRunLimit},false)`,
+      queue: sql<boolean>`coalesce(${entitlementInEffect(entitlement, sql`clock_timestamp()`)} and counts.queued_runs>=${entitlement.queuedRunLimit},false)`,
       artifact_bytes: sql<boolean>`coalesce(${capacity.chargedBytes}>=${capacity.byteLimit},false)`,
       artifact_count: sql<boolean>`coalesce(${capacity.chargedCount}>=${capacity.artifactCountLimit},false)`,
     })
