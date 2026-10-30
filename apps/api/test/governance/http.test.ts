@@ -162,7 +162,7 @@ describe('governance over HTTP', () => {
   });
 
   // api-14: settings writes are a governance:manage action, not an audit read.
-  it.fails('authorizes a settings change as governance:manage', async () => {
+  it('authorizes a settings change as governance:manage', async () => {
     const { app, authorized } = await governanceApp();
     const response = await app.inject({
       method: 'PUT',
