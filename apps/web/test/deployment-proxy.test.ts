@@ -57,9 +57,15 @@ describe('same-origin web proxy configuration', () => {
       );
     }
     // Pages can't be framed by another site.
-    expect(spa.body).toContain(
-      'add_header Content-Security-Policy "frame-ancestors \'none\'" always;',
-    );
+    expect(spa.body).toContain("frame-ancestors 'none'");
+    // nginx drops inherited lines per block, so each block has its own copy.
+    expect(
+      new Set(
+        [
+          ...configuration.matchAll(/add_header Content-Security-Policy .*/gu),
+        ].map(([line]) => line),
+      ).size,
+    ).toBe(1);
     expect(spa.body).toContain('add_header X-Frame-Options "DENY" always;');
     expect(api.body).not.toContain('add_header');
     expect(configuration.slice(api.end)).toContain(

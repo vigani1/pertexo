@@ -20,6 +20,7 @@ import { WORKSPACE_DATABASE } from './platform/database/module.js';
 import { ApiShutdownCoordinator } from './platform/health/drain-state.js';
 import { NestLoggerAdapter } from './platform/observability/module.js';
 import { registerApiMetrics } from './platform/observability/api-metrics.js';
+import { registerResponseSecurityHeaders } from './platform/http/response-security.js';
 import { registerWebhookIngress } from './webhooks/ingress/register.js';
 import { registerDataTableExportTransport } from './data-tables/export/transport.js';
 import { registerNoticeUnsubscribeTransport } from './notifications/preferences/transport.js';
@@ -92,6 +93,7 @@ export async function assembleApiApplication(
   application.enableShutdownHooks();
   try {
     const fastifyInstance: FastifyInstance = fastifyAdapter.getInstance();
+    registerResponseSecurityHeaders(fastifyInstance);
     registerWorkflowPortabilityJsonParser(fastifyAdapter);
     registerNoticeUnsubscribeTransport(fastifyAdapter);
     registerDataTableExportTransport(fastifyAdapter);
