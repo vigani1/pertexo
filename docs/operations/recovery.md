@@ -1,5 +1,8 @@
 # Recovery
 
+How to get a backup back, on a spare machine as a drill or on a replacement server.
+[Setting up backups](single-server.md#7-set-up-backups) covers taking them.
+
 ## Restore drill or replacement server
 
 Use a fresh disposable Docker host or a replacement server with no serving
@@ -36,8 +39,8 @@ If restoration fails after writes begin, `state/restore-fence` blocks deployment
 backup and operator commands. Preserve the error evidence and retry on a new
 fresh target; populated-target guards deliberately refuse partial-data retries.
 Never remove the fence to serve partial data. A successful restore clears it.
-Record the point, commit, checks and recovery duration in the owner-assisted
-slice 6 drill; repository CI alone does not complete that drill.
+Note the point, commit, checks and how long recovery took: that duration is your real
+recovery time. Repository CI runs a restore on a stand-in store, not on yours.
 
 The repository recovery qualification downloads the matched dump from storage
 and restores it into fresh PostgreSQL targets. It checks retained connection
@@ -49,5 +52,5 @@ workflow relationships and sharing revisions must survive the same restore, with
 forced workspace isolation intact. Callback material is reopened with the
 separately supplied versioned token keys.
 The existing production-image check exercises both encryption configurations.
-These isolated fixtures verify repository behavior; the remote drill above
-remains necessary for the owner's actual backup provider and server.
+These isolated fixtures verify repository behavior; only a drill proves your own backup
+provider and server.

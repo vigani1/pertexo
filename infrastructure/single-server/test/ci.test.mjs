@@ -38,46 +38,40 @@ test('qualifies what it publishes before anyone can pull it', () => {
 
 // ops-09: 7 of 75 main pushes failed, one on a docs commit that can't have caused it.
 // Tags name commits; only a release says a commit is good.
-it(
-  'publishes an image for every merged commit, whatever the test jobs did',
-  () => {
-    assert.ok(publishingJobs.length > 0);
-    for (const [name, job] of publishingJobs) {
-      for (const blocker of [
-        'check',
-        'unit',
-        'integration',
-        'browser',
-        'e2e',
-        'security',
-      ])
-        assert.ok(!neededBy(name).has(blocker), `${name} waits for ${blocker}`);
-      assert.match(job.if ?? '', /refs\/heads\/main/u);
-      assert.doesNotMatch(job.if ?? '', /docs|changes|paths/u);
-    }
-  },
-);
+it('publishes an image for every merged commit, whatever the test jobs did', () => {
+  assert.ok(publishingJobs.length > 0);
+  for (const [name, job] of publishingJobs) {
+    for (const blocker of [
+      'check',
+      'unit',
+      'integration',
+      'browser',
+      'e2e',
+      'security',
+    ])
+      assert.ok(!neededBy(name).has(blocker), `${name} waits for ${blocker}`);
+    assert.match(job.if ?? '', /refs\/heads\/main/u);
+    assert.doesNotMatch(job.if ?? '', /docs|changes|paths/u);
+  }
+});
 
 // ops-09, docs-deps-product-17
-it(
-  'a version tag publishes a release with notes and moves the stable tag',
-  () => {
-    const path = '.github/workflows/release.yml';
-    assert.ok(existsSync(path), path);
-    const release = parse(readFileSync(path, 'utf8'));
-    const tags = release.on.push.tags;
-    assert.ok(tags.some((tag) => tag.startsWith('v')));
-    const text = JSON.stringify(release);
-    // The released image is the one every merged commit already published and tested.
-    assert.match(text, /imagetools create/u);
-    assert.match(text, /:stable/u);
-    assert.doesNotMatch(text, /buildx build/u);
-    // A commit whose tests failed can have an image, but never a release.
-    assert.match(text, /verify-ci|gh run|check-runs/u);
-    assert.match(text, /CHANGELOG\.md/u);
-    assert.match(text, /gh release create|action-gh-release/u);
-  },
-);
+it('a version tag publishes a release with notes and moves the stable tag', () => {
+  const path = '.github/workflows/release.yml';
+  assert.ok(existsSync(path), path);
+  const release = parse(readFileSync(path, 'utf8'));
+  const tags = release.on.push.tags;
+  assert.ok(tags.some((tag) => tag.startsWith('v')));
+  const text = JSON.stringify(release);
+  // The released image is the one every merged commit already published and tested.
+  assert.match(text, /imagetools create/u);
+  assert.match(text, /:stable/u);
+  assert.doesNotMatch(text, /buildx build/u);
+  // A commit whose tests failed can have an image, but never a release.
+  assert.match(text, /verify-ci|gh run|check-runs/u);
+  assert.match(text, /CHANGELOG\.md/u);
+  assert.match(text, /gh release create|action-gh-release/u);
+});
 
 // ops-11: the test that would have caught ops-01, ops-02 and the fresh-install failure.
 test('runs the real deploy, backup and restore scripts on a real stack, on both architectures', () => {
@@ -99,4 +93,33 @@ test('keeps the fast deployment checks in the required check job', () => {
     jobText(ci.jobs.check),
     /infrastructure\/single-server\/test\/\*\.test\.mjs/u,
   );
+});
+
+// The drill takes about 22 minutes a leg: a pull request that didn't touch what it
+// covers must not wait for it, and one that did must not get past it.
+test('runs the drill on main, on the schedule, and only on pull requests that touch what it covers', () => {
+  const drill = ci.jobs['self-host-drill'];
+  assert.deepEqual([drill.needs].flat(), ['self-host-changes']);
+  assert.match(drill.if, /github\.event_name != 'pull_request'/u);
+  assert.match(
+    drill.if,
+    /needs\.self-host-changes\.outputs\.touched == 'true'/u,
+  );
+  const classify = jobText(ci.jobs['self-host-changes']);
+  const paths = /grep -qE '([^']+)'/u.exec(classify)?.[1];
+  assert.ok(paths, classify);
+  const touches = (file) => new RegExp(paths, 'u').test(file);
+  for (const file of [
+    'infrastructure/single-server/deploy.sh',
+    'infrastructure/quickstart/compose.yaml',
+    'Dockerfile',
+    'apps/web/deployment/nginx.conf.template',
+  ])
+    assert.ok(touches(file), file);
+  for (const file of [
+    'apps/api/src/app.ts',
+    'docs/operations/single-server.md',
+    'packages/database/src/database.ts',
+  ])
+    assert.ok(!touches(file), file);
 });

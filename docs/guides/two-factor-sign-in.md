@@ -63,7 +63,7 @@ bootstrap superuser. No authenticator key, recovery code or
 `BETTER_AUTH_SECRET` is an argument or prerequisite.
 
 On the single-server deployment, select the current release as described in
-[the operator runbook](../operations/single-server.md#logs-and-operator-commands),
+[the operator page](../operations/operator-commands.md),
 then use the API container's existing application database and mail settings.
 The existing operation lock excludes deployment and restore; an unfinished
 migration or restore must be resolved first:

@@ -1,5 +1,15 @@
 # Encryption keys
 
+Pertexo encrypts stored connection and webhook credentials. A fresh install uses
+self-managed keys from `generate-secrets.mjs`: a private 32-byte master key and version
+`1`, with no AWS account. Save the key and its version in your password manager.
+
+To use AWS KMS instead, generate with `--encryption=kms`, supply
+`CONNECTION_KMS_KEY_REFERENCE` and `CONNECTION_KMS_REGION`, and use the AWS credential
+chain, with an IAM role or privately supplied credentials. Choose before storing any
+secret: switching providers with retained secrets fails verification. Public development
+keys are refused in production, including as previous keys.
+
 The generator also creates `CALLBACK_TOKEN_KEY` and `CALLBACK_TOKEN_KEY_VERSION`
 for machine callback Waits. API and worker share that pair and optional
 `CALLBACK_TOKEN_PREVIOUS_KEYS` (the same version/key JSON shape as invitation
@@ -36,4 +46,4 @@ directory; this also refuses interim images whose verifier exists but whose
 production policy still disallows self-managed keys. Failed checks keep serving
 stopped.
 KMS verification checks provider compatibility, not IAM access or remote
-decryptability; retain the existing provider smoke test.
+decryptability, so test a stored credential after your first deploy.
