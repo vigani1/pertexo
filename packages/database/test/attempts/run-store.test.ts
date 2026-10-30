@@ -6,6 +6,8 @@ import {
   parseDatabaseConfig,
   type NodeAttemptLease,
 } from '../../src/testing.js';
+import { NodeAttemptOutputInvalidError } from '../../src/attempts/errors.js';
+import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 import { createDatabaseRuntime } from '../../src/platform/pool/runtime.js';
 
 const config = parseDatabaseConfig({
@@ -111,6 +113,31 @@ describe('NodeAttemptRunStore', () => {
         await expect(invoke(store, controller.signal)).rejects.toMatchObject({
           name: 'AbortError',
         });
+        expect(checkout).not.toHaveBeenCalled();
+      });
+    },
+  );
+
+  // db-runs-16: the refusal keeps the serializer's validation error as its cause.
+  it.fails(
+    'refuses an output that cannot be stored and keeps why',
+    async () => {
+      await withNoCheckoutStore(async (store, checkout) => {
+        const rejected = await store
+          .complete({
+            lease,
+            outcome: { output: new Date(0), status: 'succeeded' },
+            signal: new AbortController().signal,
+          })
+          .then(
+            () => undefined,
+            (error: unknown) => error,
+          );
+
+        expect(rejected).toBeInstanceOf(NodeAttemptOutputInvalidError);
+        expect((rejected as Error).cause).toBeInstanceOf(
+          StoredExecutionValueInvalidError,
+        );
         expect(checkout).not.toHaveBeenCalled();
       });
     },
