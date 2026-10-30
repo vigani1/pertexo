@@ -60,9 +60,7 @@ export function assembleWorkflowRuntime({
       ...(database.publicationReviews === undefined
         ? {}
         : { publicationReviewPersistence: database.publicationReviews }),
-      ...(metadataRuntime.inputCases === undefined
-        ? {}
-        : { inputCasePersistence: metadataRuntime.inputCases }),
+      inputCasePersistence: metadataRuntime.inputCases,
       organization: metadataRuntime.organization,
       ...(database.errorWorkflow === undefined
         ? {}
@@ -87,7 +85,6 @@ export function assembleWorkflowRuntime({
       streamer: runStreamer,
     }),
     checkReadiness: (): Promise<void> => {
-      if (liveSource === undefined) return Promise.resolve();
       const readiness = liveSource as LiveRunEventSource & {
         checkReadiness?: () => Promise<void>;
       };

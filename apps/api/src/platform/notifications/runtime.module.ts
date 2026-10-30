@@ -2,10 +2,7 @@ import { createNoticePreferencesStore } from '@pertexo/database/notifications';
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import type { ApiIdentityConfig } from '../config/identity.js';
 import { NoticePreferencesService } from '../../notifications/preferences/service.js';
-import {
-  createWorkspaceInboxDatabase,
-  type WorkspaceInboxDatabase,
-} from '@pertexo/database/notifications';
+import { createWorkspaceInboxDatabase } from '@pertexo/database/notifications';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -26,29 +23,21 @@ export type ApiNotificationRuntime = Readonly<{
   close(): Promise<void>;
 }>;
 
-export type ApiNotificationRuntimeOverrides = Readonly<{
-  database?: WorkspaceInboxDatabase;
-  hints?: InboxHintSource;
-}>;
-
 export function createApiNotificationRuntime(
   config: DatabaseConfig,
   redisUrl: string,
   {
-    overrides = {},
     runtime,
     mail,
   }: Readonly<{
-    overrides?: ApiNotificationRuntimeOverrides | undefined;
     runtime?: DatabaseRuntime | undefined;
     mail?: ApiIdentityConfig['betterAuth']['durableMail'] | undefined;
   }> = {},
 ): ApiNotificationRuntime {
-  const database =
-    overrides.database ?? createWorkspaceInboxDatabase(config, runtime);
+  const database = createWorkspaceInboxDatabase(config, runtime);
   let hints: InboxHintSource;
   try {
-    hints = overrides.hints ?? new RedisInboxHintHub({ redisUrl });
+    hints = new RedisInboxHintHub({ redisUrl });
   } catch (error: unknown) {
     void database.close().catch(() => undefined);
     throw error;

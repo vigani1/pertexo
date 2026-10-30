@@ -8,7 +8,6 @@ import type { FastifyInstance } from 'fastify';
 
 import {
   acquireApiRuntimes,
-  assertValidRuntimeSources,
   cleanupApiRuntimes,
   throwStartupFailure,
   type ApiApplicationDependencies,
@@ -36,7 +35,6 @@ export async function createApiApplication(
   config: ApiConfig,
   dependencies: ApiApplicationDependencies,
 ): Promise<NestFastifyApplication> {
-  assertValidRuntimeSources(config, dependencies);
   const runtimes = await acquireApiRuntimes(config, dependencies);
   return assembleApiApplication(config, dependencies, runtimes);
 }
@@ -44,7 +42,7 @@ export async function createApiApplication(
 /** Builds and starts the application; it owns the runtimes from here on. */
 export async function assembleApiApplication(
   config: ApiConfig,
-  dependencies: Pick<ApiApplicationDependencies, 'logger' | 'telemetry'>,
+  dependencies: ApiApplicationDependencies,
   runtimes: ApiRuntimeSet,
 ): Promise<NestFastifyApplication> {
   const nestLogger = new NestLoggerAdapter(dependencies.logger);

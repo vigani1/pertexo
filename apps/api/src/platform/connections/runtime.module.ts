@@ -22,10 +22,6 @@ import {
   ConnectionsModule,
   createConnectionTelemetry,
   type ConnectionDependencies,
-  type ConnectionSecretEncryptionPort,
-  type ConnectionHttpClient,
-  type ConnectionSlackClient,
-  type ConnectionEmailClient,
   type ConnectionTelemetry,
 } from '../../connections/index.js';
 import type { ApiIdentityRuntime } from '../identity/runtime.module.js';
@@ -36,87 +32,44 @@ export type ApiConnectionRuntime = Readonly<{
   close(): Promise<void>;
 }>;
 
-export type ApiConnectionRuntimeOverrides = Readonly<{
-  clients?: Readonly<{
-    http?: ConnectionHttpClient;
-    httpFactory?: () => ConnectionHttpClient;
-    slack?: ConnectionSlackClient;
-    slackFactory?: (httpClient: ConnectionHttpClient) => ConnectionSlackClient;
-    email?: ConnectionEmailClient;
-    emailFactory?: (httpClient: ConnectionHttpClient) => ConnectionEmailClient;
-  }>;
-  encryption?: Readonly<{
-    value?: ConnectionSecretEncryptionPort;
-    factory?: typeof createConnectionEnvelopeEncryption;
-  }>;
-  persistence?: Readonly<{
-    database?: ApiConnectionDatabase;
-    databaseFactory?: (
-      config: DatabaseConfig,
-      runtime?: DatabaseRuntime,
-    ) => ApiConnectionDatabase;
-    destinationDatabaseFactory?: typeof createFailureNotificationDestinationDatabase;
-  }>;
-  telemetry?: Readonly<{
-    value?: ConnectionTelemetry;
-    factory?: () => ConnectionTelemetry;
-  }>;
-}>;
-
 export async function createApiConnectionRuntime(
   config: NonNullable<ApiConfig['connections']>,
   databaseConfig: DatabaseConfig,
   {
     identityRuntime,
     applicationSecret,
-    overrides = {},
     runtime,
   }: Readonly<{
     identityRuntime: ApiIdentityRuntime;
     applicationSecret: string;
-    overrides?: ApiConnectionRuntimeOverrides | undefined;
     runtime?: DatabaseRuntime | undefined;
   }>,
 ): Promise<ApiConnectionRuntime> {
-  const persistenceOverrides = overrides.persistence ?? {};
-  const encryptionOverrides = overrides.encryption ?? {};
-  const clientOverrides = overrides.clients ?? {};
-  const telemetryOverrides = overrides.telemetry ?? {};
   let database: ApiConnectionDatabase | undefined;
   let destinationDatabase:
     ReturnType<typeof createFailureNotificationDestinationDatabase> | undefined;
   let encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   try {
-    database =
-      persistenceOverrides.database ??
-      (persistenceOverrides.databaseFactory ?? createConnectionDatabase)(
-        databaseConfig,
-        runtime,
-      );
-    destinationDatabase = (
-      persistenceOverrides.destinationDatabaseFactory ??
-      createFailureNotificationDestinationDatabase
-    )(databaseConfig, runtime);
-    if (encryptionOverrides.value === undefined)
-      encryptionRuntime = (
-        encryptionOverrides.factory ?? createConnectionEnvelopeEncryption
-      )(
-        'mode' in config
-          ? config
-          : {
-              keyReference: config.kmsKeyReference,
-              region: config.region,
-              ...(config.endpoint === undefined
-                ? {}
-                : { endpoint: config.endpoint }),
-            },
-      );
-    const encryption =
-      encryptionOverrides.value ?? encryptionRuntime?.encryption;
-    if (encryption === undefined)
-      throw new Error('Connection encryption composition is incomplete');
-    const { telemetry, httpClient, slackClient, emailClient } =
-      connectionClients(clientOverrides, telemetryOverrides);
+    database = createConnectionDatabase(databaseConfig, runtime);
+    destinationDatabase = createFailureNotificationDestinationDatabase(
+      databaseConfig,
+      runtime,
+    );
+    encryptionRuntime = createConnectionEnvelopeEncryption(
+      'mode' in config
+        ? config
+        : {
+            keyReference: config.kmsKeyReference,
+            region: config.region,
+            ...(config.endpoint === undefined
+              ? {}
+              : { endpoint: config.endpoint }),
+          },
+    );
+    const telemetry = productionTelemetry();
+    const httpClient = createNodeSecureHttpClient();
+    const slackClient = createSlackClient(httpClient);
+    const emailClient = createResendClient(httpClient);
     const acquiredDatabase = database;
     const acquiredDestinationDatabase = destinationDatabase;
     const acquiredEncryptionRuntime = encryptionRuntime;
@@ -129,7 +82,7 @@ export async function createApiConnectionRuntime(
         usagePersistence: database,
         sharingPersistence: database,
         authorization: identityRuntime.dependencies.authorization,
-        encryption,
+        encryption: encryptionRuntime.encryption,
         httpClient,
         slackClient,
         emailClient,
@@ -240,24 +193,4 @@ export class ConnectionRuntimeModule {
       providers: [],
     };
   }
-}
-
-function connectionClients(
-  clientOverrides: NonNullable<ApiConnectionRuntimeOverrides['clients']>,
-  telemetryOverrides: NonNullable<ApiConnectionRuntimeOverrides['telemetry']>,
-) {
-  const telemetry =
-    telemetryOverrides.value ??
-    (telemetryOverrides.factory ?? productionTelemetry)();
-  const httpClient =
-    clientOverrides.http ??
-    (clientOverrides.httpFactory ?? createNodeSecureHttpClient)();
-  const slackClient =
-    clientOverrides.slack ??
-    (clientOverrides.slackFactory ?? createSlackClient)(httpClient);
-  const emailClient =
-    clientOverrides.email ??
-    (clientOverrides.emailFactory ?? createResendClient)(httpClient);
-
-  return { telemetry, httpClient, slackClient, emailClient };
 }

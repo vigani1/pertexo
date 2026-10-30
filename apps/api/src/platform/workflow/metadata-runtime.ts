@@ -24,10 +24,9 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { WorkflowAuthoringDependencies } from '../../workflow-authoring/index.js';
-import type { ApiWorkflowRuntimeOverrides } from './runtime.module.js';
 
 export type ApiWorkflowMetadataRuntime = Readonly<{
-  inputCases?: WorkflowInputCaseDatabase;
+  inputCases: WorkflowInputCaseDatabase;
   variables: WorkspaceVariablesStore;
   dataTables: DataTablesStore;
   governance: GovernanceStore;
@@ -38,7 +37,6 @@ export type ApiWorkflowMetadataRuntime = Readonly<{
 /** One lifecycle owner for non-executable authoring metadata. */
 export async function createApiWorkflowMetadataRuntime(
   config: DatabaseConfig,
-  authoring: NonNullable<ApiWorkflowRuntimeOverrides['authoring']>,
   runtime?: DatabaseRuntime,
 ): Promise<ApiWorkflowMetadataRuntime> {
   const resources: Readonly<{ close(): Promise<void> }>[] = [];
@@ -61,18 +59,8 @@ export async function createApiWorkflowMetadataRuntime(
   }
   try {
     const lease = runtime === undefined ? {} : { runtime };
-    // Preserve the existing explicitly opted-in test adapter policy.
-    const inputCases =
-      authoring.inputCasePersistence ??
-      ((authoring.database !== undefined ||
-        authoring.databaseFactory !== undefined) &&
-      authoring.inputCasePersistenceFactory === undefined
-        ? undefined
-        : (
-            authoring.inputCasePersistenceFactory ??
-            createWorkflowInputCaseDatabase
-          )(config, lease));
-    if (inputCases !== undefined) resources.push(inputCases);
+    const inputCases = createWorkflowInputCaseDatabase(config, lease);
+    resources.push(inputCases);
     const governance = createGovernanceStore(config, runtime);
     resources.push(governance);
     const dataTables = createDataTablesStore(config, runtime);
@@ -93,7 +81,7 @@ export async function createApiWorkflowMetadataRuntime(
       variables,
       dataTables,
       governance,
-      ...(inputCases === undefined ? {} : { inputCases }),
+      inputCases,
       organization: Object.freeze({
         tags,
         favorites,

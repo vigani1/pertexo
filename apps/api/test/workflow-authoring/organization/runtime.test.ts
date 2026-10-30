@@ -29,7 +29,7 @@ describe('organization metadata runtime ownership', () => {
     createInputCases.mockReset().mockReturnValue(inputCases());
   });
   it('composes the organization stores without querying', async () => {
-    const runtime = await createApiWorkflowMetadataRuntime(config, {});
+    const runtime = await createApiWorkflowMetadataRuntime(config);
     try {
       expect(Object.keys(runtime.organization).sort()).toEqual([
         'batches',
@@ -46,7 +46,7 @@ describe('organization metadata runtime ownership', () => {
   it('owns its input cases once and returns one shared close promise', async () => {
     const cases = inputCases();
     createInputCases.mockReturnValue(cases);
-    const runtime = await createApiWorkflowMetadataRuntime(config, {});
+    const runtime = await createApiWorkflowMetadataRuntime(config);
     expect(runtime.inputCases).toBe(cases);
     const first = runtime.close(),
       second = runtime.close();
@@ -59,7 +59,7 @@ describe('organization metadata runtime ownership', () => {
       failure = new Error('owned close failure');
     cases.close.mockRejectedValue(failure);
     createInputCases.mockReturnValue(cases);
-    const runtime = await createApiWorkflowMetadataRuntime(config, {});
+    const runtime = await createApiWorkflowMetadataRuntime(config);
     await expect(runtime.close()).rejects.toBe(failure);
   });
 });

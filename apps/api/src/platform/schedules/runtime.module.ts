@@ -20,24 +20,14 @@ export type ApiScheduleRuntime = Readonly<{
   close(): Promise<void>;
 }>;
 
-export type ApiScheduleRuntimeFactories = Readonly<{
-  database?: typeof createScheduleTriggerDatabase;
-  telemetry?: () => ScheduleTelemetry;
-}>;
-
 export async function createApiScheduleRuntime(
   config: DatabaseConfig,
-  override?: ScheduleTriggerDatabase,
   runtime?: DatabaseRuntime,
-  factories: ApiScheduleRuntimeFactories = {},
 ): Promise<ApiScheduleRuntime> {
   let database: ScheduleTriggerDatabase | undefined;
   try {
-    database =
-      override ??
-      (factories.database ?? createScheduleTriggerDatabase)(config, runtime);
-    const telemetry =
-      factories.telemetry?.() ?? createProductionScheduleTelemetry();
+    database = createScheduleTriggerDatabase(config, runtime);
+    const telemetry = createProductionScheduleTelemetry();
     const acquiredDatabase = database;
     let closePromise: Promise<void> | undefined;
     return Object.freeze({

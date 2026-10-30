@@ -2,12 +2,16 @@ import { createApiCallbackRuntime } from './platform/webhooks/callback-runtime.m
 import {
   createDatabaseRuntime,
   createWorkspaceDatabase,
+  type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 
 import type { ApiConfig } from './platform/config/api.js';
 import { createApiConnectionRuntime } from './platform/connections/runtime.module.js';
-import { createApiIdentityRuntime } from './platform/identity/runtime.module.js';
+import {
+  createApiIdentityRuntime,
+  type ApiIdentityRuntime,
+} from './platform/identity/runtime.module.js';
 import { createApiWorkflowRuntime } from './platform/workflow/runtime.module.js';
 import { createApiWebhookRuntime } from './platform/webhooks/runtime.module.js';
 import { createApiScheduleRuntime } from './platform/schedules/runtime.module.js';
@@ -18,25 +22,48 @@ import type {
   ApiApplicationDependencies,
   ApiRuntimeSet,
 } from './platform/application/contract.js';
-import type { ApiRateLimit } from './platform/rate-limit/module.js';
 
 type ApiRuntimeResources = {
   -readonly [Key in keyof ApiRuntimeSet]?: ApiRuntimeSet[Key] | undefined;
 };
 
 export { type ApiApplicationDependencies } from './platform/application/contract.js';
-export { assertValidRuntimeSources } from './platform/application/sources.js';
 export async function acquireApiRuntimes(
   config: ApiConfig,
-  dependencies: ApiApplicationDependencies,
+  { logger }: Pick<ApiApplicationDependencies, 'logger'>,
 ): Promise<ApiRuntimeSet> {
   const runtimes: ApiRuntimeResources = {};
   try {
-    await acquireIdentityWorkflows(config, dependencies, runtimes);
-    await acquireFeatureRuntimes(config, dependencies, runtimes);
-    const { database, rateLimit } = runtimes;
-    if (database === undefined || rateLimit === undefined)
-      throw new Error('API runtime composition is incomplete');
+    const databaseRuntime = (runtimes.databaseRuntime = createDatabaseRuntime(
+      config.database,
+      { role: 'api' },
+    ));
+    const database = (runtimes.database = createWorkspaceDatabase(
+      config.database,
+      { runtime: databaseRuntime },
+    ));
+    const rateLimit = (runtimes.rateLimit = new RedisRateLimitRuntime(
+      config.redisUrl,
+    ));
+    const identityRuntime =
+      config.identity === undefined
+        ? undefined
+        : await acquireIdentityWorkflows(
+            config,
+            config.identity,
+            databaseRuntime,
+            runtimes,
+          );
+    runtimes.callbackRuntime = await createApiCallbackRuntime(
+      config,
+      databaseRuntime,
+    );
+    if (identityRuntime !== undefined)
+      await acquireFeatureRuntimes(config, logger, {
+        identityRuntime,
+        databaseRuntime,
+        runtimes,
+      });
     return { ...runtimes, database, rateLimit };
   } catch (error: unknown) {
     const cleanupErrors = await cleanupApiRuntimes(runtimes);
@@ -89,159 +116,71 @@ export function throwStartupFailure(
 
 async function acquireIdentityWorkflows(
   config: ApiConfig,
-  dependencies: ApiApplicationDependencies,
+  identity: NonNullable<ApiConfig['identity']>,
+  databaseRuntime: DatabaseRuntime,
   runtimes: ApiRuntimeResources,
-): Promise<void> {
-  runtimes.databaseRuntime = dependencies.databaseRuntime;
-  if (
-    runtimes.databaseRuntime === undefined &&
-    dependencies.database === undefined
-  )
-    runtimes.databaseRuntime = createDatabaseRuntime(config.database, {
-      role: 'api',
-    });
-  runtimes.database =
-    dependencies.database ??
-    createWorkspaceDatabase(
-      config.database,
-      runtimes.databaseRuntime === undefined
-        ? {}
-        : { runtime: runtimes.databaseRuntime },
-    );
-  runtimes.rateLimit = acquireRateLimit(config, dependencies);
-
-  runtimes.identityRuntime = dependencies.identityRuntime;
-  if (runtimes.identityRuntime === undefined && config.identity !== undefined)
-    runtimes.identityRuntime = await createApiIdentityRuntime(
-      config.identity,
-      config.database,
-      dependencies.identityOverrides,
-      runtimes.databaseRuntime,
-    );
-
-  runtimes.workflowRuntime = dependencies.workflowRuntime;
-  if (
-    runtimes.workflowRuntime === undefined &&
-    runtimes.identityRuntime !== undefined
-  )
-    runtimes.workflowRuntime = await createApiWorkflowRuntime(
-      config.database,
-      runtimes.identityRuntime,
-      {
-        redisUrl: config.redisUrl,
-        overrides: dependencies.workflowOverrides,
-        runtime: runtimes.databaseRuntime,
-        codeSettings: config.codeSettings,
-      },
-    );
-
-  runtimes.connectionRuntime = dependencies.connectionRuntime;
-  if (
-    runtimes.connectionRuntime === undefined &&
-    runtimes.identityRuntime !== undefined &&
-    config.connections !== undefined
-  ) {
-    if (config.identity === undefined)
-      throw new Error('Connections require application identity configuration');
+): Promise<ApiIdentityRuntime> {
+  const identityRuntime = (runtimes.identityRuntime =
+    await createApiIdentityRuntime(identity, config.database, {
+      runtime: databaseRuntime,
+    }));
+  runtimes.workflowRuntime = await createApiWorkflowRuntime(
+    config.database,
+    identityRuntime,
+    {
+      redisUrl: config.redisUrl,
+      runtime: databaseRuntime,
+      codeSettings: config.codeSettings,
+    },
+  );
+  if (config.connections !== undefined)
     runtimes.connectionRuntime = await createApiConnectionRuntime(
       config.connections,
       config.database,
       {
-        identityRuntime: runtimes.identityRuntime,
-        applicationSecret: config.identity.betterAuth.secret,
-        overrides: dependencies.connectionOverrides,
-        runtime: runtimes.databaseRuntime,
+        identityRuntime,
+        applicationSecret: identity.betterAuth.secret,
+        runtime: databaseRuntime,
       },
     );
-  }
-}
-
-function acquireRateLimit(
-  config: ApiConfig,
-  dependencies: ApiApplicationDependencies,
-): ApiRateLimit {
-  const runtime = new RedisRateLimitRuntime(config.redisUrl);
-  if (dependencies.rateLimitConsumer === undefined) return runtime;
-  return {
-    consume: dependencies.rateLimitConsumer.consume.bind(
-      dependencies.rateLimitConsumer,
-    ),
-    acquireExclusiveSlot: runtime.acquireExclusiveSlot.bind(runtime),
-    close: runtime.close.bind(runtime),
-  };
+  return identityRuntime;
 }
 
 async function acquireFeatureRuntimes(
   config: ApiConfig,
-  dependencies: ApiApplicationDependencies,
-  runtimes: ApiRuntimeResources,
+  logger: ApiApplicationDependencies['logger'],
+  {
+    identityRuntime,
+    databaseRuntime,
+    runtimes,
+  }: Readonly<{
+    identityRuntime: ApiIdentityRuntime;
+    databaseRuntime: DatabaseRuntime;
+    runtimes: ApiRuntimeResources;
+  }>,
 ): Promise<void> {
-  runtimes.callbackRuntime = dependencies.callbackRuntime;
-  if (
-    runtimes.callbackRuntime === undefined &&
-    (dependencies.database === undefined || config.callbacks !== undefined)
-  )
-    runtimes.callbackRuntime = await createApiCallbackRuntime(
-      config,
-      runtimes.databaseRuntime,
-    );
-  runtimes.webhookRuntime = dependencies.webhookRuntime;
-  if (
-    runtimes.webhookRuntime === undefined &&
-    runtimes.identityRuntime !== undefined &&
-    config.webhooks !== undefined
-  )
+  if (config.webhooks !== undefined)
     runtimes.webhookRuntime = await createApiWebhookRuntime(
       config.webhooks,
       config.database,
-      {
-        logger: dependencies.logger,
-        databaseOverride: undefined,
-        runtime: runtimes.databaseRuntime,
-      },
+      { logger, runtime: databaseRuntime },
     );
-
-  runtimes.scheduleRuntime = dependencies.scheduleRuntime;
-  if (
-    runtimes.scheduleRuntime === undefined &&
-    runtimes.identityRuntime !== undefined &&
-    dependencies.database === undefined
-  )
-    runtimes.scheduleRuntime = await createApiScheduleRuntime(
-      config.database,
-      undefined,
-      runtimes.databaseRuntime,
-    );
-
-  runtimes.notificationRuntime = dependencies.notificationRuntime;
-  if (
-    runtimes.notificationRuntime === undefined &&
-    runtimes.identityRuntime !== undefined &&
-    dependencies.database === undefined
-  )
-    runtimes.notificationRuntime = createApiNotificationRuntime(
-      config.database,
-      config.redisUrl,
-      {
-        overrides: {},
-        runtime: runtimes.databaseRuntime,
-        mail: config.identity?.betterAuth.durableMail,
-      },
-    );
-
-  runtimes.artifactRuntime = dependencies.artifactRuntime;
-  if (
-    runtimes.artifactRuntime === undefined &&
-    runtimes.identityRuntime !== undefined &&
-    config.artifacts !== undefined
-  )
+  runtimes.scheduleRuntime = await createApiScheduleRuntime(
+    config.database,
+    databaseRuntime,
+  );
+  runtimes.notificationRuntime = createApiNotificationRuntime(
+    config.database,
+    config.redisUrl,
+    {
+      runtime: databaseRuntime,
+      mail: config.identity?.betterAuth.durableMail,
+    },
+  );
+  if (config.artifacts !== undefined)
     runtimes.artifactRuntime = createApiArtifactRuntime(
       config.artifacts,
       config.database,
-      {
-        identityRuntime: runtimes.identityRuntime,
-        overrides: dependencies.artifactOverrides,
-        databaseRuntime: runtimes.databaseRuntime,
-      },
+      { identityRuntime, databaseRuntime },
     );
 }

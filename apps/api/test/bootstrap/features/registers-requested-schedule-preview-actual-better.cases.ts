@@ -55,8 +55,12 @@ export function registerRegistersRequestedSchedulePreviewActualBetter(): void {
                 scheduleDatabase,
                 NOOP_SCHEDULE_TELEMETRY,
               ),
-              checkReadiness: () => scheduleDatabase.checkReadiness(),
-              close: vi.fn(() => scheduleDatabase.close()),
+              checkReadiness: async () => {
+                await scheduleDatabase.checkReadiness();
+              },
+              close: vi.fn(async () => {
+                await scheduleDatabase.close();
+              }),
             };
             return Promise.resolve(suppliedRuntime);
           },

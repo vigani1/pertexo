@@ -17,7 +17,6 @@ import {
   createIdentityWorkspaceDatabase,
   createFederationManagementStore,
   createApiTokenDatabase,
-  type IdentityWorkspaceDatabase,
 } from '@pertexo/database/tenant-access';
 import type {
   DatabaseConfig,
@@ -40,7 +39,6 @@ import {
   type IdentityWorkspaceTelemetry,
   type IdentityWorkspaceDependencies,
 } from '../../workspaces/index.js';
-import type { IdentityClock } from '../../identity/index.js';
 import type { ApiIdentityConfig } from '../config/identity.js';
 import { composeBetterAuthRuntime } from './better-auth-composition.js';
 
@@ -53,32 +51,23 @@ export type ApiIdentityRuntime = Readonly<{
   close(): Promise<void>;
 }>;
 
-export type ApiIdentityRuntimeOverrides = Readonly<{
-  clock?: IdentityClock;
-  authenticationMail?: AuthenticationMail;
-  persistence?: Readonly<{
-    database?: IdentityWorkspaceDatabase;
-    databaseFactory?: typeof createIdentityWorkspaceDatabase;
-  }>;
-  telemetry?: Readonly<{
-    value?: IdentityWorkspaceTelemetry;
-    factory?: () => IdentityWorkspaceTelemetry;
-  }>;
-}>;
-
 type ClosableResource = Readonly<{ close(): unknown }>;
 
 /**
- * Composes the server-only identity infrastructure while retaining narrow
- * injection seams for real-database integration tests.
+ * Composes the server-only identity infrastructure. Authentication mail is the
+ * one outside service a caller may replace; the local sink cannot be read back.
  */
 export async function createApiIdentityRuntime(
   config: ApiIdentityConfig,
   databaseConfig: DatabaseConfig,
-  overrides: ApiIdentityRuntimeOverrides = {},
-  runtime?: DatabaseRuntime,
+  {
+    runtime,
+    authenticationMail,
+  }: Readonly<{
+    runtime?: DatabaseRuntime;
+    authenticationMail?: AuthenticationMail;
+  }> = {},
 ): Promise<ApiIdentityRuntime> {
-  const persistenceOverrides = overrides.persistence ?? {};
   const invitationEncryption =
     config.invitationTokenEncryption === undefined
       ? undefined
@@ -86,11 +75,7 @@ export async function createApiIdentityRuntime(
   const resources = new IdentityResourceScope();
   try {
     const identityDatabase = resources.own(
-      persistenceOverrides.database ??
-        (
-          persistenceOverrides.databaseFactory ??
-          createIdentityWorkspaceDatabase
-        )(databaseConfig, runtime),
+      createIdentityWorkspaceDatabase(databaseConfig, runtime),
     );
     const tokenDatabase = resources.own(
       createApiTokenDatabase(databaseConfig, runtime),
@@ -135,7 +120,7 @@ export async function createApiIdentityRuntime(
       config,
       databaseConfig,
       runtime,
-      authenticationMail: overrides.authenticationMail,
+      authenticationMail,
       acquire: (resource) => resources.own(resource),
     });
     let closePromise: Promise<void> | undefined;
@@ -145,8 +130,7 @@ export async function createApiIdentityRuntime(
         config,
         persistence,
         invitationEncryption,
-        clock: overrides.clock,
-        telemetry: identityTelemetry(overrides.telemetry),
+        telemetry: productionIdentityTelemetry(),
         betterAuth,
       }),
       betterAuth,
@@ -155,7 +139,7 @@ export async function createApiIdentityRuntime(
       automation: {
         database: tokenDatabase,
         enabled: config.automationTokensEnabled ?? false,
-        clock: overrides.clock ?? { now: () => new Date() },
+        clock: { now: () => new Date() },
       },
       close: (): Promise<void> => (closePromise ??= resources.close()),
     });
@@ -168,14 +152,6 @@ export async function createApiIdentityRuntime(
       );
     throw error;
   }
-}
-
-function identityTelemetry(
-  overrides: ApiIdentityRuntimeOverrides['telemetry'] = {},
-): IdentityWorkspaceTelemetry {
-  return (
-    overrides.value ?? (overrides.factory ?? productionIdentityTelemetry)()
-  );
 }
 
 function productionIdentityTelemetry(): IdentityWorkspaceTelemetry {
@@ -191,7 +167,6 @@ function identityDependencies(
     config: ApiIdentityConfig;
     persistence: DatabaseIdentityWorkspaceAdapter;
     invitationEncryption: ApplicationSecretEnvelope | undefined;
-    clock: IdentityClock | undefined;
     telemetry: IdentityWorkspaceTelemetry;
     betterAuth: BetterAuthRuntime;
   }>,
@@ -207,7 +182,6 @@ function identityDependencies(
     ...(input.invitationEncryption === undefined
       ? {}
       : { invitationTokens: input.invitationEncryption }),
-    ...(input.clock === undefined ? {} : { clock: input.clock }),
     telemetry: input.telemetry,
     sessions: new BetterAuthSessionService(input.betterAuth, {
       secure: config.session.secureCookie,

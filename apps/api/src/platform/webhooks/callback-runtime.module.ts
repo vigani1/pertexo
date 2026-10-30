@@ -17,9 +17,8 @@ export type ApiCallbackRuntime = Readonly<{
 export async function createApiCallbackRuntime(
   config: Pick<ApiConfig, 'database' | 'callbacks'>,
   runtime?: DatabaseRuntime,
-  createStore: typeof createCallbackStore = createCallbackStore,
 ): Promise<ApiCallbackRuntime> {
-  const store = createStore(config.database, runtime);
+  const store = createCallbackStore(config.database, runtime);
   let keys: CallbackTokenKeys | undefined;
   let closed: Promise<void> | undefined;
   const close = () => {

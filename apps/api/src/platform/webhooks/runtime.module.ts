@@ -27,25 +27,15 @@ type WebhookEnvelopeRuntime = ReturnType<
   typeof createWebhookTriggerEnvelopeEncryption
 >;
 
-export type ApiWebhookRuntimeFactories = Readonly<{
-  database?: typeof createWebhookTriggerDatabase;
-  testEvents?: typeof createWebhookTestEventStore;
-  envelope?: typeof createWebhookTriggerEnvelopeEncryption;
-}>;
-
 export async function createApiWebhookRuntime(
   config: NonNullable<ApiConfig['webhooks']>,
   databaseConfig: ApiConfig['database'],
   {
     logger,
-    databaseOverride,
     runtime,
-    factories = {},
   }: Readonly<{
     logger: StructuredLogger;
-    databaseOverride?: WebhookTriggerDatabase | undefined;
     runtime?: DatabaseRuntime | undefined;
-    factories?: ApiWebhookRuntimeFactories | undefined;
   }>,
 ): Promise<ApiWebhookRuntime> {
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
@@ -53,13 +43,8 @@ export async function createApiWebhookRuntime(
   let envelope: WebhookEnvelopeRuntime | undefined;
   let testEvents: WebhookTestEventStore | undefined;
   try {
-    database =
-      databaseOverride ??
-      (factories.database ?? createWebhookTriggerDatabase)(
-        databaseConfig,
-        runtime,
-      );
-    envelope = (factories.envelope ?? createWebhookTriggerEnvelopeEncryption)(
+    database = createWebhookTriggerDatabase(databaseConfig, runtime);
+    envelope = createWebhookTriggerEnvelopeEncryption(
       'mode' in config
         ? config
         : {
@@ -70,10 +55,7 @@ export async function createApiWebhookRuntime(
               : { endpoint: config.endpoint }),
           },
     );
-    testEvents = (factories.testEvents ?? createWebhookTestEventStore)(
-      databaseConfig,
-      runtime,
-    );
+    testEvents = createWebhookTestEventStore(databaseConfig, runtime);
     const acquiredTests = testEvents;
     const acquiredDatabase = database;
     const acquiredEnvelope = envelope;

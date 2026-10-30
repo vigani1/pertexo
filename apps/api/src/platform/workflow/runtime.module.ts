@@ -19,53 +19,51 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 
-import { JsonataEvaluator } from '@pertexo/workflow-model/server';
+import { createWorkflowAuthoringDatabase } from '@pertexo/database/authoring';
+import {
+  JsonataEvaluator,
+  WorkflowAuthoringValidator,
+} from '@pertexo/workflow-model/server';
 import type { ApiIdentityRuntime } from '../identity/runtime.module.js';
 import { createApiWorkflowMetadataRuntime } from './metadata-runtime.js';
 import {
+  createPostgresRunEventReader,
+  RedisRunEventPublisher,
   RedisRunEventSource,
-  type LiveRunEventSource,
 } from '../../workflow-runs/events/index.js';
 import { WorkflowAuthoringModule } from '../../workflow-authoring/index.js';
 import { NodeTestingModule } from '../../node-testing/index.js';
-import { WorkflowRunsModule } from '../../workflow-runs/index.js';
-import { createCoreWorkflowCompatibility } from './compatibility.js';
+import {
+  createPostgresWorkflowRunPersistence,
+  createWorkflowRunEventStreamer,
+  WorkflowRunsModule,
+} from '../../workflow-runs/index.js';
+import {
+  createCoreAuthoringOptions,
+  createCoreWorkflowCompatibility,
+} from './compatibility.js';
 import type {
   ApiWorkflowRuntime,
-  ApiWorkflowRuntimeOverrides,
   WorkflowResources,
 } from './composition/contract.js';
-import {
-  acquireAuthoringDatabase,
-  acquireRunPersistence,
-  configuredRunEventStreamer,
-} from './composition/acquire.js';
 import { assembleWorkflowRuntime } from './composition/assemble.js';
 import { collectWorkflowCloseFailures } from './composition/lifecycle.js';
 import { productionTelemetry } from './composition/telemetry.js';
 export { createCoreWorkflowAuthoringDatabase } from './compatibility.js';
-export {
-  type ApiWorkflowRuntime,
-  type ApiWorkflowRuntimeOverrides,
-} from './composition/contract.js';
+export { type ApiWorkflowRuntime } from './composition/contract.js';
 export async function createApiWorkflowRuntime(
   databaseConfig: DatabaseConfig,
   identityRuntime: ApiIdentityRuntime,
   {
     redisUrl,
-    overrides = {},
     runtime,
     codeSettings = DEFAULT_CODE_SETTINGS,
   }: Readonly<{
     redisUrl: string;
-    overrides?: ApiWorkflowRuntimeOverrides | undefined;
     runtime?: DatabaseRuntime | undefined;
     codeSettings?: CodeSettings | undefined;
   }>,
 ): Promise<ApiWorkflowRuntime> {
-  const authoring = overrides.authoring ?? {};
-  const persistence = overrides.persistence ?? {};
-  const streaming = overrides.streaming ?? {};
   const compatibility = createCoreWorkflowCompatibility();
   const resources: WorkflowResources = {
     database: undefined,
@@ -79,12 +77,19 @@ export async function createApiWorkflowRuntime(
     authoringValidator: undefined,
   };
   try {
-    const database = acquireAuthoringDatabase(databaseConfig, resources, {
-      authoring,
-      compatibility,
-      codeSettings,
-      runtime,
-    });
+    const authoringValidator = (resources.authoringValidator =
+      new WorkflowAuthoringValidator());
+    const database = (resources.database = createWorkflowAuthoringDatabase(
+      databaseConfig,
+      {
+        ...createCoreAuthoringOptions(
+          compatibility,
+          authoringValidator,
+          codeSettings,
+        ),
+        ...(runtime === undefined ? {} : { runtime }),
+      },
+    ));
     const pendingTasks = (resources.pendingTasks = createPendingTaskStore(
       databaseConfig,
       runtime,
@@ -95,59 +100,43 @@ export async function createApiWorkflowRuntime(
       runtime,
     ));
     const metadataRuntime = (resources.metadataRuntime =
-      await createApiWorkflowMetadataRuntime(
+      await createApiWorkflowMetadataRuntime(databaseConfig, runtime));
+    const notifications = (resources.notifications = new RedisRunEventPublisher(
+      { redisUrl },
+    ));
+    const runAdapter = (resources.runAdapter =
+      createPostgresWorkflowRunPersistence(
         databaseConfig,
-        authoring,
+        undefined,
+        notifications,
         runtime,
       ));
-    const runPersistence = acquireRunPersistence(databaseConfig, resources, {
-      persistence,
-      redisUrl,
-      runtime,
-    });
-    let liveSource: LiveRunEventSource | undefined;
-    if (streaming.streamer === undefined) {
-      resources.eventDatabase =
-        streaming.database ??
-        (streaming.databaseFactory ?? createWorkspaceDatabase)(
-          databaseConfig,
-          runtime === undefined ? {} : { runtime },
-        );
-      liveSource =
-        streaming.liveSource ??
-        (
-          streaming.liveSourceFactory ??
-          ((url) => new RedisRunEventSource({ redisUrl: url }))
-        )(redisUrl);
-    }
-    const eventDatabase = resources.eventDatabase;
-    const runStreamer = configuredRunEventStreamer(
-      streaming,
-      eventDatabase,
+    const eventDatabase = (resources.eventDatabase = createWorkspaceDatabase(
+      databaseConfig,
+      runtime === undefined ? {} : { runtime },
+    ));
+    const liveSource = new RedisRunEventSource({ redisUrl });
+    const runStreamer = createWorkflowRunEventStreamer(
+      createPostgresRunEventReader(eventDatabase),
       liveSource,
     );
-    if (runPersistence === undefined || runStreamer === undefined) {
-      throw new Error('Workflow run runtime composition is incomplete');
-    }
-    const telemetry =
-      authoring.telemetry ??
-      (authoring.telemetryFactory ?? productionTelemetry)();
+    const telemetry = productionTelemetry();
     const expressionEvaluator = (resources.expressionEvaluator =
-      authoring.expressionEvaluatorFactory?.() ?? new JsonataEvaluator());
+      new JsonataEvaluator());
     return assembleWorkflowRuntime({
       database,
       metadataRuntime,
       pendingTasks,
       forms,
-      runPersistence,
+      runPersistence: runAdapter.persistence,
       runStreamer,
       liveSource,
       telemetry,
       expressionEvaluator,
-      authoringValidator: resources.authoringValidator,
-      runAdapter: resources.runAdapter,
+      authoringValidator,
+      runAdapter,
       eventDatabase,
-      notifications: resources.notifications,
+      notifications,
       identityRuntime,
     });
   } catch (error: unknown) {
