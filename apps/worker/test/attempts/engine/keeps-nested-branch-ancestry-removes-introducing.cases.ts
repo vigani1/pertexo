@@ -134,7 +134,7 @@ export function registerKeepsNestedBranchAncestryRemovesIntroducing(): void {
 
     await expect(
       prepared.execute({
-        abortRequested: true,
+        control: { kind: 'abort', reason: 'canceled' },
         completedNodeOutputs: [],
         registry: { execute },
         runInput: null,
@@ -166,7 +166,7 @@ export function registerKeepsNestedBranchAncestryRemovesIntroducing(): void {
       prepared.execute({
         runInput: { target: true },
         completedNodeOutputs: [],
-        abortRequested: false,
+        control: { kind: 'none' },
         registry: createCoreNodeRegistry(),
         signal: new AbortController().signal,
       }),
@@ -229,7 +229,7 @@ export function registerKeepsNestedBranchAncestryRemovesIntroducing(): void {
           declaredCollectionChecksum:
             'f5ca319099f6b777b72517eb1fd6c40d5fd45f43acd86c0ce687aed7b8a7a0f9',
         },
-        abortRequested: false,
+        control: { kind: 'none' },
         registry: createPlatformNodeRegistry(),
         signal: new AbortController().signal,
       }),

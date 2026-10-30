@@ -42,50 +42,6 @@ export function registerNodeAttemptHandlerRejectsUnavailablePublishedWorkflow():
     ).rejects.toMatchObject({ code: 'workflow_not_found' });
   });
 
-  it('rejects an abort request without a durable control reason', async () => {
-    const runStore = {
-      claimDelivery: vi
-        .fn()
-        .mockResolvedValue({ kind: 'claimed', lease: lease() }),
-      close: vi.fn(),
-      complete: vi.fn(),
-      heartbeat: vi.fn(),
-      loadInputs: vi.fn().mockResolvedValue({
-        checkpoint: STORED_CHECKPOINT,
-        abortRequested: true,
-        completedNodeOutputs: [],
-        runInput: null,
-      }),
-      readAttemptOutputs: vi.fn().mockResolvedValue([]),
-      listNodeOutcomes: vi.fn().mockResolvedValue([]),
-      readNodeOutputs: vi.fn().mockResolvedValue([]),
-      readLoopDeclaration: vi.fn(),
-      markDispatched: vi.fn(),
-    };
-    const dependencies = {
-      engine: {
-        prepare: vi
-          .fn()
-          .mockReturnValue({ upstreamNodeOutputs: [], execute: vi.fn() }),
-      },
-      heartbeatIntervalMillis: 1_000,
-      leaseDurationSeconds: 30,
-      reader: {
-        close: vi.fn(),
-        readForExecution: vi.fn().mockResolvedValue(projection()),
-      },
-      registry: { execute: vi.fn() },
-      runStore,
-      workerId: 'worker-1',
-    } satisfies Parameters<typeof createNodeAttemptHandler>[0];
-
-    await expect(
-      createNodeAttemptHandler(dependencies).handle(delivery(), {
-        signal: new AbortController().signal,
-      }),
-    ).rejects.toMatchObject({ code: 'control_reason_missing' });
-  });
-
   it('fails the step, without running it, when the loop results feeding it are too large', async () => {
     const loopKey = 'v|each|b:|i:';
     const complete = vi
@@ -118,7 +74,7 @@ export function registerNodeAttemptHandlerRejectsUnavailablePublishedWorkflow():
         heartbeat: vi.fn(),
         loadInputs: vi.fn().mockResolvedValue({
           checkpoint: STORED_CHECKPOINT,
-          abortRequested: false,
+          control: { kind: 'none' },
           completedNodeOutputs: [
             {
               nodeId: 'each',
@@ -183,7 +139,7 @@ export function registerNodeAttemptHandlerRejectsUnavailablePublishedWorkflow():
         heartbeat: vi.fn(),
         loadInputs: vi.fn().mockResolvedValue({
           checkpoint: STORED_CHECKPOINT,
-          abortRequested: false,
+          control: { kind: 'none' },
           completedNodeOutputs: [],
           runInput: null,
         }),

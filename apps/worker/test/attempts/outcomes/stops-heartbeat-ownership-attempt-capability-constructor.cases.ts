@@ -21,7 +21,7 @@ export function registerStopsHeartbeatOwnershipAttemptCapabilityConstructor(): v
       const heartbeat = vi
         .fn<NodeAttemptRunStore['heartbeat']>()
         .mockResolvedValue({
-          abortRequested: false,
+          control: { kind: 'none' },
           leaseExpiresAt: new Date('2026-08-21T00:01:00.000Z'),
         });
       const constructorError = new Error('connection capability failed');
@@ -64,7 +64,7 @@ export function registerStopsHeartbeatOwnershipAttemptCapabilityConstructor(): v
       vi.useFakeTimers();
       try {
         const heartbeatResult = Promise.withResolvers<{
-          abortRequested: false;
+          control: { kind: 'none' };
           leaseExpiresAt: Date;
         }>();
         const heartbeat = vi
@@ -84,7 +84,7 @@ export function registerStopsHeartbeatOwnershipAttemptCapabilityConstructor(): v
         expect(settled).not.toHaveBeenCalled();
         if (settlement === 'resolve')
           heartbeatResult.resolve({
-            abortRequested: false,
+            control: { kind: 'none' },
             leaseExpiresAt: new Date('2026-08-21T00:01:00.000Z'),
           });
         else heartbeatResult.reject(new Error('late heartbeat failure'));

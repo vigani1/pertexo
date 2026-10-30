@@ -219,11 +219,9 @@ export function createNodeAttemptHandler(
           maxBytes: NODE_JSON_LIMITS.bytes,
         },
       );
-      if (inputs.abortRequested) {
-        if (inputs.abortReason === undefined)
-          throw new NodeAttemptHandlerStateError('control_reason_missing');
+      if (inputs.control.kind === 'abort') {
         return completeControlOutcome(dependencies, claimed.lease, {
-          reason: inputs.abortReason,
+          reason: inputs.control.reason,
           delivery: delivery,
           signal: context.signal,
           dispatched: hasProviderDispatchUncertainty(claimed.lease, {

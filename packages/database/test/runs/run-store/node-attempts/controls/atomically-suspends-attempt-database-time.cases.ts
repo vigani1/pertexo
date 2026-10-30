@@ -321,7 +321,7 @@ export function registerAtomicallySuspendsAttemptDatabaseTime(): void {
         signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({
-      abortRequested: false,
+      control: { kind: 'none' },
       resumeOutput: { held: true },
     });
     await expect(

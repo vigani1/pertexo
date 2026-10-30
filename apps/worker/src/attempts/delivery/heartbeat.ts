@@ -2,8 +2,6 @@ import type { NodeAttemptLease } from '@pertexo/database/attempts';
 
 import { waitForCancelableDelay } from '../../runtime/abortable-delay.js';
 
-import { NodeAttemptHandlerStateError } from './handler-state-error.js';
-
 import type {
   NodeAttemptHandlerDependencies,
   HeartbeatFailure,
@@ -39,10 +37,8 @@ export function startNodeAttemptHeartbeat(
           leaseDurationSeconds: dependencies.leaseDurationSeconds,
           signal: heartbeatSignal,
         });
-        if (result.abortRequested) {
-          if (result.abortReason === undefined)
-            throw new NodeAttemptHandlerStateError('control_reason_missing');
-          abortReason = result.abortReason;
+        if (result.control.kind === 'abort') {
+          abortReason = result.control.reason;
           executionAbort.abort();
           return;
         }

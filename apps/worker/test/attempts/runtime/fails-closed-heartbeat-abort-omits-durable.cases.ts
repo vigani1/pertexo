@@ -30,75 +30,6 @@ import {
 } from './fixture.js';
 
 export function registerFailsClosedHeartbeatAbortOmitsDurable(): void {
-  it('fails closed when a heartbeat abort omits its durable reason', async () => {
-    vi.useFakeTimers();
-    const runStore = {
-      claimDelivery: vi
-        .fn()
-        .mockResolvedValue({ kind: 'claimed', lease: lease() }),
-      close: vi
-        .fn<NonNullable<NodeAttemptRunStore['close']>>()
-        .mockResolvedValue(undefined),
-      complete: vi.fn<NonNullable<NodeAttemptRunStore['complete']>>(),
-      heartbeat: vi.fn().mockResolvedValue({ abortRequested: true }),
-      loadInputs: vi
-        .fn<NonNullable<NodeAttemptRunStore['loadInputs']>>()
-        .mockResolvedValue({
-          checkpoint: STORED_CHECKPOINT,
-          abortRequested: false,
-          completedNodeOutputs: [],
-          runInput: null,
-        }),
-      readAttemptOutputs: vi
-        .fn<NonNullable<NodeAttemptRunStore['readAttemptOutputs']>>()
-        .mockResolvedValue([]),
-      listNodeOutcomes: vi
-        .fn<NonNullable<NodeAttemptRunStore['listNodeOutcomes']>>()
-        .mockResolvedValue([]),
-      readNodeOutputs: vi
-        .fn<NonNullable<NodeAttemptRunStore['readNodeOutputs']>>()
-        .mockResolvedValue([]),
-      readLoopDeclaration:
-        vi.fn<NonNullable<NodeAttemptRunStore['readLoopDeclaration']>>(),
-      markDispatched:
-        vi.fn<NonNullable<NodeAttemptRunStore['markDispatched']>>(),
-    } satisfies NodeAttemptRunStore;
-    const execute = vi.fn(
-      ({ signal }: { readonly signal: AbortSignal }) =>
-        new Promise<never>((_resolve, reject) => {
-          signal.addEventListener(
-            'abort',
-            () => {
-              reject(new DOMException('aborted', 'AbortError'));
-            },
-            { once: true },
-          );
-        }),
-    );
-    const { handler, runtime } = await capturedHandler({
-      engine: {
-        prepare: vi.fn().mockReturnValue({ upstreamNodeOutputs: [], execute }),
-      },
-      registry: { execute: vi.fn() },
-      runStore,
-    });
-
-    try {
-      const handled = handler(delivery(), {
-        signal: new AbortController().signal,
-      });
-      const rejected = expect(handled).rejects.toThrow(
-        /control_reason_missing/u,
-      );
-      await vi.advanceTimersByTimeAsync(10);
-      await rejected;
-      expect(runStore.heartbeat).toHaveBeenCalledOnce();
-    } finally {
-      await runtime.close();
-      vi.useRealTimers();
-    }
-  });
-
   it('rejects executor-controlled success without durable dispatch evidence', async () => {
     const runStore = {
       claimDelivery: vi
@@ -113,7 +44,7 @@ export function registerFailsClosedHeartbeatAbortOmitsDurable(): void {
         .fn<NonNullable<NodeAttemptRunStore['loadInputs']>>()
         .mockResolvedValue({
           checkpoint: STORED_CHECKPOINT,
-          abortRequested: false,
+          control: { kind: 'none' },
           completedNodeOutputs: [],
           runInput: null,
         }),

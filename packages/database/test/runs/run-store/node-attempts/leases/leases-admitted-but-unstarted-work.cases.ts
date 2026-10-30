@@ -31,7 +31,7 @@ export function registerLeasesAdmittedButUnstartedWork(): void {
           upstreamNodeOutputs: [],
           signal: new AbortController().signal,
         }),
-      ).resolves.toMatchObject({ abortRequested: true, abortReason: control });
+      ).resolves.toMatchObject({ control: { kind: 'abort', reason: control } });
       await expect(
         nodeAttemptStore.complete({
           lease,

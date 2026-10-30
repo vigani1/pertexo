@@ -56,8 +56,7 @@ describe('atomic attempt connection health forwarding', () => {
       const heartbeat = vi
         .fn<NodeAttemptRunStore['heartbeat']>()
         .mockResolvedValue({
-          abortRequested: true,
-          abortReason: 'canceled',
+          control: { kind: 'abort', reason: 'canceled' },
           leaseExpiresAt: new Date('2026-10-01T01:00:00Z'),
         });
       const complete = vi

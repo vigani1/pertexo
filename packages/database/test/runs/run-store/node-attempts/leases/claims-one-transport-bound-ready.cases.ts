@@ -60,7 +60,7 @@ export function registerClaimsOneTransportBoundReady(): void {
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({
-      abortRequested: false,
+      control: { kind: 'none' },
       completedNodeOutputs: [],
       variables: {},
       runInput: { hello: 'world' },
@@ -226,7 +226,7 @@ export function registerClaimsOneTransportBoundReady(): void {
       leaseDurationSeconds: 30,
       signal: new AbortController().signal,
     });
-    expect(heartbeat.abortRequested).toBe(false);
+    expect(heartbeat.control).toEqual({ kind: 'none' });
     expect(heartbeat.leaseExpiresAt).toBeInstanceOf(Date);
   });
 }

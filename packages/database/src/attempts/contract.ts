@@ -41,6 +41,11 @@ export type NodeAttemptClaimResult =
   | Readonly<{ kind: 'claimed'; lease: NodeAttemptLease }>;
 
 /** What the database holds for an attempt; execution projects the rest. */
+/** Whether the run wants this attempt to stop, and why. */
+export type NodeAttemptControl =
+  | Readonly<{ kind: 'none' }>
+  | Readonly<{ kind: 'abort'; reason: 'canceled' | 'timed_out' }>;
+
 export type NodeAttemptStoredInputs = Readonly<{
   runInput: unknown;
   variables?: WorkspaceVariableValues;
@@ -51,8 +56,7 @@ export type NodeAttemptStoredInputs = Readonly<{
   }>[];
   sourceFailure?: WorkflowNodeFailureValue;
   resumeOutput?: unknown;
-  abortRequested: boolean;
-  abortReason?: 'canceled' | 'timed_out';
+  control: NodeAttemptControl;
   deadlineAt?: Date;
   /** The run's stored checkpoint JSON. */
   checkpoint: unknown;
@@ -181,8 +185,7 @@ export interface NodeAttemptRunStore {
   ): Promise<
     Readonly<{
       leaseExpiresAt: Date;
-      abortRequested: boolean;
-      abortReason?: 'canceled' | 'timed_out';
+      control: NodeAttemptControl;
     }>
   >;
   /**

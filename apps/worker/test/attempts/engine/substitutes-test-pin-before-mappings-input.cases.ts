@@ -40,7 +40,7 @@ export function registerSubstitutesTestPinBeforeMappingsInput(): void {
       prepared.execute({
         runInput: { different: true },
         completedNodeOutputs: [],
-        abortRequested: false,
+        control: { kind: 'none' },
         registry: { execute },
         onInputResolved,
         signal: new AbortController().signal,
@@ -84,7 +84,7 @@ export function registerSubstitutesTestPinBeforeMappingsInput(): void {
       prepared.execute({
         runInput: {},
         completedNodeOutputs: [],
-        abortRequested: false,
+        control: { kind: 'none' },
         registry: createCoreNodeRegistry(),
         signal: new AbortController().signal,
       }),
@@ -103,7 +103,7 @@ export function registerSubstitutesTestPinBeforeMappingsInput(): void {
       prepared.execute({
         runInput: { hello: 'world' },
         completedNodeOutputs: [],
-        abortRequested: false,
+        control: { kind: 'none' },
         registry: createCoreNodeRegistry(),
         signal: new AbortController().signal,
       }),
@@ -135,7 +135,7 @@ export function registerSubstitutesTestPinBeforeMappingsInput(): void {
         .execute({
           runInput: { hello: 'world' },
           completedNodeOutputs: [],
-          abortRequested: false,
+          control: { kind: 'none' },
           registry: createCoreNodeRegistry(),
           signal: new AbortController().signal,
           onInputResolved,

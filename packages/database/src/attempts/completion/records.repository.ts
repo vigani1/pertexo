@@ -12,7 +12,7 @@ import { inboxReceipts } from '../../schema/transport.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import type { CompletionInput } from './contract.js';
 import { nodeAttemptConsumerName } from './receipts.repository.js';
-import { runAbortState } from '../queries/control.js';
+import { runAbortReason } from '../queries/control.js';
 
 export async function lockCompletionReceipt(
   client: PoolClient,
@@ -40,7 +40,7 @@ export async function lockCompletionRun(
   input: CompletionInput,
 ) {
   return drizzle(client)
-    .select({ abortRequested: runAbortState.abortRequested })
+    .select({ abortReason: runAbortReason })
     .from(workflowRuns)
     .where(
       and(

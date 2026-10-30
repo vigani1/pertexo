@@ -11,7 +11,7 @@ import {
 import { workflowCalls } from '../../schema/runs/calls.js';
 import { pendingRunTasks } from '../../schema/runs/pending-task.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
-import { runAbortState } from '../queries/control.js';
+import { runAbortReason } from '../queries/control.js';
 
 type Input = Parameters<NodeAttemptRunStore['loadInputs']>[0];
 
@@ -22,7 +22,7 @@ export async function readLeasedInputs(client: PoolClient, { lease }: Input) {
       variableSetRevision: workflowRuns.variableSetRevision,
       deadlineAt: workflowRuns.deadlineAt,
       schedulerState: runCheckpoints.schedulerState,
-      ...runAbortState,
+      abortReason: runAbortReason,
     })
     .from(workflowRuns)
     .innerJoin(

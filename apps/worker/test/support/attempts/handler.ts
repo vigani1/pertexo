@@ -117,11 +117,11 @@ export function executionStore(
       .fn<NodeAttemptRunStore['complete']>()
       .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID }),
     heartbeat: vi.fn().mockResolvedValue({
-      abortRequested: false,
+      control: { kind: 'none' },
       leaseExpiresAt: new Date('2026-08-21T00:01:00.000Z'),
     }),
     loadInputs: vi.fn().mockResolvedValue({
-      abortRequested: false,
+      control: { kind: 'none' },
       checkpoint: storedAttemptCheckpoint(lease().workflowVersionId),
       completedNodeOutputs: [],
       runInput: null,

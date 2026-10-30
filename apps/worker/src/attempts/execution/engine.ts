@@ -179,7 +179,7 @@ function prepareNode(
         }
       >,
     ) => {
-      if (input.abortRequested)
+      if (input.control.kind === 'abort')
         throw new DOMException('The operation was aborted', 'AbortError');
       if (pinnedSample !== undefined)
         return {
