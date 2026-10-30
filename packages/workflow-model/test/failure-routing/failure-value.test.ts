@@ -26,6 +26,9 @@ describe('safe selected failure fields', () => {
   it.each([
     ['configuration', 'execution.attempt_invalid'],
     ['configuration', 'execution.variable_missing'],
+    ['configuration', 'execution.expression_failed'],
+    ['configuration', 'execution.expression_limit_exceeded'],
+    ['timeout', 'execution.expression_timed_out'],
     ['configuration', 'execution.table_key_conflict'],
     ['configuration', 'execution.file_input'],
     ['configuration', 'execution.loop_results_too_large'],

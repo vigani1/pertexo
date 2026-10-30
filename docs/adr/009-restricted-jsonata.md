@@ -37,7 +37,7 @@ Only completed upstream nodes declared by the graph are present in
 clients, loggers, clocks, random sources, prototypes, class instances, and
 other host objects never enter the context. The boundary rejects cycles and
 non-JSON values, structured-clones the accepted data, reconstructs objects with
-null prototypes inside the evaluator thread, and canonicalizes object keys
+null prototypes inside the evaluator process, and canonicalizes object keys
 before evaluation and before result comparison. Evaluation cannot mutate the
 supplied context.
 
@@ -120,9 +120,8 @@ unless stated otherwise:
 | Evaluation wall time | 100 ms | Hard runtime deadline |
 | Evaluations active per process | 4, or available CPU count when lower | Pool admission |
 | Evaluations queued per process | 128 | Pool admission |
-| Evaluator old-generation heap | 32 MiB per thread | Worker resource limit |
-| Evaluator young-generation heap | 8 MiB per thread | Worker resource limit |
-| Evaluator stack | 4 MiB per thread | Worker resource limit |
+| Evaluator old-generation heap | 64 MiB per process | V8 flag on the child process |
+| Evaluator young-generation heap | 8 MiB semi-space per process | V8 flag on the child process |
 | Output | 1 MiB | Before returning a value |
 | Output container depth | 64 | Before returning a value |
 | Output array/object members | 10,000 total | Before returning a value |
@@ -139,23 +138,32 @@ versions are untrusted boundaries.
 
 ### Isolation, timeout, and cancellation
 
-Evaluation runs in a dedicated Node worker thread that receives only the
-validated expression, policy version, and structured-cloned JSON context. The
-thread module exposes no application services or registered functions. Each
-thread has the memory and stack resource limits above. The bounded pool limits
-concurrent evaluations and queue admission; the 129th queued evaluation fails
-with `limit_exceeded` and `limit: "pool_capacity"` rather than creating
-unbounded threads or work.
+Evaluation runs in a child process from a bounded pool, one evaluation at a time.
+A process receives only the validated expression and JSON context, with no
+environment and none of its host's flags, and exposes no application services or
+registered functions. It has the memory limits above; going over them ends that
+process and nothing else. The pool limits concurrent evaluations and queue
+admission; the 129th queued evaluation fails with `limit_exceeded` and
+`limit: "pool_capacity"` rather than creating unbounded processes or work.
 
-The caller starts the 100 ms deadline when the worker begins evaluation, not
-while it waits for admission. On deadline or abort, the supervisor terminates
-that worker thread, discards any late message, returns `timed_out` or
-`canceled`, and replaces the thread before accepting more work. Cooperative
-promises or JSONata callbacks are not trusted to stop computation. The process
-shutdown signal aborts queued and active evaluations. Termination is the V1
-hard-stop boundary; moving evaluation to an OS-sandboxed subprocess or
-capability service remains an option if adversarial testing shows the library
-can cross the interpreter boundary.
+A process is reused until it is idle for 30 seconds, because one per evaluation
+costs more than the evaluation. Reuse means an evaluation shares a process with
+the next one, possibly another workspace's, so the process runs with frozen
+intrinsics and no `__proto__`, and the AST policy keeps out every construct that
+could assign anything.
+
+The caller starts the 100 ms deadline when the process begins evaluation, not
+while it waits for admission or for a process to start. On deadline or abort, the
+supervisor kills that process with SIGKILL, discards any late message, and returns
+`timed_out` or `canceled`. Its capacity stays taken until the process has gone.
+Cooperative promises or JSONata callbacks are not trusted to stop computation. The
+process shutdown signal aborts queued and active evaluations.
+
+Whose failure it is decides what happens next. `timed_out`, `unavailable` (no
+process could start or one was stopped from outside) and `pool_capacity` depend on
+how busy the host is, so a step retries them. Everything else, including a process
+that crashed out of memory (`limit: "memory"`), belongs to the expression and fails
+the step with an `execution.expression_*` code.
 
 ### Policy and library versioning
 
@@ -187,8 +195,8 @@ version. The proof must demonstrate:
    reject a one-over fixture with `limit_exceeded` and the exact `limit`
    discriminator;
 4. a deliberately expensive allowed expression is terminated at 100 ms,
-   returns `timed_out` within 250 ms total supervisor time, and the replacement
-   worker successfully evaluates the next expression;
+   returns `timed_out` within 250 ms total supervisor time, and a replacement
+   process successfully evaluates the next expression;
 5. caller cancellation terminates active work, queued cancellation never
    starts, shutdown drains or terminates the pool, and no late result is
    observed;
@@ -196,7 +204,7 @@ version. The proof must demonstrate:
    failures return their exact typed codes, and no case silently substitutes a
    value; and
 7. the same expression and context evaluated 100 times across at least two
-   workers and after pool restart yields byte-identical canonical output and
+   processes and after pool restart yields byte-identical canonical output and
    checksum, while preview and runtime adapters yield the same result.
 
 Any capability escape, deadline breach beyond the supervisor bound, unbounded
@@ -207,12 +215,11 @@ therefore the ADR 005 custom-engine gate.
 
 V1 gains expressive mappings without exposing a general-purpose scripting
 environment, and preview/runtime parity is a testable contract. The trade-off
-is that familiar JSONata features are intentionally unavailable, worker-thread
-termination and pool replacement add operational cost, and policy evolution
-requires explicit compatibility support. Worker threads provide a hard
-computation stop but are not claimed to be a general hostile-code OS sandbox;
-the AST capability boundary and executable escape suite must pass before the
-custom engine proceeds.
+is that familiar JSONata features are intentionally unavailable, the pool costs
+about 50 MiB per live process, and policy evolution requires explicit compatibility
+support. Child processes provide a hard computation and memory stop but are not
+claimed to be a general hostile-code OS sandbox; the AST capability boundary and
+executable escape suite must pass before the custom engine proceeds.
 
 ## F13 amendment — 2026-10-15
 
@@ -222,3 +229,12 @@ the named-variable exclusion above, retaining the existing restricted policy
 and runtime. No new operators, built-ins, arbitrary named bindings or host
 functions are enabled. The copied map participates in existing context bounds.
 Direct missing names fail clearly; whole-map lookup supports optional names.
+
+## Process pool amendment — 2026-10-31
+
+The sections above first described one worker thread per evaluation. A thread's
+resource limits don't hold: V8 aborts the whole process on one oversized allocation
+in a thread, so one expression (`$join([1..10000000],",")`) ended the API or the
+worker. Measured on a loaded development machine, the pool takes 0.6 ms per
+evaluation against 18.9 ms for a new thread, and 100 concurrent evaluations take
+118 ms against 2,703 ms. A process takes about 190 ms to start from cold.

@@ -1,10 +1,18 @@
-import { Worker } from 'node:worker_threads';
+import { execFileSync } from 'node:child_process';
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { JsonValue } from '../../src/values/json/canonical.js';
 import { JsonataEvaluator } from '../../src/values/expressions/evaluator.js';
 import { EXPRESSION_POLICY } from '../../src/values/expressions/policy.js';
-import { evaluators, ControlledWorker } from '../support/expression-owner.js';
+import { evaluators } from '../support/expression-owner.js';
+/** Only the one evaluator a test owns has child processes here. */
+function evaluationProcessId(): number {
+  const children = execFileSync('pgrep', ['-P', String(process.pid)], {
+    encoding: 'utf8',
+  });
+  return Number(children.trim().split('\n').at(-1));
+}
+
 describe('restricted JSONata policy v1', () => {
   it('enforces input/output limits, cancellation, pool admission, and restart', async () => {
     const evaluator = new JsonataEvaluator({ maxActive: 1, maxQueued: 0 });
@@ -148,16 +156,7 @@ describe('restricted JSONata policy v1', () => {
     );
   });
   it('hard-terminates expensive work, rejects overflow, and serves the next evaluation', async () => {
-    const exits: number[] = [];
-    const evaluator = new JsonataEvaluator({
-      maxActive: 1,
-      maxQueued: 0,
-      workerFactory: (runtimeUrl, options) => {
-        const worker = new Worker(runtimeUrl, options);
-        worker.once('exit', (code) => exits.push(code));
-        return worker;
-      },
-    });
+    const evaluator = new JsonataEvaluator({ maxActive: 1, maxQueued: 0 });
     evaluators.push(evaluator);
     const context = { runInput: null, nodeOutputs: {} };
     const expensive = evaluator.evaluate({
@@ -170,51 +169,114 @@ describe('restricted JSONata policy v1', () => {
     expect(await expensive).toEqual(
       expect.objectContaining({ kind: 'error', code: 'timed_out' }),
     );
-    expect(exits).toEqual([1]);
     expect(await evaluator.evaluate({ expression: '2', context })).toEqual({
       kind: 'value',
       value: 2,
       canonicalBytes: 1,
     });
-    expect(exits).toHaveLength(2);
     expect(evaluator.diagnostics()).toMatchObject({
-      workerCreations: 2,
-      peakWorkers: 1,
+      processStarts: 2,
+      peakProcesses: 1,
     });
   });
-  it('starts the evaluation deadline after startup and retains capacity until timeout termination finishes', async () => {
-    vi.useFakeTimers();
-    const worker = new ControlledWorker();
-    const evaluator = new JsonataEvaluator({
-      maxActive: 1,
-      maxQueued: 0,
-      workerFactory: () => worker.asWorker(),
-    });
+  it('reports a process that crashed mid-evaluation as the expression exceeding memory', async () => {
+    const evaluator = new JsonataEvaluator({ maxActive: 1 });
     evaluators.push(evaluator);
-    try {
-      const context = { runInput: null, nodeOutputs: {} };
-      const evaluation = evaluator.evaluate({ expression: '1', context });
-      // Startup has its own policy; scheduler delay is not evaluation time.
-      await vi.advanceTimersByTimeAsync(250);
-      worker.emit('message', { ready: true });
-      worker.emit('message', { started: true });
-      await vi.advanceTimersByTimeAsync(EXPRESSION_POLICY.timeoutMs - 1);
-      expect(worker.terminateCalls).toBe(0);
-      await vi.advanceTimersByTimeAsync(1);
-      expect(worker.terminateCalls).toBe(1);
+    const context = { runInput: null, nodeOutputs: {} };
+    await evaluator.evaluate({ expression: '1', context });
+    const evaluation = evaluator.evaluate({
+      expression: '$distinct([1..50000])',
+      context,
+    });
+    // How V8 ends a process out of memory; which bomb gets there first is a race.
+    process.kill(evaluationProcessId(), 'SIGABRT');
+    expect(await evaluation).toMatchObject({
+      kind: 'error',
+      code: 'limit_exceeded',
+      limit: 'memory',
+    });
+    expect(await evaluator.evaluate({ expression: '3', context })).toEqual({
+      kind: 'value',
+      value: 3,
+      canonicalBytes: 1,
+    });
+  });
+  it('reports a process stopped from outside as temporary, not as the expression', async () => {
+    const evaluator = new JsonataEvaluator({ maxActive: 1 });
+    evaluators.push(evaluator);
+    const context = { runInput: null, nodeOutputs: {} };
+    await evaluator.evaluate({ expression: '1', context });
+    const evaluation = evaluator.evaluate({
+      expression: '$distinct([1..50000])',
+      context,
+    });
+    process.kill(evaluationProcessId(), 'SIGKILL');
+    expect(await evaluation).toMatchObject({
+      kind: 'error',
+      code: 'unavailable',
+    });
+    expect(await evaluator.evaluate({ expression: '3', context })).toEqual({
+      kind: 'value',
+      value: 3,
+      canonicalBytes: 1,
+    });
+  });
+  it('counts evaluation time from the start of evaluation, not from the request', async () => {
+    const evaluator = new JsonataEvaluator({ maxActive: 1 });
+    evaluators.push(evaluator);
+    const evaluation = evaluator.evaluate({
+      expression: '4',
+      context: { runInput: null, nodeOutputs: {} },
+    });
+    // A loaded host: nothing happens here for longer than the evaluation limit.
+    const blockedUntil = performance.now() + EXPRESSION_POLICY.timeoutMs * 3;
+    while (performance.now() < blockedUntil);
+    expect(await evaluation).toEqual({
+      kind: 'value',
+      value: 4,
+      canonicalBytes: 1,
+    });
+  });
+  it('uses one process for a run of evaluations', async () => {
+    const evaluator = new JsonataEvaluator();
+    evaluators.push(evaluator);
+    const context = { runInput: { a: 1 }, nodeOutputs: {} };
+    const startedAt = performance.now();
+    for (let index = 0; index < 500; index += 1)
       expect(
-        await evaluator.evaluate({ expression: '2', context }),
-      ).toMatchObject({ kind: 'error', limit: 'pool_capacity' });
-      worker.emit('message', { ok: true, value: 99 });
-      worker.termination.resolve(1);
-      expect(await evaluation).toMatchObject({
-        kind: 'error',
-        code: 'timed_out',
-      });
-    } finally {
-      worker.termination.resolve(1);
-      await evaluator.shutdown();
-      vi.useRealTimers();
-    }
+        await evaluator.evaluate({ expression: 'runInput.a', context }),
+      ).toMatchObject({ kind: 'value', value: 1 });
+    expect(evaluator.diagnostics().processStarts).toBe(1);
+    console.info(
+      'jsonata_pool_gate',
+      JSON.stringify({
+        evaluations: 500,
+        elapsedMs: Number((performance.now() - startedAt).toFixed(2)),
+      }),
+    );
+  });
+  it('leaves nothing behind for the next evaluation in a shared process', async () => {
+    const evaluator = new JsonataEvaluator({ maxActive: 1 });
+    evaluators.push(evaluator);
+    const context = { runInput: null, nodeOutputs: {} };
+    for (const expression of [
+      '$merge([{"__proto__":{"polluted":"yes"}}])',
+      '{"__proto__":{"polluted":"yes"}}',
+      '$spread({"__proto__":{"polluted":"yes"}})',
+    ])
+      await evaluator.evaluate({ expression, context });
+    expect(evaluator.diagnostics().processStarts).toBe(1);
+    expect(
+      await evaluator.evaluate({
+        expression: '{"probe":1}.polluted',
+        context,
+      }),
+    ).toEqual({ kind: 'missing' });
+    expect(
+      await evaluator.evaluate({
+        expression: '[1].polluted',
+        context,
+      }),
+    ).toEqual({ kind: 'missing' });
   });
 });

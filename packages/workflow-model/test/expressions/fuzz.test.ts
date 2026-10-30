@@ -193,24 +193,19 @@ describe('expression fuzzing against a real host process', () => {
     expectEveryResultTagged(outcome);
   }, 120_000);
 
-  // sec-01: a program that builds something huge aborts the process.
-  it.fails(
-    'answers programs that try to build something huge with a tagged result',
-    async () => {
-      const seed = Date.now();
-      const expressions = fc.sample(
-        programs(fc.constantFrom(10_000_000, 200_000_000, 3_000, 50_000)),
-        { numRuns: 120, seed },
-      );
-      const outcome = await evaluateInRealProcess(
-        expressions.map((expression) => ({ expression, runInput: RUN_INPUT })),
-      );
+  it('answers programs that try to build something huge with a tagged result', async () => {
+    const seed = Date.now();
+    const expressions = fc.sample(
+      programs(fc.constantFrom(10_000_000, 200_000_000, 3_000, 50_000)),
+      { numRuns: 120, seed },
+    );
+    const outcome = await evaluateInRealProcess(
+      expressions.map((expression) => ({ expression, runInput: RUN_INPUT })),
+    );
 
-      expect(outcome.evaluations.length, `seed ${String(seed)}`).toBe(
-        expressions.length,
-      );
-      expectEveryResultTagged(outcome);
-    },
-    120_000,
-  );
+    expect(outcome.evaluations.length, `seed ${String(seed)}`).toBe(
+      expressions.length,
+    );
+    expectEveryResultTagged(outcome);
+  }, 120_000);
 });

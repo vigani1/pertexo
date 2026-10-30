@@ -15,7 +15,6 @@ import {
 } from '../variables/contract.js';
 
 import { availableParallelism } from 'node:os';
-import type { Worker, WorkerOptions } from 'node:worker_threads';
 import jsonata from 'jsonata';
 import { normalizeJson, type JsonValue } from '../json/canonical.js';
 
@@ -30,6 +29,10 @@ export const EXPRESSION_POLICY = Object.freeze({
   startupTimeoutMs: 5_000,
   maxActive: Math.min(4, availableParallelism()),
   maxQueued: 128,
+  /** An idle process costs about 50 MB, so a quiet host keeps none. */
+  processIdleMs: 30_000,
+  processHeapMb: 64,
+  processYoungGenerationMb: 8,
   outputBytes: 1_048_576,
   outputDepth: 64,
   outputMembers: 10_000,
@@ -45,6 +48,7 @@ export type ExpressionLimit =
   | 'output_bytes'
   | 'output_depth'
   | 'output_members'
+  | 'memory'
   | 'pool_capacity';
 
 export type ExpressionResult =
@@ -63,6 +67,7 @@ export type ExpressionResult =
         | 'timed_out'
         | 'canceled'
         | 'evaluation_failed'
+        | 'unavailable'
         | 'variable_missing'
         | 'callback_unavailable';
       readonly message: string;
@@ -91,10 +96,19 @@ export interface ExpressionEvaluator {
   evaluate(request: ExpressionRequest): Promise<ExpressionResult>;
 }
 
-export type ExpressionWorkerFactory = (
-  runtimeUrl: URL,
-  options: WorkerOptions,
-) => Worker;
+/**
+ * Whether the same expression could work on another try. Time and capacity depend
+ * on how busy the host is; every other failure belongs to the expression.
+ */
+export function isTemporaryExpressionFailure(
+  error: Extract<ExpressionResult, { kind: 'error' }>,
+): boolean {
+  return (
+    error.code === 'timed_out' ||
+    error.code === 'unavailable' ||
+    error.limit === 'pool_capacity'
+  );
+}
 
 function isJsonObject(
   value: JsonValue,
@@ -167,7 +181,7 @@ export function inspectExpression(source: string):
 export const JSONATA_EVALUATOR_DIAGNOSTICS = Object.freeze({
   library: 'jsonata',
   libraryVersion: '2.2.2',
-  isolation: 'bounded_one_shot_worker' as const,
+  isolation: 'bounded_process_pool' as const,
 });
 
 /**

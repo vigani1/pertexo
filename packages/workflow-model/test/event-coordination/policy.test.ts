@@ -132,3 +132,34 @@ it('uses fixed windows, exact boundary expiry and FIFO admission without chargin
     }),
   ).toMatchObject({ action: 'debounced', dueAt: 10100 });
 });
+it('refuses a key that can never work and asks the sender to retry when the host is busy', async () => {
+  const policy = eventCoordinationPolicySchema.parse({
+    mode: 'deduplicate',
+    key: { kind: 'expression', language: 'jsonata', expression: '1' },
+  });
+  const failing = (
+    error: Readonly<{
+      code:
+        'evaluation_failed' | 'limit_exceeded' | 'timed_out' | 'unavailable';
+      limit?: 'memory' | 'pool_capacity';
+    }>,
+  ) => ({
+    evaluate: () =>
+      Promise.resolve({ kind: 'error' as const, message: 'no', ...error }),
+  });
+  for (const error of [
+    { code: 'evaluation_failed' },
+    { code: 'limit_exceeded', limit: 'memory' },
+  ] as const)
+    expect(
+      await resolveEventCoordinationKey(policy, {}, failing(error)),
+    ).toEqual({ kind: 'invalid' });
+  for (const error of [
+    { code: 'timed_out' },
+    { code: 'unavailable' },
+    { code: 'limit_exceeded', limit: 'pool_capacity' },
+  ] as const)
+    expect(
+      await resolveEventCoordinationKey(policy, {}, failing(error)),
+    ).toEqual({ kind: 'unavailable' });
+});

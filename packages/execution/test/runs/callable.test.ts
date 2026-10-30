@@ -152,6 +152,37 @@ describe('standalone callable contracts', () => {
     ).toEqual({ kind: 'invalid', reasonCode: 'callable_result_missing' });
   });
 
+  it('names a timed-out result expression and retries when no evaluator was free', async () => {
+    const expression = {
+      ...callable,
+      result: { kind: 'expression', language: 'jsonata', expression: '1' },
+    } as const;
+    const failing = (
+      error: Readonly<{
+        code: 'timed_out' | 'unavailable' | 'limit_exceeded';
+        limit?: 'pool_capacity';
+      }>,
+    ) => ({
+      evaluate: () =>
+        Promise.resolve({ kind: 'error' as const, message: 'no', ...error }),
+    });
+    expect(
+      await resolveRunResult(
+        expression,
+        values({}),
+        signal(),
+        failing({ code: 'timed_out' }),
+      ),
+    ).toEqual({ kind: 'invalid', reasonCode: 'callable_result_timed_out' });
+    for (const error of [
+      { code: 'unavailable' },
+      { code: 'limit_exceeded', limit: 'pool_capacity' },
+    ] as const)
+      await expect(
+        resolveRunResult(expression, values({}), signal(), failing(error)),
+      ).rejects.toMatchObject({ name: 'RunResultUnavailableError' });
+  });
+
   it('checks result type and existing inline limits including the stored wrapper', async () => {
     expect(await resolveRunResult(callable, values(1), signal())).toEqual({
       kind: 'invalid',

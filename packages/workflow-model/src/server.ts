@@ -27,7 +27,10 @@ export {
 
 export { resolveEventCoordinationKey } from './triggers/event-coordination/key.js';
 
-export { inspectExpression } from './values/expressions/policy.js';
+export {
+  inspectExpression,
+  isTemporaryExpressionFailure,
+} from './values/expressions/policy.js';
 export type { CallbackReference } from './flow/callbacks/references.js';
 
 export {

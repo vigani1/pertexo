@@ -14,7 +14,11 @@ import {
   type ValueSource,
   type WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
+import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import {
+  isTemporaryExpressionFailure,
+  type ExpressionEvaluator,
+} from '@pertexo/workflow-model/server';
 
 import { PreviewMappingSourceError, WorkflowEngineError } from '../errors.js';
 
@@ -189,13 +193,41 @@ async function resolveMappingValue(
     (resolution.expression?.code === 'canceled' || signal.aborted);
   if (mappingCanceled)
     operationError('attempt_aborted', 'node attempt was aborted');
-  if (resolution.kind === 'error')
-    operationError(
-      resolution.code === 'variable_missing' ||
-        resolution.expression?.code === 'variable_missing'
-        ? 'variable_missing'
-        : 'attempt_invalid',
-      'Mapping could not resolve; check its inputs and captured workspace variables.',
-    );
+  if (resolution.kind === 'error') refuseMapping(resolution);
   return resolution;
+}
+
+function refuseMapping(
+  resolution: Extract<ValueResolution, { kind: 'error' }>,
+): never {
+  const { expression } = resolution;
+  if (expression !== undefined && isTemporaryExpressionFailure(expression))
+    // A busy host says nothing about the step's inputs: another try can work.
+    throw new NodeExecutorFailure({
+      kind: 'retry',
+      errorKind: 'timeout',
+      possiblyDispatched: false,
+      safeErrorCode:
+        expression.code === 'timed_out'
+          ? 'execution.expression_timed_out'
+          : 'execution.expression_unavailable',
+    });
+  operationError(
+    mappingFailureCode(resolution),
+    'Mapping could not resolve; check its inputs and captured workspace variables.',
+  );
+}
+
+function mappingFailureCode(
+  resolution: Extract<ValueResolution, { kind: 'error' }>,
+) {
+  if (
+    resolution.code === 'variable_missing' ||
+    resolution.expression?.code === 'variable_missing'
+  )
+    return 'variable_missing';
+  if (resolution.expression === undefined) return 'attempt_invalid';
+  return resolution.expression.code === 'limit_exceeded'
+    ? 'expression_limit_exceeded'
+    : 'expression_failed';
 }

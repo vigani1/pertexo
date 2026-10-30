@@ -3,6 +3,7 @@ import { canonicalJson, type JsonValue } from '../../values/json/canonical.js';
 import { resolveValueSource } from '../../values/mapping/resolve.js';
 import {
   inspectExpression,
+  isTemporaryExpressionFailure,
   type ExpressionEvaluator,
 } from '../../values/expressions/policy.js';
 import {
@@ -44,9 +45,7 @@ export async function resolveEventCoordinationKey(
     result.kind === 'error' &&
     result.expression !== undefined &&
     (result.expression.code === 'canceled' ||
-      result.expression.code === 'evaluation_failed' ||
-      (result.expression.code === 'limit_exceeded' &&
-        result.expression.limit === 'pool_capacity'));
+      isTemporaryExpressionFailure(result.expression));
   if (evaluationUnavailable) return { kind: 'unavailable' };
   if (result.kind !== 'value') return { kind: 'invalid' };
   const value = result.value;

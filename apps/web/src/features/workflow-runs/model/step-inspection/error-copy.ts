@@ -10,6 +10,19 @@ export type StepErrorCopy = Readonly<{
   fix?: StepErrorFix;
 }>;
 
+const expressionFailed: StepErrorCopy = {
+  sentence: 'An expression in this step failed, so the step didn’t run.',
+  advice:
+    'Check the expression in Build against the data it reads, publish, then replay the run.',
+};
+
+const expressionLimit: StepErrorCopy = {
+  sentence:
+    'An expression in this step needed more memory or produced more data than a step’s expression may.',
+  advice:
+    'Change it to work on less data in Build, publish, then replay the run.',
+};
+
 const providerUnavailable: StepErrorCopy = {
   sentence:
     'The service this step calls was unavailable, so the step didn’t finish.',
@@ -187,6 +200,20 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
     sentence: 'A workspace variable used by this preview is missing.',
     advice: 'Add it in Variables, then start a new preview.',
   },
+  'execution.expression_failed': expressionFailed,
+  'preview.expression_failed': expressionFailed,
+  'execution.expression_limit_exceeded': expressionLimit,
+  'preview.expression_limit_exceeded': expressionLimit,
+  'execution.expression_timed_out': {
+    sentence: 'An expression in this step took longer than it’s allowed to.',
+    advice:
+      'This can happen on a busy server, so the step tries again. If it keeps failing, simplify the expression or give it less data.',
+  },
+  'execution.expression_unavailable': {
+    sentence: 'The server was too busy to work out an expression in this step.',
+    advice:
+      'Nothing is wrong with the step. Replay the run once the server is less busy.',
+  },
   'execution.attempt_invalid': {
     sentence:
       'One of this step’s inputs couldn’t be worked out, so the step didn’t run.',
@@ -321,6 +348,12 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
   'artifact.unavailable': 'file unavailable',
   'execution.variable_missing': 'a workspace variable is missing',
   'preview.variable_missing': 'a workspace variable is missing',
+  'execution.expression_failed': 'an expression failed',
+  'preview.expression_failed': 'an expression failed',
+  'execution.expression_limit_exceeded': 'an expression went over its limits',
+  'preview.expression_limit_exceeded': 'an expression went over its limits',
+  'execution.expression_timed_out': 'an expression took too long',
+  'execution.expression_unavailable': 'the server was too busy',
   'execution.attempt_invalid': 'an input couldn’t be worked out',
   'preview.input_invalid': 'an input couldn’t be used',
   'preview.config_invalid': 'its setup couldn’t be used',

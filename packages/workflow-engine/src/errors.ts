@@ -5,6 +5,8 @@ export type EngineErrorCode =
   | 'observation_invalid'
   | 'attempt_invalid'
   | 'variable_missing'
+  | 'expression_failed'
+  | 'expression_limit_exceeded'
   | 'attempt_aborted'
   | 'workflow_identity_invalid'
   | 'transition_invalid'

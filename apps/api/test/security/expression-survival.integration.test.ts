@@ -52,8 +52,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       await stack.close();
     }, 60_000);
 
-    // sec-01: one delivery with a hostile coordination key killed the API.
-    it.fails(
+    it(
       'refuses the delivery with a clear error and the API keeps serving',
       async () => {
         const { path } = await publishWorkflow(
@@ -109,8 +108,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       120_000,
     );
 
-    // sec-01: the same expression in a step killed the worker once per run.
-    it.fails(
+    it(
       'fails the step with a clear error and the worker runs the next one',
       async () => {
         const hostile = await publishWorkflow(
