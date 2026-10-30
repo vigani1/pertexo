@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 
 import { expect, it } from 'vitest';
 import {
-  WorkspaceMemberRoleCommandConflictError,
+  type WorkspaceMemberRoleCommandConflictError,
   workspaceMemberships,
 } from '../../../../src/testing.js';
 
@@ -189,6 +189,6 @@ export function registerSerializesSameRevisionRoleChanges(): void {
         expectedRoleRevision: 1,
         idempotencyKey: randomUUID(),
       }),
-    ).rejects.toBeInstanceOf(WorkspaceMemberRoleCommandConflictError);
+    ).rejects.toMatchObject({ reason: 'self_change' });
   });
 }
