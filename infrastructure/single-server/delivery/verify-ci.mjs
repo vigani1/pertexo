@@ -13,16 +13,14 @@ export function verifyReleaseEvidence(commit, run, jobs) {
     run.conclusion !== 'success'
   )
     throw new Error('The latest push CI run for this main commit must succeed');
-  const publisher = jobs.find((job) => job.name === 'publish-arm-images');
+  const publisher = jobs.find((job) => job.name === 'publish-images');
   if (
     !publisher ||
     publisher.head_sha !== commit ||
     publisher.status !== 'completed' ||
     publisher.conclusion !== 'success'
   )
-    throw new Error(
-      'Native ARM image publication must succeed for this commit',
-    );
+    throw new Error('Image publication must succeed for this commit');
 }
 
 if (
@@ -32,8 +30,9 @@ if (
   const [commit, ...extra] = process.argv.slice(2);
   if (extra.length || !/^[0-9a-f]{40}$/u.test(commit))
     throw new Error('usage: verify-ci.mjs <full-40-character-commit>');
-  if (process.env.GITHUB_REF !== 'refs/heads/main')
-    throw new Error('Dispatch this workflow from main');
+  const reference = process.env.GITHUB_REF ?? '';
+  if (reference !== 'refs/heads/main' && !reference.startsWith('refs/tags/v'))
+    throw new Error('Run this from main or a version tag');
   const repository = process.env.GITHUB_REPOSITORY;
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(repository))
     throw new Error('A GitHub repository is required');
@@ -57,5 +56,5 @@ if (
     `repos/${repository}/actions/runs/${run.id}/jobs?filter=latest&per_page=100`,
   );
   verifyReleaseEvidence(commit, run, result.jobs);
-  console.log(`Verified main CI and native ARM publication: ${commit}`);
+  console.log(`Verified main CI and image publication: ${commit}`);
 }

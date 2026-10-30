@@ -17,7 +17,7 @@ const neededBy = (name) => {
 };
 
 // ops-05, docs-deps-product-05
-it.fails('publishes every image for both x86 and ARM under one tag', () => {
+it('publishes every image for both x86 and ARM under one tag', () => {
   const text = publishingJobs.map(([, job]) => jobText(job)).join();
   assert.match(text, /linux\/amd64/u);
   assert.match(text, /linux\/arm64/u);
@@ -38,7 +38,7 @@ test('qualifies what it publishes before anyone can pull it', () => {
 
 // ops-09: 7 of 75 main pushes failed, one on a docs commit that can't have caused it.
 // Tags name commits; only a release says a commit is good.
-it.fails(
+it(
   'publishes an image for every merged commit, whatever the test jobs did',
   () => {
     assert.ok(publishingJobs.length > 0);
@@ -59,7 +59,7 @@ it.fails(
 );
 
 // ops-09, docs-deps-product-17
-it.fails(
+it(
   'a version tag publishes a release with notes and moves the stable tag',
   () => {
     const path = '.github/workflows/release.yml';

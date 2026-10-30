@@ -11,9 +11,13 @@ on:
 permissions:
   contents: read
 
+# A new push replaces a pull request's older run. Runs on main all finish, each in
+# its own group: every merged commit publishes its images.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group:
+    ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' &&
+    github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Service-consuming jobs run on their own runner and Compose project, so
 # databases and Redis are disposable.
@@ -441,14 +445,30 @@ jobs:
           docker pull "$proxy_image"
           node infrastructure/images/verify-web.mjs pertexo-ci:${{ github.sha }} pertexo-web-ci:${{ github.sha }} "$proxy_image"
 
-  publish-arm-images:
+  # Every merged commit gets images, built and qualified here on its own architecture.
+  # Test jobs decide what may ship (release.yml and deploy.yml check them); a flaky one
+  # must not leave a commit with nothing to pull.
+  publish-image:
+    name: publish-image (${{ matrix.architecture }})
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [check, unit, integration, e2e, image, security]
-    runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+            platform: linux/amd64
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    env:
+      ARCHITECTURE: ${{ matrix.architecture }}
+      PLATFORM: ${{ matrix.platform }}
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -458,30 +478,51 @@ jobs:
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24
-      - name: Build and qualify native ARM images
+      - name: Build and qualify native images
         run: |
           set -euo pipefail
-          test "$(uname -m)" = aarch64
-          docker buildx build --load --platform linux/arm64 --target runtime \
-            --build-arg SOURCE_COMMIT="$GITHUB_SHA" --tag ghcr.io/vigani1/pertexo:"$GITHUB_SHA" .
-          docker buildx build --load --platform linux/arm64 --target web \
-            --build-arg SOURCE_COMMIT="$GITHUB_SHA" --tag ghcr.io/vigani1/pertexo-web:"$GITHUB_SHA" .
-          test "$(docker image inspect --format '{{.Architecture}}' ghcr.io/vigani1/pertexo:"$GITHUB_SHA")" = arm64
-          test "$(docker run --rm --read-only --tmpfs /tmp --entrypoint id ghcr.io/vigani1/pertexo:"$GITHUB_SHA" -u)" = 10001
+          tag="$GITHUB_SHA-$ARCHITECTURE"
+          docker buildx build --load --platform "$PLATFORM" --target runtime \
+            --build-arg SOURCE_COMMIT="$GITHUB_SHA" --tag ghcr.io/vigani1/pertexo:"$tag" .
+          docker buildx build --load --platform "$PLATFORM" --target web \
+            --build-arg SOURCE_COMMIT="$GITHUB_SHA" --tag ghcr.io/vigani1/pertexo-web:"$tag" .
+          test "$(docker image inspect --format '{{.Architecture}}' ghcr.io/vigani1/pertexo:"$tag")" = "$ARCHITECTURE"
+          test "$(docker run --rm --read-only --tmpfs /tmp --entrypoint id ghcr.io/vigani1/pertexo:"$tag" -u)" = 10001
           docker run --rm --read-only --tmpfs /tmp --entrypoint node \
-            ghcr.io/vigani1/pertexo:"$GITHUB_SHA" --input-type=module --eval \
+            ghcr.io/vigani1/pertexo:"$tag" --input-type=module --eval \
             "await Promise.all([
               import('./apps/api/dist/app.js'),
               import('./apps/worker/dist/app.js'),
               import('./apps/ops/dist/run.js'),
               import('./packages/database/dist/migrations.js')
             ])"
-          node infrastructure/single-server/backup/verify-runtime.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA"
-          node infrastructure/images/code/verify.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA"
+          node infrastructure/single-server/backup/verify-runtime.mjs ghcr.io/vigani1/pertexo:"$tag"
+          node infrastructure/images/code/verify.mjs ghcr.io/vigani1/pertexo:"$tag"
           proxy_image="$(node infrastructure/images/proxy/image.mjs)"
           docker pull "$proxy_image"
-          node infrastructure/images/verify-web.mjs ghcr.io/vigani1/pertexo:"$GITHUB_SHA" ghcr.io/vigani1/pertexo-web:"$GITHUB_SHA" "$proxy_image"
-      - name: Publish commit tags to GHCR
+          node infrastructure/images/verify-web.mjs ghcr.io/vigani1/pertexo:"$tag" ghcr.io/vigani1/pertexo-web:"$tag" "$proxy_image"
+      - name: Publish this architecture to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          for image in ghcr.io/vigani1/pertexo ghcr.io/vigani1/pertexo-web; do
+            docker push "$image:$GITHUB_SHA-$ARCHITECTURE"
+          done
+          docker logout ghcr.io
+
+  # deploy.sh pulls one tag per commit, and Docker picks the server's architecture.
+  publish-images:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: publish-image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Publish the commit tag for both architectures
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -490,17 +531,44 @@ jobs:
           for image in ghcr.io/vigani1/pertexo ghcr.io/vigani1/pertexo-web; do
             # A rerun must not replace an already published release tag.
             if ! docker manifest inspect "$image:$GITHUB_SHA" >/dev/null 2>&1; then
-              docker push "$image:$GITHUB_SHA"
+              docker buildx imagetools create --tag "$image:$GITHUB_SHA" \
+                "$image:$GITHUB_SHA-amd64" "$image:$GITHUB_SHA-arm64"
             fi
           done
           docker logout ghcr.io
 
+  # Tells self-host-drill whether a pull request touched what it covers.
+  self-host-changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      touched: ${{ steps.classify.outputs.touched }}
+    steps:
+      - name: Classify the change
+        id: classify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          files=$(gh api --paginate "repos/$REPOSITORY/pulls/$PULL_REQUEST/files" --jq '.[].filename')
+          touched=false
+          if printf '%s\n' "$files" | grep -qE '^infrastructure/|(^|/)Dockerfile|^apps/web/deployment/'; then touched=true; fi
+          echo "touched=$touched" >> "$GITHUB_OUTPUT"
+
   # The operator's whole life with the single-server stack, through the real scripts
-  # and a real stack on each architecture we publish. Too slow for every PR, and an
-  # image never waits for it: it tells us about main soon enough to fix forward.
+  # and a real stack on each architecture we publish. About 22 minutes a leg, so a pull
+  # request waits for it only when it touched what this covers. An image never waits.
   self-host-drill:
     name: self-host-drill (${{ matrix.runner }})
-    if: github.event_name != 'pull_request'
+    needs: self-host-changes
+    if: >-
+      ${{ !cancelled() && (github.event_name != 'pull_request' ||
+      needs.self-host-changes.outputs.touched == 'true') }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     strategy:

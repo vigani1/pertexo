@@ -1,0 +1,69 @@
+name: Release
+
+# Pushing a version tag releases the images its commit already published and tested.
+# Nothing is rebuilt: what was qualified is what ships.
+on:
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+      packages: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+      - name: Check the version names a main commit with a green CI run
+        run: |
+          set -euo pipefail
+          [[ $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Not a release version: $VERSION" >&2; exit 1; }
+          node infrastructure/single-server/delivery/verify-ci.mjs "$GITHUB_SHA"
+      - name: Read the release notes from CHANGELOG.md
+        run: |
+          set -euo pipefail
+          awk -v version="$VERSION" '
+            /^## / { inside = index($0, "## " version " ") == 1 }
+            inside { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          [[ -s $RUNNER_TEMP/notes.md ]] || { echo "CHANGELOG.md has no heading for $VERSION" >&2; exit 1; }
+      - name: Tag the images
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          # A patch to an older version must not take stable backwards.
+          newest=$(git tag --list 'v*' --sort=-version:refname | grep -m 1 -E '^v[0-9]+\.[0-9]+\.[0-9]+$')
+          for image in ghcr.io/vigani1/pertexo ghcr.io/vigani1/pertexo-web; do
+            docker buildx imagetools create --tag "$image:$VERSION" "$image:$GITHUB_SHA"
+            if [[ $VERSION == "$newest" ]]; then
+              docker buildx imagetools create --tag "$image:stable" "$image:$GITHUB_SHA"
+            fi
+          done
+          docker logout ghcr.io
+      - name: Publish the GitHub release
+        run:
+          gh release create "$VERSION" --verify-tag --title "$VERSION"
+          --notes-file "$RUNNER_TEMP/notes.md"
