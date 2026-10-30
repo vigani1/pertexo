@@ -18,7 +18,8 @@ import type {
   PurgeWorkspaceObjectsRequest,
   WorkspaceObjectPurgePage,
 } from './contract.js';
-import { purgeWorkspaceSchema, workspacePrefix } from './metadata.js';
+import { workspacePrefix } from '../identity.js';
+import { purgeWorkspaceSchema } from './metadata.js';
 
 export async function purgeWorkspaceObjects(
   {
