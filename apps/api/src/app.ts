@@ -13,6 +13,7 @@ import {
   throwStartupFailure,
   type ApiApplicationDependencies,
 } from './api-runtimes.js';
+import type { ApiRuntimeSet } from './platform/application/contract.js';
 import { AppModule } from './app.module.js';
 import { configuredSocialProviders } from './authentication/index.js';
 import type { ApiConfig } from './platform/config/api.js';
@@ -24,8 +25,6 @@ import { registerWebhookIngress } from './webhooks/ingress/register.js';
 import { registerDataTableExportTransport } from './data-tables/export/transport.js';
 import { registerNoticeUnsubscribeTransport } from './notifications/preferences/transport.js';
 import { registerWorkflowPortabilityJsonParser } from './workflow-authoring/portability/json-parser.js';
-import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
-import { RATE_LIMIT_CONSUMER } from './platform/rate-limit/module.js';
 import {
   registerAuthenticationCapabilities,
   registerBetterAuthHandler,
@@ -38,13 +37,23 @@ export async function createApiApplication(
   dependencies: ApiApplicationDependencies,
 ): Promise<NestFastifyApplication> {
   assertValidRuntimeSources(config, dependencies);
-  const nestLogger = new NestLoggerAdapter(dependencies.logger);
   const runtimes = await acquireApiRuntimes(config, dependencies);
+  return assembleApiApplication(config, dependencies, runtimes);
+}
+
+/** Builds and starts the application; it owns the runtimes from here on. */
+export async function assembleApiApplication(
+  config: ApiConfig,
+  dependencies: Pick<ApiApplicationDependencies, 'logger' | 'telemetry'>,
+  runtimes: ApiRuntimeSet,
+): Promise<NestFastifyApplication> {
+  const nestLogger = new NestLoggerAdapter(dependencies.logger);
   const {
     artifactRuntime,
     callbackRuntime,
     identityRuntime,
     notificationRuntime,
+    rateLimit,
     scheduleRuntime,
     webhookRuntime,
   } = runtimes;
@@ -58,7 +67,7 @@ export async function createApiApplication(
   let application: NestFastifyApplication;
   try {
     application = await NestFactory.create<NestFastifyApplication>(
-      AppModule.register(config, apiModuleDependencies(runtimes, dependencies)),
+      AppModule.register(config, { ...runtimes, ...dependencies }),
       fastifyAdapter,
       { abortOnError: false, logger: nestLogger },
     );
@@ -102,8 +111,7 @@ export async function createApiApplication(
     if (identityRuntime !== undefined && config.identity !== undefined)
       registerBetterAuthHandler(fastifyInstance, {
         handler: identityRuntime.betterAuth.auth.handler,
-        rateLimitConsumer:
-          application.get<RateLimitConsumer>(RATE_LIMIT_CONSUMER),
+        rateLimitConsumer: rateLimit,
         publicOrigin: config.identity.publicWebOrigin,
         sessionCookie: {
           secure: config.identity.session.secureCookie,
@@ -114,16 +122,14 @@ export async function createApiApplication(
     if (identityRuntime !== undefined && config.identity !== undefined)
       registerDirectoryTransport(fastifyInstance, {
         store: identityRuntime.directory,
-        rateLimitConsumer:
-          application.get<RateLimitConsumer>(RATE_LIMIT_CONSUMER),
+        rateLimitConsumer: rateLimit,
         publicOrigin: config.identity.publicWebOrigin,
       });
     await application.init();
     if (callbackRuntime !== undefined)
       registerCallbackIngress(fastifyInstance, {
         ...callbackRuntime,
-        rateLimitConsumer:
-          application.get<RateLimitConsumer>(RATE_LIMIT_CONSUMER),
+        rateLimitConsumer: rateLimit,
         logger: dependencies.logger,
       });
     if (webhookRuntime !== undefined) {
@@ -145,40 +151,4 @@ export async function createApiApplication(
   }
 
   return lifecycleApplication;
-}
-
-function apiModuleDependencies(
-  runtimes: Awaited<ReturnType<typeof acquireApiRuntimes>>,
-  dependencies: ApiApplicationDependencies,
-): Parameters<typeof AppModule.register>[1] {
-  const {
-    callbackRuntime,
-    artifactRuntime,
-    connectionRuntime,
-    databaseRuntime,
-    identityRuntime,
-    notificationRuntime,
-    scheduleRuntime,
-    webhookRuntime,
-    workflowRuntime,
-  } = runtimes;
-  return {
-    logger: dependencies.logger,
-    telemetry: dependencies.telemetry,
-    ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
-    ...(dependencies.database === undefined
-      ? {}
-      : { database: dependencies.database }),
-    ...(dependencies.rateLimitConsumer === undefined
-      ? {}
-      : { rateLimitConsumer: dependencies.rateLimitConsumer }),
-    ...(identityRuntime === undefined ? {} : { identityRuntime }),
-    ...(workflowRuntime === undefined ? {} : { workflowRuntime }),
-    ...(connectionRuntime === undefined ? {} : { connectionRuntime }),
-    ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
-    ...(callbackRuntime === undefined ? {} : { callbackRuntime }),
-    ...(scheduleRuntime === undefined ? {} : { scheduleRuntime }),
-    ...(notificationRuntime === undefined ? {} : { notificationRuntime }),
-    ...(artifactRuntime === undefined ? {} : { artifactRuntime }),
-  };
 }

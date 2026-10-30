@@ -1,60 +1,29 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  RATE_LIMIT_CONSUMER,
-  RATE_LIMIT_CONCURRENCY,
-  RateLimitModule,
-} from '../../src/platform/rate-limit/module.js';
-import type { ApiShutdownCoordinator } from '../../src/platform/health/drain-state.js';
+import { CsvExportAdmission } from '../../src/platform/http/csv/admission.js';
+import { HttpRateLimitAdmission } from '../../src/platform/rate-limit/admission.js';
+import { RateLimitModule } from '../../src/platform/rate-limit/module.js';
+import { Test } from '@nestjs/testing';
+import { ApiLifecycleModule } from '../../src/platform/health/drain-state.js';
 
 describe('rate-limit module wiring', () => {
-  it('uses an explicitly supplied rate consumer', () => {
-    const override = { consume: vi.fn() };
-    const module = RateLimitModule.register(
-      'redis://unused.example.test',
-      override,
-    );
-
-    expect(module.providers).toContainEqual({
-      provide: RATE_LIMIT_CONSUMER,
-      useValue: override,
-    });
-  });
-
-  it('creates and shuts down the owned Redis runtime when no consumer is supplied', async () => {
-    const module = RateLimitModule.register('redis://127.0.0.1:6379');
-    const provider = module.providers?.find(
-      (candidate) =>
-        typeof candidate === 'object' &&
-        'provide' in candidate &&
-        candidate.provide === RATE_LIMIT_CONCURRENCY,
-    );
-
-    expect(provider).toMatchObject({ provide: RATE_LIMIT_CONCURRENCY });
-    expect(provider).toHaveProperty('useFactory');
-    const candidate: unknown = provider;
-    if (
-      candidate === null ||
-      typeof candidate !== 'object' ||
-      !('useFactory' in candidate) ||
-      typeof candidate.useFactory !== 'function'
-    ) {
-      throw new Error('Owned rate-limit runtime factory missing');
-    }
-    const registered: (() => unknown)[] = [];
-    const register = vi.fn((_label: string, close: () => unknown): void => {
-      registered.push(close);
-    });
-    const shutdown = {
-      register,
-    } as unknown as ApiShutdownCoordinator;
-    const factory = candidate as {
-      useFactory: (coordinator: ApiShutdownCoordinator) => unknown;
+  it('admits through the supplied service and closes it on shutdown', async () => {
+    const rateLimit = {
+      consume: vi.fn().mockResolvedValue({ allowed: true }),
+      acquireExclusiveSlot: vi.fn().mockResolvedValue(null),
+      close: vi.fn().mockResolvedValue(undefined),
     };
-    const runtime = factory.useFactory(shutdown);
+    const testing = await Test.createTestingModule({
+      imports: [ApiLifecycleModule, RateLimitModule.register(rateLimit)],
+    }).compile();
 
-    expect(runtime).toBeDefined();
-    expect(register).toHaveBeenCalledWith('rate-limit', expect.any(Function));
-    await expect(registered[0]?.()).resolves.toBeUndefined();
+    await testing
+      .get(HttpRateLimitAdmission, { strict: false })
+      .admit('authenticated_read', { actorId: 'actor', workspaceId: 'w' });
+    expect(rateLimit.consume).toHaveBeenCalledOnce();
+    expect(testing.get(CsvExportAdmission, { strict: false })).toBeDefined();
+
+    await testing.close();
+    expect(rateLimit.close).toHaveBeenCalledOnce();
   });
 });

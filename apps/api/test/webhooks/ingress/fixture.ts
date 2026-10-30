@@ -19,6 +19,7 @@ import {
 } from '../../../src/webhooks/ingress/register.js';
 import type { WebhookIngressTelemetry } from '../../../src/webhooks/ingress/telemetry.js';
 import { currentSecret, previousSecret, verification } from './environment.js';
+import { fakeRateLimit } from '../../support/fake-rate-limit.js';
 import { silentLogger } from '../../support/silent-logger.js';
 
 export function createIngressFixture() {
@@ -49,7 +50,7 @@ export function createIngressFixture() {
       .fn<RateLimitConsumer['consume']>()
       .mockResolvedValue({ allowed: true });
     const testing = await Test.createTestingModule({
-      imports: [RateLimitModule.register('redis://unused', { consume })],
+      imports: [RateLimitModule.register(fakeRateLimit({ consume }))],
       controllers: [WebhookPreflightController],
       providers: [
         {

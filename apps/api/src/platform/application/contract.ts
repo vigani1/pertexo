@@ -24,6 +24,7 @@ import type { ApiWebhookRuntime } from '../webhooks/runtime.module.js';
 import type { ApiScheduleRuntime } from '../schedules/runtime.module.js';
 import type { ApiNotificationRuntime } from '../notifications/runtime.module.js';
 import type { RateLimitConsumer } from '../rate-limit/interceptor.js';
+import type { ApiRateLimit } from '../rate-limit/module.js';
 import type {
   ApiArtifactRuntime,
   ApiArtifactRuntimeOverrides,
@@ -93,16 +94,20 @@ export type ApiApplicationDependencies = ApiApplicationDependencyCore &
   WorkflowRuntimeSource &
   ArtifactRuntimeSource;
 
-export interface ApiRuntimeResources {
-  callbackRuntime: ApiCallbackRuntime | undefined;
-  artifactRuntime: ApiArtifactRuntime | undefined;
-  connectionRuntime: ApiConnectionRuntime | undefined;
-  databaseRuntime: DatabaseRuntime | undefined;
-  identityRuntime: ApiIdentityRuntime | undefined;
-  notificationRuntime: ApiNotificationRuntime | undefined;
-  scheduleRuntime: ApiScheduleRuntime | undefined;
-  webhookRuntime: ApiWebhookRuntime | undefined;
-  workflowRuntime: ApiWorkflowRuntime | undefined;
-}
-
-export type ApiRuntimeSet = Readonly<ApiRuntimeResources>;
+/**
+ * Everything the application is assembled from: acquired from configuration
+ * in production. A feature left out is unavailable.
+ */
+export type ApiRuntimeSet = Readonly<{
+  database: WorkspaceDatabase;
+  databaseRuntime?: DatabaseRuntime | undefined;
+  rateLimit: ApiRateLimit;
+  callbackRuntime?: ApiCallbackRuntime | undefined;
+  artifactRuntime?: ApiArtifactRuntime | undefined;
+  connectionRuntime?: ApiConnectionRuntime | undefined;
+  identityRuntime?: ApiIdentityRuntime | undefined;
+  notificationRuntime?: ApiNotificationRuntime | undefined;
+  scheduleRuntime?: ApiScheduleRuntime | undefined;
+  webhookRuntime?: ApiWebhookRuntime | undefined;
+  workflowRuntime?: ApiWorkflowRuntime | undefined;
+}>;

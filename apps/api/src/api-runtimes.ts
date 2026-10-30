@@ -1,5 +1,9 @@
 import { createApiCallbackRuntime } from './platform/webhooks/callback-runtime.module.js';
-import { createDatabaseRuntime } from '@pertexo/database/platform';
+import {
+  createDatabaseRuntime,
+  createWorkspaceDatabase,
+} from '@pertexo/database/platform';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 
 import type { ApiConfig } from './platform/config/api.js';
 import { createApiConnectionRuntime } from './platform/connections/runtime.module.js';
@@ -12,9 +16,13 @@ import { createApiNotificationRuntime } from './platform/notifications/runtime.m
 import { createApiArtifactRuntime } from './platform/artifacts/runtime.module.js';
 import type {
   ApiApplicationDependencies,
-  ApiRuntimeResources,
   ApiRuntimeSet,
 } from './platform/application/contract.js';
+import type { ApiRateLimit } from './platform/rate-limit/module.js';
+
+type ApiRuntimeResources = {
+  -readonly [Key in keyof ApiRuntimeSet]?: ApiRuntimeSet[Key] | undefined;
+};
 
 export { type ApiApplicationDependencies } from './platform/application/contract.js';
 export { assertValidRuntimeSources } from './platform/application/sources.js';
@@ -22,29 +30,22 @@ export async function acquireApiRuntimes(
   config: ApiConfig,
   dependencies: ApiApplicationDependencies,
 ): Promise<ApiRuntimeSet> {
-  const runtimes: ApiRuntimeResources = {
-    callbackRuntime: undefined,
-    artifactRuntime: undefined,
-    connectionRuntime: undefined,
-    databaseRuntime: undefined,
-    identityRuntime: undefined,
-    notificationRuntime: undefined,
-    scheduleRuntime: undefined,
-    webhookRuntime: undefined,
-    workflowRuntime: undefined,
-  };
+  const runtimes: ApiRuntimeResources = {};
   try {
     await acquireIdentityWorkflows(config, dependencies, runtimes);
     await acquireFeatureRuntimes(config, dependencies, runtimes);
+    const { database, rateLimit } = runtimes;
+    if (database === undefined || rateLimit === undefined)
+      throw new Error('API runtime composition is incomplete');
+    return { ...runtimes, database, rateLimit };
   } catch (error: unknown) {
     const cleanupErrors = await cleanupApiRuntimes(runtimes);
     throwStartupFailure(error, cleanupErrors);
   }
-  return runtimes;
 }
 
 export async function cleanupApiRuntimes(
-  runtimes: ApiRuntimeSet,
+  runtimes: ApiRuntimeResources,
 ): Promise<readonly unknown[]> {
   const results = await Promise.allSettled(
     [
@@ -56,6 +57,8 @@ export async function cleanupApiRuntimes(
       runtimes.scheduleRuntime,
       runtimes.notificationRuntime,
       runtimes.artifactRuntime,
+      runtimes.rateLimit,
+      runtimes.database,
       runtimes.databaseRuntime,
     ].map((runtime) => Promise.resolve().then(() => runtime?.close())),
   );
@@ -97,6 +100,15 @@ async function acquireIdentityWorkflows(
     runtimes.databaseRuntime = createDatabaseRuntime(config.database, {
       role: 'api',
     });
+  runtimes.database =
+    dependencies.database ??
+    createWorkspaceDatabase(
+      config.database,
+      runtimes.databaseRuntime === undefined
+        ? {}
+        : { runtime: runtimes.databaseRuntime },
+    );
+  runtimes.rateLimit = acquireRateLimit(config, dependencies);
 
   runtimes.identityRuntime = dependencies.identityRuntime;
   if (runtimes.identityRuntime === undefined && config.identity !== undefined)
@@ -142,6 +154,21 @@ async function acquireIdentityWorkflows(
       },
     );
   }
+}
+
+function acquireRateLimit(
+  config: ApiConfig,
+  dependencies: ApiApplicationDependencies,
+): ApiRateLimit {
+  const runtime = new RedisRateLimitRuntime(config.redisUrl);
+  if (dependencies.rateLimitConsumer === undefined) return runtime;
+  return {
+    consume: dependencies.rateLimitConsumer.consume.bind(
+      dependencies.rateLimitConsumer,
+    ),
+    acquireExclusiveSlot: runtime.acquireExclusiveSlot.bind(runtime),
+    close: runtime.close.bind(runtime),
+  };
 }
 
 async function acquireFeatureRuntimes(
