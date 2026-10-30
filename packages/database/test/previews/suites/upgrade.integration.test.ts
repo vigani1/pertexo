@@ -117,6 +117,7 @@ it('upgrades a populated standalone test without changing its source identity or
       '0057_users_canonical_email_index.sql',
       '0058_workspace_reactivation.sql',
       '0059_suspended_inbox.sql',
+      '0060_write_probe.sql',
     ]);
     expect(
       (

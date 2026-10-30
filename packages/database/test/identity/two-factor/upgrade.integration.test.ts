@@ -72,6 +72,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
       '0057_users_canonical_email_index.sql',
       '0058_workspace_reactivation.sql',
       '0059_suspended_inbox.sql',
+      '0060_write_probe.sql',
     ]);
     expect(
       (
