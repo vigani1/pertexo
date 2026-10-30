@@ -13,9 +13,9 @@ import {
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 import type { FactoryProvider } from '@nestjs/common';
 import { vi } from 'vitest';
-import {
-  type NodeAttemptExecutionEngine,
-  type NodeAttemptRuntime,
+import type {
+  NodeAttemptExecutionEngine,
+  NodeAttemptRuntime,
 } from '../../../src/testing.js';
 
 import type { WorkerConfig } from '../../../src/config/worker.js';

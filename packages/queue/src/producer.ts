@@ -1,7 +1,6 @@
 import { Queue } from 'bullmq';
 import type { JobsOptions } from 'bullmq';
 import { Redis } from 'ioredis';
-import { z } from 'zod';
 import { bounded, TIMED_OUT } from './consumption/deadline.js';
 import { QUEUE_CLASS_DEFAULTS } from './jobs/defaults.js';
 import { jobIdForOutboxEvent } from './jobs/job-id.js';
@@ -23,10 +22,7 @@ import type {
   QueueMap,
 } from './publication/contract.js';
 import { parseProducerOptions } from './publication/configuration.js';
-import {
-  QueueConfigurationError,
-  QueueNotReadyError,
-} from './publication/errors.js';
+import { QueueNotReadyError } from './publication/errors.js';
 
 export {
   type QueueProducerOptions,

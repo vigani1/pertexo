@@ -1,6 +1,6 @@
 import type { FactoryProvider } from '@nestjs/common';
 import { expect, it, vi } from 'vitest';
-import { type NodeAttemptRuntimeOptions } from '../../../src/testing.js';
+import type { NodeAttemptRuntimeOptions } from '../../../src/testing.js';
 import { nodeAttemptRuntimeProvider } from '../../../src/transport/providers/node-attempts.js';
 import type { WorkerConfig } from '../../../src/config/worker.js';
 import { database, providerConfig, providerFactory } from './fixture.js';

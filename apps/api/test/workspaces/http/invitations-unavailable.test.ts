@@ -15,7 +15,8 @@ const headers = {
   origin: 'https://app.example.test',
   'idempotency-key': 'unconfigured-invitations',
 };
-let application: Awaited<ReturnType<typeof createTestApiApplication>> | undefined;
+let application:
+  Awaited<ReturnType<typeof createTestApiApplication>> | undefined;
 
 afterEach(async () => {
   await application?.close();

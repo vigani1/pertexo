@@ -2,7 +2,7 @@ import type { ScheduleTriggerScanner } from '@pertexo/database/testing';
 
 import { expect, it, vi } from 'vitest';
 
-import { type TriggerCompositionFactories } from '../../../src/triggers/runtime.js';
+import type { TriggerCompositionFactories } from '../../../src/triggers/runtime.js';
 import { dependencies, options } from './fixture.js';
 import { testTriggerRuntime } from '../../support/runtime-factories.js';
 
