@@ -137,4 +137,31 @@ describe('contract schema projection', () => {
       settings: { type: 'object' },
     });
   });
+
+  // The published description must state the limits the runtime enforces.
+  it('describes the data-table value limits the runtime enforces', () => {
+    for (const schema of [dataTableValueSchema, dataTableValuesSchema])
+      expect(
+        projectContractSchema('Value', schema, 'input', 'openapi').description,
+      ).toBe(
+        'Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing.',
+      );
+    const nested = (depth: number) => {
+      let value: unknown = null;
+      for (let index = 0; index < depth; index += 1) value = [value];
+      return value;
+    };
+    const accepts = (value: unknown) =>
+      dataTableValueSchema.safeParse(value).success;
+    expect([accepts(nested(32)), accepts(nested(33))]).toEqual([true, false]);
+    expect([
+      accepts(Array.from({ length: 8_000 }, () => 0)),
+      accepts(Array.from({ length: 8_001 }, () => 0)),
+    ]).toEqual([true, false]);
+    // A string's JSON form adds two quote bytes.
+    expect([
+      accepts('a'.repeat(65_536 - 2)),
+      accepts('a'.repeat(65_536 - 1)),
+    ]).toEqual([true, false]);
+  });
 });
