@@ -61,6 +61,8 @@ describe('standalone callable contracts', () => {
     expect(() => initial.validateInput?.(undefined, 0)).toThrow(
       expect.objectContaining({ reason: 'missing' }),
     );
+    // 256 KiB of stored input is the inline limit itself, so it is accepted.
+    expect(() => initial.validateInput?.('hello', 262_144)).not.toThrow();
     expect(() => initial.validateInput?.('hello', 262_145)).toThrow(
       expect.objectContaining({ reason: 'bounds' }),
     );
