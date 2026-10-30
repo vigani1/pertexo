@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0055_task_timeout_output.sql';
+export const EXPECTED_MIGRATION_HEAD = '0056_unsent_public_form_uploads.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

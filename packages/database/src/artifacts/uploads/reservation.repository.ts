@@ -143,7 +143,7 @@ export async function completeArtifactUpload(
     artifactId: string;
     purpose: ArtifactUploadPurpose;
     expectedMetadata: ArtifactMetadataIdentity;
-    retainFor: '30 days' | '24 hours';
+    retainFor: '30 days' | '24 hours' | '1 hour';
   }>,
 ): Promise<ArtifactRecord> {
   const db = drizzle(client);

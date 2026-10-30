@@ -28,6 +28,7 @@ import { readWorkflowRunAcceptanceReplay } from '../../runs/commands/acceptance/
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { FormChangedError, FormUnavailableError } from './errors.js';
 import type { FormStore } from './contract.js';
+import { markFormUploadsSubmitted } from '../../artifacts/form-uploads/unsent.queries.js';
 import type { readFormVersion } from './records.queries.js';
 
 export async function submitForm(
@@ -121,6 +122,16 @@ export async function submitForm(
       },
       startRun,
     );
+    // A started run or a held event keeps the input, so its files are sent.
+    if (
+      'runId' in result ||
+      ('coordinated' in result && result.status === 'pending')
+    )
+      await markFormUploadsSubmitted(
+        client,
+        input.workspaceId,
+        prepared.uploadIds,
+      );
     const receipt =
       'coordinated' in result || 'skipped' in result
         ? { accepted: false as const, ...result, replayed: false }
@@ -155,6 +166,7 @@ export async function submitForm(
   await transaction.db
     .execute(sql`release savepoint form_run_admission`)
     .catch(rethrowQueryFailure);
+  await markFormUploadsSubmitted(client, input.workspaceId, prepared.uploadIds);
   const receipt = submissionReceipt(
     form,
     { runId: accepted.runId, replayed: accepted.duplicate },

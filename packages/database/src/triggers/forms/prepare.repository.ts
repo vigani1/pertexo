@@ -6,6 +6,7 @@ import { findCommandResult } from '../../platform/idempotency/repository.js';
 import { formSubmissionIdentity } from './submit.repository.js';
 import type { Pool } from 'pg';
 import {
+  formFileUploads,
   parseFormValues,
   FormValuesInvalidError,
 } from '@pertexo/workflow-model';
@@ -43,7 +44,12 @@ export async function prepareFormEvent(
         return undefined;
       if (loaded.version.id !== input.versionId) return undefined;
       let values: ReturnType<typeof parseFormValues>;
+      let uploadIds: readonly string[];
       try {
+        const parsed = parseFormValues(loaded.form.fields, input.values);
+        uploadIds = formFileUploads(loaded.form.fields, parsed).flatMap(
+          (entry) => entry.uploadIds,
+        );
         values = await resolveFormFiles(
           client,
           {
@@ -56,7 +62,7 @@ export async function prepareFormEvent(
             session: input.uploadSession,
           },
           loaded.form.fields,
-          parseFormValues(loaded.form.fields, input.values),
+          parsed,
         );
       } catch (error) {
         if (error instanceof FormValuesInvalidError)
@@ -72,6 +78,7 @@ export async function prepareFormEvent(
       return {
         versionId: loaded.version.id,
         policy: loaded.form.coordination,
+        uploadIds,
         input: {
           values,
           submittedBy: input.actorId ?? null,
@@ -90,6 +97,7 @@ export async function prepareFormEvent(
   return {
     versionId: candidate.versionId,
     input: candidate.input,
+    uploadIds: candidate.uploadIds,
     ...(coordination === undefined ? {} : { coordination }),
   };
 }

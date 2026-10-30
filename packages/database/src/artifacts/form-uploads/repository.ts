@@ -27,6 +27,7 @@ import {
   reserveArtifactUpload,
 } from '../uploads/reservation.repository.js';
 import { FormUploadLimitError } from './errors.js';
+import { assertUnsentPublicRoom } from './unsent.queries.js';
 import type {
   BeginFormUploadInput,
   FormUpload,
@@ -108,6 +109,12 @@ async function beginFormUpload(
         ...(await readBound(client, target, input, reserved.artifact.id)),
         replayed: true,
       };
+    if (target.capabilityHash !== null)
+      await assertUnsentPublicRoom(
+        client,
+        target.workspaceId,
+        input.byteLength,
+      );
     const db = drizzle(client);
     await db
       .insert(formUploads)
@@ -136,7 +143,7 @@ async function beginFormUpload(
       )
       .catch(rethrowQueryFailure);
     if ((begun?.uploads ?? 0) > FORM_FILE_LIMITS.sessionUploads)
-      throw new FormUploadLimitError();
+      throw new FormUploadLimitError('response');
     return { artifact: reserved.artifact, filename, replayed: false };
   });
 }
@@ -185,8 +192,9 @@ async function finalizeFormUpload(
       artifactId: bound.artifact.id,
       purpose: 'form-upload',
       expectedMetadata: input.expectedMetadata,
-      // Unsubmitted files go after a day; a submission's run keeps them.
-      retainFor: '24 hours',
+      // Unsent files go after a day, or an hour for a public link; a
+      // submission's run keeps them.
+      retainFor: target.capabilityHash === null ? '24 hours' : '1 hour',
     });
     return { artifact, filename: bound.filename };
   });

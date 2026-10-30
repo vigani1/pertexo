@@ -34,8 +34,8 @@ export function registerBindsPublicUploadsToResponse(): void {
     });
     const ready = await finalize(form, responder, begun);
     expect(ready.artifact.status).toBe('available');
-    // Unsubmitted uploads expire after a day.
-    expect((await readArtifact(begun.artifact.id))?.hours).toBe(24);
+    // Unsent public uploads go after an hour.
+    expect((await readArtifact(begun.artifact.id))?.hours).toBe(1);
     const command = {
       workspaceId: form.workspaceId,
       workflowId: form.workflowId,

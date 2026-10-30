@@ -101,6 +101,7 @@ it('upgrades populated human tasks without changing their decisions or context',
       '0053_remove_artifact_lookup.sql',
       '0054_form_uploads.sql',
       '0055_task_timeout_output.sql',
+      '0056_unsent_public_form_uploads.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(

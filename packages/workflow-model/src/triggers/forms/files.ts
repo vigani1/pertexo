@@ -12,6 +12,11 @@ export const FORM_FILE_LIMITS = Object.freeze({
   filenameCharacters: 255,
   /** Uploads one response may begin, including removed and replaced files. */
   sessionUploads: 25,
+  /**
+   * Bytes a workspace keeps for public-link files nobody has sent yet, so a
+   * stranger can't fill its storage before cleanup.
+   */
+  unsentPublicBytes: 100 * MEBIBYTE,
   /** Leading bytes read to recognise a file's real type. */
   sniffBytes: 512,
 });
