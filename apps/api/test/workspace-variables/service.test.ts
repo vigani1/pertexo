@@ -70,17 +70,57 @@ it('rejects a stale usage continuation with a restartable problem', async () => 
     ),
   ).rejects.toMatchObject({ code: 'variables.usage_changed' });
 });
+const cursor = {
+  workflowId: scope.workspaceId,
+  offset: 100,
+  stamp: 'a'.repeat(64),
+};
+
+async function continuation(service: WorkspaceVariablesService) {
+  const page = await service.usage({ ...scope, name: 'RATE', limit: 25 });
+  if (page.nextCursor === null) throw new Error('Expected a continuation');
+  return page.nextCursor;
+}
+
 it('keeps a bounded empty page continuation instead of inventing an unused result', async () => {
   const { service, store } = fixture();
-  const cursor = {
-    workflowId: scope.workspaceId,
-    offset: 100,
-    stamp: 'a'.repeat(64),
-  };
   store.usage.mockResolvedValue({ items: [], incomplete: false, next: cursor });
   const page = await service.usage({ ...scope, name: 'RATE', limit: 25 });
   expect(page.items).toEqual([]);
-  expect(page.nextCursor).toBe(
-    Buffer.from(JSON.stringify(cursor)).toString('base64url'),
+  expect(page.nextCursor).toEqual(expect.any(String));
+});
+
+it('resumes the reference check where its continuation left off', async () => {
+  const { service, store } = fixture();
+  store.usage.mockResolvedValueOnce({
+    items: [],
+    incomplete: false,
+    next: cursor,
+  });
+  const after = await continuation(service);
+  await service.usage({ ...scope, name: 'RATE', limit: 25, after });
+  expect(store.usage).toHaveBeenLastCalledWith(
+    expect.objectContaining({ after: cursor }),
   );
+});
+
+// api-11: continuations follow the shared opaque-cursor rule, which accepts
+// only the one canonical encoding of a cursor.
+it.fails('refuses a continuation that is not canonically encoded', async () => {
+  const { service, store } = fixture();
+  store.usage.mockResolvedValueOnce({
+    items: [],
+    incomplete: false,
+    next: cursor,
+  });
+  const after = `${await continuation(service)}=`;
+  await expect(
+    problemResult(
+      Promise.resolve().then(() =>
+        service.usage({ ...scope, name: 'RATE', limit: 25, after }),
+      ),
+      resourceFailure,
+    ),
+  ).rejects.toMatchObject({ code: 'request.invalid' });
+  expect(store.usage).toHaveBeenCalledOnce();
 });
