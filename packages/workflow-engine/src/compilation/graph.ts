@@ -26,17 +26,6 @@ export function findExecutableNodeContext(
   return undefined;
 }
 
-export function executableNodes(
-  graph: WorkflowExecutableGraph,
-): readonly WorkflowExecutableNode[] {
-  return graph.nodes.flatMap((node) => [
-    node,
-    ...(node.structured === undefined
-      ? []
-      : executableNodes(node.structured.body)),
-  ]);
-}
-
 export function executableEdges(
   graph: WorkflowExecutableGraph,
 ): readonly WorkflowExecutableGraph['edges'][number][] {
