@@ -22,7 +22,10 @@ describe('same-origin web proxy configuration', () => {
     );
 
     expect(configuration).toContain('location /v1');
-    expect(configuration).toContain('proxy_pass ${PERTEXO_API_UPSTREAM};');
+    expect(configuration).toContain(
+      'set $pertexo_api_upstream ${PERTEXO_API_UPSTREAM};',
+    );
+    expect(configuration).toContain('proxy_pass $pertexo_api_upstream;');
     expect(configuration).toContain('proxy_set_header Connection "";');
     expect(configuration).toContain('proxy_buffering off;');
     expect(configuration).toContain('proxy_cache off;');
