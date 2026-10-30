@@ -194,7 +194,7 @@ async function deliverClaim(
   await settleRetry(dependencies.store, claim, {
     now: now,
     random: random,
-    failureCode: 'delivery.outcome_unknown',
+    failureCode: 'delivery.retryable',
   });
 }
 
