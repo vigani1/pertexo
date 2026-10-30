@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
+import { isUncertainOutcome } from '@/lib/api/error-copy';
 import {
   getWorkflowDraft,
   saveWorkflowDraft,
@@ -69,9 +70,7 @@ export function useEditorSavePipeline({
           await getWorkflowDraft(apiClient, workspaceId, workflowId, signal),
         ),
       isConflict: (error) => isApiError(error) && error.status === 412,
-      isUncertain: (error) =>
-        isApiError(error) &&
-        ['network', 'protocol', 'timeout'].includes(error.kind),
+      isUncertain: isUncertainOutcome,
       retryAfterMs: (error) =>
         isApiError(error) && error.status === 429
           ? (error.retryAfterMs ?? RATE_LIMITED_WAIT_MS)

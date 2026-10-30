@@ -1,5 +1,6 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { QueryClient } from '@tanstack/react-query';
+import { workspaceKeys } from '../data/workspace-keys';
 import { isWorkspaceOpenable } from './workspace-availability';
 
 // A per-browser convenience: open the workspace someone used last. Storage can
@@ -49,7 +50,7 @@ export function knownWorkspaceName(
 ): string | undefined {
   const cached = queryClient
     .getQueriesData<readonly AccessibleWorkspace[]>({
-      predicate: (query) => query.queryKey[2] === 'accessible-workspaces',
+      predicate: (query) => workspaceKeys.isAccessibleList(query.queryKey),
     })
     .flatMap(([, workspaces]) => workspaces ?? [])
     .find((workspace) => workspace.id === workspaceId);

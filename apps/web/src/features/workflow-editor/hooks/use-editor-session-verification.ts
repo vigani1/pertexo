@@ -59,11 +59,7 @@ export function useEditorSessionVerification({
       try {
         await assertSessionIdentity(apiClient, userId, signal);
       } catch (error) {
-        if (
-          isSessionIdentityChangedError(error) ||
-          (isApiError(error) && error.status === 401)
-        )
-          pauseSession('changed');
+        if (isSessionIdentityChangedError(error)) pauseSession('changed');
         else if (isSessionIdentityUnverifiedError(error)) {
           // A dropped connection or a struggling server says nothing about
           // who is signed in: fail this action and keep editing.
@@ -134,10 +130,7 @@ export function useEditorSessionVerification({
         return;
       if (isApiError(error) && error.kind === 'canceled') return;
       pauseSession(
-        isSessionIdentityChangedError(error) ||
-          (isApiError(error) && error.status === 401)
-          ? 'changed'
-          : 'unverified',
+        isSessionIdentityChangedError(error) ? 'changed' : 'unverified',
       );
     } finally {
       if (verificationAbort.current === controller)

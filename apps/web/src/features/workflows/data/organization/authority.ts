@@ -1,18 +1,41 @@
-import type { QueryClient } from '@tanstack/react-query';
 import {
-  accessibleWorkspaceSchema,
-  type AccessibleWorkspace,
+  matchQuery,
+  type Query,
+  type QueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
+import type {
+  AccessibleWorkspace,
+  UserProfileResponse,
 } from '@pertexo/contracts';
+import {
+  hasCapability,
+  isAdministrativeRole,
+  type Role,
+} from '@pertexo/workflow-model';
 import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
 } from '@/features/auth/session/identity.public';
-import { getAllAccessibleWorkspaces } from '@/features/workspaces/queries.public';
+import { currentUserQueryKey } from '@/features/auth/session/queries.public';
+import {
+  getAllAccessibleWorkspaces,
+  workspaceKeys,
+} from '@/features/workspaces/queries.public';
 import { isApiError } from '@/lib/api/error';
+import { isAccessLost } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
+import { workspaceReadScope } from '@/lib/api/workspace-scope';
+import { workflowKeys } from '../workflows.queries';
 import { workflowOrganizationKeys } from './queries';
 
 export type RequiredRole = 'member' | 'editor' | 'admin';
+
+const ROLE_ALLOWED: Readonly<Record<RequiredRole, (role: Role) => boolean>> = {
+  member: () => true,
+  editor: (role) => hasCapability(role, 'workflow:update'),
+  admin: isAdministrativeRole,
+};
 
 export function allowed(
   workspace: AccessibleWorkspace | undefined,
@@ -21,18 +44,12 @@ export function allowed(
   return (
     workspace?.status === 'active' &&
     workspace.capabilities.includes('workflow:read') &&
-    (role === 'member' ||
-      workspace.role === 'owner' ||
-      workspace.role === 'admin' ||
-      (role === 'editor' && workspace.role === 'builder'))
+    ROLE_ALLOWED[role](workspace.role)
   );
 }
 
 export function accessLost(error: unknown) {
-  return (
-    isSessionIdentityChangedError(error) ||
-    (isApiError(error) && [401, 403, 404].includes(error.status ?? 0))
-  );
+  return isSessionIdentityChangedError(error) || isAccessLost(error);
 }
 
 export function clearOrganizationQueries(
@@ -96,7 +113,7 @@ export function observeAuthority({
   return queryClient.getQueryCache().subscribe((event) => {
     if (!current() || event.type !== 'updated') return;
     const { inScope, relatedRead, discovery, identity } = authorityReadScope(
-      event.query.queryKey as readonly unknown[],
+      event.query,
       userId,
       workspaceId,
     );
@@ -114,59 +131,33 @@ export function observeAuthority({
         inScope && isApiError(failure) && failure.status === 401;
       if (sessionLost) retire();
     }
+    const { data, status } = event.query.state;
     const discoveryRevoked =
       discovery &&
-      event.query.state.status === 'success' &&
-      discoveryLostAccess(event.query.state.data, workspaceId, requiredRole);
+      status === 'success' &&
+      !allowed(
+        (data as readonly AccessibleWorkspace[]).find(
+          (item) => item.id === workspaceId,
+        ),
+        requiredRole,
+      );
     if (discoveryRevoked) retire();
-    const data: unknown = event.query.state.data;
-    const identityChanged = identity && changedIdentity(data, userId);
+    const identityChanged =
+      identity &&
+      data !== undefined &&
+      (data as UserProfileResponse).id !== userId;
     if (identityChanged) retire();
   });
 }
 
-function authorityReadScope(
-  key: readonly unknown[],
-  userId: string,
-  workspaceId: string,
-) {
-  const inScope =
-    key[0] === 'identity' &&
-    key[1] === userId &&
-    key[2] === 'workspace' &&
-    key[3] === workspaceId;
-  const relatedRead =
-    inScope && (key[4] === 'workflows' || key[4] === 'workflow-organization');
-  const discovery =
-    key[0] === 'identity' &&
-    key[1] === userId &&
-    key[2] === 'accessible-workspaces';
-  const identity = key[0] === 'identity' && key[1] === 'current-user';
-
-  return { inScope, relatedRead, discovery, identity };
-}
-
-function discoveryLostAccess(
-  data: unknown,
-  workspaceId: string,
-  requiredRole: RequiredRole,
-): boolean {
-  const parsed = accessibleWorkspaceSchema.array().safeParse(data);
-  return (
-    parsed.success &&
-    !allowed(
-      parsed.data.find((item) => item.id === workspaceId),
-      requiredRole,
-    )
-  );
-}
-
-function changedIdentity(data: unknown, userId: string): boolean {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'id' in data &&
-    typeof data.id === 'string' &&
-    data.id !== userId
-  );
+function authorityReadScope(query: Query, userId: string, workspaceId: string) {
+  const matches = (queryKey: QueryKey) => matchQuery({ queryKey }, query);
+  return {
+    inScope: matches(workspaceReadScope(userId, workspaceId)),
+    relatedRead:
+      matches(workflowKeys.scope(userId, workspaceId)) ||
+      matches(workflowOrganizationKeys.scope(userId, workspaceId)),
+    discovery: matches(workspaceKeys.accessible(userId)),
+    identity: matches(currentUserQueryKey),
+  };
 }
