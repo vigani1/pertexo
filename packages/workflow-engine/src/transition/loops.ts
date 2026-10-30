@@ -1,7 +1,7 @@
 import { WorkflowEngineError } from '../errors.js';
 import { completeLoopIteration, createLoopState } from './scheduling/loops.js';
 import { sameOutputReference } from '../output-reference.js';
-import { assertNodeTransition } from './status.js';
+import { assertNodeTransition, invocationIdentity } from './status.js';
 import type {
   InvocationState,
   LoopState,
@@ -138,7 +138,7 @@ export function applyLoopCompletion(
   else if (iteration.status !== status)
     assertNodeTransition(iteration.status, status);
   const completedInvocation: InvocationState = {
-    ...iteration,
+    ...invocationIdentity(iteration),
     status,
     ...(observation.output === undefined ? {} : { output: observation.output }),
   };
@@ -177,7 +177,12 @@ function stopFailedLoopControl(
     observation,
     occurredAt,
   }: Readonly<{
-    status: InvocationState['status'];
+    status: NonNullable<
+      Extract<
+        WorkflowObservation,
+        { kind: 'loop_iteration_completed' }
+      >['status']
+    >;
     loop: LoopState;
     observation: Extract<
       WorkflowObservation,
@@ -198,7 +203,7 @@ function stopFailedLoopControl(
         'For Each control cannot accept its first terminal cause',
       );
     assertNodeTransition(control.status, status);
-    const stopped = { ...control, status };
+    const stopped = { ...invocationIdentity(control), status };
     state.invocations.set(control.invocationKey, stopped);
     state.eventDrafts.push(
       event(nodeEventName[status] ?? 'node.failed', occurredAt, {

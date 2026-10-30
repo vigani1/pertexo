@@ -6,7 +6,11 @@ import { WorkflowEngineError } from '../errors.js';
 import { pruneFinishedIterations } from './prune.js';
 import { deriveReadyNodes } from './scheduling/readiness.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import { assertNodeTransition, assertRunTransition } from './status.js';
+import {
+  assertNodeTransition,
+  assertRunTransition,
+  invocationIdentity,
+} from './status.js';
 import {
   boundedReadyAdmissions,
   deriveTerminalRunStatus,
@@ -207,9 +211,8 @@ function admitAttempts(
       );
     assertNodeTransition(invocation.status, 'running');
     const admissionKind = attemptAdmissionKind(invocation.waitKind);
-    const { waitKind: _waitKind, ...withoutWaitKind } = invocation;
     const running = {
-      ...withoutWaitKind,
+      ...invocationIdentity(invocation),
       status: 'running' as const,
       attemptNumber: invocation.attemptNumber + 1,
     };

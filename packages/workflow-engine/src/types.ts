@@ -59,21 +59,46 @@ export interface IterationScopePart {
   readonly ordinal: number;
 }
 
-export interface InvocationState {
-  readonly invocationKey: string;
-  readonly nodeId: string;
-  readonly status: NodeStatus;
-  readonly attemptNumber: number;
-  readonly resumeAt?: string;
-  readonly waitKind?: WaitKind;
-  readonly output?: OutputReference;
-  readonly failureHandling?: Readonly<{
+/** What an invocation keeps whatever its status. */
+export type InvocationIdentity = Readonly<{
+  invocationKey: string;
+  nodeId: string;
+  attemptNumber: number;
+  output?: OutputReference;
+  failureHandling?: Readonly<{
     sinkInvocationKey: string;
     disposition: 'pending' | 'handled';
   }>;
-  readonly branchPath?: readonly BranchScopePart[];
-  readonly iterationPath?: readonly IterationScopePart[];
-}
+  branchPath?: readonly BranchScopePart[];
+  iterationPath?: readonly IterationScopePart[];
+}>;
+
+/** Waits that resume on their own at `resumeAt`. */
+export type TimedWaitKind = Extract<WaitKind, 'node_wait' | 'retry_backoff'>;
+
+/**
+ * Wait fields belong to the status that owns them: a waiting step may carry
+ * its wait, a ready step only the timed wait it just left, and any other
+ * status neither. Every status may also carry no wait at all.
+ */
+export type InvocationState = InvocationIdentity & InvocationWait;
+export type InvocationWait =
+  | Readonly<{
+      status: 'waiting';
+      waitKind?: TimedWaitKind;
+      resumeAt?: string;
+    }>
+  | Readonly<{
+      status: 'waiting';
+      waitKind: Exclude<WaitKind, TimedWaitKind>;
+      resumeAt?: never;
+    }>
+  | Readonly<{
+      status: 'ready';
+      waitKind?: TimedWaitKind;
+      resumeAt?: never;
+    }>
+  | Readonly<{ status: NodeStatus; waitKind?: never; resumeAt?: never }>;
 
 export interface BranchLedgerEntry {
   readonly branchId: string;
@@ -124,7 +149,7 @@ export type WorkflowObservation =
       readonly kind: 'wait';
       readonly invocationKey: string;
       readonly resumeAt: string;
-      readonly waitKind: 'node_wait' | 'retry_backoff';
+      readonly waitKind: TimedWaitKind;
       readonly output?: OutputReference;
       readonly coordinatorDerived?: boolean;
     }
