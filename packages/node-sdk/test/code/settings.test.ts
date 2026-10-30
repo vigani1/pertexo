@@ -40,8 +40,7 @@ describe('Code runner settings from the environment', () => {
     },
   );
 
-  // engine-11: a malformed package list throws a bare SyntaxError.
-  it.fails.each(['CODE_RUNNER_PACKAGES', 'CODE_RUNNER_PYTHON_PACKAGES'])(
+  it.each(['CODE_RUNNER_PACKAGES', 'CODE_RUNNER_PYTHON_PACKAGES'])(
     'names %s when its package list is not JSON',
     (variable) => {
       expect(() => parseCodeSettings({ [variable]: 'lodash' })).toThrow(
