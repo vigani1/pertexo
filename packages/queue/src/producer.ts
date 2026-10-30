@@ -2,7 +2,9 @@ import { Queue } from 'bullmq';
 import type { JobsOptions } from 'bullmq';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
+import { bounded, TIMED_OUT } from './consumption/deadline.js';
 import { QUEUE_CLASS_DEFAULTS } from './jobs/defaults.js';
+import { jobIdForOutboxEvent } from './jobs/job-id.js';
 import { parseQueueJob, type QueueJob } from './jobs/contracts.js';
 import { QUEUE_FOR_JOB, QUEUE_NAME, type QueueName } from './jobs/names.js';
 import {
@@ -37,22 +39,7 @@ export {
   QueueConfigurationError,
   QueueNotReadyError,
 } from './publication/errors.js';
-export function jobIdForOutboxEvent(outboxEventId: string): string {
-  const parsed = z.uuid().safeParse(outboxEventId);
-
-  if (!parsed.success) {
-    throw new QueueConfigurationError('Outbox event ID must be a UUID');
-  }
-
-  const jobId = `outbox-${parsed.data}`;
-
-  if (/^\d+$/.test(jobId) || jobId.includes(':')) {
-    throw new QueueConfigurationError('Derived BullMQ job ID is not safe');
-  }
-
-  return jobId;
-}
-
+export { jobIdForOutboxEvent } from './jobs/job-id.js';
 function createQueues(redis: Redis): QueueMap {
   return {
     [QUEUE_NAME.workflowCoordinator]: new Queue(
@@ -348,32 +335,14 @@ export class BullMqQueueProducer implements QueueProducer {
     return this.lifecycle === 'open';
   }
 
-  private withTimeout<T>(
+  private async withTimeout<T>(
     operation: Promise<T>,
     timeoutMs: number,
     timeoutError: Error,
   ): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(timeoutError);
-      }, timeoutMs);
-      timeout.unref();
-
-      operation.then(
-        (value) => {
-          clearTimeout(timeout);
-          resolve(value);
-        },
-        (error: unknown) => {
-          clearTimeout(timeout);
-          reject(
-            error instanceof Error
-              ? error
-              : new Error('Queue publish failed', { cause: error }),
-          );
-        },
-      );
-    });
+    const result = await bounded(operation, timeoutMs);
+    if (result === TIMED_OUT) throw timeoutError;
+    return result;
   }
 }
 

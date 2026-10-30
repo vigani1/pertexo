@@ -38,7 +38,6 @@ export {
   type QueueClassJobDefaults,
 } from './jobs/defaults.js';
 export {
-  BullMqQueueProducer,
   QueueConfigurationError,
   QueueNotReadyError,
   createQueueProducer,
@@ -50,7 +49,6 @@ export {
   type QueueStateObservation,
 } from './producer.js';
 export {
-  BullMqQueueConsumer,
   InvalidQueueDeliveryError,
   QueueConsumerConfigurationError,
   QueueConsumerDrainError,
