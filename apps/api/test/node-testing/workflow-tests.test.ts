@@ -51,7 +51,7 @@ describe('draft workflow test boundary', () => {
     ).resolves.toEqual(preparation);
   });
   // api-13: the run capabilities come from one membership read, not one each.
-  it.fails('reads membership at most once beyond the guard proof', async () => {
+  it('reads membership at most once beyond the guard proof', async () => {
     const f = fixture();
     const authorizedWorkspace = await authorizeWorkspace({
       actor,

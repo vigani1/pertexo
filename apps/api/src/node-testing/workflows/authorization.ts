@@ -1,5 +1,5 @@
 import {
-  authorizeWorkspaceOperation,
+  authorizeWorkspaceCapabilities,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { NodeTestUseCaseInput } from '../use-case.js';
@@ -19,22 +19,16 @@ export async function authorizeWorkflowTesting(
   authorization: WorkspaceAuthorizationSource,
   input: WorkflowTestUseCaseInput,
 ): Promise<void> {
-  for (const capability of [
-    'workflow:update',
-    'run:read',
-    'run:start',
-  ] as const)
-    await authorizeWorkspaceOperation({
-      access: authorization,
-      actor: input.actor,
-      routeWorkspaceId: input.routeWorkspaceId,
-      ...(capability !== 'workflow:update' ||
-      input.authorizedWorkspace === undefined
-        ? {}
-        : { authorizedWorkspace: input.authorizedWorkspace }),
-      ...(input.signal === undefined ? {} : { signal: input.signal }),
-      capability,
-      allowedWorkspaceStatuses: ['active'],
-      disclosure: 'not_found',
-    });
+  await authorizeWorkspaceCapabilities({
+    access: authorization,
+    actor: input.actor,
+    routeWorkspaceId: input.routeWorkspaceId,
+    ...(input.authorizedWorkspace === undefined
+      ? {}
+      : { authorizedWorkspace: input.authorizedWorkspace }),
+    ...(input.signal === undefined ? {} : { signal: input.signal }),
+    capabilities: ['workflow:update', 'run:read', 'run:start'],
+    allowedWorkspaceStatuses: ['active'],
+    disclosure: 'not_found',
+  });
 }
