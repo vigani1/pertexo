@@ -211,7 +211,9 @@ describe('HTTP body draft', () => {
         node.id,
       );
       expect(result.value).toBeUndefined();
-      expect(result.error).toContain('split');
+      expect(result.error).toBe(
+        'Known part data already fills 10 MB before form headers. Use smaller files or split them into separate uploads.',
+      );
     }
   });
   it('refuses unsupported stored metadata and explicitly clears the form without altering other setup', () => {
