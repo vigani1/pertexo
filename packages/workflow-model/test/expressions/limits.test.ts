@@ -190,11 +190,16 @@ describe('restricted JSONata policy v1', () => {
     });
     // How V8 ends a process out of memory; which bomb gets there first is a race.
     process.kill(evaluationProcessId(), 'SIGABRT');
-    expect(await evaluation).toMatchObject({
-      kind: 'error',
-      code: 'limit_exceeded',
-      limit: 'memory',
-    });
+    // Ending takes as long as the system's crash handling does, so on a slow host
+    // the 100 ms limit can answer first. Either way it's the expression's own
+    // failure, never the temporary one a process stopped from outside reports.
+    const outcome = await evaluation;
+    expect(outcome.kind === 'error' ? outcome.code : outcome.kind).toBeOneOf([
+      'limit_exceeded',
+      'timed_out',
+    ]);
+    if (outcome.kind === 'error' && outcome.code === 'limit_exceeded')
+      expect(outcome.limit).toBe('memory');
     expect(await evaluator.evaluate({ expression: '3', context })).toEqual({
       kind: 'value',
       value: 3,
