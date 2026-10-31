@@ -14,7 +14,7 @@ export function registerRecordsBoundedOutboxClaimBacklogLease(): void {
     metrics.observeOutbox({ backlog: 23, oldestAgeSeconds: 7.5 });
     metrics.recordOutboxLeaseEvent('expired');
     metrics.recordOutboxLeaseEvent('reclaimed');
-    metrics.recordOutboxLeaseEvent('attempt_exhausted', 2);
+    metrics.recordOutboxLeaseEvent('publication_failed', 2);
 
     expect(
       values(harness.counters, TRANSPORT_METRIC_NAME.outboxClaimed),
@@ -33,7 +33,7 @@ export function registerRecordsBoundedOutboxClaimBacklogLease(): void {
     ).toEqual([
       { attributes: { event: 'expired' }, value: 1 },
       { attributes: { event: 'reclaimed' }, value: 1 },
-      { attributes: { event: 'attempt_exhausted' }, value: 2 },
+      { attributes: { event: 'publication_failed' }, value: 2 },
     ]);
   });
 

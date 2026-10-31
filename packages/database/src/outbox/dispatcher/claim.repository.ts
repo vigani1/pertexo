@@ -18,7 +18,7 @@ export async function claimOutboxBatch(
   input: ClaimOutboxBatchInput,
 ): Promise<ClaimOutboxBatchResult> {
   if (input.enabledJobNames.length === 0) {
-    return Object.freeze({ events: Object.freeze([]), exhaustedCount: 0 });
+    return Object.freeze({ events: Object.freeze([]) });
   }
   const client = await pool.connect();
   let transactionState: 'not_started' | 'open' | 'committing' | 'closed' =
@@ -88,11 +88,7 @@ type RawLeasedEvent = Omit<
 > &
   Readonly<{ availableAt: string; leaseExpiresAt: string }>;
 type ClaimRow = (RawLeasedEvent | Readonly<{ id: null }>) &
-  Readonly<{
-    exhaustedCount: number;
-    cursorUpdateCount: number;
-    releasedAdmissionCount: number;
-  }>;
+  Readonly<{ cursorUpdateCount: number }>;
 
 async function leaseFairOutboxBatch(
   client: PoolClient,
@@ -144,8 +140,7 @@ async function leaseFairOutboxBatch(
               and ${sql.identifier(outboxEvents.availableAt.name)} <= clock_timestamp()
               and (${sql.identifier(outboxEvents.leaseExpiresAt.name)} is null or ${sql.identifier(outboxEvents.leaseExpiresAt.name)} <= clock_timestamp())
               and (
-                ${sql.identifier(outboxEvents.publishAttempts.name)} >= ${parsed.maxAttempts}
-                or ${sql.identifier(outboxEvents.jobName.name)} <> 'advance-workflow-run'
+                ${sql.identifier(outboxEvents.jobName.name)} <> 'advance-workflow-run'
                 or app.workflow_run_active_admission_eligible(
                      ${event.workspaceId},${event.id},${event.aggregateId}
                    )
@@ -157,27 +152,10 @@ async function leaseFairOutboxBatch(
         ), admitted as materialized (
           select candidates.*
           from candidates
-          where ${candidates.publishAttempts} >= ${parsed.maxAttempts}
-             or ${candidates.jobName} <> 'advance-workflow-run'
+          where ${candidates.jobName} <> 'advance-workflow-run'
              or app.reserve_workflow_run_active_admission(
                   ${candidates.workspaceId},${candidates.id},${candidates.aggregateId}
                 )
-        ), exhausted as (
-          update ${outboxEvents} event
-          set
-            ${sql.identifier(outboxEvents.failedAt.name)} = clock_timestamp(),
-            ${sql.identifier(outboxEvents.lastErrorCode.name)} = 'publish.attempts_exhausted',
-            ${sql.identifier(outboxEvents.leaseOwner.name)} = null,
-            ${sql.identifier(outboxEvents.leaseToken.name)} = null,
-            ${sql.identifier(outboxEvents.leaseExpiresAt.name)} = null,
-            ${sql.identifier(outboxEvents.updatedAt.name)} = clock_timestamp()
-          from admitted
-          where ${event.id} = ${admitted.id}
-            and ${admitted.publishAttempts} >= ${parsed.maxAttempts}
-          returning ${event.id},${event.workspaceId}
-        ), released_exhausted_admissions as (
-          select app.release_dispatcher_workflow_run_active_admission(${sql.identifier(outboxEvents.workspaceId.name)},${sql.identifier(outboxEvents.id.name)})
-          from exhausted
         ), cursor_updated as (
           update ${outboxFairDispatchCursor} cursor
           set ${sql.identifier(outboxFairDispatchCursor.lastWorkspaceId.name)}=(
@@ -198,32 +176,24 @@ async function leaseFairOutboxBatch(
             ${sql.identifier(outboxEvents.updatedAt.name)} = clock_timestamp()
           from admitted
           where ${event.id} = ${admitted.id}
-            and ${admitted.publishAttempts} < ${parsed.maxAttempts}
           returning ${event.aggregateId},${event.aggregateType},${event.availableAt},${event.id},
                     ${event.jobName},${event.leaseExpiresAt},${event.leaseOwner},${event.leaseToken},
                     ${event.payload},${event.payloadChecksum},${event.publishAttempts},${event.workspaceId}
         )
         select ${leasedProjection},
-          (select count(*)::integer from exhausted) as "exhaustedCount",
-          (select count(*)::integer from cursor_updated) as "cursorUpdateCount",
-          (select count(*)::integer from released_exhausted_admissions) as "releasedAdmissionCount"
+          (select count(*)::integer from cursor_updated) as "cursorUpdateCount"
         from (select 1) summary
         left join leased on true
         order by ${leased.availableAt}, ${leased.id}
 `,
     )
     .catch(rethrowQueryFailure);
-  const first = result.rows[0];
-  if (first === undefined) throw new Error('Outbox claim returned no summary');
+  if (result.rows[0] === undefined)
+    throw new Error('Outbox claim returned no summary');
   const events: LeasedOutboxEvent[] = [];
   for (const row of result.rows) {
     if (row.id === null) continue;
-    const {
-      exhaustedCount,
-      cursorUpdateCount,
-      releasedAdmissionCount,
-      ...event
-    } = row;
+    const { cursorUpdateCount, ...event } = row;
     // Raw queue SQL bypasses Drizzle's timestamp decoder.
     events.push(
       Object.freeze({
@@ -233,10 +203,5 @@ async function leaseFairOutboxBatch(
       }),
     );
   }
-  const claim = Object.freeze({
-    events: Object.freeze(events),
-    exhaustedCount: first.exhaustedCount,
-  });
-
-  return claim;
+  return Object.freeze({ events: Object.freeze(events) });
 }

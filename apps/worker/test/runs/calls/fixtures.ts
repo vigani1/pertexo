@@ -222,7 +222,6 @@ export async function runtime(
         jobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.executeNodeAttempt],
         leaseDurationMillis: 1_000,
         leaseOwner: `call-${randomUUID()}`,
-        maxAttempts: 10,
         operationTimeoutMillis: 2_000,
         pollIntervalMillis: 25,
         retryDelayMillis: 25,

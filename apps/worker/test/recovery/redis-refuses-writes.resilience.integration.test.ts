@@ -62,12 +62,12 @@ describeFaults('Redis refusing writes while a step finishes', () => {
   }, SCENARIO_LIMIT_MS);
 
   // backend-gaps-01, reliability-08: a refused write counts against a final budget.
-  it.fails('fails no outbox event permanently', () => {
+  it('fails no outbox event permanently', () => {
     expect(failedEvents).toBe(0);
   });
 
   // backend-gaps-01, ops-03: the run has no way forward once its event has failed.
-  it.fails('finishes the run once Redis accepts writes again', () => {
+  it('finishes the run once Redis accepts writes again', () => {
     expect(facts[runId]?.status).toBe('succeeded');
     expect(stack.sink.calls('after-oom')).toHaveLength(1);
   });

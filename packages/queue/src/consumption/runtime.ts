@@ -2,7 +2,10 @@ import { performance } from 'node:perf_hooks';
 import { Worker } from 'bullmq';
 import type { Job as BullMqJob, Processor } from 'bullmq';
 import { Redis } from 'ioredis';
-import { admitQueueDelivery } from '../jobs/delivery-admission.js';
+import {
+  admitQueueDelivery,
+  deliveryIdentity,
+} from '../jobs/delivery-admission.js';
 import { QUEUE_CLASS_DEFAULTS } from '../jobs/defaults.js';
 import type { QueueName } from '../jobs/names.js';
 import {
@@ -28,7 +31,7 @@ import {
   QueueJobTimeoutError,
   QueueConsumerDrainError,
 } from './errors.js';
-import { TIMED_OUT, bounded } from './deadline.js';
+import { TIMED_OUT, abortReason, bounded } from './deadline.js';
 
 export class BullMqQueueConsumer implements QueueConsumer {
   private readonly activeExecutions = new Set<ActiveExecution>();
@@ -213,7 +216,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
     };
     const handlerPromise = Promise.resolve().then(() => {
       if (execution.controller.signal.aborted) {
-        throw this.abortReason(execution.controller.signal);
+        throw abortReason(execution.controller.signal);
       }
       const operation = (): Promise<void> =>
         this.handler(delivery, { signal: execution.controller.signal });
@@ -226,12 +229,12 @@ export class BullMqQueueConsumer implements QueueConsumer {
       );
     });
     const aborted = execution.controller.signal.aborted
-      ? Promise.reject(this.abortReason(execution.controller.signal))
+      ? Promise.reject(abortReason(execution.controller.signal))
       : new Promise<never>((_resolve, reject) => {
           execution.controller.signal.addEventListener(
             'abort',
             () => {
-              reject(this.abortReason(execution.controller.signal));
+              reject(abortReason(execution.controller.signal));
             },
             { once: true },
           );
@@ -268,18 +271,20 @@ export class BullMqQueueConsumer implements QueueConsumer {
           });
         });
       }
+      this.notifyObserver(() => {
+        this.observer?.deliveryFailed?.({
+          ...observation,
+          ...deliveryIdentity(parsed, job),
+          error,
+          failureClass: execution.abortFailureClass ?? 'handler',
+        });
+      });
       throw error;
     } finally {
       clearTimeout(timeout);
       bullMqSignal?.removeEventListener('abort', propagateBullMqAbort);
       this.activeExecutions.delete(execution);
     }
-  }
-
-  private abortReason(signal: AbortSignal): Error {
-    return signal.reason instanceof Error
-      ? signal.reason
-      : new Error('Queue handler was aborted', { cause: signal.reason });
   }
 
   private isOpen(): boolean {

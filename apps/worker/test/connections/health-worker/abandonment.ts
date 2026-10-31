@@ -97,7 +97,6 @@ export async function captureAbandonedHealthClaim(
           batchSize: 1,
           leaseDurationMillis: leaseDurationMillis,
           leaseOwner: `health-abandoned-${randomUUID()}`,
-          maxAttempts: 10,
           operationTimeoutMillis: 5000,
           pollIntervalMillis: 50,
           retryDelayMillis: 100,

@@ -29,9 +29,8 @@ describe('transport persistence input boundary', () => {
         leaseOwner: 'validation-proof',
         leaseToken: '11111111-1111-4111-8111-111111111111',
         limit: 1,
-        maxAttempts: 3,
       }),
-    ).resolves.toEqual({ events: [], exhaustedCount: 0 });
+    ).resolves.toEqual({ events: [] });
     await expect(
       dispatcher.observeBacklog({ enabledJobNames: [] }),
     ).resolves.toEqual({ backlog: 0 });

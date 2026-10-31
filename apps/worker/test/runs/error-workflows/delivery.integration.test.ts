@@ -182,7 +182,6 @@ describe.runIf(fixture.enabled)(
             ],
             leaseDurationMillis: 30_000,
             leaseOwner: `error-workflows-${randomUUID()}`,
-            maxAttempts: 3,
             retryDelayMillis: 1_000,
             pollIntervalMillis: 250,
           },

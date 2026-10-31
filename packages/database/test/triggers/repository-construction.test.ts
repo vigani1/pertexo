@@ -104,9 +104,8 @@ describe('trigger repository construction ownership', () => {
         leaseOwner: 'construction-test',
         leaseToken: '11111111-1111-4111-8111-111111111111',
         limit: 1,
-        maxAttempts: 3,
       }),
-    ).resolves.toEqual({ events: [], exhaustedCount: 0 });
+    ).resolves.toEqual({ events: [] });
     expect(database.pools[0]?.connect).not.toHaveBeenCalled();
     expect(database.pools[0]?.query).not.toHaveBeenCalled();
     await dispatcher.close();
@@ -135,7 +134,6 @@ describe('trigger repository construction ownership', () => {
         leaseOwner: 'construction-test',
         leaseToken: '11111111-1111-4111-8111-111111111111',
         limit: 1,
-        maxAttempts: 3,
       }),
     ).rejects.toThrow('claim statement failed');
     expect(queries.at(-1)).toBe('rollback');
@@ -168,7 +166,6 @@ describe('trigger repository construction ownership', () => {
         leaseOwner: 'construction-test',
         leaseToken: '11111111-1111-4111-8111-111111111111',
         limit: 1,
-        maxAttempts: 3,
       }),
     ).rejects.not.toBe(rollbackFailure);
     expect(releaseClient).toHaveBeenCalledWith(true);
@@ -204,7 +201,6 @@ describe('trigger repository construction ownership', () => {
             rows: [
               {
                 ...event,
-                exhaustedCount: 0,
                 cursorUpdateCount: 1,
                 releasedAdmissionCount: 0,
               },
@@ -224,7 +220,6 @@ describe('trigger repository construction ownership', () => {
         leaseOwner: 'construction-test',
         leaseToken: '33333333-3333-4333-8333-333333333333',
         limit: 1,
-        maxAttempts: 3,
       }),
     ).rejects.toBe(commitFailure);
     expect(queries).not.toContain('rollback');

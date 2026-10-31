@@ -58,7 +58,6 @@ export async function claimEventAcrossFairRounds(
       leaseOwner: 'integration-crashed',
       leaseToken: randomUUID(),
       limit: 100,
-      maxAttempts: 3,
     });
     const event = claimed.events.find((candidate) => candidate.id === eventId);
     if (event !== undefined) return event;

@@ -125,7 +125,7 @@ export function registerSerializesAbortRespectingCapacitySamplesAt(): void {
     });
   });
 
-  it('records retry claims, stale leases, and exhausted attempts without dynamic labels', async () => {
+  it('records retry claims, stale leases, and failed publications without dynamic labels', async () => {
     const retried = boundaries([event({ publishAttempts: 2 })]);
     vi.mocked(retried.database.markPublished).mockResolvedValue(false);
     const staleMetrics = transportMetrics();
@@ -161,27 +161,7 @@ export function registerSerializesAbortRespectingCapacitySamplesAt(): void {
       queueName: 'workflow-coordinator',
     });
     expect(exhaustedMetrics.recordOutboxLeaseEvent).toHaveBeenCalledWith(
-      'attempt_exhausted',
-    );
-  });
-
-  it('records claim-time exhaustion as one bounded counter increment', async () => {
-    const selected = boundaries([]);
-    vi.mocked(selected.database.claimBatch).mockResolvedValue({
-      events: [],
-      exhaustedCount: 2,
-    });
-    const metrics = transportMetrics();
-
-    await createDispatcher({
-      boundaries: selected,
-      drainState: new WorkerDrainState(),
-      metrics: metrics,
-    }).dispatchOnce();
-
-    expect(metrics.recordOutboxLeaseEvent).toHaveBeenCalledWith(
-      'attempt_exhausted',
-      2,
+      'publication_failed',
     );
   });
 

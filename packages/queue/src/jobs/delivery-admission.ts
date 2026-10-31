@@ -36,3 +36,21 @@ export function admitQueueDelivery(
     );
   return { parsed, transportJobId };
 }
+
+/** What an operator needs to find the run a failed delivery stopped. */
+export function deliveryIdentity(
+  parsed: QueueJob,
+  job: Pick<Job<unknown, unknown>, 'attemptsMade'>,
+): Readonly<{
+  attemptsMade: number;
+  outboxEventId: string;
+  runId?: string;
+  workspaceId: string;
+}> {
+  return {
+    attemptsMade: job.attemptsMade,
+    outboxEventId: parsed.data.outboxEventId,
+    workspaceId: parsed.data.workspaceId,
+    ...('runId' in parsed.data ? { runId: parsed.data.runId } : {}),
+  };
+}

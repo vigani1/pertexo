@@ -94,7 +94,6 @@ export async function startRoutingWorkers(scenario: RoutingBase) {
       jobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.executeNodeAttempt],
       leaseDurationMillis: 30_000,
       leaseOwner: `routing-${randomUUID()}`,
-      maxAttempts: 3,
       retryDelayMillis: 1_000,
       pollIntervalMillis: 250,
     },

@@ -9,7 +9,7 @@ describe('queue-class defaults', () => {
       const defaults = QUEUE_CLASS_DEFAULTS[queueName];
 
       expect(defaults.attempts).toBeGreaterThan(1);
-      expect(defaults.backoff).toEqual({ type: 'fixed', delay: 1_000 });
+      expect(defaults.backoff).toEqual({ type: 'exponential', delay: 1_000 });
       expect(defaults.lockDurationMs).toBeGreaterThan(0);
       expect(defaults.heartbeatIntervalMs).toBeGreaterThan(0);
       expect(defaults.heartbeatIntervalMs).toBeLessThan(

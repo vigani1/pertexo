@@ -109,7 +109,6 @@ qualified('business values through the real worker', () => {
           jobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.executeNodeAttempt],
           leaseDurationMillis: 30_000,
           leaseOwner: `values-${randomUUID()}`,
-          maxAttempts: 3,
           retryDelayMillis: 250,
           pollIntervalMillis: 100,
         },

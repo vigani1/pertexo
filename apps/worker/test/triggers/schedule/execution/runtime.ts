@@ -91,7 +91,6 @@ export async function startScheduleQualification(
         ],
         leaseDurationMillis: 1_000,
         leaseOwner: 'schedule-publication-dispatcher',
-        maxAttempts: 3,
         operationTimeoutMillis: 5_000,
         retryDelayMillis: 10,
       },

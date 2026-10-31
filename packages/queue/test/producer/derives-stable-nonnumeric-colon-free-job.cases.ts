@@ -64,8 +64,8 @@ export function registerDerivesStableNonnumericColonFreeJob(): void {
         outboxEventId: IDS.outboxEventId,
       }),
       expect.objectContaining({
-        attempts: 3,
-        backoff: { type: 'fixed', delay: 1_000 },
+        attempts: 8,
+        backoff: { type: 'exponential', delay: 1_000 },
         removeOnComplete: { age: 86_400, count: 1_000 },
         removeOnFail: { age: 2_592_000, count: 10_000 },
         jobId: `outbox-${IDS.outboxEventId}`,

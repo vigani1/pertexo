@@ -56,6 +56,16 @@ export type QueueHandlerFinishedObservation = QueueHandlerObservation &
       }
   );
 
+/** One failed delivery, with what an operator needs to find the run it stopped. */
+export interface QueueDeliveryFailure extends QueueHandlerObservation {
+  readonly attemptsMade: number;
+  readonly error: unknown;
+  readonly failureClass: QueueHandlerFailureClass;
+  readonly outboxEventId: string;
+  readonly runId?: string;
+  readonly workspaceId: string;
+}
+
 export interface QueueConsumerLifecycleObservation {
   readonly event: 'drain_forced' | 'drain_graceful' | 'ready';
   readonly queueName: QueueName;
@@ -67,10 +77,11 @@ export interface QueueStallObservation {
 
 /**
  * Dependency-free lifecycle seam for bounded operational instrumentation.
- * It deliberately exposes no message, workspace, run, or transport IDs.
+ * Metrics stay free of identifiers; only a failed delivery carries them, for the log.
  */
 export interface QueueConsumerObserver {
   consumerLifecycle?(observation: QueueConsumerLifecycleObservation): void;
+  deliveryFailed?(failure: QueueDeliveryFailure): void;
   handlerFinished(observation: QueueHandlerFinishedObservation): void;
   handlerStarted(observation: QueueHandlerObservation): void;
   jobStalled?(observation: QueueStallObservation): void;

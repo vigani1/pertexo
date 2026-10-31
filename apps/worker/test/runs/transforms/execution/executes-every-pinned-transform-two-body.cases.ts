@@ -79,7 +79,6 @@ export function registerExecutesEveryPinnedTransformTwoBody(): void {
           jobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.executeNodeAttempt],
           leaseDurationMillis: 30_000,
           leaseOwner: `transforms-${randomUUID()}`,
-          maxAttempts: 3,
           retryDelayMillis: 1_000,
           pollIntervalMillis: 250,
         },

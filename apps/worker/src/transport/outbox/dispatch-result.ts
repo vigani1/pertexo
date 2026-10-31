@@ -29,11 +29,8 @@ export function summarizeDispatchOutcomes(
 export function recordOutboxClaim(
   metrics: TransportMetrics,
   events: readonly LeasedOutboxEvent[],
-  exhaustedCount: number,
 ): void {
   metrics.recordOutboxClaim({ batchSize: events.length });
-  if (exhaustedCount > 0)
-    metrics.recordOutboxLeaseEvent('attempt_exhausted', exhaustedCount);
   for (const event of events)
     if (event.publishAttempts > 1) metrics.recordOutboxLeaseEvent('reclaimed');
 }

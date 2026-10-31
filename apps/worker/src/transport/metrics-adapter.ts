@@ -1,10 +1,12 @@
 import type {
+  StructuredLogger,
   TransportErrorClass,
   TransportMetrics,
 } from '@pertexo/observability';
 import type {
   QueueConsumerObserver,
   QueueConsumerLifecycleObservation,
+  QueueDeliveryFailure,
   QueueHandlerFailureClass,
   QueueHandlerFinishedObservation,
   QueueHandlerObservation,
@@ -29,8 +31,12 @@ function transportErrorClass(
 
 export function createQueueMetricsObserver(
   metrics: TransportMetrics,
+  logger?: StructuredLogger,
 ): QueueConsumerObserver {
   return Object.freeze({
+    deliveryFailed({ error, ...failure }: QueueDeliveryFailure): void {
+      logger?.warn('queue.delivery_failed', failure, error);
+    },
     consumerLifecycle(observation: QueueConsumerLifecycleObservation): void {
       metrics.recordConsumerLifecycle(observation);
     },

@@ -75,7 +75,7 @@ export function boundaries(events: readonly LeasedOutboxEvent[] = [event()]) {
         .mockResolvedValue(undefined),
       claimBatch: vi
         .fn<NonNullable<BoundariesMockPorts['database']['claimBatch']>>()
-        .mockResolvedValue({ events, exhaustedCount: 0 }),
+        .mockResolvedValue({ events }),
       close: vi
         .fn<NonNullable<BoundariesMockPorts['database']['close']>>()
         .mockResolvedValue(undefined),
@@ -146,7 +146,6 @@ export function createDispatcher({
       ],
       leaseDurationMillis: 30_000,
       leaseOwner: 'worker-a',
-      maxAttempts: 3,
       operationTimeoutMillis,
       pollIntervalMillis,
       retryDelayMillis: 1_000,

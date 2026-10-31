@@ -27,6 +27,17 @@ function currentLease(id: string, leaseToken: string) {
     isNull(outboxEvents.failedAt),
   );
 }
+/** The job kinds a stranded run depends on; `stalled work` watches their delivery. */
+export const RUN_DELIVERY_JOB_NAMES = [
+  'advance-workflow-run',
+  'execute-node-attempt',
+] as const;
+
+/** A queue under real load delivers well inside this; past it, the job is presumed lost. */
+const DELIVERY_CONFIRMATION_SECONDS = 60;
+
+const runDeliveryJob = sql`${outboxEvents.jobName} in ${RUN_DELIVERY_JOB_NAMES}`;
+
 async function markPublished(
   pool: Pool,
   eventId: string,
@@ -38,6 +49,7 @@ async function markPublished(
       .update(outboxEvents)
       .set({
         publishedAt: sql`clock_timestamp()`,
+        deliveryDueAt: sql`case when ${runDeliveryJob} then clock_timestamp()+make_interval(secs=>${DELIVERY_CONFIRMATION_SECONDS}) end`,
         leaseOwner: null,
         leaseToken: null,
         leaseExpiresAt: null,
@@ -65,12 +77,19 @@ async function releaseOrFail(
   input: ReleaseInput,
 ): Promise<ReleaseOutboxResult> {
   const db = drizzle(pool);
+  const outcome =
+    input.disposition === 'fail'
+      ? {
+          failedAt: sql`clock_timestamp()`,
+          // A run must not wait on a row that can never publish.
+          deliveryDueAt: sql`case when ${runDeliveryJob} then clock_timestamp() end`,
+        }
+      : { availableAt: sql`${input.retryAt}::timestamptz` };
   const updated = db.$with('updated').as(
     db
       .update(outboxEvents)
       .set({
-        availableAt: sql`case when ${outboxEvents.publishAttempts}>=${input.maxAttempts} then ${outboxEvents.availableAt} else ${input.retryAt}::timestamptz end`,
-        failedAt: sql`case when ${outboxEvents.publishAttempts}>=${input.maxAttempts} then clock_timestamp() else null end`,
+        ...outcome,
         lastErrorCode: input.errorCode,
         leaseOwner: null,
         leaseToken: null,

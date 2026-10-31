@@ -211,7 +211,6 @@ describeIntegration('preview SIGKILL reconciliation', () => {
               leaseOwner: 'preview-sigkill-integration',
               leaseToken: randomUUID(),
               limit: 20,
-              maxAttempts: 3,
             });
             for (const event of batch.events) {
               if (

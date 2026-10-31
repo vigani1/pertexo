@@ -52,6 +52,4 @@ export type ClaimOutboxBatchInput = Readonly<
 
 export type ClaimOutboxBatchResult = Readonly<{
   events: readonly LeasedOutboxEvent[];
-  /** Rows atomically terminalized because their publish-attempt ceiling was reached. */
-  exhaustedCount: number;
 }>;

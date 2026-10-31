@@ -102,8 +102,8 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
     vi.useFakeTimers();
     const selected = boundaries([]);
     vi.mocked(selected.database.claimBatch)
-      .mockResolvedValueOnce({ events: [event()], exhaustedCount: 0 })
-      .mockResolvedValueOnce({ events: [indexedEvent(2)], exhaustedCount: 0 });
+      .mockResolvedValueOnce({ events: [event()] })
+      .mockResolvedValueOnce({ events: [indexedEvent(2)] });
     const dispatcher = createDispatcher({
       boundaries: selected,
       drainState: new WorkerDrainState(),
@@ -130,7 +130,6 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
     const selected = boundaries([]);
     vi.mocked(selected.database.claimBatch).mockResolvedValueOnce({
       events: [event()],
-      exhaustedCount: 0,
     });
     const dispatcher = createDispatcher({
       boundaries: selected,
@@ -190,7 +189,6 @@ export function registerWaitsAdmittedQueueBacklogObservationsBefore(): void {
       const selected = boundaries([]);
       vi.mocked(selected.database.claimBatch).mockResolvedValueOnce({
         events: [event()],
-        exhaustedCount: 0,
       });
       if (outcome === 'failed') {
         vi.mocked(selected.producer.publish).mockRejectedValueOnce(
