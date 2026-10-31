@@ -31,7 +31,7 @@ import { WorkflowRunNotFoundError } from '../../runs/errors.js';
 import { databaseSchema } from '../../schema.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
-import { captureWorkspaceVariableRevision } from '../../variables/settings.queries.js';
+import { captureWorkspaceVariableRevision } from '../../variables/head.queries.js';
 import {
   requireNoActiveSuite,
   requireNoActiveTest,

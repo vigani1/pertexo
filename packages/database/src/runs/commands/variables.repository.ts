@@ -2,7 +2,7 @@ import { RUN_DETAILS_RETENTION_SQL } from '../data-policy.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { workflowRuns } from '../../schema.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
-import { captureWorkspaceVariableRevision } from '../../variables/settings.queries.js';
+import { captureWorkspaceVariableRevision } from '../../variables/head.queries.js';
 export class RunVariableSnapshotUnavailableError extends Error {
   override readonly name = 'RunVariableSnapshotUnavailableError';
   constructor() {

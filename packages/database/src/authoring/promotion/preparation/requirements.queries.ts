@@ -13,7 +13,7 @@ import {
   inspectWorkflowVariableSource,
 } from '@pertexo/workflow-model/server';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
-import { lockWorkspaceVariableNames } from '../../../variables/settings.queries.js';
+import { lockWorkspaceVariableNames } from '../../../variables/head.queries.js';
 import { dataTableReferenceIssues } from '../../../data-tables/columns/references.queries.js';
 import { promotionNodes } from './graph.js';
 

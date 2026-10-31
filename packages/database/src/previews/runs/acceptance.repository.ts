@@ -7,7 +7,7 @@ import { resolvePreviewSample } from './samples.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { lockActorArtifactReferences } from '../../artifacts/references/repository.js';
-import { captureWorkspaceVariableRevision } from '../../variables/settings.queries.js';
+import { captureWorkspaceVariableRevision } from '../../variables/head.queries.js';
 
 import {
   canonicalOutboxPayloadChecksum,
