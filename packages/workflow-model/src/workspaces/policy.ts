@@ -8,6 +8,8 @@ export const ROLES = Object.freeze([
 ] as const);
 export type Role = (typeof ROLES)[number];
 
+/** A change needs an active workspace. */
+export const ACTIVE_WORKSPACE_STATUSES = Object.freeze(['active'] as const);
 /** A suspended workspace reads but does not change (ADR 013/027). */
 export const BROWSABLE_WORKSPACE_STATUSES = Object.freeze([
   'active',
@@ -21,6 +23,11 @@ export const UNPURGED_WORKSPACE_STATUSES = Object.freeze([
   ...BROWSABLE_WORKSPACE_STATUSES,
   'pending_deletion',
 ] as const);
+/** A rule names the list it means, so two with different values can't be mistaken. */
+export type WorkspaceStatusList =
+  | typeof ACTIVE_WORKSPACE_STATUSES
+  | typeof BROWSABLE_WORKSPACE_STATUSES
+  | typeof UNPURGED_WORKSPACE_STATUSES;
 export const DELEGATED_ROLES = Object.freeze(
   ROLES.filter((role) => role !== 'owner'),
 );

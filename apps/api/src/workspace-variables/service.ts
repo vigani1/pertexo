@@ -6,8 +6,8 @@ import {
 } from '@pertexo/contracts';
 import type {
   ReplaceWorkspaceVariablesInput,
-  VariableScope,
   VariableUsageInput,
+  WorkspaceActor,
   WorkspaceVariablesStore,
 } from '@pertexo/core/server';
 
@@ -23,7 +23,7 @@ import {
 /** HTTP's view of the store: response checks and the opaque usage cursor. */
 export class WorkspaceVariablesService {
   constructor(private readonly store: WorkspaceVariablesStore) {}
-  async read(input: VariableScope) {
+  async read(input: WorkspaceActor) {
     return workspaceVariablesResponseSchema.parse(await this.store.read(input));
   }
   async replace(input: ReplaceWorkspaceVariablesInput) {

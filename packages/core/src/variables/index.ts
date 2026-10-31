@@ -1,9 +1,11 @@
-export { createWorkspaceVariablesStore } from './store.js';
+export {
+  createWorkspaceVariablesStore,
+  type WorkspaceVariablesStore,
+} from './store.js';
 export {
   WorkspaceVariablesConflictError,
   WorkspaceVariableUsageChangedError,
   type ReplaceWorkspaceVariablesInput,
-  type VariableScope,
   type VariableUsageInput,
-  type WorkspaceVariablesStore,
 } from './contract.js';
+export type { WorkspaceActor } from '../shared/index.js';

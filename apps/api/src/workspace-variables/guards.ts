@@ -1,4 +1,7 @@
-import { UNPURGED_WORKSPACE_STATUSES } from '../authorization/index.js';
+import {
+  ACTIVE_WORKSPACE_STATUSES,
+  UNPURGED_WORKSPACE_STATUSES,
+} from '../authorization/index.js';
 import { capabilityGuard } from '../workspaces/http/guards.js';
 
 export const VARIABLES_AUTHORIZATION = Symbol('VARIABLES_AUTHORIZATION');
@@ -13,5 +16,8 @@ export const WorkspaceVariablesReadGuard = capabilityGuard(
 export const WorkspaceVariablesManageGuard = capabilityGuard(
   VARIABLES_AUTHORIZATION,
   'variable:manage',
-  { disclosure: 'not_found', allowedWorkspaceStatuses: ['active'] },
+  {
+    disclosure: 'not_found',
+    allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
+  },
 );
