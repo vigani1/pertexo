@@ -83,8 +83,8 @@ describeFaults('a sender retrying after the server was full', () => {
     await stack.sql(
       `delete from app.trigger_coordinated_events e
         where e.workflow_id=$1 and e.status='pending'
-          and not exists(select 1 from app.webhook_trigger_replay_records r
-                          where r.coordination_event_id=e.id)`,
+          and not exists(select 1 from app.webhook_trigger_deliveries d
+                          where d.coordination_event_id=e.id)`,
       [debounced],
     );
     retried = await stack.api.sendWebhook(keys, event, EVENT_KEY);
