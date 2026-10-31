@@ -19,6 +19,8 @@ export interface SchedulerState {
     readonly control?: ControlNodeConfig;
     readonly disabled?: boolean;
     readonly sideEffectClass: SideEffectClass;
+    /** Set when this step's config makes each attempt read-only (an HTTP GET). */
+    readonly readOnlyAttempts?: boolean;
   }[];
   readonly edges: readonly {
     readonly source: { readonly nodeId: string; readonly port: string };

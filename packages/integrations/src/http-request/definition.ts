@@ -56,6 +56,11 @@ export const HTTP_REQUEST_MANIFEST: NodeManifest = Object.freeze({
     operationKey: 'request',
   }),
   retryClass: 'unsafe',
+  // GET and HEAD only read (RFC 9110 §9.2.1), so an attempt repeats safely.
+  readOnlyWhen: Object.freeze({
+    configKey: 'method',
+    values: Object.freeze(['GET', 'HEAD']),
+  }),
   resourceClass: 'io',
   capabilities: Object.freeze([
     'external_http',

@@ -29,6 +29,7 @@ import {
   assertAuthenticExecutableIdentity,
   executableControls,
   executableFailureRoutes,
+  executableReadOnlyNodeIds,
   executionNodes,
   type CompiledWorkflowExecutable,
   type ExecutionNode,
@@ -78,6 +79,7 @@ export interface AdvanceWorkflowInput {
 export function projectSchedulerState(
   graph: WorkflowExecutableGraph,
   controls: ReadonlyMap<string, ControlNodeConfig>,
+  readOnlyNodeIds: ReadonlySet<string> = new Set(),
 ): SchedulerState {
   const projectGraph = (graph: WorkflowExecutableGraph): SchedulerState => {
     const nodes = graph.nodes.map(
@@ -96,6 +98,7 @@ export function projectSchedulerState(
           ...(control === undefined ? {} : { control }),
           disabled,
           sideEffectClass: pinnedSideEffectClass,
+          ...(readOnlyNodeIds.has(id) ? { readOnlyAttempts: true } : {}),
         };
       },
     );
@@ -124,6 +127,7 @@ function schedulerState(
     ...projectSchedulerState(
       executable.envelope.graph,
       executableControls(executable),
+      executableReadOnlyNodeIds(executable),
     ),
     ...(routes.length === 0 ? {} : { failureRoutes: routes }),
   };

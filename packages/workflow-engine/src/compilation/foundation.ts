@@ -105,6 +105,7 @@ type VerifiedExecutableFacts = Readonly<{
   failureRoutes: readonly ExecutionFailureRoute[];
   nodes: readonly ExecutionNode[];
   controls: ReadonlyMap<string, ControlNodeConfig>;
+  readOnlyNodeIds: ReadonlySet<string>;
 }>;
 const authenticExecutableIdentities = new WeakMap<
   object,
@@ -113,6 +114,7 @@ const authenticExecutableIdentities = new WeakMap<
 
 export function registerExecutableIdentity(
   value: CompiledWorkflowExecutable,
+  catalog: NodeCatalog,
 ): CompiledWorkflowExecutable {
   const routing = inspectWorkflowFailureRoutes(value.envelope.graph);
   if (routing.kind === 'invalid') fail(routing.message);
@@ -157,6 +159,11 @@ export function registerExecutableIdentity(
           control === undefined ? [] : [[id, control] as const],
         ),
       ),
+      readOnlyNodeIds: new Set(
+        nodes
+          .filter((node) => attemptsOnlyRead(node, catalog))
+          .map(({ id }) => id),
+      ),
     }),
   );
   return value;
@@ -179,6 +186,18 @@ function withControls(graph: WorkflowExecutableGraph): ExecutionNode[] {
   });
 }
 
+function attemptsOnlyRead(
+  node: WorkflowExecutableNode,
+  catalog: NodeCatalog,
+): boolean {
+  const condition = catalog.definitions.find(({ definition }) =>
+    sameIdentity(definition, node.definition),
+  )?.readOnlyWhen;
+  if (condition === undefined) return false;
+  const value = node.config[condition.configKey];
+  return typeof value === 'string' && condition.values.includes(value);
+}
+
 export function assertAuthenticExecutableIdentity(
   value: CompiledWorkflowExecutable,
 ): void {
@@ -197,6 +216,12 @@ export function executionNodes(
   value: CompiledWorkflowExecutable,
 ): readonly ExecutionNode[] {
   return verifiedFacts(value).nodes;
+}
+
+export function executableReadOnlyNodeIds(
+  value: CompiledWorkflowExecutable,
+): ReadonlySet<string> {
+  return verifiedFacts(value).readOnlyNodeIds;
 }
 
 export function executableControls(

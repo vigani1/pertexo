@@ -267,6 +267,20 @@ export function schedulerNodeSideEffectClass(
   return node.sideEffectClass;
 }
 
+/**
+ * What one attempt may do. The node keeps its pinned class, which recovery
+ * compares against stored records; a read-only config narrows only the attempt.
+ */
+export function schedulerAttemptSideEffectClass(
+  schedulerNodes: SchedulerNodeLookup | undefined,
+  nodeId: string,
+): AttemptAdmissionPlan['sideEffectClass'] {
+  const pinned = schedulerNodeSideEffectClass(schedulerNodes, nodeId);
+  return schedulerNodes?.get(nodeId)?.node.readOnlyAttempts === true
+    ? 'safe'
+    : pinned;
+}
+
 export function schedulerNodeDisabled(
   schedulerNodes: SchedulerNodeLookup | undefined,
   nodeId: string,

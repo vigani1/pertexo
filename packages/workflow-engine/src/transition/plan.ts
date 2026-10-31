@@ -23,6 +23,7 @@ import type {
 } from '../types.js';
 import {
   isTerminalNodeStatus,
+  schedulerAttemptSideEffectClass,
   schedulerNodeSideEffectClass,
   scopedLoopSinkInvocation,
   transitionEvent as event,
@@ -222,7 +223,7 @@ function admitAttempts(
       nodeId: running.nodeId,
       attemptNumber: running.attemptNumber,
       admissionKind,
-      sideEffectClass: schedulerNodeSideEffectClass(
+      sideEffectClass: schedulerAttemptSideEffectClass(
         state.schedulerNodes,
         running.nodeId,
       ),
