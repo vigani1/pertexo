@@ -392,6 +392,28 @@ test('a dynamic import in a template literal is held to the same rules', () => {
   );
 });
 
+test('import-equals is held to the same rules', () => {
+  const load = (specifier) => `import a = require('${specifier}');`;
+  assert.match(
+    validateModuleImports({
+      'apps/api/src/a.ts': load('@pertexo/database/schema'),
+    }).join('\n'),
+    /is for core/u,
+  );
+  assert.match(
+    validateModuleImports({
+      'packages/execution/src/a.ts': load('@pertexo/core/variables'),
+    }).join('\n'),
+    /only applications depend on core/u,
+  );
+  assert.match(
+    validateModuleImports(source(load('./b.js'), "import './a.js';")).join(
+      '\n',
+    ),
+    /runtime module cycle/u,
+  );
+});
+
 test('a package reaches its own code by relative path', () => {
   for (const [file, specifier] of [
     ['packages/core/src/runs/start.ts', '@pertexo/core/variables'],
