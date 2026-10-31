@@ -131,12 +131,16 @@ services:
   worker:
     <<: *runtime
     env_file: ['${BETA_STATE_DIR}/worker.env']
+    # The health check ends a stopped worker, and a process can't kill its own
+    # namespace's PID 1. With this, node isn't it.
+    init: true
     command:
       [
         /bin/sh,
         -c,
-        'export WORKER_INSTANCE_ID=$$HOSTNAME; exec node
-        apps/worker/dist/main.js',
+        'rm -f /tmp/pertexo-worker-ready /tmp/pertexo-worker-not-ready
+        /tmp/pertexo-worker-progress; export WORKER_INSTANCE_ID=$$HOSTNAME; exec
+        node apps/worker/dist/main.js',
       ]
     environment:
       # Half the unchanged 768 MiB worker ceiling leaves room for buffers and native memory.
@@ -154,11 +158,16 @@ services:
       migration: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
     healthcheck:
+      # Docker never restarts a container for being unhealthy, so a worker whose scan
+      # has stopped for 5 minutes is ended here and `restart` brings it back. Past any
+      # busy host's stall: a slow worker only warns. See `stalled-work.ts`.
       test:
         [
           CMD-SHELL,
           'test -f /tmp/pertexo-worker-ready && test ! -f
-          /tmp/pertexo-worker-not-ready && kill -0 1',
+          /tmp/pertexo-worker-not-ready && kill -0 1 && { test -n "$$(find
+          /tmp/pertexo-worker-progress -mmin -5)" || { kill -9 "$$(cat
+          /tmp/pertexo-worker-progress)"; exit 1; }; }',
         ]
       interval: 5s
       timeout: 3s

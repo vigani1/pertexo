@@ -311,8 +311,12 @@ check the provider, then decide whether to replay the run.
 
 A failed readiness check only reports: the worker stays up and reconnects by
 itself, and an object store outage stops file steps, not other workflows. A
-worker exits for good reason only: it can't start, it was told to stop, or it
-ran out of memory.
+worker exits for good reason only: it can't start, it was told to stop, it ran
+out of memory, or its recovery scan has stopped for 5 minutes. In that last case
+the health check ends it and `restart` brings it back, because Docker never
+restarts a container for being unhealthy. A scan that fails counts as running, so
+a database outage doesn't restart anything. A stall shorter than that only logs
+`worker.event_loop_delayed`.
 
 ## Worker file scratch
 

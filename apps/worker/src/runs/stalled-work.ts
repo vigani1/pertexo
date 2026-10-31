@@ -1,3 +1,5 @@
+import { writeFile } from 'node:fs/promises';
+
 import {
   createStalledWorkStore,
   type StalledWorkRecovery,
@@ -21,6 +23,13 @@ const SCAN_INTERVAL_MILLIS = 5_000;
 const SCAN_BATCH_SIZE = 50;
 
 /**
+ * The container's health check reads this file's age, and its contents to end a
+ * worker that has stopped. A settled cycle counts even when it failed: a database
+ * outage is no reason to restart anything, and only a stopped loop leaves it stale.
+ */
+const PROGRESS_MARKER = '/tmp/pertexo-worker-progress';
+
+/**
  * ADR 007: acts on everything whose recorded time has passed, which is what makes
  * a crash, restart or lost job recoverable. Every worker runs it; a row's lock and
  * the consumers' receipts and fences make a second worker's attempt a no-op.
@@ -33,18 +42,28 @@ function createStalledWorkRuntime(
     name: 'Stalled work',
     pollMillis: SCAN_INTERVAL_MILLIS,
     cycle: async (signal) => {
-      const { recovered, failed } = await store.recoverDue(
-        SCAN_BATCH_SIZE,
-        signal,
-      );
-      reportDiagnostic(() => {
-        for (const recovery of recovered)
-          if (recovery.kind === 'delivery_given_up')
-            logger.warn(recoveryEvent(recovery), recovery);
-          else logger.info(recoveryEvent(recovery), recovery);
-        for (const { error, ...failure } of failed)
-          logger.warn('run_recovery.failed', failure, error);
-      });
+      try {
+        const { recovered, failed } = await store.recoverDue(
+          SCAN_BATCH_SIZE,
+          signal,
+        );
+        reportDiagnostic(() => {
+          for (const recovery of recovered)
+            if (recovery.kind === 'delivery_given_up')
+              logger.warn(recoveryEvent(recovery), recovery);
+            else logger.info(recoveryEvent(recovery), recovery);
+          for (const { error, ...failure } of failed)
+            logger.warn('run_recovery.failed', failure, error);
+        });
+      } finally {
+        await writeFile(PROGRESS_MARKER, String(process.pid)).catch(
+          (error: unknown) => {
+            reportDiagnostic(() => {
+              logger.warn('worker.progress_marker_failed', {}, error);
+            });
+          },
+        );
+      }
     },
     cycleFailed: () => {
       logger.error('run_recovery.scan_failed');
