@@ -16,6 +16,7 @@ useOAuth2Timeouts();
 const WORKER_START_MS = 120_000;
 const COMMIT_LIMIT_MS = 15_000;
 const RUNNING_LIMIT_MS = 30_000;
+const HEARTBEAT_MS = 1_000;
 
 describeOAuth2('two real workers refreshing one connection', () => {
   let harness: OAuth2Harness;
@@ -24,7 +25,10 @@ describeOAuth2('two real workers refreshing one connection', () => {
   let second: ServiceProcess;
 
   beforeAll(async () => {
-    harness = await startOAuth2Harness('race');
+    harness = await startOAuth2Harness('race', {
+      // A cancel reaches a running step at its next heartbeat: L4 needs that soon.
+      environment: { NODE_ATTEMPT_HEARTBEAT_MILLIS: String(HEARTBEAT_MS) },
+    });
     owner = await harness.newOwner();
     first = harness.stack.worker;
     second = harness.stack.createWorker('oauth2-worker-second');
@@ -297,7 +301,8 @@ describeOAuth2('two real workers refreshing one connection', () => {
     expect((await owner.api.cancelRun(owner.workspaceId, runId)).status).toBe(
       200,
     );
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Long enough for the cancel to have reached the step while its refresh is held.
+    await new Promise((resolve) => setTimeout(resolve, HEARTBEAT_MS * 3));
     hold.release();
     expect((await harness.finish(runId)).status).toBe('canceled');
     await expect

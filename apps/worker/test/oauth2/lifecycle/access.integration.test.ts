@@ -70,8 +70,9 @@ describeOAuth2('who may do what, and the connection test', () => {
     const connection = await harness.connected(owner, 'non-rotating');
     const viewer = await harness.addMember(owner.workspaceId, 'viewer');
     const asViewer = { ...owner, api: viewer.api };
+    // Connection routes hide what a member may not do: their guard's disclosure.
     expect((await harness.test(asViewer, connection.id, TEST_URL)).status).toBe(
-      403,
+      404,
     );
     expect(harness.standIn.apiCalls(connection.clientId)).toEqual([]);
     for (const role of ['builder', 'operator'] as const) {
@@ -90,8 +91,8 @@ describeOAuth2('who may do what, and the connection test', () => {
           })
         ).status,
         role,
-      ).toBe(403);
-      expect((await revoke(asMember, connection)).status, role).toBe(403);
+      ).toBe(404);
+      expect((await revoke(asMember, connection)).status, role).toBe(404);
     }
     expect((await harness.connection(connection.id)).status).toBe('active');
   });
