@@ -148,7 +148,8 @@ for (const [code, notice, short, button] of [
     await expect(
       lens(page).getByRole('button', { name: button, exact: true }),
     ).toBeVisible();
-    await expect(page.getByText(short)).toBeVisible();
+    // The list row, behind the sheet: its short form, not the notice above.
+    await expect(page.locator('li.row-divider').getByText(short)).toBeVisible();
   });
 
 // Detail: Revoke dialog adds the provider-side sentence.
@@ -290,7 +291,21 @@ test('form: server to server names only the token host', async ({ page }) => {
   await page.route(`**/v1/workspaces/${workspaceId}/connections`, (route) =>
     route.fulfill({
       status: 201,
-      json: connection('reauthorization_required'),
+      // What the API answers for the form above: server to server.
+      json: connection('reauthorization_required', {
+        oauth2: {
+          settings: {
+            grantType: 'client_credentials',
+            tokenUrl: 'https://token.example.test/token',
+            clientId: 'pertexo-client',
+            scope: '',
+            clientAuthentication: 'basic',
+            tokenParameters: {},
+            requestHosts: { mode: 'any' },
+          },
+          redirectUri: 'http://127.0.0.1:4173/v1/connections/oauth2/callback',
+        },
+      }),
     }),
   );
   await page.goto(`/w/${workspaceId}/connections?add=http`);
