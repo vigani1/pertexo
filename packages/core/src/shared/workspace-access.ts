@@ -1,5 +1,5 @@
 import {
-  lockWorkspaceAuthority,
+  lockWorkspaceAuthorityInStatuses,
   readWorkspaceAuthority,
   withTenantScopedClient,
   withTenantScopedReadClient,
@@ -62,13 +62,11 @@ export function withWorkspaceAccess<T>(
     pool,
     scope,
     async (client) => {
-      await lockWorkspaceAuthority(
-        client,
-        workspaceId,
+      await lockWorkspaceAuthorityInStatuses(client, workspaceId, {
         actorId,
         roles,
-        statuses,
-      );
+        allowedStatuses: statuses,
+      });
       return operation(client);
     },
     options,

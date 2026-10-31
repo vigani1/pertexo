@@ -11,7 +11,7 @@ export {
 } from './tenant-access/transactions.js';
 // Until tenant-access moves: every database area still uses these.
 export {
-  lockWorkspaceAuthority,
+  lockWorkspaceAuthorityInStatuses,
   readWorkspaceAuthority,
 } from './tenant-access/workspaces/authority.queries.js';
 // Until the one-shot move: authoring and runs still lock the set too, so its one
