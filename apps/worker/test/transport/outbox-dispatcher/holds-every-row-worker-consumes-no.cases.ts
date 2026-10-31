@@ -84,14 +84,17 @@ export function registerHoldsEveryRowWorkerConsumesNo(): void {
       published: 1,
       stale: 0,
     });
-    expect(selected.producer.publish).toHaveBeenCalledWith({
-      name: JOB_NAME.advanceWorkflowRun,
-      data: {
-        outboxEventId: EVENT_ID,
-        runId: RUN_ID,
-        workspaceId: WORKSPACE_ID,
-      },
-    } satisfies QueueJob);
+    expect(selected.producer.publish).toHaveBeenCalledWith(
+      {
+        name: JOB_NAME.advanceWorkflowRun,
+        data: {
+          outboxEventId: EVENT_ID,
+          runId: RUN_ID,
+          workspaceId: WORKSPACE_ID,
+        },
+      } satisfies QueueJob,
+      0,
+    );
     expect(selected.database.markPublished).toHaveBeenCalledWith(
       EVENT_ID,
       LEASE_TOKEN,
