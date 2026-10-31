@@ -85,39 +85,11 @@ export function RunRecoveryAction({
         {command.unconfirmed ? 'Retry same request' : 'Retry from this step'}
       </Button>
       {command.unconfirmed ? (
-        <ConfirmDialog
-          state={{ open: open, onOpenChange: setOpen, locked: command.pending }}
-          title="Retry same request"
-          description="Check whether the original recovery request was accepted. The same version, step, deadline and acknowledgement are retained; this does not request a second run."
-          onSubmit={() => command.retry()}
-          submitDisabled={command.pending || command.expired}
-          footer={
-            <ConfirmationFooter>
-              <DialogClose
-                disabled={command.pending}
-                render={<Button type="button" variant="ghost" />}
-              >
-                Cancel
-              </DialogClose>
-              <ProgressButton
-                type="submit"
-                variant="primary"
-                pending={command.pending}
-                pendingLabel="Checking acceptance…"
-                disabled={command.expired}
-              >
-                Retry same request
-              </ProgressButton>
-            </ConfirmationFooter>
-          }
-        >
-          <ConfirmationDetails error={command.error} tone="warning">
-            <p className="text-sm text-muted-foreground">
-              The request stays in memory while this run page remains open.
-              Check run history before leaving or reloading.
-            </p>
-          </ConfirmationDetails>
-        </ConfirmDialog>
+        <UnconfirmedRecoveryDialog
+          command={command}
+          open={open}
+          onOpenChange={setOpen}
+        />
       ) : null}
       {!command.unconfirmed && preview.data?.kind === 'eligible' ? (
         <RecoveryConfirmation
@@ -172,6 +144,53 @@ export function RunRecoveryAction({
         ></ConfirmDialog>
       ) : null}
     </>
+  );
+}
+
+/** Only checks the first request; nothing here can start a second run. */
+function UnconfirmedRecoveryDialog({
+  command,
+  open,
+  onOpenChange,
+}: Readonly<{
+  command: ReturnType<typeof useRunRecovery>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}>) {
+  return (
+    <ConfirmDialog
+      state={{ open, onOpenChange, locked: command.pending }}
+      title="Retry same request"
+      description="Check whether the original recovery request was accepted. The same version, step, deadline and acknowledgement are retained; this does not request a second run."
+      onSubmit={() => command.retry()}
+      submitDisabled={command.pending || command.expired}
+      footer={
+        <ConfirmationFooter>
+          <DialogClose
+            disabled={command.pending}
+            render={<Button type="button" variant="ghost" />}
+          >
+            Cancel
+          </DialogClose>
+          <ProgressButton
+            type="submit"
+            variant="primary"
+            pending={command.pending}
+            pendingLabel="Checking acceptance…"
+            disabled={command.expired}
+          >
+            Retry same request
+          </ProgressButton>
+        </ConfirmationFooter>
+      }
+    >
+      <ConfirmationDetails error={command.error} tone="warning">
+        <p className="text-sm text-muted-foreground">
+          The request stays in memory while this run page remains open. Check
+          run history before leaving or reloading.
+        </p>
+      </ConfirmationDetails>
+    </ConfirmDialog>
   );
 }
 

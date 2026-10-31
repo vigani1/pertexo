@@ -110,17 +110,11 @@ export function RecoveryConfirmation({
         tone={command.unconfirmed ? 'warning' : 'destructive'}
       >
         {newerVersionNumber === undefined ? null : (
-          <Notice
-            action={
-              <Button type="button" variant="outline" onClick={onReplay}>
-                Replay on v{String(newerVersionNumber)}
-              </Button>
-            }
-          >
-            v{String(newerVersionNumber)} has been published since. Retrying
-            stays on v{String(preview.versionNumber)}, because it reuses that
-            version’s saved results. To run the fix, replay from the start.
-          </Notice>
+          <NewerVersionNotice
+            newer={newerVersionNumber}
+            current={preview.versionNumber}
+            onReplay={onReplay}
+          />
         )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
           <Status tone="success">
@@ -166,5 +160,26 @@ export function RecoveryConfirmation({
         ) : null}
       </ConfirmationDetails>
     </ConfirmDialog>
+  );
+}
+
+/** A recovery run stays on its version, so point at what can run the fix. */
+function NewerVersionNotice({
+  newer,
+  current,
+  onReplay,
+}: Readonly<{ newer: number; current: number; onReplay: () => void }>) {
+  return (
+    <Notice
+      action={
+        <Button type="button" variant="outline" onClick={onReplay}>
+          Replay on v{String(newer)}
+        </Button>
+      }
+    >
+      v{String(newer)} has been published since. Retrying stays on v
+      {String(current)}, because it reuses that version’s saved results. To run
+      the fix, replay from the start.
+    </Notice>
   );
 }

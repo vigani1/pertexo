@@ -64,6 +64,91 @@ function useSourceVersion({
   };
 }
 
+/** Which version a replay runs: the published one by default, once it isn't this run's. */
+function useReplayVersion({
+  apiClient,
+  userId,
+  workspace,
+  source,
+  versionLabel,
+  open,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspace: Pick<AccessibleWorkspace, 'id' | 'capabilities'>;
+  source: Pick<
+    WorkflowRunReadSummary,
+    'id' | 'workflowId' | 'workflowVersionId' | 'triggerType'
+  >;
+  versionLabel: string | undefined;
+  open: boolean;
+}>) {
+  const { formReplay, sourceVersionNumber } = useSourceVersion({
+    apiClient,
+    userId,
+    workspace,
+    source,
+    open,
+  });
+  const published = useNewerPublishedVersion({
+    apiClient,
+    userId,
+    workspace,
+    source,
+    enabled: open,
+  });
+  const [choice, setChoice] = useState<'newer' | 'source'>('newer');
+  const sourceLabel =
+    versionLabel ??
+    (sourceVersionNumber === undefined
+      ? undefined
+      : `v${String(sourceVersionNumber)}`);
+  const newer = choice === 'newer' ? published.newer : undefined;
+  return {
+    formReplay,
+    pending: published.pending,
+    newerNumber: published.newer?.versionNumber,
+    sourceLabel,
+    choice,
+    setChoice,
+    workflowVersionId: newer?.id ?? source.workflowVersionId,
+    label:
+      newer === undefined ? sourceLabel : `v${String(newer.versionNumber)}`,
+  };
+}
+
+function ReplayVersionChoice({
+  version,
+  disabled,
+}: Readonly<{
+  version: ReturnType<typeof useReplayVersion>;
+  disabled: boolean;
+}>) {
+  if (version.newerNumber === undefined) return null;
+  return (
+    <ChoiceCards
+      legend="Version to run"
+      value={version.choice}
+      disabled={disabled}
+      onChange={version.setChoice}
+      choices={[
+        {
+          value: 'newer',
+          label: `v${String(version.newerNumber)}, published now`,
+          hint: 'Runs what’s live today, including any fix made since this run.',
+          glyph: <GitBranchIcon aria-hidden="true" className="size-3.5" />,
+        },
+        {
+          value: 'source',
+          label: version.sourceLabel ?? 'The version this run used',
+          hint: 'Runs exactly what this run ran, so it can fail the same way.',
+          glyph: <RotateCcwIcon aria-hidden="true" className="size-3.5" />,
+        },
+      ]}
+    />
+  );
+}
+
 /** The original input as the text the field shows, while it's still kept. */
 function originalInputText(data: WorkflowRunData | undefined) {
   return data?.kind === 'inline'
@@ -140,24 +225,17 @@ export function ReplayRunDialog({
   onRunAccepted: (runId: string) => void;
 }>) {
   const { id: workspaceId } = workspace;
-  const { id: sourceRunId, workflowId, workflowVersionId } = source;
+  const { id: sourceRunId, workflowId } = source;
   const notifications = useNotifications();
-  const { formReplay, sourceVersionNumber } = useSourceVersion({
+  const version = useReplayVersion({
     apiClient,
     userId,
     workspace,
     source,
+    versionLabel,
     open,
   });
-  const published = useNewerPublishedVersion({
-    apiClient,
-    userId,
-    workspace,
-    source,
-    enabled: open,
-  });
-  const [choice, setChoice] = useState<'newer' | 'source'>('newer');
-  const newer = choice === 'newer' ? published.newer : undefined;
+  const { formReplay } = version;
   const original = useQuery(
     workflowRunInputQueryOptions(apiClient, userId, workspaceId, sourceRunId),
   );
@@ -166,7 +244,7 @@ export function ReplayRunDialog({
     userId,
     workspaceId,
     sourceRunId,
-    workflowVersionId: newer?.id ?? workflowVersionId,
+    workflowVersionId: version.workflowVersionId,
     onRunAccepted: (runId) => {
       notifications.success({
         title: 'Replay started',
@@ -198,21 +276,8 @@ export function ReplayRunDialog({
     }
   }
 
-  const sourceLabel =
-    versionLabel ??
-    (sourceVersionNumber === undefined
-      ? undefined
-      : `v${String(sourceVersionNumber)}`);
-  const description = replayDescription(
-    original.data,
-    originalText,
-    newer === undefined ? sourceLabel : `v${String(newer.versionNumber)}`,
-  );
-  const confirmBlocked =
-    replay.pending ||
-    replay.expired ||
-    published.pending ||
-    (formReplay && originalText === undefined);
+  const needsCapturedInput = formReplay && originalText === undefined;
+  const cannotStart = replay.expired || version.pending || needsCapturedInput;
   return (
     <ConfirmDialog
       state={{ open: open, onOpenChange: changeOpen, locked: replay.pending }}
@@ -220,10 +285,10 @@ export function ReplayRunDialog({
       description={
         formReplay
           ? 'Replay repeats the exact captured form response. Steps that call other services run again. Use the published form to send a new response.'
-          : description
+          : replayDescription(original.data, originalText, version.label)
       }
       onSubmit={submit}
-      submitDisabled={confirmBlocked}
+      submitDisabled={replay.pending || cannotStart}
       footer={
         <ConfirmationFooter>
           <DialogClose
@@ -237,11 +302,7 @@ export function ReplayRunDialog({
             variant="primary"
             pending={replay.pending}
             pendingLabel="Replaying…"
-            disabled={
-              replay.expired ||
-              published.pending ||
-              (formReplay && originalText === undefined)
-            }
+            disabled={cannotStart}
           >
             {replay.retryAvailable ? 'Retry same replay' : 'Replay run'}
           </ProgressButton>
@@ -252,32 +313,10 @@ export function ReplayRunDialog({
         error={replay.error}
         tone={replay.retryAvailable ? 'warning' : 'destructive'}
       >
-        {published.newer === undefined ? null : (
-          <ChoiceCards
-            legend="Version to run"
-            value={choice}
-            disabled={replay.pending || replay.unconfirmed}
-            onChange={setChoice}
-            choices={[
-              {
-                value: 'newer',
-                label: `v${String(published.newer.versionNumber)}, published now`,
-                hint: 'Runs what’s live today, including any fix made since this run.',
-                glyph: (
-                  <GitBranchIcon aria-hidden="true" className="size-3.5" />
-                ),
-              },
-              {
-                value: 'source',
-                label: sourceLabel ?? 'The version this run used',
-                hint: 'Runs exactly what this run ran, so it can fail the same way.',
-                glyph: (
-                  <RotateCcwIcon aria-hidden="true" className="size-3.5" />
-                ),
-              },
-            ]}
-          />
-        )}
+        <ReplayVersionChoice
+          version={version}
+          disabled={replay.pending || replay.unconfirmed}
+        />
         <p className="text-sm text-muted-foreground">
           Replay keeps the source run’s workspace variables. Start a new run to
           use current values.
