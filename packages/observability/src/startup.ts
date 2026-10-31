@@ -7,6 +7,7 @@ export {
 } from './config.js';
 export {
   classifyProcessError,
+  describeProcessFailure,
   type ProcessErrorType,
 } from './process-error-classification.js';
 export {

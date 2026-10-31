@@ -3,12 +3,14 @@ import { fileURLToPath } from 'node:url';
 import {
   createTelemetryLifecycle,
   classifyProcessError,
+  describeProcessFailure,
 } from '@pertexo/observability/startup';
 import type { StructuredLogger } from '@pertexo/observability';
 import type * as LoggingModule from '@pertexo/observability';
 
 import type * as WorkerApplicationModule from './app.js';
 import { parseWorkerConfig, type WorkerConfig } from './config/worker.js';
+import { boundedBackgroundTask } from './runtime/background-task-deadline.js';
 import { WorkerProcessShutdown } from './runtime/shutdown/process.js';
 
 interface CloseableApplication {
@@ -45,6 +47,11 @@ async function loadModules(): Promise<WorkerBootstrapModules> {
   ]);
   return { application, logging };
 }
+
+/** A worker that couldn't start holds nothing worth waiting for. */
+const STARTUP_CLEANUP_LIMIT_MILLIS = 15_000;
+/** Time for logs to flush, then exit even if something holds the process open. */
+const FAILED_EXIT_GRACE_MILLIS = 2_000;
 
 function reportDiagnostic(report: (() => void) | undefined): void {
   try {
@@ -98,23 +105,32 @@ export async function bootstrapWorker(
     reportDiagnostic(() =>
       logger?.fatal(
         'worker.bootstrap_failed',
-        { errorType: classifyProcessError(error) },
+        {
+          errorType: classifyProcessError(error),
+          cause: describeProcessFailure(error),
+        },
         error,
       ),
     );
     try {
-      if (shutdownOwner === undefined) {
-        await application?.close();
-      } else {
-        await shutdownOwner.close();
-      }
+      await boundedBackgroundTask(
+        Promise.resolve().then(() =>
+          shutdownOwner === undefined
+            ? application?.close()
+            : shutdownOwner.close(),
+        ),
+        STARTUP_CLEANUP_LIMIT_MILLIS,
+      );
     } catch (closeError: unknown) {
       reportDiagnostic(() =>
         logger?.error('worker.cleanup_failed', {}, closeError),
       );
     }
     try {
-      await telemetry.shutdown();
+      await boundedBackgroundTask(
+        telemetry.shutdown(),
+        STARTUP_CLEANUP_LIMIT_MILLIS,
+      );
     } catch (shutdownError: unknown) {
       reportDiagnostic(() =>
         logger?.error('telemetry.shutdown_failed', {}, shutdownError),
@@ -137,9 +153,15 @@ if (isMainModule()) {
       `${JSON.stringify({
         event: 'worker.process_failed',
         errorType: classifyProcessError(error),
+        cause: describeProcessFailure(error),
         level: 'fatal',
       })}\n`,
     );
     process.exitCode = 1;
+    // Leaked reconnect timers would otherwise leave a process that neither
+    // works nor exits, and no restart policy ever fires on it (RT-01).
+    setTimeout(() => {
+      process.exit(1);
+    }, FAILED_EXIT_GRACE_MILLIS).unref();
   });
 }

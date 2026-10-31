@@ -108,6 +108,7 @@ describe('compiled worker main process', () => {
     expect(result).toEqual({ code: 1, signal: null });
     expect(fixture.output()).toContain('"event":"worker.process_failed"');
     expect(fixture.output()).toContain('"errorType":"Error"');
-    expect(fixture.output()).not.toContain('DATABASE_URL');
+    // ops-08: the fatal line names what to fix, never its value.
+    expect(fixture.output()).toContain('DATABASE_URL');
   }, 12_000);
 });

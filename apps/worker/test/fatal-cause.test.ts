@@ -41,14 +41,14 @@ describe('a worker that cannot start', () => {
   });
 
   // ops-08: the fatal line carries only `errorType`, so the operator retries blind.
-  it.fails('names the missing setting in its fatal line', async () => {
+  it('names the missing setting in its fatal line', async () => {
     const { DATABASE_URL: _missing, ...environment } = workerEnvironment;
     const { output } = await runWorker(environment);
     expect(output).toContain('DATABASE_URL');
   });
 
   // ops-08: the same blind line for a value that is present but wrong.
-  it.fails('names the invalid setting in its fatal line', async () => {
+  it('names the invalid setting in its fatal line', async () => {
     const { output } = await runWorker({
       ...workerEnvironment,
       OUTBOX_DISPATCH_BATCH_SIZE: '0',

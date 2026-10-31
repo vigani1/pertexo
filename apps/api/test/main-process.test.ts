@@ -124,7 +124,8 @@ describe('compiled API main process', () => {
       expect(result).toMatchObject({ code: 1, signal: null });
       expect(result.output).toContain('"event":"api.process_failed"');
       expect(result.output).toContain('"errorType":"Error"');
-      expect(result.output).not.toContain('DATABASE_URL');
+      // ops-08: the fatal line names what to fix, never its value.
+      expect(result.output).toContain('DATABASE_URL');
     },
     PROCESS_TEST_TIMEOUT_MILLIS,
   );

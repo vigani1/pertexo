@@ -51,7 +51,7 @@ describe('an operator command that cannot start', () => {
   });
 
   // ops-08: `operator_command.process_failed` names no setting.
-  it.fails('names the missing setting in its fatal line', async () => {
+  it('names the missing setting in its fatal line', async () => {
     const { output } = await runOperator(environment());
     expect(output).toContain('OPERATOR_RUN_ID');
   });

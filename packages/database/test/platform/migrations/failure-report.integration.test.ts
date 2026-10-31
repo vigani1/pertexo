@@ -61,12 +61,12 @@ describe('a migration that fails', () => {
   });
 
   // ops-08: `database.migration_failed` carries only `errorType`, so a rollback has no reason.
-  it.fails('names the file that failed', () => {
+  it('names the file that failed', () => {
     expect(errorOutput).toContain(BROKEN_FILE);
   });
 
   // ops-08: the operator needs the reason, while the app is down.
-  it.fails('states the reason', () => {
+  it('states the reason', () => {
     expect(errorOutput).toContain('syntax error');
   });
 
