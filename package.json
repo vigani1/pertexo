@@ -51,7 +51,7 @@
       },
       "packages/workflow-model": {
         "entry": [
-          "src/values/expressions/evaluation-thread.ts",
+          "src/values/expressions/evaluation-child.ts",
           "src/authoring/validation/thread.ts"
         ]
       },

@@ -13,7 +13,6 @@ import type {
 import { HttpRateLimitAdmission } from './admission.js';
 
 import { RATE_LIMIT_EXEMPT, RATE_LIMIT_METADATA } from './metadata.js';
-import { firstRequestHeader } from '../http/request-headers.js';
 
 export type {
   RateLimitConsumer,

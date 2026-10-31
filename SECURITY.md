@@ -25,5 +25,5 @@ Acknowledgement is not a promise of a particular resolution date.
 Pull requests run dependency review, a production dependency audit, CodeQL, and
 the repository's quality and integration gates. Secret scanning is turned on for
 the repository. Published images are not scanned for known vulnerabilities yet.
-Passing automation does not authorize bypassing a known security or data-integrity
-finding.
+Passing automation does not authorize bypassing a known security or
+data-integrity finding.

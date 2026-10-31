@@ -32,7 +32,7 @@ function resolving(evaluator: ExpressionEvaluator): Promise<unknown> {
       signal: new AbortController().signal,
       expressionEvaluator: evaluator,
     },
-  ) as Promise<unknown>;
+  );
 }
 
 describe('what a failed expression does to its step', () => {

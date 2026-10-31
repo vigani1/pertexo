@@ -74,10 +74,7 @@ export { AccountLinkingCommands } from '../identity/linking.repository.js';
 export { SocialSignInCommands } from '../identity/federation/social.repository.js';
 
 export { EmailProofCommands } from '../identity/email.repository.js';
-export {
-  SignUpAvailability,
-  type SignUpMode,
-} from '../identity/sign-up.js';
+export { SignUpAvailability, type SignUpMode } from '../identity/sign-up.js';
 
 export { createApiTokenDatabase } from './tokens/repository.js';
 export { ApiTokenPolicyError } from './tokens/errors.js';

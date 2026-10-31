@@ -45,77 +45,61 @@ describe.runIf(betterAuthIntegrationEnabled)(
       await stack.flushRedis();
     });
 
-    it(
-      'lets a stranger sign in after three addresses use up their limits',
-      async () => {
-        await lockoutAttempt();
+    it('lets a stranger sign in after three addresses use up their limits', async () => {
+      await lockoutAttempt();
 
-        const signedIn = await stack.send('POST', '/v1/auth/sign-in/email', {
-          address: address(200),
-          body: {
-            email: VICTIM,
-            password: PASSWORD,
-            callbackURL: '/workspaces',
-          },
+      const signedIn = await stack.send('POST', '/v1/auth/sign-in/email', {
+        address: address(200),
+        body: {
+          email: VICTIM,
+          password: PASSWORD,
+          callbackURL: '/workspaces',
+        },
+      });
+      expect(signedIn.status, signedIn.text).toBe(200);
+    }, 60_000);
+
+    it('lets a stranger ask for a password reset after the same attack', async () => {
+      await lockoutAttempt();
+
+      const reset = await stack.send(
+        'POST',
+        '/v1/auth/request-password-reset',
+        {
+          address: address(201),
+          body: { email: VICTIM, redirectTo: '/reset-password' },
+        },
+      );
+      expect(reset.status, reset.text).toBe(200);
+    }, 60_000);
+
+    it('lets a stranger sign up after the same attack, where sign-up is open', async () => {
+      await lockoutAttempt();
+
+      const created = await stack.send('POST', '/v1/auth/sign-up/email', {
+        address: address(202),
+        body: {
+          name: 'Fresh',
+          email: 'fresh@integration.test',
+          password: PASSWORD,
+          callbackURL: '/workspaces',
+        },
+      });
+      expect(created.status, created.text).toBe(200);
+    }, 60_000);
+
+    it('keeps email links and SSO returns working after two addresses use up theirs', async () => {
+      const visit = (from: string) =>
+        stack.send('GET', '/v1/auth/verify-email?token=not-a-real-token', {
+          address: from,
         });
-        expect(signedIn.status, signedIn.text).toBe(200);
-      },
-      60_000,
-    );
+      for (const octet of [11, 12])
+        for (let attempt = 0; attempt < 30; attempt++)
+          await visit(address(octet));
 
-    it(
-      'lets a stranger ask for a password reset after the same attack',
-      async () => {
-        await lockoutAttempt();
-
-        const reset = await stack.send(
-          'POST',
-          '/v1/auth/request-password-reset',
-          {
-            address: address(201),
-            body: { email: VICTIM, redirectTo: '/reset-password' },
-          },
-        );
-        expect(reset.status, reset.text).toBe(200);
-      },
-      60_000,
-    );
-
-    it(
-      'lets a stranger sign up after the same attack, where sign-up is open',
-      async () => {
-        await lockoutAttempt();
-
-        const created = await stack.send('POST', '/v1/auth/sign-up/email', {
-          address: address(202),
-          body: {
-            name: 'Fresh',
-            email: 'fresh@integration.test',
-            password: PASSWORD,
-            callbackURL: '/workspaces',
-          },
-        });
-        expect(created.status, created.text).toBe(200);
-      },
-      60_000,
-    );
-
-    it(
-      'keeps email links and SSO returns working after two addresses use up theirs',
-      async () => {
-        const visit = (from: string) =>
-          stack.send('GET', '/v1/auth/verify-email?token=not-a-real-token', {
-            address: from,
-          });
-        for (const octet of [11, 12])
-          for (let attempt = 0; attempt < 30; attempt++)
-            await visit(address(octet));
-
-        const reply = await visit(address(203));
-        expect(reply.status, reply.text).not.toBe(429);
-      },
-      60_000,
-    );
+      const reply = await visit(address(203));
+      expect(reply.status, reply.text).not.toBe(429);
+    }, 60_000);
 
     it('still stops one address guessing passwords', async () => {
       const replies = [];
@@ -160,23 +144,19 @@ describe.runIf(betterAuthIntegrationEnabled)(
       ).toBeLessThanOrEqual(30);
     }, 60_000);
 
-    it(
-      'lets another account sign in while one account is being guessed from everywhere',
-      async () => {
-        for (let octet = 150; octet < 190; octet++)
-          await failedSignIn(address(octet));
+    it('lets another account sign in while one account is being guessed from everywhere', async () => {
+      for (let octet = 150; octet < 190; octet++)
+        await failedSignIn(address(octet));
 
-        const signedIn = await stack.send('POST', '/v1/auth/sign-in/email', {
-          address: address(204),
-          body: {
-            email: VICTIM,
-            password: PASSWORD,
-            callbackURL: '/workspaces',
-          },
-        });
-        expect(signedIn.status, signedIn.text).toBe(200);
-      },
-      60_000,
-    );
+      const signedIn = await stack.send('POST', '/v1/auth/sign-in/email', {
+        address: address(204),
+        body: {
+          email: VICTIM,
+          password: PASSWORD,
+          callbackURL: '/workspaces',
+        },
+      });
+      expect(signedIn.status, signedIn.text).toBe(200);
+    }, 60_000);
   },
 );
