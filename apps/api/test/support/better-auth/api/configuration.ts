@@ -20,6 +20,7 @@ export function apiConfig(database: DatabaseConfig): ApiConfig {
       betterAuth: {
         secret: 'better-auth-only-integration-secret-with-32-plus-characters',
         mailMode: 'local',
+        signUpMode: 'open',
         providers: {},
       },
     },
@@ -54,6 +55,8 @@ export function fixtureIdentityConfiguration(
     automationTokensEnabled: options.automationTokens ?? false,
     betterAuth: {
       ...defaults.betterAuth,
+      // Most tests sign several people up; closed sign-up has its own tests.
+      signUpMode: options.signUpMode ?? 'open',
       providers: options.socialProviders ?? defaults.betterAuth.providers,
     },
   };

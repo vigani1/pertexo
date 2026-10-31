@@ -67,6 +67,7 @@ test('recovers password recovery after a capabilities outage without exposing ac
           verificationRequired: true,
         },
         socialProviders: [],
+        signUp: 'open',
       },
     });
   });

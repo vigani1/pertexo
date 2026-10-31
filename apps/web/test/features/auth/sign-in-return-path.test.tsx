@@ -21,6 +21,7 @@ function capabilities() {
         verificationRequired: true,
       },
       socialProviders: ['google'],
+      signUp: 'open',
     }),
   );
 }

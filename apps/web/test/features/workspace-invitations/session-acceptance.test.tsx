@@ -56,6 +56,7 @@ describe('invitation acceptance from a session sign-in', () => {
             verificationRequired: true,
           },
           socialProviders: [],
+          signUp: 'open',
         }),
       ),
       http.get('http://pertexo.test/v1/users/me', () =>

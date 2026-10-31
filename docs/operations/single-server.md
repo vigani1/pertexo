@@ -129,6 +129,11 @@ new people need an invitation (`AUTH_SIGN_UP_MODE=invitation`, the default). Set
 `AUTH_SIGN_UP_MODE=open` in `.env.production` and deploy again only if you really want
 anyone who can reach the server to create an account and run workflows on it.
 
+An address that signed up before someone else verified stays unverified, and its link says
+why, until it is invited. Organization sign-in on a verified domain isn't affected: the
+organization vouches for its own people. A new person arriving through a social provider
+follows the same rule as sign-up.
+
 If no mail arrives, check the worker's log (see
 [Logs and operator commands](#logs-and-operator-commands)) and your provider's dashboard.
 The verification link can't be fetched any other way.

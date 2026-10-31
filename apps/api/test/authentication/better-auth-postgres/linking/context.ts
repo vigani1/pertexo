@@ -48,6 +48,7 @@ export function createProviderLinkScenario({
     },
   };
   const linkingRuntime = createBetterAuthRuntime({
+    signUpMode: 'open',
     baseUrl: 'http://pertexo.test',
     secret: 'postgres-integration-secret-with-at-least-32-characters',
     database: {

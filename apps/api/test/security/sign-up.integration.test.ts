@@ -96,8 +96,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         expect(members.rows).toEqual([{ role: 'owner', email: FIRST }]);
       });
 
-      // docs-deps-product-01, ops-04: anyone could register on a public address.
-      it.fails(
+      it(
         'refuses a stranger once someone has verified, and keeps no trace',
         async () => {
           const email = 'stranger@integration.test';
@@ -107,8 +106,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         },
       );
 
-      // docs-deps-product-01: sign-up must not tell a stranger who has an account.
-      it.fails(
+      it(
         'gives an address with an account the same refusal',
         async () => {
           const taken = await signUp(stack, FIRST);
@@ -118,8 +116,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         },
       );
 
-      // docs-deps-product-01: a second person verifying later must not get in.
-      it.fails(
+      it(
         'does not turn the unverified second sign-up into a second account',
         async () => {
           await followVerificationLink(stack, MISTYPED);
@@ -146,8 +143,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         await stack.close();
       }, 60_000);
 
-      // docs-deps-product-01: only one can become the owner of an install.
-      it.fails(
+      it(
         'lets exactly one of them verify into an account',
         async () => {
           const emails = Array.from(
@@ -223,14 +219,12 @@ describe.runIf(betterAuthIntegrationEnabled)(
         expect(reply.status, reply.text).toBe(200);
       });
 
-      // docs-deps-product-01: an invitation opens the door for its address alone.
-      it.fails('still refuses everyone else', async () => {
+      it('still refuses everyone else', async () => {
         await invite('someone-else@integration.test');
         expectRefused(await signUp(stack, 'not-invited@integration.test'));
       });
 
-      // docs-deps-product-01: taking an invitation back closes it again.
-      it.fails('refuses a revoked invitation', async () => {
+      it('refuses a revoked invitation', async () => {
         const email = 'revoked@integration.test';
         const invitation = await invite(email);
         const revoked = await stack.send(
@@ -247,8 +241,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         expectRefused(await signUp(stack, email));
       });
 
-      // docs-deps-product-01: so does letting one run out.
-      it.fails('refuses an expired invitation', async () => {
+      it('refuses an expired invitation', async () => {
         const email = 'expired@integration.test';
         const invitation = await invite(email);
         await stack.query(
@@ -308,8 +301,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         await stack.close();
       }, 60_000);
 
-      // docs-deps-product-01, ops-04: with no setting, a public install was open.
-      it.fails(
+      it(
         'is closed with no setting once someone has verified',
         async () => {
           expect((await signUp(stack, 'owner@integration.test')).status).toBe(

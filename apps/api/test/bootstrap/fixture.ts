@@ -129,6 +129,7 @@ export function betterAuthIdentityConfig(
     betterAuth: {
       secret: 'bootstrap-better-auth-secret-at-least-32-characters',
       mailMode: 'local',
+      signUpMode: 'open',
       providers: { google: { clientId: 'google', clientSecret: 'secret' } },
     },
   };

@@ -10,6 +10,11 @@ export function allowlistedReturnPath(value: unknown): string | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
+/** On a closed install, an invitation link is the one way to a new account. */
+export function isInvitationReturn(returnTo: string | undefined): boolean {
+  return returnTo?.startsWith('/invitations') ?? false;
+}
+
 /** Search params that carry a return path, or none. */
 export function returnToSearch(
   returnTo: string | undefined,

@@ -106,11 +106,17 @@ export function registerBetterAuthHandler(
 
 export function registerAuthenticationCapabilities(
   fastify: FastifyInstance,
-  capabilities: AuthenticationCapabilitiesResponse,
+  capabilities: Omit<AuthenticationCapabilitiesResponse, 'signUp'>,
+  signUpAvailableToEveryone: () => Promise<boolean>,
 ): void {
-  const response = authenticationCapabilitiesResponseSchema.parse(capabilities);
   fastify.get('/v1/auth/capabilities', async (_request, reply) => {
-    reply.send(response);
+    reply.send(
+      authenticationCapabilitiesResponseSchema.parse({
+        ...capabilities,
+        // The first verified account closes an install, so this can't be fixed at start.
+        signUp: (await signUpAvailableToEveryone()) ? 'open' : 'invitation',
+      }),
+    );
   });
 }
 

@@ -23,7 +23,7 @@ type SignInUser = Awaited<ReturnType<typeof userQuery>>[number];
 export async function resolveVerifiedSignInUser(
   client: PoolClient,
   input: Pick<ProvenSocialSignIn, 'provider' | 'identity'> &
-    Readonly<{ createUser?: boolean }>,
+    Readonly<{ mayCreateUser: () => Promise<boolean> | boolean }>,
 ): Promise<SignInUser | undefined> {
   const email = input.identity.email;
   if (email === null || !input.identity.emailVerified) return undefined;
@@ -64,7 +64,7 @@ export async function resolveVerifiedSignInUser(
     .for('update')
     .catch(rethrowQueryFailure);
   if (existing !== undefined) return existing;
-  if (input.createUser === false) return undefined;
+  if (!(await input.mayCreateUser())) return undefined;
   const [created] = await drizzle(client)
     .insert(users)
     .values({

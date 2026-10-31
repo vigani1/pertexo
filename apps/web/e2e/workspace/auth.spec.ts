@@ -58,6 +58,7 @@ test('renders configured social providers as accessible Pertexo controls', async
           verificationRequired: true,
         },
         socialProviders: ['google', 'microsoft', 'github', 'apple'],
+        signUp: 'open',
       },
     });
   });

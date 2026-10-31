@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { betterAuthIntegrationEnabled } from '../../support/better-auth/real-api.support.js';
+import type { Browser } from '../../support/better-auth/api/contract.js';
 import { useSamlApi, samlOrigin } from './saml/api.fixture.js';
 import { createSocialSignInFixture } from './social/fixture.js';
 
@@ -24,7 +25,16 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         return rows.rows[0]?.count ?? 0;
       }
 
+      let owner:
+        Readonly<{ browser: Browser; workspaceId: string }> | undefined;
+
+      /** Sign-up is closed once it exists, so the file's tests share this one. */
       async function ownerWorkspace() {
+        owner ??= await createOwnerWorkspace();
+        return owner;
+      }
+
+      async function createOwnerWorkspace() {
         const email = `owner-${randomUUID()}@example.test`;
         await api.signUp(email, '/login?verified=true');
         const browser = await api.signIn(email);
@@ -37,19 +47,15 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         return { browser, workspaceId: created.json<{ id: string }>().id };
       }
 
-      // docs-deps-product-01: "Sign in with Google" would otherwise reopen sign-up.
-      it.fails(
-        'refuses a provider proof for an address no one invited',
-        async () => {
-          await ownerWorkspace();
-          const proof = identity();
+      it('refuses a provider proof for an address no one invited', async () => {
+        await ownerWorkspace();
+        const proof = identity();
 
-          const reply = await finish(await start(proof));
+        const reply = await finish(await start(proof));
 
-          expect(reply.headers.location).toContain('/login?socialError=true');
-          expect(await users(proof.email ?? '')).toBe(0);
-        },
-      );
+        expect(reply.headers.location).toContain('/login?socialError=true');
+        expect(await users(proof.email ?? '')).toBe(0);
+      });
 
       it('lets an invited address arrive through a provider', async () => {
         const { browser, workspaceId } = await ownerWorkspace();

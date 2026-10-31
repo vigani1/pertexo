@@ -40,6 +40,7 @@ export function apiConfig(): ApiConfig {
       betterAuth: {
         secret: 'workflow-lifecycle-integration-secret-with-32-plus-characters',
         mailMode: 'local',
+        signUpMode: 'open',
         providers: {},
       },
     },

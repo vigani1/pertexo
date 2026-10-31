@@ -202,6 +202,7 @@ test('repaints still canvases and the editor when appearance changes', async ({
           verificationRequired: true,
         },
         socialProviders: [],
+        signUp: 'open',
       },
     }),
   );

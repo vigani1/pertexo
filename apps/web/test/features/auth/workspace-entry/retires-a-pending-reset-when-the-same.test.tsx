@@ -223,6 +223,7 @@ describe('authentication and workspace entry', () => {
             verificationRequired: true,
           },
           socialProviders: [],
+          signUp: 'open',
         }),
       ),
     );

@@ -69,6 +69,7 @@ export const passwordCapabilities = http.get(
         verificationRequired: true,
       },
       socialProviders: [],
+      signUp: 'open',
     }),
 );
 
@@ -82,5 +83,6 @@ export const googleCapabilities = http.get(
         verificationRequired: true,
       },
       socialProviders: ['google'],
+      signUp: 'open',
     }),
 );

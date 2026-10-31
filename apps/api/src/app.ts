@@ -98,16 +98,21 @@ export async function assembleApiApplication(
     registerNoticeUnsubscribeTransport(fastifyAdapter);
     registerDataTableExportTransport(fastifyAdapter);
     registerApiMetrics(fastifyInstance);
-    registerAuthenticationCapabilities(fastifyInstance, {
-      password: {
-        enabled: identityRuntime !== undefined,
-        minimumLength: 12,
-        verificationRequired: true,
+    registerAuthenticationCapabilities(
+      fastifyInstance,
+      {
+        password: {
+          enabled: identityRuntime !== undefined,
+          minimumLength: 12,
+          verificationRequired: true,
+        },
+        socialProviders: configuredSocialProviders(
+          config.identity?.betterAuth.providers,
+        ),
       },
-      socialProviders: configuredSocialProviders(
-        config.identity?.betterAuth.providers,
-      ),
-    });
+      async () =>
+        identityRuntime?.betterAuth.signUp.availableToEveryone() ?? false,
+    );
     if (identityRuntime !== undefined && config.identity !== undefined)
       registerBetterAuthHandler(fastifyInstance, {
         handler: identityRuntime.betterAuth.auth.handler,

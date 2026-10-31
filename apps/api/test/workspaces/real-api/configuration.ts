@@ -25,6 +25,7 @@ export function config(): ApiConfig {
       betterAuth: {
         secret: 'phase1-real-api-integration-secret-with-32-plus-characters',
         mailMode: 'local',
+        signUpMode: 'open',
         providers: {},
       },
     },

@@ -32,6 +32,8 @@ export const authenticationCapabilitiesResponseSchema = z
       })
       .strict(),
     socialProviders: z.array(authenticationProviderSchema).max(4),
+    /** `invitation`: only an invited address can make an account here now. */
+    signUp: z.enum(['open', 'invitation']),
   })
   .strict();
 const accountSecuritySessionSchema = z

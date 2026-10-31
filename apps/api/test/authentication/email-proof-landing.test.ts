@@ -8,6 +8,7 @@ it.each([
   { outcome: 'change_old', expected: 'emailChangePending=true' },
   { outcome: 'change_new', expected: 'emailChanged=true' },
   { outcome: 'invalid', expected: 'error=verification_invalid' },
+  { outcome: 'sign_up_closed', expected: 'error=sign_up_closed' },
 ] as const)(
   'lands $outcome without exposing a proof',
   async ({ outcome, expected }) => {
@@ -16,6 +17,7 @@ it.each([
       pool,
       new LocalAuthenticationMailSink(),
       'https://pertexo.test',
+      'open',
     );
     const consume = vi.spyOn(proofs, 'consume').mockResolvedValue(outcome);
     try {

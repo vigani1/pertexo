@@ -47,6 +47,7 @@ export function composeBetterAuthRuntime(
       sessionTtlSeconds: Math.floor(config.session.ttlMillis / 1_000),
       trustedOrigins: [publicOrigin],
       mail,
+      signUpMode: config.betterAuth.signUpMode,
       socialProviders: config.betterAuth.providers,
       ...(config.federationEncryption === undefined
         ? {}

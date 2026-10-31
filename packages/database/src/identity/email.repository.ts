@@ -14,13 +14,18 @@ import { insertSystemMail } from '../platform/mail/repository.js';
 import type { SystemMailInput } from '../platform/mail/contract.js';
 import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { recordIdentitySecurityFact } from './facts.repository.js';
+import { admitNewAccount, type SignUpMode } from './sign-up.js';
 
 type ProofPurpose = 'initial_verification' | 'change_old' | 'change_new';
 type ProofUser = Readonly<{ id: string; email: string; name: string }>;
+type ProofOutcome = ProofPurpose | 'invalid' | 'sign_up_closed';
 
 /** Locks the user before issuing or consuming a single-use email proof. */
 export class EmailProofCommands {
-  public constructor(private readonly pool: Pool) {}
+  public constructor(
+    private readonly pool: Pool,
+    private readonly signUpMode: SignUpMode,
+  ) {}
 
   public async issue(
     user: ProofUser,
@@ -98,9 +103,13 @@ export class EmailProofCommands {
     tokenDigest: Buffer,
     next: Readonly<{ digest: Buffer; expiresAt: Date }> | undefined,
     nextMail: SystemMailInput | undefined,
-  ): Promise<ProofPurpose | 'invalid'> {
+  ): Promise<ProofOutcome> {
     return withPlatformTransaction(this.pool, (client) =>
-      consumeProof(client, tokenDigest, next, nextMail),
+      consumeProof(client, tokenDigest, {
+        next,
+        nextMail,
+        signUpMode: this.signUpMode,
+      }),
     ).catch(rethrowQueryFailure);
   }
 }
@@ -109,9 +118,16 @@ export class EmailProofCommands {
 async function consumeProof(
   client: PoolClient,
   tokenDigest: Buffer,
-  next: Readonly<{ digest: Buffer; expiresAt: Date }> | undefined,
-  nextMail: SystemMailInput | undefined,
-): Promise<ProofPurpose | 'invalid'> {
+  {
+    next,
+    nextMail,
+    signUpMode,
+  }: Readonly<{
+    next: Readonly<{ digest: Buffer; expiresAt: Date }> | undefined;
+    nextMail: SystemMailInput | undefined;
+    signUpMode: SignUpMode;
+  }>,
+): Promise<ProofOutcome> {
   const db = drizzle(client);
   const [owner] = await db
     .select({ userId: authEmailProofs.userId })
@@ -150,6 +166,9 @@ async function consumeProof(
   switch (proof.purpose) {
     case 'initial_verification': {
       if (user.emailVerified) return 'invalid';
+      // The proof stays unused: an invitation may still arrive within its hour.
+      if (!(await admitNewAccount(client, signUpMode, user.email)))
+        return 'sign_up_closed';
       await db
         .update(users)
         .set({ emailVerified: true, updatedAt: sql`clock_timestamp()` })

@@ -111,6 +111,7 @@ export function registerRegistersNodeTestingRoutesProvidersProduction(): void {
         verificationRequired: true,
       },
       socialProviders: ['google'],
+      signUp: 'open',
     });
     const crossOrigin = await applicationFixture.application.inject({
       method: 'POST',

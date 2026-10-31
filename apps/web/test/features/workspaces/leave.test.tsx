@@ -22,6 +22,7 @@ const capabilities = http.get('http://pertexo.test/v1/auth/capabilities', () =>
   HttpResponse.json({
     password: { enabled: true, minimumLength: 12, verificationRequired: true },
     socialProviders: [],
+    signUp: 'open',
   }),
 );
 

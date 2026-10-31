@@ -10,14 +10,18 @@ export function registerServesConfiguredCapabilitiesBootstrapsApplicationCSRF():
   it('serves configured capabilities and bootstraps application CSRF with a session', async () => {
     const application = Fastify();
     applications.push(application);
-    registerAuthenticationCapabilities(application, {
-      password: {
-        enabled: true,
-        minimumLength: 12,
-        verificationRequired: true,
+    registerAuthenticationCapabilities(
+      application,
+      {
+        password: {
+          enabled: true,
+          minimumLength: 12,
+          verificationRequired: true,
+        },
+        socialProviders: ['google'],
       },
-      socialProviders: ['google'],
-    });
+      () => Promise.resolve(true),
+    );
     registerBetterAuthHandler(application, {
       publicOrigin: 'https://pertexo.test',
       rateLimitConsumer: allowingRateLimit,
@@ -47,6 +51,7 @@ export function registerServesConfiguredCapabilitiesBootstrapsApplicationCSRF():
         verificationRequired: true,
       },
       socialProviders: ['google'],
+      signUp: 'open',
     });
 
     const response = await application.inject({

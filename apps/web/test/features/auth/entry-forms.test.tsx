@@ -26,6 +26,7 @@ function capabilities(
         verificationRequired: true,
       },
       socialProviders: options.socialProviders ?? [],
+      signUp: 'open',
     }),
   );
 }

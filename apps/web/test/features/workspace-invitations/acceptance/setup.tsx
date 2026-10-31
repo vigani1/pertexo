@@ -14,6 +14,7 @@ export function installAcceptanceHandlers() {
           verificationRequired: true,
         },
         socialProviders: [],
+        signUp: 'open',
       }),
     ),
   );

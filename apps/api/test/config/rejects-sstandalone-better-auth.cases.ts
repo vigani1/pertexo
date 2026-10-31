@@ -119,6 +119,7 @@ export function registerRejectsSStandaloneBetterAuth(): void {
     expect(config.identity?.betterAuth).toEqual({
       secret: 'better-auth-production-secret-at-least-32-characters',
       mailMode: 'durable',
+      signUpMode: 'invitation',
       durableMail: {
         fromEmail: 'security@example.test',
         encryption: {

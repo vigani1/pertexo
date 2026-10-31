@@ -16,7 +16,12 @@ import {
   type OidcProofGateway,
 } from '../federation/protocol/oidc.js';
 import type { BetterAuthOptions } from 'better-auth';
+import {
+  SignUpAvailability,
+  type SignUpMode,
+} from '@pertexo/database/tenant-access';
 import { Pool } from 'pg';
+import { refuseClosedSignUp } from './sign-up-gate.js';
 import { AuthenticationTransactions } from './transactions/context.js';
 
 import { AccountLinking } from '../account-security/linking.js';
@@ -49,6 +54,7 @@ export type BetterAuthRuntimeConfig = Readonly<{
   sessionTtlSeconds: number;
   trustedOrigins: readonly string[];
   mail: AuthenticationMail;
+  signUpMode: SignUpMode;
   socialProviders?: BetterAuthOptions['socialProviders'];
   /** Local provider fixtures may use this seam; production uses pinned providers. */
   linkProviderGateway?: SocialProviderGateway;
@@ -64,6 +70,7 @@ export type BetterAuthRuntime = Readonly<{
     handler(request: Request): Promise<Response>;
   }>;
   sessions: BetterAuthTrustedSessions;
+  signUp: SignUpAvailability;
   close(): Promise<void>;
 }>;
 
@@ -88,7 +95,13 @@ export function createBetterAuthRuntime(
   // them and the next checkout reconnects, but an error event nobody listens
   // for would end the whole API process.
   pool.on('error', () => undefined);
-  const emailProofs = new OwnedEmailProofs(pool, config.mail, config.baseUrl);
+  const emailProofs = new OwnedEmailProofs(
+    pool,
+    config.mail,
+    config.baseUrl,
+    config.signUpMode,
+  );
+  const signUp = new SignUpAvailability(pool, config.signUpMode);
   const authOptions = {
     pool,
     baseUrl: config.baseUrl,
@@ -131,6 +144,7 @@ export function createBetterAuthRuntime(
   });
   const social = new SocialSignIn({
     pool,
+    signUpMode: config.signUpMode,
     secret: config.secret,
     baseUrl: config.baseUrl,
     secureCookies: config.secureCookies,
@@ -169,7 +183,8 @@ export function createBetterAuthRuntime(
           (await social.handle(request)) ??
           (await federation.handle(request)) ??
           (await linking.handle(request)) ??
-          (await emailProofs.handle(request));
+          (await emailProofs.handle(request)) ??
+          (await refuseClosedSignUp(request, signUp));
         if (owned !== undefined) return owned;
         const returnTo = await emailProofs.signUpReturnPath(request);
         const response = needsSecurityTransaction(request)
@@ -184,6 +199,7 @@ export function createBetterAuthRuntime(
       },
     }),
     sessions,
+    signUp,
     close: () => (closePromise ??= pool.end()),
   });
 }

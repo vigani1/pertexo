@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { SocialSignInCommands } from '@pertexo/database/tenant-access';
+import {
+  SocialSignInCommands,
+  type SignUpMode,
+} from '@pertexo/database/tenant-access';
 import {
   authenticationProviderSchema,
   authenticationReturnPathSchema,
@@ -29,6 +32,7 @@ export class SocialSignIn {
   public constructor(
     private readonly input: Readonly<{
       pool: Pool;
+      signUpMode: SignUpMode;
       secret: string;
       baseUrl: string;
       secureCookies: boolean;

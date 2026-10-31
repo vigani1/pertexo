@@ -13,6 +13,7 @@ async function setup() {
   ]);
   const commands = new SocialSignInCommands({
     pool: db.authenticationPool(),
+    signUpMode: 'open',
     sessionTtlSeconds: 3600,
   });
   const attempt = {

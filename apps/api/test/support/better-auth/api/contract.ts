@@ -50,7 +50,7 @@ export type ApiFixtureOptions = Readonly<{
   notificationMail?: ApiIdentityConfig['betterAuth']['durableMail'];
   federationEncryption?: ApiIdentityConfig['federationEncryption'];
   secureCookies?: boolean;
-  /** Reads like AUTH_SIGN_UP_MODE; the fixture passes it to identity once it exists. */
+  /** Reads like AUTH_SIGN_UP_MODE; left out, the fixture is open. */
   signUpMode?: 'invitation' | 'open';
   socialProviders?: ApiIdentityConfig['betterAuth']['providers'];
   webhookRuntime?: (config: ApiConfig) => Promise<ApiWebhookRuntime>;

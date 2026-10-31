@@ -1,12 +1,37 @@
 import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import type { ApiClient } from '@/lib/api/client';
 import { InboxLens, RESEND_COOLDOWN_SECONDS } from '../components/inbox/lens';
 import { SignUpLens } from '../components/sign-up/lens';
-import { AuthLensFooter } from '../components/stage/auth-lens';
+import {
+  AuthLens,
+  AuthLensDescription,
+  AuthLensFooter,
+  AuthLensTitle,
+} from '../components/stage/auth-lens';
+import { isInvitationReturn } from '../model/return-path';
 import { PasswordCapabilityGate } from '../components/stage/lens-states';
 import { resendVerificationEmail } from '../data/native-auth.api';
 import { useCountdown } from '@/lib/hooks/use-countdown';
+
+/** Said on its own page, because a link can still bring someone here. */
+function SignUpClosedLens() {
+  return (
+    <AuthLens aria-labelledby="sign-up-closed-title">
+      <AuthLensTitle id="sign-up-closed-title">
+        Accounts are by invitation
+      </AuthLensTitle>
+      <AuthLensDescription>
+        Ask someone in your workspace for an invitation, then open the link they
+        send you.
+      </AuthLensDescription>
+      <AuthLensFooter>
+        Have an account? <Link to="/login">Sign in</Link>
+      </AuthLensFooter>
+    </AuthLens>
+  );
+}
 
 export function SignUpPage({
   apiClient,
@@ -29,7 +54,10 @@ export function SignUpPage({
         unavailable="Password sign-up is not available right now."
       >
         {(capabilities) =>
-          sentTo === undefined ? (
+          capabilities.signUp === 'invitation' &&
+          !isInvitationReturn(returnTo) ? (
+            <SignUpClosedLens />
+          ) : sentTo === undefined ? (
             <SignUpLens
               apiClient={apiClient}
               minimumPasswordLength={capabilities.password.minimumLength}

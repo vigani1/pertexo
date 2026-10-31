@@ -64,6 +64,7 @@ describe('two-factor sign-in challenge', () => {
             verificationRequired: true,
           },
           socialProviders: [],
+          signUp: 'open',
         }),
       ),
       http.post('http://pertexo.test/v1/auth/sign-in/email', () =>

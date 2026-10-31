@@ -101,7 +101,6 @@ test('the shipped scripts carry the same policy', async ({ page, request }) => {
 test('with an owner in place, sign-in offers no way to make an account', async ({
   page,
 }) => {
-  test.fail(true, 'docs-deps-product-01: self-service sign-up is always shown');
   await page.goto('/login');
   await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
   await expect(
@@ -112,7 +111,6 @@ test('with an owner in place, sign-in offers no way to make an account', async (
 test('with an owner in place, the sign-up page says to ask for an invitation', async ({
   page,
 }) => {
-  test.fail(true, 'docs-deps-product-01: the form is always shown');
   await page.goto('/sign-up');
   await expect(page.getByText(/invitation/iu).first()).toBeVisible();
   await expect(page.getByLabel('Email', { exact: true })).toHaveCount(0);

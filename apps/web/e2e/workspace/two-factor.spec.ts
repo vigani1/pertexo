@@ -51,6 +51,7 @@ for (const width of [1280, 375]) {
             verificationRequired: true,
           },
           socialProviders: [],
+          signUp: 'open',
         },
       }),
     );

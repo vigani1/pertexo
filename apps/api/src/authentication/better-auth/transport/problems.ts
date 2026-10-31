@@ -37,6 +37,14 @@ type NativeProblem = Readonly<{
 
 const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
+    '403:SIGN_UP_CLOSED',
+    {
+      status: 403,
+      code: 'auth.sign_up_closed',
+      title: 'Sign-up is by invitation',
+    },
+  ],
+  [
     '403:ALTERNATIVE_SIGN_IN_REQUIRED',
     {
       status: 403,

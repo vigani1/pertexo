@@ -19,8 +19,7 @@ describe('the sign-up setting', () => {
     ).not.toThrow();
   });
 
-  // docs-deps-product-01: a typo must not silently leave an install open or shut.
-  it.fails('refuses a value it does not know', () => {
+  it('refuses a value it does not know', () => {
     expect(() =>
       parseApiConfig({
         ...validDeployedEnvironment(),
@@ -29,8 +28,7 @@ describe('the sign-up setting', () => {
     ).toThrow();
   });
 
-  // docs-deps-product-01: someone installing this has to be able to find it.
-  it.fails('is documented where an install is configured', async () => {
+  it('is documented where an install is configured', async () => {
     const example = await readFile(
       new URL('../../../../.env.example', import.meta.url),
       'utf8',
