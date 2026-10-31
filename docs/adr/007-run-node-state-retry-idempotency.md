@@ -173,11 +173,14 @@ receive the stable key where available. Reconciliation emits the same domain
 outcome vocabulary as normal completion plus safe reconciliation metadata; it
 does not invent a second completion path.
 
-The same scanner replaces a published run job its consumer did not confirm by
-`outbox_events.delivery_due_at`. Together with leases and the existing wake-ups,
-this is the rule that every active run has a next step in PostgreSQL with a time
-on it, and that a worker acts when the time passes; a run waiting on a person is
-the one exception. Reading a run reports when that time has passed. An attempt's
+The same scanner delivers again any published job, of every kind, with no inbox
+receipt by `outbox_events.delivery_due_at`. It is the same event, so each consumer
+treats it as it treats a transport retry; a late original and its redelivery may
+run at once, under different BullMQ job IDs, and only the consumer's locks and
+fences decide. Together with leases and the existing wake-ups, this is the rule
+that every promise of work has a next step in PostgreSQL with a time on it, and
+that a worker acts when the time passes; a run waiting on a person is the one
+exception. Reading a run reports when that time has passed. An attempt's
 side-effect class is decided when it is planned, so a read-only configuration of
 an otherwise unsafe step (an HTTP GET) repeats safely; the node keeps its pinned
 class. A run the engine refuses to advance ends as `failed`, never stuck.

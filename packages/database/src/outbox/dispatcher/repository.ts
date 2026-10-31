@@ -27,16 +27,24 @@ function currentLease(id: string, leaseToken: string) {
     isNull(outboxEvents.failedAt),
   );
 }
-/** The job kinds a stranded run depends on; `stalled work` watches their delivery. */
+
+/** The job kinds a stranded run depends on, and which can be rebuilt from it. */
 export const RUN_DELIVERY_JOB_NAMES = [
   'advance-workflow-run',
   'execute-node-attempt',
 ] as const;
 
+const runDeliveryJob = sql`${outboxEvents.jobName} in ${RUN_DELIVERY_JOB_NAMES}`;
+
 /** A queue under real load delivers well inside this; past it, the job is presumed lost. */
 const DELIVERY_CONFIRMATION_SECONDS = 60;
+const MAXIMUM_DELIVERY_CONFIRMATION_SECONDS = 3_600;
 
-const runDeliveryJob = sql`${outboxEvents.jobName} in ${RUN_DELIVERY_JOB_NAMES}`;
+/**
+ * Doubles with each redelivery: a backlog that is merely slow is asked again less
+ * and less often, and a job that can't be confirmed costs a retry an hour at most.
+ */
+const deliveryDueTime = sql`clock_timestamp()+make_interval(secs=>least(${MAXIMUM_DELIVERY_CONFIRMATION_SECONDS},${DELIVERY_CONFIRMATION_SECONDS}*power(2,least(${outboxEvents.redeliveries},12))))`;
 
 async function markPublished(
   pool: Pool,
@@ -49,7 +57,7 @@ async function markPublished(
       .update(outboxEvents)
       .set({
         publishedAt: sql`clock_timestamp()`,
-        deliveryDueAt: sql`case when ${runDeliveryJob} then clock_timestamp()+make_interval(secs=>${DELIVERY_CONFIRMATION_SECONDS}) end`,
+        deliveryDueAt: deliveryDueTime,
         leaseOwner: null,
         leaseToken: null,
         leaseExpiresAt: null,

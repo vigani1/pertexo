@@ -19,6 +19,7 @@ import {
   consumeInboxMessage,
   InboxReceiptUnavailableError,
 } from '../../outbox/receipts.repository.js';
+import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 
 const payloadSchema = z
   .object({
@@ -175,7 +176,7 @@ export async function applyConnectionHealthObservation(
   input.signal?.throwIfAborted();
   const consumed = await consumeInboxMessage(database, input.workspaceId, {
     message: {
-      consumerName: 'connection-health-worker',
+      consumerName: DELIVERY_CONSUMER['apply-connection-health-observation'],
       messageId: input.delivery.outboxEventId,
       payloadChecksum: input.delivery.payloadChecksum,
     },

@@ -37,7 +37,7 @@ export interface QueueStateObservation {
 
 export interface QueueProducer {
   /** Returns within the configured deadline without misclassifying a timeout as failure. */
-  publish(job: QueueJob): Promise<QueuePublishResult>;
+  publish(job: QueueJob, redeliveries?: number): Promise<QueuePublishResult>;
   observe(): Promise<readonly QueueStateObservation[]>;
   isReady(): boolean;
   waitUntilReady(timeoutMs?: number): Promise<void>;

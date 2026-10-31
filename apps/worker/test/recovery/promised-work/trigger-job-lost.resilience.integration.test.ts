@@ -89,14 +89,12 @@ describeFaults('a published workflow whose trigger job was lost', () => {
     expect(jobsLeftInRedis).toBe(0);
   });
 
-  // reliability-code-01: the schedule row is never created, so no occurrence ever comes.
-  it.fails('turns the schedule on, and it fires', () => {
+  it('turns the schedule on, and it fires', () => {
     expect(scheduledStatus).toBe('active');
     expect(stack.sink.calls('scheduled').length).toBeGreaterThan(0);
   });
 
-  // reliability-code-01: the trigger stays `desired` and provisioning answers a conflict forever.
-  it.fails('lets the owner set up the webhook, and it runs', () => {
+  it('lets the owner set up the webhook, and it runs', () => {
     expect(hookedStatus).toBe('configuration_required');
     expect(provisionStatus).toBe(200);
     expect(eventStatus).toBe(202);

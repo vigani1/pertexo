@@ -6,7 +6,8 @@ import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { runFailureNotificationIntents as intents } from '../schema/runs/completion/notifications.js';
-import { outboxEvents } from '../schema/transport.js';
+import { inboxReceipts, outboxEvents } from '../schema/transport.js';
+import { DELIVERY_CONSUMER } from '../outbox/delivery-consumers.js';
 
 import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
 
@@ -105,6 +106,19 @@ async function claimFailureNotificationDelivery(
       delivery,
     });
     const db = drizzle(client);
+    // From this commit on the intent's own recovery time owns the delivery, and a
+    // retry is a new event, so this one has done its job whatever the claim finds.
+    await db
+      .insert(inboxReceipts)
+      .values({
+        consumerName: DELIVERY_CONSUMER['deliver-run-failure-notification'],
+        messageId: delivery.outboxEventId,
+        workspaceId,
+        payloadChecksum: delivery.payloadChecksum,
+        completedAt: sql`clock_timestamp()`,
+      })
+      .onConflictDoNothing()
+      .catch(rethrowQueryFailure);
     const predicate = and(
       eq(intents.workspaceId, workspaceId),
       eq(intents.id, intentId),

@@ -84,7 +84,19 @@ export function registerKeepsInvitationDeliveryRenderingStable(): void {
         deliveryAttemptId,
       };
       expect(first).toMatchObject({ recoveredUnknown: false });
-      await deliveryStore.markDispatching(identity);
+      expect(
+        await deliveryStore.markDispatching({
+          ...identity,
+          recoveredUnknown: false,
+        }),
+      ).toBe(true);
+      // Two copies of one job can both read `queued`; only one of them may send.
+      expect(
+        await deliveryStore.markDispatching({
+          ...identity,
+          recoveredUnknown: false,
+        }),
+      ).toBe(false);
       expect(
         await deliveryStore.claim({ ...identity, outboxEventId }),
       ).toMatchObject({ kind: 'ready', recoveredUnknown: true });
@@ -139,6 +151,7 @@ export function registerKeepsInvitationDeliveryRenderingStable(): void {
         workspaceId: invitationWorkspace.id,
         invitationId: created.invitation.id,
         deliveryAttemptId,
+        recoveredUnknown: false,
       });
       const concurrent = Promise.allSettled([
         delivery.complete({

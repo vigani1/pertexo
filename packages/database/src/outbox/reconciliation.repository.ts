@@ -6,6 +6,7 @@ import { z } from 'zod';
 import type { WorkspaceDatabase } from '../database.js';
 import { consumeInboxMessage } from './receipts.repository.js';
 import { canonicalOutboxPayloadChecksum } from './events.repository.js';
+import { DELIVERY_CONSUMER } from './delivery-consumers.js';
 
 const payloadSchema = z
   .object({
@@ -53,7 +54,7 @@ export async function reconcileUnknownOutcomeEvidence(
 
   const consumed = await consumeInboxMessage(database, input.workspaceId, {
     message: {
-      consumerName: 'unknown-outcome-reconciler',
+      consumerName: DELIVERY_CONSUMER['reconcile-unknown-outcome'],
       messageId: input.delivery.outboxEventId,
       payloadChecksum: input.delivery.payloadChecksum,
     },

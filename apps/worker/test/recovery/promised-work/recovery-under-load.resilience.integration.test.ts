@@ -73,8 +73,7 @@ describeFaults('a job lost behind a backlog of delivered jobs', () => {
     await stack.close();
   }, SCENARIO_LIMIT_MS);
 
-  // reliability-code-01: the backlog takes the scanner 200 s to clear, ahead of this job.
-  it.fails('still recovers the lost job within the recovery limit', () => {
+  it('still recovers the lost job within the recovery limit', () => {
     expect(factsOfRun(facts, runs, 'lost').status).toBe('succeeded');
     expect(stack.sink.calls('lost-behind-backlog')).toHaveLength(1);
   });

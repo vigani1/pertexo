@@ -78,6 +78,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
       '0063_webhook_repeats_need_a_key.sql',
       '0064_instance_capacity.sql',
       '0065_run_delivery_deadline.sql',
+      '0066_outbox_redeliveries.sql',
     ]);
     expect(
       (

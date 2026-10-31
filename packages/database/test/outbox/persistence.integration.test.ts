@@ -7,6 +7,7 @@ import { registerClaimsBoundedDisjointBatchesChanges } from './persistence/claim
 import { registerKeepsDisabledJobKindsDurable } from './persistence/keeps-disabled-job-kinds-durable.cases.js';
 import { registerAllowsDispatcherLifecycleMutationsBut } from './persistence/allows-dispatcher-lifecycle-mutations-but.cases.js';
 import { registerRedispatchesOneFailedRowWithout } from './persistence/redispatches-one-failed-row-without.cases.js';
+import { registerSettlesOverdueDeliveries } from './persistence/settles-overdue-deliveries.cases.js';
 beforeAll(transport.initialize);
 beforeEach(transport.reset);
 afterAll(transport.close);
@@ -22,4 +23,6 @@ describe('transactional outbox persistence', () => {
   registerAllowsDispatcherLifecycleMutationsBut();
 
   registerRedispatchesOneFailedRowWithout();
+
+  registerSettlesOverdueDeliveries();
 });

@@ -45,8 +45,9 @@ export function automaticReconciliationAction(
 }
 
 /**
- * A run job its consumer never confirmed. A running attempt's lease is its
- * clock, and a queued run's first advance belongs to admission recovery.
+ * A run job that can never be delivered as written, so it is rebuilt from the
+ * run. Only a run still underway needs it, and a running attempt's lease is its
+ * clock.
  */
 export function overdueDeliveryAction(
   delivery: Readonly<{
@@ -55,7 +56,11 @@ export function overdueDeliveryAction(
     jobName: string;
   }>,
 ): 'replace' | 'drop' {
-  if (delivery.runStatus !== 'running' && delivery.runStatus !== 'waiting')
+  if (
+    delivery.runStatus !== 'queued' &&
+    delivery.runStatus !== 'running' &&
+    delivery.runStatus !== 'waiting'
+  )
     return 'drop';
   return delivery.jobName !== 'execute-node-attempt' ||
     delivery.attemptStatus === 'ready'

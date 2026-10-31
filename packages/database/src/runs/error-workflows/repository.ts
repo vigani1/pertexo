@@ -13,6 +13,9 @@ import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js
 import { ErrorWorkflowDeliveryMismatchError } from './errors.js';
 import type { ErrorWorkflowStore } from './contract.js';
 import { acceptErrorWorkflow } from './accept.repository.js';
+import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
+
+const consumerName = DELIVERY_CONSUMER['start-error-workflow'];
 
 /** Admission, intent resolution and transport receipt share one commit. */
 export function createErrorWorkflowStore(
@@ -60,7 +63,7 @@ export function createErrorWorkflowStore(
           const claimed = await db
             .insert(inboxReceipts)
             .values({
-              consumerName: 'error-workflow',
+              consumerName,
               messageId: input.outboxEventId,
               workspaceId: input.workspaceId,
               payloadChecksum: input.payloadChecksum,
@@ -80,7 +83,7 @@ export function createErrorWorkflowStore(
               .where(
                 and(
                   eq(inboxReceipts.workspaceId, input.workspaceId),
-                  eq(inboxReceipts.consumerName, 'error-workflow'),
+                  eq(inboxReceipts.consumerName, consumerName),
                   eq(inboxReceipts.messageId, input.outboxEventId),
                 ),
               )
@@ -99,7 +102,7 @@ export function createErrorWorkflowStore(
             .set({ completedAt: sql`clock_timestamp()` })
             .where(
               and(
-                eq(inboxReceipts.consumerName, 'error-workflow'),
+                eq(inboxReceipts.consumerName, consumerName),
                 eq(inboxReceipts.messageId, input.outboxEventId),
                 eq(inboxReceipts.workspaceId, input.workspaceId),
                 eq(inboxReceipts.payloadChecksum, input.payloadChecksum),

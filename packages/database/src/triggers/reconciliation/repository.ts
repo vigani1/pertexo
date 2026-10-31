@@ -29,8 +29,10 @@ import {
 } from './errors.js';
 import { readHealth, refreshWorkflowActivation } from './health.repository.js';
 import { reconcileActiveWorkflowTriggers } from './materialization.repository.js';
+import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 
-const reconciliationConsumerName = 'trigger-runtime.reconciliation';
+const reconciliationConsumerName =
+  DELIVERY_CONSUMER['reconcile-workflow-triggers'];
 const transportChecksumMismatch = Symbol('transport-checksum-mismatch');
 
 async function completeReceipt(

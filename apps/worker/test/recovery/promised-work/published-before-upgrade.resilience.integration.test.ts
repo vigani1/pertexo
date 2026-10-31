@@ -84,14 +84,12 @@ describeFaults(
 
     const factsOf = (name: string): RunFacts => factsOfRun(facts, runs, name);
 
-    // reliability-code-01: nothing has a due time, so the scanner never looks at it.
-    it.fails('advances a run whose advance job has no due time', () => {
+    it('advances a run whose advance job has no due time', () => {
       expect(factsOf('advance').status).toBe('succeeded');
       expect(stack.sink.calls('after-old-advance')).toHaveLength(1);
     });
 
-    // reliability-code-01: as above; the attempt stays `ready`.
-    it.fails('runs a step whose attempt job has no due time', () => {
+    it('runs a step whose attempt job has no due time', () => {
       expect(factsOf('attempt').status).toBe('succeeded');
       expect(stack.sink.calls('old-attempt')).toHaveLength(1);
     });

@@ -9,6 +9,8 @@ import { lockDeliveryScope } from './delivery/authority.queries.js';
 import type { WorkspaceInvitationDeliveryStore } from './delivery/contract.js';
 import { assertInvitationDeliveryIdentity } from './delivery/identity.queries.js';
 import { sealedToken } from './input.js';
+import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
+import { inboxReceipts, outboxEvents } from '../../schema/transport.js';
 
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 
@@ -38,6 +40,9 @@ export function createWorkspaceInvitationDeliveryStore(
     complete: (
       raw: Parameters<WorkspaceInvitationDeliveryStore['complete']>[0],
     ) => completeInvitationDelivery(lease.pool, raw),
+    confirm: (
+      raw: Parameters<WorkspaceInvitationDeliveryStore['confirm']>[0],
+    ) => confirmInvitationDelivery(lease.pool, raw),
     close: () => lease.close(),
   });
 }
@@ -185,6 +190,24 @@ async function claimInvitationDelivery(
   });
 }
 
+async function confirmInvitationDelivery(
+  pool: Pool,
+  raw: Parameters<WorkspaceInvitationDeliveryStore['confirm']>[0],
+): ReturnType<WorkspaceInvitationDeliveryStore['confirm']> {
+  await transaction(pool, raw.workspaceId, raw.signal, async (client) => {
+    await drizzle(client)
+      .execute(
+        sql`insert into ${inboxReceipts}
+              (consumer_name, message_id, workspace_id, payload_checksum, completed_at)
+            select ${DELIVERY_CONSUMER['deliver-workspace-invitation']}, id, workspace_id, payload_checksum, clock_timestamp()
+              from ${outboxEvents}
+             where workspace_id = ${raw.workspaceId} and id = ${raw.outboxEventId}
+            on conflict do nothing`,
+      )
+      .catch(rethrowQueryFailure);
+  });
+}
+
 async function markInvitationDeliveryDispatching(
   pool: Pool,
   raw: Parameters<WorkspaceInvitationDeliveryStore['markDispatching']>[0],
@@ -207,7 +230,7 @@ async function markInvitationDeliveryDispatching(
           eq(attempts.workspaceId, workspaceId),
           eq(attempts.invitationId, invitationId),
           eq(attempts.id, deliveryAttemptId),
-          inArray(attempts.status, ['queued', 'unknown']),
+          eq(attempts.status, raw.recoveredUnknown ? 'unknown' : 'queued'),
         ),
       )
       .returning({ id: attempts.id })

@@ -34,6 +34,9 @@ export async function redispatchFailedOutbox(
         leaseToken: null,
         leaseExpiresAt: null,
         publishAttempts: 0,
+        // A row given up on after publishing still has its job in Redis's retained
+        // sets, and BullMQ ignores an add under a job ID it retains.
+        redeliveries: sql`${outboxEvents.redeliveries}+1`,
         failedAt: null,
         lastErrorCode: null,
         updatedAt: sql`clock_timestamp()`,

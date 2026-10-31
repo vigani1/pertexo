@@ -251,7 +251,7 @@ export class OutboxDispatcher {
       const job = toQueueJob(event);
       const currentJob = transportJobForName(job.name);
       jobObservation = currentJob;
-      const publication = await this.producer.publish(job);
+      const publication = await this.producer.publish(job, event.redeliveries);
       if (publication.outcome === 'outcome_unknown') {
         observeDispatchMetrics(() => {
           this.metrics.recordOutboxPublish({

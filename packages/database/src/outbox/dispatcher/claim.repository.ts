@@ -78,6 +78,7 @@ const leasedProjection = sql.join(
     sql`${leased.payload} as ${sql.identifier('payload')}`,
     sql`${leased.payloadChecksum} as ${sql.identifier('payloadChecksum')}`,
     sql`${leased.publishAttempts} as ${sql.identifier('publishAttempts')}`,
+    sql`${leased.redeliveries} as ${sql.identifier('redeliveries')}`,
     sql`${leased.workspaceId} as ${sql.identifier('workspaceId')}`,
   ],
   sql`, `,
@@ -180,7 +181,7 @@ async function leaseFairOutboxBatch(
           where ${event.id} = ${admitted.id}
           returning ${event.aggregateId},${event.aggregateType},${event.availableAt},${event.id},
                     ${event.jobName},${event.leaseExpiresAt},${event.leaseOwner},${event.leaseToken},
-                    ${event.payload},${event.payloadChecksum},${event.publishAttempts},${event.workspaceId}
+                    ${event.payload},${event.payloadChecksum},${event.publishAttempts},${event.redeliveries},${event.workspaceId}
         )
         select ${leasedProjection},
           (select count(*)::integer from cursor_updated) as "cursorUpdateCount"

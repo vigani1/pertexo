@@ -242,7 +242,7 @@ describe('overdueDeliveryAction', () => {
   it.each([
     ['advance-workflow-run', 'running', undefined, 'replace'],
     ['advance-workflow-run', 'waiting', undefined, 'replace'],
-    ['advance-workflow-run', 'queued', undefined, 'drop'],
+    ['advance-workflow-run', 'queued', undefined, 'replace'],
     ['advance-workflow-run', 'succeeded', undefined, 'drop'],
     ['advance-workflow-run', undefined, undefined, 'drop'],
     ['execute-node-attempt', 'running', 'ready', 'replace'],

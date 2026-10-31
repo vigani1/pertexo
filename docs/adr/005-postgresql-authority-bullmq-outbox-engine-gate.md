@@ -111,12 +111,16 @@ or operator decision, rather than claiming success or silently retrying.
 
 On Redis failure, consumers and dispatchers stop or pause safely; they do not
 invent state from missing queue entries. PostgreSQL outbox rows remain durable,
-leases expire and are reclaimed, and a published run job its consumer never
-confirmed by its `delivery_due_at` is replaced by a new outbox row automatically
-(ADR 007, stalled work). Publication failures retry with capped backoff for as
-long as Redis is refusing; only a row that can never publish ends as failed. On
-recovery, duplicate jobs are expected and are made safe by the inbox checksum
-and business idempotency rules. PostgreSQL failure
+leases expire and are reclaimed, and a published job of any kind that has no
+inbox receipt by its `delivery_due_at` goes back to the dispatcher automatically
+(ADR 007, stalled work). It is the same row, event ID and payload, so a repeat is
+safe for the reason every transport retry is; only its BullMQ job ID is new,
+because BullMQ ignores an add under an ID it retains. The delay doubles up to an
+hour, and after about a day a row ends as failed for an operator. Publication
+failures retry with capped backoff for as long as Redis is refusing; only a row
+that can never publish ends as failed, and a run job in that state is rebuilt from
+its run. On recovery, duplicate jobs are expected and are made safe by the inbox
+checksum and business idempotency rules. PostgreSQL failure
 has the same fail-closed posture for workers: no state transition is accepted
 from a stale queue payload.
 
