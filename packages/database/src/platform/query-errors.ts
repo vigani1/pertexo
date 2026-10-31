@@ -43,8 +43,12 @@ const TRANSIENT_NETWORK_CODES = new Set([
   'EAI_AGAIN',
 ]);
 
-/** Shutting down, starting up, too many connections: all clear up by themselves. */
+/**
+ * Shutting down, starting up, too many connections, out of time on a busy
+ * server: all clear up by themselves.
+ */
 const TRANSIENT_POSTGRES_CODES = new Set([
+  '57014',
   '57P01',
   '57P02',
   '57P03',
@@ -55,11 +59,11 @@ const TRANSIENT_POSTGRES_CODES = new Set([
 ]);
 
 const TRANSIENT_CLIENT_MESSAGE =
-  /^(?:Connection terminated|timeout exceeded when trying to connect|Client has encountered a connection error|Connection ended unexpectedly)/u;
+  /^(?:Connection terminated|timeout exceeded when trying to connect|Client has encountered a connection error|Connection ended unexpectedly|Query read timeout)/u;
 
 /**
- * True when Postgres was unreachable or briefly refused, so the same call can
- * work moments later. Anything else keeps its meaning and is never retried.
+ * True when Postgres was unreachable, slow or briefly refused, so the same call
+ * can work moments later. Anything else keeps its meaning and is never retried.
  */
 export function isTransientDatabaseFailure(error: unknown): boolean {
   try {

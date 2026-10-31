@@ -88,9 +88,7 @@ describe('isTransientDatabaseFailure', () => {
     expect(isTransientDatabaseFailure(wrapped(failure('23505')))).toBe(false);
   });
 
-  // reliability-code-01: a slow database is not a refusal. Each pool sets a statement and a
-  // query timeout, so a busy Postgres aborts a healthy provider call through the heartbeat.
-  it.fails.each([
+  it.each([
     ['canceling statement due to statement timeout', '57014'],
     ['Query read timeout', undefined],
   ])('retries a statement that ran out of time (%s)', (message, code) => {
