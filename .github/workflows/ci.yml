@@ -169,7 +169,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # A stuck run makes a fault test wait out its full recovery limit.
+    timeout-minutes: ${{ matrix.group == 'faults' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
