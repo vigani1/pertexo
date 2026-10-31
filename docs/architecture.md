@@ -42,6 +42,11 @@ keeps them out of the applications. `/testing` supplies fixtures. Observability'
 instrumented runtime libraries. Artifact storage, execution, queue and rate
 limiting are server-side packages despite having a single root door.
 
+Applications depend on `core`, and `core` on `database`, the engine and the
+model; a check refuses the reverse. Each core area has an `index.ts`, where other
+areas and `@pertexo/core/server` meet it. Functions that database areas still
+call stay in `database` until their last caller moves.
+
 The model supplies the engine's data contracts; execution connects pure engine
 decisions to database stores; the API and worker assemble those dependencies.
 The database uses engine plan/checkpoint types and the built-in schedule config
