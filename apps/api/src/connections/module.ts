@@ -22,7 +22,10 @@ import {
   FailureNotificationWorkflowEditGuard,
 } from './http/guards.js';
 import type { ConnectionDependencies } from './ports.js';
-import { NOOP_CONNECTION_TELEMETRY } from './telemetry.js';
+import {
+  NOOP_CONNECTION_TELEMETRY,
+  type ConnectionTelemetry,
+} from './telemetry.js';
 import { CONNECTION_AUTHORIZATION } from './tokens.js';
 import {
   CreateConnectionUseCase,
@@ -33,6 +36,46 @@ import {
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
 } from './use-cases/management.js';
+
+function oauth2Providers({
+  oauth2,
+  authorization,
+  encryption,
+  applicationSecret,
+}: ConnectionDependencies): readonly Provider[] {
+  if (oauth2 === undefined) return [];
+  return [
+    {
+      provide: StartOAuth2AuthorizationUseCase,
+      useValue: new StartOAuth2AuthorizationUseCase(
+        oauth2,
+        authorization,
+        encryption,
+        applicationSecret,
+      ),
+    },
+    {
+      provide: FinishOAuth2AuthorizationUseCase,
+      useValue: new FinishOAuth2AuthorizationUseCase(
+        oauth2,
+        encryption,
+        applicationSecret,
+      ),
+    },
+  ];
+}
+
+/** The usual three arguments of a use case that only reads and answers. */
+const answering = (
+  dependencies: ConnectionDependencies,
+  telemetry: ConnectionTelemetry,
+) =>
+  [
+    dependencies.persistence,
+    dependencies.authorization,
+    telemetry,
+    dependencies.oauth2,
+  ] as const;
 
 @Module({})
 // Nest dynamic modules require a class container.
@@ -71,19 +114,13 @@ export class ConnectionsModule {
       {
         provide: ListConnectionsUseCase,
         useValue: new ListConnectionsUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-          telemetry,
-          dependencies.oauth2,
+          ...answering(dependencies, telemetry),
         ),
       },
       {
         provide: GetConnectionUseCase,
         useValue: new GetConnectionUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-          telemetry,
-          dependencies.oauth2,
+          ...answering(dependencies, telemetry),
         ),
       },
       {
@@ -115,10 +152,7 @@ export class ConnectionsModule {
       {
         provide: RevokeConnectionUseCase,
         useValue: new RevokeConnectionUseCase(
-          dependencies.persistence,
-          dependencies.authorization,
-          telemetry,
-          dependencies.oauth2,
+          ...answering(dependencies, telemetry),
         ),
       },
       {
@@ -150,26 +184,7 @@ export class ConnectionsModule {
         ),
       },
     ];
-    if (dependencies.oauth2 !== undefined)
-      providers.push(
-        {
-          provide: StartOAuth2AuthorizationUseCase,
-          useValue: new StartOAuth2AuthorizationUseCase(
-            dependencies.oauth2,
-            dependencies.authorization,
-            dependencies.encryption,
-            dependencies.applicationSecret,
-          ),
-        },
-        {
-          provide: FinishOAuth2AuthorizationUseCase,
-          useValue: new FinishOAuth2AuthorizationUseCase(
-            dependencies.oauth2,
-            dependencies.encryption,
-            dependencies.applicationSecret,
-          ),
-        },
-      );
+    providers.push(...oauth2Providers(dependencies));
     if (dependencies.sharingPersistence !== undefined)
       providers.push({
         provide: ConnectionSharingUseCases,

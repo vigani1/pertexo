@@ -107,10 +107,8 @@ export {
   createOAuth2RenewalClient,
   isOAuth2HostAllowed,
 } from './http-request/execution/oauth2-renewal.js';
-export {
-  createOAuth2TokenService,
-  withCommitAttempts,
-} from './oauth2/access-token.js';
+export { createOAuth2TokenService } from './oauth2/access-token.js';
+export { withCommitAttempts } from './oauth2/refresh.js';
 export type {
   OAuth2TokenScope,
   OAuth2TokenService,

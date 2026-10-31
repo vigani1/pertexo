@@ -170,13 +170,15 @@ async function persistRotatedConnectionSecret(
         client,
         workspaceId,
         connectionId,
-        secretVersionId,
-        input.expectedAuthType === CONNECTION_AUTH_TYPE.oauth2
-          ? {
-              status: CONNECTION_STATUS.reauthorizationRequired,
-              lastErrorCode: 'connection.oauth2_not_authorized',
-            }
-          : { status: CONNECTION_STATUS.active, lastErrorCode: null },
+        {
+          secretVersionId,
+          ...(input.expectedAuthType === CONNECTION_AUTH_TYPE.oauth2
+            ? {
+                status: CONNECTION_STATUS.reauthorizationRequired,
+                lastErrorCode: 'connection.oauth2_not_authorized',
+              }
+            : { status: CONNECTION_STATUS.active, lastErrorCode: null }),
+        },
       );
       await drizzle(client)
         .insert(connectionEvents)

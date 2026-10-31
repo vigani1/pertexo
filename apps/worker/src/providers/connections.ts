@@ -3,6 +3,7 @@ import {
   ConnectionOAuth2NotConnectedError,
   ConnectionUnavailableError,
   type ConnectionResolutionDatabase,
+  type ResolvedConnectionSecretRecord,
 } from '@pertexo/database/connections';
 import {
   OAuth2TokenFailure,
@@ -34,6 +35,64 @@ function abortError(): DOMException {
 
 function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted) throw abortError();
+}
+
+async function openSecret(
+  encryption: Pick<ConnectionEnvelopeEncryption, 'open'>,
+  workspaceId: string,
+  input: Readonly<{ connectionId: string; signal: AbortSignal }>,
+  resolved: ResolvedConnectionSecretRecord,
+) {
+  const secret = await encryption.open(
+    resolved.sealed,
+    {
+      workspaceId,
+      connectionId: input.connectionId,
+      secretVersionId: resolved.secretVersionId,
+    },
+    input.signal,
+  );
+  if (input.signal.aborted) {
+    secret.fill(0);
+    throw abortError();
+  }
+  return Object.freeze({
+    connectionId: resolved.connection.id,
+    providerKey: resolved.connection.providerKey,
+    authType: resolved.connection.authType,
+    secretVersionId: resolved.secretVersionId,
+    secret,
+  });
+}
+
+async function assertSecretCurrent(
+  database: ConnectionResolutionDatabase,
+  workspaceId: string,
+  input: Parameters<NonNullable<NodeConnectionRuntime['assertCurrent']>>[0],
+): Promise<void> {
+  assertNotAborted(input.signal);
+  const unsupportedAuthType =
+    input.expectedAuthType !== CONNECTION_AUTH_TYPE.signingKey &&
+    input.expectedAuthType !== CONNECTION_AUTH_TYPE.httpHeaders &&
+    input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken &&
+    input.expectedAuthType !== CONNECTION_AUTH_TYPE.resendApiKey &&
+    input.expectedAuthType !== CONNECTION_AUTH_TYPE.oauth2;
+  if (unsupportedAuthType) throw new ProviderCredentialInvalidError();
+  try {
+    await database.assertConnectionSecretCurrent({
+      workspaceId,
+      connectionId: input.connectionId,
+      expectedProviderKey: input.expectedProviderKey,
+      expectedAuthType: input.expectedAuthType,
+      secretVersionId: input.secretVersionId,
+      signal: input.signal,
+    });
+  } catch (error: unknown) {
+    if (error instanceof ConnectionUnavailableError)
+      throw new ProviderCredentialInvalidError();
+    throw error;
+  }
+  assertNotAborted(input.signal);
 }
 
 export function createProviderConnectionRuntimeFactory(
@@ -86,32 +145,6 @@ export function createProviderConnectionRuntimeFactory(
       }
     };
 
-    const openSecret = async (
-      input: Readonly<{ connectionId: string; signal: AbortSignal }>,
-      resolved: Awaited<ReturnType<typeof resolveRecord>>,
-    ) => {
-      const secret = await encryption.open(
-        resolved.sealed,
-        {
-          workspaceId: context.workspaceId,
-          connectionId: input.connectionId,
-          secretVersionId: resolved.secretVersionId,
-        },
-        input.signal,
-      );
-      if (input.signal.aborted) {
-        secret.fill(0);
-        throw abortError();
-      }
-      return Object.freeze({
-        connectionId: resolved.connection.id,
-        providerKey: resolved.connection.providerKey,
-        authType: resolved.connection.authType,
-        secretVersionId: resolved.secretVersionId,
-        secret,
-      });
-    };
-
     const tokenScope = (connectionId: string): OAuth2TokenScope => ({
       workspaceId: context.workspaceId,
       connectionId,
@@ -134,7 +167,7 @@ export function createProviderConnectionRuntimeFactory(
         }
         if (resolved.connection.authType !== input.expectedAuthType)
           throw new ProviderCredentialInvalidError();
-        return openSecret(input, resolved);
+        return openSecret(encryption, context.workspaceId, input, resolved);
       },
       resolveHttpCredential: async (
         input: Parameters<
@@ -148,7 +181,12 @@ export function createProviderConnectionRuntimeFactory(
         });
         if (resolved.connection.authType === CONNECTION_AUTH_TYPE.httpHeaders)
           return {
-            ...(await openSecret(input, resolved)),
+            ...(await openSecret(
+              encryption,
+              context.workspaceId,
+              input,
+              resolved,
+            )),
             authType: 'http_headers',
           };
         if (
@@ -182,35 +220,11 @@ export function createProviderConnectionRuntimeFactory(
               input.tokenVersionId,
               input.signal,
             ),
-      assertCurrent: async (
+      assertCurrent: (
         input: Parameters<
           NonNullable<NodeConnectionRuntime['assertCurrent']>
         >[0],
-      ): Promise<void> => {
-        assertNotAborted(input.signal);
-        const unsupportedAuthType =
-          input.expectedAuthType !== CONNECTION_AUTH_TYPE.signingKey &&
-          input.expectedAuthType !== CONNECTION_AUTH_TYPE.httpHeaders &&
-          input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken &&
-          input.expectedAuthType !== CONNECTION_AUTH_TYPE.resendApiKey &&
-          input.expectedAuthType !== CONNECTION_AUTH_TYPE.oauth2;
-        if (unsupportedAuthType) throw new ProviderCredentialInvalidError();
-        try {
-          await database.assertConnectionSecretCurrent({
-            workspaceId: context.workspaceId,
-            connectionId: input.connectionId,
-            expectedProviderKey: input.expectedProviderKey,
-            expectedAuthType: input.expectedAuthType,
-            secretVersionId: input.secretVersionId,
-            signal: input.signal,
-          });
-        } catch (error: unknown) {
-          if (error instanceof ConnectionUnavailableError)
-            throw new ProviderCredentialInvalidError();
-          throw error;
-        }
-        assertNotAborted(input.signal);
-      },
+      ) => assertSecretCurrent(database, context.workspaceId, input),
     });
   };
 }

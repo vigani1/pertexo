@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { createOAuth2RenewalClient } from '../../src/http-request/execution/oauth2-renewal.js';
@@ -25,9 +27,7 @@ function service(statuses: readonly number[]) {
         const stream = {
           status,
           headers: {},
-          body: (async function* () {
-            yield new Uint8Array();
-          })(),
+          body: Readable.from([new Uint8Array()]),
           bodyEncoding: 'utf8',
           finalUrl: 'https://api.example.com',
           redirectCount: 0,
