@@ -10,8 +10,8 @@ import {
   withTenantScopedReadClient,
 } from '@pertexo/database/primitives';
 import {
-  BROWSABLE_WORKSPACE_STATUSES,
   rolesForCapability,
+  UNPURGED_WORKSPACE_STATUSES,
   type AuthorizationCapability,
 } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
@@ -27,7 +27,7 @@ export function createWorkspaceVariablesStore(
   runtime?: DatabaseRuntime,
 ): WorkspaceVariablesStore {
   const lease = acquireDatabasePool(config, runtime);
-  /** A suspended workspace stays readable (ADR 013/027); its writes don't. */
+  /** Readable until the purge starts (ADR 013/027); writes need an active workspace. */
   function browse<T>(
     input: VariableScope,
     capability: AuthorizationCapability,
@@ -40,7 +40,7 @@ export function createWorkspaceVariablesStore(
         await readWorkspaceAuthority(client, input.workspaceId, {
           actorId: input.actorId,
           roles: rolesForCapability(capability),
-          allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
+          allowedStatuses: UNPURGED_WORKSPACE_STATUSES,
         });
         return read(client);
       },

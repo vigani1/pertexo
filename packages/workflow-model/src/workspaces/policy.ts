@@ -13,6 +13,14 @@ export const BROWSABLE_WORKSPACE_STATUSES = Object.freeze([
   'active',
   'suspended',
 ] as const);
+/**
+ * A workspace scheduled for deletion can still be restored, and its owner opens
+ * it to decide. Reads using this list stay open until the purge starts.
+ */
+export const UNPURGED_WORKSPACE_STATUSES = Object.freeze([
+  ...BROWSABLE_WORKSPACE_STATUSES,
+  'pending_deletion',
+] as const);
 export const DELEGATED_ROLES = Object.freeze(
   ROLES.filter((role) => role !== 'owner'),
 );
