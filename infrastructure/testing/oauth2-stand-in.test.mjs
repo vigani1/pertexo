@@ -321,6 +321,15 @@ describe('the OAuth2 stand-in', () => {
     );
   });
 
+  it('gives the Retry-After it is told', async () => {
+    const clientId = standIn.newClient('429');
+    standIn.setRetryAfter(clientId, 3_600);
+    const response = await postToken(clientId, {
+      grant_type: 'client_credentials',
+    });
+    assert.equal(response.headers.get('retry-after'), '3600');
+  });
+
   it('redirects the token request, and records what reaches the target', async () => {
     const before = standIn.redirectTargetRequests().length;
     const response = await postToken(standIn.newClient('redirect'), {
@@ -454,6 +463,24 @@ describe('the OAuth2 stand-in', () => {
     standIn.scriptAnswers(clientId, ['429']);
     assert.equal((await refresh(clientId, refresh_token)).status, 429);
     assert.equal((await refresh(clientId, refresh_token)).status, 200);
+  });
+
+  it('accepts a replaced refresh token when told, and records what it issued', async () => {
+    const clientId = standIn.newClient('rotating');
+    const first = await exchange(clientId);
+    standIn.acceptAnyRefresh(clientId);
+    const renewed = await (await refresh(clientId, first.refresh_token)).json();
+    const late = await refresh(clientId, first.refresh_token);
+    assert.equal(late.status, 200);
+    const [, second] = standIn.tokenRequests(clientId);
+    assert.equal(second.issued.accessToken, renewed.access_token);
+    assert.equal(second.issued.refreshToken, renewed.refresh_token);
+  });
+
+  it('gives a lifetime inside the renewal window when short-lived', async () => {
+    const answer = await exchange(standIn.newClient('short-lived'));
+    assert.equal(answer.expires_in, 30);
+    assert.ok(answer.refresh_token);
   });
 
   it('sets a short lifetime when told', async () => {
