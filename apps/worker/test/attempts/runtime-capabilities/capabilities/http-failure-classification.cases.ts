@@ -130,7 +130,10 @@ export function registerHttpFailureClassification(): void {
         spoolDirectory,
       },
     );
+    // performance-03: the store is only reported on; it doesn't gate readiness.
     await expect(runtime.checkReadiness()).resolves.toBeUndefined();
+    expect(checkReadiness).not.toHaveBeenCalled();
+    await expect(runtime.checkObjectStore()).resolves.toBeUndefined();
     expect(checkReadiness).toHaveBeenCalledOnce();
     const artifacts = runtime.factories.artifacts?.(context);
     if (artifacts === undefined) throw new Error('artifact capability missing');

@@ -164,7 +164,6 @@ export function registerCorrectsReadyWriteCompletesAfterBounded(): void {
       idleRuntime(),
       idleRuntime(),
       idleRuntime(),
-      idleRuntime(),
       mail as never,
     );
     await expect(readiness.checkReadiness()).rejects.toThrow(
