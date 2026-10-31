@@ -31,6 +31,7 @@ export function registerParsesValidEnvironmentValuesIntoTyped(): void {
         ownerRole: 'pertexo_owner',
       },
       host: '127.0.0.1',
+      httpAllowedPrivateNetworks: [],
       nodeEnv: 'test',
       observability: {
         environment: 'test',
