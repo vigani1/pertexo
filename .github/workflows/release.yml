@@ -57,9 +57,9 @@ jobs:
           # A patch to an older version must not take stable backwards.
           newest=$(git tag --list 'v*' --sort=-version:refname | grep -m 1 -E '^v[0-9]+\.[0-9]+\.[0-9]+$')
           for image in ghcr.io/vigani1/pertexo ghcr.io/vigani1/pertexo-web; do
-            docker buildx imagetools create --tag "$image:$VERSION" "$image:$GITHUB_SHA"
+            .github/scripts/retry-once.sh docker buildx imagetools create --tag "$image:$VERSION" "$image:$GITHUB_SHA"
             if [[ $VERSION == "$newest" ]]; then
-              docker buildx imagetools create --tag "$image:stable" "$image:$GITHUB_SHA"
+              .github/scripts/retry-once.sh docker buildx imagetools create --tag "$image:stable" "$image:$GITHUB_SHA"
             fi
           done
           docker logout ghcr.io

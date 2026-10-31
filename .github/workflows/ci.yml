@@ -198,7 +198,7 @@ jobs:
         # These tests never load the web bundle.
         run: pnpm build:packages
       - name: Start services
-        run: docker compose up -d --wait postgres redis artifact-store
+        uses: ./.github/actions/start-services
       - name: Migrate
         run: pnpm db:migrate
       - name: Record owned-fixture manifest
@@ -282,7 +282,7 @@ jobs:
       - name: Build
         run: pnpm build:packages
       - name: Start services
-        run: docker compose up -d --wait postgres redis artifact-store
+        uses: ./.github/actions/start-services
       - name: Migrate
         run: pnpm db:migrate
       - name: Fault tests
@@ -367,7 +367,7 @@ jobs:
           @pertexo/code-runner... --filter '@pertexo/web^...' build
       - name: Start services
         if: matrix.journeys != ''
-        run: docker compose up -d --wait postgres redis artifact-store
+        uses: ./.github/actions/start-services
       - name: Browser journeys against the real stack
         if: matrix.journeys != ''
         env:
@@ -447,8 +447,9 @@ jobs:
           node-version: 24
       - name: Build production image
         run:
-          docker buildx build --load --target runtime --build-arg
-          SOURCE_COMMIT=${{ github.sha }} --tag pertexo-ci:${{ github.sha }} .
+          .github/scripts/retry-once.sh docker buildx build --load --target
+          runtime --build-arg SOURCE_COMMIT=${{ github.sha }} --tag
+          pertexo-ci:${{ github.sha }} .
       - name:
           Runs as non-root on a read-only filesystem and loads every entrypoint
         run: |
@@ -473,10 +474,10 @@ jobs:
       - name: Build and qualify the web image
         run: |
           set -euo pipefail
-          docker buildx build --load --target web --build-arg SOURCE_COMMIT=${{ github.sha }} \
+          .github/scripts/retry-once.sh docker buildx build --load --target web --build-arg SOURCE_COMMIT=${{ github.sha }} \
             --tag pertexo-web-ci:${{ github.sha }} .
           proxy_image="$(node infrastructure/images/proxy/image.mjs)"
-          docker pull "$proxy_image"
+          .github/scripts/retry-once.sh docker pull "$proxy_image"
           node infrastructure/images/verify-web.mjs pertexo-ci:${{ github.sha }} pertexo-web-ci:${{ github.sha }} "$proxy_image"
 
   # Every merged commit gets images, built and qualified here on its own architecture.
@@ -516,9 +517,9 @@ jobs:
         run: |
           set -euo pipefail
           tag="$GITHUB_SHA-$ARCHITECTURE"
-          docker buildx build --load --platform "$PLATFORM" --target runtime \
+          .github/scripts/retry-once.sh docker buildx build --load --platform "$PLATFORM" --target runtime \
             --build-arg SOURCE_COMMIT="$GITHUB_SHA" --tag ghcr.io/vigani1/pertexo:"$tag" .
-          docker buildx build --load --platform "$PLATFORM" --target web \
+          .github/scripts/retry-once.sh docker buildx build --load --platform "$PLATFORM" --target web \
             --build-arg SOURCE_COMMIT="$GITHUB_SHA" --tag ghcr.io/vigani1/pertexo-web:"$tag" .
           test "$(docker image inspect --format '{{.Architecture}}' ghcr.io/vigani1/pertexo:"$tag")" = "$ARCHITECTURE"
           test "$(docker run --rm --read-only --tmpfs /tmp --entrypoint id ghcr.io/vigani1/pertexo:"$tag" -u)" = 10001
@@ -533,7 +534,7 @@ jobs:
           node infrastructure/single-server/backup/verify-runtime.mjs ghcr.io/vigani1/pertexo:"$tag"
           node infrastructure/images/code/verify.mjs ghcr.io/vigani1/pertexo:"$tag"
           proxy_image="$(node infrastructure/images/proxy/image.mjs)"
-          docker pull "$proxy_image"
+          .github/scripts/retry-once.sh docker pull "$proxy_image"
           node infrastructure/images/verify-web.mjs ghcr.io/vigani1/pertexo:"$tag" ghcr.io/vigani1/pertexo-web:"$tag" "$proxy_image"
       - name: Publish this architecture to GHCR
         env:
@@ -542,7 +543,7 @@ jobs:
           set -euo pipefail
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           for image in ghcr.io/vigani1/pertexo ghcr.io/vigani1/pertexo-web; do
-            docker push "$image:$GITHUB_SHA-$ARCHITECTURE"
+            .github/scripts/retry-once.sh docker push "$image:$GITHUB_SHA-$ARCHITECTURE"
           done
           docker logout ghcr.io
 
@@ -556,6 +557,8 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Publish the commit tag for both architectures
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -565,7 +568,7 @@ jobs:
           for image in ghcr.io/vigani1/pertexo ghcr.io/vigani1/pertexo-web; do
             # A rerun must not replace an already published release tag.
             if ! docker manifest inspect "$image:$GITHUB_SHA" >/dev/null 2>&1; then
-              docker buildx imagetools create --tag "$image:$GITHUB_SHA" \
+              .github/scripts/retry-once.sh docker buildx imagetools create --tag "$image:$GITHUB_SHA" \
                 "$image:$GITHUB_SHA-amd64" "$image:$GITHUB_SHA-arm64"
             fi
           done
@@ -617,7 +620,9 @@ jobs:
       - name: Use the Docker Hub mirror
         uses: ./.github/actions/docker-mirror
       - name: Build the images once
-        run: node infrastructure/single-server/test/drill/build-images.mjs
+        run:
+          .github/scripts/retry-once.sh node
+          infrastructure/single-server/test/drill/build-images.mjs
       - name: Web tier
         run: node --test infrastructure/single-server/test/drill/proxy.test.mjs
       - name: Real deploy, backup and restore

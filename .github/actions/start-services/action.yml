@@ -1,0 +1,17 @@
+name: Start the test services
+description:
+  Pull and start PostgreSQL, Redis and the object store, retrying each once. No
+  test runs here, so a retry can't hide a flaky one.
+runs:
+  using: composite
+  steps:
+    - name: Pull the images
+      shell: bash
+      run:
+        .github/scripts/retry-once.sh docker compose pull --quiet postgres redis
+        artifact-store
+    - name: Start the services
+      shell: bash
+      run:
+        .github/scripts/retry-once.sh docker compose up -d --wait postgres redis
+        artifact-store
