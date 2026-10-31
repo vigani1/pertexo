@@ -157,7 +157,9 @@ export function readPendingEndpoint(
       trigger,
       and(
         eq(trigger.workspaceId, endpoint.workspaceId),
-        eq(trigger.id, endpoint.triggerId),
+        eq(trigger.workflowId, endpoint.workflowId),
+        eq(trigger.nodeId, endpoint.nodeId),
+        eq(trigger.workflowVersionId, event.workflow_version_id),
       ),
     )
     .where(
@@ -165,9 +167,7 @@ export function readPendingEndpoint(
         eq(endpoint.workspaceId, transaction.workspaceId),
         eq(endpoint.id, sql`${event.endpoint_id}`),
         eq(endpoint.status, 'active'),
-        eq(trigger.status, 'active'),
-        eq(trigger.workflowVersionId, event.workflow_version_id),
       ),
     )
-    .for('share', { of: [endpoint, trigger] });
+    .for('share', { of: [endpoint] });
 }

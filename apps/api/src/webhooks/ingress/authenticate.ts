@@ -83,7 +83,7 @@ async function verifyWebhookSecrets(
 async function openSecret(
   encryption: WebhookTriggerEnvelopeEncryption,
   sealed: WebhookVerificationReference['currentSecret'],
-  verification: Pick<WebhookVerificationReference, 'workspaceId' | 'triggerId'>,
+  verification: Pick<WebhookVerificationReference, 'workspaceId'>,
   signal: AbortSignal,
 ) {
   return encryption.open(
@@ -96,7 +96,7 @@ async function openSecret(
     },
     {
       workspaceId: verification.workspaceId,
-      triggerId: verification.triggerId,
+      triggerId: sealed.triggerId,
       secretVersionId: sealed.id,
     },
     signal,

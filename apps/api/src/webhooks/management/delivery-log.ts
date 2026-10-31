@@ -65,7 +65,6 @@ export async function recordRejectedAttempt(
     await database.recordRejectedDelivery({
       endpoint: {
         workspaceId: verification.workspaceId,
-        triggerId: verification.triggerId,
         endpointId: verification.endpointId,
       },
       ...attempt,

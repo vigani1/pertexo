@@ -8,7 +8,7 @@ import {
 import { workspaces } from '../../../schema/foundation.js';
 import { webhookTriggerEndpoints } from '../../../schema/triggers/endpoints.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
-import { and, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 
 import type { PublishedWorkflow } from '../../../runs/queries/execution/contract.js';
@@ -79,44 +79,32 @@ export async function lockEligibleEndpoint(
   { replaying = false }: Readonly<{ replaying?: boolean | undefined }> = {},
 ): Promise<void> {
   const endpoint = alias(webhookTriggerEndpoints, 'endpoint');
-  const trigger = alias(workflowTriggers, 'trigger');
   const workflow = alias(workflows, 'workflow');
   const workspace = alias(workspaces, 'workspace');
   const eligible = await transaction.db
     .select({
-      workflow_version_id: trigger.workflowVersionId,
       trigger_pause_state: workflow.triggerPauseState,
+      published_version_id: workflow.publishedVersionId,
     })
     .from(endpoint)
     .innerJoin(
-      trigger,
-      and(
-        eq(trigger.workspaceId, endpoint.workspaceId),
-        eq(trigger.id, endpoint.triggerId),
-      ),
-    )
-    .innerJoin(
       workflow,
       and(
-        eq(workflow.workspaceId, trigger.workspaceId),
-        eq(workflow.id, trigger.workflowId),
+        eq(workflow.workspaceId, endpoint.workspaceId),
+        eq(workflow.id, endpoint.workflowId),
       ),
     )
-    .innerJoin(workspace, eq(workspace.id, trigger.workspaceId))
+    .innerJoin(workspace, eq(workspace.id, endpoint.workspaceId))
     .where(
       and(
         eq(endpoint.workspaceId, transaction.workspaceId),
         eq(endpoint.id, verification.endpointId),
         eq(endpoint.endpointKeyHash, verification.endpointKeyHash),
-        eq(endpoint.triggerId, verification.triggerId),
+        eq(endpoint.workflowId, verification.workflowId),
+        eq(endpoint.nodeId, verification.nodeId),
         sql`${endpoint.authentication}=${JSON.stringify(verification.authentication)}::jsonb`,
         eq(endpoint.status, 'active'),
-        eq(trigger.status, 'active'),
-        eq(trigger.workflowId, verification.workflowId),
-        eq(trigger.workflowVersionId, verification.workflowVersionId),
-        eq(workflow.publishedVersionId, trigger.workflowVersionId),
         eq(workflow.lifecycleStatus, 'active'),
-        inArray(workflow.activationStatus, ['active', 'degraded']),
         eq(workspace.status, 'active'),
         or(
           eq(endpoint.currentSecretVersionId, verifiedSecretVersionId),
@@ -127,10 +115,45 @@ export async function lockEligibleEndpoint(
         ),
       ),
     )
-    .for('share', { of: [endpoint, trigger, workflow, workspace] });
+    .for('share', { of: [endpoint, workflow, workspace] });
   const row = eligible[0];
-  if (row === undefined) throw new WebhookDeliveryIneligibleError();
+  // A publish that lands after verification leaves this delivery on the version it
+  // verified against, as if it had arrived first. Only a removed step refuses it.
+  if (
+    row === undefined ||
+    !(await stepIsPublished(
+      transaction,
+      verification,
+      row.published_version_id,
+    ))
+  )
+    throw new WebhookDeliveryIneligibleError();
   // ADR 056: the shared workflow lock orders this admission against a pause.
   if (!replaying && row.trigger_pause_state === 'paused')
     throw new WebhookWorkflowPausedError();
+}
+
+/**
+ * A separate statement on purpose: joined under the row lock above, a publish committing
+ * during the wait would re-check this row against the old trigger and refuse a valid delivery.
+ */
+async function stepIsPublished(
+  transaction: WorkspaceTransaction,
+  verification: WebhookVerificationReference,
+  publishedVersionId: string | null,
+): Promise<boolean> {
+  if (publishedVersionId === null) return false;
+  const published = await transaction.db
+    .select({ one: sql`1` })
+    .from(workflowTriggers)
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, transaction.workspaceId),
+        eq(workflowTriggers.workflowId, verification.workflowId),
+        eq(workflowTriggers.nodeId, verification.nodeId),
+        eq(workflowTriggers.workflowVersionId, publishedVersionId),
+        eq(workflowTriggers.kind, 'webhook'),
+      ),
+    );
+  return published.length === 1;
 }

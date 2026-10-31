@@ -125,28 +125,28 @@ export async function seedApiOwnedRows(
   ]) {
     await client.query(
       `insert into app.webhook_trigger_secret_versions
-         (id,workspace_id,trigger_id,kms_key_reference,
+         (id,workspace_id,trigger_id,workflow_id,node_id,kms_key_reference,
           encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
-       values ($1,$2,$3,'worker-lifecycle-kms','worker-lifecycle-key',
+       select $1,workspace_id,id,workflow_id,node_id,'worker-lifecycle-kms','worker-lifecycle-key',
                'worker-lifecycle-cipher','worker-lifecycle-nonce',
-               'worker-lifecycle-auth-tag',$4)`,
+               'worker-lifecycle-auth-tag',$4
+         from app.workflow_triggers where workspace_id=$2 and id=$3`,
       [secretId, workspaceId, triggerId, actorId],
     );
   }
   await client.query(
     `insert into app.webhook_trigger_endpoints
-       (id,workspace_id,trigger_id,endpoint_key_hash,status,current_secret_version_id)
+       (id,workspace_id,workflow_id,node_id,endpoint_key_hash,status,current_secret_version_id)
      values
-       ($1,$2,$3,$4,'active',$5),
-       ($6,$2,$7,$8,'disabled',$9)`,
+       ($1,$2,$3,'active-webhook',$4,'active',$5),
+       ($6,$2,$3,'disabled-webhook',$7,'disabled',$8)`,
     [
       ids.activeWebhookEndpoint,
       workspaceId,
-      ids.activeWebhook,
+      ids.workflow,
       'a'.repeat(64),
       ids.activeWebhookSecret,
       ids.disabledWebhookEndpoint,
-      ids.disabledWebhook,
       'b'.repeat(64),
       ids.disabledWebhookSecret,
     ],

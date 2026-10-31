@@ -1,6 +1,6 @@
 import type { WebhookAuthentication } from '@pertexo/contracts';
 import { users } from '../foundation.js';
-import { workflowTriggers } from '../authoring/workflows.js';
+import { workflows, workflowTriggers } from '../authoring/workflows.js';
 import {
   type PgTableExtraConfigValue,
   char,
@@ -21,7 +21,11 @@ export const webhookTriggerSecretVersions = appSchema.table(
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
+    // The published trigger row this secret was sealed under. Its encryption
+    // context names this id, so it stays fixed while the endpoint moves on.
     triggerId: uuid('trigger_id').notNull(),
+    workflowId: uuid('workflow_id').notNull(),
+    nodeId: varchar('node_id', { length: 128 }).notNull(),
     purpose: varchar('purpose', { length: 32 })
       .notNull()
       .default(sql`'webhook_hmac_sha256'::character varying`),
@@ -40,9 +44,10 @@ export const webhookTriggerSecretVersions = appSchema.table(
       'webhook_trigger_secret_versions_purpose_valid',
       sql`((purpose)::text = 'webhook_hmac_sha256'::text)`,
     ),
-    unique('webhook_trigger_secret_versions_trigger_identity_unique').on(
+    unique('webhook_trigger_secret_versions_step_identity_unique').on(
       table.workspaceId,
-      table.triggerId,
+      table.workflowId,
+      table.nodeId,
       table.id,
     ),
     foreignKey({
@@ -52,18 +57,32 @@ export const webhookTriggerSecretVersions = appSchema.table(
     }).onDelete('restrict'),
     foreignKey({
       name: 'webhook_trigger_secret_versions_trigger_fk',
-      columns: [table.workspaceId, table.triggerId],
-      foreignColumns: [workflowTriggers.workspaceId, workflowTriggers.id],
+      columns: [
+        table.workspaceId,
+        table.triggerId,
+        table.workflowId,
+        table.nodeId,
+      ],
+      foreignColumns: [
+        workflowTriggers.workspaceId,
+        workflowTriggers.id,
+        workflowTriggers.workflowId,
+        workflowTriggers.nodeId,
+      ],
     }).onDelete('restrict'),
   ],
 );
 
+// An endpoint belongs to a workflow and its trigger step, not to a version: it
+// serves whichever published version contains that step, so a publish moves it
+// without touching this row.
 export const webhookTriggerEndpoints = appSchema.table(
   'webhook_trigger_endpoints',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    triggerId: uuid('trigger_id').notNull(),
+    workflowId: uuid('workflow_id').notNull(),
+    nodeId: varchar('node_id', { length: 128 }).notNull(),
     endpointKeyHash: char('endpoint_key_hash', { length: 64 }).notNull(),
     authentication: jsonb('authentication')
       .$type<WebhookAuthentication>()
@@ -101,7 +120,11 @@ export const webhookTriggerEndpoints = appSchema.table(
     unique('webhook_trigger_endpoints_endpoint_key_hash_key').on(
       table.endpointKeyHash,
     ),
-    unique('webhook_trigger_endpoints_trigger_id_key').on(table.triggerId),
+    unique('webhook_trigger_endpoints_step_unique').on(
+      table.workspaceId,
+      table.workflowId,
+      table.nodeId,
+    ),
     unique('webhook_trigger_endpoints_workspace_identity_unique').on(
       table.workspaceId,
       table.id,
@@ -110,12 +133,14 @@ export const webhookTriggerEndpoints = appSchema.table(
       name: 'webhook_trigger_endpoints_current_secret_fk',
       columns: [
         table.workspaceId,
-        table.triggerId,
+        table.workflowId,
+        table.nodeId,
         table.currentSecretVersionId,
       ],
       foreignColumns: [
         webhookTriggerSecretVersions.workspaceId,
-        webhookTriggerSecretVersions.triggerId,
+        webhookTriggerSecretVersions.workflowId,
+        webhookTriggerSecretVersions.nodeId,
         webhookTriggerSecretVersions.id,
       ],
     }).onDelete('restrict'),
@@ -123,19 +148,21 @@ export const webhookTriggerEndpoints = appSchema.table(
       name: 'webhook_trigger_endpoints_previous_secret_fk',
       columns: [
         table.workspaceId,
-        table.triggerId,
+        table.workflowId,
+        table.nodeId,
         table.previousSecretVersionId,
       ],
       foreignColumns: [
         webhookTriggerSecretVersions.workspaceId,
-        webhookTriggerSecretVersions.triggerId,
+        webhookTriggerSecretVersions.workflowId,
+        webhookTriggerSecretVersions.nodeId,
         webhookTriggerSecretVersions.id,
       ],
     }).onDelete('restrict'),
     foreignKey({
-      name: 'webhook_trigger_endpoints_trigger_fk',
-      columns: [table.workspaceId, table.triggerId],
-      foreignColumns: [workflowTriggers.workspaceId, workflowTriggers.id],
+      name: 'webhook_trigger_endpoints_workflow_fk',
+      columns: [table.workspaceId, table.workflowId],
+      foreignColumns: [workflows.workspaceId, workflows.id],
     }).onDelete('restrict'),
   ],
 );

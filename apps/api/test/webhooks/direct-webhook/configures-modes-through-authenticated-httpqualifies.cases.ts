@@ -189,8 +189,8 @@ export function registerConfiguresModesThroughAuthenticatedHTTPQualifies(): void
     const allowance = await ownerQuery<{ request_count: number }>(
       `select allowance.request_count from app.webhook_endpoint_ingress_limits allowance
        join app.webhook_trigger_endpoints endpoint on endpoint.id=allowance.endpoint_id
-       where endpoint.trigger_id=$1`,
-      [seeded.trigger.id],
+       where endpoint.workflow_id=$1`,
+      [seeded.workflowId],
     );
     expect(allowance.rows[0]?.request_count).toBe(6);
   });

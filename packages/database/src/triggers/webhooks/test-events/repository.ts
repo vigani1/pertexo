@@ -244,6 +244,7 @@ async function resolveTestEventListener(
             : { runInputMode: draft.config.runInput }),
           currentSecret: {
             id: row.id,
+            triggerId: row.id,
             kmsKeyReference: row.kmsKeyReference,
             encryptedDataKey: row.encryptedDataKey,
             ciphertext: row.ciphertext,

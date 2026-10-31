@@ -91,7 +91,9 @@ export async function readHealth(
       endpoints,
       and(
         eq(endpoints.workspaceId, workflowTriggers.workspaceId),
-        eq(endpoints.triggerId, workflowTriggers.id),
+        eq(endpoints.workflowId, workflowTriggers.workflowId),
+        eq(endpoints.nodeId, workflowTriggers.nodeId),
+        eq(workflowTriggers.kind, 'webhook'),
       ),
     )
     .where(

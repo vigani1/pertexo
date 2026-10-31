@@ -107,6 +107,7 @@ it('upgrades populated human tasks without changing their decisions or context',
       '0059_suspended_inbox.sql',
       '0060_write_probe.sql',
       '0061_sign_up_invitations.sql',
+      '0062_endpoints_follow_the_step.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(

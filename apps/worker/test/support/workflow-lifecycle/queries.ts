@@ -50,10 +50,9 @@ export function createLifecycleReads(
         );
         const endpoints = await client.query<{
           id: string;
-          trigger_id: string;
           status: string;
         }>(
-          `select id,trigger_id,status from app.webhook_trigger_endpoints
+          `select id,status from app.webhook_trigger_endpoints
            where workspace_id=$1 order by id`,
           [workspaceId],
         );
@@ -86,7 +85,6 @@ export function createLifecycleReads(
           })),
           endpoints: endpoints.rows.map((row) => ({
             id: row.id,
-            triggerId: row.trigger_id,
             status: row.status,
           })),
           schedules: schedules.rows.map((row) => ({

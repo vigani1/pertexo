@@ -173,7 +173,15 @@ export function PublishDialog({
                     cannot include later edits.
                   </p>
                 ) : (
-                  <WhatHappens summary={summary} versionLabel={versionLabel} />
+                  <>
+                    <RetiredWebhooks
+                      names={summary?.retiredWebhookNames ?? []}
+                    />
+                    <WhatHappens
+                      summary={summary}
+                      versionLabel={versionLabel}
+                    />
+                  </>
                 )}
                 <p className="flex items-start gap-2 text-xs text-subtle-foreground lg:hidden">
                   <MonitorIcon aria-hidden="true" className="mt-px size-3.5" />
@@ -244,6 +252,19 @@ function PublishProgress({
         );
       })}
     </ol>
+  );
+}
+
+/** A publish only ends a webhook's address by removing its step, so say so first. */
+function RetiredWebhooks({ names }: Readonly<{ names: readonly string[] }>) {
+  if (names.length === 0) return null;
+  return (
+    <Notice tone="warning">
+      {joinNames(names)} {names.length === 1 ? 'is' : 'are'} removed, so{' '}
+      {names.length === 1 ? 'its webhook address stops' : 'their webhook addresses stop'}{' '}
+      answering. Publishing a version with {names.length === 1 ? 'that step' : 'those steps'}{' '}
+      again brings the same address back.
+    </Notice>
   );
 }
 

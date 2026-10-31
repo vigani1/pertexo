@@ -80,7 +80,7 @@ export async function verifyHttpEndpoint(
 ) {
   const result = await database.query(
     `select endpoint.id from app.webhook_trigger_endpoints endpoint
-       join app.workflow_triggers trigger on trigger.id=endpoint.trigger_id and trigger.workspace_id=endpoint.workspace_id
+       join app.workflow_triggers trigger on trigger.workflow_id=endpoint.workflow_id and trigger.node_id=endpoint.node_id and trigger.workspace_id=endpoint.workspace_id
        join app.workflows workflow on workflow.id=trigger.workflow_id and workflow.workspace_id=trigger.workspace_id
       where trigger.workspace_id=$1 and trigger.workflow_id=$2 and trigger.workflow_version_id=$3
         and trigger.id=$4 and trigger.kind='webhook' and trigger.status='active'
@@ -108,7 +108,10 @@ export async function verifyHttpAccepted(
        (select count(*)::int from app.run_events event where event.workspace_id=run.workspace_id and event.workflow_run_id=run.id and event.type='run.queued') queued,
        (select count(*)::int from app.outbox_events event where event.workspace_id=run.workspace_id and event.aggregate_id=run.id and event.job_name='advance-workflow-run'
          and event.id=(select (receipt.result_ref->>'outboxEventId')::uuid from app.idempotency_records receipt where receipt.workspace_id=run.workspace_id and receipt.resource_id=run.id and receipt.operation='workflow.run.accept' and receipt.status='completed')) outbox,
-       (select count(*)::int from app.webhook_trigger_deliveries delivery where delivery.workspace_id=run.workspace_id and delivery.workflow_run_id=run.id and delivery.trigger_id=$5 and delivery.outcome='accepted') deliveries
+       (select count(*)::int from app.webhook_trigger_deliveries delivery
+         join app.webhook_trigger_endpoints endpoint on endpoint.workspace_id=delivery.workspace_id and endpoint.id=delivery.endpoint_id
+         join app.workflow_triggers trigger on trigger.workspace_id=endpoint.workspace_id and trigger.workflow_id=endpoint.workflow_id and trigger.node_id=endpoint.node_id
+         where delivery.workspace_id=run.workspace_id and delivery.workflow_run_id=run.id and trigger.id=$5 and delivery.outcome='accepted') deliveries
        from app.workflow_runs run where run.workspace_id=$1 and run.workflow_id=$2 and run.workflow_version_id=$3 and run.id=$4`,
     [
       scope.workspaceId,

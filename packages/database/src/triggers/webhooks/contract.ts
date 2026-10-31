@@ -11,7 +11,6 @@ export type WebhookReplayCheck = (typeof REPLAY_CHECKS)[number];
 /** The resolved endpoint an attempt is attributed to. */
 export type WebhookDeliveryEndpoint = Readonly<{
   workspaceId: string;
-  triggerId: string;
   endpointId: string;
 }>;
 

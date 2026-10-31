@@ -10,7 +10,7 @@ import type { Pool } from 'pg';
 import { withWorkspaceReadTransaction } from '../../../tenant-access/transactions.js';
 import { WebhookIngressRateLimitExceededError } from '../errors.js';
 import type {
-  SealedWebhookTriggerSecret,
+  StoredWebhookTriggerSecret,
   WebhookConfig,
   WebhookTriggerDatabase,
 } from './contract.js';
@@ -31,11 +31,12 @@ export async function resolveWebhookVerification(
         workflowTriggers.createdAt,
       ),
       authentication: sql<WebhookAuthentication>`resolution.authentication`,
-      currentSecret: sql<SealedWebhookTriggerSecret>`jsonb_build_object('id',resolution.current_secret_version_id,
-      'kmsKeyReference',resolution.current_kms_key_reference,'encryptedDataKey',resolution.current_encrypted_data_key,
+      currentSecret: sql<StoredWebhookTriggerSecret>`jsonb_build_object('id',resolution.current_secret_version_id,
+      'triggerId',resolution.current_secret_trigger_id,'kmsKeyReference',resolution.current_kms_key_reference,'encryptedDataKey',resolution.current_encrypted_data_key,
       'ciphertext',resolution.current_ciphertext,'nonce',resolution.current_nonce,'authTag',resolution.current_auth_tag)`,
-      previousSecret: sql<SealedWebhookTriggerSecret | null>`case when resolution.previous_secret_version_id is null then null
-      else jsonb_build_object('id',resolution.previous_secret_version_id,'kmsKeyReference',resolution.previous_kms_key_reference,
+      previousSecret: sql<StoredWebhookTriggerSecret | null>`case when resolution.previous_secret_version_id is null then null
+      else jsonb_build_object('id',resolution.previous_secret_version_id,
+        'triggerId',resolution.previous_secret_trigger_id,'kmsKeyReference',resolution.previous_kms_key_reference,
         'encryptedDataKey',resolution.previous_encrypted_data_key,'ciphertext',resolution.previous_ciphertext,
         'nonce',resolution.previous_nonce,'authTag',resolution.previous_auth_tag) end`,
       previousSecretValidUntil:
