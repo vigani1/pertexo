@@ -1,6 +1,3 @@
-import { and, eq, exists, gt, gte, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { alias } from 'drizzle-orm/pg-core';
 import {
   readBrowsableFolderScope,
   rethrowQueryFailure,
@@ -11,44 +8,29 @@ import {
   workflowDrafts,
   workflowVersions,
 } from '@pertexo/database/schema';
-import { createHash } from 'node:crypto';
+import { and, eq, exists, gt, gte, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
-import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import {
-  workflowVariableSources,
-  inspectWorkflowVariableSource,
-} from '@pertexo/workflow-model/server';
-import {
-  WorkspaceVariableUsageChangedError,
-  type WorkspaceVariablesStore,
-} from './contract.js';
-const MAX_SOURCES_PER_PAGE = 100;
-const MAX_SOURCE_BYTES_PER_PAGE = 65_536;
+
+import type { VariableUsageInput, VariableUsagePage } from './contract.js';
+import { scanVariableUsage } from './usage-scan.js';
+
 export async function readVariableUsage(
   client: PoolClient,
-  input: Parameters<WorkspaceVariablesStore['usage']>[0],
-): ReturnType<WorkspaceVariablesStore['usage']> {
-  const cursor = input.after;
+  input: VariableUsageInput,
+): Promise<VariableUsagePage> {
   const workflow = await readUsageWorkflow(client, input);
   if (workflow === undefined)
     return { items: [], next: null, incomplete: false };
-  const stamp = variableUsageDigest([
-    workflow.draftRevision,
-    workflow.versionId,
-  ]);
-  const offset = cursor?.offset ?? 0;
-  const staleCursor =
-    offset > 0 &&
-    (cursor?.workflowId !== workflow.id || cursor.stamp !== stamp);
-  if (staleCursor) throw new WorkspaceVariableUsageChangedError();
-  return scanVariableUsage(workflow, input, { offset, stamp });
+  return scanVariableUsage(workflow, input);
 }
 
+/** The next visible workflow: a page never spans two, which bounds its graphs. */
 async function readUsageWorkflow(
   client: PoolClient,
-  input: Parameters<WorkspaceVariablesStore['usage']>[0],
+  input: VariableUsageInput,
 ) {
-  const cursor = input.after;
   const resources = await readBrowsableFolderScope(client, input);
   const db = drizzle(client);
   const later = alias(workflows, 'later');
@@ -72,7 +54,7 @@ async function readUsageWorkflow(
               workflowScopeSql(resources, sql`${later.id}`),
             ),
           ),
-      ),
+      ).mapWith(Boolean),
     })
     .from(workflows)
     .leftJoin(
@@ -94,7 +76,7 @@ async function readUsageWorkflow(
       and(
         eq(workflows.workspaceId, input.workspaceId),
         workflowScopeSql(resources, sql`${workflows.id}`),
-        afterWorkflow(cursor),
+        afterWorkflow(input.after),
       ),
     )
     .orderBy(workflows.id)
@@ -102,74 +84,9 @@ async function readUsageWorkflow(
     .catch(rethrowQueryFailure);
   return workflow;
 }
-type VariableUsageRow = NonNullable<
-  Awaited<ReturnType<typeof readUsageWorkflow>>
->;
-function variableUsageDigest(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
-}
-function scanVariableUsage(
-  workflow: VariableUsageRow,
-  input: Parameters<WorkspaceVariablesStore['usage']>[0],
-  { offset, stamp }: Readonly<{ offset: number; stamp: string }>,
-): Awaited<ReturnType<WorkspaceVariablesStore['usage']>> {
-  let incomplete = false,
-    position = 0,
-    scanned = 0,
-    bytes = 0;
-  let next: { workflowId: string; offset: number; stamp: string } | null =
-    workflow.hasMore ? { workflowId: workflow.id, offset: 0, stamp } : null;
-  const items = [];
-  scan: for (const [stage, graph] of [
-    ['draft', workflow.draftGraph],
-    ['published', workflow.publishedGraph],
-  ] as const) {
-    if (graph === null) continue;
-    for (const entry of workflowVariableSources(
-      parseWorkflowGraphDraft(graph),
-    )) {
-      const ordinal = position++;
-      if (ordinal < offset) continue;
-      const pageBudgetReached =
-        items.length >= input.limit ||
-        scanned >= MAX_SOURCES_PER_PAGE ||
-        (scanned > 0 && bytes + entry.costBytes > MAX_SOURCE_BYTES_PER_PAGE);
-      if (pageBudgetReached) {
-        next = { workflowId: workflow.id, offset: ordinal, stamp };
-        break scan;
-      }
-      scanned++;
-      bytes += entry.costBytes;
-      const inspected = inspectWorkflowVariableSource(entry);
-      incomplete ||= inspected.incomplete;
-      const reference = inspected.reference;
-      const referencesVariable =
-        reference !== null &&
-        (reference.dynamic || reference.names.includes(input.name));
-      if (referencesVariable)
-        items.push({
-          id: variableUsageDigest([
-            stage,
-            stage === 'draft' ? workflow.draftRevision : workflow.versionId,
-            ordinal,
-          ]),
-          workflowId: workflow.id,
-          workflowName: workflow.name.slice(0, 160),
-          archived: workflow.lifecycleStatus === 'archived',
-          stage,
-          nodeId: reference.nodeId,
-          label: reference.label,
-          input: reference.input,
-          kind: reference.dynamic ? ('dynamic' as const) : ('direct' as const),
-        });
-    }
-  }
-  return { items, incomplete, next };
-}
 
-function afterWorkflow(
-  cursor: Parameters<WorkspaceVariablesStore['usage']>[0]['after'],
-) {
+/** A partly scanned workflow is read again; a finished one is passed. */
+function afterWorkflow(cursor: VariableUsageInput['after']) {
   if (cursor === undefined) return undefined;
   return cursor.offset > 0
     ? gte(workflows.id, cursor.workflowId)
