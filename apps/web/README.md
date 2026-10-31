@@ -153,9 +153,9 @@ wiring remains deployment-owned.
 The root Dockerfile's `web` target supplies that runtime with pinned,
 unprivileged nginx. It renders only `PERTEXO_API_UPSTREAM` and the container's
 own DNS resolvers through the standard nginx template entrypoint, so a restarted
-API is found again at its new address. Expose it behind the trusted TLS front proxy: the
-template preserves that proxy's HTTP/HTTPS scheme, with a direct-HTTP fallback.
-The image can run with a read-only root and writable `/tmp` and
+API is found again at its new address. Expose it behind the trusted TLS front
+proxy: the template preserves that proxy's HTTP/HTTPS scheme, with a direct-HTTP
+fallback. The image can run with a read-only root and writable `/tmp` and
 `/etc/nginx/conf.d` mounts; the single-server stack supplies those mounts.
 
 ## Small structure, clear ownership
