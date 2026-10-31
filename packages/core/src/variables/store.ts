@@ -4,73 +4,63 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import {
-  lockWorkspaceAuthority,
-  readWorkspaceAuthority,
-  withTenantScopedClient,
-  withTenantScopedReadClient,
-} from '@pertexo/database/primitives';
-import {
-  rolesForCapability,
+  ACTIVE_WORKSPACE_STATUSES,
   UNPURGED_WORKSPACE_STATUSES,
-  type AuthorizationCapability,
 } from '@pertexo/workflow-model';
-import type { PoolClient } from 'pg';
 
-import type { VariableScope, WorkspaceVariablesStore } from './contract.js';
+import { withWorkspaceAccess, type WorkspaceActor } from '../shared/index.js';
+import type {
+  ReplaceWorkspaceVariablesInput,
+  VariableUsageInput,
+} from './contract.js';
 import { replaceWorkspaceVariables } from './replace.js';
 import { readWorkspaceVariables } from './set.queries.js';
 import { readVariableUsage } from './usage.queries.js';
+
+export type WorkspaceVariablesStore = ReturnType<
+  typeof createWorkspaceVariablesStore
+>;
 
 /** Each action opens its own transaction and decides authority inside it. */
 export function createWorkspaceVariablesStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkspaceVariablesStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
-  /** Readable until the purge starts (ADR 013/027); writes need an active workspace. */
-  function browse<T>(
-    input: VariableScope,
-    capability: AuthorizationCapability,
-    read: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
-    return withTenantScopedReadClient(
-      lease.pool,
-      input,
-      async (client) => {
-        await readWorkspaceAuthority(client, input.workspaceId, {
-          actorId: input.actorId,
-          roles: rolesForCapability(capability),
-          allowedStatuses: UNPURGED_WORKSPACE_STATUSES,
-        });
-        return read(client);
-      },
-      input,
-    );
-  }
   return {
     close: () => lease.close(),
-    read: (input) =>
-      browse(input, 'workspace:read', (client) =>
-        readWorkspaceVariables(client, input.workspaceId),
+    read: (actor: WorkspaceActor) =>
+      withWorkspaceAccess(
+        lease.pool,
+        actor,
+        {
+          mode: 'read',
+          capability: 'workspace:read',
+          statuses: UNPURGED_WORKSPACE_STATUSES,
+        },
+        (client) => readWorkspaceVariables(client, actor.workspaceId),
       ),
-    usage: (input) =>
-      browse(input, 'workflow:read', (client) =>
-        readVariableUsage(client, input),
-      ),
-    replace: (input) =>
-      withTenantScopedClient(
+    usage: (input: VariableUsageInput) =>
+      withWorkspaceAccess(
         lease.pool,
         input,
-        async (client) => {
-          await lockWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('variable:manage'),
-          );
-          return replaceWorkspaceVariables(client, input);
+        {
+          mode: 'read',
+          capability: 'workflow:read',
+          statuses: UNPURGED_WORKSPACE_STATUSES,
         },
+        (client) => readVariableUsage(client, input),
+      ),
+    replace: (input: ReplaceWorkspaceVariablesInput) =>
+      withWorkspaceAccess(
+        lease.pool,
         input,
+        {
+          mode: 'change',
+          capability: 'variable:manage',
+          statuses: ACTIVE_WORKSPACE_STATUSES,
+        },
+        (client) => replaceWorkspaceVariables(client, input),
       ),
   };
 }

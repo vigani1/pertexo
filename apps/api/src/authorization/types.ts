@@ -1,6 +1,7 @@
 import type { IdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
 import type { ApiTokenScope } from '@pertexo/contracts';
 import {
+  ACTIVE_WORKSPACE_STATUSES,
   AUTHORIZATION_CAPABILITIES,
   BROWSABLE_WORKSPACE_STATUSES,
   ROLES,
@@ -10,6 +11,7 @@ import {
 } from '@pertexo/workflow-model';
 
 export {
+  ACTIVE_WORKSPACE_STATUSES,
   AUTHORIZATION_CAPABILITIES,
   BROWSABLE_WORKSPACE_STATUSES,
   ROLES,

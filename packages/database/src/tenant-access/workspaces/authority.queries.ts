@@ -78,11 +78,13 @@ export function lockWorkspaceAuthority(
   workspaceId: string,
   actorId: string,
   roles: readonly Role[],
+  allowedStatuses?: readonly string[],
 ): Promise<Role> {
   return workspaceAuthority(client, workspaceId, {
     actorId,
     roles,
     locking: true,
+    allowedStatuses,
   });
 }
 
