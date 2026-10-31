@@ -102,18 +102,19 @@ export function graph() {
   };
 }
 
-export type ProviderScenario = 'email' | 'http' | 'slack';
+export type ProviderScenario = 'email' | 'http' | 'http_post' | 'slack';
 
 function providerScenarioNode(provider: ProviderScenario) {
   switch (provider) {
     case 'http':
+    case 'http_post':
       return {
         id: 'provider',
         definition: { key: 'http.request', version: 1 },
         position: { x: 10, y: 0 },
         configVersion: 1,
         config: {
-          method: 'GET',
+          method: provider === 'http' ? 'GET' : 'POST',
           url: 'https://provider.example.test/scenario',
           headers: { accept: 'application/json' },
           timeoutMillis: 5_000,

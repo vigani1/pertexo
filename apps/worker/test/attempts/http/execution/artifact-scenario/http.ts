@@ -140,7 +140,8 @@ export async function executeArtifactHttpAttempt(scenario: ArtifactScenario) {
   expect(terminal[0]).toMatchObject({
     attempt_status: 'succeeded',
     attempt_provider_key: null,
-    attempt_side_effect_class: 'unsafe',
+    // A GET only reads: the attempt repeats safely, the node keeps its pin.
+    attempt_side_effect_class: 'safe',
     node_status: 'succeeded',
     node_provider_key: null,
     node_side_effect_class: 'unsafe',

@@ -78,15 +78,17 @@ export function registerHeartbeatRecovery(): void {
         attemptJob(scenario.accepted.runId, scenario.attempt),
       );
       await providerStarted.promise;
-      const failedJob = await waitFor(
+      const abortedJob = await waitFor(
         () => firstRuntime.attemptQueue.getJob(firstPublished.jobId),
         (candidate) => candidate !== undefined,
       );
-      if (failedJob === undefined)
+      if (abortedJob === undefined)
         throw new Error('Heartbeat-loss email job missing');
+      // A repeat of the job finds the attempt running and leaves it to the
+      // lease, so the job ends without settling anything.
       await waitFor(
-        () => failedJob.getState(),
-        (state) => state === 'failed',
+        () => abortedJob.getState(),
+        (state) => state === 'completed' || state === 'failed',
       );
       const abandoned = await workerQuery<{
         dispatch_marked_at: Date | null;

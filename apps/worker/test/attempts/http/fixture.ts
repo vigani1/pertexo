@@ -221,7 +221,7 @@ export function attemptJob(
 
 export async function admitProviderScenario(
   runtime: ProofRuntime,
-  provider: 'email' | 'http' | 'slack',
+  provider: 'email' | 'http' | 'http_post' | 'slack',
 ) {
   const accepted = await acceptProviderScenarioRun(provider);
   const coordinatorOutboxes = [accepted.outboxEventId];
