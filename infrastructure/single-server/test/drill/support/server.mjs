@@ -11,7 +11,6 @@ import {
   overlayCommonScript,
   overlayCompose,
   overlayNetworkName,
-  readableReleases,
 } from './overlay.mjs';
 import {
   RUNTIME_IMAGE,
@@ -298,29 +297,6 @@ export async function configure(server) {
       input: content,
     },
   );
-}
-
-/**
- * Gets past a failed first deploy so the later steps can still run. A half-started
- * Postgres keeps a data directory without roles, so its volumes have to go too.
- */
-export async function recoverFromFailedInstall(server) {
-  const { first } = server.releases;
-  const stopped = await server.composeFor(first, [
-    'down',
-    '--volumes',
-    '--remove-orphans',
-  ]);
-  if (stopped.status !== 0) throw new Error(stopped.stderr);
-  const scripts = 'repository/infrastructure/single-server';
-  const common = await server.mustExec(`cat ${scripts}/common.sh`);
-  await server.mustExec(`cat > ${scripts}/common.sh`, {
-    input: `${readableReleases(common)}\n`,
-  });
-  await server.mustExec(`chmod -R a+rX releases/${first}`);
-  const deployed = await server.script('deploy.sh', [first]);
-  if (deployed.status !== 0)
-    throw new Error(`Deploy failed: ${deployed.stdout}\n${deployed.stderr}`);
 }
 
 /** The off-server bucket an operator creates up front. */

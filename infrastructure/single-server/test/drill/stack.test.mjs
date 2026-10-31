@@ -172,18 +172,13 @@ describe('the single-server stack, through its real scripts', () => {
   // Found by this drill: a server login with the scripts' umask 077 extracts releases
   // that Postgres can't read, so it crash-loops on its first start. Docker Desktop's
   // file sharing hides this; a real Linux disk doesn't.
-  it.fails(
-    'deploy.sh installs a fresh server as the non-root login the runbook asks for',
-    async () => {
-      const deployed = await server.script('deploy.sh', [
-        server.releases.first,
-      ]);
-      firstDeployHealthy = deployed.status === 0;
-      assert.equal(deployed.status, 0, deployed.stdout + deployed.stderr);
-      assert.match(deployed.stdout, /Healthy release/u);
-      assert.equal(await server.current(), server.releases.first);
-    },
-  );
+  it('deploy.sh installs a fresh server as the non-root login the runbook asks for', async () => {
+    const deployed = await server.script('deploy.sh', [server.releases.first]);
+    firstDeployHealthy = deployed.status === 0;
+    assert.equal(deployed.status, 0, deployed.stdout + deployed.stderr);
+    assert.match(deployed.stdout, /Healthy release/u);
+    assert.equal(await server.current(), server.releases.first);
+  });
 
   it('the release is serving and recorded', async () => {
     if (!firstDeployHealthy) await recoverFromFailedInstall(server);
@@ -205,24 +200,21 @@ describe('the single-server stack, through its real scripts', () => {
   });
 
   // ops-02: the worker dies on the frozen SMTP login, so no verification mail goes out.
-  it.fails(
-    'delivers the verification mail through a relay that needs a login',
-    async () => {
-      const message = await waitFor(
-        async () =>
-          (await mailpit('messages')).messages.find((candidate) =>
-            candidate.To.some((to) => to.Address === person.email),
-          ),
-        { what: 'the verification mail', timeout: 30_000 },
-      );
-      const full = await mailpit(`message/${message.ID}`);
-      verificationLink = /https:\/\/\S+verify\S*/u.exec(full.Text)?.[0];
-      assert.ok(verificationLink, full.Text);
-    },
-  );
+  it('delivers the verification mail through a relay that needs a login', async () => {
+    const message = await waitFor(
+      async () =>
+        (await mailpit('messages')).messages.find((candidate) =>
+          candidate.To.some((to) => to.Address === person.email),
+        ),
+      { what: 'the verification mail', timeout: 30_000 },
+    );
+    const full = await mailpit(`message/${message.ID}`);
+    verificationLink = /https:\/\/\S+verify\S*/u.exec(full.Text)?.[0];
+    assert.ok(verificationLink, full.Text);
+  });
 
   // ops-02
-  it.fails('keeps the worker running through a sign-up', async () => {
+  it('keeps the worker running through a sign-up', async () => {
     assert.equal(await restartCount('worker'), 0);
   });
 
@@ -255,24 +247,21 @@ describe('the single-server stack, through its real scripts', () => {
   });
 
   // ops-01: nginx keeps the API's old address, and only the web health check passes.
-  it.fails(
-    'still answers signed-in requests right after a redeploy',
-    async () => {
-      try {
-        const redeployed = await withApiMovedDuring(server, () =>
-          server.script('deploy.sh', [server.releases.first]),
-        );
-        assert.equal(redeployed.status, 0, redeployed.stderr);
-        assert.ok(redeployed.apiMoved);
-        assert.equal(await signedInStatus(), 200);
-      } finally {
-        await clearStaleProxy();
-      }
-    },
-  );
+  it('still answers signed-in requests right after a redeploy', async () => {
+    try {
+      const redeployed = await withApiMovedDuring(server, () =>
+        server.script('deploy.sh', [server.releases.first]),
+      );
+      assert.equal(redeployed.status, 0, redeployed.stderr);
+      assert.ok(redeployed.apiMoved);
+      assert.equal(await signedInStatus(), 200);
+    } finally {
+      await clearStaleProxy();
+    }
+  });
 
   // ops-01
-  it.fails('has no 502 once a restarted API is healthy again', async () => {
+  it('has no 502 once a restarted API is healthy again', async () => {
     try {
       await withApiMovedDuring(server, async () => {
         await compose(['stop', 'api']);
@@ -297,19 +286,16 @@ describe('the single-server stack, through its real scripts', () => {
   });
 
   // ops-01: the night the first backup runs, every signed-in user gets a 502.
-  it.fails(
-    'still answers signed-in requests right after a backup',
-    async () => {
-      try {
-        assert.equal(await signedInStatus(), 200);
-      } finally {
-        await clearStaleProxy();
-      }
-    },
-  );
+  it('still answers signed-in requests right after a backup', async () => {
+    try {
+      assert.equal(await signedInStatus(), 200);
+    } finally {
+      await clearStaleProxy();
+    }
+  });
 
   // ops-07
-  it.fails('tells the dead-man switch about a completed backup', async () => {
+  it('tells the dead-man switch about a completed backup', async () => {
     const pings = (await receivedAlerts()).filter((request) =>
       request.url.startsWith('/heartbeat'),
     );
@@ -318,27 +304,24 @@ describe('the single-server stack, through its real scripts', () => {
   });
 
   // ops-07: a backup that fails quietly for 14 days is how data gets lost.
-  it.fails(
-    'tells the dead-man switch about a failed backup, and keeps serving',
-    async () => {
-      await compose(['stop', 'drill-backup-proxy']);
-      try {
-        const failed = await server.script('backup.sh');
-        assert.notEqual(failed.status, 0);
-        assert.equal(await signedInStatus(), 200);
-        assert.ok(
-          (await receivedAlerts()).some(
-            (request) => request.url === '/heartbeat/fail',
-          ),
-        );
-      } finally {
-        await compose(['up', '-d', '--no-deps', 'drill-backup-proxy']);
-      }
-    },
-  );
+  it('tells the dead-man switch about a failed backup, and keeps serving', async () => {
+    await compose(['stop', 'drill-backup-proxy']);
+    try {
+      const failed = await server.script('backup.sh');
+      assert.notEqual(failed.status, 0);
+      assert.equal(await signedInStatus(), 200);
+      assert.ok(
+        (await receivedAlerts()).some(
+          (request) => request.url === '/heartbeat/fail',
+        ),
+      );
+    } finally {
+      await compose(['up', '-d', '--no-deps', 'drill-backup-proxy']);
+    }
+  });
 
   // ops-07
-  it.fails('check.sh stays quiet on a healthy server', async () => {
+  it('check.sh stays quiet on a healthy server', async () => {
     // How full this machine's disk happens to be isn't what this checks.
     const result = await checkAndCollect({ ALERT_DISK_PERCENT: '100' });
     assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -346,76 +329,61 @@ describe('the single-server stack, through its real scripts', () => {
   });
 
   // ops-07
-  it.fails(
-    'check.sh alerts the operator when the disk is nearly full',
-    async () => {
-      const result = await checkAndCollect({ ALERT_DISK_PERCENT: '1' });
-      assert.equal(result.status, 1, result.stdout + result.stderr);
-      assert.match(result.alerts.map((alert) => alert.body).join(), /disk/iu);
-    },
-  );
+  it('check.sh alerts the operator when the disk is nearly full', async () => {
+    const result = await checkAndCollect({ ALERT_DISK_PERCENT: '1' });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.alerts.map((alert) => alert.body).join(), /disk/iu);
+  });
 
   // ops-07
-  it.fails(
-    'check.sh alerts the operator when the last backup is too old',
-    async () => {
-      const result = await checkAndCollect({ ALERT_BACKUP_MAX_AGE_HOURS: '0' });
-      assert.equal(result.status, 1, result.stdout + result.stderr);
-      assert.match(result.alerts.map((alert) => alert.body).join(), /backup/iu);
-    },
-  );
+  it('check.sh alerts the operator when the last backup is too old', async () => {
+    const result = await checkAndCollect({ ALERT_BACKUP_MAX_AGE_HOURS: '0' });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.alerts.map((alert) => alert.body).join(), /backup/iu);
+  });
 
   // ops-07: readiness only reads, so green health covered a Postgres refusing writes.
-  it.fails(
-    'readiness and check.sh notice a database that refuses writes',
-    async () => {
-      await postgres('alter system set default_transaction_read_only = on');
+  it('readiness and check.sh notice a database that refuses writes', async () => {
+    await postgres('alter system set default_transaction_read_only = on');
+    await postgres('select pg_reload_conf()');
+    try {
+      await waitFor(async () => (await readiness()).trim() === '503', {
+        what: 'readiness to fail',
+        timeout: 15_000,
+      });
+      const result = await checkAndCollect();
+      assert.equal(result.status, 1);
+      assert.match(
+        result.alerts.map((alert) => alert.body).join(),
+        /ready|write/iu,
+      );
+    } finally {
+      await compose([
+        'exec',
+        '-T',
+        '-e',
+        'PGOPTIONS=-c default_transaction_read_only=off',
+        'postgres',
+        'sh',
+        '-c',
+        'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "alter system reset default_transaction_read_only"',
+      ]);
       await postgres('select pg_reload_conf()');
-      try {
-        await waitFor(async () => (await readiness()).trim() === '503', {
-          what: 'readiness to fail',
-          timeout: 15_000,
-        });
-        const result = await checkAndCollect();
-        assert.equal(result.status, 1);
-        assert.match(
-          result.alerts.map((alert) => alert.body).join(),
-          /ready|write/iu,
-        );
-      } finally {
-        await compose([
-          'exec',
-          '-T',
-          '-e',
-          'PGOPTIONS=-c default_transaction_read_only=off',
-          'postgres',
-          'sh',
-          '-c',
-          'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "alter system reset default_transaction_read_only"',
-        ]);
-        await postgres('select pg_reload_conf()');
-      }
-    },
-  );
+    }
+  });
 
   // ops-07
-  it.fails(
-    'check.sh alerts the operator about work nobody is picking up',
-    async () => {
-      await compose(['stop', 'worker']);
-      waitingRunId = await sendWebhook(client, webhook);
-      try {
-        const result = await checkAndCollect({ ALERT_STUCK_MINUTES: '0' });
-        assert.equal(result.status, 1, result.stdout + result.stderr);
-        assert.match(
-          result.alerts.map((alert) => alert.body).join(),
-          /stuck/iu,
-        );
-      } finally {
-        await compose(['up', '-d', '--no-deps', '--wait', 'worker']);
-      }
-    },
-  );
+  it('check.sh alerts the operator about work nobody is picking up', async () => {
+    await compose(['stop', 'worker']);
+    waitingRunId = await sendWebhook(client, webhook);
+    try {
+      const result = await checkAndCollect({ ALERT_STUCK_MINUTES: '0' });
+      assert.equal(result.status, 1, result.stdout + result.stderr);
+      assert.match(result.alerts.map((alert) => alert.body).join(), /stuck/iu);
+    } finally {
+      await compose(['up', '-d', '--no-deps', '--wait', 'worker']);
+    }
+  });
 
   it('finishes the work that waited while the worker was down', async () => {
     await waitForSucceededRun(client, workspaceId, waitingRunId);
@@ -423,17 +391,14 @@ describe('the single-server stack, through its real scripts', () => {
 
   // ops-07: today's deploy calls this release healthy, because web's health check
   // only fetches its own front page.
-  it.fails(
-    'deploy.sh refuses a release whose app can not reach the API',
-    async () => {
-      const attempted = await server.script('deploy.sh', [
-        server.releases.broken,
-      ]);
-      assert.notEqual(attempted.status, 0, attempted.stdout);
-      assert.equal(await server.current(), server.releases.first);
-      assert.equal(await signedInStatus(), 200);
-    },
-  );
+  it('deploy.sh refuses a release whose app can not reach the API', async () => {
+    const attempted = await server.script('deploy.sh', [
+      server.releases.broken,
+    ]);
+    assert.notEqual(attempted.status, 0, attempted.stdout);
+    assert.equal(await server.current(), server.releases.first);
+    assert.equal(await signedInStatus(), 200);
+  });
 
   it('upgrades to a newer release and keeps the session and the data', async () => {
     const upgraded = await server.script('deploy.sh', [
@@ -446,10 +411,8 @@ describe('the single-server stack, through its real scripts', () => {
   });
 
   // ops-09, docs-deps-product-17
-  it.fails(
-    'deploy.sh takes "latest" and installs the newest release tag',
-    async () => {
-      await server.mustExec(`
+  it('deploy.sh takes "latest" and installs the newest release tag', async () => {
+    await server.mustExec(`
 set -e
 cd repository
 git tag v0.0.9 ${server.releases.first}
@@ -457,11 +420,10 @@ git tag v0.0.10 ${server.releases.repaired}
 git push --quiet origin v0.0.9 v0.0.10
 git tag -d v0.0.9 v0.0.10 >/dev/null
 `);
-      const updated = await server.script('deploy.sh', ['latest']);
-      assert.equal(updated.status, 0, updated.stdout + updated.stderr);
-      assert.equal(await server.current(), server.releases.repaired);
-    },
-  );
+    const updated = await server.script('deploy.sh', ['latest']);
+    assert.equal(updated.status, 0, updated.stdout + updated.stderr);
+    assert.equal(await server.current(), server.releases.repaired);
+  });
 
   it('brings a SIGKILLed worker back, and new work still runs', async () => {
     const before = await restartCount('worker');

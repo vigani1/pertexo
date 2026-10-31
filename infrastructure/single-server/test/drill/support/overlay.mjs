@@ -84,10 +84,6 @@ export function overlayCommonScript(source, { project }) {
     `copy_objects() {\n  docker run ${trust} `,
     'the object copy helper',
   );
-  // Only while ops-05 is open: an x86 runner would stop here, before the rest of the
-  // drill. The fast test in deploy.test.mjs pins the real behavior. No-op once fixed.
-  if (process.arch === 'x64')
-    text = text.replace('"arm64 $commit"', '"amd64 $commit"');
   return text;
 }
 
@@ -182,20 +178,6 @@ export function overlayCompose(source, { project, httpPort, httpsPort }) {
     'drill-alerts',
   ];
   return stringify(compose, { aliasDuplicateObjects: false, lineWidth: 0 });
-}
-
-/**
- * Only while the fresh-install bug is open: releases extracted under the scripts'
- * umask are unreadable to Postgres and the ops image's users on real Linux, so a
- * later step could never run. Unused once a first deploy succeeds.
- */
-export function readableReleases(source) {
-  return required(
-    source,
-    /mv "\$staging" "\$beta_root\/releases\/\$commit"/u,
-    'chmod -R a+rX "$staging"\n    $&',
-    'the release extraction',
-  );
 }
 
 /** The same overlaid Compose file with a web tier that can't reach the API. */
