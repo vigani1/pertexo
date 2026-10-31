@@ -51,7 +51,8 @@ export function registerUnsafeUnknownOutcomes(): void {
         },
       });
       try {
-        const scenario = await admitProviderScenario(runtime, 'http');
+        // A POST: a GET only reads, so stopping it is simply canceled.
+        const scenario = await admitProviderScenario(runtime, 'http_post');
         const published = await runtime.producer.publish(
           attemptJob(scenario.accepted.runId, scenario.attempt),
         );
