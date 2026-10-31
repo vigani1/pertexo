@@ -61,9 +61,9 @@ function UsageProgress({
   phase: UsageCheckPhase;
   counts: Readonly<{ checked: number; total: number }> | undefined;
 }>) {
-  const total = counts?.total ?? 0;
-  const checked = counts?.checked ?? 0;
-  const share = phase === 'finished' ? 1 : checked / Math.max(total, 1);
+  // A finished check fills the bar, even with no workflows to count.
+  const max = Math.max(counts?.total ?? 0, 1);
+  const now = phase === 'finished' ? max : (counts?.checked ?? 0);
   const sentence = progressSentence(phase, counts);
   return (
     <div className="flex flex-col gap-1.5">
@@ -71,14 +71,14 @@ function UsageProgress({
         role="progressbar"
         aria-label="Workflows checked"
         aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={checked}
+        aria-valuemax={max}
+        aria-valuenow={now}
         aria-valuetext={sentence}
         className="relative h-1 overflow-hidden rounded-full bg-surface-ink/[0.07]"
       >
         <span
           className="absolute inset-y-0 left-0 rounded-full bg-action/80 transition-[width] duration-300 ease-unspool motion-reduce:transition-none"
-          style={{ width: `${String(share * 100)}%` }}
+          style={{ width: `${String((now / max) * 100)}%` }}
         />
       </div>
       <p className="text-xs text-muted-foreground tabular-nums">{sentence}</p>
