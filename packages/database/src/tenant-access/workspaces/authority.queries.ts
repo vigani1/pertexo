@@ -78,7 +78,27 @@ export function lockWorkspaceAuthority(
   workspaceId: string,
   actorId: string,
   roles: readonly Role[],
-  allowedStatuses?: readonly string[],
+): Promise<Role> {
+  return workspaceAuthority(client, workspaceId, {
+    actorId,
+    roles,
+    locking: true,
+  });
+}
+
+/** The fence for core's one authority helper, which names its status list. */
+export function lockWorkspaceAuthorityInStatuses(
+  client: PoolClient,
+  workspaceId: string,
+  {
+    actorId,
+    roles,
+    allowedStatuses,
+  }: Readonly<{
+    actorId: string;
+    roles: readonly Role[];
+    allowedStatuses: readonly string[];
+  }>,
 ): Promise<Role> {
   return workspaceAuthority(client, workspaceId, {
     actorId,
