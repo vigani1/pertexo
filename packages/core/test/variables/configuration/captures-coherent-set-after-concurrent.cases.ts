@@ -1,17 +1,20 @@
-import { waitForApplicationLock } from '../../support/postgres/lock-coordination.js';
+import { waitForApplicationLock } from '../../../../database/test/support/postgres/lock-coordination.js';
 import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
 
 import { createCheckpoint } from '@pertexo/workflow-engine';
 
-import { parseDatabaseConfig } from '../../../src/config.js';
+import { parseDatabaseConfig } from '../../../../database/src/config.js';
 
-import { RunVariableSnapshotUnavailableError } from '../../../src/runs/commands/variables.repository.js';
-import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
-import { createRetentionDatabase } from '../../../src/lifecycle/retention/repository.js';
-import { admin } from '../../lifecycle/calls/fixtures.js';
-import { maintenanceUrl, userId } from '../../lifecycle/retention.support.js';
+import { RunVariableSnapshotUnavailableError } from '../../../../database/src/runs/commands/variables.repository.js';
+import { createWorkflowRunDatabase } from '../../../../database/src/runs/runs.repository.js';
+import { createRetentionDatabase } from '../../../../database/src/lifecycle/retention/repository.js';
+import { admin } from '../../../../database/test/lifecycle/calls/fixtures.js';
+import {
+  maintenanceUrl,
+  userId,
+} from '../../../../database/test/lifecycle/retention.support.js';
 import {
   config,
   admissionApplication,

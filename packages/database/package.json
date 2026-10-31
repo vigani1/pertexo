@@ -48,13 +48,17 @@
       "types": "./dist/triggers/index.d.ts",
       "default": "./dist/triggers/index.js"
     },
+    "./primitives": {
+      "types": "./dist/primitives.d.ts",
+      "default": "./dist/primitives.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "default": "./dist/schema.js"
+    },
     "./testing": {
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.js"
-    },
-    "./variables": {
-      "types": "./dist/variables/index.d.ts",
-      "default": "./dist/variables/index.js"
     },
     "./data-tables": {
       "types": "./dist/data-tables/index.d.ts",

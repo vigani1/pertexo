@@ -80,6 +80,9 @@ importers:
       '@pertexo/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@pertexo/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@pertexo/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -422,6 +425,9 @@ importers:
       '@nestjs/testing':
         specifier: 11.2.7
         version: 11.2.7(@nestjs/common@11.2.7(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@11.2.7(@nestjs/common@11.2.7(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(reflect-metadata@0.2.2)(rxjs@7.8.2))
+      '@pertexo/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1
@@ -475,7 +481,33 @@ importers:
         specifier: 8.20.0
         version: 8.20.0
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      '@pertexo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@pertexo/database':
+        specifier: workspace:*
+        version: link:../database
+      '@pertexo/workflow-model':
+        specifier: workspace:*
+        version: link:../workflow-model
+      drizzle-orm:
+        specifier: 0.45.4
+        version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.29.6)(pg@8.23.1)
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@pertexo/workflow-engine':
+        specifier: workspace:*
+        version: link:../workflow-engine
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
 
   packages/database:
     dependencies:
@@ -2256,10 +2288,12 @@ packages:
   '@smithy/core@3.35.0':
     resolution: {integrity: sha512-zRMhfkByhT2snNdr1si24vJitU6Cr9ix2MikUfWmkAgp4jrNP0GcKSP5YvwQ+TlI8AZXER5QOGJn3JsVtSD9/A==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/core@3.36.0':
     resolution: {integrity: sha512-3hJiwG1F5t1SoXqp/yOCmYXziyx7ZVqF63S5W6YU201e/qwVaHPex+E/3vvyY9a3ORq/b+BydeNZpP2saQ9X2g==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.5.2':
     resolution: {integrity: sha512-A9uSdn72ozbRUSit0eib0TW7nXuNPlaeM0zcGkJ+nE6tFcSDbnmtwoxbTCFBukVQcszDAyvsd7+rTduPTXpygg==}

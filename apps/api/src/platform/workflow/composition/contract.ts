@@ -2,7 +2,7 @@ import type { GovernanceStore } from '@pertexo/database/governance';
 
 import type { DataTablesStore } from '@pertexo/database/data-tables';
 
-import type { WorkspaceVariablesStore } from '@pertexo/database/variables';
+import type { WorkspaceVariablesStore } from '@pertexo/core/server';
 import type { FormStore } from '@pertexo/database/triggers';
 
 import type { PendingTaskStore } from '@pertexo/database/runs';

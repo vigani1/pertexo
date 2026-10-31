@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planWorkspaceVariableReplacement } from '../../src/values/variables/replacement.js';
+import { planWorkspaceVariableReplacement } from '../../src/variables/replacement.js';
 
 describe('workspace variable replacement', () => {
   const current = {

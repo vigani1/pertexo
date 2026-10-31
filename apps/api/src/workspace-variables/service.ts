@@ -5,7 +5,7 @@ import {
   workspaceVariableUsageCursorSchema,
   type WorkspaceVariableUsageCursor,
 } from '@pertexo/contracts';
-import type { WorkspaceVariablesStore } from '@pertexo/database/variables';
+import type { WorkspaceVariablesStore } from '@pertexo/core/server';
 
 import {
   applicationError,

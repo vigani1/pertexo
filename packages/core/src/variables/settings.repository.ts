@@ -1,19 +1,17 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type { DatabaseConfig } from '../config.js';
 import {
   acquireDatabasePool,
+  type DatabaseConfig,
   type DatabaseRuntime,
-} from '../platform/pool/runtime.js';
-import { databaseSchema } from '../schema.js';
-import {
-  parseWorkspaceId,
-  withTenantScopedClient,
-  withTenantScopedReadClient,
-} from '../tenant-access/transactions.js';
+} from '@pertexo/database/platform';
 import {
   lockWorkspaceAuthority,
+  parseWorkspaceId,
   readWorkspaceAuthority,
-} from '../tenant-access/workspaces/authority.queries.js';
+  withTenantScopedClient,
+  withTenantScopedReadClient,
+} from '@pertexo/database/primitives';
+import { databaseSchema } from '@pertexo/database/schema';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import { readWorkspaceVariables } from './settings.queries.js';
 import { replaceWorkspaceVariables } from './sets.repository.js';

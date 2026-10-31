@@ -16,5 +16,16 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "test"]
+  "exclude": ["dist", "test"],
+  "references": [
+    {
+      "path": "../contracts/tsconfig.json"
+    },
+    {
+      "path": "../database/tsconfig.json"
+    },
+    {
+      "path": "../workflow-model/tsconfig.json"
+    }
+  ]
 }

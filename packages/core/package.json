@@ -14,5 +14,17 @@
     "test": "vitest run --exclude '**/*.integration.test.ts'",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "@pertexo/contracts": "workspace:*",
+    "@pertexo/database": "workspace:*",
+    "@pertexo/workflow-model": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "pg": "8.23.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@pertexo/workflow-engine": "workspace:*",
+    "@types/pg": "8.23.1"
   }
 }
