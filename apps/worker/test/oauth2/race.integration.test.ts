@@ -104,6 +104,8 @@ describeOAuth2('two real workers refreshing one connection', () => {
       expect(await attemptOwner(secondRun)).not.toBe(
         await attemptOwner(firstRun),
       );
+      // Long enough for the second worker to have tried to claim, and been refused.
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
       first.signal('SIGCONT');
       hold.release();
       expect((await harness.finish(firstRun)).status).toBe('succeeded');

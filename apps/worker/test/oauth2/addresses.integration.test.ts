@@ -288,25 +288,28 @@ describeOAuth2('which addresses an OAuth2 connection may use', () => {
     });
 
     // S18: a redirect from the token address fails, with the secret sent nowhere else.
-    it('S18 a token redirect fails and the secret never follows it', async () => {
-      const scene = await harness.newOwner();
-      const connection = await harness.connected(scene, 'non-rotating');
-      harness.standIn.setBehavior(connection.clientId, 'redirect');
-      await harness.expireToken(connection.id);
-      const before = harness.standIn.redirectTargetRequests().length;
-      const runId = await harness.run(scene, {
-        connectionId: connection.id,
-        method: 'GET',
-        url: harness.apiUrl(),
-        retry: { maximumAttempts: 1, delayMillis: 1_000 },
-      });
-      await harness.finish(runId);
-      const [attempt] = await harness.attempts(runId);
-      expect(attempt?.safe_error_code).toBe(
-        'http.oauth2_token_response_invalid',
-      );
-      expect(harness.standIn.redirectTargetRequests().length).toBe(before);
-    });
+    it.each(['redirect', 'redirect-307'])(
+      'S18 a token %s fails and the secret never follows it',
+      async (behavior) => {
+        const scene = await harness.newOwner();
+        const connection = await harness.connected(scene, 'non-rotating');
+        harness.standIn.setBehavior(connection.clientId, behavior);
+        await harness.expireToken(connection.id);
+        const before = harness.standIn.redirectTargetRequests().length;
+        const runId = await harness.run(scene, {
+          connectionId: connection.id,
+          method: 'GET',
+          url: harness.apiUrl(),
+          retry: { maximumAttempts: 1, delayMillis: 1_000 },
+        });
+        await harness.finish(runId);
+        const [attempt] = await harness.attempts(runId);
+        expect(attempt?.safe_error_code).toBe(
+          'http.oauth2_token_response_invalid',
+        );
+        expect(harness.standIn.redirectTargetRequests().length).toBe(before);
+      },
+    );
   });
 
   describeOAuth2('with a worker that has no private networks', () => {

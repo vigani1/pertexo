@@ -28,6 +28,7 @@ const OAUTH2_STAND_IN_BEHAVIORS = Object.freeze([
   'unknown-error',
   'error-200',
   'redirect',
+  'redirect-307',
   'oversized',
   'at-limit',
   'not-json',
@@ -251,8 +252,11 @@ export async function startOAuth2StandIn({
       });
       return true;
     }
-    if (behavior === 'redirect') {
-      response.writeHead(302, { location: `${origin}/redirect-target` });
+    if (behavior === 'redirect' || behavior === 'redirect-307') {
+      // A 307 keeps the method and body, so only it would carry a secret along.
+      response.writeHead(behavior === 'redirect' ? 302 : 307, {
+        location: `${origin}/redirect-target`,
+      });
       response.end();
       return true;
     }
