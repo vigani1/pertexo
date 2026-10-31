@@ -53,6 +53,38 @@ describe('the heartbeat through a database outage', () => {
     await running.stop();
   });
 
+  // The lease is counted from its last renewal, not from the start of the step.
+  it('survives a blip long after the step began', async () => {
+    let calls = 0;
+    const heartbeat = vi.fn(() => {
+      calls += 1;
+      return calls === 7 ? Promise.reject(outage) : Promise.resolve(renewed);
+    });
+    const running = heartbeating(heartbeat);
+
+    await vi.advanceTimersByTimeAsync(75_000);
+
+    expect(calls).toBeGreaterThan(7);
+    expect(running.executionSignal.aborted).toBe(false);
+    expect(running.failure().failed).toBe(false);
+    await running.stop();
+  });
+
+  it('counts each outage from the renewal before it', async () => {
+    let calls = 0;
+    const heartbeat = vi.fn(() => {
+      calls += 1;
+      // Fails until 25 s, renews once, then fails for another 25 s.
+      return calls === 17 ? Promise.resolve(renewed) : Promise.reject(outage);
+    });
+    const running = heartbeating(heartbeat);
+
+    await vi.advanceTimersByTimeAsync(50_000);
+
+    expect(running.executionSignal.aborted).toBe(false);
+    await running.stop();
+  });
+
   it('gives up once the lease can have expired', async () => {
     const running = heartbeating(vi.fn(() => Promise.reject(outage)));
 
@@ -113,11 +145,29 @@ describe('recording a finished step through a database outage', () => {
     expect(complete).toHaveBeenCalledOnce();
   });
 
-  it('stops once the lease can have expired, leaving it to recovery', async () => {
+  it('stops when the delivery is canceled, without trying again', async () => {
+    const canceled = new AbortController();
+    const complete = vi.fn(() => Promise.reject(outage));
     const store = completingThroughOutage(
-      {
-        complete: vi.fn(() => Promise.reject(outage)),
-      } as unknown as NodeAttemptRunStore,
+      { complete } as unknown as NodeAttemptRunStore,
+      LEASE_SECONDS,
+    );
+
+    const result = store.complete({ ...input, signal: canceled.signal });
+    const settled = expect(result).rejects.toBeDefined();
+    await vi.advanceTimersByTimeAsync(2_500);
+    const callsBeforeCancel = complete.mock.calls.length;
+    canceled.abort();
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    await settled;
+    expect(complete).toHaveBeenCalledTimes(callsBeforeCancel);
+  });
+
+  it('stops once the lease can have expired, leaving it to recovery', async () => {
+    const complete = vi.fn(() => Promise.reject(outage));
+    const store = completingThroughOutage(
+      { complete } as unknown as NodeAttemptRunStore,
       LEASE_SECONDS,
     );
 
@@ -126,5 +176,9 @@ describe('recording a finished step through a database outage', () => {
     await vi.advanceTimersByTimeAsync((LEASE_SECONDS + 2) * 1_000);
 
     await settled;
+    const callsWhenItGaveUp = complete.mock.calls.length;
+    expect(callsWhenItGaveUp).toBeGreaterThan(1);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(complete).toHaveBeenCalledTimes(callsWhenItGaveUp);
   });
 });

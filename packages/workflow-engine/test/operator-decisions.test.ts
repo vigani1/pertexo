@@ -177,28 +177,64 @@ describe('automaticReconciliationAction', () => {
     },
   );
 
-  it('never asks for what the reconciler refuses', () => {
-    for (const dispatchMarkedAt of [at, null])
-      for (const sideEffectClass of ['safe', 'idempotent_with_key', 'unsafe'])
-        expect(
-          attemptReconciliationOutcome(
-            {
-              status: 'running',
-              fenceToken: 3,
-              leaseExpired: true,
+  // Every expired attempt has to end up settled; a refusal here would strand it.
+  it.each([
+    [at, 'safe', 'reclaimed'],
+    [at, 'idempotent_with_key', 'reclaimed'],
+    [at, 'unsafe', 'marked_unknown'],
+    [null, 'safe', 'reclaimed'],
+    [null, 'idempotent_with_key', 'reclaimed'],
+    [null, 'unsafe', 'reclaimed'],
+  ] as const)(
+    'settles an expired attempt with dispatch %s and class %s as %s',
+    (dispatchMarkedAt, sideEffectClass, outcome) => {
+      expect(
+        attemptReconciliationOutcome(
+          {
+            status: 'running',
+            fenceToken: 3,
+            leaseExpired: true,
+            dispatchMarkedAt,
+            sideEffectClass,
+          },
+          {
+            expectedFenceToken: 3,
+            action: automaticReconciliationAction({
               dispatchMarkedAt,
               sideEffectClass,
-            },
-            {
-              expectedFenceToken: 3,
-              action: automaticReconciliationAction({
-                dispatchMarkedAt,
-                sideEffectClass,
-              }),
-              dryRun: false,
-            },
-          ),
-        ).not.toBe('reclaim_unsafe');
+            }),
+            dryRun: false,
+          },
+        ),
+      ).toBe(outcome);
+    },
+  );
+
+  it('leaves alone what another worker has already settled', () => {
+    const action = automaticReconciliationAction({
+      dispatchMarkedAt: at,
+      sideEffectClass: 'safe',
+    });
+    const settled = {
+      status: 'ready',
+      fenceToken: 4,
+      leaseExpired: null,
+      dispatchMarkedAt: at,
+      sideEffectClass: 'safe',
+    };
+    expect(
+      attemptReconciliationOutcome(settled, {
+        expectedFenceToken: 3,
+        action,
+        dryRun: false,
+      }),
+    ).toBe('not_running');
+    expect(
+      attemptReconciliationOutcome(
+        { ...settled, status: 'running', leaseExpired: true },
+        { expectedFenceToken: 3, action, dryRun: false },
+      ),
+    ).toBe('fence_conflict');
   });
 });
 
@@ -210,6 +246,7 @@ describe('overdueDeliveryAction', () => {
     ['advance-workflow-run', 'succeeded', undefined, 'drop'],
     ['advance-workflow-run', undefined, undefined, 'drop'],
     ['execute-node-attempt', 'running', 'ready', 'replace'],
+    ['execute-node-attempt', 'waiting', 'ready', 'replace'],
     ['execute-node-attempt', 'running', 'running', 'drop'],
     ['execute-node-attempt', 'running', 'succeeded', 'drop'],
     ['execute-node-attempt', 'canceled', 'ready', 'drop'],

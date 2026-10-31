@@ -65,6 +65,38 @@ describe('isTransientDatabaseFailure', () => {
     expect(isTransientDatabaseFailure(failure(undefined, message))).toBe(true);
   });
 
+  it.each([['55P03'], ['40P01'], ['53300']])(
+    'retries a statement that only lost out for now (%s)',
+    (code) => {
+      expect(isTransientDatabaseFailure(failure(code))).toBe(true);
+    },
+  );
+
+  // What Drizzle really throws: the database failure is its cause.
+  it('sees through the query wrapper', () => {
+    const wrapped = (cause: Error) =>
+      new DrizzleQueryError('update app.node_attempts', [], cause);
+
+    expect(isTransientDatabaseFailure(wrapped(failure('ECONNREFUSED')))).toBe(
+      true,
+    );
+    expect(
+      isTransientDatabaseFailure(
+        wrapped(failure(undefined, 'Connection terminated unexpectedly')),
+      ),
+    ).toBe(true);
+    expect(isTransientDatabaseFailure(wrapped(failure('23505')))).toBe(false);
+  });
+
+  // reliability-code-01: a slow database is not a refusal. Each pool sets a statement and a
+  // query timeout, so a busy Postgres aborts a healthy provider call through the heartbeat.
+  it.fails.each([
+    ['canceling statement due to statement timeout', '57014'],
+    ['Query read timeout', undefined],
+  ])('retries a statement that ran out of time (%s)', (message, code) => {
+    expect(isTransientDatabaseFailure(failure(code, message))).toBe(true);
+  });
+
   it.each([['23505'], ['42601'], ['42501']])(
     'never retries a statement that was refused (%s)',
     (code) => {

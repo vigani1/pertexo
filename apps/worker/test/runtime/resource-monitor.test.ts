@@ -92,6 +92,69 @@ describe('worker resource monitor', () => {
     });
   });
 
+  it('reports a slow event loop again after it recovered', () => {
+    const warn = vi.fn();
+    const samples = [
+      { eventLoopDelayP99Millis: 500, rssBytes: 100 },
+      { eventLoopDelayP99Millis: 10, rssBytes: 100 },
+      { eventLoopDelayP99Millis: 500, rssBytes: 100 },
+    ];
+    const monitor = new WorkerResourceMonitor(
+      config,
+      new WorkerDrainState(),
+      {
+        debug: vi.fn(),
+        error: vi.fn(),
+        fatal: vi.fn(),
+        info: vi.fn(),
+        trace: vi.fn(),
+        warn,
+      },
+      {
+        sample: () =>
+          samples.shift() ?? { eventLoopDelayP99Millis: 10, rssBytes: 100 },
+        signal: vi.fn(),
+      },
+    );
+
+    for (let index = 0; index < 3; index += 1) monitor.sample();
+
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not count a slow event loop towards the memory drain', () => {
+    const drainState = new WorkerDrainState();
+    const signal = vi.fn();
+    const samples = [
+      { eventLoopDelayP99Millis: 500, rssBytes: 801 },
+      { eventLoopDelayP99Millis: 500, rssBytes: 100 },
+      { eventLoopDelayP99Millis: 500, rssBytes: 801 },
+      { eventLoopDelayP99Millis: 500, rssBytes: 801 },
+    ];
+    const monitor = new WorkerResourceMonitor(
+      config,
+      drainState,
+      {
+        debug: vi.fn(),
+        error: vi.fn(),
+        fatal: vi.fn(),
+        info: vi.fn(),
+        trace: vi.fn(),
+        warn: vi.fn(),
+      },
+      {
+        sample: () =>
+          samples.shift() ?? { eventLoopDelayP99Millis: 10, rssBytes: 100 },
+        signal,
+      },
+    );
+
+    for (let index = 0; index < 4; index += 1) monitor.sample();
+
+    expect(drainState.canAcceptWork()).toBe(true);
+    expect(signal).not.toHaveBeenCalled();
+  });
+
   it.each([['RSS', { eventLoopDelayP99Millis: 200, rssBytes: 801 }]] as const)(
     'treats equality as healthy and drains for an excessive %s sample',
     (_dimension, excessive) => {
