@@ -44,8 +44,9 @@ limiting are server-side packages despite having a single root door.
 
 Applications depend on `core`, and `core` on `database`, the engine and the
 model; a check refuses the reverse ([ADR 091](adr/091-core-layer.md)). Each core
-area has an `index.ts`, where other areas and its `@pertexo/core/<area>` entry point
-meet it; test flows go through `@pertexo/core/testing`. Functions that database
+area has an `index.ts` behind its `@pertexo/core/<area>` entry point; from the
+one-shot move on, other areas import the files it names directly, so no barrel edges
+appear. Test flows go through `@pertexo/core/testing`. Functions that database
 areas still call stay in `database` until every area moves at once.
 
 The model supplies the engine's data contracts; execution connects pure engine
