@@ -8,7 +8,8 @@ import type {
   WorkspaceVariablesRequest,
 } from '@pertexo/contracts';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { replaceVariables, type VariablesScope } from '../data/variables.api';
+import { replaceVariables } from '../data/variables.api';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { variableKeys, variablesQueryOptions } from '../data/variables.queries';
 import {
   variableMatches,
@@ -22,7 +23,7 @@ export function VariablesEditor({
   snapshot,
   filter,
 }: Readonly<{
-  scope: VariablesScope;
+  scope: WorkspaceApiScope;
   snapshot: WorkspaceVariablesResponse;
   filter: string;
 }>) {
@@ -171,7 +172,7 @@ interface VariableDraft {
   rows: Row[];
 }
 type VariableReloadContext = Readonly<{
-  scope: VariablesScope;
+  scope: WorkspaceApiScope;
   cache: QueryClient;
   command: Pick<ReturnType<typeof useRetainedCommand>, 'reset'>;
   draft: VariableDraft;
@@ -300,7 +301,7 @@ async function acceptVariables(
     cache,
     actions,
   }: Readonly<{
-    scope: VariablesScope;
+    scope: WorkspaceApiScope;
     cache: QueryClient;
     actions: Pick<
       ReturnType<typeof useVariableRows>['actions'],

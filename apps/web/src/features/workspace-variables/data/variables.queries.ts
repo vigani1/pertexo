@@ -1,11 +1,8 @@
 import { queryOptions, infiniteQueryOptions } from '@tanstack/react-query';
-import {
-  readVariables,
-  readVariableUsage,
-  type VariablesScope,
-} from './variables.api';
+import { readVariables, readVariableUsage } from './variables.api';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 export const variableKeys = {
-  scope: (scope: VariablesScope) =>
+  scope: (scope: WorkspaceApiScope) =>
     [
       'identity',
       scope.userId,
@@ -14,7 +11,7 @@ export const variableKeys = {
       'variables',
     ] as const,
 };
-export function variablesQueryOptions(scope: VariablesScope) {
+export function variablesQueryOptions(scope: WorkspaceApiScope) {
   return queryOptions({
     queryKey: [...variableKeys.scope(scope), 'current'],
     queryFn: ({ signal }) => readVariables(scope, signal),
@@ -23,7 +20,10 @@ export function variablesQueryOptions(scope: VariablesScope) {
     retry: false,
   });
 }
-export function variableUsageQueryOptions(scope: VariablesScope, name: string) {
+export function variableUsageQueryOptions(
+  scope: WorkspaceApiScope,
+  name: string,
+) {
   return infiniteQueryOptions({
     queryKey: [...variableKeys.scope(scope), 'usage', name],
     initialPageParam: null as string | null,

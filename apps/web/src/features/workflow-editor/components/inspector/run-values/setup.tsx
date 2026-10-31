@@ -7,7 +7,7 @@ import {
 } from '@pertexo/node-sdk';
 import { canonicalJson, type ValueSource } from '@pertexo/workflow-model';
 import jsonata from 'jsonata';
-import type { VariablesScope } from '@/features/workspace-variables/picker.public';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
@@ -27,7 +27,7 @@ type Props = Readonly<{
   graph: GraphLevel;
   definitions: readonly NodeDefinitionCatalogItem[];
   form: NodeFormApi;
-  variableScope: VariablesScope | undefined;
+  variableScope: WorkspaceApiScope | undefined;
 }>;
 export function RunValuesSetup(props: Props) {
   const source = props.node.inputMappings.values;

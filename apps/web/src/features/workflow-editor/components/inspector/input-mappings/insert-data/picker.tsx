@@ -1,7 +1,4 @@
-import {
-  VariablePicker,
-  type VariablesScope,
-} from '@/features/workspace-variables/picker.public';
+import { VariablePicker } from '@/features/workspace-variables/picker.public';
 import {
   callbackTargetNodes,
   WORKFLOW_FAILURE_PORT,
@@ -31,6 +28,7 @@ import {
   NodeOutputChoices,
   type InsertedSource,
 } from './choices';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 
 /**
  * "Insert data": inside a For each body, the item it runs for; the output
@@ -53,7 +51,7 @@ export function InsertDataPicker({
   /** The level the step is on: the workflow, or the body it's in. */
   allowFailure?: boolean;
   graph: GraphLevel;
-  variableScope?: VariablesScope;
+  variableScope?: WorkspaceApiScope;
   nodeId: string;
   /** The body's inputs when the step is inside a For each; else empty. */
   loopPorts: readonly string[];
