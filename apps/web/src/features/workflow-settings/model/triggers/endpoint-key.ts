@@ -15,3 +15,8 @@ export function extractEndpointKey(pasted: string): string | undefined {
 export function webhookAddress(endpointKey: string): string {
   return new URL(`/hooks/${endpointKey}`, window.location.origin).toString();
 }
+
+/** The same address before there is a key to show, for examples people adapt. */
+export function webhookAddressTemplate(): string {
+  return `${window.location.origin}/hooks/<endpoint key>`;
+}

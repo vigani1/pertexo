@@ -1,11 +1,12 @@
 import type { WebhookAuthentication } from '@pertexo/contracts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  CURL_SNIPPET,
+  curlSnippet,
   NODE_SNIPPET,
   WEBHOOK_FRESHNESS,
   WEBHOOK_MAX_BODY,
 } from '../../../model/triggers/webhook-snippets';
+import { webhookAddressTemplate } from '../../../model/triggers/endpoint-key';
 import { Disclosure } from '@/components/ui/disclosure';
 
 const HEADERS = [
@@ -16,7 +17,7 @@ const HEADERS = [
   ],
   [
     'X-Pertexo-Signature',
-    'v1= followed by the hex HMAC-SHA256 of "<timestamp>.<raw body>", keyed with your signing secret.',
+    'v1= followed by the hex HMAC-SHA256 of "<timestamp>.<raw body>", keyed with your signing secret decoded from base64url.',
   ],
   [
     'Idempotency-Key',
@@ -63,7 +64,7 @@ export function WebhookGuide({
                 <TabsTrigger value="node">Node</TabsTrigger>
               </TabsList>
               <TabsContent value="curl" className="pt-3">
-                <Snippet code={CURL_SNIPPET} />
+                <Snippet code={curlSnippet(webhookAddressTemplate())} />
               </TabsContent>
               <TabsContent value="node" className="pt-3">
                 <Snippet code={NODE_SNIPPET} />
@@ -79,7 +80,7 @@ export function WebhookGuide({
             </p>
             <Snippet
               code={[
-                `curl -X POST '<your Pertexo API address>/hooks/<endpoint key>' \\`,
+                `curl -X POST '${webhookAddressTemplate()}' \\`,
                 `  -H 'Content-Type: application/json' \\`,
                 ...(authentication.mode === 'header_secret'
                   ? [
