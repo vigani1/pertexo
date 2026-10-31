@@ -136,7 +136,7 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
       // Not per site: every browser shares one origin, so a few addresses could
       // lock everyone out. Per account, many addresses can't guess one password
       // or flood one mailbox, and the worst they cost is that one account's sign-in.
-      { kind: 'account', subject: 'account', limit: 10, optional: true },
+      { kind: 'account', subject: 'account', limit: 20, optional: true },
     ],
   },
   identity_callback: {

@@ -56,7 +56,7 @@ describe('abuse rate-limit policy', () => {
         'closed',
         [
           ['client_address', 10],
-          ['account', 10],
+          ['account', 20],
         ],
       ],
       identity_callback: ['closed', [['client_address', 30]]],
@@ -166,7 +166,7 @@ describe('abuse rate-limit policy', () => {
         {
           kind: 'account',
           identifier: 'someone@example.test',
-          limit: 10,
+          limit: 20,
         },
       ],
     });

@@ -24,6 +24,8 @@ export type SendInput = Readonly<{
   browser?: Browser;
   headers?: Record<string, string>;
   payload?: object | string;
+  /** Each request comes from a new address unless a test pins one. */
+  remoteAddress?: string;
 }>;
 
 export type DatabaseCleanupFailure =

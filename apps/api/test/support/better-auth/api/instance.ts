@@ -242,7 +242,8 @@ export function useBetterAuthRealApi(
     return application.inject({
       method,
       url,
-      remoteAddress: `203.0.113.${String(address % 250)}`,
+      remoteAddress:
+        input.remoteAddress ?? `203.0.113.${String(address % 250)}`,
       headers: {
         origin: fixtureOrigin,
         ...(input.browser === undefined
