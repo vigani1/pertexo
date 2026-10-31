@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "node ../../infrastructure/development/run-nest-dev.mjs",
     "start": "node dist/main.js",
-    "test": "vitest run",
+    "test": "node --test ../../infrastructure/testing/oauth2-stand-in.test.mjs && vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:trigger": "vitest run --config vitest.integration.config.ts test/triggers/schedule.integration.test.ts",
     "test:resilience": "vitest run --config vitest.resilience.config.ts",
