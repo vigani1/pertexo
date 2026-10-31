@@ -192,6 +192,7 @@ export function registerPreservesConfiguredClientPoolSettingsFrozen(): void {
         ownerRole: 'pertexo_owner',
       },
       host: '0.0.0.0',
+      httpAllowedPrivateNetworks: [],
       nodeEnv: 'development',
       observability: {
         environment: 'development',
