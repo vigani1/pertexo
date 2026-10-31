@@ -84,15 +84,12 @@ describe('the operator commands page', () => {
     },
   );
 
-  it(
-    'says how to find the fields an operator needs from the database',
-    () => {
-      const page = readPage();
-      // attempt.reconcile needs an attempt ID and fence token; ops-03 had to get them from SQL.
-      expect(page).toMatch(/OPERATOR_EXPECTED_FENCE_TOKEN/u);
-      expect(page).toMatch(/operator\.status/u);
-      expect(page).toMatch(/dry.?run/iu);
-      expect(page).toMatch(/single-server\.md/u);
-    },
-  );
+  it('says how to find the fields an operator needs from the database', () => {
+    const page = readPage();
+    // attempt.reconcile needs an attempt ID and fence token; ops-03 had to get them from SQL.
+    expect(page).toMatch(/OPERATOR_EXPECTED_FENCE_TOKEN/u);
+    expect(page).toMatch(/operator\.status/u);
+    expect(page).toMatch(/dry.?run/iu);
+    expect(page).toMatch(/single-server\.md/u);
+  });
 });
