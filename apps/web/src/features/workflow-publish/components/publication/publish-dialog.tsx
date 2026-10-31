@@ -261,9 +261,12 @@ function RetiredWebhooks({ names }: Readonly<{ names: readonly string[] }>) {
   return (
     <Notice tone="warning">
       {joinNames(names)} {names.length === 1 ? 'is' : 'are'} removed, so{' '}
-      {names.length === 1 ? 'its webhook address stops' : 'their webhook addresses stop'}{' '}
-      answering. Publishing a version with {names.length === 1 ? 'that step' : 'those steps'}{' '}
-      again brings the same address back.
+      {names.length === 1
+        ? 'its webhook address stops'
+        : 'their webhook addresses stop'}{' '}
+      answering. Publishing a version with{' '}
+      {names.length === 1 ? 'that step' : 'those steps'} again brings the same
+      address back.
     </Notice>
   );
 }
