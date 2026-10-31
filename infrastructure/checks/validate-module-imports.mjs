@@ -47,19 +47,70 @@ function isRuntimeImport(statement) {
   );
 }
 
-/** The other core area a relative import reaches past its index, if any. */
-function crossedCoreArea(file, specifier) {
-  const coreSource = 'packages/core/src/';
+const coreSource = 'packages/core/src/';
+// Tests answer only to the direction rules, but they do answer to them.
+const SCANNED_FOLDERS = ['src', 'test', 'e2e', 'e2e-live'];
+
+/**
+ * What a relative import inside a core area reaches: another area past its
+ * index, or a door at core's root, which sits above every area.
+ */
+function coreAreaViolation(file, specifier) {
   if (!file.startsWith(coreSource) || !specifier.startsWith('.')) return;
-  const [area] = file.slice(coreSource.length).split('/');
+  const [area, ...own] = file.slice(coreSource.length).split('/');
+  if (own.length === 0) return;
   const target = path.posix.normalize(
     path.posix.join(path.posix.dirname(file), specifier),
   );
   if (!target.startsWith(coreSource)) return;
   const [targetArea, ...rest] = target.slice(coreSource.length).split('/');
-  if (rest.length === 0 || targetArea === area) return;
-  return rest.join('/') === 'index.js' ? undefined : targetArea;
+  if (rest.length === 0)
+    return `core areas don't import core's entry points; ${specifier} sits above them`;
+  if (targetArea === area || rest.join('/') === 'index.js') return;
+  return `core areas meet at their index; import ${targetArea}/index.js`;
 }
+
+/** Rules that hold for a workspace's tests as well as its source. */
+function directionViolations(file, specifier) {
+  const violations = [];
+  if (
+    (specifier === '@pertexo/core' || specifier.startsWith('@pertexo/core/')) &&
+    file.startsWith('packages/') &&
+    !file.startsWith('packages/core/')
+  )
+    violations.push(
+      `${file}: only applications depend on core (apps -> core -> database)`,
+    );
+  if (
+    coreOnlyDatabaseEntries.has(specifier) &&
+    !file.startsWith('packages/core/') &&
+    !file.startsWith('packages/database/')
+  )
+    violations.push(
+      `${file}: ${specifier} is for core; applications use a core area`,
+    );
+  return violations;
+}
+
+/** Rules that hold only for what ships: test doors, and a package's own name. */
+function sourceViolations(file, specifier) {
+  const violations = [];
+  if (/^@pertexo\/[^/]+\/testing$/u.test(specifier))
+    violations.push(
+      `${file}: ${specifier} holds test flows and fixtures; production code can't load it`,
+    );
+  const [, workspaceName] = file.split('/');
+  if (
+    specifier === `@pertexo/${workspaceName}` ||
+    specifier.startsWith(`@pertexo/${workspaceName}/`)
+  )
+    violations.push(
+      `${file}: a package reaches its own code by relative path, not through ${specifier}`,
+    );
+  return violations;
+}
+
+const isSource = (file) => /^(?:apps|packages)\/[^/]+\/src\//u.test(file);
 
 /** Static local runtime imports only; deferred imports do not create startup cycles. */
 export function validateModuleImports(sources) {
@@ -94,6 +145,9 @@ export function validateModuleImports(sources) {
       ].find((candidate) => Object.hasOwn(sources, candidate));
     };
     const inspectSpecifier = (specifier, runtime) => {
+      errors.push(...directionViolations(file, specifier));
+      if (!isSource(file)) return;
+      errors.push(...sourceViolations(file, specifier));
       if (
         file.startsWith('apps/code-runner/src/') &&
         specifier.startsWith('@pertexo/') &&
@@ -102,23 +156,6 @@ export function validateModuleImports(sources) {
       )
         errors.push(
           `${file}: Code runner may depend only on the credential-free node SDK`,
-        );
-
-      if (
-        (specifier === '@pertexo/core' ||
-          specifier.startsWith('@pertexo/core/')) &&
-        file.startsWith('packages/') &&
-        !file.startsWith('packages/core/')
-      )
-        errors.push(
-          `${file}: only applications depend on core (apps -> core -> database)`,
-        );
-      if (
-        coreOnlyDatabaseEntries.has(specifier) &&
-        !file.startsWith('packages/core/')
-      )
-        errors.push(
-          `${file}: ${specifier} is for core; applications use a core area`,
         );
 
       if (file.startsWith('apps/web/src/')) {
@@ -143,11 +180,8 @@ export function validateModuleImports(sources) {
       }
       if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return;
       const target = resolveTarget(specifier);
-      const crossedArea = crossedCoreArea(file, specifier);
-      if (crossedArea !== undefined)
-        errors.push(
-          `${file}: core areas meet at their index; import ${crossedArea}/index.js`,
-        );
+      const areaViolation = coreAreaViolation(file, specifier);
+      if (areaViolation !== undefined) errors.push(`${file}: ${areaViolation}`);
       if (runtime && target !== undefined) dependencies.push(target);
     };
     for (const statement of source.statements) {
@@ -170,7 +204,7 @@ export function validateModuleImports(sources) {
             : undefined;
       if (
         argument &&
-        ts.isStringLiteral(argument) &&
+        ts.isStringLiteralLike(argument) &&
         (argument.text.startsWith('.') ||
           argument.text.startsWith('@/') ||
           argument.text.startsWith('@pertexo/'))
@@ -246,11 +280,12 @@ export async function inspectModuleImports(directory = root) {
       withFileTypes: true,
     })) {
       if (!entry.isDirectory()) continue;
-      const source = path.join(directory, category, entry.name, 'src');
-      try {
-        await visit(source);
-      } catch (error) {
-        if (error?.code !== 'ENOENT') throw error;
+      for (const folder of SCANNED_FOLDERS) {
+        try {
+          await visit(path.join(directory, category, entry.name, folder));
+        } catch (error) {
+          if (error?.code !== 'ENOENT') throw error;
+        }
       }
     }
   }
