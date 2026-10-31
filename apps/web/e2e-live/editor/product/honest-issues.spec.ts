@@ -26,12 +26,10 @@ async function startEditor(
   return createEditorWorkflow(page, workspaceId, name);
 }
 
-// product-ux-07: a Condition with no input shows "No issues" and can publish.
 test('a step that can’t run is flagged in words before publish', async ({
   page,
   request,
 }) => {
-  test.fail();
   const path = await startEditor(page, request, 'Honest issues owner');
   await addStep(page, path, /^Manual\b/u, 'Start by hand');
   await addStep(page, path, /Condition/u, 'Gate with no input');
@@ -48,12 +46,10 @@ test('a step that can’t run is flagged in words before publish', async ({
   ).toBeDisabled();
 });
 
-// product-ux-07: the Test tab's whole explanation is the raw code execution.attempt_invalid.
 test('a failed test says what’s wrong with the step', async ({
   page,
   request,
 }) => {
-  test.fail();
   const path = await startEditor(page, request, 'Test failure owner');
   const gateId = await addSingleStep(page, path, /Condition/u, 'Gate');
   await mapBrowserInput({

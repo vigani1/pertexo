@@ -4,7 +4,7 @@ import { describeNodeStatus } from '@/features/workflow-runs/labels.public';
 import { useTestHistory } from '../../hooks/use-test-history';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
 import { WORKFLOW_TEST_HISTORY_ID } from './history';
-import { TestOutputValue } from './results';
+import { StepFailure, TestOutputValue } from './results';
 
 export function WorkflowStepTestResult({
   tests,
@@ -31,6 +31,7 @@ export function WorkflowStepTestResult({
       <p className="text-xs text-muted-foreground">
         Draft {latest.snapshot.data?.draftRevision}
       </p>
+      <StepFailure step={step} />
       {step.status === 'succeeded' ? (
         <TestOutputValue
           tests={tests}

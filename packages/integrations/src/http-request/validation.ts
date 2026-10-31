@@ -178,7 +178,10 @@ export const httpRequestConfigSchema = z
       .url()
       .max(MAX_URL_BYTES)
       .refine((value) => utf8ByteLength(value) <= MAX_URL_BYTES)
-      .refine(safeRequestUrl)
+      .refine(safeRequestUrl, {
+        error:
+          'Use an http or https address with no password, fragment or credential in its query, such as api_key. Keep credentials in a connection.',
+      })
       .meta({
         title: 'URL',
         description:

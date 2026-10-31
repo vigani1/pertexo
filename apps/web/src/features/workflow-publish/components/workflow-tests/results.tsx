@@ -1,3 +1,4 @@
+import { describeStepError } from '@/features/workflow-runs/failure.public';
 import { useMemo } from 'react';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
@@ -145,9 +146,14 @@ function DispositionLabel({
   return null;
 }
 
-function StepFailure({
+export function StepFailure({
   step,
-}: Readonly<{ step: { safeErrorCode: string | null } }>) {
+}: Readonly<{
+  step: Readonly<{
+    safeErrorCode: string | null;
+    errorSummary?: string | null | undefined;
+  }>;
+}>) {
   if (step.safeErrorCode === 'test.pin_required') {
     return (
       <p className="text-sm text-warning">
@@ -159,8 +165,8 @@ function StepFailure({
     return null;
   }
   return (
-    <p className="font-mono text-xs text-muted-foreground">
-      {step.safeErrorCode}
+    <p className="text-sm break-words whitespace-pre-wrap text-muted-foreground">
+      {step.errorSummary ?? describeStepError(step.safeErrorCode).sentence}
     </p>
   );
 }

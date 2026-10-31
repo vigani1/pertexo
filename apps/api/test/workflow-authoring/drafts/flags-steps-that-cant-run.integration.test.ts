@@ -107,8 +107,7 @@ describeIntegration('checking a draft before it is published', () => {
     };
   }
 
-  // product-ux-07: each of these reports valid:true, publishes and fails at run time with execution.attempt_invalid.
-  it.fails.each([
+  it.each([
     {
       name: 'a Condition with no condition input',
       candidate: step('candidate', 'core.condition', 200),
@@ -143,43 +142,38 @@ describeIntegration('checking a draft before it is published', () => {
     60_000,
   );
 
-  // product-ux-07: the For each body gets the same check as the top level.
-  it.fails(
-    'flags a step inside a For each body the same way',
-    async () => {
-      const { report } = await saveAndValidate({
-        settings: { maxRunDurationMs: 60_000 },
-        nodes: [
-          step('manual', 'core.manual', 0),
-          step('loop', 'core.foreach', 200, {
-            inputMappings: { items: { kind: 'literal', value: [1, 2] } },
-            structured: {
-              kind: 'for_each',
-              maxIterations: 2,
-              maxConcurrency: 1,
-              body: {
-                settings: {},
-                nodes: [step('inner', 'core.condition', 0)],
-                edges: [],
-                inputPorts: ['item', 'ordinal'],
-                outputPorts: ['result'],
-              },
+  it('flags a step inside a For each body the same way', async () => {
+    const { report } = await saveAndValidate({
+      settings: { maxRunDurationMs: 60_000 },
+      nodes: [
+        step('manual', 'core.manual', 0),
+        step('loop', 'core.foreach', 200, {
+          inputMappings: { items: { kind: 'literal', value: [1, 2] } },
+          structured: {
+            kind: 'for_each',
+            maxIterations: 2,
+            maxConcurrency: 1,
+            body: {
+              settings: {},
+              nodes: [step('inner', 'core.condition', 0)],
+              edges: [],
+              inputPorts: ['item', 'ordinal'],
+              outputPorts: ['result'],
             },
-          }),
-        ],
-        edges: [
-          {
-            id: 'manual-loop',
-            source: { nodeId: 'manual', port: 'out' },
-            target: { nodeId: 'loop', port: 'in' },
           },
-        ],
-      });
-      expect(report.valid).toBe(false);
-      expect(JSON.stringify(report.issues)).toContain('inner');
-    },
-    60_000,
-  );
+        }),
+      ],
+      edges: [
+        {
+          id: 'manual-loop',
+          source: { nodeId: 'manual', port: 'out' },
+          target: { nodeId: 'loop', port: 'in' },
+        },
+      ],
+    });
+    expect(report.valid).toBe(false);
+    expect(JSON.stringify(report.issues)).toContain('inner');
+  }, 60_000);
 
   it.each([
     {
@@ -198,7 +192,7 @@ describeIntegration('checking a draft before it is published', () => {
       name: 'a Format text with a mapped input',
       candidate: step('candidate', 'core.text', 200, {
         config: { operation: 'uppercase' },
-        inputMappings: { text: { kind: 'run_input', path: '$.name' } },
+        inputMappings: { value: { kind: 'run_input', path: '$.name' } },
       }),
     },
     {
