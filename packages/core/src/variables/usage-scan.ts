@@ -14,16 +14,13 @@ import {
 
 const MAX_SOURCES_PER_PAGE = 100;
 const MAX_SOURCE_BYTES_PER_PAGE = 65_536;
-/** A workflow with no expressions costs a query and a parse, but no source budget. */
-const MAX_WORKFLOWS_PER_PAGE = 25;
-
 /** What this page has used so far, across its workflows. */
-interface UsageSpending {
+export interface UsageSpending {
   sources: number;
   bytes: number;
 }
 
-type UsageWorkflow = Readonly<{
+export type UsageWorkflow = Readonly<{
   id: string;
   name: string;
   lifecycleStatus: string;
@@ -34,48 +31,9 @@ type UsageWorkflow = Readonly<{
   hasMore: boolean;
 }>;
 
-type UsageCursor = NonNullable<VariableUsageInput['after']>;
 type UsageReference = NonNullable<
   ReturnType<typeof inspectWorkflowVariableSource>['reference']
 >;
-
-/**
- * One bounded page of references to a name. It reads one workflow at a time, so
- * only one graph is in memory, and stops at the page's budgets, its item limit
- * or its workflow cap, whichever comes first.
- */
-export async function walkVariableUsage(
-  input: Pick<VariableUsageInput, 'name' | 'limit' | 'after'>,
-  readWorkflowAfter: (
-    after: UsageCursor | undefined,
-  ) => Promise<UsageWorkflow | undefined>,
-): Promise<VariableUsageScan> {
-  const spent: UsageSpending = { sources: 0, bytes: 0 };
-  const items: VariableUsageScan['items'][number][] = [];
-  let incomplete = false;
-  let after = input.after;
-  for (let read = 1; ; read++) {
-    const workflow = await readWorkflowAfter(after);
-    if (workflow === undefined) return { items, incomplete, next: null };
-    const scan = scanVariableUsage(
-      workflow,
-      {
-        name: input.name,
-        limit: input.limit - items.length,
-        ...(after === undefined ? {} : { after }),
-      },
-      spent,
-    );
-    items.push(...scan.items);
-    incomplete ||= scan.incomplete;
-    const { next } = scan;
-    const passedWorkflow =
-      next?.workflowId === workflow.id && next.offset === 0;
-    if (next === null || !passedWorkflow || read === MAX_WORKFLOWS_PER_PAGE)
-      return { items, incomplete, next };
-    after = next;
-  }
-}
 
 /**
  * One workflow's references to a name. Expression analysis costs real time, so
