@@ -13,8 +13,10 @@ authoritative entitlement or admission decisions after loss or redelivery.
 ## Decision
 
 PostgreSQL is authoritative for versioned workspace entitlements, accepted-run
-counts, and admission. V1 defaults are five active runs and 100 queued runs per
-workspace. An active run is in `running` or `waiting`; a queued run is an
+counts, and admission. The limits are instance settings the operator sets, read
+when the API starts (amended 2026-10-31, dm-07): by default 20 active runs and
+10,000 queued runs per workspace. An active run is in `running` or `waiting`, except
+one whose only remaining work is a timed Wait, which holds no workspace slot; a queued run is an
 accepted run in `queued`, awaiting fair admission. Durable trigger deliveries
 that have not accepted a run remain trigger backlog and do not silently consume
 a queued-run slot.
@@ -73,6 +75,7 @@ V1 endpoint classes and one-minute defaults are:
 | `preview_test` | actor 20; workspace 40 | fail closed |
 | `connection_mutation` | actor 30; workspace 60; connection 10 when selected | fail closed |
 | `provider_test` | actor 10; workspace 20; connection 5 | fail closed |
+| `destination_test` | actor 10; workspace 20 | fail closed |
 | `trigger_mutation` | actor 60; workspace 120 | fail closed |
 | `provider_execution` | workspace 300; connection 60 | fail closed before provider I/O |
 

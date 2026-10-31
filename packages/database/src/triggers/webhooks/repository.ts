@@ -9,6 +9,7 @@ import type { WebhookResponseScope } from './responses/contract.js';
 import { readWebhookResponse } from './responses/records.queries.js';
 
 import type { DatabaseConfig } from '../../config.js';
+import { DEFAULT_INSTANCE_LIMITS } from '../../runs/capacity/instance-limits.js';
 
 import { readHealth } from '../reconciliation/health.repository.js';
 
@@ -35,6 +36,9 @@ import {
 export function createWebhookTriggerDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
+  {
+    burstLimit = DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
+  }: Readonly<{ burstLimit?: number }> = {},
 ): WebhookTriggerDatabase {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
@@ -79,7 +83,7 @@ export function createWebhookTriggerDatabase(
       >[0],
     ) => resolveWebhookVerification(pool, endpointKeyHashInput),
     consumeIngressLimit: (endpointKeyHashInput: string) =>
-      consumeWebhookIngressLimit(pool, endpointKeyHashInput),
+      consumeWebhookIngressLimit(pool, endpointKeyHashInput, burstLimit),
     acceptVerifiedDelivery: (
       input: Parameters<WebhookTriggerDatabase['acceptVerifiedDelivery']>[0],
     ) => acceptVerifiedWebhookDelivery(pool, eventPreparation, input),

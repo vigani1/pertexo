@@ -164,6 +164,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0061_sign_up_invitations.sql',
         '0062_endpoints_follow_the_step.sql',
         '0063_webhook_repeats_need_a_key.sql',
+        '0064_instance_capacity.sql',
       ]);
       expect(
         (

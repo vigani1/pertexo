@@ -29,7 +29,7 @@ const config = {
   region: 'test-region',
 } as const;
 const databaseConfig = {} as DatabaseConfig;
-const options = { logger: silentLogger };
+const options = { logger: silentLogger, burstLimit: 600 };
 
 function envelope(close: () => void) {
   return { encryption: {}, close };
@@ -181,6 +181,7 @@ describe('API webhook runtime ownership', () => {
     expect(outside.database).toHaveBeenCalledExactlyOnceWith(
       databaseConfig,
       sharedRuntime,
+      { burstLimit: 600 },
     );
     expect(outside.testEvents).toHaveBeenCalledExactlyOnceWith(
       databaseConfig,

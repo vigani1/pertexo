@@ -2,7 +2,6 @@ import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { entitlementPolicyState } from './entitlement-effect.js';
 import {
   DEFAULT_ARTIFACT_BYTE_LIMIT,
-  DEFAULT_ARTIFACT_COUNT_LIMIT,
   workspaceArtifactCapacity,
 } from '../../schema/transport.js';
 import {
@@ -104,7 +103,7 @@ function capacityQuery({ db, workspaceId }: WorkspaceTransaction) {
       charged_bytes: sql<string>`coalesce(${workspaceArtifactCapacity.chargedBytes},0)::text`,
       byte_limit: sql<string>`coalesce(${workspaceArtifactCapacity.byteLimit},${sql.raw(String(DEFAULT_ARTIFACT_BYTE_LIMIT))})::text`,
       charged_count: sql<number>`coalesce(${workspaceArtifactCapacity.chargedCount},0)`,
-      artifact_count_limit: sql<number>`coalesce(${workspaceArtifactCapacity.artifactCountLimit},${sql.raw(String(DEFAULT_ARTIFACT_COUNT_LIMIT))})`,
+      artifact_count_limit: sql<number>`coalesce(${workspaceArtifactCapacity.artifactCountLimit},app.instance_artifact_count_limit())`,
       capacity_source: sql<
         'default' | 'stored'
       >`case when ${workspaceArtifactCapacity.workspaceId} is null then 'default' else 'stored' end`,

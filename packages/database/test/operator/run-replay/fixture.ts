@@ -126,6 +126,7 @@ export function storeWith(results = validResults()) {
   const transaction = { db, workspaceId };
   const database = {
     checkReadiness: vi.fn(),
+    applyInstanceCapacity: vi.fn(),
     close: mocks.close,
     withWorkspace: vi.fn(),
   };
@@ -182,6 +183,7 @@ export function reconciliationWith(
   const transaction = { db: { select }, workspaceId };
   const database = {
     checkReadiness: vi.fn(),
+    applyInstanceCapacity: vi.fn(),
     close: mocks.close,
     withWorkspace: vi.fn(),
   };

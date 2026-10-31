@@ -1,6 +1,10 @@
+import { useInstanceCapacity } from '../../support/instance-capacity.js';
 import { describe } from 'vitest';
 
-import { installExecutionAcceptanceFixture } from '../../runs/acceptance/fixtures.js';
+import {
+  apiUrl,
+  installExecutionAcceptanceFixture,
+} from '../../runs/acceptance/fixtures.js';
 
 import { registerPersistsAcceptanceTicketsOnceExact } from './concurrency-admission/persists-acceptance-tickets-once-exact.cases.js';
 import { registerReservationRecoveryReplacesTransportIdentity } from './concurrency-admission/reservation-recovery-replaces-transport-identity.cases.js';
@@ -10,6 +14,14 @@ import { registerExplainsWorkspaceCapacityBlockers } from './concurrency-admissi
 import { registerAgreesOnEntitlementEffect } from './concurrency-admission/agrees-on-entitlement-effect.cases.js';
 installExecutionAcceptanceFixture();
 describe('current workflow concurrency and ordered production admission', () => {
+  useInstanceCapacity(
+    {
+      activeRunLimit: 5,
+      queuedRunLimit: 100,
+      artifactCountLimit: 1_000,
+    },
+    apiUrl,
+  );
   registerPersistsAcceptanceTicketsOnceExact();
 
   registerReservationRecoveryReplacesTransportIdentity();

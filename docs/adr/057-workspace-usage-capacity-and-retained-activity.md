@@ -32,13 +32,14 @@ Do not infer execution defaults when the current entitlement is absent. Missing
 pointer/version or counter authority is unavailable and admission fails closed.
 Report configured limits separately from whether the current entitlement is
 active, suspended, not yet effective or expired, evaluated at the snapshot.
-Provisioned defaults remain 5 active and 100 queued. Already accepted runs retain
+Provisioned limits come from the instance settings (amended 2026-10-31, dm-07), by
+default 20 active and 10,000 queued. Already accepted runs retain
 their pinned entitlement version; their eventual admission is not guaranteed by
 the displayed current limits. Reporting never changes acceptance or dispatch.
 
 Artifact capacity is lazily created for a new workspace by its first reservation.
 An absent row in an authorized active workspace therefore reports the existing
-writer defaults (1 GiB/1,000 artifacts, zero charged), explicitly marked as
+writer defaults (1 GiB and the instance's file limit, zero charged), explicitly marked as
 default rather than stored. Existing rows, including zero limits and charges
 above a lowered limit, are reported exactly. Byte totals and limits travel as
 canonical nonnegative decimal strings, preserving PostgreSQL bigint precision.

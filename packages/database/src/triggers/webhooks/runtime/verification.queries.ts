@@ -100,10 +100,11 @@ export async function consumeWebhookIngressLimit(
   endpointKeyHashInput: Parameters<
     WebhookTriggerDatabase['consumeIngressLimit']
   >[0],
+  burstLimit: number,
 ): ReturnType<WebhookTriggerDatabase['consumeIngressLimit']> {
   const result = await drizzle(pool)
     .execute<{ allowed: boolean; retry_after_seconds: number }>(
-      sql`select * from app.consume_webhook_ingress_limit(${endpointKeyHashInput}::char(64))`,
+      sql`select * from app.consume_webhook_ingress_limit(${endpointKeyHashInput}::char(64),${burstLimit}::integer)`,
     )
     .catch(rethrowQueryFailure);
   const decision = result.rows[0];

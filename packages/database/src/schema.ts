@@ -182,6 +182,7 @@ import {
 import {
   workspaceExecutionEntitlements,
   workspaceExecutionEntitlementVersions,
+  instanceCapacity,
 } from './schema/runs/capacity/entitlements.js';
 export {
   authAccounts,
@@ -312,6 +313,7 @@ export const databaseSchema = {
   outboxFairDispatchCursor,
   workspaceExecutionEntitlements,
   workspaceExecutionEntitlementVersions,
+  instanceCapacity,
   workspaceExecutionAdmissionCounters,
   workflowRunActiveAdmissions,
   workspaceLifecycleOperations,

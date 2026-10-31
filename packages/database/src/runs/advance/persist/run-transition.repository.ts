@@ -1,3 +1,4 @@
+import { releaseSlotDuringTimedWait } from '../timed-wait-slot.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
 import {
@@ -170,6 +171,11 @@ export async function persistCoordinatorRunTransition(
       phase: 'committed',
       alreadyDeferred: row.human_resume_deferred ?? false,
     });
+  if (
+    plan.checkpoint.runStatus === 'waiting' &&
+    row.timed_wait_started_at === null
+  )
+    await releaseSlotDuringTimedWait(client, { workspaceId, runId });
   if (row.status === 'queued' && plan.checkpoint.runStatus !== 'queued')
     await wakeErrorWorkflowsForCapacity(client, workspaceId);
   await persistCallCompletion(client, input);

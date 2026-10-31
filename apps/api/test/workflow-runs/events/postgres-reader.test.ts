@@ -24,6 +24,7 @@ function databaseWith(
   return {
     withWorkspace,
     checkReadiness: () => Promise.reject(new Error('not exercised')),
+    applyInstanceCapacity: () => Promise.reject(new Error('not exercised')),
     close: () => Promise.resolve(),
   };
 }

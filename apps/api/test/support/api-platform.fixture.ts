@@ -1,3 +1,4 @@
+import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/database/platform';
 import { stubFederationService, stubDirectoryStore } from './federation.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
@@ -29,9 +30,13 @@ export function createApiPlatformFixture(migrationHead: string) {
         postgresMajor: 18,
         role: 'pertexo_app',
       }),
+    applyInstanceCapacity: () => Promise.resolve(),
     close: () => Promise.resolve(),
   };
   const config: ApiConfig = {
+    capacity: DEFAULT_INSTANCE_LIMITS,
+    webhookEndpointBurstLimit:
+      DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
     codeSettings: DEFAULT_CODE_SETTINGS,
     database: {
       connectionString:

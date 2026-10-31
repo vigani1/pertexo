@@ -2,6 +2,7 @@ import {
   type PgTableExtraConfigValue,
   check,
   foreignKey,
+  boolean,
   index,
   integer,
   primaryKey,
@@ -12,6 +13,27 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../../namespace.js';
 import { workspaces } from '../../foundation.js';
+
+// One row: an instance has one set of limits, which the API writes at startup.
+export const instanceCapacity = appSchema.table(
+  'instance_capacity',
+  {
+    singleton: boolean('singleton').primaryKey().default(true),
+    activeRunLimit: integer('active_run_limit').notNull(),
+    queuedRunLimit: integer('queued_run_limit').notNull(),
+    artifactCountLimit: integer('artifact_count_limit').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`clock_timestamp()`)
+      .notNull(),
+  },
+  (table): PgTableExtraConfigValue[] => [
+    check('instance_capacity_singleton', sql`${table.singleton}`),
+    check(
+      'instance_capacity_limits_valid',
+      sql`active_run_limit BETWEEN 1 AND 10000 AND queued_run_limit BETWEEN 1 AND 100000 AND artifact_count_limit >= 0`,
+    ),
+  ],
+);
 
 export const workspaceExecutionEntitlements = appSchema.table(
   'workspace_execution_entitlements',

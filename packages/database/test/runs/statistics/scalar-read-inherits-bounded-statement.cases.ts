@@ -83,15 +83,15 @@ export function registerScalarReadInheritsBoundedStatement(): void {
       policy: {
         state: 'active',
         version: 1,
-        activeRunLimit: 5,
-        queuedRunLimit: 100,
+        activeRunLimit: 20,
+        queuedRunLimit: 10_000,
       },
     });
     expect(result.artifacts).toEqual({
       chargedBytes: '0',
       byteLimit: '1073741824',
       chargedCount: 0,
-      artifactCountLimit: 1000,
+      artifactCountLimit: 10_000,
       source: 'default',
     });
     expect(result.asOf).toMatch(/\.\d{6}Z$/u);
@@ -206,8 +206,8 @@ export function registerScalarReadInheritsBoundedStatement(): void {
     ).toEqual({
       state: 'unavailable',
       version: 1,
-      activeRunLimit: 5,
-      queuedRunLimit: 100,
+      activeRunLimit: 20,
+      queuedRunLimit: 10_000,
     });
     await inWorkspace('owner', busyWorkspace, {
       text: 'delete from app.workspace_execution_entitlements where workspace_id=$1',

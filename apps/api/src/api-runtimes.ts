@@ -163,7 +163,11 @@ async function acquireFeatureRuntimes(
     runtimes.webhookRuntime = await createApiWebhookRuntime(
       config.webhooks,
       config.database,
-      { logger, runtime: databaseRuntime },
+      {
+        logger,
+        runtime: databaseRuntime,
+        burstLimit: config.webhookEndpointBurstLimit,
+      },
     );
   runtimes.scheduleRuntime = await createApiScheduleRuntime(
     config.database,

@@ -102,7 +102,6 @@ export const artifacts = appSchema.table(
 
 /** What a workspace may store before its capacity row exists or an operator changes it. */
 export const DEFAULT_ARTIFACT_BYTE_LIMIT = 1_073_741_824;
-export const DEFAULT_ARTIFACT_COUNT_LIMIT = 1_000;
 
 export const workspaceArtifactCapacity = appSchema.table(
   'workspace_artifact_capacity',
@@ -113,7 +112,7 @@ export const workspaceArtifactCapacity = appSchema.table(
       .default(sql.raw(String(DEFAULT_ARTIFACT_BYTE_LIMIT))),
     artifactCountLimit: integer('artifact_count_limit')
       .notNull()
-      .default(sql.raw(String(DEFAULT_ARTIFACT_COUNT_LIMIT))),
+      .default(sql`app.instance_artifact_count_limit()`),
     chargedBytes: bigint('charged_bytes', { mode: 'number' })
       .notNull()
       .default(sql`0`),

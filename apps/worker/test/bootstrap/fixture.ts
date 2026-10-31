@@ -47,6 +47,7 @@ export const database: WorkspaceDatabase = {
     _workspaceId: string,
     operation: (transaction: never) => Promise<T>,
   ): Promise<T> => operation(undefined as never),
+  applyInstanceCapacity: () => Promise.resolve(),
   checkReadiness: () =>
     Promise.resolve({
       migrationHead: '0000_rls_probe.sql',

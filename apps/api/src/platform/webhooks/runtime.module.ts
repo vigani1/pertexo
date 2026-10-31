@@ -33,9 +33,11 @@ export async function createApiWebhookRuntime(
   {
     logger,
     runtime,
+    burstLimit,
   }: Readonly<{
     logger: StructuredLogger;
     runtime?: DatabaseRuntime | undefined;
+    burstLimit: number;
   }>,
 ): Promise<ApiWebhookRuntime> {
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
@@ -43,7 +45,9 @@ export async function createApiWebhookRuntime(
   let envelope: WebhookEnvelopeRuntime | undefined;
   let testEvents: WebhookTestEventStore | undefined;
   try {
-    database = createWebhookTriggerDatabase(databaseConfig, runtime);
+    database = createWebhookTriggerDatabase(databaseConfig, runtime, {
+      burstLimit,
+    });
     envelope = createWebhookTriggerEnvelopeEncryption(
       'mode' in config
         ? config
