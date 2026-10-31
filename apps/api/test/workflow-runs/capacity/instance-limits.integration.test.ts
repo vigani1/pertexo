@@ -217,10 +217,13 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             signedDelivery(running.origin, endpointKey, signingSecret),
           ),
         );
-        await Promise.all(responses.map((r) => r.arrayBuffer()));
-        expect(new Set(responses.map(({ status }) => status))).toEqual(
-          new Set([202]),
-        );
+        const bodies = await Promise.all(responses.map((r) => r.text()));
+        expect(
+          new Set(responses.map(({ status }) => status)),
+          [
+            ...new Set(bodies.filter((_, at) => responses[at]?.status !== 202)),
+          ].join('\n'),
+        ).toEqual(new Set([202]));
       } finally {
         await running.stop();
       }
