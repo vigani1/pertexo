@@ -155,14 +155,11 @@ export class EvaluationProcess {
       this.#read(message);
     });
     // Also emitted when a signal can't be delivered, so it isn't always the end.
-    this.#child.on('error', (cause) => {
+    this.#child.on('error', () => {
       if (this.#child.pid === undefined) this.#gone = true;
       this.#end({
         reusable: false,
-        result: expressionError(
-          'unavailable',
-          `evaluator process failed: ${cause.message}`,
-        ),
+        result: expressionError('unavailable', 'evaluator process failed'),
       });
     });
     this.#child.once('exit', (code, signal) => {
@@ -249,10 +246,7 @@ export class EvaluationProcess {
         if (cause !== null)
           this.#end({
             reusable: false,
-            result: expressionError(
-              'unavailable',
-              `evaluator handoff failed: ${cause.message}`,
-            ),
+            result: expressionError('unavailable', 'evaluator handoff failed'),
           });
       },
     );

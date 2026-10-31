@@ -208,11 +208,9 @@ export class JsonataEvaluator implements ExpressionEvaluator {
     let process: EvaluationProcess;
     try {
       process = this.#acquireProcess();
-    } catch (cause: unknown) {
-      return expressionError(
-        'unavailable',
-        cause instanceof Error ? cause.message : 'evaluator setup failed',
-      );
+    } catch {
+      // Spawn errors name host paths, and this message can reach whoever built the step.
+      return expressionError('unavailable', 'evaluator process failed');
     }
     const outcome = await process.run(evaluation);
     if (outcome.reusable && !process.gone && !this.#closed)

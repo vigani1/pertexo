@@ -160,6 +160,12 @@ Expressions read run input and available predecessor outputs, not another mapped
 field on the same step. A missing path does not invent a value; null or wrong
 function arguments can fail. Number conversion explicitly uses `$number`.
 
+An expression has limits that protect the server: 100 ms to run, a fixed amount of
+memory, and 1 MB of result. One that needs more memory or returns more fails its
+step. One that runs out of time is tried again, because a busy server can cause
+that, and fails the step if it keeps happening. Work on less data, or split the
+work across steps.
+
 All collection steps accept at most 4,998 items within the existing whole-JSON
 limits: the SDK envelope is 1 MiB; retained execution JSON is capped at 256 KiB, depth 64 and 10,000 members. A wide collection can hit a whole-JSON
 limit before 4,998 items. Input/output inspection, step testing, saved workflows,
