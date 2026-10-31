@@ -10,12 +10,10 @@ import { expect, publishNext, runReaches } from './steps';
 // Several real services behind one browser; this stays honest on a busy machine.
 test.describe.configure({ timeout: 120_000 });
 
-// product-ux-05: the panel says "answered with an error", with no status, body or URL.
 test('a failed HTTP step shows its status, response and URL, without the secrets', async ({
   page,
   request,
 }) => {
-  test.fail();
   const { controlOrigin, workspaceId } = await createOwnedHttpConnection(
     page,
     request,

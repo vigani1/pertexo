@@ -1,4 +1,9 @@
-import { nodeRuns, nodeAttempts } from '../../schema/runs/execution.js';
+import {
+  nodeRuns,
+  nodeAttempts,
+  workflowRuns,
+} from '../../schema/runs/execution.js';
+import { RUN_DETAILS_RETENTION_SQL } from '../data-policy.js';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { withResourceRunRead } from '../../tenant-access/resources/transactions.repository.js';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
@@ -9,7 +14,8 @@ import {
   type WorkflowCallReadRecord,
   type WorkflowParentCallReadRecord,
 } from './history/calls.queries.js';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, exists, isNull, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 import type { ResourceTransaction } from '../../tenant-access/resources/contract.js';
 import { WorkflowRunReadCapacityError } from '../errors.js';
@@ -154,6 +160,19 @@ function readNodes({ db, workspaceId }: WorkspaceTransaction, runId: string) {
         eq(nodeAttempts.safeErrorCode, nodeRuns.safeErrorCode),
       ),
     );
+  // What a service answered is provider text, so it goes when the run's other details do.
+  const keptRun = alias(workflowRuns, 'run');
+  const detailsKept = db
+    .select({ one: sql`1` })
+    .from(keptRun)
+    .where(
+      and(
+        eq(keptRun.workspaceId, nodeRuns.workspaceId),
+        eq(keptRun.id, nodeRuns.workflowRunId),
+        isNull(keptRun.detailsPurgedAt),
+        sql`(${keptRun.completedAt} is null or ${keptRun.completedAt}>statement_timestamp()-${RUN_DETAILS_RETENTION_SQL})`,
+      ),
+    );
   return db
     .select({
       id: nodeRuns.id,
@@ -170,7 +189,9 @@ function readNodes({ db, workspaceId }: WorkspaceTransaction, runId: string) {
       safe_error_code: nodeRuns.safeErrorCode,
       error_summary: sql<
         string | null
-      >`case when ${nodeRuns.safeErrorCode} in ('execution.file_input','execution.attempt_invalid') then (${errorSummary}) end`,
+      >`case when ${nodeRuns.safeErrorCode} in ('execution.file_input','execution.attempt_invalid') then (${errorSummary})
+        when ${nodeRuns.safeErrorCode} in ('execution.provider','execution.authentication','execution.rate_limit','execution.timeout')
+          and ${exists(detailsKept)} then (${errorSummary}) end`,
       failure_handler_entry_key: nodeRuns.failureHandlerEntryKey,
       failure_handler_sink_key: nodeRuns.failureHandlerSinkKey,
       failure_handling: nodeRuns.failureHandling,

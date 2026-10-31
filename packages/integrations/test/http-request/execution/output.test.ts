@@ -28,7 +28,10 @@ describe('http.request@1 server executor', () => {
         accept: 'application/json',
         authorization: 'Bearer executor-secret',
       });
-      expect(request.sensitiveValues).toEqual(['Bearer executor-secret']);
+      expect(request.sensitiveValues).toEqual([
+        'Bearer executor-secret',
+        'executor-secret',
+      ]);
       requestBody = inlineBytes(request.body);
       await request.beforeDispatch();
       expect(state.beforeDispatch).toHaveBeenCalledOnce();

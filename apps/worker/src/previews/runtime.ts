@@ -222,12 +222,12 @@ function classifyExecutorFailure(
             ? outcomes.unknownWith()
             : outcomes.failedWith(
                 error.safeErrorCode ?? `preview.${error.errorKind}`,
-                error.errorSummary,
+                error.shownSummary,
               );
         case 'failed':
           return outcomes.failedWith(
             error.safeErrorCode ?? `preview.${error.errorKind}`,
-            error.errorSummary,
+            error.shownSummary,
           );
       }
     }

@@ -1,4 +1,7 @@
-import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import {
+  NodeExecutorFailure,
+  type ServiceResponseFacts,
+} from '@pertexo/node-sdk/server';
 import type { HttpOutcomeDecision } from '../../http/outcome-policy.js';
 import type { SecureHttpClient } from '../../http/secure.js';
 
@@ -13,7 +16,12 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
     {
       possiblyDispatched,
       cause,
-    }: Readonly<{ possiblyDispatched: boolean; cause?: unknown }>,
+      serviceResponse,
+    }: Readonly<{
+      possiblyDispatched: boolean;
+      cause?: unknown;
+      serviceResponse?: ServiceResponseFacts;
+    }>,
   ) {
     if (decision.kind === 'succeeded')
       throw new TypeError('Successful HTTP outcome');
@@ -25,6 +33,7 @@ export class HttpRequestExecutorError extends NodeExecutorFailure {
       decision.minimumRetryDelayMillis !== undefined
         ? { minimumRetryDelayMillis: decision.minimumRetryDelayMillis }
         : {}),
+      ...(serviceResponse === undefined ? {} : { serviceResponse }),
     });
     this.cause = cause;
   }
