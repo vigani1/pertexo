@@ -17,7 +17,8 @@ import { startService, stopService } from '../support/recovery/services.js';
 import { startStack, type Stack } from '../support/recovery/stack.js';
 
 const DISPATCH_LIMIT_MS = 30_000;
-const POSTGRES_DOWN_MS = 5_000;
+// Longer than the worker's 10 s readiness interval, so a check always lands inside it.
+const POSTGRES_DOWN_MS = 12_000;
 
 const SAFE_RUNS = [
   ['safe-early', 2],
