@@ -138,13 +138,15 @@ describeFaults('events and occurrences that arrive with no worker', () => {
         [debounced],
       );
       if (catchUpOccurrence !== undefined && debouncedRun !== undefined) {
-        const [row] = await stack.sql<{ workflow_run_id: string }>(
+        const [row] = await stack.sql<{ workflow_run_id: string | null }>(
           `select o.workflow_run_id from app.trigger_schedule_occurrences o
              join app.workflow_triggers t on t.id=o.trigger_id
             where t.workflow_id=$1 order by o.scheduled_at limit 1`,
           [catchingUp],
         );
-        runs.catchingUp = row?.workflow_run_id ?? '';
+        // A skipped occurrence has no run: its own test then says so.
+        if (row?.workflow_run_id !== null && row !== undefined)
+          runs.catchingUp = row.workflow_run_id;
         runs.debounced = debouncedRun.id;
         break;
       }
