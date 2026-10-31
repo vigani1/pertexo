@@ -1,10 +1,9 @@
-import { createWorkspaceVariablesStore } from '../../../../src/variables/settings.repository.js';
 import { randomUUID } from 'node:crypto';
 import { it, expect } from 'vitest';
 
+import { setVariableSet } from '../../../support/variable-sets.js';
 import { workspaceId, actorId } from '../../../support/workflow-authoring.js';
 import {
-  config,
   database,
   cases,
   scanner,
@@ -122,62 +121,42 @@ export function registerFreezesPinsSharesExactOutput(): void {
   });
 
   it('freezes empty and nonempty variable revisions across later cases', async () => {
-    const variables = createWorkspaceVariablesStore(config());
-    try {
-      for (const populated of [false, true]) {
-        const f = await fixture();
-        const current = await variables.read({ workspaceId, actorId });
-        if (populated)
-          await variables.replace({
-            workspaceId,
-            actorId,
-            expectedRevision: current.revision,
-            values: { RATE: 1 },
-            idempotencyKey: randomUUID(),
-          });
-        const accepted = await database.workflowTestSuites.start(
-          await command(f),
-        );
-        const first = await database.workflowTestSuites.get({
-          ...f.scope,
-          ...accepted,
-        });
-        const before = (
+    for (const populated of [false, true]) {
+      const f = await fixture();
+      if (populated) await setVariableSet(workspaceId, { RATE: 1 });
+      const accepted = await database.workflowTestSuites.start(
+        await command(f),
+      );
+      const first = await database.workflowTestSuites.get({
+        ...f.scope,
+        ...accepted,
+      });
+      const before = (
+        await query<{ variable_set_revision: number | null }>(
+          'select variable_set_revision from app.workflow_runs where id=$1',
+          [runId(first, 0)],
+        )
+      )[0]?.variable_set_revision;
+      await setVariableSet(workspaceId, { RATE: 2 });
+      await complete(runId(first, 0), { amount: 1 });
+      await due(accepted.suiteId);
+      await scanner.scan(25);
+      const second = await database.workflowTestSuites.get({
+        ...f.scope,
+        ...accepted,
+      });
+      expect(
+        (
           await query<{ variable_set_revision: number | null }>(
             'select variable_set_revision from app.workflow_runs where id=$1',
-            [runId(first, 0)],
+            [runId(second, 1)],
           )
-        )[0]?.variable_set_revision;
-        const head = await variables.read({ workspaceId, actorId });
-        await variables.replace({
-          workspaceId,
-          actorId,
-          expectedRevision: head.revision,
-          values: { RATE: 2 },
-          idempotencyKey: randomUUID(),
-        });
-        await complete(runId(first, 0), { amount: 1 });
-        await due(accepted.suiteId);
-        await scanner.scan(25);
-        const second = await database.workflowTestSuites.get({
-          ...f.scope,
-          ...accepted,
-        });
-        expect(
-          (
-            await query<{ variable_set_revision: number | null }>(
-              'select variable_set_revision from app.workflow_runs where id=$1',
-              [runId(second, 1)],
-            )
-          )[0]?.variable_set_revision,
-        ).toBe(before);
-        expect(populated ? before !== null : before === null).toBe(true);
-        await complete(runId(second, 1), { amount: 2 });
-        await due(accepted.suiteId);
-        await scanner.scan(25);
-      }
-    } finally {
-      await variables.close();
+        )[0]?.variable_set_revision,
+      ).toBe(before);
+      expect(populated ? before !== null : before === null).toBe(true);
+      await complete(runId(second, 1), { amount: 2 });
+      await due(accepted.suiteId);
+      await scanner.scan(25);
     }
   });
 

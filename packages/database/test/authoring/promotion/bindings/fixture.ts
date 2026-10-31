@@ -3,7 +3,6 @@ import { randomUUID, createHash } from 'node:crypto';
 import { expect } from 'vitest';
 import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import { createWorkflowAuthoringFixtureDatabase } from '../../../support/workflow-authoring-admission.fixture.js';
-import { createWorkspaceVariablesStore } from '../../../../src/variables/settings.repository.js';
 import { createDataTablesStore } from '../../../../src/data-tables/tables.repository.js';
 import {
   actorId,
@@ -53,8 +52,6 @@ export const db = createWorkflowAuthoringFixtureDatabase(config, {
 });
 
 const connections = createConnectionDatabase(config);
-
-export const variables = createWorkspaceVariablesStore(config);
 
 export const tables = createDataTablesStore(config);
 
@@ -183,10 +180,5 @@ export async function beforeAllFixture1() {
 }
 
 export async function afterAllFixture2() {
-  return Promise.all([
-    db.close(),
-    connections.close(),
-    variables.close(),
-    tables.close(),
-  ]);
+  return Promise.all([db.close(), connections.close(), tables.close()]);
 }
