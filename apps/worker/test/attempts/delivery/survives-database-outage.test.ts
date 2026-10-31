@@ -85,7 +85,10 @@ describe('recording a finished step through a database outage', () => {
     const complete = vi.fn(() =>
       failures-- > 0
         ? Promise.reject(outage)
-        : Promise.resolve({ kind: 'committed', outboxEventId: 'event' } as const),
+        : Promise.resolve({
+            kind: 'committed',
+            outboxEventId: 'event',
+          } as const),
     );
     const store = completingThroughOutage(
       { complete } as unknown as NodeAttemptRunStore,

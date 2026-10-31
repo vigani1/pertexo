@@ -214,7 +214,10 @@ async function recoverOverdueDelivery(
     .select({ status: workflowRuns.status })
     .from(workflowRuns)
     .where(
-      and(eq(workflowRuns.workspaceId, workspaceId), eq(workflowRuns.id, runId)),
+      and(
+        eq(workflowRuns.workspaceId, workspaceId),
+        eq(workflowRuns.id, runId),
+      ),
     )
     .for('update');
   const attempt =
@@ -251,8 +254,7 @@ async function recoverOverdueDelivery(
   if (action === 'drop') return undefined;
   const outboxEventId = await enqueue(transaction, {
     jobName: delivery.jobName,
-    aggregateType:
-      attemptOwner === undefined ? 'workflow-run' : 'node-attempt',
+    aggregateType: attemptOwner === undefined ? 'workflow-run' : 'node-attempt',
     aggregateId: delivery.aggregateId,
     fields:
       attemptOwner === undefined

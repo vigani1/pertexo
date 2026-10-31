@@ -147,10 +147,7 @@ export function overdueRunSteps(
           and(
             isNull(event.publishedAt),
             isNull(event.failedAt),
-            lte(
-              event.availableAt,
-              sql`clock_timestamp()-${UNPUBLISHED_GRACE}`,
-            ),
+            lte(event.availableAt, sql`clock_timestamp()-${UNPUBLISHED_GRACE}`),
           ),
         ),
         inArray(workflowRuns.status, ACTIVE_STATUSES),
@@ -159,7 +156,6 @@ export function overdueRunSteps(
     );
   return expiredLeases.unionAll(overdueEvents).as('overdue_step');
 }
-
 
 /** When a run's next step passed its time, or undefined for a healthy run. */
 export async function readRunStalledSince(
