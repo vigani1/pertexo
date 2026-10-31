@@ -5,20 +5,21 @@
 export const WEBHOOK_MAX_BODY = '256 KB';
 export const WEBHOOK_FRESHNESS = '5 minutes';
 
-export const CURL_SNIPPET = [
-  "SECRET='<signing secret>'",
-  "URL='<your Pertexo API address>/hooks/<endpoint key>'",
-  'BODY=\'{"event":"order.created","id":"ord_123"}\'',
-  'TS=$(date +%s)',
-  "KEY_HEX=$(printf '%s=' \"$SECRET\" | tr '_-' '/+' | base64 -d | xxd -p -c 256)",
-  'SIG=$(printf \'%s.%s\' "$TS" "$BODY" | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$KEY_HEX" | awk \'{print $NF}\')',
-  '',
-  'curl -X POST "$URL" \\',
-  "  -H 'Content-Type: application/json' \\",
-  '  -H "X-Pertexo-Timestamp: $TS" \\',
-  '  -H "X-Pertexo-Signature: v1=$SIG" \\',
-  '  --data "$BODY"',
-].join('\n');
+export const curlSnippet = (address: string) =>
+  [
+    "SECRET='<signing secret>'",
+    `URL='${address}'`,
+    'BODY=\'{"event":"order.created","id":"ord_123"}\'',
+    'TS=$(date +%s)',
+    "KEY_HEX=$(printf '%s=' \"$SECRET\" | tr '_-' '/+' | base64 -d | xxd -p -c 256)",
+    'SIG=$(printf \'%s.%s\' "$TS" "$BODY" | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$KEY_HEX" | awk \'{print $NF}\')',
+    '',
+    'curl -X POST "$URL" \\',
+    "  -H 'Content-Type: application/json' \\",
+    '  -H "X-Pertexo-Timestamp: $TS" \\',
+    '  -H "X-Pertexo-Signature: v1=$SIG" \\',
+    '  --data "$BODY"',
+  ].join('\n');
 
 export const NODE_SNIPPET = [
   "import { createHmac } from 'node:crypto';",
