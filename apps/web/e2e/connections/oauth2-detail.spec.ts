@@ -92,7 +92,7 @@ for (const [name, grant, text] of [
     'The service gave no expiry',
   ],
 ] as const)
-  test.fail(`detail: an active grant ${name} says so`, async ({ page }) => {
+  test(`detail: an active grant ${name} says so`, async ({ page }) => {
     await showConnection(page, connection('active', { grant }));
     await expect(lens(page).getByText(text)).toBeVisible();
     await expect(
@@ -130,32 +130,29 @@ for (const [code, notice, short, button] of [
     'Reconnect',
   ],
 ] as const)
-  test.fail(
-    `detail: ${code} shows its notice and short form`,
-    async ({ page }) => {
-      await showConnection(
-        page,
-        connection('reauthorization_required', {
-          health: {
-            lastTestedAt: null,
-            lastHealthyAt: null,
-            lastErrorCode: code,
-          },
-        }),
-      );
-      await expect(
-        lens(page).getByText('Needs reauthorization', { exact: true }),
-      ).toBeVisible();
-      await expect(lens(page).getByText(notice, { exact: true })).toBeVisible();
-      await expect(
-        lens(page).getByRole('button', { name: button, exact: true }),
-      ).toBeVisible();
-      await expect(page.getByText(short)).toBeVisible();
-    },
-  );
+  test(`detail: ${code} shows its notice and short form`, async ({ page }) => {
+    await showConnection(
+      page,
+      connection('reauthorization_required', {
+        health: {
+          lastTestedAt: null,
+          lastHealthyAt: null,
+          lastErrorCode: code,
+        },
+      }),
+    );
+    await expect(
+      lens(page).getByText('Needs reauthorization', { exact: true }),
+    ).toBeVisible();
+    await expect(lens(page).getByText(notice, { exact: true })).toBeVisible();
+    await expect(
+      lens(page).getByRole('button', { name: button, exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(short)).toBeVisible();
+  });
 
 // Detail: Revoke dialog adds the provider-side sentence.
-test.fail('detail: revoke says what stays at the service', async ({ page }) => {
+test('detail: revoke says what stays at the service', async ({ page }) => {
   await showConnection(
     page,
     connection('active', {
@@ -175,34 +172,31 @@ test.fail('detail: revoke says what stays at the service', async ({ page }) => {
 });
 
 // Edit settings: all fields prefilled except the secret, which must be typed again (S22).
-test.fail(
-  'edit settings prefills everything but the secret',
-  async ({ page }) => {
-    await showConnection(
-      page,
-      connection('active', {
-        grant: {
-          authorizedAt: timestamp,
-          accessTokenExpiresAt: null,
-          renewable: false,
-        },
-      }),
-    );
-    await lens(page).getByRole('button', { name: 'Edit settings' }).click();
-    await expect(
-      lens(page).getByLabel('Client ID', { exact: true }),
-    ).toHaveValue('pertexo-client');
-    await expect(
-      lens(page).getByLabel('Token URL', { exact: true }),
-    ).toHaveValue(settings.tokenUrl);
-    await expect(
-      lens(page).getByLabel('Client secret', { exact: true }),
-    ).toHaveValue('');
-  },
-);
+test('edit settings prefills everything but the secret', async ({ page }) => {
+  await showConnection(
+    page,
+    connection('active', {
+      grant: {
+        authorizedAt: timestamp,
+        accessTokenExpiresAt: null,
+        renewable: false,
+      },
+    }),
+  );
+  await lens(page).getByRole('button', { name: 'Edit settings' }).click();
+  await expect(lens(page).getByLabel('Client ID', { exact: true })).toHaveValue(
+    'pertexo-client',
+  );
+  await expect(lens(page).getByLabel('Token URL', { exact: true })).toHaveValue(
+    settings.tokenUrl,
+  );
+  await expect(
+    lens(page).getByLabel('Client secret', { exact: true }),
+  ).toHaveValue('');
+});
 
 // Connection tests table: the copy for an API that refuses the token.
-test.fail('test: an API refusal says what to check', async ({ page }) => {
+test('test: an API refusal says what to check', async ({ page }) => {
   const active = connection('active', {
     grant: {
       authorizedAt: timestamp,
@@ -244,82 +238,78 @@ test.fail('test: an API refusal says what to check', async ({ page }) => {
 });
 
 // Create form: the sign-in types and the Advanced help text.
-test.fail(
-  'form: server to server hides what it has no use for',
-  async ({ page }) => {
-    await page.context().addCookies([
-      {
-        name: 'pertexo_csrf',
-        value: csrfToken,
-        url: 'http://127.0.0.1:4173',
-      },
-    ]);
-    await installRoutes(page);
-    await page.goto(`/w/${workspaceId}/connections?add=http`);
-    const sheet = lens(page);
-    await sheet.getByRole('radio', { name: 'OAuth2', exact: true }).click();
-    await expect(
-      sheet.getByLabel('Authorization URL', { exact: true }),
-    ).toBeVisible();
-    await sheet.getByText('Advanced', { exact: true }).click();
-    await expect(sheet.getByLabel('PKCE')).toBeVisible();
-    await expect(
-      sheet
-        .getByText(
-          "Don't put secrets here; people who can see this connection can read them.",
-        )
-        .first(),
-    ).toBeVisible();
-    await sheet
-      .getByRole('radio', { name: 'Server to server', exact: true })
-      .click();
-    await expect(
-      sheet.getByLabel('Authorization URL', { exact: true }),
-    ).toHaveCount(0);
-    await expect(sheet.getByLabel('PKCE')).toHaveCount(0);
-    await expect(
-      sheet.getByLabel('Extra authorization parameters'),
-    ).toHaveCount(0);
-    await expect(sheet.getByLabel('Token URL', { exact: true })).toBeVisible();
-  },
-);
+test('form: server to server hides what it has no use for', async ({
+  page,
+}) => {
+  await page.context().addCookies([
+    {
+      name: 'pertexo_csrf',
+      value: csrfToken,
+      url: 'http://127.0.0.1:4173',
+    },
+  ]);
+  await installRoutes(page);
+  await page.goto(`/w/${workspaceId}/connections?add=http`);
+  const sheet = lens(page);
+  await sheet.getByRole('radio', { name: 'OAuth2', exact: true }).click();
+  await expect(
+    sheet.getByLabel('Authorization URL', { exact: true }),
+  ).toBeVisible();
+  await sheet.getByText('Advanced', { exact: true }).click();
+  await expect(sheet.getByLabel('PKCE')).toBeVisible();
+  await expect(
+    sheet
+      .getByText(
+        "Don't put secrets here; people who can see this connection can read them.",
+      )
+      .first(),
+  ).toBeVisible();
+  await sheet
+    .getByRole('radio', { name: 'Server to server', exact: true })
+    .click();
+  await expect(
+    sheet.getByLabel('Authorization URL', { exact: true }),
+  ).toHaveCount(0);
+  await expect(sheet.getByLabel('PKCE')).toHaveCount(0);
+  await expect(sheet.getByLabel('Extra authorization parameters')).toHaveCount(
+    0,
+  );
+  await expect(sheet.getByLabel('Token URL', { exact: true })).toBeVisible();
+});
 
 // Connect step, for server to server: only one host is named.
-test.fail(
-  'form: server to server names only the token host',
-  async ({ page }) => {
-    await page.context().addCookies([
-      {
-        name: 'pertexo_csrf',
-        value: csrfToken,
-        url: 'http://127.0.0.1:4173',
-      },
-    ]);
-    await installRoutes(page);
-    await page.route(`**/v1/workspaces/${workspaceId}/connections`, (route) =>
-      route.fulfill({
-        status: 201,
-        json: connection('reauthorization_required'),
-      }),
-    );
-    await page.goto(`/w/${workspaceId}/connections?add=http`);
-    const sheet = lens(page);
-    await sheet.getByRole('radio', { name: 'OAuth2', exact: true }).click();
-    await sheet
-      .getByRole('radio', { name: 'Server to server', exact: true })
-      .click();
-    await sheet
-      .getByLabel('Token URL', { exact: true })
-      .fill('https://token.example.test/token');
-    await sheet.getByLabel('Client ID', { exact: true }).fill('pertexo-client');
-    await sheet.getByLabel('Client secret', { exact: true }).fill('a-secret');
-    await sheet.getByRole('button', { name: 'Continue', exact: true }).click();
-    await sheet
-      .getByLabel('Connection name', { exact: true })
-      .fill('Billing API');
-    await sheet.getByRole('button', { name: 'Continue', exact: true }).click();
-    await expect(
-      sheet.getByText('Pertexo gets its token from token.example.test.'),
-    ).toBeVisible();
-  },
-);
+test('form: server to server names only the token host', async ({ page }) => {
+  await page.context().addCookies([
+    {
+      name: 'pertexo_csrf',
+      value: csrfToken,
+      url: 'http://127.0.0.1:4173',
+    },
+  ]);
+  await installRoutes(page);
+  await page.route(`**/v1/workspaces/${workspaceId}/connections`, (route) =>
+    route.fulfill({
+      status: 201,
+      json: connection('reauthorization_required'),
+    }),
+  );
+  await page.goto(`/w/${workspaceId}/connections?add=http`);
+  const sheet = lens(page);
+  await sheet.getByRole('radio', { name: 'OAuth2', exact: true }).click();
+  await sheet
+    .getByRole('radio', { name: 'Server to server', exact: true })
+    .click();
+  await sheet
+    .getByLabel('Token URL', { exact: true })
+    .fill('https://token.example.test/token');
+  await sheet.getByLabel('Client ID', { exact: true }).fill('pertexo-client');
+  await sheet.getByLabel('Client secret', { exact: true }).fill('a-secret');
+  await sheet.getByRole('button', { name: 'Continue', exact: true }).click();
+  await sheet
+    .getByLabel('Connection name', { exact: true })
+    .fill('Billing API');
+  await sheet.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(
+    sheet.getByText('Pertexo gets its token from token.example.test.'),
+  ).toBeVisible();
+});

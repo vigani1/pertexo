@@ -49,7 +49,7 @@ describeOAuth2('an OAuth2 connection changing state', () => {
     BigInt((await harness.connection(id)).health_revision);
 
   // D4: create stores connection, secret version and client, with the not-yet-connected code.
-  it.fails('D4 a new connection is not connected yet', async () => {
+  it('D4 a new connection is not connected yet', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     expect(connection.body).toMatchObject({
@@ -74,39 +74,36 @@ describeOAuth2('an OAuth2 connection changing state', () => {
   });
 
   // D5: consent success is a recorded transition.
-  it.fails(
-    'D5 consent makes it active, with its event, audit fact and health',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.create(owner, 'non-rotating');
-      const before = await healthRevision(connection.id);
-      const landing = await harness.reconnect(owner, connection);
-      expect(landing.result).toBe('connected');
-      expect(await harness.connection(connection.id)).toMatchObject({
-        status: 'active',
-        last_error_code: null,
-        current_secret_version_id: connection.secretVersionId,
-        last_health_transition_source: 'rotation',
-      });
-      expect(
-        (await harness.connection(connection.id)).last_healthy_at,
-      ).not.toBeNull();
-      expect(await healthRevision(connection.id)).toBe(before + 1n);
-      expect(await harness.events(connection.id)).toContain(
-        'connection.oauth2_authorized',
-      );
-      const audit = await harness.stack.sql<{ action: string }>(
-        `select action from app.audit_events where target_id=$1`,
-        [connection.id],
-      );
-      expect(audit.map(({ action }) => action)).toContain(
-        'connection.oauth2_authorized',
-      );
-    },
-  );
+  it('D5 consent makes it active, with its event, audit fact and health', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.create(owner, 'non-rotating');
+    const before = await healthRevision(connection.id);
+    const landing = await harness.reconnect(owner, connection);
+    expect(landing.result).toBe('connected');
+    expect(await harness.connection(connection.id)).toMatchObject({
+      status: 'active',
+      last_error_code: null,
+      current_secret_version_id: connection.secretVersionId,
+      last_health_transition_source: 'rotation',
+    });
+    expect(
+      (await harness.connection(connection.id)).last_healthy_at,
+    ).not.toBeNull();
+    expect(await healthRevision(connection.id)).toBe(before + 1n);
+    expect(await harness.events(connection.id)).toContain(
+      'connection.oauth2_authorized',
+    );
+    const audit = await harness.stack.sql<{ action: string }>(
+      `select action from app.audit_events where target_id=$1`,
+      [connection.id],
+    );
+    expect(audit.map(({ action }) => action)).toContain(
+      'connection.oauth2_authorized',
+    );
+  });
 
   // D5: a refresh writes only the token row and lastHealthyAt: no event, no revision.
-  it.fails('D5 a refresh changes the token, not the connection', async () => {
+  it('D5 a refresh changes the token, not the connection', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.connected(owner, 'rotating');
     const tokenBefore = await harness.tokenRow(connection.id);
@@ -130,31 +127,28 @@ describeOAuth2('an OAuth2 connection changing state', () => {
   });
 
   // D6: losing a grant from a worker is source run.
-  it.fails(
-    'D6 invalid_grant in a run deletes tokens and records the transition',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'rotating');
-      const before = await healthRevision(connection.id);
-      harness.standIn.revoke(connection.clientId);
-      await harness.expireToken(connection.id);
-      const runId = await harness.run(owner, usedStep(connection));
-      expect((await harness.finish(runId)).status).toBe('failed');
-      expect(await harness.tokenRow(connection.id)).toBeUndefined();
-      expect(await harness.connection(connection.id)).toMatchObject({
-        status: 'reauthorization_required',
-        last_error_code: 'connection.oauth2_grant_revoked',
-        last_health_transition_source: 'run',
-      });
-      expect(await healthRevision(connection.id)).toBe(before + 1n);
-      expect(await harness.events(connection.id)).toContain(
-        'connection.reauthorization_required',
-      );
-    },
-  );
+  it('D6 invalid_grant in a run deletes tokens and records the transition', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'rotating');
+    const before = await healthRevision(connection.id);
+    harness.standIn.revoke(connection.clientId);
+    await harness.expireToken(connection.id);
+    const runId = await harness.run(owner, usedStep(connection));
+    expect((await harness.finish(runId)).status).toBe('failed');
+    expect(await harness.tokenRow(connection.id)).toBeUndefined();
+    expect(await harness.connection(connection.id)).toMatchObject({
+      status: 'reauthorization_required',
+      last_error_code: 'connection.oauth2_grant_revoked',
+      last_health_transition_source: 'run',
+    });
+    expect(await healthRevision(connection.id)).toBe(before + 1n);
+    expect(await harness.events(connection.id)).toContain(
+      'connection.reauthorization_required',
+    );
+  });
 
   // D6: and from a connection test, source test.
-  it.fails('D6 invalid_grant in a test records source test', async () => {
+  it('D6 invalid_grant in a test records source test', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.connected(owner, 'rotating');
     harness.standIn.revoke(connection.clientId);
@@ -169,31 +163,28 @@ describeOAuth2('an OAuth2 connection changing state', () => {
   });
 
   // Plan outcome: reconnecting works without touching the workflows that use it.
-  it.fails(
-    'a reconnect restores it without changing the secret version',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'rotating');
-      harness.standIn.revoke(connection.clientId);
-      await harness.expireToken(connection.id);
-      await harness.finish(await harness.run(owner, usedStep(connection)));
-      expect((await harness.connection(connection.id)).status).toBe(
-        'reauthorization_required',
-      );
-      const landing = await harness.reconnect(owner, connection);
-      expect(landing.result).toBe('connected');
-      expect(await harness.connection(connection.id)).toMatchObject({
-        status: 'active',
-        last_error_code: null,
-        current_secret_version_id: connection.secretVersionId,
-      });
-      const runId = await harness.run(owner, usedStep(connection));
-      expect((await harness.finish(runId)).status).toBe('succeeded');
-    },
-  );
+  it('a reconnect restores it without changing the secret version', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'rotating');
+    harness.standIn.revoke(connection.clientId);
+    await harness.expireToken(connection.id);
+    await harness.finish(await harness.run(owner, usedStep(connection)));
+    expect((await harness.connection(connection.id)).status).toBe(
+      'reauthorization_required',
+    );
+    const landing = await harness.reconnect(owner, connection);
+    expect(landing.result).toBe('connected');
+    expect(await harness.connection(connection.id)).toMatchObject({
+      status: 'active',
+      last_error_code: null,
+      current_secret_version_id: connection.secretVersionId,
+    });
+    const runId = await harness.run(owner, usedStep(connection));
+    expect((await harness.finish(runId)).status).toBe('succeeded');
+  });
 
   // S22: changing any setting needs the secret in the same request.
-  it.fails('S22 replacing settings without the secret is refused', async () => {
+  it('S22 replacing settings without the secret is refused', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.connected(owner, 'non-rotating');
     const tokenBefore = await harness.tokenRow(connection.id);
@@ -214,7 +205,7 @@ describeOAuth2('an OAuth2 connection changing state', () => {
   });
 
   // S22, D4, L16: replacing drops tokens and pending consent and asks for consent again.
-  it.fails('S22 replacing drops tokens and asks for new consent', async () => {
+  it('S22 replacing drops tokens and asks for new consent', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.connected(owner, 'non-rotating');
     await harness.start(owner.api, owner, connection.id);
@@ -241,7 +232,7 @@ describeOAuth2('an OAuth2 connection changing state', () => {
   });
 
   // D4: "An OAuth2 connection can't become a header one or the reverse".
-  it.fails('D4 refuses a type change in both directions', async () => {
+  it('D4 refuses a type change in both directions', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const toHeaders = await replace(owner, connection, {
@@ -280,24 +271,21 @@ describeOAuth2('an OAuth2 connection changing state', () => {
   });
 
   // D7: revoke deletes tokens and pending consent; the sealed secret stays.
-  it.fails(
-    'D7 revoke deletes tokens and pending consent, not the sealed secret',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'non-rotating');
-      await harness.start(owner.api, owner, connection.id);
-      expect(await harness.pendingRows(connection.id)).toBe(1);
-      expect((await revoke(owner, connection)).status).toBeLessThan(300);
-      expect(await harness.tokenRow(connection.id)).toBeUndefined();
-      expect(await harness.pendingRows(connection.id)).toBe(0);
-      expect((await harness.connection(connection.id)).status).toBe('revoked');
-      const [secret] = await harness.stack.sql<{ count: number }>(
-        `select count(*)::int as count from app.connection_secret_versions where connection_id=$1`,
-        [connection.id],
-      );
-      expect(secret?.count).toBe(1);
-      // "Revoke: deletes tokens here; doesn't call the provider".
-      expect(harness.standIn.requests.at(-1)?.path).not.toBe('/revoke');
-    },
-  );
+  it('D7 revoke deletes tokens and pending consent, not the sealed secret', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'non-rotating');
+    await harness.start(owner.api, owner, connection.id);
+    expect(await harness.pendingRows(connection.id)).toBe(1);
+    expect((await revoke(owner, connection)).status).toBeLessThan(300);
+    expect(await harness.tokenRow(connection.id)).toBeUndefined();
+    expect(await harness.pendingRows(connection.id)).toBe(0);
+    expect((await harness.connection(connection.id)).status).toBe('revoked');
+    const [secret] = await harness.stack.sql<{ count: number }>(
+      `select count(*)::int as count from app.connection_secret_versions where connection_id=$1`,
+      [connection.id],
+    );
+    expect(secret?.count).toBe(1);
+    // "Revoke: deletes tokens here; doesn't call the provider".
+    expect(harness.standIn.requests.at(-1)?.path).not.toBe('/revoke');
+  });
 });

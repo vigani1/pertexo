@@ -1,6 +1,9 @@
 import { useId, useState } from 'react';
 import { connectionTestRequestSchema } from '@pertexo/contracts';
-import type { ConnectionTestRequest } from '@pertexo/contracts';
+import type {
+  ConnectionResponse,
+  ConnectionTestRequest,
+} from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -45,15 +48,17 @@ function urlError(url: string): string | undefined {
 
 function TestOutcome({
   provider,
+  authType,
   test,
 }: Readonly<{
   provider: ProviderKey;
+  authType: ConnectionResponse['authType'] | undefined;
   test: Pick<ConnectionTest, 'phase' | 'result' | 'error'>;
 }>) {
   if (test.phase === 'running')
     return <p className="text-sm text-muted-foreground">Testing…</p>;
   if (test.result !== undefined && test.phase !== 'unsure') {
-    const copy = describeTestOutcome(provider, test.result.outcome);
+    const copy = describeTestOutcome(provider, test.result.outcome, authType);
     return (
       <Notice
         tone={test.result.outcome.ok ? 'success' : 'destructive'}
@@ -69,7 +74,13 @@ function TestOutcome({
         {test.error}
       </Notice>
     );
-  return <p className="text-sm text-muted-foreground">{INTRO[provider]}</p>;
+  return (
+    <p className="text-sm text-muted-foreground">
+      {authType === 'oauth2'
+        ? 'Pertexo gets a token and calls an address with it to see whether it works.'
+        : INTRO[provider]}
+    </p>
+  );
 }
 
 /**
@@ -78,11 +89,13 @@ function TestOutcome({
  */
 export function ConnectionTestPanel({
   provider,
+  authType,
   test,
   onRun,
   disabled = false,
 }: Readonly<{
   provider: ProviderKey;
+  authType?: ConnectionResponse['authType'];
   test: Pick<ConnectionTest, 'phase' | 'result' | 'error'>;
   onRun: (request: ConnectionTestRequest) => void;
   disabled?: boolean;
@@ -115,13 +128,13 @@ export function ConnectionTestPanel({
     <div className="flex flex-col gap-4">
       <TestThread provider={provider} phase={test.phase} />
       <div role="status" aria-live="polite">
-        <TestOutcome provider={provider} test={test} />
+        <TestOutcome provider={provider} authType={authType} test={test} />
       </div>
       {provider === 'http' ? (
         <LabelledField
           id={`${id}-url`}
           label="Address to call"
-          description="Pertexo sends a GET request with your headers, like https://api.example.com/me."
+          description={`Pertexo sends a GET request with your ${authType === 'oauth2' ? 'token' : 'headers'}, like https://api.example.com/me.`}
           error={validation.error('url')}
         >
           {(control) => (

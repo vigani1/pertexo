@@ -12,7 +12,9 @@ import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/database/platform';
 import type { InstanceCapacity } from '@pertexo/database/platform';
 import { isIP } from 'node:net';
 import {
+  parseAllowedPrivateNetworks,
   parseConnectionEncryptionConfig,
+  type AllowedPrivateNetwork,
   type SelfManagedConnectionEncryptionConfig,
 } from '@pertexo/integrations/server';
 
@@ -124,6 +126,8 @@ const apiEnvironmentSchema = databaseClientEnvironmentSchema.extend({
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 
 export type ApiConfig = Readonly<{
+  /** Where OAuth2 token requests may reach besides the public internet. */
+  httpAllowedPrivateNetworks?: readonly AllowedPrivateNetwork[];
   callbacks?: CallbackKeyConfig;
   capacity: InstanceCapacity;
   webhookEndpointBurstLimit: number;
@@ -181,6 +185,9 @@ export function parseApiConfig(
 
   const callbacks = parseCallbackKeyConfig(environment, { deployed });
   return Object.freeze({
+    httpAllowedPrivateNetworks: parseAllowedPrivateNetworks(
+      environment.HTTP_ALLOWED_PRIVATE_NETWORKS,
+    ),
     ...(callbacks === undefined ? {} : { callbacks }),
     capacity: Object.freeze({
       activeRunLimit: limits.WORKSPACE_ACTIVE_RUN_LIMIT,

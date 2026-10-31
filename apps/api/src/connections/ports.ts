@@ -5,10 +5,13 @@ import type {
   ConnectionReadDatabase,
   ConnectionTestDatabase,
   ConnectionUsageDatabase,
+  OAuth2ConsentDatabase,
 } from '@pertexo/database/connections';
 import type { FailureNotificationDestinationDatabase } from '@pertexo/database/notifications';
 import type {
   ConnectionSecretContext,
+  OAuth2EndpointPolicy,
+  OAuth2TokenService,
   SealedConnectionSecret,
   SecureHttpClient,
   SlackClient,
@@ -52,6 +55,17 @@ export type ConnectionSlackClient = Pick<
   Partial<Pick<SlackClient, 'sendMessage'>>;
 export type ConnectionEmailClient = Pick<ResendClient, 'sendNotification'>;
 
+/** What OAuth2 connections add; an install has them or the routes don't exist. */
+export type ConnectionOAuth2Dependencies = Readonly<{
+  persistence: OAuth2ConsentDatabase;
+  endpointPolicy: OAuth2EndpointPolicy;
+  /** Token requests only: it carries the operator's address policy (S17). */
+  tokenClient: Pick<SecureHttpClient, 'execute'>;
+  /** A connection test's own request, under the public-only rule. */
+  apiClient: Pick<SecureHttpClient, 'executeStreaming'>;
+  tokens: Pick<OAuth2TokenService, 'accessToken' | 'rejectToken'>;
+}>;
+
 export type ConnectionDependencies = Readonly<{
   applicationSecret: string;
   persistence: ConnectionPersistence;
@@ -64,4 +78,5 @@ export type ConnectionDependencies = Readonly<{
   destinationPersistence?: FailureNotificationDestinationDatabase;
   usagePersistence?: ConnectionUsageDatabase;
   sharingPersistence?: ConnectionSharingDatabase;
+  oauth2?: ConnectionOAuth2Dependencies;
 }>;

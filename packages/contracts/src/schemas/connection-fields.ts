@@ -13,6 +13,7 @@ const connectionAuthTypeSchema = z.enum([
   'http_headers',
   'slack_bot_token',
   'resend_api_key',
+  'oauth2',
 ]);
 export const connectionStatusSchema = z.enum([
   'active',

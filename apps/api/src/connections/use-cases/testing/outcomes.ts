@@ -1,3 +1,4 @@
+import type { OAuth2StepFailureCode } from '@pertexo/contracts';
 import type { ConnectionTestOutcome } from '@pertexo/database/connections';
 import type { SecureHttpError } from '@pertexo/integrations/server';
 import { classifySlackConnectionHealth } from '@pertexo/integrations/server';
@@ -100,6 +101,53 @@ export function responseOutcome(status: number): ConnectionTestOutcome {
     errorCode,
     reauthorizationRequired: false,
   });
+}
+
+const OAUTH2_TEST_CODE: Readonly<
+  Record<Exclude<OAuth2StepFailureCode, 'http.oauth2_not_connected'>, string>
+> = Object.freeze({
+  'http.oauth2_grant_revoked': 'connection.oauth2_grant_revoked',
+  'http.oauth2_client_rejected': 'connection.oauth2_client_rejected',
+  'http.oauth2_token_expired': 'connection.oauth2_token_expired',
+  'http.oauth2_token_rate_limited': 'connection.provider_rate_limited',
+  'http.oauth2_token_endpoint_unavailable': 'connection.provider_unavailable',
+  'http.oauth2_token_response_invalid': 'connection.provider_invalid_response',
+  'http.oauth2_token_address_blocked': 'connection.test.ssrf_blocked',
+  'http.oauth2_refresh_busy': 'connection.provider_unavailable',
+  'http.oauth2_host_not_allowed': 'connection.oauth2_host_not_allowed',
+});
+
+function oauth2Refusal(errorCode: string): ConnectionTestOutcome {
+  // The token service has already changed the status when that is right: the
+  // test itself never does, which is what a 401 from any URL must not be able to.
+  return Object.freeze({
+    ok: false,
+    httpStatus: null,
+    errorCode,
+    reauthorizationRequired: false,
+  });
+}
+
+export function oauth2NotActiveOutcome(
+  lastErrorCode: string | null,
+): ConnectionTestOutcome {
+  return oauth2Refusal(lastErrorCode ?? 'connection.oauth2_not_authorized');
+}
+
+export function oauth2TokenFailureOutcome(
+  code: Exclude<OAuth2StepFailureCode, 'http.oauth2_not_connected'>,
+): ConnectionTestOutcome {
+  return oauth2Refusal(OAUTH2_TEST_CODE[code]);
+}
+
+/** L15: unlike a header connection, a 401 or 403 from an API changes nothing. */
+export function oauth2ApiResponseOutcome(
+  status: number,
+): ConnectionTestOutcome {
+  const outcome = responseOutcome(status);
+  return outcome.ok
+    ? outcome
+    : Object.freeze({ ...outcome, reauthorizationRequired: false });
 }
 
 export function secureErrorOutcome(

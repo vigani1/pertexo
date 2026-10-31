@@ -140,6 +140,10 @@ async function acquireIdentityWorkflows(
       {
         identityRuntime,
         applicationSecret: identity.betterAuth.secret,
+        oauth2: {
+          publicWebOrigin: identity.publicWebOrigin,
+          allowedPrivateNetworks: config.httpAllowedPrivateNetworks ?? [],
+        },
         runtime: databaseRuntime,
       },
     );

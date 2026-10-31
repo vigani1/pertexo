@@ -55,6 +55,7 @@ export async function createWorkerNodeRuntimeCapabilities(
       ownedRunValues: undefined,
       ownedWebhookResponses: undefined,
       encryptionRuntime: undefined,
+      oauth2Tokens: undefined,
       ownedConnectionDatabase: undefined,
       ownedArtifactDatabase: undefined,
       ownedArtifactStore: undefined,

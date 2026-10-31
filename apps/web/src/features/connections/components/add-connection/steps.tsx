@@ -14,11 +14,12 @@ import type { SavedCredential } from '../../model/credential-draft';
 import type { ConnectionTest } from '../connection-test/use-command';
 import { ConnectionTestPanel } from '../connection-test/panel';
 
-export type AddStep = 'provider' | 'credential' | 'name' | 'test';
+export type AddStep = 'provider' | 'credential' | 'name' | 'connect' | 'test';
 
 const STEP_WORDS: Readonly<Record<Exclude<AddStep, 'provider'>, string>> = {
   credential: 'Credential',
   name: 'Name',
+  connect: 'Connect',
   test: 'Test',
 };
 const NUMBERED_STEPS = ['credential', 'name', 'test'] as const;
@@ -26,7 +27,8 @@ const NUMBERED_STEPS = ['credential', 'name', 'test'] as const;
 /** Three short bars: done steps dimmed, the current one lit, one colour. */
 export function StepIndicator({ step }: Readonly<{ step: AddStep }>) {
   if (step === 'provider') return null;
-  const current = NUMBERED_STEPS.indexOf(step);
+  // Connecting takes the third place: an OAuth2 test comes after it, and is optional.
+  const current = NUMBERED_STEPS.indexOf(step === 'connect' ? 'test' : step);
   return (
     <div className="flex flex-col gap-2">
       <div aria-hidden="true" className="flex gap-1.5">
@@ -51,6 +53,7 @@ export function StepIndicator({ step }: Readonly<{ step: AddStep }>) {
 export function NameStep({
   id,
   provider,
+  authType,
   name,
   disabled,
   validation,
@@ -60,6 +63,7 @@ export function NameStep({
 }: Readonly<{
   id: string;
   provider: ProviderKey;
+  authType: ConnectionResponse['authType'] | undefined;
   name: string;
   disabled: boolean;
   validation: FieldValidation<'name'>;
@@ -95,7 +99,7 @@ export function NameStep({
       </LabelledField>
       <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
         <dt className="text-subtle-foreground">Saves</dt>
-        <dd>{describeConnectionKind(provider)}, stored encrypted</dd>
+        <dd>{describeConnectionKind(provider, authType)}, stored encrypted</dd>
         <dt className="text-subtle-foreground">Works with</dt>
         <dd>{PROVIDERS[provider].usedBy}</dd>
       </dl>
@@ -129,6 +133,7 @@ export function TestStep({
       </p>
       <ConnectionTestPanel
         provider={connection.providerKey}
+        authType={connection.authType}
         test={test}
         onRun={(request) => {
           test.run(connection, request);

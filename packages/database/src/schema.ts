@@ -102,6 +102,11 @@ import {
   connectionHealthObservations,
 } from './schema/connections.js';
 import {
+  connectionOAuth2Authorizations,
+  connectionOAuth2Clients,
+  connectionOAuth2Tokens,
+} from './schema/oauth2-connections.js';
+import {
   artifacts,
   workspaceArtifactCapacity,
   outboxEvents,
@@ -334,6 +339,9 @@ export const databaseSchema = {
   authSessions,
   authVerifications,
   connectionEvents,
+  connectionOAuth2Authorizations,
+  connectionOAuth2Clients,
+  connectionOAuth2Tokens,
   connectionShares,
   connections,
   connectionSecretVersions,

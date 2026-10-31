@@ -123,6 +123,8 @@ function safeApplicationIssues(
 export function applicationProblemIssues(
   error: ApplicationError,
 ): readonly ProblemIssue[] | undefined {
+  if (error.code === 'connection.oauth2_endpoint_refused')
+    return safeApplicationIssues(error.details?.issues);
   if (error.code === 'workflow.invalid' || error.code === 'form.invalid')
     return safeApplicationIssues(error.details?.issues);
   if (error.code === 'request.invalid' && isRequestBodyError(error.cause))

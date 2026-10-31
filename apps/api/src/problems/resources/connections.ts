@@ -3,6 +3,7 @@ import {
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
   ConnectionNotFoundError,
+  ConnectionNotOAuth2Error,
   ConnectionSharingRevisionConflictError,
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
@@ -15,6 +16,11 @@ import {
 } from '@pertexo/integrations/server';
 import { applicationError } from '../../platform/http/index.js';
 import { InvalidConnectionCursorError } from '../../connections/cursor.js';
+import {
+  OAuth2EndpointRefusedError,
+  OAuth2ProviderUnavailableError,
+  OAuth2TokenRefusedError,
+} from '../../connections/oauth2/errors.js';
 
 export const connectionProblems = [
   errorRegistration(InvalidConnectionCursorError, () => {
@@ -24,6 +30,36 @@ export const connectionProblems = [
   }),
   errorRegistration(ConnectionNotFoundError, () => {
     return applicationError('resource.not_found');
+  }),
+  errorRegistration(ConnectionNotOAuth2Error, () => {
+    return applicationError('connection.conflict', {
+      safeDetail: 'This connection doesn’t sign in with OAuth2.',
+    });
+  }),
+  errorRegistration(OAuth2EndpointRefusedError, (error) => {
+    return applicationError('connection.oauth2_endpoint_refused', {
+      safeDetail: `${error.field} points to an address this install doesn’t allow. Use a public https address, or ask an administrator to allow the private network.`,
+      details: {
+        issues: [
+          {
+            path: `credential.settings.${error.field}`,
+            code: 'endpoint_refused',
+            message: 'This address isn’t allowed on this install.',
+          },
+        ],
+      },
+    });
+  }),
+  errorRegistration(OAuth2TokenRefusedError, () => {
+    return applicationError('connection.oauth2_token_refused', {
+      safeDetail:
+        'The service refused the sign-in. Check the client ID, secret and token URL.',
+    });
+  }),
+  errorRegistration(OAuth2ProviderUnavailableError, () => {
+    return applicationError('provider.unavailable', {
+      safeDetail: 'The service’s token address didn’t answer. Try again soon.',
+    });
   }),
   errorRegistration(FailureNotificationDestinationError, (error) => {
     if (error.code === 'not_found') {

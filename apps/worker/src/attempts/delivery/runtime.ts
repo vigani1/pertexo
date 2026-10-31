@@ -319,6 +319,9 @@ function capabilityRuntimeOptions(
     ...(options.connectionEncryption === undefined
       ? {}
       : { connectionEncryption: options.connectionEncryption }),
+    ...(options.httpRequest === undefined
+      ? {}
+      : { allowedPrivateNetworks: options.httpRequest.allowedPrivateNetworks }),
     ...(options.artifactStore === undefined
       ? {}
       : { artifactStore: options.artifactStore }),

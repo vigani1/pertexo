@@ -6,7 +6,11 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { connectionEvents, connections } from '../../schema/connections.js';
-import type { ConnectionRecord, ConnectionTestOutcome } from '../contract.js';
+import type {
+  ConnectionRecord,
+  ConnectionStatus,
+  ConnectionTestOutcome,
+} from '../contract.js';
 import { connectionFields } from '../records.queries.js';
 
 /** Transaction-private revision transitions; callers already own the connection lock. */
@@ -38,13 +42,14 @@ export async function rotateConnectionHealth(
   workspaceId: string,
   connectionId: string,
   secretVersionId: string,
+  next: Readonly<{ status: ConnectionStatus; lastErrorCode: string | null }>,
 ) {
   return drizzle(client)
     .update(connections)
     .set({
       currentSecretVersionId: secretVersionId,
-      status: 'active',
-      lastErrorCode: null,
+      status: next.status,
+      lastErrorCode: next.lastErrorCode,
       lastTestedAt: null,
       lastHealthyAt: null,
       lastRunObservedAt: null,

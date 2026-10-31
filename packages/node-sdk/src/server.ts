@@ -19,6 +19,7 @@ export type {
   NodeExecutorRegistration,
   NodeRegistryOptions,
   NodeSideEffectClass,
+  ResolvedHttpCredential,
   ResolvedNodeConnection,
 } from './execution/contract.js';
 export {

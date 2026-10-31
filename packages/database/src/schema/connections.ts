@@ -78,7 +78,7 @@ export const connections = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'connections_auth_type_valid',
-      sql`((auth_type)::text = ANY (ARRAY[('hmac_key'::character varying)::text, ('http_headers'::character varying)::text, ('slack_bot_token'::character varying)::text, ('resend_api_key'::character varying)::text]))`,
+      sql`((auth_type)::text = ANY (ARRAY[('hmac_key'::character varying)::text, ('http_headers'::character varying)::text, ('slack_bot_token'::character varying)::text, ('resend_api_key'::character varying)::text, ('oauth2'::character varying)::text]))`,
     ),
     check(
       'connections_error_code_format',
@@ -240,7 +240,7 @@ export const connectionEvents = appSchema.table(
     ),
     check(
       'connection_events_type_valid',
-      sql`((event_type)::text = ANY (ARRAY[('connection.created'::character varying)::text, ('connection.secret_rotated'::character varying)::text, ('connection.test_succeeded'::character varying)::text, ('connection.test_failed'::character varying)::text, ('connection.reauthorization_required'::character varying)::text, ('connection.revoked'::character varying)::text, ('connection.credential_accessed'::character varying)::text, ('connection.health_changed'::character varying)::text]))`,
+      sql`((event_type)::text = ANY (ARRAY[('connection.created'::character varying)::text, ('connection.secret_rotated'::character varying)::text, ('connection.test_succeeded'::character varying)::text, ('connection.test_failed'::character varying)::text, ('connection.reauthorization_required'::character varying)::text, ('connection.revoked'::character varying)::text, ('connection.credential_accessed'::character varying)::text, ('connection.health_changed'::character varying)::text, ('connection.oauth2_authorized'::character varying)::text]))`,
     ),
     foreignKey({
       name: 'connection_events_connection_fk',

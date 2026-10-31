@@ -20,6 +20,7 @@ import { withConnectionTransaction } from '../transactions.repository.js';
 import { connectionTestClaimSchema, connectionTestScope } from './claim.js';
 
 import { applyCurrentConnectionTestHealth } from '../health/transitions.repository.js';
+import { withOneOAuth2Fact } from '../oauth2/clients.repository.js';
 
 import { classifyConnectionTestCompletion } from '@pertexo/workflow-model';
 import type { ConnectionTestPersistence } from './contract.js';
@@ -98,14 +99,18 @@ export async function completePersistedConnectionTest(
         secretVersionId,
         { currentSecretWasTested },
       );
-      const connection = await applyCurrentConnectionTestHealth(client, {
-        current,
-        secretVersionId,
-        healthRevision: claimState.healthRevision,
-        outcome,
-        actorId,
-        ...metadata,
-      });
+      const connection = await withOneOAuth2Fact(
+        client,
+        workspaceId,
+        await applyCurrentConnectionTestHealth(client, {
+          current,
+          secretVersionId,
+          healthRevision: claimState.healthRevision,
+          outcome,
+          actorId,
+          ...metadata,
+        }),
+      );
       await db
         .insert(connectionEvents)
         .values({

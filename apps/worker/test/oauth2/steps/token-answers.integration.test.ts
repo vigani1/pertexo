@@ -43,7 +43,7 @@ describeOAuth2('what the token address answers', () => {
     harness.standIn.apiCalls(connection.clientId).length;
 
   // L9: a temporary failure with a valid token isn't a failure.
-  it.fails.each(['503', '429', 'not-json', 'redirect'])(
+  it.each(['503', '429', 'not-json', 'redirect'])(
     'L9 a token address answering %s with a valid token still succeeds',
     async (behavior) => {
       const connection = await harness.connected(owner, 'non-rotating');
@@ -59,44 +59,41 @@ describeOAuth2('what the token address answers', () => {
   );
 
   // L9, L10: with an expired token it retries, status stays active, then recovers.
-  it.fails(
-    'L9 an outage with an expired token retries, then recovers',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      harness.standIn.setBehavior(connection.clientId, '503');
-      await harness.expireToken(connection.id);
-      const runId = await harness.run(owner, {
-        ...get(connection),
-        retry: { maximumAttempts: 5, delayMillis: 1_000 },
-      });
-      // The attempt has really met the outage before the service recovers.
-      await expect
-        .poll(async () => (await harness.attempts(runId))[0]?.safe_error_code, {
-          timeout: 60_000,
-        })
-        .toBe('http.oauth2_token_endpoint_unavailable');
-      expect((await harness.connection(connection.id)).status).toBe('active');
-      // Past the 15 s block, so the next attempt may really ask.
-      await harness.stack.sql(
-        `update app.connection_oauth2_tokens set refresh_blocked_until=null where connection_id=$1`,
-        [connection.id],
-      );
-      harness.standIn.setBehavior(connection.clientId, 'non-rotating');
-      expect((await harness.finish(runId)).status).toBe('succeeded');
-      const attempts = await harness.attempts(runId);
-      expect(attempts[0]).toMatchObject({
-        safe_error_code: 'http.oauth2_token_endpoint_unavailable',
-        error_summary: "The service's token address didn't answer.",
-        executor_failure_kind: 'retry',
-        executor_error_kind: 'provider',
-        executor_possibly_dispatched: false,
-      });
-      expect((await harness.connection(connection.id)).status).toBe('active');
-    },
-  );
+  it('L9 an outage with an expired token retries, then recovers', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    harness.standIn.setBehavior(connection.clientId, '503');
+    await harness.expireToken(connection.id);
+    const runId = await harness.run(owner, {
+      ...get(connection),
+      retry: { maximumAttempts: 5, delayMillis: 1_000 },
+    });
+    // The attempt has really met the outage before the service recovers.
+    await expect
+      .poll(async () => (await harness.attempts(runId))[0]?.safe_error_code, {
+        timeout: 60_000,
+      })
+      .toBe('http.oauth2_token_endpoint_unavailable');
+    expect((await harness.connection(connection.id)).status).toBe('active');
+    // Past the 15 s block, so the next attempt may really ask.
+    await harness.stack.sql(
+      `update app.connection_oauth2_tokens set refresh_blocked_until=null where connection_id=$1`,
+      [connection.id],
+    );
+    harness.standIn.setBehavior(connection.clientId, 'non-rotating');
+    expect((await harness.finish(runId)).status).toBe('succeeded');
+    const attempts = await harness.attempts(runId);
+    expect(attempts[0]).toMatchObject({
+      safe_error_code: 'http.oauth2_token_endpoint_unavailable',
+      error_summary: "The service's token address didn't answer.",
+      executor_failure_kind: 'retry',
+      executor_error_kind: 'provider',
+      executor_possibly_dispatched: false,
+    });
+    expect((await harness.connection(connection.id)).status).toBe('active');
+  });
 
   // Answer table: outage rows: unchanged, blocked 15 s, retry provider.
-  it.fails.each([['503'], ['server-error'], ['temporarily-unavailable']])(
+  it.each([['503'], ['server-error'], ['temporarily-unavailable']])(
     'a token address answering %s gives the endpoint-unavailable row',
     async (behavior) => {
       const connection = await harness.connected(owner, 'non-rotating');
@@ -128,63 +125,55 @@ describeOAuth2('what the token address answers', () => {
   );
 
   // Answer table: a network failure is also endpoint-unavailable.
-  it.fails(
-    'a token address nobody listens on gives the endpoint-unavailable row',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      await harness.setTokenUrl(connection.id, 'http://127.0.0.1:1/token');
-      await harness.expireToken(connection.id);
-      const runId = await harness.run(owner, {
-        ...get(connection),
-        retry: ONE_ATTEMPT,
-      });
-      await harness.finish(runId);
-      const [attempt] = await harness.attempts(runId);
-      expect(attempt?.safe_error_code).toBe(
-        'http.oauth2_token_endpoint_unavailable',
-      );
-      expect((await harness.connection(connection.id)).status).toBe('active');
-    },
-  );
+  it('a token address nobody listens on gives the endpoint-unavailable row', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    await harness.setTokenUrl(connection.id, 'http://127.0.0.1:1/token');
+    await harness.expireToken(connection.id);
+    const runId = await harness.run(owner, {
+      ...get(connection),
+      retry: ONE_ATTEMPT,
+    });
+    await harness.finish(runId);
+    const [attempt] = await harness.attempts(runId);
+    expect(attempt?.safe_error_code).toBe(
+      'http.oauth2_token_endpoint_unavailable',
+    );
+    expect((await harness.connection(connection.id)).status).toBe('active');
+  });
 
   // Answer table: 429: unchanged, blocked for Retry-After, retry rate_limit with that delay.
-  it.fails(
-    'a token address answering 429 gives the rate-limited row',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      harness.standIn.setBehavior(connection.clientId, '429');
-      await harness.expireToken(connection.id);
-      const runId = await harness.run(owner, {
-        ...get(connection),
-        retry: ONE_ATTEMPT,
-      });
-      await harness.finish(runId);
-      const [attempt] = await harness.attempts(runId);
-      expect(attempt).toMatchObject({
-        safe_error_code: 'http.oauth2_token_rate_limited',
-        error_summary:
-          "The service's token address asked Pertexo to slow down.",
-        executor_failure_kind: 'retry',
-        executor_error_kind: 'rate_limit',
-        executor_retry_after_millis:
-          OAUTH2_STAND_IN_RETRY_AFTER_SECONDS * 1_000,
-        executor_possibly_dispatched: false,
-      });
-      expect((await harness.connection(connection.id)).status).toBe('active');
-      const [blocked] = await harness.stack.sql<{ seconds: number }>(
-        `select extract(epoch from refresh_blocked_until - clock_timestamp()) as seconds
+  it('a token address answering 429 gives the rate-limited row', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    harness.standIn.setBehavior(connection.clientId, '429');
+    await harness.expireToken(connection.id);
+    const runId = await harness.run(owner, {
+      ...get(connection),
+      retry: ONE_ATTEMPT,
+    });
+    await harness.finish(runId);
+    const [attempt] = await harness.attempts(runId);
+    expect(attempt).toMatchObject({
+      safe_error_code: 'http.oauth2_token_rate_limited',
+      error_summary: "The service's token address asked Pertexo to slow down.",
+      executor_failure_kind: 'retry',
+      executor_error_kind: 'rate_limit',
+      executor_retry_after_millis: OAUTH2_STAND_IN_RETRY_AFTER_SECONDS * 1_000,
+      executor_possibly_dispatched: false,
+    });
+    expect((await harness.connection(connection.id)).status).toBe('active');
+    const [blocked] = await harness.stack.sql<{ seconds: number }>(
+      `select extract(epoch from refresh_blocked_until - clock_timestamp()) as seconds
          from app.connection_oauth2_tokens where connection_id=$1`,
-        [connection.id],
-      );
-      expect(blocked?.seconds).toBeGreaterThan(0);
-      expect(blocked?.seconds).toBeLessThanOrEqual(
-        OAUTH2_STAND_IN_RETRY_AFTER_SECONDS,
-      );
-    },
-  );
+      [connection.id],
+    );
+    expect(blocked?.seconds).toBeGreaterThan(0);
+    expect(blocked?.seconds).toBeLessThanOrEqual(
+      OAUTH2_STAND_IN_RETRY_AFTER_SECONDS,
+    );
+  });
 
   // Answer table, S25-S27: unusable answers: unchanged, blocked 15 s, retry provider.
-  it.fails.each([
+  it.each([
     'redirect',
     'oversized',
     'not-json',
@@ -220,7 +209,7 @@ describeOAuth2('what the token address answers', () => {
   );
 
   // Answer table: invalid_grant loses the grant.
-  it.fails.each(['invalid-grant', 'error-200'])(
+  it.each(['invalid-grant', 'error-200'])(
     'a token address answering %s gives the grant-revoked row',
     async (behavior) => {
       const connection = await harness.connected(owner, 'non-rotating');
@@ -248,7 +237,7 @@ describeOAuth2('what the token address answers', () => {
   );
 
   // Answer table: invalid_client, unauthorized_client, invalid_scope, unsupported_grant_type.
-  it.fails.each([
+  it.each([
     'invalid-client',
     'unauthorized-client',
     'invalid-scope',
@@ -280,7 +269,7 @@ describeOAuth2('what the token address answers', () => {
   );
 
   // S26: bearer in any case, or absent, is usable.
-  it.fails('S26 a token with no token_type works', async () => {
+  it('S26 a token with no token_type works', async () => {
     const connection = await harness.connected(owner, 'no-token-type');
     const runId = await harness.run(owner, get(connection));
     expect((await harness.finish(runId)).status).toBe('succeeded');
@@ -288,7 +277,7 @@ describeOAuth2('what the token address answers', () => {
   });
 
   // S25: exactly at the limits is accepted.
-  it.fails('S25 tokens exactly at their limits work', async () => {
+  it('S25 tokens exactly at their limits work', async () => {
     const connection = await harness.connected(owner, 'at-limit');
     const runId = await harness.run(owner, get(connection));
     expect((await harness.finish(runId)).status).toBe('succeeded');
@@ -297,7 +286,7 @@ describeOAuth2('what the token address answers', () => {
   });
 
   // Constants: a block after a temporary failure is Retry-After, up to 60 s.
-  it.fails('a Retry-After over a minute blocks for a minute', async () => {
+  it('a Retry-After over a minute blocks for a minute', async () => {
     const connection = await harness.connected(owner, 'non-rotating');
     harness.standIn.setBehavior(connection.clientId, '429');
     harness.standIn.setRetryAfter(connection.clientId, 3_600);
@@ -317,52 +306,46 @@ describeOAuth2('what the token address answers', () => {
   });
 
   // Constants, answer table: the request gives up after 15 s, as an unavailable service.
-  it.fails(
-    'a token address that never answers times out at 15 seconds',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      await harness.expireToken(connection.id);
-      const hold = harness.standIn.holdNextToken(connection.clientId);
-      const runId = await harness.run(owner, {
-        ...get(connection),
-        retry: ONE_ATTEMPT,
-      });
-      try {
-        await hold.arrived;
-        const started = Date.now();
-        await harness.finish(runId);
-        expect(Date.now() - started).toBeLessThan(30_000);
-      } finally {
-        hold.release();
-      }
-      const [attempt] = await harness.attempts(runId);
-      expect(attempt?.safe_error_code).toBe(
-        'http.oauth2_token_endpoint_unavailable',
-      );
-      expect((await harness.connection(connection.id)).status).toBe('active');
-    },
-  );
+  it('a token address that never answers times out at 15 seconds', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    await harness.expireToken(connection.id);
+    const hold = harness.standIn.holdNextToken(connection.clientId);
+    const runId = await harness.run(owner, {
+      ...get(connection),
+      retry: ONE_ATTEMPT,
+    });
+    try {
+      await hold.arrived;
+      const started = Date.now();
+      await harness.finish(runId);
+      expect(Date.now() - started).toBeLessThan(30_000);
+    } finally {
+      hold.release();
+    }
+    const [attempt] = await harness.attempts(runId);
+    expect(attempt?.safe_error_code).toBe(
+      'http.oauth2_token_endpoint_unavailable',
+    );
+    expect((await harness.connection(connection.id)).status).toBe('active');
+  });
 
   // Answer table: a name that doesn't resolve is also endpoint-unavailable.
-  it.fails(
-    'a token address whose name doesn’t resolve gives the unavailable row',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      await harness.setTokenUrl(
-        connection.id,
-        'http://no-such-name.invalid/token',
-      );
-      await harness.expireToken(connection.id);
-      const runId = await harness.run(owner, {
-        ...get(connection),
-        retry: ONE_ATTEMPT,
-      });
-      await harness.finish(runId);
-      const [attempt] = await harness.attempts(runId);
-      expect(attempt?.safe_error_code).toBe(
-        'http.oauth2_token_endpoint_unavailable',
-      );
-      expect((await harness.connection(connection.id)).status).toBe('active');
-    },
-  );
+  it('a token address whose name doesn’t resolve gives the unavailable row', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    await harness.setTokenUrl(
+      connection.id,
+      'http://no-such-name.invalid/token',
+    );
+    await harness.expireToken(connection.id);
+    const runId = await harness.run(owner, {
+      ...get(connection),
+      retry: ONE_ATTEMPT,
+    });
+    await harness.finish(runId);
+    const [attempt] = await harness.attempts(runId);
+    expect(attempt?.safe_error_code).toBe(
+      'http.oauth2_token_endpoint_unavailable',
+    );
+    expect((await harness.connection(connection.id)).status).toBe('active');
+  });
 });

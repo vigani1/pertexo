@@ -1,3 +1,4 @@
+import { OAUTH2_LANDING_PATH } from '@pertexo/contracts';
 import { createRoute, redirect } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import {
@@ -153,6 +154,18 @@ export const accountSecurityRoute = createRoute({
   component: lazyRoute(
     () => import('../auth/account-security'),
     'AccountSecurityRoute',
+  ),
+});
+
+// Public and reads no data: the provider sends a browser here, in the tab consent opened.
+export const oauth2FinishedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: OAUTH2_LANDING_PATH,
+  pendingComponent: BootPage,
+  head: () => ({ meta: [{ title: pageTitle('Sign-in finished') }] }),
+  component: lazyRoute(
+    () => import('./oauth2-finished'),
+    'OAuth2FinishedRoute',
   ),
 });
 

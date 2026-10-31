@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1152.0",
+    "@pertexo/contracts": "workspace:*",
     "@pertexo/node-sdk": "workspace:*",
     "@smithy/node-http-handler": "4.12.1",
     "form-data": "4.0.6",

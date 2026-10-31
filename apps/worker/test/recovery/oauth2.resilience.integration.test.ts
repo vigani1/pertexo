@@ -68,7 +68,7 @@ describeFaults('OAuth2 tokens through real faults', () => {
   }, SCENARIO_LIMIT_MS);
 
   // Proof list, L1 constants: the block lifts by itself after 45 s, and nothing stays stuck.
-  it.fails(
+  it(
     'SIGKILL while holding a block: another worker renews after 45 s',
     async () => {
       const { standIn } = harness;
@@ -98,7 +98,7 @@ describeFaults('OAuth2 tokens through real faults', () => {
   );
 
   // Proof list, L8: the accepted window: the next use says so, and reconnect restores it.
-  it.fails(
+  it(
     'SIGKILL between the token response and commit: next use shows revoked, reconnect restores',
     async () => {
       const { standIn } = harness;
@@ -150,7 +150,7 @@ describeFaults('OAuth2 tokens through real faults', () => {
   };
 
   // Proof list, L8: Postgres back within the commit attempts: tokens committed.
-  it.fails(
+  it(
     'Postgres restarting during commit: a later attempt commits',
     async () => {
       const { standIn } = harness;
@@ -175,7 +175,7 @@ describeFaults('OAuth2 tokens through real faults', () => {
   );
 
   // Proof list, L8: Postgres away for longer than the attempts: visible, never stuck.
-  it.fails(
+  it(
     'Postgres down past all three attempts: visible state, no stuck run',
     async () => {
       const { standIn } = harness;
@@ -195,7 +195,7 @@ describeFaults('OAuth2 tokens through real faults', () => {
   );
 
   // Proof list: "the existing provider rate limit behavior applies".
-  it.fails(
+  it(
     'Redis down during a second credential read: the limiter answers, the grant stands',
     async () => {
       const connection = await harness.connected(owner, 'api-401-page-3');

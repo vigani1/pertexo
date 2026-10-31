@@ -42,7 +42,10 @@ function ConnectionRow({
             ) : null}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
-            {describeConnectionKind(connection.providerKey)}
+            {describeConnectionKind(
+              connection.providerKey,
+              connection.authType,
+            )}
           </span>
         </span>
         <Status tone={status.tone} className="max-sm:hidden">

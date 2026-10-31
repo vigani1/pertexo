@@ -2,7 +2,6 @@ import { useState } from 'react';
 import type { ApiProblemIssue } from '@pertexo/contracts';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { ConnectionCredential } from '../../data/connections.api';
-import type { ProviderKey } from '../../model/connection-providers';
 import {
   credentialErrors,
   credentialServerErrors,
@@ -10,6 +9,7 @@ import {
   toConnectionCredential,
   type CredentialDraft,
   type CredentialField,
+  type CredentialKind,
 } from '../../model/credential-draft';
 
 // The first header row needs a stable identity before anyone edits it.
@@ -23,13 +23,16 @@ export function createHeaderRowId(): string {
  * Owns one provider's unsaved credential and its validation. The secret stays
  * in this component's state only and is dropped by `clear`.
  */
-export function useCredentialForm(provider: ProviderKey) {
+export function useCredentialForm(
+  provider: CredentialKind,
+  initial?: CredentialDraft,
+) {
   const [stored, setDraft] = useState<CredentialDraft | undefined>();
   const validation = useFieldValidation<CredentialField>();
   const draft =
     stored?.provider === provider
       ? stored
-      : emptyCredentialDraft(provider, () => FIRST_ROW_ID);
+      : (initial ?? emptyCredentialDraft(provider, () => FIRST_ROW_ID));
 
   return {
     draft,

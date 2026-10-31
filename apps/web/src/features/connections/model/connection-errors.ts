@@ -4,13 +4,14 @@ import { isApiError } from '@/lib/api/error';
 import { describeCommandError, isForbidden } from '@/lib/api/error-copy';
 import { refusalWhoCan } from '@/features/workspaces/roles.public';
 
-type ConnectionCommand = 'create' | 'rotate' | 'revoke' | 'test';
+type ConnectionCommand = 'create' | 'rotate' | 'revoke' | 'test' | 'connect';
 
 const ACTIONS: Readonly<Record<ConnectionCommand, string>> = {
   create: 'saving this connection',
   rotate: 'replacing the credential',
   revoke: 'revoking this connection',
   test: 'testing this connection',
+  connect: 'connecting this connection',
 };
 
 const UNCERTAIN: Readonly<Record<ConnectionCommand, (name: string) => string>> =
@@ -23,6 +24,8 @@ const UNCERTAIN: Readonly<Record<ConnectionCommand, (name: string) => string>> =
       `We couldn’t confirm whether ${name} was revoked. Check the list before trying again.`,
     test: () =>
       'We couldn’t confirm the test result. Test again — it repeats the same request.',
+    connect: () =>
+      'We couldn’t confirm that the sign-in started. Try again — a new one replaces it.',
   };
 
 const FORBIDDEN: Readonly<Record<ConnectionCommand, string>> = {
@@ -30,6 +33,7 @@ const FORBIDDEN: Readonly<Record<ConnectionCommand, string>> = {
   rotate: `Your role can’t replace credentials. ${refusalWhoCan('connection:manage')}`,
   revoke: `Your role can’t revoke connections. ${refusalWhoCan('connection:manage')}`,
   test: 'Your role can’t test connections.',
+  connect: `Your role can’t connect connections. ${refusalWhoCan('connection:manage')}`,
 };
 
 const SPECIFIC_PROBLEMS: Readonly<
@@ -43,6 +47,14 @@ const SPECIFIC_PROBLEMS: Readonly<
     command === 'rotate'
       ? 'Someone replaced this credential meanwhile. Close this and start again from the latest version.'
       : `${name} changed meanwhile. Reload and try again.`,
+  'connection.oauth2_endpoint_refused': () =>
+    'This install doesn’t allow one of these addresses. Use a public https address, or ask an administrator to allow the private network.',
+  'connection.oauth2_token_refused': () =>
+    'The service refused the sign-in. Check the client ID, secret and token URL. If they’re right, try sending them in the request body.',
+  'provider.unavailable': (command) =>
+    command === 'connect'
+      ? 'The service didn’t answer. Try again in a few minutes.'
+      : 'The service isn’t available right now. Try again in a few minutes.',
   'request.idempotency_conflict': () =>
     'This request was already used with different details. Start again.',
 };

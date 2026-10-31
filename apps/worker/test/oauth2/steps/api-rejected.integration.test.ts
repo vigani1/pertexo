@@ -42,7 +42,7 @@ describeOAuth2('an API that refuses an OAuth2 token', () => {
     harness.standIn.apiCalls(connection.clientId).length;
 
   // L11: GET and HEAD with 401-once succeed with 2 /api calls and 1 token request.
-  it.fails.each(['GET', 'HEAD'] as const)(
+  it.each(['GET', 'HEAD'] as const)(
     'L11 a %s that gets a 401 renews and repeats once',
     async (method) => {
       const connection = await harness.connected(owner, 'api-401-once');
@@ -63,7 +63,7 @@ describeOAuth2('an API that refuses an OAuth2 token', () => {
   );
 
   // L12: the plan's own proof that a retry never repeats a side effect.
-  it.fails.each(['POST', 'PUT', 'PATCH', 'DELETE'] as const)(
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE'] as const)(
     'L12 a %s that gets a 401 is never sent twice',
     async (method) => {
       const connection = await harness.connected(owner, 'api-401-once');
@@ -95,31 +95,25 @@ describeOAuth2('an API that refuses an OAuth2 token', () => {
   );
 
   // L12: "The next attempt started by a person or a run picks up the new token."
-  it.fails(
-    'L12 the next run after a rejected POST uses a new token',
-    async () => {
-      const connection = await harness.connected(owner, 'api-401-once');
-      await harness.ageToken(connection.id);
-      const first = await harness.run(
-        owner,
-        get(connection, { method: 'POST' }),
-      );
-      expect((await harness.finish(first)).status).toBe('failed');
-      const second = await harness.run(
-        owner,
-        get(connection, { method: 'POST' }),
-      );
-      expect((await harness.finish(second)).status).toBe('succeeded');
-      const calls = harness.standIn.apiCalls(connection.clientId);
-      expect(calls).toHaveLength(2);
-      expect(calls[0]?.headers.authorization).not.toBe(
-        calls[1]?.headers.authorization,
-      );
-    },
-  );
+  it('L12 the next run after a rejected POST uses a new token', async () => {
+    const connection = await harness.connected(owner, 'api-401-once');
+    await harness.ageToken(connection.id);
+    const first = await harness.run(owner, get(connection, { method: 'POST' }));
+    expect((await harness.finish(first)).status).toBe('failed');
+    const second = await harness.run(
+      owner,
+      get(connection, { method: 'POST' }),
+    );
+    expect((await harness.finish(second)).status).toBe('succeeded');
+    const calls = harness.standIn.apiCalls(connection.clientId);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.headers.authorization).not.toBe(
+      calls[1]?.headers.authorization,
+    );
+  });
 
   // L13: a token younger than 60 s can't be rejected, so a GET fails with no repeat.
-  it.fails('L13 a young token isn’t renewed by a 401', async () => {
+  it('L13 a young token isn’t renewed by a 401', async () => {
     const connection = await harness.connected(owner, 'api-401');
     const tokenBefore = await harness.tokenRow(connection.id);
     const exchanged = tokenCalls(connection);
@@ -134,28 +128,25 @@ describeOAuth2('an API that refuses an OAuth2 token', () => {
   });
 
   // L13: not renewable, so marking does nothing and a GET fails without repeating.
-  it.fails(
-    'L13 a token that can’t be renewed isn’t marked by a 401',
-    async () => {
-      const connection = await harness.connected(owner, 'no-refresh');
-      harness.standIn.setBehavior(connection.clientId, 'api-401');
-      await harness.ageToken(connection.id);
-      const before = await harness.tokenRow(connection.id);
-      const runId = await harness.run(owner, {
-        ...get(connection),
-        retry: ONE_ATTEMPT,
-      });
-      expect((await harness.finish(runId)).status).toBe('failed');
-      expect(apiCalls(connection)).toBe(1);
-      expect(
-        (await harness.tokenRow(connection.id))?.access_token_expires_at,
-      ).toEqual(before?.access_token_expires_at);
-      expect((await harness.connection(connection.id)).status).toBe('active');
-    },
-  );
+  it('L13 a token that can’t be renewed isn’t marked by a 401', async () => {
+    const connection = await harness.connected(owner, 'no-refresh');
+    harness.standIn.setBehavior(connection.clientId, 'api-401');
+    await harness.ageToken(connection.id);
+    const before = await harness.tokenRow(connection.id);
+    const runId = await harness.run(owner, {
+      ...get(connection),
+      retry: ONE_ATTEMPT,
+    });
+    expect((await harness.finish(runId)).status).toBe('failed');
+    expect(apiCalls(connection)).toBe(1);
+    expect(
+      (await harness.tokenRow(connection.id))?.access_token_expires_at,
+    ).toEqual(before?.access_token_expires_at);
+    expect((await harness.connection(connection.id)).status).toBe('active');
+  });
 
   // L13: an always-401 GET makes at most one renewal per 60 s, across several runs.
-  it.fails('L13 an always-401 GET can’t drive refreshes', async () => {
+  it('L13 an always-401 GET can’t drive refreshes', async () => {
     const connection = await harness.connected(owner, 'api-401');
     await harness.ageToken(connection.id);
     const exchanged = tokenCalls(connection);
@@ -171,7 +162,7 @@ describeOAuth2('an API that refuses an OAuth2 token', () => {
   });
 
   // L14: after a repeat, a second 401 fails.
-  it.fails('L14 a second 401 after a repeat fails the GET', async () => {
+  it('L14 a second 401 after a repeat fails the GET', async () => {
     const connection = await harness.connected(owner, 'api-401');
     await harness.ageToken(connection.id);
     const runId = await harness.run(owner, {
@@ -185,7 +176,7 @@ describeOAuth2('an API that refuses an OAuth2 token', () => {
   });
 
   // L14: a paged GET with a 401 on page 3 repeats only page 3, with dispatch marked once.
-  it.fails('L14 a paged GET repeats only the page that got a 401', async () => {
+  it('L14 a paged GET repeats only the page that got a 401', async () => {
     const connection = await harness.connected(owner, 'api-401-page-3');
     await harness.ageToken(connection.id);
     const runId = await harness.run(owner, {
@@ -209,7 +200,7 @@ describeOAuth2('an API that refuses an OAuth2 token', () => {
   });
 
   // L15: after any 401 or 403 the connection is still active.
-  it.fails.each(['api-401', 'api-401-once', 'api-403'])(
+  it.each(['api-401', 'api-401-once', 'api-403'])(
     'L15 an API answering %s never changes the connection',
     async (behavior) => {
       const connection = await harness.connected(owner, behavior);
@@ -231,7 +222,7 @@ describeOAuth2('an API that refuses an OAuth2 token', () => {
   );
 
   // L15: 403 never renews.
-  it.fails('L15 a 403 never renews', async () => {
+  it('L15 a 403 never renews', async () => {
     const connection = await harness.connected(owner, 'api-403');
     await harness.ageToken(connection.id);
     const before = await harness.tokenRow(connection.id);

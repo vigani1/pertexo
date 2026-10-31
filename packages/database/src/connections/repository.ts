@@ -15,6 +15,12 @@ import type { ConnectionUsageDatabase } from './discovery/contract.js';
 import { createConnectionSecretPersistence } from './commands/secrets.repository.js';
 import { createConnectionTestPersistence } from './connection-tests/results.repository.js';
 import type { ConnectionDatabase } from './contract.js';
+import { createOAuth2AuthorizationPersistence } from './oauth2/authorizations.repository.js';
+import { createOAuth2TokenPersistence } from './oauth2/tokens.repository.js';
+import type {
+  OAuth2ConsentDatabase,
+  OAuth2TokenStoreDatabase,
+} from './oauth2/contract.js';
 
 export function createConnectionDatabase(
   config: DatabaseConfig,
@@ -22,7 +28,9 @@ export function createConnectionDatabase(
 ): ConnectionDatabase &
   ConnectionLookupDatabase &
   ConnectionUsageDatabase &
-  ConnectionSharingDatabase {
+  ConnectionSharingDatabase &
+  OAuth2ConsentDatabase &
+  OAuth2TokenStoreDatabase {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
@@ -34,6 +42,8 @@ export function createConnectionDatabase(
     ...createConnectionResolutionPersistence(pool),
     ...createConnectionTestPersistence(pool),
     ...createConnectionLookupPersistence(pool),
+    ...createOAuth2AuthorizationPersistence(pool),
+    ...createOAuth2TokenPersistence(pool),
     close: () => lease.close(),
   });
 }
@@ -47,6 +57,13 @@ export function createWorkerConnectionResolutionDatabase(
     assertConnectionSecretCurrent:
       database.assertConnectionSecretCurrent.bind(database),
     resolveConnectionSecret: database.resolveConnectionSecret.bind(database),
+    openOAuth2Grant: database.openOAuth2Grant,
+    readOAuth2Token: database.readOAuth2Token,
+    claimOAuth2Refresh: database.claimOAuth2Refresh,
+    blockOAuth2Refresh: database.blockOAuth2Refresh,
+    commitOAuth2Refresh: database.commitOAuth2Refresh,
+    loseOAuth2Grant: database.loseOAuth2Grant,
+    rejectOAuth2Token: database.rejectOAuth2Token,
     close: database.close.bind(database),
   });
 }

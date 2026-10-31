@@ -45,7 +45,7 @@ describeOAuth2('who may do what, and the connection test', () => {
     }) as const;
 
   // Roles table, S23: anyone who can read sees the settings, never the secret.
-  it.fails('S23 a viewer reads the settings, never the secret', async () => {
+  it('S23 a viewer reads the settings, never the secret', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.connected(owner, 'non-rotating');
     const viewer = await harness.addMember(owner.workspaceId, 'viewer');
@@ -65,94 +65,88 @@ describeOAuth2('who may do what, and the connection test', () => {
   });
 
   // Roles table: viewer can't test; builder and operator can; only managers change it.
-  it.fails(
-    'Roles a viewer can’t test or change it, and an editor can only test',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'non-rotating');
-      const viewer = await harness.addMember(owner.workspaceId, 'viewer');
-      const asViewer = { ...owner, api: viewer.api };
+  it('Roles a viewer can’t test or change it, and an editor can only test', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'non-rotating');
+    const viewer = await harness.addMember(owner.workspaceId, 'viewer');
+    const asViewer = { ...owner, api: viewer.api };
+    expect((await harness.test(asViewer, connection.id, TEST_URL)).status).toBe(
+      403,
+    );
+    expect(harness.standIn.apiCalls(connection.clientId)).toEqual([]);
+    for (const role of ['builder', 'operator'] as const) {
+      const member = await harness.addMember(owner.workspaceId, role);
+      const asMember = { ...owner, api: member.api };
       expect(
-        (await harness.test(asViewer, connection.id, TEST_URL)).status,
+        (await harness.test(asMember, connection.id, TEST_URL)).status,
+        role,
+      ).toBe(200);
+      expect(
+        (
+          await replace(asMember, connection, {
+            type: 'oauth2',
+            settings: harness.settings(connection.clientId),
+            clientSecret: connection.clientSecret,
+          })
+        ).status,
+        role,
       ).toBe(403);
-      expect(harness.standIn.apiCalls(connection.clientId)).toEqual([]);
-      for (const role of ['builder', 'operator'] as const) {
-        const member = await harness.addMember(owner.workspaceId, role);
-        const asMember = { ...owner, api: member.api };
-        expect(
-          (await harness.test(asMember, connection.id, TEST_URL)).status,
-          role,
-        ).toBe(200);
-        expect(
-          (
-            await replace(asMember, connection, {
-              type: 'oauth2',
-              settings: harness.settings(connection.clientId),
-              clientSecret: connection.clientSecret,
-            })
-          ).status,
-          role,
-        ).toBe(403);
-        expect((await revoke(asMember, connection)).status, role).toBe(403);
-      }
-      expect((await harness.connection(connection.id)).status).toBe('active');
-    },
-  );
+      expect((await revoke(asMember, connection)).status, role).toBe(403);
+    }
+    expect((await harness.connection(connection.id)).status).toBe('active');
+  });
 
   // Proof list: a restricted connection honors sharing in a test and in a run.
-  it.fails(
-    'sharing: an unshared builder can neither test nor bind a restricted connection',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'non-rotating');
-      const shared = await harness.addMember(owner.workspaceId, 'builder');
-      const unshared = await harness.addMember(owner.workspaceId, 'builder');
-      const sharing = await owner.api.call(
-        'GET',
-        `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}/sharing`,
-      );
-      const { revision } = sharing.json as { revision: number };
-      const restricted = await owner.api.call(
-        'POST',
-        `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}/sharing`,
-        {
-          mode: 'restricted',
-          expectedSharingRevision: revision,
-          userIds: [shared.userId],
-        },
-        { 'idempotency-key': randomUUID() },
-      );
-      expect(restricted.status).toBe(200);
-      const callsBefore = harness.standIn.apiCalls(connection.clientId).length;
-      const refused = await harness.test(
-        { ...owner, api: unshared.api },
-        connection.id,
-        TEST_URL,
-      );
-      expect(refused.status).toBeGreaterThanOrEqual(400);
-      expect(harness.standIn.apiCalls(connection.clientId).length).toBe(
-        callsBefore,
-      );
-      const allowed = await harness.test(
-        { ...owner, api: shared.api },
-        connection.id,
-        TEST_URL,
-      );
-      expect(allowed.status).toBe(200);
-      // Publishing a new binding needs Use, exactly as for a header connection.
-      await expect(
-        harness.run({ ...owner, api: unshared.api }, usedStep(connection)),
-      ).rejects.toThrow();
-      const runId = await harness.run(
-        { ...owner, api: shared.api },
-        usedStep(connection),
-      );
-      expect((await harness.finish(runId)).status).toBe('succeeded');
-    },
-  );
+  it('sharing: an unshared builder can neither test nor bind a restricted connection', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'non-rotating');
+    const shared = await harness.addMember(owner.workspaceId, 'builder');
+    const unshared = await harness.addMember(owner.workspaceId, 'builder');
+    const sharing = await owner.api.call(
+      'GET',
+      `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}/sharing`,
+    );
+    const { revision } = sharing.json as { revision: number };
+    const restricted = await owner.api.call(
+      'POST',
+      `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}/sharing`,
+      {
+        mode: 'restricted',
+        expectedSharingRevision: revision,
+        userIds: [shared.userId],
+      },
+      { 'idempotency-key': randomUUID() },
+    );
+    expect(restricted.status).toBe(200);
+    const callsBefore = harness.standIn.apiCalls(connection.clientId).length;
+    const refused = await harness.test(
+      { ...owner, api: unshared.api },
+      connection.id,
+      TEST_URL,
+    );
+    expect(refused.status).toBeGreaterThanOrEqual(400);
+    expect(harness.standIn.apiCalls(connection.clientId).length).toBe(
+      callsBefore,
+    );
+    const allowed = await harness.test(
+      { ...owner, api: shared.api },
+      connection.id,
+      TEST_URL,
+    );
+    expect(allowed.status).toBe(200);
+    // Publishing a new binding needs Use, exactly as for a header connection.
+    await expect(
+      harness.run({ ...owner, api: unshared.api }, usedStep(connection)),
+    ).rejects.toThrow();
+    const runId = await harness.run(
+      { ...owner, api: shared.api },
+      usedStep(connection),
+    );
+    expect((await harness.finish(runId)).status).toBe('succeeded');
+  });
 
   // Test route table: not active: its code, no network, not "reauthorization required".
-  it.fails('test: not active answers its code with no network', async () => {
+  it('test: not active answers its code with no network', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const tested = await harness.test(owner, connection.id, TEST_URL);
@@ -168,25 +162,22 @@ describeOAuth2('who may do what, and the connection test', () => {
   });
 
   // Test route table: host not allowed: no network.
-  it.fails(
-    'test: an unlisted host answers host_not_allowed with no network',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'non-rotating', {
-        requestHosts: { mode: 'listed', hosts: ['other.example.test'] },
-      });
-      const requestsBefore = harness.standIn.requests.length;
-      const tested = await harness.test(owner, connection.id, TEST_URL);
-      expect(tested.json).toMatchObject({
-        outcome: { ok: false, errorCode: 'connection.oauth2_host_not_allowed' },
-      });
-      expect(harness.standIn.requests.length).toBe(requestsBefore);
-      expect((await harness.connection(connection.id)).status).toBe('active');
-    },
-  );
+  it('test: an unlisted host answers host_not_allowed with no network', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'non-rotating', {
+      requestHosts: { mode: 'listed', hosts: ['other.example.test'] },
+    });
+    const requestsBefore = harness.standIn.requests.length;
+    const tested = await harness.test(owner, connection.id, TEST_URL);
+    expect(tested.json).toMatchObject({
+      outcome: { ok: false, errorCode: 'connection.oauth2_host_not_allowed' },
+    });
+    expect(harness.standIn.requests.length).toBe(requestsBefore);
+    expect((await harness.connection(connection.id)).status).toBe('active');
+  });
 
   // Test route table: temporary failures of the token address.
-  it.fails.each([
+  it.each([
     ['503', 'connection.provider_unavailable'],
     ['429', 'connection.provider_rate_limited'],
   ])('test: a token address answering %s gives %s', async (behavior, code) => {
@@ -202,7 +193,7 @@ describeOAuth2('who may do what, and the connection test', () => {
   });
 
   // Test route table: unusable answers.
-  it.fails.each(['not-json', 'oversized', 'mac', 'teapot'])(
+  it.each(['not-json', 'oversized', 'mac', 'teapot'])(
     'test: a token address answering %s is provider_invalid_response',
     async (behavior) => {
       const owner = await harness.newOwner();
@@ -221,7 +212,7 @@ describeOAuth2('who may do what, and the connection test', () => {
   );
 
   // Test route table: invalid_*: the new code, and the status already changed.
-  it.fails.each([
+  it.each([
     ['invalid-grant', 'connection.oauth2_grant_revoked'],
     ['invalid-client', 'connection.oauth2_client_rejected'],
   ])('test: a token address answering %s gives %s', async (behavior, code) => {
@@ -241,7 +232,7 @@ describeOAuth2('who may do what, and the connection test', () => {
   });
 
   // L15, test route table: a 401 from the test URL leaves the status active.
-  it.fails.each(['api-401', 'api-403'])(
+  it.each(['api-401', 'api-403'])(
     'L15 test: an API answering %s is credential_rejected and leaves it active',
     async (behavior) => {
       const owner = await harness.newOwner();
@@ -257,7 +248,7 @@ describeOAuth2('who may do what, and the connection test', () => {
   );
 
   // Connection tests: "applies L11 once", so an old token rejected by 401 renews.
-  it.fails('test: a 401 on an old token renews once and repeats', async () => {
+  it('test: a 401 on an old token renews once and repeats', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.connected(owner, 'api-401-once');
     await harness.ageToken(connection.id);
@@ -273,7 +264,7 @@ describeOAuth2('who may do what, and the connection test', () => {
   });
 
   // Connection tests: an HTTPS URL only, same body as header connections.
-  it.fails('test: refuses plain http, as for every connection', async () => {
+  it('test: refuses plain http, as for every connection', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.connected(owner, 'non-rotating');
     const tested = await harness.test(

@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { connectionCommandError } from '../../model/connection-errors';
+import { shownHost } from '../../model/oauth2-copy';
 import {
   useRevokeConnectionMutation,
   type ConnectionMutationScope,
@@ -39,7 +40,11 @@ export function RevokeConnectionDialog({
         locked: mutation.isPending,
       }}
       title={`Revoke ${connection.name}?`}
-      description="Steps and alerts that use it stop working from their next run. Past runs keep their history. A revoked connection can’t be turned back on — you would add a new one."
+      description={
+        connection.authType === 'oauth2'
+          ? `Steps and alerts that use it stop working from their next run. Past runs keep their history. A revoked connection can’t be turned back on — you would add a new one. Pertexo deletes its tokens. To remove access at ${shownHost(connection.oauth2.settings.tokenUrl)}, revoke it there too.`
+          : 'Steps and alerts that use it stop working from their next run. Past runs keep their history. A revoked connection can’t be turned back on — you would add a new one.'
+      }
       trigger={
         <Button type="button" variant="destructive">
           Revoke

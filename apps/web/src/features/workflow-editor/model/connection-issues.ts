@@ -4,7 +4,10 @@ import type {
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { describeConnectionRequirement } from '@/features/catalog/presentation.public';
-import { isUsableConnection } from '@/features/connections/queries.public';
+import {
+  fitsRequirement,
+  isUsableConnection,
+} from '@/features/connections/queries.public';
 import type { WorkflowIssue } from '@/features/workflow-publish/public';
 import { findDefinition } from './graph/adapter';
 import type { GraphLevel } from './graph/scopes';
@@ -77,7 +80,7 @@ function describeCredentialIssue({
   if (connection === undefined)
     return `The selected ${label} is unavailable. Choose another one.`;
   if (isUsableConnection(connection, requirement)) return undefined;
-  if (connection.authType !== requirement)
+  if (!fitsRequirement(connection, requirement))
     return `Choose a ${label}; ${connection.name} has a different credential type.`;
   return connection.status === 'revoked'
     ? `${connection.name} was revoked. Choose another ${label}.`

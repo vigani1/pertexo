@@ -11,6 +11,10 @@ import {
   connectionResponseFields,
   connectionSecretVersionIdentifierSchema,
 } from './connection-fields.js';
+import {
+  oauth2ConnectionResponseSchema,
+  oauth2CredentialSchema,
+} from './oauth2-connections.js';
 export {
   connectionIdentifierSchema,
   connectionStatusSchema,
@@ -177,6 +181,7 @@ const connectionCredentialSchema = z.discriminatedUnion('type', [
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
   resendApiKeyCredentialSchema,
+  oauth2CredentialSchema,
 ]);
 
 export const connectionCreateRequestSchema = z.discriminatedUnion(
@@ -194,7 +199,10 @@ export const connectionCreateRequestSchema = z.discriminatedUnion(
       .object({
         providerKey: z.literal('http'),
         name: connectionNameSchema,
-        credential: httpHeadersCredentialSchema,
+        credential: z.discriminatedUnion('type', [
+          httpHeadersCredentialSchema,
+          oauth2CredentialSchema,
+        ]),
       })
       .strict()
       .readonly(),
@@ -266,10 +274,21 @@ export const connectionTestRequestSchema = z.union([
   emailConnectionTestRequestSchema,
 ]);
 
-export const connectionResponseSchema = z
-  .object(connectionResponseFields)
-  .strict()
-  .readonly();
+export const connectionResponseSchema = z.union([
+  z
+    .object({
+      ...connectionResponseFields,
+      authType: z.enum([
+        'hmac_key',
+        'http_headers',
+        'slack_bot_token',
+        'resend_api_key',
+      ]),
+    })
+    .strict()
+    .readonly(),
+  oauth2ConnectionResponseSchema,
+]);
 
 export const connectionListQuerySchema = z
   .object({

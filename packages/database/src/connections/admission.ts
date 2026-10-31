@@ -87,6 +87,20 @@ const durableConnectionSnapshotSchema = z
     updatedAt: z.iso.datetime(),
     // Receipts stored before sharing existed describe workspace-wide connections.
     accessMode: z.enum(['workspace', 'restricted']).default('workspace'),
+    oauth2: z
+      .object({
+        settings: z.unknown(),
+        grant: z
+          .object({
+            authorizedAt: z.iso.datetime(),
+            accessTokenExpiresAt: z.iso.datetime().nullable(),
+            renewable: z.boolean(),
+          })
+          .strict()
+          .nullable(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -99,11 +113,30 @@ export function decodeDurableConnectionReplay(
   );
 }
 
-function hydrateConnectionSnapshot(
-  parsed: z.output<typeof durableConnectionSnapshotSchema>,
-): ConnectionRecord {
+function hydrateConnectionSnapshot({
+  oauth2,
+  ...parsed
+}: z.output<typeof durableConnectionSnapshotSchema>): ConnectionRecord {
   return Object.freeze({
     ...parsed,
+    ...(oauth2 === undefined
+      ? {}
+      : {
+          oauth2: Object.freeze({
+            settings: oauth2.settings,
+            grant:
+              oauth2.grant === null
+                ? null
+                : Object.freeze({
+                    authorizedAt: new Date(oauth2.grant.authorizedAt),
+                    accessTokenExpiresAt:
+                      oauth2.grant.accessTokenExpiresAt === null
+                        ? null
+                        : new Date(oauth2.grant.accessTokenExpiresAt),
+                    renewable: oauth2.grant.renewable,
+                  }),
+          }),
+        }),
     lastTestedAt:
       parsed.lastTestedAt === null ? null : new Date(parsed.lastTestedAt),
     lastHealthyAt:
@@ -126,6 +159,24 @@ export function serializeConnectionSnapshot(
       connection.lastHealthTransitionAt?.toISOString() ?? null,
     createdAt: connection.createdAt.toISOString(),
     updatedAt: connection.updatedAt.toISOString(),
+    ...(connection.oauth2 === undefined
+      ? {}
+      : {
+          oauth2: {
+            settings: connection.oauth2.settings,
+            grant:
+              connection.oauth2.grant === null
+                ? null
+                : {
+                    authorizedAt:
+                      connection.oauth2.grant.authorizedAt.toISOString(),
+                    accessTokenExpiresAt:
+                      connection.oauth2.grant.accessTokenExpiresAt?.toISOString() ??
+                      null,
+                    renewable: connection.oauth2.grant.renewable,
+                  },
+          },
+        }),
   });
 }
 

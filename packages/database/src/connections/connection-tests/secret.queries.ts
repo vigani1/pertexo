@@ -12,6 +12,7 @@ import {
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
 } from '../contract.js';
+import { withOneOAuth2Fact } from '../oauth2/clients.repository.js';
 import { connectionSecrets } from '../runtime/credentials.queries.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
 import { connectionTestClaim, connectionTestScope } from './claim.js';
@@ -114,7 +115,7 @@ export async function resolvePersistedConnectionTestSecret(
         })
         .catch(rethrowQueryFailure);
       return Object.freeze({
-        connection,
+        connection: await withOneOAuth2Fact(client, workspaceId, connection),
         secretVersionId,
         sealed: row.sealed,
       });

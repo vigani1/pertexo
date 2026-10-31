@@ -1,6 +1,10 @@
 import type { ConnectionSharingDatabase } from '../commands/contract.js';
 import type { ConnectionUsageDatabase } from '../discovery/contract.js';
 import type {
+  OAuth2ConsentDatabase,
+  OAuth2TokenStoreDatabase,
+} from '../oauth2/contract.js';
+import type {
   ConnectionDatabase,
   ConnectionManagementDatabase,
   ConnectionReadDatabase,
@@ -17,10 +21,13 @@ export type ApiConnectionDatabase = ConnectionSharingDatabase &
   ConnectionTestDatabase &
   ConnectionLookupDatabase &
   ConnectionUsageDatabase &
+  OAuth2ConsentDatabase &
+  OAuth2TokenStoreDatabase &
   Pick<ConnectionDatabase, 'close'>;
 
 /** Worker resolution capability plus the lifecycle operation owned by its runtime factory. */
 export type WorkerConnectionResolutionDatabase = ConnectionResolutionDatabase &
+  OAuth2TokenStoreDatabase &
   Pick<ConnectionDatabase, 'close'>;
 
 /**

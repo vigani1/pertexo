@@ -1,3 +1,4 @@
+import { httpConnections } from './http-execution.js';
 import {
   createServer,
   type IncomingMessage,
@@ -101,7 +102,7 @@ export function setup(
       : { deadlineAt: options.deadlineAt }),
     ...(options.credentials === true
       ? {
-          connections: {
+          connections: httpConnections({
             assertCurrent,
             resolve: () =>
               Promise.resolve({
@@ -111,7 +112,7 @@ export function setup(
                 secretVersionId: randomUUID(),
                 secret,
               }),
-          },
+          }),
         }
       : {}),
   };

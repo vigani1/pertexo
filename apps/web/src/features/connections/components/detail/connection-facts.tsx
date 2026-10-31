@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
-import { PROVIDERS } from '../../model/connection-providers';
+import { credentialWord, PROVIDERS } from '../../model/connection-providers';
+import { grantSentence, shownHost } from '../../model/oauth2-copy';
 import { Disclosure } from '@/components/ui/disclosure';
 
 function shortId(id: string): string {
@@ -45,6 +46,8 @@ export function ConnectionFacts({
 }: Readonly<{ connection: ConnectionResponse }>) {
   const provider = PROVIDERS[connection.providerKey];
   const { health } = connection;
+  const word = credentialWord(connection.providerKey, connection.authType);
+  const credentialLabel = `${word.charAt(0).toUpperCase()}${word.slice(1)}`;
   // With no history at all the status line already says "never tested";
   // once a run has reported, "Last tested: Never" is the useful contrast.
   const anyHistory = [
@@ -60,10 +63,24 @@ export function ConnectionFacts({
     <div className="flex flex-col gap-4">
       <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-sm">
         <Fact term="Service">{provider.name}</Fact>
-        <Fact term="Credential">
-          {provider.credential.charAt(0).toUpperCase()}
-          {provider.credential.slice(1)}, stored encrypted
-        </Fact>
+        <Fact term="Credential">{credentialLabel}, stored encrypted</Fact>
+        {connection.authType === 'oauth2' ? (
+          <>
+            <Fact term="Token address">
+              {shownHost(connection.oauth2.settings.tokenUrl)}
+            </Fact>
+            <Fact term="Client ID">
+              <span className="break-all">
+                {connection.oauth2.settings.clientId}
+              </span>
+            </Fact>
+            {connection.status === 'active' ? (
+              <Fact term="Token">
+                {grantSentence(connection.grant, formatDateTime)}
+              </Fact>
+            ) : null}
+          </>
+        ) : null}
         <Fact term="Works with">{provider.usedBy}</Fact>
         {anyHistory ? (
           <Fact term="Last tested">{testedWhen(health.lastTestedAt)}</Fact>
