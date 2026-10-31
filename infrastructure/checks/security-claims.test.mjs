@@ -37,28 +37,10 @@ function untrueClaims(text) {
   ).map(({ claim }) => claim.source);
 }
 
-test('SECURITY.md names no check CI does not run, apart from image scanning', () => {
-  assert.deepEqual(
-    untrueClaims(policy).filter((claim) => claim !== 'image scan'),
-    [],
-  );
+test('SECURITY.md names no check CI does not run', () => {
+  assert.deepEqual(untrueClaims(policy), []);
 });
 
-test(
-  'SECURITY.md claims image scanning only if CI scans images',
-  // docs-deps-product-09: no workflow has a scanner. Node's test runner keeps
-  // this visible and the run green until the claim or the scanner changes;
-  // drop the todo with the fix.
-  { todo: 'docs-deps-product-09' },
-  () => {
-    assert.deepEqual(untrueClaims(policy), []);
-  },
-);
-
-test(
-  'the image update procedure asks for no scan CI does not run',
-  { todo: 'docs-deps-product-09' },
-  () => {
-    assert.deepEqual(untrueClaims(imageProcedure), []);
-  },
-);
+test('the image update procedure asks for no scan CI does not run', () => {
+  assert.deepEqual(untrueClaims(imageProcedure), []);
+});

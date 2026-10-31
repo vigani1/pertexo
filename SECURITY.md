@@ -16,15 +16,14 @@ Include the affected component and revision, impact, reproduction conditions,
 and a minimal proof of concept when it is safe to share. Use synthetic data and
 redact tokens, connection strings, logs, and request payloads.
 
-The owner will acknowledge a report as soon as practical, triage it on the same
-business day, and coordinate validation, remediation, disclosure, and advisory
-credit with the reporter. Acknowledgement is not a promise of a particular
-resolution date. High or critical issues block release until fixed or covered by
-a documented, owner-accepted, time-bounded exception.
+The owner will acknowledge a report as soon as practical and coordinate
+validation, remediation, disclosure, and advisory credit with the reporter.
+Acknowledgement is not a promise of a particular resolution date.
 
 ## Security checks
 
-Pull requests and release candidates run dependency review, production
-dependency audit, CodeQL, secret scanning, image scanning, and the repository's
-quality and integration gates. Passing automation does not authorize bypassing a
-known security or data-integrity finding.
+Pull requests run dependency review, a production dependency audit, CodeQL, and
+the repository's quality and integration gates. Secret scanning is turned on for
+the repository. Published images are not scanned for known vulnerabilities yet.
+Passing automation does not authorize bypassing a known security or data-integrity
+finding.

@@ -16,8 +16,9 @@ To update an image:
 4. Run `docker compose config`, and the complete migration,
    integration, and recovery matrix. For observability changes, also start the
    observability Compose stack and retain its health/log output.
-5. Merge only after the image scan and all required CI jobs pass. A digest update
-   is a supply-chain change and requires normal code review.
+5. Merge only after all required CI jobs pass. No CI job scans images yet, so read
+   the new version's release notes for security fixes. A digest update is a
+   supply-chain change and requires normal code review.
 
 Local users may override any image with `POSTGRES_IMAGE`, `REDIS_IMAGE`,
 `S3MOCK_IMAGE`, or `MINIO_IMAGE` in `.env`; CI does not read those local
