@@ -111,7 +111,10 @@ authority in the acceptance transaction. Evaluator owners close with their store
 ## HTTP and editor behavior
 
 - Webhooks return 202 with a typed coordinated outcome (deduplicated, debounced,
-  throttled or refused) and event ID when no run is admitted immediately. Normal
+  throttled or refused) and event ID when no run is admitted immediately. The one
+  exception is a workspace whose pending events are full: that answers 429 with
+  `Retry-After`, because nothing is kept and a sender retries on a 429 and never on
+  a 202. The refusal stays in the history. Normal
   admitted responses and F29 skips keep their existing shape. Deferred events
   always acknowledge asynchronously, including response-mode webhooks; later
   Respond to webhook steps cannot send a second HTTP response.

@@ -327,6 +327,7 @@ export {
   type EventCoordinationReceipt,
   type EventCoordinationStatus,
   type EventCoordinationReason,
+  asksSenderToRetry,
 } from './triggers/event-coordination/contract.js';
 export {
   decideEventCoordination,

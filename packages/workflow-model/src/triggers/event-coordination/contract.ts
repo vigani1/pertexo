@@ -94,6 +94,13 @@ export const eventCoordinationReceiptSchema = z
 export type EventCoordinationReceipt = z.output<
   typeof eventCoordinationReceiptSchema
 >;
+/**
+ * A server with no room for this event: nothing is kept, and only the sender can
+ * save it, by trying again. A refusal for the sender's own mistake stays final.
+ */
+export function asksSenderToRetry(receipt: EventCoordinationReceipt): boolean {
+  return receipt.status === 'refused' && receipt.reason === 'coordination_full';
+}
 export type EventCoordinationStatus = z.output<
   typeof eventCoordinationStatusSchema
 >;
