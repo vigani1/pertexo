@@ -1,4 +1,4 @@
-import { monitorEventLoopDelay } from 'node:perf_hooks';
+import { monitorEventLoopDelay, performance } from 'node:perf_hooks';
 
 import type {
   BeforeApplicationShutdown,
@@ -33,6 +33,7 @@ export class WorkerResourceMonitor
   private readonly signal: () => void;
   private consecutiveUnhealthySamples = 0;
   private eventLoopDelayed = false;
+  private lastSampledAt: number | undefined;
   private drainStarted = false;
   private stopped = false;
   private timer: NodeJS.Timeout | undefined;
@@ -77,7 +78,7 @@ export class WorkerResourceMonitor
     if (this.drainStarted || this.stopped) return;
     const sample = this.sampleResourceUsage();
     this.eventLoopDelay.reset();
-    this.reportEventLoopDelay(sample);
+    this.reportEventLoopDelay(sample, this.lateBy());
     // Only memory ends the process: it will die anyway, and draining first is
     // the better way to go. A slow event loop is a busy machine, and a restart
     // would cost its in-flight steps without making the machine less busy.
@@ -111,13 +112,31 @@ export class WorkerResourceMonitor
     }
   }
 
-  private reportEventLoopDelay(sample: WorkerResourceSample): void {
+  /**
+   * How late this sample's own timer fired. A long stall is one reading among a
+   * window's hundreds, so a percentile never shows it; the gap always does.
+   */
+  private lateBy(): number {
+    const now = performance.now();
+    const previous = this.lastSampledAt;
+    this.lastSampledAt = now;
+    return previous === undefined
+      ? 0
+      : Math.max(0, now - previous - this.config.sampleIntervalMillis);
+  }
+
+  private reportEventLoopDelay(
+    sample: WorkerResourceSample,
+    sampleLateByMillis: number,
+  ): void {
     const delayed =
-      sample.eventLoopDelayP99Millis > this.config.maximumEventLoopDelayMillis;
+      Math.max(sample.eventLoopDelayP99Millis, sampleLateByMillis) >
+      this.config.maximumEventLoopDelayMillis;
     if (delayed && !this.eventLoopDelayed)
       try {
         this.logger.warn('worker.event_loop_delayed', {
           eventLoopDelayP99Millis: sample.eventLoopDelayP99Millis,
+          ...(sampleLateByMillis > 0 ? { sampleLateByMillis } : {}),
         });
       } catch {
         // Diagnostics cannot change the worker's health decision.
