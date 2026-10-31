@@ -119,6 +119,13 @@ describe('abuse rate-limit policy', () => {
           ['connection', 5],
         ],
       ],
+      destination_test: [
+        'closed',
+        [
+          ['actor', 10],
+          ['workspace', 20],
+        ],
+      ],
       trigger_mutation: [
         'closed',
         [

@@ -19,6 +19,7 @@ export const RATE_LIMIT_ENDPOINT_CLASSES = [
   'preview_test',
   'connection_mutation',
   'provider_test',
+  'destination_test',
   'trigger_mutation',
   'provider_execution',
 ] as const;
@@ -220,6 +221,14 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
       { kind: 'actor', subject: 'actorId', limit: 10 },
       { kind: 'workspace', subject: 'workspaceId', limit: 20 },
       { kind: 'connection', subject: 'connectionId', limit: 5 },
+    ],
+  },
+  // A destination's connection isn't known until it's read, so no connection dimension.
+  destination_test: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'actor', subject: 'actorId', limit: 10 },
+      { kind: 'workspace', subject: 'workspaceId', limit: 20 },
     ],
   },
   trigger_mutation: {

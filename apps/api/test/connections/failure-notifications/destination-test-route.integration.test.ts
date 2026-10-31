@@ -124,32 +124,22 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       };
     }
 
-    // api-design-01: the route's rate class needs a connection the route doesn't carry, so every call is a 500.
-    it.fails(
-      'sends one real message to a real Slack destination and reports it',
-      async () => {
-        slackBody = { ok: true };
-        const before = slackCalls.length;
-        const { send } = await seedDestination();
-        const response = await send();
-        expect(response.statusCode, response.payload).toBe(200);
-        expect(response.json()).toMatchObject({ outcome: { ok: true } });
-        expect(slackCalls.slice(before)).toContain('/api/chat.postMessage');
-      },
-      60_000,
-    );
+    it('sends one real message to a real Slack destination and reports it', async () => {
+      slackBody = { ok: true };
+      const before = slackCalls.length;
+      const { send } = await seedDestination();
+      const response = await send();
+      expect(response.statusCode, response.payload).toBe(200);
+      expect(response.json()).toMatchObject({ outcome: { ok: true } });
+      expect(slackCalls.slice(before)).toContain('/api/chat.postMessage');
+    }, 60_000);
 
-    // api-design-01: the same 500 hides the service's own refusal.
-    it.fails(
-      'reports the service refusing the message as that, not as a server failure',
-      async () => {
-        slackBody = { ok: false, error: 'channel_not_found' };
-        const { send } = await seedDestination();
-        const response = await send();
-        expect(response.statusCode, response.payload).toBe(200);
-        expect(response.json()).toMatchObject({ outcome: { ok: false } });
-      },
-      60_000,
-    );
+    it('reports the service refusing the message as that, not as a server failure', async () => {
+      slackBody = { ok: false, error: 'channel_not_found' };
+      const { send } = await seedDestination();
+      const response = await send();
+      expect(response.statusCode, response.payload).toBe(200);
+      expect(response.json()).toMatchObject({ outcome: { ok: false } });
+    }, 60_000);
   },
 );
