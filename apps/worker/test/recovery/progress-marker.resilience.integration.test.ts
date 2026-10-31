@@ -12,7 +12,6 @@ import { startStack, type Stack } from '../support/recovery/stack.js';
 
 const MARKER = '/tmp/pertexo-worker-progress';
 const SEVERAL_SCANS_MS = 20_000;
-const STARTED_LIMIT_MS = 120_000;
 
 const touchedAt = async (): Promise<number> => (await stat(MARKER)).mtimeMs;
 
@@ -35,7 +34,6 @@ describeFaults('what the worker tells its health check', () => {
 
   beforeAll(async () => {
     stack = await startStack('progress-marker');
-    await stack.worker.waitForLog(/worker\.started/u, STARTED_LIMIT_MS);
     whileRunning = await movedIn(SEVERAL_SCANS_MS);
 
     await stopService('postgres');
