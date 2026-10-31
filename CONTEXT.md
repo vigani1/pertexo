@@ -115,6 +115,11 @@ input that reuses its eligible completed prefix and runs from the failed step
 onward. Its source history stays unchanged. _Avoid_: Resuming the source run,
 full replay, automatic retry
 
+**Stalled run**: An active run whose next step passed its recorded time with
+nothing acting on it yet. A worker recovers it automatically, without repeating
+a step that may have reached a provider; it is a notice, not a run status.
+_Avoid_: Crashed run, zombie run
+
 **Reused step**: A step's retained result copied into a recovery run without
 executing that step there. _Avoid_: A new successful attempt, provider retry,
 execution cache

@@ -289,6 +289,28 @@ compose logs --tail 100 api worker proxy
 For audited changes to stuck or uncertain work, use `run_ops` as described in
 [Operator commands](operator-commands.md). Never run it as the bootstrap superuser.
 
+### Find stuck work
+
+Workers recover stranded runs by themselves, so a run only stays stuck while no
+worker can act on it, or when Redis or Postgres is down. To see what's waiting,
+in every workspace:
+
+```sh
+run_ops -e OPERATOR_COMMAND_TYPE=stuck-work.list
+```
+
+It prints stuck runs with the time their next step was due, and outbox events
+that can never publish, with their error code. Worker logs name each recovery:
+`run_recovery.attempt_reclaimed`, `run_recovery.attempt_marked_unknown` and
+`run_recovery.delivery_replaced`. A failed delivery logs as
+`queue.delivery_failed` with its run. A marked-unknown step is never sent again:
+check the provider, then decide whether to replay the run.
+
+A failed readiness check only reports: the worker stays up and reconnects by
+itself, and an object store outage stops file steps, not other workflows. A
+worker exits for good reason only: it can't start, it was told to stop, or it
+ran out of memory.
+
 ## Worker file scratch
 
 Each worker container has its own disk-backed volume mounted at

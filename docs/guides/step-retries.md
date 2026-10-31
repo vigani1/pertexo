@@ -27,7 +27,8 @@ A failure path runs only after eligible retries are exhausted. The usual run
 failure, error-workflow and notification rules then apply. A waiting retry
 releases its worker attempt slot; ordinary run and workflow capacity still apply.
 Waits and attempt history are durable, so a worker restart doesn't reset the
-configured count. A longer wait never extends the run's deadline.
+configured count. A longer wait never extends the run's deadline, and a run
+past its deadline ends even if the worker holding its step has died.
 
 ## Versions and tests
 
