@@ -13,6 +13,11 @@ const webAllowedWorkspaceImports = new Set([
   '@pertexo/templates',
   '@pertexo/integrations',
 ]);
+// Tables and primitives are what core builds on; applications go through core.
+const coreOnlyDatabaseEntries = new Set([
+  '@pertexo/database/schema',
+  '@pertexo/database/primitives',
+]);
 const webRawFetchOwners = new Set([
   'apps/web/src/lib/api/client.ts',
   'apps/web/src/features/artifacts/data/upload.api.ts',
@@ -40,6 +45,20 @@ function isRuntimeImport(statement) {
     clause.elements.length > 0 &&
     clause.elements.every((element) => element.isTypeOnly)
   );
+}
+
+/** The other core area a relative import reaches past its index, if any. */
+function crossedCoreArea(file, specifier) {
+  const coreSource = 'packages/core/src/';
+  if (!file.startsWith(coreSource) || !specifier.startsWith('.')) return;
+  const [area] = file.slice(coreSource.length).split('/');
+  const target = path.posix.normalize(
+    path.posix.join(path.posix.dirname(file), specifier),
+  );
+  if (!target.startsWith(coreSource)) return;
+  const [targetArea, ...rest] = target.slice(coreSource.length).split('/');
+  if (rest.length === 0 || targetArea === area) return;
+  return rest.join('/') === 'index.js' ? undefined : targetArea;
 }
 
 /** Static local runtime imports only; deferred imports do not create startup cycles. */
@@ -85,6 +104,23 @@ export function validateModuleImports(sources) {
           `${file}: Code runner may depend only on the credential-free node SDK`,
         );
 
+      if (
+        (specifier === '@pertexo/core' ||
+          specifier.startsWith('@pertexo/core/')) &&
+        file.startsWith('packages/') &&
+        !file.startsWith('packages/core/')
+      )
+        errors.push(
+          `${file}: only applications depend on core (apps -> core -> database)`,
+        );
+      if (
+        coreOnlyDatabaseEntries.has(specifier) &&
+        !file.startsWith('packages/core/')
+      )
+        errors.push(
+          `${file}: ${specifier} is for core; applications use a core area`,
+        );
+
       if (file.startsWith('apps/web/src/')) {
         const featureImport = specifier.match(/^@\/features\/([^/]+)\/(.+)$/u);
         const owner = file.match(/^apps\/web\/src\/features\/([^/]+)\//u)?.[1];
@@ -107,6 +143,11 @@ export function validateModuleImports(sources) {
       }
       if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return;
       const target = resolveTarget(specifier);
+      const crossedArea = crossedCoreArea(file, specifier);
+      if (crossedArea !== undefined)
+        errors.push(
+          `${file}: core areas meet at their index; import ${crossedArea}/index.js`,
+        );
       if (runtime && target !== undefined) dependencies.push(target);
     };
     for (const statement of source.statements) {

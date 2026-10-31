@@ -56,6 +56,7 @@ apps/
   ops/                 audited operator commands
 
 packages/
+  core/             product areas: flows, queries and decisions
   database/         PostgreSQL persistence, roles, and migrations
   workflow-model/   graph, JSON, portability and expression policy
   workflow-engine/  pure execution state machine

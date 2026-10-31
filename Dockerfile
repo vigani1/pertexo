@@ -84,6 +84,7 @@ COPY --from=build --chown=10001:10001 /workspace/apps/cli/dist ./apps/cli/dist
 COPY --from=build --chown=0:0 /workspace/apps/code-runner/dist ./apps/code-runner/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/artifact-store/dist ./packages/artifact-store/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/contracts/dist ./packages/contracts/dist
+COPY --from=build --chown=10001:10001 /workspace/packages/core/dist ./packages/core/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/database/dist ./packages/database/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/execution/dist ./packages/execution/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/integrations/dist ./packages/integrations/dist

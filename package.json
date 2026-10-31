@@ -106,7 +106,7 @@
     "security:audit": "pnpm audit --prod --audit-level moderate",
     "test": "pnpm --recursive --if-present test",
     "test:e2e": "pnpm --filter @pertexo/web test:e2e",
-    "test:integration": "pnpm --filter @pertexo/artifact-store test:integration && pnpm --filter @pertexo/queue test:integration && pnpm --filter @pertexo/database test:integration && pnpm --filter @pertexo/worker test:integration && pnpm --filter @pertexo/api test:integration",
+    "test:integration": "pnpm --filter @pertexo/artifact-store test:integration && pnpm --filter @pertexo/queue test:integration && pnpm --filter @pertexo/database test:integration && pnpm --filter @pertexo/core test:integration && pnpm --filter @pertexo/worker test:integration && pnpm --filter @pertexo/api test:integration",
     "typecheck": "tsc --build --pretty false && pnpm --recursive --if-present typecheck",
     "cli": "pnpm --filter @pertexo/cli start",
     "ops:two-factor-disable": "pnpm --filter @pertexo/ops exec node dist/identity/main.js"
