@@ -33,7 +33,7 @@ reconnected without touching the workflows that use it.
 
 Stop rule: no new package, subsystem or format. Provider HTTP goes in
 `packages/integrations/src/oauth2`, storage in `packages/database/src/connections/oauth2`,
-and `node-sdk` gains one additive runtime method.
+and `node-sdk` gains two optional runtime methods.
 
 ## What a person does
 
@@ -431,7 +431,7 @@ connection_oauth2_authorizations          -- at most one pending per connection
 
 | Path | Owns |
 |---|---|
-| `packages/contracts/src/schemas/oauth2-connections.ts` | Done on this branch |
+| `packages/contracts/src/schemas/oauth2-connections.ts` | The settings, credential, response and code enums; see Contract below |
 | `packages/workflow-model/src/authoring/connections/` | `oauth2` in `CONNECTION_AUTH_TYPE`; `connectionFitsSlot({ providerKey, authType }, slot)`: same provider and same type, or slot `http_headers` with type `oauth2` |
 | `packages/database/src/schema/oauth2-connections.ts`, `migrations/` | Tables above |
 | `packages/database/src/connections/oauth2/` | `contract.ts`, `clients.repository.ts`, `authorizations.repository.ts`, `tokens.repository.ts`; implements the store below |
@@ -442,13 +442,14 @@ connection_oauth2_authorizations          -- at most one pending per connection
 | `packages/integrations/src/oauth2/token-endpoint.ts` | The three token requests, S17–S18, S25–S27, and the answer table |
 | `packages/integrations/src/oauth2/consent.ts` | Authorization URL, state format, the verifier's purpose (S21) |
 | `packages/integrations/src/oauth2/access-token.ts` | `accessToken`, `rejectToken`: the lifecycle above |
+| `packages/integrations/src/oauth2/refresh.ts` | One renewal: claim, ask, commit with its three attempts, and what each answer does to the grant |
 | `packages/integrations/src/http-request/execution/oauth2-renewal.ts` | Wraps the HTTP client for L11–L14, single and paged, and S24 |
 | `packages/integrations/src/http-request/execution/oauth2-failure.ts` | The step failure class and text, like `HttpPaginationFailure` |
 | `packages/node-sdk/src/execution/contract.ts` | Adds optional `resolveHttpCredential` and `rejectAccessToken` to `NodeConnectionRuntime`, as `assertCurrent` is; only an HTTP step needs them. The first returns a union on `authType` (`http_headers` with `secret`, `oauth2` with `accessToken`, `tokenVersionId`, `requestHosts`) |
 | `apps/worker/src/providers/connections.ts` | Implements both behind the existing provider rate limit; `assertCurrent` allows `oauth2` |
 | `apps/worker/src/attempts/execution/capability-composition/connections.ts` | Gives it the token service and HTTP client |
-| `apps/api/src/connections/oauth2/` | `controller.ts`, `start-authorization.ts`, `finish-authorization.ts`; registered in `module.ts` |
-| `apps/api/src/connections/use-cases/` | Create, rotate and test branches; `problems/resources/connections.ts` |
+| `apps/api/src/connections/oauth2/` | `controller.ts`, `start-authorization.ts`, `finish-authorization.ts`, `errors.ts`; registered in `module.ts` |
+| `apps/api/src/connections/use-cases/` | Create, rotate and test branches (`testing/oauth2.ts`); `problems/resources/connections.ts` |
 | `apps/api/src/platform/connections/runtime.module.ts` | A second secure client with the address policy for token requests only |
 | `apps/web/src/features/connections/` | `credential-draft.ts` union, `components/credential/oauth2-fields.tsx`, `components/oauth2/connect.tsx`, `hooks/use-oauth2-consent.ts`, `data/oauth2.api.ts`, `pages/oauth2-finished.tsx`, and the copy in `model/` |
 | `apps/web/src/routes/root/` | The landing route, public |
