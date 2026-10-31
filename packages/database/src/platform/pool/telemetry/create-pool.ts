@@ -2,6 +2,7 @@ import { metrics } from '@opentelemetry/api';
 import { Pool, type PoolClient, type PoolConfig } from 'pg';
 import { withDatabaseDeadlineBudget } from '../policy.js';
 import { instrumentPoolCheckout } from '../checkout-telemetry.js';
+import { surviveConnectionLoss } from '../connection-loss.js';
 import {
   type DatabasePoolOptions,
   safeDiagnostic,
@@ -33,7 +34,7 @@ export function createDatabasePool(
   const role = options.role ?? 'other';
   const boundedConfig = withDatabaseDeadlineBudget(config, role);
   const pool = new Pool(boundedConfig);
-  pool.on('error', (error) => {
+  surviveConnectionLoss(pool, (error) => {
     safeDiagnostic(options.diagnostics, 'idle_pool_error', role, error);
   });
   instrumentPoolCheckout(pool, state.poolCheckoutDuration, role, (client) => {

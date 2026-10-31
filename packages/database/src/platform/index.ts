@@ -5,6 +5,7 @@ export {
   parseOperatorDatabaseConfig,
 } from '../config.js';
 export { acquireDatabasePool, createDatabaseRuntime } from './pool/runtime.js';
+export { surviveConnectionLoss } from './pool/connection-loss.js';
 export type {
   DatabaseRuntime,
   DatabaseRuntimeOptions,
