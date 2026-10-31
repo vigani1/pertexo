@@ -25,7 +25,7 @@ const SCAN_BATCH_SIZE = 50;
  * makes a crash, restart or lost job recoverable. Every worker runs it; the run
  * lock and fence make a second worker's attempt at the same row a no-op.
  */
-export function createStalledWorkRuntime(
+function createStalledWorkRuntime(
   store: StalledWorkStore,
   logger: StructuredLogger,
 ): StalledWorkRuntime {
