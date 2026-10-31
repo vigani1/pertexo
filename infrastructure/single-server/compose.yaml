@@ -10,7 +10,8 @@ x-runtime: &runtime
   image: ghcr.io/vigani1/pertexo:${SERVICE_VERSION:?Full commit required}
   read_only: true
   tmpfs: [/tmp]
-  stop_grace_period: 1m
+  # Past the worker's 60 s drain, plus time to close and flush logs.
+  stop_grace_period: 90s
 x-code-settings: &code-settings
   CODE_STEPS_ENABLED: ${CODE_STEPS_ENABLED:-true}
   CODE_RUNNER_MEMORY_MB: ${CODE_RUNNER_MEMORY_MB:-128}
@@ -183,6 +184,10 @@ services:
       DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}
   postgres:
     <<: *service
+    # A health probe Docker abandons is reparented to PID 1 and later exits
+    # non-zero. As PID 1 the postmaster would take that for a crashed child and
+    # restart every connection; an init process reaps it instead.
+    init: true
     image: postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
     environment:
       POSTGRES_DB: pertexo
@@ -209,7 +214,7 @@ services:
       - postgres-data:/var/lib/postgresql
       - ../postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: [CMD-SHELL, 'pg_isready -U postgres -d pertexo']
+      test: [CMD-SHELL, 'pg_isready -t 2 -U postgres -d pertexo']
       interval: 5s
       timeout: 3s
       retries: 24

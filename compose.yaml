@@ -1,5 +1,9 @@
 services:
   postgres:
+    # A health probe Docker abandons is reparented to PID 1 and later exits
+    # non-zero. As PID 1 the postmaster would take that for a crashed child and
+    # restart every connection; an init process reaps it instead.
+    init: true
     # postgres:18; manifest digest resolved 2026-08-30
     image: ${POSTGRES_IMAGE:-postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280}
     restart: unless-stopped
@@ -30,7 +34,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - pg_isready -U "$${POSTGRES_APP_USER}" -d "$${POSTGRES_DB}"
+        - pg_isready -t 2 -U "$${POSTGRES_APP_USER}" -d "$${POSTGRES_DB}"
       interval: 5s
       timeout: 5s
       retries: 12
