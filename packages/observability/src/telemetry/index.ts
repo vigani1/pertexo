@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import type { Tracer, TracerProvider } from '@opentelemetry/api';
+import type { SpanOptions, Tracer, TracerProvider } from '@opentelemetry/api';
 import { HostMetricsInstrumentation } from '@opentelemetry/instrumentation-host-metrics';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
@@ -22,6 +22,7 @@ import {
   installErrorSanitizer,
   sanitizeHttpSpan,
   sanitizeIncomingHttpRequest,
+  sanitizeNestSpanOptions,
   sanitizeOutgoingHttpRequest,
   sanitizeUndiciRequest,
 } from './sanitization.js';
@@ -31,6 +32,9 @@ export const METRIC_EXPORT_TIMEOUT_MILLISECONDS = 30_000;
 
 function errorSanitizingTracerProvider(
   provider: TracerProvider,
+  sanitizeOptions: (options?: SpanOptions) => SpanOptions | undefined = (
+    options,
+  ) => options,
 ): TracerProvider {
   return {
     getTracer(name, version, options): Tracer {
@@ -38,7 +42,11 @@ function errorSanitizingTracerProvider(
       return {
         startActiveSpan: tracer.startActiveSpan.bind(tracer),
         startSpan(spanName, spanOptions, spanContext) {
-          const span = tracer.startSpan(spanName, spanOptions, spanContext);
+          const span = tracer.startSpan(
+            spanName,
+            sanitizeOptions(spanOptions),
+            spanContext,
+          );
           installErrorSanitizer(span);
           return span;
         },
@@ -49,7 +57,9 @@ function errorSanitizingTracerProvider(
 
 class ErrorSanitizingNestInstrumentation extends NestInstrumentation {
   public override setTracerProvider(provider: TracerProvider): void {
-    super.setTracerProvider(errorSanitizingTracerProvider(provider));
+    super.setTracerProvider(
+      errorSanitizingTracerProvider(provider, sanitizeNestSpanOptions),
+    );
   }
 }
 
