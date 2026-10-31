@@ -124,24 +124,39 @@ describe.runIf(enabled)('the real web app in a real browser', () => {
       );
       await run([viteCli, 'build'], { NODE_ENV: 'production' });
       const apiPort = 20_000 + Math.floor(Math.random() * 20_000);
+      const webImage = await pinnedWebImage();
+      // nginx resolves a name in its config through DNS, which doesn't know
+      // --add-host names on Linux, so the upstream needs the gateway's address.
+      const { stdout: gateway } = await execute('docker', [
+        'run',
+        '--rm',
+        '--add-host=host.docker.internal:host-gateway',
+        webImage,
+        'getent',
+        'ahostsv4',
+        'host.docker.internal',
+      ]);
+      const gatewayAddress = gateway.trim().split(/\s+/)[0] ?? '';
       await execute('docker', [
         'run',
         '--detach',
         '--rm',
         '--name',
         container,
-        '--add-host=host.docker.internal:host-gateway',
         '--publish',
         '127.0.0.1::8080',
         '--env',
-        `PERTEXO_API_UPSTREAM=http://host.docker.internal:${String(apiPort)}`,
+        `PERTEXO_API_UPSTREAM=http://${gatewayAddress}:${String(apiPort)}`,
+        // The same two settings as the image in the Dockerfile.
         '--env',
-        'NGINX_ENVSUBST_FILTER=^PERTEXO_API_UPSTREAM$',
+        'NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1',
+        '--env',
+        'NGINX_ENVSUBST_FILTER=^(PERTEXO_API_UPSTREAM|NGINX_LOCAL_RESOLVERS)$',
         '--mount',
         `type=bind,src=${join(webDirectory, 'dist')},dst=/usr/share/nginx/html,readonly`,
         '--mount',
         `type=bind,src=${join(webDirectory, 'deployment/nginx.conf.template')},dst=/etc/nginx/templates/default.conf.template,readonly`,
-        await pinnedWebImage(),
+        webImage,
       ]);
       const { stdout } = await execute('docker', [
         'port',
