@@ -1,9 +1,15 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 
 export type ApiResponse = Readonly<{
   etag: string | null;
   json: unknown;
   status: number;
+}>;
+
+export type WorkflowTrigger = Readonly<{ id: string; status: string }>;
+export type WebhookKeys = Readonly<{
+  endpointKey: string;
+  signingSecret: string;
 }>;
 
 const PASSWORD = 'Recovery-test-Pw-1234';
@@ -260,6 +266,72 @@ export class ApiClient {
       ),
     );
     return idOf(invited.json, 'invitation');
+  }
+
+  /** Gets the one trigger of this workflow, as its settings page reads it. */
+  public async readTrigger(
+    workspaceId: string,
+    workflowId: string,
+  ): Promise<WorkflowTrigger> {
+    const read = await this.expect(200)(
+      this.call(
+        'GET',
+        `/v1/workspaces/${workspaceId}/workflows/${workflowId}/triggers`,
+      ),
+    );
+    const { items } = read.json as { items: readonly WorkflowTrigger[] };
+    const [trigger] = items;
+    if (trigger === undefined)
+      throw new Error(`Workflow ${workflowId} has no trigger`);
+    return trigger;
+  }
+
+  /** The owner's "create this webhook's URL"; the keys are shown only here. */
+  public async provisionWebhook(
+    workspaceId: string,
+    workflowId: string,
+    triggerId: string,
+  ): Promise<ApiResponse> {
+    return this.call(
+      'POST',
+      `/v1/workspaces/${workspaceId}/workflows/${workflowId}/triggers/${triggerId}/webhook/provision`,
+      undefined,
+      { 'idempotency-key': randomUUID() },
+    );
+  }
+
+  /** The outside sender: no session, a signed body and maybe its own event key. */
+  public async sendWebhook(
+    keys: WebhookKeys,
+    event: unknown,
+    idempotencyKey?: string,
+  ): Promise<ApiResponse> {
+    const body = JSON.stringify(event);
+    const timestamp = String(Math.floor(Date.now() / 1_000));
+    const signature = createHmac(
+      'sha256',
+      Buffer.from(keys.signingSecret, 'base64url'),
+    )
+      .update(`${timestamp}.${body}`)
+      .digest('hex');
+    const response = await fetch(`${this.baseUrl}/hooks/${keys.endpointKey}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-pertexo-signature': `v1=${signature}`,
+        'x-pertexo-timestamp': timestamp,
+        ...(idempotencyKey === undefined
+          ? {}
+          : { 'idempotency-key': idempotencyKey }),
+      },
+      body,
+      signal: AbortSignal.timeout(30_000),
+    });
+    return {
+      etag: null,
+      json: (await response.json()) as unknown,
+      status: response.status,
+    };
   }
 
   private expect(...statuses: readonly number[]) {
