@@ -13,12 +13,10 @@ import { expect } from './steps';
 // Several real services behind one browser; this stays honest on a busy machine.
 test.describe.configure({ timeout: 120_000 });
 
-// product-ux-06: one dropped save in one tab reads as "Changed elsewhere".
 test('a save the network dropped is retried and nobody else is blamed', async ({
   page,
   request,
 }) => {
-  test.fail();
   const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
   if (mail === undefined) throw new Error('Use the owned API fixture');
   await registerEditorUser(page, request, mail, 'Solo editor');

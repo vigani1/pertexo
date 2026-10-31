@@ -23,6 +23,8 @@ export type SaveCoordinatorTransport = Readonly<{
 const SAVE_DEBOUNCE_MS = 1_000;
 /** The longest a rate-limited save waits before trying on its own. */
 const MAX_RETRY_WAIT_MS = 60_000;
+/** Saves lost in a row, with the draft unchanged, before the editor says so. */
+const MAX_LOST_SAVES = 3;
 
 export type SaveCoordinator = Readonly<{
   schedule: () => void;
@@ -39,6 +41,7 @@ export function createSaveCoordinator(
   let active: Promise<void> | null = null;
   let activeRequest: AbortController | undefined;
   let destroyed = false;
+  let lostSaves = 0;
 
   function isDestroyed() {
     return destroyed;
@@ -73,6 +76,7 @@ export function createSaveCoordinator(
         request.signal,
       );
       if (isDestroyed()) return;
+      lostSaves = 0;
       store
         .getState()
         .acceptSave(
@@ -83,20 +87,23 @@ export function createSaveCoordinator(
         );
     } catch (error) {
       if (isDestroyed()) return;
-      if (transport.isConflict(error)) {
-        await reconcileRemoteSave(store, transport, {
+      if (transport.isConflict(error) || transport.isUncertain(error)) {
+        const outcome = await reconcileRemoteSave(store, transport, {
           snapshot,
           signal: request.signal,
           isDestroyed,
-          failureMessage: (error) => transport.message(error),
+          failureMessage: transport.isConflict(error)
+            ? (cause) => transport.message(cause)
+            : () => transport.message(error),
         });
-      } else if (transport.isUncertain(error)) {
-        await reconcileRemoteSave(store, transport, {
-          snapshot,
-          signal: request.signal,
-          isDestroyed,
-          failureMessage: () => transport.message(error),
-        });
+        if (outcome !== 'unchanged') return;
+        // Nothing landed and nobody else saved, so this save was simply lost.
+        lostSaves += 1;
+        if (lostSaves < MAX_LOST_SAVES) store.getState().requeueSave();
+        else {
+          lostSaves = 0;
+          store.getState().reportFailure(transport.message(error), true);
+        }
       } else {
         store.getState().reportFailure(transport.message(error), false);
         // A rate limit says when to come back, so saving resumes by itself.
@@ -157,16 +164,20 @@ async function reconcileRemoteSave(
   store: EditorStore,
   transport: SaveCoordinatorTransport,
   options: Readonly<{
-    snapshot: Readonly<{ graph: WorkflowGraphContract; generation: number }>;
+    snapshot: Readonly<{
+      graph: WorkflowGraphContract;
+      etag: string;
+      generation: number;
+    }>;
     signal: AbortSignal;
     isDestroyed: () => boolean;
     failureMessage: (error: unknown) => string;
   }>,
-) {
+): Promise<'unchanged' | 'settled'> {
   const { snapshot, signal, isDestroyed, failureMessage } = options;
   try {
     const remote = await transport.reload(signal);
-    if (isDestroyed()) return;
+    if (isDestroyed()) return 'settled';
     if (graphsEqual(remote.draft.graph, snapshot.graph)) {
       store
         .getState()
@@ -176,8 +187,10 @@ async function reconcileRemoteSave(
           snapshot.generation,
           remote.draft.updatedAt,
         );
-      return;
+      return 'settled';
     }
+    // The revision this save started from is still current: no one else wrote.
+    if (remote.etag === snapshot.etag) return 'unchanged';
     store.getState().reportConflict({
       local: store.getState().graph,
       remote: remote.draft.graph,
@@ -185,7 +198,8 @@ async function reconcileRemoteSave(
       remoteRevision: remote.draft.revision,
     });
   } catch (error) {
-    if (isDestroyed()) return;
-    store.getState().reportFailure(failureMessage(error), true);
+    if (!isDestroyed())
+      store.getState().reportFailure(failureMessage(error), true);
   }
+  return 'settled';
 }

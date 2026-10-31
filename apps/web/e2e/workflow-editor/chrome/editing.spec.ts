@@ -130,25 +130,12 @@ test('edits, autosaves, and preserves both drafts during a two-tab conflict', as
   await expect(second.getByText(/1 step, 0 links/u)).toHaveCount(2);
   await second.getByRole('button', { name: 'Close' }).click();
   await conflict.getByRole('button', { name: 'Keep mine' }).click();
-  await expect(conflict).toContainText('Your copy is kept for comparison');
-  await expect(second.getByText(/^Saved/u)).toBeVisible();
-  expect(remote.graph.nodes).toHaveLength(1);
-  expect(remote.revision).toBe(2);
-
-  await addStep(second, /Set fields/u).click();
-  await expect(second.getByText('Unsaved')).toBeVisible();
-  await expect.poll(() => remote.graph.nodes.length).toBe(2);
-  expect(remote.revision).toBe(3);
-  await expect(conflict).toBeVisible();
-  expect(await blocksUnload(second)).toBe(true);
-  await second.getByRole('link', { name: 'Settings' }).click();
-  await expect(
-    second.getByRole('heading', { name: 'Discard your kept copy?' }),
-  ).toBeVisible();
-  await expect(second).toHaveURL(editorUrl);
-  await second.getByRole('button', { name: 'Stay here' }).click();
-  await conflict.getByRole('button', { name: 'Dismiss copy' }).click();
   await expect(conflict).toBeHidden();
+  // My one step replaces theirs, saved from their revision.
+  await expect.poll(() => remote.revision).toBe(3);
+  expect(remote.graph.nodes).toHaveLength(1);
+  await expect(second.getByText(/^Saved/u)).toBeVisible();
+  await expect(second.locator('.react-flow__node')).toHaveCount(1);
   expect(await blocksUnload(second)).toBe(false);
   await second.getByRole('link', { name: 'Back to workflows' }).click();
   await expect(second).toHaveURL(`/w/${workspaceId}/workflows`);

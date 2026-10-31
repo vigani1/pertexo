@@ -89,42 +89,34 @@ function canvasStepNames() {
 }
 
 describe('Keep mine on a real conflict', { timeout: 30_000 }, () => {
-  // product-ux-06: Keep mine adopts their graph, so an empty draft empties the canvas.
-  it.fails(
-    'keeps my step on the canvas when their draft is empty',
-    async () => {
-      installRealConflict(emptyGraph);
-      const { bar, event } = await reachConflict();
-      await event.click(within(bar).getByRole('button', { name: 'Keep mine' }));
-      expect(canvasStepNames().getByText('Set fields')).toBeInTheDocument();
-    },
-  );
+  it('keeps my step on the canvas when their draft is empty', async () => {
+    installRealConflict(emptyGraph);
+    const { bar, event } = await reachConflict();
+    await event.click(within(bar).getByRole('button', { name: 'Keep mine' }));
+    expect(canvasStepNames().getByText('Set fields')).toBeInTheDocument();
+  });
 
-  // product-ux-06: Keep mine never writes my graph, so their version stays the draft.
-  it.fails(
-    'saves my graph over theirs, from their revision, and clears the conflict',
-    async () => {
-      const puts = installRealConflict({
-        ...emptyGraph,
-        nodes: graphWithMappingNodes().nodes.slice(0, 1),
-      });
-      const { bar, event } = await reachConflict();
-      await event.click(within(bar).getByRole('button', { name: 'Keep mine' }));
-      await waitFor(() => {
-        expect(puts).toHaveLength(2);
-      });
-      expect(puts[1]?.ifMatch).toBe(etagB);
-      expect(
-        puts[1]?.graph.nodes.map(({ definition }) => definition.key),
-      ).toEqual(['core.set']);
-      expect(canvasStepNames().getByText('Set fields')).toBeInTheDocument();
-      expect(canvasStepNames().queryByText('Manual input')).toBeNull();
-      await waitFor(() => {
-        expect(screen.getByText(/^Saved/u)).toBeVisible();
-      });
-      expect(screen.queryByText(/Changed elsewhere/u)).toBeNull();
-    },
-  );
+  it('saves my graph over theirs, from their revision, and clears the conflict', async () => {
+    const puts = installRealConflict({
+      ...emptyGraph,
+      nodes: graphWithMappingNodes().nodes.slice(0, 1),
+    });
+    const { bar, event } = await reachConflict();
+    await event.click(within(bar).getByRole('button', { name: 'Keep mine' }));
+    await waitFor(() => {
+      expect(puts).toHaveLength(2);
+    });
+    expect(puts[1]?.ifMatch).toBe(etagB);
+    expect(
+      puts[1]?.graph.nodes.map(({ definition }) => definition.key),
+    ).toEqual(['core.set']);
+    expect(canvasStepNames().getByText('Set fields')).toBeInTheDocument();
+    expect(canvasStepNames().queryByText('Manual input')).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByText(/^Saved/u)).toBeVisible();
+    });
+    expect(screen.queryByText(/Changed elsewhere/u)).toBeNull();
+  });
 
   it('Load theirs replaces my step with theirs and stops saving mine', async () => {
     const puts = installRealConflict({

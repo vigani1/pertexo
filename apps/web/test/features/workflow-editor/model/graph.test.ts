@@ -6,10 +6,7 @@ import {
   updateWorkflowNode,
 } from '@/features/workflow-editor/model/graph/commands';
 
-import {
-  adoptStepFrom,
-  duplicateWorkflowNodes,
-} from '@/features/workflow-editor/model/graph/copies';
+import { duplicateWorkflowNodes } from '@/features/workflow-editor/model/graph/copies';
 
 import {
   edgeWeaveOrder,
@@ -105,20 +102,6 @@ describe('editor graph commands', () => {
       source: { nodeId: 'copy-1', port: 'false' },
       target: { nodeId: 'copy-2', port: 'in' },
     });
-  });
-  it('re-applies one step from a kept copy with its connections, or removes it', () => {
-    const mine = branchingGraph();
-    const theirs: WorkflowGraphContract = {
-      ...mine,
-      nodes: mine.nodes.filter((item) => item.id !== 'post'),
-      edges: mine.edges.filter((item) => item.id !== 'e3'),
-    };
-    const reapplied = adoptStepFrom(theirs, mine, 'post');
-    expect(reapplied.nodes.map((item) => item.id)).toContain('post');
-    expect(reapplied.edges.map((item) => item.id)).toContain('e3');
-    expect(
-      adoptStepFrom(mine, theirs, 'post').nodes.map((item) => item.id),
-    ).not.toContain('post');
   });
   it('moves several steps in one change and skips unchanged positions', () => {
     const graph = branchingGraph();

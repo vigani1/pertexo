@@ -2,11 +2,11 @@ import { useBlocker } from '@tanstack/react-router';
 import { useCallback, useState } from 'react';
 import type { EditorStore } from '../model/state/store';
 
-export type LeaveReason = 'unsaved' | 'unfinished' | 'comparison';
+export type LeaveReason = 'unsaved' | 'unfinished';
 
 /**
- * Router navigation protection for the editor: unsaved graph changes, an
- * unfinished inspector edit, or a kept conflict copy all ask before leaving.
+ * Router navigation protection for the editor: unsaved graph changes or an
+ * unfinished inspector edit ask before leaving.
  * "Save and leave" flushes the save and only proceeds once it's clean.
  */
 export function useLeaveGuard({
@@ -18,7 +18,6 @@ export function useLeaveGuard({
     const state = store.getState();
     if (state.inspectorScratch) return 'unfinished';
     if (state.save.status !== 'clean') return 'unsaved';
-    if (state.comparison !== null) return 'comparison';
     return undefined;
   }, [store]);
   const shouldBlock = useCallback(() => reasonFor() !== undefined, [reasonFor]);

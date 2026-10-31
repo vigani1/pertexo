@@ -24,11 +24,6 @@ const leaveCopy: Readonly<
     description:
       'An editor field hasn’t been applied yet. Leaving discards it.',
   },
-  comparison: {
-    title: 'Discard your kept copy?',
-    description:
-      'Your copy from the conflict is only kept in this tab. Leaving now discards it.',
-  },
 };
 
 /** Router navigation guard: stay, save and leave, or leave anyway. */
@@ -45,8 +40,6 @@ export function LeaveEditorDialog({
 }>) {
   const copy = leaveCopy[reason];
   const canSave = reason === 'unsaved';
-  const leaveLabel =
-    reason === 'comparison' ? 'Discard and leave' : 'Leave anyway';
   const leave = () => {
     if (blocker.status === 'blocked') blocker.proceed();
   };
@@ -78,7 +71,7 @@ export function LeaveEditorDialog({
               disabled={saving}
               onClick={leave}
             >
-              {leaveLabel}
+              {'Leave anyway'}
             </Button>
           ) : undefined}
           <ProgressButton
@@ -91,7 +84,7 @@ export function LeaveEditorDialog({
             pending={saving}
             pendingLabel="Saving…"
           >
-            {canSave ? 'Save and leave' : leaveLabel}
+            {canSave ? 'Save and leave' : 'Leave anyway'}
           </ProgressButton>
         </ConfirmationFooter>
       }

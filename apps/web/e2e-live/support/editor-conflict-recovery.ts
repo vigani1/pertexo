@@ -130,26 +130,8 @@ export async function verifyEditorConflictAndImmutableRun(
     await conflict
       .getByRole('button', { name: 'Keep mine', exact: true })
       .click();
-    await expect(conflict).toContainText('Your copy is kept for comparison');
-    expect((await saved()).body.graph).toEqual(remote.body.graph);
-    expect(submittedEtags).toEqual([baseline.etag]);
-    await page.getByTestId(`rf__node-${input.rootId}`).focus();
-    await page.keyboard.press('Enter');
-    await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
-      'Remote source choice',
-    );
-    await conflict
-      .getByRole('button', { name: 'Compare', exact: true })
-      .click();
-    await compare.getByRole('tab', { name: 'Changes', exact: true }).click();
-    await compare
-      .getByRole('button', {
-        name: 'Use your copy of Local source choice',
-        exact: true,
-      })
-      .click();
-    await compare.getByRole('button', { name: 'Close', exact: true }).click();
-    const reappliedGraph = {
+    await expect(conflict).toBeHidden();
+    const keptGraph = {
       ...remote.body.graph,
       nodes: remote.body.graph.nodes.map((node) =>
         node.id === input.rootId
@@ -159,8 +141,13 @@ export async function verifyEditorConflictAndImmutableRun(
     };
     await expect
       .poll(async () => (await saved()).body.graph)
-      .toEqual(reappliedGraph);
+      .toEqual(keptGraph);
     expect(submittedEtags.slice(0, 2)).toEqual([baseline.etag, remote.etag]);
+    await page.getByTestId(`rf__node-${input.rootId}`).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
+      'Local source choice',
+    );
     await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
     const literalRow = page
       .getByRole('region', { name: 'Inputs', exact: true })
@@ -210,10 +197,6 @@ export async function verifyEditorConflictAndImmutableRun(
       kind: 'inline',
       value: { literalProof: 'from-real-browser' },
     });
-    await conflict
-      .getByRole('button', { name: 'Dismiss copy', exact: true })
-      .click();
-    await expect(conflict).toBeHidden();
     return {
       conflictRevision: remote.body.revision,
       finalDraftRevision: finalDraft.body.revision,

@@ -60,7 +60,6 @@ export function removeWorkflowNote(
   return { ...graph, notes: graph.notes.filter((note) => note.id !== id) };
 }
 
-/** Apply only this note from the conflict copy, preserving every other edit. */
 export function adoptWorkflowNote(
   graph: WorkflowGraphContract,
   source: WorkflowGraphContract,

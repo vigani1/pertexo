@@ -1,6 +1,3 @@
-import { useNotifications } from '@/components/ui/use-notifications';
-import { WORKFLOW_NOTE_LIMITS } from '@pertexo/workflow-model';
-import { adoptWorkflowNote } from '../../model/notes/commands';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { MinusIcon, PencilIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,40 +15,27 @@ import {
 } from '@/features/workflows/comparison.public';
 import { useEditorStore } from '../../model/state/context';
 import { shownConflict } from '../../model/state/store';
-import { adoptStepFrom } from '../../model/graph/copies';
 
 type Line = GraphChange;
 
 /**
  * What differs between your copy and theirs, step by step, with the raw
- * JSON as a secondary view. Once you keep their version, each difference
- * can be re-applied from your copy as an ordinary, undoable edit.
+ * JSON as a secondary view, so you can choose which one to keep.
  */
 export function ConflictCompareDialog({
   open,
   onOpenChange,
 }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
-  const notifications = useNotifications();
   const conflict = useEditorStore(shownConflict);
-  const inConflict = useEditorStore(
-    (state) => state.save.status === 'conflict',
-  );
-  const graph = useEditorStore((state) => state.graph);
-  const transact = useEditorStore((state) => state.transact);
   if (conflict === null) return null;
-  const comparison = diffWorkflowGraphs(
-    inConflict ? conflict.remote : graph,
-    conflict.local,
-  );
+  const comparison = diffWorkflowGraphs(conflict.remote, conflict.local);
   const lines = comparison.lines;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogTitle>Your copy and theirs</DialogTitle>
         <DialogDescription>
-          {inConflict
-            ? 'Choose Keep mine to continue from their version with your copy beside it, then re-apply the steps you still want.'
-            : 'Steps where your copy differs from the draft you’re editing now. Use mine re-applies one as a normal edit you can undo.'}
+          Keep mine saves your copy over theirs. Load theirs replaces your copy.
         </DialogDescription>
         <Tabs defaultValue="steps" className="mt-4">
           <TabsList>
@@ -80,35 +64,6 @@ export function ConflictCompareDialog({
                         · {lineWords(line)}
                       </span>
                     </span>
-                    {inConflict ||
-                    (line.target !== 'step' &&
-                      line.target !== 'note') ? null : (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="outline"
-                        aria-label={`Use your copy of ${line.label}`}
-                        onClick={() => {
-                          const next =
-                            line.target === 'step'
-                              ? adoptStepFrom(graph, conflict.local, line.id)
-                              : adoptWorkflowNote(
-                                  graph,
-                                  conflict.local,
-                                  line.id,
-                                );
-                          if (next === null)
-                            notifications.error({
-                              title: `The canvas has ${String(WORKFLOW_NOTE_LIMITS.count)} notes`,
-                              description:
-                                'Remove a note before applying this one.',
-                            });
-                          else transact(next);
-                        }}
-                      >
-                        Use mine
-                      </Button>
-                    )}
                   </li>
                 ))}
               </ul>
@@ -116,10 +71,7 @@ export function ConflictCompareDialog({
           </TabsContent>
           <TabsContent value="json" className="grid gap-3 pt-4 lg:grid-cols-2">
             <GraphJson label="Your copy" graph={conflict.local} />
-            <GraphJson
-              label={inConflict ? 'Their version' : 'Draft now'}
-              graph={inConflict ? conflict.remote : graph}
-            />
+            <GraphJson label="Their version" graph={conflict.remote} />
           </TabsContent>
         </Tabs>
         <div className="mt-6 flex justify-end">

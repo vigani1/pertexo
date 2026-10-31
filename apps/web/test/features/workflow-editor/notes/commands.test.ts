@@ -15,7 +15,6 @@ import {
   updateWorkflowNote,
   moveWorkflowNotes,
   removeWorkflowNote,
-  adoptWorkflowNote,
 } from '@/features/workflow-editor/model/notes/commands';
 import {
   noteFields,
@@ -92,20 +91,6 @@ describe('canvas documentation commands', () => {
     store.getState().transact(removeWorkflowNote(first, note.id));
     store.getState().undo();
     expect(store.getState().graph).toEqual(first);
-  });
-  it('adopts one conflict note without replacing unrelated work', () => {
-    const other = { ...note, id: 'other', text: 'Their unrelated note' };
-    const edited = { ...note, text: 'My revised instructions' };
-    const theirs = { ...graph, notes: [note, other] };
-    expect(
-      adoptWorkflowNote(theirs, { ...graph, notes: [edited] }, note.id)?.notes,
-    ).toEqual([edited, other]);
-    expect(
-      adoptWorkflowNote(theirs, { ...graph, notes: [] }, note.id)?.notes,
-    ).toEqual([other]);
-    expect(
-      adoptWorkflowNote({ ...graph, notes: [other] }, graph, note.id)?.notes,
-    ).toEqual([other, note]);
   });
 });
 describe('documentation comparisons', () => {
