@@ -276,34 +276,37 @@ export const connectionTestRequestSchema = z.union([
   emailConnectionTestRequestSchema,
 ]);
 
+/** The fields every connection answers with; an OAuth2 connection narrows them. */
+export const connectionResponseFields = {
+  id: connectionIdentifierSchema,
+  workspaceId: z.uuid(),
+  providerKey: connectionProviderKeySchema,
+  name: connectionNameSchema,
+  authType: connectionAuthTypeSchema,
+  status: connectionStatusSchema,
+  secretVersionId: connectionSecretVersionIdentifierSchema,
+  health: z
+    .object({
+      lastTestedAt: z.iso.datetime().nullable(),
+      lastHealthyAt: z.iso.datetime().nullable(),
+      lastErrorCode: z.string().min(1).max(128).nullable(),
+      lastRunObservedAt: z.iso.datetime().nullable().optional(),
+      lastHealthTransitionAt: z.iso.datetime().nullable().optional(),
+      lastHealthTransitionSource: z
+        .enum(['run', 'test', 'rotation', 'revoke'])
+        .nullable()
+        .optional(),
+    })
+    .strict()
+    .readonly(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+  /** Omitted means everyone in the workspace; who can use it stays on the sharing read. */
+  accessMode: z.enum(['workspace', 'restricted']).optional(),
+} as const;
+
 export const connectionResponseSchema = z
-  .object({
-    id: connectionIdentifierSchema,
-    workspaceId: z.uuid(),
-    providerKey: connectionProviderKeySchema,
-    name: connectionNameSchema,
-    authType: connectionAuthTypeSchema,
-    status: connectionStatusSchema,
-    secretVersionId: connectionSecretVersionIdentifierSchema,
-    health: z
-      .object({
-        lastTestedAt: z.iso.datetime().nullable(),
-        lastHealthyAt: z.iso.datetime().nullable(),
-        lastErrorCode: z.string().min(1).max(128).nullable(),
-        lastRunObservedAt: z.iso.datetime().nullable().optional(),
-        lastHealthTransitionAt: z.iso.datetime().nullable().optional(),
-        lastHealthTransitionSource: z
-          .enum(['run', 'test', 'rotation', 'revoke'])
-          .nullable()
-          .optional(),
-      })
-      .strict()
-      .readonly(),
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-    /** Omitted means everyone in the workspace; who can use it stays on the sharing read. */
-    accessMode: z.enum(['workspace', 'restricted']).optional(),
-  })
+  .object(connectionResponseFields)
   .strict()
   .readonly();
 

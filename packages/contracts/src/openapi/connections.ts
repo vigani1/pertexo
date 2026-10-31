@@ -28,6 +28,21 @@ import {
   slackChannelLookupResponseSchema,
 } from '../schemas/connections.js';
 import {
+  OAUTH2_CALLBACK_PATH,
+  OAUTH2_LANDING_PATH,
+  oauth2AuthorizationStartResponseSchema,
+  oauth2CallbackCodeSchema,
+  oauth2CallbackErrorSchema,
+  oauth2CallbackLandingSchema,
+  oauth2CallbackQuerySchema,
+  oauth2CallbackStateSchema,
+  oauth2ClientSettingsSchema,
+  oauth2ConnectionErrorCodeSchema,
+  oauth2ConnectionResponseSchema,
+  oauth2CredentialSchema,
+  oauth2StepFailureCodeSchema,
+} from '../schemas/oauth2-connections.js';
+import {
   failureNotificationDestinationAppendVersionRequestSchema,
   failureNotificationDestinationCreateRequestSchema,
   failureNotificationDestinationListResponseSchema,
@@ -57,6 +72,20 @@ const schemas = Object.freeze({
   ),
   ConnectionTestRequest: jsonSchema(connectionTestRequestSchema, 'input'),
   ConnectionTestResponse: jsonSchema(connectionTestResponseSchema, 'output'),
+  OAuth2ClientSettings: jsonSchema(oauth2ClientSettingsSchema, 'output'),
+  OAuth2Credential: jsonSchema(oauth2CredentialSchema, 'input'),
+  OAuth2Connection: jsonSchema(oauth2ConnectionResponseSchema, 'output'),
+  OAuth2ConnectionErrorCode: jsonSchema(
+    oauth2ConnectionErrorCodeSchema,
+    'output',
+  ),
+  OAuth2StepFailureCode: jsonSchema(oauth2StepFailureCodeSchema, 'output'),
+  OAuth2AuthorizationStart: jsonSchema(
+    oauth2AuthorizationStartResponseSchema,
+    'output',
+  ),
+  OAuth2CallbackQuery: jsonSchema(oauth2CallbackQuerySchema, 'input'),
+  OAuth2CallbackLanding: jsonSchema(oauth2CallbackLandingSchema, 'output'),
   SlackChannelLookupResponse: jsonSchema(
     slackChannelLookupResponseSchema,
     'output',
@@ -140,7 +169,7 @@ const idempotencyParameter = idempotencyHeaderParameter();
 
 export const connectionsOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
-  info: { title: 'Pertexo Connections API', version: '1.3.0' },
+  info: { title: 'Pertexo Connections API', version: '1.4.0' },
   paths: {
     '/v1/workspaces/{workspaceId}/connections': {
       get: {
@@ -323,6 +352,48 @@ export const connectionsOpenApiDocument = Object.freeze({
           '409': responseReference('Conflict'),
           '503': responseReference('ServiceUnavailable'),
           '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/connections/{connectionId}/oauth2/authorization':
+      {
+        post: {
+          operationId: 'startConnectionOAuth2Authorization',
+          description:
+            'Starts consent for an authorization-code connection and sets its short-lived browser binding cookie, replacing any consent already pending. A client-credentials connection is connected at once. Requires connection:manage in an active workspace.',
+          security: [{ cookieSession: [] }],
+          parameters: [workspaceParameter, connectionParameter, csrfParameter],
+          responses: {
+            '200': jsonResponse(
+              'Consent to open, or the connected connection',
+              'OAuth2AuthorizationStart',
+            ),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '409': responseReference('Conflict'),
+            '429': responseReference('RateLimited'),
+            '503': responseReference('ServiceUnavailable'),
+            '500': responseReference('Unexpected'),
+          },
+        },
+      },
+    [OAUTH2_CALLBACK_PATH]: {
+      get: {
+        operationId: 'completeConnectionOAuth2Authorization',
+        description:
+          'Where a provider returns the browser. The single-use state and its browser binding cookie stand in for the session and CSRF token. Every outcome is a redirect to the web landing page; its query follows OAuth2CallbackLanding. The accepted query is OAuth2CallbackQuery.',
+        security: [],
+        parameters: [
+          requiredQueryParameter('state', oauth2CallbackStateSchema, {
+            required: true,
+          }),
+          requiredQueryParameter('code', oauth2CallbackCodeSchema),
+          requiredQueryParameter('error', oauth2CallbackErrorSchema),
+        ],
+        responses: {
+          '303': { description: `Redirect to ${OAUTH2_LANDING_PATH}` },
+          '429': responseReference('RateLimited'),
         },
       },
     },
