@@ -72,6 +72,21 @@ export const MIGRATIONS_DIRECTORY = fileURLToPath(
   new URL('../migrations/', import.meta.url),
 );
 
+/** Names the file that stopped a migration, so a failed deploy has a reason. */
+export class MigrationFileFailedError extends Error {
+  public override readonly name = 'MigrationFileFailedError';
+
+  public constructor(
+    readonly file: string,
+    cause: unknown,
+  ) {
+    super(
+      `Migration ${file} failed: ${cause instanceof Error ? cause.message : 'no reason given'}`,
+      { cause },
+    );
+  }
+}
+
 function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;
 }
@@ -186,13 +201,17 @@ export async function migrateDatabase(
           throw new Error(`Applied migration checksum changed: ${name}`);
         continue;
       }
-      await runMigrationTransaction(transaction, async () => {
-        await client.query(renderMigration(sql, config));
-        await client.query(
-          'insert into pertexo_internal.schema_migrations(name,checksum) values($1,$2)',
-          [name, checksum],
-        );
-      });
+      try {
+        await runMigrationTransaction(transaction, async () => {
+          await client.query(renderMigration(sql, config));
+          await client.query(
+            'insert into pertexo_internal.schema_migrations(name,checksum) values($1,$2)',
+            [name, checksum],
+          );
+        });
+      } catch (error: unknown) {
+        throw new MigrationFileFailedError(name, error);
+      }
       applied.push(name);
     }
 

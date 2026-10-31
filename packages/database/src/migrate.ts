@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
 import { parseMigrationConfig, type MigrationConfig } from './config.js';
-import { migrateDatabase } from './migrations.js';
+import { MigrationFileFailedError, migrateDatabase } from './migrations.js';
 
 export interface MigrationCliDependencies {
   readonly loadConfig?: () => MigrationConfig;
@@ -15,6 +15,27 @@ function classifyError(error: unknown): 'Error' | 'NonError' {
     return error instanceof Error ? 'Error' : 'NonError';
   } catch {
     return 'NonError';
+  }
+}
+
+/**
+ * A failed statement's Postgres message says what's wrong and carries no
+ * connection details. Other errors could carry anything, so only their system
+ * code is reported.
+ */
+function failureDetails(error: unknown): Readonly<Record<string, string>> {
+  try {
+    if (error instanceof MigrationFileFailedError)
+      return {
+        file: error.file,
+        ...(error.cause instanceof Error
+          ? { reason: error.cause.message }
+          : {}),
+      };
+    const code = (error as { code?: unknown } | null | undefined)?.code;
+    return typeof code === 'string' ? { code: code.slice(0, 32) } : {};
+  } catch {
+    return {};
   }
 }
 
@@ -55,6 +76,7 @@ export async function runMigrationCli(
       `${JSON.stringify({
         event: 'database.migration_failed',
         errorType: classifyError(error),
+        ...failureDetails(error),
         level: 'fatal',
       })}\n`,
     );

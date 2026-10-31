@@ -96,7 +96,10 @@ export async function bootstrapOperatorCommand(
     reportDiagnostic(() =>
       logger?.fatal(
         'operator_command.bootstrap_failed',
-        { errorType: startup.classifyProcessError(error) },
+        {
+          cause: startup.describeProcessFailure(error),
+          errorType: startup.classifyProcessError(error),
+        },
         error,
       ),
     );
@@ -128,10 +131,11 @@ function isMainModule(): boolean {
 
 if (isMainModule()) {
   void bootstrapOperatorCommand().catch(async (error: unknown) => {
-    const { classifyProcessError } =
+    const { classifyProcessError, describeProcessFailure } =
       await import('@pertexo/observability/startup');
     process.stderr.write(
       `${JSON.stringify({
+        cause: describeProcessFailure(error),
         errorType: classifyProcessError(error),
         event: 'operator_command.process_failed',
         level: 'fatal',

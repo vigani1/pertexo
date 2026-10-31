@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import {
   createTelemetryLifecycle,
   classifyProcessError,
+  describeProcessFailure,
 } from '@pertexo/observability/startup';
 import type { StructuredLogger } from '@pertexo/observability';
 import type * as LoggingModule from '@pertexo/observability';
@@ -126,6 +127,7 @@ if (isMainModule()) {
       `${JSON.stringify({
         event: 'api.process_failed',
         errorType: classifyProcessError(error),
+        cause: describeProcessFailure(error),
         level: 'fatal',
         ...(error instanceof InvalidInstanceLimitError
           ? { invalidSetting: error.setting }
