@@ -7,11 +7,18 @@ import {
   SCENARIO_LIMIT_MS,
 } from '../../support/recovery/environment.js';
 import {
+  delay,
   factsOfRun,
   waitForRunsToEnd,
   type RunFacts,
 } from '../../support/recovery/facts.js';
-import { nextStep, slowStep, startFlow } from '../../support/recovery/flows.js';
+import {
+  failingStep,
+  nextStep,
+  slowStep,
+  startFlow,
+} from '../../support/recovery/flows.js';
+import { httpChain } from '../../support/recovery/graphs.js';
 import {
   eventsOfAggregate,
   pauseQueue,
@@ -23,6 +30,10 @@ import { startStack, type Stack } from '../../support/recovery/stack.js';
 
 const DISPATCH_LIMIT_MS = 30_000;
 const STEP_SECONDS = 15;
+// Time for the first asking, due at once, to reach its consumer and fail there.
+const FIRST_ASKING_MS = 20_000;
+// Past the 5 s between scans.
+const SCAN_MS = 8_000;
 
 /**
  * Migration 0060 adds `delivery_due_at` with no value. A job published before the
@@ -95,3 +106,87 @@ describeFaults(
     });
   },
 );
+
+/**
+ * Failure notifications wrote no receipt before due times arrived, so every one
+ * ever published has the shape the upgrade scan looks for, delivered long ago or
+ * not. Run retention takes the run and its intent with it and leaves the outbox
+ * row. Its job can then only fail, so nothing may keep asking for it.
+ */
+describeFaults('an old alert job whose run was retained away', () => {
+  let stack: Stack;
+  let asked: number | undefined;
+  let eventId: string | undefined;
+
+  beforeAll(async () => {
+    stack = await startStack('old-alert', { slackFromSink: true });
+    const workspace = await stack.api.createWorkspace('recovery-old-alert');
+    const slack = await stack.api.createSlackConnection(
+      workspace,
+      'xoxb-recovery-healthy-1',
+    );
+    const alerting = await stack.api.publish(
+      workspace,
+      'alerting',
+      httpChain([failingStep(stack, 'old-alerting')]),
+    );
+    await stack.api.alertToSlack(workspace, alerting, slack, 'C0ALERTS');
+    const run = await stack.api.startRun(workspace, alerting);
+    await waitForRunsToEnd(stack, [run], RECOVERY_LIMIT_MS);
+    const deadline = Date.now() + RECOVERY_LIMIT_MS;
+    while (Date.now() < deadline) {
+      const [intent] = await stack.sql<{ status: string }>(
+        `select status from app.run_failure_notification_intents where workflow_run_id=$1`,
+        [run],
+      );
+      if (intent?.status === 'delivered') break;
+      await delay(250);
+    }
+
+    await stack.worker.stop('SIGKILL');
+    // What the release before this one left behind, once retention had been by.
+    [{ id: eventId }] = (await stack.sql<{ id: string }>(
+      `select id from app.outbox_events
+        where job_name='deliver-run-failure-notification'`,
+    )) as [{ id: string }];
+    await stack.sql(`delete from app.inbox_receipts where message_id=$1`, [
+      eventId,
+    ]);
+    await stack.sql(
+      `update app.outbox_events set delivery_due_at=null where id=$1`,
+      [eventId],
+    );
+    await stack.sql(`delete from app.workflow_runs where id=$1`, [run]);
+
+    stack.worker.start();
+    await delay(FIRST_ASKING_MS);
+    // A row still being watched is asked for again when its time comes; bring that
+    // forward rather than wait for it.
+    await stack.sql(
+      `update app.outbox_events set delivery_due_at=clock_timestamp()
+        where id=$1 and delivery_due_at is not null`,
+      [eventId],
+    );
+    await delay(SCAN_MS);
+    asked = (
+      await stack.sql<{ redeliveries: number }>(
+        `select redeliveries from app.outbox_events where id=$1`,
+        [eventId],
+      )
+    )[0]?.redeliveries;
+  }, SCENARIO_LIMIT_MS);
+
+  afterAll(async () => {
+    await stack.close();
+  }, SCENARIO_LIMIT_MS);
+
+  it('really has the old row to read', () => {
+    expect(asked).toBeTypeOf('number');
+  });
+
+  // reliability review: its job fails every time, so it is asked for 30 times over a
+  // day and then listed as stuck work, for each old alert on the install.
+  it.fails('stops asking for a job that has nothing left to do', () => {
+    expect(asked).toBeLessThanOrEqual(1);
+  });
+});
