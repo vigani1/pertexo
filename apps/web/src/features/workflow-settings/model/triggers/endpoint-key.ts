@@ -11,10 +11,7 @@ export function extractEndpointKey(pasted: string): string | undefined {
   return match?.[1];
 }
 
-/** The address senders use; the API origin isn't known to the browser yet. */
-export const WEBHOOK_URL_TEMPLATE =
-  '<your Pertexo API address>/hooks/<endpoint key>';
-
-export function webhookPath(endpointKey: string): string {
-  return `/hooks/${endpointKey}`;
+/** The address senders use. /hooks is served on the app's own host. */
+export function webhookAddress(endpointKey: string): string {
+  return new URL(`/hooks/${endpointKey}`, window.location.origin).toString();
 }

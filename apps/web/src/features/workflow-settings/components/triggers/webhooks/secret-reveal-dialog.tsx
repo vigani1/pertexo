@@ -8,10 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import {
-  WEBHOOK_URL_TEMPLATE,
-  webhookPath,
-} from '../../../model/triggers/endpoint-key';
+import { webhookAddress } from '../../../model/triggers/endpoint-key';
 import { CopyField } from '../../copy-field';
 
 function RevealContent({
@@ -32,20 +29,13 @@ function RevealContent({
       </DialogDescription>
       <div className="mt-5 flex flex-col gap-4">
         {credentials.endpointKey === undefined ? null : (
-          <div className="flex flex-col gap-2">
+          <>
+            <CopyField
+              label="Webhook address"
+              value={webhookAddress(credentials.endpointKey)}
+            />
             <CopyField label="Endpoint key" value={credentials.endpointKey} />
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Senders post to{' '}
-              <code className="font-mono text-foreground">
-                {WEBHOOK_URL_TEMPLATE}
-              </code>
-              . Pertexo can’t show the full address here yet, so add{' '}
-              <code className="font-mono break-all text-foreground">
-                {webhookPath(credentials.endpointKey)}
-              </code>{' '}
-              to your Pertexo API address.
-            </p>
-          </div>
+          </>
         )}
         {credentials.signingSecret === undefined ? null : (
           <CopyField
