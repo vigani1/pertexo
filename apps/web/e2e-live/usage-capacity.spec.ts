@@ -49,13 +49,13 @@ test('reports real current capacity and retained activity with exact drilldowns'
     reservedActiveSlots: 0,
     activeCapacityConsumed: 4,
     queuedRuns: 1,
-    policy: { state: 'active', activeRunLimit: 20, queuedRunLimit: 10_000 },
+    policy: { state: 'active', activeRunLimit: 5, queuedRunLimit: 100 },
   });
   expect(capacity.artifacts).toMatchObject({
     chargedBytes: '11',
     chargedCount: 1,
     byteLimit: '1073741824',
-    artifactCountLimit: 10_000,
+    artifactCountLimit: 1000,
   });
   const current = page.getByRole('region', { name: 'Current capacity' });
   await expect(current.getByTitle('11 bytes')).toHaveText('11 B');
@@ -63,7 +63,7 @@ test('reports real current capacity and retained activity with exact drilldowns'
     current.getByRole('figure', { name: '11 B stored of 1 GB' }),
   ).toBeVisible();
   await expect(current).toContainText('/ 1 GB');
-  await expect(current).toContainText('4 / 20');
+  await expect(current).toContainText('4 / 5');
   const oneHour = workflowRunStatisticsResponseSchema.parse(
     await (await oneHourResponse).json(),
   );
