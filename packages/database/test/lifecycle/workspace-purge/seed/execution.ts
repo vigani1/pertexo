@@ -1,3 +1,5 @@
+import { randomBytes, randomUUID } from 'node:crypto';
+
 import type { Pool } from 'pg';
 
 import type { PurgeSeed } from '../base.js';
@@ -111,6 +113,35 @@ export async function seedPurgeExecution(
   await owner.query(
     "update app.connections set current_secret_version_id=$2,health_revision=health_revision+1,last_health_transition_at=clock_timestamp(),last_health_transition_source='rotation' where id=$1",
     [connectionId, currentSecretId],
+  );
+  await owner.query(
+    `insert into app.connection_oauth2_clients(
+          workspace_id,connection_id,secret_version_id,settings
+        ) values($1,$2,$3,'{}')`,
+    [workspaceId, connectionId, currentSecretId],
+  );
+  await owner.query(
+    `insert into app.connection_oauth2_tokens(
+          id,workspace_id,connection_id,secret_version_id,kms_key_reference,
+          encrypted_data_key,ciphertext,nonce,auth_tag,authorized_at,issued_at,
+          renewable
+        ) values($1,$2,$3,$4,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+          'AAAAAAAAAAAAAAAAAAAAAA',clock_timestamp(),clock_timestamp(),true)`,
+    [randomUUID(), workspaceId, connectionId, currentSecretId],
+  );
+  await owner.query(
+    `insert into app.connection_oauth2_authorizations(
+          workspace_id,connection_id,state_digest,binding_digest,started_by,
+          secret_version_id,expires_at
+        ) values($1,$2,$3,$4,$5,$6,clock_timestamp() + interval '10 minutes')`,
+    [
+      workspaceId,
+      connectionId,
+      randomBytes(32),
+      randomBytes(32),
+      userId,
+      currentSecretId,
+    ],
   );
   await owner.query(
     `insert into app.failure_notification_destinations(

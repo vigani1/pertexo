@@ -1,6 +1,7 @@
 import {
   expect,
   type Browser,
+  type BrowserContext,
   type Locator,
   type Page,
 } from '@playwright/test';
@@ -156,8 +157,22 @@ async function asRole(
   }
 }
 
-test.beforeEach(async ({ page }) => {
-  await signIn(page, owner);
+// One sign-in, shared: the real limit is 10 a minute per address, and a quick run
+// through these scenes would reach it.
+let ownerCookies: Awaited<ReturnType<BrowserContext['cookies']>>;
+
+test.beforeAll(async ({ browser }) => {
+  const context = await browser.newContext({ baseURL: webOrigin });
+  try {
+    await signIn(await context.newPage(), owner);
+    ownerCookies = await context.cookies();
+  } finally {
+    await context.close();
+  }
+});
+
+test.beforeEach(async ({ context }) => {
+  await context.addCookies(ownerCookies);
 });
 
 // Plan journey 1 and 2: the form, both hosts, consent, and the first tab moving on by itself.
