@@ -294,8 +294,9 @@ jobs:
         if: always()
         run: docker compose down -v --remove-orphans
 
-  # The mocked suite and three shards of real-stack journeys run side by side
-  # on separate runners; one long sequential job had grown past 25 minutes.
+  # Four shards of the mocked suite and three of real-stack journeys run side by
+  # side on separate runners; one mocked job alone took 24 minutes and set how long
+  # every pull request waited.
   browser:
     name: browser (${{ matrix.suite }})
     needs: changes
@@ -306,12 +307,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Live shards are balanced by measured duration (about 5.5 minutes
-        # each) and keep the journeys' original order. Put a new journey on
+        # Live shards keep the journeys' original order. Put a new journey on
         # the lightest shard.
         include:
-          - suite: mocked
+          - suite: mocked-1
             journeys: ''
+            shard: 1/4
+          - suite: mocked-2
+            journeys: ''
+            shard: 2/4
+          - suite: mocked-3
+            journeys: ''
+            shard: 3/4
+          - suite: mocked-4
+            journeys: ''
+            shard: 4/4
           - suite: live-1
             journeys: >-
               usage failure-routing error-workflows approvals variables
@@ -345,7 +355,9 @@ jobs:
         run: pnpm --filter @pertexo/web exec playwright install --with-deps
       - name: Browser tests against the mocked API
         if: matrix.journeys == ''
-        run: pnpm --filter @pertexo/web test:e2e
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: pnpm --filter @pertexo/web test:e2e --shard="$SHARD"
       - name: Use the Docker Hub mirror
         if: matrix.journeys != ''
         uses: ./.github/actions/docker-mirror
