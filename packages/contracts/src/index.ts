@@ -4,6 +4,7 @@ export * from './errors/api-problem.js';
 export * from './schemas/execution/artifact-transfer.js';
 export * from './schemas/catalog.js';
 export * from './schemas/connections.js';
+export * from './schemas/oauth2-connections.js';
 export * from './schemas/failure-notification-destinations.js';
 export * from './schemas/identity/workspaces.js';
 export * from './schemas/execution/node-testing.js';

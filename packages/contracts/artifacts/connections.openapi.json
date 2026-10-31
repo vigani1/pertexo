@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Pertexo Connections API",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "paths": {
     "/v1/workspaces/{workspaceId}/connections": {
@@ -721,6 +721,133 @@
           },
           "503": {
             "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/connections/{connectionId}/oauth2/authorization": {
+      "post": {
+        "operationId": "startConnectionOAuth2Authorization",
+        "description": "Starts consent for an authorization-code connection and sets its short-lived browser binding cookie, replacing any consent already pending. A client-credentials connection is connected at once. Requires connection:manage in an active workspace.",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "connectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Consent to open, or the connected connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuth2AuthorizationStart"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          }
+        }
+      }
+    },
+    "/v1/connections/oauth2/callback": {
+      "get": {
+        "operationId": "completeConnectionOAuth2Authorization",
+        "description": "Where a provider returns the browser. The single-use state and its browser binding cookie stand in for the session and CSRF token. Every outcome is a redirect to the web landing page; its query follows OAuth2CallbackLanding. The accepted query is OAuth2CallbackQuery.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}$"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[\\x20-\\x7e]+$"
+            }
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "Redirect to /connections/oauth2/finished"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
           }
         }
       }
@@ -1634,6 +1761,8 @@
               "webhook.not_configured",
               "connection.conflict",
               "connection.revoked",
+              "connection.oauth2_endpoint_refused",
+              "connection.oauth2_token_refused",
               "provider.unavailable",
               "webhook.authentication_failed",
               "webhook.payload_too_large",
@@ -2908,6 +3037,2360 @@
           "outcome"
         ],
         "additionalProperties": false
+      },
+      "OAuth2ClientSettings": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "grantType": {
+                "type": "string",
+                "const": "authorization_code"
+              },
+              "authorizationUrl": {
+                "type": "string",
+                "maxLength": 2048,
+                "format": "uri"
+              },
+              "authorizationParameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.~-]+$"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "maxLength": 1024,
+                  "pattern": "^[\\x20-\\x7e]+$"
+                }
+              },
+              "pkce": {
+                "type": "string",
+                "enum": [
+                  "s256",
+                  "none"
+                ]
+              },
+              "tokenUrl": {
+                "type": "string",
+                "maxLength": 2048,
+                "format": "uri"
+              },
+              "clientId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "^[\\x20-\\x7e]+$"
+              },
+              "scope": {
+                "type": "string",
+                "maxLength": 2048,
+                "pattern": "^[\\x20-\\x7e]*$"
+              },
+              "clientAuthentication": {
+                "type": "string",
+                "enum": [
+                  "basic",
+                  "body"
+                ]
+              },
+              "tokenParameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.~-]+$"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "maxLength": 1024,
+                  "pattern": "^[\\x20-\\x7e]+$"
+                }
+              },
+              "requestHosts": {
+                "oneOf": [
+                  {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "const": "any"
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "const": "listed"
+                      },
+                      "hosts": {
+                        "minItems": 1,
+                        "maxItems": 32,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 253,
+                          "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                        }
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "hosts"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "grantType",
+              "authorizationUrl",
+              "authorizationParameters",
+              "pkce",
+              "tokenUrl",
+              "clientId",
+              "scope",
+              "clientAuthentication",
+              "tokenParameters",
+              "requestHosts"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "grantType": {
+                "type": "string",
+                "const": "client_credentials"
+              },
+              "tokenUrl": {
+                "type": "string",
+                "maxLength": 2048,
+                "format": "uri"
+              },
+              "clientId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "^[\\x20-\\x7e]+$"
+              },
+              "scope": {
+                "type": "string",
+                "maxLength": 2048,
+                "pattern": "^[\\x20-\\x7e]*$"
+              },
+              "clientAuthentication": {
+                "type": "string",
+                "enum": [
+                  "basic",
+                  "body"
+                ]
+              },
+              "tokenParameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.~-]+$"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "maxLength": 1024,
+                  "pattern": "^[\\x20-\\x7e]+$"
+                }
+              },
+              "requestHosts": {
+                "oneOf": [
+                  {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "const": "any"
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "const": "listed"
+                      },
+                      "hosts": {
+                        "minItems": 1,
+                        "maxItems": 32,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 253,
+                          "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                        }
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "hosts"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "grantType",
+              "tokenUrl",
+              "clientId",
+              "scope",
+              "clientAuthentication",
+              "tokenParameters",
+              "requestHosts"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "OAuth2Credential": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "oauth2"
+          },
+          "settings": {
+            "oneOf": [
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "grantType": {
+                    "type": "string",
+                    "const": "authorization_code"
+                  },
+                  "authorizationUrl": {
+                    "type": "string",
+                    "maxLength": 2048,
+                    "format": "uri"
+                  },
+                  "authorizationParameters": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[A-Za-z0-9_.~-]+$"
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 1024,
+                      "pattern": "^[\\x20-\\x7e]+$"
+                    }
+                  },
+                  "pkce": {
+                    "type": "string",
+                    "enum": [
+                      "s256",
+                      "none"
+                    ]
+                  },
+                  "tokenUrl": {
+                    "type": "string",
+                    "maxLength": 2048,
+                    "format": "uri"
+                  },
+                  "clientId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512,
+                    "pattern": "^[\\x20-\\x7e]+$"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "maxLength": 2048,
+                    "pattern": "^[\\x20-\\x7e]*$"
+                  },
+                  "clientAuthentication": {
+                    "type": "string",
+                    "enum": [
+                      "basic",
+                      "body"
+                    ]
+                  },
+                  "tokenParameters": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[A-Za-z0-9_.~-]+$"
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 1024,
+                      "pattern": "^[\\x20-\\x7e]+$"
+                    }
+                  },
+                  "requestHosts": {
+                    "oneOf": [
+                      {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "type": "string",
+                            "const": "any"
+                          }
+                        },
+                        "required": [
+                          "mode"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "type": "string",
+                            "const": "listed"
+                          },
+                          "hosts": {
+                            "minItems": 1,
+                            "maxItems": 32,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 253,
+                              "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                            }
+                          }
+                        },
+                        "required": [
+                          "mode",
+                          "hosts"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "grantType",
+                  "authorizationUrl",
+                  "authorizationParameters",
+                  "pkce",
+                  "tokenUrl",
+                  "clientId",
+                  "scope",
+                  "clientAuthentication",
+                  "tokenParameters",
+                  "requestHosts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "grantType": {
+                    "type": "string",
+                    "const": "client_credentials"
+                  },
+                  "tokenUrl": {
+                    "type": "string",
+                    "maxLength": 2048,
+                    "format": "uri"
+                  },
+                  "clientId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512,
+                    "pattern": "^[\\x20-\\x7e]+$"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "maxLength": 2048,
+                    "pattern": "^[\\x20-\\x7e]*$"
+                  },
+                  "clientAuthentication": {
+                    "type": "string",
+                    "enum": [
+                      "basic",
+                      "body"
+                    ]
+                  },
+                  "tokenParameters": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[A-Za-z0-9_.~-]+$"
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 1024,
+                      "pattern": "^[\\x20-\\x7e]+$"
+                    }
+                  },
+                  "requestHosts": {
+                    "oneOf": [
+                      {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "type": "string",
+                            "const": "any"
+                          }
+                        },
+                        "required": [
+                          "mode"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "type": "string",
+                            "const": "listed"
+                          },
+                          "hosts": {
+                            "minItems": 1,
+                            "maxItems": 32,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 253,
+                              "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                            }
+                          }
+                        },
+                        "required": [
+                          "mode",
+                          "hosts"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "grantType",
+                  "tokenUrl",
+                  "clientId",
+                  "scope",
+                  "clientAuthentication",
+                  "tokenParameters",
+                  "requestHosts"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "clientSecret": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[\\x20-\\x7e]+$"
+          }
+        },
+        "required": [
+          "type",
+          "settings",
+          "clientSecret"
+        ],
+        "additionalProperties": false
+      },
+      "OAuth2Connection": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "workspaceId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "providerKey": {
+                "type": "string",
+                "const": "http"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "authType": {
+                "type": "string",
+                "const": "oauth2"
+              },
+              "status": {
+                "type": "string",
+                "const": "active"
+              },
+              "secretVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "health": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "lastTestedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastHealthyAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastErrorCode": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastRunObservedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastHealthTransitionAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastHealthTransitionSource": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "run",
+                          "test",
+                          "rotation",
+                          "revoke"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "lastTestedAt",
+                  "lastHealthyAt",
+                  "lastErrorCode"
+                ],
+                "additionalProperties": false
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "accessMode": {
+                "type": "string",
+                "enum": [
+                  "workspace",
+                  "restricted"
+                ]
+              },
+              "oauth2": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "settings": {
+                    "oneOf": [
+                      {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "grantType": {
+                            "type": "string",
+                            "const": "authorization_code"
+                          },
+                          "authorizationUrl": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "format": "uri"
+                          },
+                          "authorizationParameters": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64,
+                              "pattern": "^[A-Za-z0-9_.~-]+$"
+                            },
+                            "additionalProperties": {
+                              "type": "string",
+                              "maxLength": 1024,
+                              "pattern": "^[\\x20-\\x7e]+$"
+                            }
+                          },
+                          "pkce": {
+                            "type": "string",
+                            "enum": [
+                              "s256",
+                              "none"
+                            ]
+                          },
+                          "tokenUrl": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "format": "uri"
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 512,
+                            "pattern": "^[\\x20-\\x7e]+$"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "pattern": "^[\\x20-\\x7e]*$"
+                          },
+                          "clientAuthentication": {
+                            "type": "string",
+                            "enum": [
+                              "basic",
+                              "body"
+                            ]
+                          },
+                          "tokenParameters": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64,
+                              "pattern": "^[A-Za-z0-9_.~-]+$"
+                            },
+                            "additionalProperties": {
+                              "type": "string",
+                              "maxLength": 1024,
+                              "pattern": "^[\\x20-\\x7e]+$"
+                            }
+                          },
+                          "requestHosts": {
+                            "oneOf": [
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "const": "any"
+                                  }
+                                },
+                                "required": [
+                                  "mode"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "const": "listed"
+                                  },
+                                  "hosts": {
+                                    "minItems": 1,
+                                    "maxItems": 32,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 253,
+                                      "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "mode",
+                                  "hosts"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "grantType",
+                          "authorizationUrl",
+                          "authorizationParameters",
+                          "pkce",
+                          "tokenUrl",
+                          "clientId",
+                          "scope",
+                          "clientAuthentication",
+                          "tokenParameters",
+                          "requestHosts"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "grantType": {
+                            "type": "string",
+                            "const": "client_credentials"
+                          },
+                          "tokenUrl": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "format": "uri"
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 512,
+                            "pattern": "^[\\x20-\\x7e]+$"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "pattern": "^[\\x20-\\x7e]*$"
+                          },
+                          "clientAuthentication": {
+                            "type": "string",
+                            "enum": [
+                              "basic",
+                              "body"
+                            ]
+                          },
+                          "tokenParameters": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64,
+                              "pattern": "^[A-Za-z0-9_.~-]+$"
+                            },
+                            "additionalProperties": {
+                              "type": "string",
+                              "maxLength": 1024,
+                              "pattern": "^[\\x20-\\x7e]+$"
+                            }
+                          },
+                          "requestHosts": {
+                            "oneOf": [
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "const": "any"
+                                  }
+                                },
+                                "required": [
+                                  "mode"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "const": "listed"
+                                  },
+                                  "hosts": {
+                                    "minItems": 1,
+                                    "maxItems": 32,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 253,
+                                      "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "mode",
+                                  "hosts"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "grantType",
+                          "tokenUrl",
+                          "clientId",
+                          "scope",
+                          "clientAuthentication",
+                          "tokenParameters",
+                          "requestHosts"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "redirectUri": {
+                    "type": "string",
+                    "maxLength": 2048,
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "settings",
+                  "redirectUri"
+                ],
+                "additionalProperties": false
+              },
+              "grant": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "authorizedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "accessTokenExpiresAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "renewable": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "authorizedAt",
+                  "accessTokenExpiresAt",
+                  "renewable"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "workspaceId",
+              "providerKey",
+              "name",
+              "authType",
+              "status",
+              "secretVersionId",
+              "health",
+              "createdAt",
+              "updatedAt",
+              "oauth2",
+              "grant"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "workspaceId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "providerKey": {
+                "type": "string",
+                "const": "http"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "authType": {
+                "type": "string",
+                "const": "oauth2"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "reauthorization_required",
+                  "revoked"
+                ]
+              },
+              "secretVersionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "health": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "lastTestedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastHealthyAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastErrorCode": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastRunObservedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastHealthTransitionAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastHealthTransitionSource": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "run",
+                          "test",
+                          "rotation",
+                          "revoke"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "lastTestedAt",
+                  "lastHealthyAt",
+                  "lastErrorCode"
+                ],
+                "additionalProperties": false
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "accessMode": {
+                "type": "string",
+                "enum": [
+                  "workspace",
+                  "restricted"
+                ]
+              },
+              "oauth2": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "settings": {
+                    "oneOf": [
+                      {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "grantType": {
+                            "type": "string",
+                            "const": "authorization_code"
+                          },
+                          "authorizationUrl": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "format": "uri"
+                          },
+                          "authorizationParameters": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64,
+                              "pattern": "^[A-Za-z0-9_.~-]+$"
+                            },
+                            "additionalProperties": {
+                              "type": "string",
+                              "maxLength": 1024,
+                              "pattern": "^[\\x20-\\x7e]+$"
+                            }
+                          },
+                          "pkce": {
+                            "type": "string",
+                            "enum": [
+                              "s256",
+                              "none"
+                            ]
+                          },
+                          "tokenUrl": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "format": "uri"
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 512,
+                            "pattern": "^[\\x20-\\x7e]+$"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "pattern": "^[\\x20-\\x7e]*$"
+                          },
+                          "clientAuthentication": {
+                            "type": "string",
+                            "enum": [
+                              "basic",
+                              "body"
+                            ]
+                          },
+                          "tokenParameters": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64,
+                              "pattern": "^[A-Za-z0-9_.~-]+$"
+                            },
+                            "additionalProperties": {
+                              "type": "string",
+                              "maxLength": 1024,
+                              "pattern": "^[\\x20-\\x7e]+$"
+                            }
+                          },
+                          "requestHosts": {
+                            "oneOf": [
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "const": "any"
+                                  }
+                                },
+                                "required": [
+                                  "mode"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "const": "listed"
+                                  },
+                                  "hosts": {
+                                    "minItems": 1,
+                                    "maxItems": 32,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 253,
+                                      "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "mode",
+                                  "hosts"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "grantType",
+                          "authorizationUrl",
+                          "authorizationParameters",
+                          "pkce",
+                          "tokenUrl",
+                          "clientId",
+                          "scope",
+                          "clientAuthentication",
+                          "tokenParameters",
+                          "requestHosts"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "grantType": {
+                            "type": "string",
+                            "const": "client_credentials"
+                          },
+                          "tokenUrl": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "format": "uri"
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 512,
+                            "pattern": "^[\\x20-\\x7e]+$"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "pattern": "^[\\x20-\\x7e]*$"
+                          },
+                          "clientAuthentication": {
+                            "type": "string",
+                            "enum": [
+                              "basic",
+                              "body"
+                            ]
+                          },
+                          "tokenParameters": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64,
+                              "pattern": "^[A-Za-z0-9_.~-]+$"
+                            },
+                            "additionalProperties": {
+                              "type": "string",
+                              "maxLength": 1024,
+                              "pattern": "^[\\x20-\\x7e]+$"
+                            }
+                          },
+                          "requestHosts": {
+                            "oneOf": [
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "const": "any"
+                                  }
+                                },
+                                "required": [
+                                  "mode"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "const": "listed"
+                                  },
+                                  "hosts": {
+                                    "minItems": 1,
+                                    "maxItems": 32,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 253,
+                                      "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "mode",
+                                  "hosts"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "grantType",
+                          "tokenUrl",
+                          "clientId",
+                          "scope",
+                          "clientAuthentication",
+                          "tokenParameters",
+                          "requestHosts"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "redirectUri": {
+                    "type": "string",
+                    "maxLength": 2048,
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "settings",
+                  "redirectUri"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "workspaceId",
+              "providerKey",
+              "name",
+              "authType",
+              "status",
+              "secretVersionId",
+              "health",
+              "createdAt",
+              "updatedAt",
+              "oauth2"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "OAuth2ConnectionErrorCode": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": [
+          "connection.oauth2_not_authorized",
+          "connection.oauth2_grant_revoked",
+          "connection.oauth2_client_rejected",
+          "connection.oauth2_token_expired"
+        ]
+      },
+      "OAuth2StepFailureCode": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": [
+          "http.oauth2_not_connected",
+          "http.oauth2_grant_revoked",
+          "http.oauth2_client_rejected",
+          "http.oauth2_token_expired",
+          "http.oauth2_token_rate_limited",
+          "http.oauth2_token_endpoint_unavailable",
+          "http.oauth2_token_response_invalid",
+          "http.oauth2_token_address_blocked",
+          "http.oauth2_refresh_busy",
+          "http.oauth2_host_not_allowed"
+        ]
+      },
+      "OAuth2AuthorizationStart": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "consent"
+              },
+              "authorizationUrl": {
+                "type": "string",
+                "maxLength": 32768,
+                "format": "uri"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "kind",
+              "authorizationUrl",
+              "expiresAt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "connected"
+              },
+              "connection": {
+                "oneOf": [
+                  {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "workspaceId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "providerKey": {
+                        "type": "string",
+                        "const": "http"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "authType": {
+                        "type": "string",
+                        "const": "oauth2"
+                      },
+                      "status": {
+                        "type": "string",
+                        "const": "active"
+                      },
+                      "secretVersionId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "health": {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "lastTestedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastHealthyAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastErrorCode": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastRunObservedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastHealthTransitionAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastHealthTransitionSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "run",
+                                  "test",
+                                  "rotation",
+                                  "revoke"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "lastTestedAt",
+                          "lastHealthyAt",
+                          "lastErrorCode"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      "accessMode": {
+                        "type": "string",
+                        "enum": [
+                          "workspace",
+                          "restricted"
+                        ]
+                      },
+                      "oauth2": {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "settings": {
+                            "oneOf": [
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "grantType": {
+                                    "type": "string",
+                                    "const": "authorization_code"
+                                  },
+                                  "authorizationUrl": {
+                                    "type": "string",
+                                    "maxLength": 2048,
+                                    "format": "uri"
+                                  },
+                                  "authorizationParameters": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64,
+                                      "pattern": "^[A-Za-z0-9_.~-]+$"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string",
+                                      "maxLength": 1024,
+                                      "pattern": "^[\\x20-\\x7e]+$"
+                                    }
+                                  },
+                                  "pkce": {
+                                    "type": "string",
+                                    "enum": [
+                                      "s256",
+                                      "none"
+                                    ]
+                                  },
+                                  "tokenUrl": {
+                                    "type": "string",
+                                    "maxLength": 2048,
+                                    "format": "uri"
+                                  },
+                                  "clientId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 512,
+                                    "pattern": "^[\\x20-\\x7e]+$"
+                                  },
+                                  "scope": {
+                                    "type": "string",
+                                    "maxLength": 2048,
+                                    "pattern": "^[\\x20-\\x7e]*$"
+                                  },
+                                  "clientAuthentication": {
+                                    "type": "string",
+                                    "enum": [
+                                      "basic",
+                                      "body"
+                                    ]
+                                  },
+                                  "tokenParameters": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64,
+                                      "pattern": "^[A-Za-z0-9_.~-]+$"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string",
+                                      "maxLength": 1024,
+                                      "pattern": "^[\\x20-\\x7e]+$"
+                                    }
+                                  },
+                                  "requestHosts": {
+                                    "oneOf": [
+                                      {
+                                        "readOnly": true,
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "any"
+                                          }
+                                        },
+                                        "required": [
+                                          "mode"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "readOnly": true,
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "listed"
+                                          },
+                                          "hosts": {
+                                            "minItems": 1,
+                                            "maxItems": 32,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 253,
+                                              "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "mode",
+                                          "hosts"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "grantType",
+                                  "authorizationUrl",
+                                  "authorizationParameters",
+                                  "pkce",
+                                  "tokenUrl",
+                                  "clientId",
+                                  "scope",
+                                  "clientAuthentication",
+                                  "tokenParameters",
+                                  "requestHosts"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "grantType": {
+                                    "type": "string",
+                                    "const": "client_credentials"
+                                  },
+                                  "tokenUrl": {
+                                    "type": "string",
+                                    "maxLength": 2048,
+                                    "format": "uri"
+                                  },
+                                  "clientId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 512,
+                                    "pattern": "^[\\x20-\\x7e]+$"
+                                  },
+                                  "scope": {
+                                    "type": "string",
+                                    "maxLength": 2048,
+                                    "pattern": "^[\\x20-\\x7e]*$"
+                                  },
+                                  "clientAuthentication": {
+                                    "type": "string",
+                                    "enum": [
+                                      "basic",
+                                      "body"
+                                    ]
+                                  },
+                                  "tokenParameters": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64,
+                                      "pattern": "^[A-Za-z0-9_.~-]+$"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string",
+                                      "maxLength": 1024,
+                                      "pattern": "^[\\x20-\\x7e]+$"
+                                    }
+                                  },
+                                  "requestHosts": {
+                                    "oneOf": [
+                                      {
+                                        "readOnly": true,
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "any"
+                                          }
+                                        },
+                                        "required": [
+                                          "mode"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "readOnly": true,
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "listed"
+                                          },
+                                          "hosts": {
+                                            "minItems": 1,
+                                            "maxItems": 32,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 253,
+                                              "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "mode",
+                                          "hosts"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "grantType",
+                                  "tokenUrl",
+                                  "clientId",
+                                  "scope",
+                                  "clientAuthentication",
+                                  "tokenParameters",
+                                  "requestHosts"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "redirectUri": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "format": "uri"
+                          }
+                        },
+                        "required": [
+                          "settings",
+                          "redirectUri"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "grant": {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "authorizedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "accessTokenExpiresAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "renewable": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "authorizedAt",
+                          "accessTokenExpiresAt",
+                          "renewable"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "workspaceId",
+                      "providerKey",
+                      "name",
+                      "authType",
+                      "status",
+                      "secretVersionId",
+                      "health",
+                      "createdAt",
+                      "updatedAt",
+                      "oauth2",
+                      "grant"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "readOnly": true,
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "workspaceId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "providerKey": {
+                        "type": "string",
+                        "const": "http"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "authType": {
+                        "type": "string",
+                        "const": "oauth2"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "reauthorization_required",
+                          "revoked"
+                        ]
+                      },
+                      "secretVersionId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "health": {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "lastTestedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastHealthyAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastErrorCode": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastRunObservedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastHealthTransitionAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastHealthTransitionSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "run",
+                                  "test",
+                                  "rotation",
+                                  "revoke"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "lastTestedAt",
+                          "lastHealthyAt",
+                          "lastErrorCode"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      "accessMode": {
+                        "type": "string",
+                        "enum": [
+                          "workspace",
+                          "restricted"
+                        ]
+                      },
+                      "oauth2": {
+                        "readOnly": true,
+                        "type": "object",
+                        "properties": {
+                          "settings": {
+                            "oneOf": [
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "grantType": {
+                                    "type": "string",
+                                    "const": "authorization_code"
+                                  },
+                                  "authorizationUrl": {
+                                    "type": "string",
+                                    "maxLength": 2048,
+                                    "format": "uri"
+                                  },
+                                  "authorizationParameters": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64,
+                                      "pattern": "^[A-Za-z0-9_.~-]+$"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string",
+                                      "maxLength": 1024,
+                                      "pattern": "^[\\x20-\\x7e]+$"
+                                    }
+                                  },
+                                  "pkce": {
+                                    "type": "string",
+                                    "enum": [
+                                      "s256",
+                                      "none"
+                                    ]
+                                  },
+                                  "tokenUrl": {
+                                    "type": "string",
+                                    "maxLength": 2048,
+                                    "format": "uri"
+                                  },
+                                  "clientId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 512,
+                                    "pattern": "^[\\x20-\\x7e]+$"
+                                  },
+                                  "scope": {
+                                    "type": "string",
+                                    "maxLength": 2048,
+                                    "pattern": "^[\\x20-\\x7e]*$"
+                                  },
+                                  "clientAuthentication": {
+                                    "type": "string",
+                                    "enum": [
+                                      "basic",
+                                      "body"
+                                    ]
+                                  },
+                                  "tokenParameters": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64,
+                                      "pattern": "^[A-Za-z0-9_.~-]+$"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string",
+                                      "maxLength": 1024,
+                                      "pattern": "^[\\x20-\\x7e]+$"
+                                    }
+                                  },
+                                  "requestHosts": {
+                                    "oneOf": [
+                                      {
+                                        "readOnly": true,
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "any"
+                                          }
+                                        },
+                                        "required": [
+                                          "mode"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "readOnly": true,
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "listed"
+                                          },
+                                          "hosts": {
+                                            "minItems": 1,
+                                            "maxItems": 32,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 253,
+                                              "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "mode",
+                                          "hosts"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "grantType",
+                                  "authorizationUrl",
+                                  "authorizationParameters",
+                                  "pkce",
+                                  "tokenUrl",
+                                  "clientId",
+                                  "scope",
+                                  "clientAuthentication",
+                                  "tokenParameters",
+                                  "requestHosts"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "readOnly": true,
+                                "type": "object",
+                                "properties": {
+                                  "grantType": {
+                                    "type": "string",
+                                    "const": "client_credentials"
+                                  },
+                                  "tokenUrl": {
+                                    "type": "string",
+                                    "maxLength": 2048,
+                                    "format": "uri"
+                                  },
+                                  "clientId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 512,
+                                    "pattern": "^[\\x20-\\x7e]+$"
+                                  },
+                                  "scope": {
+                                    "type": "string",
+                                    "maxLength": 2048,
+                                    "pattern": "^[\\x20-\\x7e]*$"
+                                  },
+                                  "clientAuthentication": {
+                                    "type": "string",
+                                    "enum": [
+                                      "basic",
+                                      "body"
+                                    ]
+                                  },
+                                  "tokenParameters": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64,
+                                      "pattern": "^[A-Za-z0-9_.~-]+$"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string",
+                                      "maxLength": 1024,
+                                      "pattern": "^[\\x20-\\x7e]+$"
+                                    }
+                                  },
+                                  "requestHosts": {
+                                    "oneOf": [
+                                      {
+                                        "readOnly": true,
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "any"
+                                          }
+                                        },
+                                        "required": [
+                                          "mode"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "readOnly": true,
+                                        "type": "object",
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "const": "listed"
+                                          },
+                                          "hosts": {
+                                            "minItems": 1,
+                                            "maxItems": 32,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 253,
+                                              "pattern": "^(?:\\*\\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "mode",
+                                          "hosts"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "grantType",
+                                  "tokenUrl",
+                                  "clientId",
+                                  "scope",
+                                  "clientAuthentication",
+                                  "tokenParameters",
+                                  "requestHosts"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "redirectUri": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "format": "uri"
+                          }
+                        },
+                        "required": [
+                          "settings",
+                          "redirectUri"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "workspaceId",
+                      "providerKey",
+                      "name",
+                      "authType",
+                      "status",
+                      "secretVersionId",
+                      "health",
+                      "createdAt",
+                      "updatedAt",
+                      "oauth2"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "connection"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "OAuth2CallbackQuery": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}$"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "error": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[\\x20-\\x7e]+$"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "additionalProperties": {}
+      },
+      "OAuth2CallbackLanding": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "string",
+                "enum": [
+                  "connected",
+                  "denied",
+                  "token_refused",
+                  "provider_unavailable"
+                ]
+              },
+              "workspaceId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "connectionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": [
+              "result",
+              "workspaceId",
+              "connectionId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "string",
+                "const": "invalid"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "SlackChannelLookupResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

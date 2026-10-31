@@ -9880,6 +9880,8 @@
               "webhook.not_configured",
               "connection.conflict",
               "connection.revoked",
+              "connection.oauth2_endpoint_refused",
+              "connection.oauth2_token_refused",
               "provider.unavailable",
               "webhook.authentication_failed",
               "webhook.payload_too_large",

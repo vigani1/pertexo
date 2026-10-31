@@ -298,6 +298,8 @@ describe('connection public contracts', () => {
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/secret',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/test',
+      '/v1/workspaces/{workspaceId}/connections/{connectionId}/oauth2/authorization',
+      '/v1/connections/oauth2/callback',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/slack/channels',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}',

@@ -124,6 +124,8 @@ export const API_PROBLEM_CODES = [
   'webhook.not_configured',
   'connection.conflict',
   'connection.revoked',
+  'connection.oauth2_endpoint_refused',
+  'connection.oauth2_token_refused',
   'provider.unavailable',
   'webhook.authentication_failed',
   'webhook.payload_too_large',
@@ -539,6 +541,18 @@ const apiProblemDetails = {
   'connection.revoked': {
     status: 409,
     title: 'Connection unavailable',
+    severity: 'info',
+    exposeDetail: true,
+  },
+  'connection.oauth2_endpoint_refused': {
+    status: 400,
+    title: 'OAuth2 address refused',
+    severity: 'info',
+    exposeDetail: true,
+  },
+  'connection.oauth2_token_refused': {
+    status: 409,
+    title: 'OAuth2 token refused',
     severity: 'info',
     exposeDetail: true,
   },
