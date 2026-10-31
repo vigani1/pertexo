@@ -7,6 +7,7 @@ import type {
 } from '@pertexo/database/outbox';
 import {
   createTransportMetrics,
+  type StructuredLogger,
   type TransportJob,
   type TransportMetrics,
 } from '@pertexo/observability';
@@ -37,11 +38,11 @@ import {
   type DispatchPollingState,
   nextDispatchPolling,
 } from './cadence.js';
+import { releaseFailedPublication } from './release.js';
 import {
   transportJobName,
   transportErrorClass,
   toQueueJob,
-  errorCode,
 } from './delivery.js';
 import { OutboxDispatcherClosedError } from './errors.js';
 import type {
@@ -49,6 +50,8 @@ import type {
   OutboxDispatcherRuntimeHooks,
   OutboxDispatchResult,
 } from './contract.js';
+
+const CYCLE_FAILURE_LOG_INTERVAL_MILLIS = 60_000;
 
 export class OutboxDispatcher {
   private readonly capacitySamples: OutboxCapacitySampler;
@@ -65,6 +68,8 @@ export class OutboxDispatcher {
 
   private readonly drainState: WorkerDrainState;
   private readonly metrics: TransportMetrics;
+  private readonly logger: StructuredLogger | undefined;
+  private lastCycleFailureLoggedAt = Number.NEGATIVE_INFINITY;
   public constructor(
     private readonly database: OutboxDispatcherDatabase,
     private readonly producer: QueueProducer,
@@ -72,10 +77,12 @@ export class OutboxDispatcher {
       drainState,
       options,
       metrics = createTransportMetrics(),
+      logger,
     }: Readonly<{
       drainState: WorkerDrainState;
       options: OutboxDispatcherOptions;
       metrics?: TransportMetrics | undefined;
+      logger?: StructuredLogger | undefined;
     }>,
   ) {
     const jobNames = [...options.jobNames];
@@ -85,6 +92,7 @@ export class OutboxDispatcher {
       );
     this.drainState = drainState;
     this.metrics = metrics;
+    this.logger = logger;
 
     this.options = Object.freeze({
       operationTimeoutMillis: 5_000,
@@ -145,11 +153,10 @@ export class OutboxDispatcher {
       leaseOwner: this.options.leaseOwner,
       leaseToken: randomUUID(),
       limit: this.options.batchSize,
-      maxAttempts: this.options.maxAttempts,
     });
     const { events } = claim;
     observeDispatchMetrics(() => {
-      recordOutboxClaim(this.metrics, events, claim.exhaustedCount);
+      recordOutboxClaim(this.metrics, events);
     });
     const outcomes = await Promise.all(
       events.map((event) => this.publishAndSettle(event)),
@@ -275,7 +282,12 @@ export class OutboxDispatcher {
           });
         });
       }
-      await this.releaseFailedPublication(event, error);
+      await releaseFailedPublication(
+        { database: this.database, metrics: this.metrics },
+        event,
+        error,
+        this.options,
+      );
       return 'failed';
     }
   }
@@ -307,31 +319,6 @@ export class OutboxDispatcher {
     return marked ? 'published' : 'stale';
   }
 
-  private async releaseFailedPublication(
-    event: LeasedOutboxEvent,
-    error: unknown,
-  ): Promise<void> {
-    const releaseResult = await bounded(
-      this.database.releaseOrFail({
-        errorCode: errorCode(error),
-        id: event.id,
-        leaseToken: event.leaseToken,
-        maxAttempts: this.options.maxAttempts,
-        retryAt: new Date(Date.now() + this.options.retryDelayMillis),
-      }),
-      this.options.operationTimeoutMillis,
-    );
-    if (releaseResult === 'failed') {
-      observeDispatchMetrics(() => {
-        this.metrics.recordOutboxLeaseEvent('attempt_exhausted');
-      });
-    } else if (releaseResult === 'not_leased') {
-      observeDispatchMetrics(() => {
-        this.metrics.recordOutboxLeaseEvent('expired');
-      });
-    }
-  }
-
   private async runLoop(): Promise<void> {
     const activePollIntervalMillis = Math.min(
       ACTIVE_POLL_INTERVAL_MILLIS,
@@ -352,9 +339,10 @@ export class OutboxDispatcher {
           activeIntervalMillis: activePollIntervalMillis,
           idleIntervalMillis: this.options.pollIntervalMillis,
         });
-      } catch {
-        // Readiness surfaces boundary health. The loop stays alive so a
-        // transient PostgreSQL/Redis failure cannot permanently stop dispatch.
+      } catch (error: unknown) {
+        // The loop stays alive so a transient PostgreSQL/Redis failure cannot
+        // permanently stop dispatch.
+        this.logCycleFailure(error);
         polling = {
           lastActivityAt: Number.NEGATIVE_INFINITY,
           intervalMillis: this.options.pollIntervalMillis,
@@ -379,6 +367,17 @@ export class OutboxDispatcher {
       });
       this.wakeLoop = undefined;
     }
+  }
+
+  /** Throttled: the same failure repeats at the poll rate through an outage. */
+  private logCycleFailure(error: unknown): void {
+    const now = performance.now();
+    if (now - this.lastCycleFailureLoggedAt < CYCLE_FAILURE_LOG_INTERVAL_MILLIS)
+      return;
+    this.lastCycleFailureLoggedAt = now;
+    observeDispatchMetrics(() => {
+      this.logger?.warn('outbox.dispatch_cycle_failed', {}, error);
+    });
   }
 
   private assertOpen(): void {

@@ -3,11 +3,15 @@ import { QUEUE_NAME, type QueueName } from './names.js';
 const HOUR_SECONDS = 60 * 60;
 const DAY_SECONDS = 24 * HOUR_SECONDS;
 
+// 1 s doubling to 64 s: about two minutes, so a job outlasts a Postgres restart.
+// Past that the job is not the last hope: `stalled work` replaces it.
+const TRANSPORT_ATTEMPTS = 8;
+
 export interface QueueClassJobDefaults {
   /** Transport redelivery only; business retries remain PostgreSQL-owned. */
   readonly attempts: number;
   readonly backoff: {
-    readonly type: 'fixed';
+    readonly type: 'exponential';
     readonly delay: number;
   };
   readonly lockDurationMs: number;
@@ -39,8 +43,8 @@ const freezeDefaults = (
 
 export const QUEUE_CLASS_DEFAULTS = Object.freeze({
   [QUEUE_NAME.workflowCoordinator]: freezeDefaults({
-    attempts: 3,
-    backoff: { type: 'fixed', delay: 1_000 },
+    attempts: TRANSPORT_ATTEMPTS,
+    backoff: { type: 'exponential', delay: 1_000 },
     lockDurationMs: 30_000,
     heartbeatIntervalMs: 15_000,
     stalledIntervalMs: 30_000,
@@ -52,8 +56,8 @@ export const QUEUE_CLASS_DEFAULTS = Object.freeze({
     removeOnFail: { age: 30 * DAY_SECONDS, count: 10_000 },
   }),
   [QUEUE_NAME.nodeAttempts]: freezeDefaults({
-    attempts: 3,
-    backoff: { type: 'fixed', delay: 1_000 },
+    attempts: TRANSPORT_ATTEMPTS,
+    backoff: { type: 'exponential', delay: 1_000 },
     lockDurationMs: 5 * 60_000,
     heartbeatIntervalMs: 2 * 60_000,
     stalledIntervalMs: 60_000,
@@ -65,8 +69,8 @@ export const QUEUE_CLASS_DEFAULTS = Object.freeze({
     removeOnFail: { age: 30 * DAY_SECONDS, count: 100_000 },
   }),
   [QUEUE_NAME.triggerLifecycle]: freezeDefaults({
-    attempts: 3,
-    backoff: { type: 'fixed', delay: 1_000 },
+    attempts: TRANSPORT_ATTEMPTS,
+    backoff: { type: 'exponential', delay: 1_000 },
     lockDurationMs: 2 * 60_000,
     heartbeatIntervalMs: 60_000,
     stalledIntervalMs: 60_000,
@@ -78,8 +82,8 @@ export const QUEUE_CLASS_DEFAULTS = Object.freeze({
     removeOnFail: { age: 30 * DAY_SECONDS, count: 10_000 },
   }),
   [QUEUE_NAME.maintenance]: freezeDefaults({
-    attempts: 3,
-    backoff: { type: 'fixed', delay: 1_000 },
+    attempts: TRANSPORT_ATTEMPTS,
+    backoff: { type: 'exponential', delay: 1_000 },
     lockDurationMs: 2 * 60_000,
     heartbeatIntervalMs: 60_000,
     stalledIntervalMs: 60_000,

@@ -126,7 +126,6 @@ export function createDispatcher(
         jobNames: [JOB_NAME.deliverRunFailureNotification],
         leaseDurationMillis: 1_000,
         leaseOwner,
-        maxAttempts: 5,
         operationTimeoutMillis: 1_000,
         pollIntervalMillis: 25,
         retryDelayMillis: 100,

@@ -124,7 +124,6 @@ export function registerRejectsStaleLeasesUnmarkedDispatch(): void {
           leaseOwner: 'f30-publication-proof',
           leaseToken: randomUUID(),
           limit: 100,
-          maxAttempts: 10,
         });
         const event = result.events.find(
           (row) => row.id === command.delivery.outboxEventId,
@@ -140,7 +139,7 @@ export function registerRejectsStaleLeasesUnmarkedDispatch(): void {
           id: event.id,
           leaseToken: event.leaseToken,
           errorCode: 'queue.publish_failed',
-          maxAttempts: 10,
+          disposition: 'retry',
           retryAt: new Date(0),
         }),
       ).resolves.toBe('retry_scheduled');

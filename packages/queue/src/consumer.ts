@@ -19,6 +19,7 @@ export {
   type QueueConsumerLifecycleObservation,
   type QueueStallObservation,
   type QueueConsumerObserver,
+  type QueueDeliveryFailure,
   type QueueConsumerOptions,
   type QueueConsumerCloseResult,
   type QueueConsumer,

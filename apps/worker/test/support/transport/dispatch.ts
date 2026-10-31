@@ -55,7 +55,6 @@ export function createTransportDispatchControls(
           jobNames,
           leaseDurationMillis: 1_000,
           leaseOwner: owner,
-          maxAttempts: 3,
           operationTimeoutMillis: 5_000,
           retryDelayMillis: 100,
         },

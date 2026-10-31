@@ -208,7 +208,6 @@ describeMeasurement('Real dispatcher step latency (opt-in measurement)', () => {
             ],
             leaseDurationMillis: 30_000,
             leaseOwner: `latency-${randomUUID()}`,
-            maxAttempts: 3,
             retryDelayMillis: 1_000,
             pollIntervalMillis,
           },

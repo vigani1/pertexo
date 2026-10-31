@@ -105,6 +105,7 @@ export type {
   QueueDelivery,
   QueueDeliveryTransport,
   QueueConsumerObserver,
+  QueueDeliveryFailure,
   QueueHandlerContext,
   QueueHandlerFailureClass,
   QueueHandlerFinishedObservation,

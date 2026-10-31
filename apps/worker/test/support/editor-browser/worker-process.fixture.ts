@@ -361,7 +361,6 @@ async function constructRuntimes(
       batchSize: 25,
       leaseDurationMillis: 30_000,
       leaseOwner: `browser-dispatch:${randomUUID()}`,
-      maxAttempts: 10,
       operationTimeoutMillis: 5_000,
       pollIntervalMillis: 50,
       retryDelayMillis: 100,

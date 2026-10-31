@@ -35,7 +35,6 @@ export function registerClaimsBoundedDisjointBatchesChanges(): void {
           leaseOwner: `dispatcher-${String(index)}`,
           leaseToken: randomUUID(),
           limit: 2,
-          maxAttempts: 3,
         }),
       ),
     );
@@ -75,7 +74,6 @@ export function registerClaimsBoundedDisjointBatchesChanges(): void {
         leaseOwner: 'restart-fairness',
         leaseToken: randomUUID(),
         limit: 1,
-        maxAttempts: 3,
       });
     const firstProcess = createOutboxDispatcherDatabase(
       parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
@@ -120,7 +118,6 @@ export function registerClaimsBoundedDisjointBatchesChanges(): void {
       leaseOwner: 'observer-proof',
       leaseToken: randomUUID(),
       limit: 1,
-      maxAttempts: 3,
     });
     await expect(
       dispatcher.observeBacklog({ enabledJobNames }),
@@ -140,14 +137,13 @@ export function registerClaimsBoundedDisjointBatchesChanges(): void {
       leaseOwner: 'retry-proof',
       leaseToken: randomUUID(),
       limit: 1,
-      maxAttempts: 3,
     });
     const event = claimed.events.find((candidate) => candidate.id === id);
     if (event === undefined) throw new Error('Expected retry fixture claim');
     const retry = {
       id,
       leaseToken: event.leaseToken,
-      maxAttempts: 3,
+      disposition: 'retry' as const,
       retryAt: new Date(Date.now() + 60_000),
       errorCode: 'queue.unavailable',
     };

@@ -95,7 +95,6 @@ export function registerOwnsPrefixValuesFreezesChoiceExecutes(): void {
           jobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.executeNodeAttempt],
           leaseDurationMillis: 30_000,
           leaseOwner: `recovery-${randomUUID()}`,
-          maxAttempts: 3,
           retryDelayMillis: 1_000,
           pollIntervalMillis: 250,
         },

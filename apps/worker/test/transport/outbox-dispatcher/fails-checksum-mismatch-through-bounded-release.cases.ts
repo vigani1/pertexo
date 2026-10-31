@@ -45,7 +45,6 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
         errorCode: 'outbox.checksum_mismatch',
         id: EVENT_ID,
         leaseToken: LEASE_TOKEN,
-        maxAttempts: 3,
       }),
     );
   });
@@ -139,11 +138,9 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
     const selected = boundaries([]);
     const firstClaim = Promise.withResolvers<{
       events: readonly LeasedOutboxEvent[];
-      exhaustedCount: number;
     }>();
     const secondClaim = Promise.withResolvers<{
       events: readonly LeasedOutboxEvent[];
-      exhaustedCount: number;
     }>();
     vi.mocked(selected.database.claimBatch)
       .mockReturnValueOnce(firstClaim.promise)
@@ -157,10 +154,10 @@ export function registerFailsChecksumMismatchThroughBoundedRelease(): void {
     expect(selected.database.close).not.toHaveBeenCalled();
     expect(selected.producer.close).not.toHaveBeenCalled();
 
-    firstClaim.resolve({ events: [], exhaustedCount: 0 });
+    firstClaim.resolve({ events: [] });
     await firstDispatch;
     expect(selected.database.close).not.toHaveBeenCalled();
-    secondClaim.resolve({ events: [], exhaustedCount: 0 });
+    secondClaim.resolve({ events: [] });
     await secondDispatch;
     await closing;
     expect(selected.database.close).toHaveBeenCalledOnce();

@@ -3,7 +3,8 @@ import type { Meter } from '@opentelemetry/api';
 export type TransportErrorClass =
   'contract' | 'database' | 'redis' | 'timeout' | 'unavailable' | 'unknown';
 
-export type TransportLeaseEvent = 'attempt_exhausted' | 'expired' | 'reclaimed';
+export type TransportLeaseEvent =
+  'publication_failed' | 'expired' | 'reclaimed';
 
 /** The queue package owns job names and routing; callers keep these bounded. */
 export type TransportJob = Readonly<{ jobName: string; queueName: string }>;

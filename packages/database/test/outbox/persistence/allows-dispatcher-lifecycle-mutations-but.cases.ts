@@ -34,7 +34,6 @@ export function registerAllowsDispatcherLifecycleMutationsBut(): void {
       leaseOwner: 'least-privilege-proof',
       leaseToken: randomUUID(),
       limit: 100,
-      maxAttempts: 3,
     });
     const event = claimed.events.find(({ id }) => id === input.id);
     if (event === undefined) throw new Error('Expected a claimed outbox event');
@@ -74,7 +73,7 @@ export function registerAllowsDispatcherLifecycleMutationsBut(): void {
         id: event.id,
         leaseToken: event.leaseToken,
         errorCode: 'redis.unavailable',
-        maxAttempts: 3,
+        disposition: 'retry',
         retryAt: new Date(0),
       }),
     ).resolves.toBe('retry_scheduled');
@@ -98,7 +97,6 @@ export function registerAllowsDispatcherLifecycleMutationsBut(): void {
       leaseOwner: 'operator-proof',
       leaseToken: randomUUID(),
       limit: 1,
-      maxAttempts: 1,
     });
     const event = claimed.events.find(({ id }) => id === input.id);
     if (event === undefined)
@@ -108,8 +106,7 @@ export function registerAllowsDispatcherLifecycleMutationsBut(): void {
         errorCode: 'redis.unavailable',
         id: event.id,
         leaseToken: event.leaseToken,
-        maxAttempts: 1,
-        retryAt: new Date(),
+        disposition: 'fail',
       }),
     ).resolves.toBe('failed');
 

@@ -114,7 +114,6 @@ export function registerPreservesFourPreviewDispatchAcknowledgementCrash(): void
                   leaseOwner: 'preview-process-crash-matrix',
                   leaseToken: randomUUID(),
                   limit: 20,
-                  maxAttempts: 3,
                 });
                 for (const event of batch.events) {
                   if (

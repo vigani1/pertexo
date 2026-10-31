@@ -1,10 +1,13 @@
-export interface ReleaseInput {
+/** A failed publication either tries again or, for a row that can never publish, ends. */
+export type ReleaseInput = Readonly<{
   id: string;
   leaseToken: string;
   errorCode: string;
-  maxAttempts: number;
-  retryAt: Date;
-}
+}> &
+  (
+    | Readonly<{ disposition: 'retry'; retryAt: Date }>
+    | Readonly<{ disposition: 'fail' }>
+  );
 
 export interface ClaimInput {
   enabledJobNames: string[];
@@ -12,5 +15,4 @@ export interface ClaimInput {
   leaseOwner: string;
   leaseToken: string;
   limit: number;
-  maxAttempts: number;
 }

@@ -19,7 +19,7 @@ export function registerRestoresIdleIntervalAfterFailedClaim(): void {
     vi.useFakeTimers();
     const selected = boundaries([]);
     vi.mocked(selected.database.claimBatch)
-      .mockResolvedValueOnce({ events: [event()], exhaustedCount: 0 })
+      .mockResolvedValueOnce({ events: [event()] })
       .mockRejectedValueOnce(new Error('postgres restarted'));
     const dispatcher = createDispatcher({
       boundaries: selected,
@@ -95,7 +95,7 @@ export function registerRestoresIdleIntervalAfterFailedClaim(): void {
     const selected = boundaries([]);
     vi.mocked(selected.database.claimBatch)
       .mockRejectedValueOnce(new Error('postgres restarted'))
-      .mockResolvedValue({ events: [], exhaustedCount: 0 });
+      .mockResolvedValue({ events: [] });
     const drainState = new WorkerDrainState();
     const dispatcher = createDispatcher({
       boundaries: selected,

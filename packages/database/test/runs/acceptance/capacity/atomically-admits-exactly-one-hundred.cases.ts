@@ -108,7 +108,6 @@ export function registerAtomicallyAdmitsExactlyOneHundred(): void {
         leaseOwner: 'active-admission-test',
         leaseToken: randomUUID(),
         limit: 1,
-        maxAttempts: 3,
       });
     const admittedEventIds: string[] = [];
     const admittedRunIds: string[] = [];
@@ -161,7 +160,6 @@ export function registerAtomicallyAdmitsExactlyOneHundred(): void {
         leaseOwner: 'saturated-window-test',
         leaseToken: randomUUID(),
         limit: 1,
-        maxAttempts: 3,
       });
     await expect(mixedClaim()).resolves.toMatchObject({ events: [] });
     const afterSaturatedWindow = await mixedClaim();

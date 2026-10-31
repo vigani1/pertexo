@@ -138,7 +138,7 @@ export function registerOwnsTimedOutPublicationMarkThrough(): void {
       ),
     );
     vi.mocked(selected.database.claimBatch).mockImplementation(() =>
-      Promise.resolve({ events: batches.shift() ?? [], exhaustedCount: 0 }),
+      Promise.resolve({ events: batches.shift() ?? [] }),
     );
     const firstSample = Promise.withResolvers<undefined>();
     const observeWorkspaceCapacity = vi
@@ -170,7 +170,7 @@ export function registerOwnsTimedOutPublicationMarkThrough(): void {
     const selected = boundaries([]);
     let claimedEvents: readonly LeasedOutboxEvent[] = [];
     vi.mocked(selected.database.claimBatch).mockImplementation(() =>
-      Promise.resolve({ events: claimedEvents, exhaustedCount: 0 }),
+      Promise.resolve({ events: claimedEvents }),
     );
     const observeWorkspaceCapacity = vi.fn().mockResolvedValue(undefined);
     const dispatcher = createDispatcher({ boundaries: selected });

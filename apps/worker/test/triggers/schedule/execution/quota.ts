@@ -137,7 +137,6 @@ export async function assertScheduleQuotaRecovery(
         jobNames: [JOB_NAME.reconcileWorkflowTriggers],
         leaseDurationMillis: 1_000,
         leaseOwner: 'schedule-recovery-dispatcher',
-        maxAttempts: 3,
         operationTimeoutMillis: 5_000,
         retryDelayMillis: 10,
       },

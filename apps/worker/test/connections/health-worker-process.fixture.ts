@@ -363,7 +363,6 @@ async function construct(
       batchSize: 25,
       leaseDurationMillis: PUBLICATION_LEASE_MILLIS,
       leaseOwner: `health-dispatch-${randomUUID()}`,
-      maxAttempts: 10,
       operationTimeoutMillis: 5000,
       pollIntervalMillis: 50,
       retryDelayMillis: 100,

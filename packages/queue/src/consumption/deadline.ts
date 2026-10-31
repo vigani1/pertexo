@@ -25,3 +25,9 @@ export function bounded<T>(
     );
   });
 }
+
+export function abortReason(signal: AbortSignal): Error {
+  return signal.reason instanceof Error
+    ? signal.reason
+    : new Error('Queue handler was aborted', { cause: signal.reason });
+}

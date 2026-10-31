@@ -65,6 +65,28 @@ export function toQueueJob(event: LeasedOutboxEvent): QueueJob {
   }
 }
 
+/** Only a broken row is final: an infrastructure failure, however long, retries. */
+export function canNeverPublish(error: unknown): boolean {
+  return (
+    error instanceof OutboxPayloadChecksumError ||
+    error instanceof OutboxContractError
+  );
+}
+
+/** Long enough to stop hammering Redis, short enough to resume soon after it returns. */
+const MAXIMUM_PUBLICATION_RETRY_DELAY_MILLIS = 30_000;
+
+export function publicationRetryDelay(
+  baseDelayMillis: number,
+  publishAttempts: number,
+): number {
+  const doublings = Math.min(Math.max(publishAttempts - 1, 0), 16);
+  return Math.min(
+    baseDelayMillis * 2 ** doublings,
+    MAXIMUM_PUBLICATION_RETRY_DELAY_MILLIS,
+  );
+}
+
 export function errorCode(error: unknown): string {
   if (error instanceof OutboxPayloadChecksumError) {
     return 'outbox.checksum_mismatch';

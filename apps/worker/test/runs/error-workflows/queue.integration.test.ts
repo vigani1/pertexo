@@ -124,7 +124,6 @@ describe.runIf(fixture.enabled)(
               jobNames: [JOB_NAME.startErrorWorkflow],
               leaseDurationMillis: 1_000,
               leaseOwner: `error-capacity-${randomUUID()}`,
-              maxAttempts: 3,
               retryDelayMillis: 100,
               pollIntervalMillis: 25,
             },

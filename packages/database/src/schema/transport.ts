@@ -179,6 +179,11 @@ export const outboxEvents = appSchema.table(
     }),
     failedAt: timestamp('failed_at', { withTimezone: true, mode: 'date' }),
     lastErrorCode: varchar('last_error_code', { length: 128 }),
+    /** When a published run job must have been confirmed; see stalled work. */
+    deliveryDueAt: timestamp('delivery_due_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -220,6 +225,9 @@ export const outboxEvents = appSchema.table(
       'outbox_events_terminal_state_exclusive',
       sql`(NOT ((published_at IS NOT NULL) AND (failed_at IS NOT NULL)))`,
     ),
+    index('outbox_events_delivery_due_idx')
+      .on(table.deliveryDueAt, table.id)
+      .where(sql`(delivery_due_at IS NOT NULL)`),
     index('outbox_events_dispatch_job_due_idx')
       .on(table.jobName, table.availableAt, table.id)
       .where(sql`((published_at IS NULL) AND (failed_at IS NULL))`),

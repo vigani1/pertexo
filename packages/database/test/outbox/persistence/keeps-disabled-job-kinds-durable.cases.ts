@@ -40,7 +40,6 @@ export function registerKeepsDisabledJobKindsDurable(): void {
       leaseOwner: 'allowlist-proof',
       leaseToken: randomUUID(),
       limit: 100,
-      maxAttempts: 3,
     });
     expect(claimed.events.map((event) => event.id)).toContain(enabledId);
     expect(claimed.events.map((event) => event.id)).not.toContain(heldId);
@@ -142,7 +141,6 @@ export function registerKeepsDisabledJobKindsDurable(): void {
       leaseOwner: 'dispatcher-a',
       leaseToken: randomUUID(),
       limit: 100,
-      maxAttempts: 2,
     });
     const leased = first.events.find((event) => event.id === id);
     expect(leased?.publishAttempts).toBe(1);
@@ -153,7 +151,6 @@ export function registerKeepsDisabledJobKindsDurable(): void {
       leaseOwner: 'dispatcher-b',
       leaseToken: randomUUID(),
       limit: 100,
-      maxAttempts: 2,
     });
     const reclaimed = second.events.find((event) => event.id === id);
     expect(reclaimed?.publishAttempts).toBe(2);
@@ -163,14 +160,15 @@ export function registerKeepsDisabledJobKindsDurable(): void {
       dispatcher.releaseOrFail({
         id,
         leaseToken: reclaimed.leaseToken,
-        errorCode: 'redis.unavailable',
-        maxAttempts: 2,
-        retryAt: new Date(),
+        errorCode: 'outbox.checksum_mismatch',
+        disposition: 'fail',
       }),
     ).resolves.toBe('failed');
   });
 
-  it('atomically fails an event when crash-only lease cycles exhaust the claim limit', async () => {
+  // backend-gaps-01: crash-only lease cycles used to end an event at a claim
+  // limit, stranding its run; only a row that can never publish ends now.
+  it('keeps claiming an event through any number of crash-only lease cycles', async () => {
     const id = randomUUID();
     await apiDatabase.withWorkspace(workspaceA, (transaction) =>
       insertOutboxEvent(transaction, {
@@ -179,17 +177,13 @@ export function registerKeepsDisabledJobKindsDurable(): void {
       }).then(() => undefined),
     );
 
-    for (const [expectedAttempt, leaseOwner] of [
-      [1, 'crash-1'],
-      [2, 'crash-2'],
-    ] as const) {
+    for (const expectedAttempt of [1, 2, 3, 4]) {
       const claimed = await dispatcher.claimBatch({
         enabledJobNames,
         leaseDurationMillis: 30_000,
-        leaseOwner,
+        leaseOwner: `crash-${String(expectedAttempt)}`,
         leaseToken: randomUUID(),
         limit: 100,
-        maxAttempts: 2,
       });
       expect(
         claimed.events.find((event) => event.id === id)?.publishAttempts,
@@ -197,34 +191,12 @@ export function registerKeepsDisabledJobKindsDurable(): void {
       await expireLease(id);
     }
 
-    const afterExhaustion = await dispatcher.claimBatch({
-      enabledJobNames,
-      leaseDurationMillis: 30_000,
-      leaseOwner: 'must-not-claim',
-      leaseToken: randomUUID(),
-      limit: 100,
-      maxAttempts: 2,
-    });
-    expect(afterExhaustion.events.some((event) => event.id === id)).toBe(false);
-    expect(afterExhaustion.exhaustedCount).toBe(1);
-
     const row = await apiDatabase.withWorkspace(workspaceA, async ({ db }) =>
       db
-        .select({
-          failedAt: outboxEvents.failedAt,
-          lastErrorCode: outboxEvents.lastErrorCode,
-          leaseToken: outboxEvents.leaseToken,
-          publishAttempts: outboxEvents.publishAttempts,
-        })
+        .select({ failedAt: outboxEvents.failedAt })
         .from(outboxEvents)
         .where(eq(outboxEvents.id, id)),
     );
-    expect(row).toHaveLength(1);
-    expect(row[0]?.failedAt).toBeInstanceOf(Date);
-    expect(row[0]).toMatchObject({
-      lastErrorCode: 'publish.attempts_exhausted',
-      leaseToken: null,
-      publishAttempts: 2,
-    });
+    expect(row).toEqual([{ failedAt: null }]);
   });
 }

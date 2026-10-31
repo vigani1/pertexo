@@ -86,7 +86,6 @@ export function registerAppliesSafeDefaultsOptionalEnvironmentValues(): void {
         batchSize: 25,
         leaseDurationMillis: 30_000,
         leaseOwner: 'outbox:worker-local',
-        maxAttempts: 10,
         operationTimeoutMillis: 5_000,
         pollIntervalMillis: 250,
         retryDelayMillis: 1_000,

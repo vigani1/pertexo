@@ -24,7 +24,6 @@ export function registerRedispatchesOneFailedRowWithout(): void {
       leaseOwner: 'operator-execute-proof',
       leaseToken: randomUUID(),
       limit: 1,
-      maxAttempts: 1,
     });
     const event = claimed.events.find(({ id }) => id === input.id);
     if (event === undefined)
@@ -33,8 +32,7 @@ export function registerRedispatchesOneFailedRowWithout(): void {
       errorCode: 'redis.unavailable',
       id: event.id,
       leaseToken: event.leaseToken,
-      maxAttempts: 1,
-      retryAt: new Date(),
+      disposition: 'fail',
     });
 
     const before = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
@@ -74,7 +72,6 @@ export function registerRedispatchesOneFailedRowWithout(): void {
       leaseOwner: 'operator-normal-dispatch',
       leaseToken: randomUUID(),
       limit: 1,
-      maxAttempts: 3,
     });
     expect(reclaimed.events.map(({ id }) => id)).toContain(input.id);
   });

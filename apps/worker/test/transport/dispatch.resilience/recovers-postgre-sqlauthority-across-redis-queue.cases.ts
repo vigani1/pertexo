@@ -89,7 +89,6 @@ export function registerRecoversPostgreSQLAuthorityAcrossRedisQueue(): void {
           leaseOwner: 'resilience-crashed',
           leaseToken: randomUUID(),
           limit: 1,
-          maxAttempts: 5,
         });
         expect(claimed.events).toHaveLength(1);
         const leased = claimed.events[0];

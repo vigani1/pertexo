@@ -94,7 +94,6 @@ export function createLifecycleRuntimes(
         jobNames: [JOB_NAME.reconcileWorkflowTriggers],
         leaseDurationMillis: 1_000,
         leaseOwner,
-        maxAttempts: 3,
         operationTimeoutMillis: 5_000,
         retryDelayMillis: 10,
       },

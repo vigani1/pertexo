@@ -5,6 +5,7 @@ import {
 } from '@pertexo/database/outbox';
 import {
   createTransportMetrics,
+  type StructuredLogger,
   type TransportMetrics,
 } from '@pertexo/observability';
 import {
@@ -74,6 +75,7 @@ export type DispatcherCompositionFactories = Readonly<{
       drainState: WorkerDrainState;
       options: OutboxDispatcherOptions;
       metrics: TransportMetrics;
+      logger?: StructuredLogger | undefined;
     }>,
   ): OutboxDispatcher;
 }>;
@@ -113,6 +115,7 @@ export async function createOwnedOutboxDispatcher(
         jobNames: consumedJobNames(config),
       },
       metrics,
+      logger: dependencies.logger,
     });
   } catch (error: unknown) {
     const cleanup = await Promise.allSettled([
@@ -138,11 +141,13 @@ export function transportMetricsProvider(): Provider {
   };
 }
 
-export function queueObserverProvider(): Provider {
+export function queueObserverProvider(
+  logger: StructuredLogger | undefined,
+): Provider {
   return {
     provide: QUEUE_CONSUMER_OBSERVER,
     inject: [TRANSPORT_METRICS],
     useFactory: (metrics: TransportMetrics): QueueConsumerObserver =>
-      createQueueMetricsObserver(metrics),
+      createQueueMetricsObserver(metrics, logger),
   };
 }

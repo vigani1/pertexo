@@ -182,7 +182,6 @@ export function claimRuns(limit = 10) {
     leaseOwner: 'workflow-concurrency-proof',
     leaseToken: randomUUID(),
     limit,
-    maxAttempts: 3,
   });
 }
 

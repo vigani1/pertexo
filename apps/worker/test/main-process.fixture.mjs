@@ -77,7 +77,6 @@ const config = {
     batchSize: 1,
     leaseDurationMillis: 30_000,
     leaseOwner: 'fixture',
-    maxAttempts: 1,
     operationTimeoutMillis: 1_000,
     pollIntervalMillis: 100,
     retryDelayMillis: 100,

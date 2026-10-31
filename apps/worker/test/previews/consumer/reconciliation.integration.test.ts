@@ -102,7 +102,6 @@ describeIntegration('preview reconciliation transport', () => {
               leaseOwner: 'preview-reconciliation-integration',
               leaseToken: randomUUID(),
               limit: 10,
-              maxAttempts: 3,
             }),
           (value) =>
             value.events.some(

@@ -56,12 +56,6 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
       .min(1_000)
       .max(300_000)
       .default(30_000),
-    OUTBOX_DISPATCH_MAX_ATTEMPTS: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(1_000)
-      .default(10),
     OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS: z.coerce
       .number()
       .int()
@@ -219,7 +213,6 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
       REDIS_URL,
       OUTBOX_DISPATCH_BATCH_SIZE,
       OUTBOX_DISPATCH_LEASE_MILLIS,
-      OUTBOX_DISPATCH_MAX_ATTEMPTS,
       OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS,
       OUTBOX_DISPATCH_POLL_MILLIS,
       OUTBOX_DISPATCH_RETRY_MILLIS,
@@ -275,7 +268,6 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
         batchSize: OUTBOX_DISPATCH_BATCH_SIZE,
         leaseDurationMillis: OUTBOX_DISPATCH_LEASE_MILLIS,
         leaseOwner: `outbox:${WORKER_INSTANCE_ID}`,
-        maxAttempts: OUTBOX_DISPATCH_MAX_ATTEMPTS,
         operationTimeoutMillis: OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS,
         pollIntervalMillis: OUTBOX_DISPATCH_POLL_MILLIS,
         retryDelayMillis: OUTBOX_DISPATCH_RETRY_MILLIS,
