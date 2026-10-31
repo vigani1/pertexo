@@ -63,7 +63,8 @@ export async function walkVariableUsage(
     items.push(...scan.items);
     incomplete ||= scan.incomplete;
     const { next } = scan;
-    const passedWorkflow = next?.workflowId === workflow.id && next.offset === 0;
+    const passedWorkflow =
+      next?.workflowId === workflow.id && next.offset === 0;
     if (next === null || !passedWorkflow || read === MAX_WORKFLOWS_PER_PAGE)
       return { items, incomplete, next };
     after = next;
