@@ -70,7 +70,11 @@ export function DestinationTest({
         aria-atomic="true"
         className="mt-2 text-xs text-muted-foreground"
       >
-        <DestinationTestResult phase={test.phase} label={label} />
+        <DestinationTestResult
+          phase={test.phase}
+          label={label}
+          failure={test.failure}
+        />
       </div>
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
@@ -102,7 +106,12 @@ export function DestinationTest({
 function DestinationTestResult({
   phase,
   label,
-}: Readonly<{ phase: TestPhase; label: string }>) {
+  failure,
+}: Readonly<{
+  phase: TestPhase;
+  label: string;
+  failure: string | undefined;
+}>) {
   switch (phase) {
     case 'running':
       return <Status tone="live">Sending one test message…</Status>;
@@ -120,8 +129,8 @@ function DestinationTestResult({
     case 'failed':
       return (
         <p>
-          The test couldn’t be sent. Review the destination and its connection
-          before trying again.
+          {failure ??
+            'The test couldn’t be sent. Review the destination and its connection before trying again.'}
         </p>
       );
     case 'idle':

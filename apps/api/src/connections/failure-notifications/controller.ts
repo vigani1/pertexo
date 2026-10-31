@@ -132,7 +132,7 @@ export class FailureNotificationDestinationsController {
   }
 
   @Post('failure-notification-destinations/:destinationId/test')
-  @RateLimit('provider_test')
+  @RateLimit('destination_test')
   @HttpCode(200)
   @UseGuards(
     SessionAuthenticationGuard,

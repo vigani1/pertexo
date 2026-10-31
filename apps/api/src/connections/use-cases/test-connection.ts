@@ -126,10 +126,12 @@ export class TestConnectionUseCase {
     destination?: FailureNotificationDestinationResponse,
   ): Promise<ConnectionTestResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.test, async () => {
+      // Testing a destination is part of managing it, as its route's guard says.
+      // Secret access is still rechecked for connection:use before dispatch.
       await authorizeConnectionOperation(
         input,
         this.authorization,
-        'connection:use',
+        destination === undefined ? 'connection:use' : 'connection:manage',
       );
       const request = connectionTestRequestSchema.parse(input.request);
       const expectedProviderKey =

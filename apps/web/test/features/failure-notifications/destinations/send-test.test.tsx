@@ -50,8 +50,7 @@ async function sendTest(answer: () => Response | Promise<Response>) {
 }
 
 describe('sending a test to an alert destination', () => {
-  // api-design-01: a refusal only says "Review the destination", not what the service said.
-  it.fails('names what the service refused', async () => {
+  it('names what the service refused', async () => {
     await sendTest(() =>
       HttpResponse.json({
         connection,
@@ -76,30 +75,26 @@ describe('sending a test to an alert destination', () => {
     ).toBeVisible();
   });
 
-  // api-design-01: a server failure reads as a problem with the destination, and "Check result" repeats it.
-  it.fails(
-    'says the failure was on Pertexo’s side when the server fails',
-    async () => {
-      await sendTest(() => problem(500, 'internal.unexpected'));
-      expect(
-        await screen.findByText(/Pertexo’s side|Pertexo couldn’t/u),
-      ).toBeVisible();
-      expect(
-        screen.queryByText(/Delivery wasn’t confirmed/u),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(/Check the destination/u),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('button', {
-          name: `Check test result for ${label}`,
-        }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: `Send test to ${label}` }),
-      ).toBeEnabled();
-    },
-  );
+  it('says the failure was on Pertexo’s side when the server fails', async () => {
+    await sendTest(() => problem(500, 'internal.unexpected'));
+    expect(
+      await screen.findByText(/Pertexo’s side|Pertexo couldn’t/u),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/Delivery wasn’t confirmed/u),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Check the destination/u),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: `Check test result for ${label}`,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: `Send test to ${label}` }),
+    ).toBeEnabled();
+  });
 
   it('checks a result it really can’t know without sending again', async () => {
     let attempts = 0;
