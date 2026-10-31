@@ -169,8 +169,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    # A stuck run makes a fault test wait out its full recovery limit.
-    timeout-minutes: ${{ matrix.group == 'faults' && 60 || 30 }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -183,9 +182,6 @@ jobs:
             shard: 1/2
           - group: worker-2
             shard: 2/2
-          # Real faults against real processes; they stop Postgres, Redis and
-          # the object store, so nothing else shares their compose project.
-          - group: faults
     env:
       # Tests that own their fixtures expect the project suffix `-integration`.
       COMPOSE_PROJECT_NAME:
@@ -252,15 +248,45 @@ jobs:
         run:
           pnpm --filter @pertexo/worker exec vitest run --config
           vitest.integration.config.ts --shard="$SHARD"
-      - name: Fault tests
-        if: matrix.group == 'faults'
-        run: pnpm --filter @pertexo/worker test:fault
       - name: Qualify pinned beta storage
         if: matrix.group == 'services'
         run: node infrastructure/single-server/storage/qualify.mjs
       - name: Qualify matched beta recovery
         if: matrix.group == 'services'
         run: node infrastructure/single-server/backup/qualify.mjs
+      - name: Service logs
+        if: failure()
+        run: docker compose logs --no-color --timestamps
+      - name: Stop services
+        if: always()
+        run: docker compose down -v --remove-orphans
+
+  # Real faults against real processes. They stop Postgres, Redis and the object
+  # store, so nothing else shares their compose project. About 50 minutes, so it runs
+  # on main and nightly and no pull request waits for it.
+  faults:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # A stuck run makes a fault test wait out its full recovery limit.
+    timeout-minutes: 90
+    env:
+      COMPOSE_PROJECT_NAME:
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-integration
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Use the Docker Hub mirror
+        uses: ./.github/actions/docker-mirror
+      - name: Build
+        run: pnpm build:packages
+      - name: Start services
+        run: docker compose up -d --wait postgres redis artifact-store
+      - name: Migrate
+        run: pnpm db:migrate
+      - name: Fault tests
+        run: pnpm --filter @pertexo/worker test:fault
       - name: Service logs
         if: failure()
         run: docker compose logs --no-color --timestamps
