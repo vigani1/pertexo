@@ -8,7 +8,7 @@ import {
   workflowDrafts,
   workflowVersions,
 } from '@pertexo/database/schema';
-import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/workflow-model';
 import { and, eq, exists, gt, gte, lt, lte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -23,15 +23,9 @@ type UsageCursor = VariableUsageInput['after'];
 export async function readVariableUsage(
   client: PoolClient,
   input: VariableUsageInput,
+  role: Role,
 ): Promise<VariableUsagePage> {
-  // The same list as the store's check: a narrower one here would make every
-  // workflow invisible, and the name would read as unused.
-  const scope = await readFolderScope(
-    client,
-    input,
-    undefined,
-    UNPURGED_WORKSPACE_STATUSES,
-  );
+  const scope = await readFolderScope(client, input, role);
   const page = await walkVariableUsage(input, (after) =>
     readUsageWorkflow(client, input.workspaceId, scope, after),
   );

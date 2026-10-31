@@ -49,7 +49,7 @@ export function createWorkspaceVariablesStore(
           capability: 'workflow:read',
           statuses: UNPURGED_WORKSPACE_STATUSES,
         },
-        (client) => readVariableUsage(client, input),
+        (client, role) => readVariableUsage(client, input, role),
       ),
     replace: (input: ReplaceWorkspaceVariablesInput) =>
       withWorkspaceAccess(
