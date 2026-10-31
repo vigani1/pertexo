@@ -68,8 +68,9 @@ refuses instead of substituting today's values.
 ## Find references before changing a name
 
 The Variables page shows references in current drafts and current publications,
-including loop bodies and callable results. Follow its pages to finish the scan.
-A direct name is exact; a computed lookup or whole-map expression may use any
+including loop bodies and callable results. The check goes through every workflow
+you can see by itself and shows how far it has got. Removing a name waits until it
+ends, and says so if it stopped early. A direct name is exact; a computed lookup or whole-map expression may use any
 variable. Literal text that happens to contain `$vars.NAME` is not a reference.
 Invalid draft expressions are reported as unanalysed, not as proof of no usage.
 Archived workflows are labelled; retained old versions and run snapshots are
