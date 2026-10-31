@@ -20,6 +20,7 @@ import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js'
 import { consumeInboxMessage } from '../../outbox/receipts.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import { findPublishedWorkflow } from '../../runs/queries/execution/published.queries.js';
+import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 export class OperatorRunReplayMismatchError extends Error {
   public constructor() {
     super('Run replay delivery does not match its durable request');
@@ -117,7 +118,7 @@ async function replayRequest(
   input.signal?.throwIfAborted();
   const consumed = await consumeInboxMessage(database, input.workspaceId, {
     message: {
-      consumerName: 'operator-run-replay',
+      consumerName: DELIVERY_CONSUMER['replay-workflow-run'],
       messageId: input.delivery.outboxEventId,
       payloadChecksum: input.delivery.payloadChecksum,
     },

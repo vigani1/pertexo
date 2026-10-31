@@ -16,14 +16,14 @@ export type StalledWorkRuntime = PollingRuntime;
 
 export const STALLED_WORK_RUNTIME = Symbol('STALLED_WORK_RUNTIME');
 
-/** Short beside the 30 s lease, and cheap: two indexed reads when nothing is due. */
+/** Short beside the 30 s lease, and cheap: indexed reads when nothing is due. */
 const SCAN_INTERVAL_MILLIS = 5_000;
 const SCAN_BATCH_SIZE = 50;
 
 /**
- * ADR 007: acts on every run step whose recorded time has passed, which is what
- * makes a crash, restart or lost job recoverable. Every worker runs it; the run
- * lock and fence make a second worker's attempt at the same row a no-op.
+ * ADR 007: acts on everything whose recorded time has passed, which is what makes
+ * a crash, restart or lost job recoverable. Every worker runs it; a row's lock and
+ * the consumers' receipts and fences make a second worker's attempt a no-op.
  */
 function createStalledWorkRuntime(
   store: StalledWorkStore,
@@ -39,7 +39,9 @@ function createStalledWorkRuntime(
       );
       reportDiagnostic(() => {
         for (const recovery of recovered)
-          logger.info(recoveryEvent(recovery), recovery);
+          if (recovery.kind === 'delivery_given_up')
+            logger.warn(recoveryEvent(recovery), recovery);
+          else logger.info(recoveryEvent(recovery), recovery);
         for (const { error, ...failure } of failed)
           logger.warn('run_recovery.failed', failure, error);
       });
@@ -59,6 +61,10 @@ function recoveryEvent(recovery: StalledWorkRecovery): string {
       return 'run_recovery.attempt_marked_unknown';
     case 'delivery_replaced':
       return 'run_recovery.delivery_replaced';
+    case 'delivery_redelivered':
+      return 'run_recovery.delivery_redelivered';
+    case 'delivery_given_up':
+      return 'run_recovery.delivery_given_up';
   }
 }
 

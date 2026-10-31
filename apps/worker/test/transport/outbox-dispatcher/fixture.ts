@@ -52,6 +52,7 @@ export function event(
     payload,
     payloadChecksum: checksum(payload),
     publishAttempts: 1,
+    redeliveries: 0,
     workspaceId: WORKSPACE_ID,
   };
   return Object.freeze({

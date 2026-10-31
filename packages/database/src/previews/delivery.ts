@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import { traceparentSchema } from './input.js';
+import { DELIVERY_CONSUMER } from '../outbox/delivery-consumers.js';
 
-export const previewConsumerName = 'preview-attempt-worker';
+export const previewConsumerName = DELIVERY_CONSUMER['execute-preview-attempt'];
 
-export const previewReconcilerConsumerName = 'preview-attempt-reconciler';
+export const previewReconcilerConsumerName =
+  DELIVERY_CONSUMER['reconcile-preview-attempt'];
 
 export const previewDeliveryPayloadSchema = z
   .object({

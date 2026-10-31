@@ -42,32 +42,27 @@ describeFaults('maintenance jobs that outlast their retries', () => {
     expect(jobsOutOfRetries).toBe(5);
   });
 
-  // reliability-code-01: a Postgres restart longer than the retries loses the promise.
-  it.fails('starts the error workflow, once', () => {
+  it('starts the error workflow, once', () => {
     expect(kept.errorWorkflowRuns).toBe(1);
     expect(kept.errorWorkflowSteps).toBe(1);
   });
 
-  // reliability-code-01: as above.
-  it.fails('sends the failure alert, once', () => {
+  it('sends the failure alert, once', () => {
     expect(kept.alert).toBe('delivered');
     expect(kept.alertsSent).toBe(1);
   });
 
-  // reliability-code-01: as above.
-  it.fails('creates and runs the replay, once', () => {
+  it('creates and runs the replay, once', () => {
     expect(kept.replay).toBe('completed');
     expect(kept.replayedSteps).toBe(2);
   });
 
-  // reliability-code-01: as above.
-  it.fails('sends the invitation, once', () => {
+  it('sends the invitation, once', () => {
     expect(kept.invitation).toBe('submitted');
     expect(kept.invitationsSent).toBe(1);
   });
 
-  // reliability-code-01: as above.
-  it.fails('marks the connection as needing reauthorization', () => {
+  it('marks the connection as needing reauthorization', () => {
     expect(kept.connection).toBe('reauthorization_required');
   });
 });

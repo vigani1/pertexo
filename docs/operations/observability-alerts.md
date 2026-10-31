@@ -104,8 +104,8 @@ state.
 Identify the bounded queue, then check handler failures, stalls, forced drains,
 and worker starts. Restore consumers or dependencies and allow identifier-only
 jobs to resume from PostgreSQL truth. Redis loss is delay, not proof of run loss:
-a run job not confirmed in time is replaced by a new one, automatically and with
-a `run_recovery.delivery_replaced` log line.
+a job not confirmed in time is delivered again, automatically and with a
+`run_recovery.delivery_redelivered` log line.
 
 ## PertexoTriggerReconciliationFailures
 

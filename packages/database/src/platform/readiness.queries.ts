@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0065_run_delivery_deadline.sql';
+export const EXPECTED_MIGRATION_HEAD = '0066_outbox_redeliveries.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

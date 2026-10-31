@@ -48,6 +48,7 @@ function setup(
     retry: vi.fn().mockResolvedValue(true),
     markDispatching: vi.fn().mockResolvedValue(true),
     complete: vi.fn().mockResolvedValue(undefined),
+    confirm: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
   };
   const sendNotification = vi.fn<SystemMailClient['sendNotification']>(
@@ -69,6 +70,52 @@ function setup(
 }
 
 describe('workspace invitation delivery', () => {
+  // A late job and its redelivery can run together. The one that lost the race to
+  // mark the attempt must not hand it back while the winner may be sending it.
+  it('leaves the attempt alone when another copy of the job holds it', async () => {
+    const test = setup({ kind: 'retryable' });
+    const smtp = createWorkspaceInvitationDeliveryHandler({
+      store: {
+        ...test.store,
+        markDispatching: vi.fn().mockResolvedValue(false),
+      },
+      envelope: { open: vi.fn().mockReturnValue('wi1.secret-token') },
+      email: {
+        deduplicates: false,
+        sendNotification: async (input) => {
+          await input.beforeDispatch().catch(() => undefined);
+          return { kind: 'retryable' };
+        },
+      },
+      fromEmail: 'invites@example.test',
+      webOrigin: 'https://app.example.test',
+      timeoutMillis: 5_000,
+    });
+
+    await expect(smtp.handle(delivery, context)).rejects.toThrow(
+      'requires retry',
+    );
+
+    expect(test.store.retry).not.toHaveBeenCalled();
+    expect(test.store.confirm).not.toHaveBeenCalled();
+  });
+
+  it('confirms the job only once it has been handled', async () => {
+    const test = setup({ kind: 'retryable' });
+
+    await expect(test.handler.handle(delivery, context)).rejects.toThrow(
+      'requires retry',
+    );
+    expect(test.store.confirm).not.toHaveBeenCalled();
+
+    const sent = setup({
+      kind: 'submitted',
+      reference: '55555555-5555-4555-8555-555555555555',
+    });
+    await sent.handler.handle(delivery, context);
+    expect(sent.store.confirm).toHaveBeenCalledOnce();
+  });
+
   it('sends the fixed application-owned template and clears a submitted secret', async () => {
     const test = setup({
       kind: 'submitted',

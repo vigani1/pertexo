@@ -10,6 +10,7 @@ export type LeasedOutboxEvent = Readonly<
     | 'jobName'
     | 'payloadChecksum'
     | 'publishAttempts'
+    | 'redeliveries'
     | 'workspaceId'
   > & {
     leaseExpiresAt: Date;

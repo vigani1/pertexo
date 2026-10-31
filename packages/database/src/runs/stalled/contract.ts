@@ -1,18 +1,24 @@
 /** One thing the scanner did, so the worker can log it with the run it acted on. */
-export type StalledWorkRecovery = Readonly<{
-  workspaceId: string;
-  runId: string;
-}> &
+export type StalledWorkRecovery = Readonly<{ workspaceId: string }> &
   (
     | Readonly<{
         kind: 'attempt_reclaimed' | 'attempt_marked_unknown';
+        runId: string;
         attemptId: string;
       }>
     | Readonly<{
         kind: 'delivery_replaced';
+        runId: string;
         jobName: string;
         replacedEventId: string;
         outboxEventId: string;
+      }>
+    | Readonly<{
+        kind: 'delivery_redelivered' | 'delivery_given_up';
+        outboxEventId: string;
+        jobName: string;
+        aggregateId: string;
+        redeliveries: number;
       }>
   );
 

@@ -20,8 +20,10 @@ import {
 import { attemptJobPayloadSchema } from '../validation/delivery.js';
 import type { NodeAttemptDelivery } from '../contract.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
+import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 
-export const nodeAttemptConsumerName = 'node-attempt-worker';
+export const nodeAttemptConsumerName =
+  DELIVERY_CONSUMER['execute-node-attempt'];
 
 export async function validateDelivery(
   client: PoolClient,

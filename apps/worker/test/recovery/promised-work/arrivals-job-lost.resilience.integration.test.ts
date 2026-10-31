@@ -150,14 +150,11 @@ describeFaults('an accepted event whose first job was lost', () => {
     expect(occurrenceFacts.steps.next).toEqual(['succeeded']);
   });
 
-  // reliability-code-01: `overdueDeliveryAction` drops a `queued` run, so it waits 5 minutes
-  // for the admission check, where every other lost run job comes back in about 60 s.
-  it.fails('starts an accepted event as soon as any other lost job', () => {
+  it('starts an accepted event as soon as any other lost job', () => {
     expect(waited.webhook).toBeLessThan(RECOVERY_LIMIT_MS);
   });
 
-  // reliability-code-01: as above.
-  it.fails('starts an occurrence as soon as any other lost job', () => {
+  it('starts an occurrence as soon as any other lost job', () => {
     expect(waited.occurrence).toBeLessThan(RECOVERY_LIMIT_MS);
   });
 });

@@ -179,11 +179,13 @@ export const outboxEvents = appSchema.table(
     }),
     failedAt: timestamp('failed_at', { withTimezone: true, mode: 'date' }),
     lastErrorCode: varchar('last_error_code', { length: 128 }),
-    /** When a published run job must have been confirmed; see stalled work. */
+    /** When a published job must have been confirmed; see stalled work. */
     deliveryDueAt: timestamp('delivery_due_at', {
       withTimezone: true,
       mode: 'date',
     }),
+    /** How many times stalled work asked for it again; part of its BullMQ job ID. */
+    redeliveries: integer('redeliveries').default(0).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -197,6 +199,7 @@ export const outboxEvents = appSchema.table(
       sql`((aggregate_type)::text ~ '^[a-z][a-z0-9.-]{0,63}$'::text)`,
     ),
     check('outbox_events_attempts_nonnegative', sql`(publish_attempts >= 0)`),
+    check('outbox_events_redeliveries_nonnegative', sql`(redeliveries >= 0)`),
     check(
       'outbox_events_checksum_format',
       sql`(payload_checksum ~ '^[0-9a-f]{64}$'::text)`,

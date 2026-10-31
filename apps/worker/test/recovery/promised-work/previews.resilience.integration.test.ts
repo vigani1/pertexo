@@ -123,14 +123,12 @@ describeFaults('step tests whose jobs were lost', () => {
     expect(stack.sink.calls('settled')).toHaveLength(1);
   });
 
-  // reliability-code-01: the attempt stays `queued`; no scanner looks at previews.
-  it.fails('runs a test whose job was lost, once', () => {
+  it('runs a test whose job was lost, once', () => {
     expect(seen.neverStarted).toBe('succeeded');
     expect(stack.sink.calls('never-started')).toHaveLength(1);
   });
 
-  // reliability-code-01: the attempt stays `running` under a lease nobody will ever check.
-  it.fails('settles a test whose worker died and whose job was lost', () => {
+  it('settles a test whose worker died and whose job was lost', () => {
     expect(seen.orphaned).toBe('outcome_unknown');
     expect(stack.sink.calls('orphaned')).toHaveLength(1);
   });

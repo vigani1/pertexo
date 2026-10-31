@@ -2,7 +2,7 @@ import { UnrecoverableError } from 'bullmq';
 import type { Job } from 'bullmq';
 
 import { parseQueueJob, type QueueJob } from './contracts.js';
-import { jobIdForOutboxEvent } from './job-id.js';
+import { isJobIdOfOutboxEvent } from './job-id.js';
 import { QUEUE_FOR_JOB, type QueueName } from './names.js';
 
 /** An invalid delivery cannot become valid through transport redelivery. */
@@ -30,7 +30,7 @@ export function admitQueueDelivery(
   if (typeof job.id !== 'string' || job.id.length === 0)
     throw new InvalidQueueDeliveryError('Queue delivery has no job ID');
   const transportJobId = job.id;
-  if (transportJobId !== jobIdForOutboxEvent(parsed.data.outboxEventId))
+  if (!isJobIdOfOutboxEvent(transportJobId, parsed.data.outboxEventId))
     throw new InvalidQueueDeliveryError(
       'Queue delivery job ID does not match its outbox event',
     );

@@ -1,3 +1,4 @@
+export { DELIVERY_CONSUMER } from './delivery-consumers.js';
 export { createOutboxDispatcherDatabase } from './dispatcher/repository.js';
 export type {
   LeasedOutboxEvent,

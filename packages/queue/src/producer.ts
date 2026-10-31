@@ -190,18 +190,24 @@ export class BullMqQueueProducer implements QueueProducer {
     if (!this.isReady()) throw new QueueNotReadyError();
   }
 
-  public async publish(job: QueueJob): Promise<QueuePublishResult> {
+  public async publish(
+    job: QueueJob,
+    redeliveries = 0,
+  ): Promise<QueuePublishResult> {
     return observeRedisOperation(
       this.redisTelemetry,
       'queue_producer',
       'publish',
-      () => this.performPublish(job),
+      () => this.performPublish(job, redeliveries),
     );
   }
 
-  private async performPublish(job: QueueJob): Promise<QueuePublishResult> {
+  private async performPublish(
+    job: QueueJob,
+    redeliveries: number,
+  ): Promise<QueuePublishResult> {
     const parsed = parseQueueJob(job);
-    const jobId = jobIdForOutboxEvent(parsed.data.outboxEventId);
+    const jobId = jobIdForOutboxEvent(parsed.data.outboxEventId, redeliveries);
     const queueName = QUEUE_FOR_JOB[parsed.name];
 
     if (!this.isReady()) {

@@ -2,11 +2,15 @@ import {
   automaticReconciliationAction,
   overdueDeliveryAction,
 } from '@pertexo/workflow-engine';
-import { and, asc, eq, isNotNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, lte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import type { DatabaseConfig } from '../../config.js';
-import { nodeAttemptConsumerName } from '../../attempts/completion/receipts.repository.js';
+import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/repository.js';
+import {
+  dateUndatedDeliveries,
+  settleOverdueDeliveries,
+} from '../../outbox/overdue-deliveries.repository.js';
 import {
   readLockedAttempt,
   settleExpiredAttempt,
@@ -20,12 +24,11 @@ import {
   nodeRuns,
   workflowRuns,
 } from '../../schema/runs/execution.js';
-import { inboxReceipts, outboxEvents } from '../../schema/transport.js';
+import { outboxEvents } from '../../schema/transport.js';
 import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '../../tenant-access/transactions.js';
-import { coordinatorConsumerName } from '../advance/receipts.repository.js';
 import type {
   StalledWorkFailure,
   StalledWorkRecovery,
@@ -36,22 +39,48 @@ import type {
 const LOCK_TIMEOUT_MILLIS = 5_000;
 const STATEMENT_TIMEOUT_MILLIS = 15_000;
 
+/**
+ * Well above what a worker can consume, so confirmed rows never queue up ahead of
+ * a lost job. The bound only keeps one cycle from running without end.
+ */
+const DELIVERY_BATCH_SIZE = 1_000;
+const MAXIMUM_DELIVERY_BATCHES_PER_CYCLE = 20;
+
 export function createStalledWorkStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ): StalledWorkStore {
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
+  let undatedDeliveriesChecked = false;
   return Object.freeze({
-    recoverDue: (limit: number, signal: AbortSignal) =>
-      recoverDue(lease.pool, limit, signal),
+    recoverDue: async (limit: number, signal: AbortSignal) => {
+      const result = await recoverDue(lease.pool, limit, signal);
+      // After the work above, so a slow first look at the table delays nothing.
+      if (!undatedDeliveriesChecked) {
+        await dateAllUndatedDeliveries(lease.pool, signal);
+        undatedDeliveriesChecked = true;
+      }
+      return result;
+    },
     close: () => lease.close(),
   });
 }
 
+async function dateAllUndatedDeliveries(
+  pool: Pool,
+  signal: AbortSignal,
+): Promise<void> {
+  while (
+    (await dateUndatedDeliveries(pool, DELIVERY_BATCH_SIZE)) ===
+    DELIVERY_BATCH_SIZE
+  )
+    signal.throwIfAborted();
+}
+
 async function recoverDue(pool: Pool, limit: number, signal: AbortSignal) {
   const attempts = await readExpiredLeases(pool, limit);
-  const deliveries = await readOverdueDeliveries(pool, limit);
-  const recovered: StalledWorkRecovery[] = [];
+  const recovered: StalledWorkRecovery[] = await settleDeliveries(pool, signal);
+  const failedRunJobs = await readFailedRunJobs(pool, limit);
   const failed: StalledWorkFailure[] = [];
   const settle = async (
     workspaceId: string,
@@ -78,9 +107,9 @@ async function recoverDue(pool: Pool, limit: number, signal: AbortSignal) {
     await settle(attempt.workspaceId, attempt.attemptId, (transaction) =>
       recoverExpiredLease(transaction, attempt),
     );
-  for (const delivery of deliveries)
+  for (const delivery of failedRunJobs)
     await settle(delivery.workspaceId, delivery.id, (transaction) =>
-      recoverOverdueDelivery(transaction, delivery),
+      replaceFailedRunJob(transaction, delivery),
     );
   return Object.freeze({
     recovered: Object.freeze(recovered),
@@ -159,52 +188,68 @@ async function recoverExpiredLease(
   });
 }
 
-type OverdueDelivery = Readonly<{
+async function settleDeliveries(
+  pool: Pool,
+  signal: AbortSignal,
+): Promise<StalledWorkRecovery[]> {
+  const recovered: StalledWorkRecovery[] = [];
+  for (let batch = 0; batch < MAXIMUM_DELIVERY_BATCHES_PER_CYCLE; batch += 1) {
+    signal.throwIfAborted();
+    const { settled, asked } = await settleOverdueDeliveries(
+      pool,
+      DELIVERY_BATCH_SIZE,
+    );
+    for (const delivery of asked)
+      recovered.push(
+        Object.freeze({
+          kind: delivery.gaveUp ? 'delivery_given_up' : 'delivery_redelivered',
+          workspaceId: delivery.workspaceId,
+          outboxEventId: delivery.outboxEventId,
+          jobName: delivery.jobName,
+          aggregateId: delivery.aggregateId,
+          redeliveries: delivery.redeliveries,
+        }),
+      );
+    if (settled < DELIVERY_BATCH_SIZE) break;
+  }
+  return recovered;
+}
+
+type FailedRunJob = Readonly<{
   id: string;
   workspaceId: string;
   jobName: string;
   aggregateId: string;
 }>;
 
-/**
- * Takes a batch of due rows. Most are simply confirmed, and lose their due time
- * here in one statement, so the step path carries no extra write for this.
- */
-async function readOverdueDeliveries(
+/** A run job that can't be published or confirmed: a run still waits on it. */
+function readFailedRunJobs(
   pool: Pool,
   limit: number,
-): Promise<readonly OverdueDelivery[]> {
-  const result = await drizzle(pool)
-    .execute<OverdueDelivery>(
-      sql`
-      with due as materialized (
-        select e.id, e.workspace_id, e.job_name, e.aggregate_id,
-               exists(
-                 select 1 from ${inboxReceipts} r
-                  where r.consumer_name in (${coordinatorConsumerName},${nodeAttemptConsumerName})
-                    and r.message_id = e.id and r.completed_at is not null
-               ) as confirmed
-          from ${outboxEvents} e
-         where e.delivery_due_at <= clock_timestamp()
-         order by e.delivery_due_at, e.id
-         limit ${limit}
-         for update of e skip locked
-      ), cleared as (
-        update ${outboxEvents} e set delivery_due_at = null, updated_at = clock_timestamp()
-          from due where e.id = due.id and due.confirmed
-        returning e.id
-      )
-      select due.id, due.workspace_id as "workspaceId", due.job_name as "jobName",
-             due.aggregate_id as "aggregateId"
-        from due where not due.confirmed`,
+): Promise<readonly FailedRunJob[]> {
+  return drizzle(pool)
+    .select({
+      id: outboxEvents.id,
+      workspaceId: outboxEvents.workspaceId,
+      jobName: outboxEvents.jobName,
+      aggregateId: outboxEvents.aggregateId,
+    })
+    .from(outboxEvents)
+    .where(
+      and(
+        lte(outboxEvents.deliveryDueAt, sql`clock_timestamp()`),
+        isNotNull(outboxEvents.failedAt),
+        inArray(outboxEvents.jobName, RUN_DELIVERY_JOB_NAMES),
+      ),
     )
+    .orderBy(asc(outboxEvents.deliveryDueAt), asc(outboxEvents.id))
+    .limit(limit)
     .catch(rethrowQueryFailure);
-  return result.rows;
 }
 
-async function recoverOverdueDelivery(
+async function replaceFailedRunJob(
   transaction: WorkspaceTransaction,
-  delivery: OverdueDelivery,
+  delivery: FailedRunJob,
 ): Promise<StalledWorkRecovery | undefined> {
   const { db, workspaceId } = transaction;
   const attemptOwner = await readAttemptOwner(transaction, delivery);
@@ -277,7 +322,7 @@ async function recoverOverdueDelivery(
 
 async function readAttemptOwner(
   transaction: WorkspaceTransaction,
-  delivery: OverdueDelivery,
+  delivery: FailedRunJob,
 ) {
   if (delivery.jobName !== 'execute-node-attempt') return undefined;
   const [owner] = await transaction.db
