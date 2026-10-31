@@ -148,6 +148,9 @@ provider classifications, the routable codes are:
 
 - invalid input or setup (`execution.attempt_invalid`,
   `execution.variable_missing`, `execution.configuration`);
+- an expression that failed, went over its limits or ran out of time
+  (`execution.expression_failed`, `execution.expression_limit_exceeded`,
+  `execution.expression_timed_out`);
 - a file the step can't read (`execution.file_input`);
 - a table refusal (`execution.table_*` for not found, invalid values, quota,
   conflict, key conflict, result too large, unsafe filter);
