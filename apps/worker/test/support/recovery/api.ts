@@ -382,7 +382,7 @@ export class ApiClient {
     });
     return {
       etag: null,
-      json: (await response.json()) as unknown,
+      json: await response.json(),
       status: response.status,
     };
   }
