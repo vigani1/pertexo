@@ -2,12 +2,14 @@ import type { AuditMetadata } from '../governance/audit/events.repository.js';
 import { appendAuditFact } from '../governance/audit/events.repository.js';
 import type { Pool } from 'pg';
 import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import type { DatabaseConfig } from '../config.js';
 import { serializeBoundedPlainJson } from '../outbox/events.repository.js';
 import { acquireDatabasePool } from '../platform/pool/runtime.js';
 import type { DatabaseRuntime } from '../platform/pool/runtime.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import { checkDatabaseReadiness } from '../platform/readiness.queries.js';
+import { readStuckWork } from '../runs/stalled/overdue.queries.js';
 import { operatorCommands } from '../schema/runs/operator.js';
 import {
   withWorkspaceTransaction,
@@ -59,6 +61,7 @@ export function createOperatorCommandDatabase(
       await checkDatabaseReadiness(pool);
     },
     close: () => lease.close(),
+    listStuckWork: () => readStuckWork(drizzle(pool)),
     getCommand: (input: GetOperatorCommandInput) =>
       readOperatorCommand(context, input),
     redispatchFailedOutbox: (input: RedispatchFailedOutboxInput) =>

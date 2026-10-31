@@ -13,7 +13,7 @@ const STALLED_WORDING = /stalled/iu;
 
 describe('run page', () => {
   // reliability-10: a stuck run reads "Running", as if its steps were progressing.
-  it.fails('says when a running run has stalled', async () => {
+  it('says when a running run has stalled', async () => {
     installRun({
       run: fixtureRun(runId, 'running', {
         stalled: { since: secondsAgo(90) },

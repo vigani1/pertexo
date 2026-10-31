@@ -31,7 +31,7 @@ function createResources(
   const result = Object.hasOwn(options, 'result')
     ? options.result
     : {
-        commandId: command.commandId,
+        commandId: 'commandId' in command ? command.commandId : undefined,
         outcome: 'completed',
         replayed: false,
         status: 'completed',

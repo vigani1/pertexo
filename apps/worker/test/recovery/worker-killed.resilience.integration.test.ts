@@ -158,7 +158,7 @@ describeFaults('a worker killed with SIGKILL during its steps', () => {
     factsOfRun(scenario.facts, scenario.runs, name);
 
   // reliability-01, ops-03, backend-gaps-02: nothing acts on an expired lease.
-  it.fails('ends an unsafe dispatched step as outcome_unknown', () => {
+  it('ends an unsafe dispatched step as outcome_unknown', () => {
     expect(factsOf('unsafe').status).toBe('outcome_unknown');
     expect(factsOf('unsafe').steps.held).toEqual(['outcome_unknown']);
   });
@@ -169,14 +169,14 @@ describeFaults('a worker killed with SIGKILL during its steps', () => {
   });
 
   // reliability-01: a safe step whose worker died is retried by a live worker.
-  it.fails('retries a safe step and finishes the run', () => {
+  it('retries a safe step and finishes the run', () => {
     expect(factsOf('safe').status).toBe('succeeded');
     expect(calls('safe')).toBe(2);
     expect(calls('after-safe')).toBe(1);
   });
 
   // reliability-01: an unsafe step that never reached its provider can safely run.
-  it.fails('runs again an unsafe step that was never dispatched', () => {
+  it('runs again an unsafe step that was never dispatched', () => {
     expect(factsOf('undispatched').status).toBe('succeeded');
   });
 
@@ -185,20 +185,20 @@ describeFaults('a worker killed with SIGKILL during its steps', () => {
   });
 
   // reliability-06: cancel depends on a live worker holding the attempt.
-  it.fails('honors the cancel with no live worker on the attempt', () => {
+  it('honors the cancel with no live worker on the attempt', () => {
     expect(factsOf('canceled').status).toBe('canceled');
     expect(calls('after-canceled')).toBe(0);
   });
 
   // reliability-06: the deadline depends on a live worker holding the attempt.
-  it.fails('ends a run past its deadline, without retrying the step', () => {
+  it('ends a run past its deadline, without retrying the step', () => {
     expect(factsOf('deadline').status).toBe('timed_out');
     expect(calls('deadline')).toBe(1);
     expect(calls('after-deadline')).toBe(0);
   });
 
   // reliability-03: five stranded runs hold every slot of the workspace forever.
-  it.fails('frees stranded capacity, so the waiting run executes', () => {
+  it('frees stranded capacity, so the waiting run executes', () => {
     expect(factsOf('queued').status).toBe('succeeded');
     expect(calls('queued')).toBe(1);
     for (const name of ['full1', 'full2', 'full3', 'full4', 'full5'])
@@ -206,13 +206,13 @@ describeFaults('a worker killed with SIGKILL during its steps', () => {
   });
 
   // reliability-03: the capacity counter must come back to zero with every run ended.
-  it.fails('leaves no capacity held once every run has ended', () => {
+  it('leaves no capacity held once every run has ended', () => {
     expect(scenario.activeInFullWorkspace).toBe(0);
     expect(scenario.activeInMixedWorkspace).toBe(0);
   });
 
   // reliability-10: a stuck run reads as "Its steps are running right now".
-  it.fails('tells the user a run is stalled once its worker is gone', () => {
+  it('tells the user a run is stalled once its worker is gone', () => {
     expect(scenario.healthyRead.stalled ?? null).toBeNull();
     expect(scenario.stalledRead.stalled).toEqual({
       since: expect.any(String) as string,
@@ -220,12 +220,12 @@ describeFaults('a worker killed with SIGKILL during its steps', () => {
   });
 
   // reliability-10: operators had to read the tables with psql to find stuck runs.
-  it.fails('lists the stuck run for the operator', () => {
+  it('lists the stuck run for the operator', () => {
     expect(scenario.stuckList).toContain(scenario.runs.unsafe);
   });
 
   // reliability-10: recovery has to leave a trace an operator can read.
-  it.fails('logs each recovery with the run it acted on', () => {
+  it('logs each recovery with the run it acted on', () => {
     expect(
       stack.worker.linesMentioning(
         [required(scenario.runs.unsafe, 'unsafe')],

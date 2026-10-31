@@ -56,7 +56,11 @@ function createFixture() {
     start: vi.fn(),
   } satisfies TelemetryLifecycle;
   const database = { close: vi.fn(() => Promise.resolve()) };
-  const result = { commandId: config.command.commandId, status: 'missing' };
+  const result = {
+    commandId:
+      'commandId' in config.command ? config.command.commandId : undefined,
+    status: 'missing',
+  };
   type RunInput = Parameters<
     OperatorCommandBootstrapModules['command']['runOperatorCommand']
   >[0];
