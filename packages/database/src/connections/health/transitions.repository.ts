@@ -41,13 +41,16 @@ export async function rotateConnectionHealth(
   client: PoolClient,
   workspaceId: string,
   connectionId: string,
-  secretVersionId: string,
-  next: Readonly<{ status: ConnectionStatus; lastErrorCode: string | null }>,
+  next: Readonly<{
+    secretVersionId: string;
+    status: ConnectionStatus;
+    lastErrorCode: string | null;
+  }>,
 ) {
   return drizzle(client)
     .update(connections)
     .set({
-      currentSecretVersionId: secretVersionId,
+      currentSecretVersionId: next.secretVersionId,
       status: next.status,
       lastErrorCode: next.lastErrorCode,
       lastTestedAt: null,

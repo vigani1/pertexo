@@ -1,8 +1,7 @@
 import { and, eq, isNull, lte, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
 
-import { appendAuditFact } from '../../governance/audit/events.repository.js';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import {
@@ -17,16 +16,10 @@ import {
 } from '../../schema/oauth2-connections.js';
 import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import { CONNECTION_AUTH_TYPE, CONNECTION_STATUS } from '../contract.js';
-import {
-  connectionFields,
-  sealedFields,
-  selectConnection,
-} from '../records.queries.js';
+import { sealedFields, selectConnection } from '../records.queries.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
-import { withOneOAuth2Fact } from './clients.repository.js';
 import type {
   IssuedOAuth2Tokens,
-  OAuth2ConsentDatabase,
   OAuth2GrantLossActor,
   OAuth2TokenRecord,
   OAuth2TokenStoreDatabase,
@@ -76,7 +69,7 @@ function tokenRecord(
   });
 }
 
-const sealedColumns = (issued: IssuedOAuth2Tokens) => ({
+export const sealedColumns = (issued: IssuedOAuth2Tokens) => ({
   kmsKeyReference: issued.sealed.kmsKeyReference,
   encryptedDataKey: issued.sealed.encryptedDataKey,
   ciphertext: issued.sealed.ciphertext,
@@ -85,15 +78,14 @@ const sealedColumns = (issued: IssuedOAuth2Tokens) => ({
 });
 
 /** Expiry counts from the commit, by database time. */
-const expiryOf = (issued: IssuedOAuth2Tokens) =>
+export const expiryOf = (issued: IssuedOAuth2Tokens) =>
   issued.expiresInSeconds === null
     ? null
     : sql`clock_timestamp()+make_interval(secs=>${issued.expiresInSeconds}::double precision)`;
 
 export function createOAuth2TokenPersistence(
   pool: Pool,
-): OAuth2TokenStoreDatabase &
-  Pick<OAuth2ConsentDatabase, 'authorizeOAuth2Connection'> {
+): OAuth2TokenStoreDatabase {
   return Object.freeze({
     openOAuth2Grant: (input) => openGrant(pool, input),
     readOAuth2Token: async (input) => {
@@ -176,7 +168,6 @@ export function createOAuth2TokenPersistence(
       );
       return rejected.length === 1;
     },
-    authorizeOAuth2Connection: (input) => authorize(pool, input),
   });
 }
 
@@ -370,117 +361,6 @@ async function loseGrant(
         })
         .catch(rethrowQueryFailure);
       return true;
-    },
-  });
-}
-
-async function replaceTokenRow(
-  client: PoolClient,
-  workspaceId: string,
-  input: Readonly<{
-    connectionId: string;
-    secretVersionId: string;
-    issued: IssuedOAuth2Tokens;
-  }>,
-): Promise<void> {
-  const db = drizzle(client);
-  await db
-    .delete(tokens)
-    .where(
-      and(
-        eq(tokens.workspaceId, workspaceId),
-        eq(tokens.connectionId, input.connectionId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  await db
-    .insert(tokens)
-    .values({
-      id: input.issued.id,
-      workspaceId,
-      connectionId: input.connectionId,
-      secretVersionId: input.secretVersionId,
-      ...sealedColumns(input.issued),
-      authorizedAt: sql`clock_timestamp()`,
-      issuedAt: sql`clock_timestamp()`,
-      accessTokenExpiresAt: expiryOf(input.issued),
-      renewable: input.issued.renewable,
-    })
-    .catch(rethrowQueryFailure);
-}
-
-/**
- * Consent or a server-to-server start succeeded. It answers for the settings it
- * ran with: replaced or revoked since then, the new tokens are discarded.
- */
-async function authorize(
-  pool: Pool,
-  input: Parameters<OAuth2ConsentDatabase['authorizeOAuth2Connection']>[0],
-): ReturnType<OAuth2ConsentDatabase['authorizeOAuth2Connection']> {
-  return withConnectionTransaction(pool, input.workspaceId, {
-    actorId: undefined,
-    operation: async (client, workspaceId) => {
-      const current = await selectConnection(
-        client,
-        workspaceId,
-        input.connectionId,
-        { lock: true },
-      );
-      if (
-        current === null ||
-        current.status === CONNECTION_STATUS.revoked ||
-        current.currentSecretVersionId !== input.secretVersionId
-      )
-        return null;
-      await replaceTokenRow(client, workspaceId, input);
-      const db = drizzle(client);
-      const [row] = await db
-        .update(connections)
-        .set({
-          status: CONNECTION_STATUS.active,
-          lastErrorCode: null,
-          lastHealthyAt: sql`clock_timestamp()`,
-          healthRevision: sql`${connections.healthRevision}+1`,
-          lastHealthTransitionAt: sql`clock_timestamp()`,
-          lastHealthTransitionSource: 'rotation',
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(
-          and(
-            eq(connections.workspaceId, workspaceId),
-            eq(connections.id, input.connectionId),
-          ),
-        )
-        .returning(connectionFields)
-        .catch(rethrowQueryFailure);
-      if (row === undefined)
-        throw new Error('OAuth2 authorization returned no connection');
-      const metadata = { secretVersionId: input.secretVersionId };
-      await db
-        .insert(connectionEvents)
-        .values({
-          id: generatePersistedId(),
-          workspaceId,
-          connectionId: input.connectionId,
-          eventType: 'connection.oauth2_authorized',
-          actorKind: 'user',
-          actorId: input.actorId,
-          requestId: input.requestId ?? null,
-          traceId: input.traceId ?? null,
-          metadata,
-        })
-        .catch(rethrowQueryFailure);
-      await appendAuditFact(client, {
-        workspaceId,
-        actorId: input.actorId,
-        action: 'connection.oauth2_authorized',
-        targetType: 'connection',
-        targetId: input.connectionId,
-        requestId: input.requestId ?? null,
-        traceId: input.traceId ?? null,
-        metadata,
-      });
-      return withOneOAuth2Fact(client, workspaceId, Object.freeze(row));
     },
   });
 }

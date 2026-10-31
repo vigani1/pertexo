@@ -1,6 +1,7 @@
 import { executePagination } from './pagination/execute.js';
 import {
   type NodeExecutionInvocation,
+  type NodeExecutionRuntime,
   type NodeExecutorRegistration,
   NodeExecutorFailure,
   type ResolvedHttpCredential,
@@ -103,21 +104,11 @@ async function executeWithMaterial(
     ...credentialSensitiveValues(credential.headers),
     ...(invocation.runtime?.callbacks?.sensitiveValues() ?? []),
   ];
-  let marked = false;
   // A paged request and a renewed one dispatch more than once, as one attempt.
   const dispatchRuntime =
     config.pagination === undefined && resolved?.authType !== 'oauth2'
       ? runtime
-      : {
-          ...runtime,
-          beforeDispatch: async (
-            evidence?: Parameters<typeof runtime.beforeDispatch>[0],
-          ) => {
-            if (marked) return;
-            await runtime.beforeDispatch(evidence);
-            marked = true;
-          },
-        };
+      : markingDispatchOnce(runtime);
   let response;
   try {
     const beforeDispatch =
@@ -149,10 +140,7 @@ async function executeWithMaterial(
         dispatch.possiblyDispatched = true;
       },
     };
-    const client =
-      resolved?.authType === 'oauth2'
-        ? oauth2Client(dependencies, context, resolved)
-        : dependencies.httpClient;
+    const client = requestClient(dependencies, context, resolved);
     if (config.pagination !== undefined)
       return httpRequestOutputSchema.parse(
         await executePagination({
@@ -226,6 +214,30 @@ function credentialSensitiveValues(
     const token = /^\S+\s+(\S{8,})$/u.exec(value)?.[1];
     return token === undefined ? [value] : [value, token];
   });
+}
+
+function markingDispatchOnce(runtime: NodeExecutionRuntime) {
+  let marked = false;
+  return {
+    ...runtime,
+    beforeDispatch: async (
+      evidence?: Parameters<typeof runtime.beforeDispatch>[0],
+    ) => {
+      if (marked) return;
+      await runtime.beforeDispatch(evidence);
+      marked = true;
+    },
+  };
+}
+
+function requestClient(
+  dependencies: HttpRequestExecutorDependencies,
+  context: RequestContext,
+  resolved: ResolvedHttpCredential | undefined,
+) {
+  return resolved?.authType === 'oauth2'
+    ? oauth2Client(dependencies, context, resolved)
+    : dependencies.httpClient;
 }
 
 /** A token that renews itself and goes only where its connection allows. */

@@ -6,6 +6,7 @@ import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 import {
   SECURE_HTTP_ERROR_CODE,
   inspectSecureHttpError,
+  type SecureHttpErrorCode,
 } from '../http/secure-error.js';
 import type { SecureHttpClient } from '../http/secure.js';
 
@@ -26,6 +27,13 @@ const CLIENT_REFUSED = new Set([
   'unsupported_grant_type',
 ]);
 const TEMPORARY = new Set(['server_error', 'temporarily_unavailable']);
+/** The service answered, or the address is wrong: another try won't help. */
+const UNUSABLE_FAILURES: ReadonlySet<SecureHttpErrorCode> = new Set([
+  SECURE_HTTP_ERROR_CODE.redirectRejected,
+  SECURE_HTTP_ERROR_CODE.responseTooLarge,
+  SECURE_HTTP_ERROR_CODE.responseEncodingRejected,
+  SECURE_HTTP_ERROR_CODE.invalidRequest,
+]);
 
 export type OAuth2TokenRequest =
   | Readonly<{
@@ -205,19 +213,10 @@ function classifyAnswer(
 
 function classifyFailure(error: unknown): OAuth2TokenAnswer {
   const code = inspectSecureHttpError(error)?.code;
-  switch (code) {
-    case undefined:
-      throw error;
-    case SECURE_HTTP_ERROR_CODE.ssrfBlocked:
-      return Object.freeze({ kind: 'address_blocked' });
-    case SECURE_HTTP_ERROR_CODE.redirectRejected:
-    case SECURE_HTTP_ERROR_CODE.responseTooLarge:
-    case SECURE_HTTP_ERROR_CODE.responseEncodingRejected:
-    case SECURE_HTTP_ERROR_CODE.invalidRequest:
-      return INVALID;
-    default:
-      return UNAVAILABLE;
-  }
+  if (code === undefined) throw error;
+  if (code === SECURE_HTTP_ERROR_CODE.ssrfBlocked)
+    return Object.freeze({ kind: 'address_blocked' });
+  return UNUSABLE_FAILURES.has(code) ? INVALID : UNAVAILABLE;
 }
 
 /**
