@@ -122,7 +122,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       ).toMatchObject({
         limit: null,
         revision: 1,
-        workspaceActiveRunLimit: 5,
+        workspaceActiveRunLimit: 20,
         workspacePolicyState: 'active',
         overflow: 'queue',
       });
@@ -139,13 +139,13 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const exceeded = await api.send('PUT', route, {
         browser: owner,
         headers: { 'idempotency-key': randomUUID() },
-        payload: { limit: 6, expectedRevision: 1 },
+        payload: { limit: 21, expectedRevision: 1 },
       });
       expectProblem(exceeded, 409, 'workflow.concurrency_limit_exceeded');
       expect(
         workflowConcurrencyLimitExceededProblemSchema.parse(exceeded.json())
           .maximum,
-      ).toBe(5);
+      ).toBe(20);
       const headers = { 'idempotency-key': randomUUID() };
       const payload = { limit: 1, expectedRevision: 1 };
       const accepted = await api.send('PUT', route, {
