@@ -40,7 +40,7 @@ export function readVariableUsage(
   after: string | null,
   signal: AbortSignal,
 ) {
-  const query = new URLSearchParams({ name, limit: '25' });
+  const query = new URLSearchParams({ name, limit: '100' });
   if (after !== null) query.set('after', after);
   return scope.apiClient.request({
     path: `${path(scope)}/usage?${query}`,

@@ -24,6 +24,11 @@ export type VariableUsagePage = Omit<
   'nextCursor'
 > &
   Readonly<{ next: WorkspaceVariableUsageCursor | null }>;
+/** What the page found, before counting how far through the workflows it got. */
+export type VariableUsageScan = Omit<
+  VariableUsagePage,
+  'checkedWorkflows' | 'totalWorkflows'
+>;
 
 export class WorkspaceVariablesConflictError extends Error {
   override readonly name = 'WorkspaceVariablesConflictError';

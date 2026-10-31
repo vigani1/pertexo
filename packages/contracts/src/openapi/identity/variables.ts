@@ -87,7 +87,7 @@ export const variableContractPaths = {
       ],
       responses: {
         '200': jsonResponse(
-          'One bounded page; follow the cursor before declaring a name unused',
+          'One bounded page, spanning workflows while its budgets last; follow the cursor to the end before declaring a name unused',
           'WorkspaceVariableUsageResponse',
         ),
         ...errors,

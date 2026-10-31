@@ -9,10 +9,16 @@ import {
   WorkspaceVariableUsageChangedError,
   type VariableUsageInput,
   type VariableUsagePage,
+  type VariableUsageScan,
 } from './contract.js';
 
 const MAX_SOURCES_PER_PAGE = 100;
 const MAX_SOURCE_BYTES_PER_PAGE = 65_536;
+/** A workflow with no expressions costs a query and a parse, but no source budget. */
+const MAX_WORKFLOWS_PER_PAGE = 25;
+
+/** What this page has used so far, across its workflows. */
+type UsageSpending = { sources: number; bytes: number };
 
 type UsageWorkflow = Readonly<{
   id: string;
@@ -25,15 +31,56 @@ type UsageWorkflow = Readonly<{
   hasMore: boolean;
 }>;
 
+type UsageCursor = NonNullable<VariableUsageInput['after']>;
+
 /**
- * One bounded page of one workflow's references to a name. Expression analysis
- * costs real time, so a page stops at its source and byte budgets, and resumes
- * by position only while the stamp shows the workflow's graphs are unchanged.
+ * One bounded page of references to a name. It reads one workflow at a time, so
+ * only one graph is in memory, and stops at the page's budgets, its item limit
+ * or its workflow cap, whichever comes first.
+ */
+export async function walkVariableUsage(
+  input: Pick<VariableUsageInput, 'name' | 'limit' | 'after'>,
+  readWorkflowAfter: (
+    after: UsageCursor | undefined,
+  ) => Promise<UsageWorkflow | undefined>,
+): Promise<VariableUsageScan> {
+  const spent: UsageSpending = { sources: 0, bytes: 0 };
+  const items: VariableUsageScan['items'][number][] = [];
+  let incomplete = false;
+  let after = input.after;
+  for (let read = 1; ; read++) {
+    const workflow = await readWorkflowAfter(after);
+    if (workflow === undefined) return { items, incomplete, next: null };
+    const scan = scanVariableUsage(
+      workflow,
+      {
+        name: input.name,
+        limit: input.limit - items.length,
+        ...(after === undefined ? {} : { after }),
+      },
+      spent,
+    );
+    items.push(...scan.items);
+    incomplete ||= scan.incomplete;
+    const { next } = scan;
+    const passedWorkflow = next?.workflowId === workflow.id && next.offset === 0;
+    if (next === null || !passedWorkflow || read === MAX_WORKFLOWS_PER_PAGE)
+      return { items, incomplete, next };
+    after = next;
+  }
+}
+
+/**
+ * One workflow's references to a name. Expression analysis costs real time, so
+ * this stops at the page's budgets, and a later page resumes by position only
+ * while the stamp shows the workflow's graphs are unchanged. A page's first
+ * source always runs, so a source over the byte budget can't stall the walk.
  */
 export function scanVariableUsage(
   workflow: UsageWorkflow,
   input: Pick<VariableUsageInput, 'name' | 'limit' | 'after'>,
-): VariableUsagePage {
+  spent: UsageSpending = { sources: 0, bytes: 0 },
+): VariableUsageScan {
   const stamp = usageDigest([workflow.draftRevision, workflow.versionId]);
   const offset = input.after?.offset ?? 0;
   if (
@@ -42,23 +89,27 @@ export function scanVariableUsage(
   )
     throw new WorkspaceVariableUsageChangedError();
   const items: VariableUsagePage['items'][number][] = [];
-  let incomplete = false,
-    scanned = 0,
-    bytes = 0;
+  let incomplete = false;
   for (const { stage, ordinal, entry } of stagedSources(workflow)) {
     if (ordinal < offset) continue;
     const budgetSpent =
-      items.length >= input.limit ||
-      scanned >= MAX_SOURCES_PER_PAGE ||
-      (scanned > 0 && bytes + entry.costBytes > MAX_SOURCE_BYTES_PER_PAGE);
+      spent.sources > 0 &&
+      (items.length >= input.limit ||
+        spent.sources >= MAX_SOURCES_PER_PAGE ||
+        spent.bytes + entry.costBytes > MAX_SOURCE_BYTES_PER_PAGE);
     if (budgetSpent)
       return {
         items,
         incomplete,
-        next: { workflowId: workflow.id, offset: ordinal, stamp },
+        // Offset 0 means a workflow was passed, so one not yet started resumes
+        // from the workflow before it. Spending means there was one.
+        next:
+          ordinal === 0
+            ? (input.after ?? null)
+            : { workflowId: workflow.id, offset: ordinal, stamp },
       };
-    scanned++;
-    bytes += entry.costBytes;
+    spent.sources++;
+    spent.bytes += entry.costBytes;
     const inspected = inspectWorkflowVariableSource(entry);
     incomplete ||= inspected.incomplete;
     const { reference } = inspected;
