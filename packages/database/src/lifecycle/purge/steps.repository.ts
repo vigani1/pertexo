@@ -29,6 +29,11 @@ import {
   nodeAttemptConnectionDispatches,
   connectionEvents,
 } from '../../schema/connections.js';
+import {
+  connectionOAuth2Authorizations,
+  connectionOAuth2Clients,
+  connectionOAuth2Tokens,
+} from '../../schema/oauth2-connections.js';
 import { noticeMailItems, noticeMailBatches } from '../../schema/inbox/mail.js';
 import {
   noticeSubscriptions,
@@ -352,6 +357,11 @@ export const PURGE_STEPS: readonly PurgeStep[] = Object.freeze([
   deleteRows(workflowVersions),
   deleteRows(workflowTemplateOrigins),
   deleteRows(workflows),
+  ...[
+    connectionOAuth2Authorizations,
+    connectionOAuth2Tokens,
+    connectionOAuth2Clients,
+  ].map(deleteRows),
   {
     // A connection points at its current secret, so the two go together.
     name: 'connection_secret_versions',
