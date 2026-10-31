@@ -21,6 +21,9 @@
       "path": "./packages/contracts/tsconfig.json"
     },
     {
+      "path": "./packages/core/tsconfig.json"
+    },
+    {
       "path": "./packages/database/tsconfig.json"
     },
     {

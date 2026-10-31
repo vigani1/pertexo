@@ -36,6 +36,15 @@ export function validateProjectReferences(workspaces, rootReferences) {
     workspaces.map((workspace) => workspace.directory),
   );
   for (const workspace of workspaces) {
+    if (
+      workspace.directory.startsWith('packages/') &&
+      ['dependencies', 'devDependencies'].some((kind) =>
+        Object.hasOwn(workspace[kind] ?? {}, '@pertexo/core'),
+      )
+    )
+      errors.push(
+        `${workspace.name}: only applications depend on core (apps -> core -> database)`,
+      );
     const dependencies = Object.entries(workspace.dependencies ?? {}).filter(
       ([name, version]) => byName.has(name) || version.startsWith('workspace:'),
     );
@@ -102,6 +111,7 @@ export async function inspectProjectReferences(directory = root) {
         name: manifest.name,
         directory: workspaceDirectory,
         dependencies: manifest.dependencies,
+        devDependencies: manifest.devDependencies,
         references: config.references ?? [],
       });
     }

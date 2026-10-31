@@ -475,6 +475,8 @@ importers:
         specifier: 8.20.0
         version: 8.20.0
 
+  packages/core: {}
+
   packages/database:
     dependencies:
       '@opentelemetry/api':

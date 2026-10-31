@@ -86,6 +86,7 @@ const readablePackages = [
   'templates',
   'contracts',
   'database',
+  'core',
   'artifact-store',
   'queue',
   'observability',
@@ -260,13 +261,16 @@ export default tseslint.config(
                 '@pertexo/queue/*',
                 '@pertexo/worker',
                 '@pertexo/worker/*',
+                '@pertexo/core',
+                '@pertexo/core/*',
+                '**/core/src/**',
                 '@pertexo/execution',
                 '@pertexo/execution/*',
                 'bullmq',
                 'ioredis',
               ],
               message:
-                'The database package is a server persistence leaf and cannot depend on actions, frameworks, queues, observability, or applications.',
+                'The database package is a server persistence leaf and cannot depend on core, actions, frameworks, queues, observability, or applications.',
             },
           ],
         },
@@ -484,6 +488,64 @@ export default tseslint.config(
               ],
               message:
                 'Core nodes own pure definitions and executors, not application infrastructure or providers.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/database/test/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@pertexo/core', '@pertexo/core/*', '**/core/src/**'],
+              message:
+                'Core depends on the database, never the reverse. A test that needs a core flow lives in packages/core/test.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/core/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@pertexo/database',
+              message:
+                'Import a database entry point, such as @pertexo/database/primitives.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@pertexo/contracts', '@pertexo/contracts/*'],
+              allowTypeImports: true,
+              message:
+                'Core may use transport read-model types, never their runtime schemas or rules. Input is validated at the route.',
+            },
+            {
+              group: [
+                '**/apps/**',
+                '@nestjs/*',
+                '@pertexo/api',
+                '@pertexo/api/*',
+                '@pertexo/worker',
+                '@pertexo/worker/*',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
+                'bullmq',
+                'ioredis',
+              ],
+              message:
+                'Core holds areas: flows, queries and decisions. Frameworks, queues and applications stay outside it.',
             },
           ],
         },

@@ -224,3 +224,49 @@ test('Code runner can use only the credential-free SDK workspace dependency', ()
     [],
   );
 });
+
+test('keeps the direction apps -> core -> database', () => {
+  const imports = (file, specifier) =>
+    validateModuleImports({ [file]: `import '${specifier}';` });
+  const database = 'packages/database/src/runs/advance.ts';
+  for (const specifier of ['@pertexo/core/server', '@pertexo/core'])
+    assert.match(
+      imports(database, specifier).join('\n'),
+      /only applications depend on core/u,
+    );
+  assert.match(
+    validateModuleImports({
+      [database]: "import type { A } from '@pertexo/core/server';",
+    }).join('\n'),
+    /only applications depend on core/u,
+  );
+  assert.match(
+    imports('packages/execution/src/a.ts', '@pertexo/core/server').join('\n'),
+    /only applications depend on core/u,
+  );
+  assert.deepEqual(imports('apps/api/src/a.ts', '@pertexo/core/server'), []);
+  for (const entry of ['schema', 'primitives']) {
+    const specifier = `@pertexo/database/${entry}`;
+    assert.match(
+      imports('apps/worker/src/a.ts', specifier).join('\n'),
+      /is for core/u,
+    );
+    assert.deepEqual(imports('packages/core/src/a/b.ts', specifier), []);
+  }
+});
+
+test('core areas meet at their index', () => {
+  const area = (specifier) =>
+    validateModuleImports({
+      'packages/core/src/runs/start.ts': `import { a } from '${specifier}';`,
+      'packages/core/src/runs/own.ts': 'export const a = 1;',
+      'packages/core/src/variables/index.ts': 'export const a = 1;',
+      'packages/core/src/variables/private.ts': 'export const a = 1;',
+    });
+  assert.match(
+    area('../variables/private.js').join('\n'),
+    /core areas meet at their index/u,
+  );
+  assert.deepEqual(area('../variables/index.js'), []);
+  assert.deepEqual(area('./own.js'), []);
+});

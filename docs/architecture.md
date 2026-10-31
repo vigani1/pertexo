@@ -20,6 +20,7 @@ remain in `docs/adr/`, with supersession noted where their decisions changed.
 | `workflow-model`  | Graph and JSON contracts, portable authoring, expressions and validation                                           |
 | `workflow-engine` | Pure execution decisions and the checkpoint shape                                                                  |
 | `execution`       | Run advancement orchestration, initial checkpoints, persisted projection verification and attempt input projection |
+| `core`            | Whole product areas, each with its flows, queries and decisions; areas move in from `database` one at a time       |
 | `database`        | Drizzle tables, migrations, transactions, repositories, reads, command persistence, admission and outbox           |
 | `contracts`       | Zod HTTP request/response/problem schemas and server-side OpenAPI generation                                       |
 | `node-sdk`        | Node definitions, config/port contracts and executor interfaces                                                    |

@@ -141,8 +141,8 @@ jobs:
         include:
           - group: core
             filter: >-
-              --filter @pertexo/contracts --filter @pertexo/execution --filter
-              @pertexo/integrations --filter @pertexo/node-catalog --filter
+              --filter @pertexo/contracts --filter @pertexo/core --filter
+              @pertexo/execution --filter @pertexo/integrations --filter @pertexo/node-catalog --filter
               @pertexo/node-sdk --filter @pertexo/nodes-core --filter
               @pertexo/observability --filter @pertexo/queue --filter
               @pertexo/rate-limit --filter @pertexo/templates --filter
@@ -220,6 +220,7 @@ jobs:
           EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true \
             pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
             test/authoring/organization/
+          pnpm --filter @pertexo/core exec vitest run --config vitest.integration.config.ts
       - name: Service integration tests
         if: matrix.group == 'services'
         env:

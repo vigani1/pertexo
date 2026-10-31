@@ -31,6 +31,30 @@ test('accepts dependency-aware references and ignores external dependencies', ()
   assert.deepEqual(validateProjectReferences(fixture(), rootReferences), []);
 });
 
+test('only applications may depend on core, even for tests', () => {
+  const core = {
+    name: '@pertexo/core',
+    directory: 'packages/core',
+    dependencies: { '@repo/model': 'workspace:*' },
+    references: [{ path: '../model/tsconfig.json' }],
+  };
+  const roots = [...rootReferences, { path: './packages/core/tsconfig.json' }];
+  for (const kind of ['dependencies', 'devDependencies']) {
+    const [model, api] = fixture();
+    model[kind] = { '@pertexo/core': 'workspace:*' };
+    model.references =
+      kind === 'dependencies' ? [{ path: '../core/tsconfig.json' }] : [];
+    assert.match(
+      validateProjectReferences([model, api, core], roots).join('\n'),
+      /only applications depend on core/u,
+    );
+  }
+  const [model, api] = fixture();
+  api.dependencies['@pertexo/core'] = 'workspace:*';
+  api.references.push({ path: '../../packages/core/tsconfig.json' });
+  assert.deepEqual(validateProjectReferences([model, api, core], roots), []);
+});
+
 test('rejects a workspace omitted from the root build', () => {
   assert.match(
     validateProjectReferences(fixture(), rootReferences.slice(1)).join('\n'),

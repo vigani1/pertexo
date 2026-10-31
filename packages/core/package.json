@@ -1,0 +1,18 @@
+{
+  "name": "@pertexo/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --exclude '**/*.integration.test.ts'",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  }
+}
