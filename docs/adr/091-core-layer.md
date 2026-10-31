@@ -24,15 +24,27 @@ lint refuse the reverse. `execution` folds into `core`, so run actions live ther
 
 **What stays in `database` for good:** tables, migrations, transaction helpers, row
 security setup, and the shared helpers for outbox, audit and idempotency. Authority
-and folder scope are product rules and go to `core`. The flows inside `platform`
-move too: mail and keys to `secrets`, the rest to `core`. The final state is that
-applications import only `@pertexo/database/platform`, for pools and startup.
+and folder scope are product rules and go to `core/src/shared/`. The flows inside
+`platform` leave later: they stay in `platform` through the one-shot move, then mail
+and keys go to `secrets` and the rest to `core`. `secrets` is a new package that
+doesn't exist yet, and creating it is a step of its own, at that point. The final
+state is that applications import only `@pertexo/database/platform`, for pools and
+startup.
+
+**One authority helper.** A core flow opens its transaction through
+`withWorkspaceAccess` in `core/src/shared/`, which installs the workspace scope,
+checks authority inside the transaction, honours the signal and hands the flow the
+role it found.
+
+**Named status lists.** The workspace statuses an action accepts are a constant from
+`workflow-model` (`ACTIVE_`, `BROWSABLE_` or `UNPURGED_WORKSPACE_STATUSES`), and a
+flow names its list once, at the helper, so two reads can't disagree.
 
 **Entry points (this replaces §7's rule for these two packages):**
 
 | Entry point | Who may use it | Holds |
 |---|---|---|
-| `@pertexo/core/<area>`, Node only | Applications | One area's door, so a process loads only what it uses and the imports record who uses what |
+| `@pertexo/core/<area>`, Node only | Applications | One area's door, so the imports record who uses what |
 | `@pertexo/core/testing` | Tests | Test flows, which production must not be able to load |
 | `@pertexo/database/schema`, `/primitives` | `core` | Tables and helpers; `/primitives` shrinks to the list above once the areas have moved |
 | `@pertexo/database/testing` | Tests | Fixtures |
@@ -40,8 +52,9 @@ applications import only `@pertexo/database/platform`, for pools and startup.
 
 `core` has no root entry and no `/server`. Other packages keep the rule of at most
 `@pertexo/<name>` and `@pertexo/<name>/server`. A check refuses a `/testing` door in
-any `src`, a package importing itself, an application's tests importing `/schema`
-or `/primitives`, and a core area reaching past another area's `index.ts`.
+any `src`, a package importing itself, an application's tests importing `/schema` or
+`/primitives` or reaching the database's code by relative path, and a core area
+reaching into another area except as the rule below allows.
 
 **Move every area in one mechanical PR, then one pass per area in place.** Area by
 area has no order that works. Counting only runtime imports, the 17 moving areas
@@ -54,15 +67,36 @@ and `platform` form one dependency cycle, so each step leaves code behind:
 
 Either way `/primitives` grows past 100 temporary exports for most of the project,
 and areas are split across two packages meanwhile. The one-shot move costs less:
-`git mv` keeps 2,407 relative imports valid and a codemod rewrites 1,971. What stays
-has only 23 imports into what moves (19 type-only, 4 runtime) to cut first.
+after `git mv` 2,407 relative imports still resolve and a codemod rewrites 1,971.
+What stays has only 23 imports into what moves (19 type-only, 4 runtime) to cut
+first.
+
+**The move leaves deep imports alone.** Of those 2,407, 688 reach into another moving
+area (524 at runtime), and none goes through an `index.ts`. Measured against the real
+check on a simulated tree:
+
+| Cross-area imports after the move | Area rule errors | Runtime cycles |
+|---|---|---|
+| Left as they are | 688 | 0 |
+| All rewritten through `<area>/index.js` | 0 | 304 |
+
+15 of the 17 areas are one strongly connected group, so barrels turn its area cycle
+into file cycles and risk startup failures from uninitialized bindings. So the area
+rule is off for areas not yet passed, through an explicit list in the check that can
+only shrink. A passed area's `index.ts` names its public files, and other areas
+import those files directly, so no barrel edges appear. The list and this form of the
+rule arrive with the move; until then `variables` and `shared` meet at `index.ts`.
 
 ## Consequences
 
+- Until that group is broken up, loading any area in it loads them all, so an area's
+  entry point doesn't narrow what a process loads. Breaking it up is real work, not
+  yet priced; it belongs in the re-estimate after the first passes.
 - One very large PR, safe only because it changes no logic. Branches in flight land
   first or are replayed.
 - Until that PR, `variables` is the only area in `core`. What other database areas
   still call stays in `database/src/variables`, and `/primitives` carries a few
   exports marked as temporary.
 - Each area's pass happens in place, with no package crossing, and no check of what
-  was left behind is needed.
+  was left behind is needed. `platform`'s flows are the one crossing, in their own
+  step.
