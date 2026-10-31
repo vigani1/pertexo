@@ -9,7 +9,7 @@ import {
 } from '../../schema/authoring/workflows.js';
 import { workspaces } from '../../schema/foundation.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
-import { lockWorkspaceVariableNames } from '../../variables/settings.queries.js';
+import { lockWorkspaceVariableNames } from '../../variables/head.queries.js';
 import { recordPromotedPublication } from '../promotion/provenance.repository.js';
 import { PublicationReviewError } from '../reviews/errors.js';
 
