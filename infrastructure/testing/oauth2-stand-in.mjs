@@ -8,12 +8,13 @@ import { createServer } from 'node:http';
  * A test can change a client's behavior later, which is how a healthy grant
  * starts failing.
  */
-export const OAUTH2_STAND_IN_BEHAVIORS = Object.freeze([
+const OAUTH2_STAND_IN_BEHAVIORS = Object.freeze([
   'rotating-reuse',
   'rotating',
   'non-rotating',
   'no-refresh',
   'no-expiry',
+  'short-lived',
   'delayed',
   '503',
   '429',
@@ -153,9 +154,12 @@ export async function startOAuth2StandIn({
         tokenAnswers: 0,
         apiCalls: 0,
         api401Sent: false,
-        expiresIn: 3_600,
+        // Always inside the 60 s renewal window, so each use really asks the service.
+        expiresIn: behaviorOfClient(clientId) === 'short-lived' ? 30 : 3_600,
         holds: [],
         answers: [],
+        acceptsAnyRefresh: false,
+        retryAfterSeconds: OAUTH2_STAND_IN_RETRY_AFTER_SECONDS,
       };
       clients.set(clientId, state);
     }
@@ -222,7 +226,7 @@ export async function startOAuth2StandIn({
     return body;
   };
 
-  const failureAnswer = (behavior, response) => {
+  const failureAnswer = (behavior, response, retryAfterSeconds) => {
     if (behavior === '503') {
       json(response, 503, { message: 'unavailable' });
       return true;
@@ -232,7 +236,7 @@ export async function startOAuth2StandIn({
         response,
         429,
         { message: 'slow down' },
-        { 'retry-after': String(OAUTH2_STAND_IN_RETRY_AFTER_SECONDS) },
+        { 'retry-after': String(retryAfterSeconds) },
       );
       return true;
     }
@@ -283,18 +287,19 @@ export async function startOAuth2StandIn({
     return false;
   };
 
-  const answerToken = (clientId, form, response) => {
+  const answerToken = (record, clientId, form, response) => {
     const state = clientState(clientId);
     state.tokenAnswers += 1;
     // A scripted answer settles this one request, whatever the client does next.
     const scripted = state.answers.shift();
     const behavior = scripted ?? state.behavior;
-    if (failureAnswer(behavior, response)) return;
+    if (failureAnswer(behavior, response, state.retryAfterSeconds)) return;
     const grantType = form.get('grant_type');
     if (grantType === 'refresh_token') {
       const presented = form.get('refresh_token');
       const reused = state.usedRefresh.has(presented);
-      if (state.revoked || reused || presented !== state.currentRefresh) {
+      const stale = reused || presented !== state.currentRefresh;
+      if (state.revoked || (stale && !state.acceptsAnyRefresh)) {
         if (reused && state.behavior === 'rotating-reuse')
           revokeFamily(clientId);
         json(response, 400, {
@@ -330,7 +335,13 @@ export async function startOAuth2StandIn({
       state.revoked = false;
       state.usedRefresh.clear();
     }
-    json(response, 200, tokenBody(clientId, grantType));
+    const body = tokenBody(clientId, grantType);
+    // What this request was given, so a test can follow a token to where it is used.
+    record.issued = {
+      accessToken: body.access_token,
+      refreshToken: body.refresh_token,
+    };
+    json(response, 200, body);
   };
 
   const handleToken = async (record, response) => {
@@ -365,7 +376,7 @@ export async function startOAuth2StandIn({
       await new Promise((resolve) => {
         setTimeout(resolve, DELAYED_MS);
       });
-    answerToken(clientId, form, response);
+    answerToken(record, clientId, form, response);
   };
 
   const handleApi = (record, response, url) => {
@@ -557,6 +568,13 @@ export async function startOAuth2StandIn({
     },
     setExpiresIn(clientId, seconds) {
       clientState(clientId).expiresIn = seconds;
+    },
+    setRetryAfter(clientId, seconds) {
+      clientState(clientId).retryAfterSeconds = seconds;
+    },
+    /** Answers even a refresh token it has replaced: a slow service mid-rotation. */
+    acceptAnyRefresh(clientId) {
+      clientState(clientId).acceptsAnyRefresh = true;
     },
     /** The next token requests answer this way, one each, before the behavior. */
     scriptAnswers(clientId, behaviors) {

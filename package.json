@@ -21,6 +21,7 @@
           "infrastructure/testing/curated-template-envelope-context.d.mts",
           "infrastructure/testing/curated-template-owned-fixture.d.mts",
           "infrastructure/testing/connection-health-slack-transport.d.mts",
+          "infrastructure/testing/oauth2-stand-in.d.mts",
           "infrastructure/single-server/generate-secrets.mjs",
           "infrastructure/single-server/encryption/verify.mjs",
           "infrastructure/single-server/storage/prepare.mjs",

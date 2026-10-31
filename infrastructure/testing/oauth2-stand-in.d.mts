@@ -1,10 +1,9 @@
-export const OAUTH2_STAND_IN_BEHAVIORS: readonly string[];
 export const OAUTH2_STAND_IN_RESPONSE_LIMIT_BYTES: number;
 export const OAUTH2_STAND_IN_RETRY_AFTER_SECONDS: number;
 export const OAUTH2_STAND_IN_PAGES: number;
 export const OAUTH2_STAND_IN_DESCRIPTION: string;
 
-export type OAuth2StandInRequest = {
+export interface OAuth2StandInRequest {
   at: number;
   method: string;
   path: string;
@@ -19,7 +18,8 @@ export type OAuth2StandInRequest = {
     clientSecret: string;
   };
   form?: Record<string, string>;
-};
+  issued?: { accessToken?: string; refreshToken?: string };
+}
 
 export type OAuth2StandInHold = Readonly<{
   arrived: Promise<void>;
@@ -36,6 +36,8 @@ export type OAuth2StandIn = Readonly<{
   expectSecret: (clientId: string, secret: string) => void;
   setBehavior: (clientId: string, behavior: string) => void;
   setExpiresIn: (clientId: string, seconds: number) => void;
+  setRetryAfter: (clientId: string, seconds: number) => void;
+  acceptAnyRefresh: (clientId: string) => void;
   scriptAnswers: (clientId: string, behaviors: readonly string[]) => void;
   holdNextToken: (clientId: string) => OAuth2StandInHold;
   revoke: (clientId: string) => void;
