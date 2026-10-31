@@ -173,15 +173,7 @@ export function PublishDialog({
                     cannot include later edits.
                   </p>
                 ) : (
-                  <>
-                    <RetiredWebhooks
-                      names={summary?.retiredWebhookNames ?? []}
-                    />
-                    <WhatHappens
-                      summary={summary}
-                      versionLabel={versionLabel}
-                    />
-                  </>
+                  <WhatHappens summary={summary} versionLabel={versionLabel} />
                 )}
                 <p className="flex items-start gap-2 text-xs text-subtle-foreground lg:hidden">
                   <MonitorIcon aria-hidden="true" className="mt-px size-3.5" />
@@ -277,19 +269,22 @@ function WhatHappens({
 }: Readonly<{ summary: PublishSummary | undefined; versionLabel: string }>) {
   const triggers = summary?.triggerNames ?? [];
   return (
-    <section aria-label="What happens next">
-      <h3 className="text-sm font-semibold">What happens</h3>
-      <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-sm text-muted-foreground">
-        <li>
-          {triggers.length === 0
-            ? `Runs you start after this use ${versionLabel}.`
-            : `${joinNames(triggers)} ${triggers.length === 1 ? 'starts' : 'start'} ${versionLabel} once it’s live.`}
-        </li>
-        <li>
-          Runs already in progress finish on the version they started with.
-        </li>
-      </ul>
-    </section>
+    <>
+      <RetiredWebhooks names={summary?.retiredWebhookNames ?? []} />
+      <section aria-label="What happens next">
+        <h3 className="text-sm font-semibold">What happens</h3>
+        <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-sm text-muted-foreground">
+          <li>
+            {triggers.length === 0
+              ? `Runs you start after this use ${versionLabel}.`
+              : `${joinNames(triggers)} ${triggers.length === 1 ? 'starts' : 'start'} ${versionLabel} once it’s live.`}
+          </li>
+          <li>
+            Runs already in progress finish on the version they started with.
+          </li>
+        </ul>
+      </section>
+    </>
   );
 }
 
