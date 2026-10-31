@@ -92,6 +92,36 @@ describe('worker resource monitor', () => {
     });
   });
 
+  // A worker can stop right after it starts, before any sample has been taken.
+  it('reports a stall that comes before the first sample', async () => {
+    const warn = vi.fn();
+    const monitor = new WorkerResourceMonitor(
+      { ...config, sampleIntervalMillis: 50 },
+      new WorkerDrainState(),
+      {
+        debug: vi.fn(),
+        error: vi.fn(),
+        fatal: vi.fn(),
+        info: vi.fn(),
+        trace: vi.fn(),
+        warn,
+      },
+      { sample: () => ({ eventLoopDelayP99Millis: 1, rssBytes: 1 }) },
+    );
+    monitor.onApplicationBootstrap();
+
+    const stalledUntil = performance.now() + 400;
+    while (performance.now() < stalledUntil);
+    await vi.waitFor(() => {
+      expect(warn).toHaveBeenCalledWith(
+        'worker.event_loop_delayed',
+        expect.objectContaining({ sampleLateByMillis: expect.any(Number) }),
+      );
+    });
+
+    monitor.beforeApplicationShutdown();
+  });
+
   it('reports a slow event loop again after it recovered', () => {
     const warn = vi.fn();
     const samples = [

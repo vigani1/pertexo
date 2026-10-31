@@ -60,6 +60,8 @@ export class WorkerResourceMonitor
   public onApplicationBootstrap(): void {
     if (this.stopped || this.timer !== undefined) return;
     this.eventLoopDelay.enable();
+    // From here, not the first sample: a worker can stop before it has taken one.
+    this.lastSampledAt = performance.now();
     this.timer = setInterval(() => {
       this.sample();
     }, this.config.sampleIntervalMillis);
