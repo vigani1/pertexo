@@ -290,9 +290,10 @@ it('leaves an address retired when the published version no longer has its step'
   await olderDatabase(async (context) => {
     const { admin, upgrade } = context;
     const { workflowId, versions } = await workflowWithVersions(context, 2);
+    const [v1] = versions as [string, string];
     const oldTrigger = await webhookTrigger(context, {
       workflowId,
-      versionId: versions[0] as string,
+      versionId: v1,
       status: 'disabled',
     });
     const removed = await legacyEndpoint(context, {

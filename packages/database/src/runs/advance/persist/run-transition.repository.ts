@@ -171,17 +171,11 @@ export async function persistCoordinatorRunTransition(
       phase: 'committed',
       alreadyDeferred: row.human_resume_deferred ?? false,
     });
-  // Read from the plan first: the full check is too costly for a run with no timer,
-  // such as a large loop of Calls advancing many times.
-  if (
-    plan.checkpoint.runStatus === 'waiting' &&
-    row.timed_wait_started_at === null &&
-    plan.checkpoint.invocations.some(
-      ({ status, waitKind }) =>
-        status === 'waiting' && waitKind === 'node_wait',
-    )
-  )
-    await releaseSlotDuringTimedWait(client, { workspaceId, runId });
+  await releaseSlotDuringTimedWait(
+    client,
+    { workspaceId, runId },
+    { checkpoint: plan.checkpoint, row },
+  );
   if (row.status === 'queued' && plan.checkpoint.runStatus !== 'queued')
     await wakeErrorWorkflowsForCapacity(client, workspaceId);
   await persistCallCompletion(client, input);
