@@ -2,6 +2,7 @@ import { acquireDatabasePool } from './platform/pool/runtime.js';
 import type { DatabaseRuntime } from './platform/pool/runtime.js';
 
 import type { DatabaseConfig } from './config.js';
+import type { InstanceCapacity } from './runs/capacity/instance-limits.js';
 import {
   checkDatabaseReadiness,
   checkDatabaseWrites,
@@ -20,6 +21,8 @@ export interface WorkspaceDatabase {
     options?: WorkspaceTransactionOptions,
   ): Promise<T>;
   checkReadiness(): Promise<DatabaseReadiness>;
+  /** Writes the operator's limits, for new and existing workspaces alike. */
+  applyInstanceCapacity(limits: InstanceCapacity): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -40,6 +43,13 @@ export function createWorkspaceDatabase(
       const readiness = await checkDatabaseReadiness(pool);
       await checkDatabaseWrites(pool);
       return readiness;
+    },
+    applyInstanceCapacity: async (limits: InstanceCapacity) => {
+      await pool.query('select app.apply_instance_capacity($1,$2,$3)', [
+        limits.activeRunLimit,
+        limits.queuedRunLimit,
+        limits.artifactCountLimit,
+      ]);
     },
     close: (): Promise<void> => lease.close(),
   });

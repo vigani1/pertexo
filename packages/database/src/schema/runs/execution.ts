@@ -69,6 +69,12 @@ export const workflowRuns = appSchema.table(
       mode: 'date',
     }),
     remainingExecutionMs: integer('remaining_execution_ms'),
+    // Waiting only on timers, so it holds no workspace slot. Unlike a human wait the
+    // clock keeps running and it keeps its place in the workflow's own limit.
+    timedWaitStartedAt: timestamp('timed_wait_started_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     triggerType: varchar('trigger_type', { length: 32 })
       .$type<AcceptanceInput['triggerType']>()
       .notNull(),

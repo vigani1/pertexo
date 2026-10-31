@@ -1,3 +1,4 @@
+import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/database/platform';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 
 import type { ArtifactStoreConfig } from '@pertexo/artifact-store';
@@ -12,6 +13,9 @@ import {
 
 export function artifactApiConfig(): ApiConfig {
   return {
+    capacity: DEFAULT_INSTANCE_LIMITS,
+    webhookEndpointBurstLimit:
+      DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
     codeSettings: DEFAULT_CODE_SETTINGS,
     artifacts: artifactStoreConfig(),
     database: artifactTransferDatabaseConfig,

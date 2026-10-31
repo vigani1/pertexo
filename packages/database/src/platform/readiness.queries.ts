@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0063_webhook_repeats_need_a_key.sql';
+export const EXPECTED_MIGRATION_HEAD = '0064_instance_capacity.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

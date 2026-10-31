@@ -131,7 +131,7 @@ export const webhookEndpointIngressLimits = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'webhook_endpoint_ingress_limits_count_valid',
-      sql`((request_count >= 1) AND (request_count <= 60))`,
+      sql`(request_count >= 1)`,
     ),
     foreignKey({
       name: 'webhook_endpoint_ingress_limits_endpoint_fk',

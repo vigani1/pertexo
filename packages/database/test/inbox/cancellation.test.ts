@@ -29,6 +29,7 @@ const config = {
 function duplicateDatabase(): WorkspaceDatabase {
   return {
     checkReadiness: vi.fn(),
+    applyInstanceCapacity: vi.fn(),
     close: databaseMocks.close,
     withWorkspace: databaseMocks.withWorkspace,
   };
@@ -113,6 +114,7 @@ function interruptibleDatabase() {
     completionUpdate,
     database: {
       checkReadiness: vi.fn(),
+      applyInstanceCapacity: vi.fn(),
       close: databaseMocks.close,
       withWorkspace,
     } as unknown as WorkspaceDatabase,

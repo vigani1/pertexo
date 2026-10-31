@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
+import { z } from 'zod';
+
 import {
   createTelemetryLifecycle,
   classifyProcessError,
@@ -109,6 +111,16 @@ export async function bootstrapApi(
   }
 }
 
+/** Names what to fix in the environment; a setting's value may be secret, so never that. */
+function invalidSettings(error: unknown) {
+  if (!(error instanceof z.ZodError)) return {};
+  return {
+    invalidSettings: [
+      ...new Set(error.issues.map(({ path }) => path.join('.'))),
+    ],
+  };
+}
+
 function isMainModule(): boolean {
   return (
     process.argv[1] !== undefined &&
@@ -123,6 +135,7 @@ if (isMainModule()) {
         event: 'api.process_failed',
         errorType: classifyProcessError(error),
         level: 'fatal',
+        ...invalidSettings(error),
       })}\n`,
     );
     process.exitCode = 1;

@@ -11,6 +11,10 @@ export type {
 } from './pool/runtime.js';
 export { generatePersistedId } from './persisted-id.js';
 export {
+  DEFAULT_INSTANCE_LIMITS,
+  type InstanceCapacity,
+} from '../runs/capacity/instance-limits.js';
+export {
   IdempotencyConflictError,
   credentialCommandScope,
 } from './idempotency/repository.js';

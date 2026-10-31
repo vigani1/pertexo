@@ -8,6 +8,8 @@ import {
   type CallbackKeyConfig,
 } from '@pertexo/integrations/server';
 import { parseCodeSettings, type CodeSettings } from '@pertexo/node-sdk';
+import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/database/platform';
+import type { InstanceCapacity } from '@pertexo/database/platform';
 import { isIP } from 'node:net';
 import {
   parseConnectionEncryptionConfig,
@@ -55,7 +57,27 @@ const trustedProxyCidrsSchema = z
       .min(1),
   );
 
+/** A whole number within what the database accepts, or startup stops and names the variable. */
+const instanceLimit = (fallback: number, maximum: number) =>
+  z.coerce.number().int().min(1).max(maximum).default(fallback);
+
 const apiEnvironmentSchema = databaseClientEnvironmentSchema.extend({
+  WORKSPACE_ACTIVE_RUN_LIMIT: instanceLimit(
+    DEFAULT_INSTANCE_LIMITS.activeRunLimit,
+    10_000,
+  ),
+  WORKSPACE_QUEUED_RUN_LIMIT: instanceLimit(
+    DEFAULT_INSTANCE_LIMITS.queuedRunLimit,
+    100_000,
+  ),
+  WORKSPACE_FILE_LIMIT: instanceLimit(
+    DEFAULT_INSTANCE_LIMITS.artifactCountLimit,
+    10_000_000,
+  ),
+  WEBHOOK_ENDPOINT_BURST_LIMIT: instanceLimit(
+    DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
+    1_000_000,
+  ),
   HOST: z.string().trim().min(1).default('0.0.0.0'),
   NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
   LOG_LEVEL: z
@@ -82,6 +104,8 @@ export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 
 export type ApiConfig = Readonly<{
   callbacks?: CallbackKeyConfig;
+  capacity: InstanceCapacity;
+  webhookEndpointBurstLimit: number;
   codeSettings: CodeSettings;
   artifacts?: ArtifactStoreConfig;
   connections?:
@@ -136,6 +160,12 @@ export function parseApiConfig(
   const callbacks = parseCallbackKeyConfig(environment, { deployed });
   return Object.freeze({
     ...(callbacks === undefined ? {} : { callbacks }),
+    capacity: Object.freeze({
+      activeRunLimit: parsed.WORKSPACE_ACTIVE_RUN_LIMIT,
+      queuedRunLimit: parsed.WORKSPACE_QUEUED_RUN_LIMIT,
+      artifactCountLimit: parsed.WORKSPACE_FILE_LIMIT,
+    }),
+    webhookEndpointBurstLimit: parsed.WEBHOOK_ENDPOINT_BURST_LIMIT,
     codeSettings: parseCodeSettings(environment),
     ...(artifacts === undefined ? {} : { artifacts }),
     ...(connections === undefined ? {} : { connections }),

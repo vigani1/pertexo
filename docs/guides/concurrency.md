@@ -4,10 +4,11 @@ Open a workflow’s **Settings → Concurrency**. **Runs at once** is the curren
 limit across all its published versions. Leave it blank to use only workspace
 limits. Editors can change the limit and its overflow choice without publishing.
 
-**Queue** is the default. Extra runs wait in acceptance order. An ordinary timed Wait or retry
-keeps its place until it finishes, is canceled or times out. Quiescent human
-approval/input waits release capacity and reacquire it before work continues. Start order does
-not promise completion or external-effect order.
+**Queue** is the default. Extra runs wait in acceptance order. A run keeps its place in
+this limit until it finishes, is canceled or times out, including through a timed Wait or a retry,
+so **Runs at once** of 1 still means one at a time. Quiescent human approval/input waits release
+capacity and reacquire it before work continues. Start order does not promise completion or
+external-effect order.
 
 **Skip** ignores new automatic trigger events while this workflow is full.
 Active runs, ordinary waits and already accepted queued runs occupy its places; reserved
@@ -37,5 +38,9 @@ selected activity window. An exact replay does not count another logical skip.
 Skips contain metadata only, never submitted data or credentials.
 
 Lowering a limit does not interrupt active runs or revoke reserved starts.
-Workspace queued/active limits still apply. For larger workloads, use
+Workspace queued/active limits still apply, set by your operator as described
+in [Usage](usage.md). A run whose only remaining work is a timed Wait holds no
+workspace slot, so long Waits don't stop other workflows; it takes one back when
+the Wait ends, and waits a few seconds at a time if every slot is full. A run
+inside a Call keeps its slot, since parent and child share it. For larger workloads, use
 [For Each batching](for-each.md) within the existing execution bounds.

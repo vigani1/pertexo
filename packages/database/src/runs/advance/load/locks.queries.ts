@@ -60,6 +60,7 @@ export function lockRunForAdvance(
         variable_set_revision: run.variableSetRevision,
         deadline_at: run.deadlineAt,
         human_wait_started_at: run.humanWaitStartedAt,
+        timed_wait_started_at: run.timedWaitStartedAt,
         has_unconsumed_tasks: sql<boolean>`${exists(tasks)}`,
         deadline_expired: sql<boolean>`${run.deadlineAt} is not null and ${run.deadlineAt}<=clock_timestamp()`,
       },

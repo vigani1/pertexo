@@ -176,6 +176,12 @@ export function registerPreservesConfiguredClientPoolSettingsFrozen(): void {
     });
 
     expect(config).toEqual({
+      capacity: {
+        activeRunLimit: 20,
+        queuedRunLimit: 10_000,
+        artifactCountLimit: 10_000,
+      },
+      webhookEndpointBurstLimit: 600,
       codeSettings: DEFAULT_CODE_SETTINGS,
       database: {
         connectionString:

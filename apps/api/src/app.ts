@@ -140,9 +140,10 @@ export async function assembleApiApplication(
     if (webhookRuntime !== undefined) {
       registerWebhookIngress(fastifyInstance, webhookRuntime.ingress);
     }
-    await application
-      .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
-      .checkReadiness();
+    const workspaceDatabase =
+      application.get<WorkspaceDatabase>(WORKSPACE_DATABASE);
+    await workspaceDatabase.checkReadiness();
+    await workspaceDatabase.applyInstanceCapacity(config.capacity);
     await scheduleRuntime?.checkReadiness();
     await notificationRuntime?.checkReadiness();
     await artifactRuntime?.checkReadiness();

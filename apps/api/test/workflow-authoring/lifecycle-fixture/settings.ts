@@ -1,3 +1,4 @@
+import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/database/platform';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
@@ -27,6 +28,9 @@ export const telemetry: TelemetryLifecycle = {
 
 export function apiConfig(): ApiConfig {
   return {
+    capacity: DEFAULT_INSTANCE_LIMITS,
+    webhookEndpointBurstLimit:
+      DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
     codeSettings: DEFAULT_CODE_SETTINGS,
     database: workflowLifecycleDatabaseConfig,
     host: '127.0.0.1',
@@ -72,6 +76,7 @@ export function borrowedWorkspaceDatabase(
   return Object.freeze({
     withWorkspace: database.withWorkspace.bind(database),
     checkReadiness: database.checkReadiness.bind(database),
+    applyInstanceCapacity: database.applyInstanceCapacity.bind(database),
     close: () => Promise.resolve(),
   });
 }

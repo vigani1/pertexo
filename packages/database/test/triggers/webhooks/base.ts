@@ -115,7 +115,9 @@ export async function beforeAllFixture1() {
   identity = createIdentityWorkspaceDatabase(apiConfig);
   reconciliation = createWorkflowTriggerReconciliationDatabase(workerConfig);
   schedules = createScheduleTriggerDatabase(apiConfig);
-  webhook = createWebhookTriggerDatabase(apiConfig);
+  webhook = createWebhookTriggerDatabase(apiConfig, undefined, {
+    burstLimit: 60,
+  });
   authoring = createWorkflowAuthoringDatabase(apiConfig, {
     definitionCatalog: triggerCatalog,
     executableCompiler: (graph) => ({

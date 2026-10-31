@@ -121,100 +121,78 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       return ownWorkspace(send);
     }
 
-    // dm-07, performance-04: 5 active, 100 queued, 1,000 files, reachable only by SQL.
-    it.fails(
-      'gives a new workspace sensible higher defaults',
-      async () => {
-        const running = await stack.boot();
-        try {
-          const owner = await newWorkspace(running.origin);
-          const { execution, artifacts } = await usageCapacity(owner);
-          expect(execution.policy.activeRunLimit).toBeGreaterThanOrEqual(20);
-          expect(execution.policy.queuedRunLimit).toBeGreaterThanOrEqual(
-            10_000,
-          );
-          expect(artifacts.artifactCountLimit).toBeGreaterThanOrEqual(10_000);
-        } finally {
-          await running.stop();
-        }
-      },
-      120_000,
-    );
+    it('gives a new workspace sensible higher defaults', async () => {
+      const running = await stack.boot();
+      try {
+        const owner = await newWorkspace(running.origin);
+        const { execution, artifacts } = await usageCapacity(owner);
+        expect(execution.policy.activeRunLimit).toBeGreaterThanOrEqual(20);
+        expect(execution.policy.queuedRunLimit).toBeGreaterThanOrEqual(10_000);
+        expect(artifacts.artifactCountLimit).toBeGreaterThanOrEqual(10_000);
+      } finally {
+        await running.stop();
+      }
+    }, 120_000);
 
-    // dm-07, performance-04: there is no setting to read.
-    it.fails(
-      'applies the operator’s settings to new and existing workspaces after a restart',
-      async () => {
-        const first = await stack.boot(OPERATOR_SETTINGS);
-        let owner: CapacityOwner;
-        try {
-          owner = await newWorkspace(first.origin);
-          const { execution, artifacts } = await usageCapacity(owner);
-          expect(execution.policy).toMatchObject({
-            activeRunLimit: 2,
-            queuedRunLimit: 3,
-          });
-          expect(artifacts.artifactCountLimit).toBe(7);
-        } finally {
-          await first.stop();
-        }
-        const second = await stack.boot({
-          ...OPERATOR_SETTINGS,
-          WORKSPACE_ACTIVE_RUN_LIMIT: '9',
+    it('applies the operator’s settings to new and existing workspaces after a restart', async () => {
+      const first = await stack.boot(OPERATOR_SETTINGS);
+      let owner: CapacityOwner;
+      try {
+        owner = await newWorkspace(first.origin);
+        const { execution, artifacts } = await usageCapacity(owner);
+        expect(execution.policy).toMatchObject({
+          activeRunLimit: 2,
+          queuedRunLimit: 3,
         });
-        try {
-          const raised = await usageCapacity(owner);
-          expect(raised.execution.policy.activeRunLimit).toBe(9);
-          const fresh = await usageCapacity(await newWorkspace(second.origin));
-          expect(fresh.execution.policy.activeRunLimit).toBe(9);
-        } finally {
-          await second.stop();
-        }
-      },
-      180_000,
-    );
+        expect(artifacts.artifactCountLimit).toBe(7);
+      } finally {
+        await first.stop();
+      }
+      const second = await stack.boot({
+        ...OPERATOR_SETTINGS,
+        WORKSPACE_ACTIVE_RUN_LIMIT: '9',
+      });
+      try {
+        const raised = await usageCapacity(owner);
+        expect(raised.execution.policy.activeRunLimit).toBe(9);
+        const fresh = await usageCapacity(await newWorkspace(second.origin));
+        expect(fresh.execution.policy.activeRunLimit).toBe(9);
+      } finally {
+        await second.stop();
+      }
+    }, 180_000);
 
-    // dm-07: the setting has one validation, at the boundary, and a bad value says so.
-    it.fails(
-      'refuses to start on a limit that isn’t a number',
-      async () => {
-        const refused = await stack.bootExitCode({
-          WORKSPACE_ACTIVE_RUN_LIMIT: 'lots',
-        });
-        expect(refused.code).not.toBe(null);
-        expect(refused.code).not.toBe(0);
-        expect(refused.output).toContain('WORKSPACE_ACTIVE_RUN_LIMIT');
-      },
-      60_000,
-    );
+    it('refuses to start on a limit that isn’t a number', async () => {
+      const refused = await stack.bootExitCode({
+        WORKSPACE_ACTIVE_RUN_LIMIT: 'lots',
+      });
+      expect(refused.code).not.toBe(null);
+      expect(refused.code).not.toBe(0);
+      expect(refused.output).toContain('WORKSPACE_ACTIVE_RUN_LIMIT');
+    }, 60_000);
 
-    // dm-07, performance-04: timed Waits hold their slot, so two of them stop everything else.
-    it.fails(
-      'lets other runs start while timed Waits fill what would be every active slot',
-      async () => {
-        const running = await stack.boot({
-          WORKSPACE_ACTIVE_RUN_LIMIT: '2',
-        });
-        try {
-          const owner = await newWorkspace(running.origin);
-          const waiting = await publishGraph(owner, 'Sleeps', waitGraph);
-          const quick = await publishGraph(owner, 'Quick', quickGraph);
-          const sleepers = [
-            await startRun(owner, waiting.path),
-            await startRun(owner, waiting.path),
-            await startRun(owner, waiting.path),
-          ];
-          for (const sleeper of sleepers)
-            await runReaches(owner, sleeper, 'waiting');
-          expect((await usageCapacity(owner)).execution.activeRuns).toBe(0);
-          const next = await startRun(owner, quick.path);
-          await runReaches(owner, next, 'succeeded');
-        } finally {
-          await running.stop();
-        }
-      },
-      180_000,
-    );
+    it('lets other runs start while timed Waits fill what would be every active slot', async () => {
+      const running = await stack.boot({
+        WORKSPACE_ACTIVE_RUN_LIMIT: '2',
+      });
+      try {
+        const owner = await newWorkspace(running.origin);
+        const waiting = await publishGraph(owner, 'Sleeps', waitGraph);
+        const quick = await publishGraph(owner, 'Quick', quickGraph);
+        const sleepers = [
+          await startRun(owner, waiting.path),
+          await startRun(owner, waiting.path),
+          await startRun(owner, waiting.path),
+        ];
+        for (const sleeper of sleepers)
+          await runReaches(owner, sleeper, 'waiting');
+        expect((await usageCapacity(owner)).execution.activeRuns).toBe(0);
+        const next = await startRun(owner, quick.path);
+        await runReaches(owner, next, 'succeeded');
+      } finally {
+        await running.stop();
+      }
+    }, 180_000);
 
     it('finishes a run after its timed Wait ends', async () => {
       const running = await stack.boot();
@@ -237,56 +215,47 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       }
     }, 120_000);
 
-    // performance-04: a burst of 300 gives exactly 60 × 202 and 240 × 429, whatever the operator wants.
-    it.fails(
-      'applies the configured burst limit to a webhook endpoint',
-      async () => {
-        const running = await stack.boot(OPERATOR_SETTINGS);
-        try {
-          const owner = await newWorkspace(running.origin);
-          const { endpointKey, signingSecret } = await liveWebhook(owner);
-          const statuses: number[] = [];
-          for (let sent = 0; sent < 7; sent += 1) {
-            const response = await signedDelivery(
-              running.origin,
-              endpointKey,
-              signingSecret,
-            );
-            statuses.push(response.status);
-            await response.arrayBuffer();
-          }
-          expect(statuses).toEqual([202, 202, 202, 202, 202, 429, 429]);
-        } finally {
-          await running.stop();
+    it('applies the configured burst limit to a webhook endpoint', async () => {
+      const running = await stack.boot(OPERATOR_SETTINGS);
+      try {
+        const owner = await newWorkspace(running.origin);
+        const { endpointKey, signingSecret } = await liveWebhook(owner);
+        const statuses: number[] = [];
+        for (let sent = 0; sent < 7; sent += 1) {
+          const response = await signedDelivery(
+            running.origin,
+            endpointKey,
+            signingSecret,
+          );
+          statuses.push(response.status);
+          await response.arrayBuffer();
         }
-      },
-      120_000,
-    );
+        expect(statuses).toEqual([202, 202, 202, 202, 202, 429, 429]);
+      } finally {
+        await running.stop();
+      }
+    }, 120_000);
 
-    it.fails(
-      'takes more than the old burst of 60 when the operator raises the limit',
-      async () => {
-        const running = await stack.boot({
-          WEBHOOK_ENDPOINT_BURST_LIMIT: '100',
-          WORKSPACE_QUEUED_RUN_LIMIT: '1000',
-        });
-        try {
-          const owner = await newWorkspace(running.origin);
-          const { endpointKey, signingSecret } = await liveWebhook(owner);
-          const responses = await Promise.all(
-            Array.from({ length: 80 }, () =>
-              signedDelivery(running.origin, endpointKey, signingSecret),
-            ),
-          );
-          await Promise.all(responses.map((r) => r.arrayBuffer()));
-          expect(new Set(responses.map(({ status }) => status))).toEqual(
-            new Set([202]),
-          );
-        } finally {
-          await running.stop();
-        }
-      },
-      120_000,
-    );
+    it('takes more than the old burst of 60 when the operator raises the limit', async () => {
+      const running = await stack.boot({
+        WEBHOOK_ENDPOINT_BURST_LIMIT: '100',
+        WORKSPACE_QUEUED_RUN_LIMIT: '1000',
+      });
+      try {
+        const owner = await newWorkspace(running.origin);
+        const { endpointKey, signingSecret } = await liveWebhook(owner);
+        const responses = await Promise.all(
+          Array.from({ length: 80 }, () =>
+            signedDelivery(running.origin, endpointKey, signingSecret),
+          ),
+        );
+        await Promise.all(responses.map((r) => r.arrayBuffer()));
+        expect(new Set(responses.map(({ status }) => status))).toEqual(
+          new Set([202]),
+        );
+      } finally {
+        await running.stop();
+      }
+    }, 120_000);
   },
 );

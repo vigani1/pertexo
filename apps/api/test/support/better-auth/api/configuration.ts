@@ -1,3 +1,4 @@
+import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/database/platform';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type { ApiIdentityConfig } from '../../../../src/platform/config/identity.js';
 
@@ -10,6 +11,9 @@ import type { ApiFixtureOptions } from './contract.js';
 
 export function apiConfig(database: DatabaseConfig): ApiConfig {
   return {
+    capacity: DEFAULT_INSTANCE_LIMITS,
+    webhookEndpointBurstLimit:
+      DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
     codeSettings: DEFAULT_CODE_SETTINGS,
     database,
     host: '127.0.0.1',

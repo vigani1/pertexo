@@ -33,8 +33,32 @@ expire. It cannot reconstruct deleted history or dates before the workspace
 existed. The coverage and snapshot labels explain what is available. Data refreshes
 while the page is visible; **Refresh** requests a fresh snapshot. A temporary read
 failure marks an old snapshot stale; losing access removes it. Workflow names and
-links require the existing workflow-read permission. There is no billing, quota
-editor or lifetime reporting in this page.
+links require the existing workflow-read permission. There is no billing or lifetime
+reporting in this page.
+
+## Capacity an operator sets
+
+These are instance settings, read when the API starts and applied to every
+workspace, new and existing. Set them in the API's environment (`api.env` on the
+single server) and restart the API. A value that isn't a whole number stops the
+API at startup, and the error names the setting.
+
+| Setting | Default | What it limits, per workspace |
+|---|---|---|
+| `WORKSPACE_ACTIVE_RUN_LIMIT` | 20 | Runs working at once. A timed Wait doesn't count; see [concurrency](concurrency.md). |
+| `WORKSPACE_QUEUED_RUN_LIMIT` | 10,000 | Runs waiting to start. Past it, new runs are refused. |
+| `WORKSPACE_FILE_LIMIT` | 10,000 | Stored files. Past it, new files are refused. |
+| `WEBHOOK_ENDPOINT_BURST_LIMIT` | 600 | POSTs a minute to one webhook endpoint. Past it, senders get 429. |
+
+The defaults suit a server with about 4 CPU cores and 8 GB of memory. On a small
+one (2 cores, 4 GB) start with `WORKSPACE_ACTIVE_RUN_LIMIT=5`,
+`WORKSPACE_QUEUED_RUN_LIMIT=1000` and `WEBHOOK_ENDPOINT_BURST_LIMIT=120`, and raise
+them while memory and database load stay comfortable. Active runs are what cost
+most: each holds worker and database time, so a small server slows down long
+before the queue fills. Lowering a limit doesn't stop work already running. A
+workflow's own **Runs at once** still applies inside these limits.
+
+## Other activity
 
 Coordinated trigger events appear as a separate activity count. Each new business
 event counts once, including events later replaced or refused; exact transport

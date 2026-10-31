@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { apiPool, purgeTestWorkspace } from '../support/workflow-authoring.js';
+import {
+  apiPool,
+  apiUrl,
+  purgeTestWorkspace,
+} from '../support/workflow-authoring.js';
+import { useInstanceCapacity } from '../support/instance-capacity.js';
 import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
 import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
 import {
@@ -13,6 +18,14 @@ import {
 } from './notices.fixture.js';
 
 describe('capacity warning episodes', () => {
+  useInstanceCapacity(
+    {
+      activeRunLimit: 5,
+      queuedRunLimit: 100,
+      artifactCountLimit: 1_000,
+    },
+    apiUrl,
+  );
   it('warns at exactly 80%, keeps limits independent and rearms only after a drop', async () => {
     const f = await seedNoticeWorkspace();
     await queryAsOwner(

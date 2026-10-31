@@ -1,3 +1,4 @@
+import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/database/platform';
 import { createWebhookTestEventStore } from '@pertexo/database/triggers';
 import { WebhookTestEventService } from '../../../../src/webhooks/test-events/service.js';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
@@ -230,6 +231,9 @@ async function createFixture(): Promise<FixtureResourceOwner> {
       close: () => Promise.resolve(),
     };
     const config: ApiConfig = {
+      capacity: DEFAULT_INSTANCE_LIMITS,
+      webhookEndpointBurstLimit:
+        DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
       codeSettings: DEFAULT_CODE_SETTINGS,
       database: apiConfig,
       host: '127.0.0.1',

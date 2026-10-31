@@ -58,6 +58,7 @@ export async function readHumanWaitFacts(
       status: node.status,
       control_kind: node.controlKind,
       wait_kind: node.waitKind,
+      resume_at: node.resumeAt,
       task_status: sql<string | null>`${task.status}`.as('task_status'),
       child_wait: sql<Date | null>`${child.humanWaitStartedAt}`.as(
         'child_wait',
@@ -127,6 +128,19 @@ export async function readHumanWaitFacts(
       has_human_wait:
         sql<boolean>`coalesce(bool_or((${p.control_kind}='human_task' and ${p.task_status}='pending') or ${p.child_wait} is not null),false)`.as(
           'has_human_wait',
+        ),
+      // Every remaining step waits on a timer, a person or a barrier: nothing can run yet.
+      all_parked:
+        sql<boolean>`coalesce(bool_and(coalesce(${p.join_barrier} or ${p.status}='waiting' and (${p.wait_kind}='node_wait' or (${p.control_kind}='human_task' and ${p.task_status}='pending') or ${p.control_kind}='for_each_barrier'),false)),false)`.as(
+          'all_parked',
+        ),
+      has_timed_wait:
+        sql<boolean>`coalesce(bool_or(${p.wait_kind}='node_wait'),false)`.as(
+          'has_timed_wait',
+        ),
+      timer_due:
+        sql<boolean>`coalesce(bool_or(${p.wait_kind} in ('node_wait','retry_backoff') and ${p.resume_at}<=clock_timestamp()),false)`.as(
+          'timer_due',
         ),
       has_running_or_timed_work:
         sql<boolean>`coalesce(bool_or(${p.status}='running' or ${p.wait_kind} in ('node_wait','retry_backoff')),false)`.as(

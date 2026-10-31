@@ -1,3 +1,4 @@
+import { reacquireSlotAfterTimedWait } from '../timed-wait-slot.repository.js';
 import {
   lockRunForAdvance,
   readPendingFailures,
@@ -79,6 +80,15 @@ export async function loadRunForAdvance(
         phase: 'loading',
       })),
     };
+  if (
+    row.timed_wait_started_at !== null &&
+    (await reacquireSlotAfterTimedWait(
+      client,
+      { workspaceId, runId },
+      row.execution_entitlement_version,
+    ))
+  )
+    row = { ...row, timed_wait_started_at: null };
   // A run's version is immutable; one that is gone went with its run.
   const version = projectExecutionSource(selected.version ?? undefined);
   if (version === null) return Object.freeze({ kind: 'not_found' });
@@ -150,7 +160,9 @@ export async function loadRunForAdvance(
     pendingFailures,
     state: Object.freeze({
       hasExecutionSlot:
-        calls.hasExecutionSlot && row.human_wait_started_at === null,
+        calls.hasExecutionSlot &&
+        row.human_wait_started_at === null &&
+        row.timed_wait_started_at === null,
       callOutcomes: calls.callOutcomes,
       taskOutcomes,
       runId,

@@ -132,7 +132,7 @@ whitespace counts as different bytes. A reused key with a changed request return
 key if it retries. To drop repeats by a value inside the event, use
 [event coordination](event-coordination.md).
 
-All modes share these rules, the 60-POST-attempt/minute endpoint allowance, workspace capacity and the metadata-only delivery log. Authentication failures
+All modes share these rules, the per-endpoint POST allowance (600 a minute by default, `WEBHOOK_ENDPOINT_BURST_LIMIT`), workspace capacity and the metadata-only delivery log. Authentication failures
 don't disclose whether an endpoint exists.
 
 For a workflow-controlled response, see [Respond to webhook](webhook-responses.md).
