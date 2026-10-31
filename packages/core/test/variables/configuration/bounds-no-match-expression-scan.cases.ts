@@ -9,7 +9,7 @@ import {
 import { createCheckpoint } from '@pertexo/workflow-engine';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 
-import { WorkspaceVariableUsageChangedError } from '../../../src/variables/contract.js';
+import { WorkspaceVariableUsageChangedError } from '../../../src/variables/index.js';
 
 import { RunVariableSnapshotUnavailableError } from '../../../../database/src/runs/commands/variables.repository.js';
 import { createWorkflowRunDatabase } from '../../../../database/src/runs/runs.repository.js';

@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 
 import { createCheckpoint } from '@pertexo/workflow-engine';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
-import { createWorkspaceVariablesStore } from '../../../src/variables/settings.repository.js';
+import { createWorkspaceVariablesStore } from '../../../src/variables/index.js';
 
 import { parseDatabaseConfig } from '../../../../database/src/config.js';
 import { withWorkspaceTransaction } from '../../../../database/src/tenant-access/transactions.js';

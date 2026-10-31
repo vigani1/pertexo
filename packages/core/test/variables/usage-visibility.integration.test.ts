@@ -18,7 +18,7 @@ import {
   builder,
   publicId,
 } from '../../../database/test/tenant-access/resources/folders/fixture.js';
-import { createWorkspaceVariablesStore } from '../../src/variables/settings.repository.js';
+import { createWorkspaceVariablesStore } from '../../src/variables/index.js';
 beforeAll(beforeAllFixture1, 30_000);
 afterAll(afterAllFixture2);
 it('omits hidden workflow identities from variable and connection usage before pagination', async () => {
