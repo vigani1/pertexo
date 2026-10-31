@@ -246,15 +246,15 @@ const apiProblemDetails = {
     severity: 'info',
     exposeDetail: false,
   },
-  'auth.sign_up_closed': {
-    status: 403,
-    title: 'Sign-up is by invitation',
-    severity: 'info',
-    exposeDetail: false,
-  },
   'auth.reset_link_invalid': {
     status: 400,
     title: 'Reset link invalid or expired',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.sign_up_closed': {
+    status: 403,
+    title: 'Sign-up is by invitation',
     severity: 'info',
     exposeDetail: false,
   },
