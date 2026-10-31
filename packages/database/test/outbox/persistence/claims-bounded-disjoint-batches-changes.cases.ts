@@ -95,6 +95,47 @@ export function registerClaimsBoundedDisjointBatchesChanges(): void {
     ).toHaveLength(2);
   });
 
+  it('never claims past the batch, and a busy workspace cannot crowd out a quiet one', async () => {
+    const claim = (limit: number) =>
+      dispatcher.claimBatch({
+        enabledJobNames,
+        leaseDurationMillis: 30_000,
+        leaseOwner: 'share-bound-proof',
+        leaseToken: randomUUID(),
+        limit,
+      });
+    const insert = async (workspaceId: string, count: number) => {
+      await apiDatabase.withWorkspace(workspaceId, async (transaction) => {
+        for (let index = 0; index < count; index += 1)
+          await insertOutboxEvent(transaction, {
+            ...outboxInput(randomUUID()),
+            availableAt: new Date(0),
+          });
+      });
+    };
+    while ((await claim(100)).events.length > 0);
+
+    // Twenty waiting in one, one in the other, and a batch that doesn't divide evenly.
+    await insert(workspaceA, 20);
+    await insert(workspaceB, 1);
+    const { events } = await claim(5);
+
+    expect(events.length).toBeLessThanOrEqual(5);
+    expect(
+      events.filter(({ workspaceId }) => workspaceId === workspaceB),
+    ).toHaveLength(1);
+    expect(
+      events.filter(({ workspaceId }) => workspaceId === workspaceA).length,
+    ).toBeGreaterThan(1);
+    while ((await claim(100)).events.length > 0);
+
+    // Both busy, so an uneven share has nowhere to fall but past the limit.
+    await insert(workspaceA, 5);
+    await insert(workspaceB, 5);
+    expect((await claim(5)).events.length).toBeLessThanOrEqual(5);
+    while ((await claim(100)).events.length > 0);
+  });
+
   it('persists fair workspace rotation across dispatcher process replacement', async () => {
     for (const workspaceId of [workspaceA, workspaceB]) {
       await apiDatabase.withWorkspace(workspaceId, async (transaction) => {

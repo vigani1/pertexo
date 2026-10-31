@@ -70,6 +70,25 @@ export function triggeredChain(
   return { settings: {}, nodes: order, edges: inLine(order) };
 }
 
+/** A timed Wait, then this step: the run sits `waiting`, with nothing in Redis. */
+export function waitThen(durationSeconds: number, step: HttpStep) {
+  const order = [
+    manual,
+    {
+      id: 'wait',
+      label: 'wait',
+      definition: { key: 'core.wait', version: 1 },
+      position: { x: 10, y: 0 },
+      configVersion: 1,
+      config: { durationSeconds },
+      inputMappings: {},
+      connectionRefs: {},
+    },
+    httpNode(step, 1),
+  ];
+  return { settings: {}, nodes: order, edges: inLine(order) };
+}
+
 /** One Slack message through a real connection: the provider decides how it ends. */
 export function slackMessage(connectionId: string, text: string) {
   const order = [
