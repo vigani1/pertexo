@@ -1,0 +1,73 @@
+import {
+  createStalledWorkStore,
+  type StalledWorkRecovery,
+  type StalledWorkStore,
+} from '@pertexo/database/runs';
+import type { StructuredLogger } from '@pertexo/observability';
+
+import type { WorkerConfig } from '../config/worker.js';
+import {
+  createPollingRuntime,
+  reportDiagnostic,
+  type PollingRuntime,
+} from '../runtime/polling.js';
+
+export type StalledWorkRuntime = PollingRuntime;
+
+export const STALLED_WORK_RUNTIME = Symbol('STALLED_WORK_RUNTIME');
+
+/** Short beside the 30 s lease, and cheap: two indexed reads when nothing is due. */
+const SCAN_INTERVAL_MILLIS = 5_000;
+const SCAN_BATCH_SIZE = 50;
+
+/**
+ * ADR 007: acts on every run step whose recorded time has passed, which is what
+ * makes a crash, restart or lost job recoverable. Every worker runs it; the run
+ * lock and fence make a second worker's attempt at the same row a no-op.
+ */
+export function createStalledWorkRuntime(
+  store: StalledWorkStore,
+  logger: StructuredLogger,
+): StalledWorkRuntime {
+  return createPollingRuntime({
+    name: 'Stalled work',
+    pollMillis: SCAN_INTERVAL_MILLIS,
+    cycle: async (signal) => {
+      const { recovered, failed } = await store.recoverDue(
+        SCAN_BATCH_SIZE,
+        signal,
+      );
+      reportDiagnostic(() => {
+        for (const recovery of recovered)
+          logger.info(recoveryEvent(recovery), recovery);
+        for (const { error, ...failure } of failed)
+          logger.warn('run_recovery.failed', failure, error);
+      });
+    },
+    cycleFailed: () => {
+      logger.error('run_recovery.scan_failed');
+    },
+    release: () => store.close(),
+  });
+}
+
+function recoveryEvent(recovery: StalledWorkRecovery): string {
+  switch (recovery.kind) {
+    case 'attempt_reclaimed':
+      return 'run_recovery.attempt_reclaimed';
+    case 'attempt_marked_unknown':
+      return 'run_recovery.attempt_marked_unknown';
+    case 'delivery_replaced':
+      return 'run_recovery.delivery_replaced';
+  }
+}
+
+export function configuredStalledWorkRuntime(
+  config: WorkerConfig,
+  logger: StructuredLogger,
+): StalledWorkRuntime {
+  return createStalledWorkRuntime(
+    createStalledWorkStore(config.retention.maintenanceDatabase),
+    logger,
+  );
+}

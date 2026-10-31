@@ -28,6 +28,41 @@ export function attemptReconciliationOutcome(
   return input.action === 'reclaim' ? 'reclaimed' : 'marked_unknown';
 }
 
+/**
+ * What automatic recovery asks of an expired lease: a repeat is only ever
+ * requested when it cannot duplicate an effect.
+ */
+export function automaticReconciliationAction(
+  attempt: Readonly<{
+    dispatchMarkedAt: Date | null;
+    sideEffectClass: string;
+  }>,
+): 'reclaim' | 'outcome_unknown' {
+  return attempt.dispatchMarkedAt !== null &&
+    attempt.sideEffectClass === 'unsafe'
+    ? 'outcome_unknown'
+    : 'reclaim';
+}
+
+/**
+ * A run job its consumer never confirmed. A running attempt's lease is its
+ * clock, and a queued run's first advance belongs to admission recovery.
+ */
+export function overdueDeliveryAction(
+  delivery: Readonly<{
+    runStatus: string | undefined;
+    attemptStatus: string | undefined;
+    jobName: string;
+  }>,
+): 'replace' | 'drop' {
+  if (delivery.runStatus !== 'running' && delivery.runStatus !== 'waiting')
+    return 'drop';
+  return delivery.jobName !== 'execute-node-attempt' ||
+    delivery.attemptStatus === 'ready'
+    ? 'replace'
+    : 'drop';
+}
+
 export function evidenceOutcome(status: string | undefined): string {
   if (status === undefined) return 'not_found';
   if (status !== 'outcome_unknown') return 'not_unknown';

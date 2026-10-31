@@ -51,9 +51,10 @@ async function advanceOrStateError(
   try {
     return await dependencies.advance(input);
   } catch (error: unknown) {
+    // The engine decides from stored state alone, so its refusal repeats forever.
     if (
       error instanceof WorkflowEngineError &&
-      error.code === 'checkpoint_invalid'
+      error.code !== 'attempt_aborted'
     )
       throw new CoordinatorHandlerStateError('invalid_checkpoint');
     throw error;

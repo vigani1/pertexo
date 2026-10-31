@@ -2,6 +2,7 @@ import {
   NodeAttemptDeliveryMismatchError,
   NodeAttemptStateCorruptError,
 } from '@pertexo/database/attempts';
+import type { RunFailureStore } from '@pertexo/database/runs';
 
 import {
   InvalidQueueDeliveryError,
@@ -20,9 +21,15 @@ import {
   type PreviewAttemptHandler,
 } from '../../../previews/runtime.js';
 
+/** Shown on the run: its stored state can never produce this attempt. */
+const UNADVANCEABLE_RUN_CODE = 'execution.run_state_invalid';
+/** A few tries first, so a state that only looked wrong can't end a healthy run. */
+const UNADVANCEABLE_AFTER_DELIVERIES = 4;
+
 export function queueHandler(
   handler: NodeAttemptHandler,
   previewHandler: PreviewAttemptHandler | undefined,
+  runFailures: RunFailureStore,
 ): QueueJobHandler {
   return async (delivery, context): Promise<void> => {
     if (
@@ -46,6 +53,22 @@ export function queueHandler(
         );
       await handler.handle(delivery, context);
     } catch (error: unknown) {
+      const stateRefused =
+        delivery.name === JOB_NAME.executeNodeAttempt &&
+        (error instanceof NodeAttemptStateCorruptError ||
+          error instanceof NodeAttemptHandlerStateError);
+      if (
+        stateRefused &&
+        delivery.transport.attemptsMade + 1 < UNADVANCEABLE_AFTER_DELIVERIES
+      )
+        throw error;
+      if (stateRefused)
+        await runFailures.failUnadvanceable({
+          workspaceId: delivery.data.workspaceId,
+          runId: delivery.data.runId,
+          safeErrorCode: UNADVANCEABLE_RUN_CODE,
+          signal: context.signal,
+        });
       if (
         error instanceof NodeAttemptDeliveryMismatchError ||
         error instanceof NodeAttemptStateCorruptError ||

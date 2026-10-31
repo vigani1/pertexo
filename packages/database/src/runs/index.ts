@@ -58,6 +58,17 @@ export {
 } from '../operator/replay/repository.js';
 export type { OperatorRunReplayStore } from '../operator/replay/contract.js';
 export { createOperatorCommandDatabase } from '../operator/repository.js';
+export { createRunFailureStore } from './advance/run-failure-store.js';
+export type { RunFailureStore } from './advance/run-failure-store.js';
+export { createStalledWorkStore } from './stalled/repository.js';
+export type {
+  FailedOutboxEvent,
+  StalledWorkFailure,
+  StalledWorkRecovery,
+  StalledWorkStore,
+  StuckRun,
+  StuckWork,
+} from './stalled/contract.js';
 export type {
   GenericOperatorCommandResult,
   OperatorCommandDatabase,

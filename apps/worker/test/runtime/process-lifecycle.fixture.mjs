@@ -4,6 +4,7 @@ import { createWorkerApplication } from '../../dist/app.js';
 import { WORKSPACE_INBOX_RUNTIME } from '../../dist/notifications/inbox-runtime.js';
 import { WORKSPACE_DATABASE } from '../../dist/platform/database/module.js';
 import { RETENTION_RUNTIME } from '../../dist/retention/runtime.js';
+import { STALLED_WORK_RUNTIME } from '../../dist/runs/stalled-work.js';
 import { WorkerReadiness } from '../../dist/runtime/health/readiness.js';
 import { WorkerReadinessMonitor } from '../../dist/runtime/health/readiness-monitor.js';
 import { WorkerDrainState } from '../../dist/runtime/shutdown/drain-state.js';
@@ -49,7 +50,7 @@ const database = {
 
 const dispatcherDatabase = {
   checkReadiness: () => Promise.resolve(),
-  claimBatch: () => Promise.resolve({ events: [], exhaustedCount: 0 }),
+  claimBatch: () => Promise.resolve({ events: [] }),
   close: () => Promise.resolve(),
   markPublished: () => Promise.resolve(true),
   observeBacklog: () => Promise.resolve({ backlog: 0 }),
@@ -155,7 +156,6 @@ const config = {
     batchSize: 10,
     leaseDurationMillis: 30_000,
     leaseOwner: 'process-fixture',
-    maxAttempts: 3,
     operationTimeoutMillis: 5_000,
     pollIntervalMillis: 250,
     retryDelayMillis: 1_000,
@@ -201,6 +201,7 @@ try {
           [TRIGGER_RUNTIME, idleRuntime()],
           [WORKFLOW_AUTO_PAUSE_RUNTIME, idleRuntime()],
           [RETENTION_RUNTIME, idleRuntime()],
+          [STALLED_WORK_RUNTIME, idleRuntime()],
         ])
           builder.overrideProvider(token).useValue(value);
         builder.overrideProvider(OUTBOX_DISPATCHER).useFactory({

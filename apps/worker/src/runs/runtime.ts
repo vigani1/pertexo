@@ -2,8 +2,11 @@ import {
   createWorkflowTestSuiteScanner,
   type WorkflowTestSuiteScanner,
 } from '@pertexo/database/previews';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
 import {
   CoordinatorDeliveryMismatchError,
+  CoordinatorRunStateCorruptError,
+  createRunFailureStore,
   createDueNodeWakeupScanner,
   createDeadlineWakeupScanner,
   createRunAdvanceStore,
@@ -11,6 +14,7 @@ import {
   type DueNodeWakeupScanner,
   type DeadlineWakeupScanner,
   type RunAdvanceStore,
+  type RunFailureStore,
   type WorkflowCallStore,
 } from '@pertexo/database/runs';
 import type {
@@ -77,6 +81,7 @@ export type CoordinatorCompositionFactories = Readonly<{
   testSuiteScanner: typeof createWorkflowTestSuiteScanner;
   notifications(redisUrl: string): RunEventNotificationPublisher;
   runStore: typeof createRunAdvanceStore;
+  runFailures: typeof createRunFailureStore;
   callStore: typeof createWorkflowCallStore;
   telemetry: typeof createCoordinatorTelemetry;
   traceRunner: typeof createQueueTraceRunner;
@@ -91,12 +96,22 @@ const productionFactories: CoordinatorCompositionFactories = {
   notifications: (redisUrl) =>
     new RedisRunEventNotificationPublisher({ redisUrl }),
   runStore: createRunAdvanceStore,
+  runFailures: createRunFailureStore,
   callStore: createWorkflowCallStore,
   telemetry: createCoordinatorTelemetry,
   traceRunner: createQueueTraceRunner,
 };
 
-function queueHandler(handler: CoordinatorHandler): QueueJobHandler {
+/** Shown on the run: the engine refused its stored state, so no retry can help. */
+const UNADVANCEABLE_RUN_CODE = 'execution.run_state_invalid';
+/** A few tries first, so a state that only looked wrong can't end a healthy run. */
+const UNADVANCEABLE_AFTER_DELIVERIES = 4;
+
+function queueHandler(
+  handler: CoordinatorHandler,
+  runFailures: RunFailureStore,
+  logger: StructuredLogger | undefined,
+): QueueJobHandler {
   return async (delivery, context): Promise<void> => {
     if (delivery.name !== JOB_NAME.advanceWorkflowRun) {
       throw new InvalidQueueDeliveryError(
@@ -106,16 +121,40 @@ function queueHandler(handler: CoordinatorHandler): QueueJobHandler {
     try {
       await handler.handle(delivery, context);
     } catch (error: unknown) {
-      if (
-        error instanceof CoordinatorDeliveryMismatchError ||
-        error instanceof CoordinatorHandlerStateError
-      ) {
+      if (error instanceof CoordinatorDeliveryMismatchError)
         throw unrecoverableQueueError(
-          error instanceof CoordinatorHandlerStateError
-            ? `Coordinator delivery is not recoverable: ${error.code}`
-            : 'Coordinator delivery failed durable transport verification',
+          'Coordinator delivery failed durable transport verification',
         );
+      const unadvanceable =
+        error instanceof CoordinatorRunStateCorruptError ||
+        (error instanceof CoordinatorHandlerStateError &&
+          error.code !== 'not_found');
+      if (
+        unadvanceable &&
+        delivery.transport.attemptsMade + 1 < UNADVANCEABLE_AFTER_DELIVERIES
+      )
+        throw error;
+      if (unadvanceable) {
+        const ended = await runFailures.failUnadvanceable({
+          workspaceId: delivery.data.workspaceId,
+          runId: delivery.data.runId,
+          safeErrorCode: UNADVANCEABLE_RUN_CODE,
+          delivery: {
+            outboxEventId: delivery.data.outboxEventId,
+            payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
+          },
+          signal: context.signal,
+        });
+        logger?.error('run_recovery.run_unadvanceable', {
+          workspaceId: delivery.data.workspaceId,
+          runId: delivery.data.runId,
+          ended,
+        });
       }
+      if (error instanceof CoordinatorHandlerStateError || unadvanceable)
+        throw unrecoverableQueueError(
+          `Coordinator delivery is not recoverable: ${error.message}`,
+        );
       throw error;
     }
   };
@@ -135,6 +174,7 @@ export async function createCoordinatorRuntime(
   const telemetry = factories.telemetry();
   const traceRunner = factories.traceRunner();
   let runStore: RunAdvanceStore | undefined;
+  let runFailures: RunFailureStore | undefined;
   let callStore: WorkflowCallStore | undefined;
   let notifications: RunEventNotificationPublisher | undefined;
   let dueWakeupScanner: DueNodeWakeupScanner | undefined;
@@ -145,6 +185,10 @@ export async function createCoordinatorRuntime(
   const expressionOwner = { close: () => expressionEvaluator.shutdown() };
   try {
     runStore = factories.runStore(options.database, options.databaseRuntime);
+    runFailures = factories.runFailures(
+      options.database,
+      options.databaseRuntime,
+    );
     callStore = factories.callStore(
       options.maintenanceDatabase,
       options.maintenanceDatabaseRuntime,
@@ -187,7 +231,7 @@ export async function createCoordinatorRuntime(
     consumer = factories.consumer({
       queueName: QUEUE_NAME.workflowCoordinator,
       redisUrl: options.redisUrl,
-      handler: queueHandler(handler),
+      handler: queueHandler(handler, runFailures, options.logger),
       ...(options.observer === undefined ? {} : { observer: options.observer }),
       traceRunner,
     });
@@ -199,6 +243,7 @@ export async function createCoordinatorRuntime(
         testSuiteScanner,
         notifications,
         runStore,
+        runFailures,
         callStore,
         expressionOwner,
       ],
@@ -223,6 +268,7 @@ export async function createCoordinatorRuntime(
       testSuiteScanner,
       notifications,
       runStore,
+      runFailures,
       callStore,
       expressionOwner,
     ],

@@ -49,6 +49,11 @@ import {
   RETENTION_RUNTIME,
   type RetentionRuntime,
 } from './retention/runtime.js';
+import {
+  configuredStalledWorkRuntime,
+  STALLED_WORK_RUNTIME,
+  type StalledWorkRuntime,
+} from './runs/stalled-work.js';
 import { WorkerReadiness } from './runtime/health/readiness.js';
 import { WorkerReadinessMonitor } from './runtime/health/readiness-monitor.js';
 import { WorkerResourceMonitor } from './runtime/health/resource-monitor.js';
@@ -127,6 +132,11 @@ export class WorkerModule {
             configuredRetentionRuntime(config, dependencies.logger),
         },
         {
+          provide: STALLED_WORK_RUNTIME,
+          useFactory: (): StalledWorkRuntime =>
+            configuredStalledWorkRuntime(config, dependencies.logger),
+        },
+        {
           provide: WorkerReadinessMonitor,
           inject: [WorkerReadiness],
           useFactory: (readiness: WorkerReadiness): WorkerReadinessMonitor =>
@@ -155,6 +165,7 @@ export class WorkerModule {
             WORKSPACE_INBOX_RUNTIME,
             WORKFLOW_AUTO_PAUSE_RUNTIME,
             RETENTION_RUNTIME,
+            STALLED_WORK_RUNTIME,
           ],
           // Nest pairs these parameters with the ordered inject array below.
           // eslint-disable-next-line max-params
@@ -166,11 +177,13 @@ export class WorkerModule {
             workspaceInbox: WorkspaceInboxRuntime,
             autoPause: WorkflowAutoPauseRuntime,
             retention: RetentionRuntime,
+            stalledWork: StalledWorkRuntime,
           ) => {
             systemMail?.start();
             workspaceInbox.start();
             autoPause.start();
             retention.start();
+            stalledWork.start();
             // Register dependencies before users; the coordinator unwinds them.
             shutdown.register('telemetry', () =>
               dependencies.telemetry.shutdown(),
@@ -192,6 +205,7 @@ export class WorkerModule {
             shutdown.register('workspace-inbox', () => workspaceInbox.close());
             shutdown.register('workflow-auto-pause', () => autoPause.close());
             shutdown.register('retention', () => retention.close());
+            shutdown.register('stalled-work', () => stalledWork.close());
             return Object.freeze({ registered: true });
           },
         },

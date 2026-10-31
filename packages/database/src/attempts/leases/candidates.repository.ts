@@ -68,10 +68,6 @@ export async function lockClaimCandidate(
       attemptNumber: attempt.attemptNumber,
       admissionKind: attempt.admissionKind,
       attemptStatus: attempt.status,
-      leaseExpiresAt: attempt.leaseExpiresAt,
-      leaseValid: sql<
-        boolean | null
-      >`${attempt.leaseExpiresAt}>clock_timestamp()`,
       invocationKey: node.invocationKey,
       nodeId: node.nodeId,
       branchContext: node.branchContext,
