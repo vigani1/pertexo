@@ -305,19 +305,6 @@ test('compares every change category and reapplies a note without replacing step
   await conflict
     .getByRole('button', { name: 'Keep mine', exact: true })
     .click();
-  await conflict.getByRole('button', { name: 'Compare' }).click();
-  await expect(
-    page.getByRole('button', {
-      name: /Use your copy of (Links|Workflow|Input)/u,
-    }),
-  ).toHaveCount(0);
-  await page
-    .getByRole('button', {
-      name: 'Use your copy of Note: My documented change',
-      exact: true,
-    })
-    .click();
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect
     .poll(() => remote.graph.notes?.[0]?.text)
     .toBe('My documented change');

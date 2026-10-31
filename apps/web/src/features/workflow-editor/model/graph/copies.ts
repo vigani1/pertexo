@@ -2,7 +2,6 @@ import jsonata from 'jsonata';
 import { remapCallbackReferences } from '@pertexo/workflow-model';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { cardSize, overlaps, settleBodyLayout } from './for-each-body-layout';
-import { removeWorkflowElements } from './removal';
 import {
   groupByScope,
   mapLevel,
@@ -12,8 +11,7 @@ import {
   type WorkflowNode,
 } from './scopes';
 
-// Copies of steps: duplicates made on the canvas, and a step taken over
-// from another version of the workflow after a conflict.
+// Copies of steps: duplicates made on the canvas.
 
 type Position = Readonly<{ x: number; y: number }>;
 type CreateId = () => string;
@@ -174,39 +172,6 @@ function copyEdges(
       },
     ];
   });
-}
-
-/**
- * Makes one step match another version of the graph: copies it (with its
- * links to steps that exist here) or removes it if that version has
- * none. This is how a kept copy's edits are re-applied after a conflict.
- */
-export function adoptStepFrom(
-  graph: WorkflowGraphContract,
-  source: WorkflowGraphContract,
-  nodeId: string,
-): WorkflowGraphContract {
-  const node = source.nodes.find((candidate) => candidate.id === nodeId);
-  if (node === undefined)
-    return removeWorkflowElements(graph, { nodeIds: [nodeId], edgeIds: [] })
-      .graph;
-  const exists = graph.nodes.some((candidate) => candidate.id === nodeId);
-  const nodes = exists
-    ? graph.nodes.map((candidate) =>
-        candidate.id === nodeId ? node : candidate,
-      )
-    : [...graph.nodes, node];
-  const nodeIds = new Set(nodes.map((candidate) => candidate.id));
-  const edgeIds = new Set(graph.edges.map((edge) => edge.id));
-  const edges = source.edges.filter((edge) => {
-    const isCopiedIncidentEdge =
-      (edge.source.nodeId === nodeId || edge.target.nodeId === nodeId) &&
-      !edgeIds.has(edge.id) &&
-      nodeIds.has(edge.source.nodeId) &&
-      nodeIds.has(edge.target.nodeId);
-    return isCopiedIncidentEdge;
-  });
-  return { ...graph, nodes, edges: [...graph.edges, ...edges] };
 }
 
 function copyCallbackBindings(

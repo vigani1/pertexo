@@ -368,22 +368,8 @@ describe('workflow editor guards and conflicts', { timeout: 30_000 }, () => {
 
     await event.click(within(bar).getByRole('button', { name: 'Keep mine' }));
     expect(
-      within(screen.getByRole('region', { name: 'Draft conflict' })).getByText(
-        'Your copy is kept for comparison',
-      ),
-    ).toBeVisible();
-    expect(
-      within(screen.getByRole('application')).getByText('Manual input'),
-    ).toBeInTheDocument();
-    await event.click(screen.getByRole('button', { name: 'Compare' }));
-    await event.click(
-      screen.getByRole('button', { name: 'Use your copy of Set fields' }),
-    );
-    await event.click(screen.getByRole('button', { name: 'Close' }));
-    expect(
       within(screen.getByRole('application')).getByText('Set fields'),
     ).toBeInTheDocument();
-    await event.click(screen.getByRole('button', { name: 'Dismiss copy' }));
     expect(screen.queryByRole('region', { name: 'Draft conflict' })).toBeNull();
   });
 });

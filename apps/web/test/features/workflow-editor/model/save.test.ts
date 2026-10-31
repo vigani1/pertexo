@@ -253,26 +253,10 @@ describe('workflow editor save coordinator', () => {
       remoteEtag: etagB,
       remoteRevision: 2,
     });
-    store.getState().acceptRemoteForReview();
-    expect(store.getState().graph).toBe(remote);
+    store.getState().keepMine();
+    expect(store.getState().graph).toBe(local);
     expect(store.getState().etag).toBe(etagB);
-    expect(store.getState().save.status).toBe('clean');
-    expect(shownConflict(store.getState())).toEqual({
-      local,
-      remote,
-      remoteEtag: etagB,
-      remoteRevision: 2,
-    });
-    const reapplied = addDefinitionNode(
-      store.getState().graph,
-      definition,
-      { x: 100, y: 0 },
-      'reapplied',
-    );
-    store.getState().transact(reapplied);
-    expect(store.getState().etag).toBe(etagB);
-    expect(shownConflict(store.getState())?.local).toBe(local);
-    store.getState().dismissConflictComparison();
+    expect(store.getState().save.status).toBe('dirty');
     expect(shownConflict(store.getState())).toBeNull();
     coordinator.destroy();
   });

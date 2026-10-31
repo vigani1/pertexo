@@ -45,10 +45,7 @@ export function EditorCommandBar({
     shortcuts;
   const graph = useEditorStore((state) => state.graph);
   const duplicateBlocked = useEditorStore(
-    (state) =>
-      state.save.status !== 'clean' ||
-      state.inspectorScratch ||
-      state.comparison !== null,
+    (state) => state.save.status !== 'clean' || state.inspectorScratch,
   );
   const moreRef = useRef<HTMLButtonElement>(null);
   const contractRef = useRef<HTMLButtonElement>(null);

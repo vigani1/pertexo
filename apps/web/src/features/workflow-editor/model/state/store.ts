@@ -42,16 +42,13 @@ export type EditorState = Readonly<{
   history: EditorHistory;
   save: SaveState;
   /** A resolved conflict's drafts, kept so people can still compare them. */
-  comparison: EditorConflict | null;
 }>;
 
-/** The conflict on screen: the unresolved one, else the one kept for comparison. */
+/** The unresolved conflict, if there is one. */
 export function shownConflict(
-  state: Pick<EditorState, 'save' | 'comparison'>,
+  state: Pick<EditorState, 'save'>,
 ): EditorConflict | null {
-  return state.save.status === 'conflict'
-    ? state.save.conflict
-    : state.comparison;
+  return state.save.status === 'conflict' ? state.save.conflict : null;
 }
 
 export type EditorActions = Readonly<{
@@ -66,6 +63,8 @@ export type EditorActions = Readonly<{
   undo: () => void;
   redo: () => void;
   beginSave: () => void;
+  /** Sends the same save again, because the last one never arrived. */
+  requeueSave: () => void;
   acceptSave: (
     etag: string,
     revision: number,
@@ -75,8 +74,8 @@ export type EditorActions = Readonly<{
   reportFailure: (message: string, uncertain: boolean) => void;
   reportConflict: (conflict: EditorConflict) => void;
   discardLocalAndUseRemote: () => void;
-  acceptRemoteForReview: () => void;
-  dismissConflictComparison: () => void;
+  /** Saves this graph over theirs, from their revision. */
+  keepMine: () => void;
 }>;
 
 export type EditorStore = ReturnType<typeof createEditorStore>;
@@ -119,7 +118,6 @@ export function createEditorStore(
       lastEdit: null,
       history: emptyEditorHistory,
       save: { status: 'clean' },
-      comparison: null,
       transact: (next, options = {}) => {
         const current = get();
         if (next === current.graph || current.save.status === 'conflict')
@@ -181,6 +179,9 @@ export function createEditorStore(
       beginSave: () => {
         set({ save: { status: 'saving' } });
       },
+      requeueSave: () => {
+        set({ save: { status: 'dirty' } });
+      },
       acceptSave: (etag, revision, savedGeneration, savedAt) => {
         const current = get();
         set({
@@ -196,26 +197,22 @@ export function createEditorStore(
         set({ save: { status: uncertain ? 'uncertain' : 'failed', error } });
       },
       reportConflict: (conflict) => {
-        set({ save: { status: 'conflict', conflict }, comparison: null });
+        set({ save: { status: 'conflict', conflict } });
       },
       discardLocalAndUseRemote: () => {
         const conflict = shownConflict(get());
         if (conflict === null) return;
-        set({
-          ...adoptRemote(conflict, get().generation),
-          comparison: null,
-        });
+        set(adoptRemote(conflict, get().generation));
       },
-      acceptRemoteForReview: () => {
+      keepMine: () => {
         const conflict = shownConflict(get());
         if (conflict === null) return;
         set({
-          ...adoptRemote(conflict, get().generation),
-          comparison: conflict,
+          etag: conflict.remoteEtag,
+          revision: conflict.remoteRevision,
+          generation: get().generation + 1,
+          save: { status: 'dirty' },
         });
-      },
-      dismissConflictComparison: () => {
-        if (get().save.status !== 'conflict') set({ comparison: null });
       },
     };
   });

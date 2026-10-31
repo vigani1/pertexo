@@ -72,32 +72,26 @@ function coordinator(
 }
 
 describe('a save the network lost, with nobody else editing', () => {
-  // product-ux-06: an unchanged draft on the server reads as "Changed elsewhere".
-  it.fails(
-    'saves again quietly when the server still holds the revision it started from',
-    async () => {
-      const saved = empty();
-      const store = storeWithUnsavedStep(saved);
-      const save = vi
-        .fn<(graph: WorkflowGraphContract) => Promise<WorkflowDraftSnapshot>>()
-        .mockRejectedValueOnce(dropped)
-        .mockImplementation((graph) =>
-          Promise.resolve(snapshot(graph, nextEtag, 3)),
-        );
-      await coordinator(store, save, () =>
-        Promise.resolve(snapshot(saved, startEtag, 2)),
-      ).flush();
-      expect(shownConflict(store.getState())).toBeNull();
-      await vi.waitFor(() => {
-        expect(store.getState().save.status).toBe('clean');
-      });
-      expect(store.getState().revision).toBe(3);
-      expect(store.getState().graph.nodes.map(({ id }) => id)).toEqual([
-        'mine',
-      ]);
-      expect(save).toHaveBeenCalledTimes(2);
-    },
-  );
+  it('saves again quietly when the server still holds the revision it started from', async () => {
+    const saved = empty();
+    const store = storeWithUnsavedStep(saved);
+    const save = vi
+      .fn<(graph: WorkflowGraphContract) => Promise<WorkflowDraftSnapshot>>()
+      .mockRejectedValueOnce(dropped)
+      .mockImplementation((graph) =>
+        Promise.resolve(snapshot(graph, nextEtag, 3)),
+      );
+    await coordinator(store, save, () =>
+      Promise.resolve(snapshot(saved, startEtag, 2)),
+    ).flush();
+    expect(shownConflict(store.getState())).toBeNull();
+    await vi.waitFor(() => {
+      expect(store.getState().save.status).toBe('clean');
+    });
+    expect(store.getState().revision).toBe(3);
+    expect(store.getState().graph.nodes.map(({ id }) => id)).toEqual(['mine']);
+    expect(save).toHaveBeenCalledTimes(2);
+  });
 
   it('accepts the save when the lost answer hid a save that landed', async () => {
     const store = storeWithUnsavedStep();

@@ -6,19 +6,15 @@ import { shownConflict } from '../../model/state/store';
 
 /**
  * A draft conflict never blocks the canvas: an amber bar says what happened
- * and offers Compare, Keep mine (continue from their version with your copy
- * kept beside it) or Load theirs. Nothing overwrites the other person's work.
+ * and offers Compare, Keep mine (save your graph over theirs) or Load theirs
+ * (replace yours). Nothing is overwritten until you choose.
  */
 export function ConflictBar({
   onCompare,
 }: Readonly<{ onCompare: () => void }>) {
   const conflict = useEditorStore(shownConflict);
-  const inConflict = useEditorStore(
-    (state) => state.save.status === 'conflict',
-  );
-  const keepMine = useEditorStore((state) => state.acceptRemoteForReview);
+  const keepMine = useEditorStore((state) => state.keepMine);
   const loadTheirs = useEditorStore((state) => state.discardLocalAndUseRemote);
-  const dismiss = useEditorStore((state) => state.dismissConflictComparison);
   if (conflict === null) return null;
   return (
     <section
@@ -27,52 +23,25 @@ export function ConflictBar({
     >
       <StatusGlyph tone="attention" className="text-warning" />
       <p className="min-w-0 flex-1">
-        {inConflict ? (
-          <>
-            <span className="font-semibold text-warning">
-              Changed elsewhere (revision {conflict.remoteRevision})
-            </span>
-            <span className="text-muted-foreground">
-              {' '}
-              · Saving is paused until you choose. Both versions are safe.
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="font-semibold text-warning">
-              Your copy is kept for comparison
-            </span>
-            <span className="text-muted-foreground">
-              {' '}
-              · You’re editing their version. Re-apply steps from Compare.
-            </span>
-          </>
-        )}
+        <span className="font-semibold text-warning">
+          Changed elsewhere (revision {conflict.remoteRevision})
+        </span>
+        <span className="text-muted-foreground">
+          {' '}
+          · Saving is paused until you choose. Both versions are safe.
+        </span>
       </p>
       <div className="flex flex-wrap gap-1.5">
         <Button type="button" size="sm" variant="outline" onClick={onCompare}>
           <GitCompareArrowsIcon data-icon="inline-start" />
           Compare
         </Button>
-        {inConflict ? (
-          <>
-            <Button type="button" size="sm" onClick={keepMine}>
-              Keep mine
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={loadTheirs}
-            >
-              Load theirs
-            </Button>
-          </>
-        ) : (
-          <Button type="button" size="sm" variant="ghost" onClick={dismiss}>
-            Dismiss copy
-          </Button>
-        )}
+        <Button type="button" size="sm" onClick={keepMine}>
+          Keep mine
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={loadTheirs}>
+          Load theirs
+        </Button>
       </div>
     </section>
   );
