@@ -55,15 +55,14 @@ function isRunning(child: ChildProcess) {
 
 /** This stack's own Redis database, so its jobs never reach another suite's worker. */
 function stackRedisUrl(): string {
-  const redis = new URL(required('REDIS_URL'));
-  redis.pathname = '/12';
-  return redis.toString();
+  return Object.assign(new URL(required('REDIS_URL')), {
+    pathname: '/12',
+  }).toString();
 }
 
 async function clearStackRedis(): Promise<void> {
-  const redis = new Redis(stackRedisUrl(), { lazyConnect: true });
+  const redis = new Redis(stackRedisUrl());
   try {
-    await redis.connect();
     await redis.flushdb();
   } finally {
     redis.disconnect();

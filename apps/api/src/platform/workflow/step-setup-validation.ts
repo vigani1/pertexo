@@ -67,7 +67,7 @@ function configIssues(
       problemPath(`${path}.config`, problem),
       describeProblem(problem, {
         given: node.config,
-        schema: definition.manifest.configSchema as FieldSchema,
+        schema: definition.manifest.configSchema,
         whole: 'This step’s setup isn’t finished.',
       }),
     ),
@@ -101,7 +101,7 @@ function inputIssues(
         problemPath(`${path}.inputMappings`, problem),
         describeProblem(problem, {
           given: literals,
-          schema: definition.manifest.inputSchema as FieldSchema,
+          schema: definition.manifest.inputSchema,
           whole: 'This step needs its inputs set.',
         }),
       ),
