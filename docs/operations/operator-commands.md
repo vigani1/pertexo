@@ -76,6 +76,24 @@ run_ops \
   -e OPERATOR_REASON='Check an earlier command'
 ```
 
+## `stuck-work.list`
+
+Use this when a run seems stuck or the stuck-work alert fired. Workers recover stranded runs and lost
+jobs of every kind by themselves, so work only stays stuck while no worker can act on it, or when
+Redis or Postgres is down. It changes nothing and shows every workspace:
+
+```sh
+run_ops -e OPERATOR_COMMAND_TYPE=stuck-work.list
+```
+
+It prints stuck runs with the time their next step was due, and outbox events that can never publish
+or were never confirmed, with their error code (`delivery.never_confirmed` after about a day of
+redeliveries; fix the cause, then use [`outbox.redispatch`](#outboxredispatch)). Worker logs name each
+recovery: `run_recovery.attempt_reclaimed`, `run_recovery.attempt_marked_unknown`,
+`run_recovery.delivery_redelivered`, `run_recovery.delivery_replaced` and, as a warning,
+`run_recovery.delivery_given_up`. A failed delivery logs as `queue.delivery_failed` with its run. A
+marked-unknown step is never sent again: check the provider, then decide whether to replay the run.
+
 ## `attempt.reconcile`
 
 Use this when an attempt says `running`, but its worker is gone and its lease has expired, so
