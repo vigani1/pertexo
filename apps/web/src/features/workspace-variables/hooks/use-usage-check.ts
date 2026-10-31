@@ -47,12 +47,14 @@ export type UsageCheckPhase = 'checking' | 'failed' | 'finished';
 
 function checkPhase(
   query: Readonly<{
+    isPending: boolean;
     isFetching: boolean;
     isError: boolean;
     hasNextPage: boolean;
   }>,
 ): UsageCheckPhase {
-  if (query.isFetching) return 'checking';
+  // Offline, the first page pauses: pending, but not fetching, with no next page.
+  if (query.isPending || query.isFetching) return 'checking';
   if (query.isError) return 'failed';
   return query.hasNextPage ? 'checking' : 'finished';
 }
