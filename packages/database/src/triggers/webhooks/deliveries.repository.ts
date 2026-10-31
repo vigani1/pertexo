@@ -66,7 +66,6 @@ export async function insertWebhookDelivery(
     replayCheck: WebhookReplayCheck;
     bodyBytes: number;
     runId?: string;
-    dedupeKind?: 'keyed' | 'fingerprint';
     coordinationEventId?: string;
   }>,
 ): Promise<void> {
@@ -75,7 +74,6 @@ export async function insertWebhookDelivery(
     workspaceId: transaction.workspaceId,
     endpointId: endpoint.endpointId,
     workflowRunId: delivery.runId ?? null,
-    dedupeKind: delivery.dedupeKind ?? null,
     outcome: delivery.outcome,
     httpStatus: HTTP_STATUS[delivery.outcome],
     signatureCheck: delivery.signatureCheck,

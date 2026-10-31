@@ -55,9 +55,10 @@ responds** enabled. A later Respond to webhook step cannot send a second respons
 A caller disconnect does not cancel pending work.
 
 Exact transport retries return their original receipt and do not create another
-event or extend a quiet period. Webhook transport replay runs first: without a
-unique `Idempotency-Key`, an identical payload is still the same delivery for
-five minutes. If identical payloads represent distinct events, give each event a
+event or extend a quiet period. Webhook transport replay runs first: a repeated
+`Idempotency-Key` returns the first delivery's result without reaching
+coordination. Without a key every delivery reaches it, even with identical bytes.
+If identical payloads represent distinct events, give each event a
 new idempotency key and reuse it only for that event's retries.
 
 **Triggers → Recent deliveries** shows current coordination status alongside the

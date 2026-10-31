@@ -80,11 +80,13 @@ signature timestamp is excluded so a later signed retry can resolve the same
 request. Reuse with that fingerprint returns the same `202` result and run
 reference; changed content returns idempotency conflict.
 
-Without a key, the generic adapter's canonical payload fingerprint is the same
-endpoint/raw-body/media-type checksum, retained for five minutes. It is
-intentionally whitespace- and key-order-sensitive because this adapter signs
-and accepts exact raw bytes; this is the adapter-defined fingerprint required by
-the platform plan, not a claim of semantic JSON deduplication. The accepted
+Without a key there is no deduplication: every delivery starts a run, even with
+identical bytes (amended 2026-10-31, api-design-03). Merging byte-identical
+events behind a `202` lost real ones (a button pressed twice, a repeating ping)
+for senders that never read `replayed`. Business deduplication is an explicit key
+or [event coordination](../guides/event-coordination.md). The fingerprint is
+whitespace- and key-order-sensitive because this adapter signs and accepts exact
+raw bytes; it only tells a key's exact retry from a changed request. The accepted
 media type is `application/json`, optionally with only UTF-8 charset, normalized
 to `application/json`. Replay resolution and mismatch detection occur before
 creating another run.
@@ -198,7 +200,7 @@ cookies, Pertexo signature headers and proxy-added headers are withheld, so
 they never reach stored run input. Query and headers stay unsigned in Signed
 mode.
 
-Deduplication keeps its windows. The request fingerprint of a JSON POST
+The 24-hour key window stays. The request fingerprint of a JSON POST
 without a query is unchanged, so retries across the upgrade still match. A
 POST adds its lowercase media type and, when present, the exact query string; a
 GET uses its exact query string. Headers never count.

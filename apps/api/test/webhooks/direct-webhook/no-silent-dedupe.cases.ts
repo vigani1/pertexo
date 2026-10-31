@@ -49,82 +49,67 @@ async function runCount(workspaceId: string) {
 }
 
 export function registerNoSilentDedupe(): void {
-  // api-design-03, product-ux-16: identical bytes within five minutes return the first run.
-  it.fails(
-    'starts a run for each identical signed delivery that carries no key',
-    async () => {
-      const seeded = await seedWebhook('no-key-sequential');
-      const first = await sendWithoutKey(seeded, '{"button":"pressed"}');
-      const second = await sendWithoutKey(seeded, '{"button":"pressed"}');
-      expect([first.status, second.status]).toEqual([202, 202]);
-      expect(first.json.replayed).toBe(false);
-      expect(second.json.replayed).toBe(false);
-      expect(second.json.runId).not.toBe(first.json.runId);
-      expect(await runCount(seeded.workspaceId)).toBe(2);
-      const log = await service.listDeliveries({
-        workspaceId: seeded.workspaceId,
-        workflowId: seeded.workflowId,
-        actorId: seeded.actorId,
-        triggerId: seeded.trigger.id,
-      });
-      expect(log.items.map(({ outcome }) => outcome)).toEqual([
-        'accepted',
-        'accepted',
-      ]);
-    },
-    60_000,
-  );
+  it('starts a run for each identical signed delivery that carries no key', async () => {
+    const seeded = await seedWebhook('no-key-sequential');
+    const first = await sendWithoutKey(seeded, '{"button":"pressed"}');
+    const second = await sendWithoutKey(seeded, '{"button":"pressed"}');
+    expect([first.status, second.status]).toEqual([202, 202]);
+    expect(first.json.replayed).toBe(false);
+    expect(second.json.replayed).toBe(false);
+    expect(second.json.runId).not.toBe(first.json.runId);
+    expect(await runCount(seeded.workspaceId)).toBe(2);
+    const log = await service.listDeliveries({
+      workspaceId: seeded.workspaceId,
+      workflowId: seeded.workflowId,
+      actorId: seeded.actorId,
+      triggerId: seeded.trigger.id,
+    });
+    expect(log.items.map(({ outcome }) => outcome)).toEqual([
+      'accepted',
+      'accepted',
+    ]);
+  }, 60_000);
 
-  // api-design-03: concurrent identical deliveries collapse into one run.
-  it.fails(
-    'starts one run per delivery when identical keyless deliveries race',
-    async () => {
-      const seeded = await seedWebhook('no-key-concurrent');
-      const responses = await Promise.all(
-        Array.from({ length: 5 }, () => sendWithoutKey(seeded, '{}')),
-      );
-      expect(responses.map(({ status }) => status)).toEqual(
-        Array.from({ length: 5 }, () => 202),
-      );
-      expect(new Set(responses.map(({ json }) => json.runId)).size).toBe(5);
-      expect(await runCount(seeded.workspaceId)).toBe(5);
-    },
-    60_000,
-  );
+  it('starts one run per delivery when identical keyless deliveries race', async () => {
+    const seeded = await seedWebhook('no-key-concurrent');
+    const responses = await Promise.all(
+      Array.from({ length: 5 }, () => sendWithoutKey(seeded, '{}')),
+    );
+    expect(responses.map(({ status }) => status)).toEqual(
+      Array.from({ length: 5 }, () => 202),
+    );
+    expect(new Set(responses.map(({ json }) => json.runId)).size).toBe(5);
+    expect(await runCount(seeded.workspaceId)).toBe(5);
+  }, 60_000);
 
-  // api-design-03: a repeating ping with a fixed query starts one run per five minutes.
-  it.fails(
-    'starts a run for each identical keyless GET at a secret URL',
-    async () => {
-      const seeded = await seedWebhook('no-key-get');
-      const { session, triggersPath } = await browser(seeded);
-      const configured = await application.inject({
-        method: 'POST',
-        url: `${triggersPath}/${seeded.trigger.id}/webhook/authentication`,
-        headers: {
-          cookie: session.cookieHeader,
-          'x-csrf-token': session.csrf,
-          'idempotency-key': randomUUID(),
-        },
-        payload: { mode: 'secret_url', allowedOrigins: [] },
-      });
-      expect(configured.statusCode, configured.body).toBe(200);
-      const { endpointKey } = configured.json<{ endpointKey: string }>();
-      const ping = async () => {
-        const response = await fetch(
-          new URL(`/hooks/${endpointKey}?source=monitor`, origin),
-          { signal: AbortSignal.timeout(5000) },
-        );
-        expect(response.status).toBe(202);
-        return (await response.json()) as Record<string, unknown>;
-      };
-      const first = await ping();
-      const second = await ping();
-      expect(second.runId).not.toBe(first.runId);
-      expect(await runCount(seeded.workspaceId)).toBe(2);
-    },
-    60_000,
-  );
+  it('starts a run for each identical keyless GET at a secret URL', async () => {
+    const seeded = await seedWebhook('no-key-get');
+    const { session, triggersPath } = await browser(seeded);
+    const configured = await application.inject({
+      method: 'POST',
+      url: `${triggersPath}/${seeded.trigger.id}/webhook/authentication`,
+      headers: {
+        cookie: session.cookieHeader,
+        'x-csrf-token': session.csrf,
+        'idempotency-key': randomUUID(),
+      },
+      payload: { mode: 'secret_url', allowedOrigins: [] },
+    });
+    expect(configured.statusCode, configured.body).toBe(200);
+    const { endpointKey } = configured.json<{ endpointKey: string }>();
+    const ping = async () => {
+      const response = await fetch(
+        new URL(`/hooks/${endpointKey}?source=monitor`, origin),
+        { signal: AbortSignal.timeout(5000) },
+      );
+      expect(response.status).toBe(202);
+      return (await response.json()) as Record<string, unknown>;
+    };
+    const first = await ping();
+    const second = await ping();
+    expect(second.runId).not.toBe(first.runId);
+    expect(await runCount(seeded.workspaceId)).toBe(2);
+  }, 60_000);
 
   it('still deduplicates when the sender names the event with a key', async () => {
     const seeded = await seedWebhook('explicit-key');

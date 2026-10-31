@@ -66,7 +66,7 @@ export function registerPreparesFreshInputCoordinationReplay(): void {
         // Observe the blocked write: its preliminary read has seen the live receipt.
         await waitForBlockedBy(workerPool, pid, { timeout: 10_000 });
         await fence.query(
-          `update app.webhook_trigger_replay_records set created_at=clock_timestamp()-interval '24 hours 2 seconds', expires_at=clock_timestamp()-interval '2 seconds' where workspace_id=$1 and endpoint_id=$2 and dedupe_kind='keyed' and dedupe_key_hash=$3`,
+          `update app.webhook_trigger_replay_records set created_at=clock_timestamp()-interval '24 hours 2 seconds', expires_at=clock_timestamp()-interval '2 seconds' where workspace_id=$1 and endpoint_id=$2 and dedupe_key_hash=$3`,
           [workspaceId, resources.endpointId, input.idempotencyKeyHash],
         );
         await fence.query('commit');
@@ -98,54 +98,41 @@ export function registerPreparesFreshInputCoordinationReplay(): void {
     20_000,
   );
 
-  it('serializes expired keyed and fingerprint replay replacement with database time', async () => {
+  it('serializes expired replay replacement with database time', async () => {
     const { resources, verification } = await createWebhookScenario();
-    for (const dedupeKind of ['keyed', 'fingerprint'] as const) {
-      const requestFingerprint = hash(`expired-${dedupeKind}-payload`);
-      const dedupeKeyHash =
-        dedupeKind === 'keyed'
-          ? hash(`expired-${dedupeKind}-key`)
-          : requestFingerprint;
-      const input = {
-        verification,
-        verifiedSecretVersionId: verification.currentSecret.id,
-        requestFingerprint,
-        ...(dedupeKind === 'keyed'
-          ? { idempotencyKeyHash: dedupeKeyHash }
-          : {}),
-        runInput: webhookRunInput(
-          verification.runInputMode,
-          post({ dedupeKind }),
-        ),
-        bodyBytes: 64,
-        checkpointFactory,
-      } as const;
-      const first = await acceptWebhook(input);
-      const observation = await ownerQuery<{ observed_at: Date }>(
-        `update app.webhook_trigger_replay_records
-            set created_at=clock_timestamp()-case when dedupe_kind='keyed'
-                  then interval '24 hours 2 seconds'
-                  else interval '5 minutes 2 seconds' end,
-                expires_at=clock_timestamp()-interval '2 seconds'
-          where workspace_id=$1 and endpoint_id=$2 and dedupe_kind=$3
-            and dedupe_key_hash=$4
-          returning clock_timestamp() observed_at`,
-        [workspaceId, resources.endpointId, dedupeKind, dedupeKeyHash],
-      );
-      expect(observation.rows[0]?.observed_at).toBeInstanceOf(Date);
+    const requestFingerprint = hash('expired-keyed-payload');
+    const dedupeKeyHash = hash('expired-keyed-key');
+    const input = {
+      verification,
+      verifiedSecretVersionId: verification.currentSecret.id,
+      requestFingerprint,
+      idempotencyKeyHash: dedupeKeyHash,
+      runInput: webhookRunInput(
+        verification.runInputMode,
+        post({ event: 'expired-keyed' }),
+      ),
+      bodyBytes: 64,
+      checkpointFactory,
+    } as const;
+    const first = await acceptWebhook(input);
+    const observation = await ownerQuery<{ observed_at: Date }>(
+      `update app.webhook_trigger_replay_records
+          set created_at=clock_timestamp()-interval '24 hours 2 seconds',
+              expires_at=clock_timestamp()-interval '2 seconds'
+        where workspace_id=$1 and endpoint_id=$2 and dedupe_key_hash=$3
+        returning clock_timestamp() observed_at`,
+      [workspaceId, resources.endpointId, dedupeKeyHash],
+    );
+    expect(observation.rows[0]?.observed_at).toBeInstanceOf(Date);
 
-      const raced = await Promise.all([
-        acceptWebhook(input),
-        acceptWebhook(input),
-      ]);
-      expect(new Set(raced.map(({ runId }) => runId)).size).toBe(1);
-      expect(raced[0].runId).not.toBe(first.runId);
-      expect(raced.map(({ replayed }) => replayed).sort()).toEqual([
-        false,
-        true,
-      ]);
-    }
-    // Each kind admits twice; each race also records its losing exact replay.
+    const raced = await Promise.all([
+      acceptWebhook(input),
+      acceptWebhook(input),
+    ]);
+    expect(new Set(raced.map(({ runId }) => runId)).size).toBe(1);
+    expect(raced[0].runId).not.toBe(first.runId);
+    expect(raced.map(({ replayed }) => replayed).sort()).toEqual([false, true]);
+    // Admits twice; the race also records its losing exact replay.
     await expect(
       ownerQuery<{ outcome: string; count: number }>(
         `select outcome,count(*)::int count from app.webhook_trigger_deliveries
@@ -155,8 +142,8 @@ export function registerPreparesFreshInputCoordinationReplay(): void {
       ),
     ).resolves.toMatchObject({
       rows: [
-        { outcome: 'accepted', count: 4 },
-        { outcome: 'replayed', count: 2 },
+        { outcome: 'accepted', count: 2 },
+        { outcome: 'replayed', count: 1 },
       ],
     });
   });

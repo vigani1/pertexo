@@ -17,7 +17,6 @@ export const webhookReplays = deletionRule('webhook_replay_records', {
   table: webhookTriggerReplayRecords,
   keys: [
     webhookTriggerReplayRecords.endpointId,
-    webhookTriggerReplayRecords.dedupeKind,
     webhookTriggerReplayRecords.dedupeKeyHash,
   ],
   condition: lte(webhookTriggerReplayRecords.expiresAt, sql`clock_timestamp()`),

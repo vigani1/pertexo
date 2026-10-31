@@ -12,7 +12,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import { WebhookDeliveryReplayMismatchError } from './errors.js';
 
-/** Endpoint-scoped deduplication records for ADR 026 webhook replay. */
+/** Endpoint-scoped records of an `Idempotency-Key` for ADR 026 webhook replay. */
 export type WebhookReplayRecord = NonNullable<
   Awaited<ReturnType<typeof readLockedReplay>>
 >;
@@ -22,7 +22,7 @@ export async function lockEndpointDedupeKey(
 ): Promise<void> {
   await transaction.db.execute(sql`
     select pg_advisory_xact_lock(hashtextextended(
-      ${`${identity.endpointId}:${identity.dedupeKind}:${identity.dedupeKeyHash}`},0))
+      ${`${identity.endpointId}:${identity.dedupeKeyHash}`},0))
   `);
 }
 export async function readLockedReplay(
@@ -58,7 +58,6 @@ export async function readLockedReplay(
       and(
         eq(replay.workspaceId, transaction.workspaceId),
         eq(replay.endpointId, identity.endpointId),
-        eq(replay.dedupeKind, identity.dedupeKind),
         eq(replay.dedupeKeyHash, identity.dedupeKeyHash),
       ),
     )
@@ -109,7 +108,6 @@ export async function deleteExpiredReplay(
       and(
         eq(webhookTriggerReplayRecords.workspaceId, transaction.workspaceId),
         eq(webhookTriggerReplayRecords.endpointId, identity.endpointId),
-        eq(webhookTriggerReplayRecords.dedupeKind, identity.dedupeKind),
         eq(webhookTriggerReplayRecords.dedupeKeyHash, identity.dedupeKeyHash),
       ),
     );

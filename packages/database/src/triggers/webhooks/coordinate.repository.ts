@@ -17,13 +17,11 @@ export async function coordinateVerifiedWebhook(
     prepared,
     projection,
     deliveryId,
-    dedupeKind,
   }: Readonly<{
     runInput: unknown;
     prepared: PreparedEventCoordination;
     projection: PublishedWorkflow;
     deliveryId: string;
-    dedupeKind: 'keyed' | 'fingerprint';
   }>,
 ) {
   const initial = input.checkpointFactory(projection);
@@ -65,7 +63,6 @@ export async function coordinateVerifiedWebhook(
     signatureCheck: 'verified',
     replayCheck: 'new',
     bodyBytes: input.bodyBytes,
-    dedupeKind,
     coordinationEventId: deliveryId,
     ...(runId === undefined ? {} : { runId }),
   });

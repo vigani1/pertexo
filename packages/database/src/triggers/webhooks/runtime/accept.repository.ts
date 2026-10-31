@@ -43,20 +43,21 @@ export async function acceptVerifiedWebhookDelivery(
 ): ReturnType<WebhookTriggerDatabase['acceptVerifiedDelivery']> {
   const verification = input.verification;
   const requestFingerprint = input.requestFingerprint;
-  const dedupeKind =
-    input.idempotencyKeyHash === undefined ? 'fingerprint' : 'keyed';
-  const dedupeKeyHash = input.idempotencyKeyHash ?? requestFingerprint;
-  const replayIdentity: WebhookReplayIdentity = {
-    endpointId: verification.endpointId,
-    dedupeKind,
-    dedupeKeyHash,
-  };
+  // Only a sender's own key names a repeat. Identical bytes without one are separate
+  // events; business dedupe is event coordination's job (ADR 026).
+  const replayIdentity: WebhookReplayIdentity | undefined =
+    input.idempotencyKeyHash === undefined
+      ? undefined
+      : {
+          endpointId: verification.endpointId,
+          dedupeKeyHash: input.idempotencyKeyHash,
+        };
   const readCandidate = ({ checkReplay }: Readonly<{ checkReplay: boolean }>) =>
     withWorkspaceReadTransaction(
       pool,
       verification.workspaceId,
       async (transaction) => {
-        if (checkReplay) {
+        if (checkReplay && replayIdentity !== undefined) {
           const replay = await transaction.db
             .select({ one: sql`1` })
             .from(replays)
@@ -64,8 +65,7 @@ export async function acceptVerifiedWebhookDelivery(
               and(
                 eq(replays.workspaceId, transaction.workspaceId),
                 eq(replays.endpointId, replayIdentity.endpointId),
-                eq(replays.dedupeKind, dedupeKind),
-                eq(replays.dedupeKeyHash, dedupeKeyHash),
+                eq(replays.dedupeKeyHash, replayIdentity.dedupeKeyHash),
                 sql`${replays.expiresAt}>clock_timestamp()`,
               ),
             );
@@ -115,8 +115,10 @@ export async function acceptVerifiedWebhookDelivery(
         );
         if (prepared !== undefined)
           await lockEventCoordination(transaction.workspaceId, transaction.db);
-        await lockEndpointDedupeKey(transaction, replayIdentity);
-        const replay = await readLockedReplay(transaction, replayIdentity);
+        const replay =
+          replayIdentity === undefined
+            ? undefined
+            : await readReplayUnderLock(transaction, replayIdentity);
         await lockEligibleEndpoint(
           transaction,
           verification,
@@ -134,7 +136,6 @@ export async function acceptVerifiedWebhookDelivery(
               ? {}
               : { coordinationEventId: replay.coordination_event_id }),
             ...replayDeliveryReference(replayed),
-            dedupeKind,
           });
           if ('skipped' in replayed || 'coordinated' in replayed)
             return replayed;
@@ -145,7 +146,7 @@ export async function acceptVerifiedWebhookDelivery(
           };
         }
         if (candidate.replay) return undefined;
-        if (replay !== undefined)
+        if (replay !== undefined && replayIdentity !== undefined)
           await deleteExpiredReplay(transaction, replayIdentity);
 
         return acceptNewWebhookDelivery(transaction, input, {
@@ -161,6 +162,14 @@ export async function acceptVerifiedWebhookDelivery(
     // Prepare once outside locks; the next pass always has fresh event input.
     candidate = await readCandidate({ checkReplay: false });
   }
+}
+
+async function readReplayUnderLock(
+  transaction: WorkspaceTransaction,
+  identity: WebhookReplayIdentity,
+) {
+  await lockEndpointDedupeKey(transaction, identity);
+  return readLockedReplay(transaction, identity);
 }
 
 function replayDeliveryOutcome(
@@ -200,7 +209,7 @@ async function acceptNewWebhookDelivery(
     prepared,
   }: Readonly<{
     requestFingerprint: string;
-    replayIdentity: WebhookReplayIdentity;
+    replayIdentity: WebhookReplayIdentity | undefined;
     runInput: Parameters<
       WebhookTriggerDatabase['acceptVerifiedDelivery']
     >[0]['runInput'];
@@ -212,21 +221,16 @@ async function acceptNewWebhookDelivery(
   }>,
 ): ReturnType<WebhookTriggerDatabase['acceptVerifiedDelivery']> {
   const verification = input.verification;
-  const { dedupeKind, dedupeKeyHash } = replayIdentity;
   const deliveryId = generatePersistedId();
-  const retention =
-    dedupeKind === 'keyed'
-      ? sql`interval '24 hours'`
-      : sql`interval '5 minutes'`;
-  await transaction.db.insert(replays).values({
-    workspaceId: transaction.workspaceId,
-    endpointId: verification.endpointId,
-    dedupeKind,
-    dedupeKeyHash,
-    requestFingerprint,
-    deliveryId,
-    expiresAt: sql`clock_timestamp()+${retention}`,
-  });
+  if (replayIdentity !== undefined)
+    await transaction.db.insert(replays).values({
+      workspaceId: transaction.workspaceId,
+      endpointId: verification.endpointId,
+      dedupeKeyHash: replayIdentity.dedupeKeyHash,
+      requestFingerprint,
+      deliveryId,
+      expiresAt: sql`clock_timestamp()+interval '24 hours'`,
+    });
   const projection = await executableProjection(
     transaction,
     verification.workflowVersionId,
@@ -237,7 +241,6 @@ async function acceptNewWebhookDelivery(
       prepared,
       projection,
       deliveryId,
-      dedupeKind,
     });
   const initial = input.checkpointFactory(projection);
   let accepted;
@@ -272,7 +275,6 @@ async function acceptNewWebhookDelivery(
       signatureCheck: 'verified',
       replayCheck: 'new',
       bodyBytes: input.bodyBytes,
-      dedupeKind,
     });
     await transaction.db
       .update(replays)
@@ -301,7 +303,6 @@ async function acceptNewWebhookDelivery(
     replayCheck: 'new',
     bodyBytes: input.bodyBytes,
     runId: accepted.runId,
-    dedupeKind,
   });
   await transaction.db
     .update(replays)

@@ -17,10 +17,9 @@ Without a workflow limit, Skip has no effect.
 
 - Webhooks receive HTTP 202 with
   `{ "skipped": true, "reason": "concurrency_limit" }`. This also applies when
-  a webhook normally waits for a workflow response. No run starts. During the
-  existing replay window (five minutes by fingerprint, 24 hours with an
-  Idempotency-Key), exact retries keep the same skip result. A fresh event is
-  considered independently.
+  a webhook normally waits for a workflow response. No run starts. For 24 hours,
+  a retry with the same `Idempotency-Key` keeps the same skip result. Any other
+  event, including identical bytes without a key, is considered independently.
 - Schedules record **Skipped — concurrency limit reached** and move to the next
   occurrence. The schedule’s missed-run policy remains separate.
 - Forms say **This workflow is busy. Try again shortly.** Entered values remain

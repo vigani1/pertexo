@@ -122,13 +122,17 @@ or header secret exposes that credential to its visitors.
 
 ## Retries and limits
 
-Use the same `Idempotency-Key` (1–128 visible ASCII characters, no comma) for the
-same event. It deduplicates the exact request for 24 hours. Without one, the
-exact request deduplicates for five minutes. For a POST that means its body
-bytes, media type and query string; for a GET, its query string. Headers don't
-count. Different whitespace counts as different bytes. A reused key with a
-changed request returns 409. All modes share
-these rules, the 60-POST-attempt/minute endpoint allowance, workspace capacity and the metadata-only delivery log. Authentication failures
+Every delivery starts a run unless it names itself as a repeat. Send the same
+`Idempotency-Key` (1–128 visible ASCII characters, no comma) on each retry of an
+event: Pertexo returns the first result for 24 hours instead of starting another
+run. "The same request" means its body bytes, media type and query string for a
+POST, and its query string for a GET; headers don't count, and different
+whitespace counts as different bytes. A reused key with a changed request returns
+409. A sender that retries without a key can start duplicate runs, so give it a
+key if it retries. To drop repeats by a value inside the event, use
+[event coordination](event-coordination.md).
+
+All modes share these rules, the 60-POST-attempt/minute endpoint allowance, workspace capacity and the metadata-only delivery log. Authentication failures
 don't disclose whether an endpoint exists.
 
 For a workflow-controlled response, see [Respond to webhook](webhook-responses.md).
