@@ -55,6 +55,11 @@ describeFaults('jobs on the maintenance queue, late but not lost', () => {
     expect(kept.invitationsSent).toBe(1);
   });
 
+  // Otherwise each is delivered again for a day, and then reads as stuck.
+  it('has every job kind confirmed by its consumer', () => {
+    expect(kept.unconfirmed).toEqual([]);
+  });
+
   it('marks the connection as needing reauthorization', () => {
     expect(kept.connection).toBe('reauthorization_required');
   });

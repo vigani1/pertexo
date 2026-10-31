@@ -116,6 +116,36 @@ describe('workspace invitation delivery', () => {
     expect(sent.store.confirm).toHaveBeenCalledOnce();
   });
 
+  // A worker shutting down stops before sending, and that job has to come back.
+  it('does not confirm a job it stopped before sending', async () => {
+    const test = setup({
+      kind: 'submitted',
+      reference: '55555555-5555-4555-8555-555555555555',
+    });
+    const stopping = new AbortController();
+    const claim = test.store.claim;
+    const handler = createWorkspaceInvitationDeliveryHandler({
+      store: {
+        ...test.store,
+        claim: async (input) => {
+          const claimed = await claim(input);
+          stopping.abort();
+          return claimed;
+        },
+      },
+      envelope: { open: vi.fn().mockReturnValue('wi1.secret-token') },
+      email: { sendNotification: test.sendNotification, deduplicates: true },
+      fromEmail: 'invites@example.test',
+      webOrigin: 'https://app.example.test',
+      timeoutMillis: 5_000,
+    });
+
+    await handler.handle(delivery, { signal: stopping.signal });
+
+    expect(test.sendNotification).not.toHaveBeenCalled();
+    expect(test.store.confirm).not.toHaveBeenCalled();
+  });
+
   it('sends the fixed application-owned template and clears a submitted secret', async () => {
     const test = setup({
       kind: 'submitted',
