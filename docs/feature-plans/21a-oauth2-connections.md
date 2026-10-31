@@ -1,8 +1,8 @@
 # F21 slice 0 — Generic OAuth2 connections for HTTP Request
 
-Status: **Planned; contract only.** Parent: [F21](21-integrations-and-polling.md).
-No handler, table or screen exists yet. Numbered rules (S, L, D) are what the
-tests check, so a change to one is a change to this plan.
+Status: **Built; awaiting the owner's sandbox proofs.** Parent: [F21](21-integrations-and-polling.md).
+Numbered rules (S, L, D) are what the tests check, so a change to one is a change
+to this plan.
 
 ## Outcome
 
@@ -97,8 +97,8 @@ With a connection, it also links to that connection.
 ### Using it
 
 The HTTP Request connection picker lists active OAuth2 connections beside header
-ones. Nothing else in the step changes. A step that sets its own `Authorization`
-header fails as a conflicting header does today.
+ones. Nothing else in the step changes. A step can't set its own `Authorization`
+header: saving refuses that name, so publishing is refused and nothing is sent.
 
 ### Detail and reconnect
 
@@ -173,8 +173,8 @@ The contract checks shape (S14). One function in the API process decides the res
 - **S15** With `HTTP_ALLOWED_PRIVATE_NETWORKS` empty, refused: `http:`; every IP
   literal; `localhost`, `*.localhost`, `*.local`, `*.internal`, `*.intranet`, `*.lan`,
   `*.home.arpa`; single-label names. With networks set, those pass only if an IP
-  literal is inside them; names are settled at dispatch. Always refused: the host of
-  `PUBLIC_WEB_ORIGIN`. The answer is `connection.oauth2_endpoint_refused`, naming the
+  literal is inside them; names are settled at dispatch. Always refused: the hostname of
+  `PUBLIC_WEB_ORIGIN`, whatever the port. The answer is `connection.oauth2_endpoint_refused`, naming the
   field.
 - **S16** Pertexo's server never requests the authorization URL; only the person's
   browser does, so its redirects aren't followed by us.
@@ -194,10 +194,14 @@ The contract checks shape (S14). One function in the API process decides the res
   connection won't open.
 - **S20** The secret, tokens, code, state, verifier and binding appear in no API
   response, connection event, audit fact, log line, trace, step output or error
-  summary. Token requests pass them as `sensitiveValues`.
+  summary. The two necessary exceptions: the state is in `authorizationUrl`, which the
+  person must open, and the binding is in its own `Set-Cookie`. Token requests pass the
+  secret, code and verifier as `sensitiveValues`. A refresh token isn't one: a service
+  that doesn't rotate echoes it, and redacting that answer would store a broken copy.
 - **S21** The PKCE verifier isn't stored: it is
   `deriveJourneySecret(applicationSecret, 'oauth2-pkce:' + state)`, the identity
-  journeys' existing way.
+  journeys' existing way. That function lives in the API, so `consent.ts` names the
+  purpose and the API derives it.
 - **S22** Changing any setting requires the client secret in the same request, so
   someone with manage rights can't point a stored secret at their own token address.
 - **S23** Client ID, addresses, scope and parameters aren't secret and are returned
@@ -276,7 +280,10 @@ connection tests share it.
   then zeroes them. If it still fails, or the process dies first, a rotating provider
   answers `invalid_grant` next time and the connection shows reconnect. That window
   is accepted: no design closes it, it needs a crash within milliseconds, and it costs
-  one visible reconnect.
+  one visible reconnect. A second window is accepted the same way: if the worker told
+  `invalid_grant` acts before the winner commits, L3's version check passes and the
+  winner's commit is discarded. It takes a process frozen past the 45 s block, closing it
+  would need a lock across HTTP, and it ends in a visible reconnect with L7 intact.
 
 ### What the token address answers
 
@@ -433,11 +440,11 @@ connection_oauth2_authorizations          -- at most one pending per connection
 | `packages/integrations/src/oauth2/stored.ts` | D1 |
 | `packages/integrations/src/oauth2/endpoints.ts` | S15 |
 | `packages/integrations/src/oauth2/token-endpoint.ts` | The three token requests, S17–S18, S25–S27, and the answer table |
-| `packages/integrations/src/oauth2/consent.ts` | Authorization URL, state format, verifier |
+| `packages/integrations/src/oauth2/consent.ts` | Authorization URL, state format, the verifier's purpose (S21) |
 | `packages/integrations/src/oauth2/access-token.ts` | `accessToken`, `rejectToken`: the lifecycle above |
 | `packages/integrations/src/http-request/execution/oauth2-renewal.ts` | Wraps the HTTP client for L11–L14, single and paged, and S24 |
 | `packages/integrations/src/http-request/execution/oauth2-failure.ts` | The step failure class and text, like `HttpPaginationFailure` |
-| `packages/node-sdk/src/execution/contract.ts` | Adds `resolveHttpCredential` and `rejectAccessToken` to `NodeConnectionRuntime`; the first returns a union on `authType` (`http_headers` with `secret`, `oauth2` with `accessToken`, `tokenVersionId`, `requestHosts`) |
+| `packages/node-sdk/src/execution/contract.ts` | Adds optional `resolveHttpCredential` and `rejectAccessToken` to `NodeConnectionRuntime`, as `assertCurrent` is; only an HTTP step needs them. The first returns a union on `authType` (`http_headers` with `secret`, `oauth2` with `accessToken`, `tokenVersionId`, `requestHosts`) |
 | `apps/worker/src/providers/connections.ts` | Implements both behind the existing provider rate limit; `assertCurrent` allows `oauth2` |
 | `apps/worker/src/attempts/execution/capability-composition/connections.ts` | Gives it the token service and HTTP client |
 | `apps/api/src/connections/oauth2/` | `controller.ts`, `start-authorization.ts`, `finish-authorization.ts`; registered in `module.ts` |
@@ -454,33 +461,19 @@ Routes use `provider_test` for start, `identity_callback` for the callback.
 `connections/oauth2/*` into `core/connections`, and the envelope and `SecureHttpClient`
 into `secrets`. `token-endpoint.ts` and `endpoints.ts` stay in `integrations`.
 
-## Contract on this branch
+## Contract
 
-In `packages/contracts`, with artifacts regenerated:
+In `packages/contracts`, with artifacts regenerated: `schemas/oauth2-connections.ts` (settings,
+credential, response, start response, callback query and landing, and the connection and step
+code enums), and `startConnectionOAuth2Authorization` and `completeConnectionOAuth2Authorization`
+in `openapi/connections.ts`. The `http` member of `connectionCreateRequestSchema` takes either
+credential; there is no separate create route. `connectionResponseSchema` is a union of the other
+auth types' shape and `oauth2ConnectionResponseSchema`.
 
-- `schemas/oauth2-connections.ts`: settings, credential, response, start response, callback
-  query and landing, and the connection and step code enums.
-- Routes in `openapi/connections.ts`: `startConnectionOAuth2Authorization` and
-  `completeConnectionOAuth2Authorization`. They don't break `pnpm check`, which compares
-  artifacts rather than handlers. The route list in `test/connections.test.ts` gains the two.
-- Problem codes: `connection.oauth2_endpoint_refused` (400), `connection.oauth2_token_refused`
-  (409, a client-credentials start that the service refused). An outage on start is the
-  existing `provider.unavailable`; starting on a revoked connection is `connection.revoked`;
-  on a non-OAuth2 connection is `connection.conflict`.
-- `connectionResponseFields` is extracted from `connectionResponseSchema` with no type change.
-
-**Deliberately not yet changed, because each would break the build with no handler.** The coder
-makes these with the code:
-
-- `connectionAuthTypeSchema` gains `oauth2`.
-- `connectionCredentialSchema` gains `oauth2CredentialSchema`.
-- The `http` member of `connectionCreateRequestSchema` takes `credential` as a union of headers
-  and `oauth2CredentialSchema`. There is no separate create route.
-- `connectionResponseSchema` becomes a union of today's shape, for the other auth types, and
-  `oauth2ConnectionResponseSchema`.
-
-Today these are consumed exhaustively, for example `PROVIDER_BY_CREDENTIAL` in the web app and
-`authType: request.credential.type` in the create use case.
+Problem codes: `connection.oauth2_endpoint_refused` (400, with the field in `errors`),
+`connection.oauth2_token_refused` (409, a client-credentials start that the service refused). An
+outage on start is the existing `provider.unavailable`; starting on a revoked connection is
+`connection.revoked`; on a non-OAuth2 connection is `connection.conflict`.
 
 ## Not in this slice
 
@@ -563,7 +556,9 @@ migration on a database with existing connections leaves them unchanged.
   `refresh_blocked_until` directly in the database so the second worker also calls. The stand-in answers
   the first with new tokens and the second `invalid_grant`. The connection stays active and both steps
   succeed.
-- The reverse commit order gives the same result.
+- The reverse commit order, with the second requester answered and committed first, gives the same
+  result. If the worker told `invalid_grant` acts before the winner commits, it ends in a visible
+  reconnect with L7 intact (L8).
 - A person reconnects during a refresh: the refresh's commit is discarded, and the new grant stands.
 - L4: cancel a step during a delayed refresh; the new tokens are still committed.
 
@@ -583,7 +578,8 @@ migration on a database with existing connections leaves them unchanged.
 2. Consent window opens, Approve, it closes or shows "Connected. You can close this tab."; the first tab
    moves on with no reload.
 3. Publish and run an HTTP Request with it; the run succeeds.
-4. The stand-in revokes the grant; the next run fails with the `http.oauth2_grant_revoked` text; the
+4. The stand-in revokes the grant; the next run whose token is due for renewal fails with the
+   `http.oauth2_grant_revoked` text (with a fresh token, the API's 401 changes nothing, per L15); the
    connection shows "Needs reauthorization" and the notice; Reconnect, Approve; the same workflow runs
    again without being edited.
 5. Deny shows the `denied` text and changes nothing.
@@ -612,7 +608,7 @@ The owner runs these later with sandbox apps. They can't be done here:
 ## Delivery tracker
 
 - [x] Plan and contract.
-- [ ] Tests, by a separate agent, from this plan.
-- [ ] Code, by a separate agent.
-- [ ] Real browser journey and fault suite green.
+- [x] Tests, by a separate agent, from this plan.
+- [x] Code, by a separate agent.
+- [x] Real browser journey and fault suite green.
 - [ ] Sandbox proofs (owner).
