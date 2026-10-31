@@ -81,9 +81,10 @@ it.fails(
         );
         await admin.query('commit');
       }
-      const snapshot = async () =>
+      const reader = admin;
+      const snapshot = async (): Promise<readonly unknown[]> =>
         (
-          await (admin as Pool).query(
+          await reader.query<{ connection: unknown; secret: unknown }>(
             `select to_jsonb(c) as connection, to_jsonb(s) as secret
              from app.connections c
              join app.connection_secret_versions s
