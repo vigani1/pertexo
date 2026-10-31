@@ -22,7 +22,7 @@ const entrypoint = (app: 'api' | 'ops' | 'worker'): string =>
   fileURLToPath(new URL(`../../../../${app}/dist/main.js`, import.meta.url));
 
 const REDIS_DATABASE = 14;
-const WEB_ORIGIN = 'http://127.0.0.1:5999';
+const DEFAULT_WEB_ORIGIN = 'http://127.0.0.1:5999';
 const START_LIMIT_MS = 120_000;
 
 const quote = (name: string): string => `"${name.replaceAll('"', '""')}"`;
@@ -76,6 +76,8 @@ async function createMigratedDatabase(databaseName: string): Promise<void> {
 export type Stack = Readonly<{
   api: ApiClient;
   apiProcess: ServiceProcess;
+  /** Where the real API listens. */
+  baseUrl: string;
   close: () => Promise<void>;
   /** One connection of the test's own, for locks held across statements. */
   connect: () => Promise<PoolClient>;
@@ -99,6 +101,8 @@ export type StackOptions = Readonly<{
   workerEnvironment?: Readonly<Record<string, string>>;
   /** Serves Slack from the sink, for steps and alerts that use a real connection. */
   slackFromSink?: boolean;
+  /** The install's public web address, when a test needs a host other than the API's. */
+  webOrigin?: string;
 }>;
 
 const providerPreload = fileURLToPath(
@@ -132,11 +136,12 @@ export async function startStack(
 
   const sink = await startSink();
   const port = await freePort();
+  const webOrigin = options.webOrigin ?? DEFAULT_WEB_ORIGIN;
   const shared = {
     ...serviceEnvironment,
     DATABASE_MAINTENANCE_URL: onDatabase(composeUrls.maintenance, databaseName),
     DATABASE_URL: onDatabase(composeUrls.app, databaseName),
-    PUBLIC_WEB_ORIGIN: WEB_ORIGIN,
+    PUBLIC_WEB_ORIGIN: webOrigin,
     REDIS_URL: redisNamespace.redisUrl,
     ...(options.slackFromSink === true
       ? {
@@ -178,7 +183,7 @@ export async function startStack(
   };
 
   const baseUrl = `http://127.0.0.1:${String(port)}`;
-  const api = new ApiClient(baseUrl, WEB_ORIGIN);
+  const api = new ApiClient(baseUrl, webOrigin);
   try {
     apiProcess.start();
     const deadline = Date.now() + START_LIMIT_MS;
@@ -215,6 +220,7 @@ export async function startStack(
   return Object.freeze({
     api,
     apiProcess,
+    baseUrl,
     connect: () => pool.connect(),
     createWorker(instance) {
       const created = createWorker(instance);

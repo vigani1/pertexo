@@ -17,7 +17,7 @@ export type WebhookKeys = Readonly<{
   signingSecret: string;
 }>;
 
-const PASSWORD = 'Recovery-test-Pw-1234';
+export const PASSWORD = 'Recovery-test-Pw-1234';
 const PUBLISH_ATTEMPTS = 10;
 
 const idOf = (value: unknown, key: string): string => {
@@ -35,8 +35,8 @@ export class ApiClient {
   private readonly cookies = new Map<string, string>();
 
   public constructor(
-    private readonly baseUrl: string,
-    private readonly webOrigin: string,
+    protected readonly baseUrl: string,
+    protected readonly webOrigin: string,
   ) {}
 
   public async call(
