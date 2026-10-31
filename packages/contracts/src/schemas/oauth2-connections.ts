@@ -299,3 +299,21 @@ export const oauth2CallbackLandingSchema = z.discriminatedUnion('result', [
     .strict()
     .readonly(),
 ]);
+
+export type OAuth2ClientSettings = z.output<typeof oauth2ClientSettingsSchema>;
+export type OAuth2Credential = z.output<typeof oauth2CredentialSchema>;
+export type OAuth2ConnectionResponse = z.output<
+  typeof oauth2ConnectionResponseSchema
+>;
+export type OAuth2ConnectionErrorCode = z.output<
+  typeof oauth2ConnectionErrorCodeSchema
+>;
+export type OAuth2StepFailureCode = z.output<
+  typeof oauth2StepFailureCodeSchema
+>;
+export type OAuth2AuthorizationStartResponse = z.output<
+  typeof oauth2AuthorizationStartResponseSchema
+>;
+export type OAuth2CallbackLanding = z.output<
+  typeof oauth2CallbackLandingSchema
+>;

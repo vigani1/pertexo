@@ -6,6 +6,9 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
 import { ConnectionsController } from './http/controllers.js';
+import { ConnectionOAuth2Controller } from './oauth2/controller.js';
+import { FinishOAuth2AuthorizationUseCase } from './oauth2/finish-authorization.js';
+import { StartOAuth2AuthorizationUseCase } from './oauth2/start-authorization.js';
 import {
   ConnectionUsageController,
   ListConnectionUsageUseCase,
@@ -71,6 +74,7 @@ export class ConnectionsModule {
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
+          dependencies.oauth2,
         ),
       },
       {
@@ -79,6 +83,7 @@ export class ConnectionsModule {
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
+          dependencies.oauth2,
         ),
       },
       {
@@ -90,6 +95,7 @@ export class ConnectionsModule {
             encryption: dependencies.encryption,
             applicationSecret: dependencies.applicationSecret,
             telemetry: telemetry,
+            oauth2: dependencies.oauth2,
           },
         ),
       },
@@ -102,6 +108,7 @@ export class ConnectionsModule {
             encryption: dependencies.encryption,
             applicationSecret: dependencies.applicationSecret,
             telemetry: telemetry,
+            oauth2: dependencies.oauth2,
           },
         ),
       },
@@ -111,6 +118,7 @@ export class ConnectionsModule {
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
+          dependencies.oauth2,
         ),
       },
       {
@@ -125,6 +133,7 @@ export class ConnectionsModule {
             telemetry: telemetry,
             slackClient: dependencies.slackClient,
             emailClient: dependencies.emailClient,
+            oauth2: dependencies.oauth2,
           },
         ),
       },
@@ -141,6 +150,26 @@ export class ConnectionsModule {
         ),
       },
     ];
+    if (dependencies.oauth2 !== undefined)
+      providers.push(
+        {
+          provide: StartOAuth2AuthorizationUseCase,
+          useValue: new StartOAuth2AuthorizationUseCase(
+            dependencies.oauth2,
+            dependencies.authorization,
+            dependencies.encryption,
+            dependencies.applicationSecret,
+          ),
+        },
+        {
+          provide: FinishOAuth2AuthorizationUseCase,
+          useValue: new FinishOAuth2AuthorizationUseCase(
+            dependencies.oauth2,
+            dependencies.encryption,
+            dependencies.applicationSecret,
+          ),
+        },
+      );
     if (dependencies.sharingPersistence !== undefined)
       providers.push({
         provide: ConnectionSharingUseCases,
@@ -173,6 +202,9 @@ export class ConnectionsModule {
       imports: [identityModule],
       controllers: [
         ConnectionsController,
+        ...(dependencies.oauth2 === undefined
+          ? []
+          : [ConnectionOAuth2Controller]),
         ...(dependencies.sharingPersistence === undefined
           ? []
           : [ConnectionSharingController]),

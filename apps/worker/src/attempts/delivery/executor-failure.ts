@@ -42,6 +42,7 @@ export function executorFailureCompletion(
     !dataExecutorSummaryCodes.has(safeErrorCode) &&
     safeErrorCode !== 'execution.file_input' &&
     !safeErrorCode.startsWith('http.pagination_') &&
+    !safeErrorCode.startsWith('http.oauth2_') &&
     safeErrorCode !== 'execution.attempt_invalid'
   )
     throw new NodeAttemptStateCorruptError();

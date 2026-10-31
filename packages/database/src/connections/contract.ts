@@ -42,8 +42,18 @@ export type ConnectionRecord = Readonly<
         | 'lastHealthTransitionAt'
         | 'lastHealthTransitionSource'
       >
-    >
+    > & { oauth2?: OAuth2ConnectionFacts }
 >;
+
+/** Read beside the connection, so its status and grant can't disagree. */
+export type OAuth2ConnectionFacts = Readonly<{
+  settings: unknown;
+  grant: Readonly<{
+    authorizedAt: Date;
+    accessTokenExpiresAt: Date | null;
+    renewable: boolean;
+  }> | null;
+}>;
 
 export type ListConnectionsInput = Readonly<{
   workspaceId: string;
@@ -82,7 +92,13 @@ export type RequestMetadata = Readonly<{
   traceId?: string;
 }>;
 
+/** Only an OAuth2 connection has settings, and it always has them. */
+type ConnectionAuthChoice =
+  | Readonly<{ authType: Exclude<ConnectionAuthType, 'oauth2'> }>
+  | Readonly<{ authType: 'oauth2'; oauth2Settings: unknown }>;
+
 export type CreateConnectionInput = RequestMetadata &
+  ConnectionAuthChoice &
   Readonly<{
     workspaceId: string;
     actorId: string;
@@ -90,7 +106,6 @@ export type CreateConnectionInput = RequestMetadata &
     secretVersionId: string;
     providerKey: string;
     name: string;
-    authType: ConnectionAuthType;
     sealed: SealedConnectionSecretRecord;
     idempotencyKey: string;
     requestHash: string;
@@ -112,13 +127,16 @@ export type FindConnectionRotateReplayInput = Readonly<{
 }>;
 
 export type RotateConnectionSecretInput = RequestMetadata &
+  (
+    | Readonly<{ expectedAuthType?: Exclude<ConnectionAuthType, 'oauth2'> }>
+    | Readonly<{ expectedAuthType: 'oauth2'; oauth2Settings: unknown }>
+  ) &
   Readonly<{
     workspaceId: string;
     actorId: string;
     connectionId: string;
     secretVersionId: string;
     expectedCurrentSecretVersionId: string;
-    expectedAuthType?: ConnectionAuthType;
     sealed: SealedConnectionSecretRecord;
     idempotencyKey: string;
     requestHash: string;
@@ -318,6 +336,9 @@ export class ConnectionUnavailableError extends Error {
   public override readonly name = 'ConnectionUnavailableError';
 }
 
+/** An OAuth2 connection with no usable grant: it says so rather than just being unavailable. */
+export class ConnectionOAuth2NotConnectedError extends ConnectionUnavailableError {}
+
 export class ConnectionSharingRevisionConflictError extends Error {
   override readonly name = 'ConnectionSharingRevisionConflictError';
   constructor() {
@@ -327,6 +348,11 @@ export class ConnectionSharingRevisionConflictError extends Error {
 
 export class ConnectionSecretVersionConflictError extends Error {
   public override readonly name = 'ConnectionSecretVersionConflictError';
+}
+
+/** OAuth2 consent was asked of a connection that doesn't use it. */
+export class ConnectionNotOAuth2Error extends Error {
+  public override readonly name = 'ConnectionNotOAuth2Error';
 }
 
 export class ConnectionTestInProgressError extends Error {

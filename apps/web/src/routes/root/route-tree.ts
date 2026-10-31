@@ -7,6 +7,7 @@ import {
   invitationAcceptanceRoute,
   loginRoute,
   logoutRoute,
+  oauth2FinishedRoute,
   passwordRecoveryRoute,
   passwordResetRoute,
   signUpRoute,
@@ -71,6 +72,7 @@ export const routeTree = rootRoute.addChildren([
   logoutRoute,
   accountSecurityRoute,
   invitationAcceptanceRoute,
+  oauth2FinishedRoute,
   workspacesRoute,
   workspaceScopeRoute.addChildren([
     workspaceShellRoute.addChildren([

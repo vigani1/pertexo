@@ -3,6 +3,7 @@ import type {
   NodeConnectionRuntime,
   NodeExecutionInvocation,
   NodeExecutionRuntime,
+  ResolvedHttpCredential,
   ResolvedNodeConnection,
 } from '@pertexo/node-sdk/server';
 import { vi } from 'vitest';
@@ -37,6 +38,24 @@ export function credentialBytes(): Uint8Array {
     }),
   );
 }
+/**
+ * A connection's stub in these tests answers through `resolve`, as a header
+ * connection does; the step asks for its credential with `resolveHttpCredential`.
+ */
+export function httpConnections(
+  connections: NodeConnectionRuntime,
+): NodeConnectionRuntime {
+  return {
+    ...connections,
+    resolveHttpCredential: (input) =>
+      connections.resolve({
+        ...input,
+        expectedProviderKey: 'http',
+        expectedAuthType: 'http_headers',
+      }) as Promise<ResolvedHttpCredential>,
+  };
+}
+
 export function runtime(overrides: Partial<NodeExecutionRuntime> = {}) {
   const secret = credentialBytes();
   const resolved: ResolvedNodeConnection = {
@@ -76,9 +95,12 @@ export function runtime(overrides: Partial<NodeExecutionRuntime> = {}) {
       invocationKey: 'http-node-invocation',
       sideEffectClass: 'unsafe' as const,
       beforeDispatch,
-      connections: { assertCurrent, resolve },
+      connections: httpConnections({ assertCurrent, resolve }),
       artifacts: { write },
       ...overrides,
+      ...(overrides.connections === undefined
+        ? {}
+        : { connections: httpConnections(overrides.connections) }),
     } satisfies NodeExecutionRuntime,
     beforeDispatch,
     assertCurrent,

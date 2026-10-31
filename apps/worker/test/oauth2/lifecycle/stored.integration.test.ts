@@ -45,7 +45,7 @@ describeOAuth2('what an OAuth2 connection stores', () => {
     }) as const;
 
   // S19: the client secret is sealed in connection_secret_versions.
-  it.fails('S19 stores the client secret sealed, not in settings', async () => {
+  it('S19 stores the client secret sealed, not in settings', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const [row] = await harness.stack.sql<{ stored: string }>(
@@ -59,48 +59,42 @@ describeOAuth2('what an OAuth2 connection stores', () => {
   });
 
   // Plan, Detail: the grant facts answered, one per kind of service.
-  it.fails(
-    'answers its grant: renewable, with a lifetime by database time',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'non-rotating');
-      const read = await harness.read(owner.api, owner, connection.id);
-      expect(read.json).toMatchObject({
-        status: 'active',
-        grant: {
-          renewable: true,
-          accessTokenExpiresAt: expect.any(String) as string,
-        },
-      });
-      const { grant } = read.json as {
-        grant: { accessTokenExpiresAt: string };
-      };
-      const remaining =
-        (new Date(grant.accessTokenExpiresAt).getTime() - Date.now()) / 1_000;
-      expect(remaining).toBeGreaterThan(ONE_HOUR_S - 120);
-      expect(remaining).toBeLessThanOrEqual(ONE_HOUR_S + 120);
-    },
-  );
+  it('answers its grant: renewable, with a lifetime by database time', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'non-rotating');
+    const read = await harness.read(owner.api, owner, connection.id);
+    expect(read.json).toMatchObject({
+      status: 'active',
+      grant: {
+        renewable: true,
+        accessTokenExpiresAt: expect.any(String) as string,
+      },
+    });
+    const { grant } = read.json as {
+      grant: { accessTokenExpiresAt: string };
+    };
+    const remaining =
+      (new Date(grant.accessTokenExpiresAt).getTime() - Date.now()) / 1_000;
+    expect(remaining).toBeGreaterThan(ONE_HOUR_S - 120);
+    expect(remaining).toBeLessThanOrEqual(ONE_HOUR_S + 120);
+  });
 
   // L6, Detail: no refresh token means not renewable, with an expiry.
-  it.fails(
-    'answers not renewable when the service gave no refresh token',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'no-refresh');
-      expect(
-        (await harness.read(owner.api, owner, connection.id)).json,
-      ).toMatchObject({
-        grant: {
-          renewable: false,
-          accessTokenExpiresAt: expect.any(String) as string,
-        },
-      });
-    },
-  );
+  it('answers not renewable when the service gave no refresh token', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'no-refresh');
+    expect(
+      (await harness.read(owner.api, owner, connection.id)).json,
+    ).toMatchObject({
+      grant: {
+        renewable: false,
+        accessTokenExpiresAt: expect.any(String) as string,
+      },
+    });
+  });
 
   // L6, Detail: "The service gave no expiry".
-  it.fails('answers no expiry when the service gave none', async () => {
+  it('answers no expiry when the service gave none', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.connected(owner, 'no-expiry');
     expect(
@@ -111,23 +105,20 @@ describeOAuth2('what an OAuth2 connection stores', () => {
   });
 
   // L6: a numeric string counts as a lifetime, and anything else as absent.
-  it.fails(
-    'L6 reads expires_in as a number or numeric string, and nothing else',
-    async () => {
-      const owner = await harness.newOwner();
-      const asString = await harness.connected(owner, 'expires-string');
-      expect(
-        (await harness.tokenRow(asString.id))?.access_token_expires_at,
-      ).not.toBeNull();
-      const asWord = await harness.connected(owner, 'expires-bad');
-      expect(
-        (await harness.tokenRow(asWord.id))?.access_token_expires_at,
-      ).toBeNull();
-    },
-  );
+  it('L6 reads expires_in as a number or numeric string, and nothing else', async () => {
+    const owner = await harness.newOwner();
+    const asString = await harness.connected(owner, 'expires-string');
+    expect(
+      (await harness.tokenRow(asString.id))?.access_token_expires_at,
+    ).not.toBeNull();
+    const asWord = await harness.connected(owner, 'expires-bad');
+    expect(
+      (await harness.tokenRow(asWord.id))?.access_token_expires_at,
+    ).toBeNull();
+  });
 
   // L6: up to 315,360,000, and anything above counts as absent.
-  it.fails('L6 treats an absurd lifetime as absent', async () => {
+  it('L6 treats an absurd lifetime as absent', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     harness.standIn.setExpiresIn(connection.clientId, 315_360_001);
@@ -138,7 +129,7 @@ describeOAuth2('what an OAuth2 connection stores', () => {
   });
 
   // L5: client credentials has no refresh token and is always renewable.
-  it.fails('L5 client credentials is always renewable', async () => {
+  it('L5 client credentials is always renewable', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.createServer(owner, 'non-rotating');
     const started = await harness.start(owner.api, owner, connection.id);
@@ -147,7 +138,7 @@ describeOAuth2('what an OAuth2 connection stores', () => {
   });
 
   // L7: a connection is active exactly when it has a token row for its current version.
-  it.fails('L7 holds after every step of a connection’s life', async () => {
+  it('L7 holds after every step of a connection’s life', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'rotating');
     const holds = async (): Promise<void> => {
@@ -189,34 +180,31 @@ describeOAuth2('what an OAuth2 connection stores', () => {
   });
 
   // S19: a ciphertext copied to another connection won't open.
-  it.fails(
-    'S19 a token row copied to another connection won’t open',
-    async () => {
-      const owner = await harness.newOwner();
-      const source = await harness.connected(owner, 'non-rotating');
-      const target = await harness.connected(owner, 'non-rotating');
-      await harness.stack.sql(
-        `update app.connection_oauth2_tokens t
+  it('S19 a token row copied to another connection won’t open', async () => {
+    const owner = await harness.newOwner();
+    const source = await harness.connected(owner, 'non-rotating');
+    const target = await harness.connected(owner, 'non-rotating');
+    await harness.stack.sql(
+      `update app.connection_oauth2_tokens t
           set kms_key_reference=s.kms_key_reference, encrypted_data_key=s.encrypted_data_key,
               ciphertext=s.ciphertext, nonce=s.nonce, auth_tag=s.auth_tag
          from app.connection_oauth2_tokens s
         where t.connection_id=$1 and s.connection_id=$2`,
-        [target.id, source.id],
-      );
-      const runId = await harness.run(owner, {
-        connectionId: target.id,
-        method: 'GET',
-        url: harness.apiUrl(),
-        retry: { maximumAttempts: 1, delayMillis: 1_000 },
-      });
-      expect((await harness.finish(runId)).status).toBe('failed');
-      expect(harness.standIn.apiCalls(source.clientId)).toEqual([]);
-      expect(harness.standIn.apiCalls(target.clientId)).toEqual([]);
-    },
-  );
+      [target.id, source.id],
+    );
+    const runId = await harness.run(owner, {
+      connectionId: target.id,
+      method: 'GET',
+      url: harness.apiUrl(),
+      retry: { maximumAttempts: 1, delayMillis: 1_000 },
+    });
+    expect((await harness.finish(runId)).status).toBe('failed');
+    expect(harness.standIn.apiCalls(source.clientId)).toEqual([]);
+    expect(harness.standIn.apiCalls(target.clientId)).toEqual([]);
+  });
 
   // S19: the row's own id is in the authenticated data too.
-  it.fails('S19 a token row with a changed id won’t open', async () => {
+  it('S19 a token row with a changed id won’t open', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.connected(owner, 'non-rotating');
     await harness.stack.sql(
@@ -234,29 +222,24 @@ describeOAuth2('what an OAuth2 connection stores', () => {
   });
 
   // D10: "startup refuses if a token's key is gone".
-  it.fails(
-    'D10 a worker refuses to start when a token’s key is gone',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'non-rotating');
+  it('D10 a worker refuses to start when a token’s key is gone', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'non-rotating');
+    await harness.stack.sql(
+      `update app.connection_oauth2_tokens set kms_key_reference='local:gone' where connection_id=$1`,
+      [connection.id],
+    );
+    try {
+      const worker = harness.stack.createWorker('oauth2-key-gone');
+      worker.startOnce();
+      await expect.poll(() => worker.exits.length, { timeout: 60_000 }).toBe(1);
+      expect(worker.exits[0]?.code).not.toBe(0);
+    } finally {
+      // Other tests in this file start no worker, but keep the row honest anyway.
       await harness.stack.sql(
-        `update app.connection_oauth2_tokens set kms_key_reference='local:gone' where connection_id=$1`,
+        `delete from app.connection_oauth2_tokens where connection_id=$1`,
         [connection.id],
       );
-      try {
-        const worker = harness.stack.createWorker('oauth2-key-gone');
-        worker.startOnce();
-        await expect
-          .poll(() => worker.exits.length, { timeout: 60_000 })
-          .toBe(1);
-        expect(worker.exits[0]?.code).not.toBe(0);
-      } finally {
-        // Other tests in this file start no worker, but keep the row honest anyway.
-        await harness.stack.sql(
-          `delete from app.connection_oauth2_tokens where connection_id=$1`,
-          [connection.id],
-        );
-      }
-    },
-  );
+    }
+  });
 });

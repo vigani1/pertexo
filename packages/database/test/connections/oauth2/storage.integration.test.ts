@@ -90,7 +90,7 @@ describe('OAuth2 connection storage', () => {
   };
 
   // S28, D3: forced row security with the three policies of migration 0051.
-  it.fails.each(OAUTH2_TABLES)('S28 %s forces row security', async (table) => {
+  it.each(OAUTH2_TABLES)('S28 %s forces row security', async (table) => {
     const { rows } = await admin.query<{
       relrowsecurity: boolean;
       relforcerowsecurity: boolean;
@@ -104,24 +104,21 @@ describe('OAuth2 connection storage', () => {
   });
 
   // S28, D3: one workspace-scoped policy each for app, owner and maintenance.
-  it.fails.each(OAUTH2_TABLES)(
-    'S28 %s has the three policies',
-    async (table) => {
-      const { rows } = await admin.query<{ roles: string[] }>(
-        `select roles::text[] as roles from pg_policies
+  it.each(OAUTH2_TABLES)('S28 %s has the three policies', async (table) => {
+    const { rows } = await admin.query<{ roles: string[] }>(
+      `select roles::text[] as roles from pg_policies
           where schemaname='app' and tablename=$1 order by policyname`,
-        [table],
-      );
-      expect(rows.flatMap(({ roles }) => roles).sort()).toEqual([
-        'pertexo_app',
-        'pertexo_maintenance',
-        'pertexo_owner',
-      ]);
-    },
-  );
+      [table],
+    );
+    expect(rows.flatMap(({ roles }) => roles).sort()).toEqual([
+      'pertexo_app',
+      'pertexo_maintenance',
+      'pertexo_owner',
+    ]);
+  });
 
   // D3: app role reads and writes; maintenance only reads and deletes.
-  it.fails.each(OAUTH2_TABLES)('D3 %s grants', async (table) => {
+  it.each(OAUTH2_TABLES)('D3 %s grants', async (table) => {
     const allowed = async (role: string, privilege: string) =>
       (
         await admin.query<{ allowed: boolean }>(
@@ -138,7 +135,7 @@ describe('OAuth2 connection storage', () => {
   });
 
   // S28: the app role with A's workspace sees none of B's rows.
-  it.fails.each(OAUTH2_TABLES)(
+  it.each(OAUTH2_TABLES)(
     'S28 the app role in workspace A reads nothing of B in %s',
     async (table) => {
       const [a, b] = await seedTwoWorkspaces();
@@ -154,7 +151,7 @@ describe('OAuth2 connection storage', () => {
   );
 
   // S28: with no workspace set there is nothing to read at all.
-  it.fails.each(OAUTH2_TABLES)(
+  it.each(OAUTH2_TABLES)(
     'S28 the app role with no workspace reads nothing in %s',
     async (table) => {
       await seedTwoWorkspaces();
@@ -164,7 +161,7 @@ describe('OAuth2 connection storage', () => {
   );
 
   // S28: updates and deletes of another workspace's rows reach no row.
-  it.fails.each(OAUTH2_TABLES)(
+  it.each(OAUTH2_TABLES)(
     'S28 the app role in workspace A changes nothing of B in %s',
     async (table) => {
       const [a, b] = await seedTwoWorkspaces();
@@ -189,62 +186,56 @@ describe('OAuth2 connection storage', () => {
   );
 
   // S28: inserting into another workspace is refused by the policy, code 42501.
-  it.fails(
-    'S28 the app role in workspace A can’t add a token to B',
-    async () => {
-      const [a, b] = await seedTwoWorkspaces();
-      await admin.query(
-        'delete from app.connection_oauth2_tokens where workspace_id=$1',
-        [b.workspaceId],
-      );
-      await inWorkspace(a.workspaceId, async (client) => {
-        await expect(
-          insertTokenRow(client, {
-            tokenId: randomUUID(),
-            workspaceId: b.workspaceId,
-            connectionId: b.connectionId,
-            secretVersionId: b.secretVersionId,
-            tokenKeyReference: 'alias/oauth2-token',
-          }),
-        ).rejects.toMatchObject({ code: '42501' });
-      });
-    },
-  );
-
-  // Plan, Storage: "at most one pending per connection", digests exactly 32 bytes.
-  it.fails(
-    'keeps one token row and one pending consent per connection',
-    async () => {
-      const stored = await seedOAuth2Connection(
-        admin,
-        await seedWorkspace(admin),
-      );
+  it('S28 the app role in workspace A can’t add a token to B', async () => {
+    const [a, b] = await seedTwoWorkspaces();
+    await admin.query(
+      'delete from app.connection_oauth2_tokens where workspace_id=$1',
+      [b.workspaceId],
+    );
+    await inWorkspace(a.workspaceId, async (client) => {
       await expect(
-        insertTokenRow(admin, {
+        insertTokenRow(client, {
           tokenId: randomUUID(),
-          workspaceId: stored.workspaceId,
-          connectionId: stored.connectionId,
-          secretVersionId: stored.secretVersionId,
+          workspaceId: b.workspaceId,
+          connectionId: b.connectionId,
+          secretVersionId: b.secretVersionId,
           tokenKeyReference: 'alias/oauth2-token',
         }),
-      ).rejects.toMatchObject({ code: '23505' });
-      await expect(
-        admin.query(
-          "insert into app.connection_oauth2_authorizations(workspace_id,connection_id,state_digest,binding_digest,started_by,secret_version_id,expires_at) values($1,$2,$3,$4,$5,$6,clock_timestamp()+interval '600 seconds')",
-          [
-            stored.workspaceId,
-            stored.connectionId,
-            randomBytes(32),
-            randomBytes(32),
-            stored.ownerId,
-            stored.secretVersionId,
-          ],
-        ),
-      ).rejects.toMatchObject({ code: '23505' });
-    },
-  );
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+  });
 
-  it.fails('refuses a digest that isn’t 32 bytes', async () => {
+  // Plan, Storage: "at most one pending per connection", digests exactly 32 bytes.
+  it('keeps one token row and one pending consent per connection', async () => {
+    const stored = await seedOAuth2Connection(
+      admin,
+      await seedWorkspace(admin),
+    );
+    await expect(
+      insertTokenRow(admin, {
+        tokenId: randomUUID(),
+        workspaceId: stored.workspaceId,
+        connectionId: stored.connectionId,
+        secretVersionId: stored.secretVersionId,
+        tokenKeyReference: 'alias/oauth2-token',
+      }),
+    ).rejects.toMatchObject({ code: '23505' });
+    await expect(
+      admin.query(
+        "insert into app.connection_oauth2_authorizations(workspace_id,connection_id,state_digest,binding_digest,started_by,secret_version_id,expires_at) values($1,$2,$3,$4,$5,$6,clock_timestamp()+interval '600 seconds')",
+        [
+          stored.workspaceId,
+          stored.connectionId,
+          randomBytes(32),
+          randomBytes(32),
+          stored.ownerId,
+          stored.secretVersionId,
+        ],
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+  });
+
+  it('refuses a digest that isn’t 32 bytes', async () => {
     const stored = await seedOAuth2Connection(
       admin,
       await seedWorkspace(admin),
@@ -263,7 +254,7 @@ describe('OAuth2 connection storage', () => {
     ).rejects.toMatchObject({ code: '23514' });
   });
 
-  it.fails('bounds stored settings at 16,384 bytes', async () => {
+  it('bounds stored settings at 16,384 bytes', async () => {
     const stored = await seedOAuth2Connection(
       admin,
       await seedWorkspace(admin),
@@ -277,7 +268,7 @@ describe('OAuth2 connection storage', () => {
   });
 
   // D2: only transitions write an event, and the new type is allowed.
-  it.fails('D2 allows the new auth type and event, and no other', async () => {
+  it('D2 allows the new auth type and event, and no other', async () => {
     const stored = await seedOAuth2Connection(
       admin,
       await seedWorkspace(admin),
@@ -295,37 +286,30 @@ describe('OAuth2 connection storage', () => {
   });
 
   // D8: workspace purge removes all three through the cascade.
-  it.fails(
-    'D8 a real workspace purge leaves no rows',
-    async () => {
-      const workspace = await seedWorkspace(admin);
-      await seedOAuth2Connection(admin, workspace);
-      const other = await seedOAuth2Connection(
-        admin,
-        await seedWorkspace(admin),
-      );
-      await purgeWorkspace({
-        adminUrl: fixture.databaseUrl(adminUrl),
-        maintenanceUrl: fixture.databaseUrl(maintenanceUrl),
-        workspaceId: workspace.workspaceId,
-      });
-      expect(await rowCounts(admin, workspace.workspaceId)).toEqual({
-        connection_oauth2_clients: 0,
-        connection_oauth2_tokens: 0,
-        connection_oauth2_authorizations: 0,
-      });
-      // The purge touched only the workspace it was given.
-      expect(await rowCounts(admin, other.workspaceId)).toEqual({
-        connection_oauth2_clients: 1,
-        connection_oauth2_tokens: 1,
-        connection_oauth2_authorizations: 1,
-      });
-    },
-    60_000,
-  );
+  it('D8 a real workspace purge leaves no rows', async () => {
+    const workspace = await seedWorkspace(admin);
+    await seedOAuth2Connection(admin, workspace);
+    const other = await seedOAuth2Connection(admin, await seedWorkspace(admin));
+    await purgeWorkspace({
+      adminUrl: fixture.databaseUrl(adminUrl),
+      maintenanceUrl: fixture.databaseUrl(maintenanceUrl),
+      workspaceId: workspace.workspaceId,
+    });
+    expect(await rowCounts(admin, workspace.workspaceId)).toEqual({
+      connection_oauth2_clients: 0,
+      connection_oauth2_tokens: 0,
+      connection_oauth2_authorizations: 0,
+    });
+    // The purge touched only the workspace it was given.
+    expect(await rowCounts(admin, other.workspaceId)).toEqual({
+      connection_oauth2_clients: 1,
+      connection_oauth2_tokens: 1,
+      connection_oauth2_authorizations: 1,
+    });
+  }, 60_000);
 
   // D10: tokens join the key inventory as kind connection, keyed by the token row.
-  it.fails('D10 the key inventory counts a token’s key', async () => {
+  it('D10 the key inventory counts a token’s key', async () => {
     const stored = await seedOAuth2Connection(
       admin,
       await seedWorkspace(admin),

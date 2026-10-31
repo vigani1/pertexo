@@ -18,6 +18,8 @@ import {
   type RotateConnectionCommand,
 } from '../../data/connections.mutations';
 import { PROVIDERS } from '../../model/connection-providers';
+import { isOAuth2Connection } from '../../model/oauth2-copy';
+import { draftFromSettings } from '../../model/oauth2-draft';
 import { CredentialFields } from '../credential/fields';
 import { createHeaderRowId, useCredentialForm } from '../credential/use-form';
 
@@ -36,7 +38,11 @@ export function ReplaceCredentialForm({
 }>) {
   const id = useId();
   const notifications = useNotifications();
-  const credential = useCredentialForm(connection.providerKey);
+  const oauth2 = isOAuth2Connection(connection) ? connection.oauth2 : undefined;
+  const credential = useCredentialForm(
+    oauth2 === undefined ? connection.providerKey : 'oauth2',
+    oauth2 === undefined ? undefined : draftFromSettings(oauth2.settings),
+  );
   const [baseVersion, setBaseVersion] = useState(connection.secretVersionId);
   const { mutation, clearSensitiveState } = useRotateConnectionMutation(scope);
   const attempt = useRef<
@@ -86,7 +92,10 @@ export function ReplaceCredentialForm({
       return;
     }
     notifications.success({
-      title: `Replaced the ${PROVIDERS[connection.providerKey].credential} for ${connection.name}`,
+      title:
+        oauth2 === undefined
+          ? `Replaced the ${PROVIDERS[connection.providerKey].credential} for ${connection.name}`
+          : `Saved the settings for ${connection.name}`,
     });
     finish();
   }
@@ -108,9 +117,19 @@ export function ReplaceCredentialForm({
       }}
     >
       <p className="text-sm text-muted-foreground">
-        Steps keep using {connection.name}. The old{' '}
-        {PROVIDERS[connection.providerKey].credential} stops being used as soon
-        as this is saved.
+        {oauth2 === undefined ? (
+          <>
+            Steps keep using {connection.name}. The old{' '}
+            {PROVIDERS[connection.providerKey].credential} stops being used as
+            soon as this is saved.
+          </>
+        ) : (
+          <>
+            Steps keep using {connection.name}. Saving always asks for new
+            consent, and its token stops being used until then. Type the client
+            secret again so these addresses can have it.
+          </>
+        )}
       </p>
       <CredentialFields
         draft={credential.draft}
@@ -145,7 +164,11 @@ export function ReplaceCredentialForm({
           pending={mutation.isPending}
           pendingLabel="Replacing…"
         >
-          {replaceLabel({ uncertain, replacingNewer })}
+          {replaceLabel({
+            uncertain,
+            replacingNewer,
+            oauth2: oauth2 !== undefined,
+          })}
         </ProgressButton>
       </div>
     </form>
@@ -155,7 +178,13 @@ export function ReplaceCredentialForm({
 function replaceLabel({
   uncertain,
   replacingNewer,
-}: Readonly<{ uncertain: boolean; replacingNewer: boolean }>): string {
+  oauth2,
+}: Readonly<{
+  uncertain: boolean;
+  replacingNewer: boolean;
+  oauth2: boolean;
+}>): string {
   if (uncertain) return 'Try again';
-  return replacingNewer ? 'Use my credential' : 'Replace credential';
+  if (replacingNewer) return 'Use my credential';
+  return oauth2 ? 'Save settings' : 'Replace credential';
 }

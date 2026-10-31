@@ -3,6 +3,7 @@ import {
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
   NodeExecutorFailure,
+  type ResolvedHttpCredential,
 } from '@pertexo/node-sdk/server';
 import {
   classifySecureHttpError,
@@ -22,6 +23,9 @@ import {
 } from '../provider-dispatch-fence.js';
 import { decodeCredential } from './material.js';
 import { serviceResponseFacts } from './execution/service-response.js';
+import { OAuth2TokenFailure } from '../oauth2/contract.js';
+import { HttpOAuth2Failure } from './execution/oauth2-failure.js';
+import { createOAuth2RenewalClient } from './execution/oauth2-renewal.js';
 
 import {
   HttpRequestExecutorError,
@@ -34,6 +38,7 @@ import { requestHeaders } from './execution/input.js';
 import {
   type RequestContext,
   type RequestMaterial,
+  credentialFailure,
   prepareInvocation,
   prepareRequestBody,
   resolveRequestConnection,
@@ -67,10 +72,14 @@ async function executeHttpRequest(
       dispatch,
     });
   } finally {
-    await releaseHttpMaterial(prepared.body, resolved?.secret, {
-      repeatable,
-      possiblyDispatched: dispatch.possiblyDispatched,
-    });
+    await releaseHttpMaterial(
+      prepared.body,
+      resolved?.authType === 'http_headers' ? resolved.secret : undefined,
+      {
+        repeatable,
+        possiblyDispatched: dispatch.possiblyDispatched,
+      },
+    );
   }
 }
 
@@ -95,8 +104,9 @@ async function executeWithMaterial(
     ...(invocation.runtime?.callbacks?.sensitiveValues() ?? []),
   ];
   let marked = false;
+  // A paged request and a renewed one dispatch more than once, as one attempt.
   const dispatchRuntime =
-    config.pagination === undefined
+    config.pagination === undefined && resolved?.authType !== 'oauth2'
       ? runtime
       : {
           ...runtime,
@@ -119,7 +129,7 @@ async function executeWithMaterial(
             assertCurrent: connections.assertCurrent,
             connectionId,
             expectedProviderKey: 'http',
-            expectedAuthType: 'http_headers',
+            expectedAuthType: resolved.authType,
             secretVersionId: resolved.secretVersionId,
             signal: invocation.signal,
             runtime: dispatchRuntime,
@@ -139,10 +149,14 @@ async function executeWithMaterial(
         dispatch.possiblyDispatched = true;
       },
     };
+    const client =
+      resolved?.authType === 'oauth2'
+        ? oauth2Client(dependencies, context, resolved)
+        : dependencies.httpClient;
     if (config.pagination !== undefined)
       return httpRequestOutputSchema.parse(
         await executePagination({
-          client: dependencies.httpClient,
+          client,
           request,
           pagination: config.pagination,
           ...(runtime.artifacts === undefined
@@ -169,15 +183,13 @@ async function executeWithMaterial(
           },
         }),
       );
-    response = await dependencies.httpClient.executeStreaming(
-      request,
-      (stream) =>
-        consumeResponseBody(runtime.artifacts, {
-          inlineLimit: config.inlineResponseBytes,
-          maxBytes: config.maxResponseBytes,
-          response: stream,
-          repeatable,
-        }),
+    response = await client.executeStreaming(request, (stream) =>
+      consumeResponseBody(runtime.artifacts, {
+        inlineLimit: config.inlineResponseBytes,
+        maxBytes: config.maxResponseBytes,
+        response: stream,
+        repeatable,
+      }),
     );
   } catch (error: unknown) {
     rethrowHttpError(error, context);
@@ -216,12 +228,53 @@ function credentialSensitiveValues(
   });
 }
 
-function rethrowHttpError(
-  error: unknown,
-  { config, invocation, runtime, repeatable, sideEffect }: RequestContext,
-): never {
+/** A token that renews itself and goes only where its connection allows. */
+function oauth2Client(
+  dependencies: HttpRequestExecutorDependencies,
+  context: RequestContext,
+  credential: Extract<ResolvedHttpCredential, { authType: 'oauth2' }>,
+) {
+  const { connections, connectionId, invocation } = context;
+  if (
+    connectionId === undefined ||
+    connections?.rejectAccessToken === undefined ||
+    connections.resolveHttpCredential === undefined
+  )
+    throw failedConfiguration();
+  const { rejectAccessToken, resolveHttpCredential } = connections;
+  return createOAuth2RenewalClient({
+    client: dependencies.httpClient,
+    credential,
+    reject: (tokenVersionId) =>
+      rejectAccessToken({
+        connectionId,
+        tokenVersionId,
+        signal: invocation.signal,
+      }),
+    renew: async () => {
+      let renewed;
+      try {
+        renewed = await resolveHttpCredential({
+          connectionId,
+          purpose: 'http.request.execute',
+          signal: invocation.signal,
+        });
+      } catch (error: unknown) {
+        throw credentialFailure(error, context);
+      }
+      if (renewed.authType !== 'oauth2') throw failedConfiguration();
+      return renewed;
+    },
+  });
+}
+
+function rethrowHttpError(error: unknown, context: RequestContext): never {
+  const { config, invocation, runtime, repeatable, sideEffect } = context;
+  if (safeInstanceOf(error, OAuth2TokenFailure))
+    throw credentialFailure(error, context);
   if (
     safeInstanceOf(error, HttpRequestExecutorError) ||
+    safeInstanceOf(error, HttpOAuth2Failure) ||
     (config.pagination !== undefined &&
       safeInstanceOf(error, NodeExecutorFailure))
   )
@@ -274,26 +327,34 @@ export function createHttpRequestExecutorRegistration(
   });
 }
 
+function requestCredential(
+  resolved: ResolvedHttpCredential | undefined,
+): Readonly<{ headers: Readonly<Record<string, string>> }> {
+  if (resolved === undefined) return { headers: Object.freeze({}) };
+  if (resolved.authType === 'oauth2')
+    return {
+      headers: Object.freeze({
+        authorization: `Bearer ${resolved.accessToken}`,
+      }),
+    };
+  return decodeCredential(
+    resolved.secret,
+    () =>
+      new HttpRequestExecutorError(
+        Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+        { possiblyDispatched: false },
+      ),
+  );
+}
+
 function prepareHeaders(context: RequestContext, material: RequestMaterial) {
   const { config, input, runtime, connectionId } = context;
   const { resolved, multipartContentType } = material;
   const credentialBindingMismatch =
     resolved !== undefined &&
-    (resolved.connectionId !== connectionId ||
-      resolved.providerKey !== 'http' ||
-      resolved.authType !== 'http_headers');
+    (resolved.connectionId !== connectionId || resolved.providerKey !== 'http');
   if (credentialBindingMismatch) throw failedConfiguration();
-  const credential =
-    resolved === undefined
-      ? { headers: Object.freeze({}) }
-      : decodeCredential(
-          resolved.secret,
-          () =>
-            new HttpRequestExecutorError(
-              Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-              { possiblyDispatched: false },
-            ),
-        );
+  const credential = requestCredential(resolved);
   let headers: Readonly<Record<string, string>>;
   try {
     headers = requestHeaders(

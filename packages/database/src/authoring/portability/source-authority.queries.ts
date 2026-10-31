@@ -3,6 +3,7 @@ import {
   type PortableConnectionBinding,
   type WorkflowGraph,
   type WorkflowPortableManifest,
+  connectionFitsSlot,
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { and, asc, eq, inArray } from 'drizzle-orm';
@@ -170,8 +171,7 @@ export async function inspectPortableConnections(
       row === undefined ||
       slot === undefined ||
       row.status !== 'active' ||
-      row.providerKey !== slot.providerKey ||
-      row.authType !== slot.authType;
+      !connectionFitsSlot(row, slot);
     if (connectionUnavailable)
       return [
         {

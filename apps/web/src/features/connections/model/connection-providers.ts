@@ -39,7 +39,7 @@ export const PROVIDERS: Readonly<Record<ProviderKey, ProviderCopy>> = {
   },
   http: {
     name: 'HTTP',
-    purpose: 'Call any HTTPS API with header auth',
+    purpose: 'Call any API with headers or OAuth2',
     credential: 'headers',
     connectTitle: 'Connect HTTP',
     usedBy: 'HTTP request steps',
@@ -60,6 +60,7 @@ const PROVIDER_BY_CREDENTIAL: Readonly<
   slack_bot_token: 'slack',
   http_headers: 'http',
   resend_api_key: 'email',
+  oauth2: 'http',
 };
 
 /**
@@ -78,10 +79,20 @@ export function isProviderKey(value: unknown): value is ProviderKey {
   return PROVIDER_KEYS.some((key) => key === value);
 }
 
+/** The stored credential in words: OAuth2 is HTTP's other way to sign in. */
+export function credentialWord(
+  provider: ProviderKey,
+  authType?: ConnectionResponse['authType'],
+): string {
+  return authType === 'oauth2' ? 'OAuth2' : PROVIDERS[provider].credential;
+}
+
 /** Provider and stored credential in words, e.g. "Slack · bot token". */
-export function describeConnectionKind(provider: ProviderKey): string {
-  const copy = PROVIDERS[provider];
-  return `${copy.name} · ${copy.credential}`;
+export function describeConnectionKind(
+  provider: ProviderKey,
+  authType?: ConnectionResponse['authType'],
+): string {
+  return `${PROVIDERS[provider].name} · ${credentialWord(provider, authType)}`;
 }
 
 export function connectionNameError(name: string): string | undefined {

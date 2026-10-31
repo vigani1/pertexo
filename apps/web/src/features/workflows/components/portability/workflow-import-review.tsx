@@ -1,3 +1,4 @@
+import { connectionFitsSlot } from '@pertexo/workflow-model';
 import { connectionSlotKey } from '../../model/portability';
 import { useQuery } from '@tanstack/react-query';
 import type {
@@ -159,8 +160,7 @@ function WorkflowImportConnections({
       {slots.map((slot, index) => {
         const choices = (connections.data?.items ?? []).filter(
           (connection) =>
-            connection.providerKey === slot.providerKey &&
-            connection.authType === slot.authType &&
+            connectionFitsSlot(connection, slot) &&
             connection.status === 'active',
         );
         const optional = optionalSlots.has(

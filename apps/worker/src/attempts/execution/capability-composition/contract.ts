@@ -27,6 +27,8 @@ import type {
   ConnectionEnvelopeEncryptionConfig,
   ConnectionEnvelopeEncryptionRuntime,
   ConnectionEnvelopeEncryption,
+  AllowedPrivateNetwork,
+  OAuth2TokenService,
 } from '@pertexo/integrations/server';
 import type { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import type { NodeExecutionCapabilityFactories } from '../capabilities.js';
@@ -42,6 +44,7 @@ export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
   database: DatabaseConfig;
   codeRunner?: WorkerCodeRunnerConfig;
   connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
+  allowedPrivateNetworks?: readonly AllowedPrivateNetwork[];
   artifactStore?: ArtifactStoreConfig;
   artifactRetentionMillis?: number;
   artifactScratchDirectory?: string;
@@ -82,6 +85,7 @@ interface OwnedCapabilityResources {
   ownedRunValues: RunValuesStore | undefined;
   ownedWebhookResponses: WebhookResponseStore | undefined;
   encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
+  oauth2Tokens: OAuth2TokenService | undefined;
   ownedConnectionDatabase: WorkerConnectionResolutionDatabase | undefined;
   ownedArtifactDatabase: WorkspaceDatabase | undefined;
   ownedArtifactStore: ArtifactStore | undefined;

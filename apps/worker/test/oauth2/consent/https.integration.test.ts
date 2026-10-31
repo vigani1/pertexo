@@ -22,7 +22,7 @@ describeOAuth2('consent on an https install', () => {
   });
 
   // S5: Secure on HTTPS.
-  it.fails('S5 marks the cookie Secure', async () => {
+  it('S5 marks the cookie Secure', async () => {
     const owner = await secure.newOwner();
     const connection = await secure.create(owner, 'non-rotating');
     const started = await secure.start(owner.api, owner, connection.id);

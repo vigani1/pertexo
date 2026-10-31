@@ -165,7 +165,12 @@ export const sealed = (marker: number) => ({
 });
 
 export function createInput(
-  overrides: Partial<CreateConnectionInput> = {},
+  overrides: Partial<
+    Extract<
+      CreateConnectionInput,
+      { authType: Exclude<CreateConnectionInput['authType'], 'oauth2'> }
+    >
+  > = {},
 ): CreateConnectionInput {
   const connectionId = overrides.connectionId ?? generatePersistedId();
   const secretVersionId = overrides.secretVersionId ?? randomUUID();

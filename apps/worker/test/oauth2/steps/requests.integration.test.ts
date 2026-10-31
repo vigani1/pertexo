@@ -39,21 +39,18 @@ describeOAuth2('what an OAuth2 step sends', () => {
     harness.standIn.apiCalls(connection.clientId).length;
 
   // Proof list: reaches /api with Bearer <token>, and the token isn't in its output.
-  it.fails(
-    'calls the API with the bearer token and doesn’t store it',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      const runId = await harness.run(owner, get(connection));
-      expect((await harness.finish(runId)).status).toBe('succeeded');
-      const [call] = harness.standIn.apiCalls(connection.clientId);
-      expect(call?.headers.authorization).toMatch(/^Bearer stand-in-at-/u);
-      const token = String(call?.headers.authorization).slice('Bearer '.length);
-      expect(await harness.storedOutput(runId)).not.toContain(token);
-    },
-  );
+  it('calls the API with the bearer token and doesn’t store it', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    const runId = await harness.run(owner, get(connection));
+    expect((await harness.finish(runId)).status).toBe('succeeded');
+    const [call] = harness.standIn.apiCalls(connection.clientId);
+    expect(call?.headers.authorization).toMatch(/^Bearer stand-in-at-/u);
+    const token = String(call?.headers.authorization).slice('Bearer '.length);
+    expect(await harness.storedOutput(runId)).not.toContain(token);
+  });
 
   // S24: a listed host passes; an unlisted one fails with no /api call.
-  it.fails('S24 sends the token only to a listed host', async () => {
+  it('S24 sends the token only to a listed host', async () => {
     const port = new URL(harness.standIn.origin).port;
     const connection = await harness.connected(owner, 'non-rotating', {
       requestHosts: { mode: 'listed', hosts: ['api.listed.example.test'] },
@@ -88,7 +85,7 @@ describeOAuth2('what an OAuth2 step sends', () => {
   });
 
   // S24: *.example.com matches subdomains, not the apex.
-  it.fails('S24 a wildcard matches subdomains, not the apex', async () => {
+  it('S24 a wildcard matches subdomains, not the apex', async () => {
     const port = new URL(harness.standIn.origin).port;
     const connection = await harness.connected(owner, 'non-rotating', {
       requestHosts: { mode: 'listed', hosts: ['*.listed.example.test'] },
@@ -111,24 +108,21 @@ describeOAuth2('what an OAuth2 step sends', () => {
 
   // Using it: a step can't set its own Authorization. Configured headers refuse that
   // name at save today, so the step never reaches a run.
-  it.fails(
-    'a step can’t set its own Authorization beside the token',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      await expect(
-        harness.run(
-          owner,
-          get(connection, {
-            headers: { Authorization: 'Bearer step-own-value' },
-          }),
-        ),
-      ).rejects.toThrow(/API answered 4/u);
-      expect(apiCalls(connection)).toBe(0);
-    },
-  );
+  it('a step can’t set its own Authorization beside the token', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    await expect(
+      harness.run(
+        owner,
+        get(connection, {
+          headers: { Authorization: 'Bearer step-own-value' },
+        }),
+      ),
+    ).rejects.toThrow(/API answered 4/u);
+    expect(apiCalls(connection)).toBe(0);
+  });
 
   // Getting a token, step 1: "record the credential access once".
-  it.fails('records one credential access for one use', async () => {
+  it('records one credential access for one use', async () => {
     const connection = await harness.connected(owner, 'non-rotating');
     const before = (await harness.events(connection.id)).filter(
       (type) => type === 'connection.credential_accessed',
@@ -141,7 +135,7 @@ describeOAuth2('what an OAuth2 step sends', () => {
   });
 
   // S27: Accept: application/json is always sent, on every token request.
-  it.fails('S27 asks for JSON on every token request', async () => {
+  it('S27 asks for JSON on every token request', async () => {
     const connection = await harness.connected(owner, 'non-rotating');
     await harness.expireToken(connection.id);
     await harness.finish(await harness.run(owner, get(connection)));
@@ -152,7 +146,7 @@ describeOAuth2('what an OAuth2 step sends', () => {
   });
 
   // Decisions: basic by default, per RFC 6749 §2.3.1, with a secret that needs encoding.
-  it.fails('basic authentication encodes a secret with + and /', async () => {
+  it('basic authentication encodes a secret with + and /', async () => {
     const { standIn } = harness;
     const clientId = standIn.newClient('non-rotating');
     const clientSecret = 'a+secret/with=marks&more';
@@ -192,7 +186,7 @@ describeOAuth2('what an OAuth2 step sends', () => {
   });
 
   // Decisions: the request body as an option, with the same secret.
-  it.fails('body authentication sends the secret in the form', async () => {
+  it('body authentication sends the secret in the form', async () => {
     const { standIn } = harness;
     const clientId = standIn.newClient('non-rotating');
     const clientSecret = 'a+secret/with=marks&more';
@@ -214,7 +208,7 @@ describeOAuth2('what an OAuth2 step sends', () => {
   });
 
   // Decisions: extra parameters reach the right request, and only that one.
-  it.fails('extra parameters reach the right request', async () => {
+  it('extra parameters reach the right request', async () => {
     const connection = await harness.create(owner, 'non-rotating', {
       scope: 'one,two three',
       authorizationParameters: { access_type: 'offline', prompt: 'consent' },
@@ -245,7 +239,7 @@ describeOAuth2('what an OAuth2 step sends', () => {
   });
 
   // Decisions: scope is sent as typed on a server-to-server token request.
-  it.fails('client credentials sends the scope as typed', async () => {
+  it('client credentials sends the scope as typed', async () => {
     const connection = await harness.createServer(owner, 'non-rotating', {
       scope: 'one,two three',
     });
@@ -256,23 +250,20 @@ describeOAuth2('what an OAuth2 step sends', () => {
   });
 
   // Getting a token, D10: each refresh re-seals, under the row's new id.
-  it.fails(
-    'D10 a refresh re-seals the tokens under a new version',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      const read = async () =>
-        (
-          await harness.stack.sql<{ ciphertext: string; id: string }>(
-            `select id, ciphertext from app.connection_oauth2_tokens where connection_id=$1`,
-            [connection.id],
-          )
-        )[0];
-      const before = await read();
-      await harness.expireToken(connection.id);
-      await harness.finish(await harness.run(owner, get(connection)));
-      const after = await read();
-      expect(after?.id).not.toBe(before?.id);
-      expect(after?.ciphertext).not.toBe(before?.ciphertext);
-    },
-  );
+  it('D10 a refresh re-seals the tokens under a new version', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    const read = async () =>
+      (
+        await harness.stack.sql<{ ciphertext: string; id: string }>(
+          `select id, ciphertext from app.connection_oauth2_tokens where connection_id=$1`,
+          [connection.id],
+        )
+      )[0];
+    const before = await read();
+    await harness.expireToken(connection.id);
+    await harness.finish(await harness.run(owner, get(connection)));
+    const after = await read();
+    expect(after?.id).not.toBe(before?.id);
+    expect(after?.ciphertext).not.toBe(before?.ciphertext);
+  });
 });

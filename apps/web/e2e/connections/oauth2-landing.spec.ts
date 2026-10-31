@@ -21,39 +21,33 @@ for (const [result, text] of [
     "The service didn't answer. Try again in a few minutes.",
   ],
 ] as const)
-  test.fail(
-    `landing: ${result} says so and links to the connection`,
-    async ({ page }) => {
-      await page.goto(landing(`result=${result}&${named}`));
-      await expect(page.getByText(text, { exact: true })).toBeVisible();
-      await expect(
-        page.getByRole('link', { name: /connection/iu }),
-      ).toHaveAttribute(
-        'href',
-        new RegExp(`/w/${workspaceId}/connections.*${connectionId}`, 'u'),
-      );
-    },
-  );
+  test(`landing: ${result} says so and links to the connection`, async ({
+    page,
+  }) => {
+    await page.goto(landing(`result=${result}&${named}`));
+    await expect(page.getByText(text, { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: /connection/iu }),
+    ).toHaveAttribute(
+      'href',
+      new RegExp(`/w/${workspaceId}/connections.*${connectionId}`, 'u'),
+    );
+  });
 
 // Landing page table, S7: invalid names no connection, so nothing to link to.
-test.fail(
-  'landing: invalid says so, with no connection link',
-  async ({ page }) => {
-    await page.goto(landing('result=invalid'));
-    await expect(
-      page.getByText(
-        'This sign-in link is no longer valid. Start again from Connections.',
-        { exact: true },
-      ),
-    ).toBeVisible();
-    await expect(page.getByRole('link', { name: /connection/iu })).toHaveCount(
-      0,
-    );
-  },
-);
+test('landing: invalid says so, with no connection link', async ({ page }) => {
+  await page.goto(landing('result=invalid'));
+  await expect(
+    page.getByText(
+      'This sign-in link is no longer valid. Start again from Connections.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole('link', { name: /connection/iu })).toHaveCount(0);
+});
 
 // Landing page: public, reads no data. A signed-out browser, and no API call at all.
-test.fail('landing: is public and reads no data', async ({ page }) => {
+test('landing: is public and reads no data', async ({ page }) => {
   const called: string[] = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname.startsWith('/v1/'))
@@ -67,7 +61,7 @@ test.fail('landing: is public and reads no data', async ({ page }) => {
 });
 
 // Landing page: anything else in the address is the invalid page.
-test.fail('landing: an unknown result reads as invalid', async ({ page }) => {
+test('landing: an unknown result reads as invalid', async ({ page }) => {
   await page.goto(landing('result=hacked'));
   await expect(
     page.getByText(
@@ -78,7 +72,7 @@ test.fail('landing: an unknown result reads as invalid', async ({ page }) => {
 });
 
 // Landing page: posts to the channel and tries to close itself.
-test.fail('landing: tells the channel and tries to close', async ({ page }) => {
+test('landing: tells the channel and tries to close', async ({ page }) => {
   await page.addInitScript(() => {
     const seen: unknown[] = [];
     (window as unknown as { seen: unknown[] }).seen = seen;

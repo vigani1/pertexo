@@ -50,27 +50,24 @@ describeOAuth2('returning from OAuth2 consent', () => {
   };
 
   // Landing: connected names its connection, and it becomes active.
-  it.fails(
-    'an approved consent connects and names the connection',
-    async () => {
-      const { owner, connection, callbackUrl } = await pendingConsent();
-      const landing = await harness.land(owner.api, callbackUrl);
-      expect(landing.status).toBe(303);
-      expect(landing).toMatchObject({
-        result: 'connected',
-        workspaceId: owner.workspaceId,
-        connectionId: connection.id,
-      });
-      expect(
-        landing.location?.startsWith(`${WEB_ORIGIN}${LANDING_PATH}?`),
-      ).toBe(true);
-      expect((await harness.connection(connection.id)).status).toBe('active');
-      expect(await harness.pendingRows(connection.id)).toBe(0);
-    },
-  );
+  it('an approved consent connects and names the connection', async () => {
+    const { owner, connection, callbackUrl } = await pendingConsent();
+    const landing = await harness.land(owner.api, callbackUrl);
+    expect(landing.status).toBe(303);
+    expect(landing).toMatchObject({
+      result: 'connected',
+      workspaceId: owner.workspaceId,
+      connectionId: connection.id,
+    });
+    expect(landing.location?.startsWith(`${WEB_ORIGIN}${LANDING_PATH}?`)).toBe(
+      true,
+    );
+    expect((await harness.connection(connection.id)).status).toBe('active');
+    expect(await harness.pendingRows(connection.id)).toBe(0);
+  });
 
   // S5: the session stays home on a cross-site return; only the binding cookie comes.
-  it.fails('S5 needs no session on the way back', async () => {
+  it('S5 needs no session on the way back', async () => {
     const { owner, callbackUrl } = await pendingConsent();
     const landing = await harness.land(owner.api, callbackUrl, (name) =>
       name.startsWith('pertexo_oauth2_'),
@@ -79,44 +76,38 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S5, proof list: a callback with no cookie exchanges nothing and leaves the row.
-  it.fails(
-    'no cookie: invalid, nothing exchanged, row kept for the right browser',
-    async () => {
-      const { owner, connection, callbackUrl } = await pendingConsent();
-      const landing = await harness.land(owner.api, callbackUrl, () => false);
-      expect(landing.status).toBe(303);
-      expect(landing.location).toBe(INVALID_LANDING);
-      expectNothingExchanged(connection);
-      expect(await harness.pendingRows(connection.id)).toBe(1);
-      expect((await harness.land(owner.api, callbackUrl)).result).toBe(
-        'connected',
-      );
-    },
-  );
+  it('no cookie: invalid, nothing exchanged, row kept for the right browser', async () => {
+    const { owner, connection, callbackUrl } = await pendingConsent();
+    const landing = await harness.land(owner.api, callbackUrl, () => false);
+    expect(landing.status).toBe(303);
+    expect(landing.location).toBe(INVALID_LANDING);
+    expectNothingExchanged(connection);
+    expect(await harness.pendingRows(connection.id)).toBe(1);
+    expect((await harness.land(owner.api, callbackUrl)).result).toBe(
+      'connected',
+    );
+  });
 
   // S5, proof list: "wrong cookie (and the row survives for the right browser)".
-  it.fails(
-    'wrong cookie: invalid, nothing exchanged, the right browser still works',
-    async () => {
-      const { owner, connection, callbackUrl } = await pendingConsent();
-      const name = `pertexo_oauth2_${connection.id.replaceAll('-', '')}`;
-      const value = owner.api.cookieValue(name);
-      expect(value).toBeDefined();
-      owner.api.setCookie(name, 'B'.repeat(43));
-      expect((await harness.land(owner.api, callbackUrl)).location).toBe(
-        INVALID_LANDING,
-      );
-      expectNothingExchanged(connection);
-      expect(await harness.pendingRows(connection.id)).toBe(1);
-      owner.api.setCookie(name, value ?? '');
-      expect((await harness.land(owner.api, callbackUrl)).result).toBe(
-        'connected',
-      );
-    },
-  );
+  it('wrong cookie: invalid, nothing exchanged, the right browser still works', async () => {
+    const { owner, connection, callbackUrl } = await pendingConsent();
+    const name = `pertexo_oauth2_${connection.id.replaceAll('-', '')}`;
+    const value = owner.api.cookieValue(name);
+    expect(value).toBeDefined();
+    owner.api.setCookie(name, 'B'.repeat(43));
+    expect((await harness.land(owner.api, callbackUrl)).location).toBe(
+      INVALID_LANDING,
+    );
+    expectNothingExchanged(connection);
+    expect(await harness.pendingRows(connection.id)).toBe(1);
+    owner.api.setCookie(name, value ?? '');
+    expect((await harness.land(owner.api, callbackUrl)).result).toBe(
+      'connected',
+    );
+  });
 
   // S5: "That is what refuses a link sent to someone else."
-  it.fails('a link sent to someone else’s browser is refused', async () => {
+  it('a link sent to someone else’s browser is refused', async () => {
     const { connection, callbackUrl, owner } = await pendingConsent();
     const stranger = harness.anonymousBrowser();
     expect((await harness.land(stranger, callbackUrl)).location).toBe(
@@ -131,7 +122,7 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S7: the workspace in the state selects row security; changing it matches no row.
-  it.fails('a tampered workspace in the state lands invalid', async () => {
+  it('a tampered workspace in the state lands invalid', async () => {
     const { owner, connection, callbackUrl } = await pendingConsent();
     const other = await harness.newOwner();
     const url = new URL(callbackUrl);
@@ -149,27 +140,22 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S4: a state works once.
-  it.fails(
-    'a replayed callback lands invalid and exchanges nothing more',
-    async () => {
-      const { owner, connection, callbackUrl } = await pendingConsent();
-      const name = `pertexo_oauth2_${connection.id.replaceAll('-', '')}`;
-      const value = owner.api.cookieValue(name) ?? '';
-      expect((await harness.land(owner.api, callbackUrl)).result).toBe(
-        'connected',
-      );
-      owner.api.setCookie(name, value);
-      expect((await harness.land(owner.api, callbackUrl)).location).toBe(
-        INVALID_LANDING,
-      );
-      expect(harness.standIn.tokenRequests(connection.clientId)).toHaveLength(
-        1,
-      );
-    },
-  );
+  it('a replayed callback lands invalid and exchanges nothing more', async () => {
+    const { owner, connection, callbackUrl } = await pendingConsent();
+    const name = `pertexo_oauth2_${connection.id.replaceAll('-', '')}`;
+    const value = owner.api.cookieValue(name) ?? '';
+    expect((await harness.land(owner.api, callbackUrl)).result).toBe(
+      'connected',
+    );
+    owner.api.setCookie(name, value);
+    expect((await harness.land(owner.api, callbackUrl)).location).toBe(
+      INVALID_LANDING,
+    );
+    expect(harness.standIn.tokenRequests(connection.clientId)).toHaveLength(1);
+  });
 
   // S4: two concurrent callbacks exchange one code.
-  it.fails('two callbacks at once exchange one code', async () => {
+  it('two callbacks at once exchange one code', async () => {
     const { owner, connection, callbackUrl } = await pendingConsent();
     const hold = harness.standIn.holdNextToken(connection.clientId);
     const landings = Promise.all([
@@ -184,7 +170,7 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S3: state expires 600 s after start, by database time.
-  it.fails('an expired state lands invalid', async () => {
+  it('an expired state lands invalid', async () => {
     const { owner, connection, callbackUrl } = await pendingConsent();
     await harness.stack.sql(
       `update app.connection_oauth2_authorizations
@@ -199,7 +185,7 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S2: a new start replaces the old one, so the older state stops working.
-  it.fails('a newer start replaces the older one', async () => {
+  it('a newer start replaces the older one', async () => {
     const { owner, connection, callbackUrl } = await pendingConsent();
     const newer = harness.authorizationUrl(
       await harness.start(owner.api, owner, connection.id),
@@ -215,7 +201,7 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S6: the starter must still have connection:manage; a demoted one gets nothing.
-  it.fails('a starter demoted mid-consent lands invalid', async () => {
+  it('a starter demoted mid-consent lands invalid', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const admin = await harness.addMember(owner.workspaceId, 'admin');
@@ -235,7 +221,7 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S6: and neither does one removed from the workspace.
-  it.fails('a starter removed mid-consent lands invalid', async () => {
+  it('a starter removed mid-consent lands invalid', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const admin = await harness.addMember(owner.workspaceId, 'admin');
@@ -255,7 +241,7 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S8: a connection revoked mid-consent.
-  it.fails('a connection revoked mid-consent lands invalid', async () => {
+  it('a connection revoked mid-consent lands invalid', async () => {
     const { owner, connection, callbackUrl } = await pendingConsent();
     const revoked = await owner.api.call(
       'DELETE',
@@ -270,7 +256,7 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S8: settings replaced mid-consent.
-  it.fails('settings replaced mid-consent land invalid', async () => {
+  it('settings replaced mid-consent land invalid', async () => {
     const { owner, connection, callbackUrl } = await pendingConsent();
     const replaced = await owner.api.call(
       'PUT',
@@ -293,7 +279,7 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S7: all refusals look the same, down to malformed input.
-  it.fails.each([
+  it.each([
     ['no parameters at all', ''],
     ['a state of the wrong shape', '?state=short&code=the-code'],
     ['no code and no error', `?state=${'A'.repeat(22)}.${'b'.repeat(43)}`],
@@ -322,29 +308,26 @@ describeOAuth2('returning from OAuth2 consent', () => {
   });
 
   // S11: every callback answer, and the cookie cleared once the row is consumed.
-  it.fails(
-    'S11 forbids caching and referrers, and clears the cookie when consumed',
-    async () => {
-      const { owner, connection, callbackUrl } = await pendingConsent();
-      const name = `pertexo_oauth2_${connection.id.replaceAll('-', '')}`;
-      const refused = await harness.land(owner.api, callbackUrl, () => false);
-      expect(refused.headers.get('cache-control')).toContain('no-store');
-      expect(refused.headers.get('referrer-policy')).toBe('no-referrer');
-      expect(
-        refused.headers
-          .getSetCookie()
-          .some((line) => line.startsWith(`${name}=`)),
-        'a refusal leaves the right browser’s cookie alone',
-      ).toBe(false);
-      const landed = await harness.land(owner.api, callbackUrl);
-      expect(landed.result).toBe('connected');
-      expect(landed.headers.get('cache-control')).toContain('no-store');
-      expect(landed.headers.get('referrer-policy')).toBe('no-referrer');
-      const cleared = landed.headers
+  it('S11 forbids caching and referrers, and clears the cookie when consumed', async () => {
+    const { owner, connection, callbackUrl } = await pendingConsent();
+    const name = `pertexo_oauth2_${connection.id.replaceAll('-', '')}`;
+    const refused = await harness.land(owner.api, callbackUrl, () => false);
+    expect(refused.headers.get('cache-control')).toContain('no-store');
+    expect(refused.headers.get('referrer-policy')).toBe('no-referrer');
+    expect(
+      refused.headers
         .getSetCookie()
-        .find((line) => line.startsWith(`${name}=`));
-      expect(cleared).toMatch(/max-age=0/iu);
-      expect(owner.api.cookieValue(name)).toBeUndefined();
-    },
-  );
+        .some((line) => line.startsWith(`${name}=`)),
+      'a refusal leaves the right browser’s cookie alone',
+    ).toBe(false);
+    const landed = await harness.land(owner.api, callbackUrl);
+    expect(landed.result).toBe('connected');
+    expect(landed.headers.get('cache-control')).toContain('no-store');
+    expect(landed.headers.get('referrer-policy')).toBe('no-referrer');
+    const cleared = landed.headers
+      .getSetCookie()
+      .find((line) => line.startsWith(`${name}=`));
+    expect(cleared).toMatch(/max-age=0/iu);
+    expect(owner.api.cookieValue(name)).toBeUndefined();
+  });
 });

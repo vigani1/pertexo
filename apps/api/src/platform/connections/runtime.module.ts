@@ -6,16 +6,20 @@ import {
   type ApiConnectionDatabase,
 } from '@pertexo/database/connections';
 import { createFailureNotificationDestinationDatabase } from '@pertexo/database/notifications';
-import type {
-  DatabaseConfig,
-  DatabaseRuntime,
+import {
+  generatePersistedId,
+  type DatabaseConfig,
+  type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import {
   createConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,
+  createOAuth2TokenService,
   createSlackClient,
   createResendClient,
+  type AllowedPrivateNetwork,
   type ConnectionEnvelopeEncryptionRuntime,
+  type SecureHttpClient,
 } from '@pertexo/integrations/server';
 
 import {
@@ -38,10 +42,15 @@ export async function createApiConnectionRuntime(
   {
     identityRuntime,
     applicationSecret,
+    oauth2,
     runtime,
   }: Readonly<{
     identityRuntime: ApiIdentityRuntime;
     applicationSecret: string;
+    oauth2?: Readonly<{
+      publicWebOrigin: string;
+      allowedPrivateNetworks: readonly AllowedPrivateNetwork[];
+    }>;
     runtime?: DatabaseRuntime | undefined;
   }>,
 ): Promise<ApiConnectionRuntime> {
@@ -70,6 +79,14 @@ export async function createApiConnectionRuntime(
     const httpClient = createNodeSecureHttpClient();
     const slackClient = createSlackClient(httpClient);
     const emailClient = createResendClient(httpClient);
+    const oauth2Runtime =
+      oauth2 === undefined
+        ? undefined
+        : createOAuth2Runtime(oauth2, {
+            database,
+            encryption: encryptionRuntime.encryption,
+            apiClient: httpClient,
+          });
     const acquiredDatabase = database;
     const acquiredDestinationDatabase = destinationDatabase;
     const acquiredEncryptionRuntime = encryptionRuntime;
@@ -87,12 +104,19 @@ export async function createApiConnectionRuntime(
         slackClient,
         emailClient,
         telemetry,
+        ...(oauth2Runtime === undefined
+          ? {}
+          : { oauth2: oauth2Runtime.dependencies }),
       }),
       close: (): Promise<void> => {
-        closePromise ??= closeResources(
-          acquiredDatabase,
-          acquiredDestinationDatabase,
-          acquiredEncryptionRuntime,
+        // A refresh already at the service has to reach the database before it closes.
+        closePromise ??= Promise.resolve(oauth2Runtime?.tokens.drain()).then(
+          () =>
+            closeResources(
+              acquiredDatabase,
+              acquiredDestinationDatabase,
+              acquiredEncryptionRuntime,
+            ),
         );
         return closePromise;
       },
@@ -110,6 +134,45 @@ export async function createApiConnectionRuntime(
       );
     throw error;
   }
+}
+
+function createOAuth2Runtime(
+  oauth2: Readonly<{
+    publicWebOrigin: string;
+    allowedPrivateNetworks: readonly AllowedPrivateNetwork[];
+  }>,
+  {
+    database,
+    encryption,
+    apiClient,
+  }: Readonly<{
+    database: ApiConnectionDatabase;
+    encryption: ConnectionEnvelopeEncryptionRuntime['encryption'];
+    apiClient: SecureHttpClient;
+  }>,
+) {
+  // S17: an address policy is always passed, because the transport only refuses
+  // plain http to a public address when one exists. Token requests only: every
+  // other request from the API keeps the public-only rule.
+  const tokenClient = createNodeSecureHttpClient({
+    allowedPrivateNetworks: oauth2.allowedPrivateNetworks,
+  });
+  const tokens = createOAuth2TokenService({
+    store: database,
+    encryption,
+    httpClient: tokenClient,
+    newId: generatePersistedId,
+  });
+  return Object.freeze({
+    tokens,
+    dependencies: Object.freeze({
+      persistence: database,
+      endpointPolicy: Object.freeze(oauth2),
+      tokenClient,
+      apiClient,
+      tokens,
+    }),
+  });
 }
 
 async function closeResources(

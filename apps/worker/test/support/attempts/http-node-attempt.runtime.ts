@@ -78,6 +78,7 @@ export async function createHttpNodeAttemptProofRuntime(
         (database) => database.close(),
       );
       injectedConnectionDatabase = Object.freeze({
+        ...baseConnectionDatabase,
         assertConnectionSecretCurrent: async (
           input: Parameters<
             WorkerConnectionResolutionDatabase['assertConnectionSecretCurrent']

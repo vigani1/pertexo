@@ -27,11 +27,17 @@ import {
 import { requireConnectionManager } from '../authority.queries.js';
 import type { ConnectionDatabase } from '../contract.js';
 import {
+  CONNECTION_AUTH_TYPE,
   CONNECTION_STATUS,
   ConnectionConflictError,
   ConnectionNotFoundError,
 } from '../contract.js';
 import { revokeConnectionHealth } from '../health/transitions.repository.js';
+import {
+  deleteOAuth2Grant,
+  insertOAuth2Client,
+  withOneOAuth2Fact,
+} from '../oauth2/clients.repository.js';
 import { connectionFields, selectConnection } from '../records.queries.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
 
@@ -108,7 +114,13 @@ async function persistCreatedConnection(
             providerKey,
             name,
             authType,
-            status: 'active',
+            // A client alone isn't connected: consent gives it its first token.
+            ...(authType === CONNECTION_AUTH_TYPE.oauth2
+              ? {
+                  status: CONNECTION_STATUS.reauthorizationRequired,
+                  lastErrorCode: 'connection.oauth2_not_authorized',
+                }
+              : { status: CONNECTION_STATUS.active }),
             currentSecretVersionId: secretVersionId,
             createdBy: actorId,
           })
@@ -116,7 +128,6 @@ async function persistCreatedConnection(
           .catch(rethrowQueryFailure);
         if (row === undefined)
           throw new Error('Connection insert returned no row');
-        const connection = Object.freeze(row);
         await db
           .insert(connectionSecretVersions)
           .values({
@@ -131,6 +142,18 @@ async function persistCreatedConnection(
             createdBy: actorId,
           })
           .catch(rethrowQueryFailure);
+        if (input.authType === CONNECTION_AUTH_TYPE.oauth2)
+          await insertOAuth2Client(client, {
+            workspaceId,
+            connectionId,
+            secretVersionId,
+            settings: input.oauth2Settings,
+          });
+        const connection = await withOneOAuth2Fact(
+          client,
+          workspaceId,
+          Object.freeze(row),
+        );
         await db
           .insert(connectionEvents)
           .values({
@@ -219,12 +242,15 @@ async function persistRevokedConnection(
       );
       if (connection === null)
         throw new ConnectionNotFoundError('Connection is not visible');
-      if (connection.status === CONNECTION_STATUS.revoked) return connection;
+      if (connection.status === CONNECTION_STATUS.revoked)
+        return withOneOAuth2Fact(client, workspaceId, connection);
       const updated = await revokeConnectionHealth(
         client,
         workspaceId,
         connectionId,
       );
+      if (connection.authType === CONNECTION_AUTH_TYPE.oauth2)
+        await deleteOAuth2Grant(client, workspaceId, connectionId);
       await drizzle(client)
         .insert(connectionEvents)
         .values({
@@ -251,7 +277,7 @@ async function persistRevokedConnection(
       const row = updated[0];
       if (row === undefined)
         throw new Error('Connection revocation returned no row');
-      return Object.freeze(row);
+      return withOneOAuth2Fact(client, workspaceId, Object.freeze(row));
     },
   });
 }

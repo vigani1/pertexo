@@ -4,4 +4,7 @@ export {
   editorConnectionsQueryOptions,
   slackChannelNamesQueryOptions,
 } from './data/connections.queries';
-export { isUsableConnection } from './model/connection-selection';
+export {
+  fitsRequirement,
+  isUsableConnection,
+} from './model/connection-selection';

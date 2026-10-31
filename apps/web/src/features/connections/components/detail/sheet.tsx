@@ -35,6 +35,8 @@ import { useConnectionTest } from '../connection-test/use-command';
 import { ConnectionTestPanel } from '../connection-test/panel';
 import { ProviderTile } from '../provider-tile';
 import { ConnectionFacts } from './connection-facts';
+import { isOAuth2Connection } from '../../model/oauth2-copy';
+import { OAuth2OverviewActions } from '../oauth2/overview-actions';
 import { ReplaceCredentialForm } from './replace-credential-form';
 import { RevokeConnectionDialog } from './revoke-connection-dialog';
 import { ConnectionUsage } from './connection-usage';
@@ -73,15 +75,27 @@ function ConnectionState({
 }
 
 function OverviewActions({
+  scope,
   connection,
   permissions,
   onMode,
 }: Readonly<{
+  scope: ConnectionMutationScope;
   connection: ConnectionResponse;
   permissions: ConnectionPermissions;
   onMode: (mode: Mode) => void;
 }>) {
   if (connection.status === 'revoked') return null;
+  if (isOAuth2Connection(connection))
+    return (
+      <OAuth2OverviewActions
+        scope={scope}
+        connection={connection}
+        canTest={permissions.canTest}
+        canManage={permissions.canManage}
+        onMode={onMode}
+      />
+    );
   const reconnect = connection.status === 'reauthorization_required';
   return (
     <>
@@ -157,6 +171,7 @@ function DetailBody({
       {mode === 'overview' ? (
         <>
           <OverviewActions
+            scope={scope}
             connection={connection}
             permissions={permissions}
             onMode={setMode}
@@ -205,6 +220,7 @@ function DetailBody({
         <>
           <ConnectionTestPanel
             provider={connection.providerKey}
+            authType={connection.authType}
             test={test}
             onRun={(request) => {
               test.run(connection, request);
@@ -309,7 +325,10 @@ function ConnectionDetailSession({
                       {connection.name}
                     </SheetTitle>
                     <SheetDescription>
-                      {describeConnectionKind(connection.providerKey)}
+                      {describeConnectionKind(
+                        connection.providerKey,
+                        connection.authType,
+                      )}
                     </SheetDescription>
                     {connection.accessMode === 'restricted' ? (
                       <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">

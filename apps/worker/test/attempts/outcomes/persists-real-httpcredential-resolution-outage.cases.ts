@@ -98,6 +98,7 @@ export function registerPersistsRealHTTPCredentialResolutionOutage(): void {
         connections: () => ({
           assertCurrent: vi.fn().mockResolvedValue(undefined),
           resolve,
+          resolveHttpCredential: resolve,
         }),
       },
       workerId: 'worker-1',

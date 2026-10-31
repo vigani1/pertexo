@@ -11,7 +11,12 @@ import type {
   ConnectionDatabase,
   ResolvedConnectionSecretRecord,
 } from '../contract.js';
-import { ConnectionUnavailableError } from '../contract.js';
+import {
+  CONNECTION_AUTH_TYPE,
+  ConnectionOAuth2NotConnectedError,
+  ConnectionUnavailableError,
+} from '../contract.js';
+import { selectConnection } from '../records.queries.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
 import {
   isConnectionFenceCurrent,
@@ -52,10 +57,20 @@ export function createConnectionResolutionPersistence(
               ),
             )
             .catch(rethrowQueryFailure);
-          if (row === undefined)
+          if (row === undefined) {
+            const connection = await selectConnection(
+              client,
+              workspaceId,
+              connectionId,
+            );
+            if (connection?.authType === CONNECTION_AUTH_TYPE.oauth2)
+              throw new ConnectionOAuth2NotConnectedError(
+                'OAuth2 connection has no usable grant',
+              );
             throw new ConnectionUnavailableError(
               'Connection is not available for credential use',
             );
+          }
           const connection = Object.freeze(row.connection);
           const secretVersionId = row.secretVersionId;
           if (secretVersionId !== connection.currentSecretVersionId)

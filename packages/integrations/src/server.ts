@@ -103,6 +103,42 @@ export type {
   HttpRequestExecutorDependencies,
   HttpRequestExecutorTelemetry,
 } from './http-request/executor.js';
+export {
+  createOAuth2RenewalClient,
+  isOAuth2HostAllowed,
+} from './http-request/execution/oauth2-renewal.js';
+export {
+  createOAuth2TokenService,
+  withCommitAttempts,
+} from './oauth2/access-token.js';
+export type {
+  OAuth2TokenScope,
+  OAuth2TokenService,
+} from './oauth2/access-token.js';
+export {
+  newOAuth2Secret,
+  newOAuth2State,
+  oauth2AuthorizationAddress,
+  oauth2Digest,
+  oauth2StateWorkspace,
+  oauth2VerifierPurpose,
+} from './oauth2/consent.js';
+export { OAuth2TokenFailure } from './oauth2/contract.js';
+export type {
+  OAuth2GrantLossActor,
+  OAuth2TokenStore,
+} from './oauth2/contract.js';
+export { refusedEndpoint } from './oauth2/endpoints.js';
+export type { OAuth2EndpointPolicy } from './oauth2/endpoints.js';
+export {
+  decodeClientSettings,
+  decodeStoredClientSecret,
+  encodeStoredClientSecret,
+  encodeStoredTokens,
+  isRenewable,
+} from './oauth2/stored.js';
+export { requestOAuth2Token } from './oauth2/token-endpoint.js';
+export type { OAuth2TokenAnswer } from './oauth2/token-endpoint.js';
 export type {
   HttpExecutionErrorKind,
   HttpOutcomeDecision,

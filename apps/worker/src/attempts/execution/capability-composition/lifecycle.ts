@@ -15,6 +15,8 @@ export function closeCapabilityResources(
     state.closePromise = (async (): Promise<void> => {
       state.codeClient?.close();
       state.resources.callbackKeys?.close();
+      // A refresh already at the service has to reach the database before it closes.
+      await state.resources.oauth2Tokens?.drain();
       const closeOperations = [
         state.resources.ownedDataTables?.close.bind(
           state.resources.ownedDataTables,

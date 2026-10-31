@@ -1,3 +1,4 @@
+import { httpConnections } from '../support/http-execution.js';
 import {
   emptyArtifactRuntime,
   spoolBytes,
@@ -55,7 +56,10 @@ function fixture(
     sideEffectClass: 'unsafe',
     beforeDispatch,
     ...(priorUnknown ? { providerDispatchUnresolved: true } : {}),
-    connections: { resolve, assertCurrent: () => Promise.resolve() },
+    connections: httpConnections({
+      resolve,
+      assertCurrent: () => Promise.resolve(),
+    }),
   };
   const executeStreaming = vi
     .fn()

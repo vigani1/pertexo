@@ -51,6 +51,24 @@ export type ResolvedNodeConnection = Readonly<{
   secret: Uint8Array;
 }>;
 
+/** What an OAuth2 connection lets a step do with its token. */
+export type NodeOAuth2RequestHosts =
+  | Readonly<{ mode: 'any' }>
+  | Readonly<{ mode: 'listed'; hosts: readonly string[] }>;
+
+/** An HTTP step's credential: its headers, or a token that renews by itself. */
+export type ResolvedHttpCredential =
+  | (ResolvedNodeConnection & Readonly<{ authType: 'http_headers' }>)
+  | Readonly<{
+      authType: 'oauth2';
+      connectionId: string;
+      providerKey: string;
+      secretVersionId: string;
+      accessToken: string;
+      tokenVersionId: string;
+      requestHosts: NodeOAuth2RequestHosts;
+    }>;
+
 export interface NodeConnectionRuntime {
   resolve(
     input: Readonly<{
@@ -61,6 +79,22 @@ export interface NodeConnectionRuntime {
       signal: AbortSignal;
     }>,
   ): Promise<ResolvedNodeConnection>;
+  /** An HTTP step's credential, whichever kind the connection is. */
+  readonly resolveHttpCredential?: (
+    input: Readonly<{
+      connectionId: string;
+      purpose: string;
+      signal: AbortSignal;
+    }>,
+  ) => Promise<ResolvedHttpCredential>;
+  /** After an API's 401. False when the token can't or needn't be renewed. */
+  readonly rejectAccessToken?: (
+    input: Readonly<{
+      connectionId: string;
+      tokenVersionId: string;
+      signal: AbortSignal;
+    }>,
+  ) => Promise<boolean>;
   readonly assertCurrent?: (
     input: Readonly<{
       connectionId: string;

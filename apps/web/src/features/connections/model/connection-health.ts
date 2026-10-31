@@ -5,6 +5,7 @@ import type {
 import type { StatusTone } from '@/components/ui/status';
 import { formatElapsedTime } from '@/lib/format/time';
 import type { ProviderKey } from './connection-providers';
+import { oauth2ShortStatus } from './oauth2-copy';
 
 /** Where a connection test stands, as the test thread draws it. */
 export type TestPhase = 'idle' | 'running' | 'ok' | 'failed' | 'unsure';
@@ -39,6 +40,7 @@ const FAILURE_REASONS: Readonly<Record<string, string>> = {
   'connection.provider_unavailable': 'service unavailable',
   'connection.provider_rejected': 'request refused',
   'connection.provider_invalid_response': 'unexpected answer',
+  'connection.oauth2_host_not_allowed': 'host not allowed',
   'connection.test.dns_failed': 'address not found',
   'connection.test.ssrf_blocked': 'address not allowed',
   'connection.test.timed_out': 'timed out',
@@ -94,6 +96,12 @@ export function describeConnectionHealth(
       text: `revoked ${formatElapsedTime(connection.updatedAt, now)}`,
       tone: 'quiet',
     };
+  const oauth2Status =
+    connection.status === 'reauthorization_required'
+      ? oauth2ShortStatus(health.lastErrorCode)
+      : undefined;
+  if (oauth2Status !== undefined)
+    return { text: oauth2Status, tone: 'attention' };
   if (health.lastErrorCode !== null)
     return {
       text: `${connection.status === 'reauthorization_required' && health.lastHealthTransitionSource === 'run' ? 'run credential rejected' : 'last test failed'} · ${describeTestFailure(connection.providerKey, health.lastErrorCode)}`,
@@ -148,6 +156,12 @@ const REJECTED_HELP: Readonly<Record<ProviderKey, TestOutcomeCopy>> = {
   },
 };
 
+const OAUTH2_REJECTED_HELP: TestOutcomeCopy = {
+  title: 'The API refused this token.',
+  detail:
+    'It answered 401 or 403. Check the scope and that this account can reach that URL, or reconnect.',
+};
+
 function failureDetail(errorCode: string): string {
   switch (errorCode) {
     case 'connection.provider_rate_limited':
@@ -160,6 +174,8 @@ function failureDetail(errorCode: string): string {
       return 'Pertexo only calls public HTTPS addresses, not private or local ones.';
     case 'connection.test.timed_out':
       return 'No answer arrived within 15 seconds.';
+    case 'connection.oauth2_host_not_allowed':
+      return 'Call a host this connection allows, or change its allowed hosts.';
     default:
       return 'Check the credential and the service’s settings, then test again.';
   }
@@ -169,17 +185,20 @@ function failureDetail(errorCode: string): string {
 export function describeTestOutcome(
   provider: ProviderKey,
   outcome: ConnectionTestResponse['outcome'],
+  authType?: ConnectionResponse['authType'],
 ): TestOutcomeCopy {
   if (outcome.ok)
     return {
       title: SUCCESS_TITLES[provider],
       detail:
         provider === 'http'
-          ? `It answered ${String(outcome.httpStatus)}, so the headers work.`
+          ? `It answered ${String(outcome.httpStatus)}, so the ${authType === 'oauth2' ? 'token works' : 'headers work'}.`
           : 'This connection is ready to use.',
     };
   if (outcome.errorCode === 'connection.credential_rejected')
-    return REJECTED_HELP[provider];
+    return authType === 'oauth2'
+      ? OAUTH2_REJECTED_HELP
+      : REJECTED_HELP[provider];
   const reason = describeTestFailure(provider, outcome.errorCode);
   return {
     title: `The test failed: ${reason}.`,

@@ -9,6 +9,17 @@ import type { ApiProblemIssue } from '@pertexo/contracts';
 import type { FieldErrors } from '@/components/ui/use-field-validation';
 import type { ConnectionCredential } from '../data/connections.api';
 import type { ProviderKey } from './connection-providers';
+import {
+  emptyOAuth2Draft,
+  oauth2DraftErrors,
+  oauth2ServerErrors,
+  toOAuth2Credential,
+  type OAuth2Draft,
+  type OAuth2Field,
+} from './oauth2-draft';
+
+/** What a form fills in: a provider's own credential, or HTTP's other way in. */
+export type CredentialKind = ProviderKey | 'oauth2';
 
 export type HeaderRow = Readonly<{ id: string; name: string; value: string }>;
 
@@ -17,9 +28,11 @@ export type CredentialDraft =
   | Readonly<{ provider: 'signing'; signingKey: string }>
   | Readonly<{ provider: 'slack'; botToken: string }>
   | Readonly<{ provider: 'http'; headers: readonly HeaderRow[] }>
-  | Readonly<{ provider: 'email'; apiKey: string; fromEmail: string }>;
+  | Readonly<{ provider: 'email'; apiKey: string; fromEmail: string }>
+  | OAuth2Draft;
 
 export type CredentialField =
+  | OAuth2Field
   | 'signingKey'
   | 'botToken'
   | 'apiKey'
@@ -44,11 +57,13 @@ export function credentialDraftHasSecret(draft: CredentialDraft): boolean {
       return draft.headers.some((row) => row.value.trim() !== '');
     case 'email':
       return draft.apiKey.trim() !== '';
+    case 'oauth2':
+      return draft.clientSecret.trim() !== '';
   }
 }
 
 export function emptyCredentialDraft(
-  provider: ProviderKey,
+  provider: CredentialKind,
   createId: () => string,
 ): CredentialDraft {
   switch (provider) {
@@ -63,6 +78,8 @@ export function emptyCredentialDraft(
       };
     case 'email':
       return { provider, apiKey: '', fromEmail: '' };
+    case 'oauth2':
+      return emptyOAuth2Draft();
   }
 }
 
@@ -213,6 +230,8 @@ export function credentialErrors(
         ? rowErrors
         : contractHeaderErrors(draft.headers);
     }
+    case 'oauth2':
+      return oauth2DraftErrors(draft);
   }
 }
 
@@ -244,6 +263,8 @@ export function toConnectionCredential(
           ]),
         ),
       };
+    case 'oauth2':
+      return toOAuth2Credential(draft);
   }
 }
 
@@ -261,6 +282,7 @@ export function toCreateRequest(
     case 'resend_api_key':
       return { providerKey: 'email', name, credential };
     case 'http_headers':
+    case 'oauth2':
       return { providerKey: 'http', name, credential };
   }
 }
@@ -270,6 +292,7 @@ export function credentialServerErrors(
   draft: CredentialDraft,
   issues: readonly ApiProblemIssue[],
 ): FieldErrors<CredentialField> {
+  if (draft.provider === 'oauth2') return oauth2ServerErrors(issues);
   const errors: Partial<Record<CredentialField, string>> = {};
   for (const issue of issues) {
     const path = issue.path.split('.');
@@ -338,5 +361,7 @@ export function describeSavedCredential(
         value: names.join(', '),
       };
     }
+    case 'oauth2':
+      return { term: 'Client ID', value: draft.clientId.trim() };
   }
 }

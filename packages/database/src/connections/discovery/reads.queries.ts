@@ -11,6 +11,7 @@ import {
 import { requireConnectionReader } from '../authority.queries.js';
 import type { ConnectionPage, ConnectionReadDatabase } from '../contract.js';
 import { connectionFields } from '../records.queries.js';
+import { withOAuth2Facts } from '../oauth2/clients.repository.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
 
 export function createConnectionReadPersistence(
@@ -58,11 +59,15 @@ export function createConnectionReadPersistence(
             .catch(rethrowQueryFailure);
           const hasMore = result.length > limit;
           const items = Object.freeze(
-            result
-              .slice(0, limit)
-              .map(({ createdAtCursor: _cursor, ...record }) =>
-                Object.freeze(record),
-              ),
+            await withOAuth2Facts(
+              client,
+              workspaceId,
+              result
+                .slice(0, limit)
+                .map(({ createdAtCursor: _cursor, ...record }) =>
+                  Object.freeze(record),
+                ),
+            ),
           );
           const last = result.at(limit - 1);
           return Object.freeze({
@@ -106,7 +111,11 @@ export function createConnectionReadPersistence(
               ),
             )
             .catch(rethrowQueryFailure);
-          return row === undefined ? null : Object.freeze(row);
+          if (row === undefined) return null;
+          const [record] = await withOAuth2Facts(client, workspaceId, [
+            Object.freeze(row),
+          ]);
+          return record ?? null;
         },
       });
     },

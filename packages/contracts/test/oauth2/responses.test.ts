@@ -42,8 +42,7 @@ describe('the OAuth2 credential', () => {
     ).toBe(false);
   });
 
-  // Plan, "Deliberately not yet changed": these unions widen with the handler.
-  it.fails('replaces through the one rotate route', () => {
+  it('replaces through the one rotate route', () => {
     expect(
       connectionRotateSecretRequestSchema.safeParse({
         expectedSecretVersionId: connectionFields.secretVersionId,
@@ -52,7 +51,7 @@ describe('the OAuth2 credential', () => {
     ).toBe(true);
   });
 
-  it.fails('creates through the http member of the one create route', () => {
+  it('creates through the http member of the one create route', () => {
     expect(
       connectionCreateRequestSchema.safeParse({
         providerKey: 'http',
@@ -62,8 +61,7 @@ describe('the OAuth2 credential', () => {
     ).toBe(true);
   });
 
-  // Plan, "Deliberately not yet changed": this also widens the auth type.
-  it.fails('answers from the same connection response', () => {
+  it('answers from the same connection response', () => {
     expect(
       connectionResponseSchema.safeParse({
         ...connectionFields,

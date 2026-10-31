@@ -127,7 +127,8 @@ export function ConnectionSlot({
             request={adding ? provider : undefined}
             onCreated={(connection) => {
               setCreated(connection);
-              if (connection.authType === requirement) choose(connection.id);
+              if (isUsableConnection(connection, requirement))
+                choose(connection.id);
             }}
             onClose={() => {
               setAdding(false);

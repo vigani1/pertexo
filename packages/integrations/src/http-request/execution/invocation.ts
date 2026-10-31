@@ -2,10 +2,12 @@ import {
   type NodeVerifiedByteSource,
   type NodeExecutionInvocation,
   FileInputFailure,
+  type NodeExecutorFailure,
   ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 import { HTTP_SIDE_EFFECT_CLASS } from '../../http/outcome-policy.js';
+import { OAuth2TokenFailure } from '../../oauth2/contract.js';
 
 import { errorNameIs, safeInstanceOf } from '../../http/unknown-error.js';
 import { HTTP_REQUEST_CONNECTION_SLOT } from '../definition.js';
@@ -16,6 +18,7 @@ import { readRequestBody } from '../read-body.js';
 import { HttpRequestExecutorError, failedConfiguration } from './contract.js';
 import { releaseHttpMaterial } from './body.js';
 import { fillPlaceholders } from './input.js';
+import { HttpOAuth2Failure } from './oauth2-failure.js';
 
 export type RequestContext = ReturnType<typeof prepareInvocation>;
 
@@ -53,7 +56,9 @@ export function prepareInvocation(
     runtime.sideEffectClass === 'unsafe' ||
     (repeatable && runtime.sideEffectClass === 'safe');
   const invalidDispatchRuntime =
-    (connectionId !== undefined && connections?.assertCurrent === undefined) ||
+    (connectionId !== undefined &&
+      (connections?.assertCurrent === undefined ||
+        connections.resolveHttpCredential === undefined)) ||
     !expectedClass ||
     runtime.providerIdempotencyKey !== undefined ||
     Object.keys(invocation.connectionRefs).some(
@@ -115,64 +120,68 @@ export async function prepareRequestBody({
 }
 
 export async function resolveRequestConnection(
-  {
-    connections,
-    connectionId,
-    invocation,
-    runtime,
-    repeatable,
-  }: RequestContext,
+  context: RequestContext,
   body: PreparedBody['body'],
   dispatch: DispatchState,
 ) {
-  let resolved:
-    Awaited<ReturnType<NonNullable<typeof connections>['resolve']>> | undefined;
-  if (connectionId !== undefined && connections !== undefined)
-    try {
-      resolved = await connections.resolve({
-        connectionId,
-        expectedProviderKey: 'http',
-        expectedAuthType: 'http_headers',
-        purpose: 'http.request.execute',
-        signal: invocation.signal,
-      });
-    } catch (error: unknown) {
-      await releaseHttpMaterial(body, undefined, {
-        repeatable,
-        possiblyDispatched: dispatch.possiblyDispatched,
-      });
-      if (!repeatable && (runtime.providerDispatchUnresolved ?? false))
-        throw new HttpRequestExecutorError(
-          Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
-          { possiblyDispatched: true },
-        );
-      if (safeInstanceOf(error, ProviderExecutionRateLimitError))
-        throw new HttpRequestExecutorError(
-          Object.freeze({
-            kind: 'retry',
-            errorKind: 'rate_limit',
-            reuseProviderKey: false,
-          }),
-          { possiblyDispatched: false },
-        );
-      if (safeInstanceOf(error, ProviderCredentialInvalidError))
-        throw new HttpRequestExecutorError(
-          Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-          { possiblyDispatched: false },
-        );
-      if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
-        throw new HttpRequestExecutorError(
-          Object.freeze({ kind: 'canceled', errorKind: 'canceled' }),
-          { possiblyDispatched: false },
-        );
-      throw new HttpRequestExecutorError(
-        Object.freeze({
-          kind: 'retry',
-          errorKind: 'provider',
-          reuseProviderKey: false,
-        }),
-        { possiblyDispatched: false },
-      );
-    }
-  return resolved;
+  const { connections, connectionId, invocation, repeatable } = context;
+  if (
+    connectionId === undefined ||
+    connections?.resolveHttpCredential === undefined
+  )
+    return undefined;
+  try {
+    return await connections.resolveHttpCredential({
+      connectionId,
+      purpose: 'http.request.execute',
+      signal: invocation.signal,
+    });
+  } catch (error: unknown) {
+    await releaseHttpMaterial(body, undefined, {
+      repeatable,
+      possiblyDispatched: dispatch.possiblyDispatched,
+    });
+    throw credentialFailure(error, context);
+  }
+}
+
+/** Why a step has no credential, for the first request or a renewal partway through. */
+export function credentialFailure(
+  error: unknown,
+  { invocation, runtime, repeatable }: RequestContext,
+): NodeExecutorFailure {
+  if (!repeatable && (runtime.providerDispatchUnresolved ?? false))
+    return new HttpRequestExecutorError(
+      Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
+      { possiblyDispatched: true },
+    );
+  if (safeInstanceOf(error, OAuth2TokenFailure))
+    return new HttpOAuth2Failure(error);
+  if (safeInstanceOf(error, ProviderExecutionRateLimitError))
+    return new HttpRequestExecutorError(
+      Object.freeze({
+        kind: 'retry',
+        errorKind: 'rate_limit',
+        reuseProviderKey: false,
+      }),
+      { possiblyDispatched: false },
+    );
+  if (safeInstanceOf(error, ProviderCredentialInvalidError))
+    return new HttpRequestExecutorError(
+      Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+      { possiblyDispatched: false },
+    );
+  if (invocation.signal.aborted || errorNameIs(error, 'AbortError'))
+    return new HttpRequestExecutorError(
+      Object.freeze({ kind: 'canceled', errorKind: 'canceled' }),
+      { possiblyDispatched: false },
+    );
+  return new HttpRequestExecutorError(
+    Object.freeze({
+      kind: 'retry',
+      errorKind: 'provider',
+      reuseProviderKey: false,
+    }),
+    { possiblyDispatched: false },
+  );
 }

@@ -32,6 +32,11 @@ import {
   ConnectionUnavailableError,
 } from '../contract.js';
 import { rotateConnectionHealth } from '../health/transitions.repository.js';
+import {
+  deleteOAuth2Grant,
+  insertOAuth2Client,
+  withOneOAuth2Fact,
+} from '../oauth2/clients.repository.js';
 import { selectConnection } from '../records.queries.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
 
@@ -152,11 +157,26 @@ async function persistRotatedConnectionSecret(
           createdBy: actorId,
         })
         .catch(rethrowQueryFailure);
+      if (input.expectedAuthType === CONNECTION_AUTH_TYPE.oauth2) {
+        await insertOAuth2Client(client, {
+          workspaceId,
+          connectionId,
+          secretVersionId,
+          settings: input.oauth2Settings,
+        });
+        await deleteOAuth2Grant(client, workspaceId, connectionId);
+      }
       const updated = await rotateConnectionHealth(
         client,
         workspaceId,
         connectionId,
         secretVersionId,
+        input.expectedAuthType === CONNECTION_AUTH_TYPE.oauth2
+          ? {
+              status: CONNECTION_STATUS.reauthorizationRequired,
+              lastErrorCode: 'connection.oauth2_not_authorized',
+            }
+          : { status: CONNECTION_STATUS.active, lastErrorCode: null },
       );
       await drizzle(client)
         .insert(connectionEvents)
@@ -184,7 +204,11 @@ async function persistRotatedConnectionSecret(
       const row = updated[0];
       if (row === undefined)
         throw new Error('Connection rotation returned no row');
-      const rotated = Object.freeze(row);
+      const rotated = await withOneOAuth2Fact(
+        client,
+        workspaceId,
+        Object.freeze(row),
+      );
       await completeCommand(
         client,
         command,

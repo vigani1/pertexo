@@ -14,6 +14,8 @@ import {
 
 useOAuth2Timeouts();
 
+/** Every connection route hides what a member may not do, as its guard's disclosure says. */
+const HIDDEN = 404;
 const FORBIDDEN_PROBLEM = 403;
 
 describeOAuth2('starting OAuth2 consent', () => {
@@ -46,30 +48,30 @@ describeOAuth2('starting OAuth2 consent', () => {
     new URL(url).searchParams.get('state') ?? '';
 
   // Roles table: a Viewer can't start.
-  it.fails('a viewer can’t start consent', async () => {
+  it('a viewer can’t start consent', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const viewer = await harness.addMember(owner.workspaceId, 'viewer');
     const started = await harness.start(viewer.api, owner, connection.id);
-    expect(started.status).toBe(FORBIDDEN_PROBLEM);
+    expect(started.status).toBe(HIDDEN);
     expect(await harness.pendingRows(connection.id)).toBe(0);
   });
 
   // Roles table: Operator and Builder ("Editor" roles) only have connection:use.
-  it.fails.each(['operator', 'builder'] as const)(
+  it.each(['operator', 'builder'] as const)(
     'a %s can’t start consent',
     async (role) => {
       const owner = await harness.newOwner();
       const connection = await harness.create(owner, 'non-rotating');
       const member = await harness.addMember(owner.workspaceId, role);
       const started = await harness.start(member.api, owner, connection.id);
-      expect(started.status).toBe(FORBIDDEN_PROBLEM);
+      expect(started.status).toBe(HIDDEN);
       expect(await harness.pendingRows(connection.id)).toBe(0);
     },
   );
 
   // Roles table: Owner and Admin have connection:manage.
-  it.fails('an admin and an owner can start consent', async () => {
+  it('an admin and an owner can start consent', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const admin = await harness.addMember(owner.workspaceId, 'admin');
@@ -82,7 +84,7 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // S28: another workspace's id gets 404 on the start route.
-  it.fails('another workspace gets 404, and its member nothing', async () => {
+  it('another workspace gets 404, and its member nothing', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const outsider = await harness.newOwner();
@@ -100,7 +102,7 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // Proof list: start needs CSRF.
-  it.fails('start needs the CSRF token', async () => {
+  it('start needs the CSRF token', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const started = await owner.api.call(
@@ -114,7 +116,7 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // S1: the state is <workspace, 22 chars>.<43 chars>; only its digest is stored.
-  it.fails('S1 stores only the digest of the state it gives out', async () => {
+  it('S1 stores only the digest of the state it gives out', async () => {
     const { connection, callbackUrl } = await pendingConsent();
     const state = stateOf(callbackUrl);
     expect(state).toMatch(/^[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/u);
@@ -132,7 +134,7 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // S5: the binding cookie's name and every attribute.
-  it.fails('S5 sets the binding cookie exactly as written', async () => {
+  it('S5 sets the binding cookie exactly as written', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const started = await harness.start(owner.api, owner, connection.id);
@@ -165,37 +167,34 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // S12: the redirect URI is the install's, in the start URL, the exchange and the response.
-  it.fails(
-    'S12 sends the install’s redirect URI, whatever the request says',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.create(owner, 'non-rotating');
-      expect(connection.body).toMatchObject({
-        oauth2: { redirectUri: REDIRECT_URI },
-      });
-      const started = await owner.api.call(
-        'POST',
-        `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}/oauth2/authorization`,
-        undefined,
-        {
-          'x-forwarded-host': 'evil.example.test',
-          'x-forwarded-proto': 'https',
-        },
-      );
-      const url = new URL(harness.authorizationUrl(started));
-      expect(url.searchParams.get('redirect_uri')).toBe(REDIRECT_URI);
-      const landing = await harness.land(
-        owner.api,
-        await harness.decide(url.toString(), 'approve'),
-      );
-      expect(landing.result).toBe('connected');
-      const [exchange] = harness.standIn.tokenRequests(connection.clientId);
-      expect(exchange?.form?.redirect_uri).toBe(REDIRECT_URI);
-    },
-  );
+  it('S12 sends the install’s redirect URI, whatever the request says', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.create(owner, 'non-rotating');
+    expect(connection.body).toMatchObject({
+      oauth2: { redirectUri: REDIRECT_URI },
+    });
+    const started = await owner.api.call(
+      'POST',
+      `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}/oauth2/authorization`,
+      undefined,
+      {
+        'x-forwarded-host': 'evil.example.test',
+        'x-forwarded-proto': 'https',
+      },
+    );
+    const url = new URL(harness.authorizationUrl(started));
+    expect(url.searchParams.get('redirect_uri')).toBe(REDIRECT_URI);
+    const landing = await harness.land(
+      owner.api,
+      await harness.decide(url.toString(), 'approve'),
+    );
+    expect(landing.result).toBe('connected');
+    const [exchange] = harness.standIn.tokenRequests(connection.clientId);
+    expect(exchange?.form?.redirect_uri).toBe(REDIRECT_URI);
+  });
 
   // Decisions, PKCE: on by default with S256; the stand-in checks verifier against challenge.
-  it.fails('PKCE: the verifier matches the challenge', async () => {
+  it('PKCE: the verifier matches the challenge', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const url = new URL(
@@ -221,7 +220,7 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // S21: derived from the state, so two consents have different verifiers.
-  it.fails('S21 derives a different verifier for each consent', async () => {
+  it('S21 derives a different verifier for each consent', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     for (const _ of [1, 2]) {
@@ -238,7 +237,7 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // Decisions, PKCE: the Advanced switch sends neither challenge nor verifier.
-  it.fails('PKCE off sends neither', async () => {
+  it('PKCE off sends neither', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating', {
       pkce: 'none',
@@ -260,7 +259,7 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // S3: 600 s, stored by database time and answered in the start response.
-  it.fails('S3 keeps a consent open for 600 seconds', async () => {
+  it('S3 keeps a consent open for 600 seconds', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     const started = await harness.start(owner.api, owner, connection.id);
@@ -277,7 +276,7 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // Plan, Contract: server-to-server is connected at once, with no consent.
-  it.fails('client credentials connects at once', async () => {
+  it('client credentials connects at once', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.createServer(owner, 'non-rotating');
     const started = await harness.start(owner.api, owner, connection.id);
@@ -302,7 +301,7 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // Plan, Contract: a client-credentials start that the service refused is a 409.
-  it.fails.each(['invalid-client', 'unauthorized-client', 'invalid-scope'])(
+  it.each(['invalid-client', 'unauthorized-client', 'invalid-scope'])(
     'a client-credentials start answered %s is connection.oauth2_token_refused',
     async (behavior) => {
       const owner = await harness.newOwner();
@@ -320,19 +319,16 @@ describeOAuth2('starting OAuth2 consent', () => {
   );
 
   // Plan, Contract: an outage on start is the existing provider.unavailable.
-  it.fails(
-    'a client-credentials start during an outage is provider.unavailable',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.createServer(owner, '503');
-      const started = await harness.start(owner.api, owner, connection.id);
-      expect(started.status).toBe(503);
-      expect(started.json).toMatchObject({ code: 'provider.unavailable' });
-    },
-  );
+  it('a client-credentials start during an outage is provider.unavailable', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.createServer(owner, '503');
+    const started = await harness.start(owner.api, owner, connection.id);
+    expect(started.status).toBe(503);
+    expect(started.json).toMatchObject({ code: 'provider.unavailable' });
+  });
 
   // Plan, Contract: starting on a revoked connection is connection.revoked.
-  it.fails('start on a revoked connection is connection.revoked', async () => {
+  it('start on a revoked connection is connection.revoked', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.create(owner, 'non-rotating');
     await owner.api.call(
@@ -344,7 +340,7 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // Plan, Contract: start on a non-OAuth2 connection is connection.conflict.
-  it.fails('start on a header connection is connection.conflict', async () => {
+  it('start on a header connection is connection.conflict', async () => {
     const owner = await harness.newOwner();
     const created = await owner.api.call(
       'POST',
@@ -370,18 +366,15 @@ describeOAuth2('starting OAuth2 consent', () => {
   });
 
   // S15: start also decides addresses, so a stored address that's no longer allowed is refused.
-  it.fails(
-    'S15 start refuses a stored address that is now refused',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.createServer(owner, 'non-rotating');
-      await harness.setTokenUrl(connection.id, 'http://10.0.0.5/token');
-      const started = await harness.start(owner.api, owner, connection.id);
-      expect(started.status).toBe(400);
-      expect(started.json).toMatchObject({
-        code: 'connection.oauth2_endpoint_refused',
-      });
-      expect(harness.standIn.tokenRequests(connection.clientId)).toEqual([]);
-    },
-  );
+  it('S15 start refuses a stored address that is now refused', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.createServer(owner, 'non-rotating');
+    await harness.setTokenUrl(connection.id, 'http://10.0.0.5/token');
+    const started = await harness.start(owner.api, owner, connection.id);
+    expect(started.status).toBe(400);
+    expect(started.json).toMatchObject({
+      code: 'connection.oauth2_endpoint_refused',
+    });
+    expect(harness.standIn.tokenRequests(connection.clientId)).toEqual([]);
+  });
 });

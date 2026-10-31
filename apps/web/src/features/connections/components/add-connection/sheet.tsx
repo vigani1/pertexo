@@ -42,6 +42,7 @@ import {
   toCreateRequest,
   type SavedCredential,
 } from '../../model/credential-draft';
+import { useOAuth2Consent } from '../../hooks/use-oauth2-consent';
 import { useConnectionTest } from '../connection-test/use-command';
 import { useCredentialForm } from '../credential/use-form';
 import { StepIndicator, type AddStep } from './steps';
@@ -54,6 +55,7 @@ const DESCRIPTIONS: Readonly<Record<AddStep, string>> = {
   provider: 'Choose what Pertexo should plug into.',
   credential: 'Paste the key or token the service gave you.',
   name: 'Name it so people recognize it in steps and alerts.',
+  connect: 'Sign in so Pertexo can get its token.',
   test: 'Check that the service accepts it.',
 };
 
@@ -120,8 +122,11 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
                 created: model.created,
                 savedCredential: model.savedCredential,
                 test: model.test,
+                consent: model.consent,
               }}
               fields={{
+                useOAuth2: model.useOAuth2,
+                onUseOAuth2: model.chooseOAuth2,
                 credential: model.credential,
                 name: model.name,
                 nameValidation: model.nameValidation,
@@ -145,6 +150,7 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
             saving={model.create.isPending}
             retrying={model.uncertain}
             tested={model.test.phase}
+            useOAuth2={model.useOAuth2}
             onBack={() => {
               model.setStep(model.step === 'name' ? 'credential' : 'provider');
               if (model.step === 'credential') model.setChosen(undefined);
@@ -199,33 +205,33 @@ function useAddConnectionForm({
   const [created, setCreated] = useState<ConnectionResponse>();
   const [savedCredential, setSavedCredential] = useState<SavedCredential>();
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [useOAuth2, chooseOAuth2] = useState(false);
   const provider = chosen ?? (request === 'any' ? undefined : request);
   const step: AddStep =
     stepState ?? (provider === undefined ? 'provider' : 'credential');
-  const credential = useCredentialForm(provider ?? 'slack');
+  const credential = useCredentialForm(
+    provider === 'http' && useOAuth2 ? 'oauth2' : (provider ?? 'slack'),
+  );
   const nameValidation = useFieldValidation<'name'>();
   const { mutation: create, clearSensitiveState } =
     useCreateConnectionMutation(scope);
   const test = useConnectionTest(scope, { toastOnPass: false });
-  const attempt = useRef<
-    | Readonly<{
-        signature: string;
-        command: CreateConnectionCommand & CommandKey;
-      }>
-    | undefined
-  >(undefined);
+  const consent = useOAuth2Consent(scope, created, (connected) => {
+    setCreated(connected);
+    setStep('test');
+    // A step's slot takes it as soon as it can be used, not when this sheet closes.
+    onCreated?.(connected);
+  });
+  const attempt = useRef<HeldCommand | undefined>(undefined);
   const name =
     nameInput ??
-    (provider === undefined
-      ? ''
-      : suggestConnectionName(provider, workspaceName));
+    (provider && suggestConnectionName(provider, workspaceName)) ??
+    '';
 
   function close() {
     if (create.isPending) return;
     if (created !== undefined) {
-      notifications.success(
-        savedMessage({ name: created.name, passed: test.phase === 'ok' }),
-      );
+      notifications.success(savedMessage(created, test.phase === 'ok'));
       onCreated?.(test.result?.connection ?? created);
     }
     attempt.current = undefined;
@@ -234,6 +240,7 @@ function useAddConnectionForm({
     setNameInput(undefined);
     setCreated(undefined);
     setSavedCredential(undefined);
+    chooseOAuth2(false);
     credential.clear();
     nameValidation.reset();
     clearSensitiveState();
@@ -258,11 +265,9 @@ function useAddConnectionForm({
 
   /** Server field errors land on the name or the credential step. */
   function placeServerIssues(error: unknown) {
-    const issues = isApiError(error) ? (error.problem?.errors ?? []) : [];
+    const issues = problemIssues(error);
     if (issues.some((issue) => issue.path === 'name'))
-      nameValidation.showErrors({
-        name: 'Pertexo couldn’t use this name. Try a shorter one.',
-      });
+      nameValidation.showErrors({ name: NAME_REFUSED });
     if (credential.showServerIssues(issues)) setStep('credential');
   }
 
@@ -273,14 +278,12 @@ function useAddConnectionForm({
       setStep('credential');
       return;
     }
-    const body = toCreateRequest(name.trim(), credential.draft);
-    const signature = JSON.stringify(body);
-    const held = attempt.current;
-    const command =
-      held?.signature === signature && canResend(held.command)
-        ? held.command
-        : { request: body, ...newCommandKey() };
-    attempt.current = { signature, command };
+    const held = heldCommand(
+      attempt.current,
+      toCreateRequest(name.trim(), credential.draft),
+    );
+    attempt.current = held;
+    const { command } = held;
     let connection: ConnectionResponse;
     try {
       connection = await create.mutateAsync(command);
@@ -293,6 +296,10 @@ function useAddConnectionForm({
     credential.clear();
     clearSensitiveState();
     setCreated(connection);
+    if (connection.authType === 'oauth2') {
+      setStep('connect');
+      return;
+    }
     setStep('test');
     if (
       connection.providerKey === 'slack' ||
@@ -314,6 +321,9 @@ function useAddConnectionForm({
     save,
     created,
     savedCredential,
+    useOAuth2,
+    chooseOAuth2,
+    consent,
     credential,
     name,
     nameValidation,
@@ -331,10 +341,34 @@ function useAddConnectionForm({
   } as const;
 }
 
-function savedMessage({
-  name,
-  passed,
-}: Readonly<{ name: string; passed: boolean }>) {
+type HeldCommand = Readonly<{
+  signature: string;
+  command: CreateConnectionCommand & CommandKey;
+}>;
+
+const NAME_REFUSED = 'Pertexo couldn’t use this name. Try a shorter one.';
+
+/** A retry of the same request keeps its key, so it can't save twice. */
+function heldCommand(
+  held: HeldCommand | undefined,
+  request: CreateConnectionCommand['request'],
+): HeldCommand {
+  const signature = JSON.stringify(request);
+  return held?.signature === signature && canResend(held.command)
+    ? held
+    : { signature, command: { request, ...newCommandKey() } };
+}
+
+const problemIssues = (error: unknown) =>
+  isApiError(error) ? (error.problem?.errors ?? []) : [];
+
+function savedMessage(connection: ConnectionResponse, passed: boolean) {
+  const { name, authType, status } = connection;
+  if (authType === 'oauth2' && status !== 'active')
+    return {
+      title: `Saved ${name}`,
+      description: 'Connect it from its details when you’re ready.',
+    };
   return passed
     ? { title: `Connected ${name}` }
     : { title: `Saved ${name}`, description: 'It hasn’t passed a test yet.' };

@@ -9,6 +9,7 @@ import {
 } from '../../model/credential-draft';
 import { CredentialHelp } from './help';
 import { HttpHeaderEditor } from './http-header-editor';
+import { OAuth2Fields } from './oauth2-fields';
 
 type FieldsProps = Readonly<{
   draft: CredentialDraft;
@@ -74,6 +75,16 @@ function CredentialInput({
 /** The provider's credential inputs. Secrets stay masked and local. */
 export function CredentialFields(props: FieldsProps) {
   const { draft } = props;
+  if (draft.provider === 'oauth2')
+    return (
+      <OAuth2Fields
+        draft={draft}
+        idPrefix={props.idPrefix}
+        disabled={props.disabled}
+        validation={props.validation}
+        onChange={props.onChange}
+      />
+    );
   if (draft.provider === 'http')
     return (
       <HttpHeaderEditor

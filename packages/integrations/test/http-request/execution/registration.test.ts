@@ -26,6 +26,7 @@ import {
   encoder,
   config,
   runtime,
+  httpConnections,
   invocation,
   response,
   streamingHttpClient,
@@ -38,7 +39,7 @@ describe('http.request@1 server executor', () => {
       const executionRuntime: NodeExecutionRuntime = {
         ...state.value,
         providerDispatchUnresolved: true,
-        connections: {
+        connections: httpConnections({
           assertCurrent:
             stage === 'fence'
               ? () => Promise.reject(new Error('postgres unavailable'))
@@ -47,7 +48,7 @@ describe('http.request@1 server executor', () => {
             stage === 'resolve'
               ? () => Promise.reject(new Error('postgres unavailable'))
               : state.resolve,
-        },
+        }),
       };
 
       await expect(
@@ -85,10 +86,10 @@ describe('http.request@1 server executor', () => {
       const state = runtime();
       const executionRuntime: NodeExecutionRuntime = {
         ...state.value,
-        connections: {
+        connections: httpConnections({
           resolve: state.resolve,
           assertCurrent: () => Promise.reject(error),
-        },
+        }),
       };
       const dispatch = vi.fn();
       const registration = createHttpRequestExecutorRegistration({

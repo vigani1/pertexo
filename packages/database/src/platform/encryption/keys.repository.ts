@@ -7,6 +7,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { webhookTestEvents } from '../../schema/triggers/test-events.js';
 import { webhookTriggerSecretVersions } from '../../schema/triggers/endpoints.js';
 import { connectionSecretVersions } from '../../schema/connections.js';
+import { connectionOAuth2Tokens } from '../../schema/oauth2-connections.js';
 import type { Pool, PoolClient } from 'pg';
 import type { DatabaseConfig } from '../../config.js';
 import { acquireDatabasePool, type DatabaseRuntime } from '../pool/runtime.js';
@@ -24,6 +25,12 @@ const inventories = [
     kind: 'connection',
     table: connectionSecretVersions,
     resource: connectionSecretVersions.connectionId,
+    retained: undefined,
+  },
+  {
+    kind: 'connection',
+    table: connectionOAuth2Tokens,
+    resource: connectionOAuth2Tokens.connectionId,
     retained: undefined,
   },
   {

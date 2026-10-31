@@ -15,6 +15,7 @@ import {
   projectWorkflowPortableManifest,
   type PortableConnectionBinding,
   type WorkflowGraph,
+  connectionFitsSlot,
 } from '@pertexo/workflow-model';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import type { AuthoringCatalogs } from '../../workflows/catalogs.js';
@@ -80,14 +81,21 @@ export async function rebindPromotionConnections(
       (candidate) => candidate.id === sourceId,
     );
     const matches =
-      connection?.provider_key !== slot.providerKey ||
-      connection.auth_type !== slot.authType
+      connection === undefined ||
+      !connectionFitsSlot(
+        {
+          providerKey: connection.provider_key,
+          authType: connection.auth_type,
+        },
+        slot,
+      )
         ? []
         : targets.filter(
             (candidate) =>
               candidate.normalized_name === connection.normalized_name &&
-              candidate.provider_key === slot.providerKey &&
-              candidate.auth_type === slot.authType &&
+              candidate.provider_key === connection.provider_key &&
+              // Promotion copies no credential, so the target signs in the same way.
+              candidate.auth_type === connection.auth_type &&
               candidate.status === 'active',
           );
     const matched = matches.length === 1 ? matches[0] : undefined;
