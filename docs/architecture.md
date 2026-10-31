@@ -43,9 +43,10 @@ instrumented runtime libraries. Artifact storage, execution, queue and rate
 limiting are server-side packages despite having a single root door.
 
 Applications depend on `core`, and `core` on `database`, the engine and the
-model; a check refuses the reverse. Each core area has an `index.ts`, where other
-areas and `@pertexo/core/server` meet it. Functions that database areas still
-call stay in `database` until their last caller moves.
+model; a check refuses the reverse ([ADR 091](adr/091-core-layer.md)). Each core
+area has an `index.ts`, where other areas and its `@pertexo/core/<area>` entry point
+meet it; test flows go through `@pertexo/core/testing`. Functions that database
+areas still call stay in `database` until every area moves at once.
 
 The model supplies the engine's data contracts; execution connects pure engine
 decisions to database stores; the API and worker assemble those dependencies.
