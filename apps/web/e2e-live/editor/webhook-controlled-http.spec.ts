@@ -127,8 +127,10 @@ test('signed acceptance replay produces two immutable runs and one actual contro
   await expect(reveal).toBeVisible();
   // Read transient values without assertions/reporters that could dump them.
   const codes = await reveal.locator('code').allTextContents();
-  const endpointKey = codes[0],
-    signingSecret = codes.at(-1);
+  // The first code shown is the whole address; the key and secret are the bare values.
+  const keys = codes.filter((code) => /^[\w-]{43}$/u.test(code));
+  const endpointKey = keys[0],
+    signingSecret = keys.at(-1);
   if (
     endpointKey === undefined ||
     signingSecret === undefined ||

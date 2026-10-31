@@ -77,8 +77,10 @@ test('coordinates all three real signed webhook policies with visible history', 
     });
     await expect(dialog).toBeVisible();
     const codes = await dialog.locator('code').allTextContents();
-    const endpoint = codes[0],
-      secret = codes.at(-1);
+    // The first code shown is the whole address; the key and secret are the bare values.
+    const keys = codes.filter((code) => /^[\w-]{43}$/u.test(code));
+    const endpoint = keys[0],
+      secret = keys.at(-1);
     if (endpoint === undefined || secret === undefined)
       throw new Error('Reveal missing');
     await dialog.getByRole('switch', { name: 'I’ve stored these' }).click();

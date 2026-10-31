@@ -116,7 +116,11 @@ export async function verifyHttpEvidence(
     replay_check: string;
     workflow_run_id: string | null;
   }>(
-    'select id,outcome,http_status,signature_check,replay_check,workflow_run_id from app.webhook_trigger_deliveries where workspace_id=$1 and trigger_id=$2',
+    `select delivery.id,delivery.outcome,delivery.http_status,delivery.signature_check,delivery.replay_check,delivery.workflow_run_id
+       from app.webhook_trigger_deliveries delivery
+       join app.webhook_trigger_endpoints endpoint on endpoint.workspace_id=delivery.workspace_id and endpoint.id=delivery.endpoint_id
+       join app.workflow_triggers trigger on trigger.workspace_id=endpoint.workspace_id and trigger.workflow_id=endpoint.workflow_id and trigger.node_id=endpoint.node_id
+      where delivery.workspace_id=$1 and trigger.id=$2`,
     [evidence.workspaceId, evidence.triggerId],
   );
   expect(deliveries.rows).toHaveLength(4);
