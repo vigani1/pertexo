@@ -15,7 +15,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 
 import type { VariableUsageInput, VariableUsagePage } from './contract.js';
-import { walkVariableUsage } from './usage-scan.js';
+import { walkVariableUsage } from './usage-walk.js';
 
 type FolderScope = Awaited<ReturnType<typeof readFolderScope>>;
 type UsageCursor = VariableUsageInput['after'];
