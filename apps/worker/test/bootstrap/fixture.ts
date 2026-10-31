@@ -116,7 +116,6 @@ export const workerConfig = {
     batchSize: 10,
     leaseDurationMillis: 30_000,
     leaseOwner: 'outbox:test-worker',
-    maxAttempts: 3,
     operationTimeoutMillis: 5_000,
     pollIntervalMillis: 250,
     retryDelayMillis: 1_000,
@@ -191,6 +190,9 @@ function idleRuntimes() {
     checkReadiness: vi
       .fn<NonNullable<NodeAttemptRuntime['checkReadiness']>>()
       .mockResolvedValue(undefined),
+    checkObjectStore: vi
+      .fn<NonNullable<NodeAttemptRuntime['checkObjectStore']>>()
+      .mockResolvedValue(undefined),
     close: vi
       .fn<NonNullable<NodeAttemptRuntime['close']>>()
       .mockResolvedValue(undefined),
@@ -218,6 +220,11 @@ function idleRuntimes() {
     checkReadiness: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
   } as unknown as WorkflowAutoPauseRuntime;
+  const idlePollingRuntime = () => ({
+    start: vi.fn(),
+    checkReadiness: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  });
   const retentionRuntime = {
     start: vi.fn(),
     checkReadiness: vi.fn().mockResolvedValue(undefined),
@@ -230,6 +237,7 @@ function idleRuntimes() {
     triggerRuntime,
     workflowAutoPauseRuntime,
     retentionRuntime,
+    stalledWorkRuntime: idlePollingRuntime(),
   };
 }
 
@@ -249,7 +257,7 @@ export function dependencies(
     checkReadiness: dispatcherReadiness,
     claimBatch: vi
       .fn<NonNullable<OutboxDispatcherDatabase['claimBatch']>>()
-      .mockResolvedValue({ events: [], exhaustedCount: 0 }),
+      .mockResolvedValue({ events: [] }),
     close: dispatcherClose,
     markPublished: vi
       .fn<NonNullable<OutboxDispatcherDatabase['markPublished']>>()

@@ -51,12 +51,12 @@ describeFaults('an object store outage, for a workflow with no files', () => {
   }, SCENARIO_LIMIT_MS);
 
   // performance-03: the worker exits within seconds of the store going away.
-  it.fails('keeps the worker running', () => {
+  it('keeps the worker running', () => {
     expect(exitsDuringOutage).toBe(0);
   });
 
   // performance-03: workflows that never touch a file stop until the store returns.
-  it.fails('still runs a workflow that touches no files', () => {
+  it('still runs a workflow that touches no files', () => {
     expect(facts[runId]?.status).toBe('succeeded');
     expect(stack.sink.calls('no-files-one')).toHaveLength(1);
     expect(stack.sink.calls('no-files-two')).toHaveLength(1);

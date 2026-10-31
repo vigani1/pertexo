@@ -10,6 +10,7 @@ const readinessRevocationMarker = '/tmp/pertexo-worker-not-ready';
 
 interface WorkerReadinessProbe {
   checkReadiness(signal?: AbortSignal): Promise<void>;
+  checkObjectStore?(): Promise<void>;
 }
 
 export interface WorkerReadinessMarker {
@@ -52,6 +53,7 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
   private shutdownPromise: Promise<void> | undefined;
   private state: WorkerReadinessMonitorState = 'idle';
   private timer: NodeJS.Timeout | undefined;
+  private objectStoreUnreachable = false;
 
   private readonly marker: WorkerReadinessMarker;
   private readonly failClosed: (
@@ -85,11 +87,10 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
       this.timer !== undefined
     )
       return;
+    // Readiness reports and never kills: a worker keeps its in-flight work
+    // through a dependency blip, and every client here reconnects by itself.
     this.timer = setInterval(() => {
-      void this.check().catch(() => {
-        process.exitCode = 1;
-        process.kill(process.pid, 'SIGTERM');
-      });
+      void this.check().catch(() => undefined);
     }, 10_000);
     this.timer.unref();
   }
@@ -137,6 +138,7 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
         this.operationTimeoutMillis,
       );
       if (this.state === 'checking') await this.setReady();
+      await this.reportObjectStore();
     } catch (error: unknown) {
       this.safeLog('warn', 'worker.readiness_check_failed', {}, error);
       try {
@@ -155,6 +157,23 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
         );
       }
       throw error;
+    }
+  }
+
+  private async reportObjectStore(): Promise<void> {
+    if (this.readiness.checkObjectStore === undefined) return;
+    try {
+      await boundedBackgroundTask(
+        this.readiness.checkObjectStore(),
+        this.operationTimeoutMillis,
+      );
+      if (this.objectStoreUnreachable)
+        this.logger.info('worker.object_store_recovered');
+      this.objectStoreUnreachable = false;
+    } catch (error: unknown) {
+      if (!this.objectStoreUnreachable)
+        this.safeLog('warn', 'worker.object_store_unreachable', {}, error);
+      this.objectStoreUnreachable = true;
     }
   }
 

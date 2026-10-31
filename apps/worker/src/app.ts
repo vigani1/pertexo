@@ -18,6 +18,7 @@ import type { TransportMetrics } from '@pertexo/observability';
 import type { WorkerConfig } from './config/worker.js';
 import { WORKSPACE_DATABASE } from './platform/database/module.js';
 import { NestLoggerAdapter } from './platform/observability/module.js';
+import { boundedBackgroundTask } from './runtime/background-task-deadline.js';
 import { observeWorkspaceArtifactCapacity } from './runtime/health/artifact-metrics.js';
 import { WorkerReadinessMonitor } from './runtime/health/readiness-monitor.js';
 import { WorkerShutdownCoordinator } from './runtime/shutdown/coordinator.js';
@@ -42,6 +43,8 @@ export type WorkerApplicationCompositionFactories = Readonly<{
   encryptionKeysRepository?: typeof createEncryptionKeyRepository;
   callbackStore?: typeof createCallbackStore;
 }>;
+
+const STARTUP_CLEANUP_LIMIT_MILLIS = 15_000;
 
 const productionFactories: WorkerApplicationCompositionFactories = {
   applicationContext: (module, options) =>
@@ -147,7 +150,12 @@ export async function createWorkerApplication(
     readinessMonitor.start();
   } catch (error: unknown) {
     try {
-      await coordinatedClose();
+      // Nothing started here is worth waiting on: a step that did begin is
+      // recovered from its lease, and a process that can't start must exit.
+      await boundedBackgroundTask(
+        coordinatedClose(),
+        STARTUP_CLEANUP_LIMIT_MILLIS,
+      );
     } catch (cleanupError: unknown) {
       throwWorkerStartupFailure(error, [cleanupError]);
     }

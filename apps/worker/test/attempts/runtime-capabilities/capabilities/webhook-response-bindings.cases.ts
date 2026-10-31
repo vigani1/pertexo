@@ -64,36 +64,6 @@ export function registerWebhookResponseBindings(): void {
     }
   });
 
-  it('refuses a readiness check that finishes after capability shutdown', async () => {
-    const readiness = Promise.withResolvers<undefined>();
-    const checkingStore = Promise.withResolvers<undefined>();
-    const runtime = await createOwnedCapabilities(
-      { database: databaseConfig },
-      {
-        artifactStore: {
-          put: vi.fn(),
-          checkReadiness: () => {
-            checkingStore.resolve(undefined);
-            return readiness.promise.then(() => ({
-              bucket: 'owned-test',
-              region: 'eu-west-1',
-            }));
-          },
-        },
-      },
-    );
-    const checking = expect(runtime.checkReadiness()).rejects.toThrow('closed');
-    try {
-      await checkingStore.promise;
-      await runtime.close();
-      readiness.resolve(undefined);
-      await checking;
-    } finally {
-      readiness.resolve(undefined);
-      await runtime.close();
-    }
-  });
-
   it('fails closed for partially configured runtime capabilities', async () => {
     await expect(
       createOwnedCapabilities(

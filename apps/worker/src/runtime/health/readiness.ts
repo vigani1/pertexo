@@ -15,10 +15,6 @@ import {
 } from '../../workflows/auto-pause-runtime.js';
 import { WORKSPACE_DATABASE } from '../../platform/database/module.js';
 import {
-  RETENTION_RUNTIME,
-  type RetentionRuntime,
-} from '../../retention/runtime.js';
-import {
   COORDINATOR_RUNTIME,
   MAINTENANCE_RUNTIME,
   NODE_ATTEMPT_RUNTIME,
@@ -61,8 +57,6 @@ export class WorkerReadiness {
     private readonly workspaceInboxRuntime: WorkspaceInboxRuntime,
     @Inject(WORKFLOW_AUTO_PAUSE_RUNTIME)
     private readonly workflowAutoPauseRuntime: WorkflowAutoPauseRuntime,
-    @Inject(RETENTION_RUNTIME)
-    private readonly retentionRuntime: RetentionRuntime,
     // Absent until authentication mail is configured.
     @Optional()
     @Inject(SYSTEM_MAIL_RUNTIME)
@@ -73,6 +67,11 @@ export class WorkerReadiness {
     if (!this.drainState.canAcceptWork()) {
       throw new WorkerDrainingError();
     }
+  }
+
+  /** Files fail on their own and everything else keeps running, so this only reports. */
+  public checkObjectStore(): Promise<void> {
+    return this.nodeAttemptRuntime.checkObjectStore();
   }
 
   public async checkReadiness(): Promise<void> {
@@ -86,7 +85,6 @@ export class WorkerReadiness {
       this.maintenanceRuntime.checkReadiness(),
       this.workspaceInboxRuntime.checkReadiness(),
       this.workflowAutoPauseRuntime.checkReadiness(),
-      this.retentionRuntime.checkReadiness(),
       this.authenticationMailRuntime?.checkReadiness(),
     ]);
     this.assertCanAcceptWork();

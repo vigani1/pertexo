@@ -25,7 +25,7 @@ function config() {
 function database(close: () => Promise<void> | void): OutboxDispatcherDatabase {
   return {
     checkReadiness: vi.fn().mockResolvedValue(undefined),
-    claimBatch: vi.fn().mockResolvedValue({ events: [], exhaustedCount: 0 }),
+    claimBatch: vi.fn().mockResolvedValue({ events: [] }),
     close,
     markPublished: vi.fn().mockResolvedValue(true),
     observeBacklog: vi.fn().mockResolvedValue({ backlog: 0 }),
@@ -207,6 +207,7 @@ function runtime(close: () => Promise<void> | void) {
   return {
     consumer,
     checkReadiness: () => Promise.resolve(),
+    checkObjectStore: () => Promise.resolve(),
     close: () => Promise.resolve().then(close),
   };
 }

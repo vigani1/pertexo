@@ -60,12 +60,12 @@ describeFaults('a short Redis stop during a step', () => {
   }, SCENARIO_LIMIT_MS);
 
   // reliability-07: a 13 s blip costs about 75 s with no dispatching.
-  it.fails('resumes dispatching moments after Redis returns', () => {
+  it('resumes dispatching moments after Redis returns', () => {
     expect(afterResume.status).toBe('succeeded');
   });
 
   // reliability-07, RT-01: the worker exits on a failed readiness check.
-  it.fails('keeps the same worker process through the blip', () => {
+  it('keeps the same worker process through the blip', () => {
     expect(stack.worker.exits).toEqual([]);
     expect(stack.worker.starts).toHaveLength(1);
   });

@@ -20,10 +20,10 @@ describe('worker resource monitor', () => {
     const warn = vi.fn();
     const signal = vi.fn();
     const samples = [
-      { eventLoopDelayP99Millis: 201, rssBytes: 700 },
+      { eventLoopDelayP99Millis: 10, rssBytes: 801 },
       { eventLoopDelayP99Millis: 10, rssBytes: 700 },
       { eventLoopDelayP99Millis: 10, rssBytes: 801 },
-      { eventLoopDelayP99Millis: 201, rssBytes: 700 },
+      { eventLoopDelayP99Millis: 10, rssBytes: 801 },
       { eventLoopDelayP99Millis: 10, rssBytes: 801 },
     ];
     const monitor = new WorkerResourceMonitor(
@@ -58,11 +58,42 @@ describe('worker resource monitor', () => {
     });
   });
 
-  it.each([
-    ['RSS', { eventLoopDelayP99Millis: 200, rssBytes: 801 }],
-    ['event-loop delay', { eventLoopDelayP99Millis: 201, rssBytes: 800 }],
-  ] as const)(
-    'treats equality as healthy and drains for an independently excessive %s sample',
+  // reliability-07: only memory is fatal. A slow event loop is a busy machine,
+  // and a restart would cost its in-flight steps without freeing it.
+  it('reports a slow event loop once and keeps running', () => {
+    const drainState = new WorkerDrainState();
+    const signal = vi.fn();
+    const warn = vi.fn();
+    const monitor = new WorkerResourceMonitor(
+      { ...config, unhealthySamplesBeforeDrain: 1 },
+      drainState,
+      {
+        debug: vi.fn(),
+        error: vi.fn(),
+        fatal: vi.fn(),
+        info: vi.fn(),
+        trace: vi.fn(),
+        warn,
+      },
+      {
+        sample: () => ({ eventLoopDelayP99Millis: 500, rssBytes: 100 }),
+        signal,
+      },
+    );
+
+    monitor.sample();
+    monitor.sample();
+
+    expect(drainState.canAcceptWork()).toBe(true);
+    expect(signal).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith('worker.event_loop_delayed', {
+      eventLoopDelayP99Millis: 500,
+    });
+  });
+
+  it.each([['RSS', { eventLoopDelayP99Millis: 200, rssBytes: 801 }]] as const)(
+    'treats equality as healthy and drains for an excessive %s sample',
     (_dimension, excessive) => {
       const drainState = new WorkerDrainState();
       const signal = vi.fn();
@@ -109,7 +140,7 @@ describe('worker resource monitor', () => {
         }),
       },
       {
-        sample: () => ({ eventLoopDelayP99Millis: 201, rssBytes: 800 }),
+        sample: () => ({ eventLoopDelayP99Millis: 10, rssBytes: 801 }),
         signal,
       },
     );
@@ -142,7 +173,7 @@ describe('worker resource monitor', () => {
         warn: vi.fn(),
       },
       {
-        sample: () => ({ eventLoopDelayP99Millis: 201, rssBytes: 800 }),
+        sample: () => ({ eventLoopDelayP99Millis: 10, rssBytes: 801 }),
         signal: () => {
           throw signalFailure;
         },

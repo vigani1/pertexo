@@ -32,6 +32,7 @@ export class WorkerResourceMonitor
   private readonly sampleResourceUsage: () => WorkerResourceSample;
   private readonly signal: () => void;
   private consecutiveUnhealthySamples = 0;
+  private eventLoopDelayed = false;
   private drainStarted = false;
   private stopped = false;
   private timer: NodeJS.Timeout | undefined;
@@ -76,12 +77,14 @@ export class WorkerResourceMonitor
     if (this.drainStarted || this.stopped) return;
     const sample = this.sampleResourceUsage();
     this.eventLoopDelay.reset();
-    const unhealthy =
-      sample.rssBytes > this.config.maximumRssBytes ||
-      sample.eventLoopDelayP99Millis > this.config.maximumEventLoopDelayMillis;
-    this.consecutiveUnhealthySamples = unhealthy
-      ? this.consecutiveUnhealthySamples + 1
-      : 0;
+    this.reportEventLoopDelay(sample);
+    // Only memory ends the process: it will die anyway, and draining first is
+    // the better way to go. A slow event loop is a busy machine, and a restart
+    // would cost its in-flight steps without making the machine less busy.
+    this.consecutiveUnhealthySamples =
+      sample.rssBytes > this.config.maximumRssBytes
+        ? this.consecutiveUnhealthySamples + 1
+        : 0;
     if (
       this.consecutiveUnhealthySamples < this.config.unhealthySamplesBeforeDrain
     )
@@ -106,5 +109,19 @@ export class WorkerResourceMonitor
         // A secondary diagnostic failure cannot escape the interval callback.
       }
     }
+  }
+
+  private reportEventLoopDelay(sample: WorkerResourceSample): void {
+    const delayed =
+      sample.eventLoopDelayP99Millis > this.config.maximumEventLoopDelayMillis;
+    if (delayed && !this.eventLoopDelayed)
+      try {
+        this.logger.warn('worker.event_loop_delayed', {
+          eventLoopDelayP99Millis: sample.eventLoopDelayP99Millis,
+        });
+      } catch {
+        // Diagnostics cannot change the worker's health decision.
+      }
+    this.eventLoopDelayed = delayed;
   }
 }

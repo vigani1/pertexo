@@ -68,6 +68,7 @@ import { queueHandler } from './runtime/queue-handler.js';
 export interface NodeAttemptRuntime {
   readonly consumer: QueueConsumer;
   checkReadiness(): Promise<void>;
+  checkObjectStore(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -268,6 +269,7 @@ export async function createNodeAttemptRuntime(
         await capabilityRuntime.checkReadiness();
         assertNodeAttemptRuntimeOpen(lifecycle);
       },
+      checkObjectStore: () => capabilityRuntime.checkObjectStore(),
       close: (): Promise<void> => {
         if (closePromise === undefined) {
           lifecycle.terminal = true;

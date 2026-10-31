@@ -112,10 +112,10 @@ export async function prepareArtifactCapability(
         )));
   if (store === undefined)
     throw new Error('Worker artifact capability is incomplete');
-  const readiness = store;
-  const checkReadiness = readiness.checkReadiness;
-  if (checkReadiness !== undefined)
-    state.checkArtifactReadiness = () => checkReadiness.call(readiness);
+  const reachability = store;
+  const checkReachable = reachability.checkReadiness;
+  if (checkReachable !== undefined)
+    state.checkObjectStore = () => checkReachable.call(reachability);
   const directory =
     state.dependencies.spoolDirectory ?? state.options.artifactScratchDirectory;
   if (directory === undefined)
@@ -126,10 +126,8 @@ export async function prepareArtifactCapability(
     directory,
     state.dependencies.artifactSpoolOperations,
   );
-  const checkStoreReadiness = state.checkArtifactReadiness;
-  state.checkArtifactReadiness = async () => {
+  state.checkArtifactReadiness = () => {
     scratch.checkReadiness();
-    await checkStoreReadiness?.();
   };
   state.factories.artifacts = createNodeArtifactRuntimeFactory({
     assertOpen: () => {

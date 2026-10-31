@@ -71,6 +71,7 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
 export type WorkerNodeRuntimeCapabilities = Readonly<{
   factories: NodeExecutionCapabilityFactories;
   checkReadiness(): Promise<void>;
+  checkObjectStore(): Promise<void>;
   close(): Promise<void>;
 }>;
 
@@ -104,7 +105,9 @@ export interface CapabilityAssembly {
   };
   readonly lifecycle: { terminal: boolean };
   closePromise?: Promise<void> | undefined;
-  checkArtifactReadiness?: (() => Promise<unknown>) | undefined;
+  checkArtifactReadiness?: (() => unknown) | undefined;
+  /** Reachability only: workflows that touch no files run without the store. */
+  checkObjectStore?: (() => Promise<unknown>) | undefined;
   readonly retentionMillis: number;
   readonly codeClient: ReturnType<typeof createCodeRunnerClient> | undefined;
 }

@@ -57,12 +57,12 @@ describeFaults('a long Redis outage', () => {
   }, SCENARIO_LIMIT_MS);
 
   // RT-01: boot fails, the process only sets exitCode, and leaked timers keep it alive.
-  it.fails('never leaves a worker that neither works nor exits', () => {
+  it('never leaves a worker that neither works nor exits', () => {
     expect(bootOutcome.exited || bootOutcome.started).toBe(true);
   });
 
   // RT-01, reliability-05: the hung worker holds no connections and dispatches nothing.
-  it.fails('finishes the run once Redis returns', () => {
+  it('finishes the run once Redis returns', () => {
     expect(facts[runId]?.status).toBe('succeeded');
   });
 

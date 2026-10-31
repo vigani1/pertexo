@@ -95,6 +95,9 @@ export async function createWorkerNodeRuntimeCapabilities(
       await state.checkArtifactReadiness?.();
       assertCapabilityRuntimeOpen(state.lifecycle);
     },
+    checkObjectStore: async (): Promise<void> => {
+      await state.checkObjectStore?.();
+    },
     close: () => closeCapabilityResources(state),
   });
 }
