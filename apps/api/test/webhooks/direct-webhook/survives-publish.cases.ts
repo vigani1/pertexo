@@ -261,6 +261,27 @@ export function registerSurvivesPublish(): void {
       await runVersion(seeded.workspaceId, between.json.runId),
     );
   }, 60_000);
+
+  it('answers on a republished version from its commit, and stays ready once the worker takes that publication', async () => {
+    const seeded = await seedWebhook('survives-republish');
+    const first = await publishAndReconcile(seeded, webhookThenSet(1));
+    await publishAndReconcile(seeded, webhookThenSet(2));
+    const republished = await publish(seeded, webhookThenSet(1));
+    expect(republished.versionId).toBe(first);
+    const between = await deliver(seeded);
+    expect(between.status).toBe(202);
+    expect(await runVersion(seeded.workspaceId, between.json.runId)).toBe(
+      first,
+    );
+    await republished.reconcile();
+    expect(await currentWebhookTrigger(seeded)).toMatchObject({
+      status: 'active',
+      endpointReady: true,
+    });
+    const after = await deliver(seeded);
+    expect(after.status).toBe(202);
+    expect(await runVersion(seeded.workspaceId, after.json.runId)).toBe(first);
+  }, 60_000);
 }
 
 export function registerStoresKeysAsHashes(): void {
