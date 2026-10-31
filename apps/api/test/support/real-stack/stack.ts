@@ -9,7 +9,7 @@ import { Redis } from 'ioredis';
 import { Pool } from 'pg';
 import { expect } from 'vitest';
 
-import { dropDisconnectedDatabase } from '../../support/disposable-database.js';
+import { dropDisconnectedDatabase } from '../disposable-database.js';
 
 const repository = new URL('../../../../../', import.meta.url);
 const password = 'a long enough integration password';

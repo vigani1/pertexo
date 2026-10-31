@@ -12,7 +12,7 @@ import {
   step,
   usageCapacity,
   type CapacityOwner,
-} from './real-stack.js';
+} from '../../support/real-stack/stack.js';
 
 // The operator's settings, which ship in .env.example and need no SQL.
 const OPERATOR_SETTINGS = {
