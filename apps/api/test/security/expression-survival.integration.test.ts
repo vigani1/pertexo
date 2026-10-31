@@ -52,116 +52,108 @@ describe.runIf(betterAuthIntegrationEnabled)(
       await stack.close();
     }, 60_000);
 
-    it(
-      'refuses the delivery with a clear error and the API keeps serving',
-      async () => {
-        const { path } = await publishWorkflow(
-          stack,
-          browser,
-          workspaceId,
-          graphOf([
-            {
-              id: 'hook',
-              key: 'core.webhook',
-              config: {
-                coordination: {
-                  mode: 'deduplicate',
-                  key: {
-                    kind: 'expression',
-                    language: 'jsonata',
-                    expression: HOSTILE,
-                  },
-                },
-              },
-            },
-          ]),
-        );
-        const endpoint = await openSecretUrlEndpoint(stack, browser, path);
-
-        const replies = [];
-        for (let delivery = 0; delivery < DELIVERIES; delivery++)
-          replies.push(await deliver(stack, endpoint));
-        expect(stack.api.alive, stack.api.describeExit()).toBe(true);
-        for (const reply of replies) {
-          // The sender got past authentication, so the key really was evaluated.
-          expect(reply.status, reply.body).not.toBe(401);
-          expect(JSON.parse(reply.body)).toEqual(
-            // The ingress contract's refusal, or a problem naming what went wrong.
-            reply.status === 202
-              ? expect.objectContaining({
-                  status: 'refused',
-                  reason: expect.stringMatching(/^[a-z_]+$/u) as string,
-                })
-              : expect.objectContaining({
-                  code: expect.stringMatching(/^[a-z_.]+$/u) as string,
-                }),
-          );
-          expect(reply.body).not.toMatch(/heap|jsonata|node:internal/iu);
-        }
-        const health = await stack.send('GET', '/health/ready');
-        expect(health.status).toBe(200);
-        const someoneElse = await stack.send('GET', '/v1/users/me', {
-          browser,
-        });
-        expect(someoneElse.status).toBe(200);
-      },
-      120_000,
-    );
-
-    it(
-      'fails the step with a clear error and the worker runs the next one',
-      async () => {
-        const hostile = await publishWorkflow(
-          stack,
-          browser,
-          workspaceId,
-          graphOf([
-            { id: 'start', key: 'core.manual' },
-            {
-              id: 'bomb',
-              key: 'core.set',
-              inputMappings: {
-                bomb: {
+    it('refuses the delivery with a clear error and the API keeps serving', async () => {
+      const { path } = await publishWorkflow(
+        stack,
+        browser,
+        workspaceId,
+        graphOf([
+          {
+            id: 'hook',
+            key: 'core.webhook',
+            config: {
+              coordination: {
+                mode: 'deduplicate',
+                key: {
                   kind: 'expression',
                   language: 'jsonata',
                   expression: HOSTILE,
                 },
               },
             },
-          ]),
+          },
+        ]),
+      );
+      const endpoint = await openSecretUrlEndpoint(stack, browser, path);
+
+      const replies = [];
+      for (let delivery = 0; delivery < DELIVERIES; delivery++)
+        replies.push(await deliver(stack, endpoint));
+      expect(stack.api.alive, stack.api.describeExit()).toBe(true);
+      for (const reply of replies) {
+        // The sender got past authentication, so the key really was evaluated.
+        expect(reply.status, reply.body).not.toBe(401);
+        expect(JSON.parse(reply.body)).toEqual(
+          // The ingress contract's refusal, or a problem naming what went wrong.
+          reply.status === 202
+            ? expect.objectContaining({
+                status: 'refused',
+                reason: expect.stringMatching(/^[a-z_]+$/u) as string,
+              })
+            : expect.objectContaining({
+                code: expect.stringMatching(/^[a-z_.]+$/u) as string,
+              }),
         );
-        const healthy = await publishWorkflow(
-          stack,
-          browser,
-          workspaceId,
-          graphOf([
-            { id: 'start', key: 'core.manual' },
-            {
-              id: 'fine',
-              key: 'core.set',
-              inputMappings: { ok: { kind: 'literal', value: true } },
+        expect(reply.body).not.toMatch(/heap|jsonata|node:internal/iu);
+      }
+      const health = await stack.send('GET', '/health/ready');
+      expect(health.status).toBe(200);
+      const someoneElse = await stack.send('GET', '/v1/users/me', {
+        browser,
+      });
+      expect(someoneElse.status).toBe(200);
+    }, 120_000);
+
+    it('fails the step with a clear error and the worker runs the next one', async () => {
+      const hostile = await publishWorkflow(
+        stack,
+        browser,
+        workspaceId,
+        graphOf([
+          { id: 'start', key: 'core.manual' },
+          {
+            id: 'bomb',
+            key: 'core.set',
+            inputMappings: {
+              bomb: {
+                kind: 'expression',
+                language: 'jsonata',
+                expression: HOSTILE,
+              },
             },
-          ]),
-        );
+          },
+        ]),
+      );
+      const healthy = await publishWorkflow(
+        stack,
+        browser,
+        workspaceId,
+        graphOf([
+          { id: 'start', key: 'core.manual' },
+          {
+            id: 'fine',
+            key: 'core.set',
+            inputMappings: { ok: { kind: 'literal', value: true } },
+          },
+        ]),
+      );
 
-        const hostileRun = await startRun(hostile.path);
-        const failed = await waitForRun(hostileRun);
-        expect(stack.worker?.alive, stack.worker?.describeExit()).toBe(true);
-        expect(failed.run.status).toBe('failed');
-        // The person reading the run learns it was their expression, not "invalid".
-        expect(
-          failed.nodes.find((node) => node.nodeId === 'bomb')?.safeErrorCode,
-        ).toMatch(/expression/u);
-        expect(JSON.stringify(failed)).not.toMatch(
-          /heap out of memory|node:internal/iu,
-        );
+      const hostileRun = await startRun(hostile.path);
+      const failed = await waitForRun(hostileRun);
+      expect(stack.worker?.alive, stack.worker?.describeExit()).toBe(true);
+      expect(failed.run.status).toBe('failed');
+      // The person reading the run learns it was their expression, not "invalid".
+      expect(
+        failed.nodes.find((node) => node.nodeId === 'bomb')?.safeErrorCode,
+      ).toMatch(/expression/u);
+      expect(JSON.stringify(failed)).not.toMatch(
+        /heap out of memory|node:internal/iu,
+      );
 
-        const healthyRun = await startRun(healthy.path);
-        expect((await waitForRun(healthyRun)).run.status).toBe('succeeded');
-        expect(stack.worker?.alive, stack.worker?.describeExit()).toBe(true);
-      },
-      180_000,
-    );
+      const healthyRun = await startRun(healthy.path);
+      expect((await waitForRun(healthyRun)).run.status).toBe('succeeded');
+      expect(stack.worker?.alive, stack.worker?.describeExit()).toBe(true);
+    }, 180_000);
 
     async function startRun(workflowPath: string): Promise<string> {
       const started = await stack.send('POST', `${workflowPath}/runs`, {

@@ -15,7 +15,7 @@ import {
   type ExpressionEvaluator,
 } from '@pertexo/workflow-model/server';
 
-export class RunResultUnavailableError extends Error {
+class RunResultUnavailableError extends Error {
   override readonly name = 'RunResultUnavailableError';
 }
 

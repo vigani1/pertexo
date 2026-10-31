@@ -96,34 +96,25 @@ describe.runIf(betterAuthIntegrationEnabled)(
         expect(members.rows).toEqual([{ role: 'owner', email: FIRST }]);
       });
 
-      it(
-        'refuses a stranger once someone has verified, and keeps no trace',
-        async () => {
-          const email = 'stranger@integration.test';
-          expectRefused(await signUp(stack, email));
-          expect(await accountCount(stack, email)).toBe(0);
-          expect(stack.api.logs).not.toContain(`verification for ${email}`);
-        },
-      );
+      it('refuses a stranger once someone has verified, and keeps no trace', async () => {
+        const email = 'stranger@integration.test';
+        expectRefused(await signUp(stack, email));
+        expect(await accountCount(stack, email)).toBe(0);
+        expect(stack.api.logs).not.toContain(`verification for ${email}`);
+      });
 
-      it(
-        'gives an address with an account the same refusal',
-        async () => {
-          const taken = await signUp(stack, FIRST);
-          const unknown = await signUp(stack, 'unknown@integration.test');
-          expectRefused(taken);
-          expectRefused(unknown);
-        },
-      );
+      it('gives an address with an account the same refusal', async () => {
+        const taken = await signUp(stack, FIRST);
+        const unknown = await signUp(stack, 'unknown@integration.test');
+        expectRefused(taken);
+        expectRefused(unknown);
+      });
 
-      it(
-        'does not turn the unverified second sign-up into a second account',
-        async () => {
-          await followVerificationLink(stack, MISTYPED);
-          const reply = await signInReply(stack, MISTYPED);
-          expect(reply.status, reply.text).not.toBe(200);
-        },
-      );
+      it('does not turn the unverified second sign-up into a second account', async () => {
+        await followVerificationLink(stack, MISTYPED);
+        const reply = await signInReply(stack, MISTYPED);
+        expect(reply.status, reply.text).not.toBe(200);
+      });
 
       it('keeps the owner signed in and working once closed', async () => {
         const me = await stack.send('GET', '/v1/users/me', { browser: owner });
@@ -143,29 +134,25 @@ describe.runIf(betterAuthIntegrationEnabled)(
         await stack.close();
       }, 60_000);
 
-      it(
-        'lets exactly one of them verify into an account',
-        async () => {
-          const emails = Array.from(
-            { length: 5 },
-            (_, index) => `racer-${String(index)}@integration.test`,
-          );
-          for (const email of emails)
-            expect((await signUp(stack, email)).status).toBe(200);
+      it('lets exactly one of them verify into an account', async () => {
+        const emails = Array.from(
+          { length: 5 },
+          (_, index) => `racer-${String(index)}@integration.test`,
+        );
+        for (const email of emails)
+          expect((await signUp(stack, email)).status).toBe(200);
 
-          await Promise.all(
-            emails.map((email) => followVerificationLink(stack, email)),
-          );
+        await Promise.all(
+          emails.map((email) => followVerificationLink(stack, email)),
+        );
 
-          const signedIn = await Promise.all(
-            emails.map((email) => signInReply(stack, email)),
-          );
-          expect(signedIn.filter((reply) => reply.status === 200)).toHaveLength(
-            1,
-          );
-        },
-        60_000,
-      );
+        const signedIn = await Promise.all(
+          emails.map((email) => signInReply(stack, email)),
+        );
+        expect(signedIn.filter((reply) => reply.status === 200)).toHaveLength(
+          1,
+        );
+      }, 60_000);
     });
 
     describe('invitations on a closed install', () => {
@@ -301,23 +288,20 @@ describe.runIf(betterAuthIntegrationEnabled)(
         await stack.close();
       }, 60_000);
 
-      it(
-        'is closed with no setting once someone has verified',
-        async () => {
-          expect((await signUp(stack, 'owner@integration.test')).status).toBe(
-            200,
-          );
-          // Mail leaves through the worker here; the proof it carries is not the subject.
-          await stack.query(
-            'update app.users set email_verified = true where email = $1',
-            ['owner@integration.test'],
-          );
+      it('is closed with no setting once someone has verified', async () => {
+        expect((await signUp(stack, 'owner@integration.test')).status).toBe(
+          200,
+        );
+        // Mail leaves through the worker here; the proof it carries is not the subject.
+        await stack.query(
+          'update app.users set email_verified = true where email = $1',
+          ['owner@integration.test'],
+        );
 
-          const email = 'stranger@integration.test';
-          expectRefused(await signUp(stack, email));
-          expect(await accountCount(stack, email)).toBe(0);
-        },
-      );
+        const email = 'stranger@integration.test';
+        expectRefused(await signUp(stack, email));
+        expect(await accountCount(stack, email)).toBe(0);
+      });
     });
   },
 );

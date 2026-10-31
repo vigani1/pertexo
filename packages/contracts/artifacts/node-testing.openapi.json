@@ -4298,6 +4298,7 @@
               "auth.organization_email_managed",
               "auth.alternative_required",
               "auth.reset_link_invalid",
+              "auth.sign_up_closed",
               "auth.conflict",
               "auth.session_not_fresh",
               "resource.not_found",
