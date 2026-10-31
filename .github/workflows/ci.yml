@@ -616,7 +616,18 @@ jobs:
   # branch protection can't require them directly.
   ci-passed:
     if: ${{ !cancelled() }}
-    needs: [changes, docs, check, unit, integration, e2e, image, security]
+    needs:
+      [
+        changes,
+        docs,
+        check,
+        unit,
+        integration,
+        e2e,
+        image,
+        security,
+        self-host-drill,
+      ]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
