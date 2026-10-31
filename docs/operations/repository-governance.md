@@ -7,13 +7,13 @@ described under Verification.
 
 ## Main-branch policy
 
-`main` is a protected release branch. Normal changes arrive through an
-up-to-date pull request after every required CI and CodeQL check succeeds.
-Protection uses strict required checks, administrator enforcement, linear
-history and resolved-conversation enforcement. Force pushes and branch deletion
-are disabled, and stale approvals are dismissed when the reviewed commit
-changes. The CI check, unit, integration, e2e, image and security jobs and
-CodeQL are required.
+`main` is a protected release branch. Normal changes arrive through a pull
+request after the required checks succeed. A pull request doesn't have to be
+rebuilt on the newest `main` first, because merges queue up badly otherwise.
+Protection uses administrator enforcement, linear history and
+resolved-conversation enforcement. Force pushes and branch deletion are disabled,
+and stale approvals are dismissed when the reviewed commit changes. `ci-passed`
+and CodeQL's `analyze` are required.
 
 Critical paths have explicit owners in `.github/CODEOWNERS`. Dependency
 automation follows the grouping, triage and deferral policy in
@@ -21,10 +21,14 @@ automation follows the grouping, triage and deferral policy in
 
 ## Required checks
 
-The protected checks are the named jobs emitted by `.github/workflows/ci.yml`
-and `.github/workflows/codeql.yml`. A workflow-file change must preserve the
-protected context names or update branch protection in the same reviewed
-change. A skipped, cancelled, missing, or stale check is not success.
+`ci-passed` is the one CI check to require. It waits for every job the change
+needs, and fails unless each one succeeded or was skipped on purpose: a docs-only
+pull request skips the heavy jobs, and `self-host-drill` runs only for changes to
+what it covers. A matrix that was skipped never reports its per-leg names, so
+protection can't require those directly. The `faults` job runs on `main` and
+nightly, outside `ci-passed`, so no pull request waits for it; a failed run still
+blocks releases and deploys, which need the commit's whole run green. A cancelled,
+missing or stale `ci-passed` is not success.
 
 ## Solo-maintainer review exception
 
