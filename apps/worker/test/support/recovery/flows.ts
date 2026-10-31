@@ -39,6 +39,13 @@ export const slowStep = (
   url: `${stack.sink.origin}/hold/${String(seconds)}/${id}`,
 });
 
+/** A step the provider refuses, which fails the run. */
+export const failingStep = (stack: Stack, id: string): HttpStep => ({
+  id: 'failing',
+  method: 'POST',
+  url: `${stack.sink.origin}/fail/${id}`,
+});
+
 /** The step after: the provider sees it only if the run really moved on. */
 export const nextStep = (stack: Stack, id: string): HttpStep => ({
   id: 'next',
