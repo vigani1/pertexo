@@ -59,15 +59,3 @@ export function removeWorkflowNote(
   if (!graph.notes?.some((note) => note.id === id)) return graph;
   return { ...graph, notes: graph.notes.filter((note) => note.id !== id) };
 }
-
-export function adoptWorkflowNote(
-  graph: WorkflowGraphContract,
-  source: WorkflowGraphContract,
-  id: string,
-): WorkflowGraphContract | null {
-  const note = source.notes?.find((value) => value.id === id);
-  if (note === undefined) return removeWorkflowNote(graph, id);
-  return graph.notes?.some((value) => value.id === id)
-    ? updateWorkflowNote(graph, note)
-    : addWorkflowNote(graph, note);
-}
