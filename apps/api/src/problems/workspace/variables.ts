@@ -2,7 +2,7 @@ import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   WorkspaceVariablesConflictError,
   WorkspaceVariableUsageChangedError,
-} from '@pertexo/database/variables';
+} from '@pertexo/core/server';
 import { applicationError } from '../../platform/http/index.js';
 
 export const variablesProblems = [

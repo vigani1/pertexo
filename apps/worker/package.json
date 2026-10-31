@@ -37,6 +37,7 @@
   "devDependencies": {
     "@fastify/busboy": "3.2.3",
     "@nestjs/testing": "11.2.7",
+    "@pertexo/core": "workspace:*",
     "@types/pg": "8.23.1",
     "bullmq": "6.3.16",
     "drizzle-orm": "0.45.4",

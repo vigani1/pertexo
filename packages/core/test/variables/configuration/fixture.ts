@@ -5,12 +5,18 @@ import { createCheckpoint } from '@pertexo/workflow-engine';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import { createWorkspaceVariablesStore } from '../../../src/variables/settings.repository.js';
 
-import { parseDatabaseConfig } from '../../../src/config.js';
-import { withWorkspaceTransaction } from '../../../src/tenant-access/transactions.js';
-import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
+import { parseDatabaseConfig } from '../../../../database/src/config.js';
+import { withWorkspaceTransaction } from '../../../../database/src/tenant-access/transactions.js';
+import { acceptWorkflowRun } from '../../../../database/src/runs/commands/acceptance.repository.js';
 
-import { admin, createFamily } from '../../lifecycle/calls/fixtures.js';
-import { apiUrl, userId } from '../../lifecycle/retention.support.js';
+import {
+  admin,
+  createFamily,
+} from '../../../../database/test/lifecycle/calls/fixtures.js';
+import {
+  apiUrl,
+  userId,
+} from '../../../../database/test/lifecycle/retention.support.js';
 
 export const config = () =>
   parseDatabaseConfig({ connectionString: apiUrl, max: 4 });

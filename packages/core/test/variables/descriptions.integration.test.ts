@@ -7,13 +7,13 @@ import {
   parseDatabaseConfig,
   randomUUID,
   queryAsOwner,
-} from '../support/workflow-authoring.js';
+} from '../../../database/test/support/workflow-authoring.js';
 import { createWorkspaceVariablesStore } from '../../src/variables/settings.repository.js';
-import { readVariableSetValues } from '../../src/variables/values.queries.js';
-import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
+import { readVariableSetValues } from '../../../database/src/variables/values.queries.js';
+import { withTenantScopedClient } from '../../../database/src/tenant-access/transactions.js';
 import { Pool } from 'pg';
 import { workspaceVariablesRequestSchema } from '@pertexo/contracts';
-import { IdempotencyConflictError } from '../../src/platform/idempotency/repository.js';
+import { IdempotencyConflictError } from '@pertexo/database/platform';
 let store: ReturnType<typeof createWorkspaceVariablesStore>;
 beforeAll(() => {
   store = createWorkspaceVariablesStore(

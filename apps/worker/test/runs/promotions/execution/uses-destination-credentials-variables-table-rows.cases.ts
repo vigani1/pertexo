@@ -6,7 +6,7 @@ import {
   CONNECTION_AUTH_TYPE,
 } from '@pertexo/database/connections';
 import { createDataTablesStore } from '@pertexo/database/data-tables';
-import { createWorkspaceVariablesStore } from '@pertexo/database/variables';
+import { createWorkspaceVariablesStore } from '@pertexo/core/server';
 import { createWorkflowRunDatabase } from '@pertexo/database/runs';
 import { createIdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/testing';

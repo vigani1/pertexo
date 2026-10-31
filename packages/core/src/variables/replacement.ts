@@ -1,4 +1,4 @@
-import type { WorkspaceVariableValues } from './contract.js';
+import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 
 /** Omitted metadata retains descriptions only for names in the replacement. */
 export function planWorkspaceVariableReplacement(

@@ -1,24 +1,24 @@
-import { appendAuditFact } from '../governance/audit/events.repository.js';
-import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
+  appendAuditFact,
+  claimCommand,
+  completeCommand,
+  rethrowQueryFailure,
+} from '@pertexo/database/primitives';
+import {
   workspaceVariables,
   workspaceVariableSetRevisions,
-} from '../schema/variables.js';
+} from '@pertexo/database/schema';
 import {
   canonicalJson,
-  planWorkspaceVariableReplacement,
   WORKSPACE_VARIABLE_LIMITS,
 } from '@pertexo/workflow-model';
 
-import {
-  claimCommand,
-  completeCommand,
-} from '../platform/idempotency/repository.js';
+import { planWorkspaceVariableReplacement } from './replacement.js';
 import {
   WorkspaceVariablesConflictError,
   type WorkspaceVariablesStore,

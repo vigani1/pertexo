@@ -1,14 +1,16 @@
-import { rethrowQueryFailure } from '../platform/query-errors.js';
 import { and, eq, exists, gt, gte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import {
+  readBrowsableFolderScope,
+  rethrowQueryFailure,
+  workflowScopeSql,
+} from '@pertexo/database/primitives';
+import {
   workflows,
   workflowDrafts,
   workflowVersions,
-} from '../schema/authoring/workflows.js';
-import { readBrowsableFolderScope } from '../tenant-access/resources/facts.queries.js';
-import { workflowScopeSql } from '../tenant-access/resources/scope.queries.js';
+} from '@pertexo/database/schema';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';

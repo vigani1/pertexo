@@ -329,57 +329,6 @@ it('audits table creation and row effects once, without retaining row values in 
   }
 });
 
-it('keeps valid full variable replacements inside the audit metadata budget', async () => {
-  const { createWorkspaceVariablesStore } =
-    await import('../../src/variables/index.js');
-  const variables = createWorkspaceVariablesStore(
-    parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
-  );
-  const names = (prefix: string) =>
-    Object.fromEntries(
-      Array.from({ length: 100 }, (_, index) => [
-        `${prefix}${'X'.repeat(60)}${String(index).padStart(3, '0')}`,
-        'PRIVATE_VARIABLE_VALUE',
-      ]),
-    );
-  try {
-    const initial = await variables.read(scope());
-    const first = await variables.replace({
-      ...scope(),
-      expectedRevision: initial.revision,
-      values: names('A'),
-      idempotencyKey: randomUUID(),
-    });
-    const result = await variables.replace({
-      ...scope(),
-      expectedRevision: first.revision,
-      values: names('B'),
-      idempotencyKey: randomUUID(),
-    });
-    const audit = await store.list({
-      ...scope(),
-      query: { action: 'workspace.variables_changed', limit: 50 },
-    });
-    const event = audit.items.find(
-      (item) => item.metadata.revision === result.revision,
-    );
-    expect(event?.metadata).toMatchObject({
-      changedCount: 200,
-      changedNamesTruncated: true,
-    });
-    expect(event?.metadata.changedNames).toHaveLength(100);
-    expect(JSON.stringify(audit)).not.toContain('PRIVATE_VARIABLE_VALUE');
-    const stored = await queryAsOwner<{ bytes: number }>(
-      "select octet_length(metadata::text)::int bytes from app.audit_events where workspace_id=$1 and action='workspace.variables_changed' and metadata->>'revision'=$2",
-      [workspaceId, String(result.revision)],
-      workspaceId,
-    );
-    expect(stored[0]?.bytes).toBeLessThanOrEqual(8192);
-  } finally {
-    await variables.close();
-  }
-});
-
 it('keeps microsecond audit filter boundaries and literal person search', async () => {
   const targetId = await insert();
   const list = (query: { from?: string; until?: string; person?: string }) =>

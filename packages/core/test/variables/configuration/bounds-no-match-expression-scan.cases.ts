@@ -11,11 +11,11 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 
 import { WorkspaceVariableUsageChangedError } from '../../../src/variables/contract.js';
 
-import { RunVariableSnapshotUnavailableError } from '../../../src/runs/commands/variables.repository.js';
-import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
+import { RunVariableSnapshotUnavailableError } from '../../../../database/src/runs/commands/variables.repository.js';
+import { createWorkflowRunDatabase } from '../../../../database/src/runs/runs.repository.js';
 
-import { admin } from '../../lifecycle/calls/fixtures.js';
-import { userId } from '../../lifecycle/retention.support.js';
+import { admin } from '../../../../database/test/lifecycle/calls/fixtures.js';
+import { userId } from '../../../../database/test/lifecycle/retention.support.js';
 import {
   config,
   store,

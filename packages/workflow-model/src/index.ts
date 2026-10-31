@@ -437,7 +437,6 @@ export { decideInvitationAcceptance } from './workspaces/invitation-acceptance.j
 
 export { publicationReviewDecision } from './authoring/reviews/decision.js';
 export { requiresPublicationReviewer } from './workspaces/governance.js';
-export { planWorkspaceVariableReplacement } from './values/variables/replacement.js';
 
 export {
   workflowTestSuiteReportSchema,

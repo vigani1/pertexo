@@ -196,7 +196,10 @@ export {
   auditEvents,
   usageEvents,
 } from './schema/foundation.js';
-export { workspaceVariableSetRevisions } from './schema/variables.js';
+export {
+  workspaceVariables,
+  workspaceVariableSetRevisions,
+} from './schema/variables.js';
 export { rlsProbeRecords } from './schema/rls-probe.js';
 export {
   artifacts,
