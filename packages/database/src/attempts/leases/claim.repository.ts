@@ -7,11 +7,7 @@ import { appendAttemptEvent } from '../events.repository.js';
 import { lockClaimCandidate } from './candidates.repository.js';
 import type { Pool } from 'pg';
 import type { z } from 'zod';
-import {
-  DeliveryMismatch,
-  NodeAttemptReconciliationRequiredError,
-  NodeAttemptStateCorruptError,
-} from '../errors.js';
+import { DeliveryMismatch, NodeAttemptStateCorruptError } from '../errors.js';
 import { branchContextSchema } from '../validation/shared.js';
 import type {
   NodeAttemptClaimResult,
@@ -56,11 +52,10 @@ export async function claimNodeAttemptDelivery(
           await completeReceipt(client, input.workspaceId, input.delivery);
           return Object.freeze({ kind: 'duplicate' as const });
         }
-        if (row.attemptStatus === 'running') {
-          if (row.leaseExpiresAt !== null && row.leaseValid)
-            return Object.freeze({ kind: 'duplicate' as const });
-          throw new NodeAttemptReconciliationRequiredError();
-        }
+        // A live lease has an owner and an expired one belongs to stalled-work
+        // recovery, so a repeat of this job has nothing left to do either way.
+        if (row.attemptStatus === 'running')
+          return Object.freeze({ kind: 'duplicate' as const });
         if (row.attemptStatus !== 'ready' || row.nodeStatus !== 'ready')
           throw new NodeAttemptStateCorruptError();
 

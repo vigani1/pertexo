@@ -76,6 +76,8 @@ export {
 
 export {
   attemptReconciliationOutcome,
+  automaticReconciliationAction,
+  overdueDeliveryAction,
   evidenceOutcome,
   resumeOutcome,
   cancellationOutcome,

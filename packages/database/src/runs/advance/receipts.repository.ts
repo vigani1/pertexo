@@ -24,7 +24,7 @@ import { withCoordinatorWriteClient } from './transactions.repository.js';
 import { canonicalOutboxPayloadChecksum } from '../../outbox/events.repository.js';
 import { serializeStoredExecutionJsonValue } from '../../platform/stored-execution-value.js';
 
-const coordinatorConsumerName = 'workflow-coordinator';
+export const coordinatorConsumerName = 'workflow-coordinator';
 
 export class DeliveryMismatch extends Error {}
 

@@ -18,23 +18,29 @@ import type { WorkspaceTransaction } from '../../tenant-access/transactions.js';
 import type { OperatorDecision } from './contract.js';
 import { withoutNulls, enqueue, enqueueAdvance } from './enqueue.js';
 
+/** Where a settlement came from, kept on the attempt and in its event. */
+export type AttemptSettlementSource =
+  | Readonly<{ operatorCommandId: string }>
+  | Readonly<{ stalledWorkRecovery: true }>;
+
 /**
  * Settles a running attempt whose lease expired: either back to ready for
  * another worker (never once an unsafe side effect may have been dispatched)
- * or to an unknown outcome the run then advances past.
+ * or to an unknown outcome the run then advances past. The operator command
+ * and the stalled-work scanner both settle here, under the run lock.
  */
-export async function reconcileAttempt(
+export async function settleExpiredAttempt(
   transaction: WorkspaceTransaction,
+  attempt: LockedAttempt | undefined,
   input: Readonly<{
-    commandId: string;
     attemptId: string;
     expectedFenceToken: number;
     action: 'reclaim' | 'outcome_unknown';
     dryRun: boolean;
+    source: AttemptSettlementSource;
   }>,
-): Promise<OperatorDecision> {
-  const { attemptId, action, expectedFenceToken: fence } = input;
-  const attempt = await readLockedAttempt(transaction, attemptId);
+): Promise<Readonly<{ outcome: string; outboxEventId?: string }>> {
+  const { attemptId, expectedFenceToken: fence } = input;
   const outcome = attemptReconciliationOutcome(attempt, input);
 
   let outboxEventId: string | undefined;
@@ -87,7 +93,7 @@ export async function reconcileAttempt(
         fenceToken: fence + 1,
         leaseOwner: null,
         leaseExpiresAt: null,
-        reconciliationRef: sql`jsonb_build_object('operatorCommandId',${input.commandId}::uuid)`,
+        reconciliationRef: sql`${JSON.stringify(input.source)}::jsonb`,
         completedAt: sql`clock_timestamp()`,
         updatedAt: sql`clock_timestamp()`,
       })
@@ -116,12 +122,34 @@ export async function reconcileAttempt(
       payload: {
         attemptId,
         nodeRunId: attempt.nodeRunId,
-        operatorCommandId: input.commandId,
+        ...input.source,
         reconciliation: true,
       },
     });
     outboxEventId = await enqueueAdvance(transaction, attempt.runId);
   }
+  return outboxEventId === undefined
+    ? Object.freeze({ outcome })
+    : Object.freeze({ outcome, outboxEventId });
+}
+
+export async function reconcileAttempt(
+  transaction: WorkspaceTransaction,
+  input: Readonly<{
+    commandId: string;
+    attemptId: string;
+    expectedFenceToken: number;
+    action: 'reclaim' | 'outcome_unknown';
+    dryRun: boolean;
+  }>,
+): Promise<OperatorDecision> {
+  const { action, expectedFenceToken: fence } = input;
+  const attempt = await readLockedAttempt(transaction, input.attemptId);
+  const { outcome, outboxEventId } = await settleExpiredAttempt(
+    transaction,
+    attempt,
+    { ...input, source: { operatorCommandId: input.commandId } },
+  );
   const changed = outcome === 'reclaimed' || outcome === 'marked_unknown';
   return {
     outcome,
@@ -186,7 +214,11 @@ export async function recordUnknownOutcomeEvidence(
   };
 }
 
-async function readLockedAttempt(
+export type LockedAttempt = NonNullable<
+  Awaited<ReturnType<typeof readLockedAttempt>>
+>;
+
+export async function readLockedAttempt(
   transaction: WorkspaceTransaction,
   attemptId: string,
 ) {

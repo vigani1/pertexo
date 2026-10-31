@@ -22,6 +22,10 @@ import {
   type RetentionRuntime,
 } from '../../src/retention/runtime.js';
 import type { CoordinatorRuntime } from '../../src/runs/runtime.js';
+import {
+  STALLED_WORK_RUNTIME,
+  type StalledWorkRuntime,
+} from '../../src/runs/stalled-work.js';
 import { WorkerReadiness } from '../../src/runtime/health/readiness.js';
 import {
   WorkerReadinessMonitor,
@@ -58,6 +62,7 @@ export type WorkerTestServices = Readonly<{
   workspaceInboxRuntime?: WorkspaceInboxRuntime;
   workflowAutoPauseRuntime?: WorkflowAutoPauseRuntime;
   retentionRuntime?: RetentionRuntime;
+  stalledWorkRuntime?: StalledWorkRuntime;
   readinessMarker?: WorkerReadinessMarker;
 }>;
 
@@ -82,6 +87,7 @@ export function workerTestFactories(
         [WORKSPACE_INBOX_RUNTIME, services.workspaceInboxRuntime],
         [WORKFLOW_AUTO_PAUSE_RUNTIME, services.workflowAutoPauseRuntime],
         [RETENTION_RUNTIME, services.retentionRuntime],
+        [STALLED_WORK_RUNTIME, services.stalledWorkRuntime],
       ];
       for (const [token, value] of values)
         if (value !== undefined)

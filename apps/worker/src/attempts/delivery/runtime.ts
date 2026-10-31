@@ -1,7 +1,11 @@
 import type { CallbackKeyConfig } from '@pertexo/integrations/server';
 import type { WorkerCodeRunnerConfig } from '../code/client.js';
 import { createNodeAttemptRunStore } from '@pertexo/database/attempts';
-import { createWorkflowExecutionReader } from '@pertexo/database/runs';
+import {
+  createRunFailureStore,
+  createWorkflowExecutionReader,
+  type RunFailureStore,
+} from '@pertexo/database/runs';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -114,6 +118,7 @@ export type NodeAttemptRuntimeFactories = Readonly<{
   previewTelemetry: () => PreviewTelemetry;
   reader: typeof createWorkflowExecutionReader;
   registry: (httpRequest?: SecureHttpAddressPolicy) => NodeExecutionRegistry;
+  runFailures: typeof createRunFailureStore;
   runStore: typeof createNodeAttemptRunStore;
 }>;
 
@@ -133,12 +138,14 @@ const productionFactories: NodeAttemptRuntimeFactories = {
       slackSendMessageTelemetry: createSlackProviderTelemetry(),
       emailSendNotificationTelemetry: createEmailProviderTelemetry(),
     }),
+  runFailures: createRunFailureStore,
   runStore: createNodeAttemptRunStore,
 };
 
 interface ProductionNodeAttemptRuntime {
   capabilityRuntime: WorkerNodeRuntimeCapabilities;
   handler: NodeAttemptHandler;
+  runFailures: RunFailureStore;
 }
 
 async function createProductionNodeAttemptRuntime(
@@ -161,6 +168,11 @@ async function createProductionNodeAttemptRuntime(
     options.databaseRuntime,
   );
   own('node-attempt run store', runStore.close.bind(runStore));
+  const runFailures = factories.runFailures(
+    options.database,
+    options.databaseRuntime,
+  );
+  own('run failures', runFailures.close.bind(runFailures));
   const reader = factories.reader(options.database, options.databaseRuntime);
   own('published workflow reader', reader.close.bind(reader));
   const notifications = factories.notifications(options.redisUrl);
@@ -178,6 +190,7 @@ async function createProductionNodeAttemptRuntime(
   );
   return {
     capabilityRuntime,
+    runFailures,
     handler: createNodeAttemptHandler({
       engine,
       heartbeatIntervalMillis: options.heartbeatIntervalMillis,
@@ -251,7 +264,11 @@ export async function createNodeAttemptRuntime(
     const consumer = factories.consumer({
       queueName: QUEUE_NAME.nodeAttempts,
       redisUrl: options.redisUrl,
-      handler: queueHandler(nodeHandler, previewHandler),
+      handler: queueHandler(
+        nodeHandler,
+        previewHandler,
+        production.runFailures,
+      ),
       ...(options.observer === undefined ? {} : { observer: options.observer }),
       traceRunner: createQueueTraceRunner(),
     });

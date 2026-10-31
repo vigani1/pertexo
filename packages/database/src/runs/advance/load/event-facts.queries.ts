@@ -155,6 +155,8 @@ function cursorEventFact(
     row.attempt_status === null ||
     !physicalStatusIsCoherent ||
     ![
+      // A reclaimed attempt: its start is a fact, and it is about to run again.
+      'ready',
       'running',
       'succeeded',
       'failed',

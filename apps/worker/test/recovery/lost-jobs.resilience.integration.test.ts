@@ -147,14 +147,14 @@ describeFaults('jobs published to Redis, then lost', () => {
   const factsOf = (name: string): RunFacts => factsOfRun(facts, runs, name);
 
   // reliability-04, reliability-05: the row is `published`, so nothing sends it again.
-  it.fails('advances a run whose advance job was lost', () => {
+  it('advances a run whose advance job was lost', () => {
     expect(factsOf('advance').status).toBe('succeeded');
     expect(stack.sink.calls('advance')).toHaveLength(1);
     expect(stack.sink.calls('after-advance')).toHaveLength(1);
   });
 
   // reliability-05: `ready` forever, and `due-work.resume` answers `not_due`.
-  it.fails('runs a step whose attempt job was lost', () => {
+  it('runs a step whose attempt job was lost', () => {
     expect(factsOf('attempt').status).toBe('succeeded');
     expect(stack.sink.calls('lost-attempt')).toHaveLength(1);
   });
@@ -164,19 +164,19 @@ describeFaults('jobs published to Redis, then lost', () => {
   });
 
   // reliability-05, reliability-06: a cancel is accepted and has no effect.
-  it.fails('honors the cancel without running the step', () => {
+  it('honors the cancel without running the step', () => {
     expect(factsOf('canceled').status).toBe('canceled');
     expect(stack.sink.calls('lost-canceled')).toHaveLength(0);
   });
 
   // reliability-05, reliability-06: the deadline wake-up can't end a `ready` attempt.
-  it.fails('ends a run past its deadline without running the step', () => {
+  it('ends a run past its deadline without running the step', () => {
     expect(factsOf('deadline').status).toBe('timed_out');
     expect(stack.sink.calls('lost-deadline')).toHaveLength(0);
   });
 
   // reliability-03: every lost job would otherwise keep its slot forever.
-  it.fails('releases every slot', () => {
+  it('releases every slot', () => {
     expect(active).toBe(0);
   });
 });

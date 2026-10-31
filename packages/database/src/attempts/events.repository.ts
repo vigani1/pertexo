@@ -15,7 +15,7 @@ export async function appendAttemptEvent(
     type: string;
     payload: unknown;
   }>,
-): Promise<void> {
+): Promise<number> {
   const db = drizzle(client);
   const rows = await db
     .select({
@@ -41,4 +41,5 @@ export async function appendAttemptEvent(
       payload: sql`${serializeStoredExecutionJsonValue(input.payload)}::jsonb`,
     })
     .catch(rethrowQueryFailure);
+  return sequence;
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   attemptReconciliationOutcome,
+  automaticReconciliationAction,
+  overdueDeliveryAction,
   evidenceOutcome,
   resumeOutcome,
   cancellationOutcome,
@@ -156,4 +158,67 @@ describe('operator decisions', () => {
         ),
       ).toBe(dryRun ? 'would_request' : 'replay_requested');
   });
+});
+
+describe('automaticReconciliationAction', () => {
+  const at = new Date('2026-10-31T00:00:00.000Z');
+
+  it.each([
+    [at, 'unsafe', 'outcome_unknown'],
+    [null, 'unsafe', 'reclaim'],
+    [at, 'safe', 'reclaim'],
+    [at, 'idempotent_with_key', 'reclaim'],
+  ] as const)(
+    'with dispatch %s and class %s asks for %s',
+    (dispatchMarkedAt, sideEffectClass, action) => {
+      expect(
+        automaticReconciliationAction({ dispatchMarkedAt, sideEffectClass }),
+      ).toBe(action);
+    },
+  );
+
+  it('never asks for what the reconciler refuses', () => {
+    for (const dispatchMarkedAt of [at, null])
+      for (const sideEffectClass of ['safe', 'idempotent_with_key', 'unsafe'])
+        expect(
+          attemptReconciliationOutcome(
+            {
+              status: 'running',
+              fenceToken: 3,
+              leaseExpired: true,
+              dispatchMarkedAt,
+              sideEffectClass,
+            },
+            {
+              expectedFenceToken: 3,
+              action: automaticReconciliationAction({
+                dispatchMarkedAt,
+                sideEffectClass,
+              }),
+              dryRun: false,
+            },
+          ),
+        ).not.toBe('reclaim_unsafe');
+  });
+});
+
+describe('overdueDeliveryAction', () => {
+  it.each([
+    ['advance-workflow-run', 'running', undefined, 'replace'],
+    ['advance-workflow-run', 'waiting', undefined, 'replace'],
+    ['advance-workflow-run', 'queued', undefined, 'drop'],
+    ['advance-workflow-run', 'succeeded', undefined, 'drop'],
+    ['advance-workflow-run', undefined, undefined, 'drop'],
+    ['execute-node-attempt', 'running', 'ready', 'replace'],
+    ['execute-node-attempt', 'running', 'running', 'drop'],
+    ['execute-node-attempt', 'running', 'succeeded', 'drop'],
+    ['execute-node-attempt', 'canceled', 'ready', 'drop'],
+  ] as const)(
+    '%s on a %s run with a %s attempt: %s',
+    (jobName, runStatus, attemptStatus, action) => {
+      expect(overdueDeliveryAction({ jobName, runStatus, attemptStatus })).toBe(
+        action,
+      );
+    },
+  );
 });

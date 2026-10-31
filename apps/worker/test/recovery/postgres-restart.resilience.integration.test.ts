@@ -72,28 +72,22 @@ describeFaults('a short Postgres stop during running steps', () => {
   const factsOf = (name: string): RunFacts => factsOfRun(facts, runs, name);
 
   // reliability-04: coordinator jobs burn 3 retries at 1 s, then nobody retries.
-  it.fails(
-    'finishes every run whose steps could be repeated or recorded',
-    () => {
-      expect(factsOf('safe-early').status).toBe('succeeded');
-      expect(factsOf('safe-during').status).toBe('succeeded');
-      expect(factsOf('unsafe-after').status).toBe('succeeded');
-      expect(factsOf('unsafe-later').status).toBe('succeeded');
-    },
-  );
+  it('finishes every run whose steps could be repeated or recorded', () => {
+    expect(factsOf('safe-early').status).toBe('succeeded');
+    expect(factsOf('safe-during').status).toBe('succeeded');
+    expect(factsOf('unsafe-after').status).toBe('succeeded');
+    expect(factsOf('unsafe-later').status).toBe('succeeded');
+  });
 
   // reliability-04: a step that ended during the stop must still reach an end.
-  it.fails(
-    'ends the run of an unsafe step that finished during the stop',
-    () => {
-      expect(['succeeded', 'outcome_unknown']).toContain(
-        factsOf('unsafe-during').status,
-      );
-    },
-  );
+  it('ends the run of an unsafe step that finished during the stop', () => {
+    expect(['succeeded', 'outcome_unknown']).toContain(
+      factsOf('unsafe-during').status,
+    );
+  });
 
   // reliability-03: a stranded run keeps its slot.
-  it.fails('releases every slot', () => {
+  it('releases every slot', () => {
     expect(active).toBe(0);
   });
 
@@ -105,7 +99,7 @@ describeFaults('a short Postgres stop during running steps', () => {
   });
 
   // reliability-07: one failed readiness check sends the worker SIGTERM.
-  it.fails('keeps the same worker process through the stop', () => {
+  it('keeps the same worker process through the stop', () => {
     expect(stack.worker.exits).toEqual([]);
     expect(stack.worker.starts).toHaveLength(1);
   });
