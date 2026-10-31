@@ -115,7 +115,9 @@ export function identityRuntime(
         close: () => Promise.resolve(),
       },
     },
-    betterAuth: {} as BetterAuthRuntime,
+    betterAuth: {
+      signUp: { availableToEveryone: () => Promise.resolve(true) },
+    } as unknown as BetterAuthRuntime,
     close,
   });
 }
