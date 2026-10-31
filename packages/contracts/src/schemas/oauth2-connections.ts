@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { connectionResponseFields } from './connections.js';
+import { connectionResponseFields } from './connection-fields.js';
 import { utf8ByteLength } from './shared/text.js';
 
 /** A provider returns the browser here, so this is what people register with it. */
