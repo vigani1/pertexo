@@ -7,7 +7,7 @@ import {
   type TrendRanking,
 } from './trends/records.queries.js';
 import { RUN_STATUS_VALUES } from '../commands/acceptance/vocabulary.js';
-import { RETAINED_RESOURCE_WORKSPACE_STATUSES } from '../../tenant-access/resources/policy.js';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 
 import { readFolderScope } from '../../tenant-access/resources/facts.queries.js';
 
@@ -45,7 +45,7 @@ export function readUsageTrends(
         client,
         input,
         undefined,
-        RETAINED_RESOURCE_WORKSPACE_STATUSES,
+        UNPURGED_WORKSPACE_STATUSES,
       );
       const length = input.period === '30d' ? 30 : 90;
       const [bounds] = await readTrendBounds(client, {

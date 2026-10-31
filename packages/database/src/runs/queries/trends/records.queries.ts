@@ -19,7 +19,7 @@ import { workflowRuns } from '../../../schema/runs/execution.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
 import type { FolderScope } from '../../../tenant-access/resources/contract.js';
 import { workflowScopeSql } from '../../../tenant-access/resources/scope.queries.js';
-import { RETAINED_RESOURCE_WORKSPACE_STATUSES } from '../../../tenant-access/resources/policy.js';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { ordinaryRunSql } from '../../data-policy.js';
 import { emptyRunCounts, type RunStatusCounts } from '../counts.js';
 
@@ -40,7 +40,7 @@ export function readTrendBounds(
     .where(
       and(
         eq(workspaces.id, workspaceId),
-        inArray(workspaces.status, RETAINED_RESOURCE_WORKSPACE_STATUSES),
+        inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
       ),
     )
     .catch(rethrowQueryFailure);
