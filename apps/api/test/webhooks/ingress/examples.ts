@@ -28,7 +28,6 @@ export function createDeliveryLogFixture(
 
   const endpoint = {
     workspaceId: verification.workspaceId,
-    triggerId: verification.triggerId,
     endpointId: verification.endpointId,
   };
 
