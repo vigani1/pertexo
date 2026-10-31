@@ -250,7 +250,11 @@ try {
   const targetDb = await database('target-db', false);
   const encryption = await seedEncryptedRecoveryFixture(sql, sourceDb);
   const sharing = seedSharingRecoveryFixture(sql, sourceDb);
-  const oauth2 = seedOAuth2RecoveryFixture(sql, sourceDb);
+  const oauth2 = await seedOAuth2RecoveryFixture(
+    sql,
+    sourceDb,
+    encryption.environment,
+  );
   const { artifacts, bodies, bundle } = createRecoveryFiles();
   store = createArtifactStore(parseArtifactStoreConfig(source));
   for (const artifact of artifacts)
@@ -472,7 +476,7 @@ try {
     bundle,
   );
   sharing.verify(targetDb);
-  oauth2.verify(targetDb);
+  await oauth2.verify(targetDb);
   const visible = sql(
     targetDb,
     `SET ROLE pertexo_app; SELECT set_config('app.workspace_id','${artifacts[0].workspaceId}',false); SELECT count(*) FROM public.recovery_fixture;`,
@@ -508,7 +512,7 @@ try {
   assert.deepEqual(preflight(targetDb, encryption.environment), {
     event: 'encryption.verified',
     mode: 'self-managed',
-    connectionKeys: 2,
+    connectionKeys: 2 + oauth2.connectionKeys,
     webhookKeys: 2,
   });
   await encryption.openRestored(targetDb);
