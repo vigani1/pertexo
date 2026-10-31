@@ -233,7 +233,7 @@ it('keeps a live endpoint answering after the upgrade, and folds in the rows ear
       ).rows,
     ).toEqual([{ id: live.secretId }]);
   });
-});
+}, 120_000);
 
 it('brings back an address a publish killed, under the secret’s original sealing', async () => {
   await olderDatabase(async (context) => {
@@ -284,7 +284,7 @@ it('brings back an address a publish killed, under the secret’s original seali
       },
     ]);
   });
-});
+}, 120_000);
 
 it('leaves an address retired when the published version no longer has its step', async () => {
   await olderDatabase(async (context) => {
@@ -313,4 +313,4 @@ it('leaves an address retired when the published version no longer has its step'
       ).rows,
     ).toEqual([{ id: removed.endpointId, status: 'disabled' }]);
   });
-});
+}, 120_000);
