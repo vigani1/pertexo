@@ -163,8 +163,10 @@ test('a browser-authored response reaches its original signed caller and work co
   });
   await expect(dialog).toBeVisible();
   const codes = await dialog.locator('code').allTextContents();
-  const endpoint = codes[0],
-    secret = codes.at(-1);
+  // The first code shown is the whole address; the key and secret are the bare values.
+  const keys = codes.filter((code) => /^[\w-]{43}$/u.test(code));
+  const endpoint = keys[0],
+    secret = keys.at(-1);
   if (
     endpoint === undefined ||
     secret === undefined ||
@@ -252,7 +254,9 @@ test('changes authentication through settings and answers a real browser caller 
     exact: true,
   });
   await expect(reveal).toBeVisible();
-  const firstEndpoint = (await reveal.locator('code').allTextContents())[0];
+  const firstEndpoint = (await reveal.locator('code').allTextContents()).find(
+    (code) => /^[\w-]{43}$/u.test(code),
+  );
   if (firstEndpoint === undefined) throw new Error('Endpoint reveal missing');
   await reveal.getByRole('switch', { name: 'I’ve stored these' }).click();
   await reveal.getByRole('button', { name: 'Done', exact: true }).click();
@@ -291,7 +295,9 @@ test('changes authentication through settings and answers a real browser caller 
     .getByRole('button', { name: 'Save and rotate credentials', exact: true })
     .click();
   await expect(reveal).toBeVisible();
-  const endpoint = (await reveal.locator('code').allTextContents())[0];
+  const endpoint = (await reveal.locator('code').allTextContents()).find(
+    (code) => /^[\w-]{43}$/u.test(code),
+  );
   if (endpoint === undefined || endpoint === firstEndpoint)
     throw new Error('Authentication change did not rotate URL');
   await expect(reveal.getByText('Signing secret', { exact: true })).toHaveCount(

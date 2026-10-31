@@ -41,8 +41,11 @@ test('a step that can’t run is flagged in words before publish', async ({
   await expect(lens).toContainText('Gate with no input');
   await expect(lens).toContainText(/condition/iu);
   await expect(lens).not.toContainText('execution.');
+  await page.getByRole('button', { name: 'Publish v1', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Publish v1', exact: true });
+  await expect(dialog).toContainText('Gate with no input');
   await expect(
-    page.getByRole('button', { name: 'Publish v1', exact: true }),
+    dialog.getByRole('button', { name: /Publish v1/u }),
   ).toBeDisabled();
 });
 
