@@ -1,4 +1,5 @@
 import { webhookRunInput } from '@pertexo/nodes-core';
+import { asksSenderToRetry } from '@pertexo/workflow-model';
 
 import { replyToAcceptedWebhook } from '../responses/reply.js';
 
@@ -26,6 +27,9 @@ import type {
   WebhookRequestData,
 } from './contract.js';
 import { optionalIdempotencyKey, sha256 } from './fingerprint.js';
+
+/** Pending events leave on their own schedule, so this only paces the sender. */
+const COORDINATION_FULL_RETRY_SECONDS = 60;
 
 function diagnosticTraceparent(
   telemetry: WebhookIngressTelemetry,
@@ -133,6 +137,14 @@ export async function admitIngressDelivery(
       ...(traceparent === undefined ? {} : { traceparent }),
     });
     if ('coordinated' in result) {
+      if (asksSenderToRetry(result)) {
+        record(() => {
+          telemetry.delivery('rate_limited');
+        });
+        reply.header('retry-after', String(COORDINATION_FULL_RETRY_SECONDS));
+        await problem(reply, 'webhook.rate_limited', requestId);
+        return;
+      }
       record(() => {
         telemetry.delivery('accepted');
       });

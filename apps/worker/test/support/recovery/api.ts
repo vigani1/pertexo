@@ -358,7 +358,7 @@ export class ApiClient {
     keys: WebhookKeys,
     event: unknown,
     idempotencyKey?: string,
-  ): Promise<ApiResponse> {
+  ): Promise<ApiResponse & Readonly<{ retryAfter: string | null }>> {
     const body = JSON.stringify(event);
     const timestamp = String(Math.floor(Date.now() / 1_000));
     const signature = createHmac(
@@ -380,11 +380,9 @@ export class ApiClient {
       body,
       signal: AbortSignal.timeout(30_000),
     });
-    return {
-      etag: null,
-      json: await response.json(),
-      status: response.status,
-    };
+    const retryAfter = response.headers.get('retry-after');
+    const json: unknown = await response.json();
+    return { etag: null, json, retryAfter, status: response.status };
   }
 
   private expect(...statuses: readonly number[]) {

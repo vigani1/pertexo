@@ -120,8 +120,7 @@ describeFaults('events refused when they arrive', () => {
     });
   });
 
-  // reliability-code-01: a 202 here loses the event for good, and a 429 would have saved it.
-  it.fails('tells a sender to try again when there is no room', () => {
+  it('tells a sender to try again when there is no room', () => {
     expect([429, 503]).toContain(overCapacity.status);
   });
 });
