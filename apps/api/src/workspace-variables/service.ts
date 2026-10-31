@@ -9,7 +9,7 @@ import type {
   VariableUsageInput,
   WorkspaceActor,
   WorkspaceVariablesStore,
-} from '@pertexo/core/server';
+} from '@pertexo/core/variables';
 
 import {
   applicationError,

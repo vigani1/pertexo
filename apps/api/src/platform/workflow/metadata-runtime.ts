@@ -9,7 +9,7 @@ import {
 import {
   createWorkspaceVariablesStore,
   type WorkspaceVariablesStore,
-} from '@pertexo/core/server';
+} from '@pertexo/core/variables';
 import {
   createWorkflowInputCaseDatabase,
   createWorkflowTagDatabase,
