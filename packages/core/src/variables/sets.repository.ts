@@ -1,8 +1,4 @@
-import { createHash } from 'node:crypto';
-import type { PoolClient } from 'pg';
-import { z } from 'zod';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import type { WorkspaceVariablesCommandResponse } from '@pertexo/contracts';
 import {
   appendAuditFact,
   claimCommand,
@@ -14,102 +10,64 @@ import {
   workspaceVariableSetRevisions,
 } from '@pertexo/database/schema';
 import {
-  canonicalJson,
+  EMPTY_VARIABLE_SNAPSHOT,
   WORKSPACE_VARIABLE_LIMITS,
 } from '@pertexo/workflow-model';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
 
-import { planWorkspaceVariableReplacement } from './replacement.js';
 import {
   WorkspaceVariablesConflictError,
-  type WorkspaceVariablesStore,
+  type ReplaceWorkspaceVariablesInput,
 } from './contract.js';
-const result = z
-  .object({ revision: z.number().int().nonnegative(), changed: z.boolean() })
-  .strict();
+import { planWorkspaceVariableReplacement } from './replacement.js';
+
+type AcceptedReplacement = Readonly<{ revision: number; changed: boolean }>;
+
+/** A replacement that changes nothing keeps the revision and writes no audit. */
 export async function replaceWorkspaceVariables(
   client: PoolClient,
-  input: Parameters<WorkspaceVariablesStore['replace']>[0],
-) {
-  const db = drizzle(client);
-  const identity = {
+  input: ReplaceWorkspaceVariablesInput,
+): Promise<WorkspaceVariablesCommandResponse> {
+  const command = {
     workspaceId: input.workspaceId,
     scope: input.actorId,
     operation: 'workspace.variables.replace',
     idempotencyKey: input.idempotencyKey,
   };
-  const replay = await claimCommand(client, {
-    ...identity,
+  const replay = await claimCommand<AcceptedReplacement>(client, {
+    ...command,
     resourceId: input.workspaceId,
-    requestHash: createHash('sha256')
-      .update(
-        canonicalJson({
-          expectedRevision: input.expectedRevision,
-          values: input.values,
-          ...(input.descriptions === undefined
-            ? {}
-            : { descriptions: input.descriptions }),
-        }),
-      )
-      .digest('hex'),
+    request: {
+      expectedRevision: input.expectedRevision,
+      values: input.values,
+      ...(input.descriptions === undefined
+        ? {}
+        : { descriptions: input.descriptions }),
+    },
   });
-  if (replay !== null) return { ...result.parse(replay), replayed: true };
-  const current = await readCurrentVariableRevision(client, input.workspaceId);
+  if (replay !== null) return { ...replay, replayed: true };
+  const current = await lockCurrentVariableSet(client, input.workspaceId);
   if (current.revision !== input.expectedRevision)
     throw new WorkspaceVariablesConflictError();
-  const { descriptions, changedNames: names } =
-    planWorkspaceVariableReplacement(current, input);
-  let revision = current.revision;
-  if (names.length > 0) {
-    revision = current.revision + 1;
-    const inserted = await db
-      .insert(workspaceVariableSetRevisions)
-      .values({
-        workspaceId: input.workspaceId,
-        revision,
-        values: input.values,
-        descriptions,
-      })
-      .onConflictDoNothing()
-      .returning({ revision: workspaceVariableSetRevisions.revision })
-      .catch(rethrowQueryFailure);
-    if (inserted.length !== 1) throw new WorkspaceVariablesConflictError();
-    const saved = await db
-      .insert(workspaceVariables)
-      .values({ workspaceId: input.workspaceId, revision })
-      .onConflictDoUpdate({
-        target: workspaceVariables.workspaceId,
-        set: { revision, updatedAt: sql`clock_timestamp()` },
-        setWhere: eq(workspaceVariables.revision, input.expectedRevision),
-      })
-      .returning({ revision: workspaceVariables.revision })
-      .catch(rethrowQueryFailure);
-    if (saved.length !== 1) throw new WorkspaceVariablesConflictError();
-    await appendAuditFact(client, {
-      workspaceId: input.workspaceId,
-      actorId: input.actorId,
-      action: 'workspace.variables_changed',
-      targetType: 'workspace_variables',
-      targetId: input.workspaceId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: {
-        revision,
-        changedNames: names.slice(0, WORKSPACE_VARIABLE_LIMITS.count),
-        ...(names.length > WORKSPACE_VARIABLE_LIMITS.count
-          ? { changedCount: names.length, changedNamesTruncated: true }
-          : {}),
-      },
-    });
+  const { descriptions, changedNames } = planWorkspaceVariableReplacement(
+    current,
+    input,
+  );
+  const changed = changedNames.length > 0;
+  const revision = changed ? current.revision + 1 : current.revision;
+  if (changed) {
+    await saveVariableSet(client, input, { revision, descriptions });
+    await auditVariablesChanged(client, input, { revision, changedNames });
   }
-  const accepted = { revision, changed: names.length > 0 };
-  await completeCommand(client, identity, accepted);
+  const accepted = { revision, changed };
+  await completeCommand(client, command, accepted);
   return { ...accepted, replayed: false };
 }
 
-async function readCurrentVariableRevision(
-  client: PoolClient,
-  workspaceId: string,
-) {
+/** Lock only the mutable head, then read its exact immutable set after any wait. */
+async function lockCurrentVariableSet(client: PoolClient, workspaceId: string) {
   const db = drizzle(client);
   const [head] = await db
     .select({ revision: workspaceVariables.revision })
@@ -117,29 +75,84 @@ async function readCurrentVariableRevision(
     .where(eq(workspaceVariables.workspaceId, workspaceId))
     .for('update')
     .catch(rethrowQueryFailure);
-  const stored =
-    head === undefined
-      ? undefined
-      : (
-          await db
-            .select({
-              values: workspaceVariableSetRevisions.values,
-              descriptions: workspaceVariableSetRevisions.descriptions,
-            })
-            .from(workspaceVariableSetRevisions)
-            .where(
-              and(
-                eq(workspaceVariableSetRevisions.workspaceId, workspaceId),
-                eq(workspaceVariableSetRevisions.revision, head.revision),
-              ),
-            )
-            .catch(rethrowQueryFailure)
-        )[0];
-  if (head !== undefined && stored === undefined)
+  if (head === undefined)
+    return { ...EMPTY_VARIABLE_SNAPSHOT, descriptions: {} };
+  const [stored] = await db
+    .select({
+      values: workspaceVariableSetRevisions.values,
+      descriptions: workspaceVariableSetRevisions.descriptions,
+    })
+    .from(workspaceVariableSetRevisions)
+    .where(
+      and(
+        eq(workspaceVariableSetRevisions.workspaceId, workspaceId),
+        eq(workspaceVariableSetRevisions.revision, head.revision),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (stored === undefined)
     throw new Error('Workspace variable revision is missing');
-  return {
-    revision: head?.revision ?? 0,
-    values: stored?.values ?? {},
-    descriptions: stored?.descriptions ?? {},
-  };
+  return { revision: head.revision, ...stored };
+}
+
+/** With no head to lock yet, two first saves meet at the revision's primary key. */
+async function saveVariableSet(
+  client: PoolClient,
+  input: ReplaceWorkspaceVariablesInput,
+  set: Readonly<{
+    revision: number;
+    descriptions: Readonly<Record<string, string>>;
+  }>,
+): Promise<void> {
+  const db = drizzle(client);
+  const inserted = await db
+    .insert(workspaceVariableSetRevisions)
+    .values({
+      workspaceId: input.workspaceId,
+      revision: set.revision,
+      values: input.values,
+      descriptions: set.descriptions,
+    })
+    .onConflictDoNothing()
+    .returning({ revision: workspaceVariableSetRevisions.revision })
+    .catch(rethrowQueryFailure);
+  if (inserted.length !== 1) throw new WorkspaceVariablesConflictError();
+  const saved = await db
+    .insert(workspaceVariables)
+    .values({ workspaceId: input.workspaceId, revision: set.revision })
+    .onConflictDoUpdate({
+      target: workspaceVariables.workspaceId,
+      set: { revision: set.revision, updatedAt: sql`clock_timestamp()` },
+      setWhere: eq(workspaceVariables.revision, input.expectedRevision),
+    })
+    .returning({ revision: workspaceVariables.revision })
+    .catch(rethrowQueryFailure);
+  if (saved.length !== 1) throw new WorkspaceVariablesConflictError();
+}
+
+/** Names only, never values, and within the audit metadata budget. */
+function auditVariablesChanged(
+  client: PoolClient,
+  input: ReplaceWorkspaceVariablesInput,
+  {
+    revision,
+    changedNames,
+  }: Readonly<{ revision: number; changedNames: readonly string[] }>,
+): Promise<void> {
+  return appendAuditFact(client, {
+    workspaceId: input.workspaceId,
+    actorId: input.actorId,
+    action: 'workspace.variables_changed',
+    targetType: 'workspace_variables',
+    targetId: input.workspaceId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata: {
+      revision,
+      changedNames: changedNames.slice(0, WORKSPACE_VARIABLE_LIMITS.count),
+      ...(changedNames.length > WORKSPACE_VARIABLE_LIMITS.count
+        ? { changedCount: changedNames.length, changedNamesTruncated: true }
+        : {}),
+    },
+  });
 }
