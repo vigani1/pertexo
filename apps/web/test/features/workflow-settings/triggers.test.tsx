@@ -170,7 +170,9 @@ describe('workflow triggers tab', () => {
     );
     expect(await screen.findByText('e'.repeat(43))).toBeVisible();
     expect(screen.getByText('s'.repeat(43))).toBeVisible();
-    expect(screen.getByText(`/hooks/${'e'.repeat(43)}`)).toBeVisible();
+    expect(
+      screen.getByText(`http://localhost:3000/hooks/${'e'.repeat(43)}`),
+    ).toBeVisible();
     await acknowledgeCredentials(event);
     await waitFor(() => {
       expect(screen.queryByText('s'.repeat(43))).not.toBeInTheDocument();

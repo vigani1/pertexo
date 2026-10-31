@@ -45,8 +45,7 @@ async function createEndpoint(
 }
 
 describe('the webhook address where the endpoint is created', () => {
-  // product-ux-08, web-gaps-01: the dialog says to add /hooks/… to an address you must work out.
-  it.fails('shows the whole address and copies it', async () => {
+  it('shows the whole address and copies it', async () => {
     const { dialog, event } = await createEndpoint(
       { signingSecret: 's'.repeat(43) },
       { mode: 'signed', allowedOrigins: [] },
@@ -62,15 +61,11 @@ describe('the webhook address where the endpoint is created', () => {
     expect(await navigator.clipboard.readText()).toBe(fullAddress);
   });
 
-  // product-ux-08, web-gaps-01: in Secret URL mode the address is the credential to paste.
-  it.fails(
-    'shows the whole address for a secret URL with no secret beside it',
-    async () => {
-      const { dialog } = await createEndpoint(
-        {},
-        { mode: 'secret_url', allowedOrigins: [] },
-      );
-      expect(within(dialog).getByText(fullAddress)).toBeVisible();
-    },
-  );
+  it('shows the whole address for a secret URL with no secret beside it', async () => {
+    const { dialog } = await createEndpoint(
+      {},
+      { mode: 'secret_url', allowedOrigins: [] },
+    );
+    expect(within(dialog).getByText(fullAddress)).toBeVisible();
+  });
 });
