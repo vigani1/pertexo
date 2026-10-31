@@ -42,6 +42,8 @@ export class WorkspaceVariablesService {
     return workspaceVariableUsageResponseSchema.parse({
       items: result.items,
       incomplete: result.incomplete,
+      checkedWorkflows: result.checkedWorkflows,
+      totalWorkflows: result.totalWorkflows,
       nextCursor:
         result.next === null
           ? null

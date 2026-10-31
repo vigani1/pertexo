@@ -73,6 +73,8 @@ export const workspaceVariableUsageResponseSchema = z
       .max(100),
     nextCursor: z.string().max(1024).nullable(),
     incomplete: z.boolean(),
+    checkedWorkflows: z.number().int().nonnegative(),
+    totalWorkflows: z.number().int().nonnegative(),
   })
   .strict();
 export const workflowRunVariablesResponseSchema = z

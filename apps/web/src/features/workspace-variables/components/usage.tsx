@@ -4,37 +4,101 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useInfiniteQuery } from '@tanstack/react-query';
 import type { WorkspaceVariableUsageResponse } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { variableUsageQueryOptions } from '../data/variables.queries';
+import { isAccessLost, readFailureReason } from '@/lib/api/error-copy';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
+import {
+  useVariableUsageCheck,
+  type UsageCheckPhase,
+} from '../hooks/use-usage-check';
 type UsageRow = WorkspaceVariableUsageResponse['items'][number];
 
-function emptySentence({
-  checkedAll,
-  incomplete,
-}: Readonly<{ checkedAll: boolean; incomplete: boolean }>): string {
-  if (!checkedAll)
-    return 'No matches in the workflows checked so far. Continue the check.';
+function emptySentence(phase: UsageCheckPhase, incomplete: boolean): string {
+  if (phase !== 'finished')
+    return 'No references in the workflows checked so far.';
   if (incomplete) return 'No parsed reference found; the check is incomplete.';
   return 'No current draft or publication references this name.';
+}
+
+const count = (value: number) => value.toLocaleString(FORMAT_LOCALE);
+
+/** Hidden workflows aren't checked, so every sentence says whose view this is. */
+function progressSentence(
+  phase: UsageCheckPhase,
+  counts: Readonly<{ checked: number; total: number }> | undefined,
+): string {
+  if (counts === undefined) return 'Checking workflows…';
+  const { checked, total } = counts;
+  if (phase === 'finished') {
+    if (total === 0) return 'You can’t see any workflows to check.';
+    return total === 1
+      ? 'Checked the 1 workflow you can see.'
+      : `Checked all ${count(total)} workflows you can see.`;
+  }
+  const seen = `${count(checked)} of ${count(total)} ${total === 1 ? 'workflow' : 'workflows'} you can see`;
+  return phase === 'failed' ? `Stopped after ${seen}.` : `Checked ${seen}.`;
+}
+
+const PHASE_ANNOUNCEMENT: Readonly<Record<UsageCheckPhase, string>> = {
+  checking: 'Checking workflows',
+  finished: 'Check finished',
+  failed: 'Check stopped',
+};
+
+/**
+ * Stays in place once the check ends, so what's below it doesn't jump. Only the
+ * check's start and end are announced: each new count would talk over the page.
+ */
+function UsageProgress({
+  phase,
+  counts,
+}: Readonly<{
+  phase: UsageCheckPhase;
+  counts: Readonly<{ checked: number; total: number }> | undefined;
+}>) {
+  const total = counts?.total ?? 0;
+  const checked = counts?.checked ?? 0;
+  const share = phase === 'finished' ? 1 : total === 0 ? 0 : checked / total;
+  const sentence = progressSentence(phase, counts);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div
+        role="progressbar"
+        aria-label="Workflows checked"
+        aria-valuemin={0}
+        aria-valuemax={total}
+        aria-valuenow={checked}
+        aria-valuetext={sentence}
+        className="relative h-1 overflow-hidden rounded-full bg-surface-ink/[0.07]"
+      >
+        <span
+          className="absolute inset-y-0 left-0 rounded-full bg-action/80 transition-[width] duration-300 ease-unspool motion-reduce:transition-none"
+          style={{ width: `${String(share * 100)}%` }}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground tabular-nums">{sentence}</p>
+      <span role="status" className="sr-only">
+        {PHASE_ANNOUNCEMENT[phase]}
+      </span>
+    </div>
+  );
 }
 
 function UsageRows({
   scope,
   rows,
   incomplete,
-  checkedAll,
+  phase,
 }: Readonly<{
   scope: WorkspaceApiScope;
   rows: readonly UsageRow[];
   incomplete: boolean;
-  checkedAll: boolean;
+  phase: UsageCheckPhase;
 }>) {
   return (
     <>
@@ -45,7 +109,7 @@ function UsageRows({
         </Notice>
       ) : null}
       {rows.length === 0 ? (
-        <p className="text-sm">{emptySentence({ checkedAll, incomplete })}</p>
+        <p className="text-sm">{emptySentence(phase, incomplete)}</p>
       ) : (
         <ul className="flex flex-col divide-y divide-border">
           {rows.map((row) => (
@@ -86,45 +150,77 @@ function VariableUsage({
   name: string;
   onRemove?: () => void;
 }>) {
-  const query = useInfiniteQuery(variableUsageQueryOptions(scope, name));
+  const { query, phase, workflowChanged, resume } = useVariableUsageCheck(
+    scope,
+    name,
+  );
+  const lastPage = query.data?.pages.at(-1);
+  // A first read that failed, or lost access, is QueryView's to explain.
+  const stoppedPartway =
+    query.isFetchNextPageError && !isAccessLost(query.error);
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <p className="text-sm text-muted-foreground">
         Current drafts and current publications, including archived workflows.
         Retained historical versions and run snapshots keep their own values.
       </p>
+      {phase === 'failed' && lastPage === undefined ? null : (
+        <UsageProgress
+          phase={phase}
+          counts={
+            lastPage === undefined
+              ? undefined
+              : {
+                  checked: lastPage.checkedWorkflows,
+                  total: lastPage.totalWorkflows,
+                }
+          }
+        />
+      )}
       <QueryView query={query} resource="Workflow references">
         {(data) => (
           <UsageRows
             scope={scope}
             rows={data.pages.flatMap((page) => page.items)}
             incomplete={data.pages.some((page) => page.incomplete)}
-            checkedAll={!query.hasNextPage}
+            phase={phase}
           />
         )}
       </QueryView>
-      <LoadMore
-        subject="workflows"
-        label="Check more workflows"
-        hasNextPage={query.hasNextPage}
-        loading={query.isFetchingNextPage}
-        failed={query.isFetchNextPageError}
-        onLoadMore={() => void query.fetchNextPage()}
-      />
+      {phase === 'failed' && stoppedPartway ? (
+        <Notice
+          tone="destructive"
+          action={
+            <Button type="button" variant="outline" size="sm" onClick={resume}>
+              {workflowChanged ? 'Restart check' : 'Try again'}
+            </Button>
+          }
+        >
+          {workflowChanged
+            ? 'A workflow changed while it was being checked. Restart the check for current results.'
+            : readFailureReason(query.error)}
+        </Notice>
+      ) : null}
       {onRemove === undefined ? null : (
         <>
           <Notice tone="warning">
-            Removing a name does not rewrite these references. New runs that
-            require it will fail; existing snapshots stay unchanged.
+            {phase === 'failed'
+              ? 'This check didn’t finish, so workflows it didn’t reach may still use this name. New runs that require it will fail; existing snapshots stay unchanged.'
+              : 'Removing a name does not rewrite these references. New runs that require it will fail; existing snapshots stay unchanged.'}
           </Notice>
           <Button
             type="button"
             variant="destructive"
-            disabled={query.isPending}
+            disabled={phase === 'checking'}
             onClick={onRemove}
           >
-            Remove from draft
+            {phase === 'failed' ? 'Remove anyway' : 'Remove from draft'}
           </Button>
+          {phase === 'checking' ? (
+            <p className="text-xs text-muted-foreground">
+              You can remove this name when the check finishes.
+            </p>
+          ) : null}
         </>
       )}
     </div>

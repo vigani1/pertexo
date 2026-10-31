@@ -44,7 +44,9 @@ export const READS_OPEN_UNTIL_PURGE: readonly Read[] = [
     name: "a variable's references",
     as: 'viewer',
     path: (world) => `${root(world)}/variables/usage?name=RATE`,
-    shows: answers,
+    shows: (body: { totalWorkflows: number }) => {
+      expect(body.totalWorkflows).toBeGreaterThan(0);
+    },
   },
 ];
 

@@ -12,6 +12,11 @@ const scope = {
   workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 };
+const noWorkflows = {
+  incomplete: false,
+  checkedWorkflows: 0,
+  totalWorkflows: 0,
+};
 function fixture() {
   const store = {
     read: vi
@@ -22,7 +27,7 @@ function fixture() {
       .mockResolvedValue({ revision: 1, changed: true, replayed: false }),
     usage: vi
       .fn<WorkspaceVariablesStore['usage']>()
-      .mockResolvedValue({ items: [], incomplete: false, next: null }),
+      .mockResolvedValue({ ...noWorkflows, items: [], next: null }),
     close: () => Promise.resolve(),
   };
   return { store, service: new WorkspaceVariablesService(store) };
@@ -84,7 +89,7 @@ async function continuation(service: WorkspaceVariablesService) {
 
 it('keeps a bounded empty page continuation instead of inventing an unused result', async () => {
   const { service, store } = fixture();
-  store.usage.mockResolvedValue({ items: [], incomplete: false, next: cursor });
+  store.usage.mockResolvedValue({ ...noWorkflows, items: [], next: cursor });
   const page = await service.usage({ ...scope, name: 'RATE', limit: 25 });
   expect(page.items).toEqual([]);
   expect(page.nextCursor).toEqual(expect.any(String));
@@ -93,8 +98,8 @@ it('keeps a bounded empty page continuation instead of inventing an unused resul
 it('resumes the reference check where its continuation left off', async () => {
   const { service, store } = fixture();
   store.usage.mockResolvedValueOnce({
+    ...noWorkflows,
     items: [],
-    incomplete: false,
     next: cursor,
   });
   const after = await continuation(service);
@@ -109,8 +114,8 @@ it('resumes the reference check where its continuation left off', async () => {
 it('refuses a continuation that is not canonically encoded', async () => {
   const { service, store } = fixture();
   store.usage.mockResolvedValueOnce({
+    ...noWorkflows,
     items: [],
-    incomplete: false,
     next: cursor,
   });
   const after = `${await continuation(service)}=`;

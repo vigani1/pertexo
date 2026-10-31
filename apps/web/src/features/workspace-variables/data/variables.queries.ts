@@ -32,7 +32,9 @@ export function variableUsageQueryOptions(
     getNextPageParam: (page) => page.nextCursor,
     staleTime: 0,
     gcTime: 0,
+    // A refetch would walk every page again from the first.
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     retry: false,
   });
 }

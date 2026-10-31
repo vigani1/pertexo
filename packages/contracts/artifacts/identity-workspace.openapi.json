@@ -776,7 +776,7 @@
         ],
         "responses": {
           "200": {
-            "description": "One bounded page; follow the cursor before declaring a name unused",
+            "description": "One bounded page, spanning workflows while its budgets last; follow the cursor to the end before declaring a name unused",
             "content": {
               "application/json": {
                 "schema": {
@@ -9723,12 +9723,24 @@
           },
           "incomplete": {
             "type": "boolean"
+          },
+          "checkedWorkflows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "totalWorkflows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
           }
         },
         "required": [
           "items",
           "nextCursor",
-          "incomplete"
+          "incomplete",
+          "checkedWorkflows",
+          "totalWorkflows"
         ],
         "additionalProperties": false
       },
