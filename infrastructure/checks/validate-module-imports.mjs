@@ -70,7 +70,21 @@ function coreAreaViolation(file, specifier) {
   return `core areas meet at their index; import ${targetArea}/index.js`;
 }
 
-/** Rules that hold for a workspace's tests as well as its source. */
+/** A database entry point meant for core, by name or by a path around its door. */
+function reachesDatabaseCode(file, specifier) {
+  if (coreOnlyDatabaseEntries.has(specifier)) return true;
+  if (!specifier.startsWith('.')) return false;
+  return /^packages\/database\/(?:src|dist)(?:\/|$)/u.test(
+    path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier)),
+  );
+}
+
+/**
+ * Rules that hold for a workspace's tests as well as its source. A deliberate
+ * limit: only import syntax is read, so a name passed as a plain string, as in
+ * `vi.importActual('@pertexo/database/schema')`, isn't seen. A string is only a
+ * module name to the function that takes it, and no test does this today.
+ */
 function directionViolations(file, specifier) {
   const violations = [];
   if (
@@ -82,7 +96,7 @@ function directionViolations(file, specifier) {
       `${file}: only applications depend on core (apps -> core -> database)`,
     );
   if (
-    coreOnlyDatabaseEntries.has(specifier) &&
+    reachesDatabaseCode(file, specifier) &&
     !file.startsWith('packages/core/') &&
     !file.startsWith('packages/database/')
   )
