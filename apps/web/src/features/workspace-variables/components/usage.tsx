@@ -63,7 +63,7 @@ function UsageProgress({
 }>) {
   const total = counts?.total ?? 0;
   const checked = counts?.checked ?? 0;
-  const share = phase === 'finished' ? 1 : total === 0 ? 0 : checked / total;
+  const share = phase === 'finished' ? 1 : checked / Math.max(total, 1);
   const sentence = progressSentence(phase, counts);
   return (
     <div className="flex flex-col gap-1.5">
