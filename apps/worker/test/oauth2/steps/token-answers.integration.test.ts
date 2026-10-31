@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
 import { OAUTH2_STAND_IN_RETRY_AFTER_SECONDS } from '../../../../../infrastructure/testing/oauth2-stand-in.mjs';
 import {
   describeOAuth2,
@@ -20,6 +20,9 @@ describeOAuth2('what the token address answers', () => {
 
   beforeAll(async () => {
     harness = await startOAuth2Harness('steps-token-answers');
+  });
+  // Connecting is limited to 10 a minute per person, the real limit: each test has its own.
+  beforeEach(async () => {
     owner = await harness.newOwner();
   });
   afterAll(async () => {
@@ -115,7 +118,7 @@ describeOAuth2('what the token address answers', () => {
       expect((await harness.connection(connection.id)).status).toBe('active');
       expect(apiCalls(connection)).toBe(0);
       const [blocked] = await harness.stack.sql<{ seconds: number }>(
-        `select extract(epoch from refresh_blocked_until - clock_timestamp()) as seconds
+        `select extract(epoch from refresh_blocked_until - clock_timestamp())::float8 as seconds
          from app.connection_oauth2_tokens where connection_id=$1`,
         [connection.id],
       );
@@ -162,7 +165,7 @@ describeOAuth2('what the token address answers', () => {
     });
     expect((await harness.connection(connection.id)).status).toBe('active');
     const [blocked] = await harness.stack.sql<{ seconds: number }>(
-      `select extract(epoch from refresh_blocked_until - clock_timestamp()) as seconds
+      `select extract(epoch from refresh_blocked_until - clock_timestamp())::float8 as seconds
          from app.connection_oauth2_tokens where connection_id=$1`,
       [connection.id],
     );
@@ -297,7 +300,7 @@ describeOAuth2('what the token address answers', () => {
     });
     await harness.finish(runId);
     const [blocked] = await harness.stack.sql<{ seconds: number }>(
-      `select extract(epoch from refresh_blocked_until - clock_timestamp()) as seconds
+      `select extract(epoch from refresh_blocked_until - clock_timestamp())::float8 as seconds
          from app.connection_oauth2_tokens where connection_id=$1`,
       [connection.id],
     );

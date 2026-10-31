@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
 import {
   describeOAuth2,
   startOAuth2Harness,
@@ -19,6 +19,9 @@ describeOAuth2('an API that refuses an OAuth2 token', () => {
 
   beforeAll(async () => {
     harness = await startOAuth2Harness('steps-api-rejected');
+  });
+  // Connecting is limited to 10 a minute per person, the real limit: each test has its own.
+  beforeEach(async () => {
     owner = await harness.newOwner();
   });
   afterAll(async () => {

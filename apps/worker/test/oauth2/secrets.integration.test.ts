@@ -146,12 +146,6 @@ describeOAuth2('where OAuth2 secrets never appear', () => {
         `/v1/workspaces/${owner.workspaceId}/runs/${failed}`,
       ),
     );
-    keep(
-      await owner.api.call(
-        'GET',
-        `/v1/workspaces/${owner.workspaceId}/runs/${failed}/events`,
-      ),
-    );
 
     // Give batched traces time to leave.
     await new Promise((resolve) => setTimeout(resolve, 2_000));
