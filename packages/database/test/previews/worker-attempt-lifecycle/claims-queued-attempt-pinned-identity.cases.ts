@@ -11,6 +11,7 @@ import {
   claimFixture,
   previewTerminalFacts,
   scopedQuery,
+  withOwnerRole,
   workerPool,
   workspaceId,
   workflowId,
@@ -18,6 +19,29 @@ import {
 import { withTenantScopedClient } from '../../../src/tenant-access/transactions.js';
 
 export function registerClaimsQueuedAttemptPinnedIdentity(): void {
+  it('hands the worker the set captured at admission, not the current one', async () => {
+    const setHead = (values: string) =>
+      withOwnerRole((client) =>
+        client.query(
+          `with next_set as (
+             insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json)
+             select $1,coalesce(max(revision),0)+1,$2::jsonb
+               from app.workspace_variable_set_revisions where workspace_id=$1
+             returning revision
+           )
+           insert into app.workspace_variables(workspace_id,revision)
+           select $1,revision from next_set
+           on conflict (workspace_id) do update set revision=excluded.revision`,
+          [workspaceId, values],
+        ),
+      );
+    await setHead('{"RATE":10}');
+    const accepted = await acceptFixture();
+    await setHead('{"RATE":20}');
+    const claimed = await claimFixture(accepted, 'worker-preview-variables');
+    expect(claimed.lease.variables).toEqual({ RATE: 10 });
+  });
+
   it('claims a queued attempt with pinned identity and completes truthfully', async () => {
     const claimed = await claimFixture(
       await acceptFixture(),

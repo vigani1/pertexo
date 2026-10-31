@@ -110,6 +110,38 @@ export function registerPlatformPreviewNodeInvokerClassifiesExecutorFailure(): v
     ).resolves.toEqual(expected);
   });
 
+  it('names a workspace variable missing from the captured set, without running the step', async () => {
+    let executed = false;
+    const invoker = createPlatformPreviewNodeInvoker({
+      registry: {
+        execute: () => {
+          executed = true;
+          return Promise.resolve({ output: {} });
+        },
+      } as never,
+    });
+    const lease = {
+      ...leaseFixture({
+        config: {},
+        configVersion: 1,
+        connectionRefs: {},
+        definition: { key: 'core.set', version: 1 },
+        id: 'node-1',
+        inputMappings: {
+          value: { kind: 'workspace_variable', name: 'ABSENT' },
+        },
+      }),
+      variables: { PRESENT: 1 },
+    };
+    await expect(
+      invoker.invoke({ lease, signal: new AbortController().signal }),
+    ).resolves.toMatchObject({
+      safeErrorCode: 'preview.variable_missing',
+      status: 'failed',
+    });
+    expect(executed).toBe(false);
+  });
+
   it('maps a possibly-dispatched unsafe retry to outcome unknown', async () => {
     const invoker = createPlatformPreviewNodeInvoker({
       registry: {

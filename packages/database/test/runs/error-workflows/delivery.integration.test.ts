@@ -24,6 +24,7 @@ import { registerCreatesExactlyOneSIntent } from './delivery/creates-exactly-one
 import { registerRetainsErrorWorkflowOriginOn } from './delivery/retains-error-workflow-origin-on.cases.js';
 import { registerRecordsUnpublishedTargetOnSource } from './delivery/records-unpublished-target-on-source.cases.js';
 import { registerFencesWakeupUpdatesSameWorkspace } from './delivery/fences-wakeup-updates-same-workspace.cases.js';
+import { registerCapturesCurrentVariables } from './delivery/captures-current-variables.cases.js';
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);
 describe('durable error workflow admission', () => {
@@ -154,3 +155,4 @@ describe('error workflow settings authority and publication', () => {
 registerRetainsErrorWorkflowOriginOn();
 registerRecordsUnpublishedTargetOnSource();
 registerFencesWakeupUpdatesSameWorkspace();
+registerCapturesCurrentVariables();

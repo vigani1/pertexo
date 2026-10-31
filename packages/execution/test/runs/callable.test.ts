@@ -297,3 +297,34 @@ describe('standalone callable contracts', () => {
     ).toThrow();
   });
 });
+
+describe('a callable result that reads a workspace variable', () => {
+  const declaration: CallableDeclaration = {
+    ...callable,
+    result: { kind: 'workspace_variable', name: 'RATE' },
+  };
+  const captured = (variables: Readonly<Record<string, string>>) => ({
+    readCompletionValues: vi.fn(() =>
+      Promise.resolve({ runInput: 'input', outputs: [], variables }),
+    ),
+  });
+
+  it('uses the value captured by the run', async () => {
+    expect(
+      await resolveRunResult(
+        declaration,
+        captured({ RATE: 'daily' }),
+        signal(),
+      ),
+    ).toEqual({ kind: 'valid', value: 'daily' });
+  });
+
+  it('names a missing variable as the reason', async () => {
+    expect(await resolveRunResult(declaration, captured({}), signal())).toEqual(
+      {
+        kind: 'invalid',
+        reasonCode: 'callable_result_variable_missing',
+      },
+    );
+  });
+});

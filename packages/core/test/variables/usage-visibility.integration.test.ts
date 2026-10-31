@@ -16,6 +16,8 @@ import {
   afterAllFixture2,
   beforeAllFixture1,
   builder,
+  folderId,
+  folders,
   publicId,
 } from '../../../database/test/tenant-access/resources/folders/fixture.js';
 import { createWorkspaceVariablesStore } from '../../src/variables/index.js';
@@ -88,5 +90,55 @@ it('omits hidden workflow identities from variable and connection usage before p
   } finally {
     await variables.close();
     await connections.close();
+  }
+});
+
+// Sorted after every generated id, so the check would otherwise promise more.
+const LAST_HIDDEN = 'ffffffff-ffff-4fff-bfff-ffffffffffff';
+
+it('does not promise more pages because a hidden workflow sorts after the last visible one', async () => {
+  await queryAsOwner(
+    "insert into app.workflows(id,workspace_id,name,created_by) values($1,$2,'Hidden last',$3)",
+    [LAST_HIDDEN, workspaceId, actorId],
+    workspaceId,
+  );
+  await folders.placeWorkflow({
+    workspaceId,
+    actorId,
+    workflowId: LAST_HIDDEN,
+    folderId,
+    expectedOrganizationRevision: 1,
+    idempotencyKey: randomUUID(),
+  });
+  const config = parseDatabaseConfig({ connectionString: apiUrl, max: 2 });
+  const variables = createWorkspaceVariablesStore(config);
+  try {
+    const page = await variables.usage({
+      workspaceId,
+      actorId: builder,
+      name: 'CURRENCY',
+      limit: 25,
+    });
+    expect(page.items.map((item) => item.workflowId)).toEqual([publicId]);
+    expect(page.next).toBeNull();
+    expect(page).toMatchObject({ checkedWorkflows: 1, totalWorkflows: 1 });
+    let after: typeof page.next = null;
+    const seenByOwner: string[] = [];
+    for (let visited = 0; visited < 8; visited += 1) {
+      const next: typeof page = await variables.usage({
+        workspaceId,
+        actorId,
+        name: 'CURRENCY',
+        limit: 25,
+        ...(after === null ? {} : { after }),
+      });
+      seenByOwner.push(...next.items.map((item) => item.workflowId));
+      after = next.next;
+      if (after === null) break;
+    }
+    expect(after).toBeNull();
+    expect(seenByOwner).toContain(publicId);
+  } finally {
+    await variables.close();
   }
 });

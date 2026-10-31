@@ -180,5 +180,43 @@ describe.runIf(fixture.enabled)(
         await Promise.all([variables.close(), tasks.close(), runs.close()]);
       }
     }, 60000);
+
+    it('fails the step clearly, once, when a required name is not in the captured set', async () => {
+      const workers = await runtime();
+      try {
+        const published = await publishGraph({
+          settings: { maxRunDurationMs: 60000 },
+          nodes: [
+            node('manual', 'core.manual'),
+            {
+              ...node('finish', 'core.terminate'),
+              inputMappings: {
+                result: { kind: 'workspace_variable', name: 'NEVER_ADDED' },
+              },
+            },
+          ],
+          edges: [edge('manual', 'finish')],
+        });
+        const accepted = await accept(published, {});
+        await workers.until(async () => {
+          expect(
+            await fixture.workerQuery(
+              'select status from app.workflow_runs where id=$1',
+              [accepted.runId],
+            ),
+          ).toEqual([{ status: 'failed' }]);
+        });
+        expect(
+          await fixture.workerQuery(
+            "select attempt.status,attempt.safe_error_code from app.node_attempts attempt join app.node_runs node on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id where node.workflow_run_id=$1 and node.node_id='finish'",
+            [accepted.runId],
+          ),
+        ).toEqual([
+          { status: 'failed', safe_error_code: 'execution.variable_missing' },
+        ]);
+      } finally {
+        await workers.close();
+      }
+    }, 60000);
   },
 );

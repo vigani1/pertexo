@@ -76,6 +76,24 @@ const rowNames = () =>
     .map((row) => row.getAttribute('aria-label'));
 
 describe('workspace variables list', () => {
+  it(
+    'states the limits and what a replay keeps',
+    { timeout: 30_000 },
+    async () => {
+      fixtures();
+      renderApp(`/w/${workspaceId}/settings/variables`);
+      const event = userEvent.setup();
+      await event.click(
+        await screen.findByText('Limits', {}, { timeout: 15_000 }),
+      );
+      expect(
+        screen.getByText(
+          'Up to 100 names, 4,096 characters per text value and 32 KB in all. A replay, a recovery or a child workflow keeps the values its run started with.',
+        ),
+      ).toBeVisible();
+    },
+  );
+
   it('shows one line per variable and filters by name, value or description', async () => {
     fixtures();
     renderApp(`/w/${workspaceId}/settings/variables`);
