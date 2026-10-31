@@ -1,4 +1,9 @@
-import type { Attributes, Exception, Span } from '@opentelemetry/api';
+import type {
+  Attributes,
+  Exception,
+  Span,
+  SpanOptions,
+} from '@opentelemetry/api';
 import type { IncomingMessage, RequestOptions } from 'node:http';
 
 import type { UndiciRequest } from '@opentelemetry/instrumentation-undici';
@@ -156,6 +161,20 @@ export function sanitizeUndiciRequest(request: UndiciRequest): Attributes {
     'url.full': `${safeOrigin(request.origin)}${safePath(request.path)}`,
     'url.path': safePath(request.path),
   };
+}
+
+/**
+ * Nest's request span records the address as sent. A query can hold what a
+ * request carries in the open, like an OAuth2 callback's code and state.
+ */
+export function sanitizeNestSpanOptions(options?: SpanOptions): SpanOptions {
+  const address = options?.attributes?.['url.full'];
+  return address === undefined
+    ? (options ?? {})
+    : {
+        ...options,
+        attributes: { ...options?.attributes, 'url.full': safePath(address) },
+      };
 }
 
 export function sanitizeHttpSpan(span: Span): void {
