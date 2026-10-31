@@ -36,7 +36,7 @@ const UNPUBLISHED_GRACE = sql`interval '60 seconds'`;
  * row that lingers means no worker is acting. A run stuck on an attempt's job
  * carries the job's attempt as its aggregate, hence the two joins.
  */
-export function overdueRunSteps(
+function overdueRunSteps(
   db: Pick<NodePgDatabase, 'select'>,
   scope: Readonly<{ workspaceId: string; runId: string }> | undefined,
 ) {
