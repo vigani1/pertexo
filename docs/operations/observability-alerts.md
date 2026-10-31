@@ -103,7 +103,9 @@ state.
 
 Identify the bounded queue, then check handler failures, stalls, forced drains,
 and worker starts. Restore consumers or dependencies and allow identifier-only
-jobs to resume from PostgreSQL truth. Redis loss is delay, not proof of run loss.
+jobs to resume from PostgreSQL truth. Redis loss is delay, not proof of run loss:
+a run job not confirmed in time is replaced by a new one, automatically and with
+a `run_recovery.delivery_replaced` log line.
 
 ## PertexoTriggerReconciliationFailures
 
@@ -120,8 +122,9 @@ verify inbox, attempt, usage, and provider-effect truth before intervention.
 ## PertexoWorkerForcedDrain
 
 Correlate the forced drain with deployment or shutdown logs and identify the
-queue involved. Verify active work reached a truthful durable state and that the
-replacement worker became ready. Escalate repeated forced drains as a resource
+queue involved. Steps cut off by the drain settle automatically once their lease
+expires; `stuck-work.list` shows anything still waiting. Verify the replacement
+worker became ready. Escalate repeated forced drains as a resource
 or timeout-envelope issue.
 
 ## PertexoWorkerRestartBurst

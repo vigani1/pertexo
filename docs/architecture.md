@@ -109,7 +109,10 @@ or execution change.
 ## Execution and persistence
 
 PostgreSQL owns durable state. Redis/BullMQ transports identifiers and provides
-live hints; losing transport state does not replace accepted database facts.
+live hints; losing transport state does not replace accepted database facts, and
+every active run has a next step in PostgreSQL with a time on it. The stalled-work
+scanner acts when that time passes, so a crash or lost job delays a run but never
+strands it (ADR 007).
 Published workflow versions contain their immutable graph, executable and
 checksums. The engine selects the next transition from the executable,
 checkpoint and facts. `execution/src/runs/advance.ts` verifies the stored

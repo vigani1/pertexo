@@ -153,8 +153,11 @@ monotonically increasing fencing token. Only that owner and token may heartbeat
 or commit the attempt result. Heartbeats extend bounded ownership; they are not
 evidence that dispatch occurred or that the provider completed work.
 
-An expired lease authorizes reconciliation, not blind execution. The
-reconciler locks the attempt, reads its terminal state, dispatch evidence,
+An expired lease authorizes reconciliation, not blind execution. The stalled-work
+scanner in every worker runs this automatically, every few seconds, and an
+operator can still force it; both settle through one code path, and the fence
+makes two at once harmless. The reconciler locks the attempt, reads its terminal
+state, dispatch evidence,
 side-effect class, provider key/reference, cancellation state, and retry
 policy, then makes one compare-and-swap decision:
 
@@ -169,6 +172,15 @@ reconciliation. It cannot undo an external effect, so provider calls also
 receive the stable key where available. Reconciliation emits the same domain
 outcome vocabulary as normal completion plus safe reconciliation metadata; it
 does not invent a second completion path.
+
+The same scanner replaces a published run job its consumer did not confirm by
+`outbox_events.delivery_due_at`. Together with leases and the existing wake-ups,
+this is the rule that every active run has a next step in PostgreSQL with a time
+on it, and that a worker acts when the time passes; a run waiting on a person is
+the one exception. Reading a run reports when that time has passed. An attempt's
+side-effect class is decided when it is planned, so a read-only configuration of
+an otherwise unsafe step (an HTTP GET) repeats safely; the node keeps its pinned
+class. A run the engine refuses to advance ends as `failed`, never stuck.
 
 The crash-boundary fixture therefore has deterministic expectations: failure
 before the dispatch-marker commit is reclaimable without an assumed call;
