@@ -28,6 +28,30 @@ export type NodeExecutorFailureKind =
   (typeof NODE_EXECUTOR_FAILURE_KINDS)[number];
 export type NodeExecutorErrorKind = (typeof NODE_EXECUTOR_ERROR_KINDS)[number];
 
+/** The longest response excerpt a failure keeps. */
+export const MAXIMUM_RESPONSE_EXCERPT_CHARACTERS = 1_500;
+
+const serviceResponseSchema = z
+  .object({
+    method: z.string().min(1).max(16),
+    /** Origin and path only: a query can hold credentials. */
+    url: z.url().max(512),
+    status: z.number().int().min(100).max(599),
+    /** Already redacted by the secure HTTP client, and bounded here. */
+    body: z.discriminatedUnion('kind', [
+      z.object({
+        kind: z.literal('text'),
+        excerpt: z.string().max(MAXIMUM_RESPONSE_EXCERPT_CHARACTERS + 1),
+      }),
+      z.object({ kind: z.enum(['none', 'binary', 'too_large']) }),
+    ]),
+  })
+  .strict();
+
+export type ServiceResponseFacts = Readonly<
+  z.output<typeof serviceResponseSchema>
+>;
+
 export type NodeExecutorFailureOutcome = Readonly<{
   kind: NodeExecutorFailureKind;
   errorKind: NodeExecutorErrorKind;
@@ -36,6 +60,8 @@ export type NodeExecutorFailureOutcome = Readonly<{
   /** Fixed, content-free diagnostics supplied by the executor, never provider text. */
   safeErrorCode?: string;
   errorSummary?: string;
+  /** What the called service answered. Its own channel, since it is provider text. */
+  serviceResponse?: ServiceResponseFacts;
 }>;
 
 const nodeExecutorFailureSchema = z
@@ -56,8 +82,28 @@ const nodeExecutorFailureSchema = z
       .regex(/^[a-z][a-z0-9_.]*$/u)
       .optional(),
     errorSummary: z.string().min(1).max(2048).optional(),
+    serviceResponse: serviceResponseSchema.optional(),
   })
   .strict();
+
+function describeServiceResponse({
+  method,
+  url,
+  status,
+  body,
+}: ServiceResponseFacts): string {
+  const answered = `${method} ${url} answered ${String(status)}.`;
+  switch (body.kind) {
+    case 'text':
+      return `${answered}\n${body.excerpt}`;
+    case 'binary':
+      return `${answered} The response isn’t text, so it isn’t shown here.`;
+    case 'too_large':
+      return `${answered} The response was too large to show here.`;
+    case 'none':
+      return answered;
+  }
+}
 
 export class NodeExecutorFailure extends Error {
   public override readonly name: string = 'NodeExecutorFailure';
@@ -67,6 +113,7 @@ export class NodeExecutorFailure extends Error {
   public readonly minimumRetryDelayMillis?: number;
   public readonly safeErrorCode?: string;
   public readonly errorSummary?: string;
+  public readonly serviceResponse?: ServiceResponseFacts;
   public constructor(outcome: unknown) {
     const parsed = nodeExecutorFailureSchema.safeParse(outcome);
     if (!parsed.success) throw new TypeError('Invalid node executor failure');
@@ -78,8 +125,20 @@ export class NodeExecutorFailure extends Error {
       this.safeErrorCode = parsed.data.safeErrorCode;
     if (parsed.data.errorSummary !== undefined)
       this.errorSummary = parsed.data.errorSummary;
+    if (parsed.data.serviceResponse !== undefined)
+      this.serviceResponse = parsed.data.serviceResponse;
     if (parsed.data.minimumRetryDelayMillis !== undefined)
       this.minimumRetryDelayMillis = parsed.data.minimumRetryDelayMillis;
+  }
+
+  /** The sentence a person reads: the executor's own, or the service's answer. */
+  public get shownSummary(): string | undefined {
+    return (
+      this.errorSummary ??
+      (this.serviceResponse === undefined
+        ? undefined
+        : describeServiceResponse(this.serviceResponse))
+    );
   }
 }
 

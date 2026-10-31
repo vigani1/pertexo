@@ -54,8 +54,8 @@ export function executorFailureCompletion(
     errorKind: error.errorKind,
     possiblyDispatched: error.possiblyDispatched,
     safeErrorCode,
-    ...(error.errorSummary === undefined
+    ...(error.shownSummary === undefined
       ? {}
-      : { errorSummary: error.errorSummary }),
+      : { errorSummary: error.shownSummary }),
   };
 }

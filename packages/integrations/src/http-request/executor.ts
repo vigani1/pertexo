@@ -21,6 +21,7 @@ import {
   createUnauthenticatedBeforeDispatch,
 } from '../provider-dispatch-fence.js';
 import { decodeCredential } from './material.js';
+import { serviceResponseFacts } from './execution/service-response.js';
 
 import {
   HttpRequestExecutorError,
@@ -89,6 +90,10 @@ async function executeWithMaterial(
   } = context;
   const { body, resolved, dispatch } = material;
   const { credential, headers } = prepareHeaders(context, material);
+  const sensitiveValues = [
+    ...credentialSensitiveValues(credential.headers),
+    ...(invocation.runtime?.callbacks?.sensitiveValues() ?? []),
+  ];
   let marked = false;
   const dispatchRuntime =
     config.pagination === undefined
@@ -127,10 +132,7 @@ async function executeWithMaterial(
       timeoutMillis: config.timeoutMillis,
       maxRedirects: config.maxRedirects,
       maxResponseBytes: config.maxResponseBytes,
-      sensitiveValues: [
-        ...Object.values(credential.headers),
-        ...(invocation.runtime?.callbacks?.sensitiveValues() ?? []),
-      ],
+      sensitiveValues,
       signal: invocation.signal,
       beforeDispatch: async () => {
         await beforeDispatch();
@@ -158,6 +160,11 @@ async function executeWithMaterial(
             if (decision.kind !== 'succeeded')
               throw new HttpRequestExecutorError(decision, {
                 possiblyDispatched: false,
+                serviceResponse: serviceResponseFacts(
+                  config,
+                  { status },
+                  request.sensitiveValues,
+                ),
               });
           },
         }),
@@ -188,6 +195,7 @@ async function executeWithMaterial(
   )
     throw new HttpRequestExecutorError(decision, {
       possiblyDispatched: !repeatable,
+      serviceResponse: serviceResponseFacts(config, response, sensitiveValues),
     });
   return httpRequestOutputSchema.parse({
     status: response.status,
@@ -195,6 +203,16 @@ async function executeWithMaterial(
     body: response.body,
     finalOrigin: response.finalUrl,
     redirectCount: response.redirectCount,
+  });
+}
+
+/** A service can echo a token without its scheme, so both forms are secret. */
+function credentialSensitiveValues(
+  headers: Readonly<Record<string, string>>,
+): readonly string[] {
+  return Object.values(headers).flatMap((value) => {
+    const token = /^\S+\s+(\S{8,})$/u.exec(value)?.[1];
+    return token === undefined ? [value] : [value, token];
   });
 }
 
