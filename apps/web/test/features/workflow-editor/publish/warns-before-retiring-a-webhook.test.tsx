@@ -93,29 +93,25 @@ async function openPublish() {
 }
 
 describe('publishing a workflow with a live webhook', () => {
-  // product-ux-01: the dialog gives no warning that an endpoint stops answering.
-  it.fails(
-    'warns, by step name, when the publish removes a webhook step',
-    async () => {
-      renderPublish({
-        nodes: [
-          step('manual', 'core.manual', 'Start by hand'),
-          step('apply', 'core.set', 'Apply order'),
-        ],
-        edges: [],
-        settings: {},
-      });
-      const dialog = await openPublish();
-      const mentions = await within(dialog).findAllByText(/Incoming order/u);
-      expect(
-        mentions.some(
-          ({ textContent }) =>
-            /stop|retire|no longer/iu.test(textContent) &&
-            /address|endpoint|webhook/iu.test(textContent),
-        ),
-      ).toBe(true);
-    },
-  );
+  it('warns, by step name, when the publish removes a webhook step', async () => {
+    renderPublish({
+      nodes: [
+        step('manual', 'core.manual', 'Start by hand'),
+        step('apply', 'core.set', 'Apply order'),
+      ],
+      edges: [],
+      settings: {},
+    });
+    const dialog = await openPublish();
+    const mentions = await within(dialog).findAllByText(/Incoming order/u);
+    expect(
+      mentions.some(
+        ({ textContent }) =>
+          /stop|retire|no longer/iu.test(textContent) &&
+          /address|endpoint|webhook/iu.test(textContent),
+      ),
+    ).toBe(true);
+  });
 
   it('does not warn when the webhook step stays', async () => {
     renderPublish({

@@ -96,12 +96,10 @@ async function closeReveal(page: Page) {
   await expect(reveal).toBeHidden();
 }
 
-// product-ux-01: a publish disables the endpoint; the same request answers 401.
 test('a publish keeps a live webhook answering on the new version, with its history', async ({
   page,
   request,
 }) => {
-  test.fail();
   const origin = process.env.PERTEXO_API_PROXY_TARGET;
   if (origin === undefined) throw new Error('Use the owned API fixture');
   const live = await publishedWebhook(page, request);
@@ -165,12 +163,10 @@ test('a publish keeps a live webhook answering on the new version, with its hist
   ).toHaveCount(3);
 });
 
-// product-ux-01: nothing warns that removing the step takes the address away.
 test('the publish dialog warns when a webhook step goes, and the endpoint then retires', async ({
   page,
   request,
 }) => {
-  test.fail();
   const origin = process.env.PERTEXO_API_PROXY_TARGET;
   if (origin === undefined) throw new Error('Use the owned API fixture');
   const live = await publishedWebhook(page, request);
@@ -196,12 +192,10 @@ test('the publish dialog warns when a webhook step goes, and the endpoint then r
     .toBe(401);
 });
 
-// product-ux-08, web-gaps-01: the dialog asks you to assemble the address by hand.
 test('the reveal dialog gives a whole address that really takes a delivery', async ({
   page,
   request,
 }) => {
-  test.fail();
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   const live = await publishedWebhook(page, request);
   const pageOrigin = new URL(page.url()).origin;

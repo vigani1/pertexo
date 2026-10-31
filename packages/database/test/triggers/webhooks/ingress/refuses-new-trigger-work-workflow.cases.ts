@@ -131,7 +131,7 @@ export function registerRefusesNewTriggerWorkWorkflow(): void {
       [resources.endpointId],
     );
     await ownerQuery(
-      "update app.workflow_triggers set status='disabled',health_status='disabled' where id=(select trigger_id from app.webhook_trigger_endpoints where id=$1)",
+      "update app.workflow_triggers set status='disabled',health_status='disabled' where workflow_version_id=(select published_version_id from app.workflows where id=(select workflow_id from app.webhook_trigger_endpoints where id=$1)) and node_id=(select node_id from app.webhook_trigger_endpoints where id=$1)",
       [resources.endpointId],
     );
     await ownerQuery(

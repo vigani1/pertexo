@@ -25,6 +25,10 @@ export type SealedWebhookTriggerSecret = Readonly<{
   authTag: string;
 }>;
 
+/** Opens only with the trigger id it was sealed under, which outlives later publishes. */
+export type StoredWebhookTriggerSecret = SealedWebhookTriggerSecret &
+  Readonly<{ triggerId: string }>;
+
 export type Command = Readonly<{
   workspaceId: string;
   workflowId: string;
@@ -47,8 +51,8 @@ export type WebhookVerificationReference = Readonly<{
   databaseTime: Date;
   authentication: WebhookAuthentication;
   runInputMode?: WebhookConfig['runInput'];
-  currentSecret: SealedWebhookTriggerSecret;
-  previousSecret?: SealedWebhookTriggerSecret & Readonly<{ validUntil: Date }>;
+  currentSecret: StoredWebhookTriggerSecret;
+  previousSecret?: StoredWebhookTriggerSecret & Readonly<{ validUntil: Date }>;
 }>;
 
 export type AcceptVerifiedWebhookDeliveryInput = Readonly<{

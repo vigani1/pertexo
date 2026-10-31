@@ -83,14 +83,16 @@ describe('persisted workflow activation projection', () => {
           const secretId = randomUUID();
           await client.query(
             `insert into app.webhook_trigger_secret_versions
-        (id,workspace_id,trigger_id,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
-        values ($1,$2,$3,'fixture','fixture','fixture','fixture','fixture',$4)`,
+        (id,workspace_id,trigger_id,workflow_id,node_id,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
+        select $1,workspace_id,id,workflow_id,node_id,'fixture','fixture','fixture','fixture','fixture',$4
+          from app.workflow_triggers where workspace_id=$2 and id=$3`,
             [secretId, workspaceId, triggerId, actorId],
           );
           await client.query(
             `insert into app.webhook_trigger_endpoints
-        (id,workspace_id,trigger_id,endpoint_key_hash,current_secret_version_id)
-        values ($1,$2,$3,$4,$5)`,
+        (id,workspace_id,workflow_id,node_id,endpoint_key_hash,current_secret_version_id)
+        select $1,workspace_id,workflow_id,node_id,$4,$5
+          from app.workflow_triggers where workspace_id=$2 and id=$3`,
             [randomUUID(), workspaceId, triggerId, 'b'.repeat(64), secretId],
           );
         },
@@ -103,8 +105,8 @@ describe('persisted workflow activation projection', () => {
         { workspaceId, actorId },
         (client) =>
           client.query(
-            "update app.webhook_trigger_endpoints set status='disabled' where trigger_id=$1",
-            [triggerId],
+            "update app.webhook_trigger_endpoints set status='disabled' where workflow_id=$1",
+            [created.workflowId],
           ),
       );
       expect(

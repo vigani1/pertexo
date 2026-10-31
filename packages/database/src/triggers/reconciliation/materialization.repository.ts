@@ -88,22 +88,6 @@ async function retirePreviousResources(
       ),
     )
     .catch(rethrowQueryFailure);
-  const oldEndpoint = db
-    .select({ one: sql`1` })
-    .from(workflowTriggers)
-    .where(
-      and(
-        eq(workflowTriggers.workspaceId, endpoints.workspaceId),
-        eq(workflowTriggers.id, endpoints.triggerId),
-        eq(workflowTriggers.workflowId, workflowId),
-        ne(workflowTriggers.workflowVersionId, versionId),
-      ),
-    );
-  await db
-    .update(endpoints)
-    .set({ status: 'disabled', updatedAt: sql`clock_timestamp()` })
-    .where(and(eq(endpoints.workspaceId, workspaceId), exists(oldEndpoint)))
-    .catch(rethrowQueryFailure);
   const oldSchedule = db
     .select({ one: sql`1` })
     .from(workflowTriggers)
@@ -231,7 +215,8 @@ async function applyResourceDispositions(
       .where(
         and(
           eq(endpoints.workspaceId, trigger.workspaceId),
-          eq(endpoints.triggerId, trigger.id),
+          eq(endpoints.workflowId, trigger.workflowId),
+          eq(endpoints.nodeId, trigger.nodeId),
           eq(endpoints.status, status),
         ),
       );
@@ -242,8 +227,8 @@ async function applyResourceDispositions(
         id: trigger.id,
         disposition: sql<WorkflowTriggerStatus>`case
       when ${trigger.kind}='schedule' and ${exists(scheduleWithStatus('enabled'))} then 'active'
-      when ${exists(endpointWithStatus('active'))} then 'active'
-      when ${exists(scheduleWithStatus('disabled'))} or ${exists(endpointWithStatus('disabled'))} then 'disabled'
+      when ${trigger.kind}='webhook' and ${exists(endpointWithStatus('active'))} then 'active'
+      when ${exists(scheduleWithStatus('disabled'))} or (${trigger.kind}='webhook' and ${exists(endpointWithStatus('disabled'))}) then 'disabled'
       else 'configuration_required' end`.as('disposition'),
       })
       .from(trigger)

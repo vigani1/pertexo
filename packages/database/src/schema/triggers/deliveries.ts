@@ -4,7 +4,6 @@ import type {
   WebhookReplayCheck,
 } from '../../triggers/webhooks/contract.js';
 import { triggerCoordinatedEvents } from '../event-coordination/records.js';
-import { workflowTriggers } from '../authoring/workflows.js';
 import { workflowRuns } from '../runs/execution.js';
 import {
   type PgTableExtraConfigValue,
@@ -29,7 +28,6 @@ export const webhookTriggerDeliveries = appSchema.table(
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    triggerId: uuid('trigger_id').notNull(),
     endpointId: uuid('endpoint_id').notNull(),
     workflowRunId: uuid('workflow_run_id'),
     dedupeKind: varchar('dedupe_kind', { length: 16 }),
@@ -97,11 +95,6 @@ export const webhookTriggerDeliveries = appSchema.table(
       columns: [table.workspaceId, table.workflowRunId],
       foreignColumns: [workflowRuns.workspaceId, workflowRuns.id],
     }).onDelete('restrict'),
-    foreignKey({
-      name: 'webhook_trigger_deliveries_trigger_fk',
-      columns: [table.workspaceId, table.triggerId],
-      foreignColumns: [workflowTriggers.workspaceId, workflowTriggers.id],
-    }).onDelete('restrict'),
     index('webhook_deliveries_retention_dry_run_idx').on(
       table.workspaceId,
       table.expiresAt,
@@ -114,9 +107,9 @@ export const webhookTriggerDeliveries = appSchema.table(
       table.expiresAt,
       table.id,
     ),
-    index('webhook_trigger_deliveries_trigger_time_idx').on(
+    index('webhook_trigger_deliveries_endpoint_time_idx').on(
       table.workspaceId,
-      table.triggerId,
+      table.endpointId,
       table.receivedAt.desc().nullsFirst(),
       table.id,
     ),

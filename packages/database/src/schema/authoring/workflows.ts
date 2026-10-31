@@ -322,6 +322,12 @@ export const workflowTriggers = appSchema.table(
       table.workspaceId,
       table.id,
     ),
+    unique('workflow_triggers_step_identity_unique').on(
+      table.workspaceId,
+      table.id,
+      table.workflowId,
+      table.nodeId,
+    ),
     foreignKey({
       name: 'workflow_triggers_version_fk',
       columns: [table.workspaceId, table.workflowId, table.workflowVersionId],

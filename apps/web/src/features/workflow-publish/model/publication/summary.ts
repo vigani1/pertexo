@@ -25,6 +25,8 @@ export type PublishSummary = Readonly<{
   linksRemoved: number;
   layoutOnly: boolean;
   triggerNames: readonly string[];
+  /** Webhook steps this publish removes; their addresses stop answering. */
+  retiredWebhookNames: readonly string[];
 }>;
 
 /**
@@ -61,6 +63,13 @@ export function summarizePublish(
         const kind = triggerKindOf(node.definition);
         return kind !== undefined && kind !== 'core.manual';
       })
+      .map(nodeName),
+    retiredWebhookNames: previous.nodes
+      .filter(
+        (node) =>
+          triggerKindOf(node.definition) === 'core.webhook' &&
+          !draft.nodes.some(({ id }) => id === node.id),
+      )
       .map(nodeName),
   };
 }

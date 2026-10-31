@@ -8,6 +8,7 @@ import { rethrowQueryFailure } from '../../platform/query-errors.js';
 import { workflowTriggers } from '../../schema/authoring/workflows.js';
 import { triggerCoordinatedEvents } from '../../schema/event-coordination/records.js';
 import { webhookTriggerDeliveries as deliveries } from '../../schema/triggers/deliveries.js';
+import { webhookTriggerEndpoints as endpoints } from '../../schema/triggers/endpoints.js';
 import { COORDINATED_EVENT_METADATA } from '../coordination/history.queries.js';
 import type {
   ListWebhookDeliveriesInput,
@@ -72,7 +73,6 @@ export async function insertWebhookDelivery(
   await transaction.db.insert(deliveries).values({
     id: delivery.id ?? generatePersistedId(),
     workspaceId: transaction.workspaceId,
-    triggerId: endpoint.triggerId,
     endpointId: endpoint.endpointId,
     workflowRunId: delivery.runId ?? null,
     dedupeKind: delivery.dedupeKind ?? null,
@@ -90,7 +90,7 @@ async function readDeliveryPage(
   client: PoolClient,
   input: Readonly<{
     workspaceId: string;
-    triggerId: string;
+    endpointId: string;
     limit: number;
     after: WebhookDeliveryPosition | undefined;
   }>,
@@ -124,7 +124,7 @@ async function readDeliveryPage(
     .where(
       and(
         eq(deliveries.workspaceId, input.workspaceId),
-        eq(deliveries.triggerId, input.triggerId),
+        eq(deliveries.endpointId, input.endpointId),
         sql`${deliveries.expiresAt}>clock_timestamp()`,
         sql`(${input.after?.receivedAt ?? null}::timestamptz is null or ${deliveries.receivedAt}<${input.after?.receivedAt ?? null}::timestamptz or
         (${deliveries.receivedAt}=${input.after?.receivedAt ?? null}::timestamptz and ${deliveries.id}>${input.after?.id ?? null}::uuid))`,
@@ -177,9 +177,18 @@ export function createWebhookDeliveryLog(pool: Pool): WebhookDeliveryLog {
             actorId,
             workflowId,
           );
+          // History follows the endpoint, so a trigger row of any version finds all of it.
           const trigger = await drizzle(client)
-            .select({ one: sql`1` })
+            .select({ endpointId: endpoints.id })
             .from(workflowTriggers)
+            .leftJoin(
+              endpoints,
+              and(
+                eq(endpoints.workspaceId, workflowTriggers.workspaceId),
+                eq(endpoints.workflowId, workflowTriggers.workflowId),
+                eq(endpoints.nodeId, workflowTriggers.nodeId),
+              ),
+            )
             .where(
               and(
                 eq(workflowTriggers.workspaceId, workspaceId),
@@ -189,10 +198,12 @@ export function createWebhookDeliveryLog(pool: Pool): WebhookDeliveryLog {
               ),
             )
             .catch(rethrowQueryFailure);
-          if (trigger.length !== 1) throw new WebhookTriggerNotFoundError();
+          const found = trigger[0];
+          if (found === undefined) throw new WebhookTriggerNotFoundError();
+          if (found.endpointId === null) return Object.freeze({ items: [] });
           return readDeliveryPage(client, {
             workspaceId,
-            triggerId,
+            endpointId: found.endpointId,
             limit,
             after,
           });

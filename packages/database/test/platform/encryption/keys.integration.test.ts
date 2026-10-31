@@ -94,8 +94,8 @@ beforeAll(async () => {
     [trigger, workspaceB, workflow, version],
   );
   await admin.query(
-    "insert into app.webhook_trigger_secret_versions(id,workspace_id,trigger_id,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by) select gen_random_uuid(),$1,$2,'alias/fixture','Zg','Zg','nonce','tag',$3 from generate_series(1,251)",
-    [workspaceB, trigger, actor],
+    "insert into app.webhook_trigger_secret_versions(id,workspace_id,trigger_id,workflow_id,node_id,kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by) select gen_random_uuid(),$1,$2,$4,'webhook','alias/fixture','Zg','Zg','nonce','tag',$3 from generate_series(1,251)",
+    [workspaceB, trigger, actor, workflow],
   );
 }, 60000);
 afterAll(async () => {

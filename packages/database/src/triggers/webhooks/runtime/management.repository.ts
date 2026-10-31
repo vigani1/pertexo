@@ -16,13 +16,27 @@ import {
 } from '../errors.js';
 
 import { command } from './commands.js';
-import type { WebhookTriggerDatabase } from './contract.js';
+import type { Command, WebhookTriggerDatabase } from './contract.js';
 import {
   claimWebhookCommand,
   completeWebhookCommand,
   insertSecret,
 } from './receipts.repository.js';
 import { oneHealth } from './state.queries.js';
+
+/** Finds the endpoint through its step, so a trigger row of any version addresses it. */
+function endpointOfTrigger(input: Command) {
+  return and(
+    eq(endpoints.workspaceId, input.workspaceId),
+    eq(endpoints.workflowId, input.workflowId),
+    eq(
+      endpoints.nodeId,
+      sql`(select ${workflowTriggers.nodeId} from ${workflowTriggers}
+        where ${workflowTriggers.workspaceId}=${input.workspaceId}
+          and ${workflowTriggers.id}=${input.triggerId})`,
+    ),
+  );
+}
 
 export function configureWebhookAuthentication(
   pool: Pool,
@@ -40,13 +54,7 @@ export function configureWebhookAuthentication(
     const result = await db
       .select({ authentication: endpoints.authentication })
       .from(endpoints)
-      .where(
-        and(
-          eq(endpoints.workspaceId, input.workspaceId),
-          eq(endpoints.triggerId, input.triggerId),
-          eq(endpoints.status, 'active'),
-        ),
-      )
+      .where(and(endpointOfTrigger(input), eq(endpoints.status, 'active')))
       .for('update')
       .catch(rethrowQueryFailure);
     const current = result[0]?.authentication;
@@ -69,23 +77,13 @@ export function configureWebhookAuthentication(
           previousSecretValidUntil: null,
           updatedAt: sql`clock_timestamp()`,
         })
-        .where(
-          and(
-            eq(endpoints.workspaceId, input.workspaceId),
-            eq(endpoints.triggerId, input.triggerId),
-          ),
-        )
+        .where(endpointOfTrigger(input))
         .catch(rethrowQueryFailure);
     } else {
       await db
         .update(endpoints)
         .set({ authentication: next, updatedAt: sql`clock_timestamp()` })
-        .where(
-          and(
-            eq(endpoints.workspaceId, input.workspaceId),
-            eq(endpoints.triggerId, input.triggerId),
-          ),
-        )
+        .where(endpointOfTrigger(input))
         .catch(rethrowQueryFailure);
     }
     await completeWebhookCommand(client, input, operation);
@@ -112,6 +110,7 @@ export function provisionWebhook(
     const trigger = await db
       .select({
         workflow_id: workflowTriggers.workflowId,
+        node_id: workflowTriggers.nodeId,
         status: workflowTriggers.status,
       })
       .from(workflowTriggers)
@@ -139,7 +138,8 @@ export function provisionWebhook(
       .values({
         id: input.endpointId,
         workspaceId: input.workspaceId,
-        triggerId: input.triggerId,
+        workflowId: row.workflow_id,
+        nodeId: row.node_id,
         endpointKeyHash: input.endpointKeyHash,
         currentSecretVersionId: secret.id,
       })
@@ -185,13 +185,7 @@ export function rotateWebhookEndpoint(
         endpointKeyHash: input.endpointKeyHash,
         updatedAt: sql`clock_timestamp()`,
       })
-      .where(
-        and(
-          eq(endpoints.workspaceId, input.workspaceId),
-          eq(endpoints.triggerId, input.triggerId),
-          eq(endpoints.status, 'active'),
-        ),
-      )
+      .where(and(endpointOfTrigger(input), eq(endpoints.status, 'active')))
       .returning({ id: endpoints.id })
       .catch(rethrowQueryFailure);
     if (result.length !== 1) throw new WebhookTriggerNotFoundError();
@@ -229,8 +223,7 @@ export function rotateWebhookSecret(
       .from(endpoints)
       .where(
         and(
-          eq(endpoints.workspaceId, input.workspaceId),
-          eq(endpoints.triggerId, input.triggerId),
+          endpointOfTrigger(input),
           eq(endpoints.endpointKeyHash, input.endpointKeyHash),
           eq(endpoints.status, 'active'),
         ),
@@ -250,12 +243,7 @@ export function rotateWebhookSecret(
         previousSecretValidUntil: sql`clock_timestamp()+interval '5 minutes'`,
         updatedAt: sql`clock_timestamp()`,
       })
-      .where(
-        and(
-          eq(endpoints.workspaceId, input.workspaceId),
-          eq(endpoints.triggerId, input.triggerId),
-        ),
-      )
+      .where(endpointOfTrigger(input))
       .catch(rethrowQueryFailure);
     await completeWebhookCommand(client, keyedCommand, operation);
     return {

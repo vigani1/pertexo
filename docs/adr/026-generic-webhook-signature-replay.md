@@ -33,6 +33,13 @@ Secret rotation retains the previous encrypted version only for the five-minute
 overlap described below. Trigger disable or workflow archive invalidates ingress
 without deleting retained delivery facts.
 
+An endpoint belongs to its workflow and trigger step, not to a published version
+(amended 2026-10-31, product-ux-01). It carries no version pointer: resolution
+joins the step in whichever version is published, so a publish moves it at commit
+with its address, secret, authentication mode and delivery history. Removing the
+step stops it answering; publishing that step again resumes it. A secret keeps the
+trigger id it was sealed under, because its encryption context names that id.
+
 The public management interface exposes bounded trigger identity, kind, status,
 health, and endpoint readiness. It does not expose endpoint-key hashes,
 ciphertext, fingerprints, payloads, or secret-version references. The ingress

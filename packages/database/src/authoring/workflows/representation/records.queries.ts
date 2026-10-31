@@ -22,7 +22,8 @@ const missingEndpoint = new QueryBuilder()
     webhookTriggerEndpoints,
     and(
       eq(webhookTriggerEndpoints.workspaceId, workflowTriggers.workspaceId),
-      eq(webhookTriggerEndpoints.triggerId, workflowTriggers.id),
+      eq(webhookTriggerEndpoints.workflowId, workflowTriggers.workflowId),
+      eq(webhookTriggerEndpoints.nodeId, workflowTriggers.nodeId),
     ),
   )
   .where(

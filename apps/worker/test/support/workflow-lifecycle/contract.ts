@@ -48,7 +48,6 @@ export type LifecycleProjection = Readonly<{
   }>[];
   endpoints: readonly Readonly<{
     id: string;
-    triggerId: string;
     status: string;
   }>[];
   schedules: readonly Readonly<{

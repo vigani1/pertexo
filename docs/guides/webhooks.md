@@ -134,6 +134,21 @@ don't disclose whether an endpoint exists.
 For a workflow-controlled response, see [Respond to webhook](webhook-responses.md).
 Provider-specific signatures such as Stripe or GitHub remain later work in F21.
 
+## Publishing and the address
+
+The address, secret, authentication mode and delivery history belong to the
+workflow and its webhook step, not to a version. Publish as often as you like:
+senders keep using the same address, and the next delivery runs on the new
+version from the moment the publish commits. A run already underway finishes on
+the version it started with, including one a sender is waiting on for a
+[workflow response](webhook-responses.md). Restoring an older version keeps the
+address too, and archiving only pauses it until you restore the workflow.
+
+The address stops answering when a publish removes its step, and the publish
+dialog warns you first. Deliveries then get the same 401 as any unknown address.
+Publishing a version that has that step again, for example by restoring it,
+brings the same address and secret back; rotate them if that isn't what you want.
+
 ## When the workflow is busy
 
 A workflow can [queue or skip at its concurrency limit](concurrency.md).

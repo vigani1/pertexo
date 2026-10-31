@@ -161,7 +161,8 @@ export async function triggerFacts(workflowIdInput: string) {
               schedule.status schedule_status,schedule.health_status schedule_health_status
          from app.workflow_triggers trigger
          left join app.webhook_trigger_endpoints endpoint
-           on endpoint.workspace_id=trigger.workspace_id and endpoint.trigger_id=trigger.id
+           on endpoint.workspace_id=trigger.workspace_id and endpoint.workflow_id=trigger.workflow_id
+          and endpoint.node_id=trigger.node_id and trigger.kind='webhook'
          left join app.trigger_schedules schedule
            on schedule.workspace_id=trigger.workspace_id and schedule.trigger_id=trigger.id
         where trigger.workspace_id=$1 and trigger.workflow_id=$2

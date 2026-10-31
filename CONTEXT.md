@@ -150,6 +150,10 @@ version context. Loading it supplies editable input for a separately confirmed
 real manual run; it is not an execution or a substitute for provider effects.
 _Avoid_: Replay, preview, mock, pinned sample
 
+**Webhook endpoint**: The address, secret and delivery history of a webhook
+step. It belongs to the workflow and that step, so publishing never changes it;
+it stops answering only while the published version doesn't contain the step.
+
 **Webhook reply**: A JSON or text response chosen once by an original webhook
 run for its waiting caller. Sending it does not end the run; a bounded wait can
 instead return the accepted run reference. _Avoid_: Run result, Call result,

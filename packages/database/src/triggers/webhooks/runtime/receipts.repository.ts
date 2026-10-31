@@ -1,6 +1,8 @@
+import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { appendAuditFact } from '../../../governance/audit/events.repository.js';
 import { rethrowQueryFailure } from '../../../platform/query-errors.js';
+import { workflowTriggers } from '../../../schema/authoring/workflows.js';
 import { webhookTriggerSecretVersions as secrets } from '../../../schema/triggers/endpoints.js';
 
 import type { PoolClient } from 'pg';
@@ -10,7 +12,10 @@ import {
   completeCommand,
 } from '../../../platform/idempotency/repository.js';
 
-import { WebhookTriggerIdempotencyConflictError } from '../errors.js';
+import {
+  WebhookTriggerIdempotencyConflictError,
+  WebhookTriggerNotFoundError,
+} from '../errors.js';
 
 import type { Command, SealedWebhookTriggerSecret } from './contract.js';
 
@@ -68,12 +73,29 @@ export async function insertSecret(
   nonce: string;
   authTag: string;
 }> {
-  await drizzle(client)
+  const db = drizzle(client);
+  const [trigger] = await db
+    .select({
+      workflowId: workflowTriggers.workflowId,
+      nodeId: workflowTriggers.nodeId,
+    })
+    .from(workflowTriggers)
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, input.workspaceId),
+        eq(workflowTriggers.id, input.triggerId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (trigger === undefined) throw new WebhookTriggerNotFoundError();
+  await db
     .insert(secrets)
     .values({
       id: secret.id,
       workspaceId: input.workspaceId,
       triggerId: input.triggerId,
+      workflowId: trigger.workflowId,
+      nodeId: trigger.nodeId,
       purpose: 'webhook_hmac_sha256',
       kmsKeyReference: secret.kmsKeyReference,
       encryptedDataKey: secret.encryptedDataKey,

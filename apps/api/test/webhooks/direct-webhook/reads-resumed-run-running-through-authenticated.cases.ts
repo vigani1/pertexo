@@ -95,8 +95,8 @@ export function registerReadsResumedRunRunningThroughAuthenticated(): void {
     const expired = await apiQuery(
       `update app.webhook_trigger_endpoints
         set previous_secret_valid_until=clock_timestamp()-interval '1 second'
-        where workspace_id=$1 and trigger_id=$2 returning id`,
-      [workspaceId, trigger.id],
+        where workspace_id=$1 and workflow_id=$2 returning id`,
+      [workspaceId, workflowId],
     );
     expect(expired.rowCount).toBe(1);
     const expiredPrevious = await sendWebhook(

@@ -85,10 +85,10 @@ export function registerInvalidatesOldEndpointReferencesAt(): void {
     const nextSecret = secret();
     const beforeWrongKey = await ownerQuery(
       `select endpoint.current_secret_version_id,
-              (select count(*)::integer from app.webhook_trigger_secret_versions
-                where trigger_id=$1) secret_count
-         from app.webhook_trigger_endpoints endpoint where endpoint.trigger_id=$1`,
-      [resources.webhookId],
+              (select count(*)::integer from app.webhook_trigger_secret_versions secret
+                where secret.workflow_id=endpoint.workflow_id and secret.node_id=endpoint.node_id) secret_count
+         from app.webhook_trigger_endpoints endpoint where endpoint.id=$1`,
+      [resources.endpointId],
     );
     await expect(
       webhook.rotateSecret({
@@ -104,10 +104,10 @@ export function registerInvalidatesOldEndpointReferencesAt(): void {
     ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
     const afterWrongKey = await ownerQuery(
       `select endpoint.current_secret_version_id,
-              (select count(*)::integer from app.webhook_trigger_secret_versions
-                where trigger_id=$1) secret_count
-         from app.webhook_trigger_endpoints endpoint where endpoint.trigger_id=$1`,
-      [resources.webhookId],
+              (select count(*)::integer from app.webhook_trigger_secret_versions secret
+                where secret.workflow_id=endpoint.workflow_id and secret.node_id=endpoint.node_id) secret_count
+         from app.webhook_trigger_endpoints endpoint where endpoint.id=$1`,
+      [resources.endpointId],
     );
     expect(afterWrongKey.rows).toEqual(beforeWrongKey.rows);
     await webhook.rotateSecret({

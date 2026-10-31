@@ -128,8 +128,8 @@ export function registerRecordsMetadataDeliveryOutcomesPages(): void {
       `select array_agg(key order by key) keys from (
          select distinct jsonb_object_keys(to_jsonb(delivery)) key
            from app.webhook_trigger_deliveries delivery
-          where workspace_id=$1 and trigger_id=$2) keys`,
-      [workspaceId, resources.webhookId],
+          where workspace_id=$1 and endpoint_id=$2) keys`,
+      [workspaceId, resources.endpointId],
     );
     expect(columns.rows[0]?.keys).toEqual([
       'body_bytes',
@@ -144,7 +144,6 @@ export function registerRecordsMetadataDeliveryOutcomesPages(): void {
       'replay_check',
       'signature_check',
       'skip_reason',
-      'trigger_id',
       'workflow_run_id',
       'workspace_id',
     ]);
@@ -153,8 +152,8 @@ export function registerRecordsMetadataDeliveryOutcomesPages(): void {
       `update app.webhook_trigger_deliveries
           set received_at=clock_timestamp()-interval '91 days',
               expires_at=clock_timestamp()-interval '1 day'
-        where workspace_id=$1 and trigger_id=$2 and outcome='rate_limited'`,
-      [workspaceId, resources.webhookId],
+        where workspace_id=$1 and endpoint_id=$2 and outcome='rate_limited'`,
+      [workspaceId, resources.endpointId],
     );
     const retained = await webhook.listDeliveries({ ...read, limit: 100 });
     expect(retained.items.map(({ outcome }) => outcome)).not.toContain(
@@ -179,8 +178,8 @@ export function registerRecordsMetadataDeliveryOutcomesPages(): void {
       ]);
       await expect(
         otherTenant.query(
-          'select id from app.webhook_trigger_deliveries where trigger_id=$1',
-          [resources.webhookId],
+          'select id from app.webhook_trigger_deliveries where endpoint_id=$1',
+          [resources.endpointId],
         ),
       ).resolves.toMatchObject({ rows: [] });
       await otherTenant.query('rollback');
