@@ -26,12 +26,12 @@ export const workspaceVariableValuesSchema = z
     if (Object.keys(values).length > WORKSPACE_VARIABLE_LIMITS.count)
       context.addIssue({
         code: 'custom',
-        message: 'Keep at most 100 workspace variables.',
+        message: `Keep at most ${String(WORKSPACE_VARIABLE_LIMITS.count)} workspace variables.`,
       });
     if (inspectJsonValue(values).bytes > WORKSPACE_VARIABLE_LIMITS.bytes)
       context.addIssue({
         code: 'custom',
-        message: 'Keep workspace variables within 32 KB in total.',
+        message: `Keep workspace variables within ${String(WORKSPACE_VARIABLE_LIMITS.bytes / 1024)} KB in total.`,
       });
   })
   .readonly();
@@ -46,7 +46,7 @@ export const workspaceVariableDescriptionsSchema = z
     if (Object.keys(descriptions).length > WORKSPACE_VARIABLE_LIMITS.count)
       context.addIssue({
         code: 'custom',
-        message: 'Keep descriptions for at most 100 workspace variables.',
+        message: `Keep descriptions for at most ${String(WORKSPACE_VARIABLE_LIMITS.count)} workspace variables.`,
       });
     if (
       inspectJsonValue(descriptions).bytes >
@@ -54,7 +54,7 @@ export const workspaceVariableDescriptionsSchema = z
     )
       context.addIssue({
         code: 'custom',
-        message: 'Keep variable descriptions within 16 KB in total.',
+        message: `Keep variable descriptions within ${String(WORKSPACE_VARIABLE_LIMITS.descriptionsBytes / 1024)} KB in total.`,
       });
   })
   .readonly();
