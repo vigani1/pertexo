@@ -127,9 +127,7 @@ describeFaults('a worker frozen past its leases, then thawed', () => {
     ).toHaveLength(0);
   });
 
-  // reliability-code-01: a warning is now the only thing a stall leaves behind, and it
-  // reads p99. One 40 s gap among a window's samples is never the 99th percentile.
-  it.fails('says that it stalled', () => {
+  it('says that it stalled', () => {
     expect(
       stack.worker.linesMentioning(['worker.event_loop_delayed'], 'warn'),
     ).not.toHaveLength(0);
