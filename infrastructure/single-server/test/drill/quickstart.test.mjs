@@ -73,18 +73,15 @@ describe('the one-command quick try', () => {
     await docker(['network', 'rm', `${project}_default`]);
   });
 
-  it.fails(
-    'starts from the documented command and serves the app',
-    async () => {
-      const started = await shell(documentedCommand());
-      assert.equal(started.status, 0, started.stdout + started.stderr);
-      const page = await client.get('/');
-      assert.equal(page.status, 200);
-      assert.match(page.text, /<html/iu);
-    },
-  );
+  it('starts from the documented command and serves the app', async () => {
+    const started = await shell(documentedCommand());
+    assert.equal(started.status, 0, started.stdout + started.stderr);
+    const page = await client.get('/');
+    assert.equal(page.status, 200);
+    assert.match(page.text, /<html/iu);
+  });
 
-  it.fails('lets someone in with no mail relay', async () => {
+  it('lets someone in with no mail relay', async () => {
     assert.equal((await signUp(client, person)).status, 200);
     let response = await signIn(client, person);
     if (response.status !== 200) {
@@ -101,37 +98,28 @@ describe('the one-command quick try', () => {
     assert.equal(response.status, 200, response.text);
   });
 
-  it.fails(
-    'runs a published workflow from a webhook through a Code step',
-    async () => {
-      workspaceId = await createWorkspace(client);
-      const key = await publishWebhookWorkflow(client, workspaceId);
-      await waitForSucceededRun(
-        client,
-        workspaceId,
-        await sendWebhook(client, key),
-      );
-    },
-  );
+  it('runs a published workflow from a webhook through a Code step', async () => {
+    workspaceId = await createWorkspace(client);
+    const key = await publishWebhookWorkflow(client, workspaceId);
+    await waitForSucceededRun(
+      client,
+      workspaceId,
+      await sendWebhook(client, key),
+    );
+  });
 
-  it.fails('stores and returns a file on the one address', async () => {
+  it('stores and returns a file on the one address', async () => {
     artifactId = await uploadFile(client, workspaceId, file);
     assert.deepEqual(await downloadFile(client, workspaceId, artifactId), file);
   });
 
-  it.fails(
-    'keeps its generated secrets and data across a restart',
-    async () => {
-      assert.equal((await compose('down')).status, 0);
-      assert.equal((await shell(documentedCommand())).status, 0);
-      await waitFor(
-        async () => (await client.get('/v1/workspaces')).status === 200,
-        { what: 'the old session to work', timeout: 60_000 },
-      );
-      assert.deepEqual(
-        await downloadFile(client, workspaceId, artifactId),
-        file,
-      );
-    },
-  );
+  it('keeps its generated secrets and data across a restart', async () => {
+    assert.equal((await compose('down')).status, 0);
+    assert.equal((await shell(documentedCommand())).status, 0);
+    await waitFor(
+      async () => (await client.get('/v1/workspaces')).status === 200,
+      { what: 'the old session to work', timeout: 60_000 },
+    );
+    assert.deepEqual(await downloadFile(client, workspaceId, artifactId), file);
+  });
 });

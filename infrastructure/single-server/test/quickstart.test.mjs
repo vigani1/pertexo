@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { parse } from 'yaml';
 import { it } from './support/it.mjs';
 import {
   codeContainerLimits,
@@ -80,5 +81,25 @@ it('gives the Code runner the limits its own settings derive', () => {
   assert.equal(
     runner.environment.NODE_OPTIONS,
     `--max-old-space-size=${limits.managerHeapMiB}`,
+  );
+});
+
+// Two files pin the same third-party images, and only one of them gets exercised by a
+// real server: they must not drift apart.
+it('runs the same pinned images as a real install', () => {
+  const read = (path) =>
+    parse(readFileSync(path, 'utf8'), { merge: true }).services;
+  const quick = read(composePath);
+  const real = read('infrastructure/single-server/compose.yaml');
+  for (const service of ['proxy', 'postgres', 'redis', 'storage'])
+    assert.equal(quick[service].image, real[service].image, service);
+  assert.ok(
+    readFileSync('infrastructure/single-server/common.sh', 'utf8').includes(
+      quick['storage-setup'].image,
+    ) ||
+      readFileSync('infrastructure/single-server/deploy.sh', 'utf8').includes(
+        quick['storage-setup'].image,
+      ),
+    'the storage setup client',
   );
 });

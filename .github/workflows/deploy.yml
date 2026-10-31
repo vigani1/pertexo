@@ -5,7 +5,7 @@ on:
     inputs:
       commit:
         description:
-          Full lowercase SHA of a main commit with successful CI and ARM
+          Full lowercase SHA of a main commit with successful CI and image
           publication
         required: true
         type: string
