@@ -31,7 +31,6 @@ function sealed(id: string) {
   return {
     id,
     triggerId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-    triggerId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
     kmsKeyReference: 'key',
     encryptedDataKey: 'key',
     ciphertext: 'ciphertext',

@@ -375,10 +375,10 @@ describe('workflow trigger pause (ADR 056)', () => {
     await expect(
       asAdmin(
         `insert into app.webhook_trigger_deliveries
-           (id,workspace_id,trigger_id,endpoint_id,outcome,http_status,
+           (id,workspace_id,endpoint_id,outcome,http_status,
             signature_check,replay_check)
-         values ($1,$2,$3,$4,'paused',409,'verified','new')`,
-        [randomUUID(), workspaceId, randomUUID(), randomUUID()],
+         values ($1,$2,$3,'paused',409,'verified','new')`,
+        [randomUUID(), workspaceId, randomUUID()],
       ),
     ).rejects.toThrow(/webhook_trigger_deliveries_outcome_valid/u);
     await expect(

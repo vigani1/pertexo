@@ -134,7 +134,6 @@ export function registerRecordsMetadataDeliveryOutcomesPages(): void {
     expect(columns.rows[0]?.keys).toEqual([
       'body_bytes',
       'coordination_event_id',
-      'dedupe_kind',
       'endpoint_id',
       'expires_at',
       'http_status',

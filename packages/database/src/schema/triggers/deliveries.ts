@@ -30,7 +30,6 @@ export const webhookTriggerDeliveries = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     endpointId: uuid('endpoint_id').notNull(),
     workflowRunId: uuid('workflow_run_id'),
-    dedupeKind: varchar('dedupe_kind', { length: 16 }),
     skipReason: varchar('skip_reason', { length: 32 }),
     coordinationEventId: uuid('coordination_event_id'),
     receivedAt: timestamp('received_at', { withTimezone: true, mode: 'date' })
@@ -67,12 +66,8 @@ export const webhookTriggerDeliveries = appSchema.table(
       sql`((body_bytes IS NULL) OR ((body_bytes >= 0) AND (body_bytes <= 262144)))`,
     ),
     check(
-      'webhook_trigger_deliveries_dedupe_valid',
-      sql`((dedupe_kind)::text = ANY (ARRAY[('keyed'::character varying)::text, ('fingerprint'::character varying)::text]))`,
-    ),
-    check(
       'webhook_trigger_deliveries_outcome_valid',
-      sql`(((outcome='coordinated' and http_status=202 and signature_check='verified' and replay_check in ('new','duplicate') and workflow_run_id is null and dedupe_kind is not null and skip_reason is null and coordination_event_id is not null) OR (outcome='skipped' AND http_status=202 AND signature_check='verified' AND replay_check IN ('new','duplicate') AND workflow_run_id IS NULL AND dedupe_kind IS NOT NULL AND skip_reason='concurrency_limit') OR (skip_reason IS NULL AND ((((outcome)::text = 'accepted'::text) AND (http_status = 202) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text) AND (workflow_run_id IS NOT NULL) AND (dedupe_kind IS NOT NULL)) OR (((outcome)::text = 'replayed'::text) AND (http_status = 202) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'duplicate'::text) AND (workflow_run_id IS NOT NULL) AND (dedupe_kind IS NOT NULL)) OR ((workflow_run_id IS NULL) AND ((((outcome)::text = 'authentication_failed'::text) AND (http_status = 401) AND ((((signature_check)::text = 'not_checked'::text) AND ((replay_check)::text = 'stale_timestamp'::text)) OR (((signature_check)::text = 'mismatch'::text) AND ((replay_check)::text = 'not_checked'::text)) OR (((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)))) OR (((outcome)::text = 'invalid_request'::text) AND (http_status = 400) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'not_checked'::text)) OR (((outcome)::text = 'conflict'::text) AND (http_status = 409) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'conflict'::text)) OR (((outcome)::text = 'rate_limited'::text) AND (http_status = 429) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)) OR (((outcome)::text = 'paused'::text) AND (http_status = 423) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)))))))) IS TRUE`,
+      sql`(((outcome='coordinated' and http_status=202 and signature_check='verified' and replay_check in ('new','duplicate') and workflow_run_id is null and skip_reason is null and coordination_event_id is not null) OR (outcome='skipped' AND http_status=202 AND signature_check='verified' AND replay_check IN ('new','duplicate') AND workflow_run_id IS NULL AND skip_reason='concurrency_limit') OR (skip_reason IS NULL AND ((((outcome)::text = 'accepted'::text) AND (http_status = 202) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text) AND (workflow_run_id IS NOT NULL)) OR (((outcome)::text = 'replayed'::text) AND (http_status = 202) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'duplicate'::text) AND (workflow_run_id IS NOT NULL)) OR ((workflow_run_id IS NULL) AND ((((outcome)::text = 'authentication_failed'::text) AND (http_status = 401) AND ((((signature_check)::text = 'not_checked'::text) AND ((replay_check)::text = 'stale_timestamp'::text)) OR (((signature_check)::text = 'mismatch'::text) AND ((replay_check)::text = 'not_checked'::text)) OR (((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)))) OR (((outcome)::text = 'invalid_request'::text) AND (http_status = 400) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'not_checked'::text)) OR (((outcome)::text = 'conflict'::text) AND (http_status = 409) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'conflict'::text)) OR (((outcome)::text = 'rate_limited'::text) AND (http_status = 429) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)) OR (((outcome)::text = 'paused'::text) AND (http_status = 423) AND ((signature_check)::text = 'verified'::text) AND ((replay_check)::text = 'new'::text)))))))) IS TRUE`,
     ),
     check(
       'webhook_trigger_deliveries_retention_valid',
@@ -154,7 +149,6 @@ export const webhookTriggerReplayRecords = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     endpointId: uuid('endpoint_id').notNull(),
-    dedupeKind: varchar('dedupe_kind', { length: 16 }).notNull(),
     dedupeKeyHash: char('dedupe_key_hash', { length: 64 }).notNull(),
     requestFingerprint: char('request_fingerprint', {
       length: 64,
@@ -192,16 +186,12 @@ export const webhookTriggerReplayRecords = appSchema.table(
       sql`((dedupe_key_hash ~ '^[0-9a-f]{64}$'::text) AND (request_fingerprint ~ '^[0-9a-f]{64}$'::text))`,
     ),
     check(
-      'webhook_trigger_replay_records_kind_valid',
-      sql`((dedupe_kind)::text = ANY (ARRAY[('keyed'::character varying)::text, ('fingerprint'::character varying)::text]))`,
-    ),
-    check(
       'webhook_trigger_replay_retention_valid',
-      sql`((((dedupe_kind)::text = 'fingerprint'::text) AND (expires_at >= (created_at + '00:04:59'::interval)) AND (expires_at <= (created_at + '00:05:01'::interval))) OR (((dedupe_kind)::text = 'keyed'::text) AND (expires_at >= (created_at + '23:59:59'::interval)) AND (expires_at <= (created_at + '24:00:01'::interval))))`,
+      sql`((expires_at >= (created_at + '23:59:59'::interval)) AND (expires_at <= (created_at + '24:00:01'::interval)))`,
     ),
     primaryKey({
       name: 'webhook_trigger_replay_records_pkey',
-      columns: [table.endpointId, table.dedupeKind, table.dedupeKeyHash],
+      columns: [table.endpointId, table.dedupeKeyHash],
     }),
     // The baseline sets this foreign key DEFERRABLE INITIALLY DEFERRED.
     foreignKey({
@@ -232,7 +222,6 @@ export const webhookTriggerReplayRecords = appSchema.table(
       table.workspaceId,
       table.expiresAt,
       table.endpointId,
-      table.dedupeKind,
       table.dedupeKeyHash,
     ),
     index('webhook_replay_run_retention_idx')

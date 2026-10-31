@@ -68,6 +68,5 @@ export interface WebhookDeliveryLog {
 
 export type WebhookReplayIdentity = Readonly<{
   endpointId: string;
-  dedupeKind: 'fingerprint' | 'keyed';
   dedupeKeyHash: string;
 }>;

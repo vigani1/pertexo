@@ -147,13 +147,13 @@ export async function verifyHttpEvidence(
       ?.workflow_run_id,
   ).toBeNull();
   const replays = await database.query(
-    'select workflow_run_id,dedupe_kind from app.webhook_trigger_replay_records where workspace_id=$1 and workflow_run_id=any($2::uuid[]) order by workflow_run_id',
+    'select workflow_run_id from app.webhook_trigger_replay_records where workspace_id=$1 and workflow_run_id=any($2::uuid[]) order by workflow_run_id',
     [evidence.workspaceId, [evidence.trueRunId, evidence.falseRunId]],
   );
   expect(replays.rows).toEqual(
     [evidence.trueRunId, evidence.falseRunId]
       .sort()
-      .map((workflow_run_id) => ({ workflow_run_id, dedupe_kind: 'keyed' })),
+      .map((workflow_run_id) => ({ workflow_run_id })),
   );
   const receipts = await database.query(
     'select operation,status,key_hash,resource_id from app.idempotency_records where workspace_id=$1 and operation=any($2::text[]) and resource_id=any($3::uuid[]) order by operation,key_hash',
