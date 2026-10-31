@@ -114,7 +114,7 @@
       ],
       "healthCheck": [
         "CMD-SHELL",
-        "test -f /tmp/pertexo-worker-ready && test ! -f /tmp/pertexo-worker-not-ready && kill -0 1"
+        "test -f /tmp/pertexo-worker-ready && test ! -f /tmp/pertexo-worker-not-ready && kill -0 1 && { test -n \"$(find /tmp/pertexo-worker-progress -mmin -5)\" || { kill -9 \"$(cat /tmp/pertexo-worker-progress)\"; exit 1; }; }"
       ]
     },
     "ops": {
