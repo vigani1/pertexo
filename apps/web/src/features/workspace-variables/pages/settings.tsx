@@ -3,6 +3,7 @@ import { SearchIcon } from 'lucide-react';
 import { VariableUsageDialog } from '../components/usage';
 import { useQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
+import { WORKSPACE_VARIABLE_LIMITS } from '@pertexo/workflow-model';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { Button } from '@/components/ui/button';
@@ -11,12 +12,13 @@ import { Notice } from '@/components/ui/notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { StatusGlyph } from '@/components/ui/status';
 import { variablesQueryOptions } from '../data/variables.queries';
-import type { VariablesScope } from '../data/variables.api';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { VariablesEditor } from '../components/editor';
 import { variableMatches, variableRows } from '../model/draft';
 import { Disclosure } from '@/components/ui/disclosure';
 import type { WorkspaceVariablesResponse } from '@pertexo/contracts';
 import { whoCan } from '@/features/workspaces/roles.public';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 function VariableFilter({
   value,
@@ -102,7 +104,7 @@ function ReadOnlyVariables({
 export function WorkspaceVariablesPage({
   scope,
   workspace,
-}: Readonly<{ scope: VariablesScope; workspace: AccessibleWorkspace }>) {
+}: Readonly<{ scope: WorkspaceApiScope; workspace: AccessibleWorkspace }>) {
   const [inspected, setInspected] = useState<string>();
   const [filter, setFilter] = useState('');
   const query = useQuery(variablesQueryOptions(scope));
@@ -142,9 +144,14 @@ export function WorkspaceVariablesPage({
             appearance={{ size: 'xs' }}
           >
             <p className="max-w-lg leading-relaxed">
-              Up to 100 names, 4,096 characters per text value and 32 KB in all.
-              A replay, a recovery or a child workflow keeps the values its run
-              started with.
+              Up to {WORKSPACE_VARIABLE_LIMITS.count} names,{' '}
+              {WORKSPACE_VARIABLE_LIMITS.textCharacters.toLocaleString(
+                FORMAT_LOCALE,
+              )}{' '}
+              characters per text value and{' '}
+              {WORKSPACE_VARIABLE_LIMITS.bytes / 1024} KB in all. A replay, a
+              recovery or a child workflow keeps the values its run started
+              with.
             </p>
           </Disclosure>
         </div>
