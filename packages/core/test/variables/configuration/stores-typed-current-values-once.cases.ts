@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 
-import { WorkspaceVariablesConflictError } from '../../../src/variables/contract.js';
+import { WorkspaceVariablesConflictError } from '../../../src/variables/index.js';
 import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
 
 import { withWorkspaceTransaction } from '../../../../database/src/tenant-access/transactions.js';

@@ -8,7 +8,7 @@ import {
   randomUUID,
   queryAsOwner,
 } from '../../../database/test/support/workflow-authoring.js';
-import { createWorkspaceVariablesStore } from '../../src/variables/settings.repository.js';
+import { createWorkspaceVariablesStore } from '../../src/variables/index.js';
 import { readVariableSetValues } from '../../../database/src/variables/values.queries.js';
 import { withTenantScopedClient } from '../../../database/src/tenant-access/transactions.js';
 import { Pool } from 'pg';

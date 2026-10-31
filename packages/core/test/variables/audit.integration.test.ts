@@ -8,7 +8,7 @@ import {
   workspaceId,
   queryAsOwner,
 } from '../../../database/test/support/workflow-authoring.js';
-import { createWorkspaceVariablesStore } from '../../src/variables/settings.repository.js';
+import { createWorkspaceVariablesStore } from '../../src/variables/index.js';
 const scope = () => ({ actorId, workspaceId });
 let store: ReturnType<typeof createGovernanceStore>;
 beforeAll(() => {

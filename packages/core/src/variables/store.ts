@@ -17,8 +17,8 @@ import {
 import type { PoolClient } from 'pg';
 
 import type { VariableScope, WorkspaceVariablesStore } from './contract.js';
-import { replaceWorkspaceVariables } from './sets.repository.js';
-import { readWorkspaceVariables } from './settings.queries.js';
+import { replaceWorkspaceVariables } from './replace.js';
+import { readWorkspaceVariables } from './set.queries.js';
 import { readVariableUsage } from './usage.queries.js';
 
 /** Each action opens its own transaction and decides authority inside it. */
