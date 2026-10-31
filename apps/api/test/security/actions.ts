@@ -107,7 +107,7 @@ export async function publishWorkflow(
   });
   if (published.status !== 200 && published.status !== 201)
     throw new Error(
-      `Publish: ${String(published.status)} ${published.text.slice(250)}`,
+      `Publish: ${String(published.status)} ${published.text.slice(0, 1_000)}`,
     );
   return { workflowId, path };
 }
