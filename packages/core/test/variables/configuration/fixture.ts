@@ -45,6 +45,19 @@ export async function fixture() {
   return { ...family, parentWorkflowId };
 }
 
+export async function member(workspaceId: string, role: string) {
+  const id = randomUUID();
+  await admin.query(
+    "insert into app.users(id,email,display_name) values($1,$2,'Variable member')",
+    [id, `${id}@example.test`],
+  );
+  await admin.query(
+    "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,$3,'active')",
+    [workspaceId, id, role],
+  );
+  return id;
+}
+
 export const scope = (workspaceId: string) => ({
   workspaceId,
   actorId: userId,

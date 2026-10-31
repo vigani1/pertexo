@@ -1,5 +1,8 @@
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
+import {
+  JsonataEvaluator,
+  type ExpressionEvaluator,
+} from '@pertexo/workflow-model/server';
 import { describe, expect, it } from 'vitest';
 
 import { WorkflowEngineError } from '../../../src/errors.js';
@@ -69,5 +72,58 @@ describe('what a failed expression does to its step', () => {
       possiblyDispatched: false,
       safeErrorCode,
     });
+  });
+});
+
+describe('what a missing workspace variable does to its step', () => {
+  it.each([
+    [{ kind: 'workspace_variable', name: 'ABSENT' }],
+    [{ kind: 'expression', language: 'jsonata', expression: '$vars.ABSENT' }],
+  ] as const)(
+    'fails the step for good, naming the cause: %j',
+    async (value) => {
+      const evaluator = new JsonataEvaluator();
+      try {
+        const failure: unknown = await resolveMappedNodeInput(
+          {
+            definition: { key: 'core.set', version: 1 },
+            inputMappings: { value },
+          },
+          {
+            runInput: {},
+            completedOutputs: {},
+            directUpstream: new Set(),
+            signal: new AbortController().signal,
+            expressionEvaluator: evaluator,
+            variables: { PRESENT: 1 },
+          },
+        ).catch((caught: unknown) => caught);
+        expect(failure).toBeInstanceOf(WorkflowEngineError);
+        expect(failure).toMatchObject({ code: 'variable_missing' });
+      } finally {
+        await evaluator.shutdown();
+      }
+    },
+  );
+
+  it('resolves a captured value, including zero, false and empty text', async () => {
+    const mapped = await resolveMappedNodeInput(
+      {
+        definition: { key: 'core.set', version: 1 },
+        inputMappings: {
+          zero: { kind: 'workspace_variable', name: 'ZERO' },
+          off: { kind: 'workspace_variable', name: 'OFF' },
+          empty: { kind: 'workspace_variable', name: 'EMPTY' },
+        },
+      },
+      {
+        runInput: {},
+        completedOutputs: {},
+        directUpstream: new Set(),
+        signal: new AbortController().signal,
+        variables: { ZERO: 0, OFF: false, EMPTY: '' },
+      },
+    );
+    expect(mapped).toEqual({ zero: 0, off: false, empty: '' });
   });
 });
