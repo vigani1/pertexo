@@ -186,6 +186,17 @@ export function validateModuleImports(sources) {
     };
     for (const statement of source.statements) {
       if (
+        ts.isImportEqualsDeclaration(statement) &&
+        ts.isExternalModuleReference(statement.moduleReference) &&
+        ts.isStringLiteralLike(statement.moduleReference.expression)
+      ) {
+        inspectSpecifier(
+          statement.moduleReference.expression.text,
+          !statement.isTypeOnly,
+        );
+        continue;
+      }
+      if (
         !ts.isImportDeclaration(statement) &&
         !ts.isExportDeclaration(statement)
       )
