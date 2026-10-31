@@ -14,6 +14,7 @@ import {
 
 const MAX_SOURCES_PER_PAGE = 100;
 const MAX_SOURCE_BYTES_PER_PAGE = 65_536;
+
 /** What this page has used so far, across its workflows. */
 export interface UsageSpending {
   sources: number;
