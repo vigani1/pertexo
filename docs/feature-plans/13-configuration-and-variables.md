@@ -67,7 +67,7 @@ history. Descriptions are settings metadata, not execution values.
 | --- | --- |
 | Value/mapping/AST contracts | workflow-model; complete |
 | Separate database area and Node-only `/variables` entry | Move-only commit; complete |
-| Scoped current edits, usage and publication fence | database/variables + authoring; complete |
+| Scoped current edits, usage and publication fence | core/variables + authoring; complete |
 | Immutable sets, admission/worker references and lifecycle | Complete, migration 0016 |
 | Descriptions, settings/picker and safe publish feedback | API/web; complete |
 
