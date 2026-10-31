@@ -55,6 +55,46 @@ export function registerClaimsBoundedDisjointBatchesChanges(): void {
     ).resolves.toBe(true);
   });
 
+  it('shares a batch equally between workspaces and gives a lone one all of it', async () => {
+    const claim = (limit: number) =>
+      dispatcher.claimBatch({
+        enabledJobNames,
+        leaseDurationMillis: 30_000,
+        leaseOwner: 'share-proof',
+        leaseToken: randomUUID(),
+        limit,
+      });
+    const insert = async (workspaceId: string, count: number) => {
+      await apiDatabase.withWorkspace(workspaceId, async (transaction) => {
+        for (let index = 0; index < count; index += 1)
+          await insertOutboxEvent(transaction, {
+            ...outboxInput(randomUUID()),
+            availableAt: new Date(0),
+          });
+      });
+    };
+    // Anything earlier cases left claimable would take a share.
+    while ((await claim(100)).events.length > 0);
+
+    await insert(workspaceA, 3);
+    const alone = await claim(3);
+    expect(alone.events.map(({ workspaceId }) => workspaceId)).toEqual([
+      workspaceA,
+      workspaceA,
+      workspaceA,
+    ]);
+
+    await insert(workspaceA, 3);
+    await insert(workspaceB, 3);
+    const { events } = await claim(4);
+    expect(
+      events.filter(({ workspaceId }) => workspaceId === workspaceA),
+    ).toHaveLength(2);
+    expect(
+      events.filter(({ workspaceId }) => workspaceId === workspaceB),
+    ).toHaveLength(2);
+  });
+
   it('persists fair workspace rotation across dispatcher process replacement', async () => {
     for (const workspaceId of [workspaceA, workspaceB]) {
       await apiDatabase.withWorkspace(workspaceId, async (transaction) => {

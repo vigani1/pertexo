@@ -147,7 +147,9 @@ async function leaseFairOutboxBatch(
               )
             order by ${sql.identifier(outboxEvents.availableAt.name)},${sql.identifier(outboxEvents.id.name)}
             for update skip locked
-            limit 1
+            -- An equal share of the batch: workspaces stay fair with each other,
+            -- and a lone busy one isn't held to one event per claim.
+            limit (select greatest(1, ${parsed.limit} / count(*)) from workspace_round)
           ) picked
         ), admitted as materialized (
           select candidates.*
