@@ -5,11 +5,10 @@ import {
   type WorkspaceVariablesRequest,
 } from '@pertexo/contracts';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
-export type VariablesScope = WorkspaceApiScope;
-function path(scope: VariablesScope): `/v1${string}` {
+function path(scope: WorkspaceApiScope): `/v1${string}` {
   return `/v1/workspaces/${encodeURIComponent(scope.workspaceId)}/variables`;
 }
-export function readVariables(scope: VariablesScope, signal: AbortSignal) {
+export function readVariables(scope: WorkspaceApiScope, signal: AbortSignal) {
   return scope.apiClient.request({
     path: path(scope),
     signal,
@@ -20,7 +19,7 @@ export function readVariables(scope: VariablesScope, signal: AbortSignal) {
   });
 }
 export function replaceVariables(
-  scope: VariablesScope,
+  scope: WorkspaceApiScope,
   body: WorkspaceVariablesRequest,
   key: string,
 ) {
@@ -36,7 +35,7 @@ export function replaceVariables(
   });
 }
 export function readVariableUsage(
-  scope: VariablesScope,
+  scope: WorkspaceApiScope,
   name: string,
   after: string | null,
   signal: AbortSignal,

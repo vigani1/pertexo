@@ -1,6 +1,6 @@
 import { ContextFieldRow } from './context-row';
 
-import type { VariablesScope } from '@/features/workspace-variables/picker.public';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import jsonata from 'jsonata';
 import {
   canonicalJson,
@@ -24,7 +24,7 @@ import {
 import { useInspectorDraftField } from '../use-draft-field';
 
 type Props = Readonly<{
-  variableScope: VariablesScope;
+  variableScope: WorkspaceApiScope;
   node: WorkflowNode;
   graph: GraphLevel;
   form: NodeFormApi;

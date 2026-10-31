@@ -1,5 +1,5 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
-import type { VariablesScope } from '@/features/workspace-variables/picker.public';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LabelledField } from '@/components/ui/field';
@@ -24,7 +24,7 @@ export function RunValueRow({
   graph: GraphLevel;
   definitions: readonly NodeDefinitionCatalogItem[];
   form: NodeFormApi;
-  variableScope: VariablesScope | undefined;
+  variableScope: WorkspaceApiScope | undefined;
   onChange: (row: InputMappingDraftRow) => void;
   onRemove: () => void;
 }>) {

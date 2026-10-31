@@ -12,7 +12,7 @@ import { Notice } from '@/components/ui/notice';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { variableUsageQueryOptions } from '../data/variables.queries';
-import type { VariablesScope } from '../data/variables.api';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 type UsageRow = WorkspaceVariableUsageResponse['items'][number];
 
 function emptySentence({
@@ -31,7 +31,7 @@ function UsageRows({
   incomplete,
   checkedAll,
 }: Readonly<{
-  scope: VariablesScope;
+  scope: WorkspaceApiScope;
   rows: readonly UsageRow[];
   incomplete: boolean;
   checkedAll: boolean;
@@ -81,7 +81,11 @@ function VariableUsage({
   scope,
   name,
   onRemove,
-}: Readonly<{ scope: VariablesScope; name: string; onRemove?: () => void }>) {
+}: Readonly<{
+  scope: WorkspaceApiScope;
+  name: string;
+  onRemove?: () => void;
+}>) {
   const query = useInfiniteQuery(variableUsageQueryOptions(scope, name));
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -133,7 +137,7 @@ export function VariableUsageDialog({
   onClose,
   onRemove,
 }: Readonly<{
-  scope: VariablesScope;
+  scope: WorkspaceApiScope;
   name: string;
   onClose: () => void;
   onRemove?: () => void;

@@ -3,17 +3,18 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { variablesQueryOptions } from '../data/variables.queries';
-import type { VariablesScope } from '../data/variables.api';
-function valueKind(value: unknown): string {
-  if (typeof value === 'boolean') return 'true/false';
-  if (typeof value === 'number') return 'number';
-  return 'text';
-}
+import { variableType } from '../model/draft';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
+const VALUE_KIND_LABELS = {
+  text: 'text',
+  number: 'number',
+  boolean: 'true/false',
+} as const;
 
 export function VariablePicker({
   scope,
   onChoose,
-}: Readonly<{ scope: VariablesScope; onChoose: (name: string) => void }>) {
+}: Readonly<{ scope: WorkspaceApiScope; onChoose: (name: string) => void }>) {
   const query = useQuery(variablesQueryOptions(scope));
   const descriptionPrefix = useId();
   return (
@@ -43,7 +44,7 @@ export function VariablePicker({
                     $vars.{name}
                   </code>
                   <span className="text-xs text-muted-foreground">
-                    {valueKind(value)}
+                    {VALUE_KIND_LABELS[variableType(value)]}
                   </span>
                 </button>
                 {snapshot.descriptions[name] === undefined ? null : (

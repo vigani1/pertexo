@@ -1,7 +1,7 @@
 import { useInspectorSession } from '../use-session';
 import { useState } from 'react';
 
-import type { VariablesScope } from '@/features/workspace-variables/picker.public';
+import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import type { FormField } from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +32,7 @@ export function ContextFieldRow({
   fields: readonly FormField[] | undefined;
   graph: GraphLevel;
   form: NodeFormApi;
-  variableScope: VariablesScope;
+  variableScope: WorkspaceApiScope;
   onChange: (row: InputMappingDraftRow) => void;
   onRemove: () => void;
 }>) {

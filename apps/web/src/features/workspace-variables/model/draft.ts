@@ -23,7 +23,9 @@ export function variableRows(
   }));
 }
 
-function variableType(value: string | number | boolean): VariableRow['type'] {
+export function variableType(
+  value: string | number | boolean,
+): VariableRow['type'] {
   if (typeof value === 'number') {
     return 'number';
   }
