@@ -20,6 +20,7 @@ import {
   SignUpAvailability,
   type SignUpMode,
 } from '@pertexo/database/tenant-access';
+import { surviveConnectionLoss } from '@pertexo/database/platform';
 import { Pool } from 'pg';
 import { refuseClosedSignUp } from './sign-up-gate.js';
 import { AuthenticationTransactions } from './transactions/context.js';
@@ -91,10 +92,7 @@ export function createBetterAuthRuntime(
     max: config.database.max,
     application_name: 'pertexo-api-authentication',
   });
-  // PostgreSQL ends idle connections on a restart or failover. The pool drops
-  // them and the next checkout reconnects, but an error event nobody listens
-  // for would end the whole API process.
-  pool.on('error', () => undefined);
+  surviveConnectionLoss(pool);
   const emailProofs = new OwnedEmailProofs(
     pool,
     config.mail,
