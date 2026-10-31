@@ -46,11 +46,21 @@ const STATEMENT_TIMEOUT_MILLIS = 15_000;
 const DELIVERY_BATCH_SIZE = 1_000;
 const MAXIMUM_DELIVERY_BATCHES_PER_CYCLE = 20;
 
+/**
+ * The worker's health check ends a worker whose scan hasn't settled in 5 minutes,
+ * so a hung PostgreSQL has to fail the scan well before that, or an outage would
+ * restart the worker. The scan's statements are small and don't need a maintenance
+ * job's budget.
+ */
+export const STALLED_WORK_POOL_ROLE = 'worker';
+
 export function createStalledWorkStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ): StalledWorkStore {
-  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
+  const lease = acquireDatabasePool(config, runtime, {
+    role: STALLED_WORK_POOL_ROLE,
+  });
   let undatedDeliveriesChecked = false;
   return Object.freeze({
     recoverDue: async (limit: number, signal: AbortSignal) => {
