@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { Pool, type PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 
 const OAUTH2_SETTINGS = {
   grantType: 'authorization_code',
