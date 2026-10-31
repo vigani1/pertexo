@@ -39,6 +39,7 @@ describeFaults('a worker frozen past its leases, then thawed', () => {
   let stack: Stack;
   let second: ServiceProcess;
   let facts: Readonly<Record<string, RunFacts>>;
+  let factsAfterThaw: Readonly<Record<string, RunFacts>>;
   let exits: readonly ExitRecord[];
   let active: number;
   const runs: Record<string, string> = {};
@@ -76,6 +77,11 @@ describeFaults('a worker frozen past its leases, then thawed', () => {
     );
     // The thawed worker's late heartbeats and completions land in this time.
     await delay(THAW_SETTLE_MS);
+    factsAfterThaw = await waitForRunsToEnd(
+      stack,
+      Object.values(runs),
+      RECOVERY_LIMIT_MS,
+    );
     exits = [...stack.worker.exits];
     active = await activeRuns(stack, workspace);
   }, SCENARIO_LIMIT_MS);
@@ -107,6 +113,10 @@ describeFaults('a worker frozen past its leases, then thawed', () => {
       status === 'succeeded' ? 1 : 0,
     );
     expect(['succeeded', 'outcome_unknown']).toContain(status);
+  });
+
+  it('lets the thawed worker change nothing that was settled', () => {
+    expect(factsAfterThaw).toEqual(facts);
   });
 
   it('keeps the thawed worker running', () => {
