@@ -20,8 +20,7 @@
     "@pertexo/database": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "drizzle-orm": "0.45.4",
-    "pg": "8.23.1",
-    "zod": "4.6.7"
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@pertexo/workflow-engine": "workspace:*",
