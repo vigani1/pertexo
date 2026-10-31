@@ -257,6 +257,7 @@ export function telemetryClient(outcomes: ClientQueryOutcome[]) {
     emit(event: string, value?: unknown): void {
       for (const listener of listeners.get(event) ?? []) listener(value);
     },
+    on: vi.fn(),
     once(event: string, listener: (value?: unknown) => void) {
       const current = listeners.get(event) ?? [];
       current.push(listener);

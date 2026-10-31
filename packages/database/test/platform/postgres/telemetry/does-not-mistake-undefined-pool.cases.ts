@@ -138,6 +138,7 @@ export function registerDoesNotMistakeUndefinedPool(): void {
       { meter: telemetry.meter, monitorLockWaits: false },
     );
     const client = {
+      on: vi.fn(),
       once: vi.fn(),
       release: vi.fn(),
       query(query: string): Promise<{ rows: unknown[] }> {
