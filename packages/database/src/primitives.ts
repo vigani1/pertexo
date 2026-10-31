@@ -6,10 +6,8 @@ export {
 } from './platform/idempotency/repository.js';
 export { appendAuditFact } from './governance/audit/events.repository.js';
 export {
-  parseWorkspaceId,
   withTenantScopedClient,
   withTenantScopedReadClient,
-  type WorkspaceTransaction,
 } from './tenant-access/transactions.js';
 // Until tenant-access moves: every database area still uses these.
 export {

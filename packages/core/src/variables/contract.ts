@@ -1,35 +1,41 @@
 import type {
+  WorkspaceVariablesCommandResponse,
   WorkspaceVariablesRequest,
   WorkspaceVariablesResponse,
-  WorkspaceVariablesCommandResponse,
   WorkspaceVariableUsageCursor,
   WorkspaceVariableUsageResponse,
 } from '@pertexo/contracts';
+
 export type VariableScope = Readonly<{
   workspaceId: string;
   actorId: string;
   signal?: AbortSignal;
-  requestId?: string;
-  traceId?: string;
 }>;
+export type ReplaceWorkspaceVariablesInput = VariableScope &
+  WorkspaceVariablesRequest &
+  Readonly<{
+    idempotencyKey: string;
+    requestId?: string;
+    traceId?: string;
+  }>;
+export type VariableUsageInput = VariableScope &
+  Readonly<{
+    name: string;
+    limit: number;
+    after?: WorkspaceVariableUsageCursor;
+  }>;
+export type VariableUsagePage = Omit<
+  WorkspaceVariableUsageResponse,
+  'nextCursor'
+> &
+  Readonly<{ next: WorkspaceVariableUsageCursor | null }>;
+
 export interface WorkspaceVariablesStore {
   read(input: VariableScope): Promise<WorkspaceVariablesResponse>;
   replace(
-    input: VariableScope &
-      WorkspaceVariablesRequest &
-      Readonly<{ idempotencyKey: string }>,
+    input: ReplaceWorkspaceVariablesInput,
   ): Promise<WorkspaceVariablesCommandResponse>;
-  usage(
-    input: VariableScope &
-      Readonly<{
-        name: string;
-        limit: number;
-        after?: WorkspaceVariableUsageCursor;
-      }>,
-  ): Promise<
-    Omit<WorkspaceVariableUsageResponse, 'nextCursor'> &
-      Readonly<{ next: WorkspaceVariableUsageCursor | null }>
-  >;
+  usage(input: VariableUsageInput): Promise<VariableUsagePage>;
   close(): Promise<void>;
 }
 export class WorkspaceVariablesConflictError extends Error {

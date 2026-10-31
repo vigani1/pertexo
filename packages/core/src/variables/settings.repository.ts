@@ -1,4 +1,3 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   acquireDatabasePool,
   type DatabaseConfig,
@@ -6,45 +5,62 @@ import {
 } from '@pertexo/database/platform';
 import {
   lockWorkspaceAuthority,
-  parseWorkspaceId,
   readWorkspaceAuthority,
   withTenantScopedClient,
   withTenantScopedReadClient,
 } from '@pertexo/database/primitives';
-import { databaseSchema } from '@pertexo/database/schema';
-import { rolesForCapability } from '@pertexo/workflow-model';
-import { readWorkspaceVariables } from './settings.queries.js';
+import {
+  BROWSABLE_WORKSPACE_STATUSES,
+  rolesForCapability,
+  type AuthorizationCapability,
+} from '@pertexo/workflow-model';
+import type { PoolClient } from 'pg';
+
+import type { VariableScope, WorkspaceVariablesStore } from './contract.js';
 import { replaceWorkspaceVariables } from './sets.repository.js';
+import { readWorkspaceVariables } from './settings.queries.js';
 import { readVariableUsage } from './usage.queries.js';
-import type { WorkspaceVariablesStore } from './contract.js';
+
+/** Each action opens its own transaction and decides authority inside it. */
 export function createWorkspaceVariablesStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ): WorkspaceVariablesStore {
   const lease = acquireDatabasePool(config, runtime);
+  /** A suspended workspace stays readable (ADR 013/027); its writes don't. */
+  function browse<T>(
+    input: VariableScope,
+    capability: AuthorizationCapability,
+    read: (client: PoolClient) => Promise<T>,
+  ): Promise<T> {
+    return withTenantScopedReadClient(
+      lease.pool,
+      input,
+      async (client) => {
+        await readWorkspaceAuthority(client, input.workspaceId, {
+          actorId: input.actorId,
+          roles: rolesForCapability(capability),
+          allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
+        });
+        return read(client);
+      },
+      input,
+    );
+  }
   return {
     close: () => lease.close(),
     read: (input) =>
-      withTenantScopedReadClient(
-        lease.pool,
-        { workspaceId: input.workspaceId, actorId: input.actorId },
-        async (client) => {
-          await readWorkspaceAuthority(client, input.workspaceId, {
-            actorId: input.actorId,
-            roles: rolesForCapability('workspace:read'),
-            allowedStatuses: ['active', 'suspended', 'pending_deletion'],
-          });
-          return readWorkspaceVariables({
-            db: drizzle(client, { schema: databaseSchema }),
-            workspaceId: parseWorkspaceId(input.workspaceId),
-          });
-        },
-        input.signal === undefined ? {} : { signal: input.signal },
+      browse(input, 'workspace:read', (client) =>
+        readWorkspaceVariables(client, input.workspaceId),
+      ),
+    usage: (input) =>
+      browse(input, 'workflow:read', (client) =>
+        readVariableUsage(client, input),
       ),
     replace: (input) =>
       withTenantScopedClient(
         lease.pool,
-        { workspaceId: input.workspaceId, actorId: input.actorId },
+        input,
         async (client) => {
           await lockWorkspaceAuthority(
             client,
@@ -54,21 +70,7 @@ export function createWorkspaceVariablesStore(
           );
           return replaceWorkspaceVariables(client, input);
         },
-        input.signal === undefined ? {} : { signal: input.signal },
-      ),
-    usage: (input) =>
-      withTenantScopedReadClient(
-        lease.pool,
-        { workspaceId: input.workspaceId, actorId: input.actorId },
-        async (client) => {
-          await readWorkspaceAuthority(client, input.workspaceId, {
-            actorId: input.actorId,
-            roles: rolesForCapability('workflow:read'),
-            allowedStatuses: ['active', 'suspended', 'pending_deletion'],
-          });
-          return readVariableUsage(client, input);
-        },
-        input.signal === undefined ? {} : { signal: input.signal },
+        input,
       ),
   };
 }
