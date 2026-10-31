@@ -149,5 +149,6 @@ export function buildWorkflowExecutable(input: {
       envelope: normalizedEnvelope,
       checksum: computeWorkflowExecutableChecksum(normalizedEnvelope),
     }),
+    catalog,
   );
 }

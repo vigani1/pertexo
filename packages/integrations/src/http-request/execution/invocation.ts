@@ -44,18 +44,22 @@ export function prepareInvocation(
   const connections = runtime.connections;
   // The connection is optional: a public API needs no auth headers.
   const connectionId = invocation.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT];
+  // GET and HEAD only read (RFC 9110 §9.2.1), so a repeat can't cause a side
+  // effect: their failures retry and can follow a failure link instead of
+  // leaving the outcome unknown.
+  const repeatable = config.method === 'GET' || config.method === 'HEAD';
+  // An attempt planned before classes came from the method still says unsafe.
+  const expectedClass =
+    runtime.sideEffectClass === 'unsafe' ||
+    (repeatable && runtime.sideEffectClass === 'safe');
   const invalidDispatchRuntime =
     (connectionId !== undefined && connections?.assertCurrent === undefined) ||
-    runtime.sideEffectClass !== 'unsafe' ||
+    !expectedClass ||
     runtime.providerIdempotencyKey !== undefined ||
     Object.keys(invocation.connectionRefs).some(
       (slot) => slot !== HTTP_REQUEST_CONNECTION_SLOT,
     );
   if (invalidDispatchRuntime) throw failedConfiguration();
-  // GET and HEAD only read (RFC 9110 §9.2.1), so a repeat can't cause a side
-  // effect: their failures retry and can follow a failure link instead of
-  // leaving the outcome unknown.
-  const repeatable = config.method === 'GET' || config.method === 'HEAD';
   const sideEffect = repeatable
     ? HTTP_SIDE_EFFECT_CLASS.safe
     : HTTP_SIDE_EFFECT_CLASS.unsafe;

@@ -1,4 +1,4 @@
-import { parseNodeCatalog } from '@pertexo/node-sdk';
+import { parseNodeCatalog, type NodeCatalog } from '@pertexo/node-sdk';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import { computeWorkflowExecutableChecksum } from './identity.js';
 import {
@@ -27,13 +27,13 @@ export function parseBoundary(input: {
   readonly envelope: unknown;
   readonly catalog: unknown;
 }): WorkflowExecutable {
-  return readUntrusted(() => readBoundary(input));
+  return readUntrusted(() => readBoundary(input)).executable;
 }
 
 function readBoundary(input: {
   readonly envelope: unknown;
   readonly catalog: unknown;
-}): WorkflowExecutable {
+}): Readonly<{ executable: WorkflowExecutable; catalog: NodeCatalog }> {
   // Authored order survives, so a step's fields reach it as they were laid out.
   const normalizedEnvelope: unknown = normalizeBoundedEngineValue(
     input.envelope,
@@ -48,8 +48,11 @@ function readBoundary(input: {
     definitions: catalog.definitions.map(({ definition }) => definition),
   });
   return {
-    graph: validateExecutableGraph(rawGraph, graph, catalog),
-    runtimePolicies,
+    executable: {
+      graph: validateExecutableGraph(rawGraph, graph, catalog),
+      runtimePolicies,
+    },
+    catalog,
   };
 }
 
@@ -66,9 +69,13 @@ export function verifyWorkflowExecutable(input: {
   readonly checksum: unknown;
   readonly catalog: unknown;
 }): CompiledWorkflowExecutable {
-  const envelope = parseWorkflowExecutable(input);
+  const { executable, catalog } = readUntrusted(() => readBoundary(input));
+  const envelope = freezeExecutable(executable) as VerifiedWorkflowExecutable;
   const checksum = computeWorkflowExecutableChecksum(envelope);
   if (input.checksum !== checksum)
     fail('workflow executable checksum does not match');
-  return registerExecutableIdentity(Object.freeze({ envelope, checksum }));
+  return registerExecutableIdentity(
+    Object.freeze({ envelope, checksum }),
+    catalog,
+  );
 }

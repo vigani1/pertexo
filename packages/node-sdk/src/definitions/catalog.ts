@@ -64,6 +64,11 @@ export interface NodeIntegrationOperation {
   readonly operationKey: string;
 }
 
+export interface ReadOnlyConfigCondition {
+  readonly configKey: string;
+  readonly values: readonly string[];
+}
+
 /** One node definition: its contract, ports, requirements and pinned executor. */
 export interface NodeManifest {
   readonly definition: DefinitionIdentity;
@@ -80,6 +85,8 @@ export interface NodeManifest {
   readonly optionalConnections?: readonly string[] | undefined;
   readonly integration?: NodeIntegrationOperation | undefined;
   readonly retryClass: RetryClass;
+  /** Config values under which an attempt only reads, whatever `retryClass` pins: an HTTP GET. */
+  readonly readOnlyWhen?: ReadOnlyConfigCondition | undefined;
   readonly resourceClass: ResourceClass;
   readonly capabilities: readonly string[];
   readonly executor: ExecutorIdentity;
@@ -155,6 +162,13 @@ export const nodeManifestSchema = z
     optionalConnections: identifiersSchema.optional(),
     integration: integrationOperationSchema.optional(),
     retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
+    readOnlyWhen: z
+      .object({
+        configKey: z.string().min(1),
+        values: z.array(z.string().min(1)).min(1),
+      })
+      .strict()
+      .optional(),
     resourceClass: z.enum(['io', 'cpu']),
     capabilities: identifiersSchema,
     executor: executorIdentitySchema,
