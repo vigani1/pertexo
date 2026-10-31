@@ -57,11 +57,11 @@ const trustedProxyCidrsSchema = z
       .min(1),
   );
 
-/** A whole number within what the database accepts, or startup stops and names the variable. */
+/** A whole number within what the database accepts. */
 const instanceLimit = (fallback: number, maximum: number) =>
   z.coerce.number().int().min(1).max(maximum).default(fallback);
 
-const apiEnvironmentSchema = databaseClientEnvironmentSchema.extend({
+const instanceLimitsSchema = z.object({
   WORKSPACE_ACTIVE_RUN_LIMIT: instanceLimit(
     DEFAULT_INSTANCE_LIMITS.activeRunLimit,
     10_000,
@@ -78,6 +78,27 @@ const apiEnvironmentSchema = databaseClientEnvironmentSchema.extend({
     DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
     1_000_000,
   ),
+});
+
+/** An operator's typo: naming the setting tells them what to fix, and it holds no secret. */
+export class InvalidInstanceLimitError extends Error {
+  public override readonly name = 'InvalidInstanceLimitError';
+  public constructor(public readonly setting: string) {
+    super(`${setting} must be a whole number within its allowed range`);
+  }
+}
+
+function parseInstanceLimits(
+  environment: Record<string, string | undefined>,
+): z.output<typeof instanceLimitsSchema> {
+  const parsed = instanceLimitsSchema.safeParse(environment);
+  if (parsed.success) return parsed.data;
+  throw new InvalidInstanceLimitError(
+    String(parsed.error.issues[0]?.path[0] ?? 'instance limit'),
+  );
+}
+
+const apiEnvironmentSchema = databaseClientEnvironmentSchema.extend({
   HOST: z.string().trim().min(1).default('0.0.0.0'),
   NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
   LOG_LEVEL: z
@@ -136,6 +157,7 @@ export function parseApiConfig(
   environment: Record<string, string | undefined> = process.env,
 ): ApiConfig {
   const parsed = apiEnvironmentSchema.parse(environment);
+  const limits = parseInstanceLimits(environment);
   const observability = parseObservabilityConfig({
     serviceName: 'pertexo-api',
     serviceVersion: parsed.SERVICE_VERSION,
@@ -161,11 +183,11 @@ export function parseApiConfig(
   return Object.freeze({
     ...(callbacks === undefined ? {} : { callbacks }),
     capacity: Object.freeze({
-      activeRunLimit: parsed.WORKSPACE_ACTIVE_RUN_LIMIT,
-      queuedRunLimit: parsed.WORKSPACE_QUEUED_RUN_LIMIT,
-      artifactCountLimit: parsed.WORKSPACE_FILE_LIMIT,
+      activeRunLimit: limits.WORKSPACE_ACTIVE_RUN_LIMIT,
+      queuedRunLimit: limits.WORKSPACE_QUEUED_RUN_LIMIT,
+      artifactCountLimit: limits.WORKSPACE_FILE_LIMIT,
     }),
-    webhookEndpointBurstLimit: parsed.WEBHOOK_ENDPOINT_BURST_LIMIT,
+    webhookEndpointBurstLimit: limits.WEBHOOK_ENDPOINT_BURST_LIMIT,
     codeSettings: parseCodeSettings(environment),
     ...(artifacts === undefined ? {} : { artifacts }),
     ...(connections === undefined ? {} : { connections }),

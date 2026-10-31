@@ -6,6 +6,7 @@ const events = (event) =>
   process.stdout.write(`${JSON.stringify({ event })}\n`);
 const database = {
   checkReadiness: () => Promise.resolve(),
+  applyInstanceCapacity: () => Promise.resolve(),
   close: async () => {
     events('database.closed');
     if (process.env.DB_CLOSE_FAIL === '1')
