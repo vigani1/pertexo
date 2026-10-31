@@ -1,3 +1,5 @@
+import { setTimeout as delay } from 'node:timers/promises';
+
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -83,12 +85,19 @@ describeIntegration('checking a draft before it is published', () => {
       payload: { graph },
     });
     expect(saved.statusCode, saved.body).toBe(200);
-    const checked = await application.inject({
-      method: 'POST',
-      url: `${base}/validate`,
-      headers: mutationHeaders(owner),
-      payload: {},
-    });
+    const validate = () =>
+      application.inject({
+        method: 'POST',
+        url: `${base}/validate`,
+        headers: mutationHeaders(owner),
+        payload: {},
+      });
+    let checked = await validate();
+    // A busy machine's validator asks for a retry, which is what the page offers.
+    for (let tries = 1; checked.statusCode === 503 && tries < 5; tries += 1) {
+      await delay(1_000);
+      checked = await validate();
+    }
     expect(checked.statusCode, checked.body).toBe(200);
     return {
       report: checked.json<{
