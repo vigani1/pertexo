@@ -47,6 +47,12 @@ test('a step that can’t run is flagged in words before publish', async ({
   await expect(
     dialog.getByRole('button', { name: /Publish v1/u }),
   ).toBeDisabled();
+  // The header's Publish opens this so the way to fix it can be reached.
+  await dialog.getByRole('button', { name: /^Fix:.*condition/iu }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
+    'Gate with no input',
+  );
 });
 
 test('a failed test says what’s wrong with the step', async ({
