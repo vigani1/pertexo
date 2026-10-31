@@ -45,6 +45,10 @@ export const queuedJobs = (stack: Stack, name: string): Promise<number> =>
     ),
   );
 
+/** What sits in Redis's failed set for this queue, where nothing reads it again. */
+export const failedJobs = (stack: Stack, name: string): Promise<number> =>
+  withQueue(stack, name, async (queue) => queue.getFailedCount());
+
 /**
  * Waits until the outbox holds at least this many events of each job kind and
  * all of them have reached Redis, so losing Redis then loses those jobs.
