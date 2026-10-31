@@ -36,6 +36,21 @@ test('qualifies what it publishes before anyone can pull it', () => {
     assert.ok(text.includes(check), check);
 });
 
+// A leg dropped from a matrix takes its tests with it while every other leg stays green.
+test('the gate requires a split suite, and every one of its shards exists', () => {
+  for (const name of ['integration', 'browser']) {
+    const shards = ci.jobs[name].strategy.matrix.include.flatMap(
+      ({ shard }) => shard ?? [],
+    );
+    assert.ok(shards.length > 1, name);
+    assert.deepEqual(
+      shards,
+      shards.map((_, index) => `${index + 1}/${shards.length}`),
+    );
+    assert.ok(neededBy('ci-passed').has(name), name);
+  }
+});
+
 // ops-09: 7 of 75 main pushes failed, one on a docs commit that can't have caused it.
 // Tags name commits; only a release says a commit is good.
 it('publishes an image for every merged commit, whatever the test jobs did', () => {
