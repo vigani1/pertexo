@@ -2,15 +2,20 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { formatDurationMs } from '@/lib/format/time';
 
 /**
- * The longest a run may take (`WORKFLOW_EXECUTION_LIMITS` in
- * workflow-model, which the browser can't import; a test pins the two). A
- * workflow without its own setting gets this limit.
+ * The longest duration a workflow may set (`WORKFLOW_EXECUTION_LIMITS` in
+ * workflow-model, which the browser can't import; a test pins the two).
  */
 export const RUN_DURATION_LIMIT_MS = 3_600_000;
 
 const MINUTE_MS = 60_000;
 
-/** The durations offered, shortest first, ending at the limit. */
+/**
+ * A workflow's own limit, or `undefined` for none: its runs get no deadline at
+ * all, which is the only way a Wait longer than an hour can finish.
+ */
+export type RunDuration = number | undefined;
+
+/** The limits offered, shortest first, after the choice of having none. */
 export const RUN_DURATION_CHOICES: readonly number[] = [
   MINUTE_MS,
   5 * MINUTE_MS,
@@ -19,27 +24,35 @@ export const RUN_DURATION_CHOICES: readonly number[] = [
   RUN_DURATION_LIMIT_MS,
 ];
 
-/** How long this graph lets a run take, its own setting or the limit. */
+/** How long this graph lets a run take. */
 export function maxRunDurationOf(
   graph: Pick<WorkflowGraphContract, 'settings'> | undefined,
-): number {
-  return graph?.settings.maxRunDurationMs ?? RUN_DURATION_LIMIT_MS;
+): RunDuration {
+  return graph?.settings.maxRunDurationMs;
 }
 
 /** The graph with a new maximum run duration and everything else kept. */
 export function withMaxRunDuration(
   graph: WorkflowGraphContract,
-  maxRunDurationMs: number,
+  maxRunDurationMs: RunDuration,
 ): WorkflowGraphContract {
-  return { ...graph, settings: { ...graph.settings, maxRunDurationMs } };
+  const { maxRunDurationMs: _previous, ...settings } = graph.settings;
+  return {
+    ...graph,
+    settings:
+      maxRunDurationMs === undefined
+        ? settings
+        : { ...settings, maxRunDurationMs },
+  };
 }
 
-/** "1 minute", "15 minutes", "1 hour"; other values as a compact duration. */
-export function describeRunDuration(durationMs: number): string {
-  if (durationMs === RUN_DURATION_LIMIT_MS) return '1 hour';
-  if (durationMs % MINUTE_MS === 0) {
-    const minutes = durationMs / MINUTE_MS;
+/** "No limit", "1 minute", "15 minutes", "1 hour"; others as a compact duration. */
+export function describeRunDuration(duration: RunDuration): string {
+  if (duration === undefined) return 'No limit';
+  if (duration === RUN_DURATION_LIMIT_MS) return '1 hour';
+  if (duration % MINUTE_MS === 0) {
+    const minutes = duration / MINUTE_MS;
     return minutes === 1 ? '1 minute' : `${String(minutes)} minutes`;
   }
-  return formatDurationMs(durationMs);
+  return formatDurationMs(duration);
 }

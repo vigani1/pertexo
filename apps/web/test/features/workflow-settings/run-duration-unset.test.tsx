@@ -18,7 +18,7 @@ const settingsPath = `/w/${workspaceId}/workflows/${workflowId}/settings`;
 
 describe('workflow settings: run duration with no setting', () => {
   // backend-gaps-18: the page says 1 hour, while acceptance stores no deadline at all.
-  it.fails('says such a workflow has no time limit', async () => {
+  it('says such a workflow has no time limit', async () => {
     installQueries();
     mockServer.use(
       http.get(`${workflowApi}/draft`, () => draftResponse(emptyGraph, etag)),

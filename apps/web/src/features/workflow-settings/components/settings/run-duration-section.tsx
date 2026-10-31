@@ -19,6 +19,7 @@ import {
   RUN_DURATION_CHOICES,
   describeRunDuration,
   maxRunDurationOf,
+  type RunDuration,
 } from '../../model/run-duration';
 import { visibleSettingsData } from '../../model/settings-query';
 import { useRunDurationChange } from '../../data/mutations/use-run-duration-change';
@@ -28,20 +29,35 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 
-function choicesWith(current: number): readonly number[] {
-  return RUN_DURATION_CHOICES.includes(current)
-    ? RUN_DURATION_CHOICES
-    : [...RUN_DURATION_CHOICES, current].sort((left, right) => left - right);
+const NO_LIMIT_VALUE = 'none';
+
+const choiceValue = (duration: RunDuration): string =>
+  duration === undefined ? NO_LIMIT_VALUE : String(duration);
+
+function choicesWith(current: RunDuration): readonly RunDuration[] {
+  const limits =
+    current === undefined || RUN_DURATION_CHOICES.includes(current)
+      ? RUN_DURATION_CHOICES
+      : [...RUN_DURATION_CHOICES, current].sort((left, right) => left - right);
+  return [undefined, ...limits];
+}
+
+/** What a stored duration does to a run, as the end of a sentence. */
+function liveLimit(duration: RunDuration): string {
+  return duration === undefined
+    ? 'has no time limit'
+    : `stops runs after ${describeRunDuration(duration)}`;
 }
 
 /** Where the draft stands against what runs today, in one sentence. */
 function publishNote(
-  draftMs: number,
-  live: Readonly<{ versionNumber: number; durationMs: number }> | undefined,
+  draftMs: RunDuration,
+  live:
+    Readonly<{ versionNumber: number; durationMs: RunDuration }> | undefined,
 ): string {
   if (live === undefined || live.durationMs === draftMs)
     return 'Changes go into the draft. Publish to apply them to new runs.';
-  return `The draft says ${describeRunDuration(draftMs)}. Live v${String(live.versionNumber)} stops runs after ${describeRunDuration(live.durationMs)} until you publish.`;
+  return `The draft says ${describeRunDuration(draftMs).toLowerCase()}. Live v${String(live.versionNumber)} ${liveLimit(live.durationMs)} until you publish.`;
 }
 
 type Scope = Readonly<{
@@ -109,17 +125,21 @@ function useDurationChoice({
     workspaceId,
     workflowId: workflow?.id ?? '',
   });
-  const [requested, setRequested] = useState<number>();
-  const [unsaved, setUnsaved] = useState<number>();
+  // Wrapped, since `undefined` is itself a choice: no limit.
+  const [requested, setRequested] = useState<{ duration: RunDuration }>();
+  const [unsaved, setUnsaved] = useState<{ duration: RunDuration }>();
 
-  async function choose(durationMs: number) {
-    setRequested(durationMs);
-    const saved = await change.apply(durationMs);
+  async function choose(duration: RunDuration) {
+    setRequested({ duration });
+    const saved = await change.apply(duration);
     setRequested(undefined);
-    setUnsaved(saved ? undefined : durationMs);
+    setUnsaved(saved ? undefined : { duration });
     if (saved)
       notifications.success({
-        title: `Runs may take up to ${describeRunDuration(durationMs)} in the draft`,
+        title:
+          duration === undefined
+            ? 'Runs have no time limit in the draft'
+            : `Runs may take up to ${describeRunDuration(duration)} in the draft`,
         description: 'Publish to apply it to new runs.',
       });
   }
@@ -141,11 +161,11 @@ function DurationPicker({
   note,
   onChoose,
 }: Readonly<{
-  durationMs: number;
+  durationMs: RunDuration;
   disabled: boolean;
   saving: boolean;
   note: string;
-  onChoose: (durationMs: number) => void;
+  onChoose: (durationMs: RunDuration) => void;
 }>) {
   const choices = choicesWith(durationMs);
   return (
@@ -154,13 +174,14 @@ function DurationPicker({
       <div className="flex flex-wrap items-center gap-3">
         <Select
           items={choices.map((choice) => ({
-            value: String(choice),
+            value: choiceValue(choice),
             label: describeRunDuration(choice),
           }))}
-          value={String(durationMs)}
+          value={choiceValue(durationMs)}
           disabled={disabled}
           onValueChange={(value) => {
-            if (typeof value === 'string') onChoose(Number(value));
+            if (typeof value === 'string')
+              onChoose(value === NO_LIMIT_VALUE ? undefined : Number(value));
           }}
         >
           <SelectTrigger
@@ -172,7 +193,7 @@ function DurationPicker({
           </SelectTrigger>
           <SelectContent>
             {choices.map((choice) => (
-              <SelectItem key={choice} value={String(choice)}>
+              <SelectItem key={choiceValue(choice)} value={choiceValue(choice)}>
                 {describeRunDuration(choice)}
               </SelectItem>
             ))}
@@ -194,8 +215,8 @@ function DurationPicker({
 }
 
 /**
- * The longest a run of this workflow may take before Pertexo stops it, up to
- * an hour. Changing it edits the draft; publishing applies it.
+ * The longest a run of this workflow may take before Pertexo stops it, or no
+ * limit. Changing it edits the draft; publishing applies it.
  */
 export function RunDurationSection({
   apiClient,
@@ -217,7 +238,7 @@ export function RunDurationSection({
   return (
     <SettingsSection
       title="Run duration"
-      description="How long a run may take before Pertexo stops it, up to 1 hour."
+      description="How long a run may take before Pertexo stops it. With no limit, a run takes as long as it needs."
     >
       <QueryView
         query={stored.draft}
@@ -226,11 +247,15 @@ export function RunDurationSection({
       >
         {(snapshot) => {
           const draftMs =
-            choice.requested ?? maxRunDurationOf(snapshot.draft.graph);
+            choice.requested === undefined
+              ? maxRunDurationOf(snapshot.draft.graph)
+              : choice.requested.duration;
           if (!canUpdate)
             return (
               <p className="text-sm text-muted-foreground">
-                Runs stop after {describeRunDuration(draftMs)} in the draft.{' '}
+                {draftMs === undefined
+                  ? 'Runs have no time limit in the draft.'
+                  : `Runs stop after ${describeRunDuration(draftMs)} in the draft.`}{' '}
                 {roleLimitSentence(
                   workspace.role,
                   'workflow:update',
@@ -264,7 +289,7 @@ export function RunDurationSection({
                 variant="outline"
                 onClick={() => {
                   if (choice.unsaved !== undefined)
-                    void choice.choose(choice.unsaved);
+                    void choice.choose(choice.unsaved.duration);
                 }}
               >
                 Apply again
