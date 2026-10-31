@@ -124,9 +124,12 @@ async function claimFailureNotificationDelivery(
       eq(intents.id, intentId),
     );
     const row = await readFailureIntent(client, { workspaceId, intentId });
-    if (row === undefined)
-      throw new FailureNotificationStateError('Intent not found');
-    if (['delivered', 'dead_letter', 'outcome_unknown'].includes(row.status))
+    // Run retention takes the intent and leaves the outbox row, so a late copy of
+    // the job has nothing left to deliver.
+    if (
+      row === undefined ||
+      ['delivered', 'dead_letter', 'outcome_unknown'].includes(row.status)
+    )
       return Object.freeze({ kind: 'terminal' as const });
     if (row.status === 'claimed' || row.status === 'dispatching')
       return Object.freeze({ kind: 'busy' as const });

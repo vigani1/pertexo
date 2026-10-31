@@ -184,9 +184,7 @@ describeFaults('an old alert job whose run was retained away', () => {
     expect(asked).toBeTypeOf('number');
   });
 
-  // reliability review: its job fails every time, so it is asked for 30 times over a
-  // day and then listed as stuck work, for each old alert on the install.
-  it.fails('stops asking for a job that has nothing left to do', () => {
+  it('stops asking for a job that has nothing left to do', () => {
     expect(asked).toBeLessThanOrEqual(1);
   });
 });
