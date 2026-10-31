@@ -148,6 +148,7 @@ export function betterAuthIdentityRuntime() {
       },
     },
     sessions: {},
+    signUp: { availableToEveryone: () => Promise.resolve(true) },
     close: () => Promise.resolve(),
   } as unknown as BetterAuthRuntime;
   const runtime = {
