@@ -90,6 +90,8 @@ describe.skipIf(!enabled)('real Usage browser, API and PostgreSQL', () => {
     const versionId = randomUUID();
     const artifactId = randomUUID();
     const inspection = api.database();
+    // As an operator sets them; 4 active runs must reach 80% for the inbox warning.
+    await inspection.query('select app.apply_instance_capacity(5,100,1000)');
     const seed = await inspection.connect();
     try {
       await seed.query('begin');
