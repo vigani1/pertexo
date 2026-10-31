@@ -3,9 +3,13 @@ import {
   workspaceVariablesCommandResponseSchema,
   workspaceVariableUsageResponseSchema,
   workspaceVariableUsageCursorSchema,
-  type WorkspaceVariableUsageCursor,
 } from '@pertexo/contracts';
-import type { WorkspaceVariablesStore } from '@pertexo/core/server';
+import type {
+  ReplaceWorkspaceVariablesInput,
+  VariableScope,
+  VariableUsageInput,
+  WorkspaceVariablesStore,
+} from '@pertexo/core/server';
 
 import {
   applicationError,
@@ -16,38 +20,24 @@ import {
   encodeOpaqueCursor,
 } from '../platform/http/opaque-cursor.js';
 
+/** HTTP's view of the store: response checks and the opaque usage cursor. */
 export class WorkspaceVariablesService {
   constructor(private readonly store: WorkspaceVariablesStore) {}
-  async read(input: Parameters<WorkspaceVariablesStore['read']>[0]) {
+  async read(input: VariableScope) {
     return workspaceVariablesResponseSchema.parse(await this.store.read(input));
   }
-  async replace(input: Parameters<WorkspaceVariablesStore['replace']>[0]) {
+  async replace(input: ReplaceWorkspaceVariablesInput) {
     return workspaceVariablesCommandResponseSchema.parse(
       await this.store.replace(input),
     );
   }
-  async usage(
-    input: Omit<Parameters<WorkspaceVariablesStore['usage']>[0], 'after'> & {
-      after?: string | undefined;
-    },
-  ) {
-    let after: WorkspaceVariableUsageCursor | undefined;
-    if (input.after !== undefined) {
-      after = decodeOpaqueCursor(
-        workspaceVariableUsageCursorSchema,
-        input.after,
-      );
-      if (after === undefined)
-        return throwApplicationError(
-          applicationError('request.invalid', {
-            safeDetail: 'Reference cursor is invalid. Restart this check.',
-          }),
-        );
-    }
-    const { after: _encoded, ...scope } = input;
+  async usage({
+    after,
+    ...scope
+  }: Omit<VariableUsageInput, 'after'> & { after?: string | undefined }) {
     const result = await this.store.usage({
       ...scope,
-      ...(after === undefined ? {} : { after }),
+      ...(after === undefined ? {} : { after: decodeContinuation(after) }),
     });
     return workspaceVariableUsageResponseSchema.parse({
       items: result.items,
@@ -58,4 +48,14 @@ export class WorkspaceVariablesService {
           : encodeOpaqueCursor(workspaceVariableUsageCursorSchema, result.next),
     });
   }
+}
+
+function decodeContinuation(after: string) {
+  const cursor = decodeOpaqueCursor(workspaceVariableUsageCursorSchema, after);
+  if (cursor !== undefined) return cursor;
+  return throwApplicationError(
+    applicationError('request.invalid', {
+      safeDetail: 'Reference cursor is invalid. Restart this check.',
+    }),
+  );
 }
