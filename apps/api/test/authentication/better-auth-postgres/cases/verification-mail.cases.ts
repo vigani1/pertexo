@@ -26,6 +26,7 @@ export function registerCommitsOwnedProofSealedVerificationMail(): void {
       ownerRole: 'pertexo_owner',
     });
     const durable = createBetterAuthRuntime({
+      signUpMode: 'open',
       baseUrl: 'http://pertexo.test',
       secret: 'durable-proof-integration-secret-at-least-32-characters',
       database: {

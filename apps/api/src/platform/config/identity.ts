@@ -18,6 +18,7 @@ export const identityEnvironmentShape = {
   INVITATION_TOKEN_PREVIOUS_KEYS: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32).max(512).optional(),
   AUTH_MAIL_MODE: z.enum(['local', 'durable']).default('local'),
+  AUTH_SIGN_UP_MODE: z.enum(['invitation', 'open']).default('invitation'),
   AUTH_MAIL_FROM: z.email().max(320).optional(),
   AUTH_FEDERATION_KEY: z.string().optional(),
   AUTH_FEDERATION_KEY_VERSION: z.string().optional(),
@@ -70,6 +71,7 @@ export type ApiIdentityConfig = Readonly<{
   betterAuth: Readonly<{
     secret: string;
     mailMode: 'local' | 'durable';
+    signUpMode: 'invitation' | 'open';
     /** Local development prints each local message's link to stdout. */
     printLocalMailLinks?: true;
     durableMail?: Readonly<{ fromEmail: string; encryption: EncryptionKeys }>;
@@ -234,6 +236,7 @@ function betterAuthConfig(
   return Object.freeze({
     secret,
     mailMode: environment.AUTH_MAIL_MODE,
+    signUpMode: environment.AUTH_SIGN_UP_MODE,
     ...(printLocalMailLinks ? { printLocalMailLinks } : {}),
     ...(durableMail === undefined ? {} : { durableMail }),
     providers: parseAuthenticationProviders(environment),

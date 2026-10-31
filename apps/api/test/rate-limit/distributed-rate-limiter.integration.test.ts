@@ -97,7 +97,7 @@ describeIntegration('distributed abuse rate limit integration', () => {
 
   it.each([
     'client_address',
-    'origin',
+    'account',
     'actor',
     'workspace',
     'connection',

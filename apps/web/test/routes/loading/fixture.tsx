@@ -107,6 +107,7 @@ export const signInCapabilities = http.get(
         verificationRequired: true,
       },
       socialProviders: [],
+      signUp: 'open',
     }),
 );
 

@@ -23,6 +23,7 @@ export function useSocialProviderGateway(gateway: SocialProviderGateway) {
           sessionTtlSeconds: Math.floor(config.session.ttlMillis / 1000),
           trustedOrigins: [config.publicWebOrigin],
           mail: input.authenticationMail,
+          signUpMode: config.betterAuth.signUpMode,
           socialProviders: config.betterAuth.providers,
           linkProviderGateway: gateway,
           ...(config.federationEncryption === undefined

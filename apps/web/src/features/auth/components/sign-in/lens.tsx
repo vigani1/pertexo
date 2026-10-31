@@ -10,7 +10,7 @@ import { emailProblem, requiredPasswordProblem } from '../../forms/field-rules';
 import { AuthForm } from '../../forms/submission';
 import { PasswordField } from '../../forms/password-field';
 import type { LoginNotice } from '../../model/login-notice';
-import { returnToSearch } from '../../model/return-path';
+import { isInvitationReturn, returnToSearch } from '../../model/return-path';
 import { useSignIn } from './use-submit';
 import { OrDivider, SocialProviderGrid } from '../social/provider-grid';
 import {
@@ -132,6 +132,9 @@ export function SignInLens({
       <PasswordSignIn
         enabled={passwordEnabled}
         hasProviders={providers.length > 0}
+        offersSignUp={
+          capabilities.signUp === 'open' || isInvitationReturn(returnTo)
+        }
         signIn={signIn}
         fields={fields}
         returnTo={returnTo}
@@ -158,6 +161,7 @@ export function SignInLens({
 function PasswordSignIn({
   enabled,
   hasProviders,
+  offersSignUp,
   signIn,
   fields,
   returnTo,
@@ -165,6 +169,7 @@ function PasswordSignIn({
 }: Readonly<{
   enabled: boolean;
   hasProviders: boolean;
+  offersSignUp: boolean;
   signIn: ReturnType<typeof useSignIn>;
   fields: ReturnType<typeof useFieldValues<'email' | 'password'>>;
   returnTo: string | undefined;
@@ -234,10 +239,16 @@ function PasswordSignIn({
         />
       </AuthForm>
       <AuthLensFooter>
-        New to Pertexo?{' '}
-        <Link to="/sign-up" search={returnToSearch(returnTo)}>
-          Create an account
-        </Link>
+        {offersSignUp ? (
+          <>
+            New to Pertexo?{' '}
+            <Link to="/sign-up" search={returnToSearch(returnTo)}>
+              Create an account
+            </Link>
+          </>
+        ) : (
+          'New here? Ask someone in your workspace for an invitation.'
+        )}
       </AuthLensFooter>
     </>
   );

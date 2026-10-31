@@ -170,6 +170,7 @@ async function createFixture(): Promise<FixtureResourceOwner> {
           betterAuth: {
             secret: 'webhook-integration-secret-with-32-plus-characters',
             mailMode: 'local',
+            signUpMode: 'open',
             providers: {},
           },
         },

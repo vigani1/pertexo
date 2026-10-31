@@ -67,6 +67,8 @@ export function providerStartFailure(error: unknown, provider: string): string {
 
 export function signUpFailure(error: unknown): string {
   const failure = nativeError(error);
+  if (failure?.code === 'auth.sign_up_closed')
+    return 'New accounts here are by invitation. Ask someone in the workspace to invite this address.';
   if (failure?.status === 422 || failure?.status === 400)
     return 'Pertexo couldn’t create an account with these details. Check them and try again.';
   if (failure?.status === 429) return TOO_MANY;

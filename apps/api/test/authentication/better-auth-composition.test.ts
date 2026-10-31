@@ -43,6 +43,7 @@ function betterAuth(
   return {
     secret: 'composition-runtime-secret-at-least-32-characters',
     mailMode,
+    signUpMode: 'open',
     providers: {},
   };
 }

@@ -22,6 +22,7 @@ export function registerSecuresCookiesOnHTTPSOrigin(): void {
       betterAuth: {
         secret: 'standalone-better-auth-secret-at-least-32-characters',
         mailMode: 'local',
+        signUpMode: 'invitation',
         printLocalMailLinks: true,
         providers: {},
       },

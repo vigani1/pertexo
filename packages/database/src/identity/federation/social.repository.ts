@@ -7,6 +7,7 @@ import { SignInProofRejectedError } from './accounts/rejection.js';
 import type { Pool } from 'pg';
 import { withPlatformTransaction } from '../../tenant-access/transactions.js';
 import { completeSocialSignIn } from './complete.repository.js';
+import type { SignUpMode } from '../sign-up.js';
 import type {
   ProvenSocialSignIn,
   SocialSignInAttempt,
@@ -16,7 +17,11 @@ import type {
 /** A provider proves identity before this owner acquires a transaction. */
 export class SocialSignInCommands {
   public constructor(
-    private readonly input: Readonly<{ pool: Pool; sessionTtlSeconds: number }>,
+    private readonly input: Readonly<{
+      pool: Pool;
+      sessionTtlSeconds: number;
+      signUpMode: SignUpMode;
+    }>,
   ) {}
 
   public async start(
@@ -62,11 +67,7 @@ export class SocialSignInCommands {
 
   public complete(input: ProvenSocialSignIn): Promise<SocialSignInResult> {
     return withPlatformTransaction(this.input.pool, async (client) => {
-      const result = await completeSocialSignIn(
-        client,
-        input,
-        this.input.sessionTtlSeconds,
-      );
+      const result = await completeSocialSignIn(client, input, this.input);
       if (result.kind === 'failed') throw new SignInProofRejectedError();
       return result;
     }).catch((error: unknown) => {

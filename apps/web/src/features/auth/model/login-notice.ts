@@ -6,6 +6,7 @@ export type LoginLinkOutcome = Readonly<{
   emailChanged?: true;
   emailChangePending?: true;
   verificationInvalid?: true;
+  signUpClosed?: true;
   linkReauthenticate?: true;
   migrationReauthenticate?: true;
   migrationFailed?: true;
@@ -43,6 +44,11 @@ export function loginNoticeFrom(
       tone: 'destructive',
       text: 'That verification link is invalid, expired, or already used.',
       offersNewVerificationLink: true,
+    };
+  if (outcome.signUpClosed ?? false)
+    return {
+      tone: 'warning',
+      text: 'New accounts here are by invitation, so yours wasn’t created. Ask someone in the workspace to invite this address, then open the link again.',
     };
   if (outcome.linkReauthenticate ?? false)
     return {

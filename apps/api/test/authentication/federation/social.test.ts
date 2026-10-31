@@ -18,6 +18,7 @@ function signIn(secureCookies = false) {
   };
   return new SocialSignIn({
     pool,
+    signUpMode: 'open',
     secret: 'social-unit-secret-with-more-than-32-characters',
     baseUrl: 'https://app.example',
     secureCookies,

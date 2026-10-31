@@ -64,6 +64,9 @@ export const loginRoute = createRoute({
     ...(search.error === 'verification_invalid'
       ? { verificationInvalid: true as const }
       : {}),
+    ...(search.error === 'sign_up_closed'
+      ? { signUpClosed: true as const }
+      : {}),
     ...(search.error === 'link_reauthenticate'
       ? { linkReauthenticate: true as const }
       : {}),

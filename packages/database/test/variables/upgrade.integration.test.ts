@@ -161,6 +161,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0058_workspace_reactivation.sql',
         '0059_suspended_inbox.sql',
         '0060_write_probe.sql',
+        '0061_sign_up_invitations.sql',
       ]);
       expect(
         (

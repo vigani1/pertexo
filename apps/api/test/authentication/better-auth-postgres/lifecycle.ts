@@ -29,6 +29,7 @@ export async function prepareBetterAuthPostgresIntegrationTestTs() {
     ownerRole: 'pertexo_owner',
   });
   runtime = createBetterAuthRuntime({
+    signUpMode: 'open',
     baseUrl: 'http://pertexo.test',
     secret: 'postgres-integration-secret-with-at-least-32-characters',
     database: {

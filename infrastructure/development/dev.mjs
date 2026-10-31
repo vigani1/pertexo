@@ -84,8 +84,9 @@ async function ensureDevelopmentAccount(environment, signal) {
     body: JSON.stringify(developmentAccount),
     signal,
   });
-  // An existing account answers with a conflict; both outcomes are fine.
-  if (!response.ok && response.status !== 422 && response.status !== 409)
+  // An existing account answers with a conflict, or a refusal once it has closed
+  // sign-up; each of those is fine.
+  if (![403, 409, 422].includes(response.status) && !response.ok)
     throw new Error(`Development sign-up failed with ${response.status}`);
   // Local mail is never delivered, so mark only this account verified.
   await run(

@@ -15,6 +15,7 @@ const identityConfig: ApiIdentityConfig = {
   betterAuth: {
     secret: 'identity-runtime-secret-at-least-32-characters',
     mailMode: 'local',
+    signUpMode: 'open',
     providers: {},
   },
 };

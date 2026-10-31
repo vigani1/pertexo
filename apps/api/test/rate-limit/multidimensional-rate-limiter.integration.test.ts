@@ -17,7 +17,7 @@ assertIntegrationGateConfigured({
 const describeIntegration = requested ? describe : describe.skip;
 const kinds = [
   'client_address',
-  'origin',
+  'account',
   'actor',
   'workspace',
   'connection',

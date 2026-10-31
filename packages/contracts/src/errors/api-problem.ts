@@ -37,6 +37,7 @@ export const API_PROBLEM_CODES = [
   'auth.organization_email_managed',
   'auth.alternative_required',
   'auth.reset_link_invalid',
+  'auth.sign_up_closed',
   'auth.conflict',
   'auth.session_not_fresh',
   'resource.not_found',
@@ -242,6 +243,12 @@ const apiProblemDetails = {
   'auth.alternative_required': {
     status: 403,
     title: 'Another sign-in method required',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.sign_up_closed': {
+    status: 403,
+    title: 'Sign-up is by invitation',
     severity: 'info',
     exposeDetail: false,
   },

@@ -71,7 +71,8 @@ export async function completeFederationJourney(
       emailVerified: true,
       displayName: input.identity.displayName,
     },
-    createUser:
+    // An organization vouches for its own domain: sign-up settings don't apply.
+    mayCreateUser: () =>
       directory !== undefined || attempt.provider.configuration.jitEnabled,
   });
   if (user?.status !== 'active' || !user.email_verified)

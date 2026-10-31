@@ -12,12 +12,16 @@ import type { PoolClient } from 'pg';
 import { generatePersistedId } from '../../platform/persisted-id.js';
 import { revokeUserSessions } from '../../tenant-access/users/sessions.repository.js';
 import { recordIdentitySecurityFact } from '../facts.repository.js';
+import { admitNewAccount, type SignUpMode } from '../sign-up.js';
 import type { ProvenSocialSignIn, SocialSignInResult } from './contract.js';
 
 export async function completeSocialSignIn(
   client: PoolClient,
   input: ProvenSocialSignIn,
-  sessionTtlSeconds: number,
+  {
+    sessionTtlSeconds,
+    signUpMode,
+  }: Readonly<{ sessionTtlSeconds: number; signUpMode: SignUpMode }>,
 ): Promise<SocialSignInResult> {
   const db = drizzle(client);
   const [attempt] = await db
@@ -36,7 +40,11 @@ export async function completeSocialSignIn(
     .for('update')
     .catch(rethrowQueryFailure);
   if (attempt === undefined) return { kind: 'failed' };
-  const user = await resolveVerifiedSignInUser(client, input);
+  const user = await resolveVerifiedSignInUser(client, {
+    ...input,
+    mayCreateUser: () =>
+      admitNewAccount(client, signUpMode, input.identity.email ?? ''),
+  });
   if (user?.status !== 'active' || !user.email_verified)
     return { kind: 'failed' };
   if (

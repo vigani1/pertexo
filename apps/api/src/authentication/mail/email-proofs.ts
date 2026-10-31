@@ -2,7 +2,10 @@ import { canonicalEmail } from '@pertexo/workflow-model';
 import { createHash, randomBytes } from 'node:crypto';
 
 import { authenticationReturnPathSchema } from '@pertexo/contracts';
-import { EmailProofCommands } from '@pertexo/database/tenant-access';
+import {
+  EmailProofCommands,
+  type SignUpMode,
+} from '@pertexo/database/tenant-access';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -31,8 +34,9 @@ export class OwnedEmailProofs {
     pool: Pool,
     private readonly mail: AuthenticationMail,
     private readonly baseUrl: string,
+    signUpMode: SignUpMode,
   ) {
-    this.commands = new EmailProofCommands(pool);
+    this.commands = new EmailProofCommands(pool, signUpMode);
   }
 
   /**
@@ -60,6 +64,9 @@ export class OwnedEmailProofs {
         break;
       case 'change_new':
         landing.searchParams.set('emailChanged', 'true');
+        break;
+      case 'sign_up_closed':
+        landing.searchParams.set('error', 'sign_up_closed');
         break;
       case 'invalid':
         landing.searchParams.set('error', 'verification_invalid');
@@ -181,7 +188,9 @@ export class OwnedEmailProofs {
       });
   }
 
-  public async consume(token: string): Promise<ProofPurpose | 'invalid'> {
+  public async consume(
+    token: string,
+  ): Promise<ProofPurpose | 'invalid' | 'sign_up_closed'> {
     if (!/^[A-Za-z0-9_-]{43}$/u.test(token)) return 'invalid';
     const tokenDigest = digest(token);
     const proof = await this.commands.inspect(tokenDigest);

@@ -80,6 +80,7 @@ export async function mockIdentity(
           verificationRequired: true,
         },
         socialProviders: [],
+        signUp: 'open',
       },
     });
   });
