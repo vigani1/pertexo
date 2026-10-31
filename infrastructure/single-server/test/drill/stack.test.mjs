@@ -21,7 +21,6 @@ import {
   joinPrivateNetwork,
   killLikeTheKernel,
   leavePrivateNetwork,
-  recoverFromFailedInstall,
   createServer,
   destroyServer,
   httpsPort,
@@ -52,7 +51,6 @@ describe('the single-server stack, through its real scripts', () => {
   let verificationLink;
   let backup;
   let waitingRunId;
-  let firstDeployHealthy = false;
 
   const app = () =>
     createClient({
@@ -151,16 +149,6 @@ describe('the single-server stack, through its real scripts', () => {
         ]),
       ),
     );
-  // While ops-01 is open nginx holds a dead address, and the steps after a failed
-  // check still need a working app. Does nothing once nginx re-resolves.
-  const clearStaleProxy = async () => {
-    if ((await signedInStatus()) === 502)
-      await mustDocker(['restart', await server.containerOf('web')]);
-    await waitFor(async () => (await signedInStatus()) === 200, {
-      what: 'the signed-in API to answer',
-    });
-  };
-
   before(async () => {
     server = await createServer();
     await configure(server);
@@ -174,14 +162,12 @@ describe('the single-server stack, through its real scripts', () => {
   // file sharing hides this; a real Linux disk doesn't.
   it('deploy.sh installs a fresh server as the non-root login the runbook asks for', async () => {
     const deployed = await server.script('deploy.sh', [server.releases.first]);
-    firstDeployHealthy = deployed.status === 0;
     assert.equal(deployed.status, 0, deployed.stdout + deployed.stderr);
     assert.match(deployed.stdout, /Healthy release/u);
     assert.equal(await server.current(), server.releases.first);
   });
 
   it('the release is serving and recorded', async () => {
-    if (!firstDeployHealthy) await recoverFromFailedInstall(server);
     assert.equal(await server.current(), server.releases.first);
     await createBackupBucket(server);
     await joinPrivateNetwork();
@@ -199,7 +185,7 @@ describe('the single-server stack, through its real scripts', () => {
     assert.equal(response.status, 200, response.text);
   });
 
-  // ops-02: the worker dies on the frozen SMTP login, so no verification mail goes out.
+  // ops-02: the worker used to die on the frozen SMTP login, sending no mail.
   it('delivers the verification mail through a relay that needs a login', async () => {
     const message = await waitFor(
       async () =>
@@ -220,15 +206,8 @@ describe('the single-server stack, through its real scripts', () => {
 
   it('lets the first person sign in once their address is verified', async () => {
     await healthy('worker');
-    if (verificationLink) {
-      const opened = await client.get(verificationLink);
-      assert.ok(opened.status < 400, opened.text);
-    } else {
-      // Only while ops-02 stops the mail going out.
-      await postgres(
-        `update app.users set email_verified=true where email='${person.email}'`,
-      );
-    }
+    const opened = await client.get(verificationLink);
+    assert.ok(opened.status < 400, opened.text);
     const response = await signIn(client, person);
     assert.equal(response.status, 200, response.text);
     assert.equal(await signedInStatus(), 200);
@@ -246,36 +225,28 @@ describe('the single-server stack, through its real scripts', () => {
     assert.deepEqual(await downloadFile(client, workspaceId, artifactId), file);
   });
 
-  // ops-01: nginx keeps the API's old address, and only the web health check passes.
+  // ops-01: nginx used to keep the API's old address while health checks passed.
   it('still answers signed-in requests right after a redeploy', async () => {
-    try {
-      const redeployed = await withApiMovedDuring(server, () =>
-        server.script('deploy.sh', [server.releases.first]),
-      );
-      assert.equal(redeployed.status, 0, redeployed.stderr);
-      assert.ok(redeployed.apiMoved);
-      assert.equal(await signedInStatus(), 200);
-    } finally {
-      await clearStaleProxy();
-    }
+    const redeployed = await withApiMovedDuring(server, () =>
+      server.script('deploy.sh', [server.releases.first]),
+    );
+    assert.equal(redeployed.status, 0, redeployed.stderr);
+    assert.ok(redeployed.apiMoved);
+    assert.equal(await signedInStatus(), 200);
   });
 
   // ops-01
   it('has no 502 once a restarted API is healthy again', async () => {
-    try {
-      await withApiMovedDuring(server, async () => {
-        await compose(['stop', 'api']);
-        await new Promise((resolve) => setTimeout(resolve, 2_000));
-        await compose(['up', '-d', '--no-deps', '--wait', 'api']);
-        return {};
-      });
-      await waitFor(async () => (await signedInStatus()) === 200, {
-        what: 'nginx to find the restarted API',
-        timeout: 15_000,
-      });
-    } finally {
-      await clearStaleProxy();
-    }
+    await withApiMovedDuring(server, async () => {
+      await compose(['stop', 'api']);
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      await compose(['up', '-d', '--no-deps', '--wait', 'api']);
+      return {};
+    });
+    await waitFor(async () => (await signedInStatus()) === 200, {
+      what: 'nginx to find the restarted API',
+      timeout: 15_000,
+    });
   });
 
   it('backup.sh completes a recovery point', async () => {
@@ -285,13 +256,9 @@ describe('the single-server stack, through its real scripts', () => {
     assert.match(backup.stdout, /Completed recovery point: \S+/u);
   });
 
-  // ops-01: the night the first backup runs, every signed-in user gets a 502.
+  // ops-01: the night the first backup ran, every signed-in user used to get a 502.
   it('still answers signed-in requests right after a backup', async () => {
-    try {
-      assert.equal(await signedInStatus(), 200);
-    } finally {
-      await clearStaleProxy();
-    }
+    assert.equal(await signedInStatus(), 200);
   });
 
   // ops-07
@@ -447,7 +414,7 @@ git tag -d v0.0.9 v0.0.10 >/dev/null
     const point = /Completed recovery point: (\S+)/u.exec(
       finalBackup.stdout,
     )[1];
-    await clearStaleProxy();
+    assert.equal(await signedInStatus(), 200);
     const rowsBefore = await countRows();
 
     await leavePrivateNetwork();

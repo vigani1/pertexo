@@ -235,8 +235,8 @@ Two things it can't tell you, and what to use for each:
 
 - **The server is down, so nothing can send an alert.** Point a free outside uptime monitor
   at `https://app.example.com/v1/workspaces`, expecting status 401: that answer comes from
-  the API through the whole path. If yours can only expect 200, use `https://app.example.com/`,
-  which only proves the web tier.
+  the API through the whole path. If yours can only expect 200, use `https://app.example.com/v1/auth/ok`,
+  which proves Caddy and the API but not the web tier between them.
 - **Backups quietly stopped running.** Create a check at a dead-man switch service such as
   healthchecks.io and set `BACKUP_HEARTBEAT_URL` to its address. `backup.sh` requests it
   on success and `<url>/fail` on failure, and the service tells you when neither arrives.
