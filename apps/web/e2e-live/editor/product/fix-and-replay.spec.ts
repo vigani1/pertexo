@@ -22,12 +22,10 @@ import {
 // Several real services behind one browser; this stays honest on a busy machine.
 test.describe.configure({ timeout: 120_000 });
 
-// product-ux-04: Replay says "a new run of v1", so following its advice repeats the failure.
 test('a failed run replays on the version that fixes it', async ({
   page,
   request,
 }) => {
-  test.fail();
   const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
   if (mail === undefined) throw new Error('Use the owned API fixture');
   await registerEditorUser(page, request, mail, 'Fix and replay owner');

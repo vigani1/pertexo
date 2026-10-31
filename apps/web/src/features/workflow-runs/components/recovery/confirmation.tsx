@@ -9,6 +9,7 @@ import {
 } from '@/components/patterns/actions/confirm-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeadlineField } from '@/components/ui/deadline-field';
+import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { formatDateTime } from '@/lib/format/time';
@@ -21,11 +22,16 @@ export function RecoveryConfirmation({
   command,
   open,
   onOpenChange,
+  newerVersionNumber,
+  onReplay,
 }: Readonly<{
   preview: EligibleRecovery;
   command: RecoveryCommand;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The version published since this run, when there is one. */
+  newerVersionNumber: number | undefined;
+  onReplay: () => void;
 }>) {
   const [deadline, setDeadline] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
@@ -103,6 +109,19 @@ export function RecoveryConfirmation({
         error={command.error}
         tone={command.unconfirmed ? 'warning' : 'destructive'}
       >
+        {newerVersionNumber === undefined ? null : (
+          <Notice
+            action={
+              <Button type="button" variant="outline" onClick={onReplay}>
+                Replay on v{String(newerVersionNumber)}
+              </Button>
+            }
+          >
+            v{String(newerVersionNumber)} has been published since. Retrying
+            stays on v{String(preview.versionNumber)}, because it reuses that
+            version’s saved results. To run the fix, replay from the start.
+          </Notice>
+        )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
           <Status tone="success">
             {String(preview.reusedCount)} earlier{' '}

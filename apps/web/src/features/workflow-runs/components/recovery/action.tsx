@@ -1,6 +1,9 @@
 import { ProgressButton } from '@/components/ui/progress-button';
 import { DialogClose } from '@/components/ui/dialog';
-import type { WorkflowRecoveryPreview } from '@pertexo/contracts';
+import type {
+  AccessibleWorkspace,
+  WorkflowRecoveryPreview,
+} from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { CornerDownRightIcon } from 'lucide-react';
@@ -16,12 +19,14 @@ import { describeReadError } from '@/lib/api/error-copy';
 import { recoveryQueryOptions } from '../../data/recovery.queries';
 import { useRunRecovery } from '../../data/mutations/use-run-recovery';
 import { recoveryRefusal } from '../../model/commands/recovery';
+import { useNewerPublishedVersion } from '../../hooks/use-newer-published-version';
 import { RecoveryConfirmation } from './confirmation';
 export function RunRecoveryAction({
   apiClient,
   userId,
-  workspaceId,
+  workspace,
   runId,
+  workflowId,
   workflowVersionId,
   compact,
   onRunAccepted,
@@ -29,15 +34,24 @@ export function RunRecoveryAction({
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
-  workspaceId: string;
+  workspace: Pick<AccessibleWorkspace, 'id' | 'capabilities'>;
   runId: string;
+  workflowId: string;
   workflowVersionId: string;
   compact: boolean;
   onRunAccepted: (id: string) => void;
   onReplay: () => void;
 }>) {
+  const workspaceId = workspace.id;
   const [open, setOpen] = useState(false);
   const notifications = useNotifications();
+  const published = useNewerPublishedVersion({
+    apiClient,
+    userId,
+    workspace,
+    source: { workflowId, workflowVersionId },
+    enabled: open,
+  });
   const command = useRunRecovery({
     apiClient,
     userId,
@@ -112,6 +126,11 @@ export function RunRecoveryAction({
           open={open}
           onOpenChange={(next) => {
             if (!command.pending) setOpen(next);
+          }}
+          newerVersionNumber={published.newer?.versionNumber}
+          onReplay={() => {
+            setOpen(false);
+            onReplay();
           }}
         />
       ) : null}

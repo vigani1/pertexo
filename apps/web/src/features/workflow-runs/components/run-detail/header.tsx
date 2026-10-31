@@ -288,8 +288,9 @@ export function RunHeader({
               key={`${userId}:${workspace.id}:${run.id}`}
               apiClient={apiClient}
               userId={userId}
-              workspaceId={workspace.id}
+              workspace={workspace}
               runId={run.id}
+              workflowId={run.workflowId}
               workflowVersionId={run.workflowVersionId}
               compact={compact}
               onRunAccepted={onRunAccepted}

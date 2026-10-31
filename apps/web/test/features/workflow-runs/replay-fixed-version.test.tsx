@@ -135,8 +135,7 @@ function captureReplay() {
 }
 
 describe('replaying a failed run after a fix is published', () => {
-  // product-ux-04: the dialog pins the failed version, so following its advice repeats the failure.
-  it.fails('offers the fixed version and starts on it by default', async () => {
+  it('offers the fixed version and starts on it by default', async () => {
     install({ id: fixedVersionId, versionNumber: 3 });
     const bodies = captureReplay();
     renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
@@ -154,8 +153,7 @@ describe('replaying a failed run after a fix is published', () => {
       .toEqual([fixedVersionId]);
   });
 
-  // product-ux-04: the choice has to keep the original available too.
-  it.fails('can still replay the version the run used', async () => {
+  it('can still replay the version the run used', async () => {
     install({ id: fixedVersionId, versionNumber: 3 });
     const bodies = captureReplay();
     renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
@@ -185,33 +183,29 @@ describe('replaying a failed run after a fix is published', () => {
       .toEqual([sourceVersionId]);
   });
 
-  // product-ux-04: a recovery run stays on its version (CONTEXT.md), so the dialog must point at the fix.
-  it.fails(
-    'points from Retry from this step to replaying on the fixed version',
-    async () => {
-      install({ id: fixedVersionId, versionNumber: 3 });
-      renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
-      const event = userEvent.setup();
-      await event.click(
-        await screen.findByRole(
-          'button',
-          { name: 'Retry from this step' },
-          coldStart,
-        ),
-      );
-      const dialog = await screen.findByRole('dialog', {
-        name: 'Retry from this step',
-      });
-      expect(dialog).toHaveTextContent('v2');
-      await event.click(
-        await within(dialog).findByRole('button', { name: /Replay.*v3/u }),
-      );
-      const replay = await screen.findByRole('dialog', {
-        name: 'Replay this run',
-      });
-      expect(
-        await within(replay).findByRole('radio', { name: /v3/u }),
-      ).toBeChecked();
-    },
-  );
+  it('points from Retry from this step to replaying on the fixed version', async () => {
+    install({ id: fixedVersionId, versionNumber: 3 });
+    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole(
+        'button',
+        { name: 'Retry from this step' },
+        coldStart,
+      ),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Retry from this step',
+    });
+    expect(dialog).toHaveTextContent('v2');
+    await event.click(
+      await within(dialog).findByRole('button', { name: /Replay.*v3/u }),
+    );
+    const replay = await screen.findByRole('dialog', {
+      name: 'Replay this run',
+    });
+    expect(
+      await within(replay).findByRole('radio', { name: /v3/u }),
+    ).toBeChecked();
+  });
 });

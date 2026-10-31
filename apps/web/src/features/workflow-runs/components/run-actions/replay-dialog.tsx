@@ -3,6 +3,8 @@ import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Notice } from '@/components/ui/notice';
+import { ChoiceCards } from '@/components/patterns/choice-cards';
+import { GitBranchIcon, RotateCcwIcon } from 'lucide-react';
 import { workflowRunVersionQueryOptions } from '../../data/detail.queries';
 import type {
   WorkflowRunData,
@@ -19,11 +21,12 @@ import {
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { useRunReplay } from '../../data/mutations/use-run-replay';
+import { useNewerPublishedVersion } from '../../hooks/use-newer-published-version';
 import { useRunInput } from '../../hooks/use-run-input';
 import { workflowRunInputQueryOptions } from '../../data/stored-values.queries';
 import { RunInputFields } from '../run-input-fields';
 
-function useFormReplay({
+function useSourceVersion({
   apiClient,
   userId,
   workspace,
@@ -49,14 +52,16 @@ function useFormReplay({
     }),
     enabled: open && workspace.capabilities.includes('workflow:read'),
   });
-  return (
-    source.triggerType === 'form' ||
-    (version.data?.graph.nodes.some(
-      (node) =>
-        node.definition.key === 'core.form' && node.definition.version === 1,
-    ) ??
-      false)
-  );
+  return {
+    formReplay:
+      source.triggerType === 'form' ||
+      (version.data?.graph.nodes.some(
+        (node) =>
+          node.definition.key === 'core.form' && node.definition.version === 1,
+      ) ??
+        false),
+    sourceVersionNumber: version.data?.versionNumber,
+  };
 }
 
 /** The original input as the text the field shows, while it's still kept. */
@@ -106,9 +111,10 @@ function replayDescription(
 }
 
 /**
- * Replay starts a new run of this run's exact version. It opens with the
- * input the run used while Pertexo still keeps it (ADR 050), and an uncertain
- * result retains the same command within the acceptance receipt's 24-hour window.
+ * Replay starts a new run from the start, on the version published now when a
+ * fix has landed since this run, or on this run's own. It opens with the input
+ * the run used while Pertexo still keeps it (ADR 050), and an uncertain result
+ * retains the same command within the acceptance receipt's 24-hour window.
  */
 export function ReplayRunDialog({
   apiClient,
@@ -136,13 +142,22 @@ export function ReplayRunDialog({
   const { id: workspaceId } = workspace;
   const { id: sourceRunId, workflowId, workflowVersionId } = source;
   const notifications = useNotifications();
-  const formReplay = useFormReplay({
+  const { formReplay, sourceVersionNumber } = useSourceVersion({
     apiClient,
     userId,
     workspace,
     source,
     open,
   });
+  const published = useNewerPublishedVersion({
+    apiClient,
+    userId,
+    workspace,
+    source,
+    enabled: open,
+  });
+  const [choice, setChoice] = useState<'newer' | 'source'>('newer');
+  const newer = choice === 'newer' ? published.newer : undefined;
   const original = useQuery(
     workflowRunInputQueryOptions(apiClient, userId, workspaceId, sourceRunId),
   );
@@ -151,7 +166,7 @@ export function ReplayRunDialog({
     userId,
     workspaceId,
     sourceRunId,
-    workflowVersionId,
+    workflowVersionId: newer?.id ?? workflowVersionId,
     onRunAccepted: (runId) => {
       notifications.success({
         title: 'Replay started',
@@ -183,14 +198,20 @@ export function ReplayRunDialog({
     }
   }
 
+  const sourceLabel =
+    versionLabel ??
+    (sourceVersionNumber === undefined
+      ? undefined
+      : `v${String(sourceVersionNumber)}`);
   const description = replayDescription(
     original.data,
     originalText,
-    versionLabel,
+    newer === undefined ? sourceLabel : `v${String(newer.versionNumber)}`,
   );
   const confirmBlocked =
     replay.pending ||
     replay.expired ||
+    published.pending ||
     (formReplay && originalText === undefined);
   return (
     <ConfirmDialog
@@ -217,7 +238,9 @@ export function ReplayRunDialog({
             pending={replay.pending}
             pendingLabel="Replaying…"
             disabled={
-              replay.expired || (formReplay && originalText === undefined)
+              replay.expired ||
+              published.pending ||
+              (formReplay && originalText === undefined)
             }
           >
             {replay.retryAvailable ? 'Retry same replay' : 'Replay run'}
@@ -229,6 +252,32 @@ export function ReplayRunDialog({
         error={replay.error}
         tone={replay.retryAvailable ? 'warning' : 'destructive'}
       >
+        {published.newer === undefined ? null : (
+          <ChoiceCards
+            legend="Version to run"
+            value={choice}
+            disabled={replay.pending || replay.unconfirmed}
+            onChange={setChoice}
+            choices={[
+              {
+                value: 'newer',
+                label: `v${String(published.newer.versionNumber)}, published now`,
+                hint: 'Runs what’s live today, including any fix made since this run.',
+                glyph: (
+                  <GitBranchIcon aria-hidden="true" className="size-3.5" />
+                ),
+              },
+              {
+                value: 'source',
+                label: sourceLabel ?? 'The version this run used',
+                hint: 'Runs exactly what this run ran, so it can fail the same way.',
+                glyph: (
+                  <RotateCcwIcon aria-hidden="true" className="size-3.5" />
+                ),
+              },
+            ]}
+          />
+        )}
         <p className="text-sm text-muted-foreground">
           Replay keeps the source run’s workspace variables. Start a new run to
           use current values.
