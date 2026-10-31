@@ -23,11 +23,11 @@
     "@pertexo/contracts": "workspace:*",
     "@pertexo/database": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
-    "drizzle-orm": "0.45.4",
-    "pg": "8.23.1"
+    "drizzle-orm": "0.45.4"
   },
   "devDependencies": {
     "@pertexo/workflow-engine": "workspace:*",
-    "@types/pg": "8.23.1"
+    "@types/pg": "8.23.1",
+    "pg": "8.23.1"
   }
 }
