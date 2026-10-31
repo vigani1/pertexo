@@ -97,27 +97,24 @@ describeFaults('Postgres health probes (dm-01)', () => {
   }, SCENARIO_LIMIT_MS);
 
   // dm-01: 7 crash-restarts in 62 s from an abandoned production probe.
-  it.fails('survives an orphan exiting non-zero, in production compose', () => {
+  it('survives an orphan exiting non-zero, in production compose', () => {
     expect(productionOutcome).toBe('stays-up');
   });
 
   // dm-01: the same orphan crash-restarts development Postgres.
-  it.fails(
-    'survives an orphan exiting non-zero, in development compose',
-    () => {
-      expect(developmentOutcome).toBe('stays-up');
-    },
-  );
+  it('survives an orphan exiting non-zero, in development compose', () => {
+    expect(developmentOutcome).toBe('stays-up');
+  });
 
   // dm-01: pg_isready's default 3 s races Docker's production 3 s timeout.
-  it.fails('ends its production probe before Docker abandons it', () => {
+  it('ends its production probe before Docker abandons it', () => {
     expect(probeLimitMs(production)).toBeLessThan(
       production.healthcheckTimeoutMs,
     );
   });
 
   // dm-01: both compose files take the same fix.
-  it.fails('ends its development probe before Docker abandons it', () => {
+  it('ends its development probe before Docker abandons it', () => {
     expect(probeLimitMs(development)).toBeLessThan(
       development.healthcheckTimeoutMs,
     );

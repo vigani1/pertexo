@@ -73,13 +73,10 @@ describeFaults('a worker stopped with SIGTERM during a step over 60 s', () => {
   });
 
   // reliability-02: the job is recorded completed and the run stays running.
-  it.fails(
-    'ends an unsafe step cut off by the drain as outcome_unknown',
-    () => {
-      expect(factsOf('unsafe').status).toBe('outcome_unknown');
-      expect(factsOf('unsafe').steps.slow).toEqual(['outcome_unknown']);
-    },
-  );
+  it('ends an unsafe step cut off by the drain as outcome_unknown', () => {
+    expect(factsOf('unsafe').status).toBe('outcome_unknown');
+    expect(factsOf('unsafe').steps.slow).toEqual(['outcome_unknown']);
+  });
 
   it('never sends an unsafe step cut off by the drain twice', () => {
     expect(stack.sink.calls('unsafe')).toHaveLength(1);
@@ -87,20 +84,17 @@ describeFaults('a worker stopped with SIGTERM during a step over 60 s', () => {
   });
 
   // reliability-02: the same stranding happens to a step that could simply retry.
-  it.fails('retries a safe step cut off by the drain', () => {
+  it('retries a safe step cut off by the drain', () => {
     expect(factsOf('safe').status).toBe('succeeded');
     expect(stack.sink.calls('safe')).toHaveLength(2);
     expect(stack.sink.calls('after-safe')).toHaveLength(1);
   });
 
   // reliability-02: the drain equals the grace period, so no margin is left before SIGKILL.
-  it.fails(
-    'exits inside the production grace period, with room to close',
-    async () => {
-      const worker = await productionService('worker');
-      expect(exitAfterMs + CLOSING_MARGIN_MS).toBeLessThan(
-        worker.stopGracePeriodMs,
-      );
-    },
-  );
+  it('exits inside the production grace period, with room to close', async () => {
+    const worker = await productionService('worker');
+    expect(exitAfterMs + CLOSING_MARGIN_MS).toBeLessThan(
+      worker.stopGracePeriodMs,
+    );
+  });
 });
