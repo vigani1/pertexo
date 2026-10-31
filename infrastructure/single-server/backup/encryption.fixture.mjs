@@ -179,8 +179,13 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
         {
           id: record.secretVersionId,
           workspace_id: record.workspaceId,
-          [record.kind === 'connection' ? 'connection_id' : 'trigger_id']:
-            record.resourceId,
+          ...(record.kind === 'connection'
+            ? { connection_id: record.resourceId }
+            : {
+                trigger_id: record.resourceId,
+                workflow_id: workflow,
+                node_id: 'webhook',
+              }),
           kms_key_reference: record.sealed.kmsKeyReference,
           encrypted_data_key: record.sealed.encryptedDataKey,
           ciphertext: record.sealed.ciphertext,
