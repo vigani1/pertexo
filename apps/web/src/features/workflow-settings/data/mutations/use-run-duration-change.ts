@@ -9,7 +9,11 @@ import {
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { maxRunDurationOf, withMaxRunDuration } from '../../model/run-duration';
+import {
+  maxRunDurationOf,
+  withMaxRunDuration,
+  type RunDuration,
+} from '../../model/run-duration';
 
 export type RunDurationProblem = Readonly<{
   message: string;
@@ -40,12 +44,12 @@ export function useRunDurationChange({
   const [problem, setProblem] = useState<RunDurationProblem>();
   const pendingRef = useRef(false);
 
-  async function draftHas(durationMs: number): Promise<boolean> {
+  async function draftHas(durationMs: RunDuration): Promise<boolean> {
     const current = await getWorkflowDraft(apiClient, workspaceId, workflowId);
     return maxRunDurationOf(current.draft.graph) === durationMs;
   }
 
-  async function recover(cause: unknown, durationMs: number) {
+  async function recover(cause: unknown, durationMs: RunDuration) {
     const conflict = isApiError(cause) && cause.status === 412;
     if (conflict || isUnconfirmedCommand(cause)) {
       const applied = await draftHas(durationMs).catch(() => undefined);
@@ -65,7 +69,7 @@ export function useRunDurationChange({
     return false;
   }
 
-  async function apply(durationMs: number): Promise<boolean> {
+  async function apply(durationMs: RunDuration): Promise<boolean> {
     if (pendingRef.current) return false;
     pendingRef.current = true;
     setPending(true);

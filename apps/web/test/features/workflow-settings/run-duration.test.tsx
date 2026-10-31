@@ -77,7 +77,8 @@ describe('workflow settings: run duration', () => {
     expect(saves[0]?.graph.settings).toEqual({ maxRunDurationMs: 1_800_000 });
     expect(
       await within(section).findByText(
-        'The draft says 30 minutes. Live v1 stops runs after 1 hour until you publish.',
+        // backend-gaps-18: a graph with no setting has no deadline, not an hour.
+        'The draft says 30 minutes. Live v1 has no time limit until you publish.',
       ),
     ).toBeVisible();
   });
@@ -136,7 +137,7 @@ describe('workflow settings: run duration', () => {
       coldStart,
     );
     expect(
-      await within(section).findByText(/Runs stop after 1 hour in the draft/u),
+      await within(section).findByText(/Runs have no time limit in the draft/u),
     ).toHaveTextContent(
       'Your role (Owner) can’t change how long runs may take. Builders and admins can.',
     );
