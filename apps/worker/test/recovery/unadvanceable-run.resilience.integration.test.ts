@@ -79,12 +79,12 @@ describeFaults('a run the engine can never advance', () => {
   }, SCENARIO_LIMIT_MS);
 
   // backend-gaps-02: an unrecoverable delivery writes nothing to the run.
-  it.fails('fails the run with a reason instead of leaving it running', () => {
+  it('fails the run with a reason instead of leaving it running', () => {
     expect(facts[runId]?.status).toBe('failed');
   });
 
   // backend-gaps-02, reliability-03: a run that can't move must not keep its slot.
-  it.fails('releases its slot', () => {
+  it('releases its slot', () => {
     expect(active).toBe(0);
   });
 
@@ -94,12 +94,12 @@ describeFaults('a run the engine can never advance', () => {
   });
 
   // backend-gaps-03, ops-08, reliability-10: job failures reach only Redis's failedReason.
-  it.fails('logs the failed delivery at warn or above, naming the run', () => {
+  it('logs the failed delivery at warn or above, naming the run', () => {
     expect(stack.worker.linesMentioning([runId], 'warn')).not.toEqual([]);
   });
 
   // reliability-10: outbox failures have no listing, only one-id-at-a-time repair.
-  it.fails('lists the failed outbox event for the operator', () => {
+  it('lists the failed outbox event for the operator', () => {
     expect(list).toContain(badEventId);
   });
 });

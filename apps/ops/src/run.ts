@@ -3,6 +3,7 @@ import type {
   OperatorCommandRecord,
   OperatorCommandResult,
   GenericOperatorCommandResult,
+  StuckWork,
 } from '@pertexo/database/runs';
 import type { StructuredLogger } from '@pertexo/observability';
 import type { TelemetryLifecycle } from '@pertexo/observability/startup';
@@ -20,6 +21,7 @@ export interface OperatorCommandResources {
 }
 
 type OperatorCommandExecutionResult =
+  | StuckWork
   | OperatorCommandResult
   | GenericOperatorCommandResult
   | OperatorCommandRecord
@@ -50,6 +52,8 @@ async function executeConfiguredCommand(
   resources: OperatorCommandResources,
 ): Promise<OperatorCommandExecutionResult> {
   switch (resources.command.type) {
+    case 'stuck-work.list':
+      return resources.database.listStuckWork();
     case 'operator.status':
       return resources.database.getCommand({
         actorRef: resources.command.actorRef,
@@ -101,6 +105,13 @@ async function executeConfiguredCommand(
   }
 }
 
+function commandOutcome(
+  result: OperatorCommandExecutionResult,
+): Readonly<{ outcome?: string }> {
+  if (result === null) return { outcome: 'not_found' };
+  return 'outcome' in result ? { outcome: result.outcome } : {};
+}
+
 async function cleanupOperatorResources(
   resources: OperatorCommandResources,
 ): Promise<readonly unknown[]> {
@@ -135,7 +146,7 @@ export async function runOperatorCommand(
       ...('dryRun' in resources.command
         ? { dryRun: resources.command.dryRun }
         : {}),
-      outcome: result === null ? 'not_found' : result.outcome,
+      ...commandOutcome(result),
       ...('replayed' in (result ?? {})
         ? { replayed: (result as OperatorCommandResult).replayed }
         : {}),

@@ -26,6 +26,8 @@ export type WorkflowRunReadRecord = WorkflowRunRecord &
   Readonly<{
     hasHumanTasks?: boolean;
     runValues?: RunValues;
+    /** The next step passed its time and nothing has acted on it yet. */
+    stalled?: Readonly<{ since: string }>;
     humanWait?: Readonly<{
       since: string;
       remainingExecutionMs: number | null;

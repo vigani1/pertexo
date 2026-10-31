@@ -9,6 +9,7 @@ import { withResourceRunRead } from '../../tenant-access/resources/transactions.
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
 import { readErrorWorkflow } from '../error-workflows/read.queries.js';
+import { readRunStalledSince } from '../stalled/overdue.queries.js';
 import {
   readWorkflowCalls,
   type WorkflowCallReadRecord,
@@ -86,11 +87,24 @@ async function readRunModel(
     includeWorkflowName,
   });
   if (run === undefined) return undefined;
+  const stalledSince =
+    run.status === 'running' || run.status === 'waiting'
+      ? await readRunStalledSince(transaction.db, {
+          workspaceId: transaction.workspaceId,
+          runId,
+        })
+      : undefined;
   const nodes = await readNodes(transaction, runId);
   if (nodes.length > WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations)
     throw new WorkflowRunReadCapacityError();
   return Object.freeze({
-    run,
+    run:
+      stalledSince === undefined
+        ? run
+        : Object.freeze({
+            ...run,
+            stalled: { since: stalledSince.toISOString() },
+          }),
     ...(await readWorkflowCalls(transaction, runId)),
     ...(await readErrorWorkflow(transaction, runId)),
     nodes: Object.freeze(nodes.map(toNodeRecord)),

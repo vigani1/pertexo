@@ -40,6 +40,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { CancelRunDialog } from '../run-actions/cancel-dialog';
 import { ReplayRunDialog } from '../run-actions/replay-dialog';
 import { RunAdmissionBlockers } from '../run-admission-blockers';
+import { RunStalledNotice } from '../run-stalled-notice';
 
 function MetaFact({ children }: Readonly<{ children: ReactNode }>) {
   return (
@@ -279,6 +280,7 @@ export function RunHeader({
           run={run}
           className="mt-3 text-sm text-muted-foreground"
         />
+        <RunStalledNotice run={run} className="mt-3" />
       </div>
       <RunDetailActions
         compact={compact}

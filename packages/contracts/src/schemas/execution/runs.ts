@@ -174,6 +174,11 @@ export const workflowRunReadSummarySchema = workflowRunSummarySchema
     /** The run a replay was started from (ADR 050). */
     replaySourceRunId: workflowRunIdentifierSchema.nullable().optional(),
     admissionBlockers: workflowRunAdmissionBlockersSchema.optional(),
+    /** The run's next step passed its time and no worker has acted on it yet. */
+    stalled: z
+      .object({ since: z.iso.datetime({ offset: true }) })
+      .strict()
+      .optional(),
   })
   .strict();
 

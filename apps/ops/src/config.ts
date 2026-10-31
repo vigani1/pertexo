@@ -12,30 +12,36 @@ const dryRunSchema = z
   .enum(['true', 'false'])
   .transform((value) => value === 'true');
 
-const baseEnvironmentSchema = z.object({
+const unscopedEnvironmentSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
   NODE_ENV: z
     .enum(['development', 'test', 'staging', 'production'])
     .default('development'),
-  OPERATOR_ACTOR_REF: z
-    .string()
-    .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u),
-  OPERATOR_COMMAND_ID: z.uuid(),
-  OPERATOR_REASON: z.string().min(1).max(512),
   OPERATOR_TIMEOUT_MS: z.coerce
     .number()
     .int()
     .min(1_000)
     .max(300_000)
     .default(30_000),
-  OPERATOR_WORKSPACE_ID: z.uuid(),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
   SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
 });
 
+const baseEnvironmentSchema = unscopedEnvironmentSchema.extend({
+  OPERATOR_ACTOR_REF: z
+    .string()
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u),
+  OPERATOR_COMMAND_ID: z.uuid(),
+  OPERATOR_REASON: z.string().min(1).max(512),
+  OPERATOR_WORKSPACE_ID: z.uuid(),
+});
+
 const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
+  unscopedEnvironmentSchema.extend({
+    OPERATOR_COMMAND_TYPE: z.literal('stuck-work.list'),
+  }),
   baseEnvironmentSchema.extend({
     OPERATOR_COMMAND_TYPE: z.literal('outbox.redispatch'),
     OPERATOR_DRY_RUN: dryRunSchema,
@@ -107,6 +113,7 @@ const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
 
 export interface OperatorCommandConfig {
   readonly command:
+    | Readonly<{ type: 'stuck-work.list' }>
     | Readonly<{
         actorRef: string;
         commandId: string;
@@ -183,6 +190,8 @@ type ParsedOperatorEnvironment = z.infer<typeof environmentSchema>;
 function toOperatorCommand(
   parsed: ParsedOperatorEnvironment,
 ): OperatorCommandConfig['command'] {
+  if (parsed.OPERATOR_COMMAND_TYPE === 'stuck-work.list')
+    return Object.freeze({ type: parsed.OPERATOR_COMMAND_TYPE });
   const auditIdentity = {
     actorRef: parsed.OPERATOR_ACTOR_REF,
     commandId: parsed.OPERATOR_COMMAND_ID,

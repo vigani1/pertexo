@@ -1,4 +1,5 @@
 import type { AuditMetadata } from '../governance/audit/events.repository.js';
+import type { StuckWork } from '../runs/stalled/contract.js';
 import type { WorkspaceTransaction } from '../tenant-access/transactions.js';
 import type { OperatorDecision } from './handlers/contract.js';
 import type {
@@ -79,6 +80,8 @@ export type OperatorCommandRecord = Readonly<{
 
 export interface OperatorCommandDatabase {
   checkReadiness(signal?: AbortSignal): Promise<void>;
+  /** Reads across workspaces: an operator doesn't yet know which one is stuck. */
+  listStuckWork(): Promise<StuckWork>;
   close(): Promise<void>;
   getCommand(
     input: GetOperatorCommandInput,
