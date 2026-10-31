@@ -193,6 +193,12 @@ data. Keep the bucket private and turn on your provider's encryption at rest. Ke
 settings file and encryption keys separately: the backup alone can't recover encrypted
 credentials. A deleted workspace stays in the backups until they expire.
 
+OAuth2 connections are in the backup with their tokens, sealed like every other
+credential. A service that rotates refresh tokens may have moved on since the backup
+was taken: after a restore, the next renewal gets `invalid_grant` and the connection
+shows **Needs reauthorization**. That is safe. Reconnect it, and the workflows that use
+it carry on unchanged.
+
 A backup you haven't restored is a hope. Practise once on a spare machine with
 [Recovery](recovery.md).
 
@@ -325,6 +331,15 @@ default; give simultaneously running workers separate absolute paths.
 ECS workers mount task-local ephemeral storage at the same path. Keep the
 matching Dockerfile `VOLUME` and task `containerPath`: ECS copies the image
 volume's owner and mode when preparing the mount. It is not shared storage.
+
+## OAuth2 connections
+
+Register `https://<your app host>/v1/connections/oauth2/callback` with each service as
+the redirect address. The address comes from `PUBLIC_WEB_ORIGIN`, so changing that value
+means registering the new one too. Token addresses must be public https addresses unless
+their network is in `HTTP_ALLOWED_PRIVATE_NETWORKS`, which the API and worker both read.
+The callback goes straight from Caddy to the API, so its code and state never reach a
+proxy log. See [OAuth2 connections](../guides/oauth2-connections.md).
 
 ## Public webhook address
 

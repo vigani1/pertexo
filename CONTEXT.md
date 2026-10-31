@@ -43,6 +43,12 @@ input mappings determine the data they receive. _Avoid_: Connection, credential
 **Workflow connection**: A workspace’s named credentials for an external
 service, referenced by workflow steps. _Avoid_: Workflow link, sign-in method
 
+**OAuth2 grant**: What a service gave a workflow connection when someone signed
+in: tokens that renew themselves until the service stops accepting them. A
+connection has a grant exactly while it is active, and reconnecting replaces it
+without touching the workflows that use it. _Avoid_: Sign-in method, session,
+Pertexo account
+
 **Workflow organization**: Shared workspace metadata that helps people discover
 and arrange workflows. Folder access grants are separate from that metadata.
 _Avoid_: Workflow graph, access grant

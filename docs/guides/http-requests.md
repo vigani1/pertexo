@@ -22,7 +22,9 @@ can't follow run data to another server.
 Leave **HTTP headers connection** empty for an API that needs no key. To send a
 key, choose a connection. Its headers are added to the request, and their
 values are redacted from logs and from the response body. A connection that was
-removed has to be replaced before the workflow can publish.
+removed has to be replaced before the workflow can publish. A service that signs
+in with OAuth2 works the same way, with a token that renews itself: see
+[OAuth2 connections](oauth2-connections.md).
 
 ## The response
 
