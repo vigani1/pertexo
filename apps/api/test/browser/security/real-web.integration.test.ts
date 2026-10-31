@@ -214,48 +214,35 @@ ${STEAL}
       config: unknown;
       body: unknown;
     }>) {
-      let published;
-      try {
-        published = await publishWorkflow(
-          stack,
-          browser,
-          workspaceId,
-          graphOf([
-            {
-              id: 'hook',
-              key: 'core.webhook',
-              config: { responseMode: 'workflow', responseWaitSeconds: 10 },
+      const publishing = publishWorkflow(
+        stack,
+        browser,
+        workspaceId,
+        graphOf([
+          {
+            id: 'hook',
+            key: 'core.webhook',
+            config: { responseMode: 'workflow', responseWaitSeconds: 10 },
+          },
+          {
+            id: 'answer',
+            key: 'core.respond_webhook',
+            config,
+            inputMappings: {
+              body: { kind: 'literal', value: body },
             },
-            {
-              id: 'answer',
-              key: 'core.respond_webhook',
-              config,
-              inputMappings: {
-                body: { kind: 'literal', value: body },
-              },
-            },
-          ]),
-        );
-      } catch (error: unknown) {
-        // Refusing XML at authoring time is one of the two right answers;
-        // anything else failing here must not pass as "no link to open".
-        if (
-          name.startsWith('xml-') &&
-          error instanceof Error &&
-          error.message.includes('textContentType')
-        )
-          return;
-        throw error;
+          },
+        ]),
+      );
+      // XML can't be published, so there is no link to open.
+      if (name.startsWith('xml-')) {
+        await expect(publishing).rejects.toThrow('textContentType');
+        return;
       }
+      const published = await publishing;
       const path = await openSecretUrlEndpoint(stack, browser, published.path);
       // A false pass must not hide here: the link really does answer with the body.
       const answer = await stack.send('GET', path, { withoutOrigin: true });
-      // Publishing doesn't check a step's settings yet, so an XML step is refused
-      // when it runs: the sender gets this and there is no response to open.
-      if (name.startsWith('xml-') && answer.status === 500) {
-        expect(answer.json()).toEqual({ code: 'webhook.workflow_failed' });
-        return;
-      }
       expect(answer.status, `${name}: ${answer.text}`).not.toBe(202);
       expect(answer.status, `${name}: ${answer.text}`).toBeLessThan(400);
       hooks[name] = path;
