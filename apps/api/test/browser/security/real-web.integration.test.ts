@@ -106,8 +106,9 @@ async function pinnedWebImage(): Promise<string> {
 
 describe.runIf(enabled)('the real web app in a real browser', () => {
   let startStack: typeof StackModule.startStack;
+  let freePort: typeof StackModule.freePort;
   beforeAll(async () => {
-    ({ startStack } = await import('../../security/stack.js'));
+    ({ startStack, freePort } = await import('../../security/stack.js'));
   });
 
   describe('behind the production nginx config', () => {
@@ -123,7 +124,7 @@ describe.runIf(enabled)('the real web app in a real browser', () => {
         'bin/vite.js',
       );
       await run([viteCli, 'build'], { NODE_ENV: 'production' });
-      const apiPort = 20_000 + Math.floor(Math.random() * 20_000);
+      const apiPort = await freePort();
       const webImage = await pinnedWebImage();
       // nginx resolves a name in its config through DNS, which doesn't know
       // --add-host names on Linux, so the upstream needs the gateway's address.
