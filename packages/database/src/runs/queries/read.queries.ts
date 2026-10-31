@@ -203,7 +203,7 @@ function readNodes({ db, workspaceId }: WorkspaceTransaction, runId: string) {
       safe_error_code: nodeRuns.safeErrorCode,
       error_summary: sql<
         string | null
-      >`case when ${nodeRuns.safeErrorCode} in ('execution.file_input','execution.attempt_invalid') then (${errorSummary})
+      >`case when ${nodeRuns.safeErrorCode} in ('execution.file_input','execution.attempt_invalid') or ${nodeRuns.safeErrorCode} like 'http.oauth2\_%' then (${errorSummary})
         when ${nodeRuns.safeErrorCode} in ('execution.provider','execution.authentication','execution.rate_limit','execution.timeout')
           and ${exists(detailsKept)} then (${errorSummary}) end`,
       failure_handler_entry_key: nodeRuns.failureHandlerEntryKey,
