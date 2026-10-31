@@ -113,10 +113,10 @@ describe('worker resource monitor', () => {
     const stalledUntil = performance.now() + 400;
     while (performance.now() < stalledUntil);
     await vi.waitFor(() => {
-      expect(warn).toHaveBeenCalledWith(
-        'worker.event_loop_delayed',
-        expect.objectContaining({ sampleLateByMillis: expect.any(Number) }),
-      );
+      expect(warn).toHaveBeenCalledWith('worker.event_loop_delayed', {
+        eventLoopDelayP99Millis: 1,
+        sampleLateByMillis: expect.any(Number) as number,
+      });
     });
 
     monitor.beforeApplicationShutdown();
