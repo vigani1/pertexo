@@ -80,6 +80,16 @@ for (const [name, check] of [
     assert.equal(await stoppedWithin(exited, 200), false);
   });
 
+  // A busy host's slow scan is no reason to restart: only 5 minutes is.
+  test(`${name}: a worker just short of 5 minutes behind is left alone`, async (t) => {
+    const { status, exited } = runCheck(t, check, {
+      ready: true,
+      progressAgeMinutes: 4,
+    });
+    assert.equal(status, 0);
+    assert.equal(await stoppedWithin(exited, 200), false);
+  });
+
   test(`${name}: a worker with no progress for 5 minutes fails and is ended`, async (t) => {
     const { status, exited } = runCheck(t, check, {
       ready: true,
