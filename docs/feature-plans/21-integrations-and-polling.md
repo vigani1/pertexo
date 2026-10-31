@@ -1,6 +1,7 @@
 # F21 — Provider expansion and durable polling/subscriptions
 
 Status: proposed plan; not implementation-authorized by this document.
+Slice 0, generic OAuth2 connections for HTTP Request: planned, contract only, in [21a](21a-oauth2-connections.md).
 Created: 2026-09-28. Parent: [product roadmap](../product-roadmap.md).
 Scope: Later integration program. Relative size: **XL per provider family**, not a calendar estimate.
 
