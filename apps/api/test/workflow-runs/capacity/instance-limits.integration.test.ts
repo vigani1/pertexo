@@ -4,15 +4,19 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { betterAuthIntegrationEnabled } from '../../support/better-auth/real-api.support.js';
 import {
-  createCapacityStack,
-  publishGraph,
   ownWorkspace,
+  provisionWebhook,
+  publishGraph,
+  readRun,
+  runReaches,
   signedDelivery,
   signUp,
+  startRun,
   step,
   usageCapacity,
-  type CapacityOwner,
-} from '../../support/real-stack/stack.js';
+  type StackOwner,
+} from '../../support/real-stack/owner.js';
+import { createRealStack } from '../../support/real-stack/stack.js';
 
 // The operator's settings, which ship in .env.example and need no SQL.
 const OPERATOR_SETTINGS = {
@@ -56,60 +60,10 @@ const quickGraph = {
   ],
 };
 
-async function startRun(owner: CapacityOwner, path: string) {
-  const started = await owner.send('POST', `${path}/runs`, { input: {} });
-  const body = await started.text();
-  expect(started.status, body).toBe(202);
-  return (JSON.parse(body) as { run: { id: string } }).run.id;
-}
-
-async function runStatus(owner: CapacityOwner, runId: string) {
-  const read = await owner.send('GET', `${owner.base}/runs/${runId}`);
-  return ((await read.json()) as { run: { status: string } }).run.status;
-}
-
-async function runReaches(owner: CapacityOwner, runId: string, status: string) {
-  await expect
-    .poll(() => runStatus(owner, runId), { timeout: 30_000, interval: 250 })
-    .toBe(status);
-}
-
-async function liveWebhook(owner: CapacityOwner) {
-  const { path } = await publishGraph(owner, 'Burst', {
-    nodes: [step('webhook', 'core.webhook', 0)],
-    edges: [],
-  });
-  let triggerId: string | undefined;
-  await expect
-    .poll(
-      async () => {
-        const listed = await owner.send('GET', `${path}/triggers`);
-        const { items } = (await listed.json()) as {
-          items: { id: string; status: string }[];
-        };
-        triggerId = items.find(
-          ({ status }) => status === 'configuration_required',
-        )?.id;
-        return triggerId !== undefined;
-      },
-      { timeout: 30_000, interval: 250 },
-    )
-    .toBe(true);
-  const provisioned = await owner.send(
-    'POST',
-    `${path}/triggers/${String(triggerId)}/webhook/provision`,
-  );
-  expect(provisioned.status).toBe(200);
-  return (await provisioned.json()) as {
-    endpointKey: string;
-    signingSecret: string;
-  };
-}
-
 describe.skipIf(!betterAuthIntegrationEnabled)(
   'capacity an operator sets on real API and worker processes',
   () => {
-    const stack = createCapacityStack();
+    const stack = createRealStack('capacity');
 
     let send: Awaited<ReturnType<typeof signUp>> | undefined;
 
@@ -136,7 +90,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it('applies the operator’s settings to new and existing workspaces after a restart', async () => {
       const first = await stack.boot(OPERATOR_SETTINGS);
-      let owner: CapacityOwner;
+      let owner: StackOwner;
       try {
         owner = await newWorkspace(first.origin);
         const { execution, artifacts } = await usageCapacity(owner);
@@ -209,7 +163,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         const run = await startRun(owner, path);
         await delay(500);
         await runReaches(owner, run, 'succeeded');
-        expect(await runStatus(owner, run)).toBe('succeeded');
+        expect((await readRun(owner, run)).status).toBe('succeeded');
       } finally {
         await running.stop();
       }
@@ -219,7 +173,14 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       const running = await stack.boot(OPERATOR_SETTINGS);
       try {
         const owner = await newWorkspace(running.origin);
-        const { endpointKey, signingSecret } = await liveWebhook(owner);
+        const { path } = await publishGraph(owner, 'Burst', {
+          nodes: [step('webhook', 'core.webhook', 0)],
+          edges: [],
+        });
+        const { endpointKey, signingSecret } = await provisionWebhook(
+          owner,
+          path,
+        );
         const statuses: number[] = [];
         for (let sent = 0; sent < 7; sent += 1) {
           const response = await signedDelivery(
@@ -243,7 +204,14 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       });
       try {
         const owner = await newWorkspace(running.origin);
-        const { endpointKey, signingSecret } = await liveWebhook(owner);
+        const { path } = await publishGraph(owner, 'Burst', {
+          nodes: [step('webhook', 'core.webhook', 0)],
+          edges: [],
+        });
+        const { endpointKey, signingSecret } = await provisionWebhook(
+          owner,
+          path,
+        );
         const responses = await Promise.all(
           Array.from({ length: 80 }, () =>
             signedDelivery(running.origin, endpointKey, signingSecret),

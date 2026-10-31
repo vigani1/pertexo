@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { createHmac, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -7,12 +7,20 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { migrateDatabase } from '@pertexo/database/testing';
 import { Redis } from 'ioredis';
 import { Pool } from 'pg';
-import { expect } from 'vitest';
 
 import { dropDisconnectedDatabase } from '../disposable-database.js';
 
 const repository = new URL('../../../../../', import.meta.url);
-const password = 'a long enough integration password';
+
+/**
+ * Each suite's own Redis database, since vitest runs files side by side and the stack flushes on
+ * start and close. 1 to 9 are free of the worker's and browser suites, which use 10 to 15.
+ */
+const SUITE_REDIS_DATABASES = {
+  capacity: 9,
+  'timed-waits': 8,
+  'webhook-endpoints': 7,
+} as const;
 
 /** The operator's starting point: the shipped example, with this slot's services. */
 function exampleEnvironment(): Record<string, string> {
@@ -53,15 +61,14 @@ function isRunning(child: ChildProcess) {
   return child.exitCode === null && child.signalCode === null;
 }
 
-/** This stack's own Redis database, so its jobs never reach another suite's worker. */
-function stackRedisUrl(): string {
+function suiteRedisUrl(suite: keyof typeof SUITE_REDIS_DATABASES): string {
   return Object.assign(new URL(required('REDIS_URL')), {
-    pathname: '/12',
+    pathname: `/${String(SUITE_REDIS_DATABASES[suite])}`,
   }).toString();
 }
 
-async function clearStackRedis(): Promise<void> {
-  const redis = new Redis(stackRedisUrl());
+async function clearRedis(url: string): Promise<void> {
+  const redis = new Redis(url);
   try {
     await redis.flushdb();
   } finally {
@@ -76,8 +83,9 @@ function withDatabase(base: string, name: string): string {
 }
 
 /** Real API and worker processes from their built entry points, on a disposable database. */
-export function createCapacityStack() {
-  const databaseName = `pertexo_test_capacity_${randomUUID().replaceAll('-', '')}`;
+export function createRealStack(suite: keyof typeof SUITE_REDIS_DATABASES) {
+  const databaseName = `pertexo_test_stack_${randomUUID().replaceAll('-', '')}`;
+  const redisUrl = suiteRedisUrl(suite);
   const processes = new Set<ChildProcess>();
   const output = new Map<ChildProcess, string>();
   let admin: Pool | undefined;
@@ -85,7 +93,7 @@ export function createCapacityStack() {
   let port: number | undefined;
 
   async function create() {
-    await clearStackRedis();
+    await clearRedis(redisUrl);
     admin = new Pool({
       connectionString: required('DATABASE_ADMIN_URL'),
       max: 1,
@@ -171,7 +179,7 @@ export function createCapacityStack() {
         required('DATABASE_MIGRATION_URL'),
         databaseName,
       ),
-      REDIS_URL: stackRedisUrl(),
+      REDIS_URL: redisUrl,
       ARTIFACT_STORE_ENDPOINT: required('ARTIFACT_STORE_ENDPOINT'),
       ARTIFACT_STORE_ACCESS_KEY_ID: required('ARTIFACT_STORE_ACCESS_KEY_ID'),
       ARTIFACT_STORE_SECRET_ACCESS_KEY: required(
@@ -225,7 +233,7 @@ export function createCapacityStack() {
 
   async function close() {
     await Promise.all([...processes].map(stop));
-    await clearStackRedis();
+    await clearRedis(redisUrl);
     await owner?.end();
     if (admin !== undefined) {
       await dropDisconnectedDatabase(admin, databaseName);
@@ -244,157 +252,4 @@ export function createCapacityStack() {
   return { create, boot, bootExitCode, close, verifyEmail };
 }
 
-export type CapacityStack = ReturnType<typeof createCapacityStack>;
-
-/** Signs one person up over real HTTP; sign-ups are rate limited, so a suite shares them. */
-export async function signUp(stack: CapacityStack, origin: string) {
-  const email = `capacity-${randomUUID()}@example.test`;
-  const headers = { origin, 'content-type': 'application/json' };
-  const created = await fetch(`${origin}/v1/auth/sign-up/email`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      name: 'Capacity owner',
-      email,
-      password,
-      callbackURL: '/workspaces',
-    }),
-  });
-  expect(created.status, await created.text()).toBe(200);
-  await stack.verifyEmail(email);
-  const signedIn = await fetch(`${origin}/v1/auth/sign-in/email`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ email, password, callbackURL: '/workspaces' }),
-  });
-  expect(signedIn.status, await signedIn.text()).toBe(200);
-  const cookies = signedIn.headers.getSetCookie();
-  const cookie = (name: string) => {
-    const value = cookies
-      .find((entry) => entry.startsWith(`${name}=`))
-      ?.split(';', 1)[0]
-      ?.slice(name.length + 1);
-    if (value === undefined) throw new Error(`${name} cookie missing`);
-    return value;
-  };
-  const session = cookie('pertexo_session');
-  const csrf = cookie('pertexo_csrf');
-  return function send(
-    method: string,
-    path: string,
-    payload?: unknown,
-    extra: Readonly<Record<string, string>> = {},
-  ) {
-    return fetch(`${origin}${path}`, {
-      method,
-      headers: {
-        origin,
-        cookie: `pertexo_session=${session}; pertexo_csrf=${csrf}`,
-        'x-csrf-token': decodeURIComponent(csrf),
-        ...(method === 'GET' ? {} : { 'idempotency-key': randomUUID() }),
-        ...(payload === undefined
-          ? {}
-          : { 'content-type': 'application/json' }),
-        ...extra,
-      },
-      ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
-    });
-  };
-}
-
-/** A workspace of its own, so one test's runs don't count against another's. */
-export async function ownWorkspace(send: Awaited<ReturnType<typeof signUp>>) {
-  const workspace = await send('POST', '/v1/workspaces', {
-    name: 'Capacity',
-    slug: `capacity-${randomUUID().slice(0, 8)}`,
-  });
-  expect(workspace.status).toBe(201);
-  const { id: workspaceId } = (await workspace.json()) as { id: string };
-  return { send, workspaceId, base: `/v1/workspaces/${workspaceId}` };
-}
-
-export type CapacityOwner = Awaited<ReturnType<typeof ownWorkspace>>;
-
-export const step = (
-  id: string,
-  key: string,
-  x: number,
-  config: Readonly<Record<string, unknown>> = {},
-) => ({
-  id,
-  definition: { key, version: 1 },
-  position: { x, y: 0 },
-  configVersion: 1,
-  config,
-  inputMappings: {},
-  connectionRefs: {},
-});
-
-export async function publishGraph(
-  owner: CapacityOwner,
-  name: string,
-  graph: Readonly<{ nodes: unknown[]; edges: unknown[] }>,
-) {
-  const created = await owner.send('POST', `${owner.base}/workflows`, { name });
-  expect(created.status).toBe(201);
-  const { workflow } = (await created.json()) as { workflow: { id: string } };
-  const path = `${owner.base}/workflows/${workflow.id}`;
-  const draft = await owner.send('GET', `${path}/draft`);
-  const saved = await owner.send(
-    'PUT',
-    `${path}/draft`,
-    { graph: { settings: {}, ...graph } },
-    { 'if-match': String(draft.headers.get('etag')) },
-  );
-  const savedBody = await saved.text();
-  expect(saved.status, savedBody).toBe(200);
-  // The API asks for a retry when validation is saturated on a busy machine.
-  for (let tries = 1; ; tries += 1) {
-    const published = await owner.send('POST', `${path}/publish`, undefined, {
-      'if-match': String(saved.headers.get('etag')),
-    });
-    const publishedBody = await published.text();
-    if (published.status === 503 && tries < 5) {
-      await delay(1_000);
-      continue;
-    }
-    expect(published.status, publishedBody).toBe(200);
-    break;
-  }
-  return { path, workflowId: workflow.id };
-}
-
-export async function usageCapacity(owner: CapacityOwner) {
-  const response = await owner.send('GET', `${owner.base}/usage-capacity`);
-  expect(response.status).toBe(200);
-  return (await response.json()) as {
-    execution: {
-      activeRuns: number;
-      queuedRuns: number;
-      policy: { activeRunLimit: number; queuedRunLimit: number };
-    };
-    artifacts: { artifactCountLimit: number };
-  };
-}
-
-/** A signed delivery with its own key, as a real sender would send it. */
-export function signedDelivery(
-  origin: string,
-  endpointKey: string,
-  secret: string,
-) {
-  const timestamp = String(Math.floor(Date.now() / 1000));
-  const signature = `v1=${createHmac('sha256', Buffer.from(secret, 'base64url'))
-    .update(`${timestamp}.{}`)
-    .digest('hex')}`;
-  return fetch(`${origin}/hooks/${endpointKey}`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'idempotency-key': randomUUID(),
-      'x-pertexo-timestamp': timestamp,
-      'x-pertexo-signature': signature,
-    },
-    body: '{}',
-  });
-}
+export type RealStack = ReturnType<typeof createRealStack>;
