@@ -293,21 +293,7 @@ For audited changes to stuck or uncertain work, use `run_ops` as described in
 
 Workers recover stranded runs and lost jobs of every kind by themselves, so work
 only stays stuck while no worker can act on it, or when Redis or Postgres is down.
-To see what's waiting, in every workspace:
-
-```sh
-run_ops -e OPERATOR_COMMAND_TYPE=stuck-work.list
-```
-
-It prints stuck runs with the time their next step was due, and outbox events
-that can never publish or were never confirmed, with their error code
-(`delivery.never_confirmed` after about a day of redeliveries; fix the cause, then
-use the audited redispatch). Worker logs name each recovery:
-`run_recovery.attempt_reclaimed`, `run_recovery.attempt_marked_unknown`,
-`run_recovery.delivery_redelivered`, `run_recovery.delivery_replaced` and, as a
-warning, `run_recovery.delivery_given_up`. A failed delivery logs as
-`queue.delivery_failed` with its run. A marked-unknown step is never sent again:
-check the provider, then decide whether to replay the run.
+[`stuck-work.list`](operator-commands.md#stuck-worklist) shows what's waiting.
 
 A failed readiness check only reports: the worker stays up and reconnects by
 itself, and an object store outage stops file steps, not other workflows. A
