@@ -17,6 +17,7 @@ export function registerSamplesLockWaitsOnDedicated(): void {
       },
     );
     poolAt(0).emit('connect', {
+      on: vi.fn(),
       once: vi.fn(),
       processID: 17,
       query: () => Promise.resolve({ rows: [] }),
