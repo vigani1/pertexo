@@ -80,15 +80,7 @@ export async function loadRunForAdvance(
         phase: 'loading',
       })),
     };
-  if (
-    row.timed_wait_started_at !== null &&
-    (await reacquireSlotAfterTimedWait(
-      client,
-      { workspaceId, runId },
-      row.execution_entitlement_version,
-    ))
-  )
-    row = { ...row, timed_wait_started_at: null };
+  row = await reacquireSlotAfterTimedWait(client, { workspaceId, runId }, row);
   // A run's version is immutable; one that is gone went with its run.
   const version = projectExecutionSource(selected.version ?? undefined);
   if (version === null) return Object.freeze({ kind: 'not_found' });
@@ -159,10 +151,7 @@ export async function loadRunForAdvance(
     row,
     pendingFailures,
     state: Object.freeze({
-      hasExecutionSlot:
-        calls.hasExecutionSlot &&
-        row.human_wait_started_at === null &&
-        row.timed_wait_started_at === null,
+      hasExecutionSlot: holdsExecutionSlot(row, calls.hasExecutionSlot),
       callOutcomes: calls.callOutcomes,
       taskOutcomes,
       runId,
@@ -185,4 +174,19 @@ export async function loadRunForAdvance(
         }),
     }),
   });
+}
+
+/** A run parked on a person or a timer has given its slot back, and so has a parent lending it. */
+function holdsExecutionSlot(
+  row: Pick<
+    LockedCoordinatorRow,
+    'human_wait_started_at' | 'timed_wait_started_at'
+  >,
+  slotNotLent: boolean,
+): boolean {
+  return (
+    slotNotLent &&
+    row.human_wait_started_at === null &&
+    row.timed_wait_started_at === null
+  );
 }

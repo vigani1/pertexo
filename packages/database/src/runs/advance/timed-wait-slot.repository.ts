@@ -1,5 +1,6 @@
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 import type { PoolClient } from 'pg';
 
 import { rethrowQueryFailure } from '../../platform/query-errors.js';
@@ -19,7 +20,25 @@ type RunScope = Readonly<{ workspaceId: string; runId: string }>;
 export async function releaseSlotDuringTimedWait(
   client: PoolClient,
   scope: RunScope,
+  {
+    checkpoint,
+    row,
+  }: Readonly<{
+    checkpoint: Pick<WorkflowCheckpoint, 'runStatus' | 'invocations'>;
+    row: Readonly<{ timed_wait_started_at: Date | null }>;
+  }>,
 ): Promise<void> {
+  // Read from the plan first: the full check is too costly for a run with no timer,
+  // such as a large loop of Calls advancing many times.
+  if (
+    row.timed_wait_started_at !== null ||
+    checkpoint.runStatus !== 'waiting' ||
+    !checkpoint.invocations.some(
+      ({ status, waitKind }) =>
+        status === 'waiting' && waitKind === 'node_wait',
+    )
+  )
+    return;
   const facts = await readHumanWaitFacts(client, scope);
   if (
     facts === undefined ||
@@ -55,9 +74,21 @@ export async function releaseSlotDuringTimedWait(
 
 /**
  * Takes a slot back when the timer has fired, or defers if every slot is full, as a
- * human wait resuming does. Returns whether the run may work now.
+ * human wait resuming does. Returns the row as it now stands.
  */
-export async function reacquireSlotAfterTimedWait(
+export async function reacquireSlotAfterTimedWait<
+  Row extends Readonly<{
+    timed_wait_started_at: Date | null;
+    execution_entitlement_version: number;
+  }>,
+>(client: PoolClient, scope: RunScope, row: Row): Promise<Row> {
+  if (row.timed_wait_started_at === null) return row;
+  return (await slotTakenBack(client, scope, row.execution_entitlement_version))
+    ? { ...row, timed_wait_started_at: null }
+    : row;
+}
+
+async function slotTakenBack(
   client: PoolClient,
   scope: RunScope,
   entitlementVersion: number,
