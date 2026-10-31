@@ -7,6 +7,7 @@ import {
 import {
   rolesForCapability,
   type AuthorizationCapability,
+  type Role,
   type WorkspaceStatusList,
 } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
@@ -33,13 +34,15 @@ export type WorkspaceAccess = Readonly<{
  * Opens the transaction, installs the workspace scope, checks authority inside
  * it and honours the signal. The API's guards are only a first check; this one
  * decides. Fields are picked out of the actor so that a larger input, such as
- * a request body, can't reach the transaction's options.
+ * a request body, can't reach the transaction's options. The operation gets the
+ * role this check found, so it never has to read the role again with a second
+ * status list.
  */
 export function withWorkspaceAccess<T>(
   pool: Pool,
   { workspaceId, actorId, signal }: WorkspaceActor,
   { mode, capability, statuses }: WorkspaceAccess,
-  operation: (client: PoolClient) => Promise<T>,
+  operation: (client: PoolClient, role: Role) => Promise<T>,
 ): Promise<T> {
   const scope = { workspaceId, actorId };
   const options = signal === undefined ? {} : { signal };
@@ -49,12 +52,12 @@ export function withWorkspaceAccess<T>(
       pool,
       scope,
       async (client) => {
-        await readWorkspaceAuthority(client, workspaceId, {
+        const role = await readWorkspaceAuthority(client, workspaceId, {
           actorId,
           roles,
           allowedStatuses: statuses,
         });
-        return operation(client);
+        return operation(client, role);
       },
       options,
     );
@@ -62,12 +65,12 @@ export function withWorkspaceAccess<T>(
     pool,
     scope,
     async (client) => {
-      await lockWorkspaceAuthorityInStatuses(client, workspaceId, {
+      const role = await lockWorkspaceAuthorityInStatuses(client, workspaceId, {
         actorId,
         roles,
         allowedStatuses: statuses,
       });
-      return operation(client);
+      return operation(client, role);
     },
     options,
   );
