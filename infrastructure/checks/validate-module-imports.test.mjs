@@ -336,6 +336,39 @@ test("an application's tests stay out of core's database entry points", () => {
   );
 });
 
+test("an application's tests can't reach the database's code by relative path", () => {
+  for (const [file, specifier] of [
+    ['apps/api/test/a.ts', '../../../packages/database/src/schema.js'],
+    ['apps/api/test/a.ts', '../../../packages/database/src/primitives.js'],
+    ['apps/api/test/a.ts', '../../../packages/database/src/schema/runs/a'],
+    ['apps/api/test/a.ts', '../../../packages/database/dist/schema.js'],
+    ['apps/web/e2e/a/b.spec.ts', '../../../../packages/database/src/schema.js'],
+    ['apps/web/e2e-live/a.spec.ts', '../../../packages/database/src/schema.js'],
+  ])
+    for (const statement of [
+      `import { a } from '${specifier}';`,
+      `import type { A } from '${specifier}';`,
+      `export { a } from '${specifier}';`,
+      `const a = () => import('${specifier}');`,
+    ])
+      assert.match(
+        validateModuleImports({ [file]: statement }).join('\n'),
+        /is for core/u,
+        `${file}: ${statement}`,
+      );
+  assert.deepEqual(
+    validateModuleImports({
+      'apps/api/test/fixtures.ts':
+        "import { a } from '../../../packages/database/test/support.js';",
+      'apps/web/test/catalog.ts':
+        "import { a } from '../../../packages/node-catalog/dist/index.js';",
+      'packages/core/test/a.ts': "import { a } from '../../database/src/a.js';",
+      'packages/database/test/a.ts': "import { a } from '../src/schema.js';",
+    }),
+    [],
+  );
+});
+
 test('the scan reads tests, and holds them only to the direction rules', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'module-imports-'));
   try {
