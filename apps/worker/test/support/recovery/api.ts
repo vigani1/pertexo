@@ -188,6 +188,80 @@ export class ApiClient {
     return body.run ?? (read.json as Record<string, unknown>);
   }
 
+  public async createSlackConnection(
+    workspaceId: string,
+    botToken: string,
+  ): Promise<string> {
+    const created = await this.expect(201)(
+      this.call(
+        'POST',
+        `/v1/workspaces/${workspaceId}/connections`,
+        {
+          providerKey: 'slack',
+          name: `Slack ${randomUUID().slice(0, 8)}`,
+          credential: { type: 'slack_bot_token', botToken },
+        },
+        { 'idempotency-key': randomUUID() },
+      ),
+    );
+    return idOf(created.json, 'connection');
+  }
+
+  /** Sends this workflow's failure alerts to a Slack channel. */
+  public async alertToSlack(
+    workspaceId: string,
+    workflowId: string,
+    connectionId: string,
+    channelId: string,
+  ): Promise<void> {
+    const destination = await this.expect(201)(
+      this.call(
+        'POST',
+        `/v1/workspaces/${workspaceId}/failure-notification-destinations`,
+        { kind: 'slack', connectionId, channelId },
+        { 'idempotency-key': randomUUID() },
+      ),
+    );
+    await this.expect(204)(
+      this.call(
+        'PUT',
+        `/v1/workspaces/${workspaceId}/workflows/${workflowId}/failure-notification-policy`,
+        { destinationId: idOf(destination.json, 'destination') },
+        { 'idempotency-key': randomUUID() },
+      ),
+    );
+  }
+
+  public async setErrorWorkflow(
+    workspaceId: string,
+    workflowId: string,
+    targetWorkflowId: string,
+  ): Promise<void> {
+    const path = `/v1/workspaces/${workspaceId}/workflows/${workflowId}/error-workflow`;
+    const current = await this.expect(200)(this.call('GET', path));
+    const { revision } = current.json as { revision: number };
+    await this.expect(200)(
+      this.call(
+        'PUT',
+        path,
+        { targetWorkflowId, expectedRevision: revision },
+        { 'idempotency-key': randomUUID() },
+      ),
+    );
+  }
+
+  public async invite(workspaceId: string, email: string): Promise<string> {
+    const invited = await this.expect(202)(
+      this.call(
+        'POST',
+        `/v1/workspaces/${workspaceId}/invitations`,
+        { email, role: 'viewer' },
+        { 'idempotency-key': randomUUID() },
+      ),
+    );
+    return idOf(invited.json, 'invitation');
+  }
+
   private expect(...statuses: readonly number[]) {
     return async (pending: Promise<ApiResponse>): Promise<ApiResponse> => {
       const response = await pending;

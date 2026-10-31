@@ -90,12 +90,28 @@ export type Stack = Readonly<{
   worker: ServiceProcess;
 }>;
 
+export type StackOptions = Readonly<{
+  /** Extra settings for the API and the worker. */
+  environment?: Readonly<Record<string, string>>;
+  /** Extra settings only the worker may have, such as mail delivery. */
+  workerEnvironment?: Readonly<Record<string, string>>;
+  /** Serves Slack from the sink, for steps and alerts that use a real connection. */
+  slackFromSink?: boolean;
+}>;
+
+const providerPreload = fileURLToPath(
+  new URL('./stand-ins/provider-preload.mjs', import.meta.url),
+);
+
 /**
  * A disposable install of the real compiled API and worker on default settings,
  * with one verified user. Queries read as the superuser, past row security, so
  * tests see what is stored in every workspace.
  */
-export async function startStack(name: string): Promise<Stack> {
+export async function startStack(
+  name: string,
+  options: StackOptions = {},
+): Promise<Stack> {
   const databaseName = `pertexo_test_recovery_${name.replaceAll('-', '_')}_${randomUUID().slice(0, 8)}`;
   const redisNamespace = createRedisTestNamespace(
     composeUrls.redis,
@@ -120,6 +136,13 @@ export async function startStack(name: string): Promise<Stack> {
     DATABASE_URL: onDatabase(composeUrls.app, databaseName),
     PUBLIC_WEB_ORIGIN: WEB_ORIGIN,
     REDIS_URL: redisNamespace.redisUrl,
+    ...(options.slackFromSink === true
+      ? {
+          NODE_OPTIONS: `--import=${providerPreload}`,
+          PROVIDER_STAND_IN_ORIGIN: sink.origin,
+        }
+      : {}),
+    ...options.environment,
   };
   const apiProcess = new ServiceProcess(entrypoint('api'), {
     ...shared,
@@ -128,6 +151,7 @@ export async function startStack(name: string): Promise<Stack> {
   const createWorker = (instance: string): ServiceProcess =>
     new ServiceProcess(entrypoint('worker'), {
       ...shared,
+      ...options.workerEnvironment,
       WORKER_INSTANCE_ID: instance,
     });
   const worker = createWorker('recovery-worker');
