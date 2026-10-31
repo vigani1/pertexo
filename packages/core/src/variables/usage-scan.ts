@@ -18,7 +18,10 @@ const MAX_SOURCE_BYTES_PER_PAGE = 65_536;
 const MAX_WORKFLOWS_PER_PAGE = 25;
 
 /** What this page has used so far, across its workflows. */
-type UsageSpending = { sources: number; bytes: number };
+interface UsageSpending {
+  sources: number;
+  bytes: number;
+}
 
 type UsageWorkflow = Readonly<{
   id: string;
@@ -32,6 +35,9 @@ type UsageWorkflow = Readonly<{
 }>;
 
 type UsageCursor = NonNullable<VariableUsageInput['after']>;
+type UsageReference = NonNullable<
+  ReturnType<typeof inspectWorkflowVariableSource>['reference']
+>;
 
 /**
  * One bounded page of references to a name. It reads one workflow at a time, so
@@ -74,8 +80,7 @@ export async function walkVariableUsage(
 /**
  * One workflow's references to a name. Expression analysis costs real time, so
  * this stops at the page's budgets, and a later page resumes by position only
- * while the stamp shows the workflow's graphs are unchanged. A page's first
- * source always runs, so a source over the byte budget can't stall the walk.
+ * while the stamp shows the workflow's graphs are unchanged.
  */
 export function scanVariableUsage(
   workflow: UsageWorkflow,
@@ -84,21 +89,16 @@ export function scanVariableUsage(
 ): VariableUsageScan {
   const stamp = usageDigest([workflow.draftRevision, workflow.versionId]);
   const offset = input.after?.offset ?? 0;
-  if (
-    offset > 0 &&
-    (input.after?.workflowId !== workflow.id || input.after.stamp !== stamp)
-  )
+  if (offset > 0 && !cursorFits(input.after, workflow.id, stamp))
     throw new WorkspaceVariableUsageChangedError();
   const items: VariableUsagePage['items'][number][] = [];
   let incomplete = false;
   for (const { stage, ordinal, entry } of stagedSources(workflow)) {
     if (ordinal < offset) continue;
-    const budgetSpent =
-      spent.sources > 0 &&
-      (items.length >= input.limit ||
-        spent.sources >= MAX_SOURCES_PER_PAGE ||
-        spent.bytes + entry.costBytes > MAX_SOURCE_BYTES_PER_PAGE);
-    if (budgetSpent)
+    if (
+      pageIsFull(spent, entry.costBytes) ||
+      (spent.sources > 0 && items.length >= input.limit)
+    )
       return {
         items,
         incomplete,
@@ -118,21 +118,7 @@ export function scanVariableUsage(
       reference !== null &&
       (reference.dynamic || reference.names.includes(input.name))
     )
-      items.push({
-        id: usageDigest([
-          stage,
-          stage === 'draft' ? workflow.draftRevision : workflow.versionId,
-          ordinal,
-        ]),
-        workflowId: workflow.id,
-        workflowName: workflow.name.slice(0, 160),
-        archived: workflow.lifecycleStatus === 'archived',
-        stage,
-        nodeId: reference.nodeId,
-        label: reference.label,
-        input: reference.input,
-        kind: reference.dynamic ? 'dynamic' : 'direct',
-      });
+      items.push(usageItem(workflow, stage, ordinal, reference));
   }
   return {
     items,
@@ -141,6 +127,45 @@ export function scanVariableUsage(
       ? { workflowId: workflow.id, offset: 0, stamp }
       : null,
   };
+}
+
+function cursorFits(
+  cursor: VariableUsageInput['after'],
+  workflowId: string,
+  stamp: string,
+): boolean {
+  return cursor?.workflowId === workflowId && cursor.stamp === stamp;
+}
+
+function usageItem(
+  workflow: UsageWorkflow,
+  stage: 'draft' | 'published',
+  ordinal: number,
+  reference: UsageReference,
+): VariableUsagePage['items'][number] {
+  return {
+    id: usageDigest([
+      stage,
+      stage === 'draft' ? workflow.draftRevision : workflow.versionId,
+      ordinal,
+    ]),
+    workflowId: workflow.id,
+    workflowName: workflow.name.slice(0, 160),
+    archived: workflow.lifecycleStatus === 'archived',
+    stage,
+    nodeId: reference.nodeId,
+    label: reference.label,
+    input: reference.input,
+    kind: reference.dynamic ? 'dynamic' : 'direct',
+  };
+}
+
+/** A page's first source always runs, whatever it costs. */
+function pageIsFull(spent: UsageSpending, costBytes: number): boolean {
+  return (
+    spent.sources >= MAX_SOURCES_PER_PAGE ||
+    (spent.sources > 0 && spent.bytes + costBytes > MAX_SOURCE_BYTES_PER_PAGE)
+  );
 }
 
 /** Every source of the draft, then of the publication, numbered across both. */
