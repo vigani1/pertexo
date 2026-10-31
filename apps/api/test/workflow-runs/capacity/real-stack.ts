@@ -5,6 +5,7 @@ import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { migrateDatabase } from '@pertexo/database/testing';
+import { Redis } from 'ioredis';
 import { Pool } from 'pg';
 import { expect } from 'vitest';
 
@@ -52,6 +53,23 @@ function isRunning(child: ChildProcess) {
   return child.exitCode === null && child.signalCode === null;
 }
 
+/** This stack's own Redis database, so its jobs never reach another suite's worker. */
+function stackRedisUrl(): string {
+  const redis = new URL(required('REDIS_URL'));
+  redis.pathname = '/12';
+  return redis.toString();
+}
+
+async function clearStackRedis(): Promise<void> {
+  const redis = new Redis(stackRedisUrl(), { lazyConnect: true });
+  try {
+    await redis.connect();
+    await redis.flushdb();
+  } finally {
+    redis.disconnect();
+  }
+}
+
 function withDatabase(base: string, name: string): string {
   const url = new URL(base);
   url.pathname = `/${name}`;
@@ -68,6 +86,7 @@ export function createCapacityStack() {
   let port: number | undefined;
 
   async function create() {
+    await clearStackRedis();
     admin = new Pool({
       connectionString: required('DATABASE_ADMIN_URL'),
       max: 1,
@@ -137,9 +156,6 @@ export function createCapacityStack() {
     listenPort: number,
     settings: Readonly<Record<string, string>>,
   ) {
-    const redis = new URL(required('REDIS_URL'));
-    // This stack's worker must not take other suites' queue jobs.
-    redis.pathname = '/14';
     return {
       PATH: process.env.PATH ?? '',
       ...exampleEnvironment(),
@@ -156,7 +172,7 @@ export function createCapacityStack() {
         required('DATABASE_MIGRATION_URL'),
         databaseName,
       ),
-      REDIS_URL: redis.toString(),
+      REDIS_URL: stackRedisUrl(),
       ARTIFACT_STORE_ENDPOINT: required('ARTIFACT_STORE_ENDPOINT'),
       ARTIFACT_STORE_ACCESS_KEY_ID: required('ARTIFACT_STORE_ACCESS_KEY_ID'),
       ARTIFACT_STORE_SECRET_ACCESS_KEY: required(
@@ -210,6 +226,7 @@ export function createCapacityStack() {
 
   async function close() {
     await Promise.all([...processes].map(stop));
+    await clearStackRedis();
     await owner?.end();
     if (admin !== undefined) {
       await dropDisconnectedDatabase(admin, databaseName);
