@@ -113,7 +113,7 @@ export async function publish(seeded: Seeded, graph: Graph) {
   const versionId = published.version.id;
   return {
     versionId,
-    /** What the worker does when it takes the publication's outbox job. */
+    /** What the worker does when it takes this publication's outbox job; a republished version has older ones. */
     reconcile: async () => {
       const events = await ownerQuery<{
         id: string;
@@ -122,7 +122,9 @@ export async function publish(seeded: Seeded, graph: Graph) {
         `select id,payload_checksum from app.outbox_events
            where workspace_id=$1 and aggregate_id=$2
              and job_name='reconcile-workflow-triggers'
-             and payload::text like '%' || $3 || '%'`,
+             and payload::text like '%' || $3 || '%'
+           order by created_at desc, id desc
+           limit 1`,
         [workspaceId, workflowId, versionId],
       );
       const event = events.rows[0];
