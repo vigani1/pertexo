@@ -114,6 +114,25 @@ export class EmailProofCommands {
   }
 }
 
+async function verifyFirstAddress(
+  client: PoolClient,
+  user: Readonly<{ id: string; email: string; emailVerified: boolean }>,
+  signUpMode: SignUpMode,
+): Promise<'invalid' | 'sign_up_closed' | undefined> {
+  if (user.emailVerified) return 'invalid';
+  // The proof stays unused: an invitation may still arrive within its hour.
+  if (!(await admitNewAccount(client, signUpMode, user.email)))
+    return 'sign_up_closed';
+  const db = drizzle(client);
+  await db
+    .update(users)
+    .set({ emailVerified: true, updatedAt: sql`clock_timestamp()` })
+    .where(eq(users.id, user.id));
+  await db.delete(authSessions).where(eq(authSessions.userId, user.id));
+  await recordIdentitySecurityFact(client, user.id, 'email.initial_verified');
+  return undefined;
+}
+
 /** Consumes a proof only while it still refers to the user's current address. */
 async function consumeProof(
   client: PoolClient,
@@ -165,20 +184,8 @@ async function consumeProof(
   let outcome: ProofPurpose;
   switch (proof.purpose) {
     case 'initial_verification': {
-      if (user.emailVerified) return 'invalid';
-      // The proof stays unused: an invitation may still arrive within its hour.
-      if (!(await admitNewAccount(client, signUpMode, user.email)))
-        return 'sign_up_closed';
-      await db
-        .update(users)
-        .set({ emailVerified: true, updatedAt: sql`clock_timestamp()` })
-        .where(eq(users.id, userId));
-      await db.delete(authSessions).where(eq(authSessions.userId, userId));
-      await recordIdentitySecurityFact(
-        client,
-        userId,
-        'email.initial_verified',
-      );
+      const refusal = await verifyFirstAddress(client, user, signUpMode);
+      if (refusal !== undefined) return refusal;
       outcome = proof.purpose;
       break;
     }
