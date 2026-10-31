@@ -30,6 +30,10 @@
 	handle /v1/notifications/unsubscribe/one-click {
 		reverse_proxy api:3000
 	}
+	# Its query holds an OAuth2 code and state.
+	handle /v1/connections/oauth2/callback {
+		reverse_proxy api:3000
+	}
 	handle {
 		reverse_proxy web:8080 {
 			flush_interval -1
