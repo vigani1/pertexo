@@ -21,7 +21,7 @@ import {
 
 import { builder, publicId } from './fixture.js';
 
-export function registerOmitsHiddenWorkflowIdentitiesVariable(): void {
+export function registerCallTargetsAndPrivateChildren(): void {
   it('requires target read access for a new Call site even when another site already pins that target', async () => {
     const target = {
       workflowId,
