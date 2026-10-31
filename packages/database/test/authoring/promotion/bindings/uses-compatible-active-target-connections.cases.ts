@@ -9,8 +9,11 @@ import {
   emptyGraph,
 } from '../../../support/workflow-authoring.js';
 import {
+  readVariableSet,
+  setVariableSet,
+} from '../../../support/variable-sets.js';
+import {
   db,
-  variables,
   tables,
   scope,
   promotions,
@@ -62,13 +65,7 @@ export function registerUsesCompatibleActiveTargetConnections(): void {
   });
 
   it('requires target variables without copying source values and makes changed names stale', async () => {
-    const source = await variables.read(scope());
-    await variables.replace({
-      ...scope(),
-      expectedRevision: source.revision,
-      values: { RATE: 42 },
-      idempotencyKey: randomUUID(),
-    });
+    await setVariableSet(scope().workspaceId, { RATE: 42 });
     const selection = await published({
       ...emptyGraph,
       nodes: [
@@ -97,27 +94,11 @@ export function registerUsesCompatibleActiveTargetConnections(): void {
         }),
       ]),
     );
-    const targetScope = {
-      workspaceId: otherWorkspaceId,
-      actorId: otherActorId,
-    };
-    const initial = await variables.read(targetScope);
-    await variables.replace({
-      ...targetScope,
-      expectedRevision: initial.revision,
-      values: { RATE: 7 },
-      idempotencyKey: randomUUID(),
-    });
+    await setVariableSet(otherWorkspaceId, { RATE: 7 });
     const { review } = await promote(selection);
-    expect((await variables.read(targetScope)).values.RATE).toBe(7);
+    expect((await readVariableSet(otherWorkspaceId)).RATE).toBe(7);
     expect(JSON.stringify(review)).not.toContain('"RATE":42');
-    const current = await variables.read(targetScope);
-    await variables.replace({
-      ...targetScope,
-      expectedRevision: current.revision,
-      values: { OTHER: 7 },
-      idempotencyKey: randomUUID(),
-    });
+    await setVariableSet(otherWorkspaceId, { OTHER: 7 });
     await expect(
       promotions().apply({
         ...scope(),

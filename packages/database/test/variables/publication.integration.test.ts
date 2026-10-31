@@ -17,19 +17,15 @@ import {
   saveCurrentDraft,
   currentRepresentationTag,
 } from '../support/workflow-authoring.js';
-import { createWorkspaceVariablesStore } from '../../src/variables/settings.repository.js';
-let variables: ReturnType<typeof createWorkspaceVariablesStore>;
+import { setVariableSet } from '../support/variable-sets.js';
 let authoring: ReturnType<typeof createWorkflowAuthoringDatabase>;
 beforeAll(() => {
   const config = parseDatabaseConfig({ connectionString: apiUrl, max: 3 });
-  variables = createWorkspaceVariablesStore(config);
   authoring = createWorkflowAuthoringDatabase(config, {
     definitionCatalog: testDefinitionCatalog,
   });
 });
-afterAll(async () => {
-  await Promise.all([variables.close(), authoring.close()]);
-});
+afterAll(() => authoring.close());
 it.each([
   { kind: 'workspace_variable' as const, name: 'RATE' },
   {
@@ -40,16 +36,8 @@ it.each([
 ])(
   'checks current names at publication, while exact receipts keep their accepted result: %j',
   async (source: ValueSource) => {
-    async function configure(values: Record<string, number>) {
-      const current = await variables.read({ workspaceId, actorId });
-      await variables.replace({
-        workspaceId,
-        actorId,
-        expectedRevision: current.revision,
-        idempotencyKey: randomUUID(),
-        values,
-      });
-    }
+    const configure = (values: Record<string, number>) =>
+      setVariableSet(workspaceId, values);
     await configure({});
     const created = await authoring.createWorkflow({
       workspaceId,
