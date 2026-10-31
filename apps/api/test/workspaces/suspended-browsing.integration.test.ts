@@ -11,6 +11,7 @@ import {
   HIDDEN,
   READS_CLOSED_TODAY,
   READS_OPEN_TODAY,
+  READS_OPEN_UNTIL_PURGE,
   expectShown,
   type Read,
 } from './suspended/reads.js';
@@ -181,8 +182,14 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
     describe('while it is scheduled for deletion', () => {
       beforeAll(() => enter('pending_deletion'));
 
-      // READS_OPEN_TODAY answer here too: their guards allow this state on
-      // purpose or by habit, and nothing here decides which, so none is pinned.
+      for (const entry of READS_OPEN_UNTIL_PURGE)
+        it(`shows ${entry.name}`, async () => {
+          expectShown(entry, await read(entry), world);
+        });
+
+      // The rest of READS_OPEN_TODAY answer here too: their guards allow this
+      // state on purpose or by habit, and nothing here decides which, so none
+      // is pinned.
       for (const entry of READS_CLOSED_TODAY)
         it(`refuses ${entry.name}`, async () => {
           const { status, code } = entry.refusal ?? HIDDEN;

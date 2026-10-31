@@ -4,11 +4,17 @@ import {
   AUTHORIZATION_CAPABILITIES,
   BROWSABLE_WORKSPACE_STATUSES,
   ROLES,
+  UNPURGED_WORKSPACE_STATUSES,
   type AuthorizationCapability,
   type Role,
 } from '@pertexo/workflow-model';
 
-export { AUTHORIZATION_CAPABILITIES, BROWSABLE_WORKSPACE_STATUSES, ROLES };
+export {
+  AUTHORIZATION_CAPABILITIES,
+  BROWSABLE_WORKSPACE_STATUSES,
+  ROLES,
+  UNPURGED_WORKSPACE_STATUSES,
+};
 export type { AuthorizationCapability };
 
 export const MEMBERSHIP_STATUSES = Object.freeze([

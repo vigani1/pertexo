@@ -32,8 +32,25 @@ const root = ({ workspaceId }: World) => `/v1/workspaces/${workspaceId}`;
 const workflow = (world: World) =>
   `${root(world)}/workflows/${world.workflowId}`;
 
+/** Open on purpose until the purge starts: `UNPURGED_WORKSPACE_STATUSES`. */
+export const READS_OPEN_UNTIL_PURGE: readonly Read[] = [
+  {
+    name: 'the variables',
+    as: 'viewer',
+    path: (world) => `${root(world)}/variables`,
+    shows: answers,
+  },
+  {
+    name: "a variable's references",
+    as: 'viewer',
+    path: (world) => `${root(world)}/variables/usage?name=RATE`,
+    shows: answers,
+  },
+];
+
 /** The reads a suspended workspace already answers. */
 export const READS_OPEN_TODAY: readonly Read[] = [
+  ...READS_OPEN_UNTIL_PURGE,
   {
     name: 'the run list',
     as: 'viewer',
@@ -61,12 +78,6 @@ export const READS_OPEN_TODAY: readonly Read[] = [
     shows: (body: { total: number }) => {
       expect(body.total).toBeGreaterThan(0);
     },
-  },
-  {
-    name: 'the variables',
-    as: 'viewer',
-    path: (world) => `${root(world)}/variables`,
-    shows: answers,
   },
   {
     name: 'the data tables',
