@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
-import { validateModuleImports } from './validate-module-imports.mjs';
+import {
+  inspectModuleImports,
+  validateModuleImports,
+} from './validate-module-imports.mjs';
 
 const source = (a, b) => ({
   'packages/example/src/a.ts': a,
@@ -229,22 +235,24 @@ test('keeps the direction apps -> core -> database', () => {
   const imports = (file, specifier) =>
     validateModuleImports({ [file]: `import '${specifier}';` });
   const database = 'packages/database/src/runs/advance.ts';
-  for (const specifier of ['@pertexo/core/server', '@pertexo/core'])
+  for (const specifier of ['@pertexo/core/variables', '@pertexo/core'])
     assert.match(
       imports(database, specifier).join('\n'),
       /only applications depend on core/u,
     );
   assert.match(
     validateModuleImports({
-      [database]: "import type { A } from '@pertexo/core/server';",
+      [database]: "import type { A } from '@pertexo/core/variables';",
     }).join('\n'),
     /only applications depend on core/u,
   );
   assert.match(
-    imports('packages/execution/src/a.ts', '@pertexo/core/server').join('\n'),
+    imports('packages/execution/src/a.ts', '@pertexo/core/variables').join(
+      '\n',
+    ),
     /only applications depend on core/u,
   );
-  assert.deepEqual(imports('apps/api/src/a.ts', '@pertexo/core/server'), []);
+  assert.deepEqual(imports('apps/api/src/a.ts', '@pertexo/core/variables'), []);
   for (const entry of ['schema', 'primitives']) {
     const specifier = `@pertexo/database/${entry}`;
     assert.match(
@@ -269,4 +277,167 @@ test('core areas meet at their index', () => {
   );
   assert.deepEqual(area('../variables/index.js'), []);
   assert.deepEqual(area('./own.js'), []);
+});
+
+test('a test door never reaches code that ships', () => {
+  for (const specifier of [
+    '@pertexo/database/testing',
+    '@pertexo/core/testing',
+  ])
+    for (const file of [
+      'apps/api/src/a.ts',
+      'packages/execution/src/a.ts',
+      'packages/core/src/variables/a.ts',
+    ]) {
+      for (const statement of [
+        `import { a } from '${specifier}';`,
+        `import type { A } from '${specifier}';`,
+        `export { a } from '${specifier}';`,
+        `const a = () => import('${specifier}');`,
+      ])
+        assert.match(
+          validateModuleImports({ [file]: statement }).join('\n'),
+          /holds test flows/u,
+          `${file}: ${statement}`,
+        );
+    }
+  assert.deepEqual(
+    validateModuleImports({
+      'apps/api/test/a.ts': "import { a } from '@pertexo/database/testing';",
+      'packages/core/test/a.ts': "import { a } from '@pertexo/core/testing';",
+    }),
+    [],
+  );
+});
+
+test("an application's tests stay out of core's database entry points", () => {
+  for (const entry of ['schema', 'primitives'])
+    for (const file of [
+      'apps/api/test/a.ts',
+      'apps/worker/test/a.integration.test.ts',
+      'apps/web/e2e/a.spec.ts',
+      'apps/web/e2e-live/a.spec.ts',
+    ])
+      assert.match(
+        validateModuleImports({
+          [file]: `import { a } from '@pertexo/database/${entry}';`,
+        }).join('\n'),
+        /is for core/u,
+        `${file}: ${entry}`,
+      );
+  assert.deepEqual(
+    validateModuleImports({
+      'packages/core/test/a.ts':
+        "import { a } from '@pertexo/database/schema';",
+      'packages/database/test/a.ts':
+        "import { a } from '@pertexo/database/schema';",
+    }),
+    [],
+  );
+});
+
+test('the scan reads tests, and holds them only to the direction rules', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'module-imports-'));
+  try {
+    await mkdir(path.join(directory, 'packages/placeholder'), {
+      recursive: true,
+    });
+    for (const folder of ['test', 'e2e', 'e2e-live']) {
+      await mkdir(path.join(directory, 'apps/web', folder), {
+        recursive: true,
+      });
+      await writeFile(
+        path.join(directory, 'apps/web', folder, 'a.ts'),
+        "import { a } from '@pertexo/database/schema';",
+      );
+    }
+    assert.equal(
+      (await inspectModuleImports(directory)).filter((error) =>
+        /is for core/u.test(error),
+      ).length,
+      3,
+    );
+
+    await rm(path.join(directory, 'apps'), { recursive: true });
+    await mkdir(path.join(directory, 'apps/api/test'), { recursive: true });
+    await writeFile(
+      path.join(directory, 'apps/api/test/a.ts'),
+      "import { a } from '../../../packages/database/test/support.js';\nimport { b } from '@pertexo/api/x';\nexport const load = () => fetch('/x');",
+    );
+    assert.deepEqual(await inspectModuleImports(directory), []);
+  } finally {
+    await rm(directory, { recursive: true });
+  }
+});
+
+test('a dynamic import in a template literal is held to the same rules', () => {
+  const load = (specifier) => `const load = () => import(\`${specifier}\`);`;
+  assert.match(
+    validateModuleImports({
+      'apps/api/src/a.ts': load('@pertexo/database/schema'),
+    }).join('\n'),
+    /is for core/u,
+  );
+  assert.match(
+    validateModuleImports({
+      'packages/execution/src/a.ts': load('@pertexo/core/variables'),
+    }).join('\n'),
+    /only applications depend on core/u,
+  );
+  assert.match(
+    validateModuleImports(source(load('../../other/src/index.js'), '')).join(
+      '\n',
+    ),
+    /public workspace package export/u,
+  );
+});
+
+test('a package reaches its own code by relative path', () => {
+  for (const [file, specifier] of [
+    ['packages/core/src/runs/start.ts', '@pertexo/core/variables'],
+    ['packages/core/src/runs/start.ts', '@pertexo/core'],
+    ['packages/database/src/runs/a.ts', '@pertexo/database/schema'],
+    ['apps/worker/src/a.ts', '@pertexo/worker'],
+  ])
+    for (const statement of [
+      `import { a } from '${specifier}';`,
+      `import type { A } from '${specifier}';`,
+      `const a = () => import('${specifier}');`,
+    ])
+      assert.match(
+        validateModuleImports({ [file]: statement }).join('\n'),
+        /reaches its own code/u,
+        `${file}: ${statement}`,
+      );
+  assert.deepEqual(
+    validateModuleImports({
+      'packages/nodes-core/src/a.ts': "import { a } from '@pertexo/core-ish';",
+      'packages/core/test/a.ts': "import { a } from '@pertexo/core/variables';",
+    }),
+    [],
+  );
+});
+
+test("a core area doesn't import the entry points above it", () => {
+  for (const specifier of ['../server.js', '../testing.js'])
+    for (const statement of [
+      `import { a } from '${specifier}';`,
+      `import type { A } from '${specifier}';`,
+    ])
+      assert.match(
+        validateModuleImports({
+          'packages/core/src/runs/start.ts': statement,
+          'packages/core/src/server.ts': 'export const a = 1;',
+          'packages/core/src/testing.ts': 'export const a = 1;',
+        }).join('\n'),
+        /don't import core's entry points/u,
+        statement,
+      );
+  assert.deepEqual(
+    validateModuleImports({
+      'packages/core/src/testing.ts': "export { a } from './runs/index.js';",
+      'packages/core/src/runs/index.ts': 'export const a = 1;',
+    }),
+    [],
+  );
 });
