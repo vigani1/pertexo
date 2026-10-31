@@ -64,7 +64,7 @@ V1 endpoint classes and one-minute defaults are:
 
 | Endpoint class | Dimensions and limits | Backend failure |
 | --- | --- | --- |
-| `identity_start` | client address 10; account named in the request 10 | fail closed |
+| `identity_start` | client address 10; account named in the request 20 | fail closed |
 | `identity_callback` | client address 30 | fail closed |
 | `authenticated_read` | actor 600; workspace 1,200 when scoped | fail open |
 | `ordinary_mutation` | actor 120; workspace 300 when scoped | fail closed |
