@@ -3,6 +3,7 @@ import {
   appendAuditFact,
   claimCommand,
   completeCommand,
+  lockVariableSet,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import {
@@ -13,7 +14,7 @@ import {
   EMPTY_VARIABLE_SNAPSHOT,
   WORKSPACE_VARIABLE_LIMITS,
 } from '@pertexo/workflow-model';
-import { and, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
@@ -48,7 +49,11 @@ export async function replaceWorkspaceVariables(
     },
   });
   if (replay !== null) return { ...replay, replayed: true };
-  const current = await lockCurrentVariableSet(client, input.workspaceId);
+  const current = (await lockVariableSet(
+    client,
+    input.workspaceId,
+    'update',
+  )) ?? { ...EMPTY_VARIABLE_SNAPSHOT, descriptions: {} };
   if (current.revision !== input.expectedRevision)
     throw new WorkspaceVariablesConflictError();
   const { descriptions, changedNames } = planWorkspaceVariableReplacement(
@@ -64,35 +69,6 @@ export async function replaceWorkspaceVariables(
   const accepted = { revision, changed };
   await completeCommand(client, command, accepted);
   return { ...accepted, replayed: false };
-}
-
-/** Lock only the mutable head, then read its exact immutable set after any wait. */
-async function lockCurrentVariableSet(client: PoolClient, workspaceId: string) {
-  const db = drizzle(client);
-  const [head] = await db
-    .select({ revision: workspaceVariables.revision })
-    .from(workspaceVariables)
-    .where(eq(workspaceVariables.workspaceId, workspaceId))
-    .for('update')
-    .catch(rethrowQueryFailure);
-  if (head === undefined)
-    return { ...EMPTY_VARIABLE_SNAPSHOT, descriptions: {} };
-  const [stored] = await db
-    .select({
-      values: workspaceVariableSetRevisions.values,
-      descriptions: workspaceVariableSetRevisions.descriptions,
-    })
-    .from(workspaceVariableSetRevisions)
-    .where(
-      and(
-        eq(workspaceVariableSetRevisions.workspaceId, workspaceId),
-        eq(workspaceVariableSetRevisions.revision, head.revision),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  if (stored === undefined)
-    throw new Error('Workspace variable revision is missing');
-  return { revision: head.revision, ...stored };
 }
 
 /** With no head to lock yet, two first saves meet at the revision's primary key. */

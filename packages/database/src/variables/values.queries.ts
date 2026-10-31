@@ -11,8 +11,19 @@ export async function readVariableSetValues(
   revision: number | null,
 ) {
   if (revision === null) return EMPTY_VARIABLE_SNAPSHOT.values;
+  return (await readVariableSet(db, workspaceId, revision)).values;
+}
+
+export async function readVariableSet(
+  db: Pick<NodePgDatabase, 'select'>,
+  workspaceId: string,
+  revision: number,
+) {
   const [stored] = await db
-    .select({ values: workspaceVariableSetRevisions.values })
+    .select({
+      values: workspaceVariableSetRevisions.values,
+      descriptions: workspaceVariableSetRevisions.descriptions,
+    })
     .from(workspaceVariableSetRevisions)
     .where(
       and(
@@ -23,5 +34,5 @@ export async function readVariableSetValues(
     .catch(rethrowQueryFailure);
   if (stored === undefined)
     throw new Error('Workspace variable revision is missing');
-  return stored.values;
+  return stored;
 }

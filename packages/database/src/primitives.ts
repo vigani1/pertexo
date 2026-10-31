@@ -14,5 +14,8 @@ export {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from './tenant-access/workspaces/authority.queries.js';
+// Until the one-shot move: authoring and runs still lock the set too, so its one
+// lock-then-read stays below them, and the replacement meets it here.
+export { lockVariableSet } from './variables/head.queries.js';
 export { readBrowsableFolderScope } from './tenant-access/resources/facts.queries.js';
 export { workflowScopeSql } from './tenant-access/resources/scope.queries.js';
