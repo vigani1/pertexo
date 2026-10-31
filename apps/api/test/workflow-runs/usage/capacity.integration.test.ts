@@ -61,15 +61,15 @@ describe.runIf(betterAuthIntegrationEnabled)(
           policy: {
             state: 'active',
             version: 1,
-            activeRunLimit: 5,
-            queuedRunLimit: 100,
+            activeRunLimit: 20,
+            queuedRunLimit: 10_000,
           },
         },
         artifacts: {
           chargedBytes: '0',
           byteLimit: '1073741824',
           chargedCount: 0,
-          artifactCountLimit: 1000,
+          artifactCountLimit: 10_000,
           source: 'default',
         },
       });
