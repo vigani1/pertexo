@@ -35,6 +35,7 @@ import type {
   NodeAttemptHandlerDependencies,
   NodeAttemptHeartbeat,
 } from './contract.js';
+import { completingThroughOutage } from './complete-through-outage.js';
 import { startNodeAttemptHeartbeat } from './heartbeat.js';
 import {
   completeControlOutcome,
@@ -181,8 +182,15 @@ async function executePreparedNodeAttempt(
 }
 
 export function createNodeAttemptHandler(
-  dependencies: NodeAttemptHandlerDependencies,
+  input: NodeAttemptHandlerDependencies,
 ): NodeAttemptHandler {
+  const dependencies = {
+    ...input,
+    runStore: completingThroughOutage(
+      input.runStore,
+      input.leaseDurationSeconds,
+    ),
+  };
   return Object.freeze({
     handle: async (
       delivery: AttemptDelivery,

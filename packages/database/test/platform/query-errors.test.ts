@@ -2,6 +2,7 @@ import { DrizzleQueryError } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import {
+  isTransientDatabaseFailure,
   isUniqueConstraintFailure,
   postgresFailure,
 } from '../../src/platform/query-errors.js';
@@ -39,5 +40,40 @@ describe('postgresFailure', () => {
     expect(
       isUniqueConstraintFailure(new DrizzleQueryError('select 1', [], unique)),
     ).toBe(true);
+  });
+});
+
+describe('isTransientDatabaseFailure', () => {
+  const failure = (code?: string, message = 'failed') =>
+    Object.assign(new Error(message), code === undefined ? {} : { code });
+
+  it.each([
+    ['ECONNREFUSED'],
+    ['ECONNRESET'],
+    ['57P01'],
+    ['57P03'],
+    ['08006'],
+    ['40001'],
+  ])('retries Postgres being unreachable or busy (%s)', (code) => {
+    expect(isTransientDatabaseFailure(failure(code))).toBe(true);
+  });
+
+  it.each([
+    ['Connection terminated unexpectedly'],
+    ['timeout exceeded when trying to connect'],
+  ])('retries the client losing its connection (%s)', (message) => {
+    expect(isTransientDatabaseFailure(failure(undefined, message))).toBe(true);
+  });
+
+  it.each([['23505'], ['42601'], ['42501']])(
+    'never retries a statement that was refused (%s)',
+    (code) => {
+      expect(isTransientDatabaseFailure(failure(code))).toBe(false);
+    },
+  );
+
+  it('never retries an ordinary error or a thrown value', () => {
+    expect(isTransientDatabaseFailure(new Error('stale lease'))).toBe(false);
+    expect(isTransientDatabaseFailure('nope')).toBe(false);
   });
 });

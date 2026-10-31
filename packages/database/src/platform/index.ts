@@ -11,6 +11,7 @@ export type {
   DatabaseRuntimeOptions,
 } from './pool/runtime.js';
 export { generatePersistedId } from './persisted-id.js';
+export { isTransientDatabaseFailure } from './query-errors.js';
 export {
   DEFAULT_INSTANCE_LIMITS,
   type InstanceCapacity,
