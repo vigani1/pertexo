@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
@@ -141,6 +142,17 @@ async function flush(url: string): Promise<void> {
   }
 }
 
+/** The system's pick: a random one can land on a port an outgoing connection holds. */
+export async function freePort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  await new Promise((resolve) => server.close(resolve));
+  if (address === null || typeof address === 'string')
+    throw new Error('The system gave no port');
+  return address.port;
+}
+
 export type StackOptions = Readonly<{
   /** The public origin the API believes it is served on. */
   webOrigin?: string;
@@ -183,7 +195,7 @@ export async function startStack(options: StackOptions = {}) {
     max: 2,
   });
   const redis = await leaseRedisDatabase(name);
-  const port = options.port ?? 20_000 + Math.floor(Math.random() * 20_000);
+  const port = options.port ?? (await freePort());
   const apiOrigin = `http://127.0.0.1:${String(port)}`;
   const webOrigin = options.webOrigin ?? apiOrigin;
   const base: NodeJS.ProcessEnv = {
