@@ -33,6 +33,8 @@ const webOrigin = process.env.PERTEXO_LIVE_WEB_ORIGIN ?? '';
 
 // Each scene stops at the first missing screen, instead of waiting out its whole budget.
 test.use({ actionTimeout: 10_000 });
+// Scenes publish and run for real, and a shared machine's validator may ask them to wait.
+test.describe.configure({ timeout: 180_000 });
 
 const uniqueClient = (behavior: string): string =>
   `${behavior}.${crypto.randomUUID().slice(0, 12)}`;
@@ -159,102 +161,103 @@ test.beforeEach(async ({ page }) => {
 });
 
 // Plan journey 1 and 2: the form, both hosts, consent, and the first tab moving on by itself.
-test(
-  'adds a connection and connects it with no reload',
-  async ({ page }) => {
-    const clientId = uniqueClient('non-rotating');
-    const sheet = await openOAuth2Form(page);
-    const redirect = sheet.getByLabel('Redirect URL', { exact: true });
-    await expect(redirect).toHaveValue(
-      `${webOrigin}/v1/connections/oauth2/callback`,
-    );
-    await expect(redirect).toHaveAttribute('readonly', /.*/u);
-    await expect(
-      sheet.getByText('Register this address with the service first.', {
-        exact: true,
-      }),
-    ).toBeVisible();
-    await fillForm(sheet, clientId, 'Journey API');
-    const host = new URL(standIn).host;
-    await expect(
-      sheet.getByText(
-        `You'll sign in at ${host}. Pertexo then gets its token from ${host}.`,
-      ),
-    ).toBeVisible();
-    await page.evaluate(() => {
-      (window as unknown as { journeyMarker: boolean }).journeyMarker = true;
-    });
-    const popup = await clickConnect(page, sheet);
-    await expect(
-      sheet.getByText('Finish signing in in the window that opened.', {
-        exact: true,
-      }),
-    ).toBeVisible();
-    await popup.getByRole('button', { name: 'Approve', exact: true }).click();
-    await closesOrSays(popup, 'Connected. You can close this tab.');
-    await expect(
-      sheet.getByRole('button', { name: 'Call this address', exact: true }),
-    ).toBeVisible();
-    // No reload happened: the mark set before consent is still here.
-    expect(
-      await page.evaluate(
-        () => (window as unknown as { journeyMarker?: boolean }).journeyMarker,
-      ),
-    ).toBe(true);
-    expect((await controlCounts(page, clientId)).token).toBe(1);
-  },
-);
+test('adds a connection and connects it with no reload', async ({ page }) => {
+  const clientId = uniqueClient('non-rotating');
+  const sheet = await openOAuth2Form(page);
+  const redirect = sheet.getByLabel('Redirect URL', { exact: true });
+  await expect(redirect).toHaveValue(
+    `${webOrigin}/v1/connections/oauth2/callback`,
+  );
+  await expect(redirect).toHaveAttribute('readonly', /.*/u);
+  await expect(
+    sheet.getByText('Register this address with the service first.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await fillForm(sheet, clientId, 'Journey API');
+  const host = new URL(standIn).host;
+  await expect(
+    sheet.getByText(
+      `You'll sign in at ${host}. Pertexo then gets its token from ${host}.`,
+    ),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    (window as unknown as { journeyMarker: boolean }).journeyMarker = true;
+  });
+  const popup = await clickConnect(page, sheet);
+  await expect(
+    sheet.getByText('Finish signing in in the window that opened.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await popup.getByRole('button', { name: 'Approve', exact: true }).click();
+  await closesOrSays(popup, 'Connected. You can close this tab.');
+  await expect(
+    sheet.getByRole('button', { name: 'Call this address', exact: true }),
+  ).toBeVisible();
+  // No reload happened: the mark set before consent is still here.
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { journeyMarker?: boolean }).journeyMarker,
+    ),
+  ).toBe(true);
+  expect((await controlCounts(page, clientId)).token).toBe(1);
+});
 
 // Plan journey 3 and 4: run, revoke, the failure text and notice, reconnect, same workflow.
-test(
-  'runs, shows a revoked grant, and reconnects without editing the workflow',
-  async ({ page }) => {
-    test.setTimeout(120_000);
-    const name = `Revoked API ${crypto.randomUUID().slice(0, 6)}`;
-    // Always inside the renewal window, so the next run really asks the service.
-    const clientId = await createConnected(page, 'short-lived', name);
-    await publishCallTo(page, name, `Uses ${name}`);
-    const workflowUrl = page.url();
-    const firstRun = await startSingleStep(page, {});
-    await waitForRun(page, workspaceId, firstRun, 'succeeded');
-    expect((await controlCounts(page, clientId)).api).toBe(1);
+test('runs, shows a revoked grant, and reconnects without editing the workflow', async ({
+  page,
+}) => {
+  const name = `Revoked API ${crypto.randomUUID().slice(0, 6)}`;
+  // Always inside the renewal window, so the next run really asks the service.
+  const clientId = await createConnected(page, 'short-lived', name);
+  await publishCallTo(page, name, `Uses ${name}`);
+  const workflowUrl = page.url();
+  const firstRun = await startSingleStep(page, {});
+  await waitForRun(page, workspaceId, firstRun, 'succeeded');
+  expect((await controlCounts(page, clientId)).api).toBe(1);
 
-    const revoked = await page.request.post(`${standIn}/control/revoke`, {
-      data: { clientId },
-    });
-    expect(revoked.ok()).toBe(true);
-    await page.goto(workflowUrl);
-    const failedRun = await startSingleStep(page, {});
-    await waitForRun(page, workspaceId, failedRun, 'failed');
-    await expect(
-      page.getByText(
+  const revoked = await page.request.post(`${standIn}/control/revoke`, {
+    data: { clientId },
+  });
+  expect(revoked.ok()).toBe(true);
+  await page.goto(workflowUrl);
+  const failedRun = await startSingleStep(page, {});
+  await waitForRun(page, workspaceId, failedRun, 'failed');
+  // A step's failure text is in its details on the run page.
+  await page.getByRole('button', { name: /^Call the API: Failed/u }).click();
+  await expect(
+    page
+      .getByRole('complementary', { name: 'Step details' })
+      .getByText(
         "The service no longer accepts this connection's sign-in. Reconnect it in Connections.",
       ),
-    ).toBeVisible();
+  ).toBeVisible();
 
-    await page.goto(connectionsPath);
-    await expect(page.getByText('sign-in revoked')).toBeVisible();
-    await page.getByRole('button', { name: new RegExp(`^${name},`, 'u') }).click();
-    const lens = page.locator('[data-slot="sheet-content"]');
-    await expect(
-      lens.getByText('Needs reauthorization', { exact: true }),
-    ).toBeVisible();
-    const host = new URL(standIn).host;
-    await expect(
-      lens.getByText(
-        `${host} no longer accepts this connection's sign-in. Reconnect to restore it.`,
-      ),
-    ).toBeVisible();
-    const popup = await clickConnect(page, lens, 'Reconnect');
-    await popup.getByRole('button', { name: 'Approve', exact: true }).click();
-    await closesOrSays(popup, 'Connected. You can close this tab.');
-    await expect(lens.getByText('Healthy', { exact: true })).toBeVisible();
+  await page.goto(connectionsPath);
+  await expect(page.getByText('sign-in revoked')).toBeVisible();
+  await page
+    .getByRole('button', { name: new RegExp(`^${name},`, 'u') })
+    .click();
+  const lens = page.locator('[data-slot="sheet-content"]');
+  await expect(
+    lens.getByText('Needs reauthorization', { exact: true }),
+  ).toBeVisible();
+  const host = new URL(standIn).host;
+  await expect(
+    lens.getByText(
+      `${host} no longer accepts this connection's sign-in. Reconnect to restore it.`,
+    ),
+  ).toBeVisible();
+  const popup = await clickConnect(page, lens, 'Reconnect');
+  await popup.getByRole('button', { name: 'Approve', exact: true }).click();
+  await closesOrSays(popup, 'Connected. You can close this tab.');
+  await expect(lens.getByText('Healthy', { exact: true })).toBeVisible();
 
-    await page.goto(workflowUrl);
-    const restoredRun = await startSingleStep(page, {});
-    await waitForRun(page, workspaceId, restoredRun, 'succeeded');
-  },
-);
+  await page.goto(workflowUrl);
+  const restoredRun = await startSingleStep(page, {});
+  await waitForRun(page, workspaceId, restoredRun, 'succeeded');
+});
 
 // Plan journey 5: Deny shows the denied text and changes nothing.
 test('deny shows the text and changes nothing', async ({ page }) => {
@@ -270,97 +273,95 @@ test('deny shows the text and changes nothing', async ({ page }) => {
 });
 
 // Plan journey 6, decision "Consent window": an unsaved draft survives consent.
-test(
-  'a New HTTP sheet keeps the unsaved draft and selects the connection',
-  async ({ page }) => {
-    const path = await createEditorWorkflow(
-      page,
-      workspaceId,
-      `Draft ${crypto.randomUUID().slice(0, 6)}`,
-    );
-    await addSingleStep(page, path, /HTTP request/u, 'Draft call');
-    const editorUrl = page.url();
-    await page
-      .getByLabel('URL', { exact: true })
-      .fill(`${standIn}/api?unsaved=1`);
-    await page.getByRole('button', { name: /^New HTTP/u }).click();
-    const sheet = page.getByRole('dialog', {
-      name: 'Connect HTTP',
-      exact: true,
-    });
-    await sheet.getByRole('radio', { name: 'OAuth2', exact: true }).click();
-    const name = `From editor ${crypto.randomUUID().slice(0, 6)}`;
-    await fillForm(sheet, uniqueClient('non-rotating'), name);
-    const popup = await clickConnect(page, sheet);
-    await popup.getByRole('button', { name: 'Approve', exact: true }).click();
-    await closesOrSays(popup, 'Connected. You can close this tab.');
-    await expect(
-      page.getByLabel('HTTP connection', { exact: true }),
-    ).toContainText(name);
-    expect(page.url()).toBe(editorUrl);
-    await expect(page.getByLabel('URL', { exact: true })).toHaveValue(
-      `${standIn}/api?unsaved=1`,
-    );
-  },
-);
+test('a New HTTP sheet keeps the unsaved draft and selects the connection', async ({
+  page,
+}) => {
+  const path = await createEditorWorkflow(
+    page,
+    workspaceId,
+    `Draft ${crypto.randomUUID().slice(0, 6)}`,
+  );
+  await addSingleStep(page, path, /HTTP request/u, 'Draft call');
+  const editorUrl = page.url();
+  await page
+    .getByLabel('URL', { exact: true })
+    .fill(`${standIn}/api?unsaved=1`);
+  await page.getByRole('button', { name: /^New HTTP/u }).click();
+  const sheet = page.getByRole('dialog', {
+    name: 'Connect HTTP',
+    exact: true,
+  });
+  await sheet.getByRole('radio', { name: 'OAuth2', exact: true }).click();
+  const name = `From editor ${crypto.randomUUID().slice(0, 6)}`;
+  await fillForm(sheet, uniqueClient('non-rotating'), name);
+  const popup = await clickConnect(page, sheet);
+  await popup.getByRole('button', { name: 'Approve', exact: true }).click();
+  await closesOrSays(popup, 'Connected. You can close this tab.');
+  await expect(
+    page.getByLabel('HTTP connection', { exact: true }),
+  ).toContainText(name);
+  expect(page.url()).toBe(editorUrl);
+  await expect(page.getByLabel('URL', { exact: true })).toHaveValue(
+    `${standIn}/api?unsaved=1`,
+  );
+});
 
 // Plan journey 7: a blocked window offers the link, and the link works.
-test(
-  'a blocked window shows Open sign-in page, which works',
-  async ({ page }) => {
-    await page.addInitScript(() => {
-      window.open = () => null;
-    });
-    const sheet = await openOAuth2Form(page);
-    const clientId = uniqueClient('non-rotating');
-    await fillForm(sheet, clientId, `Blocked ${clientId}`);
-    await sheet.getByRole('button', { name: 'Connect', exact: true }).click();
-    await expect(
-      sheet.getByText('Your browser blocked the window.', { exact: true }),
-    ).toBeVisible();
-    const link = sheet.getByRole('link', {
-      name: 'Open sign-in page',
-      exact: true,
-    });
-    await expect(link).toHaveAttribute('target', '_blank');
-    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    const opened = page.waitForEvent('popup');
-    await link.click();
-    const popup = await opened;
-    await popup.getByRole('button', { name: 'Approve', exact: true }).click();
-    await closesOrSays(popup, 'Connected. You can close this tab.');
-    await expect(
-      sheet.getByRole('button', { name: 'Call this address', exact: true }),
-    ).toBeVisible();
-  },
-);
+test('a blocked window shows Open sign-in page, which works', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.open = () => null;
+  });
+  const sheet = await openOAuth2Form(page);
+  const clientId = uniqueClient('non-rotating');
+  await fillForm(sheet, clientId, `Blocked ${clientId}`);
+  await sheet.getByRole('button', { name: 'Connect', exact: true }).click();
+  await expect(
+    sheet.getByText('Your browser blocked the window.', { exact: true }),
+  ).toBeVisible();
+  const link = sheet.getByRole('link', {
+    name: 'Open sign-in page',
+    exact: true,
+  });
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  const opened = page.waitForEvent('popup');
+  await link.click();
+  const popup = await opened;
+  await popup.getByRole('button', { name: 'Approve', exact: true }).click();
+  await closesOrSays(popup, 'Connected. You can close this tab.');
+  await expect(
+    sheet.getByRole('button', { name: 'Call this address', exact: true }),
+  ).toBeVisible();
+});
 
 // Plan journey 8, Roles table: who sees Connect and Edit settings, and who may test.
-test(
-  'a viewer and a builder see no Connect or Edit settings; a builder can pick it',
-  async ({ page, browser }) => {
-    const name = `Roles ${crypto.randomUUID().slice(0, 6)}`;
-    await createConnected(page, 'non-rotating', name);
-    const noManagerButtons = async (member: Page, allowTest: boolean) => {
-      await member.goto(connectionsPath);
-      await member
-        .getByRole('button', { name: new RegExp(`^${name},`, 'u') })
-        .click();
-      const lens = member.locator('[data-slot="sheet-content"]');
-      await expect(lens.getByText(name, { exact: true })).toBeVisible();
-      for (const button of ['Connect', 'Reconnect', 'Edit settings'])
-        await expect(lens.getByRole('button', { name: button })).toHaveCount(0);
-      await expect(
-        lens.getByRole('button', { name: 'Test', exact: true }),
-      ).toHaveCount(allowTest ? 1 : 0);
-    };
-    await asRole(browser, viewer, (member) => noManagerButtons(member, false));
-    await asRole(browser, builder, async (member) => {
-      await noManagerButtons(member, true);
-      await publishCallTo(member, name, `Builder uses ${name}`);
-    });
-  },
-);
+test('a viewer and a builder see no Connect or Edit settings; a builder can pick it', async ({
+  page,
+  browser,
+}) => {
+  const name = `Roles ${crypto.randomUUID().slice(0, 6)}`;
+  await createConnected(page, 'non-rotating', name);
+  const noManagerButtons = async (member: Page, allowTest: boolean) => {
+    await member.goto(connectionsPath);
+    await member
+      .getByRole('button', { name: new RegExp(`^${name},`, 'u') })
+      .click();
+    const lens = member.locator('[data-slot="sheet-content"]');
+    await expect(lens.getByText(name, { exact: true })).toBeVisible();
+    for (const button of ['Connect', 'Reconnect', 'Edit settings'])
+      await expect(lens.getByRole('button', { name: button })).toHaveCount(0);
+    await expect(
+      lens.getByRole('button', { name: 'Test', exact: true }),
+    ).toHaveCount(allowTest ? 1 : 0);
+  };
+  await asRole(browser, viewer, (member) => noManagerButtons(member, false));
+  await asRole(browser, builder, async (member) => {
+    await noManagerButtons(member, true);
+    await publishCallTo(member, name, `Builder uses ${name}`);
+  });
+});
 
 // Plan journey 9: a phone-sized viewport for the form and the landing page.
 test('the form and landing page fit a phone', async ({ page }) => {

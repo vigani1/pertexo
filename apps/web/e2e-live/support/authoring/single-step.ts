@@ -65,16 +65,21 @@ export async function addSingleStep(
 
 export async function publishSingleStep(page: Page, workflowPath: string) {
   await page.getByRole('button', { name: 'Publish v1', exact: true }).click();
-  await page
+  const confirm = page
     .getByRole('dialog', { name: 'Publish v1', exact: true })
-    .getByRole('button', { name: 'Publish v1', exact: true })
-    .click();
-  await expect(page.getByText('v1 is live', { exact: true })).toBeVisible();
-  const response = await page.request.get(`${workflowPath}/versions`);
-  expect(response.status()).toBe(200);
-  const versions = workflowVersionsResponseSchema.parse(await response.json());
-  expect(versions.items).toHaveLength(1);
-  const version = versions.items[0];
+    .getByRole('button', { name: 'Publish v1', exact: true });
+  const published = async () => {
+    const response = await page.request.get(`${workflowPath}/versions`);
+    expect(response.status()).toBe(200);
+    return workflowVersionsResponseSchema.parse(await response.json()).items;
+  };
+  // A busy machine's validator asks for another try, and the dialog says so.
+  await expect(async () => {
+    if (await confirm.isEnabled({ timeout: 1_000 }).catch(() => false))
+      await confirm.click();
+    expect(await published()).toHaveLength(1);
+  }).toPass({ intervals: [2_000], timeout: 60_000 });
+  const version = (await published())[0];
   if (version === undefined) throw new Error('Published version is missing');
   return version;
 }

@@ -56,7 +56,6 @@ describe.skipIf(!enabled)('OAuth2 connections in a real browser', () => {
     await harness.close();
   });
 
-  // Each spec marks its own expected failures, so this stays green until the code lands.
   it(
     'runs the journey through real consent and back into HTTP Request',
     async () => {
@@ -112,6 +111,10 @@ describe.skipIf(!enabled)('OAuth2 connections in a real browser', () => {
           '--config',
           'playwright.live.config.ts',
           'oauth2-connections.spec.ts',
+          // One scene, for proving a guard without the whole journey.
+          ...(process.env.OAUTH2_JOURNEY_GREP === undefined
+            ? []
+            : ['--grep', process.env.OAUTH2_JOURNEY_GREP]),
         ],
         environment,
       );
