@@ -6,6 +6,11 @@ export type ApiResponse = Readonly<{
   status: number;
 }>;
 
+export type SavedDraft = Readonly<{
+  etag: string;
+  revision: number;
+  workflowId: string;
+}>;
 export type WorkflowTrigger = Readonly<{ id: string; status: string }>;
 export type WebhookKeys = Readonly<{
   endpointKey: string;
@@ -112,12 +117,12 @@ export class ApiClient {
     return idOf(created.json, 'workspace');
   }
 
-  /** Creates, saves and publishes a workflow; returns its id. */
-  public async publish(
+  /** Creates a workflow and saves this graph as its draft. */
+  public async saveDraft(
     workspaceId: string,
     name: string,
     graph: unknown,
-  ): Promise<string> {
+  ): Promise<SavedDraft> {
     const root = `/v1/workspaces/${workspaceId}/workflows`;
     const created = await this.expect(
       200,
@@ -135,6 +140,54 @@ export class ApiClient {
         { 'if-match': draft.etag ?? '' },
       ),
     );
+    const { revision } = saved.json as { revision: number };
+    return { etag: saved.etag ?? '', revision, workflowId };
+  }
+
+  /** The editor's "test this step"; returns the preview's id. */
+  public async testStep(
+    workspaceId: string,
+    draft: SavedDraft,
+    nodeId: string,
+  ): Promise<string> {
+    const started = await this.expect(202)(
+      this.call(
+        'POST',
+        `/v1/workspaces/${workspaceId}/workflows/${draft.workflowId}/draft/nodes/${nodeId}/test`,
+        {
+          mode: 'test_execute',
+          expectedRevision: draft.revision,
+          input: { kind: 'manual', value: {} },
+          acknowledgeSideEffects: true,
+        },
+        { 'idempotency-key': randomUUID() },
+      ),
+    );
+    return idOf(started.json, 'preview');
+  }
+
+  /** What the editor shows of a step's test: its status. */
+  public async readPreview(
+    workspaceId: string,
+    previewRunId: string,
+  ): Promise<string> {
+    const read = await this.expect(200)(
+      this.call(
+        'GET',
+        `/v1/workspaces/${workspaceId}/previews/${previewRunId}`,
+      ),
+    );
+    return (read.json as { preview: { status: string } }).preview.status;
+  }
+
+  /** Creates, saves and publishes a workflow; returns its id. */
+  public async publish(
+    workspaceId: string,
+    name: string,
+    graph: unknown,
+  ): Promise<string> {
+    const root = `/v1/workspaces/${workspaceId}/workflows`;
+    const { etag, workflowId } = await this.saveDraft(workspaceId, name, graph);
     // Validation answers 503 when its worker thread is starved on a loaded host,
     // and its problem detail asks the caller to retry.
     for (let attempt = 1; ; attempt += 1) {
@@ -142,7 +195,7 @@ export class ApiClient {
         'POST',
         `${root}/${workflowId}/publish`,
         undefined,
-        { 'if-match': saved.etag ?? '', 'idempotency-key': randomUUID() },
+        { 'if-match': etag, 'idempotency-key': randomUUID() },
       );
       if (published.status !== 503 || attempt === PUBLISH_ATTEMPTS) {
         await this.expect(200, 201)(Promise.resolve(published));

@@ -107,6 +107,11 @@ export class ServiceProcess {
     return exited;
   }
 
+  /** Freezes or thaws the process, the way a stalled host or a long pause does. */
+  public signal(signal: 'SIGCONT' | 'SIGSTOP'): void {
+    this.child?.kill(signal);
+  }
+
   /** Lines at `level` or above that contain every given text. */
   public linesMentioning(
     texts: readonly string[],
