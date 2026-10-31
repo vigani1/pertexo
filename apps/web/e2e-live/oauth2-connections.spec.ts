@@ -108,7 +108,7 @@ async function createConnected(
   await popup.getByRole('button', { name: 'Approve', exact: true }).click();
   await closesOrSays(popup, 'Connected. You can close this tab.');
   await expect(
-    sheet.getByRole('button', { name: 'Test connection', exact: true }),
+    sheet.getByRole('button', { name: 'Call this address', exact: true }),
   ).toBeVisible();
   await sheet.getByRole('button', { name: 'Done', exact: true }).click();
   return clientId;
@@ -159,7 +159,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 // Plan journey 1 and 2: the form, both hosts, consent, and the first tab moving on by itself.
-test.fail(
+test(
   'adds a connection and connects it with no reload',
   async ({ page }) => {
     const clientId = uniqueClient('non-rotating');
@@ -193,7 +193,7 @@ test.fail(
     await popup.getByRole('button', { name: 'Approve', exact: true }).click();
     await closesOrSays(popup, 'Connected. You can close this tab.');
     await expect(
-      sheet.getByRole('button', { name: 'Test connection', exact: true }),
+      sheet.getByRole('button', { name: 'Call this address', exact: true }),
     ).toBeVisible();
     // No reload happened: the mark set before consent is still here.
     expect(
@@ -206,7 +206,7 @@ test.fail(
 );
 
 // Plan journey 3 and 4: run, revoke, the failure text and notice, reconnect, same workflow.
-test.fail(
+test(
   'runs, shows a revoked grant, and reconnects without editing the workflow',
   async ({ page }) => {
     test.setTimeout(120_000);
@@ -234,7 +234,7 @@ test.fail(
 
     await page.goto(connectionsPath);
     await expect(page.getByText('sign-in revoked')).toBeVisible();
-    await page.getByRole('button', { name, exact: true }).click();
+    await page.getByRole('button', { name: new RegExp(`^${name},`, 'u') }).click();
     const lens = page.locator('[data-slot="sheet-content"]');
     await expect(
       lens.getByText('Needs reauthorization', { exact: true }),
@@ -257,7 +257,7 @@ test.fail(
 );
 
 // Plan journey 5: Deny shows the denied text and changes nothing.
-test.fail('deny shows the text and changes nothing', async ({ page }) => {
+test('deny shows the text and changes nothing', async ({ page }) => {
   const sheet = await openOAuth2Form(page);
   const clientId = uniqueClient('non-rotating');
   await fillForm(sheet, clientId, `Denied ${clientId}`);
@@ -270,7 +270,7 @@ test.fail('deny shows the text and changes nothing', async ({ page }) => {
 });
 
 // Plan journey 6, decision "Consent window": an unsaved draft survives consent.
-test.fail(
+test(
   'a New HTTP sheet keeps the unsaved draft and selects the connection',
   async ({ page }) => {
     const path = await createEditorWorkflow(
@@ -305,7 +305,7 @@ test.fail(
 );
 
 // Plan journey 7: a blocked window offers the link, and the link works.
-test.fail(
+test(
   'a blocked window shows Open sign-in page, which works',
   async ({ page }) => {
     await page.addInitScript(() => {
@@ -330,20 +330,22 @@ test.fail(
     await popup.getByRole('button', { name: 'Approve', exact: true }).click();
     await closesOrSays(popup, 'Connected. You can close this tab.');
     await expect(
-      sheet.getByRole('button', { name: 'Test connection', exact: true }),
+      sheet.getByRole('button', { name: 'Call this address', exact: true }),
     ).toBeVisible();
   },
 );
 
 // Plan journey 8, Roles table: who sees Connect and Edit settings, and who may test.
-test.fail(
+test(
   'a viewer and a builder see no Connect or Edit settings; a builder can pick it',
   async ({ page, browser }) => {
     const name = `Roles ${crypto.randomUUID().slice(0, 6)}`;
     await createConnected(page, 'non-rotating', name);
     const noManagerButtons = async (member: Page, allowTest: boolean) => {
       await member.goto(connectionsPath);
-      await member.getByRole('button', { name, exact: true }).click();
+      await member
+        .getByRole('button', { name: new RegExp(`^${name},`, 'u') })
+        .click();
       const lens = member.locator('[data-slot="sheet-content"]');
       await expect(lens.getByText(name, { exact: true })).toBeVisible();
       for (const button of ['Connect', 'Reconnect', 'Edit settings'])
@@ -361,7 +363,7 @@ test.fail(
 );
 
 // Plan journey 9: a phone-sized viewport for the form and the landing page.
-test.fail('the form and landing page fit a phone', async ({ page }) => {
+test('the form and landing page fit a phone', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 768 });
   const sheet = await openOAuth2Form(page);
   await expect(sheet.getByLabel('Token URL', { exact: true })).toBeVisible();

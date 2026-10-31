@@ -8,7 +8,10 @@ import {
   AddConnectionSheet,
   providerForCredential,
 } from '@/features/connections/add.public';
-import { isUsableConnection } from '@/features/connections/queries.public';
+import {
+  fitsRequirement,
+  isUsableConnection,
+} from '@/features/connections/queries.public';
 import { AddConnectionContext } from '../../../model/add-connection-context';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from './choice-select';
@@ -127,7 +130,11 @@ export function ConnectionSlot({
             request={adding ? provider : undefined}
             onCreated={(connection) => {
               setCreated(connection);
-              if (isUsableConnection(connection, requirement))
+              // A new OAuth2 connection is only selected once someone has connected it.
+              const waiting =
+                connection.authType === 'oauth2' &&
+                connection.status !== 'active';
+              if (fitsRequirement(connection, requirement) && !waiting)
                 choose(connection.id);
             }}
             onClose={() => {
