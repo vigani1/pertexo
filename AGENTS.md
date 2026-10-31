@@ -4,7 +4,8 @@
 
 - Use the user's request, `CONTEXT.md` (glossary), the ADRs that are not
   superseded, and the current code. [ADR 069](docs/adr/069-architecture-reset.md)
-  overrides older ADRs where they conflict.
+  overrides older ADRs where they conflict, and [ADR 091](docs/adr/091-core-layer.md)
+  overrides it on the `core` layer and entry points.
 - The architecture reset is complete. `docs/architecture-reset-plan.md` is its
   history, not a tracker to update.
 - Feature work follows a short plan in `docs/feature-plans/`. Update a plan only
@@ -46,13 +47,21 @@
 
 ## Code conventions
 
+- Dependencies run `apps -> core -> database, workflow-engine, workflow-model`;
+  only applications depend on `core` ([ADR 091](docs/adr/091-core-layer.md)).
 - Packages use at most two entry points: `@pertexo/<name>` (safe anywhere,
-  including the browser) and `@pertexo/<name>/server` (Node only). The database
-  is the accepted exception: Node-only entry points per area (`/runs`,
-  `/authoring`, `/platform`, etc.) and `/testing`, as recorded in the reset plan.
-  `@pertexo/observability/startup` is also a Node-only entry-point exception:
-  instrumentation must load before the dependencies it instruments.
-  Do not add consumer-named barrels or expose database entry points to the browser.
+  including the browser) and `@pertexo/<name>/server` (Node only). The accepted
+  exceptions, all Node only:
+  - `core` has one entry point per area (`@pertexo/core/<area>`) and `/testing`;
+    it has no root and no `/server`.
+  - The database has `/schema` and `/primitives` for `core` alone, `/testing`, and
+    one entry point per area (`/runs`, `/authoring`, `/platform`, etc.) until the
+    area moves to `core`.
+  - `@pertexo/observability/startup`: instrumentation must load before the
+    dependencies it instruments.
+
+  `/testing` is for tests and never loads from a `src`. Do not add consumer-named
+  barrels or expose database or core entry points to the browser.
 - Group files by directory: sub-area first, then role. A folder holds at most
   ~10 files; no long flat lists.
 - The folder names the area and the file names what it is. File names never

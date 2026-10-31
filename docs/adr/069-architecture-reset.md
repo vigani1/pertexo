@@ -1,6 +1,6 @@
 # ADR 069: Architecture reset — rules in code, a thin database, one way per thing
 
-- **Status:** accepted
+- **Status:** accepted; superseded in part by [ADR 091](091-core-layer.md)
 - **Date:** 2026-10-08
 - **Plan:** [architecture reset plan](../architecture-reset-plan.md)
 
@@ -37,7 +37,8 @@ package).
    PR.
 2. **The engine's rules exist once,** in `workflow-engine`. Run actions move to a
    new `execution` package used by the API and the worker. Re-check copies are
-   deleted.
+   deleted. _Where they live is superseded by [ADR 091](091-core-layer.md):
+   `execution` folds into `core`._
 3. **Tables are defined once** in Drizzle. Migrations are generated from the
    schema plus small hand-written SQL for policies, grants and remaining
    functions. Because nothing is launched, the migration history is squashed
@@ -58,7 +59,8 @@ package).
    plus `/testing`, replacing consumer-named barrels. Folders are grouped by
    sub-area and role with no long flat lists; file names never
    repeat their folder; input is validated once at the boundary; tests check
-   behavior, not structure.
+   behavior, not structure. _The entry points of `core` and the database are
+   superseded by [ADR 091](091-core-layer.md)._
 8. **Process:** ADRs only for hard-to-reverse decisions; the reset plan's
    tracker is the only progress log; every PR lists what moved where and what was
    removed, and why.
