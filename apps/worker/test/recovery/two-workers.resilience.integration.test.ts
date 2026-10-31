@@ -188,6 +188,9 @@ describeFaults(
       );
       late = stack.createWorker('recovery-worker-late');
       late.start();
+      // Frozen while still starting, its startup would fail when it woke, and a
+      // restart reads a new list.
+      await late.waitForLog(/worker\.started/u, START_LIMIT_MS);
       await waitUntil('a scan waiting on a run', (waiting) => waiting > 0);
       late.signal('SIGSTOP');
       // Its lock wait times out on its own, so it holds nothing while it sleeps.
@@ -225,7 +228,13 @@ describeFaults(
     // A restart would read a new list, and then no scan here has an old one.
     it('really woke the same process, with what it read before anything was recovered', () => {
       expect(nothingRecoveredYet).toBe(true);
-      expect(late.exits).toEqual([]);
+      expect(
+        late.exits,
+        late.logs
+          .slice(-20)
+          .map(({ text }) => text)
+          .join('\n'),
+      ).toEqual([]);
       expect(late.starts).toHaveLength(1);
     });
 
