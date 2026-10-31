@@ -4,11 +4,11 @@ import { openVerificationLink } from './verification-navigation';
 
 const password = 'a long enough integration password';
 
-/** Ordinary public UI authentication; no session/cookie seeding. */
 // Sign-up's mail goes through the worker, which a busy runner can take longer than
 // expect.poll's default 5 s to reach.
 const VERIFICATION_MAIL_WAIT = { timeout: 30_000 };
 
+/** Ordinary public UI authentication; no session/cookie seeding. */
 export async function signInEditorUser(
   page: Page,
   email: string,
