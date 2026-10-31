@@ -107,7 +107,7 @@ describe('sign-in and sign-up on an install', () => {
       <SignUpPage apiClient={apiClient()} returnTo={INVITATION} />,
     );
     const actor = userEvent.setup();
-    await actor.type(await screen.findByLabelText('Name'), 'Someone');
+    await actor.type(await screen.findByLabelText('Your name'), 'Someone');
     await actor.type(screen.getByLabelText('Email'), 'someone@example.test');
     await actor.type(
       screen.getByLabelText('Password'),

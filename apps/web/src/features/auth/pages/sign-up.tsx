@@ -53,11 +53,13 @@ export function SignUpPage({
         loadingLabel="Checking how you can create an account…"
         unavailable="Password sign-up is not available right now."
       >
-        {(capabilities) =>
-          capabilities.signUp === 'invitation' &&
-          !isInvitationReturn(returnTo) ? (
-            <SignUpClosedLens />
-          ) : sentTo === undefined ? (
+        {(capabilities) => {
+          if (
+            capabilities.signUp === 'invitation' &&
+            !isInvitationReturn(returnTo)
+          )
+            return <SignUpClosedLens />;
+          return sentTo === undefined ? (
             <SignUpLens
               apiClient={apiClient}
               minimumPasswordLength={capabilities.password.minimumLength}
@@ -102,8 +104,8 @@ export function SignUpPage({
               </strong>
               . Open it to finish, then sign in.
             </InboxLens>
-          )
-        }
+          );
+        }}
       </PasswordCapabilityGate>
     </>
   );
