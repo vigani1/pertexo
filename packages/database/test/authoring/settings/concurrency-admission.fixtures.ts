@@ -175,7 +175,8 @@ export async function acceptRun(
   return { ...result, request };
 }
 
-export function claimRuns(limit = 10) {
+// One at a time by default: these tests pin the order of separate grants.
+export function claimRuns(limit = 1) {
   return dispatcherDatabase.claimBatch({
     enabledJobNames: ['advance-workflow-run'],
     leaseDurationMillis: 30_000,
