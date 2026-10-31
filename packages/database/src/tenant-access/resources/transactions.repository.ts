@@ -1,5 +1,5 @@
 import type { ResourceTransaction } from './contract.js';
-import { RETAINED_RESOURCE_WORKSPACE_STATUSES } from './policy.js';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { workflowScopeSql } from './scope.queries.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -35,7 +35,7 @@ export function withRetainedResourceRead<T>(
           client,
           input,
           undefined,
-          RETAINED_RESOURCE_WORKSPACE_STATUSES,
+          UNPURGED_WORKSPACE_STATUSES,
         ),
       }),
     {
