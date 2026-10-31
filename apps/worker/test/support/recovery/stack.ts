@@ -7,7 +7,7 @@ import {
   migrateDatabase,
   parseMigrationConfig,
 } from '@pertexo/database/testing';
-import { Pool, type QueryResultRow } from 'pg';
+import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 
 import { dropDisconnectedDatabase } from '../infrastructure/disposable-database.js';
 import { createRedisTestNamespace } from '../infrastructure/redis-test-namespace.js';
@@ -77,6 +77,8 @@ export type Stack = Readonly<{
   api: ApiClient;
   apiProcess: ServiceProcess;
   close: () => Promise<void>;
+  /** One connection of the test's own, for locks held across statements. */
+  connect: () => Promise<PoolClient>;
   createWorker: (instance: string) => ServiceProcess;
   flushRedis: () => Promise<void>;
   operator: (environment: Readonly<Record<string, string>>) => ServiceProcess;
@@ -213,6 +215,7 @@ export async function startStack(
   return Object.freeze({
     api,
     apiProcess,
+    connect: () => pool.connect(),
     createWorker(instance) {
       const created = createWorker(instance);
       extraWorkers.push(created);

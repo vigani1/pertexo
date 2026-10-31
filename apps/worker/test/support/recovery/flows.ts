@@ -39,6 +39,17 @@ export const slowStep = (
   url: `${stack.sink.origin}/hold/${String(seconds)}/${id}`,
 });
 
+/** A step whose every call waits until the test releases it. */
+export const releasedStep = (
+  stack: Stack,
+  id: string,
+  method: 'GET' | 'POST',
+): HttpStep => ({
+  id: 'released',
+  method,
+  url: `${stack.sink.origin}/released/${id}`,
+});
+
 /** A step the provider refuses, which fails the run. */
 export const failingStep = (stack: Stack, id: string): HttpStep => ({
   id: 'failing',

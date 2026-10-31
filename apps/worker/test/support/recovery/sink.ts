@@ -17,6 +17,9 @@ export type SinkCall = Readonly<{
  * - `/hold/<seconds>/<id>` answers after that many seconds.
  * - `/hold-first/<id>` never answers its first call, and answers later calls at
  *   once, so a retried step can finish while the first attempt's socket hangs.
+ * - `/released/<id>` holds every call until the test releases it by its number,
+ *   and says in its answer which call this was, so a stored result shows whose
+ *   answer it is.
  * - `/api/<method>` is Slack, reached through the provider stand-in. A bot token
  *   containing "revoked" is refused the way Slack refuses a revoked one.
  */
@@ -24,6 +27,8 @@ export type Sink = Readonly<{
   calls: (id: string) => readonly SinkCall[];
   close: () => Promise<void>;
   origin: string;
+  /** Answers this call to `/released/<id>`, counting from 1, whether it has come yet or not. */
+  release: (id: string, call: number) => void;
   waitForCalls: (id: string, count: number, limitMs: number) => Promise<void>;
 }>;
 
@@ -34,11 +39,19 @@ export async function startSink(): Promise<Sink> {
   const held = new Set<ServerResponse>();
   const firstCallSeen = new Set<string>();
   const timers = new Set<NodeJS.Timeout>();
+  const awaitingRelease = new Map<string, ServerResponse[]>();
+  const released = new Set<string>();
 
   const answer = (response: ServerResponse): void => {
     held.delete(response);
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end('{"ok":true}');
+  };
+
+  const answerCall = (response: ServerResponse, call: number): void => {
+    held.delete(response);
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ ok: true, call }));
   };
 
   const answerSlack = (
@@ -92,6 +105,15 @@ export async function startSink(): Promise<Sink> {
         timers.add(timer);
         return;
       }
+      if (route === 'released' && first !== undefined) {
+        const callsSoFar = awaitingRelease.get(first) ?? [];
+        callsSoFar.push(response);
+        awaitingRelease.set(first, callsSoFar);
+        if (released.has(`${first}/${String(callsSoFar.length)}`))
+          answerCall(response, callsSoFar.length);
+        else held.add(response);
+        return;
+      }
       if (route === 'hold-first' && first !== undefined) {
         if (!firstCallSeen.has(first)) {
           firstCallSeen.add(first);
@@ -114,6 +136,11 @@ export async function startSink(): Promise<Sink> {
   return Object.freeze({
     calls: callsFor,
     origin: `http://127.0.0.1:${String(port)}`,
+    release(id, call) {
+      released.add(`${id}/${String(call)}`);
+      const response = awaitingRelease.get(id)?.[call - 1];
+      if (response !== undefined) answerCall(response, call);
+    },
     async waitForCalls(id, count, limitMs) {
       const deadline = Date.now() + limitMs;
       while (callsFor(id).length < count) {

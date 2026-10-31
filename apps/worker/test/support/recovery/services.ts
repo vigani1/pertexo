@@ -34,6 +34,18 @@ export async function startService(service: ComposeService): Promise<void> {
   );
 }
 
+/**
+ * Freezes the real container: connections stay open and nothing answers, the way
+ * a hung host or a network that drops packets looks from outside.
+ */
+export async function pauseService(service: ComposeService): Promise<void> {
+  await compose('pause', service);
+}
+
+export async function unpauseService(service: ComposeService): Promise<void> {
+  await compose('unpause', service);
+}
+
 export async function redisCommand(
   database: number,
   ...arguments_: readonly string[]
