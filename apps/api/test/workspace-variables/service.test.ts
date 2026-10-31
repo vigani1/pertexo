@@ -6,7 +6,7 @@ import {
   WorkspaceVariablesConflictError,
   WorkspaceVariableUsageChangedError,
   type WorkspaceVariablesStore,
-} from '@pertexo/core/server';
+} from '@pertexo/core/variables';
 import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
 const scope = {
   workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',

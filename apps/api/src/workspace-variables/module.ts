@@ -1,5 +1,5 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import type { WorkspaceVariablesStore } from '@pertexo/core/server';
+import type { WorkspaceVariablesStore } from '@pertexo/core/variables';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { WorkspaceVariablesController } from './controller.js';
 import { WorkspaceVariablesService } from './service.js';
