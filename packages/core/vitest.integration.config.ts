@@ -6,6 +6,5 @@ export default defineConfig({
     include: ['test/**/*.integration.test.ts'],
     pool: 'forks',
     fileParallelism: false,
-    passWithNoTests: true,
   },
 });
