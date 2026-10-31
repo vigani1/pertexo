@@ -98,6 +98,19 @@ test('the shipped scripts carry the same policy', async ({ page, request }) => {
   );
 });
 
+test('the theme is set from the shipped script before the app loads', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('pertexo.appearance', 'light');
+  });
+  // Stops the app itself: only what the page's head ran can have set this.
+  await page.route('**/assets/index-*.js', (route) => route.abort());
+  await page.goto('/login');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('script:not([src])')).toHaveCount(0);
+});
+
 test('with an owner in place, sign-in offers no way to make an account', async ({
   page,
 }) => {
