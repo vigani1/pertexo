@@ -79,9 +79,12 @@ describeFaults('a sender retrying after the server was full', () => {
     retryAfter = full.retryAfter;
     stillFull = (await stack.api.sendWebhook(keys, event, EVENT_KEY)).status;
 
+    // Room again: the stand-in rows have no delivery of their own to answer for.
     await stack.sql(
-      `update app.trigger_coordinated_events set status='refused', reason='coordination_full'
-        where workflow_id=$1 and status='pending'`,
+      `delete from app.trigger_coordinated_events e
+        where e.workflow_id=$1 and e.status='pending'
+          and not exists(select 1 from app.webhook_trigger_replay_records r
+                          where r.coordination_event_id=e.id)`,
       [debounced],
     );
     retried = await stack.api.sendWebhook(keys, event, EVENT_KEY);
@@ -112,6 +115,7 @@ describeFaults('a sender retrying after the server was full', () => {
       coordinated: true,
       status: 'pending',
     });
-    expect(keptEvents).toBe(1);
+    // The first event and this one.
+    expect(keptEvents).toBe(2);
   });
 });
