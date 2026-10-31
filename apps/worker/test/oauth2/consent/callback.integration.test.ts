@@ -278,6 +278,53 @@ describeOAuth2('returning from OAuth2 consent', () => {
     expectNothingExchanged(connection);
   });
 
+  // S8 itself: replace and revoke delete the pending row too, so these leave one
+  // behind on purpose. Only the consuming transaction's own check can refuse them.
+  it('S8 refuses a pending consent that outlived a revoke', async () => {
+    const { owner, connection, callbackUrl } = await pendingConsent();
+    await harness.stack.sql(
+      `update app.connections set status='revoked' where id=$1`,
+      [connection.id],
+    );
+    expect((await harness.land(owner.api, callbackUrl)).location).toBe(
+      INVALID_LANDING,
+    );
+    expectNothingExchanged(connection);
+  });
+
+  it('S8 refuses a pending consent for an older secret version', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.create(owner, 'non-rotating');
+    const replaced = await owner.api.call(
+      'PUT',
+      `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}/secret`,
+      {
+        expectedSecretVersionId: connection.secretVersionId,
+        credential: {
+          type: 'oauth2',
+          settings: harness.settings(connection.clientId),
+          clientSecret: connection.clientSecret,
+        },
+      },
+      { 'idempotency-key': crypto.randomUUID() },
+    );
+    expect(replaced.status).toBe(200);
+    const callbackUrl = await harness.decide(
+      harness.authorizationUrl(
+        await harness.start(owner.api, owner, connection.id),
+      ),
+      'approve',
+    );
+    await harness.stack.sql(
+      `update app.connection_oauth2_authorizations set secret_version_id=$2 where connection_id=$1`,
+      [connection.id, connection.secretVersionId],
+    );
+    expect((await harness.land(owner.api, callbackUrl)).location).toBe(
+      INVALID_LANDING,
+    );
+    expectNothingExchanged(connection);
+  });
+
   // S7: all refusals look the same, down to malformed input.
   it.each([
     ['no parameters at all', ''],

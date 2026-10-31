@@ -344,6 +344,17 @@ describe('the OAuth2 stand-in', () => {
     assert.equal(last.body, 'followed');
   });
 
+  it('redirects with a 307 when asked, keeping the method', async () => {
+    const response = await postToken(standIn.newClient('redirect-307'), {
+      grant_type: 'client_credentials',
+    });
+    assert.equal(response.status, 307);
+    assert.equal(
+      response.headers.get('location'),
+      `${standIn.origin}/redirect-target`,
+    );
+  });
+
   it('answers over the size limit when oversized', async () => {
     const response = await postToken(standIn.newClient('oversized'), {
       grant_type: 'client_credentials',
