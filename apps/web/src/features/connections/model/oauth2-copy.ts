@@ -44,7 +44,7 @@ export function shownHost(address: string): string {
   }
 }
 
-export function signInHost(settings: OAuth2ClientSettings): string {
+function signInHost(settings: OAuth2ClientSettings): string {
   return shownHost(
     settings.grantType === 'authorization_code'
       ? settings.authorizationUrl

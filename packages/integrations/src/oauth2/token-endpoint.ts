@@ -10,7 +10,7 @@ import {
 } from '../http/secure-error.js';
 import type { SecureHttpClient } from '../http/secure.js';
 
-export const TOKEN_REQUEST_TIMEOUT_MILLIS = 15_000;
+const TOKEN_REQUEST_TIMEOUT_MILLIS = 15_000;
 const MAXIMUM_RESPONSE_BYTES = 65_536;
 const MAXIMUM_ACCESS_TOKEN_LENGTH = 8_000;
 const MAXIMUM_REFRESH_TOKEN_LENGTH = 16_384;
