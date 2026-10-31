@@ -334,6 +334,7 @@ jobs:
               workflow-concurrency connection-health input-cases callable
               webhook-controlled-http api-tokens workflow-organization receipts
               readonly nested-conflict email-attachments task-timeouts product
+              oauth2
           - suite: live-3
             journeys: >-
               duplication portability curated-templates run-recovery forms
@@ -404,6 +405,9 @@ jobs:
                 WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true live test/browser/workflow-concurrency.integration.test.ts ;;
               connection-health)
                 CONNECTION_HEALTH_BROWSER_INTEGRATION=true live test/browser/connection-health.integration.test.ts ;;
+              oauth2)
+                OAUTH2_BROWSER_INTEGRATION=true pnpm --filter @pertexo/worker exec vitest run \
+                  --config vitest.integration.config.ts test/oauth2/browser.integration.test.ts ;;
               workflow-organization)
                 EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true F07_ORGANIZATION_BROWSER_INTEGRATION=true \
                   live test/browser/workflow-organization.integration.test.ts ;;
