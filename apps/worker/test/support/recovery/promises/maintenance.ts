@@ -33,6 +33,8 @@ export type KeptPromises = Readonly<{
   invitationsSent: number;
   replay: string | undefined;
   replayedSteps: number;
+  /** Job kinds with a published row no consumer has confirmed. */
+  unconfirmed: readonly string[];
 }>;
 
 const allKept = (seen: KeptPromises): boolean =>
@@ -42,17 +44,9 @@ const allKept = (seen: KeptPromises): boolean =>
   seen.invitation === 'submitted' &&
   seen.replay === 'completed';
 
-/**
- * One workspace in which, with the maintenance queue paused, each job kind on
- * that queue gets published: a run that alerts, a run with an error workflow, an
- * operator replay, an invitation and a provider's answer about a connection.
- */
-export async function publishMaintenancePromises(
-  name: string,
-): Promise<MaintenancePromises> {
-  const mailbox: Mailbox = await startMailbox();
-  const stack = await startStack(name, {
-    slackFromSink: true,
+/** What an install needs to send invitations through this mailbox. */
+export const invitationMailSettings = (mailbox: Mailbox) =>
+  ({
     environment: {
       INVITATION_TOKEN_KEY: Buffer.alloc(32, 0x5a).toString('base64'),
       INVITATION_TOKEN_KEY_VERSION: 'recovery-v1',
@@ -66,6 +60,20 @@ export async function publishMaintenancePromises(
       SYSTEM_MAIL_SMTP_TLS: 'none',
       SYSTEM_MAIL_TRANSPORT: 'smtp',
     },
+  }) as const;
+
+/**
+ * One workspace in which, with the maintenance queue paused, each job kind on
+ * that queue gets published: a run that alerts, a run with an error workflow, an
+ * operator replay, an invitation and a provider's answer about a connection.
+ */
+export async function publishMaintenancePromises(
+  name: string,
+): Promise<MaintenancePromises> {
+  const mailbox: Mailbox = await startMailbox();
+  const stack = await startStack(name, {
+    slackFromSink: true,
+    ...invitationMailSettings(mailbox),
   });
   const workspace = await stack.api.createWorkspace(`recovery-${name}`);
   const slack = await stack.api.createSlackConnection(
@@ -182,6 +190,13 @@ export async function publishMaintenancePromises(
       )
     )[0]?.status,
     replayedSteps: stack.sink.calls('replayed').length,
+    unconfirmed: (
+      await stack.sql<{ job_name: string }>(
+        `select distinct e.job_name from app.outbox_events e
+          where not exists(select 1 from app.inbox_receipts r where r.message_id=e.id)
+          order by e.job_name`,
+      )
+    ).map(({ job_name: jobName }) => jobName),
   });
 
   return Object.freeze({

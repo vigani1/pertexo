@@ -1,24 +1,74 @@
 import { createServer, type Server, type Socket } from 'node:net';
 import type { AddressInfo } from 'node:net';
 
+export type MailboxBehavior = Readonly<{
+  /**
+   * Greets nobody until this many senders are connected at once. A sender does
+   * nothing durable before the greeting, so they all get there with what they read
+   * before connecting, and meet on purpose rather than by timing.
+   */
+  greetTogether?: number;
+  /** Holds the answer to a message this long, as a slow server does. */
+  answerAfterMs?: number;
+}>;
+
 export type Mailbox = Readonly<{
   close: () => Promise<void>;
+  /** The most senders that were connected at the same moment. */
+  mostConnectedAtOnce: () => number;
   /** One entry per message accepted, with its recipient. */
   messages: () => readonly string[];
   port: number;
 }>;
 
 /** The outside mail server: accepts plain SMTP on loopback and records what it took. */
-export async function startMailbox(): Promise<Mailbox> {
+export async function startMailbox(
+  behavior: MailboxBehavior = {},
+): Promise<Mailbox> {
   const messages: string[] = [];
   const sockets = new Set<Socket>();
+  const awaitingGreeting = new Set<Socket>();
+  const timers = new Set<NodeJS.Timeout>();
+  let mostConnected = 0;
+  let greeted = behavior.greetTogether === undefined;
+
+  const greet = (socket: Socket): void => {
+    socket.write('220 mailbox ready\r\n');
+  };
+
+  const answerMessage = (socket: Socket): void => {
+    const answer = (): void => {
+      if (!socket.destroyed) socket.write('250 2.0.0 accepted\r\n');
+    };
+    if (behavior.answerAfterMs === undefined) {
+      answer();
+      return;
+    }
+    const timer = setTimeout(() => {
+      timers.delete(timer);
+      answer();
+    }, behavior.answerAfterMs);
+    timers.add(timer);
+  };
 
   const server: Server = createServer((socket) => {
     sockets.add(socket);
-    socket.on('close', () => sockets.delete(socket));
+    mostConnected = Math.max(mostConnected, sockets.size);
+    socket.on('close', () => {
+      sockets.delete(socket);
+      awaitingGreeting.delete(socket);
+    });
     socket.on('error', () => undefined);
     socket.setEncoding('utf8');
-    socket.write('220 mailbox ready\r\n');
+    if (greeted) greet(socket);
+    else {
+      awaitingGreeting.add(socket);
+      if (awaitingGreeting.size >= (behavior.greetTogether ?? 0)) {
+        greeted = true;
+        for (const waiting of awaitingGreeting) greet(waiting);
+        awaitingGreeting.clear();
+      }
+    }
     let recipient = '';
     let inData = false;
     let pending = '';
@@ -29,7 +79,7 @@ export async function startMailbox(): Promise<Mailbox> {
         inData = false;
         pending = '';
         messages.push(recipient);
-        socket.write('250 2.0.0 accepted\r\n');
+        answerMessage(socket);
         return;
       }
       const lines = pending.split('\r\n');
@@ -57,7 +107,9 @@ export async function startMailbox(): Promise<Mailbox> {
   return Object.freeze({
     port,
     messages: () => [...messages],
+    mostConnectedAtOnce: () => mostConnected,
     async close() {
+      for (const timer of timers) clearTimeout(timer);
       for (const socket of sockets) socket.destroy();
       await new Promise<void>((resolve) => {
         server.close(() => {
