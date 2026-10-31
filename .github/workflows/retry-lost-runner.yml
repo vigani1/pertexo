@@ -1,0 +1,38 @@
+name: Retry a lost runner
+
+# A job that failed without a failed step lost its runner, and GitHub won't retry it.
+# A hang is left alone: a job that hits its time limit ends as cancelled, and it may be
+# a real deadlock. So is any run with a real failure, which a retry could only hide.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  actions: write
+
+jobs:
+  retry:
+    if:
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Re-run the failed jobs if only a lost runner failed them
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          # The `Require` steps are CI's gates, which fail only because a job they need did.
+          decision=$(gh api --paginate "repos/$REPOSITORY/actions/runs/$RUN_ID/jobs?filter=latest&per_page=100" --jq '.jobs[]' | jq -rs '
+            [.[] | select(.conclusion == "failure")] as $failed
+            | [$failed[] | select(any(.steps[]; .conclusion == "failure") | not)] as $lost
+            | [$failed[] | select(any(.steps[]; .conclusion == "failure" and (.name | startswith("Require") | not)))] as $real
+            | if ($lost | length) > 0 and ($real | length) == 0 then "retry" else "leave" end')
+          echo "Decision for run $RUN_ID: $decision"
+          if [ "$decision" = retry ]; then
+            gh run rerun "$RUN_ID" --failed --repo "$REPOSITORY"
+          fi
