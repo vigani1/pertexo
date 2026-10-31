@@ -6,6 +6,7 @@ import {
   type Page,
 } from '@playwright/test';
 import { test } from './support/browser-fixture';
+import { clickConnect, closesOrSays } from './support/oauth2-consent';
 import {
   addSingleStep,
   createEditorWorkflow,
@@ -80,23 +81,6 @@ async function fillForm(
   await sheet.getByRole('button', { name: 'Continue', exact: true }).click();
   await sheet.getByLabel('Connection name', { exact: true }).fill(name);
   await sheet.getByRole('button', { name: 'Continue', exact: true }).click();
-}
-
-async function clickConnect(
-  page: Page,
-  scope: Locator,
-  name: 'Connect' | 'Reconnect' = 'Connect',
-): Promise<Page> {
-  const opened = page.waitForEvent('popup');
-  await scope.getByRole('button', { name, exact: true }).click();
-  return opened;
-}
-
-async function closesOrSays(popup: Page, text: string): Promise<void> {
-  await Promise.race([
-    popup.waitForEvent('close'),
-    popup.getByText(text, { exact: true }).waitFor(),
-  ]);
 }
 
 async function createConnected(
