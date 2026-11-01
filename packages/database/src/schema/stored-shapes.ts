@@ -103,3 +103,21 @@ export type ScheduleTriggerRecord = Readonly<{
   misfirePolicy: 'skip' | 'catch_up_once';
   healthStatus: 'healthy' | 'degraded' | 'unhealthy' | 'disabled';
 }>;
+
+export type StoredExecutionJsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly StoredExecutionJsonValue[]
+  | Readonly<{ [key: string]: StoredExecutionJsonValue }>;
+
+export type StoredExecutionValue =
+  | Readonly<{
+      kind: 'inline';
+      value: StoredExecutionJsonValue;
+    }>
+  | Readonly<{
+      kind: 'artifact';
+      artifactId: string;
+    }>;
