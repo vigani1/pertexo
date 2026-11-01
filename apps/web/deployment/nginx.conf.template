@@ -27,8 +27,10 @@ server {
 
   # An OAuth2 callback's query holds a code and state, so it never reaches a log.
   # Caddy sends it straight to the API; this covers an install with nginx in front.
+  # The error log counts too: a failed upstream writes the request line there.
   location = /v1/connections/oauth2/callback {
     access_log off;
+    error_log /dev/null crit;
     resolver ${NGINX_LOCAL_RESOLVERS} valid=5s;
     set $pertexo_api_upstream ${PERTEXO_API_UPSTREAM};
     proxy_pass $pertexo_api_upstream;
