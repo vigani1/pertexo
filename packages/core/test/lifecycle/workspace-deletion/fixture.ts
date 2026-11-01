@@ -88,10 +88,11 @@ async function apiWorkspaceQuery(
 export function change(
   input: Partial<WorkspaceLifecycleChange> &
     Pick<WorkspaceLifecycleChange, 'commandType'>,
+  pool: Pool | undefined = api,
 ) {
-  if (api === undefined) throw new Error('API pool unavailable');
+  if (pool === undefined) throw new Error('API pool unavailable');
   const actorUserId = input.actorUserId ?? ownerUserId;
-  return changeWorkspaceLifecycle(api, {
+  return changeWorkspaceLifecycle(pool, {
     operationId: randomUUID(),
     workspaceId,
     actorUserId,
@@ -101,6 +102,9 @@ export function change(
     ...input,
   });
 }
+
+export const apiUrlFor = () => apiUrl;
+export const ownerUrlFor = () => ownerUrl;
 
 export async function asOwner(text: string, values: readonly unknown[] = []) {
   const owner = new Pool({ connectionString: ownerUrl, max: 1 });
