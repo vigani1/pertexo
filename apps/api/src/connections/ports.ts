@@ -7,7 +7,7 @@ import type {
   ConnectionUsageDatabase,
   OAuth2ConsentDatabase,
 } from '@pertexo/core/connections';
-import type { FailureNotificationDestinationDatabase } from '@pertexo/core/notifications';
+import type { NotificationDestinationStore } from '@pertexo/core/notifications';
 import type {
   ConnectionSecretContext,
   OAuth2EndpointPolicy,
@@ -75,7 +75,7 @@ export type ConnectionDependencies = Readonly<{
   slackClient?: ConnectionSlackClient;
   emailClient?: ConnectionEmailClient;
   telemetry?: ConnectionTelemetry;
-  destinationPersistence?: FailureNotificationDestinationDatabase;
+  destinationPersistence?: NotificationDestinationStore;
   usagePersistence?: ConnectionUsageDatabase;
   sharingPersistence?: ConnectionSharingDatabase;
   oauth2?: ConnectionOAuth2Dependencies;

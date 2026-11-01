@@ -1,7 +1,7 @@
 import type { Role } from '@pertexo/workflow-model';
 import type {
   ConnectionRecord,
-  FailureNotificationDestinationDatabase,
+  NotificationDestinationStore,
 } from '@pertexo/core/testing';
 
 import { expect, vi } from 'vitest';
@@ -141,18 +141,18 @@ function connectionRuntime(
     updatedAt: new Date('2026-08-22T12:01:00.000Z'),
   };
   const appendDestinationVersion = vi
-    .fn<FailureNotificationDestinationDatabase['appendVersion']>()
+    .fn<NotificationDestinationStore['appendVersion']>()
     .mockResolvedValue(destinationRecord);
   const getDestination = vi
-    .fn<FailureNotificationDestinationDatabase['get']>()
+    .fn<NotificationDestinationStore['get']>()
     .mockResolvedValue(destinationRecord);
   const listDestinations = vi
-    .fn<FailureNotificationDestinationDatabase['list']>()
+    .fn<NotificationDestinationStore['list']>()
     .mockResolvedValue([destinationRecord]);
   const getWorkflowPolicy = vi
-    .fn<FailureNotificationDestinationDatabase['getWorkflowPolicy']>()
+    .fn<NotificationDestinationStore['getWorkflowPolicy']>()
     .mockResolvedValue(destinationRecord);
-  const destinationPersistence: FailureNotificationDestinationDatabase = {
+  const destinationPersistence: NotificationDestinationStore = {
     create: () => Promise.reject(new Error('not used')),
     get: getDestination,
     list: listDestinations,

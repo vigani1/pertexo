@@ -15,7 +15,7 @@ import {
   claimNotificationCommand,
   completeNotificationCommand,
   destinationError,
-} from '../destinations/commands.repository.js';
+} from '../destinations/command.js';
 import type {
   CommandMetadata,
   DestinationTransaction,

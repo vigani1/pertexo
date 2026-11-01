@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 
 export type DestinationConfig = FailureNotificationDestinationConfig;
 
-export interface FailureNotificationDestinationDatabase {
+export interface NotificationDestinationStore {
   create(
     input: IdempotentCommandMetadata &
       Readonly<{

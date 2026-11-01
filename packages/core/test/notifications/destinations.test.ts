@@ -22,7 +22,7 @@ vi.mock('../../../database/dist/tenant-access/transactions.js', () => ({
   },
 }));
 
-import { createFailureNotificationDestinationDatabase } from '../../src/notifications/destinations/repository.js';
+import { createNotificationDestinationStore } from '../../src/notifications/destinations/store.js';
 
 const actorId = '11111111-1111-4111-8111-111111111111';
 const workspaceId = '22222222-2222-4222-8222-222222222222';
@@ -119,7 +119,7 @@ describe('failure notification destination decoding', () => {
       },
     );
     tenantState.client = { query } as unknown as PoolClient;
-    const database = createFailureNotificationDestinationDatabase({
+    const database = createNotificationDestinationStore({
       connectionString: 'postgres://unused',
     } as never);
 
