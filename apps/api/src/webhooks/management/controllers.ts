@@ -39,6 +39,8 @@ const commandRouteSchema = z
   .object({ ...routeShape, triggerId: z.uuid() })
   .strict()
   .readonly();
+/** A route that takes no settings says so, rather than ignoring what it was sent. */
+const noBodySchema = z.object({}).strict();
 type Request = IdentityWorkspaceRequest &
   Readonly<{
     raw?: Readonly<{
@@ -93,7 +95,12 @@ export class WebhookManagementController {
     WebhookUpdateGuard,
     CsrfProtectionGuard,
   )
-  public provision(@Req() request: Request, @Param() params: unknown) {
+  public provision(
+    @Req() request: Request,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    noBodySchema.parse(body ?? {});
     return this.command('provision', request, params);
   }
 
@@ -129,7 +136,12 @@ export class WebhookManagementController {
     WebhookUpdateGuard,
     CsrfProtectionGuard,
   )
-  public rotateEndpoint(@Req() request: Request, @Param() params: unknown) {
+  public rotateEndpoint(
+    @Req() request: Request,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    noBodySchema.parse(body ?? {});
     return this.command('rotateEndpoint', request, params);
   }
 
