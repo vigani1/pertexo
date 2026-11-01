@@ -433,6 +433,47 @@ test('a test door never reaches code that ships', () => {
   );
 });
 
+test('secrets builds on the database and only applications and core use it', () => {
+  const imports = (file, specifier) =>
+    validateModuleImports({
+      [file]: `import { a } from '${specifier}';`,
+    }).join('\n');
+  for (const entry of ['schema', 'primitives', 'platform', 'testing'])
+    for (const file of [
+      'packages/secrets/src/a.ts',
+      'packages/secrets/test/a.ts',
+    ])
+      assert.doesNotMatch(
+        imports(file, `@pertexo/database/${entry}`),
+        /is for core/u,
+      );
+  assert.match(
+    imports('packages/secrets/test/a.ts', '../../database/src/schema.js'),
+    /is for core and secrets/u,
+  );
+  for (const file of [
+    'packages/database/src/a.ts',
+    'packages/database/test/a.ts',
+    'packages/integrations/src/a.ts',
+    'packages/queue/test/a.ts',
+  ])
+    assert.match(
+      imports(file, '@pertexo/secrets/server'),
+      /only applications and core depend on secrets/u,
+    );
+  for (const file of [
+    'apps/api/src/a.ts',
+    'apps/worker/test/a.ts',
+    'packages/core/src/inbox/a.ts',
+    'packages/core/test/a.ts',
+  ])
+    assert.equal(imports(file, '@pertexo/secrets/server'), '');
+  assert.match(
+    imports('packages/secrets/src/a.ts', '@pertexo/core/runs'),
+    /only applications depend on core/u,
+  );
+});
+
 test("an application's tests stay out of core's database entry points", () => {
   for (const entry of ['schema', 'primitives'])
     for (const file of [

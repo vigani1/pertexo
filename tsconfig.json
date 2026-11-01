@@ -48,6 +48,9 @@
       "path": "./packages/rate-limit/tsconfig.json"
     },
     {
+      "path": "./packages/secrets/tsconfig.json"
+    },
+    {
       "path": "./packages/templates/tsconfig.json"
     },
     {

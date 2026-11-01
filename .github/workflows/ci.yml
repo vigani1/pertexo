@@ -145,9 +145,10 @@ jobs:
               @pertexo/integrations --filter @pertexo/node-catalog --filter
               @pertexo/node-sdk --filter @pertexo/nodes-core --filter
               @pertexo/observability --filter @pertexo/queue --filter
-              @pertexo/rate-limit --filter @pertexo/templates --filter
-              @pertexo/workflow-engine --filter @pertexo/workflow-model --filter
-              @pertexo/artifact-store --filter @pertexo/database
+              @pertexo/rate-limit --filter @pertexo/secrets --filter
+              @pertexo/templates --filter @pertexo/workflow-engine --filter
+              @pertexo/workflow-model --filter @pertexo/artifact-store --filter
+              @pertexo/database
           - group: apps
             filter: >-
               --filter @pertexo/api --filter @pertexo/worker --filter
@@ -216,6 +217,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts
+          pnpm --filter @pertexo/secrets exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/core exec vitest run --config vitest.integration.config.ts \
             --exclude 'test/authoring/organization/**'
           EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true \

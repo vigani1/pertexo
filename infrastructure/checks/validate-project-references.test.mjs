@@ -31,6 +31,45 @@ test('accepts dependency-aware references and ignores external dependencies', ()
   assert.deepEqual(validateProjectReferences(fixture(), rootReferences), []);
 });
 
+test('only applications and core may depend on secrets, even for tests', () => {
+  const secrets = {
+    name: '@pertexo/secrets',
+    directory: 'packages/secrets',
+    references: [],
+  };
+  const core = {
+    name: '@pertexo/core',
+    directory: 'packages/core',
+    dependencies: { '@pertexo/secrets': 'workspace:*' },
+    references: [{ path: '../secrets/tsconfig.json' }],
+  };
+  const [model, api] = fixture();
+  const roots = [
+    ...rootReferences,
+    { path: './packages/core/tsconfig.json' },
+    { path: './packages/secrets/tsconfig.json' },
+  ];
+  assert.deepEqual(
+    validateProjectReferences([model, api, core, secrets], roots),
+    [],
+  );
+  assert.match(
+    validateProjectReferences(
+      [
+        {
+          ...model,
+          devDependencies: { '@pertexo/secrets': 'workspace:*' },
+        },
+        api,
+        core,
+        secrets,
+      ],
+      roots,
+    ).join('\n'),
+    /only applications and core depend on secrets/u,
+  );
+});
+
 test('only applications may depend on core, even for tests', () => {
   const core = {
     name: '@pertexo/core',

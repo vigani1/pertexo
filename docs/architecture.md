@@ -21,6 +21,7 @@ remain in `docs/adr/`, with supersession noted where their decisions changed.
 | `workflow-engine` | Pure execution decisions and the checkpoint shape                                                                  |
 | `core`            | Whole product areas, each with its flows, queries and decisions; its `execution` area advances runs               |
 | `database`        | Drizzle tables, migrations, transactions, row security, and the shared outbox, audit and idempotency helpers       |
+| `secrets`         | System mail storage and the encryption key inventory, above `database` and below `core`                            |
 | `contracts`       | Zod HTTP request/response/problem schemas and server-side OpenAPI generation                                       |
 | `node-sdk`        | Node definitions, config/port contracts and executor interfaces                                                    |
 | `nodes-core`      | Built-in deterministic and control nodes                                                                           |
@@ -33,14 +34,15 @@ remain in `docs/adr/`, with supersession noted where their decisions changed.
 | `rate-limit`      | Abuse policies and atomic Redis counters                                                                           |
 
 Packages expose a browser-safe root and, when needed, `/server`. The database
-exposes `/schema` and `/primitives` for what core builds on, `/platform` for pools
+exposes `/schema` and `/primitives` for what core and secrets build on, `/platform` for pools
 and startup, and `/testing` for fixtures; a check keeps applications to `/platform`,
 plus `/testing` from tests. Observability's `/startup` must load before the
 instrumented runtime libraries. Artifact storage, queue and rate limiting are
 server-side packages despite having a single root door.
 
-Applications depend on `core`, and `core` on `database`, the engine and the
-model; a check refuses the reverse ([ADR 091](adr/091-core-layer.md)). Each core
+Applications depend on `core`, and `core` on `secrets`, `database`, the engine and
+the model; `secrets` builds on `database` alone. A check refuses the reverse
+([ADR 091](adr/091-core-layer.md)). Each core
 area has an `index.ts` behind its `@pertexo/core/<area>` entry point; from the
 one-shot move on, other areas import the files it names directly, so no barrel edges
 appear. Test flows go through `@pertexo/core/testing`.

@@ -13,7 +13,7 @@ const webAllowedWorkspaceImports = new Set([
   '@pertexo/templates',
   '@pertexo/integrations',
 ]);
-// Tables and primitives are what core builds on; applications go through core.
+// Tables and primitives are what core and secrets build on; applications go through them.
 const coreOnlyDatabaseEntries = new Set([
   '@pertexo/database/schema',
   '@pertexo/database/primitives',
@@ -150,12 +150,24 @@ function directionViolations(file, specifier) {
       `${file}: only applications depend on core (apps -> core -> database)`,
     );
   if (
-    reachesDatabaseCode(file, specifier) &&
+    (specifier === '@pertexo/secrets' ||
+      specifier.startsWith('@pertexo/secrets/')) &&
+    file.startsWith('packages/') &&
     !file.startsWith('packages/core/') &&
-    !file.startsWith('packages/database/')
+    !file.startsWith('packages/secrets/')
   )
     violations.push(
-      `${file}: ${specifier} is for core; applications use a core area`,
+      `${file}: only applications and core depend on secrets (apps -> core -> secrets -> database)`,
+    );
+  if (
+    reachesDatabaseCode(file, specifier) &&
+    !file.startsWith('packages/core/') &&
+    !file.startsWith('packages/database/') &&
+    // Secrets uses the database's doors by name, never a path around them.
+    !(file.startsWith('packages/secrets/') && !specifier.startsWith('.'))
+  )
+    violations.push(
+      `${file}: ${specifier} is for core and secrets; applications use a core area`,
     );
   if (
     file.startsWith('apps/') &&
