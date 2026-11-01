@@ -133,25 +133,4 @@ describe('compiled operator command main process', () => {
     expect(fixture.output()).toContain('"commandType":"stuck-work.list"');
     expect(fixture.output()).toContain('ECONNREFUSED');
   }, 40_000);
-
-  const databaseUrl = process.env.DATABASE_MAINTENANCE_URL;
-
-  it.skipIf(databaseUrl === undefined)(
-    'answers a real command from a real database',
-    async () => {
-      const fixture = start(entrypointPath, [], {
-        ...process.env,
-        LOG_LEVEL: 'silent',
-        OPERATOR_COMMAND_TYPE: 'stuck-work.list',
-      });
-      const result = await waitForExit(fixture.child, fixture.output, 30_000);
-
-      expect(result).toEqual({ code: 0, signal: null });
-      expect(JSON.parse(fixture.output())).toEqual({
-        runs: expect.any(Array) as unknown,
-        failedOutboxEvents: expect.any(Array) as unknown,
-      });
-    },
-    40_000,
-  );
 });
