@@ -65,6 +65,43 @@ export function outputFieldsOf(
   });
 }
 
+/** A field a step declares, with what's declared inside it. */
+export type DeclaredField = Readonly<{
+  key: string;
+  label?: string;
+  type?: SchemaValueType;
+  /** Its children sit in each item of a list. */
+  list?: boolean;
+  children?: readonly DeclaredField[];
+}>;
+
+const MAX_DECLARED_DEPTH = 6;
+
+/** Output fields at every depth the schema spells out, for "Insert data". */
+export function declaredFieldsOf(
+  outputSchema: unknown,
+  node?: Pick<WorkflowNode, 'config'>,
+  outputVariant?: OutputVariantSelection,
+): readonly DeclaredField[] {
+  return declaredIn(selectedOutputSchema(outputSchema, node, outputVariant), 0);
+}
+
+function declaredIn(schema: unknown, depth: number): readonly DeclaredField[] {
+  if (depth >= MAX_DECLARED_DEPTH) return [];
+  return schemaProperties(schema).map(([key, candidate]) => {
+    if (!isRecord(candidate)) return { key };
+    const type = schemaValueType(candidate);
+    const list = type === 'array';
+    const children = declaredIn(list ? candidate.items : candidate, depth + 1);
+    return {
+      key,
+      ...(type === undefined ? {} : { type }),
+      ...(list ? { list } : {}),
+      ...(children.length === 0 ? {} : { children }),
+    };
+  });
+}
+
 export type FileField = Readonly<{
   key: string;
   /** Some outputs are a file only sometimes, such as an HTTP response body. */

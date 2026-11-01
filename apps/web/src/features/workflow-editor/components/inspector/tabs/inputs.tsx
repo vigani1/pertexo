@@ -17,6 +17,7 @@ import type { EditorFocusTarget } from '../../../hooks/use-editor-actions';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import {
   directPredecessorOptions,
+  inputMappingSourceControlId,
   nodeUsesRunInputDirectly,
   type InputMappingDraftRow,
 } from '../../../model/inspector/input-mappings/draft';
@@ -24,7 +25,10 @@ import { inputKeySuggestions } from '../../../model/inspector/input-mappings/sch
 import { useInputMappingDraft } from '../input-mappings/use-draft';
 import { IncomingLinks } from '../incoming-links';
 import { InsertDataPicker } from '../input-mappings/insert-data/picker';
-import type { InsertedSource } from '../../../model/inspector/input-mappings/reference';
+import {
+  sourceReference,
+  type InsertedSource,
+} from '../../../model/inspector/input-mappings/reference';
 import { MappingRow } from '../input-mappings/row';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { httpRequestPlaceholders } from '../../../model/inspector/http-body';
@@ -124,6 +128,7 @@ function MappedInputsTab({
   });
   const rowsShown = useRowDisclosure(mappings, node.id, focusTarget);
   const { activeRowId, openRow, insert } = useMappingInsertion({
+    nodeId: node.id,
     mappings,
     rowsShown,
   });
@@ -313,9 +318,11 @@ function useRowDisclosure(
 }
 
 function useMappingInsertion({
+  nodeId,
   mappings,
   rowsShown,
 }: Readonly<{
+  nodeId: string;
   mappings: ReturnType<typeof useInputMappingDraft>;
   rowsShown: ReturnType<typeof useRowDisclosure>;
 }>) {
@@ -328,7 +335,11 @@ function useMappingInsertion({
     rowsShown.openRow({ rowId, focusKey });
   }
 
-  /** Fills the open row you were editing, or adds one named after the field. */
+  /**
+   * Fills the open row you were editing, or adds one named after the field.
+   * An expression you were writing keeps its text: the field goes in at the
+   * cursor.
+   */
   function insert(source: InsertedSource, fieldName: string) {
     const active = mappings.rows.find(
       (row) => row.id === activeRowId.current && rowsShown.open.has(row.id),
@@ -336,6 +347,26 @@ function useMappingInsertion({
     const withSource = (
       base: Pick<InputMappingDraftRow, 'id' | 'destinationKey'>,
     ): InputMappingDraftRow => ({ ...base, ...source });
+    const reference = sourceReference(source);
+    if (active?.kind === 'expression' && reference !== undefined) {
+      const { expression } = active;
+      const control = document.getElementById(
+        inputMappingSourceControlId(nodeId, active.id),
+      );
+      const start =
+        control instanceof HTMLTextAreaElement
+          ? control.selectionStart
+          : expression.length;
+      const end =
+        control instanceof HTMLTextAreaElement
+          ? control.selectionEnd
+          : expression.length;
+      mappings.changeRow({
+        ...active,
+        expression: `${expression.slice(0, start)}${reference}${expression.slice(end)}`,
+      });
+      return;
+    }
     if (active !== undefined) {
       mappings.changeRow(
         withSource({ id: active.id, destinationKey: active.destinationKey }),

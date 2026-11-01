@@ -27,7 +27,7 @@ export function valueExpression(source: ValueSource): string | undefined {
       return undefined;
   }
 }
-function pathExpression(root: string, path: string) {
+export function pathExpression(root: string, path: string) {
   const segments = parseJsonPath(path);
   return segments === undefined
     ? undefined

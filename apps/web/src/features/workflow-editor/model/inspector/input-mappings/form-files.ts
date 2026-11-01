@@ -2,11 +2,12 @@ import {
   formConfigSchema,
   inputRequestConfigSchema,
   isWorkflowTriggerDefinition,
+  type FormField,
   type ValueSource,
 } from '@pertexo/workflow-model';
 import type { GraphLevel, WorkflowNode } from '../../graph/scopes';
 import { directPredecessorOptions } from './draft';
-import { fileFieldsOf } from './schema';
+import { fileFieldsOf, type SchemaValueType } from './schema';
 
 type FormAnswerSource = Extract<
   ValueSource,
@@ -36,6 +37,38 @@ const formSetups: Readonly<
   'core.form': formConfigSchema,
   'core.request_input': inputRequestConfigSchema,
 };
+
+/** A form question as its answer arrives, under the output's `values`. */
+export type FormFieldAnswer = Readonly<{
+  name: string;
+  label: string;
+  type?: SchemaValueType;
+}>;
+
+const ANSWER_TYPES: Readonly<Record<FormField['type'], SchemaValueType>> = {
+  text: 'string',
+  textarea: 'string',
+  email: 'string',
+  date: 'string',
+  select: 'string',
+  number: 'number',
+  boolean: 'boolean',
+  multi_select: 'array',
+  file: 'array',
+};
+
+/** A form step's questions; undefined when this step isn't a form. */
+export function formFieldsOf(
+  node: WorkflowNode,
+): readonly FormFieldAnswer[] | undefined {
+  const parsed = formSetups[node.definition.key]?.safeParse(node.config);
+  if (parsed?.success !== true) return undefined;
+  return parsed.data.fields.map((field) => ({
+    name: field.name,
+    label: field.label,
+    type: ANSWER_TYPES[field.type],
+  }));
+}
 
 function fileFieldsOfForm(node: WorkflowNode): readonly FormFileField[] {
   const parsed = formSetups[node.definition.key]?.safeParse(node.config);

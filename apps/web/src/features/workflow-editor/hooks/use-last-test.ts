@@ -18,13 +18,27 @@ export type RecordedTest = FinishedTest & Readonly<{ generation: number }>;
 export function useLastTest() {
   const store = useEditorStoreApi();
   const [last, setLast] = useState<RecordedTest>();
+  const [outputs, setOutputs] = useState<StepTestOutputs>(() => new Map());
   return {
     last,
+    outputs,
     record: (test: FinishedTest) => {
       setLast({ ...test, generation: store.getState().generation });
+      const { output, status } = test.preview;
+      if (status !== 'succeeded' || output === null) return;
+      setOutputs((current) => new Map(current).set(test.nodeId, output));
     },
   } as const;
 }
+
+/** Each step's output from its last passed test in this session. */
+export type StepTestOutputs = ReadonlyMap<
+  string,
+  NonNullable<PreviewRunSummary['output']>
+>;
+
+/** Lets Insert data read what earlier steps' tests returned. */
+export const StepTestOutputsContext = createContext<StepTestOutputs>(new Map());
 
 /** The session's last finished test, for setups that preview its output. */
 export const LastTestContext = createContext<RecordedTest | undefined>(
