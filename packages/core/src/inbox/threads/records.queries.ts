@@ -11,6 +11,7 @@ import {
   workspaces,
   workflows,
   connections,
+  failureNotificationDestinations,
   workflowCommentMentions,
   workflowComments,
 } from '@pertexo/database/schema';
@@ -20,8 +21,18 @@ export const seen = alias(workspaceInboxReads, 'seen');
 export const workspace = alias(workspaces, 'workspace');
 export const workflow = alias(workflows, 'workflow');
 export const connection = alias(connections, 'connection');
+export const destination = alias(
+  failureNotificationDestinations,
+  'destination',
+);
 export const mention = alias(workflowCommentMentions, 'mention');
 export const comment = alias(workflowComments, 'comment');
+/** A failure alert notice's subject is its destination; no other notice has one. */
+export const alertDestinationOn = and(
+  eq(thread.noticeKind, 'failure_alert_attention'),
+  eq(destination.workspaceId, thread.workspaceId),
+  eq(destination.id, thread.subjectId),
+);
 /** Joins a thread to the one person's read row. */
 export const seenByActor = (actorId: string) =>
   and(
@@ -37,6 +48,7 @@ const noticeFields = {
   workflow_id: thread.workflowId,
   workflow_name: workflow.name,
   connection_name: connection.name,
+  destination_kind: destination.kind,
   workspace_name: workspace.name,
   latest_kind: thread.latestKind,
   occurrence_count: sql<string>`${thread.occurrenceCount}::text`,
@@ -82,6 +94,7 @@ export function noticeRecords(
         eq(connection.id, thread.connectionId),
       ),
     )
+    .leftJoin(destination, alertDestinationOn)
     .leftJoin(
       mention,
       and(

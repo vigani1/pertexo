@@ -160,6 +160,10 @@ export const runFailureNotificationIntents = appSchema.table(
       columns: [table.workspaceId, table.workflowRunId],
       foreignColumns: [workflowRuns.workspaceId, workflowRuns.id],
     }).onDelete('cascade'),
+    // A destination's latest finished alert decides whether it needs attention.
+    index('run_failure_notification_intents_destination_completed_idx')
+      .on(table.workspaceId, table.destinationId, table.completedAt, table.id)
+      .where(sql`(completed_at IS NOT NULL)`),
     index('run_failure_notification_intents_recovery_idx')
       .on(table.recoveryAt, table.id)
       .where(

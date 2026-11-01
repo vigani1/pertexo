@@ -706,6 +706,7 @@
                           "enum": [
                             "workflow_auto_paused",
                             "connection_attention",
+                            "failure_alert_attention",
                             "limit_reached",
                             "limit_approaching",
                             "approval_waiting",
@@ -2104,6 +2105,7 @@
                 "workflow_failure",
                 "workflow_auto_paused",
                 "connection_attention",
+                "failure_alert_attention",
                 "limit_reached",
                 "limit_approaching",
                 "approval_waiting",

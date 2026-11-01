@@ -10,10 +10,12 @@ import {
   systemMailDeliveries as delivery,
 } from '@pertexo/database/schema';
 import {
+  alertDestinationOn,
   thread,
   workspace,
   workflow,
   connection,
+  destination,
   mention,
   comment,
 } from '../threads/records.queries.js';
@@ -45,9 +47,16 @@ export type MailSubjectRow = MailSubjectRecord &
         comment_thread_id: string;
       }>
     | Readonly<{
+        notice_kind: 'failure_alert_attention';
+        destination_kind: 'slack' | 'email';
+        capacity_limit: null;
+        comment_id: null;
+        comment_thread_id: null;
+      }>
+    | Readonly<{
         notice_kind: Exclude<
           WorkspaceNoticeKind,
-          'limit_approaching' | 'workflow_mention'
+          'limit_approaching' | 'workflow_mention' | 'failure_alert_attention'
         >;
         capacity_limit: null;
         comment_id: null;
@@ -95,6 +104,7 @@ export async function readMailSubjects(
           inArray(thread.noticeKind, [
             'limit_reached',
             'limit_approaching',
+            'failure_alert_attention',
             'approval_waiting',
             'publication_review_waiting',
             'workflow_mention',
@@ -130,12 +140,13 @@ export async function readMailSubjects(
     .limit(SUBJECTS_PER_MAIL)
     .catch(rethrowQueryFailure);
   const current: MailSubjectRow[] = [];
-  // Audience and task eligibility filter before LIMIT; capacity facts are rechecked before use.
+  // Audience and task eligibility filter before LIMIT; capacity and failure alert facts are rechecked before use.
   // Subject/FK checks correlate the nullable columns with the notice kind.
   for (const row of found as MailSubjectRow[]) {
     if (
       row.notice_kind === 'limit_reached' ||
-      row.notice_kind === 'limit_approaching'
+      row.notice_kind === 'limit_approaching' ||
+      row.notice_kind === 'failure_alert_attention'
     ) {
       const scope = { workspaceId, subjectId: row.subject_id };
       const fact = await readAttentionFact(
@@ -170,6 +181,7 @@ function mailSubjectsQuery(
       comment_id: comment.id,
       comment_thread_id: comment.threadId,
       name: sql<string>`coalesce(${workflow.name},${connection.name},${workspace.name})`,
+      destination_kind: destination.kind,
     })
     .from(thread)
     .innerJoin(workspace, eq(workspace.id, thread.workspaceId))
@@ -187,6 +199,7 @@ function mailSubjectsQuery(
         eq(connection.id, thread.connectionId),
       ),
     )
+    .leftJoin(destination, alertDestinationOn)
     .leftJoin(
       mention,
       and(

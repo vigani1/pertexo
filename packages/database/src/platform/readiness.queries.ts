@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0070_notice_window_from_core.sql';
+export const EXPECTED_MIGRATION_HEAD = '0071_failure_alert_notice.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

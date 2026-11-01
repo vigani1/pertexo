@@ -61,6 +61,7 @@ export function noticeVisibilitySql(
     workflow_failure: workflowAudience,
     workflow_auto_paused: workflowAudience,
     connection_attention: capabilityAudienceSql('connection:manage'),
+    failure_alert_attention: capabilityAudienceSql('connection:manage'),
     limit_reached: operational,
     limit_approaching: operational,
     workflow_mention: and(

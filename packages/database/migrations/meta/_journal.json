@@ -498,6 +498,13 @@
       "when": 1793552089157,
       "tag": "0070_notice_window_from_core",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1793562072181,
+      "tag": "0071_failure_alert_notice",
+      "breakpoints": true
     }
   ]
 }
