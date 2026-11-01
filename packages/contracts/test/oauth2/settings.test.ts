@@ -193,6 +193,31 @@ describe('OAuth2 client settings', () => {
     ).toBe(false);
   });
 
+  // S10: sixteen largest parameters pass each limit but not the database's 16,384
+  // bytes, so without a total the person gets a database failure, not a field error.
+  it.fails('S10 refuses parameters too large to store, in total', () => {
+    expect(
+      accepts({
+        ...consentSettings,
+        tokenParameters: Object.fromEntries(
+          Array.from({ length: 16 }, (_, index) => [
+            String(index).padStart(64, 'p'),
+            'v'.repeat(1_024),
+          ]),
+        ),
+      }),
+    ).toBe(false);
+  });
+
+  it('S10 still takes one parameter of the largest size', () => {
+    expect(
+      accepts({
+        ...consentSettings,
+        tokenParameters: { ['p'.repeat(64)]: 'v'.repeat(1_024) },
+      }),
+    ).toBe(true);
+  });
+
   it('refuses an unknown setting rather than dropping it', () => {
     expect(accepts({ ...consentSettings, clientSecret: 'hunter2' })).toBe(
       false,
