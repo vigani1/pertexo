@@ -1,5 +1,8 @@
 // @vitest-environment node
-import type { WorkflowRunReadSummary } from '@pertexo/contracts';
+import type {
+  ConnectionResponse,
+  WorkflowRunReadSummary,
+} from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import {
   firstThreadSteps,
@@ -7,6 +10,7 @@ import {
 } from '@/features/overview/model/first-thread';
 import { loomCaption } from '@/features/overview/model/loom-caption';
 import {
+  connectionAttentionItems,
   destinationAttentionItems,
   runAttentionItems,
   workflowAttentionItems,
@@ -337,5 +341,45 @@ describe('first thread', () => {
     expect(isNewWorkspace({ hasRun: true, workflows: [] })).toBe(false);
     expect(isNewWorkspace({ workflows: [] })).toBe(true);
     expect(isNewWorkspace({})).toBe(false);
+  });
+});
+
+describe('connections that need attention', () => {
+  const connection = (lastErrorCode: string) =>
+    ({
+      id: 'connection-1',
+      name: 'Billing API',
+      status: 'reauthorization_required',
+      health: { lastErrorCode },
+    }) as unknown as ConnectionResponse;
+
+  // M4: nothing uses a brand-new connection and nobody has connected it yet.
+  it.fails(
+    'M4 says nothing about a connection nobody has connected yet',
+    () => {
+      expect(
+        connectionAttentionItems({
+          connections: [connection('connection.oauth2_not_authorized')],
+          canManage: true,
+        }),
+      ).toEqual([]);
+    },
+  );
+
+  it('still says a connection that lost its grant needs reconnecting', () => {
+    expect(
+      connectionAttentionItems({
+        connections: [connection('connection.oauth2_grant_revoked')],
+        canManage: true,
+      }),
+    ).toEqual([
+      {
+        key: 'connection:connection-1',
+        tone: 'attention',
+        title: 'Billing API needs reconnecting',
+        detail: 'Steps that use it fail until it’s reconnected.',
+        action: { kind: 'connections' },
+      },
+    ]);
   });
 });
