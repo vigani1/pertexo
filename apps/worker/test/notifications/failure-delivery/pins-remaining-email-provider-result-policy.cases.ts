@@ -116,7 +116,7 @@ export function registerPinsRemainingEmailProviderResultPolicy(): void {
     });
   });
 
-  it('rejects a destination that resolves to a different secret version', async () => {
+  it('keeps a retry of a possibly sent alert on the credential that send used', async () => {
     const persistence = store('email');
     vi.mocked(persistence.loadDestination).mockResolvedValue({
       kind: 'email',
@@ -134,10 +134,14 @@ export function registerPinsRemainingEmailProviderResultPolicy(): void {
     });
 
     await expect(
-      delivery.deliver({ ...identity, sideEffectClass: 'idempotent_with_key' }),
+      delivery.deliver({
+        ...identity,
+        sideEffectClass: 'idempotent_with_key',
+        deliveryUnresolved: true,
+      }),
     ).resolves.toMatchObject({
-      kind: 'definite_failure',
-      safeErrorCode: 'delivery.identity_changed',
+      kind: 'outcome_unknown',
+      safeErrorCode: 'delivery.previous_outcome_unresolved',
     });
   });
 }
