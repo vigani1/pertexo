@@ -229,6 +229,65 @@ describe('run retention windows', () => {
   });
 });
 
+describe('rows that follow a run past its 30 days', () => {
+  async function insertFollowers(runId: string): Promise<void> {
+    await admin.query(
+      `insert into app.data_table_write_receipts
+        (workspace_id,execution_id,invocation_id,run_id,request_hash,result_json)
+       values($1,$2,$3,$2,$4,'{}')`,
+      [workspaceId, runId, randomUUID(), 'a'.repeat(64)],
+    );
+    await admin.query(
+      `insert into app.webhook_run_responses(run_id,workspace_id,wait_seconds)
+       values($1,$2,30)`,
+      [runId, workspaceId],
+    );
+    await admin.query(
+      `insert into app.pending_run_tasks
+        (id,workspace_id,run_id,workflow_version_id,invocation_key,kind,config,status,
+         callback_node_id,callback_scope,callback_scope_hash,callback_token_hash,
+         callback_key_version,completed_at,consumed_at)
+       select uuidv7(),workspace_id,id,workflow_version_id,'prepared','callback','{}',
+         'canceled','callback','[]',$2,$2,'retired',clock_timestamp(),clock_timestamp()
+       from app.workflow_runs where id=$1`,
+      [runId, randomUUID().replaceAll('-', '').padEnd(64, '0')],
+    );
+  }
+  async function followers(runId: string) {
+    const count = async (table: string, column: string) =>
+      (
+        await admin.query(`select 1 from app.${table} where ${column}=$1`, [
+          runId,
+        ])
+      ).rowCount;
+    return {
+      receipts: await count('data_table_write_receipts', 'run_id'),
+      responses: await count('webhook_run_responses', 'run_id'),
+      callbacks: await count('pending_run_tasks', 'run_id'),
+    };
+  }
+
+  it('go a minute past the window and stay a minute inside', async () => {
+    const past = await insertRun({ completedAt: ago(30 * DAY + MINUTE) });
+    const inside = await insertRun({ completedAt: ago(30 * DAY - MINUTE) });
+    await insertFollowers(past);
+    await insertFollowers(inside);
+
+    await untilIdle();
+
+    expect(await followers(past)).toEqual({
+      receipts: 0,
+      responses: 0,
+      callbacks: 0,
+    });
+    expect(await followers(inside)).toEqual({
+      receipts: 1,
+      responses: 1,
+      callbacks: 1,
+    });
+  });
+});
+
 describe('what retention must not delete early', () => {
   it.each(['queued', 'running', 'waiting'])(
     'keeps a %s run, however old, with everything it owns',
