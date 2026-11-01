@@ -34,18 +34,29 @@ function isLocalName(host: string): boolean {
   );
 }
 
-function isRefused(address: string, policy: OAuth2EndpointPolicy): boolean {
+function isRefused(
+  address: string,
+  field: 'authorizationUrl' | 'tokenUrl',
+  policy: OAuth2EndpointPolicy,
+): boolean {
   const url = new URL(address);
   const host = comparableHost(url.hostname);
   // Not even a private network makes Pertexo's own address a place to send a secret.
   if (host === comparableHost(new URL(policy.publicWebOrigin).hostname))
     return true;
   const literal = isIP(host) !== 0;
-  if (policy.allowedPrivateNetworks.length > 0)
-    // Names are settled at dispatch, where they resolve; an IP literal is settled here.
+  if (policy.allowedPrivateNetworks.length > 0) {
+    // An IP literal is settled here. Names are settled at dispatch, where they
+    // resolve, but the browser alone opens the authorization URL: no dispatch ever
+    // refuses it, so consent can't start in cleartext at what looks like a public name.
+    if (literal)
+      return !isAllowedPrivateAddress(host, policy.allowedPrivateNetworks);
     return (
-      literal && !isAllowedPrivateAddress(host, policy.allowedPrivateNetworks)
+      field === 'authorizationUrl' &&
+      url.protocol !== 'https:' &&
+      !isLocalName(host)
     );
+  }
   return url.protocol !== 'https:' || literal || isLocalName(host);
 }
 
@@ -56,8 +67,10 @@ export function refusedEndpoint(
 ): 'authorizationUrl' | 'tokenUrl' | undefined {
   if (
     settings.grantType === 'authorization_code' &&
-    isRefused(settings.authorizationUrl, policy)
+    isRefused(settings.authorizationUrl, 'authorizationUrl', policy)
   )
     return 'authorizationUrl';
-  return isRefused(settings.tokenUrl, policy) ? 'tokenUrl' : undefined;
+  return isRefused(settings.tokenUrl, 'tokenUrl', policy)
+    ? 'tokenUrl'
+    : undefined;
 }

@@ -77,6 +77,30 @@ export class SecureHttpClient {
     private readonly addressPolicy?: SecureHttpAddressPolicy,
   ) {}
 
+  /**
+   * Whether a request to this address would be refused, for when a refusal after
+   * dispatching would cost something. A name that doesn't resolve isn't refused:
+   * that may pass, and the request itself will say.
+   */
+  public async isAddressBlocked(
+    url: string,
+    signal: AbortSignal,
+  ): Promise<boolean> {
+    try {
+      await this.resolvePublic(
+        parseTargetUrl(url),
+        Object.freeze({ possiblyDispatched: false, ambiguous: false }),
+        signal,
+      );
+      return false;
+    } catch (error: unknown) {
+      return (
+        inspectSecureHttpError(error)?.code ===
+        SECURE_HTTP_ERROR_CODE.ssrfBlocked
+      );
+    }
+  }
+
   public execute(input: SecureHttpRequest): Promise<SecureHttpResponse> {
     return this.executeStreaming(input, async (response) =>
       collectBody(response.body),

@@ -39,6 +39,7 @@ import {
 } from './errors.js';
 
 const CONSENT_LIFETIME_SECONDS = 600;
+const ADDRESS_CHECK_TIMEOUT_MILLIS = 5_000;
 
 export const OAUTH2_BINDING_COOKIE_PREFIX = 'pertexo_oauth2_';
 
@@ -85,6 +86,14 @@ export class StartOAuth2AuthorizationUseCase {
     const settings = decodeClientSettings(stored.settings);
     const refused = refusedEndpoint(settings, this.oauth2.endpointPolicy);
     if (refused !== undefined) throw new OAuth2EndpointRefusedError(refused);
+    // A name settled only at dispatch would otherwise fail after the code is spent.
+    if (
+      await this.oauth2.tokenClient.isAddressBlocked(
+        settings.tokenUrl,
+        AbortSignal.timeout(ADDRESS_CHECK_TIMEOUT_MILLIS),
+      )
+    )
+      throw new OAuth2EndpointRefusedError('tokenUrl');
     const secretVersionId = stored.connection.currentSecretVersionId;
     if (settings.grantType === 'client_credentials')
       return this.connectAtOnce(input, settings, stored);
