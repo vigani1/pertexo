@@ -2,9 +2,9 @@ import { count } from 'drizzle-orm';
 
 import { expect, it } from 'vitest';
 
-import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
+import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { PreviewAdmissionDeniedError } from '../../../src/previews/errors.js';
-import { resolvePreviewReplay } from '../../../src/previews/runs/replay.repository.js';
+import { resolvePreviewReplay } from '../../../src/previews/runs/resolve-replay.js';
 import {
   auditEvents,
   idempotencyRecords,

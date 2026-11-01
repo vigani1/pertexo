@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 
 import { expect, it } from 'vitest';
 
-import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
+import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { readPreviewRun } from '../../../src/previews/runs/records.queries.js';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 

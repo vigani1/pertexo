@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
-import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
-import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.repository.js';
+import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
+import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.js';
 import type { AcceptPreviewRunInput } from '../../../src/previews/runs/acceptance/contract.js';
 import type {
   PreviewAttemptLease,

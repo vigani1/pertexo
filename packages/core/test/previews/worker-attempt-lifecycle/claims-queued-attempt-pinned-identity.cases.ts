@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
-import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.repository.js';
-import { completePreviewAttempt } from '../../../src/previews/attempts/completion.repository.js';
+import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.js';
+import { completePreviewAttempt } from '../../../src/previews/attempts/complete.js';
 import { PREVIEW_STATUS } from '../../../src/previews/state.js';
 import {
   acceptFixture,

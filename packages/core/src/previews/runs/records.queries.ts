@@ -7,7 +7,7 @@ import { and, eq, gt } from 'drizzle-orm';
 import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { assertPreviewActor } from './acceptance/authority.queries.js';
+import { assertPreviewActor } from './acceptance/admission.queries.js';
 import type { PreviewRunRecord } from './acceptance/contract.js';
 
 export async function readPreviewRun(

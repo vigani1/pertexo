@@ -5,9 +5,9 @@ import { createRetentionStore } from '../../../src/lifecycle/retention/store.js'
 import { createPreviewRetentionCoordinator } from '../../../src/lifecycle/previews/coordinator.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
-import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
+import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { PreviewIdempotencyConflictError } from '../../../src/previews/errors.js';
-import { resolvePreviewReplay } from '../../../src/previews/runs/replay.repository.js';
+import { resolvePreviewReplay } from '../../../src/previews/runs/resolve-replay.js';
 import {
   auditEvents,
   outboxEvents,

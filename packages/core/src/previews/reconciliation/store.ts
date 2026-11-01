@@ -4,9 +4,9 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import { reconcilePreviewDelivery } from './deliveries.repository.js';
+import { reconcilePreviewDelivery } from './reconcile.js';
 
-export function createDatabasePreviewReconciliationStore(
+export function createPreviewReconciliationStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ): PreviewReconciliationStore & { close(): Promise<void> } {

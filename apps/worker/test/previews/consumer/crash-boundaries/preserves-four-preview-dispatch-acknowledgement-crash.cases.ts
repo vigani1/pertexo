@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createDatabasePreviewAttemptRunStore } from '@pertexo/core/previews';
+import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME, parseQueueJob } from '@pertexo/queue';
@@ -234,7 +234,7 @@ export function registerPreservesFourPreviewDispatchAcknowledgementCrash(): void
             // check. Expiring that marker lets the fresh consumer's startup
             // check redeliver now instead of a full production interval later.
             await lockRedis.del(queue.toKey('stalled-check'));
-            const redeliveryStore = createDatabasePreviewAttemptRunStore(
+            const redeliveryStore = createPreviewAttemptRunStore(
               parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
             );
             let redeliveryRuntime:

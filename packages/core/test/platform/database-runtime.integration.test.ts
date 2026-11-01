@@ -10,8 +10,8 @@ import {
   acquireDatabasePool,
   createDatabaseRuntime,
 } from '@pertexo/database/platform';
-import { createDatabasePreviewAttemptRunStore } from '../../src/previews/attempts/repository.js';
-import { createDatabasePreviewReconciliationStore } from '../../src/previews/reconciliation/repository.js';
+import { createPreviewAttemptRunStore } from '../../src/previews/attempts/store.js';
+import { createPreviewReconciliationStore } from '../../src/previews/reconciliation/store.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,
@@ -97,8 +97,8 @@ describe('database process runtime integration', () => {
     });
     const runtime = createDatabaseRuntime(config, { role: 'api' });
     const lease = acquireDatabasePool(config, runtime);
-    const attemptStore = createDatabasePreviewAttemptRunStore(config, runtime);
-    const reconciliationStore = createDatabasePreviewReconciliationStore(
+    const attemptStore = createPreviewAttemptRunStore(config, runtime);
+    const reconciliationStore = createPreviewReconciliationStore(
       config,
       runtime,
     );

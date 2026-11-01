@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { it, expect } from 'vitest';
 
-import { createWorkflowTestSuiteScanner } from '../../../../src/previews/suites/scanner.repository.js';
+import { createWorkflowTestSuiteScanner } from '../../../../src/previews/suites/scanner.js';
 
 import { workspaceId } from '../../../support/workflow-authoring.js';
 import {

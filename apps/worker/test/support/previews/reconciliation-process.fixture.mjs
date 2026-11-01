@@ -6,7 +6,7 @@ import {
   withTenantScopedClient,
 } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createDatabasePreviewAttemptRunStore } from '@pertexo/core/previews';
+import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { Pool } from 'pg';
 
 import { createNodeAttemptRuntime } from '../../../src/attempts/delivery/runtime.ts';
@@ -95,7 +95,7 @@ async function runWithCleanup(operation, cleanup, label) {
 }
 
 async function runComposedConsumer() {
-  const databaseStore = createDatabasePreviewAttemptRunStore(
+  const databaseStore = createPreviewAttemptRunStore(
     parseDatabaseConfig({ connectionString: input.workerUrl, max: 2 }),
   );
   const runStore = {

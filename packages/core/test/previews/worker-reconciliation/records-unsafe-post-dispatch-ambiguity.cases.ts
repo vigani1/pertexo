@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.repository.js';
-import { markPreviewDispatched } from '../../../src/previews/attempts/dispatch.repository.js';
+import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.js';
+import { markPreviewDispatched } from '../../../src/previews/attempts/mark-dispatched.js';
 import { PREVIEW_STATUS } from '../../../src/previews/state.js';
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
 } from '../../../src/previews/errors.js';
-import { reconcilePreviewDelivery } from '../../../src/previews/reconciliation/deliveries.repository.js';
+import { reconcilePreviewDelivery } from '../../../src/previews/reconciliation/reconcile.js';
 import {
   acceptFixture,
   claimFixture,
