@@ -39,3 +39,11 @@ it('D9 the runbook says a restored backup may need reconnecting', () => {
   assert.match(runbook, /OAuth2/u);
   assert.match(runbook, /invalid_grant|reconnect/iu);
 });
+
+// M6: without it Google gives no refresh token on a reconnect.
+it.fails('M6 the guide says to add prompt=consent', () => {
+  assert.match(
+    read('../../docs/guides/oauth2-connections.md'),
+    /prompt=consent/u,
+  );
+});
