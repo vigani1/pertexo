@@ -19,6 +19,9 @@ function concatenateBytes(left: Uint8Array, right: Uint8Array): Uint8Array {
 }
 
 const REDACTED_BYTES = new TextEncoder().encode('[Redacted]');
+const COMPARISONS_BEFORE_YIELD = 4_096;
+const NOT_FOUND = -1;
+const NOT_SEARCHED = -2;
 
 async function redactAvailable(
   value: Uint8Array,
@@ -47,6 +50,11 @@ async function redactAvailable(
     });
   }
   const maximumPatternBytes = patterns[0]?.byteLength ?? 0;
+  // Until the body ends, the last bytes could be the start of a secret that
+  // finishes in the next chunk, so only what comes before them is decided.
+  const decidedEnd = final
+    ? value.byteLength
+    : Math.max(0, value.byteLength - maximumPatternBytes + 1);
   const emitted = new Uint8Array(
     Math.min(outputBudget, value.byteLength * REDACTED_BYTES.byteLength),
   );
@@ -60,37 +68,64 @@ async function redactAvailable(
     emitted.set(bytes, emittedLength);
     emittedLength += bytes.byteLength;
   };
-  let index = 0;
+  // A view, not a copy: the caller clears these bytes, and only these.
+  const source = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
   let comparisons = 0;
-  while (index < value.byteLength) {
-    if (!final && value.byteLength - index < maximumPatternBytes) break;
-    let match: Uint8Array | undefined;
-    for (const pattern of patterns) {
-      let offset = 0;
+  const compared = async (): Promise<void> => {
+    comparisons += 1;
+    if (comparisons < COMPARISONS_BEFORE_YIELD) return;
+    comparisons = 0;
+    await yieldToEventLoop();
+    assertBodyDeadline(signal, deadline);
+  };
+  /**
+   * Jumps between a pattern's first byte, which is what makes an ordinary body
+   * fast. Not `indexOf` on the whole pattern: on a hostile body that holds the
+   * event loop for seconds, where these comparisons stay counted and cancellable.
+   */
+  const nextMatch = async (
+    pattern: Uint8Array,
+    from: number,
+  ): Promise<number> => {
+    const firstByte = pattern.subarray(0, 1);
+    let position = source.indexOf(firstByte, from);
+    while (position !== NOT_FOUND && position < decidedEnd) {
+      await compared();
+      let offset = 1;
       while (offset < pattern.byteLength) {
-        comparisons += 1;
-        if (comparisons >= 4_096) {
-          comparisons = 0;
-          await yieldToEventLoop();
-          assertBodyDeadline(signal, deadline);
-        }
-        if (value[index + offset] !== pattern[offset]) break;
+        await compared();
+        if (value[position + offset] !== pattern[offset]) break;
         offset += 1;
       }
-      if (offset === pattern.byteLength) {
-        match = pattern;
-        break;
-      }
+      if (offset === pattern.byteLength) return position;
+      position = source.indexOf(firstByte, position + 1);
     }
-    if (match !== undefined) {
-      append(REDACTED_BYTES);
-      index += match.byteLength;
-      continue;
+    return NOT_FOUND;
+  };
+  // Each pattern's next match holds until the scan passes it, so every pattern
+  // walks the bytes once. Patterns come longest first, so where several start at
+  // the same byte the longest wins.
+  const searches = patterns.map((pattern) => ({ pattern, at: NOT_SEARCHED }));
+  let index = 0;
+  while (index < decidedEnd) {
+    let earliest: (typeof searches)[number] | undefined;
+    for (const search of searches) {
+      if (search.at !== NOT_FOUND && search.at < index)
+        search.at = await nextMatch(search.pattern, index);
+      if (
+        search.at !== NOT_FOUND &&
+        (earliest === undefined || search.at < earliest.at)
+      )
+        earliest = search;
     }
-    const byte = value[index];
-    if (byte === undefined) break;
-    append(Uint8Array.of(byte));
-    index += 1;
+    if (earliest === undefined) {
+      append(value.subarray(index, decidedEnd));
+      index = decidedEnd;
+      break;
+    }
+    append(value.subarray(index, earliest.at));
+    append(REDACTED_BYTES);
+    index = earliest.at + earliest.pattern.byteLength;
   }
   return Object.freeze({
     emitted: emitted.slice(0, emittedLength),
