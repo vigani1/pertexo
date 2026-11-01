@@ -57,31 +57,28 @@ function ownedClose(
     | 'createApiTokenDatabase'
     | 'createDirectoryStore',
 ) {
+  // Each factory sits on one door; the spy only needs to see a method by name.
   const stores = (factory === 'createDirectoryStore'
     ? identityStores
-    : tenantAccessStores) as unknown as Record<
-    string,
-    (...arguments_: unknown[]) => { close(): Promise<void> }
-  >;
-  const original = stores[factory] as (...arguments_: unknown[]) => {
-    close(): Promise<void>;
+    : tenantAccessStores) as unknown as {
+    factory: (...arguments_: unknown[]) => { close(): Promise<void> };
   };
+  const name = factory as 'factory';
+  const original = stores[name];
   let close: ReturnType<typeof vi.fn> | undefined;
-  vi.spyOn(stores as Record<typeof factory, never>, factory).mockImplementation(
-    ((...arguments_: unknown[]) => {
-      const store = original(...arguments_);
-      const closeStore = vi.fn(() => store.close());
-      close = closeStore;
-      // The stores are frozen; shadow close on an object that inherits the rest.
-      return Object.defineProperty(
-        Object.create(store) as typeof store,
-        'close',
-        {
-          value: closeStore,
-        },
-      );
-    }) as never,
-  );
+  vi.spyOn(stores, name).mockImplementation(((...arguments_: unknown[]) => {
+    const store = original(...arguments_);
+    const closeStore = vi.fn(() => store.close());
+    close = closeStore;
+    // The stores are frozen; shadow close on an object that inherits the rest.
+    return Object.defineProperty(
+      Object.create(store) as typeof store,
+      'close',
+      {
+        value: closeStore,
+      },
+    );
+  }) as never);
   return () => {
     if (close === undefined) throw new Error(`${factory} was never called`);
     return close;
