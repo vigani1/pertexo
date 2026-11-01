@@ -58,6 +58,17 @@ const call = (url: string): SecureHttpRequest => ({
 });
 
 describe('operator-allowed private networks', () => {
+  // S7: the docs promise metadata stays blocked; an operator listing all of IPv6
+  // must not open it through a mapped or NAT64 spelling of the same address.
+  it.fails.each(['::ffff:169.254.169.254', '64:ff9b::a9fe:a9fe'])(
+    'S7 %s stays blocked with ::/0 listed',
+    (address) => {
+      expect(
+        isAllowedPrivateAddress(address, parseAllowedPrivateNetworks('::/0')),
+      ).toBe(false);
+    },
+  );
+
   it('matches listed IPv4 and IPv6 networks and nothing else', () => {
     for (const address of [
       '10.1.2.3',
