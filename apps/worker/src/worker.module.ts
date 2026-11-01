@@ -8,7 +8,10 @@ import type {
   WorkspaceDatabase,
 } from '@pertexo/database/platform';
 import { createSystemMailDeliveryStore } from '@pertexo/database/platform';
-import { createNoticeMailStore, createWorkspaceInboxFoldStore } from '@pertexo/core/inbox';
+import {
+  createNoticeMailStore,
+  createWorkspaceInboxFoldStore,
+} from '@pertexo/core/inbox';
 import {
   createApplicationSecretEnvelope,
   createSystemMailClient,
@@ -240,6 +243,13 @@ function systemMailProvider(
                   input,
                 ),
               dependencies.databaseRuntime,
+              ({ error, ...fields }) => {
+                dependencies.logger.error(
+                  'notice_mail.person_failed',
+                  fields,
+                  error,
+                );
+              },
             );
       const handler = createSystemMailDeliveryHandler({
         ...(notices === undefined ? {} : { notices }),
