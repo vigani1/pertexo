@@ -14,7 +14,7 @@ export type { FailureNotificationResolvedDestination } from './contract.js';
 export type {} from './policies/admission.queries.js';
 export type {} from './delivery/evidence.repository.js';
 
-export { createWorkspaceInboxDatabase } from '../inbox/threads/reader.repository.js';
+export { createWorkspaceInboxDatabase } from '../inbox/threads/store.js';
 export type {
   WorkspaceInboxCursor,
   WorkspaceInboxDatabase,
@@ -23,20 +23,20 @@ export type {
   WorkspaceInboxThreadPage,
   WorkspaceInboxThreadRecord,
 } from '../inbox/threads/contract.js';
-export { createWorkspaceInboxFoldStore } from '../inbox/folding/processor.repository.js';
+export { createWorkspaceInboxFoldStore } from '../inbox/folding/store.js';
 export type {
   WorkspaceInboxChange,
   WorkspaceInboxFoldStore,
 } from '../inbox/folding/contract.js';
 
-export { createNoticePreferencesStore } from '../inbox/preferences/settings.repository.js';
+export { createNoticePreferencesStore } from '../inbox/preferences/store.js';
 export {
   NoticeConflictError,
   NoticeUnavailableError,
   type NoticePreferencesStore,
 } from '../inbox/preferences/contract.js';
 
-export { createNoticeMailStore } from '../inbox/mail/delivery.repository.js';
+export { createNoticeMailStore } from '../inbox/mail/store.js';
 export type {
   NoticeMailStore,
   NoticeMailSealer,

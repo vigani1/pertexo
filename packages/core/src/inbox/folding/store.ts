@@ -4,7 +4,7 @@ import {
   rethrowQueryFailure,
   checkDatabaseReadiness,
 } from '@pertexo/database/primitives';
-import { createAttentionObserver } from '../observations/state.repository.js';
+import { createAttentionObserver } from '../observations/observe.js';
 import type { WorkspaceInboxFoldStore } from './contract.js';
 
 import type { DatabaseConfig } from '@pertexo/database/platform';

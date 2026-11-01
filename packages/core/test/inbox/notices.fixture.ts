@@ -10,10 +10,10 @@ import {
   queryAsOwner,
 } from '../support/workflow-authoring.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/processor.repository.js';
-import { createWorkspaceInboxDatabase } from '../../src/inbox/threads/reader.repository.js';
-import { createNoticePreferencesStore } from '../../src/inbox/preferences/settings.repository.js';
-import { createNoticeMailStore } from '../../src/inbox/mail/delivery.repository.js';
+import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/store.js';
+import { createWorkspaceInboxDatabase } from '../../src/inbox/threads/store.js';
+import { createNoticePreferencesStore } from '../../src/inbox/preferences/store.js';
+import { createNoticeMailStore } from '../../src/inbox/mail/store.js';
 import { createConnectionStore } from '../../src/connections/store.js';
 import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
 const resources: { close(): Promise<void> }[] = [];

@@ -43,7 +43,7 @@ import { readNoticePreferences } from './settings.queries.js';
 import {
   replacePreference,
   replaceSubscription,
-} from './commands.repository.js';
+} from './replace.repository.js';
 async function subjectExists(
   client: PoolClient,
   input: NoticeReader & NoticeSubject,
