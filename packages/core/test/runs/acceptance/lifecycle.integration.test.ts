@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
 import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/errors.js';
-import { applyWorkspaceLifecycleChange } from '../../../src/lifecycle/deletion/apply.repository.js';
+import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/change.js';
 import { runEvents } from '@pertexo/database/schema';
 import {
   acceptanceInput,
@@ -111,19 +111,14 @@ describe('workflow run lifecycle serialization', () => {
     ]);
     if (beforeBarrier instanceof Error) throw beforeBarrier;
 
+    // A pool of one, so the backend looked up here is the one the deletion uses.
     const app = new Pool({ connectionString: apiUrl, max: 1 });
-    const deletionClient = await app.connect();
-    const deletionProcessId = await deletionClient
+    const deletionProcessId = await app
       .query<{ process_id: number }>('select pg_backend_pid() process_id')
       .then(({ rows }) => rows[0]?.process_id);
     if (deletionProcessId === undefined)
       throw new Error('Expected racing-deletion database process');
-    await deletionClient.query('begin');
-    await deletionClient.query(
-      "select set_config('app.workspace_id',$1,true), set_config('app.actor_id',$2,true)",
-      [workspaceA, workspaceCreatorId],
-    );
-    const deletion = applyWorkspaceLifecycleChange(deletionClient, {
+    const deletion = changeWorkspaceLifecycle(app, {
       operationId: randomUUID(),
       workspaceId: workspaceA,
       actorUserId: workspaceCreatorId,
@@ -144,7 +139,6 @@ describe('workflow run lifecycle serialization', () => {
       await expect(deletion).resolves.toMatchObject({
         commandType: 'deletion_requested',
       });
-      await deletionClient.query('commit');
       // The deletion requests the admitted run's cancellation; the
       // coordinator finishes it.
       await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
@@ -162,8 +156,6 @@ describe('workflow run lifecycle serialization', () => {
     } finally {
       releaseAdmission();
       await Promise.allSettled([admission, deletion]);
-      await deletionClient.query('rollback').catch(() => undefined);
-      deletionClient.release();
       await app.end();
     }
   });

@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe } from 'vitest';
 
 import { beforeAllFixture1, afterAllFixture2 } from './workspace/fixture.js';
+import { registerShowsExpiredBeforeRetentionRuns } from './workspace/invitations/expiration/shows-expired-before-retention-runs.cases.js';
 import { registerReplaysCommandReorderedNestedObject } from './workspace/commands/replays-command-reordered-nested-object.cases.js';
 import { registerSerializesConcurrentRenamesAuthorizesAgainst } from './workspace/commands/serializes-concurrent-renames-authorizes-against.cases.js';
 import { registerListsActiveWorkspaceMembersBounded } from './workspace/membership/lists-active-workspace-members-bounded.cases.js';
@@ -30,6 +31,8 @@ import { registerSerializesAcceptanceAgainstRevocationSo } from './workspace/inv
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);
 describe('identity/workspace persistence', () => {
+  registerShowsExpiredBeforeRetentionRuns();
+
   registerReplaysCommandReorderedNestedObject();
 
   registerSerializesConcurrentRenamesAuthorizesAgainst();
