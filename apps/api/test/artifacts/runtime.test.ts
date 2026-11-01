@@ -18,8 +18,8 @@ vi.mock('@pertexo/artifact-store', async (original) => ({
 }));
 vi.mock('@pertexo/core/runs', async (original) => ({
   ...(await original<object>()),
-  createArtifactUploadDatabase: outside.database,
-  createFormUploadDatabase: outside.formUploads,
+  createArtifactUploadStore: outside.database,
+  createFormUploadStore: outside.formUploads,
 }));
 
 const config = {

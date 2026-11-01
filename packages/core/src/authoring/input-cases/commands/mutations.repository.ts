@@ -1,7 +1,7 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
+import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   workflowInputCasePayloads,

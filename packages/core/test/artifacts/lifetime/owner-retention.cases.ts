@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 
-import { lockArtifactReferences } from '../../../src/artifacts/references/repository.js';
-import { ArtifactMetadataNotFoundError } from '../../../src/artifacts/input.js';
+import { lockArtifactReferences } from '../../../src/artifacts/references/locks.repository.js';
+import { ArtifactMetadataNotFoundError } from '../../../src/artifacts/errors.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import {
   workspaceId,

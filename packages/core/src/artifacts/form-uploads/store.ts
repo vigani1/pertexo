@@ -32,7 +32,7 @@ import { assertUnsentPublicRoom } from './unsent.queries.js';
 import type {
   BeginFormUploadInput,
   FormUpload,
-  FormUploadDatabase,
+  FormUploadStore,
   FormUploadSession,
 } from './contract.js';
 import {
@@ -180,7 +180,7 @@ async function readBound(
 
 async function finalizeFormUpload(
   pool: Pool,
-  input: Parameters<FormUploadDatabase['finalize']>[0],
+  input: Parameters<FormUploadStore['finalize']>[0],
 ): Promise<FormUpload> {
   return inTarget(pool, input, async (client) => {
     const target = await loadUploadTarget(client, input.target, {
@@ -201,10 +201,10 @@ async function finalizeFormUpload(
   });
 }
 
-export function createFormUploadDatabase(
+export function createFormUploadStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): FormUploadDatabase {
+): FormUploadStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
@@ -222,5 +222,5 @@ export function createFormUploadDatabase(
     finalize: (input) => finalizeFormUpload(pool, input),
     checkReadiness: () => checkDatabaseReadiness(pool),
     close: lease.close,
-  } satisfies FormUploadDatabase);
+  } satisfies FormUploadStore);
 }

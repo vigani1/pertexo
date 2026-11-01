@@ -6,8 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   artifactStorageKey,
   createPendingPreviewArtifact,
-} from '../../src/artifacts/repository.js';
-import { ArtifactLifecycleConflictError } from '../../src/artifacts/input.js';
+} from '../../src/artifacts/records.repository.js';
+import { ArtifactLifecycleConflictError } from '../../src/artifacts/errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { completePreviewAttempt } from '../../src/previews/attempts/completion.repository.js';
 import { PREVIEW_STATUS } from '../../src/previews/state.js';

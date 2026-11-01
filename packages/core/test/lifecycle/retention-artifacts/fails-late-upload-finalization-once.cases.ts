@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { ArtifactUploadNotFoundError } from '../../../src/artifacts/uploads/input.js';
-import { createArtifactUploadDatabase } from '../../../src/artifacts/uploads/repository.js';
+import { createArtifactUploadStore } from '../../../src/artifacts/uploads/store.js';
 import {
   createRunArtifactRetentionCoordinator,
   maintenanceUrl,
@@ -18,7 +18,7 @@ export function registerFailsLateUploadFinalizationOnce(): void {
         'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
     );
     apiUrl.pathname = new URL(maintenanceUrl).pathname;
-    const uploadDatabase = createArtifactUploadDatabase(
+    const uploadDatabase = createArtifactUploadStore(
       parseDatabaseConfig({ connectionString: apiUrl.toString(), max: 2 }),
     );
     const releaseVerification = Promise.withResolvers<undefined>();

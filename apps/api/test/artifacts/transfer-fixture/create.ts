@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { createArtifactStore } from '@pertexo/artifact-store';
 import {
-  createArtifactUploadDatabase,
-  createFormUploadDatabase,
+  createArtifactUploadStore,
+  createFormUploadStore,
 } from '@pertexo/core/runs';
 import { createIdentityWorkspaceDatabase } from '@pertexo/core/testing';
 import { createWorkspaceDatabase } from '@pertexo/database/testing';
@@ -182,8 +182,8 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
       await createApiIdentityRuntime(config.identity, config.database),
       (runtime) => runtime.close(),
     );
-    const uploads = createArtifactUploadDatabase(config.database);
-    const formUploads = createFormUploadDatabase(config.database);
+    const uploads = createArtifactUploadStore(config.database);
+    const formUploads = createFormUploadStore(config.database);
     // S3Mock reports its own bucket region. The store remains real; this
     // fixture bypasses only the startup region probe.
     const runtime: ApiArtifactRuntime = Object.freeze({

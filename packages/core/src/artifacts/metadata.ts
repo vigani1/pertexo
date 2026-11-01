@@ -1,4 +1,4 @@
-import type { ArtifactMetadataIdentity } from './contract.js';
+import type { ArtifactMetadataIdentity } from './metadata/contract.js';
 
 export function artifactMetadataMatches(
   actual: ArtifactMetadataIdentity,

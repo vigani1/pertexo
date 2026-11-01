@@ -18,7 +18,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { lockArtifactReferences } from '../../../artifacts/references/repository.js';
+import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import {
   workflowTemplateOrigins,
   workflowDrafts,

@@ -43,7 +43,7 @@ export type ArtifactUploadResult = Readonly<{
   replayed: boolean;
 }>;
 
-export type ArtifactUploadDatabase = Readonly<{
+export type ArtifactUploadStore = Readonly<{
   beginUpload(input: BeginArtifactUploadInput): Promise<ArtifactUploadResult>;
   getForUpload(
     input: ArtifactUploadAuthorization,

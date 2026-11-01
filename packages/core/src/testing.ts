@@ -70,7 +70,7 @@ export {
   ArtifactFinalizeConflictError,
   ArtifactLifecycleConflictError,
   ArtifactMetadataNotFoundError,
-} from './artifacts/input.js';
+} from './artifacts/errors.js';
 export {
   artifactStorageKey,
   claimDueUnfinalizedArtifact,
@@ -79,7 +79,7 @@ export {
   createPendingArtifact,
   createPendingPreviewArtifact,
   finalizeArtifactUpload,
-} from './artifacts/repository.js';
+} from './artifacts/records.repository.js';
 export {
   readArtifactCapacity,
   readExecutionStorageCapacity,
@@ -92,9 +92,9 @@ export {
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
 } from './artifacts/uploads/input.js';
-export { createArtifactUploadDatabase } from './artifacts/uploads/repository.js';
+export { createArtifactUploadStore } from './artifacts/uploads/store.js';
 export type {
-  ArtifactUploadDatabase,
+  ArtifactUploadStore,
   ArtifactUploadActor,
   ArtifactUploadAuthorization,
   ArtifactUploadIdentity,

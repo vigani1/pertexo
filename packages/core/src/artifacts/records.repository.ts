@@ -19,8 +19,8 @@ import {
   ArtifactFinalizeConflictError,
   ArtifactLifecycleConflictError,
   ArtifactMetadataNotFoundError,
-} from './input.js';
-import { artifactMetadataMatches } from './metadata/validation.js';
+} from './errors.js';
+import { artifactMetadataMatches } from './metadata.js';
 export function artifactStorageKey(
   workspaceId: string,
   artifactId: string,

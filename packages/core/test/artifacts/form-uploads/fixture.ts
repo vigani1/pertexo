@@ -1,16 +1,16 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createFormUploadDatabase } from '../../../src/artifacts/form-uploads/repository.js';
+import { createFormUploadStore } from '../../../src/artifacts/form-uploads/store.js';
 import type { FormUploadTarget } from '../../../src/artifacts/form-uploads/contract.js';
 import { admin } from '../../lifecycle/calls/fixtures.js';
 import { apiUrl } from '../../lifecycle/retention.support.js';
 import { fixture, store } from '../../triggers/forms/admission/fixture.js';
 
 export { admin, store };
-export let uploads: ReturnType<typeof createFormUploadDatabase>;
+export let uploads: ReturnType<typeof createFormUploadStore>;
 
 export function openUploads() {
-  uploads = createFormUploadDatabase(
+  uploads = createFormUploadStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
   );
 }

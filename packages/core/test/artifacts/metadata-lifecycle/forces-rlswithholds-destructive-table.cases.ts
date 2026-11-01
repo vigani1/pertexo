@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { ArtifactFinalizeConflictError } from '../../../src/artifacts/input.js';
+import { ArtifactFinalizeConflictError } from '../../../src/artifacts/errors.js';
 import {
   createPendingArtifact,
   finalizeArtifactUpload,
-} from '../../../src/artifacts/repository.js';
+} from '../../../src/artifacts/records.repository.js';
 import { readArtifactCapacity } from '../../../src/artifacts/capacity.queries.js';
 
 import { artifacts } from '@pertexo/database/schema';

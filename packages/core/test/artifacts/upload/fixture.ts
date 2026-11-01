@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createArtifactUploadDatabase } from '../../../src/artifacts/uploads/repository.js';
+import { createArtifactUploadStore } from '../../../src/artifacts/uploads/store.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,
@@ -40,7 +40,7 @@ const migrationConfig = {
   ownerRole: 'pertexo_owner',
 } as const;
 
-export let database!: ReturnType<typeof createArtifactUploadDatabase>;
+export let database!: ReturnType<typeof createArtifactUploadStore>;
 
 let apiProbePool!: Pool;
 
@@ -188,7 +188,7 @@ export async function beforeAllFixture1() {
     await fixture.create();
     databaseCreated = true;
     await migrateDatabase(migrationConfig);
-    database = createArtifactUploadDatabase(
+    database = createArtifactUploadStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
     );
     databaseAcquired = true;
