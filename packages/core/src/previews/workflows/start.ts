@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { canonicalJson, type Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/workflow-model';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
@@ -16,10 +16,11 @@ import { requireTestCapability } from './access.js';
 import type { WorkflowTestCommand } from './contract.js';
 import { WorkflowTestError } from './errors.js';
 import {
-  loadTestSnapshot,
+  assertEffectsAcknowledged,
   sameTestSamples,
-  saveTestSnapshot,
-} from './snapshot.repository.js';
+  testRunDurationMs,
+} from './rules.js';
+import { loadTestSnapshot, saveTestSnapshot } from './snapshot.repository.js';
 
 export async function startWorkflowTest(
   client: PoolClient,
@@ -34,12 +35,12 @@ export async function startWorkflowTest(
     scope: `${input.actorId}:${input.workflowId}`,
     idempotencyKey: input.idempotencyKey,
   };
-  const replay = await claimCommand(client, {
+  const replay = await claimCommand<{ runId: string }>(client, {
     ...command,
     request: input.request,
     resourceId: runId,
   });
-  if (replay !== null) return replay as { runId: string };
+  if (replay !== null) return replay;
   const snapshot = await loadTestSnapshot(client, input, catalogs);
   if (snapshot.preparation.draftRevision !== input.request.expectedRevision)
     throw new WorkflowTestError('draft_changed');
@@ -50,18 +51,7 @@ export async function startWorkflowTest(
     )
   )
     throw new WorkflowTestError('samples_changed');
-  if (
-    canonicalJson([...input.request.expectedEffectfulSteps].sort()) !==
-    canonicalJson(
-      snapshot.preparation.effectfulSteps.map((step) => step.nodeId).sort(),
-    )
-  )
-    throw new WorkflowTestError('effects_changed');
-  if (
-    snapshot.preparation.effectfulSteps.length > 0 &&
-    !input.request.acknowledgeSideEffects
-  )
-    throw new WorkflowTestError('effects_acknowledgement_required');
+  assertEffectsAcknowledged(input.request, snapshot.preparation.effectfulSteps);
   if (snapshot.usesConnections) requireTestCapability(role, 'connection:use');
   await requireNoActiveSuite(client, input);
   await requireNoActiveTest(client, input);
@@ -87,10 +77,7 @@ export async function startWorkflowTest(
     initialCheckpoint: snapshot.compiled.initialCheckpoint(runId),
     deadlineAt: new Date(
       snapshot.now.getTime() +
-        Math.min(
-          5 * 60 * 1000,
-          snapshot.graph.settings.maxRunDurationMs ?? 5 * 60 * 1000,
-        ),
+        testRunDurationMs(snapshot.graph.settings.maxRunDurationMs),
     ),
     command: {
       scope: `test:${input.actorId}:${input.workflowId}`,

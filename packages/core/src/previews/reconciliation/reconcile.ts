@@ -33,26 +33,16 @@ import {
   PreviewDeliveryMismatchError,
 } from '../errors.js';
 import { optionsFor } from '../input.js';
-import { PREVIEW_STATUS, TERMINAL_PREVIEW_STATUSES } from '../state.js';
+import {
+  mayHaveDispatchedUnsafely,
+  PREVIEW_STATUS,
+  TERMINAL_PREVIEW_STATUSES,
+  UNFINISHED_PREVIEW_STATUSES,
+} from '../state.js';
 
 type LockedPreviewReconciliationState = Awaited<
   ReturnType<typeof lockPreviewReconciliationState>
 >;
-
-export function isValidStoredExecutionOutput(
-  value: unknown,
-): value is StoredExecutionValue {
-  try {
-    // The descriptor-based stored-value module is the single admission
-    // contract. It rejects accessors, proxies and lossy JSON shapes without
-    // invoking caller-controlled properties, then proves canonical stability.
-    const serialized = serializeStoredExecutionValue(value);
-    const reparsed = parseStoredExecutionValue(serialized);
-    return serializeStoredExecutionValue(reparsed) === serialized;
-  } catch {
-    return false;
-  }
-}
 
 async function completeExpiredOrUnsafePreview(
   client: PoolClient,
@@ -62,8 +52,7 @@ async function completeExpiredOrUnsafePreview(
 ): Promise<
   Extract<PreviewDeliveryReconciliationResult, { kind: 'completed' }>
 > {
-  const unsafePossiblyDispatched =
-    state.dispatchMarkedAt !== null && state.sideEffectClass === 'unsafe';
+  const unsafePossiblyDispatched = mayHaveDispatchedUnsafely(state);
   const status = unsafePossiblyDispatched
     ? PREVIEW_STATUS.outcomeUnknown
     : PREVIEW_STATUS.timedOut;
@@ -115,7 +104,7 @@ async function completeExpiredOrUnsafePreview(
       and(
         eq(previewRuns.workspaceId, scope.workspaceId),
         eq(previewRuns.id, scope.previewRunId),
-        inArray(previewRuns.status, ['queued', 'running']),
+        inArray(previewRuns.status, UNFINISHED_PREVIEW_STATUSES),
       ),
     )
     .returning({ id: previewRuns.id })
@@ -213,10 +202,7 @@ export async function reconcilePreviewDelivery(
           });
         }
 
-        const unsafePossiblyDispatched =
-          state.dispatchMarkedAt !== null && state.sideEffectClass === 'unsafe';
-        const runDeadlineExpired = state.runDeadlineExpired;
-        if (unsafePossiblyDispatched || runDeadlineExpired)
+        if (mayHaveDispatchedUnsafely(state) || state.runDeadlineExpired)
           return completeExpiredOrUnsafePreview(
             client,
             scope,

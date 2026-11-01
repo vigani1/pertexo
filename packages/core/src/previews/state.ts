@@ -34,3 +34,18 @@ export function previewPairConsistent(
   if (!Object.hasOwn(PREVIEW_STATUS_PAIRS, attemptStatus)) return false;
   return PREVIEW_STATUS_PAIRS[attemptStatus]?.has(runStatus) ?? false;
 }
+
+/** Not yet finished: the only states a terminal or reclaiming write may leave. */
+export const UNFINISHED_PREVIEW_STATUSES = [
+  PREVIEW_STATUS.queued,
+  PREVIEW_STATUS.running,
+];
+
+/** An unsafe step that may have reached its provider can't safely run again. */
+export function mayHaveDispatchedUnsafely(
+  attempt: Readonly<{ dispatchMarkedAt: Date | null; sideEffectClass: string }>,
+): boolean {
+  return (
+    attempt.dispatchMarkedAt !== null && attempt.sideEffectClass === 'unsafe'
+  );
+}

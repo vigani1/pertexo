@@ -19,6 +19,7 @@ import {
 import { lockTestAuthority } from '../workflows/access.js';
 import type { SuiteRow, SuiteCaseRow } from './contract.js';
 import { admitSuiteCase } from './admit.js';
+import { suiteOutcome } from './rules.js';
 import { evaluateSuiteCase, readSuiteRunOutcome } from './evaluate.queries.js';
 
 async function stop(
@@ -191,25 +192,6 @@ export async function advanceSuite(
   }
   await admitNextSuiteCase(client, suite, next, now);
   return true;
-}
-
-function suiteOutcome(
-  suite: SuiteRow,
-  nonpassing: number | undefined,
-): 'canceled' | 'error' | 'passed' | 'failed' {
-  if (
-    suite.stopReason === 'user_canceled' ||
-    suite.stopReason === 'case_canceled'
-  ) {
-    return 'canceled';
-  }
-  if (suite.stopReason !== null) {
-    return 'error';
-  }
-  if (nonpassing === 0) {
-    return 'passed';
-  }
-  return 'failed';
 }
 
 async function completeActiveSuiteCase(

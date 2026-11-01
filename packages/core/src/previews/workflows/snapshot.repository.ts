@@ -10,7 +10,7 @@ import { workflowTestStepChoices } from '@pertexo/workflow-model';
 import type { FrozenWorkflowTestPins } from '@pertexo/database/schema';
 import { sampleDraft } from '../../authoring/step-samples/records.repository.js';
 import type { PoolClient } from 'pg';
-import { canonicalJson, normalizedJson } from '@pertexo/workflow-model';
+import { normalizedJson } from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
@@ -90,23 +90,6 @@ export async function loadTestSnapshot(
     },
   };
 }
-export function sameTestSamples(
-  left: readonly { nodeId: string; sampleId: string }[],
-  right: readonly { nodeId: string; sampleId: string }[],
-) {
-  const sort = (items: typeof left) =>
-    [...items].sort((a, b) => {
-      if (a.nodeId < b.nodeId) {
-        return -1;
-      }
-      if (a.nodeId > b.nodeId) {
-        return 1;
-      }
-      return 0;
-    });
-  return canonicalJson(sort(left)) === canonicalJson(sort(right));
-}
-
 /** One immutable source may serve a standalone test or all serial suite cases. */
 export async function saveTestSnapshot(
   client: PoolClient,
