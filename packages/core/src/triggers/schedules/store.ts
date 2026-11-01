@@ -12,7 +12,11 @@ import { ScheduleTriggerError } from './errors.js';
 
 import { withTriggerManagement } from '../management.js';
 import { refreshWorkflowActivation } from '../reconciliation/health.repository.js';
-import type { ScheduleTriggerStore } from './management/contract.js';
+import type {
+  ListSchedulesInput,
+  ScheduleTriggerCommandResult,
+  SetEnabledInput,
+} from './management/contract.js';
 import {
   applyScheduleHealthTransition,
   claimScheduleCommand,
@@ -29,19 +33,25 @@ import {
   createScheduleTriggerReads,
   withScheduleReader,
 } from './reads.queries.js';
+export type ScheduleTriggerStore = ReturnType<
+  typeof createScheduleTriggerStore
+>;
+
 export function createScheduleTriggerStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): ScheduleTriggerStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
     ...createScheduleTriggerReads(pool),
-    list: (input: Parameters<ScheduleTriggerStore['list']>[0]) =>
+    list: (input: ListSchedulesInput) =>
       withScheduleReader(pool, input, (client) =>
         readSchedules(client, input.workspaceId, input.workflowId),
       ),
-    setEnabled: (input: Parameters<ScheduleTriggerStore['setEnabled']>[0]) =>
+    setEnabled: (
+      input: SetEnabledInput,
+    ): Promise<ScheduleTriggerCommandResult> =>
       withTriggerManagement(
         pool,
         input,

@@ -5,16 +5,9 @@ import type { EventCoordinationReceipt } from '@pertexo/workflow-model';
 import type { WebhookAuthentication } from '@pertexo/contracts';
 
 import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
-import type {
-  WebhookResponseScope,
-  WebhookResponseSnapshot,
-} from '../responses/contract.js';
-
 import type { z } from 'zod';
 
 import type { WorkflowTriggerHealth } from '../../reconciliation/contract.js';
-
-import type { WebhookDeliveryLog } from '../contract.js';
 
 export type SealedWebhookTriggerSecret = Readonly<{
   id: string;
@@ -72,53 +65,37 @@ export type WebhookCommandResult = Readonly<{
   replayed: boolean;
 }>;
 
-export interface WebhookTriggerStore extends WebhookDeliveryLog {
-  readResponse(input: WebhookResponseScope): Promise<WebhookResponseSnapshot>;
-  configureAuthentication(
-    input: Command &
-      Readonly<{
-        authentication: WebhookAuthentication;
-        endpointKeyHash: string;
-        secret: SealedWebhookTriggerSecret;
-      }>,
-  ): Promise<WebhookCommandResult & Readonly<{ rotated: boolean }>>;
-  provision(
-    input: Command &
-      Readonly<{
-        endpointId: string;
-        endpointKeyHash: string;
-        secret: SealedWebhookTriggerSecret;
-      }>,
-  ): Promise<WebhookCommandResult>;
-  rotateEndpoint(
-    input: Command & Readonly<{ endpointKeyHash: string }>,
-  ): Promise<WebhookCommandResult>;
-  rotateSecret(
-    input: Command &
-      Readonly<{
-        endpointKeyHash: string;
-        secret: SealedWebhookTriggerSecret;
-      }>,
-  ): Promise<WebhookCommandResult>;
-  getHealth(
-    input: Readonly<{
-      workspaceId: string;
-      actorId: string;
-      workflowId: string;
-    }>,
-  ): Promise<readonly WorkflowTriggerHealth[]>;
-  resolveVerification(
-    endpointKeyHash: string,
-  ): Promise<WebhookVerificationReference | null>;
-  consumeIngressLimit(endpointKeyHash: string): Promise<void>;
-  acceptVerifiedDelivery(input: AcceptVerifiedWebhookDeliveryInput): Promise<
-    | Readonly<{
-        runId: string;
-        replayed: boolean;
-        responseWaitSeconds?: number;
-      }>
-    | Readonly<{ skipped: true; reason: 'concurrency_limit' }>
-    | EventCoordinationReceipt
-  >;
-  close(): Promise<void>;
-}
+export type ConfigureWebhookAuthenticationInput = Command &
+  Readonly<{
+    authentication: WebhookAuthentication;
+    endpointKeyHash: string;
+    secret: SealedWebhookTriggerSecret;
+  }>;
+
+export type ProvisionWebhookInput = Command &
+  Readonly<{
+    endpointId: string;
+    endpointKeyHash: string;
+    secret: SealedWebhookTriggerSecret;
+  }>;
+
+export type RotateWebhookEndpointInput = Command &
+  Readonly<{ endpointKeyHash: string }>;
+
+export type RotateWebhookSecretInput = Command &
+  Readonly<{ endpointKeyHash: string; secret: SealedWebhookTriggerSecret }>;
+
+export type ReadWebhookHealthInput = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  workflowId: string;
+}>;
+
+export type WebhookAcceptance =
+  | Readonly<{
+      runId: string;
+      replayed: boolean;
+      responseWaitSeconds?: number;
+    }>
+  | Readonly<{ skipped: true; reason: 'concurrency_limit' }>
+  | EventCoordinationReceipt;

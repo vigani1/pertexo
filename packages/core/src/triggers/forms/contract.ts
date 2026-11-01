@@ -5,12 +5,8 @@ import type {
 import type { PreparedEventCoordination } from '../coordination/contract.js';
 
 import type {
-  FormAccess,
   FormAccessRequest,
-  FormSchemaResponse,
   FormSubmissionRequest,
-  FormSubmissionResponse,
-  CoordinatedEventHistory,
 } from '@pertexo/contracts';
 export type FormScope = Readonly<{
   workspaceId: string;
@@ -27,38 +23,25 @@ export type PublicFormGrant = Readonly<{
   nodeId: string;
   capabilityHash: string;
 }>;
-export interface FormStore {
-  discover(
-    input: Readonly<{
-      publicId: string;
-      capability: string;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<PublicFormGrant>;
-  read(input: FormScope, grant?: PublicFormGrant): Promise<FormSchemaResponse>;
-  submit(
-    input: FormScope &
-      FormSubmissionRequest &
-      Readonly<{ idempotencyKey: string; uploadSession?: string }>,
-    grant?: PublicFormGrant,
-  ): Promise<FormSubmissionResponse>;
-  history(
-    input: FormScope &
-      Readonly<{
-        actorId: string;
-        limit: number;
-        before?: string;
-        beforeId?: string;
-      }>,
-  ): Promise<CoordinatedEventHistory>;
-  access(input: FormScope & Readonly<{ actorId: string }>): Promise<FormAccess>;
-  setAccess(
-    input: FormScope &
-      FormAccessRequest &
-      Readonly<{ actorId: string; idempotencyKey: string }>,
-  ): Promise<FormAccess>;
-  close(): Promise<void>;
-}
+export type DiscoverFormInput = Readonly<{
+  publicId: string;
+  capability: string;
+  signal?: AbortSignal;
+}>;
+export type SubmitFormInput = FormScope &
+  FormSubmissionRequest &
+  Readonly<{ idempotencyKey: string; uploadSession?: string }>;
+export type FormHistoryInput = FormScope &
+  Readonly<{
+    actorId: string;
+    limit: number;
+    before?: string;
+    beforeId?: string;
+  }>;
+export type ReadFormAccessInput = FormScope & Readonly<{ actorId: string }>;
+export type SetFormAccessInput = FormScope &
+  FormAccessRequest &
+  Readonly<{ actorId: string; idempotencyKey: string }>;
 
 export type PreparedFormEvent =
   | Readonly<{ versionId: string; error: FormValuesInvalidError }>

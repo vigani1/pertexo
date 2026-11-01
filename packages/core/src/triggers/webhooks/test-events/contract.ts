@@ -20,23 +20,12 @@ export type TestEventSnapshot = Readonly<{
   expiresAt: string | null;
   output: unknown;
 }>;
-export interface WebhookTestEventStore {
-  start(
-    input: TestEventScope &
-      Readonly<{
-        id: string;
-        endpointKeyHash: string;
-        expectedDraftRevision: number;
-        authentication: WebhookAuthentication;
-        secret: SealedWebhookTriggerSecret;
-      }>,
-  ): Promise<{ expiresAt: string }>;
-  get(
-    input: TestEventScope & Readonly<{ id: string }>,
-  ): Promise<TestEventSnapshot>;
-  stop(input: TestEventScope & Readonly<{ id: string }>): Promise<void>;
-  resolve(endpointKeyHash: string): Promise<TestEventReference | null>;
-  consume(reference: TestEventReference): Promise<void>;
-  capture(reference: TestEventReference, runInput: unknown): Promise<boolean>;
-  close(): Promise<void>;
-}
+export type StartTestEventInput = TestEventScope &
+  Readonly<{
+    id: string;
+    endpointKeyHash: string;
+    expectedDraftRevision: number;
+    authentication: WebhookAuthentication;
+    secret: SealedWebhookTriggerSecret;
+  }>;
+export type TestEventListenerInput = TestEventScope & Readonly<{ id: string }>;

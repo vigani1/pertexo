@@ -9,10 +9,12 @@ import {
   triggerSchedules as schedules,
 } from '@pertexo/database/schema';
 import type {
+  ListScheduleOccurrencesInput,
+  NextScheduleFireTimesInput,
+  PreviewScheduleFireTimesInput,
   ScheduleFireTimes,
   ScheduleOccurrencePage,
   ScheduleOccurrencePosition,
-  ScheduleTriggerReads,
   TriggerRead,
 } from './contract.js';
 
@@ -189,11 +191,9 @@ function projectPersistedSchedule(
   });
 }
 
-export function createScheduleTriggerReads(pool: Pool): ScheduleTriggerReads {
+export function createScheduleTriggerReads(pool: Pool) {
   return Object.freeze({
-    listOccurrences: (
-      input: Parameters<ScheduleTriggerReads['listOccurrences']>[0],
-    ) => {
+    listOccurrences: (input: ListScheduleOccurrencesInput) => {
       const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
       return withScheduleReader(pool, input, async (client) => {
         const trigger = await drizzle(client)
@@ -212,17 +212,13 @@ export function createScheduleTriggerReads(pool: Pool): ScheduleTriggerReads {
         return readOccurrencePage(client, input, limit, input.after);
       });
     },
-    nextFireTimes: async (
-      input: Parameters<ScheduleTriggerReads['nextFireTimes']>[0],
-    ) => {
+    nextFireTimes: async (input: NextScheduleFireTimesInput) => {
       const row = await withScheduleReader(pool, input, (client) =>
         readScheduleState(client, input),
       );
       return projectPersistedSchedule(row, input.count);
     },
-    previewFireTimes: async (
-      input: Parameters<ScheduleTriggerReads['previewFireTimes']>[0],
-    ) => {
+    previewFireTimes: async (input: PreviewScheduleFireTimesInput) => {
       const { count, recurrence } = input;
       const observedAt = await withScheduleReader(
         pool,

@@ -18,27 +18,20 @@ export type ScanDueSchedulesResult = Readonly<{
   maxLagSeconds: number;
 }>;
 
-export interface ScheduleTriggerScanner {
-  scanDue(
-    input: Readonly<{
-      leaseOwner: string;
-      limit: number;
-      leaseSeconds: number;
-      /**
-       * ADR 049: how late, from 60 through 3,600 seconds, a `skip` schedule's
-       * greatest due occurrence may be observed and still be admitted.
-       */
-      onTimeWindowSeconds: number;
-      checkpointFactory: InitialCheckpointFactory;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<ScanDueSchedulesResult>;
-  close(): Promise<void>;
-}
+export type ScanDueInput = Readonly<{
+  leaseOwner: string;
+  limit: number;
+  leaseSeconds: number;
+  /**
+   * ADR 049: how late, from 60 through 3,600 seconds, a `skip` schedule's
+   * greatest due occurrence may be observed and still be admitted.
+   */
+  onTimeWindowSeconds: number;
+  checkpointFactory: InitialCheckpointFactory;
+  signal?: AbortSignal;
+}>;
 
 export type ScheduleClaim = z.output<typeof claimSchema>;
-
-export type ScanDueInput = Parameters<ScheduleTriggerScanner['scanDue']>[0];
 
 export type ClaimOutcome = RecordedScheduleOccurrence | 'deferred';
 

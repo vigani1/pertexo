@@ -1,7 +1,4 @@
-import type {
-  NodeWebhookResponse,
-  NodeWebhookResponseReceipt,
-} from '@pertexo/node-sdk';
+import type { NodeWebhookResponse } from '@pertexo/node-sdk';
 
 export type WebhookResponseScope = Readonly<{
   workspaceId: string;
@@ -24,7 +21,3 @@ export type WriteWebhookResponse = Readonly<{
   response: NodeWebhookResponse;
   signal: AbortSignal;
 }>;
-export interface WebhookResponseStore {
-  respond(input: WriteWebhookResponse): Promise<NodeWebhookResponseReceipt>;
-  close(): Promise<void>;
-}

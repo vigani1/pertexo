@@ -12,7 +12,7 @@ import type { PoolClient } from 'pg';
 import type { FormAccess } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { FormAccessConflictError } from './errors.js';
-import type { FormStore } from './contract.js';
+import type { SetFormAccessInput } from './contract.js';
 export const capabilityHash = (value: string) =>
   createHash('sha256').update(value).digest('hex');
 const accessSelection = {
@@ -38,7 +38,7 @@ export async function readFormAccess(
 }
 export async function changeFormAccess(
   client: PoolClient,
-  input: Parameters<FormStore['setAccess']>[0],
+  input: SetFormAccessInput,
   nodeId: string,
 ): Promise<FormAccess> {
   const command = {

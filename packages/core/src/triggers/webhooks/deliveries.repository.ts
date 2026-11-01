@@ -20,7 +20,6 @@ import type {
   ListWebhookDeliveriesInput,
   RejectedWebhookDelivery,
   WebhookDeliveryEndpoint,
-  WebhookDeliveryLog,
   WebhookDeliveryOutcome,
   WebhookDeliveryPage,
   WebhookDeliveryPosition,
@@ -162,9 +161,11 @@ async function readDeliveryPage(
   });
 }
 
-export function createWebhookDeliveryLog(pool: Pool): WebhookDeliveryLog {
+export function createWebhookDeliveryLog(pool: Pool) {
   return Object.freeze({
-    listDeliveries: (input: ListWebhookDeliveriesInput) => {
+    listDeliveries: (
+      input: ListWebhookDeliveriesInput,
+    ): Promise<WebhookDeliveryPage> => {
       const { workspaceId, workflowId, triggerId } = input;
       const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
       const after = input.after;

@@ -59,13 +59,6 @@ export type ListWebhookDeliveriesInput = Readonly<{
   after?: WebhookDeliveryPosition;
 }>;
 
-export interface WebhookDeliveryLog {
-  listDeliveries(
-    input: ListWebhookDeliveriesInput,
-  ): Promise<WebhookDeliveryPage>;
-  recordRejectedDelivery(input: RejectedWebhookDelivery): Promise<void>;
-}
-
 export type WebhookReplayIdentity = Readonly<{
   endpointId: string;
   dedupeKeyHash: string;

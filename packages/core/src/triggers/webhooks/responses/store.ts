@@ -19,15 +19,22 @@ import {
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import { NodeAttemptReconciliationRequiredError } from '../../../attempts/errors.js';
 import type { NodeWebhookResponseReceipt } from '@pertexo/node-sdk';
-import type { WebhookResponseStore, WriteWebhookResponse } from './contract.js';
+import type { WriteWebhookResponse } from './contract.js';
+
+export type WebhookResponseStore = ReturnType<
+  typeof createWebhookResponseStore
+>;
+
+/** The worker's step answering a waiting sender: fenced by its attempt, not by a member. */
 
 export function createWebhookResponseStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WebhookResponseStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   return {
-    respond: (input) => writeWebhookResponse(lease.pool, input),
+    respond: (input: WriteWebhookResponse) =>
+      writeWebhookResponse(lease.pool, input),
     close: () => lease.close(),
   };
 }

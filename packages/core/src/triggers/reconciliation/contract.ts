@@ -15,29 +15,23 @@ export type WorkflowTriggerHealth = Readonly<{
   reconciledAt: Date | null;
 }>;
 
-export interface WorkflowTriggerReconciliationStore {
-  reconcile(
-    input: Readonly<{
-      workspaceId: string;
-      workflowId: string;
-      publishedVersionId: string;
-      outboxEventId: string;
-      delivery?: Readonly<{
-        outboxEventId: string;
-        payloadChecksum: string;
-      }>;
-    }>,
-  ): Promise<readonly WorkflowTriggerHealth[]>;
-  recordFailure(
-    input: Readonly<{
-      workspaceId: string;
-      workflowId: string;
-      publishedVersionId: string;
-      reason: string;
-    }>,
-  ): Promise<void>;
-  close(): Promise<void>;
-}
+export type ReconcileWorkflowTriggersInput = Readonly<{
+  workspaceId: string;
+  workflowId: string;
+  publishedVersionId: string;
+  outboxEventId: string;
+  delivery?: Readonly<{
+    outboxEventId: string;
+    payloadChecksum: string;
+  }>;
+}>;
+
+export type RecordReconciliationFailureInput = Readonly<{
+  workspaceId: string;
+  workflowId: string;
+  publishedVersionId: string;
+  reason: string;
+}>;
 
 export type WorkflowTriggerProjection = Readonly<{
   nodeId: string;

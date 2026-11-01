@@ -25,7 +25,13 @@ import {
   testEventDraftForCreator,
 } from './authority.queries.js';
 import { WebhookTestEventError } from './errors.js';
-import type { TestEventScope, WebhookTestEventStore } from './contract.js';
+import type {
+  StartTestEventInput,
+  TestEventListenerInput,
+  TestEventReference,
+  TestEventScope,
+  TestEventSnapshot,
+} from './contract.js';
 
 const WORKSPACE_LISTENER_LIMIT = 10;
 const LISTENER_ATTEMPT_LIMIT = 60;
@@ -43,19 +49,28 @@ const scopeOf = (r: Row): TestEventScope => ({
   actorId: r.createdBy,
 });
 
+export type WebhookTestEventStore = ReturnType<
+  typeof createWebhookTestEventStore
+>;
+
 export function createWebhookTestEventStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WebhookTestEventStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
 
   return {
-    start: (input) => startTestEventListener(lease.pool, input),
-    get: (input) => readTestEventListener(lease.pool, input),
-    stop: (input) => stopTestEventListener(lease.pool, input),
-    resolve: (hash) => resolveTestEventListener(lease.pool, hash),
-    consume: (reference) => consumeTestEventLimit(lease.pool, reference),
-    capture: (reference, runInput) =>
+    start: (input: StartTestEventInput) =>
+      startTestEventListener(lease.pool, input),
+    get: (input: TestEventListenerInput) =>
+      readTestEventListener(lease.pool, input),
+    stop: (input: TestEventListenerInput) =>
+      stopTestEventListener(lease.pool, input),
+    // These answer an HTTP sender rather than a member, so they stay off the helper.
+    resolve: (hash: string) => resolveTestEventListener(lease.pool, hash),
+    consume: (reference: TestEventReference) =>
+      consumeTestEventLimit(lease.pool, reference),
+    capture: (reference: TestEventReference, runInput: unknown) =>
       captureTestEvent(lease.pool, reference, runInput),
     close: () => lease.close(),
   };
@@ -99,8 +114,8 @@ async function find(client: PoolClient, scope: TestEventScope, id: string) {
 }
 function startTestEventListener(
   pool: Pool,
-  input: Parameters<WebhookTestEventStore['start']>[0],
-): ReturnType<WebhookTestEventStore['start']> {
+  input: StartTestEventInput,
+): Promise<{ expiresAt: string }> {
   return transact(pool, input, async (client) => {
     const draft = await readTestEventDraft(client, input);
     if (draft.revision !== input.expectedDraftRevision)
@@ -167,8 +182,8 @@ function startTestEventListener(
 
 function readTestEventListener(
   pool: Pool,
-  input: Parameters<WebhookTestEventStore['get']>[0],
-): ReturnType<WebhookTestEventStore['get']> {
+  input: TestEventListenerInput,
+): Promise<TestEventSnapshot> {
   return transact(pool, input, async (client) => {
     const draft = await readTestEventDraft(client, input);
     const row = await find(client, input, input.id);
@@ -193,8 +208,8 @@ function readTestEventListener(
 
 function stopTestEventListener(
   pool: Pool,
-  input: Parameters<WebhookTestEventStore['stop']>[0],
-): ReturnType<WebhookTestEventStore['stop']> {
+  input: TestEventListenerInput,
+): Promise<void> {
   return transact(pool, input, async (client) => {
     await readTestEventDraft(client, input);
     await drizzle(client)
@@ -214,8 +229,8 @@ function stopTestEventListener(
 
 async function resolveTestEventListener(
   pool: Pool,
-  hash: Parameters<WebhookTestEventStore['resolve']>[0],
-): ReturnType<WebhookTestEventStore['resolve']> {
+  hash: string,
+): Promise<TestEventReference | null> {
   const resolution = await drizzle(pool)
     .execute<{ workspace_id: string; id: string }>(
       sql`select * from app.resolve_webhook_test_event(${hash}::char(64))`,
@@ -280,8 +295,8 @@ async function resolveTestEventListener(
 
 async function consumeTestEventLimit(
   pool: Pool,
-  reference: Parameters<WebhookTestEventStore['consume']>[0],
-): ReturnType<WebhookTestEventStore['consume']> {
+  reference: TestEventReference,
+): Promise<void> {
   const allowed = await withTenantScopedClient(
     pool,
     { workspaceId: reference.workspaceId },
@@ -328,9 +343,9 @@ async function consumeTestEventLimit(
 
 async function captureTestEvent(
   pool: Pool,
-  reference: Parameters<WebhookTestEventStore['capture']>[0],
-  runInput: Parameters<WebhookTestEventStore['capture']>[1],
-): ReturnType<WebhookTestEventStore['capture']> {
+  reference: TestEventReference,
+  runInput: unknown,
+): Promise<boolean> {
   return withTenantScopedClient(
     pool,
     { workspaceId: reference.workspaceId },
