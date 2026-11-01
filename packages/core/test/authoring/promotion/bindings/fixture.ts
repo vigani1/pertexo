@@ -3,7 +3,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { expect } from 'vitest';
 import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import { createWorkflowAuthoringFixtureDatabase } from '../../../support/workflow-authoring-admission.fixture.js';
-import { createDataTablesStore } from '../../../../src/data-tables/tables.repository.js';
+import { createDataTablesStore } from '../../../../src/data-tables/store.js';
 import {
   actorId,
   workspaceId,

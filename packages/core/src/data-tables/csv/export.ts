@@ -13,7 +13,7 @@ import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workspaceDataTableRows as rows } from '@pertexo/database/schema';
 import { requireTable } from '../definitions.queries.js';
-import { queryClause } from '../rows.queries.js';
+import { queryClause } from '../rows/find.queries.js';
 
 const BATCH_ROWS = 256;
 const BATCH_BYTES = 4 * 1024 * 1024;

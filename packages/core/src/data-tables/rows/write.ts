@@ -4,8 +4,8 @@ import type { Pool } from 'pg';
 import type { DataTablesStore } from '../contract.js';
 import { readQuotas, requireTable } from '../definitions.queries.js';
 
-import { mutateRows, insertTableBatch } from '../rows.repository.js';
-import { write, command } from './session.js';
+import { mutateRows, insertTableBatch } from './mutate.repository.js';
+import { write, command } from '../command.js';
 
 export function writeTableRows(
   pool: Pool,
