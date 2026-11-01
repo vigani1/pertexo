@@ -27,8 +27,8 @@ import {
 } from '@pertexo/node-sdk';
 import { isRecord } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { artifactMetadataMatches } from '../metadata/validation.js';
-import { ArtifactMetadataNotFoundError } from '../input.js';
+import { artifactMetadataMatches } from '../metadata.js';
+import { ArtifactMetadataNotFoundError } from '../errors.js';
 
 type ArtifactRow = Awaited<ReturnType<typeof referenceRows>>[number];
 function referenceRows(db: Pick<NodePgDatabase, 'select'>) {

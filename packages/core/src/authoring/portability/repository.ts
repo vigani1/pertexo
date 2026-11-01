@@ -9,7 +9,7 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
-import { lockArtifactReferences } from '../../artifacts/references/repository.js';
+import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import {
   workflowTemplateOrigins,
   workflowDrafts,

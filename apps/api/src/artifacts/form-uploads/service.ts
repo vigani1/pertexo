@@ -14,7 +14,7 @@ import {
   ArtifactApiConflictError,
   ArtifactUploadDeadlineError,
 } from '../errors.js';
-import type { FormUploadDatabase } from '../ports.js';
+import type { FormUploadStore } from '../ports.js';
 import type { ArtifactStore } from '../store-port.js';
 import {
   assertUploadSize,
@@ -38,7 +38,7 @@ export class FormUploadService {
 
   public constructor(
     private readonly dependencies: Readonly<{
-      database: FormUploadDatabase;
+      database: FormUploadStore;
       store: ArtifactStore;
     }>,
     private readonly options: Readonly<{
@@ -49,12 +49,12 @@ export class FormUploadService {
     this.now = options.now ?? (() => new Date());
   }
 
-  public discover(input: Parameters<FormUploadDatabase['discover']>[0]) {
+  public discover(input: Parameters<FormUploadStore['discover']>[0]) {
     return this.dependencies.database.discover(input);
   }
 
   public async begin(
-    input: Parameters<FormUploadDatabase['begin']>[0],
+    input: Parameters<FormUploadStore['begin']>[0],
   ): Promise<FormUploadResponse> {
     assertUploadSize(input.byteLength, this.options.maxObjectBytes);
     const created = await this.dependencies.database.begin(input);

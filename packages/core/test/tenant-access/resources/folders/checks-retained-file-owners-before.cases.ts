@@ -1,6 +1,6 @@
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
-import { createArtifactUploadDatabase } from '../../../../src/artifacts/uploads/repository.js';
-import { ArtifactMetadataNotFoundError } from '../../../../src/artifacts/input.js';
+import { createArtifactUploadStore } from '../../../../src/artifacts/uploads/store.js';
+import { ArtifactMetadataNotFoundError } from '../../../../src/artifacts/errors.js';
 
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
@@ -57,7 +57,7 @@ export function registerChecksRetainedFileOwnersBefore(): void {
       ],
       workspaceId,
     );
-    const files = createArtifactUploadDatabase(
+    const files = createArtifactUploadStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     );
     const metadata = (reader: string) =>

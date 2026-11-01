@@ -2,9 +2,9 @@ import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { createArtifactStore } from '@pertexo/artifact-store';
 import {
-  createArtifactUploadDatabase,
-  createFormUploadDatabase,
-  type FormUploadDatabase,
+  createArtifactUploadStore,
+  createFormUploadStore,
+  type FormUploadStore,
 } from '@pertexo/core/runs';
 import type {
   DatabaseConfig,
@@ -14,7 +14,7 @@ import type {
 import {
   ArtifactsModule,
   type ArtifactDependencies,
-  type ArtifactUploadDatabase,
+  type ArtifactUploadStore,
   type ArtifactStore,
 } from '../../artifacts/index.js';
 import type { ApiConfig } from '../config/api.js';
@@ -40,11 +40,11 @@ export function createApiArtifactRuntime(
   }>,
 ): ApiArtifactRuntime {
   const store = createArtifactStore(config);
-  let database: ArtifactUploadDatabase;
-  let formUploads: FormUploadDatabase;
+  let database: ArtifactUploadStore;
+  let formUploads: FormUploadStore;
   try {
-    database = createArtifactUploadDatabase(databaseConfig, databaseRuntime);
-    formUploads = createFormUploadDatabase(databaseConfig, databaseRuntime);
+    database = createArtifactUploadStore(databaseConfig, databaseRuntime);
+    formUploads = createFormUploadStore(databaseConfig, databaseRuntime);
   } catch (error: unknown) {
     closeStore(store, error);
     throw error;

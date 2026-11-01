@@ -42,7 +42,7 @@ export type FormUpload = Readonly<{
   filename: string;
 }>;
 
-export interface FormUploadDatabase {
+export interface FormUploadStore {
   discover(
     input: Readonly<{
       publicId: string;

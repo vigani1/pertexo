@@ -8,7 +8,7 @@ import {
   ArtifactUploadDeadlineError,
   ArtifactUploadTooLargeError,
   type ArtifactStore,
-  type FormUploadDatabase,
+  type FormUploadStore,
 } from '../../../src/artifacts/index.js';
 import { FormUploadService } from '../../../src/artifacts/form-uploads/service.js';
 import { record } from '../service/fixture.js';
@@ -42,7 +42,7 @@ function setup(
       ...bound,
       artifact: { ...bound.artifact, status: 'available' },
     }),
-  } satisfies FormUploadDatabase;
+  } satisfies FormUploadStore;
   const store = {
     beginDirectUpload: vi.fn().mockResolvedValue({
       expiresAt: '2026-09-06T00:15:00.000Z',

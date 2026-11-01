@@ -1,6 +1,6 @@
 import type { artifacts } from '@pertexo/database/schema';
 
-import type { ARTIFACT_STATUS } from './input.js';
+import type { ARTIFACT_STATUS } from './errors.js';
 
 export type ArtifactStatus =
   (typeof ARTIFACT_STATUS)[keyof typeof ARTIFACT_STATUS];

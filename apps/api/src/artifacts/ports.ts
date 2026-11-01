@@ -1,7 +1,7 @@
 import type { ArtifactStore } from './store-port.js';
 import type {
-  ArtifactUploadDatabase as PersistedArtifactUploadDatabase,
-  FormUploadDatabase as PersistedFormUploadDatabase,
+  ArtifactUploadStore as PersistedArtifactUploadStore,
+  FormUploadStore as PersistedFormUploadStore,
   ArtifactUploadIdentity,
   ArtifactUploadResult,
   FinalizeArtifactUploadInput,
@@ -20,21 +20,21 @@ export type ArtifactDeclaredMetadata =
   FinalizeArtifactUploadInput['expectedMetadata'];
 
 type ArtifactUploadOperations = Pick<
-  PersistedArtifactUploadDatabase,
+  PersistedArtifactUploadStore,
   'beginUpload' | 'getForUpload' | 'finalizeUpload' | 'getMetadata'
 >;
 
-export type ArtifactUploadDatabase = ArtifactUploadOperations &
-  Pick<PersistedArtifactUploadDatabase, 'checkReadiness' | 'close'>;
+export type ArtifactUploadStore = ArtifactUploadOperations &
+  Pick<PersistedArtifactUploadStore, 'checkReadiness' | 'close'>;
 
-export type FormUploadDatabase = Pick<
-  PersistedFormUploadDatabase,
+export type FormUploadStore = Pick<
+  PersistedFormUploadStore,
   'discover' | 'begin' | 'read' | 'finalize'
 >;
 
 export type ArtifactDependencies = Readonly<{
   database: ArtifactUploadOperations;
-  formUploads: FormUploadDatabase;
+  formUploads: FormUploadStore;
   authorization: WorkspaceAuthorizationSource;
   store: ArtifactStore;
 }>;

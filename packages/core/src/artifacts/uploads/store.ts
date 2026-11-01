@@ -24,7 +24,7 @@ import {
   rolesForCapability,
 } from '@pertexo/workflow-model';
 import type { ArtifactRecord } from '../contract.js';
-import { artifactMetadataMatches } from '../metadata/validation.js';
+import { artifactMetadataMatches } from '../metadata.js';
 
 import {
   completeArtifactUpload,
@@ -40,7 +40,7 @@ import {
 } from './input.js';
 import type {
   ArtifactUploadAuthorization,
-  ArtifactUploadDatabase,
+  ArtifactUploadStore,
   ArtifactUploadResult,
   BeginArtifactUploadInput,
   FinalizeArtifactUploadInput,
@@ -225,10 +225,10 @@ async function finalizeUpload(
   return completeUploadFinalization(pool, input, input.signal);
 }
 
-export function createArtifactUploadDatabase(
+export function createArtifactUploadStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): ArtifactUploadDatabase {
+): ArtifactUploadStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({

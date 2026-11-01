@@ -17,7 +17,7 @@ vi.mock('../../../database/dist/tenant-access/transactions.js', () => ({
   withTenantScopedClient: seams.withTenantScopedClient,
 }));
 
-import { createArtifactUploadDatabase } from '../../src/artifacts/uploads/repository.js';
+import { createArtifactUploadStore } from '../../src/artifacts/uploads/store.js';
 import type { ArtifactRecord } from '../../src/artifacts/contract.js';
 
 const workspaceId = randomUUID();
@@ -69,7 +69,7 @@ describe('artifact upload finalization cancellation', () => {
     const controller = new AbortController();
     const reason = new Error('pre-aborted finalization');
     controller.abort(reason);
-    const database = createArtifactUploadDatabase(config);
+    const database = createArtifactUploadStore(config);
 
     await expect(
       database.finalizeUpload(input(controller.signal)),
@@ -80,7 +80,7 @@ describe('artifact upload finalization cancellation', () => {
   it('does not begin finalization when verification aborts and then resolves', async () => {
     const controller = new AbortController();
     const reason = new Error('aborted after object verification');
-    const database = createArtifactUploadDatabase(config);
+    const database = createArtifactUploadStore(config);
 
     await expect(
       database.finalizeUpload(

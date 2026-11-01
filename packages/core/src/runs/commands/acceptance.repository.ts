@@ -5,7 +5,7 @@ import { runInputRetentionSql } from '../data-policy.js';
 import { variableRevisionForAcceptance } from './variables.repository.js';
 import { requireFormAdmission } from './forms.queries.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { lockExecutionArtifactReferences } from '../../artifacts/references/repository.js';
+import { lockExecutionArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

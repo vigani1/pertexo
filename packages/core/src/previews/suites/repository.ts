@@ -20,7 +20,7 @@ import {
 } from '@pertexo/workflow-model';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
-import { lockArtifactReferences } from '../../artifacts/references/repository.js';
+import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import { lockInputCaseQuota } from '../../authoring/input-cases/metadata.queries.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';

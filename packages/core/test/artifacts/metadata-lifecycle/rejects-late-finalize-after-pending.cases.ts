@@ -5,14 +5,14 @@ import { expect, it } from 'vitest';
 import {
   ArtifactLifecycleConflictError,
   ArtifactMetadataNotFoundError,
-} from '../../../src/artifacts/input.js';
+} from '../../../src/artifacts/errors.js';
 import {
   claimDueUnfinalizedArtifact,
   claimDueUnfinalizedArtifacts,
   completeArtifactRemoval,
   createPendingArtifact,
   finalizeArtifactUpload,
-} from '../../../src/artifacts/repository.js';
+} from '../../../src/artifacts/records.repository.js';
 
 import {
   database,

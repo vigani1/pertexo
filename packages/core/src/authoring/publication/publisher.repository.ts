@@ -27,7 +27,7 @@ import {
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
 import type { PoolClient } from 'pg';
-import { lockArtifactReferences } from '../../artifacts/references/repository.js';
+import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import type { CommandIdentity } from '@pertexo/database/primitives';
 import {
   credentialCommandScope,

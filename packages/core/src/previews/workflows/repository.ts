@@ -1,7 +1,7 @@
 import { requireConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
-import { lockArtifactReferences } from '../../artifacts/references/repository.js';
+import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { cancelInTransaction } from '../../runs/commands/cancel-active.repository.js';

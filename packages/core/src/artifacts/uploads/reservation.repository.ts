@@ -9,11 +9,11 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { artifacts } from '@pertexo/database/schema';
-import { artifactStorageKey } from '../repository.js';
+import { artifactStorageKey } from '../records.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { ArtifactRecord } from '../contract.js';
 import type { ArtifactMetadataIdentity } from '../metadata/contract.js';
-import { artifactMetadataMatches } from '../metadata/validation.js';
+import { artifactMetadataMatches } from '../metadata.js';
 import {
   ARTIFACT_UPLOAD_PENDING_MS,
   ArtifactQuotaExceededError,
