@@ -30,7 +30,7 @@ import type {
   DataTablesStore,
 } from '../contract.js';
 import { readQuotas, requireTable } from '../definitions.queries.js';
-import { keyValue } from '../rows.repository.js';
+import { keyValue } from '../rows/mutate.repository.js';
 
 export async function editTableSchema(
   client: PoolClient,

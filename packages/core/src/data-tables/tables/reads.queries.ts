@@ -10,11 +10,11 @@ import {
   requireTable,
   tableFields,
 } from '../definitions.queries.js';
-import { findRows } from '../rows.queries.js';
+import { findRows } from '../rows/find.queries.js';
 
-import { exportTableCsv } from '../csv/export.queries.js';
+import { exportTableCsv } from '../csv/export.js';
 
-import { read } from './session.js';
+import { read } from '../command.js';
 
 export function listTables(
   pool: Pool,

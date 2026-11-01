@@ -28,8 +28,11 @@ import {
 import { dataTableWriteReceipts as receipts } from '@pertexo/database/schema';
 import type { WorkerDataTablesStore } from './contract.js';
 import { readQuotas, requireTable } from './definitions.queries.js';
-import { findRows } from './rows.queries.js';
-import { mutateRows, translateTableConstraint } from './rows.repository.js';
+import { findRows } from './rows/find.queries.js';
+import {
+  mutateRows,
+  translateTableConstraint,
+} from './rows/mutate.repository.js';
 export function createWorkerDataTablesStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

@@ -10,17 +10,14 @@ import {
   listTables,
   exportCsv,
   findTableRows,
-} from './persistence/definitions.queries.js';
+} from './tables/reads.queries.js';
 import {
   createTable,
   editSchema,
   removeTable,
   configureTables,
-} from './persistence/definitions.repository.js';
-import {
-  writeTableRows,
-  importTableRows,
-} from './persistence/rows.repository.js';
+} from './tables/manage.repository.js';
+import { writeTableRows, importTableRows } from './rows/write.js';
 
 export function createDataTablesStore(
   config: DatabaseConfig,

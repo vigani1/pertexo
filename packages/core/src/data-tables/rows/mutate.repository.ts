@@ -27,13 +27,13 @@ import {
   workspaceDataTableRows as tableRows,
   workspaceDataTables as tables,
 } from '@pertexo/database/schema';
-import type { DataTableDefinition, DataTableQuotas } from './contract.js';
+import type { DataTableDefinition, DataTableQuotas } from '../contract.js';
 import {
   boundedResult,
   queryClause,
   rowFields,
   type StoredRow,
-} from './rows.queries.js';
+} from './find.queries.js';
 export function keyValue(
   table: DataTableDefinition,
   values: DataTableValues,

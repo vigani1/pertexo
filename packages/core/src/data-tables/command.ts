@@ -14,12 +14,12 @@ import type { Pool, PoolClient } from 'pg';
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../../shared/authority.queries.js';
+} from '../shared/authority.queries.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 
-import type { DataTableScope } from '../contract.js';
+import type { DataTableScope } from './contract.js';
 
-import { translateTableConstraint } from '../rows.repository.js';
+import { translateTableConstraint } from './rows/mutate.repository.js';
 
 export function read<T>(
   pool: Pool,
