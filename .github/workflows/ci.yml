@@ -229,6 +229,7 @@ jobs:
           set -euo pipefail
           pnpm --filter @pertexo/artifact-store exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/queue exec vitest run --config vitest.integration.config.ts
+          pnpm --filter @pertexo/ops exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             --exclude 'test/browser/*.integration.test.ts' \
             --exclude 'test/workflow-authoring/organization/**'

@@ -36,7 +36,11 @@ async function waitForOutput(
   expect(child.exitCode).toBeNull();
 }
 
-async function waitForExit(child: ChildProcess, output: () => string) {
+async function waitForExit(
+  child: ChildProcess,
+  output: () => string,
+  timeoutMs = 5_000,
+) {
   if (child.exitCode !== null || child.signalCode !== null)
     return { code: child.exitCode, signal: child.signalCode };
   return new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
@@ -44,7 +48,7 @@ async function waitForExit(child: ChildProcess, output: () => string) {
       const timer = setTimeout(() => {
         child.kill('SIGKILL');
         reject(new Error(`operator main child timed out: ${output()}`));
-      }, 5_000);
+      }, timeoutMs);
       child.once('error', (error) => {
         clearTimeout(timer);
         reject(error);
@@ -111,4 +115,22 @@ describe('compiled operator command main process', () => {
     expect(fixture.output()).toContain('"errorType":"Error"');
     expect(fixture.output()).not.toContain('DATABASE_MAINTENANCE_URL');
   });
+
+  // No injected modules here: this is the real import of `@pertexo/core/operator`.
+  it('starts for real, loads the operator store and runs its command as far as the database', async () => {
+    const fixture = start(entrypointPath, [], {
+      ...process.env,
+      // Port 1 refuses every connection on a machine not serving tcpmux.
+      DATABASE_MAINTENANCE_URL:
+        'postgresql://pertexo_maintenance:unused@127.0.0.1:1/pertexo',
+      LOG_LEVEL: 'error',
+      OPERATOR_COMMAND_TYPE: 'stuck-work.list',
+    });
+    const result = await waitForExit(fixture.child, fixture.output, 30_000);
+
+    expect(result).toEqual({ code: 1, signal: null });
+    expect(fixture.output()).toContain('"event":"operator_command.failed"');
+    expect(fixture.output()).toContain('"commandType":"stuck-work.list"');
+    expect(fixture.output()).toContain('ECONNREFUSED');
+  }, 40_000);
 });
