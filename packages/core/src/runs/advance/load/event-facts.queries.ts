@@ -2,11 +2,11 @@ import type { nodeRuns } from '@pertexo/database/schema';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { artifacts } from '@pertexo/database/schema';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
-  rethrowQueryFailure,
   parseStoredExecutionValue,
   storedExecutionValuesEqual,
-} from '@pertexo/database/primitives';
+} from '../../values/stored-execution.js';
 import type { PoolClient } from 'pg';
 
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';

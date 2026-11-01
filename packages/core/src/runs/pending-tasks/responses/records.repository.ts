@@ -1,10 +1,8 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import { nodeRuns, workflows, users } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  parseStoredExecutionValue,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { parseStoredExecutionValue } from '../../values/stored-execution.js';
 import { and, eq, desc, inArray, lt, or, sql } from 'drizzle-orm';
 import type { FolderScope } from '../../../tenant-access/resources/contract.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';

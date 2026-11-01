@@ -5,8 +5,8 @@ import { nodeRuns, nodeAttempts, outboxEvents } from '@pertexo/database/schema';
 import {
   rethrowQueryFailure,
   canonicalOutboxPayloadChecksum,
-  serializeStoredExecutionJsonValue,
 } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../../../values/stored-execution.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../../state-errors.js';

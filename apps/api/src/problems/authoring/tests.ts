@@ -3,7 +3,7 @@ import {
   NodeTestRequestError,
   NodeTestInvalidError,
 } from '../../node-testing/errors.js';
-import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
+import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 
 import {
   WorkflowTestError,

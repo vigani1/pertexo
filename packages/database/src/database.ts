@@ -2,12 +2,14 @@ import { acquireDatabasePool } from './platform/pool/runtime.js';
 import type { DatabaseRuntime } from './platform/pool/runtime.js';
 
 import type { DatabaseConfig } from './config.js';
-import type { InstanceCapacity } from './platform/instance-limits.js';
 import {
   checkDatabaseReadiness,
   checkDatabaseWrites,
 } from './platform/readiness.queries.js';
-import type { DatabaseReadiness } from './platform/contract.js';
+import type {
+  DatabaseReadiness,
+  InstanceCapacity,
+} from './platform/contract.js';
 import { withWorkspaceTransaction } from './tenant-access/transactions.js';
 import type {
   WorkspaceTransaction,

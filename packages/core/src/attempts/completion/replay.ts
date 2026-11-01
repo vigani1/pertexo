@@ -6,7 +6,7 @@ import { NodeAttemptStateCorruptError } from '../errors.js';
 import type { CompleteNodeAttemptResult } from '../contract.js';
 import { completeReceipt } from './receipts.repository.js';
 
-import { serializeStoredExecutionValue } from '@pertexo/database/primitives';
+import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { assertConnectionHealthReplay } from './connection-health.repository.js';
 import type {
   CompletionInput,

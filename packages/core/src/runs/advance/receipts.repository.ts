@@ -8,8 +8,8 @@ import {
 import {
   rethrowQueryFailure,
   canonicalOutboxPayloadChecksum,
-  serializeStoredExecutionJsonValue,
 } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../values/stored-execution.js';
 import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '@pertexo/database/platform';

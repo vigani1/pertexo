@@ -2,10 +2,8 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { runEvents } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  serializeStoredExecutionJsonValue,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../runs/values/stored-execution.js';
 import { NodeAttemptStateCorruptError } from './errors.js';
 
 /** The caller holds the run lock, so its next event sequence cannot race. */

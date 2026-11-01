@@ -7,7 +7,7 @@ import {
   ExecutionStateConflictError,
   RunEventGapError,
 } from '../../state-errors.js';
-import { serializeStoredExecutionJsonValue } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../../values/stored-execution.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 export const RUN_EVENT_TYPE = {

@@ -5,8 +5,8 @@ import {
   rethrowQueryFailure,
   appendAuditFact,
   withTenantScopedClient,
-  parseStoredExecutionValue,
 } from '@pertexo/database/primitives';
+import { parseStoredExecutionValue } from '../../../runs/values/stored-execution.js';
 import type { Pool, PoolClient } from 'pg';
 
 import type { DatabaseConfig } from '@pertexo/database/platform';

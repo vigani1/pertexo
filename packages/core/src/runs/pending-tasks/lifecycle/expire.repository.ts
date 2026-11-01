@@ -9,10 +9,8 @@ import {
   timedOutTaskOutput,
 } from '@pertexo/workflow-model';
 import { workflowRuns, pendingRunTasks } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  serializeStoredExecutionValue,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { serializeStoredExecutionValue } from '../../values/stored-execution.js';
 
 /**
  * Database time decides expiry. A task whose step continues on Timed out

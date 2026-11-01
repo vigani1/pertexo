@@ -4,8 +4,8 @@ import { workflowStepSamples } from '@pertexo/database/schema';
 import {
   rethrowQueryFailure,
   withTenantScopedClient,
-  parseStoredExecutionValue,
 } from '@pertexo/database/primitives';
+import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import {
   sampleMetadataProjection,
   sampleProjection,

@@ -13,19 +13,10 @@ export type {
 export { generatePersistedId } from './persisted-id.js';
 export { isTransientDatabaseFailure } from './query-errors.js';
 export {
-  DEFAULT_INSTANCE_LIMITS,
-  type InstanceCapacity,
-} from './instance-limits.js';
-export {
   IdempotencyConflictError,
   credentialCommandScope,
 } from './idempotency/repository.js';
-export type { DatabaseReadiness } from './contract.js';
-export {
-  prepareStoredExecutionValue,
-  STORED_EXECUTION_VALUE_LIMITS,
-  StoredExecutionValueInvalidError,
-} from './stored-execution-value.js';
+export type { DatabaseReadiness, InstanceCapacity } from './contract.js';
 export { createWorkspaceDatabase } from '../database.js';
 export type { WorkspaceDatabase } from '../database.js';
 

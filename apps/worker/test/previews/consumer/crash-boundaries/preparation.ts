@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { parseStoredExecutionValue } from '@pertexo/database/testing';
+import { parseStoredExecutionValue } from '@pertexo/core/runs';
 import type { createQueueProducer } from '@pertexo/queue';
 import type { Queue } from 'bullmq';
 

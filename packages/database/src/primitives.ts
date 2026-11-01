@@ -31,15 +31,6 @@ export {
 } from './platform/query-errors.js';
 export { checkDatabaseReadiness } from './platform/readiness.queries.js';
 export {
-  parseStoredExecutionValue,
-  serializeStoredExecutionJsonValue,
-  serializeStoredExecutionValue,
-  serializeWrittenJsonValue,
-  type StoredExecutionJsonValue,
-  type StoredExecutionValue,
-  storedExecutionValuesEqual,
-} from './platform/stored-execution-value.js';
-export {
   withActorDiscoveryScope,
   withActorScopedClient,
   withMultiWorkspaceTransaction,

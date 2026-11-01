@@ -12,7 +12,7 @@ import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input
 import { createWorkflowTestSuiteScanner } from '../../../../src/previews/suites/scanner.repository.js';
 import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.queries.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { serializeStoredExecutionValue } from '@pertexo/database/primitives';
+import { serializeStoredExecutionValue } from '../../../../src/runs/values/stored-execution.js';
 import {
   apiUrl,
   dispatcherUrl,

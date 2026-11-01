@@ -4,10 +4,8 @@ import {
   workflowStepSamples,
   workflowTestSnapshots,
 } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  parseStoredExecutionValue,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { workflowTestStepChoices } from '@pertexo/workflow-model';
 import type { FrozenWorkflowTestPins } from '@pertexo/database/schema';
 import { sampleDraft } from '../../authoring/step-samples/records.repository.js';

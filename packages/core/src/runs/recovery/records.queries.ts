@@ -18,11 +18,9 @@ import type {
   RecoveryValues,
 } from '@pertexo/workflow-engine';
 import { branchContextSchema } from '../../attempts/validation/shared.js';
-import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
-import {
-  type StoredExecutionValue,
-  parseStoredExecutionValue,
-} from '@pertexo/database/primitives';
+import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
+import { type StoredExecutionValue } from '@pertexo/database/schema';
+import { parseStoredExecutionValue } from '../values/stored-execution.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
   WorkflowRunNotExecutableError,

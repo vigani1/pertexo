@@ -1,8 +1,8 @@
 import {
   withTenantScopedClient,
   rethrowQueryFailure,
-  serializeStoredExecutionValue,
 } from '@pertexo/database/primitives';
+import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -22,7 +22,7 @@ import type {
 } from '../contract.js';
 import { auditMismatch, validateDelivery } from './receipts.repository.js';
 import { applyNodeAttemptCompletion } from './outcomes.repository.js';
-import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
+import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 
 export async function completeNodeAttempt(
   pool: Pool,

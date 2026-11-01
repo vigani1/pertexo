@@ -1,10 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { createDatabasePreviewAttemptRunStore } from '@pertexo/core/previews';
 
-import {
-  parseDatabaseConfig,
-  parseStoredExecutionValue,
-} from '@pertexo/database/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
+import { parseStoredExecutionValue } from '@pertexo/core/runs';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { describe, expect, it } from 'vitest';
 

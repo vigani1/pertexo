@@ -3,7 +3,7 @@ import { hasHttpStatus } from '../../platform/http/problems/status.js';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { CallbackResponseError } from '@pertexo/core/runs';
-import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
+import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 import { callbackTokenHash, redactText } from '@pertexo/integrations/server';
 import type { StructuredLogger } from '@pertexo/observability';
 import { AbuseRateLimitPolicy } from '@pertexo/rate-limit';

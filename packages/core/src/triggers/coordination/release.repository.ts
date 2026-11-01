@@ -25,7 +25,7 @@ import {
 } from '../../runs/commands/acceptance/errors.js';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/acceptance/errors.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
-import { parseStoredExecutionValue } from '@pertexo/database/primitives';
+import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { recordWorkflowTriggerSkip } from '../skips.repository.js';
 import { finishCoordinatedEvent } from './events.repository.js';
 import {
