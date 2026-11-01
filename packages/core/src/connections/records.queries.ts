@@ -68,8 +68,7 @@ export async function selectConnection(
 /** A restricted connection only exists for the members its shares and role reach. */
 export async function requireVisibleConnection(
   client: PoolClient,
-  actor: ResourceActor,
-  connectionId: string,
+  actor: ResourceActor & Readonly<{ connectionId: string }>,
   role: Role,
   capability: ConnectionCapability,
 ): Promise<void> {
@@ -79,7 +78,7 @@ export async function requireVisibleConnection(
     .where(
       and(
         eq(connections.workspaceId, actor.workspaceId),
-        eq(connections.id, connectionId),
+        eq(connections.id, actor.connectionId),
         connectionScopeSql(
           connectionScope(actor, role, capability),
           connections,

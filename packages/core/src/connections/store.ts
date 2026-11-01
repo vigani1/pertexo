@@ -150,13 +150,7 @@ export function createConnectionStore(
         statuses: ACTIVE_WORKSPACE_STATUSES,
       },
       async (client, role) => {
-        await requireVisibleConnection(
-          client,
-          actor,
-          actor.connectionId,
-          role,
-          'connection:use',
-        );
+        await requireVisibleConnection(client, actor, role, 'connection:use');
         return work(client);
       },
     );
