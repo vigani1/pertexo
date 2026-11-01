@@ -4,7 +4,6 @@ import {
   ConnectionTestInProgressError,
   createInput,
   ownerA,
-  pgCode,
   randomUUID,
   workspaceA,
 } from '../support/connections.js';
@@ -155,10 +154,10 @@ describe('finishing a connection test in a workspace that isn’t active', () =>
     },
   );
 
-  // Integrations stay off outside an active workspace, whoever is asking. What
-  // the caller sees here is a raw database error: reported, not pinned as right.
+  // Integrations stay off outside an active workspace, whoever is asking, so the
+  // connection doesn't change; the test still reports what it found.
   it.each(['suspended', 'pending_deletion'] as const)(
-    'a %s workspace doesn’t let a healthy answer change the connection',
+    'a %s workspace records a healthy answer without changing the connection',
     async (status) => {
       const claim = await dispatched(ownerA);
       const before = await connections.api.getConnection(
@@ -166,9 +165,11 @@ describe('finishing a connection test in a workspace that isn’t active', () =>
         claim.connectionId,
       );
       await whileWorkspaceIs(status, async () => {
-        await expect(complete(claim)).rejects.toSatisfy(pgCode('55000'));
+        await expect(complete(claim)).resolves.toMatchObject({
+          outcome: { ok: true },
+        });
       });
-      expect(await claimStatus(claim)).toBe('in_progress');
+      expect(await claimStatus(claim)).toBe('completed');
       expect(
         await connections.api.getConnection(workspaceA, claim.connectionId),
       ).toEqual(before);
