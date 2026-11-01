@@ -10,9 +10,17 @@ import {
   withDirectoryRead,
 } from './authority.repository.js';
 import type {
-  DirectoryPrincipal,
-  DirectoryUserValues,
+  AdoptMembershipInput,
+  CreateCredentialInput,
+  DirectoryGroup,
   DirectoryGroupValues,
+  DirectoryPrincipal,
+  DirectoryQuery,
+  DirectoryUser,
+  DirectoryUserValues,
+  ReplaceMappingsInput,
+  RevokeCredentialInput,
+  UnlinkWorkspaceInput,
 } from './contract.js';
 import {
   createDirectoryUser,
@@ -20,24 +28,20 @@ import {
   deleteDirectoryUser,
   readDirectoryUser,
 } from './resources/users.repository.js';
-import type { DirectoryUser } from './contract.js';
 import {
   createDirectoryGroup,
   changeDirectoryGroup,
   deleteDirectoryGroup,
   readDirectoryGroup,
 } from './resources/groups.repository.js';
-import type { DirectoryGroup } from './contract.js';
 import {
   listDirectoryUsers,
   listDirectoryGroups,
 } from './resources/records.queries.js';
-import type { DirectoryQuery } from './contract.js';
 import {
   readDirectoryAdoption,
   readDirectoryManagement,
 } from './management/commands.repository.js';
-import type { DirectoryCommand } from './contract.js';
 import {
   createDirectoryCredential,
   revokeDirectoryCredential,
@@ -51,11 +55,9 @@ import {
   projectDirectorySettings,
   listDirectoryPeople,
 } from './management/settings.queries.js';
-import type {
-  DirectoryMappings,
-  DirectoryAdopt,
-  DirectoryPeopleQuery,
-} from '@pertexo/contracts';
+import type { DirectoryPeopleQuery } from '@pertexo/contracts';
+
+export type DirectoryStore = ReturnType<typeof createDirectoryStore>;
 
 export function createDirectoryStore(
   config: DatabaseConfig,
@@ -129,17 +131,15 @@ export function createDirectoryStore(
       readDirectoryManagement(pool, scope, (client, organization) =>
         listDirectoryPeople(client, organization.id, query),
       ),
-    createCredential: (input: DirectoryCommand & Readonly<{ name: string }>) =>
+    createCredential: (input: CreateCredentialInput) =>
       createDirectoryCredential(pool, input),
-    revokeCredential: (
-      input: DirectoryCommand & Readonly<{ credentialId: string }>,
-    ) => revokeDirectoryCredential(pool, input),
-    replaceMappings: (input: DirectoryCommand & DirectoryMappings) =>
+    revokeCredential: (input: RevokeCredentialInput) =>
+      revokeDirectoryCredential(pool, input),
+    replaceMappings: (input: ReplaceMappingsInput) =>
       replaceDirectoryMappings(pool, input),
-    adopt: (input: DirectoryCommand & DirectoryAdopt) =>
+    adopt: (input: AdoptMembershipInput) =>
       adoptDirectoryMembership(pool, input),
-    unlink: (
-      input: DirectoryCommand & Readonly<{ targetWorkspaceId: string }>,
-    ) => unlinkDirectoryWorkspace(pool, input),
+    unlink: (input: UnlinkWorkspaceInput) =>
+      unlinkDirectoryWorkspace(pool, input),
   };
 }

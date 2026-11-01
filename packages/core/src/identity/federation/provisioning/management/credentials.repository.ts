@@ -22,11 +22,14 @@ import {
   auditDirectoryManagement,
   runDirectoryCommand,
 } from './commands.repository.js';
-import type { DirectoryCommand } from '../contract.js';
+import type {
+  CreateCredentialInput,
+  RevokeCredentialInput,
+} from '../contract.js';
 
 export async function createDirectoryCredential(
   pool: Pool,
-  input: DirectoryCommand & Readonly<{ name: string }>,
+  input: CreateCredentialInput,
 ): Promise<DirectoryCredentialResult> {
   const result = await runDirectoryCommand(pool, input, {
     operation: 'identity.directory.credential.create',
@@ -104,7 +107,7 @@ export async function createDirectoryCredential(
 }
 export async function revokeDirectoryCredential(
   pool: Pool,
-  input: DirectoryCommand & Readonly<{ credentialId: string }>,
+  input: RevokeCredentialInput,
 ): Promise<void> {
   await runDirectoryCommand(pool, input, {
     operation: 'identity.directory.credential.revoke',

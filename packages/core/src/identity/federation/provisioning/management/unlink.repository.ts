@@ -30,7 +30,7 @@ import {
 } from '../authority.repository.js';
 import { DirectoryError } from '../errors.js';
 import { DIRECTORY_LIMITS } from '../limits.js';
-import type { DirectoryCommand } from '../contract.js';
+import type { UnlinkWorkspaceInput } from '../contract.js';
 import { detachDirectoryMemberships } from './detach.repository.js';
 
 /**
@@ -39,7 +39,7 @@ import { detachDirectoryMemberships } from './detach.repository.js';
  */
 export async function unlinkDirectoryWorkspace(
   pool: Pool,
-  input: DirectoryCommand & Readonly<{ targetWorkspaceId: string }>,
+  input: UnlinkWorkspaceInput,
 ): Promise<void> {
   await withPlatformTransaction(pool, async (client) => {
     // The workspace remains the command's receipt authority even after unlinking.

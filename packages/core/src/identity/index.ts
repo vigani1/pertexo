@@ -16,28 +16,32 @@ export {
   identityEmailChangeEligibility,
 } from './federation/sessions/authority.repository.js';
 export { isAuthenticationSessionAllowed } from './federation/sessions/lookup.queries.js';
-export { createFederationManagementStore } from './federation/management/store.js';
-export type { FederationManagementStore } from './federation/management/contract.js';
+export {
+  createFederationManagementStore,
+  type FederationManagementStore,
+} from './federation/management/store.js';
 export { FederationConflictError } from './federation/management/errors.js';
-export { createDirectoryStore } from './federation/provisioning/store.js';
+export {
+  createDirectoryStore,
+  type DirectoryStore,
+} from './federation/provisioning/store.js';
 export type {
   DirectoryGroup,
   DirectoryGroupValues,
   DirectoryPrincipal,
   DirectoryQuery,
   DirectoryRole,
-  DirectoryStore,
   DirectoryUser,
   DirectoryUserProfile,
   DirectoryUserValues,
 } from './federation/provisioning/contract.js';
 export { DirectoryError } from './federation/provisioning/errors.js';
 export { DIRECTORY_LIMITS } from './federation/provisioning/limits.js';
-export { createTwoFactorRecoveryStore } from './two-factor/store.js';
-export type {
-  TwoFactorRecoveryResult,
-  TwoFactorRecoveryStore,
-} from './two-factor/contract.js';
+export {
+  createTwoFactorRecoveryStore,
+  type TwoFactorRecoveryStore,
+} from './two-factor/store.js';
+export type { TwoFactorRecoveryResult } from './two-factor/contract.js';
 
 // Other areas reach these directly (ADR 091).
 export type {} from './federation/provisioning/management/detach.repository.js';

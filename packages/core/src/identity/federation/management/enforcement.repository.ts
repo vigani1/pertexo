@@ -23,7 +23,7 @@ import {
   requireControlOrganization,
   runFederationCommand,
 } from './commands.repository.js';
-import type { FederationCommand } from './contract.js';
+import type { ConfigureEnforcementInput } from './contract.js';
 import { requireOrganizationDomain } from './domains.repository.js';
 
 async function requireRecoveryCredential(
@@ -126,7 +126,7 @@ export async function assertRequiredDomainsReady(
 }
 export function configureDomainEnforcement(
   pool: Pool,
-  input: FederationCommand & Readonly<{ domainId: string; required: boolean }>,
+  input: ConfigureEnforcementInput,
 ): Promise<FederationSettings> {
   return runFederationCommand(pool, input, {
     operation: 'identity.domain.enforcement',
