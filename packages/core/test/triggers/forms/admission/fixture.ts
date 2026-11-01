@@ -9,7 +9,7 @@ import {
   createCheckpoint,
 } from '@pertexo/workflow-engine';
 import { formConfigSchema, type WorkflowGraph } from '@pertexo/workflow-model';
-import { createFormStore } from '../../../../src/triggers/forms/repository.js';
+import { createFormStore } from '../../../../src/triggers/forms/store.js';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { admin, createFamily } from '../../../lifecycle/calls/fixtures.js';

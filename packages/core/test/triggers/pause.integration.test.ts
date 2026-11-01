@@ -9,7 +9,7 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import { createIdentityWorkspaceDatabase } from '../../src/testing.js';
-import { createWorkflowTriggerPauseFoldStore } from '../../src/triggers/pause/fold.repository.js';
+import { createWorkflowTriggerPauseFoldStore } from '../../src/triggers/pause/fold.store.js';
 import { persistWorkflowTriggerOutcome } from '../../src/triggers/pause/outcomes.repository.js';
 
 type Status =
