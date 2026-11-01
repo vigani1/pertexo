@@ -7,7 +7,6 @@ import {
 import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
-
 import { createTriggerReconciliationHandler } from '../../src/triggers/handler.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';

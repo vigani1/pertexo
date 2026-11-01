@@ -8,7 +8,6 @@ import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-
 import type { createTriggerRuntime } from '../../src/triggers/runtime.js';
 import { createRedisTestNamespace } from '../support/infrastructure/redis-test-namespace.js';
 import { runWithCleanup } from '../support/infrastructure/test-operation.js';
