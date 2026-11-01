@@ -64,16 +64,30 @@ async function readManagedOrganization(
     .catch(rethrowQueryFailure);
   const row = await organizationForWorkspace(client, workspaceId);
   if (row?.id !== preview.id) throw new DirectoryError('not_found');
+  return manageableOrganization(client, row, workspaceId, role);
+}
+
+async function manageableOrganization(
+  client: PoolClient,
+  row: Omit<DirectoryOrganization, 'workspaces'>,
+  workspaceId: string,
+  role: Role,
+): Promise<ManagedOrganization> {
   return {
     organization: {
       ...row,
-      workspaces: await directoryWorkspaces(client, preview.id),
+      workspaces: await directoryWorkspaces(client, row.id),
     },
     canManage: role === 'owner' && row.control_workspace_id === workspaceId,
   };
 }
 
-/** What an owner or admin may see of the directory. These reads lock, so `change`. */
+/**
+ * What an owner or admin may see of the directory, from one snapshot. It takes
+ * no locks: a federation command locks only its own workspaces, then the
+ * organization, then the people bound to it, so a read from a linked workspace
+ * that held a member's row while waiting on the organization would deadlock it.
+ */
 export function readDirectoryManagement<T>(
   pool: Pool,
   scope: FederationScope,
@@ -87,13 +101,16 @@ export function readDirectoryManagement<T>(
     pool,
     scope,
     {
-      mode: 'change',
+      mode: 'read',
       capability: 'member:read',
       statuses: BROWSABLE_WORKSPACE_STATUSES,
     },
     async (client, role) => {
-      const { organization, canManage } = await readManagedOrganization(
+      const row = await organizationForWorkspace(client, scope.workspaceId);
+      if (row === undefined) throw new DirectoryError('not_found');
+      const { organization, canManage } = await manageableOrganization(
         client,
+        row,
         scope.workspaceId,
         role,
       );
