@@ -21,9 +21,14 @@ Owners and admins can do this. Open **Connections → HTTP** and choose **OAuth2
    unsaved workflow behind it is safe.
 
 **Advanced** holds the client authentication (Basic header, or Request body if the service
-refuses Basic), PKCE, extra parameters such as Google's `access_type=offline` or Auth0's
-`audience`, and **Allowed API hosts**. Parameters aren't secret storage: anyone who can see
-the connection can read them.
+refuses Basic), PKCE, extra parameters such as Auth0's `audience`, and **Allowed API
+hosts**. Parameters aren't secret storage: anyone who can see the connection can read them.
+
+For Google, add both `access_type=offline` and `prompt=consent` as authorization parameters.
+Without `prompt=consent`, Google gives a refresh token only the first time someone consents.
+If the service gives none when you reconnect, Pertexo keeps the one it already has, unless
+the settings changed. So reconnecting as a different account on such a service keeps renewing
+as the first account until you change the settings or revoke.
 
 ## Who can do what
 
@@ -63,6 +68,17 @@ when its token is due, not at the next call. Until then the API's 401s fail thos
 | Client refused | The client ID or secret was refused | **Edit settings**, then connect |
 | Token expired | The service gave no way to renew it | **Reconnect** |
 
+A connection nobody has signed in to yet isn't an alarm: it stays out of the inbox, mail and
+Home until something goes wrong with it.
+
+Requesting a workspace's deletion deletes every connection's tokens at once. If the workspace is
+restored, reconnect its OAuth2 connections.
+
+If the service answers with an error Pertexo doesn't recognize, the connection stays as it was
+and the step retries. The step and the sign-in page show the service's short code, such as
+`bad_verification_code`, so you can look it up in its documentation. Its longer description
+is never kept or shown.
+
 **Edit settings** asks for the client secret again and always asks for new consent. That
 stops someone with manage rights pointing a stored secret at their own address. Steps
 already running with the old settings fail before they send anything.
@@ -73,8 +89,11 @@ too.
 ## Private addresses
 
 Addresses must be public https unless the operator lists their network in
-`HTTP_ALLOWED_PRIVATE_NETWORKS`. Pertexo's own host is always refused, and every request
-re-checks where the name resolves. Token requests never follow a redirect.
+`HTTP_ALLOWED_PRIVATE_NETWORKS`. With a network listed, an authorization URL may use plain
+http only at an address inside it or a local name such as `id.internal`, because your browser
+opens that URL and Pertexo can't check where it resolves. Pertexo's own host is always refused,
+**Connect** checks where the token URL resolves, and every request checks that again. Token
+requests never follow a redirect.
 
 ## Restoring a backup
 
