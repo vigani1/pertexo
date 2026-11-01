@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { acceptManualFixtureRun } from '../manual-start.js';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { requestWorkflowRunCancellation } from '@pertexo/core/testing';
-import { createOperatorCommandDatabase } from '@pertexo/core/runs';
+import { createOperatorCommandStore } from '@pertexo/core/runs';
 
 import {
   buildWorkflowExecutable,
@@ -126,7 +126,7 @@ export async function reclaimProviderScenarioAttempt(input: {
   attemptId: string;
   expectedFence: number;
 }) {
-  const operator = createOperatorCommandDatabase(
+  const operator = createOperatorCommandStore(
     parseDatabaseConfig({ connectionString: databaseUrl(operatorUrl), max: 1 }),
   );
   try {

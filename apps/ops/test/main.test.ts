@@ -67,16 +67,16 @@ function createFixture() {
   const runOperatorCommand = vi.fn((_input: RunInput) => {
     return Promise.resolve(result as never);
   });
-  const createOperatorCommandDatabase = vi.fn(() => database);
+  const createOperatorCommandStore = vi.fn(() => database);
   const createStructuredLogger = vi.fn(() => logger);
   const modules = {
     command: { runOperatorCommand },
-    database: { createOperatorCommandDatabase },
+    database: { createOperatorCommandStore },
     logging: { createStructuredLogger },
   } as unknown as OperatorCommandBootstrapModules;
   const loadModules = vi.fn(() => Promise.resolve(modules));
   return {
-    createOperatorCommandDatabase,
+    createOperatorCommandStore,
     createStructuredLogger,
     database,
     loadModules,
@@ -137,7 +137,7 @@ describe('operator command main bootstrap', () => {
           throw failure;
         });
       } else {
-        fixture.createOperatorCommandDatabase.mockImplementationOnce(() => {
+        fixture.createOperatorCommandStore.mockImplementationOnce(() => {
           throw failure;
         });
       }

@@ -3,7 +3,7 @@ import { JOB_NAME } from '@pertexo/queue';
 
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 
-import { createOperatorCommandDatabase } from '@pertexo/core/runs';
+import { createOperatorCommandStore } from '@pertexo/core/runs';
 import { parseOperatorDatabaseConfig } from '@pertexo/database/platform';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
@@ -38,12 +38,12 @@ export function registerReplayProviderIdentities(): void {
     if (encryption === undefined)
       throw new Error('HTTP attempt fixture encryption is missing');
     const runtime = await createHttpNodeAttemptProofRuntime(encryption);
-    let operator: ReturnType<typeof createOperatorCommandDatabase> | undefined;
+    let operator: ReturnType<typeof createOperatorCommandStore> | undefined;
     let replayStore:
       ReturnType<typeof createDatabaseOperatorRunReplayStore> | undefined;
     await runWithCleanup(
       async () => {
-        operator = createOperatorCommandDatabase(
+        operator = createOperatorCommandStore(
           parseOperatorDatabaseConfig({
             ...process.env,
             DATABASE_MAINTENANCE_URL: databaseUrl(operatorUrl),
