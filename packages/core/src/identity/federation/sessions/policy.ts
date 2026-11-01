@@ -1,8 +1,3 @@
-export const FEDERATION_WORKSPACE_STATUSES = [
-  'active',
-  'suspended',
-  'pending_deletion',
-] as const;
 export type SessionAuthenticationProof =
   | Readonly<{ method: 'credential' | 'social' }>
   | Readonly<{

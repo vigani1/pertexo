@@ -14,8 +14,8 @@ import {
 import {
   ACTIVE_WORKSPACE_STATUSES,
   FEDERATION_LIMITS,
+  UNPURGED_WORKSPACE_STATUSES,
 } from '@pertexo/workflow-model';
-import { FEDERATION_WORKSPACE_STATUSES } from '../sessions/policy.js';
 import type { Pool } from 'pg';
 import type { FederationDiscovery } from '@pertexo/contracts';
 import { withPlatformTransaction } from '@pertexo/database/platform';
@@ -76,7 +76,7 @@ export class OrganizationSignInCommands {
       .where(
         and(
           eq(authDomains.domain, domain),
-          inArray(workspaces.status, FEDERATION_WORKSPACE_STATUSES),
+          inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
           isNotNull(authDomains.verifiedAt),
         ),
       )
@@ -243,7 +243,7 @@ export class OrganizationSignInCommands {
             eq(authProviders.id, input.providerId),
             eq(authProviders.revision, input.providerRevision),
             eq(authDomains.id, input.domainId),
-            inArray(workspaces.status, FEDERATION_WORKSPACE_STATUSES),
+            inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
             or(eq(authProviders.enabled, true), sql`${input.purpose}='test'`),
           ),
         );

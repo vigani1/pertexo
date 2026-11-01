@@ -5,6 +5,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import type { Pool, PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import {
   workspaces,
   authDomains,
@@ -12,7 +13,6 @@ import {
   authOrganizations,
   authFederationAttempts,
 } from '@pertexo/database/schema';
-import { FEDERATION_WORKSPACE_STATUSES } from '../sessions/policy.js';
 import type { FederationAttempt } from './contract.js';
 
 const provider = alias(authProviders, 'provider');
@@ -125,7 +125,7 @@ export async function findFederationAttempt(
       eq(attempt.browserDigest, browserDigest),
       isNull(attempt.consumedAt),
       gt(attempt.expiresAt, sql`clock_timestamp()`),
-      inArray(workspaces.status, FEDERATION_WORKSPACE_STATUSES),
+      inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
       or(eq(provider.enabled, true), eq(attempt.purpose, 'test')),
     ),
   );
@@ -154,7 +154,7 @@ export async function readFederationProvider(
       and(
         eq(provider.id, providerId),
         eq(domain.domain, domainName),
-        inArray(workspaces.status, FEDERATION_WORKSPACE_STATUSES),
+        inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
         or(eq(provider.enabled, true), sql`${testing}::boolean`),
       ),
     )
