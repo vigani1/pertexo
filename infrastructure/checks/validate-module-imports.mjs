@@ -65,7 +65,6 @@ export const AREAS_NOT_YET_PASSED = new Set([
   'identity',
   'lifecycle',
   'outbox',
-  'previews',
   'runs',
   'tenant-access',
   'triggers',
