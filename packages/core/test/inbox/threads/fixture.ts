@@ -13,7 +13,7 @@ import {
 import { createIdentityWorkspaceDatabase } from '../../../src/testing.js';
 import { createWorkspaceInboxFoldStore } from '../../../src/inbox/folding/store.js';
 import { persistWorkspaceInboxEvent } from '../../../src/inbox/folding/events.repository.js';
-import { createWorkspaceInboxDatabase } from '../../../src/inbox/threads/store.js';
+import { createWorkspaceInboxStore } from '../../../src/inbox/threads/store.js';
 
 type Kind = 'failed' | 'timed_out' | 'outcome_unknown';
 
@@ -57,7 +57,7 @@ let tenant: ReturnType<typeof createWorkspaceDatabase>;
 
 export let fold: ReturnType<typeof createWorkspaceInboxFoldStore>;
 
-export let inbox: ReturnType<typeof createWorkspaceInboxDatabase>;
+export let inbox: ReturnType<typeof createWorkspaceInboxStore>;
 
 export let admin: Pool;
 
@@ -242,7 +242,7 @@ export async function beforeAllFixture1() {
   fold = createWorkspaceInboxFoldStore(
     parseDatabaseConfig({ connectionString: workerUrl, max: 6 }),
   );
-  inbox = createWorkspaceInboxDatabase(
+  inbox = createWorkspaceInboxStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
   );
   admin = new Pool({ connectionString: fixture.databaseUrl(adminUrl), max: 2 });

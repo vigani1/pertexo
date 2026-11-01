@@ -4,7 +4,7 @@ import { registerNoticeUnsubscribeTransport } from '../../../src/notifications/p
 import type { NoticePreferencesService } from '../../../src/notifications/preferences/service.js';
 import type {
   NoticePreferencesStore,
-  WorkspaceInboxDatabase,
+  WorkspaceInboxStore,
 } from '@pertexo/core/notifications';
 
 import { FastifyAdapter } from '@nestjs/platform-fastify';
@@ -52,24 +52,24 @@ export const thread = {
 
 export function inboxDatabase() {
   return {
-    listThreads: vi.fn<WorkspaceInboxDatabase['listThreads']>(() =>
+    listThreads: vi.fn<WorkspaceInboxStore['listThreads']>(() =>
       Promise.resolve({
         items: [thread],
         next: { latestOccurredAt: thread.latestOccurredAt, threadId },
         revision: '8',
       }),
     ),
-    readSummary: vi.fn<WorkspaceInboxDatabase['readSummary']>(() =>
+    readSummary: vi.fn<WorkspaceInboxStore['readSummary']>(() =>
       Promise.resolve({ unreadCount: 1, revision: '8' }),
     ),
-    markThreadRead: vi.fn<WorkspaceInboxDatabase['markThreadRead']>(() =>
+    markThreadRead: vi.fn<WorkspaceInboxStore['markThreadRead']>(() =>
       Promise.resolve({ unread: false, revision: '8' }),
     ),
-    markAllRead: vi.fn<WorkspaceInboxDatabase['markAllRead']>(() =>
+    markAllRead: vi.fn<WorkspaceInboxStore['markAllRead']>(() =>
       Promise.resolve({ marked: 1 }),
     ),
     close: vi.fn(() => Promise.resolve()),
-  } satisfies WorkspaceInboxDatabase;
+  } satisfies WorkspaceInboxStore;
 }
 
 function access(role: Role) {
@@ -93,7 +93,7 @@ export const hints: InboxHintSource = {
 const openApplications: { close(): Promise<void> }[] = [];
 
 export async function application(
-  database: WorkspaceInboxDatabase,
+  database: WorkspaceInboxStore,
   role: Parameters<typeof access>[0] = 'owner',
   source: InboxHintSource = hints,
   preferences?: NoticePreferencesService,

@@ -10,7 +10,7 @@ import {
   type WorkspaceInboxReadResponse,
   type WorkspaceInboxSummaryResponse,
 } from '@pertexo/contracts';
-import type { WorkspaceInboxDatabase } from '@pertexo/core/notifications';
+import type { WorkspaceInboxStore } from '@pertexo/core/notifications';
 
 import {
   decodeWorkspaceInboxCursor,
@@ -31,7 +31,7 @@ const DEFAULT_PAGE_SIZE = 25;
  * to every statement, so an ineligible reader sees nothing.
  */
 export class WorkspaceInboxService {
-  public constructor(private readonly database: WorkspaceInboxDatabase) {}
+  public constructor(private readonly store: WorkspaceInboxStore) {}
 
   public async list(
     input: Reader &
@@ -51,7 +51,7 @@ export class WorkspaceInboxService {
         ? {}
         : { noticeKind: input.noticeKind }),
     };
-    const page = await this.database.listThreads({
+    const page = await this.store.listThreads({
       workspaceId: input.workspaceId,
       actorId: input.actorId,
       filter,
@@ -78,14 +78,14 @@ export class WorkspaceInboxService {
     input: Reader & Readonly<{ signal?: AbortSignal }>,
   ): Promise<WorkspaceInboxSummaryResponse> {
     return workspaceInboxSummaryResponseSchema.parse(
-      await this.database.readSummary(input),
+      await this.store.readSummary(input),
     );
   }
 
   public async markRead(
     input: Reader & Readonly<{ threadId: string; revision: string }>,
   ): Promise<WorkspaceInboxReadResponse> {
-    const read = await this.database.markThreadRead(input);
+    const read = await this.store.markThreadRead(input);
     if (read === undefined) throw new WorkspaceInboxThreadNotFoundError();
     return workspaceInboxReadResponseSchema.parse({
       threadId: input.threadId,
@@ -97,7 +97,7 @@ export class WorkspaceInboxService {
     input: Reader & Readonly<{ revision: string }>,
   ): Promise<WorkspaceInboxReadAllResponse> {
     return workspaceInboxReadAllResponseSchema.parse(
-      await this.database.markAllRead(input),
+      await this.store.markAllRead(input),
     );
   }
 }

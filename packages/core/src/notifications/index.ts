@@ -14,10 +14,10 @@ export type { FailureNotificationResolvedDestination } from './contract.js';
 export type {} from './policies/admission.queries.js';
 export type {} from './delivery/evidence.repository.js';
 
-export { createWorkspaceInboxDatabase } from '../inbox/threads/store.js';
+export { createWorkspaceInboxStore } from '../inbox/threads/store.js';
 export type {
   WorkspaceInboxCursor,
-  WorkspaceInboxDatabase,
+  WorkspaceInboxStore,
   WorkspaceInboxFailureKind,
   WorkspaceInboxSummary,
   WorkspaceInboxThreadPage,
