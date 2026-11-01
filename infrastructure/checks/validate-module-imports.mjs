@@ -130,6 +130,14 @@ function reachesDatabaseCode(file, specifier) {
   );
 }
 
+/** A relative path into another package's code, around the name that guards it. */
+function reachesPackageCode(file, specifier, packageName) {
+  if (!specifier.startsWith('.')) return false;
+  return path.posix
+    .normalize(path.posix.join(path.posix.dirname(file), specifier))
+    .startsWith(`packages/${packageName}/`);
+}
+
 /**
  * Rules that hold for a workspace's tests as well as its source. A deliberate
  * limit: only import syntax is read, so a name passed as a plain string, as in
@@ -139,7 +147,9 @@ function reachesDatabaseCode(file, specifier) {
 function directionViolations(file, specifier) {
   const violations = [];
   if (
-    (specifier === '@pertexo/core' || specifier.startsWith('@pertexo/core/')) &&
+    (specifier === '@pertexo/core' ||
+      specifier.startsWith('@pertexo/core/') ||
+      reachesPackageCode(file, specifier, 'core')) &&
     file.startsWith('packages/') &&
     !file.startsWith('packages/core/')
   )
@@ -148,7 +158,8 @@ function directionViolations(file, specifier) {
     );
   if (
     (specifier === '@pertexo/secrets' ||
-      specifier.startsWith('@pertexo/secrets/')) &&
+      specifier.startsWith('@pertexo/secrets/') ||
+      reachesPackageCode(file, specifier, 'secrets')) &&
     file.startsWith('packages/') &&
     !file.startsWith('packages/core/') &&
     !file.startsWith('packages/secrets/')
