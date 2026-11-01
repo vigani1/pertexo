@@ -132,6 +132,7 @@ describe('the names the plan fixes', () => {
   it('lists every step failure', () => {
     expect(oauth2StepFailureCodeSchema.options).toEqual([
       'http.oauth2_not_connected',
+      'http.oauth2_connection_revoked',
       'http.oauth2_grant_revoked',
       'http.oauth2_client_rejected',
       'http.oauth2_token_expired',

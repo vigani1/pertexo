@@ -5,6 +5,7 @@ export {
   ConnectionNotFoundError,
   ConnectionNotOAuth2Error,
   ConnectionOAuth2NotConnectedError,
+  ConnectionOAuth2RevokedError,
   ConnectionSharingRevisionConflictError,
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,

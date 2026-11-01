@@ -2,6 +2,12 @@
 // do). The code itself stays visible in mono beside the sentence, so support
 // can still find it; prose never shows a bare code.
 
+import {
+  connectionRevoked,
+  OAUTH2_SHORT_REASONS,
+  OAUTH2_STEP_ERRORS,
+} from './oauth2-error-copy';
+
 type StepErrorFix = 'reconnect' | 'review-connection';
 
 export type StepErrorCopy = Readonly<{
@@ -167,11 +173,7 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
     advice: 'Reconnect it in Connections, then replay the run.',
     fix: 'reconnect',
   },
-  'connection.revoked': {
-    sentence: 'The connection this step uses was revoked.',
-    advice:
-      'Choose another connection for this step in Build, publish, then replay the run.',
-  },
+  'connection.revoked': connectionRevoked,
   'connection.provider_rejected': credentialsRejected,
   'connection.credential_rejected': credentialsRejected,
   'connection.provider_invalid_response': {
@@ -179,6 +181,7 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
     advice:
       'Replay the run later. If it keeps happening, check the service’s status page.',
   },
+  ...OAUTH2_STEP_ERRORS,
   'run.outcome_unknown': outcomeUnknown,
   'node.outcome_unknown': outcomeUnknown,
   'execution.deadline_exceeded': {
@@ -341,6 +344,7 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
   'connection.provider_rejected': 'credentials rejected',
   'connection.credential_rejected': 'credentials rejected',
   'connection.provider_invalid_response': 'unreadable response',
+  ...OAUTH2_SHORT_REASONS,
   'run.outcome_unknown': 'outcome unknown',
   'node.outcome_unknown': 'outcome unknown',
   'execution.deadline_exceeded': 'deadline reached',
