@@ -24,7 +24,10 @@ import type {
   WorkspaceNoticeKind,
 } from '@pertexo/contracts';
 import { noticeVisibilitySql } from '../threads/eligibility.queries.js';
-import { readAttentionFact } from '../observations/facts.queries.js';
+import {
+  connectionNeedsAttentionSql,
+  readAttentionFact,
+} from '../observations/facts.queries.js';
 import type { NoticeMailItem } from './contract.js';
 type MailSubjectRecord = Awaited<ReturnType<typeof mailSubjectsQuery>>[number];
 export type MailSubjectRow = MailSubjectRecord &
@@ -88,7 +91,7 @@ export async function readMailSubjects(
           ),
           and(
             eq(thread.noticeKind, 'connection_attention'),
-            eq(connection.status, 'reauthorization_required'),
+            connectionNeedsAttentionSql(connection),
           ),
           inArray(thread.noticeKind, [
             'limit_reached',
