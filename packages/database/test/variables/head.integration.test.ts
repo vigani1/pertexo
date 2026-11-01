@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { Pool } from 'pg';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { Client, Pool } from 'pg';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   withTenantScopedClient,
@@ -8,16 +9,29 @@ import {
 } from '../../src/tenant-access/transactions.js';
 import {
   captureWorkspaceVariableRevision,
+  lockVariableSet,
   lockWorkspaceVariableNames,
 } from '../../src/variables/head.queries.js';
 import { admin, createFamily } from '../lifecycle/calls/fixtures.js';
-import { apiUrl } from '../lifecycle/retention.support.js';
+import {
+  adminUrl,
+  apiUrl,
+  withApplicationName,
+  withDatabase,
+} from '../lifecycle/retention.support.js';
+import { waitForApplicationLock } from '../support/postgres/lock-coordination.js';
 
+const waitingApplication = `variable-head-${randomUUID()}`;
 let pool: Pool;
+let waitingPool: Pool;
 beforeAll(() => {
   pool = new Pool({ connectionString: apiUrl, max: 2 });
+  waitingPool = new Pool({
+    connectionString: withApplicationName(apiUrl, waitingApplication),
+    max: 1,
+  });
 });
-afterAll(() => pool.end());
+afterAll(() => Promise.all([pool.end(), waitingPool.end()]));
 
 async function setHead(workspaceId: string, revision: number, values: object) {
   await admin.query(
@@ -112,4 +126,157 @@ it('never lets a name escape another workspace through the head queries', async 
       lockWorkspaceVariableNames(client, theirs.workspaceId),
     ),
   ).resolves.toEqual([]);
+});
+
+describe('locking the set', () => {
+  const lockIn = (from: Pool, workspaceId: string, lock: 'share' | 'update') =>
+    withTenantScopedClient(from, { workspaceId }, (client) =>
+      lockVariableSet(client, workspaceId, lock),
+    );
+
+  it.each(['share', 'update'] as const)(
+    'gives null under a %s lock when the workspace has no head',
+    async (lock) => {
+      const { workspaceId } = await createFamily();
+      expect(await lockIn(pool, workspaceId, lock)).toBeNull();
+    },
+  );
+
+  it.each(['share', 'update'] as const)(
+    'gives the current revision with its values and descriptions under a %s lock',
+    async (lock) => {
+      const { workspaceId } = await createFamily();
+      await setHead(workspaceId, 1, { OLD: 1 });
+      await admin.query(
+        `insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json,descriptions_json)
+         values($1,2,'{"RATE":10}','{"RATE":"Invoice rate"}')`,
+        [workspaceId],
+      );
+      await admin.query(
+        'update app.workspace_variables set revision=2 where workspace_id=$1',
+        [workspaceId],
+      );
+      expect(await lockIn(pool, workspaceId, lock)).toEqual({
+        revision: 2,
+        values: { RATE: 10 },
+        descriptions: { RATE: 'Invoice rate' },
+      });
+    },
+  );
+
+  it.each(['share', 'update'] as const)(
+    'fails under a %s lock when the head names a set that is gone, rather than reading empty',
+    async (lock) => {
+      const { workspaceId } = await createFamily();
+      await setHead(workspaceId, 1, { RATE: 1 });
+      // The foreign key forbids this state, so only a restore or a damaged
+      // database reaches it: replica mode is the one way to build it here.
+      await admin.query('set session_replication_role=replica');
+      try {
+        await admin.query(
+          'update app.workspace_variables set revision=99 where workspace_id=$1',
+          [workspaceId],
+        );
+      } finally {
+        await admin.query('set session_replication_role=default');
+      }
+      await expect(lockIn(pool, workspaceId, lock)).rejects.toThrow(
+        'Workspace variable revision is missing',
+      );
+    },
+  );
+
+  // A concurrent replace is what these locks are for: whoever waits must read
+  // the set the head names after the wait, never the one from before it.
+  it.each([
+    ['share', 'commit', 2, { RATE: 'new' }],
+    ['share', 'rollback', 1, { RATE: 'old' }],
+    ['update', 'commit', 2, { RATE: 'new' }],
+    ['update', 'rollback', 1, { RATE: 'old' }],
+  ] as const)(
+    'under a %s lock waits for an open edit, and after its %s reads revision %i',
+    async (lock, finish, revision, values) => {
+      const { workspaceId } = await createFamily();
+      await setHead(workspaceId, 1, { RATE: 'old' });
+      const editor = new Client({ connectionString: withDatabase(adminUrl) });
+      await editor.connect();
+      try {
+        await editor.query('begin');
+        await editor.query(
+          `insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json)
+           values($1,2,'{"RATE":"new"}')`,
+          [workspaceId],
+        );
+        await editor.query(
+          'update app.workspace_variables set revision=2 where workspace_id=$1',
+          [workspaceId],
+        );
+        const locked = lockIn(waitingPool, workspaceId, lock);
+        await waitForApplicationLock(admin, waitingApplication);
+        await editor.query(finish);
+        expect(await locked).toEqual({ revision, values, descriptions: {} });
+      } finally {
+        await editor.end();
+      }
+    },
+  );
+
+  it('lets shared holders overlap, while an update lock waits for them', async () => {
+    const { workspaceId } = await createFamily();
+    await setHead(workspaceId, 1, { RATE: 'old' });
+    const { update } = await withTenantScopedClient(
+      pool,
+      { workspaceId },
+      async (client) => {
+        await lockVariableSet(client, workspaceId, 'share');
+        expect(await lockIn(waitingPool, workspaceId, 'share')).toMatchObject({
+          revision: 1,
+        });
+        const waiting = lockIn(waitingPool, workspaceId, 'update');
+        await waitForApplicationLock(admin, waitingApplication);
+        return { update: waiting };
+      },
+    );
+    expect(await update).toMatchObject({ revision: 1 });
+  });
+
+  it.each(['share', 'update'] as const)(
+    'holds an edit back until the %s lock is let go',
+    async (lock) => {
+      const { workspaceId } = await createFamily();
+      await setHead(workspaceId, 1, { RATE: 'old' });
+      const application = `variable-editor-${randomUUID()}`;
+      const editor = new Client({
+        connectionString: withApplicationName(
+          withDatabase(adminUrl),
+          application,
+        ),
+      });
+      await editor.connect();
+      try {
+        const { edit } = await withTenantScopedClient(
+          pool,
+          { workspaceId },
+          async (client) => {
+            await lockVariableSet(client, workspaceId, lock);
+            await admin.query(
+              `insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json)
+               values($1,2,'{"RATE":"new"}')`,
+              [workspaceId],
+            );
+            const held = editor.query(
+              'update app.workspace_variables set revision=2 where workspace_id=$1',
+              [workspaceId],
+            );
+            await waitForApplicationLock(admin, application);
+            return { edit: held };
+          },
+        );
+        await edit;
+        expect(await capture(workspaceId)).toBe(2);
+      } finally {
+        await editor.end();
+      }
+    },
+  );
 });
