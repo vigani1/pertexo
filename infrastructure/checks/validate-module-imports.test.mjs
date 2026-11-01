@@ -334,7 +334,6 @@ test('the list of areas not yet passed can only shrink', () => {
     'outbox',
     'runs',
     'tenant-access',
-    'triggers',
   ];
   for (const area of AREAS_NOT_YET_PASSED)
     assert.ok(
