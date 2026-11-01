@@ -31,21 +31,8 @@ export type StartCoordinatedRun = (
   eventId: string,
 ) => Promise<{ runId: string; duplicate: boolean }>;
 
-export interface TriggerEventScanner {
-  scanDue(
-    input: Readonly<{
-      limit: number;
-      checkpointFactory: InitialCheckpointFactory;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<
-    Readonly<{
-      examined: number;
-      started: number;
-      pending: number;
-      refused: number;
-      idle: number;
-    }>
-  >;
-  close(): Promise<void>;
-}
+export type ScanDueEventsInput = Readonly<{
+  limit: number;
+  checkpointFactory: InitialCheckpointFactory;
+  signal?: AbortSignal;
+}>;

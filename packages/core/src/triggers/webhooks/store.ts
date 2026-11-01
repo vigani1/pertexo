@@ -19,7 +19,14 @@ import {
   withWebhookReader,
 } from './deliveries.repository.js';
 
-import type { WebhookTriggerStore } from './runtime/contract.js';
+import type {
+  AcceptVerifiedWebhookDeliveryInput,
+  ConfigureWebhookAuthenticationInput,
+  ProvisionWebhookInput,
+  ReadWebhookHealthInput,
+  RotateWebhookEndpointInput,
+  RotateWebhookSecretInput,
+} from './runtime/contract.js';
 
 import { acceptVerifiedWebhookDelivery } from './runtime/accept.repository.js';
 import { createWorkspaceTurns } from './runtime/workspace-turns.js';
@@ -43,13 +50,15 @@ const ACCEPTANCES_AT_ONCE_PER_WORKSPACE = 3;
 /** Long enough for a burst of 80 at 4 a second, and inside a request's 30 second limit. */
 const ACCEPTANCE_MAX_WAIT_MILLIS = 20_000;
 
+export type WebhookTriggerStore = ReturnType<typeof createWebhookTriggerStore>;
+
 export function createWebhookTriggerStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
   {
     burstLimit = DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
   }: Readonly<{ burstLimit?: number }> = {},
-): WebhookTriggerStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   const eventPreparation = createEventCoordinationPreparation();
@@ -59,35 +68,26 @@ export function createWebhookTriggerStore(
   });
 
   return Object.freeze({
-    readResponse: (input: WebhookResponseScope) => {
-      return readWebhookResponse(pool, input);
-    },
-    configureAuthentication: (
-      input: Parameters<WebhookTriggerStore['configureAuthentication']>[0],
-    ) => configureWebhookAuthentication(pool, input),
-    provision: (input: Parameters<WebhookTriggerStore['provision']>[0]) =>
-      provisionWebhook(pool, input),
-    rotateEndpoint: (
-      input: Parameters<WebhookTriggerStore['rotateEndpoint']>[0],
-    ) => rotateWebhookEndpoint(pool, input),
-    rotateSecret: (input: Parameters<WebhookTriggerStore['rotateSecret']>[0]) =>
+    readResponse: (input: WebhookResponseScope) =>
+      readWebhookResponse(pool, input),
+    configureAuthentication: (input: ConfigureWebhookAuthenticationInput) =>
+      configureWebhookAuthentication(pool, input),
+    provision: (input: ProvisionWebhookInput) => provisionWebhook(pool, input),
+    rotateEndpoint: (input: RotateWebhookEndpointInput) =>
+      rotateWebhookEndpoint(pool, input),
+    rotateSecret: (input: RotateWebhookSecretInput) =>
       rotateWebhookSecret(pool, input),
-    getHealth: (input: Parameters<WebhookTriggerStore['getHealth']>[0]) =>
+    getHealth: (input: ReadWebhookHealthInput) =>
       withWebhookReader(pool, input, (client) =>
         readHealth(client, input.workspaceId, input.workflowId),
       ),
     // From here on the caller is an HTTP sender, not a member: it has proved only that
     // it knows the address, and its signature is what gets checked.
-    resolveVerification: (
-      endpointKeyHashInput: Parameters<
-        WebhookTriggerStore['resolveVerification']
-      >[0],
-    ) => resolveWebhookVerification(pool, endpointKeyHashInput),
-    consumeIngressLimit: (endpointKeyHashInput: string) =>
-      consumeWebhookIngressLimit(pool, endpointKeyHashInput, burstLimit),
-    acceptVerifiedDelivery: (
-      input: Parameters<WebhookTriggerStore['acceptVerifiedDelivery']>[0],
-    ) =>
+    resolveVerification: (endpointKeyHash: string) =>
+      resolveWebhookVerification(pool, endpointKeyHash),
+    consumeIngressLimit: (endpointKeyHash: string) =>
+      consumeWebhookIngressLimit(pool, endpointKeyHash, burstLimit),
+    acceptVerifiedDelivery: (input: AcceptVerifiedWebhookDeliveryInput) =>
       acceptVerifiedWebhookDelivery(pool, { eventPreparation, turns }, input),
     ...createWebhookDeliveryLog(pool),
     close: () =>

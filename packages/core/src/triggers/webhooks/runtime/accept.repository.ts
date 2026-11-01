@@ -34,7 +34,11 @@ import {
   withWorkspaceReadTransaction,
   withWorkspaceTransaction,
 } from '@pertexo/database/primitives';
-import type { WebhookConfig, WebhookTriggerStore } from './contract.js';
+import type {
+  AcceptVerifiedWebhookDeliveryInput,
+  WebhookAcceptance,
+  WebhookConfig,
+} from './contract.js';
 
 import { executableProjection, lockEligibleEndpoint } from './state.queries.js';
 import type { WorkspaceTurns } from './workspace-turns.js';
@@ -48,8 +52,8 @@ export async function acceptVerifiedWebhookDelivery(
     eventPreparation: ReturnType<typeof createEventCoordinationPreparation>;
     turns: WorkspaceTurns;
   }>,
-  input: Parameters<WebhookTriggerStore['acceptVerifiedDelivery']>[0],
-): ReturnType<WebhookTriggerStore['acceptVerifiedDelivery']> {
+  input: AcceptVerifiedWebhookDeliveryInput,
+): Promise<WebhookAcceptance> {
   const verification = input.verification;
   const requestFingerprint = input.requestFingerprint;
   // Only a sender's own key names a repeat. Identical bytes without one are separate
@@ -223,7 +227,7 @@ function replayDeliveryReference(
 
 async function acceptNewWebhookDelivery(
   transaction: WorkspaceTransaction,
-  input: Parameters<WebhookTriggerStore['acceptVerifiedDelivery']>[0],
+  input: AcceptVerifiedWebhookDeliveryInput,
   {
     requestFingerprint,
     replayIdentity,
@@ -232,16 +236,14 @@ async function acceptNewWebhookDelivery(
   }: Readonly<{
     requestFingerprint: string;
     replayIdentity: WebhookReplayIdentity | undefined;
-    runInput: Parameters<
-      WebhookTriggerStore['acceptVerifiedDelivery']
-    >[0]['runInput'];
+    runInput: unknown;
     prepared: Awaited<
       ReturnType<
         ReturnType<typeof createEventCoordinationPreparation>['prepare']
       >
     >;
   }>,
-): ReturnType<WebhookTriggerStore['acceptVerifiedDelivery']> {
+): Promise<WebhookAcceptance> {
   const verification = input.verification;
   const deliveryId = generatePersistedId();
   if (replayIdentity !== undefined)

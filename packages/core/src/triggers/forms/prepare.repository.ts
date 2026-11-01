@@ -14,14 +14,14 @@ import {
   FormValuesInvalidError,
 } from '@pertexo/workflow-model';
 import { authorizeForm, readFormVersion } from './records.queries.js';
-import type { FormStore, PublicFormGrant } from './contract.js';
+import type { PublicFormGrant, SubmitFormInput } from './contract.js';
 import { resolveFormFiles } from '../../artifacts/form-uploads/resolve.queries.js';
 
 import type { createEventCoordinationPreparation } from '../coordination/prepare.js';
 /** Read an authorized immutable candidate; expression work holds no admission locks. */
 export async function prepareFormEvent(
   pool: Pool,
-  input: Parameters<FormStore['submit']>[0],
+  input: SubmitFormInput,
   grant: PublicFormGrant | undefined,
   preparation: ReturnType<typeof createEventCoordinationPreparation>,
 ): Promise<PreparedFormEvent | undefined> {

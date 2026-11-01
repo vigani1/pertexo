@@ -18,7 +18,14 @@ import {
 } from '../errors.js';
 
 import { command } from './commands.js';
-import type { Command, WebhookTriggerStore } from './contract.js';
+import type {
+  Command,
+  ConfigureWebhookAuthenticationInput,
+  ProvisionWebhookInput,
+  RotateWebhookEndpointInput,
+  RotateWebhookSecretInput,
+  WebhookCommandResult,
+} from './contract.js';
 import {
   claimWebhookCommand,
   completeWebhookCommand,
@@ -42,8 +49,8 @@ function endpointOfTrigger(input: Command) {
 
 export function configureWebhookAuthentication(
   pool: Pool,
-  input: Parameters<WebhookTriggerStore['configureAuthentication']>[0],
-): ReturnType<WebhookTriggerStore['configureAuthentication']> {
+  input: ConfigureWebhookAuthenticationInput,
+): Promise<WebhookCommandResult & Readonly<{ rotated: boolean }>> {
   return command(pool, input, async (client) => {
     const operation = 'webhook.trigger.authentication.configure';
     if (await claimWebhookCommand(client, input, operation))
@@ -99,8 +106,8 @@ export function configureWebhookAuthentication(
 
 export function provisionWebhook(
   pool: Pool,
-  input: Parameters<WebhookTriggerStore['provision']>[0],
-): ReturnType<WebhookTriggerStore['provision']> {
+  input: ProvisionWebhookInput,
+): Promise<WebhookCommandResult> {
   return command(pool, input, async (client) => {
     const operation = 'webhook.trigger.provision';
     if (await claimWebhookCommand(client, input, operation))
@@ -172,8 +179,8 @@ export function provisionWebhook(
 
 export function rotateWebhookEndpoint(
   pool: Pool,
-  input: Parameters<WebhookTriggerStore['rotateEndpoint']>[0],
-): ReturnType<WebhookTriggerStore['rotateEndpoint']> {
+  input: RotateWebhookEndpointInput,
+): Promise<WebhookCommandResult> {
   return command(pool, input, async (client) => {
     const operation = 'webhook.trigger.endpoint.rotate';
     if (await claimWebhookCommand(client, input, operation))
@@ -201,8 +208,8 @@ export function rotateWebhookEndpoint(
 
 export function rotateWebhookSecret(
   pool: Pool,
-  input: Parameters<WebhookTriggerStore['rotateSecret']>[0],
-): ReturnType<WebhookTriggerStore['rotateSecret']> {
+  input: RotateWebhookSecretInput,
+): Promise<WebhookCommandResult> {
   return command(pool, input, async (client) => {
     const operation = 'webhook.trigger.secret.rotate';
     const keyedCommand = {

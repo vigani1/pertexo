@@ -2,8 +2,6 @@ import type { z } from 'zod';
 import type { scheduleTriggerSchema } from './receipt.js';
 import type { readScheduleCommandTarget } from './state.queries.js';
 
-import type { ScheduleTriggerReads } from '../contract.js';
-
 // Projection joins workflow triggers with schedule state and decoded recurrence.
 export type ScheduleTriggerRecord = Readonly<
   z.output<typeof scheduleTriggerSchema>
@@ -14,32 +12,23 @@ export type ScheduleTriggerCommandResult = Readonly<{
   replayed: boolean;
 }>;
 
-export interface ScheduleTriggerStore extends ScheduleTriggerReads {
-  list(
-    input: Readonly<{
-      workspaceId: string;
-      actorId: string;
-      workflowId: string;
-    }>,
-  ): Promise<readonly ScheduleTriggerRecord[]>;
-  setEnabled(
-    input: Readonly<{
-      workspaceId: string;
-      actorId: string;
-      workflowId: string;
-      triggerId: string;
-      enabled: boolean;
-      idempotencyKey: string;
-      requestHash: string;
-      requestId?: string;
-      traceId?: string;
-    }>,
-  ): Promise<ScheduleTriggerCommandResult>;
-  checkReadiness(): Promise<void>;
-  close(): Promise<void>;
-}
+export type ListSchedulesInput = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  workflowId: string;
+}>;
 
-export type SetEnabledInput = Parameters<ScheduleTriggerStore['setEnabled']>[0];
+export type SetEnabledInput = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  workflowId: string;
+  triggerId: string;
+  enabled: boolean;
+  idempotencyKey: string;
+  requestHash: string;
+  requestId?: string;
+  traceId?: string;
+}>;
 
 export type ScheduleCommandIdentity = Readonly<{
   idempotencyKey: string;

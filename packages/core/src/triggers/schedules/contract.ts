@@ -41,16 +41,11 @@ export type TriggerRead = Readonly<{
   triggerId: string;
 }>;
 
-export interface ScheduleTriggerReads {
-  listOccurrences(
-    input: TriggerRead &
-      Readonly<{ limit?: number; after?: ScheduleOccurrencePosition }>,
-  ): Promise<ScheduleOccurrencePage>;
-  nextFireTimes(
-    input: TriggerRead & Readonly<{ count: number }>,
-  ): Promise<ScheduleFireTimes>;
-  previewFireTimes(
-    input: Omit<TriggerRead, 'triggerId'> &
-      Readonly<{ recurrence: ScheduleRecurrence; count: number }>,
-  ): Promise<ScheduleFireTimes>;
-}
+export type ListScheduleOccurrencesInput = TriggerRead &
+  Readonly<{ limit?: number; after?: ScheduleOccurrencePosition }>;
+
+export type NextScheduleFireTimesInput = TriggerRead &
+  Readonly<{ count: number }>;
+
+export type PreviewScheduleFireTimesInput = Omit<TriggerRead, 'triggerId'> &
+  Readonly<{ recurrence: ScheduleRecurrence; count: number }>;

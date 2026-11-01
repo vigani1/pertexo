@@ -9,7 +9,6 @@ import type {
   ScanDueInput,
   ScanDueSchedulesResult,
   ScannerResources,
-  ScheduleTriggerScanner,
 } from './scanning/contract.js';
 import {
   claimDueSchedules,
@@ -41,6 +40,11 @@ async function scanDueSchedules(
   });
 }
 
+export type ScheduleTriggerScanner = ReturnType<
+  typeof createScheduleTriggerScanner
+>;
+
+/** The worker firing what's due: no member behind it, so it stays off the helper. */
 export function createScheduleTriggerScanner(
   claimConfig: DatabaseConfig,
   acceptanceConfig: DatabaseConfig,
@@ -48,7 +52,7 @@ export function createScheduleTriggerScanner(
     acceptance?: DatabaseRuntime;
     claim?: DatabaseRuntime;
   }> = {},
-): ScheduleTriggerScanner {
+) {
   const claimLease = acquireDatabasePool(claimConfig, runtimes.claim);
   let acceptanceLease: ReturnType<typeof acquireDatabasePool>;
   try {

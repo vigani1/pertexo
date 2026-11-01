@@ -26,13 +26,13 @@ import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js'
 import { readWorkflowRunAcceptanceReplay } from '../../runs/commands/acceptance/replay.repository.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { FormChangedError, FormUnavailableError } from './errors.js';
-import type { FormStore } from './contract.js';
+import type { SubmitFormInput } from './contract.js';
 import { markFormUploadsSubmitted } from '../../artifacts/form-uploads/unsent.queries.js';
 import type { readFormVersion } from './records.queries.js';
 
 export async function submitForm(
   client: PoolClient,
-  input: Parameters<FormStore['submit']>[0],
+  input: SubmitFormInput,
   {
     prepare,
     publicAccess,
@@ -190,9 +190,7 @@ function submissionReceipt(
   };
 }
 
-export function formSubmissionIdentity(
-  input: Parameters<FormStore['submit']>[0],
-) {
+export function formSubmissionIdentity(input: SubmitFormInput) {
   const digest = (value: string) =>
     createHash('sha256').update(value).digest('hex');
   const scope = `form:${input.workflowId}:${input.actorId ?? 'public'}`;

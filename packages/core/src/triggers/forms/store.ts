@@ -26,7 +26,21 @@ import type { PoolClient } from 'pg';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { withWorkflowAccess } from '../workflow-access.js';
 import { FormUnavailableError } from './errors.js';
-import type { FormScope, FormStore, PublicFormGrant } from './contract.js';
+import type {
+  CoordinatedEventHistory,
+  FormAccess,
+  FormSchemaResponse,
+  FormSubmissionResponse,
+} from '@pertexo/contracts';
+import type {
+  DiscoverFormInput,
+  FormHistoryInput,
+  FormScope,
+  PublicFormGrant,
+  ReadFormAccessInput,
+  SetFormAccessInput,
+  SubmitFormInput,
+} from './contract.js';
 import { authorizeForm, readFormVersion } from './records.queries.js';
 import {
   capabilityHash,
@@ -34,35 +48,41 @@ import {
   changeFormAccess,
 } from './access.repository.js';
 import { submitForm } from './submit.repository.js';
+export type FormStore = ReturnType<typeof createFormStore>;
+
 export function createFormStore(
   config: DatabaseConfig,
   prepare: InitialCheckpointFactory,
   runtime?: DatabaseRuntime,
-): FormStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const eventPreparation = createEventCoordinationPreparation();
   return Object.freeze({
     close: () =>
       closeEventCoordinationStore(() => lease.close(), eventPreparation),
-    discover: (input) => discoverPublicForm(lease.pool, input),
-    read: (input, grant) => readForm(lease.pool, input, grant),
-    submit: (input, grant) =>
+    discover: (input: DiscoverFormInput) =>
+      discoverPublicForm(lease.pool, input),
+    read: (input: FormScope, grant?: PublicFormGrant) =>
+      readForm(lease.pool, input, grant),
+    submit: (input: SubmitFormInput, grant?: PublicFormGrant) =>
       submitFormEvent(
         { pool: lease.pool, prepare, eventPreparation },
         input,
         grant,
       ),
-    history: (input) => readFormHistory(lease.pool, input),
-    access: (input) => readManagedFormAccess(lease.pool, input),
-    setAccess: (input) => setManagedFormAccess(lease.pool, input),
-  } satisfies FormStore);
+    history: (input: FormHistoryInput) => readFormHistory(lease.pool, input),
+    access: (input: ReadFormAccessInput) =>
+      readManagedFormAccess(lease.pool, input),
+    setAccess: (input: SetFormAccessInput) =>
+      setManagedFormAccess(lease.pool, input),
+  });
 }
 
 /** No member behind this one either: it turns a link into a grant. */
 export async function discoverPublicForm(
   pool: Pool,
-  input: Parameters<FormStore['discover']>[0],
-): ReturnType<FormStore['discover']> {
+  input: DiscoverFormInput,
+): Promise<PublicFormGrant> {
   const result = await drizzle(pool)
     .execute<{
       workspaceId: string;
@@ -83,7 +103,7 @@ export async function discoverPublicForm(
 
 function publishedForm(
   loaded: Awaited<ReturnType<typeof readFormVersion>>,
-): Awaited<ReturnType<FormStore['read']>> {
+): FormSchemaResponse {
   const { version, form } = loaded;
   return {
     versionId: version.id,
@@ -98,9 +118,9 @@ function publishedForm(
 /** A member still reads a suspended workspace's form; the public never does. */
 async function readForm(
   pool: Pool,
-  input: Parameters<FormStore['read']>[0],
-  grant: Parameters<FormStore['read']>[1],
-): ReturnType<FormStore['read']> {
+  input: FormScope,
+  grant: PublicFormGrant | undefined,
+): Promise<FormSchemaResponse> {
   if (grant !== undefined) return readPublicForm(pool, input, grant);
   const { actorId } = input;
   if (actorId === undefined) throw new FormUnavailableError();
@@ -122,9 +142,9 @@ async function readForm(
 /** No member behind this one: the link is the authority, so it stays off the helper. */
 function readPublicForm(
   pool: Pool,
-  input: Parameters<FormStore['read']>[0],
+  input: FormScope,
   grant: PublicFormGrant,
-): ReturnType<FormStore['read']> {
+): Promise<FormSchemaResponse> {
   return withTenantScopedReadClient(
     pool,
     {
@@ -152,9 +172,9 @@ async function submitFormEvent(
     prepare: InitialCheckpointFactory;
     eventPreparation: ReturnType<typeof createEventCoordinationPreparation>;
   }>,
-  input: Parameters<FormStore['submit']>[0],
-  grant: Parameters<FormStore['submit']>[1],
-): ReturnType<FormStore['submit']> {
+  input: SubmitFormInput,
+  grant: PublicFormGrant | undefined,
+): Promise<FormSubmissionResponse> {
   const prepared = await prepareFormEvent(pool, input, grant, eventPreparation);
   return withTenantScopedClient(
     pool,
@@ -217,8 +237,8 @@ function withFormManager<T>(
 
 async function readFormHistory(
   pool: Pool,
-  input: Parameters<FormStore['history']>[0],
-): ReturnType<FormStore['history']> {
+  input: FormHistoryInput,
+): Promise<CoordinatedEventHistory> {
   try {
     return await withFormManager(pool, input, (client) =>
       readCoordinatedEventHistory(client, input),
@@ -232,8 +252,8 @@ async function readFormHistory(
 
 function readManagedFormAccess(
   pool: Pool,
-  input: Parameters<FormStore['access']>[0],
-): ReturnType<FormStore['access']> {
+  input: ReadFormAccessInput,
+): Promise<FormAccess> {
   return withFormManager(pool, input, async (client) => {
     await readFormVersion(client, input, 'read', { allowPaused: true });
     return readFormAccess(client, input);
@@ -242,8 +262,8 @@ function readManagedFormAccess(
 
 function setManagedFormAccess(
   pool: Pool,
-  input: Parameters<FormStore['setAccess']>[0],
-): ReturnType<FormStore['setAccess']> {
+  input: SetFormAccessInput,
+): Promise<FormAccess> {
   return withWorkflowAccess(
     pool,
     input,

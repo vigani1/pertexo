@@ -19,7 +19,11 @@ import {
   inboxReceipts,
   transportSecurityAuditFacts,
 } from '@pertexo/database/schema';
-import type { WorkflowTriggerReconciliationStore } from './contract.js';
+import type {
+  ReconcileWorkflowTriggersInput,
+  RecordReconciliationFailureInput,
+  WorkflowTriggerHealth,
+} from './contract.js';
 import {
   assertDeliveryIdentity,
   readReconciliationEvent,
@@ -64,27 +68,30 @@ async function completeReceipt(
     );
 }
 
+export type WorkflowTriggerReconciliationStore = ReturnType<
+  typeof createWorkflowTriggerReconciliationStore
+>;
+
+/** The worker applying a publish: no member behind it, so it stays off the helper. */
 export function createWorkflowTriggerReconciliationStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkflowTriggerReconciliationStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
-    reconcile: (
-      input: Parameters<WorkflowTriggerReconciliationStore['reconcile']>[0],
-    ) => reconcileWorkflowTriggers(pool, input),
-    recordFailure: (
-      input: Parameters<WorkflowTriggerReconciliationStore['recordFailure']>[0],
-    ) => recordTriggerReconciliationFailure(pool, input),
+    reconcile: (input: ReconcileWorkflowTriggersInput) =>
+      reconcileWorkflowTriggers(pool, input),
+    recordFailure: (input: RecordReconciliationFailureInput) =>
+      recordTriggerReconciliationFailure(pool, input),
     close: () => lease.close(),
   });
 }
 
 async function reconcileWorkflowTriggers(
   pool: Pool,
-  input: Parameters<WorkflowTriggerReconciliationStore['reconcile']>[0],
-): ReturnType<WorkflowTriggerReconciliationStore['reconcile']> {
+  input: ReconcileWorkflowTriggersInput,
+): Promise<readonly WorkflowTriggerHealth[]> {
   const outcome = await withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId },
@@ -189,8 +196,8 @@ async function reconcileWorkflowTriggers(
 
 async function recordTriggerReconciliationFailure(
   pool: Pool,
-  input: Parameters<WorkflowTriggerReconciliationStore['recordFailure']>[0],
-): ReturnType<WorkflowTriggerReconciliationStore['recordFailure']> {
+  input: RecordReconciliationFailureInput,
+): Promise<void> {
   return withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId },

@@ -17,13 +17,13 @@ import { endpointTakesDeliveries } from './endpoint-rules.js';
 import type {
   StoredWebhookTriggerSecret,
   WebhookConfig,
-  WebhookTriggerStore,
+  WebhookVerificationReference,
 } from './contract.js';
 
 export async function resolveWebhookVerification(
   pool: Pool,
-  endpointKeyHash: Parameters<WebhookTriggerStore['resolveVerification']>[0],
-): ReturnType<WebhookTriggerStore['resolveVerification']> {
+  endpointKeyHash: string,
+): Promise<WebhookVerificationReference | null> {
   const result = await drizzle(pool)
     .select({
       endpointId: sql<string>`resolution.endpoint_id`,
@@ -105,11 +105,9 @@ export async function resolveWebhookVerification(
 
 export async function consumeWebhookIngressLimit(
   pool: Pool,
-  endpointKeyHashInput: Parameters<
-    WebhookTriggerStore['consumeIngressLimit']
-  >[0],
+  endpointKeyHashInput: string,
   burstLimit: number,
-): ReturnType<WebhookTriggerStore['consumeIngressLimit']> {
+): Promise<void> {
   const result = await drizzle(pool)
     .execute<{ allowed: boolean; retry_after_seconds: number }>(
       sql`select * from app.consume_webhook_ingress_limit(${endpointKeyHashInput}::char(64),${burstLimit}::integer)`,

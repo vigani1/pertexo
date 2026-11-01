@@ -1,4 +1,4 @@
-import type { TriggerEventScanner } from './contract.js';
+import type { ScanDueEventsInput } from './contract.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -13,14 +13,18 @@ import {
 } from '@pertexo/database/platform';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import { releaseCoordinatedEvent } from './release.repository.js';
+
+export type TriggerEventScanner = ReturnType<typeof createTriggerEventScanner>;
+
+/** The worker releasing held events: no member behind it, so it stays off the helper. */
 export function createTriggerEventScanner(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): TriggerEventScanner {
+) {
   const lease = acquireDatabasePool(config, runtime);
   return {
     close: () => lease.close(),
-    async scanDue(input) {
+    async scanDue(input: ScanDueEventsInput) {
       const due = await withPlatformTransaction(
         lease.pool,
         (client) =>
