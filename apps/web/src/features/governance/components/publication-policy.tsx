@@ -1,16 +1,13 @@
-import { useId } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useId, useState } from 'react';
 import type { GovernanceSettings } from '@pertexo/contracts';
 import { LabelledField, FieldGroup } from '@/components/ui/field';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { saveSettings, type GovernanceScope } from '../data/audit.api';
-import { governanceKeys, governanceQueryOptions } from '../data/audit.queries';
-import { useState } from 'react';
 import { isApiError } from '@/lib/api/error';
+import type { GovernanceScope } from '../data/audit.api';
+import { useSettingForm } from '../hooks/use-setting-form';
 export function PublicationPolicy({
   scope,
   snapshot,
@@ -20,29 +17,18 @@ export function PublicationPolicy({
   snapshot: GovernanceSettings;
   editable: boolean;
 }>) {
-  const id = useId(),
-    cache = useQueryClient();
-  const [base, setBase] = useState(snapshot);
+  const id = useId();
   const [required, setRequired] = useState(snapshot.requirePublishApproval);
-  const command = useRetainedCommand(
-    (
-      body: { expectedRevision: number; requirePublishApproval: boolean },
-      key: string,
-    ) => saveSettings(scope, body, key),
-    async (saved) => {
-      setBase(saved);
-      cache.setQueryData(governanceQueryOptions(scope).queryKey, saved);
-      await cache.invalidateQueries({ queryKey: governanceKeys.scope(scope) });
-    },
-    { action: 'changing publication approval' },
-  );
+  const { base, command, stale, expectedRevision, adoptSnapshot } =
+    useSettingForm(scope, snapshot, 'requirePublishApproval', {
+      action: 'changing publication approval',
+    });
   const failureMessage =
     !command.uncertain &&
     isApiError(command.cause) &&
     command.cause.problem?.code === 'request.invalid'
       ? (command.cause.problem.detail ?? command.error)
       : command.error;
-  const stale = snapshot.revision > base.revision;
   const locked = !editable || command.pending || command.uncertain;
   return (
     <form
@@ -50,7 +36,7 @@ export function PublicationPolicy({
         event.preventDefault();
         if (!locked && !stale)
           void command.send({
-            expectedRevision: base.revision,
+            expectedRevision,
             requirePublishApproval: required,
           });
       }}
@@ -78,17 +64,16 @@ export function PublicationPolicy({
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setBase(snapshot);
+                  adoptSnapshot();
                   setRequired(snapshot.requirePublishApproval);
-                  command.reset();
                 }}
               >
-                Reload policy
+                Reload setting
               </Button>
             }
           >
-            Governance settings changed. Your choice is kept; reload before
-            saving.
+            Someone else changed this setting. Your choice is kept; reload
+            before saving.
           </Notice>
         ) : null}
         <div>

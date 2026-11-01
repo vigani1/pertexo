@@ -4,6 +4,7 @@ import { SettingsSection } from '@/components/patterns/settings/section';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type { GovernanceScope } from '../data/audit.api';
 import { governanceQueryOptions } from '../data/audit.queries';
+import { AUDIT_RETENTION_RANGE } from '../model/setting-edit';
 import { PublicationPolicy } from './publication-policy';
 import { AuditRetention } from './retention';
 import { whoCan } from '@/features/workspaces/roles.public';
@@ -33,7 +34,7 @@ export function GovernanceSettings({
           </SettingsSection>
           <SettingsSection
             title="Audit retention"
-            description={`${sentenceStart(whoCan('governance:manage'))} can keep events for 30 to 2,555 days. Run data retention is separate.`}
+            description={`${sentenceStart(whoCan('governance:manage'))} can keep events for ${AUDIT_RETENTION_RANGE}. Run data retention is separate.`}
           >
             <AuditRetention
               scope={scope}
