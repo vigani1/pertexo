@@ -1,5 +1,5 @@
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createRetentionDatabase } from '@pertexo/core/lifecycle';
+import { createRetentionStore } from '@pertexo/core/lifecycle';
 
 import { parseCheckpoint } from '@pertexo/workflow-engine';
 
@@ -84,7 +84,7 @@ export async function assertSerialLoopRecovery(context: ForEachPhaseContext) {
     const history = await readHistory();
     expect(Number(history[0]?.outputs)).toBeGreaterThan(ordinal + 2);
     if (mode === 'serial_complete' && ordinal === 0) {
-      const retention = createRetentionDatabase(
+      const retention = createRetentionStore(
         parseDatabaseConfig({
           connectionString: databaseUrl(dispatcherUrl),
           max: 1,
@@ -164,7 +164,7 @@ export async function assertSerialLoopRecovery(context: ForEachPhaseContext) {
                 where workspace_id=$1 and id=$2`,
       [workspaceId, accepted.runId],
     );
-    const retention = createRetentionDatabase(
+    const retention = createRetentionStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(dispatcherUrl),
         max: 1,

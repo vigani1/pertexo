@@ -1,5 +1,5 @@
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createRetentionDatabase } from '../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../src/lifecycle/retention/store.js';
 import type { RetentionRuleName } from '../../src/lifecycle/retention/rules.js';
 
 /**
@@ -10,7 +10,7 @@ export async function enforceRetention(
   maintenanceUrl: string,
   pageSize = 1_000,
 ): Promise<Readonly<Record<RetentionRuleName, number>>> {
-  const retention = createRetentionDatabase(
+  const retention = createRetentionStore(
     parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
     { pageSize },
   );

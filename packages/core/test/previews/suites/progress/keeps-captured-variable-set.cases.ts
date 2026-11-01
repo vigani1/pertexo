@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { createRetentionDatabase } from '../../../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../../../src/lifecycle/retention/store.js';
 import { setVariableSet } from '../../../support/variable-sets.js';
 import { workspaceId } from '../../../support/workflow-authoring.js';
 import { command, database, fixture, maintenance, query } from './fixture.js';
@@ -22,7 +22,7 @@ export function registerKeepsCapturedVariableSet(): void {
       'update app.workflow_runs set variable_set_revision=null where workspace_id=$1 and variable_set_revision=$2',
       [workspaceId, captured?.revision],
     );
-    const retention = createRetentionDatabase(maintenance());
+    const retention = createRetentionStore(maintenance());
     try {
       await retention.enforce();
     } finally {

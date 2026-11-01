@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createRetentionDatabase } from '../../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../../src/lifecycle/retention/store.js';
 import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/change.repository.js';
 import {
   withTenantScopedClient,
@@ -139,7 +139,7 @@ describe('connection health retention and tenant purge', () => {
         'alter table app.workflow_runs force row level security',
       );
     });
-    const retention = createRetentionDatabase(
+    const retention = createRetentionStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(maintenanceBase),
         max: 2,

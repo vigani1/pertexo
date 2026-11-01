@@ -1,7 +1,7 @@
 import { and, count, eq } from 'drizzle-orm';
 
 import { expect, it } from 'vitest';
-import { createRetentionDatabase } from '../../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../../src/lifecycle/retention/store.js';
 import { createPreviewRetentionCoordinator } from '../../../src/lifecycle/previews/coordinator.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
@@ -94,7 +94,7 @@ export function registerCapturesVariablesOnPreviewAdmission(): void {
       ),
       max: 1,
     });
-    const retention = createRetentionDatabase(maintenanceConfig);
+    const retention = createRetentionStore(maintenanceConfig);
     const previews = createPreviewRetentionCoordinator(maintenanceConfig, {
       delete: () => Promise.resolve(),
       head: () => Promise.resolve(null),

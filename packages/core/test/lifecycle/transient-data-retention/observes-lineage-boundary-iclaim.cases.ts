@@ -1,4 +1,4 @@
-import { createRetentionDatabase } from '../../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../../src/lifecycle/retention/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
 import { expect, it } from 'vitest';
@@ -14,7 +14,7 @@ export function registerObservesLineageBoundaryIClaim(): void {
         (_, index) =>
           `00000000-0000-4000-8000-${(4096 + index).toString(16).padStart(12, '0')}`,
       );
-      const one = createRetentionDatabase(
+      const one = createRetentionStore(
         parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
         { pageSize: 1 },
       );

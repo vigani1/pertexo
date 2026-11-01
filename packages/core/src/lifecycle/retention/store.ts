@@ -1,7 +1,7 @@
 import type {
   RetentionPassResult,
   RetentionDatabase,
-  RetentionDatabaseOptions,
+  RetentionStoreOptions,
 } from './contract.js';
 import { optionsSchema } from './input.js';
 import { sql } from 'drizzle-orm';
@@ -22,9 +22,9 @@ import { inRetentionTransaction } from './transaction.js';
 /** Advisory lock class for the rules; the rule's index is the second key. */
 const RETENTION_LOCK_CLASS = 1_934_781_128;
 
-export function createRetentionDatabase(
+export function createRetentionStore(
   config: DatabaseConfig,
-  inputOptions: RetentionDatabaseOptions = {},
+  inputOptions: RetentionStoreOptions = {},
   runtime?: DatabaseRuntime,
 ): RetentionDatabase {
   const options = optionsSchema.parse(inputOptions);
