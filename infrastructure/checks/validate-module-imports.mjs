@@ -63,7 +63,6 @@ export const AREAS_NOT_YET_PASSED = new Set([
   'attempts',
   'authoring',
   'connections',
-  'data-tables',
   'execution',
   'governance',
   'identity',

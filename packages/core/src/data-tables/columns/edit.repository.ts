@@ -24,17 +24,34 @@ import {
   workspaceDataTableRows as tableRows,
   workspaceDataTables as tables,
 } from '@pertexo/database/schema';
+import { runTableCommand } from '../command.js';
 import type {
   DataTableDefinition,
   DataTableQuotas,
-  DataTablesStore,
+  EditTableSchemaInput,
 } from '../contract.js';
 import { readQuotas, requireTable } from '../definitions.queries.js';
-import { keyValue } from '../rows/mutate.repository.js';
+import { keyValue } from '../rows/key.js';
 
-export async function editTableSchema(
+/** Rows rewrite in batches of this many. */
+const REWRITE_BATCH_ROWS = 64;
+
+export function editSchema(client: PoolClient, input: EditTableSchemaInput) {
+  return runTableCommand(client, input, {
+    operation: 'data.tables.schema.edit',
+    audit: null,
+    request: {
+      tableId: input.tableId,
+      expectedRevision: input.expectedRevision,
+      change: input.change,
+    },
+    work: () => editTableSchema(client, input),
+  });
+}
+
+async function editTableSchema(
   client: PoolClient,
-  input: Parameters<DataTablesStore['editSchema']>[0],
+  input: EditTableSchemaInput,
 ): Promise<{ revision: number }> {
   const quota = await readQuotas(client, input.workspaceId, { lock: true });
   const table = await requireTable(
@@ -120,7 +137,7 @@ export async function editTableSchema(
 
 async function rewriteTableRows(
   client: PoolClient,
-  input: Parameters<DataTablesStore['editSchema']>[0],
+  input: EditTableSchemaInput,
   {
     table,
     next,
@@ -168,7 +185,7 @@ async function rewriteTableRows(
         ),
       )
       .orderBy(tableRows.id)
-      .limit(64)
+      .limit(REWRITE_BATCH_ROWS)
       .catch(rethrowQueryFailure);
     if (batch.length === 0) break;
     const rows = batch.map((row) => {

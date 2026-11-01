@@ -9,7 +9,7 @@ import {
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { DataTableDefinition, DataTableQuotas } from './contract.js';
 
-export const tableFields = {
+const tableFields = {
   id: tables.id,
   name: tables.name,
   columns: tables.columns,
@@ -19,6 +19,19 @@ export const tableFields = {
   storedBytes: tables.storedBytes,
   revision: tables.revision,
 };
+
+export async function listTables(client: PoolClient, workspaceId: string) {
+  return {
+    quotas: await readQuotas(client, workspaceId),
+    tables: await drizzle(client)
+      .select(tableFields)
+      .from(tables)
+      .where(eq(tables.workspaceId, workspaceId))
+      .orderBy(tables.name)
+      .limit(DATA_TABLE_LIMITS.maxTables)
+      .catch(rethrowQueryFailure),
+  };
+}
 
 export async function requireTable(
   client: PoolClient,

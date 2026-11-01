@@ -12,7 +12,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workspaceDataTableRows as rows } from '@pertexo/database/schema';
-import type { DataTableDefinition } from '../contract.js';
+import type { DataTableDefinition, FindRowsInput } from '../contract.js';
+import { requireTable } from '../definitions.queries.js';
 
 export type StoredRow = Pick<
   typeof rows.$inferSelect,
@@ -107,5 +108,14 @@ export async function findRows(
     found.slice(0, query.limit).map((row) => projectRow(table, row)),
     Math.min(found.length, query.limit),
     { hasMore: found.length > query.limit },
+  );
+}
+
+export async function findTableRows(client: PoolClient, input: FindRowsInput) {
+  return findRows(
+    client,
+    input.workspaceId,
+    await requireTable(client, input.workspaceId, { id: input.tableId }),
+    input.query,
   );
 }

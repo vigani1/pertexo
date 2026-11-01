@@ -8,14 +8,12 @@ import {
 import type {
   DataTablesStore,
   DataTableDefinition,
+  ImportRowsInput,
 } from '@pertexo/core/data-tables';
 export class DataTablesService {
   constructor(readonly store: DataTablesStore) {}
   async importCsv(
-    input: Omit<
-      Parameters<DataTablesStore['importRows']>[0],
-      'rows' | 'prepareRows'
-    > &
+    input: Omit<ImportRowsInput, 'rows' | 'prepareRows'> &
       Readonly<{ csv: string }>,
   ) {
     try {
