@@ -1,4 +1,4 @@
-import { previewDirectoryAdoption } from './management/adoption.repository.js';
+import { previewDirectoryAdoption } from './management/adoption.queries.js';
 import type { DirectoryAdoptionQuery } from '@pertexo/contracts';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
