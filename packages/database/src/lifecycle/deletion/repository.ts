@@ -5,6 +5,7 @@ import type {
   WorkspaceLifecycleChange,
 } from './contract.js';
 import { connections } from '../../schema/connections.js';
+import { deleteWorkspaceOAuth2Grants } from '../../connections/oauth2/clients.repository.js';
 import { apiTokens } from '../../schema/identity/api-tokens.js';
 import { webhookTriggerEndpoints } from '../../schema/triggers/endpoints.js';
 import { triggerSchedules } from '../../schema/triggers/schedules.js';
@@ -35,6 +36,65 @@ import type { WorkspaceId } from '../../tenant-access/transactions.js';
 
 /** How long a workspace waits for restore before it is purged. */
 export const WORKSPACE_RECOVERY_DAYS = 30;
+
+/** Invitation, then delivery attempt, then acceptance intent. */
+async function cancelPendingInvitations(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  const db = drizzle(client);
+  await db
+    .update(workspaceInvitations)
+    .set({
+      status: 'revoked',
+      revision: sql`${workspaceInvitations.revision}+1`,
+      revokedAt: sql`clock_timestamp()`,
+      deliveryStatus: 'canceled',
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workspaceInvitations.workspaceId, workspaceId),
+        eq(workspaceInvitations.status, 'pending'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .update(workspaceInvitationDeliveryAttempts)
+    .set({
+      status: sql`case when ${workspaceInvitationDeliveryAttempts.status} in ('queued','failed') then 'canceled' else ${workspaceInvitationDeliveryAttempts.status} end`,
+      tokenCiphertext: null,
+      tokenNonce: null,
+      tokenTag: null,
+      tokenKeyVersion: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workspaceInvitationDeliveryAttempts.workspaceId, workspaceId),
+        inArray(workspaceInvitationDeliveryAttempts.status, [
+          'queued',
+          'failed',
+          'unknown',
+        ]),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .update(workspaceInvitationAcceptanceIntents)
+    .set({ status: 'superseded', updatedAt: sql`clock_timestamp()` })
+    .where(
+      and(
+        eq(workspaceInvitationAcceptanceIntents.workspaceId, workspaceId),
+        inArray(workspaceInvitationAcceptanceIntents.status, [
+          'pending',
+          'verified',
+          'wrong_account',
+        ]),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+}
 
 /** Everything a workspace stops doing once deletion is requested. */
 async function applyDeletionSideEffects(
@@ -67,6 +127,7 @@ async function applyDeletionSideEffects(
       ),
     )
     .catch(rethrowQueryFailure);
+  await deleteWorkspaceOAuth2Grants(client, workspaceId);
   await db
     .update(webhookTriggerEndpoints)
     .set({
@@ -127,58 +188,7 @@ async function applyDeletionSideEffects(
       ),
     )
     .catch(rethrowQueryFailure);
-  // Invitation, then delivery attempt, then acceptance intent.
-  await db
-    .update(workspaceInvitations)
-    .set({
-      status: 'revoked',
-      revision: sql`${workspaceInvitations.revision}+1`,
-      revokedAt: sql`clock_timestamp()`,
-      deliveryStatus: 'canceled',
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(workspaceInvitations.workspaceId, workspaceId),
-        eq(workspaceInvitations.status, 'pending'),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  await db
-    .update(workspaceInvitationDeliveryAttempts)
-    .set({
-      status: sql`case when ${workspaceInvitationDeliveryAttempts.status} in ('queued','failed') then 'canceled' else ${workspaceInvitationDeliveryAttempts.status} end`,
-      tokenCiphertext: null,
-      tokenNonce: null,
-      tokenTag: null,
-      tokenKeyVersion: null,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(workspaceInvitationDeliveryAttempts.workspaceId, workspaceId),
-        inArray(workspaceInvitationDeliveryAttempts.status, [
-          'queued',
-          'failed',
-          'unknown',
-        ]),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  await db
-    .update(workspaceInvitationAcceptanceIntents)
-    .set({ status: 'superseded', updatedAt: sql`clock_timestamp()` })
-    .where(
-      and(
-        eq(workspaceInvitationAcceptanceIntents.workspaceId, workspaceId),
-        inArray(workspaceInvitationAcceptanceIntents.status, [
-          'pending',
-          'verified',
-          'wrong_account',
-        ]),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  await cancelPendingInvitations(client, workspaceId);
   await requestActiveRunCancellations(
     Object.freeze({
       db: drizzle(client, { schema: databaseSchema }),
