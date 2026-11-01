@@ -21,6 +21,7 @@ import {
 } from './platform/database/module.js';
 import { LiveController } from './platform/health/live.controller.js';
 import {
+  API_READINESS_LOGGER,
   API_RUNTIME_READINESS,
   ReadyController,
 } from './platform/health/ready.controller.js';
@@ -177,6 +178,7 @@ export class AppModule {
             return Object.freeze({ registered: true });
           },
         },
+        { provide: API_READINESS_LOGGER, useValue: dependencies.logger },
         ...(runtimeReadiness === undefined
           ? []
           : [{ provide: API_RUNTIME_READINESS, useValue: runtimeReadiness }]),

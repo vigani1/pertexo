@@ -58,8 +58,8 @@ export const workflowProblems = [
         'An attached file is unavailable or its metadata does not match. Upload the file again before saving or running.',
     });
   }),
-  errorRegistration(AuthoringValidationUnavailableError, () => {
-    return validationUnavailable();
+  errorRegistration(AuthoringValidationUnavailableError, (error) => {
+    return validationUnavailable(error);
   }),
 
   errorRegistration(WorkflowHeaderError, (error) => {
@@ -183,7 +183,7 @@ export const workflowProblems = [
         (issue) => !apiProblemIssueSchema.safeParse(issue).success,
       )
     )
-      return validationUnavailable();
+      return validationUnavailable(error);
     return applicationError('workflow.invalid', {
       safeDetail: 'The workflow cannot be published in its current form.',
       details: { issues: error.issues },
@@ -241,10 +241,12 @@ const EXECUTABLE_PROBLEMS: Readonly<Record<string, string>> = {
   'node config version is incompatible':
     'A step’s setup was saved by an older version. Open it and save its setup again.',
 };
-function validationUnavailable(): ApplicationError {
+/** The cause reaches the log, with its reason; the response says only to retry. */
+function validationUnavailable(cause: Error): ApplicationError {
   return applicationError('workflow.validation_unavailable', {
     safeDetail:
       'Workflow validation is temporarily unavailable. Retry explicitly after a short wait.',
     details: { retryAfterSeconds: 1 },
+    cause,
   });
 }
