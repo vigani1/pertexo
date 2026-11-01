@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 
 import { PreviewAdmissionDeniedError } from '../../../src/previews/errors.js';
 
-import { workspaceA, apiDatabase, input, apiPreviews } from './fixture.js';
+import { workspaceA, input, apiPreviews } from './fixture.js';
 
 // Previews are kept at most seven days and execute for at most five minutes.
 const minute = 60 * 1_000;
