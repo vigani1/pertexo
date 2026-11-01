@@ -34,6 +34,8 @@ export type WorkspaceAccess = Readonly<{
   mode: 'read' | 'change' | 'exclusive';
   capability: AuthorizationCapability;
   statuses: WorkspaceStatusList;
+  /** For a request-path flow that must give up rather than hold a connection. */
+  statementTimeoutMillis?: number;
 }>;
 
 /**
@@ -47,11 +49,14 @@ export type WorkspaceAccess = Readonly<{
 export function withWorkspaceAccess<T>(
   pool: Pool,
   { workspaceId, actorId, signal }: WorkspaceActor,
-  { mode, capability, statuses }: WorkspaceAccess,
+  { mode, capability, statuses, statementTimeoutMillis }: WorkspaceAccess,
   operation: (client: PoolClient, role: Role) => Promise<T>,
 ): Promise<T> {
   const scope = { workspaceId, actorId };
-  const options = signal === undefined ? {} : { signal };
+  const options = {
+    ...(signal === undefined ? {} : { signal }),
+    ...(statementTimeoutMillis === undefined ? {} : { statementTimeoutMillis }),
+  };
   const roles = rolesForCapability(capability);
   if (mode === 'read')
     return withTenantScopedReadClient(

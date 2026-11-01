@@ -22,6 +22,13 @@ export const workflow = alias(workflows, 'workflow');
 export const connection = alias(connections, 'connection');
 export const mention = alias(workflowCommentMentions, 'mention');
 export const comment = alias(workflowComments, 'comment');
+/** Joins a thread to the one person's read row. */
+export const seenByActor = (actorId: string) =>
+  and(
+    eq(seen.workspaceId, thread.workspaceId),
+    eq(seen.threadId, thread.id),
+    eq(seen.userId, actorId),
+  );
 export const unreadSql = sql<boolean>`(${seen.readRevision} is null or ${seen.readRevision}<${thread.revision})`;
 const noticeFields = {
   id: thread.id,
@@ -93,13 +100,6 @@ export function noticeRecords(
       task,
       and(eq(task.workspaceId, thread.workspaceId), eq(task.id, thread.taskId)),
     )
-    .leftJoin(
-      seen,
-      and(
-        eq(seen.workspaceId, thread.workspaceId),
-        eq(seen.threadId, thread.id),
-        eq(seen.userId, actorId),
-      ),
-    );
+    .leftJoin(seen, seenByActor(actorId));
 }
 export type NoticeRecord = Awaited<ReturnType<typeof noticeRecords>>[number];

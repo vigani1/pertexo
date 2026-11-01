@@ -1,5 +1,3 @@
-import type { NoticeSchedule } from '@pertexo/contracts';
-import { nextNoticeDue } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -12,11 +10,11 @@ import {
   noticePreferences,
   noticeWorkspaceSettings,
 } from '@pertexo/database/schema';
-import { projectNoticePreferences } from '../preferences/settings.queries.js';
+import { projectNoticePreferences } from '../preferences/effective.js';
+import type { NoticeMailPerson } from './contract.js';
 
 const users = alias(usersTable, 'person');
 const workspaceMemberships = alias(membershipsTable, 'member');
-export type Person = Readonly<{ workspace_id: string; user_id: string }>;
 export async function recipient(
   client: PoolClient,
   workspaceId: string,
@@ -94,31 +92,19 @@ export async function settings(
     defaultRevision: pref?.mode === null ? projected.defaults.revision : 0,
   };
 }
-export async function advance(
+export async function setNextDue(
   client: PoolClient,
-  workspaceId: string,
-  {
-    actorId,
-    schedule,
-    now,
-    defaultRevision,
-  }: Readonly<{
-    actorId: string;
-    schedule: NoticeSchedule;
-    now: Date;
-    defaultRevision: number;
-  }>,
+  person: NoticeMailPerson,
+  nextDueAt: Date | null,
+  defaultRevision: number,
 ) {
   await drizzle(client)
     .update(noticePreferences)
-    .set({
-      nextDueAt: nextNoticeDue(schedule, now),
-      scheduleDefaultRevision: defaultRevision,
-    })
+    .set({ nextDueAt, scheduleDefaultRevision: defaultRevision })
     .where(
       and(
-        eq(noticePreferences.workspaceId, workspaceId),
-        eq(noticePreferences.userId, actorId),
+        eq(noticePreferences.workspaceId, person.workspace_id),
+        eq(noticePreferences.userId, person.user_id),
       ),
     )
     .catch(rethrowQueryFailure);

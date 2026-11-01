@@ -4,23 +4,29 @@ import {
   rethrowQueryFailure,
   checkDatabaseReadiness,
 } from '@pertexo/database/primitives';
-import { createAttentionObserver } from '../observations/observe.js';
-import type { WorkspaceInboxFoldStore } from './contract.js';
-
-import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   acquireDatabasePool,
+  type DatabaseConfig,
   type DatabaseRuntime,
   withPlatformTransaction,
 } from '@pertexo/database/platform';
+import { createAttentionObserver } from '../observations/observe.js';
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
-/** ADR 055: the worker's fold command, run across workspaces. */
+
+export type WorkspaceInboxFoldStore = ReturnType<
+  typeof createWorkspaceInboxFoldStore
+>;
+
+/**
+ * ADR 055: the worker's fold command, run across workspaces. No member is behind
+ * it, so it stays off `withWorkspaceAccess`.
+ */
 export function createWorkspaceInboxFoldStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
   maintenanceConfig?: DatabaseConfig,
-): WorkspaceInboxFoldStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   const maintenance =
@@ -37,19 +43,20 @@ export function createWorkspaceInboxFoldStore(
   });
   return Object.freeze({
     ...(observer === undefined ? {} : { observeCurrent: observer }),
+    /** Fails unless the database is at the expected migration. */
     checkReadiness: async (signal?: AbortSignal) => {
       signal?.throwIfAborted();
       await checkDatabaseReadiness(pool);
     },
-    foldPending: (limit: number, signal?: AbortSignal) => {
-      const bounded = limit;
-      return withPlatformTransaction(
+    /** Folds up to `limit` pending failures into their workflows' threads. */
+    foldPending: (limit: number, signal?: AbortSignal) =>
+      withPlatformTransaction(
         pool,
         async (client) => {
           // The cross-workspace fold function owns queue claiming and revision allocation.
           const result = await drizzle(client)
             .execute<{ workspace_id: string; revision: string }>(
-              sql`select workspace_id,revision::text from app.fold_workspace_inbox_events(${bounded})`,
+              sql`select workspace_id,revision::text from app.fold_workspace_inbox_events(${limit})`,
             )
             .catch(rethrowQueryFailure);
           return Object.freeze(
@@ -62,8 +69,7 @@ export function createWorkspaceInboxFoldStore(
           );
         },
         options(signal),
-      );
-    },
+      ),
     close: async () => {
       await lease.close();
       await maintenance?.close();

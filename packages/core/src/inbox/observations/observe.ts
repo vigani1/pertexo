@@ -3,6 +3,7 @@ import {
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import {
+  ATTENTION_PAGE_SIZE,
   readAttentionCandidates,
   type Candidate,
 } from './candidates.queries.js';
@@ -18,7 +19,14 @@ import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { WorkspaceInboxChange } from '../folding/contract.js';
 import { readAttentionFact, type AttentionFact } from './facts.queries.js';
-/** Keyset progress lives only in this scan; authoritative facts make restart safe. */
+
+const STATEMENT_TIMEOUT_MILLIS = 5_000;
+
+/**
+ * Keeps attention notices in step with their sources. Nobody is acting, so this
+ * stays off `withWorkspaceAccess`. Keyset progress lives only in this scan; authoritative facts
+ * make restart safe.
+ */
 export function createAttentionObserver(pool: Pool, maintenance: Pool) {
   let after: Candidate | undefined;
   return async (
@@ -96,7 +104,7 @@ export function createAttentionObserver(pool: Pool, maintenance: Pool) {
           return writeAttentionThread(client, { candidate, row, fact });
         },
         {
-          statementTimeoutMillis: 5000,
+          statementTimeoutMillis: STATEMENT_TIMEOUT_MILLIS,
           ...(signal === undefined ? {} : { signal }),
         },
       ).catch(rethrowQueryFailure);
@@ -107,7 +115,7 @@ export function createAttentionObserver(pool: Pool, maintenance: Pool) {
           revision: changed,
         });
     }
-    if (candidates.length < 100) after = undefined;
+    if (candidates.length < ATTENTION_PAGE_SIZE) after = undefined;
     return changes;
   };
 }

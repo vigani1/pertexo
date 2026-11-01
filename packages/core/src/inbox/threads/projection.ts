@@ -9,6 +9,7 @@ import { databaseSchema } from '@pertexo/database/schema';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
 import { readWorkflowRunFailedSteps } from '../../runs/queries/history/details.queries.js';
 import { readFailureDays } from './failure-days.queries.js';
+import type { WorkspaceInboxFailureKind } from './contract.js';
 import type { NoticeRecord } from './records.queries.js';
 type NoticeRow = NoticeRecord &
   (
@@ -17,7 +18,7 @@ type NoticeRow = NoticeRecord &
         workflow_id: string;
         workflow_name: string;
         latest_run_id: string;
-        latest_kind: 'failed' | 'timed_out' | 'outcome_unknown';
+        latest_kind: WorkspaceInboxFailureKind;
       }
     | {
         notice_kind: 'workflow_mention';

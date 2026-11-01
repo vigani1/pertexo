@@ -18,7 +18,6 @@ import {
   comment,
 } from '../threads/records.queries.js';
 import type { PoolClient } from 'pg';
-import { CAPACITY_LIMIT_LABELS } from '../observations/capacity.queries.js';
 import type {
   WorkspaceCapacityLimit,
   WorkspaceNoticeKind,
@@ -28,7 +27,7 @@ import {
   connectionNeedsAttentionSql,
   readAttentionFact,
 } from '../observations/facts.queries.js';
-import type { NoticeMailItem } from './contract.js';
+const SUBJECTS_PER_MAIL = 100;
 type MailSubjectRecord = Awaited<ReturnType<typeof mailSubjectsQuery>>[number];
 export type MailSubjectRow = MailSubjectRecord &
   (
@@ -128,7 +127,7 @@ export async function readMailSubjects(
       ),
     )
     .orderBy(thread.latestOccurredAt, thread.id)
-    .limit(100)
+    .limit(SUBJECTS_PER_MAIL)
     .catch(rethrowQueryFailure);
   const current: MailSubjectRow[] = [];
   // Audience and task eligibility filter before LIMIT; capacity facts are rechecked before use.
@@ -155,35 +154,6 @@ export async function readMailSubjects(
   }
   return current;
 }
-export function mailItem(row: MailSubjectRow): NoticeMailItem {
-  if (row.notice_kind === 'workflow_mention')
-    return {
-      id: row.id,
-      revision: row.revision,
-      noticeKind: row.notice_kind,
-      name: row.name,
-      count: Number(row.occurrence_count),
-      subjectId: row.subject_id,
-      workflowId: row.workflow_id,
-      discussion: {
-        threadId: row.comment_thread_id,
-        commentId: row.comment_id,
-      },
-    };
-  return {
-    id: row.id,
-    revision: row.revision,
-    noticeKind: row.notice_kind,
-    name:
-      row.notice_kind === 'limit_approaching'
-        ? CAPACITY_LIMIT_LABELS[row.capacity_limit]
-        : row.name,
-    count: Number(row.occurrence_count),
-    subjectId: row.subject_id,
-    workflowId: row.workflow_id,
-  };
-}
-
 function mailSubjectsQuery(
   db: Pick<NodePgDatabase, 'select'>,
   actorId: string,

@@ -3,7 +3,14 @@ import {
   noticeSubscriptionSchema,
   noticeCommandResponseSchema,
 } from '@pertexo/contracts';
-import type { NoticePreferencesStore } from '@pertexo/core/inbox';
+import type {
+  NoticePreferencesStore,
+  ReadNoticeSubscriptionInput,
+  ReplaceNoticeDefaultsInput,
+  ReplaceNoticePreferencesInput,
+  ReplaceNoticeSubscriptionInput,
+  WorkspaceActor,
+} from '@pertexo/core/inbox';
 import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 
 import {
@@ -20,29 +27,23 @@ export class NoticePreferencesService {
     private readonly store: NoticePreferencesStore,
     private readonly envelope: ApplicationSecretEnvelope | undefined,
   ) {}
-  async read(input: Parameters<NoticePreferencesStore['read']>[0]) {
+  async read(input: WorkspaceActor) {
     return noticePreferencesResponseSchema.parse(await this.store.read(input));
   }
-  async replace(input: Parameters<NoticePreferencesStore['replace']>[0]) {
+  async replace(input: ReplaceNoticePreferencesInput) {
     return noticeCommandResponseSchema.parse(await this.store.replace(input));
   }
-  async replaceDefaults(
-    input: Parameters<NoticePreferencesStore['replaceDefaults']>[0],
-  ) {
+  async replaceDefaults(input: ReplaceNoticeDefaultsInput) {
     return noticeCommandResponseSchema.parse(
       await this.store.replaceDefaults(input),
     );
   }
-  async subscription(
-    input: Parameters<NoticePreferencesStore['readSubscription']>[0],
-  ) {
+  async subscription(input: ReadNoticeSubscriptionInput) {
     return noticeSubscriptionSchema.parse(
       await this.store.readSubscription(input),
     );
   }
-  async replaceSubscription(
-    input: Parameters<NoticePreferencesStore['replaceSubscription']>[0],
-  ) {
+  async replaceSubscription(input: ReplaceNoticeSubscriptionInput) {
     return noticeCommandResponseSchema.parse(
       await this.store.replaceSubscription(input),
     );

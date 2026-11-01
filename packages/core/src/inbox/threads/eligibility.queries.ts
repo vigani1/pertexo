@@ -1,4 +1,4 @@
-import { NOTICE_WINDOW_SQL } from '../lifetime.js';
+import { NOTICE_WINDOW_SQL, windowedNoticeSql } from '../lifetime.js';
 import { and, eq, exists, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -128,7 +128,7 @@ export function noticeVisibilitySql(
       ),
   );
   return sql`${resources.role !== null} and (${thread.workflowId} is null or (${workflowScopeSql(resources, sql`${thread.workflowId}`)})) and ${thread.active}
- and (${thread.noticeKind} not in ('workflow_failure','workflow_mention') or ${thread.latestOccurredAt}>statement_timestamp()-${NOTICE_WINDOW_SQL})
+ and (not ${windowedNoticeSql(thread.noticeKind)} or ${thread.latestOccurredAt}>statement_timestamp()-${NOTICE_WINDOW_SQL})
  and not (${muted}) and ${exists(
    db
      .select({ one: sql`1` })

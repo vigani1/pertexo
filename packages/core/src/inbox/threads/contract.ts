@@ -2,8 +2,16 @@ import type {
   WorkspaceInboxThread,
   WorkspaceNoticeKind,
 } from '@pertexo/contracts';
+import type { WorkspaceActor } from '../../shared/workspace-access.js';
+
+/** The terminal run statuses that raise a notice (ADR 055). */
+export const WORKSPACE_INBOX_FAILURE_KINDS = [
+  'failed',
+  'timed_out',
+  'outcome_unknown',
+] as const;
 export type WorkspaceInboxFailureKind =
-  'failed' | 'timed_out' | 'outcome_unknown';
+  (typeof WORKSPACE_INBOX_FAILURE_KINDS)[number];
 export type WorkspaceInboxThreadRecord = WorkspaceInboxThread;
 export type WorkspaceInboxCursor = Readonly<{
   latestOccurredAt: string;
@@ -18,27 +26,13 @@ export type WorkspaceInboxSummary = Readonly<{
   unreadCount: number;
   revision: string;
 }>;
-export type ReaderScope = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  signal?: AbortSignal;
-}>;
-export interface WorkspaceInboxStore {
-  listThreads(
-    input: ReaderScope &
-      Readonly<{
-        filter: 'all' | 'unread';
-        noticeKind?: WorkspaceNoticeKind;
-        limit: number;
-        after?: WorkspaceInboxCursor;
-      }>,
-  ): Promise<WorkspaceInboxThreadPage>;
-  readSummary(input: ReaderScope): Promise<WorkspaceInboxSummary>;
-  markThreadRead(
-    input: ReaderScope & Readonly<{ threadId: string; revision: string }>,
-  ): Promise<Readonly<{ unread: boolean; revision: string }> | undefined>;
-  markAllRead(
-    input: ReaderScope & Readonly<{ revision: string }>,
-  ): Promise<Readonly<{ marked: number }>>;
-  close(): Promise<void>;
-}
+export type ListThreadsInput = WorkspaceActor &
+  Readonly<{
+    filter: 'all' | 'unread';
+    noticeKind?: WorkspaceNoticeKind;
+    limit: number;
+    after?: WorkspaceInboxCursor;
+  }>;
+export type MarkThreadReadInput = WorkspaceActor &
+  Readonly<{ threadId: string; revision: string }>;
+export type MarkAllReadInput = WorkspaceActor & Readonly<{ revision: string }>;

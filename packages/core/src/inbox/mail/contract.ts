@@ -28,11 +28,18 @@ export type NoticeMailToSeal = Readonly<{
   memberRevision: number;
   items: readonly NoticeMailItem[];
 }>;
-export interface NoticeMailStore {
-  prepare(signal?: AbortSignal): Promise<number>;
-  authorize(deliveryId: string): Promise<boolean>;
-  close(): Promise<void>;
-}
+/** The person a notice mail is prepared for: no member is acting, only addressed. */
+export type NoticeMailPerson = Readonly<{
+  workspace_id: string;
+  user_id: string;
+}>;
+export type NoticeMailPersonFailure = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  /** In a row, so someone can tell a blip from a person whose mail never works. */
+  failures: number;
+  error: unknown;
+}>;
 export type NoticeMailSealer = (
   input: NoticeMailToSeal,
 ) => SealedSystemMailPayload;

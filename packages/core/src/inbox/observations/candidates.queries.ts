@@ -164,7 +164,7 @@ function mentionCandidates(db: Pick<NodePgDatabase, 'select'>) {
       ),
     );
 }
-const ATTENTION_PAGE_SIZE = 100;
+export const ATTENTION_PAGE_SIZE = 100;
 
 /**
  * One source's next page. A source is keyed by workspace and id, so this walks its

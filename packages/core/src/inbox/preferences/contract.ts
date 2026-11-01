@@ -1,21 +1,29 @@
 import type {
   NoticePreferencesRequest,
   NoticeDefaultsRequest,
-  NoticePreferencesResponse,
-  NoticeSubscription,
   NoticeSubscriptionRequest,
-  NoticeCommandResponse,
   NoticeSubjectParams,
 } from '@pertexo/contracts';
-export type NoticeReader = Readonly<{
-  workspaceId: string;
-  actorId: string;
-  signal?: AbortSignal;
-}>;
+import type { WorkspaceActor } from '../../shared/workspace-access.js';
+
 export type NoticeSubject = Pick<
   NoticeSubjectParams,
   'subjectKind' | 'subjectId'
 >;
+export type ReplaceNoticePreferencesInput = WorkspaceActor &
+  NoticePreferencesRequest &
+  Readonly<{ idempotencyKey: string }>;
+export type ReplaceNoticeDefaultsInput = WorkspaceActor &
+  NoticeDefaultsRequest &
+  Readonly<{ idempotencyKey: string }>;
+export type ReadNoticeSubscriptionInput = WorkspaceActor & NoticeSubject;
+export type ReplaceNoticeSubscriptionInput = WorkspaceActor &
+  NoticeSubject &
+  NoticeSubscriptionRequest &
+  Readonly<{ idempotencyKey: string }>;
+export type UnsubscribeNoticeMailInput = WorkspaceActor &
+  Readonly<{ revision: number; memberRevision: number }>;
+
 export class NoticeConflictError extends Error {
   override readonly name = 'NoticeConflictError';
   constructor() {
@@ -24,30 +32,4 @@ export class NoticeConflictError extends Error {
 }
 export class NoticeUnavailableError extends Error {
   override readonly name = 'NoticeUnavailableError';
-}
-export interface NoticePreferencesStore {
-  read(input: NoticeReader): Promise<NoticePreferencesResponse>;
-  replace(
-    input: NoticeReader & NoticePreferencesRequest & { idempotencyKey: string },
-  ): Promise<NoticeCommandResponse>;
-  replaceDefaults(
-    input: NoticeReader & NoticeDefaultsRequest & { idempotencyKey: string },
-  ): Promise<NoticeCommandResponse>;
-  readSubscription(
-    input: NoticeReader & NoticeSubject,
-  ): Promise<NoticeSubscription>;
-  replaceSubscription(
-    input: NoticeReader &
-      NoticeSubject &
-      NoticeSubscriptionRequest & { idempotencyKey: string },
-  ): Promise<NoticeCommandResponse>;
-  unsubscribe(
-    input: Readonly<{
-      workspaceId: string;
-      actorId: string;
-      revision: number;
-      memberRevision: number;
-    }>,
-  ): Promise<boolean>;
-  close(): Promise<void>;
 }
