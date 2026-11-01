@@ -156,30 +156,47 @@ test('members can inspect references and an empty scan page is never presented a
       },
     }),
   );
+  // The last page waits, so the check can be seen partway with nothing found.
+  let finishCheck: () => void = () => undefined;
+  const lastPageMayAnswer = new Promise<void>((resolve) => {
+    finishCheck = resolve;
+  });
   await page.route(
     `**/v1/workspaces/${workspaceId}/variables/usage?**`,
-    (route) =>
-      route.fulfill({
-        json: route.request().url().includes('after=')
-          ? {
-              items: [
-                {
-                  id: 'a'.repeat(64),
-                  workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-                  workflowName: 'Invoice export',
-                  archived: true,
-                  stage: 'published',
-                  nodeId: 'set',
-                  label: 'Set currency',
-                  input: 'currency',
-                  kind: 'dynamic',
-                },
-              ],
-              nextCursor: null,
-              incomplete: false,
-            }
-          : { items: [], nextCursor: 'cursor', incomplete: false },
-      }),
+    async (route) => {
+      if (!route.request().url().includes('after='))
+        return route.fulfill({
+          json: {
+            items: [],
+            nextCursor: 'cursor',
+            incomplete: false,
+            checkedWorkflows: 1,
+            totalWorkflows: 2,
+          },
+        });
+      await lastPageMayAnswer;
+      return route.fulfill({
+        json: {
+          items: [
+            {
+              id: 'a'.repeat(64),
+              workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+              workflowName: 'Invoice export',
+              archived: true,
+              stage: 'published',
+              nodeId: 'set',
+              label: 'Set currency',
+              input: 'currency',
+              kind: 'dynamic',
+            },
+          ],
+          nextCursor: null,
+          incomplete: false,
+          checkedWorkflows: 2,
+          totalWorkflows: 2,
+        },
+      });
+    },
   );
   await page.goto(`/w/${workspaceId}/settings/variables`);
   await expect(
@@ -190,14 +207,18 @@ test('members can inspect references and an empty scan page is never presented a
   ).toBeVisible();
   await page.getByRole('button', { name: 'References', exact: true }).click();
   await expect(
-    page.getByText(
-      'No matches in the workflows checked so far. Continue the check.',
-      { exact: true },
-    ),
+    page.getByText('Checked 1 of 2 workflows you can see.', { exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Check more workflows', exact: true })
-    .click();
+  await expect(
+    page.getByText('No references in the workflows checked so far.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  // Nothing to click: the check carries on by itself.
+  finishCheck();
+  await expect(
+    page.getByText('Checked all 2 workflows you can see.', { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole('link', { name: 'Invoice export', exact: true }),
   ).toBeVisible();
@@ -207,6 +228,8 @@ test('members can inspect references and an empty scan page is never presented a
       { exact: true },
     ),
   ).toBeVisible();
+  // A viewer can look but can't change the draft.
+  await expect(page.getByRole('button', { name: /Remove/u })).toHaveCount(0);
 });
 
 test('the mapping picker inserts a typed scalar reference without an expression', async ({
