@@ -43,7 +43,7 @@ import type {
   ReadOAuth2ClientInput,
   StartOAuth2AuthorizationInput,
 } from './contract.js';
-import { expiryOf, sealedColumns } from './tokens.repository.js';
+import { expiryOf, sealedColumns } from './token-columns.js';
 
 /** Only a connection that can still be connected may start consent. */
 function requireConnectable(

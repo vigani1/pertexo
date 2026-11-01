@@ -103,13 +103,7 @@ export async function listConnectionUsage(
   const limit = input.limit ?? DEFAULT_CONNECTION_PAGE_SIZE;
   const after = input.after?.workflowVersionId;
   const resources = await readFolderScope(client, input, role);
-  await requireVisibleConnection(
-    client,
-    input,
-    connectionId,
-    role,
-    'connection:read',
-  );
+  await requireVisibleConnection(client, input, role, 'connection:read');
   const db = drizzle(client);
   if (after !== undefined) {
     const anchor = await db
