@@ -15,6 +15,7 @@ export {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
+  WebhookIntakeBusyError,
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
   WebhookTriggerStateError,

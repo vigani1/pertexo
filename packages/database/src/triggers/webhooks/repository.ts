@@ -22,6 +22,7 @@ import { withTenantScopedClient } from '../../tenant-access/transactions.js';
 import type { WebhookTriggerDatabase } from './runtime/contract.js';
 
 import { acceptVerifiedWebhookDelivery } from './runtime/accept.repository.js';
+import { createWorkspaceTurns } from './runtime/workspace-turns.js';
 import {
   configureWebhookAuthentication,
   provisionWebhook,
@@ -33,6 +34,15 @@ import {
   resolveWebhookVerification,
 } from './runtime/verification.queries.js';
 
+/**
+ * Measured on a loaded machine with the default pool of 5: one acceptance at a
+ * time admits 8 deliveries a second, three admit 14, and more add nothing because
+ * the admission row lets only one through. Three still leaves other requests two.
+ */
+const ACCEPTANCES_AT_ONCE_PER_WORKSPACE = 3;
+/** Long enough for a burst of 80 at 4 a second, and inside a request's 30 second limit. */
+const ACCEPTANCE_MAX_WAIT_MILLIS = 20_000;
+
 export function createWebhookTriggerDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
@@ -43,6 +53,10 @@ export function createWebhookTriggerDatabase(
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   const eventPreparation = createEventCoordinationPreparation();
+  const turns = createWorkspaceTurns({
+    atOnce: ACCEPTANCES_AT_ONCE_PER_WORKSPACE,
+    maxWaitMillis: ACCEPTANCE_MAX_WAIT_MILLIS,
+  });
 
   return Object.freeze({
     readResponse: (input: WebhookResponseScope) => {
@@ -86,7 +100,8 @@ export function createWebhookTriggerDatabase(
       consumeWebhookIngressLimit(pool, endpointKeyHashInput, burstLimit),
     acceptVerifiedDelivery: (
       input: Parameters<WebhookTriggerDatabase['acceptVerifiedDelivery']>[0],
-    ) => acceptVerifiedWebhookDelivery(pool, eventPreparation, input),
+    ) =>
+      acceptVerifiedWebhookDelivery(pool, { eventPreparation, turns }, input),
     ...createWebhookDeliveryLog(pool),
     close: () =>
       closeEventCoordinationStore(() => lease.close(), eventPreparation),

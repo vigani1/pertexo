@@ -135,6 +135,16 @@ key if it retries. To drop repeats by a value inside the event, use
 All modes share these rules, the per-endpoint POST allowance (600 a minute by default, `WEBHOOK_ENDPOINT_BURST_LIMIT`), workspace capacity and the metadata-only delivery log. Authentication failures
 don't disclose whether an endpoint exists.
 
+A burst waits rather than failing: one workspace takes in roughly 10 to 15 deliveries
+a second on a small machine, and a delivery can wait up to 20 seconds for its turn.
+Refusals start no run and carry `Retry-After`, so retrying is always safe with an
+`Idempotency-Key`:
+
+| Answer | Means |
+| --- | --- |
+| `429 webhook.rate_limited` | This endpoint or workspace is over its limit, or the burst outlasted the wait. |
+| `503 webhook.unavailable` | The database is busy or away. Without `Retry-After`, something unexpected failed; the request ID finds it in the logs. |
+
 For a workflow-controlled response, see [Respond to webhook](webhook-responses.md).
 Provider-specific signatures such as Stripe or GitHub remain later work in F21.
 

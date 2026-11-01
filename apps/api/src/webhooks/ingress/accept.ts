@@ -177,7 +177,10 @@ export async function admitIngressDelivery(
   } catch (error) {
     await rejectAcceptance(error, reply, {
       requestId: requestId,
+      workspaceId: verification.workspaceId,
+      signal: encryptionSignal,
       telemetry: telemetry,
+      logger: dependencies.logger,
       reject: reject,
     });
   }
