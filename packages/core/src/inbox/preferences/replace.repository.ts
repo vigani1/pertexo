@@ -15,17 +15,19 @@ import type { PoolClient } from 'pg';
 
 import {
   NoticeConflictError,
-  type NoticePreferencesStore,
+  type ReplaceNoticeDefaultsInput,
+  type ReplaceNoticePreferencesInput,
+  type ReplaceNoticeSubscriptionInput,
 } from './contract.js';
 export async function replacePreference(
   client: PoolClient,
   command:
     | Readonly<{
-        input: Parameters<NoticePreferencesStore['replace']>[0];
+        input: ReplaceNoticePreferencesInput;
         defaults: false;
       }>
     | Readonly<{
-        input: Parameters<NoticePreferencesStore['replaceDefaults']>[0];
+        input: ReplaceNoticeDefaultsInput;
         defaults: true;
       }>,
 ) {
@@ -119,7 +121,7 @@ export async function replacePreference(
 }
 export async function replaceSubscription(
   client: PoolClient,
-  input: Parameters<NoticePreferencesStore['replaceSubscription']>[0],
+  input: ReplaceNoticeSubscriptionInput,
 ) {
   const identity = {
     workspaceId: input.workspaceId,

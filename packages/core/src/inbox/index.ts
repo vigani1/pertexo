@@ -3,6 +3,9 @@ export {
   type WorkspaceInboxStore,
 } from './threads/store.js';
 export type {
+  ListThreadsInput,
+  MarkAllReadInput,
+  MarkThreadReadInput,
   WorkspaceInboxCursor,
   WorkspaceInboxFailureKind,
   WorkspaceInboxSummary,
@@ -21,13 +24,20 @@ export {
 export {
   NoticeConflictError,
   NoticeUnavailableError,
+  type ReadNoticeSubscriptionInput,
+  type ReplaceNoticeDefaultsInput,
+  type ReplaceNoticePreferencesInput,
+  type ReplaceNoticeSubscriptionInput,
+  type UnsubscribeNoticeMailInput,
 } from './preferences/contract.js';
 export { createNoticeMailStore, type NoticeMailStore } from './mail/store.js';
 export type {
   NoticeMailItem,
+  NoticeMailPersonFailure,
   NoticeMailSealer,
   NoticeMailToSeal,
 } from './mail/contract.js';
+export type { WorkspaceActor } from '../shared/workspace-access.js';
 
 // A run's completion and retention use these directly (ADR 091).
 export type {} from './folding/events.repository.js';

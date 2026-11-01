@@ -1,0 +1,37 @@
+import { CAPACITY_LIMIT_LABELS } from '../observations/capacity-labels.js';
+import type { NoticeMailItem } from './contract.js';
+import type { MailSubjectRow } from './subjects.queries.js';
+
+export function mailItem(row: MailSubjectRow): NoticeMailItem {
+  if (row.notice_kind === 'workflow_mention')
+    return {
+      id: row.id,
+      revision: row.revision,
+      noticeKind: row.notice_kind,
+      name: row.name,
+      count: Number(row.occurrence_count),
+      subjectId: row.subject_id,
+      workflowId: row.workflow_id,
+      discussion: {
+        threadId: row.comment_thread_id,
+        commentId: row.comment_id,
+      },
+    };
+  return {
+    id: row.id,
+    revision: row.revision,
+    noticeKind: row.notice_kind,
+    name:
+      row.notice_kind === 'limit_approaching'
+        ? CAPACITY_LIMIT_LABELS[row.capacity_limit]
+        : row.name,
+    count: Number(row.occurrence_count),
+    subjectId: row.subject_id,
+    workflowId: row.workflow_id,
+  };
+}
+
+/** Only what happened after they chose this schedule and joined goes in a mail. */
+export function mailCutoff(settingsChangedAt: Date, memberSince: Date): Date {
+  return new Date(Math.max(settingsChangedAt.getTime(), memberSince.getTime()));
+}

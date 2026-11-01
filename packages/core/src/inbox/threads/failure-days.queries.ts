@@ -3,6 +3,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { databaseSchema } from '@pertexo/database/schema';
+import { WORKSPACE_INBOX_FAILURE_KINDS } from './contract.js';
 import { workflowRuns } from '@pertexo/database/schema';
 
 type FailureDay = Readonly<{ day: string; count: number }>;
@@ -27,11 +28,7 @@ export async function readFailureDays(
         eq(workflowRuns.workspaceId, workspaceId),
         ordinaryRunSql('workflow_runs'),
         inArray(workflowRuns.workflowId, [...workflowIds]),
-        inArray(workflowRuns.status, [
-          'failed',
-          'timed_out',
-          'outcome_unknown',
-        ]),
+        inArray(workflowRuns.status, [...WORKSPACE_INBOX_FAILURE_KINDS]),
         gte(
           workflowRuns.completedAt,
           sql`(date_trunc('day', transaction_timestamp() at time zone 'UTC') - interval '29 days') at time zone 'UTC'`,

@@ -6,12 +6,9 @@ import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { RunTransitionPlan } from '../../runs/advance/plan.js';
+import { WORKSPACE_INBOX_FAILURE_KINDS } from '../threads/contract.js';
 
-const inboxKinds: ReadonlySet<string> = new Set([
-  'failed',
-  'timed_out',
-  'outcome_unknown',
-]);
+const inboxKinds: ReadonlySet<string> = new Set(WORKSPACE_INBOX_FAILURE_KINDS);
 
 /**
  * Records a run's terminal failure for the workspace inbox (ADR 055) in the
