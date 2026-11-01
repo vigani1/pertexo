@@ -42,7 +42,7 @@ export function registerHttpFailureClassification(): void {
       const runtime = await createOwnedCapabilities(
         { database: databaseConfig },
         {
-          connectionDatabase: {
+          connectionStore: {
             resolveConnectionSecret: () =>
               stage === 'resolve'
                 ? Promise.reject(sourceError)

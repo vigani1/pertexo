@@ -113,7 +113,7 @@ export async function createHttpNodeAttemptProofRuntime(
           connectionEncryption: encryption,
           ...(injectedConnectionDatabase === undefined
             ? {}
-            : { connectionDatabase: injectedConnectionDatabase }),
+            : { connectionStore: injectedConnectionDatabase }),
         },
       ),
       (runtime) => runtime.close(),

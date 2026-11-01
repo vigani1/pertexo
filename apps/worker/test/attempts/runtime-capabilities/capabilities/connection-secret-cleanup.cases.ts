@@ -31,7 +31,7 @@ export function registerConnectionSecretCleanup(): void {
     const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
-        connectionDatabase: {
+        connectionStore: {
           resolveConnectionSecret: resolveConnectionSecret as never,
           assertConnectionSecretCurrent: vi.fn(),
         },
@@ -77,7 +77,7 @@ export function registerConnectionSecretCleanup(): void {
     const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
-        connectionDatabase: {
+        connectionStore: {
           resolveConnectionSecret: vi.fn().mockResolvedValue({
             connection: {
               id: connectionId,
@@ -129,7 +129,7 @@ export function registerConnectionSecretCleanup(): void {
     const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
-        connectionDatabase: {
+        connectionStore: {
           resolveConnectionSecret: () =>
             Promise.resolve({
               connection: { ...connection, providerKey: 'http' } as never,
@@ -169,7 +169,7 @@ export function registerConnectionSecretCleanup(): void {
     const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
-        connectionDatabase: {
+        connectionStore: {
           resolveConnectionSecret: vi.fn(),
           assertConnectionSecretCurrent,
         },

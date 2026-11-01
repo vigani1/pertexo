@@ -69,7 +69,7 @@ export function registerWebhookResponseBindings(): void {
       createOwnedCapabilities(
         { database: databaseConfig },
         {
-          connectionDatabase: {
+          connectionStore: {
             resolveConnectionSecret: vi.fn(),
             assertConnectionSecretCurrent: vi.fn(),
           },
@@ -80,7 +80,7 @@ export function registerWebhookResponseBindings(): void {
       createOwnedCapabilities(
         { database: databaseConfig },
         {
-          connectionDatabase: {
+          connectionStore: {
             resolveConnectionSecret: vi.fn(),
             assertConnectionSecretCurrent: vi.fn(),
           },
@@ -114,7 +114,7 @@ export function registerWebhookResponseBindings(): void {
       const result = await createOwnedCapabilities(
         { database: databaseConfig, redisUrl: 'redis://localhost:6379/0' },
         {
-          connectionDatabase: {
+          connectionStore: {
             resolveConnectionSecret: vi.fn(),
             assertConnectionSecretCurrent: vi.fn(),
           },

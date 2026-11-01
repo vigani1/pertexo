@@ -9,7 +9,7 @@ import {
   acceptRun,
   actorId,
   attemptDelivery,
-  connectionDatabase,
+  connectionStore,
   connectionId,
   continuation,
   slackConnectionId,
@@ -31,9 +31,9 @@ export function registerDispatchSecretFences(): void {
       const encryption = fixtureEncryption;
       if (encryption === undefined)
         throw new Error('HTTP attempt fixture encryption is missing');
-      if (connectionDatabase === undefined)
+      if (connectionStore === undefined)
         throw new Error('Connection database missing');
-      const apiConnectionDatabase = connectionDatabase;
+      const apiConnectionDatabase = connectionStore;
 
       const targetConnectionId =
         target === 'http' ? connectionId : slackConnectionId;

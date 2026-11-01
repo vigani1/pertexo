@@ -6,7 +6,7 @@ import { createHttpNodeAttemptProofRuntime } from '../../../support/attempts/htt
 
 import {
   actorId,
-  connectionDatabase,
+  connectionStore,
   cancelProviderScenarioRun,
   plaintextSecret,
   resetProviderScenarioIsolation,
@@ -99,7 +99,7 @@ export function registerProviderRetryDelays(): void {
   );
 
   it('restores fixture secret versions with a fresh revision and never changes revoked connections', async () => {
-    if (connectionDatabase === undefined || fixtureEncryption === undefined)
+    if (connectionStore === undefined || fixtureEncryption === undefined)
       throw new Error('Connection fixture missing');
     const encryption = fixtureEncryption;
     const isolatedConnectionId = randomUUID();
@@ -122,7 +122,7 @@ export function registerProviderRetryDelays(): void {
         plaintext.fill(0);
       }
     };
-    await connectionDatabase.createConnection({
+    await connectionStore.createConnection({
       workspaceId,
       actorId,
       connectionId: isolatedConnectionId,
@@ -134,7 +134,7 @@ export function registerProviderRetryDelays(): void {
       idempotencyKey: randomUUID(),
       requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
     });
-    await connectionDatabase.rotateConnectionSecret({
+    await connectionStore.rotateConnectionSecret({
       workspaceId,
       actorId,
       connectionId: isolatedConnectionId,
@@ -185,7 +185,7 @@ export function registerProviderRetryDelays(): void {
     await resetProviderScenarioIsolation(seeds);
     expect(await read()).toEqual(restored);
     const revokedVersion = randomUUID();
-    await connectionDatabase.rotateConnectionSecret({
+    await connectionStore.rotateConnectionSecret({
       workspaceId,
       actorId,
       connectionId: isolatedConnectionId,
@@ -196,7 +196,7 @@ export function registerProviderRetryDelays(): void {
       idempotencyKey: randomUUID(),
       requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
     });
-    await connectionDatabase.revokeConnection({
+    await connectionStore.revokeConnection({
       workspaceId,
       actorId,
       connectionId: isolatedConnectionId,

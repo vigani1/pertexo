@@ -27,7 +27,7 @@ export function registerAdmissionCancellation(): void {
       const runtime = await createOwnedCapabilities(
         { database: databaseConfig },
         {
-          connectionDatabase: {
+          connectionStore: {
             resolveConnectionSecret,
             assertConnectionSecretCurrent: vi.fn(),
           },
@@ -81,7 +81,7 @@ export function registerAdmissionCancellation(): void {
     const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
-        connectionDatabase: {
+        connectionStore: {
           resolveConnectionSecret: resolveConnectionSecret as never,
           assertConnectionSecretCurrent: vi.fn(),
         },
@@ -158,7 +158,7 @@ export function registerAdmissionCancellation(): void {
     const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
-        connectionDatabase: {
+        connectionStore: {
           resolveConnectionSecret,
           assertConnectionSecretCurrent,
         } satisfies Pick<

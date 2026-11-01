@@ -61,7 +61,7 @@ let databaseCreated = false;
 
 let redisNamespaceAcquired = false;
 
-export let connectionDatabase: ConnectionStore | undefined;
+export let connectionStore: ConnectionStore | undefined;
 
 export async function withOwner<T>(work: (client: PoolClient) => Promise<T>) {
   const client = await ownerPool.connect();
@@ -154,7 +154,7 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
   const connections = createConnectionStore(
     parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 2 }),
   );
-  connectionDatabase = connections;
+  connectionStore = connections;
   await connections.createConnection({
     workspaceId,
     actorId,
@@ -236,8 +236,8 @@ function cleanupHttpNodeAttemptFixture(): Promise<void> {
           );
         });
     };
-    const activeConnectionDatabase = connectionDatabase;
-    connectionDatabase = undefined;
+    const activeConnectionDatabase = connectionStore;
+    connectionStore = undefined;
     if (activeConnectionDatabase !== undefined)
       await attempt('connection database', () =>
         activeConnectionDatabase.close(),

@@ -28,7 +28,7 @@ export {
   redisConnection,
 } from './http-node-attempt/environment.js';
 export {
-  connectionDatabase,
+  connectionStore,
   withOwner,
   workerQuery,
   seedFixture,
