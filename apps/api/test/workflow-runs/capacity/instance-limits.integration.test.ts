@@ -222,6 +222,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           new Set(responses.map(({ status }) => status)),
           [
             ...new Set(bodies.filter((_, at) => responses[at]?.status !== 202)),
+            ...running.apiErrors().slice(0, 3),
           ].join('\n'),
         ).toEqual(new Set([202]));
       } finally {

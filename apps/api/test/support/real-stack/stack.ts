@@ -22,6 +22,9 @@ const SUITE_REDIS_DATABASES = {
   'webhook-endpoints': 7,
 } as const;
 
+/** Enough to read what went wrong, without growing without bound on a broken stack. */
+const MAX_KEPT_ERROR_LINES = 200;
+
 /** The operator's starting point: the shipped example, with this slot's services. */
 function exampleEnvironment(): Record<string, string> {
   const lines = readFileSync(new URL('.env.example', repository), 'utf8').split(
@@ -88,6 +91,7 @@ export function createRealStack(suite: keyof typeof SUITE_REDIS_DATABASES) {
   const redisUrl = suiteRedisUrl(suite);
   const processes = new Set<ChildProcess>();
   const output = new Map<ChildProcess, string>();
+  const errorLogs = new Map<ChildProcess, string[]>();
   let admin: Pool | undefined;
   let owner: Pool | undefined;
   let port: number | undefined;
@@ -137,13 +141,23 @@ export function createRealStack(suite: keyof typeof SUITE_REDIS_DATABASES) {
     );
     processes.add(child);
     output.set(child, '');
+    const errors: string[] = [];
+    errorLogs.set(child, errors);
     const record = (chunk: Buffer) => {
       output.set(
         child,
         ((output.get(child) ?? '') + chunk.toString()).slice(-4000),
       );
     };
-    child.stdout.on('data', record);
+    // The tail above rolls past a burst's first failures, so errors are kept whole.
+    let unfinishedLine = '';
+    child.stdout.on('data', (chunk: Buffer) => {
+      record(chunk);
+      const lines = (unfinishedLine + chunk.toString()).split('\n');
+      unfinishedLine = lines.pop() ?? '';
+      if (errors.length < MAX_KEPT_ERROR_LINES)
+        errors.push(...lines.filter((line) => /^\{"level":[56]0/u.test(line)));
+    });
     child.stderr.on('data', record);
     child.once('exit', () => {
       processes.delete(child);
@@ -217,6 +231,8 @@ export function createRealStack(suite: keyof typeof SUITE_REDIS_DATABASES) {
     return {
       origin,
       stop: () => Promise.all([stop(api), stop(worker)]),
+      /** The API's logged errors so far, as written, to say why a request failed. */
+      apiErrors: () => [...(errorLogs.get(api) ?? [])],
     };
   }
 
