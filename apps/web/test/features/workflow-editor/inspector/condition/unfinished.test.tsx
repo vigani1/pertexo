@@ -97,7 +97,9 @@ describe('unfinished rules', { timeout: 60_000 }, () => {
   it('empties the only rule and removes the stored input when it’s removed', async () => {
     const session = await openCheck(
       orderGraph(
-        asExpression('$lowercase($string(runInput."a")) = $lowercase("x")'),
+        asExpression(
+          '$type(runInput."a") in ["string", "number", "boolean"] and $lowercase($string(runInput."a")) = $lowercase("x")',
+        ),
       ),
     );
     await session.event.click(
@@ -141,7 +143,7 @@ describe('unfinished rules', { timeout: 60_000 }, () => {
 
   it('says a field’s step no longer runs before this one, and keeps the condition', async () => {
     const expression =
-      '$lowercase($string(nodeOutputs."gone"."state")) = $lowercase("x")';
+      '$type(nodeOutputs."gone"."state") in ["string", "number", "boolean"] and $lowercase($string(nodeOutputs."gone"."state")) = $lowercase("x")';
     const session = await openCheck(orderGraph(asExpression(expression)));
     expect(
       await screen.findByText(/no longer runs before this one/u),

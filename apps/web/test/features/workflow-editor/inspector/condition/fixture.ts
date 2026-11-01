@@ -103,4 +103,4 @@ export async function answer(stored: Condition | undefined, output: JsonValue) {
 }
 
 export const TWO_RULES =
-  '($type(nodeOutputs."fetch"."status") = "number" and nodeOutputs."fetch"."status" >= 200) or ($lowercase($string(nodeOutputs."fetch"."customer"."name")) = $lowercase("ada"))';
+  '($type(nodeOutputs."fetch"."status") = "number" and nodeOutputs."fetch"."status" >= 200) or ($type(nodeOutputs."fetch"."customer"."name") in ["string", "number", "boolean"] and $lowercase($string(nodeOutputs."fetch"."customer"."name")) = $lowercase("ada"))';
