@@ -5,7 +5,7 @@ import { expect } from 'vitest';
 import {
   actorId,
   attemptDelivery,
-  connectionDatabase,
+  connectionStore,
   continuation,
   emailConnectionId,
   emailSecretVersionId,
@@ -98,9 +98,9 @@ export async function proveArtifactRotatedCredentialFence(
     secretVersionId: rotatedEmailSecretVersionId,
   });
   rotatedSecret.fill(0);
-  if (connectionDatabase === undefined)
+  if (connectionStore === undefined)
     throw new Error('Connection database missing');
-  await connectionDatabase.rotateConnectionSecret({
+  await connectionStore.rotateConnectionSecret({
     workspaceId,
     actorId,
     connectionId: emailConnectionId,

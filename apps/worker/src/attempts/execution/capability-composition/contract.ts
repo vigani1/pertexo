@@ -55,7 +55,7 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   webhookResponses?: Pick<WebhookResponseStore, 'respond'>;
   dataTables?: Pick<WorkerDataTablesStore, 'execute'>;
   runValues?: Pick<RunValuesStore, 'save'>;
-  connectionDatabase?: Parameters<
+  connectionStore?: Parameters<
     typeof createProviderConnectionRuntimeFactory
   >[0];
   connectionEncryption?: Pick<ConnectionEnvelopeEncryption, 'open'>;

@@ -23,16 +23,15 @@ export function prepareConnectionCapability(state: CapabilityAssembly): void {
   if (providerRateLimiter === undefined)
     throw new Error('Worker provider rate limiter is incomplete');
   const ownedDatabase =
-    state.dependencies.connectionDatabase === undefined
+    state.dependencies.connectionStore === undefined
       ? (state.resources.ownedConnectionStore =
           createWorkerConnectionResolutionStore(
             state.options.database,
             state.dependencies.databaseRuntime,
           ))
       : undefined;
-  const connectionDatabase =
-    state.dependencies.connectionDatabase ?? ownedDatabase;
-  if (connectionDatabase === undefined)
+  const connectionStore = state.dependencies.connectionStore ?? ownedDatabase;
+  if (connectionStore === undefined)
     throw new Error('Worker connection capability is incomplete');
   const ownedEncryption =
     state.dependencies.connectionEncryption === undefined &&
@@ -59,7 +58,7 @@ export function prepareConnectionCapability(state: CapabilityAssembly): void {
         });
   state.resources.oauth2Tokens = tokens;
   state.factories.connections = createProviderConnectionRuntimeFactory(
-    connectionDatabase,
+    connectionStore,
     encryption,
     providerRateLimiter,
     tokens,

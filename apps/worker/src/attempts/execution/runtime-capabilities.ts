@@ -35,7 +35,7 @@ export async function createWorkerNodeRuntimeCapabilities(
     options.artifactRetentionMillis ?? DEFAULT_ARTIFACT_RETENTION_MILLIS;
   const connectionConfigured =
     options.connectionEncryption !== undefined ||
-    dependencies.connectionDatabase !== undefined ||
+    dependencies.connectionStore !== undefined ||
     dependencies.connectionEncryption !== undefined;
   const artifactConfigured =
     options.artifactStore !== undefined ||

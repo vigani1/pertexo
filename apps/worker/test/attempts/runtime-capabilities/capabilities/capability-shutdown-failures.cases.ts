@@ -79,7 +79,7 @@ export function registerCapabilityShutdownFailures(): void {
     const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
-        connectionDatabase: {
+        connectionStore: {
           resolveConnectionSecret,
           assertConnectionSecretCurrent,
         } satisfies Pick<
@@ -155,7 +155,7 @@ export function registerCapabilityShutdownFailures(): void {
     const runtime = await createOwnedCapabilities(
       { database: databaseConfig },
       {
-        connectionDatabase: {
+        connectionStore: {
           resolveConnectionSecret,
           assertConnectionSecretCurrent: vi.fn(),
         },
