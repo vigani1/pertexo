@@ -142,6 +142,7 @@ describeOAuth2('an OAuth2 connection in a workspace that isn’t active', () => 
     await restore(owner);
     await lift(owner);
     await reconnects(owner, connection);
+    expect((await harness.connection(connection.id)).status).toBe('connected');
   });
 
   // M1, ADR 013: restoring revives nothing, so a client still needs signing in.
