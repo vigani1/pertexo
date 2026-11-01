@@ -1,7 +1,4 @@
-import type {
-  StoredEncryptionKey,
-  EncryptionKeyRepository,
-} from './contract.js';
+import type { StoredEncryptionKey } from './contract.js';
 import { and, asc, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -21,6 +18,9 @@ import {
   checkDatabaseReadiness,
   destroyCanceledPoolClient,
 } from '@pertexo/database/primitives';
+
+const PAGE_SIZE = 250;
+
 const inventories = [
   {
     kind: 'webhook',
@@ -136,14 +136,14 @@ async function* readKeys(
             ),
           )
           .orderBy(asc(inventory.table.id))
-          .limit(250);
+          .limit(PAGE_SIZE);
         signal.throwIfAborted();
         for (const row of page) {
           signal.throwIfAborted();
           after = row.secretVersionId;
           yield Object.freeze({ kind: inventory.kind, ...row });
         }
-        if (page.length < 250) break;
+        if (page.length < PAGE_SIZE) break;
       }
     }
     signal.throwIfAborted();
@@ -160,17 +160,27 @@ async function* readKeys(
   if (state.cleanupFailure !== undefined) throw state.cleanupFailure;
 }
 
+export type EncryptionKeyRepository = ReturnType<
+  typeof createEncryptionKeyRepository
+>;
+
+/**
+ * Reads every stored key across workspaces, for startup verification and key
+ * rotation. No member stands behind it, so it takes the maintenance role and no
+ * workspace's authority.
+ */
 export function createEncryptionKeyRepository(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): EncryptionKeyRepository {
+) {
   const lease = acquireDatabasePool(config, runtime, {
     role: 'maintenance',
     monitorLockWaits: false,
   });
   const state: RepositoryState = {};
   return Object.freeze({
-    read: (signal: AbortSignal) => readKeys(lease.pool, signal, state),
+    read: (signal: AbortSignal): AsyncIterable<StoredEncryptionKey> =>
+      readKeys(lease.pool, signal, state),
     close: async (): Promise<void> => {
       await lease.close();
       // Early iterator return skips code after finally; its owner still observes cleanup failure.
