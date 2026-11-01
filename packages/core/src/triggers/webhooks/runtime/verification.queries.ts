@@ -13,6 +13,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 
 import { WebhookIngressRateLimitExceededError } from '../errors.js';
+import { endpointTakesDeliveries } from './endpoint-rules.js';
 import type {
   StoredWebhookTriggerSecret,
   WebhookConfig,
@@ -35,6 +36,9 @@ export async function resolveWebhookVerification(
         workflowTriggers.createdAt,
       ),
       authentication: sql<WebhookAuthentication>`resolution.authentication`,
+      endpointStatus: sql<string>`resolution.endpoint_status`,
+      workflowLifecycleStatus: sql<string>`resolution.workflow_lifecycle_status`,
+      workspaceStatus: sql<string>`resolution.workspace_status`,
       currentSecret: sql<StoredWebhookTriggerSecret>`jsonb_build_object('id',resolution.current_secret_version_id,
       'triggerId',resolution.current_secret_trigger_id,'kmsKeyReference',resolution.current_kms_key_reference,'encryptedDataKey',resolution.current_encrypted_data_key,
       'ciphertext',resolution.current_ciphertext,'nonce',resolution.current_nonce,'authTag',resolution.current_auth_tag)`,
@@ -53,7 +57,7 @@ export async function resolveWebhookVerification(
     )
     .catch(rethrowQueryFailure);
   const row = result[0];
-  if (row === undefined) return null;
+  if (row === undefined || !endpointTakesDeliveries(row)) return null;
   const { workspaceId, triggerId, workflowVersionId } = row;
   const config = await withWorkspaceReadTransaction(
     pool,

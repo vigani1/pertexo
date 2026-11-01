@@ -22,6 +22,7 @@ import {
 } from '../errors.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type { WebhookVerificationReference } from './contract.js';
+import { endpointTakesDeliveries } from './endpoint-rules.js';
 
 export async function oneHealth(
   client: PoolClient,
@@ -71,7 +72,10 @@ export async function executableProjection(
   return Object.freeze(published);
 }
 
-/** Locks the verified endpoint and everything that must stay admissible. */
+/**
+ * Locks the verified endpoint and everything that must stay admissible. The statuses
+ * are read from the locked rows, so a change that committed during the wait is seen.
+ */
 export async function lockEligibleEndpoint(
   transaction: WorkspaceTransaction,
   verification: WebhookVerificationReference,
@@ -85,6 +89,9 @@ export async function lockEligibleEndpoint(
     .select({
       trigger_pause_state: workflow.triggerPauseState,
       published_version_id: workflow.publishedVersionId,
+      endpointStatus: endpoint.status,
+      workflowLifecycleStatus: workflow.lifecycleStatus,
+      workspaceStatus: workspace.status,
     })
     .from(endpoint)
     .innerJoin(
@@ -103,9 +110,6 @@ export async function lockEligibleEndpoint(
         eq(endpoint.workflowId, verification.workflowId),
         eq(endpoint.nodeId, verification.nodeId),
         sql`${endpoint.authentication}=${JSON.stringify(verification.authentication)}::jsonb`,
-        eq(endpoint.status, 'active'),
-        eq(workflow.lifecycleStatus, 'active'),
-        eq(workspace.status, 'active'),
         or(
           eq(endpoint.currentSecretVersionId, verifiedSecretVersionId),
           and(
@@ -121,6 +125,7 @@ export async function lockEligibleEndpoint(
   // verified against, as if it had arrived first. Only a removed step refuses it.
   if (
     row === undefined ||
+    !endpointTakesDeliveries(row) ||
     !(await stepIsPublished(
       transaction,
       verification,
