@@ -94,7 +94,7 @@ describeOAuth2('exchanging a code', () => {
   });
 
   // S9 (review): an outage at consent isn't a wrong client ID.
-  it.fails.each(['temporarily_unavailable', 'server_error'])(
+  it.each(['temporarily_unavailable', 'server_error'])(
     'S9 consent answering %s lands provider_unavailable',
     async (error) => {
       const owner = await harness.newOwner();
@@ -114,27 +114,24 @@ describeOAuth2('exchanging a code', () => {
 
   // S1: "Every outcome is a landing page": a client secret that won't open is the
   // same unexpected failure as a key service or database going away.
-  it.fails(
-    'S1 an unexpected failure lands on provider_unavailable',
-    async () => {
-      const { owner, connection, callbackUrl } = await pendingConsent();
-      await harness.stack.sql(
-        `update app.connection_secret_versions set ciphertext='AAAA' where connection_id=$1`,
-        [connection.id],
-      );
-      const landing = await harness.land(owner.api, callbackUrl);
-      expect(landing.status).toBe(303);
-      expect(landing).toMatchObject({
-        result: 'provider_unavailable',
-        workspaceId: owner.workspaceId,
-        connectionId: connection.id,
-      });
-      expectNothingExchanged(connection);
-    },
-  );
+  it('S1 an unexpected failure lands on provider_unavailable', async () => {
+    const { owner, connection, callbackUrl } = await pendingConsent();
+    await harness.stack.sql(
+      `update app.connection_secret_versions set ciphertext='AAAA' where connection_id=$1`,
+      [connection.id],
+    );
+    const landing = await harness.land(owner.api, callbackUrl);
+    expect(landing.status).toBe(303);
+    expect(landing).toMatchObject({
+      result: 'provider_unavailable',
+      workspaceId: owner.workspaceId,
+      connectionId: connection.id,
+    });
+    expectNothingExchanged(connection);
+  });
 
   // S1: the callback's rate limit is the other way a popup gets a JSON problem.
-  it.fails('S1 a rate-limited callback still lands on a page', async () => {
+  it('S1 a rate-limited callback still lands on a page', async () => {
     const browser = harness.anonymousBrowser();
     const callback = `${WEB_ORIGIN}${CALLBACK_PATH}`;
     for (let sent = 0; sent < CALLBACK_LIMIT; sent += 1)

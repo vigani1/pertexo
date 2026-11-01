@@ -195,20 +195,17 @@ describeOAuth2('which addresses an OAuth2 connection may use', () => {
 
     // S6 (review): the authorization address is never dispatched, so nothing would
     // ever refuse it, and consent would start in cleartext to a public name.
-    it.fails(
-      'S6 refuses plain http to a public name as an authorization address',
-      async () => {
-        const created = await harness.createResponse(
-          owner,
-          harness.settings('client', {
-            authorizationUrl: 'http://id.example.com/authorize',
-          }),
-        );
-        expect(created.status).toBe(400);
-        expect(created.json).toMatchObject(refusal);
-        expect(JSON.stringify(created.json)).toContain('authorizationUrl');
-      },
-    );
+    it('S6 refuses plain http to a public name as an authorization address', async () => {
+      const created = await harness.createResponse(
+        owner,
+        harness.settings('client', {
+          authorizationUrl: 'http://id.example.com/authorize',
+        }),
+      );
+      expect(created.status).toBe(400);
+      expect(created.json).toMatchObject(refusal);
+      expect(JSON.stringify(created.json)).toContain('authorizationUrl');
+    });
 
     // S6: a local name stays allowed, as the review's fix says.
     it.each([
@@ -228,19 +225,16 @@ describeOAuth2('which addresses an OAuth2 connection may use', () => {
 
     // S6: otherwise the token address fails only after a code is spent, and the
     // landing blames the service.
-    it.fails(
-      'S6 checks a token address that resolves to plain http on a public address at start',
-      async () => {
-        const scene = await harness.newOwner();
-        const connection = await harness.create(scene, 'non-rotating', {
-          tokenUrl: 'http://public.example.test/token',
-        });
-        const started = await harness.start(scene.api, scene, connection.id);
-        expect(started.status).toBeGreaterThanOrEqual(400);
-        expect(started.json).not.toHaveProperty('authorizationUrl');
-        expect(await harness.pendingRows(connection.id)).toBe(0);
-      },
-    );
+    it('S6 checks a token address that resolves to plain http on a public address at start', async () => {
+      const scene = await harness.newOwner();
+      const connection = await harness.create(scene, 'non-rotating', {
+        tokenUrl: 'http://public.example.test/token',
+      });
+      const started = await harness.start(scene.api, scene, connection.id);
+      expect(started.status).toBeGreaterThanOrEqual(400);
+      expect(started.json).not.toHaveProperty('authorizationUrl');
+      expect(await harness.pendingRows(connection.id)).toBe(0);
+    });
 
     // S15: always refused, networks or not.
     it.each([

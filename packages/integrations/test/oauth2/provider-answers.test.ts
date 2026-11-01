@@ -42,7 +42,7 @@ const ask = ({ status = 200, headers = {}, body }: Answer) =>
 
 describe('provider-specific refusals', () => {
   // M5: Entra's and GitHub's names for a lost grant are not temporary failures.
-  it.fails.each([
+  it.each([
     ['Entra', 400, 'interaction_required'],
     ['Entra', 400, 'consent_required'],
     ['GitHub', 200, 'bad_refresh_token'],
@@ -56,14 +56,11 @@ describe('provider-specific refusals', () => {
   );
 
   // M5: GitHub's name for a refused client is not a temporary failure.
-  it.fails(
-    'M5 GitHub answering incorrect_client_credentials refused the client',
-    async () => {
-      expect(
-        await ask({ body: { error: 'incorrect_client_credentials' } }),
-      ).toEqual({ kind: 'client_refused' });
-    },
-  );
+  it('M5 GitHub answering incorrect_client_credentials refused the client', async () => {
+    expect(
+      await ask({ body: { error: 'incorrect_client_credentials' } }),
+    ).toEqual({ kind: 'client_refused' });
+  });
 
   // L10 stays: a name nobody has listed is temporary, so a typo can't drop a grant.
   it('keeps an unknown error temporary', async () => {
@@ -77,7 +74,7 @@ describe('provider-specific refusals', () => {
 
 describe('fields a service writes as null or empty', () => {
   // S4: a service that writes absent fields as null can still renew.
-  it.fails.each([
+  it.each([
     ['refresh_token null', { refresh_token: null }],
     ['refresh_token empty', { refresh_token: '' }],
     ['token_type null', { token_type: null }],
@@ -102,7 +99,7 @@ describe('fields a service writes as null or empty', () => {
 
 describe('how long a 429 blocks', () => {
   // S5: a Retry-After that can't be read takes the plan's 15 s default, not 1 s.
-  it.fails.each([
+  it.each([
     ['an HTTP date', 'Wed, 21 Oct 2015 07:28:00 GMT'],
     ['zero', '0'],
   ])('S5 %s blocks for the 15 s default', async (_name, retryAfter) => {

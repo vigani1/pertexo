@@ -108,7 +108,7 @@ describe('a callback meeting a key service fault', () => {
   });
 
   // S2: the code is already spent, so a blip here would lose the first tokens.
-  it.fails('S2 a seal that fails once still connects', async () => {
+  it('S2 a seal that fails once still connects', async () => {
     const { connectionId, authorized, run } = callback(1);
     expect(resultOf((await run()).location)).toBe('connected');
     expect(authorized).toEqual([connectionId]);

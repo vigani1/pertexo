@@ -354,17 +354,14 @@ describe('connections that need attention', () => {
     }) as unknown as ConnectionResponse;
 
   // M4: nothing uses a brand-new connection and nobody has connected it yet.
-  it.fails(
-    'M4 says nothing about a connection nobody has connected yet',
-    () => {
-      expect(
-        connectionAttentionItems({
-          connections: [connection('connection.oauth2_not_authorized')],
-          canManage: true,
-        }),
-      ).toEqual([]);
-    },
-  );
+  it('M4 says nothing about a connection nobody has connected yet', () => {
+    expect(
+      connectionAttentionItems({
+        connections: [connection('connection.oauth2_not_authorized')],
+        canManage: true,
+      }),
+    ).toEqual([]);
+  });
 
   it('still says a connection that lost its grant needs reconnecting', () => {
     expect(

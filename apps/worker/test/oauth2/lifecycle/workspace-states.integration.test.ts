@@ -98,47 +98,41 @@ describeOAuth2('an OAuth2 connection in a workspace that isn’t active', () => 
   };
 
   // M1, L7: a refresh token must not stay stored for the 30-day recovery window.
-  it.fails(
-    'M1 requesting deletion removes token and pending rows',
-    async () => {
-      const owner = await harness.newOwner();
-      const connected = await harness.connected(owner, 'non-rotating');
-      const pending = await harness.create(owner, 'non-rotating');
-      await harness.start(owner.api, owner, pending.id);
-      expect(await harness.pendingRows(pending.id)).toBe(1);
-      await requestDeletion(owner);
-      expect(await harness.tokenRow(connected.id)).toBeUndefined();
-      expect(await harness.pendingRows(pending.id)).toBe(0);
-      expect(await harness.connection(connected.id)).toMatchObject({
-        status: 'reauthorization_required',
-        last_error_code: 'workspace.pending_deletion',
-      });
-    },
-  );
+  it('M1 requesting deletion removes token and pending rows', async () => {
+    const owner = await harness.newOwner();
+    const connected = await harness.connected(owner, 'non-rotating');
+    const pending = await harness.create(owner, 'non-rotating');
+    await harness.start(owner.api, owner, pending.id);
+    expect(await harness.pendingRows(pending.id)).toBe(1);
+    await requestDeletion(owner);
+    expect(await harness.tokenRow(connected.id)).toBeUndefined();
+    expect(await harness.pendingRows(pending.id)).toBe(0);
+    expect(await harness.connection(connected.id)).toMatchObject({
+      status: 'reauthorization_required',
+      last_error_code: 'workspace.pending_deletion',
+    });
+  });
 
   // M1: one such connection took the list, the picker and the overview down.
-  it.fails(
-    'M1 after a restore the connection is listed and readable, suspended and lifted',
-    async () => {
-      const owner = await harness.newOwner();
-      const connection = await harness.connected(owner, 'non-rotating');
-      await requestDeletion(owner);
-      await restore(owner);
-      const suspended = await list(owner);
-      expect(suspended.status, JSON.stringify(suspended.json)).toBe(200);
-      expect(JSON.stringify(suspended.json)).toContain(connection.id);
-      expect((await harness.read(owner.api, owner, connection.id)).status).toBe(
-        200,
-      );
-      await lift(owner);
-      const lifted = await list(owner);
-      expect(lifted.status).toBe(200);
-      const detail = await harness.read(owner.api, owner, connection.id);
-      expect(detail.status).toBe(200);
-      expect(detail.json).toMatchObject({ status: 'reauthorization_required' });
-      expect(detail.json).not.toHaveProperty('grant');
-    },
-  );
+  it('M1 after a restore the connection is listed and readable, suspended and lifted', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'non-rotating');
+    await requestDeletion(owner);
+    await restore(owner);
+    const suspended = await list(owner);
+    expect(suspended.status, JSON.stringify(suspended.json)).toBe(200);
+    expect(JSON.stringify(suspended.json)).toContain(connection.id);
+    expect((await harness.read(owner.api, owner, connection.id)).status).toBe(
+      200,
+    );
+    await lift(owner);
+    const lifted = await list(owner);
+    expect(lifted.status).toBe(200);
+    const detail = await harness.read(owner.api, owner, connection.id);
+    expect(detail.status).toBe(200);
+    expect(detail.json).toMatchObject({ status: 'reauthorization_required' });
+    expect(detail.json).not.toHaveProperty('grant');
+  });
 
   // M1: the whole way back: Reconnect is what the page offers.
   it('M1 a restored and lifted workspace can reconnect and run', async () => {

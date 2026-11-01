@@ -84,7 +84,7 @@ describeOAuth2('how real services differ from the standard', () => {
       ?.refreshToken;
 
   // M5: a dead connection must not stay Active, retrying forever as "Check the token URL".
-  it.fails.each([
+  it.each([
     ['Entra', 'entra-interaction-required'],
     ['Entra', 'entra-consent-required'],
     ['GitHub', 'github-bad-refresh'],
@@ -100,23 +100,20 @@ describeOAuth2('how real services differ from the standard', () => {
     expect(await harness.tokenRow(connection.id)).toBeUndefined();
   });
 
-  it.fails(
-    'M5 GitHub refusing the client with a 200 needs new client details',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      const { runId, ended } = await renewalsWith(
-        connection,
-        'github-bad-credentials',
-      );
-      expect(ended.status).toBe('failed');
-      expect((await harness.attempts(runId))[0]).toMatchObject(CLIENT_REFUSED);
-      expect(await harness.connection(connection.id)).toMatchObject({
-        status: 'reauthorization_required',
-        last_error_code: 'connection.oauth2_client_rejected',
-      });
-      expect(await harness.tokenRow(connection.id)).toBeUndefined();
-    },
-  );
+  it('M5 GitHub refusing the client with a 200 needs new client details', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    const { runId, ended } = await renewalsWith(
+      connection,
+      'github-bad-credentials',
+    );
+    expect(ended.status).toBe('failed');
+    expect((await harness.attempts(runId))[0]).toMatchObject(CLIENT_REFUSED);
+    expect(await harness.connection(connection.id)).toMatchObject({
+      status: 'reauthorization_required',
+      last_error_code: 'connection.oauth2_client_rejected',
+    });
+    expect(await harness.tokenRow(connection.id)).toBeUndefined();
+  });
 
   // L10 stays: an error nobody has listed is temporary and changes nothing.
   it('an unknown error stays temporary', async () => {
@@ -133,7 +130,7 @@ describeOAuth2('how real services differ from the standard', () => {
   });
 
   // M5, related: the service's short code gives a person something to act on.
-  it.fails('M5 a step shows the service’s short error code', async () => {
+  it('M5 a step shows the service’s short error code', async () => {
     const connection = await harness.connected(owner, 'non-rotating');
     const { runId } = await renewalsWith(connection, 'unknown-error');
     const [attempt] = await harness.attempts(runId);
@@ -141,16 +138,13 @@ describeOAuth2('how real services differ from the standard', () => {
     expect(attempt?.error_summary).not.toContain(OAUTH2_STAND_IN_DESCRIPTION);
   });
 
-  it.fails(
-    'M5 a landing page shows the service’s short error code',
-    async () => {
-      const connection = await harness.create(owner, 'unknown-error');
-      const landing = await harness.reconnect(owner, connection);
-      expect(landing.result).toBe('token_refused');
-      expect(landing.location).toContain('stand_in_unknown_error');
-      expect(landing.location).not.toContain(OAUTH2_STAND_IN_DESCRIPTION);
-    },
-  );
+  it('M5 a landing page shows the service’s short error code', async () => {
+    const connection = await harness.create(owner, 'unknown-error');
+    const landing = await harness.reconnect(owner, connection);
+    expect(landing.result).toBe('token_refused');
+    expect(landing.location).toContain('stand_in_unknown_error');
+    expect(landing.location).not.toContain(OAUTH2_STAND_IN_DESCRIPTION);
+  });
 
   // S9, M5: only `[a-z_]` is ever repeated: the rest is a service's free text.
   it('an error that isn’t a short code is never repeated', async () => {
@@ -165,25 +159,22 @@ describeOAuth2('how real services differ from the standard', () => {
   });
 
   // M6: Google gives a refresh token only on first consent unless asked again.
-  it.fails(
-    'M6 reconnecting without a new refresh token keeps renewal working',
-    async () => {
-      const connection = await harness.connected(
-        owner,
-        'refresh-on-first-consent',
-      );
-      const held = issuedRefreshToken(connection);
-      expect(held).toMatch(/^stand-in-rt-/u);
-      expect((await harness.reconnect(owner, connection)).result).toBe(
-        'connected',
-      );
-      expect((await harness.tokenRow(connection.id))?.renewable).toBe(true);
-      await harness.expireToken(connection.id);
-      const runId = await harness.run(owner, get(connection));
-      expect((await harness.finish(runId)).status).toBe('succeeded');
-      expect(refreshTokensSent(connection)).toEqual([held]);
-    },
-  );
+  it('M6 reconnecting without a new refresh token keeps renewal working', async () => {
+    const connection = await harness.connected(
+      owner,
+      'refresh-on-first-consent',
+    );
+    const held = issuedRefreshToken(connection);
+    expect(held).toMatch(/^stand-in-rt-/u);
+    expect((await harness.reconnect(owner, connection)).result).toBe(
+      'connected',
+    );
+    expect((await harness.tokenRow(connection.id))?.renewable).toBe(true);
+    await harness.expireToken(connection.id);
+    const runId = await harness.run(owner, get(connection));
+    expect((await harness.finish(runId)).status).toBe('succeeded');
+    expect(refreshTokensSent(connection)).toEqual([held]);
+  });
 
   // M6's limit: "when the secret version is unchanged". New client details are a
   // different sign-in, so an old refresh token must not carry over.
@@ -226,7 +217,7 @@ describeOAuth2('how real services differ from the standard', () => {
   });
 
   // S4: a service that writes absent fields as null can connect.
-  it.fails.each(['null-fields', 'empty-refresh-token'])(
+  it.each(['null-fields', 'empty-refresh-token'])(
     'S4 a %s service connects and its token works',
     async (behavior) => {
       const connection = await harness.connected(owner, behavior);
@@ -238,22 +229,19 @@ describeOAuth2('how real services differ from the standard', () => {
   );
 
   // S4: and can renew, keeping the refresh token it already has.
-  it.fails(
-    'S4 a null refresh token on renewal keeps the one held',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      const held = issuedRefreshToken(connection);
-      const { ended } = await renewalsWith(connection, 'null-fields');
-      expect(ended.status).toBe('succeeded');
-      await harness.expireToken(connection.id);
-      const again = await harness.run(owner, get(connection));
-      expect((await harness.finish(again)).status).toBe('succeeded');
-      expect(refreshTokensSent(connection)).toEqual([held, held]);
-    },
-  );
+  it('S4 a null refresh token on renewal keeps the one held', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    const held = issuedRefreshToken(connection);
+    const { ended } = await renewalsWith(connection, 'null-fields');
+    expect(ended.status).toBe('succeeded');
+    await harness.expireToken(connection.id);
+    const again = await harness.run(owner, get(connection));
+    expect((await harness.finish(again)).status).toBe('succeeded');
+    expect(refreshTokensSent(connection)).toEqual([held, held]);
+  });
 
   // S5: a rate-limited service must not be asked again every second.
-  it.fails.each([
+  it.each([
     ['an HTTP date', 'Wed, 21 Oct 2015 07:28:00 GMT'],
     ['zero', '0'],
   ])(
@@ -321,7 +309,7 @@ describeOAuth2('how real services differ from the standard', () => {
   });
 
   // M2: ...and must take a revoked grant, the case people most want it for.
-  it.fails('M2 a revoked grant takes a step’s error path', async () => {
+  it('M2 a revoked grant takes a step’s error path', async () => {
     const connection = await harness.connected(owner, 'non-rotating');
     const workflowId = await owner.api.publish(
       owner.workspaceId,
