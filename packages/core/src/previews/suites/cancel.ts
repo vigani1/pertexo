@@ -10,21 +10,19 @@ import {
   workflowTestSuiteCases,
   workflowTestSuites,
 } from '@pertexo/database/schema';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/workflow-model';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
-import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { cancelInTransaction } from '../../runs/commands/cancel-active.repository.js';
 import { WorkflowRunNotFoundError } from '../../runs/errors.js';
+import { requireTestCapability } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/errors.js';
 
 export async function cancelTestSuite(
   client: PoolClient,
+  role: Role,
   input: SampleScope & Readonly<{ suiteId: string }>,
 ): Promise<void> {
-  await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
-    actorId: input.actorId,
-    roles: rolesForCapability('run:cancel'),
-  });
+  requireTestCapability(role, 'run:cancel');
   const db = drizzle(client);
   const found = await db
     .select()

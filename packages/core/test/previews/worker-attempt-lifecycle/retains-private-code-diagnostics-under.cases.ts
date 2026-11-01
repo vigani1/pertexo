@@ -1,5 +1,6 @@
 import { withWorkspaceTransaction } from '@pertexo/database/primitives';
 import { readPreviewRun } from '../../../src/previews/runs/records.queries.js';
+import { createPreviewRunStore } from '../../../src/previews/runs/store.js';
 
 import { expect, it } from 'vitest';
 import { completePreviewAttempt } from '../../../src/previews/attempts/complete.js';
@@ -47,15 +48,11 @@ export function registerRetainsPrivateCodeDiagnosticsUnder(): void {
         codeDiagnostics: { ...codeDiagnostics, logs: [] },
       }),
     ).rejects.toBeInstanceOf(PreviewAttemptStateError);
-    const preview = await withWorkspaceTransaction(
-      apiPool,
+    const preview = await createPreviewRunStore(apiPool).readPreview({
       workspaceId,
-      (transaction) =>
-        readPreviewRun(transaction, {
-          actorUserId,
-          previewRunId: claimed.fixture.previewRunId,
-        }),
-    );
+      actorUserId,
+      previewRunId: claimed.fixture.previewRunId,
+    });
     expect(preview?.codeDiagnostics).toEqual(codeDiagnostics);
     const facts = await previewTerminalFacts(claimed.fixture.previewRunId);
     expect(JSON.stringify(facts)).not.toContain('private preview log');
@@ -67,6 +64,7 @@ export function registerRetainsPrivateCodeDiagnosticsUnder(): void {
         readPreviewRun(
           transaction,
           { actorUserId, previewRunId: claimed.fixture.previewRunId },
+          'builder',
           new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
         ),
     );
@@ -100,15 +98,11 @@ export function registerRetainsPrivateCodeDiagnosticsUnder(): void {
         outcome: { ...input.outcome, errorSummary: 'Another reason.' },
       }),
     ).rejects.toBeInstanceOf(PreviewAttemptStateError);
-    const preview = await withWorkspaceTransaction(
-      apiPool,
+    const preview = await createPreviewRunStore(apiPool).readPreview({
       workspaceId,
-      (transaction) =>
-        readPreviewRun(transaction, {
-          actorUserId,
-          previewRunId: claimed.fixture.previewRunId,
-        }),
-    );
+      actorUserId,
+      previewRunId: claimed.fixture.previewRunId,
+    });
     expect(preview).toMatchObject({
       status: 'failed',
       safeErrorCode: 'preview.input_invalid',

@@ -1,9 +1,8 @@
 import { expect, it } from 'vitest';
 
-import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { PreviewAdmissionDeniedError } from '../../../src/previews/errors.js';
 
-import { workspaceA, apiDatabase, input } from './fixture.js';
+import { workspaceA, apiDatabase, input, apiPreviews } from './fixture.js';
 
 // Previews are kept at most seven days and execute for at most five minutes.
 const minute = 60 * 1_000;
@@ -48,15 +47,13 @@ export function registerBoundsRetentionExecutionDeadline(): void {
       const now = Date.now();
 
       await expect(
-        apiDatabase.withWorkspace(workspaceA, (transaction) =>
-          acceptPreviewRun(
-            transaction,
-            input({
-              expiresAt: new Date(now + expiresAt),
-              executionDeadlineAt: new Date(now + executionDeadlineAt),
-            }),
-          ),
-        ),
+        apiPreviews.acceptPreview({
+          workspaceId: workspaceA,
+          ...input({
+            expiresAt: new Date(now + expiresAt),
+            executionDeadlineAt: new Date(now + executionDeadlineAt),
+          }),
+        }),
       ).rejects.toStrictEqual(new PreviewAdmissionDeniedError(reason));
     },
   );
@@ -65,15 +62,13 @@ export function registerBoundsRetentionExecutionDeadline(): void {
     const now = Date.now();
 
     await expect(
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        acceptPreviewRun(
-          transaction,
-          input({
-            expiresAt: new Date(now + sevenDays - minute),
-            executionDeadlineAt: new Date(now + fiveMinutes - 10_000),
-          }),
-        ),
-      ),
+      apiPreviews.acceptPreview({
+        workspaceId: workspaceA,
+        ...input({
+          expiresAt: new Date(now + sevenDays - minute),
+          executionDeadlineAt: new Date(now + fiveMinutes - 10_000),
+        }),
+      }),
     ).resolves.toHaveProperty('previewRunId');
   });
 }

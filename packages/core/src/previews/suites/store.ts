@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
-import { withTestAuthority, withTestRead } from '../workflows/access.js';
+import { withTestChange, withTestRead } from '../workflows/access.js';
 import { cancelTestSuite } from './cancel.js';
 import type { WorkflowTestSuiteStore } from './contract.js';
 import { readSuiteCurrent } from './current.queries.js';
@@ -13,15 +13,15 @@ export function createWorkflowTestSuiteStore(
 ): WorkflowTestSuiteStore {
   return {
     prepare: (input) =>
-      withTestAuthority(
+      withTestChange(
         pool,
         input,
         async (client) =>
           (await prepareTestSuite(client, input, catalogs)).prepared,
       ),
     start: (input) =>
-      withTestAuthority(pool, input, (client) =>
-        startTestSuite(client, input, catalogs),
+      withTestChange(pool, input, (client, role) =>
+        startTestSuite(client, role, input, catalogs),
       ),
     list: (input) =>
       withTestRead(pool, input, async (client) => ({
@@ -33,8 +33,8 @@ export function createWorkflowTestSuiteStore(
     report: (input) =>
       withTestRead(pool, input, (client) => readCaseReport(client, input)),
     cancel: (input) =>
-      withTestAuthority(pool, input, (client) =>
-        cancelTestSuite(client, input),
+      withTestChange(pool, input, (client, role) =>
+        cancelTestSuite(client, role, input),
       ),
   };
 }

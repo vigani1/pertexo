@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import { readTransactionFolderScope } from '../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
@@ -7,21 +8,24 @@ import { and, eq, gt } from 'drizzle-orm';
 import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { assertPreviewActor } from './acceptance/admission.queries.js';
-import type { PreviewRunRecord } from './acceptance/contract.js';
+import type {
+  PreviewRunRecord,
+  ReadPreviewRunInput,
+} from './acceptance/contract.js';
 
 export async function readPreviewRun(
   transaction: WorkspaceTransaction,
-  input: Readonly<{ actorUserId: string; previewRunId: string }>,
+  input: ReadPreviewRunInput,
+  role: Role,
   now: Date = new Date(),
 ): Promise<PreviewRunRecord | null> {
   const actorUserId = input.actorUserId;
   const previewRunId = input.previewRunId;
-  await assertPreviewActor(transaction, actorUserId);
-  const resources = await readTransactionFolderScope(transaction, {
-    workspaceId: transaction.workspaceId,
-    actorId: actorUserId,
-  });
+  const resources = await readTransactionFolderScope(
+    transaction,
+    { workspaceId: transaction.workspaceId, actorId: actorUserId },
+    role,
+  );
   const rows = await transaction.db
     .select({
       completedAt: previewRuns.completedAt,

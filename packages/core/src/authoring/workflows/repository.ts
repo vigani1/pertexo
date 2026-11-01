@@ -22,13 +22,10 @@ import type { Pool, PoolClient } from 'pg';
 
 import { rolesForCapability } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import { acceptPreviewRun } from '../../previews/runs/accept.js';
-import { readPreviewRun } from '../../previews/runs/records.queries.js';
-import { resolvePreviewReplay } from '../../previews/runs/resolve-replay.js';
+import { createPreviewRunStore } from '../../previews/runs/store.js';
 import {
   withMultiWorkspaceTransaction,
   withTenantScopedClient,
-  withWorkspaceTransaction,
   type WorkspaceScopeRunner,
 } from '@pertexo/database/primitives';
 import { createWorkflowPortabilityStore } from '../portability/repository.js';
@@ -128,28 +125,6 @@ async function requireWorkspaceReader(
   }
 }
 
-function createPreviewStore(
-  pool: Pool,
-): Pick<
-  WorkflowAuthoringDatabase,
-  'acceptPreview' | 'readPreview' | 'resolvePreviewReplay'
-> {
-  return {
-    acceptPreview: async ({ workspaceId, ...input }) =>
-      withWorkspaceTransaction(pool, workspaceId, (transaction) =>
-        acceptPreviewRun(transaction, input),
-      ),
-    readPreview: async ({ workspaceId, ...input }) =>
-      withWorkspaceTransaction(pool, workspaceId, (transaction) =>
-        readPreviewRun(transaction, input),
-      ),
-    resolvePreviewReplay: async ({ workspaceId, ...input }) =>
-      withWorkspaceTransaction(pool, workspaceId, (transaction) =>
-        resolvePreviewReplay(transaction, input),
-      ),
-  };
-}
-
 export function createWorkflowAuthoringDatabase(
   config: DatabaseConfig,
   options: WorkflowAuthoringDatabaseOptions,
@@ -220,7 +195,7 @@ export function createWorkflowAuthoringDatabase(
     autoPause: createWorkflowAutoPauseStore(transact),
     concurrency: createWorkflowConcurrencyStore(transact),
     errorWorkflow: createWorkflowErrorStore(transact),
-    ...createPreviewStore(pool),
+    ...createPreviewRunStore(pool),
     ...createWorkflowAuthoringDraftStore(authoringContext),
     ...createWorkflowVersionRestoreStore(authoringContext),
     ...createWorkflowDuplicationStore(authoringContext),

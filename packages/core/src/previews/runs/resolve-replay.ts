@@ -3,14 +3,12 @@ import type {
   ResolvePreviewReplayInput,
 } from './contract.js';
 
+import type { Role } from '@pertexo/workflow-model';
 import { and, eq, gt } from 'drizzle-orm';
 import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 
 import { PreviewAcceptanceCorruptError } from '../errors.js';
-import {
-  assertPreviewActor,
-  previewWorkflowVisible,
-} from './acceptance/admission.queries.js';
+import { previewWorkflowVisible } from './acceptance/admission.queries.js';
 import { readExistingAcceptance } from './acceptance/replay.queries.js';
 
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
@@ -19,15 +17,15 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 export async function resolvePreviewReplay(
   transaction: WorkspaceTransaction,
   input: ResolvePreviewReplayInput,
+  role: Role,
   now: Date = new Date(),
 ): Promise<PreviewReplayRecord | null> {
-  await assertPreviewActor(transaction, input.actorUserId);
   if (
     !(await previewWorkflowVisible(
       transaction,
+      role,
       input.actorUserId,
       input.workflowId,
-      'workflow:update',
     ))
   )
     return null;

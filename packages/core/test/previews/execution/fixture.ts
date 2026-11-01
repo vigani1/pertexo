@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
 import {
+  acquireDatabasePool,
   parseDatabaseConfig,
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
@@ -11,6 +12,7 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import type { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
+import { createPreviewRunStore } from '../../../src/previews/runs/store.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -64,6 +66,10 @@ export const otherRequestHash = digest('preview-request-conflict');
 export let apiDatabase!: ReturnType<typeof createWorkspaceDatabase>;
 
 export let workerDatabase!: ReturnType<typeof createWorkspaceDatabase>;
+
+export let apiPreviews!: ReturnType<typeof createPreviewRunStore>;
+
+let apiPreviewsLease: ReturnType<typeof acquireDatabasePool> | undefined;
 
 let databaseCreated = false;
 
@@ -235,6 +241,10 @@ export async function beforeAllFixture1() {
     workerDatabase = createWorkspaceDatabase(
       parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
     );
+    apiPreviewsLease = acquireDatabasePool(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
+    );
+    apiPreviews = createPreviewRunStore(apiPreviewsLease.pool);
   } catch (error: unknown) {
     await Promise.allSettled([apiDatabase.close(), workerDatabase.close()]);
     await disposableDatabase.drop();
@@ -248,6 +258,7 @@ export async function afterAllFixture2() {
   for (const close of [
     () => apiDatabase.close(),
     () => workerDatabase.close(),
+    () => apiPreviewsLease?.close() ?? Promise.resolve(),
   ]) {
     try {
       await close();
