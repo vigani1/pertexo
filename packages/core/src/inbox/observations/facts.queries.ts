@@ -1,5 +1,6 @@
 import { entitlementInEffect } from '../../runs/queries/entitlement-effect.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { readFailureAlertState } from './failure-alert.queries.js';
 import { readCommentMentionSource } from './mentions.queries.js';
 import {
   review,
@@ -73,6 +74,8 @@ export async function readAttentionFact(
       return readAutoPauseFact(client, subject);
     case 'connection_attention':
       return readConnectionAttentionFact(client, subject);
+    case 'failure_alert_attention':
+      return readFailureAlertFact(client, subject);
     case 'publication_review_waiting':
       return readPublicationReviewFact(client, subject);
     case 'approval_waiting':
@@ -164,6 +167,17 @@ async function readConnectionAttentionFact(
     connectionId: subject.subjectId,
     active: row?.needs_attention === true,
     sourceRevision: row?.health_revision ?? 'removed',
+  };
+}
+async function readFailureAlertFact(
+  client: PoolClient,
+  subject: AttentionSubject,
+): Promise<AttentionFact> {
+  const state = await readFailureAlertState(client, subject);
+  return {
+    ...base,
+    active: state?.active ?? false,
+    sourceRevision: state?.sourceRevision ?? 'removed',
   };
 }
 async function readPublicationReviewFact(

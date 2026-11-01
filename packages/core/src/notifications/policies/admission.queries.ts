@@ -3,7 +3,7 @@ import {
   eligibleNotificationDestination,
 } from '@pertexo/workflow-model';
 import { and, eq, getTableName, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
+import { alias, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
   connections,
   connectionSecretVersions,
@@ -22,6 +22,14 @@ type ResolvedFailureNotificationPolicy = Readonly<{
   connectionSecretVersionId: string;
 }>;
 
+/** The connection a stored destination version names, or null if it names none. */
+export const destinationConnectionIdSql = (
+  version: Readonly<{ config: AnyPgColumn }>,
+) =>
+  sql<
+    string | null
+  >`case when jsonb_typeof(${version.config})='object' and ${version.config} ? 'connectionId' and (${version.config}->>'connectionId') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then (${version.config}->>'connectionId')::uuid end`;
+
 /** One notification policy resolver for ordinary run acceptance. */
 export async function resolveWorkflowFailureNotificationPolicy(
   transaction: WorkspaceTransaction,
@@ -29,9 +37,7 @@ export async function resolveWorkflowFailureNotificationPolicy(
 ): Promise<ResolvedFailureNotificationPolicy | undefined> {
   const [destination] = await transaction.db
     .select({
-      connection_id: sql<
-        string | null
-      >`case when jsonb_typeof(${versions.config})='object' and ${versions.config} ? 'connectionId' and (${versions.config}->>'connectionId') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then (${versions.config}->>'connectionId')::uuid end`,
+      connection_id: destinationConnectionIdSql(versions),
       destination_id: destinations.id,
       current_config_version: destinations.currentConfigVersion,
       destination_status: destinations.status,

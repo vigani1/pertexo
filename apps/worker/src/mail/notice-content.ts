@@ -7,6 +7,7 @@ const labels = {
   workflow_failure: 'Workflow failed',
   workflow_auto_paused: 'Workflow auto-paused',
   connection_attention: 'Connection needs attention',
+  failure_alert_attention: 'Failure alerts can’t be delivered',
   limit_reached: 'Workspace limit reached',
   limit_approaching: 'Workspace nearing a limit',
   approval_waiting: 'Approval waiting',
@@ -95,6 +96,11 @@ function noticeLine(
   const label = labels[item.noticeKind] + ': ' + noticeName(item.name);
   if (item.noticeKind === 'workflow_failure')
     return label + ' (' + String(item.count) + ')';
+  if (item.noticeKind === 'failure_alert_attention') {
+    const setup = new URL('/w/' + workspaceId + '/settings/alerts', origin);
+    setup.searchParams.set('destination', item.subjectId);
+    return label + '\nCheck its connection in Settings: ' + setup.href;
+  }
   if (item.noticeKind !== 'workflow_mention') return label;
   const discussion = new URL(
     '/w/' + workspaceId + '/workflows/' + item.workflowId + '/comments',

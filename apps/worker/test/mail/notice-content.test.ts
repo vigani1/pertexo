@@ -89,6 +89,11 @@ it.each([
     'Billing key',
     'Connection needs attention: Billing key — Operations',
   ],
+  [
+    'failure_alert_attention',
+    'Slack',
+    'Failure alerts can’t be delivered: Slack — Operations',
+  ],
   ['limit_reached', 'Operations', 'Workspace limit reached — Operations'],
   [
     'limit_approaching',

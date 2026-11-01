@@ -38,6 +38,7 @@ export const workspaceNoticeKindSchema = z.enum([
   'workflow_failure',
   'workflow_auto_paused',
   'connection_attention',
+  'failure_alert_attention',
   'limit_reached',
   'limit_approaching',
   'approval_waiting',
@@ -93,6 +94,7 @@ const operationalAttentionSchema = z
     noticeKind: z.enum([
       'workflow_auto_paused',
       'connection_attention',
+      'failure_alert_attention',
       'limit_reached',
       'limit_approaching',
       'approval_waiting',
