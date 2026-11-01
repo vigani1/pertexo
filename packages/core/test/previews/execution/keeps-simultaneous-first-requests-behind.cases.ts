@@ -4,7 +4,6 @@ import { expect, it } from 'vitest';
 
 import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { PreviewAdmissionDeniedError } from '../../../src/previews/errors.js';
-import { resolvePreviewReplay } from '../../../src/previews/runs/resolve-replay.js';
 import {
   auditEvents,
   idempotencyRecords,
