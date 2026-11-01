@@ -18,9 +18,15 @@ import { openWebhookResponse } from './responses/admission.repository.js';
 export function startWebhookRun(
   transaction: WorkspaceTransaction,
   input: AcceptVerifiedWebhookDeliveryInput,
-  initial: ReturnType<InitialCheckpointFactory>,
-  key: string,
-  runInput: unknown,
+  {
+    initial,
+    key,
+    runInput,
+  }: Readonly<{
+    initial: ReturnType<InitialCheckpointFactory>;
+    key: string;
+    runInput: unknown;
+  }>,
 ) {
   const { verification } = input;
   return acceptWorkflowRun(transaction, {
@@ -70,7 +76,8 @@ export async function coordinateVerifiedWebhook(
       version: projection,
       prepared,
     },
-    (tx, eventId) => startWebhookRun(tx, input, initial, eventId, runInput),
+    (tx, eventId) =>
+      startWebhookRun(tx, input, { initial, key: eventId, runInput }),
   );
   const runId = 'runId' in result ? result.runId : undefined;
   if ('coordinated' in result && asksSenderToRetry(result)) {

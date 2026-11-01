@@ -19,9 +19,15 @@ import { workflowAccessible } from '../tenant-access/resources/workflows.queries
 export async function withWorkflowAccess<T>(
   pool: Pool,
   actor: WorkspaceActor & Readonly<{ workflowId: string }>,
-  access: WorkspaceAccess &
-    Readonly<{ folderCapability: WorkflowResourceCapability }>,
-  denied: () => Error,
+  {
+    folderCapability,
+    denied,
+    ...access
+  }: WorkspaceAccess &
+    Readonly<{
+      folderCapability: WorkflowResourceCapability;
+      denied: () => Error;
+    }>,
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
   const { workspaceId, actorId, workflowId } = actor;
@@ -40,7 +46,7 @@ export async function withWorkflowAccess<T>(
           !(await workflowAccessible(client, scope, {
             workspaceId,
             workflowId,
-            capability: access.folderCapability,
+            capability: folderCapability,
           }))
         )
           throw denied();

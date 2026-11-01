@@ -54,8 +54,8 @@ export function withWebhookReader<T>(
       capability: 'workflow:update',
       statuses: BROWSABLE_WORKSPACE_STATUSES,
       folderCapability: 'workflow:read',
+      denied: () => new WebhookTriggerNotFoundError(),
     },
-    () => new WebhookTriggerNotFoundError(),
     work,
   );
 }

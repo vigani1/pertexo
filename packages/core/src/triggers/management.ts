@@ -32,8 +32,8 @@ export function withTriggerManagement<T>(
       capability: 'workflow:update',
       statuses: ACTIVE_WORKSPACE_STATUSES,
       folderCapability: 'workflow:update',
+      denied,
     },
-    denied,
     async (client) => {
       if (
         !(await lockActiveTriggerWorkflow(

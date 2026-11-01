@@ -236,13 +236,11 @@ async function acceptNewWebhookDelivery(
   let accepted;
   await transaction.db.execute(sql`savepoint webhook_run_admission`);
   try {
-    accepted = await startWebhookRun(
-      transaction,
-      input,
+    accepted = await startWebhookRun(transaction, input, {
       initial,
-      deliveryId,
+      key: deliveryId,
       runInput,
-    );
+    });
   } catch (error) {
     if (!(error instanceof WorkflowAlreadyRunningError)) throw error;
     await transaction.db.execute(

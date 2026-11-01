@@ -1,10 +1,9 @@
-import { and, eq, getTableColumns, isNull, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { webhookTestEvents as listeners } from '@pertexo/database/schema';
 import {
   rethrowQueryFailure,
   appendAuditFact,
-  withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { parseStoredExecutionValue } from '../../../runs/values/stored-execution.js';
@@ -15,15 +14,15 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { inlineSampleOutput } from '../../../authoring/step-samples/records.repository.js';
-import { WorkflowStepSampleError } from '../../../authoring/step-samples/errors.js';
 import { WorkflowNotFoundError } from '../../../authoring/workflows/errors.js';
-import { WebhookIngressRateLimitExceededError } from '../errors.js';
 import { withWorkflowAccess } from '../../workflow-access.js';
+import { readTestEventDraft } from './authority.queries.js';
 import {
-  readTestEventDraft,
-  testEventDraftForCreator,
-} from './authority.queries.js';
+  captureTestEvent,
+  consumeTestEventLimit,
+  resolveTestEventListener,
+} from './ingress.repository.js';
+import { lockListener } from './records.queries.js';
 import { WebhookTestEventError } from './errors.js';
 import type {
   StartTestEventInput,
@@ -34,20 +33,6 @@ import type {
 } from './contract.js';
 
 const WORKSPACE_LISTENER_LIMIT = 10;
-const LISTENER_ATTEMPT_LIMIT = 60;
-
-const selection = {
-  ...getTableColumns(listeners),
-  expired: sql<boolean>`${listeners.expiresAt}<=clock_timestamp()`,
-  databaseTime: sql<Date>`clock_timestamp()`.mapWith(listeners.createdAt),
-};
-type Row = NonNullable<Awaited<ReturnType<typeof find>>>;
-const scopeOf = (r: Row): TestEventScope => ({
-  workspaceId: r.workspaceId,
-  workflowId: r.workflowId,
-  nodeId: r.nodeId,
-  actorId: r.createdBy,
-});
 
 export type WebhookTestEventStore = ReturnType<
   typeof createWebhookTestEventStore
@@ -90,27 +75,10 @@ function transact<T>(
       capability: 'workflow:update',
       statuses: ACTIVE_WORKSPACE_STATUSES,
       folderCapability: 'workflow:update',
+      denied: () => new WorkflowNotFoundError('Workflow is not visible'),
     },
-    () => new WorkflowNotFoundError('Workflow is not visible'),
     work,
   );
-}
-async function find(client: PoolClient, scope: TestEventScope, id: string) {
-  const result = await drizzle(client)
-    .select(selection)
-    .from(listeners)
-    .where(
-      and(
-        eq(listeners.workspaceId, scope.workspaceId),
-        eq(listeners.workflowId, scope.workflowId),
-        eq(listeners.nodeId, scope.nodeId),
-        eq(listeners.createdBy, scope.actorId),
-        eq(listeners.id, id),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
-  return result[0];
 }
 function startTestEventListener(
   pool: Pool,
@@ -186,7 +154,7 @@ function readTestEventListener(
 ): Promise<TestEventSnapshot> {
   return transact(pool, input, async (client) => {
     const draft = await readTestEventDraft(client, input);
-    const row = await find(client, input, input.id);
+    const row = await lockListener(client, input, input.id);
     if (row === undefined || row.expired)
       return { state: 'expired', expiresAt: null, output: null };
     if (row.binding !== draft.binding)
@@ -225,188 +193,4 @@ function stopTestEventListener(
       )
       .catch(rethrowQueryFailure);
   });
-}
-
-async function resolveTestEventListener(
-  pool: Pool,
-  hash: string,
-): Promise<TestEventReference | null> {
-  const resolution = await drizzle(pool)
-    .execute<{ workspace_id: string; id: string }>(
-      sql`select * from app.resolve_webhook_test_event(${hash}::char(64))`,
-    )
-    .catch(rethrowQueryFailure);
-  const resolved = resolution.rows[0];
-  if (resolved === undefined) return null;
-  try {
-    return await withTenantScopedClient(
-      pool,
-      { workspaceId: resolved.workspace_id },
-      async (client) => {
-        const result = await drizzle(client)
-          .select(selection)
-          .from(listeners)
-          .where(
-            and(
-              eq(listeners.workspaceId, resolved.workspace_id),
-              eq(listeners.id, resolved.id),
-              eq(listeners.endpointKeyHash, hash),
-              isNull(listeners.outputRef),
-            ),
-          )
-          .catch(rethrowQueryFailure);
-        const row = result[0];
-        if (row === undefined || row.expired) return null;
-        const draft = await testEventDraftForCreator(client, scopeOf(row));
-        if (draft.binding !== row.binding) return null;
-        return {
-          endpointId: row.id,
-          endpointKeyHash: hash,
-          workspaceId: row.workspaceId,
-          triggerId: row.id,
-          workflowId: row.workflowId,
-          nodeId: row.nodeId,
-          databaseTime: row.databaseTime,
-          authentication: row.authentication,
-          ...(draft.config.runInput === undefined
-            ? {}
-            : { runInputMode: draft.config.runInput }),
-          currentSecret: {
-            id: row.id,
-            triggerId: row.id,
-            kmsKeyReference: row.kmsKeyReference,
-            encryptedDataKey: row.encryptedDataKey,
-            ciphertext: row.ciphertext,
-            nonce: row.nonce,
-            authTag: row.authTag,
-          },
-        };
-      },
-    );
-  } catch (error) {
-    if (
-      error instanceof WorkflowNotFoundError ||
-      error instanceof WebhookTestEventError
-    )
-      return null;
-    throw error;
-  }
-}
-
-async function consumeTestEventLimit(
-  pool: Pool,
-  reference: TestEventReference,
-): Promise<void> {
-  const allowed = await withTenantScopedClient(
-    pool,
-    { workspaceId: reference.workspaceId },
-    (client) =>
-      drizzle(client)
-        .update(listeners)
-        .set({ attempts: sql`${listeners.attempts}+1` })
-        .where(
-          and(
-            eq(listeners.workspaceId, reference.workspaceId),
-            eq(listeners.id, reference.endpointId),
-            sql`${listeners.attempts}<${LISTENER_ATTEMPT_LIMIT}`,
-            sql`${listeners.expiresAt}>clock_timestamp()`,
-            isNull(listeners.outputRef),
-          ),
-        )
-        .returning({ id: listeners.id })
-        .catch(rethrowQueryFailure),
-  );
-  if (allowed.length !== 1) {
-    const limited = await withTenantScopedClient(
-      pool,
-      { workspaceId: reference.workspaceId },
-      (client) =>
-        drizzle(client)
-          .select({ one: sql`1` })
-          .from(listeners)
-          .where(
-            and(
-              eq(listeners.workspaceId, reference.workspaceId),
-              eq(listeners.id, reference.endpointId),
-              sql`${listeners.attempts}>=${LISTENER_ATTEMPT_LIMIT}`,
-              sql`${listeners.expiresAt}>clock_timestamp()`,
-              isNull(listeners.outputRef),
-            ),
-          )
-          .catch(rethrowQueryFailure),
-    );
-    if (limited.length === 1)
-      throw new WebhookIngressRateLimitExceededError(LISTENER_ATTEMPT_LIMIT);
-    throw new WebhookTestEventError('unavailable');
-  }
-}
-
-async function captureTestEvent(
-  pool: Pool,
-  reference: TestEventReference,
-  runInput: unknown,
-): Promise<boolean> {
-  return withTenantScopedClient(
-    pool,
-    { workspaceId: reference.workspaceId },
-    async (client) => {
-      // Read authority before the row lock, matching management's lock order.
-      const result = await drizzle(client)
-        .select(selection)
-        .from(listeners)
-        .where(
-          and(
-            eq(listeners.workspaceId, reference.workspaceId),
-            eq(listeners.id, reference.endpointId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      const candidate = result[0];
-      if (candidate === undefined) return false;
-      let draft;
-      try {
-        draft = await testEventDraftForCreator(client, scopeOf(candidate));
-      } catch (error) {
-        if (
-          error instanceof WorkflowNotFoundError ||
-          error instanceof WebhookTestEventError
-        )
-          return false;
-        throw error;
-      }
-      const row = await find(client, scopeOf(candidate), candidate.id);
-      const listenerUnavailable =
-        row === undefined ||
-        row.expired ||
-        row.outputRef !== null ||
-        row.binding !== draft.binding;
-      if (listenerUnavailable) return false;
-      let output;
-      try {
-        output = inlineSampleOutput({
-          kind: 'inline',
-          value: runInput,
-        });
-      } catch (error) {
-        if (error instanceof WorkflowStepSampleError)
-          throw new WebhookTestEventError('value_invalid');
-        throw error;
-      }
-      await drizzle(client)
-        .update(listeners)
-        .set({
-          outputRef: output,
-          receivedAt: sql`clock_timestamp()`,
-          expiresAt: sql`clock_timestamp()+interval '10 minutes'`,
-        })
-        .where(
-          and(
-            eq(listeners.workspaceId, reference.workspaceId),
-            eq(listeners.id, reference.endpointId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      return true;
-    },
-  );
 }
