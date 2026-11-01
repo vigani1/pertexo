@@ -11,18 +11,17 @@ import {
 /** The tab that opened consent hears from the tab it opened on this channel. */
 export const OAUTH2_CHANNEL = 'pertexo.connections.oauth2';
 
-const LANDING_TEXT: Readonly<
-  Record<OAuth2CallbackLanding['result'], string>
-> = {
-  connected: 'Connected. You can close this tab.',
-  denied: "You didn't allow access. Nothing changed.",
-  token_refused:
-    "The service refused the sign-in. Check the client ID, secret and token URL. If they're right, try sending them in the request body.",
-  provider_unavailable:
-    "The service didn't answer. Try again in a few minutes.",
-  invalid:
-    'This sign-in link is no longer valid. Start again from Connections.',
-};
+const LANDING_TEXT: Readonly<Record<OAuth2CallbackLanding['result'], string>> =
+  {
+    connected: 'Connected. You can close this tab.',
+    denied: "You didn't allow access. Nothing changed.",
+    token_refused:
+      "The service refused the sign-in. Check the client ID, secret and token URL. If they're right, try sending them in the request body.",
+    provider_unavailable:
+      "The service didn't answer. Try again in a few minutes.",
+    invalid:
+      'This sign-in link is no longer valid. Start again from Connections.',
+  };
 
 /** How a sign-in ended, with the service's own code when it gave one worth acting on. */
 export function landingMessage(landing: OAuth2CallbackLanding): string {
