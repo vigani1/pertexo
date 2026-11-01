@@ -13,8 +13,13 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { authorizeBatch } from './authorize.repository.js';
+import { createPersonBackoff } from './backoff.js';
 import { readMailCandidates } from './candidates.queries.js';
-import type { NoticeMailPerson, NoticeMailSealer } from './contract.js';
+import type {
+  NoticeMailPerson,
+  NoticeMailPersonFailure,
+  NoticeMailSealer,
+} from './contract.js';
 import { preparePerson } from './prepare.repository.js';
 
 const CANDIDATE_PAGE_SIZE = 10;
@@ -32,9 +37,11 @@ export function createNoticeMailStore(
   maintenanceConfig: DatabaseConfig,
   seal: NoticeMailSealer,
   runtime?: DatabaseRuntime,
+  onPersonFailed?: (failure: NoticeMailPersonFailure) => void,
 ) {
   const lease = acquireDatabasePool(config, runtime);
   const maintenance = acquireDatabasePool(maintenanceConfig);
+  const backoff = createPersonBackoff();
   let after: NoticeMailPerson | undefined;
   const asPerson = (person: NoticeMailPerson) => ({
     workspaceId: person.workspace_id,
@@ -45,6 +52,7 @@ export function createNoticeMailStore(
       await lease.close();
       await maintenance.close();
     },
+    /** One person's failure stays theirs: the walk moves on to everyone after them. */
     prepare: async (signal?: AbortSignal): Promise<number> => {
       signal?.throwIfAborted();
       const candidates = await readMailCandidates(
@@ -55,19 +63,28 @@ export function createNoticeMailStore(
       let count = 0;
       for (const person of candidates) {
         signal?.throwIfAborted();
-        try {
-          count += await withTenantScopedClient(
-            lease.pool,
-            asPerson(person),
-            (client) => preparePerson(client, person, seal),
-            {
-              statementTimeoutMillis: STATEMENT_TIMEOUT_MILLIS,
-              ...(signal === undefined ? {} : { signal }),
-            },
-          );
-        } catch (error) {
-          if (!(error instanceof WorkspaceAccessDeniedError)) throw error;
-        }
+        const key = `${person.workspace_id}:${person.user_id}`;
+        if (!backoff.isWaiting(key))
+          try {
+            count += await withTenantScopedClient(
+              lease.pool,
+              asPerson(person),
+              (client) => preparePerson(client, person, seal),
+              {
+                statementTimeoutMillis: STATEMENT_TIMEOUT_MILLIS,
+                ...(signal === undefined ? {} : { signal }),
+              },
+            );
+            backoff.succeeded(key);
+          } catch (error) {
+            if (signal?.aborted === true) throw error;
+            if (!(error instanceof WorkspaceAccessDeniedError))
+              onPersonFailed?.({
+                ...asPerson(person),
+                failures: backoff.failed(key),
+                error,
+              });
+          }
         after = person;
       }
       if (candidates.length < CANDIDATE_PAGE_SIZE) after = undefined;
