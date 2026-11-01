@@ -133,28 +133,40 @@ const sharedClientSettings = {
   requestHosts: oauth2RequestHostsSchema,
 } as const;
 
+/**
+ * Below the 16,384 bytes the database allows: it measures its own text form, which
+ * adds a space per key and item, and each field alone can't add up to more than this.
+ */
+const MAXIMUM_SETTINGS_BYTES = 16_000;
+
 /** Everything but the client secret: shown to readers and stored as one format. */
-export const oauth2ClientSettingsSchema = z.discriminatedUnion('grantType', [
-  z
-    .object({
-      grantType: z.literal('authorization_code'),
-      authorizationUrl: endpointUrlSchema(AUTHORIZATION_RESERVED_PARAMETERS),
-      authorizationParameters: extraParametersSchema(
-        AUTHORIZATION_RESERVED_PARAMETERS,
-      ),
-      pkce: z.enum(['s256', 'none']),
-      ...sharedClientSettings,
-    })
-    .strict()
-    .readonly(),
-  z
-    .object({
-      grantType: z.literal('client_credentials'),
-      ...sharedClientSettings,
-    })
-    .strict()
-    .readonly(),
-]);
+export const oauth2ClientSettingsSchema = z
+  .discriminatedUnion('grantType', [
+    z
+      .object({
+        grantType: z.literal('authorization_code'),
+        authorizationUrl: endpointUrlSchema(AUTHORIZATION_RESERVED_PARAMETERS),
+        authorizationParameters: extraParametersSchema(
+          AUTHORIZATION_RESERVED_PARAMETERS,
+        ),
+        pkce: z.enum(['s256', 'none']),
+        ...sharedClientSettings,
+      })
+      .strict()
+      .readonly(),
+    z
+      .object({
+        grantType: z.literal('client_credentials'),
+        ...sharedClientSettings,
+      })
+      .strict()
+      .readonly(),
+  ])
+  .refine(
+    (settings) =>
+      utf8ByteLength(JSON.stringify(settings)) <= MAXIMUM_SETTINGS_BYTES,
+    { message: 'These settings are too long to store together' },
+  );
 
 /** Sent in full on create and replace: changing an address needs the secret again. */
 export const oauth2CredentialSchema = z
