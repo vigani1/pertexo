@@ -66,7 +66,7 @@ function ownedClose(
   const name = factory as 'factory';
   const original = stores[name];
   let close: ReturnType<typeof vi.fn> | undefined;
-  vi.spyOn(stores, name).mockImplementation(((...arguments_: unknown[]) => {
+  vi.spyOn(stores, name).mockImplementation((...arguments_: unknown[]) => {
     const store = original(...arguments_);
     const closeStore = vi.fn(() => store.close());
     close = closeStore;
@@ -78,7 +78,7 @@ function ownedClose(
         value: closeStore,
       },
     );
-  }) as never);
+  });
   return () => {
     if (close === undefined) throw new Error(`${factory} was never called`);
     return close;
