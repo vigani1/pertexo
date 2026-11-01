@@ -1,6 +1,17 @@
 import { entitlementInEffect } from '../../runs/queries/entitlement-effect.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { and, eq, notExists, sql, type SQLWrapper } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  exists,
+  inArray,
+  isNull,
+  ne,
+  notExists,
+  or,
+  sql,
+  type SQLWrapper,
+} from 'drizzle-orm';
 import { union } from 'drizzle-orm/pg-core';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -9,6 +20,10 @@ import {
   workspaces,
   workflows,
   connections,
+  failureNotificationDestinations as destinations,
+  failureNotificationDestinationVersions as destinationVersions,
+  runFailureNotificationIntents as alertIntents,
+  workflowFailureNotificationPolicies as alertPolicies,
   workflowPublicationRequests,
   pendingRunTasks,
   workspaceInboxThreads as thread,
@@ -25,6 +40,9 @@ import {
   type AttentionSubject,
 } from './facts.queries.js';
 import { NOTICE_WINDOW_SQL } from '../lifetime.js';
+import { destinationConnectionIdSql } from '../../notifications/policies/admission.queries.js';
+import { UNDELIVERED_ALERT_STATUSES } from './failure-alert-state.js';
+import { RECENT_ALERT_FAILURE_SQL } from './failure-alert.queries.js';
 type Kind = AttentionSubject['noticeKind'];
 const kind = (value: Kind) => sql<Kind>`${value}::varchar`.as('notice_kind');
 const noLimit = sql<WorkspaceCapacityLimit | null>`null::varchar`.as(
@@ -83,6 +101,80 @@ function workflowCandidates(db: Pick<NodePgDatabase, 'select'>) {
       ),
     );
   return [paused, connection, review, approval];
+}
+/**
+ * Destinations worth looking at, so a healthy one costs no transaction each scan.
+ * The state's rule decides; this only has to include every destination it could
+ * call broken, and the kinds of connection a destination accepts are fixed when
+ * it's saved.
+ */
+function failureAlertCandidates(db: Pick<NodePgDatabase, 'select'>) {
+  const selection = {
+    workspace_id: destinations.workspaceId,
+    notice_kind: kind('failure_alert_attention'),
+    subject_id: destinations.id,
+    capacity_limit: noLimit,
+  };
+  const stranded = db
+    .select(selection)
+    .from(destinations)
+    .innerJoin(
+      destinationVersions,
+      and(
+        eq(destinationVersions.workspaceId, destinations.workspaceId),
+        eq(destinationVersions.destinationId, destinations.id),
+        eq(destinationVersions.version, destinations.currentConfigVersion),
+      ),
+    )
+    .leftJoin(
+      connections,
+      and(
+        eq(connections.workspaceId, destinations.workspaceId),
+        eq(connections.id, destinationConnectionIdSql(destinationVersions)),
+      ),
+    )
+    .where(
+      and(
+        or(
+          ne(destinations.status, 'enabled'),
+          isNull(connections.id),
+          ne(connections.status, 'active'),
+        ),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(alertPolicies)
+            .where(
+              and(
+                eq(alertPolicies.workspaceId, destinations.workspaceId),
+                eq(alertPolicies.destinationId, destinations.id),
+              ),
+            ),
+        ),
+      ),
+    );
+  const undelivered = db
+    .select(selection)
+    .from(destinations)
+    .where(
+      and(
+        eq(destinations.status, 'enabled'),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(alertIntents)
+            .where(
+              and(
+                eq(alertIntents.workspaceId, destinations.workspaceId),
+                eq(alertIntents.destinationId, destinations.id),
+                sql`${alertIntents.completedAt}>clock_timestamp()-${RECENT_ALERT_FAILURE_SQL}`,
+                inArray(alertIntents.status, [...UNDELIVERED_ALERT_STATUSES]),
+              ),
+            ),
+        ),
+      ),
+    );
+  return [stranded, undelivered];
 }
 /** The workspace itself as a notice's subject, named apart from its workspace column. */
 const workspaceSubject = (workspaceId: SQLWrapper) =>
@@ -223,6 +315,7 @@ export async function readAttentionCandidates(
   const sources = [
     ...workflowCandidates(db),
     ...capacityCandidates(db),
+    ...failureAlertCandidates(db),
     existing,
   ] as unknown as readonly CandidateSource[];
   const subjects = union(

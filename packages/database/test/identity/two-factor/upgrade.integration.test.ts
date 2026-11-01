@@ -83,6 +83,7 @@ it('upgrades password accounts with two-factor off, isolated auth grants and cas
       '0068_connection_events_retention.sql',
       '0069_alert_dispatch_identity.sql',
       '0070_notice_window_from_core.sql',
+      '0071_failure_alert_notice.sql',
     ]);
     expect(
       (

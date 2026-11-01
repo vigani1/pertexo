@@ -8,6 +8,7 @@ import type { WorkspaceInboxThread } from '@pertexo/contracts';
 import { databaseSchema } from '@pertexo/database/schema';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
 import { readWorkflowRunFailedSteps } from '../../runs/queries/history/details.queries.js';
+import { FAILURE_ALERT_CHANNEL_NAMES } from './alert-channels.js';
 import { readFailureDays } from './failure-days.queries.js';
 import type { WorkspaceInboxFailureKind } from './contract.js';
 import type { NoticeRecord } from './records.queries.js';
@@ -29,8 +30,15 @@ type NoticeRow = NoticeRecord &
     | {
         notice_kind: Exclude<
           WorkspaceNoticeKind,
-          'workflow_failure' | 'workflow_mention' | 'limit_approaching'
+          | 'workflow_failure'
+          | 'workflow_mention'
+          | 'limit_approaching'
+          | 'failure_alert_attention'
         >;
+      }
+    | {
+        notice_kind: 'failure_alert_attention';
+        destination_kind: 'slack' | 'email';
       }
     | {
         notice_kind: 'limit_approaching';
@@ -79,7 +87,10 @@ export async function projectNotices(
     const attention = {
       ...common,
       subjectId: row.subject_id,
-      name: row.workflow_name ?? row.connection_name ?? row.workspace_name,
+      name:
+        row.notice_kind === 'failure_alert_attention'
+          ? FAILURE_ALERT_CHANNEL_NAMES[row.destination_kind]
+          : (row.workflow_name ?? row.connection_name ?? row.workspace_name),
     };
     if (row.notice_kind === 'workflow_mention')
       return {
