@@ -147,6 +147,18 @@ export async function seedWorld(api: Api): Promise<World> {
       },
     }),
   );
+  const row = await api.send('POST', `${root}/data-tables/${table.id}/rows`, {
+    browser: owner,
+    headers: apiHeaders(),
+    payload: {
+      command: {
+        operation: 'insert',
+        table: 'Orders',
+        values: { note: 'still here' },
+      },
+    },
+  });
+  expect(row.statusCode, row.payload).toBe(200);
 
   const { tag } = await created<Readonly<{ tag: Readonly<{ id: string }> }>>(
     api.send('POST', `${root}/workflow-tags`, {
