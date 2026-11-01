@@ -45,6 +45,16 @@ export function validateProjectReferences(workspaces, rootReferences) {
       errors.push(
         `${workspace.name}: only applications depend on core (apps -> core -> database)`,
       );
+    if (
+      workspace.directory.startsWith('packages/') &&
+      workspace.directory !== 'packages/core' &&
+      ['dependencies', 'devDependencies'].some((kind) =>
+        Object.hasOwn(workspace[kind] ?? {}, '@pertexo/secrets'),
+      )
+    )
+      errors.push(
+        `${workspace.name}: only applications and core depend on secrets (apps -> core -> secrets -> database)`,
+      );
     const dependencies = Object.entries(workspace.dependencies ?? {}).filter(
       ([name, version]) => byName.has(name) || version.startsWith('workspace:'),
     );

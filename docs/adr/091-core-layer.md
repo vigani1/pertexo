@@ -25,11 +25,20 @@ lint refuse the reverse. `execution` folds into `core`, so run actions live ther
 **What stays in `database` for good:** tables, migrations, transaction helpers, row
 security setup, and the shared helpers for outbox, audit and idempotency. Authority
 and folder scope are product rules and go to `core/src/shared/`. The flows inside
-`platform` leave later: they stay in `platform` through the one-shot move, then mail
-and keys go to `secrets` and the rest to `core`. `secrets` is a new package that
-doesn't exist yet, and creating it is a step of its own, at that point. The final
-state is that applications import only `@pertexo/database/platform`, for pools and
+`platform` left after the one-shot move: mail and keys went to `secrets` and the rest
+to `core`. Applications import only `@pertexo/database/platform`, for pools and
 startup.
+
+**`secrets` sits between `core` and `database`.** `apps -> core -> secrets ->
+database`. It reads tables, so it builds on `/schema` and `/primitives` as `core`
+does. `core` may use it, because three of its flows queue a sealed mail inside their
+own transaction (`inbox` notice batches, `identity` email proofs, two-factor
+recovery) and the insert has to share that transaction. `secrets` may not use `core`,
+and `database` may not use `secrets`, even from tests: a module check, a project
+reference check and lint refuse them. Its one entry point is `@pertexo/secrets/server`.
+It holds system mail storage and the encryption key inventory; the rest of what the
+target design names for it (key rings, safe HTTP, the mail client) is still in
+`integrations`.
 
 **One authority helper.** A core flow opens its transaction through
 `withWorkspaceAccess` in `core/src/shared/`, which installs the workspace scope,
@@ -46,7 +55,8 @@ flow names its list once, at the helper, so two reads can't disagree.
 |---|---|---|
 | `@pertexo/core/<area>`, Node only | Applications | One area's door, so the imports record who uses what |
 | `@pertexo/core/testing` | Tests | Test flows, which production must not be able to load |
-| `@pertexo/database/schema`, `/primitives` | `core` | Tables and helpers; `/primitives` shrinks to the list above once the areas have moved |
+| `@pertexo/database/schema`, `/primitives` | `core`, `secrets` | Tables and helpers; `/primitives` shrinks to the list above once the areas have moved |
+| `@pertexo/secrets/server`, Node only | Applications, `core` | System mail storage and the encryption key inventory |
 | `@pertexo/database/testing` | Tests | Fixtures |
 | `@pertexo/database/<area>` | Applications, until that area moves | Removed as part of the move |
 
@@ -98,5 +108,5 @@ rule arrive with the move; until then `variables` and `shared` meet at `index.ts
   still call stays in `database/src/variables`, and `/primitives` carries a few
   exports marked as temporary.
 - Each area's pass happens in place, with no package crossing, and no check of what
-  was left behind is needed. `platform`'s flows are the one crossing, in their own
+  was left behind is needed. `platform`'s flows were the one crossing, in their own
   step.
