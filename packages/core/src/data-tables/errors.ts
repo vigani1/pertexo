@@ -1,18 +1,8 @@
+import { isTransientDatabaseFailure } from '@pertexo/database/platform';
 import { postgresFailure, queryFailure } from '@pertexo/database/primitives';
 import { DataTableError } from '@pertexo/node-sdk';
 
 import { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
-
-const TRANSIENT_STORAGE_CODES = [
-  '53300',
-  '57P01',
-  '57P02',
-  '57P03',
-  'ECONNRESET',
-  'ECONNREFUSED',
-  'ETIMEDOUT',
-  'EPIPE',
-];
 
 export function translateTableConstraint(caught: unknown): never {
   const { code, constraint } = postgresFailure(caught);
@@ -30,11 +20,7 @@ export function translateTableConstraint(caught: unknown): never {
 export function translateWorkerFailure(caught: unknown): never {
   if (caught instanceof ExecutionCapabilityExpiredError)
     throw new DataTableError('attempt_expired', caught.message);
-  const { code } = postgresFailure(caught);
-  if (
-    code !== undefined &&
-    (/^(?:08|40)/u.test(code) || TRANSIENT_STORAGE_CODES.includes(code))
-  )
+  if (isTransientDatabaseFailure(caught))
     throw new DataTableError(
       'unavailable',
       'Data table storage is temporarily unavailable. The same write can be retried safely.',
