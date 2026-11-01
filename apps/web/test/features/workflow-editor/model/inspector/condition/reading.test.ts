@@ -100,6 +100,10 @@ describe('a saved condition reopens as what it was', () => {
       '$lowercase($string(runInput."a"))  =  $lowercase("x")',
     ],
     [
+      'what is equal to wrote before null stopped matching text',
+      '$lowercase($string(runInput."a")) = $lowercase("x")',
+    ],
+    [
       'mixed and and or',
       '(runInput."a" = true) and (runInput."b" = true) or (runInput."c" = true)',
     ],
