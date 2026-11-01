@@ -14,10 +14,35 @@ import type { PoolClient } from 'pg';
 import { DirectoryError } from '../errors.js';
 import type { DirectoryOrganization } from '../contract.js';
 import { readDirectoryRole } from '../roles.queries.js';
+import { judgeAdoption } from './adoption.js';
 import type {
   DirectoryAdoptionQuery,
   DirectoryAdoptionPreview,
 } from '@pertexo/contracts';
+
+/** Someone the directory holds and hasn't deleted; only one who has signed in has a user. */
+export async function readAdoptableDirectoryUser(
+  client: PoolClient,
+  organizationId: string,
+  directoryUserId: string,
+) {
+  const [row] = await drizzle(client)
+    .select({
+      user_id: authDirectoryUsers.userId,
+      revision: authDirectoryUsers.revision,
+    })
+    .from(authDirectoryUsers)
+    .where(
+      and(
+        eq(authDirectoryUsers.organizationId, organizationId),
+        eq(authDirectoryUsers.id, directoryUserId),
+        eq(authDirectoryUsers.active, true),
+        isNull(authDirectoryUsers.deletedAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return row;
+}
 
 /** The preview is advisory; adoption rechecks every reviewed revision under write locks. */
 export async function previewDirectoryAdoption(
@@ -33,21 +58,11 @@ export async function previewDirectoryAdoption(
     (entry) => entry.workspace_id === query.targetWorkspaceId,
   );
   if (workspace === undefined) throw new DirectoryError('not_found');
-  const [directory] = await drizzle(client)
-    .select({
-      user_id: authDirectoryUsers.userId,
-      revision: authDirectoryUsers.revision,
-    })
-    .from(authDirectoryUsers)
-    .where(
-      and(
-        eq(authDirectoryUsers.organizationId, organization.id),
-        eq(authDirectoryUsers.id, query.directoryUserId),
-        eq(authDirectoryUsers.active, true),
-        isNull(authDirectoryUsers.deletedAt),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  const directory = await readAdoptableDirectoryUser(
+    client,
+    organization.id,
+    query.directoryUserId,
+  );
   if (directory?.user_id === null || directory === undefined)
     return {
       eligible: false,
@@ -92,22 +107,8 @@ export async function previewDirectoryAdoption(
       return record;
     },
   );
-  if (member?.role === 'owner')
-    return {
-      eligible: false,
-      reason: 'Keep the recovery owner outside directory management.',
-    };
-  if (member?.status !== 'active')
-    return {
-      eligible: false,
-      reason:
-        'Only an active manual membership can be adopted. Reactivate an existing suspended or removed membership first.',
-    };
-  if (member.managed)
-    return {
-      eligible: false,
-      reason: 'This membership is already directory-managed.',
-    };
+  const judged = judgeAdoption(member);
+  if (!judged.eligible) return judged;
   const role = await readDirectoryRole(client, organization.id, {
     workspaceId: workspace.workspace_id,
     directoryUserId: query.directoryUserId,
@@ -115,13 +116,13 @@ export async function previewDirectoryAdoption(
   });
   return {
     eligible: true,
-    displayName: member.display_name,
-    currentRole: member.role,
+    displayName: judged.member.display_name,
+    currentRole: judged.member.role,
     command: {
       ...query,
       expectedRevision: organization.revision,
       directoryRevision: directory.revision,
-      membershipRevision: member.role_revision,
+      membershipRevision: judged.member.role_revision,
       role,
     },
   };

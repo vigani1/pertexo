@@ -26,7 +26,8 @@ import type {
 import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.repository.js';
 import type { DirectoryOrganization } from './contract.js';
 
-import { directoryRole } from './roles.queries.js';
+import { projectMember } from './projection.js';
+import { directoryRole } from './roles.js';
 
 /** The caller holds all linked workspace locks and the organization lock. */
 export async function projectDirectoryMemberships(
@@ -60,22 +61,19 @@ export async function projectDirectoryMemberships(
             [],
           facts: AuditFact[] = [];
         for (const user of users) {
-          const member = members.get(user.user_id);
-          // Manual grants, including removed ones, are never adopted implicitly.
-          const membershipNotManaged =
-            member !== undefined &&
-            (member.directory_user_id !== user.id || member.role === 'owner');
-          if (membershipNotManaged) continue;
-          const membershipActive =
-            active && user.active && user.deleted_at === null;
-          const status = membershipActive ? 'active' : 'removed';
           const role = directoryRole(
             mappings,
             groupsByUser.get(user.id) ?? new Set<string>(),
             workspace.default_role,
           );
-          if (member === undefined) {
-            if (status !== 'active') continue;
+          const projected = projectMember({
+            member: members.get(user.user_id),
+            user,
+            workspaceActive: active,
+            role,
+          });
+          if (projected.kind === 'leave') continue;
+          if (projected.kind === 'add') {
             additions.push({
               userId: user.user_id,
               directoryUserId: user.id,
@@ -88,13 +86,8 @@ export async function projectDirectoryMemberships(
             });
             continue;
           }
-          if (member.role === role && member.status === status) continue;
-          changes.push({
-            userId: user.user_id,
-            role,
-            status,
-            roleRevision: member.role_revision + 1,
-          });
+          const { status, roleRevision } = projected;
+          changes.push({ userId: user.user_id, role, status, roleRevision });
           revoked.add(user.user_id);
           facts.push({
             workspaceId: workspace.workspace_id,

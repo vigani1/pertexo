@@ -6,18 +6,9 @@ import { and, asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import type { DirectoryMapping, DirectoryRole } from './contract.js';
+import type { DirectoryRole } from './contract.js';
+import { directoryRole } from './roles.js';
 
-/** Mapping order is explicit: builder and operator are not a privilege ladder. */
-export function directoryRole(
-  mappings: readonly DirectoryMapping[],
-  groups: ReadonlySet<string>,
-  fallback: DirectoryRole,
-): DirectoryRole {
-  return (
-    mappings.find((mapping) => groups.has(mapping.groupId))?.role ?? fallback
-  );
-}
 export async function readDirectoryRole(
   client: PoolClient,
   organizationId: string,
