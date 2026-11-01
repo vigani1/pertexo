@@ -1,14 +1,20 @@
 # Personal notifications
 
 The Inbox combines failing workflows, auto-paused workflows, connections needing
-attention, approaching workspace capacity, reached queue/file limits, waiting
+attention, failure alerts that can't be delivered, approaching workspace capacity, reached queue/file limits, waiting
 approvals, publication reviews and private comment mentions. Failure threads
 keep their 30-day lanes. Operational cards describe current attention and leave
 when it resolves. A full active-run allowance is ordinary queueing, not a limit
 notice; its 80% approaching-capacity warning is separate. See [Usage and trends](usage.md). Reading a notice changes only your own read state.
 
 Owners, admins and operators see workflow failures, pauses and limits by default.
-Owners and admins see connection attention. Approval cards use the task's actual
+Owners and admins see connection attention, and a notice when failure alerts
+aren't reaching a destination: one notice per destination, however many alerts
+failed. It appears when the destination's latest alert in the past week didn't
+arrive, or when a workflow's alert setting points at a destination that's turned
+off or whose connection isn't working. It leaves when a later alert arrives, when
+you change the destination or its credential, or when no workflow depends on it.
+Approval cards use the task's actual
 allowed people. Its starter is excluded unless that step explicitly allows
 starter decisions. The Approvals list and authenticated task
 page remain authoritative; email never approves or rejects anything. Input

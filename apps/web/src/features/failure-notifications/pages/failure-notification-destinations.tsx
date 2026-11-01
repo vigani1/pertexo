@@ -70,12 +70,30 @@ const HOW_ALERTS_WORK: readonly HowItWorksStep[] = [
  * is a new session, so the form starts from the destination as it is now;
  * it can't be closed while a save is in flight.
  */
-function useDestinationLens({ saving }: Readonly<{ saving: boolean }>) {
+function useDestinationLens({
+  saving,
+  linkedDestinationId,
+  onLinkedClosed,
+}: Readonly<{
+  saving: boolean;
+  /** A destination a link asked for. It waits for the list: unknown, it'd be the add form. */
+  linkedDestinationId: string | undefined;
+  onLinkedClosed: () => void;
+}>) {
   const [lens, setLens] = useState<Lens>({
     open: false,
     destinationId: undefined,
     session: 0,
   });
+  if (linkedDestinationId !== undefined && !lens.open)
+    return {
+      lens: { open: true, destinationId: linkedDestinationId, session: -1 },
+      open: () => undefined,
+      close: () => {
+        if (!saving) onLinkedClosed();
+      },
+      done: onLinkedClosed,
+    };
   return {
     lens,
     open: (destinationId?: string) => {
@@ -177,15 +195,61 @@ function DestinationSheet({
   );
 }
 
+/** The linked destination someone may actually edit, once the list has it. */
+function linkedTo(
+  items: readonly FailureNotificationDestinationList['items'][number][],
+  canManage: boolean,
+  id: string | undefined,
+): string | undefined {
+  return canManage ? items.find((item) => item.id === id)?.id : undefined;
+}
+
+/** Editing needs the connections, but alerts keep going out without this page. */
+function ConnectionsLoadProblem({
+  query,
+}: Readonly<{ query: ComponentProps<typeof QueryView>['query'] }>) {
+  return (
+    <QueryView
+      query={query}
+      resource="Connections"
+      loading={null}
+      error={({ retrying, retry }) => (
+        <Notice
+          tone="warning"
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={retrying}
+              onClick={retry}
+            >
+              Retry
+            </Button>
+          }
+        >
+          Connections couldn’t be loaded, so destinations can’t be added or
+          edited right now. Alerts keep being sent.
+        </Notice>
+      )}
+    />
+  );
+}
+
 /** Decide where Pertexo speaks up when a run fails. */
 export function FailureNotificationDestinationsPage({
   apiClient,
   user,
   workspace,
+  linkedDestinationId,
+  onLinkedDestinationClosed,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
+  /** A notice can open one destination's setup; closing it leaves the link. */
+  linkedDestinationId?: string;
+  onLinkedDestinationClosed: () => void;
 }>) {
   const can = (capability: AccessibleWorkspace['capabilities'][number]) =>
     workspace.capabilities.includes(capability);
@@ -213,7 +277,12 @@ export function FailureNotificationDestinationsPage({
     channels: destinationChannels(destinations.data?.items ?? []),
     enabled: canRead && can('connection:use'),
   });
-  const lens = useDestinationLens({ saving });
+  const items = destinations.data?.items ?? [];
+  const lens = useDestinationLens({
+    saving,
+    linkedDestinationId: linkedTo(items, canManage, linkedDestinationId),
+    onLinkedClosed: onLinkedDestinationClosed,
+  });
 
   if (!canRead)
     return (
@@ -248,7 +317,6 @@ export function FailureNotificationDestinationsPage({
       />
     );
 
-  const items = destinations.data?.items ?? [];
   const listRefresh: ListRefresh = {
     failed: destinations.isError,
     pending: destinations.isRefetching,
@@ -288,32 +356,7 @@ export function FailureNotificationDestinationsPage({
         className="border-t border-border pt-8"
         steps={HOW_ALERTS_WORK}
       />
-      {canManage ? (
-        <QueryView
-          query={connections}
-          resource="Connections"
-          loading={null}
-          error={({ retrying, retry }) => (
-            <Notice
-              tone="warning"
-              action={
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={retrying}
-                  onClick={retry}
-                >
-                  Retry
-                </Button>
-              }
-            >
-              Connections couldn’t be loaded, so destinations can’t be added or
-              edited right now. Alerts keep being sent.
-            </Notice>
-          )}
-        />
-      ) : null}
+      {canManage ? <ConnectionsLoadProblem query={connections} /> : null}
 
       <DestinationSheet
         lens={lens.lens}

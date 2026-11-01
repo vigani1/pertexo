@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
 
@@ -26,6 +26,19 @@ import {
 } from './destinations/fixture';
 
 describe('alert destinations', () => {
+  it('opens the destination a link names, once it has loaded', async () => {
+    mockServer.use(
+      ...identityHandlers(),
+      connectionHandler(),
+      destinationsOf(() => [destination()]),
+    );
+    renderApp(`/w/${workspaceId}/settings/alerts?destination=${destinationId}`);
+    const sheet = await screen.findByRole('dialog');
+    expect(
+      await within(sheet).findByRole('heading', { name: /edit/iu }),
+    ).toBeVisible();
+    expect(within(sheet).queryByRole('heading', { name: /add/iu })).toBeNull();
+  });
   it('names each destination in words with a success-toned Enabled switch', async () => {
     mockServer.use(
       ...identityHandlers(),
