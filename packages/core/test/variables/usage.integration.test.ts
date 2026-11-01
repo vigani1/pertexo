@@ -188,3 +188,38 @@ it('has nothing to report for a workspace without workflows that use the name', 
     await store.usage({ ...scope(f.workspaceId), name: 'RATE', limit: 25 }),
   ).toMatchObject({ items: [], incomplete: false });
 });
+
+it('counts a workflow only once it has been passed, however the pages were cut', async () => {
+  const { workspaceId } = await twoWorkflows();
+  // The first workflow holds three references, the second one.
+  const pages = await everyPage(workspaceId, 'RATE', 1);
+  expect(
+    pages.map((page) => [page.checkedWorkflows, page.totalWorkflows]),
+  ).toEqual([
+    [0, 2],
+    [0, 2],
+    [1, 2],
+    [2, 2],
+  ]);
+});
+
+it('reports nothing to check, as 0 of 0, for a workspace with no workflows at all', async () => {
+  const workspaceId = randomUUID();
+  await admin.query(
+    "insert into app.workspaces(id,name,slug,created_by) values($1,'Empty',$2,$3)",
+    [workspaceId, `empty-${workspaceId}`, userId],
+  );
+  await admin.query(
+    "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,'owner','active')",
+    [workspaceId, userId],
+  );
+  expect(
+    await store.usage({ ...scope(workspaceId), name: 'RATE', limit: 25 }),
+  ).toEqual({
+    items: [],
+    incomplete: false,
+    next: null,
+    checkedWorkflows: 0,
+    totalWorkflows: 0,
+  });
+});

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { CONNECTION_AUTH_TYPE } from '../../../database/src/connections/contract.js';
 import { createConnectionDatabase } from '../../../database/src/connections/repository.js';
@@ -8,6 +8,7 @@ import {
   apiUrl,
   draftNode,
   emptyGraph,
+  identity,
   queryAsOwner,
   workflowId,
   workspaceId,
@@ -142,3 +143,106 @@ it('does not promise more pages because a hidden workflow sorts after the last v
     await variables.close();
   }
 });
+
+describe.each(['suspended', 'pending_deletion'])(
+  'in a workspace that is %s',
+  (status) => {
+    const usageOf = async (
+      variables: ReturnType<typeof createWorkspaceVariablesStore>,
+      actor: string,
+    ) => {
+      const items: string[] = [];
+      let last = await variables.usage({
+        workspaceId,
+        actorId: actor,
+        name: 'CURRENCY',
+        limit: 25,
+      });
+      items.push(...last.items.map((item) => item.workflowId));
+      while (last.next !== null) {
+        last = await variables.usage({
+          workspaceId,
+          actorId: actor,
+          name: 'CURRENCY',
+          limit: 25,
+          after: last.next,
+        });
+        items.push(...last.items.map((item) => item.workflowId));
+      }
+      return { items, last };
+    };
+
+    it('shows a folder-limited member only what they can see, and an admin everything', async () => {
+      const graph = {
+        ...emptyGraph,
+        nodes: [
+          {
+            ...draftNode('variable'),
+            inputMappings: {
+              amount: { kind: 'workspace_variable', name: 'CURRENCY' },
+            },
+          },
+        ],
+      };
+      for (const id of [workflowId, publicId])
+        await queryAsOwner(
+          'update app.workflow_drafts set graph_json=$3::json where workspace_id=$1 and workflow_id=$2',
+          [workspaceId, id, JSON.stringify(graph)],
+          workspaceId,
+        );
+      const manager = randomUUID();
+      await identity.createUser({
+        id: manager,
+        email: `${manager}@example.test`,
+        displayName: 'Workspace admin',
+      });
+      await queryAsOwner(
+        "insert into app.workspace_memberships(workspace_id,user_id,role,status) values($1,$2,'admin','active')",
+        [workspaceId, manager],
+        workspaceId,
+      );
+      const [everything] = await queryAsOwner<{ total: number }>(
+        'select count(*)::int total from app.workflows where workspace_id=$1',
+        [workspaceId],
+        workspaceId,
+      );
+      await queryAsOwner(
+        status === 'suspended'
+          ? "update app.workspaces set status='suspended' where id=$1"
+          : `update app.workspaces set status='pending_deletion',deletion_requested_at=clock_timestamp(),
+             deletion_requested_by=created_by,deletion_reason='Variables test',
+             purge_after=clock_timestamp()+interval '30 days' where id=$1`,
+        [workspaceId],
+        workspaceId,
+      );
+      const variables = createWorkspaceVariablesStore(
+        parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+      );
+      try {
+        const limited = await usageOf(variables, builder);
+        expect(limited.items).toEqual([publicId]);
+        expect(limited.last).toMatchObject({
+          checkedWorkflows: 1,
+          totalWorkflows: 1,
+          next: null,
+        });
+        for (const actor of [actorId, manager]) {
+          const all = await usageOf(variables, actor);
+          expect([...all.items].sort()).toEqual([workflowId, publicId].sort());
+          expect(all.last).toMatchObject({
+            checkedWorkflows: everything?.total,
+            totalWorkflows: everything?.total,
+          });
+        }
+      } finally {
+        await variables.close();
+        await queryAsOwner(
+          `update app.workspaces set status='active',deletion_requested_at=null,
+             deletion_requested_by=null,deletion_reason=null,purge_after=null where id=$1`,
+          [workspaceId],
+          workspaceId,
+        );
+      }
+    });
+  },
+);
