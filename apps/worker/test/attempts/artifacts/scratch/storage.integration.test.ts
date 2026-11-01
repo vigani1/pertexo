@@ -22,6 +22,7 @@ import type { NodeArtifactReference } from '@pertexo/node-sdk/server';
 import { createWorkerNodeRuntimeCapabilities } from '../../../../src/attempts/execution/runtime-capabilities.js';
 import { createArtifactDatabaseEnvironment } from '../database.js';
 import { runWithCleanup } from '../../../support/infrastructure/test-operation.js';
+import { headerConnection } from '../../../support/attempts/header-connection.js';
 
 const integration =
   process.env.ARTIFACT_STORE_INTEGRATION === 'true' &&
@@ -219,22 +220,11 @@ async function* document(size: number, rows: number) {
                 runtime: {
                   ...context,
                   artifacts,
-                  connections: {
-                    resolve: () =>
-                      Promise.resolve({
-                        connectionId: '55555555-5555-4555-8555-555555555555',
-                        providerKey: 'http',
-                        authType: 'http_headers',
-                        secretVersionId: '66666666-6666-4666-8666-666666666666',
-                        secret: Buffer.from(
-                          JSON.stringify({
-                            type: 'http_headers',
-                            headers: { authorization: receiver.authorization },
-                          }),
-                        ),
-                      }),
-                    assertCurrent: () => Promise.resolve(),
-                  },
+                  connections: headerConnection(
+                    '55555555-5555-4555-8555-555555555555',
+                    '66666666-6666-4666-8666-666666666666',
+                    { authorization: receiver.authorization },
+                  ),
                   sideEffectClass: 'unsafe',
                   beforeDispatch: () => {
                     dispatched++;
