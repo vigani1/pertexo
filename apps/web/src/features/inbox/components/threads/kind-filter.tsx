@@ -14,6 +14,7 @@ const noticeKinds = [
   { value: 'workflow_failure', label: 'Workflow failures' },
   { value: 'workflow_auto_paused', label: 'Auto-paused workflows' },
   { value: 'connection_attention', label: 'Connections needing attention' },
+  { value: 'failure_alert_attention', label: 'Failure alerts not delivered' },
   { value: 'limit_reached', label: 'Limits reached' },
   { value: 'limit_approaching', label: 'Approaching limits' },
   { value: 'approval_waiting', label: 'Approvals waiting' },
