@@ -60,7 +60,7 @@ export type ConnectionOAuth2Dependencies = Readonly<{
   persistence: OAuth2ConsentDatabase;
   endpointPolicy: OAuth2EndpointPolicy;
   /** Token requests only: it carries the operator's address policy (S17). */
-  tokenClient: Pick<SecureHttpClient, 'execute'>;
+  tokenClient: Pick<SecureHttpClient, 'execute' | 'isAddressBlocked'>;
   /** A connection test's own request, under the public-only rule. */
   apiClient: Pick<SecureHttpClient, 'executeStreaming'>;
   tokens: Pick<OAuth2TokenService, 'accessToken' | 'rejectToken'>;
