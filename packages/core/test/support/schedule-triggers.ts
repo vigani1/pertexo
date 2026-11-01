@@ -15,9 +15,9 @@ import {
 } from '@pertexo/database/testing';
 import { createOperatorCommandStore } from '../../src/operator/store.js';
 import { createOperatorRunReplayStore } from '../../src/operator/replay/store.js';
-import { createScheduleTriggerDatabase } from '../../src/triggers/schedules/repository.js';
+import { createScheduleTriggerDatabase } from '../../src/triggers/schedules/store.js';
 import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';
-import { createWorkflowTriggerReconciliationDatabase } from '../../src/triggers/reconciliation/repository.js';
+import { createWorkflowTriggerReconciliationDatabase } from '../../src/triggers/reconciliation/store.js';
 
 export function createScheduleTriggerTestEnvironment(
   options: Readonly<{ includeOperator?: boolean; scannerCount?: 1 | 2 }> = {},

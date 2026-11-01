@@ -1,4 +1,4 @@
-export { createWorkflowTriggerReconciliationDatabase } from './reconciliation/repository.js';
+export { createWorkflowTriggerReconciliationDatabase } from './reconciliation/store.js';
 export {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
@@ -7,7 +7,7 @@ export {
   type WorkflowTriggerHealth,
   type WorkflowTriggerReconciliationDatabase,
 } from './reconciliation/contract.js';
-export { createWebhookTriggerDatabase } from './webhooks/repository.js';
+export { createWebhookTriggerDatabase } from './webhooks/store.js';
 export {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
@@ -28,7 +28,7 @@ export type {
   WebhookDeliveryRecord,
 } from './webhooks/contract.js';
 export { workflowTriggerProjection } from './reconciliation/projection.js';
-export { createScheduleTriggerDatabase } from './schedules/repository.js';
+export { createScheduleTriggerDatabase } from './schedules/store.js';
 export {
   type ScheduleTriggerCommandResult,
   type ScheduleTriggerDatabase,
@@ -56,7 +56,7 @@ export {
 } from './schedules/recurrence.js';
 export type { WorkflowTriggerProjection } from './reconciliation/contract.js';
 
-export { createWebhookResponseStore } from './webhooks/responses/repository.js';
+export { createWebhookResponseStore } from './webhooks/responses/store.js';
 export type {
   WebhookResponseStore,
   WebhookResponseScope,

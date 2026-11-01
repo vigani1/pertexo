@@ -11,9 +11,9 @@ import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/contract.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 
-import { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/repository.js';
-import { createWorkflowTriggerReconciliationDatabase } from '../../../src/triggers/reconciliation/repository.js';
-import { createScheduleTriggerDatabase } from '../../../src/triggers/schedules/repository.js';
+import { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/store.js';
+import { createWorkflowTriggerReconciliationDatabase } from '../../../src/triggers/reconciliation/store.js';
+import { createScheduleTriggerDatabase } from '../../../src/triggers/schedules/store.js';
 
 import {
   adminUrl,

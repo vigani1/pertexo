@@ -1,4 +1,4 @@
-export { createScheduleTriggerDatabase } from './schedules/repository.js';
+export { createScheduleTriggerDatabase } from './schedules/store.js';
 export { ScheduleTriggerError } from './schedules/errors.js';
 export type {
   ScheduleTriggerDatabase,
@@ -10,7 +10,7 @@ export type {
   ScheduleOccurrencePosition,
   ScheduleOccurrenceRecord,
 } from './schedules/contract.js';
-export { createWebhookTriggerDatabase } from './webhooks/repository.js';
+export { createWebhookTriggerDatabase } from './webhooks/store.js';
 export {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
@@ -40,17 +40,17 @@ export type {
   ScanDueSchedulesResult,
   ScheduleTriggerScanner,
 } from './schedules/scanning/contract.js';
-export { createWorkflowTriggerReconciliationDatabase } from './reconciliation/repository.js';
+export { createWorkflowTriggerReconciliationDatabase } from './reconciliation/store.js';
 export {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
 } from './reconciliation/errors.js';
-export { createWorkflowTriggerPauseFoldStore } from './pause/fold.repository.js';
+export { createWorkflowTriggerPauseFoldStore } from './pause/fold.store.js';
 export type {
   WorkflowTriggerPauseDecision,
   WorkflowTriggerPauseFoldStore,
 } from './pause/contract.js';
-export { createFormStore } from './forms/repository.js';
+export { createFormStore } from './forms/store.js';
 export {
   FormUnavailableError,
   FormChangedError,
@@ -58,7 +58,7 @@ export {
 } from './forms/errors.js';
 export { type FormStore, type PublicFormGrant } from './forms/contract.js';
 
-export { createWebhookResponseStore } from './webhooks/responses/repository.js';
+export { createWebhookResponseStore } from './webhooks/responses/store.js';
 export type {
   WebhookResponseStore,
   WebhookResponseScope,
@@ -70,7 +70,7 @@ export { createTriggerEventScanner } from './coordination/scanner.repository.js'
 export { type TriggerEventScanner } from './coordination/contract.js';
 export { EventCoordinationUnavailableError } from './coordination/errors.js';
 
-export { createWebhookTestEventStore } from './webhooks/test-events/repository.js';
+export { createWebhookTestEventStore } from './webhooks/test-events/store.js';
 export { WebhookTestEventError } from './webhooks/test-events/errors.js';
 export type {
   WebhookTestEventStore,

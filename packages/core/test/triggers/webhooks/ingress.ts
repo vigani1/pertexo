@@ -1,4 +1,4 @@
-import type { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/repository.js';
+import type { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/store.js';
 
 import { webhook } from './base.js';
 
