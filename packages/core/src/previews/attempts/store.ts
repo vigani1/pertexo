@@ -5,41 +5,36 @@ import {
 } from '@pertexo/database/platform';
 import { claimPreviewDelivery } from './claim.js';
 import { completePreviewAttempt } from './complete.js';
-import type { PreviewAttemptRunStore } from './contract.js';
-import { markPreviewDispatched } from './mark-dispatched.js';
+import type {
+  ClaimPreviewDeliveryInput,
+  CompletePreviewAttemptInput,
+  HeartbeatPreviewLeaseInput,
+  MarkPreviewDispatchedInput,
+} from './contract.js';
 import { heartbeatPreviewLease } from './heartbeat.js';
+import { markPreviewDispatched } from './mark-dispatched.js';
 
-/** The store owns its pool lease; injected runtimes retain their own lifetime. */
+/**
+ * A preview worker has a claim and a fence token, not a member, so these flows
+ * stay off withWorkspaceAccess. The member's authority was checked when the
+ * preview was accepted. The store owns its pool lease; injected runtimes retain
+ * their own lifetime.
+ */
 export function createPreviewAttemptRunStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): PreviewAttemptRunStore & { close(): Promise<void> } {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
-    claim: (input: Parameters<PreviewAttemptRunStore['claim']>[0]) =>
+    claim: (input: ClaimPreviewDeliveryInput) =>
       claimPreviewDelivery(pool, input),
-    markDispatched: async (
-      input: Parameters<PreviewAttemptRunStore['markDispatched']>[0],
-    ) =>
-      markPreviewDispatched(pool, {
-        ...input,
-        lease: input.lease,
-      }),
-    heartbeat: async (
-      input: Parameters<PreviewAttemptRunStore['heartbeat']>[0],
-    ) =>
-      heartbeatPreviewLease(pool, {
-        ...input,
-        lease: input.lease,
-      }),
-    complete: async (
-      input: Parameters<PreviewAttemptRunStore['complete']>[0],
-    ) =>
-      completePreviewAttempt(pool, {
-        ...input,
-        lease: input.lease,
-      }),
+    markDispatched: (input: MarkPreviewDispatchedInput) =>
+      markPreviewDispatched(pool, input),
+    heartbeat: (input: HeartbeatPreviewLeaseInput) =>
+      heartbeatPreviewLease(pool, input),
+    complete: (input: CompletePreviewAttemptInput) =>
+      completePreviewAttempt(pool, input),
     close: () => lease.close(),
   });
 }

@@ -28,9 +28,17 @@ export type {
   PreviewHeartbeatResult,
 } from './attempts/contract.js';
 export type { PreviewDeliveryReconciliationResult } from './reconciliation/contract.js';
+export { WorkflowTestError } from './workflows/errors.js';
+export type { WorkflowTestStore } from './workflows/store.js';
+export type { WorkflowTestSuiteStore } from './suites/store.js';
 export { createWorkflowTestSuiteScanner } from './suites/scanner.js';
 export type { WorkflowTestSuiteScanner } from './suites/contract.js';
 export {
   PREVIEW_EXECUTION_TIMEOUT_MAX_MS,
   PREVIEW_RETENTION_MAX_MS,
 } from './runs/acceptance/limits.js';
+
+// Named for the areas that reach them directly (authoring composes these stores).
+export type {} from './runs/store.js';
+export type {} from './runs/contract.js';
+export type {} from './runs/acceptance/contract.js';

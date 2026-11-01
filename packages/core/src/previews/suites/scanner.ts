@@ -12,7 +12,12 @@ import {
 import { workflowTestSuites } from '@pertexo/database/schema';
 import { advanceSuite } from './advance.js';
 import type { WorkflowTestSuiteScanner } from './contract.js';
-/** Global discovery uses maintenance; all progress and admission are tenant scoped. */
+/**
+ * Global discovery uses maintenance; all progress and admission are tenant
+ * scoped. The worker acts for whoever started the suite, and losing their
+ * authority stops the suite rather than being refused, so this stays off
+ * withWorkspaceAccess.
+ */
 export async function createWorkflowTestSuiteScanner(
   config: DatabaseConfig,
   maintenance: DatabaseConfig,

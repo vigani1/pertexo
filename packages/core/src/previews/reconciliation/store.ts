@@ -1,20 +1,20 @@
-import type { PreviewReconciliationStore } from './contract.js';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { DatabaseConfig } from '@pertexo/database/platform';
+import type { ReconcilePreviewDeliveryInput } from './contract.js';
 import { reconcilePreviewDelivery } from './reconcile.js';
 
+/** Maintenance has no member behind it, so this stays off withWorkspaceAccess. */
 export function createPreviewReconciliationStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): PreviewReconciliationStore & { close(): Promise<void> } {
+) {
   const lease = acquireDatabasePool(config, runtime);
   return Object.freeze({
-    reconcile: (
-      input: Parameters<PreviewReconciliationStore['reconcile']>[0],
-    ) => reconcilePreviewDelivery(lease.pool, input),
+    reconcile: (input: ReconcilePreviewDeliveryInput) =>
+      reconcilePreviewDelivery(lease.pool, input),
     close: () => lease.close(),
   });
 }
