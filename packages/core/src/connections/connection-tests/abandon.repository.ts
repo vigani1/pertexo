@@ -3,8 +3,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { idempotencyRecords as records } from '@pertexo/database/schema';
-import { keyDigest } from '../admission.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { keyDigest } from '../receipts.js';
+import { withConnectionTransaction } from '../transaction.js';
 import { connectionTestScope } from './claim.js';
 
 import type { ConnectionTestPersistence } from './contract.js';

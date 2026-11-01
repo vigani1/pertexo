@@ -34,7 +34,7 @@ import {
   sealedFields,
   selectConnection,
 } from '../records.queries.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { withConnectionTransaction } from '../transaction.js';
 import { withOneOAuth2Fact } from './clients.repository.js';
 import type {
   ConsumedOAuth2Authorization,

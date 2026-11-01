@@ -11,14 +11,14 @@ import {
   keyDigest,
   parseRequestMetadata,
   serializeConnectionTestResult,
-} from '../admission.js';
+} from '../receipts.js';
 import {
   CONNECTION_EVENT_TYPE,
   ConnectionNotFoundError,
   ConnectionTestInProgressError,
 } from '../contract.js';
 import { selectConnection } from '../records.queries.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { withConnectionTransaction } from '../transaction.js';
 import { connectionTestClaimSchema, connectionTestScope } from './claim.js';
 
 import { applyCurrentConnectionTestHealth } from '../health/transitions.repository.js';

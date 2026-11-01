@@ -21,7 +21,7 @@ import type { ConnectionSharingDatabase } from './contract.js';
 import { CONNECTION_SHARE_LIMIT } from '@pertexo/workflow-model';
 import type { ConnectionSharing } from '@pertexo/contracts';
 
-import { connectionCommand } from '../admission.js';
+import { connectionCommand } from '../receipts.js';
 import { requireConnectionManager } from '../authority.queries.js';
 import {
   ConnectionNotFoundError,

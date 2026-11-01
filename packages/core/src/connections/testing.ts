@@ -12,7 +12,7 @@ export {
 export {
   createConnectionDatabase,
   createWorkerConnectionResolutionDatabase,
-} from './repository.js';
+} from './store.js';
 export type {
   ConnectionAuthType,
   ConnectionDatabase,

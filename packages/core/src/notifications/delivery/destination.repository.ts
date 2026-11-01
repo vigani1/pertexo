@@ -14,7 +14,7 @@ import {
 } from '@pertexo/database/schema';
 import { currentDestinationSql, deliverySources } from './sources.queries.js';
 
-import { recordCredentialAccess } from '../../connections/runtime/dispatch.repository.js';
+import { recordCredentialAccess } from '../../connections/runtime/credential-use.repository.js';
 import type {
   FailureNotificationResolvedDestination,
   FenceDispatchInput,

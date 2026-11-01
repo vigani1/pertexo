@@ -5,7 +5,7 @@ import { markConnectionTestDispatched } from './dispatch.repository.js';
 
 import { abandonPersistedConnectionTest } from './abandon.repository.js';
 import { completePersistedConnectionTest } from './complete.repository.js';
-import { resolvePersistedConnectionTestSecret } from './secret.queries.js';
+import { resolvePersistedConnectionTestSecret } from './resolve-secret.repository.js';
 import { startPersistedConnectionTest } from './start.repository.js';
 export { classifyConnectionTestCompletion } from '@pertexo/workflow-model';
 
