@@ -5,6 +5,7 @@ import type { OAuth2ClientSettings } from '@pertexo/contracts';
 import type {
   ConnectionEnvelopeEncryption,
   ConnectionSecretContext,
+  SealedConnectionSecret,
 } from '../credentials/envelope-encryption.js';
 import type { SecureHttpClient } from '../http/secure.js';
 
@@ -32,8 +33,10 @@ import {
 
 const COMMIT_ATTEMPTS = 3;
 const COMMIT_DELAY_MILLIS = 1_000;
-/** Opening a key must not hold a refresh that has already been answered. */
+/** Sealing must not hold a refresh that has already been answered for long. */
 const CIPHER_TIMEOUT_MILLIS = 30_000;
+/** Longer than a token request, and than one seal and commit: see L1. */
+export const REFRESH_BLOCK_SECONDS = 45;
 
 export type OAuth2TokenScope = Readonly<{
   workspaceId: string;
@@ -55,7 +58,7 @@ export type RefreshOutcome =
 
 const CHANGED: RefreshOutcome = Object.freeze({ kind: 'changed' });
 
-/** Keeps new tokens through a short database outage; the caller zeroes them after. */
+/** Keeps new tokens through a short database or KMS outage; the caller zeroes them after. */
 export async function withCommitAttempts<Result>(
   write: () => Promise<Result>,
 ): Promise<Result> {
@@ -146,6 +149,30 @@ export async function loseOAuth2Grant(
   );
 }
 
+/** What a refresh sends, opened before anyone claims it. */
+export type OpenedOAuth2Grant = Readonly<{
+  settings: OAuth2ClientSettings;
+  stored: OAuth2StoredTokens;
+  clientSecret: string;
+}>;
+
+/**
+ * Before the claim, so a slow KMS can't use up the block while a refresh token
+ * waits to be sent: once claimed, only the token request stands before the answer.
+ */
+export async function openOAuth2Grant(
+  dependencies: OAuth2TokenServiceDependencies,
+  scope: OAuth2TokenScope,
+  grant: OAuth2Grant,
+  signal: AbortSignal,
+): Promise<OpenedOAuth2Grant> {
+  return Object.freeze({
+    settings: decodeClientSettings(grant.settings),
+    stored: await openStoredTokens(dependencies, scope, grant.token, signal),
+    clientSecret: await openClientSecret(dependencies, scope, grant, signal),
+  });
+}
+
 type Refreshing = Readonly<{
   dependencies: OAuth2TokenServiceDependencies;
   scope: OAuth2TokenScope;
@@ -155,20 +182,24 @@ type Refreshing = Readonly<{
 }>;
 
 async function commitIssued(
-  { dependencies, scope, grant, settings, stored }: Refreshing,
+  refreshing: Refreshing,
   answer: Extract<OAuth2TokenAnswer, { kind: 'issued' }>,
 ): Promise<RefreshOutcome> {
+  const { dependencies, scope, grant, settings, stored } = refreshing;
   const tokens = nextTokens(stored, answer);
   const id = dependencies.newId();
   const plaintext = encodeStoredTokens(tokens);
+  let sealed: SealedConnectionSecret | undefined;
   try {
-    const sealed = await dependencies.encryption.seal(
-      plaintext,
-      secretContext(scope, id),
-      AbortSignal.timeout(CIPHER_TIMEOUT_MILLIS),
-    );
-    const committed = await withCommitAttempts(() =>
-      dependencies.store.commitOAuth2Refresh({
+    const committed = await withCommitAttempts(async () => {
+      // The service may have rotated: nobody may ask with the old token meanwhile.
+      await blockFor(refreshing, REFRESH_BLOCK_SECONDS);
+      sealed ??= await dependencies.encryption.seal(
+        plaintext,
+        secretContext(scope, id),
+        AbortSignal.timeout(CIPHER_TIMEOUT_MILLIS),
+      );
+      return dependencies.store.commitOAuth2Refresh({
         workspaceId: scope.workspaceId,
         connectionId: scope.connectionId,
         tokenId: grant.token.id,
@@ -178,8 +209,8 @@ async function commitIssued(
           expiresInSeconds: answer.expiresInSeconds,
           renewable: isRenewable(settings, tokens),
         },
-      }),
-    );
+      });
+    });
     if (!committed) return CHANGED;
     return Object.freeze({
       kind: 'renewed',
@@ -274,21 +305,8 @@ export async function refreshOAuth2Grant(
   dependencies: OAuth2TokenServiceDependencies,
   scope: OAuth2TokenScope,
   grant: OAuth2Grant,
+  { settings, stored, clientSecret }: OpenedOAuth2Grant,
 ): Promise<RefreshOutcome> {
-  const cipher = AbortSignal.timeout(CIPHER_TIMEOUT_MILLIS);
-  const settings = decodeClientSettings(grant.settings);
-  const stored = await openStoredTokens(
-    dependencies,
-    scope,
-    grant.token,
-    cipher,
-  );
-  const clientSecret = await openClientSecret(
-    dependencies,
-    scope,
-    grant,
-    cipher,
-  );
   const refreshing = { dependencies, scope, grant, settings, stored };
   if (settings.grantType === 'client_credentials')
     return actOnAnswer(

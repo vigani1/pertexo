@@ -8,16 +8,18 @@ import type {
 import { OAuth2TokenFailure } from './contract.js';
 import {
   loseOAuth2Grant,
+  openOAuth2Grant,
   openStoredTokens,
+  REFRESH_BLOCK_SECONDS,
   refreshOAuth2Grant,
   type OAuth2TokenScope,
+  type OpenedOAuth2Grant,
   type OAuth2TokenServiceDependencies,
   type RefreshOutcome,
 } from './refresh.js';
 import { decodeClientSettings } from './stored.js';
 
 const RENEW_WITHIN_MILLIS = 60_000;
-const REFRESH_BLOCK_SECONDS = 45;
 const WAIT_LIMIT_MILLIS = 20_000;
 const WAIT_STEP_MILLIS = 250;
 const MINIMUM_REJECTED_AGE_SECONDS = 60;
@@ -102,8 +104,9 @@ export function createOAuth2TokenService(
   const startRefresh = (
     scope: OAuth2TokenScope,
     grant: OAuth2Grant,
+    opened: OpenedOAuth2Grant,
   ): Promise<RefreshOutcome> => {
-    const work = refreshOAuth2Grant(dependencies, scope, grant);
+    const work = refreshOAuth2Grant(dependencies, scope, grant, opened);
     inFlight.add(work);
     work
       .finally(() => {
@@ -160,6 +163,7 @@ export function createOAuth2TokenService(
         throw new OAuth2TokenFailure('http.oauth2_token_expired');
       return undefined;
     }
+    const opened = await openOAuth2Grant(dependencies, scope, grant, signal);
     const claimed = await store.claimOAuth2Refresh({
       workspaceId: scope.workspaceId,
       connectionId: scope.connectionId,
@@ -172,7 +176,10 @@ export function createOAuth2TokenService(
       await waitForRefresh(scope, token, deadline, signal);
       return undefined;
     }
-    const outcome = await raceSignal(startRefresh(scope, grant), signal);
+    const outcome = await raceSignal(
+      startRefresh(scope, grant, opened),
+      signal,
+    );
     if (outcome.kind === 'renewed') return outcome.token;
     if (outcome.kind === 'changed') return undefined;
     // A token that still works is the answer; the outage only matters once it doesn't.
