@@ -7,6 +7,7 @@ import { openUploads, uploads } from './form-uploads/fixture.js';
 import { registerBindsPublicUploadsToResponse } from './form-uploads/binds-public-uploads-to-response.cases.js';
 import { registerLimitsUploads } from './form-uploads/limits-uploads.cases.js';
 import { registerBindsMemberAndTaskUploads } from './form-uploads/binds-member-and-task-uploads.cases.js';
+import { registerKeepsPublicRespondersOut } from './form-uploads/keeps-public-responders-out.cases.js';
 
 beforeAll(() => {
   beforeAllFixture1();
@@ -18,3 +19,4 @@ afterAll(async () => {
 registerBindsPublicUploadsToResponse();
 registerLimitsUploads();
 registerBindsMemberAndTaskUploads();
+registerKeepsPublicRespondersOut();
