@@ -16,11 +16,15 @@ import {
   workspaceId,
 } from './fixture.js';
 
-const FILE = {
+const FILE: Readonly<{
+  byteLength: number;
+  mediaType: string;
+  sha256: string;
+}> = {
   byteLength: 29,
   mediaType: 'text/plain',
   sha256: '9'.repeat(64),
-} as const;
+};
 
 const begin = (idempotencyKey: string, file: Partial<typeof FILE> = {}) =>
   database.beginUpload({
