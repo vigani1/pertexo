@@ -196,6 +196,28 @@ describe('where an OAuth2 token may go', () => {
     expect(api.sent).toEqual([]);
   });
 
+  // S24, from the review: hosts that only look like a listed one.
+  it.each([
+    ['a longer name ending the same way', 'https://evilexample.com/items'],
+    ['the listed name as a prefix', 'https://example.com.evil.com/items'],
+    ['the listed name as a user', 'https://example.com@evil.com/items'],
+  ])('refuses %s, with nothing sent', async (_name, url) => {
+    const { api, renewal } = listed(['example.com']);
+    await expect(
+      renewal.executeStreaming({ ...request('GET'), url }, statusOf),
+    ).rejects.toMatchObject({ code: 'http.oauth2_host_not_allowed' });
+    expect(api.sent).toEqual([]);
+  });
+
+  it('allows a listed host written with a trailing dot, sending the token there', async () => {
+    const { api, renewal } = listed(['api.example.com']);
+    await renewal.executeStreaming(
+      { ...request('GET'), url: 'https://api.example.com./items' },
+      statusOf,
+    );
+    expect(api.sent.map(authorizationOf)).toEqual(['Bearer first']);
+  });
+
   it('lets a wildcard cover subdomains, not the apex', async () => {
     const covered = listed(['*.example.com']);
     await expect(
