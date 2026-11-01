@@ -19,7 +19,7 @@ import { workflowGraphStepSql } from '../execution/graph-step.js';
 import type { Pool } from 'pg';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../values/stored-execution.js';
-import { type StoredExecutionJsonValue } from '@pertexo/database/schema';
+import type { StoredExecutionJsonValue } from '@pertexo/database/schema';
 
 /**
  * A run's input or a node run's output as stored (ADR 050). `expired` is a
