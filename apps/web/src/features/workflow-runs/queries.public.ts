@@ -13,6 +13,7 @@ export {
 } from './data/statistics.queries';
 export {
   stepHealthQueryOptions,
+  stepRunsQueryOptions,
   workflowRunQueryOptions,
   workflowRunVersionQueryOptions,
 } from './data/detail.queries';

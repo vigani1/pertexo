@@ -37,8 +37,10 @@ import type { InspectorTab } from '../../hooks/use-inspector-navigation';
 import type { NodeInspectorActions } from './node';
 import {
   LastTestContext,
+  StepTestOutputsContext,
   type FinishedTest,
   type RecordedTest,
+  type StepTestOutputs,
 } from '../../hooks/use-last-test';
 
 type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
@@ -65,6 +67,7 @@ type EditorInspectorProps = Readonly<{
   testing: Readonly<{
     testRef: Ref<NodeTestHandle>;
     rememberedTest: RecordedTest | undefined;
+    testOutputs: StepTestOutputs;
     onTestFinished: (test: FinishedTest) => void;
     onTestPassed: (nodeId: string, outputBytes: number | undefined) => void;
   }>;
@@ -210,7 +213,11 @@ export function EditorInspector({
   return (
     <SchedulePreviewScope value={previewScope}>
       <AddConnectionContext value={connectionScope}>
-        <LastTestContext value={rememberedTest}>{panel}</LastTestContext>
+        <LastTestContext value={rememberedTest}>
+          <StepTestOutputsContext value={testing.testOutputs}>
+            {panel}
+          </StepTestOutputsContext>
+        </LastTestContext>
       </AddConnectionContext>
     </SchedulePreviewScope>
   );

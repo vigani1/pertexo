@@ -86,6 +86,7 @@ export function WorkspaceInspector({
       testing={{
         testRef: testRef,
         rememberedTest: lastTest.last,
+        testOutputs: lastTest.outputs,
         onTestFinished: lastTest.record,
         onTestPassed: onTestPassed,
       }}

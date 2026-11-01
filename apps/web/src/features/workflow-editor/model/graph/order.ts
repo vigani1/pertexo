@@ -1,3 +1,4 @@
+import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { GraphLevel } from './scopes';
 
 /**
@@ -60,6 +61,28 @@ export function upstreamEdgeIds(
     }
   }
   return edgeIds;
+}
+
+/** Steps on any path that leads into `nodeId`, nearest first. */
+export function upstreamStepIds(
+  graph: GraphLevel,
+  nodeId: string,
+): readonly string[] {
+  const seen = new Set<string>([nodeId]);
+  const upstream: string[] = [];
+  const queue = [nodeId];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    for (const edge of graph.edges) {
+      if (edge.target.nodeId !== current || seen.has(edge.source.nodeId))
+        continue;
+      if (edge.source.port === WORKFLOW_FAILURE_PORT) continue;
+      seen.add(edge.source.nodeId);
+      upstream.push(edge.source.nodeId);
+      queue.push(edge.source.nodeId);
+    }
+  }
+  return upstream;
 }
 
 /**
