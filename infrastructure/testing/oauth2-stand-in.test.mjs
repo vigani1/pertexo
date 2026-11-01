@@ -516,6 +516,144 @@ describe('the OAuth2 stand-in', () => {
     assert.equal((await callApi(access_token)).status, 401);
   });
 
+  // Behaviors the review found real services have and the stand-in lacked.
+  describe('behaving like real services', () => {
+    it('gives a refresh token only on the first consent, and the first keeps working', async () => {
+      const clientId = standIn.newClient('refresh-on-first-consent');
+      const first = await exchange(clientId);
+      assert.equal(typeof first.refresh_token, 'string');
+      const second = await exchange(clientId);
+      assert.equal(typeof second.access_token, 'string');
+      assert.equal(Object.hasOwn(second, 'refresh_token'), false);
+      const renewed = await refresh(clientId, first.refresh_token);
+      assert.equal(renewed.status, 200);
+    });
+
+    it('repeats the refresh token it was sent when it does not rotate', async () => {
+      const clientId = standIn.newClient('echoes-refresh');
+      const { refresh_token: held } = await exchange(clientId);
+      const first = await (await refresh(clientId, held)).json();
+      assert.equal(first.refresh_token, held);
+      const second = await refresh(clientId, held);
+      assert.equal(second.status, 200);
+      assert.equal((await second.json()).refresh_token, held);
+    });
+
+    it('a plain non-rotating client leaves the refresh token out', async () => {
+      const clientId = standIn.newClient('non-rotating');
+      const { refresh_token: held } = await exchange(clientId);
+      const answer = await (await refresh(clientId, held)).json();
+      assert.equal(Object.hasOwn(answer, 'refresh_token'), false);
+    });
+
+    for (const [behavior, error, status] of [
+      ['entra-interaction-required', 'interaction_required', 400],
+      ['entra-consent-required', 'consent_required', 400],
+      ['github-bad-credentials', 'incorrect_client_credentials', 200],
+      ['github-bad-refresh', 'bad_refresh_token', 200],
+      ['unsafe-error', 'Bad <b>Thing</b> 42', 400],
+    ])
+      it(`${behavior} answers ${error} with status ${String(status)}`, async () => {
+        const clientId = standIn.newClient(behavior);
+        const answer = await refresh(clientId, 'any');
+        assert.equal(answer.status, status);
+        assert.deepEqual(await answer.json(), {
+          error,
+          error_description: OAUTH2_STAND_IN_DESCRIPTION,
+        });
+      });
+
+    it('a raw-basic client compares the Basic secret without form-decoding it', async () => {
+      const clientId = standIn.newClient('raw-basic');
+      standIn.expectSecret(clientId, 'a~b+c/d=');
+      const send = (encoded) =>
+        fetch(`${standIn.origin}/token`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/x-www-form-urlencoded',
+            authorization: `Basic ${Buffer.from(`${clientId}:${encoded}`).toString('base64')}`,
+          },
+          body: new URLSearchParams({ grant_type: 'client_credentials' }),
+        });
+      assert.equal((await send('a~b+c/d=')).status, 200);
+      const refused = await send('a%7Eb%2Bc%2Fd%3D');
+      assert.equal(refused.status, 401);
+      assert.deepEqual(await refused.json(), { error: 'invalid_client' });
+    });
+
+    it('any other client does form-decode it', async () => {
+      const clientId = standIn.newClient('non-rotating');
+      standIn.expectSecret(clientId, 'a~b+c/d=');
+      const answer = await postToken(
+        clientId,
+        { grant_type: 'client_credentials' },
+        {},
+        'a~b+c/d=',
+      );
+      assert.equal(answer.status, 200);
+    });
+
+    it('writes absent fields as null', async () => {
+      const clientId = standIn.newClient('null-fields');
+      const answer = await exchange(clientId);
+      assert.equal(typeof answer.access_token, 'string');
+      assert.strictEqual(answer.refresh_token, null);
+      assert.strictEqual(answer.token_type, null);
+      assert.strictEqual(answer.expires_in, null);
+    });
+
+    it('can write an absent refresh token as an empty string', async () => {
+      const clientId = standIn.newClient('empty-refresh-token');
+      assert.strictEqual((await exchange(clientId)).refresh_token, '');
+    });
+
+    it('can send an HTTP date or zero in Retry-After', async () => {
+      const date = 'Wed, 21 Oct 2026 07:28:00 GMT';
+      const clientId = standIn.newClient('429');
+      standIn.setRetryAfter(clientId, date);
+      const dated = await postToken(clientId, {
+        grant_type: 'client_credentials',
+      });
+      assert.equal(dated.status, 429);
+      assert.equal(dated.headers.get('retry-after'), date);
+      standIn.setRetryAfter(clientId, '0');
+      const zero = await postToken(clientId, {
+        grant_type: 'client_credentials',
+      });
+      assert.equal(zero.headers.get('retry-after'), '0');
+    });
+
+    it('its echo route answers with what it was sent', async () => {
+      const clientId = standIn.newClient('non-rotating');
+      const { access_token: token } = await exchange(clientId);
+      const answer = await fetch(`${standIn.origin}/api/echo?marker=m`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+        body: 'the-body',
+      });
+      assert.equal(answer.status, 200);
+      const seen = await answer.json();
+      assert.equal(seen.headers.authorization, `Bearer ${token}`);
+      assert.deepEqual(seen.query, { marker: 'm' });
+      assert.equal(seen.body, 'the-body');
+    });
+
+    it('its redirect route sends a 307 to the address asked for', async () => {
+      const clientId = standIn.newClient('non-rotating');
+      const { access_token: token } = await exchange(clientId);
+      const to = 'http://other.example.test:1/redirect-target';
+      const answer = await fetch(
+        `${standIn.origin}/api/redirect?to=${encodeURIComponent(to)}`,
+        {
+          redirect: 'manual',
+          headers: { authorization: `Bearer ${token}` },
+        },
+      );
+      assert.equal(answer.status, 307);
+      assert.equal(answer.headers.get('location'), to);
+    });
+  });
+
   it('really goes down when closed', async () => {
     const other = await startOAuth2StandIn();
     const { origin } = other;

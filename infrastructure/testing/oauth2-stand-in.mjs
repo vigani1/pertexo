@@ -14,6 +14,11 @@ const OAUTH2_STAND_IN_BEHAVIORS = Object.freeze([
   'non-rotating',
   'no-refresh',
   'no-expiry',
+  'refresh-on-first-consent',
+  'echoes-refresh',
+  'null-fields',
+  'empty-refresh-token',
+  'raw-basic',
   'short-lived',
   'delayed',
   '503',
@@ -26,6 +31,11 @@ const OAUTH2_STAND_IN_BEHAVIORS = Object.freeze([
   'server-error',
   'temporarily-unavailable',
   'unknown-error',
+  'unsafe-error',
+  'entra-interaction-required',
+  'entra-consent-required',
+  'github-bad-credentials',
+  'github-bad-refresh',
   'error-200',
   'redirect',
   'redirect-307',
@@ -63,7 +73,20 @@ const OAUTH_ERRORS = Object.freeze({
   'server-error': 'server_error',
   'temporarily-unavailable': 'temporarily_unavailable',
   'unknown-error': 'stand_in_unknown_error',
+  // Not a short lowercase name, so it must never be repeated to a person.
+  'unsafe-error': 'Bad <b>Thing</b> 42',
+  // Microsoft's token error table.
+  'entra-interaction-required': 'interaction_required',
+  'entra-consent-required': 'consent_required',
+  // GitHub's OAuth app troubleshooting page.
+  'github-bad-credentials': 'incorrect_client_credentials',
+  'github-bad-refresh': 'bad_refresh_token',
 });
+/** GitHub answers its OAuth errors with a 200. */
+const ERRORS_ANSWERED_200 = new Set([
+  'incorrect_client_credentials',
+  'bad_refresh_token',
+]);
 
 const secretToken = (prefix) =>
   `${prefix}-${randomBytes(18).toString('base64url')}`;
@@ -93,13 +116,18 @@ function readBody(request) {
   });
 }
 
-/** RFC 6749 §2.3.1: both parts are form-encoded before Basic joins them. */
+/**
+ * RFC 6749 §2.3.1: both parts are form-encoded before Basic joins them. A
+ * `raw-basic` client is a service that skips the decoding, as some real ones do.
+ */
 function clientFromBasicHeader(header) {
   if (!header?.toLowerCase().startsWith('basic ')) return undefined;
   const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
   const split = decoded.indexOf(':');
   if (split < 0) return undefined;
-  const part = (value) => decodeURIComponent(value.replaceAll('+', ' '));
+  const raw = behaviorOfClient(decoded.slice(0, split)) === 'raw-basic';
+  const part = (value) =>
+    raw ? value : decodeURIComponent(value.replaceAll('+', ' '));
   return {
     method: 'basic',
     clientId: part(decoded.slice(0, split)),
@@ -160,6 +188,7 @@ export async function startOAuth2StandIn({
         holds: [],
         answers: [],
         acceptsAnyRefresh: false,
+        consents: 0,
         retryAfterSeconds: OAUTH2_STAND_IN_RETRY_AFTER_SECONDS,
       };
       clients.set(clientId, state);
@@ -187,8 +216,8 @@ export async function startOAuth2StandIn({
       if (token.clientId === clientId) token.revoked = true;
   };
 
-  const tokenBody = (clientId, grantType) => {
-    const { behavior, expiresIn } = clientState(clientId);
+  const tokenBody = (clientId, grantType, presentedRefresh) => {
+    const { behavior, expiresIn, consents } = clientState(clientId);
     const accessToken = issueAccess(clientId);
     const body = {
       access_token: accessToken,
@@ -212,7 +241,16 @@ export async function startOAuth2StandIn({
       body.refresh_token = 'r'.repeat(16_384);
       clientState(clientId).currentRefresh = body.refresh_token;
     }
-    const withoutRefresh = ['no-refresh', 'no-expiry'].includes(behavior);
+    if (behavior === 'null-fields') {
+      body.token_type = null;
+      body.refresh_token = null;
+      body.expires_in = null;
+    }
+    if (behavior === 'empty-refresh-token') body.refresh_token = '';
+    // Google without `prompt=consent`: a second consent gives no refresh token.
+    const withoutRefresh =
+      ['no-refresh', 'no-expiry'].includes(behavior) ||
+      (behavior === 'refresh-on-first-consent' && consents > 1);
     if (
       grantType === 'authorization_code' &&
       !withoutRefresh &&
@@ -224,6 +262,9 @@ export async function startOAuth2StandIn({
       ['rotating-reuse', 'rotating', 'delayed'].includes(behavior)
     )
       body.refresh_token = issueRefresh(clientId);
+    // A service that doesn't rotate may still repeat the token it was sent.
+    if (grantType === 'refresh_token' && behavior === 'echoes-refresh')
+      body.refresh_token = presentedRefresh;
     return body;
   };
 
@@ -275,13 +316,13 @@ export async function startOAuth2StandIn({
     }
     const oauthError = OAUTH_ERRORS[behavior];
     if (oauthError !== undefined) {
-      const status = ['server_error', 'temporarily_unavailable'].includes(
-        oauthError,
-      )
-        ? 503
-        : oauthError === 'invalid_client'
-          ? 401
-          : 400;
+      const status = ERRORS_ANSWERED_200.has(oauthError)
+        ? 200
+        : ['server_error', 'temporarily_unavailable'].includes(oauthError)
+          ? 503
+          : oauthError === 'invalid_client'
+            ? 401
+            : 400;
       json(response, status, {
         error: oauthError,
         error_description: OAUTH2_STAND_IN_DESCRIPTION,
@@ -338,8 +379,9 @@ export async function startOAuth2StandIn({
       // A new consent gives a new family; only then is an old revocation over.
       state.revoked = false;
       state.usedRefresh.clear();
+      state.consents += 1;
     }
-    const body = tokenBody(clientId, grantType);
+    const body = tokenBody(clientId, grantType, form.get('refresh_token'));
     // What this request was given, so a test can follow a token to where it is used.
     record.issued = {
       accessToken: body.access_token,
@@ -404,6 +446,20 @@ export async function startOAuth2StandIn({
     if (state.behavior === 'api-401-once' && !state.api401Sent) {
       state.api401Sent = true;
       json(response, 401, { error: 'invalid_token' });
+      return;
+    }
+    // What it was sent, as an echo service or a debug endpoint answers.
+    if (url.pathname === '/api/echo') {
+      json(response, 200, {
+        headers: record.headers,
+        query: record.query,
+        body: record.body,
+      });
+      return;
+    }
+    if (url.pathname === '/api/redirect') {
+      response.writeHead(307, { location: url.searchParams.get('to') ?? '/' });
+      response.end();
       return;
     }
     if (url.pathname.endsWith('/pages')) {
@@ -573,8 +629,9 @@ export async function startOAuth2StandIn({
     setExpiresIn(clientId, seconds) {
       clientState(clientId).expiresIn = seconds;
     },
-    setRetryAfter(clientId, seconds) {
-      clientState(clientId).retryAfterSeconds = seconds;
+    /** Seconds, or any other header text such as an HTTP date. */
+    setRetryAfter(clientId, value) {
+      clientState(clientId).retryAfterSeconds = value;
     },
     /** Answers even a refresh token it has replaced: a slow service mid-rotation. */
     acceptAnyRefresh(clientId) {
