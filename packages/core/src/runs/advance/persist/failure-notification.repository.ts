@@ -298,6 +298,12 @@ function notificationSource(
       deliveryBinding: sql<null>`null`.as(
         runFailureNotificationIntents.deliveryBinding.name,
       ),
+      dispatchedConfigVersion: sql<null>`null`.as(
+        runFailureNotificationIntents.dispatchedConfigVersion.name,
+      ),
+      dispatchedSecretVersionId: sql<null>`null`.as(
+        runFailureNotificationIntents.dispatchedSecretVersionId.name,
+      ),
     })
     .from(workflowRuns)
     .where(

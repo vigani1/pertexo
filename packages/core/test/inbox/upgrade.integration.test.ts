@@ -132,6 +132,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0066_outbox_redeliveries.sql',
       '0067_oauth2_connections.sql',
       '0068_connection_events_retention.sql',
+      '0069_alert_dispatch_identity.sql',
     ]);
     read = createWorkspaceInboxDatabase(
       parseDatabaseConfig({

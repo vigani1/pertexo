@@ -147,6 +147,7 @@ async function readFailureIntent(
       status: intents.status,
       next_delivery_at: intents.nextDeliveryAt,
       connection_secret_version_id: intents.connectionSecretVersionId,
+      dispatched_secret_version_id: intents.dispatchedSecretVersionId,
       delivery_binding: intents.deliveryBinding,
       possibly_dispatched: intents.possiblyDispatched,
       retry_due: sql<boolean>`(${intents.nextDeliveryAt} is not null and ${intents.nextDeliveryAt}<=clock_timestamp())`,
@@ -213,7 +214,8 @@ function prepareNotificationClaim(row: FailureIntentRow) {
   if (checksum !== row.context_checksum)
     throw new FailureNotificationStateError('Intent checksum mismatch');
   const attemptNumber = row.delivery_attempts + 1;
-  const connectionSecretVersionId = row.connection_secret_version_id;
+  const connectionSecretVersionId =
+    row.dispatched_secret_version_id ?? row.connection_secret_version_id;
   // Missing persisted evidence must retain the worker's retry behavior.
   if (connectionSecretVersionId === null)
     throw new Error('Intent credential pin is missing');

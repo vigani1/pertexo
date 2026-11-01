@@ -66,6 +66,9 @@ export const runFailureNotificationIntents = appSchema.table(
       .notNull(),
     connectionSecretVersionId: uuid('connection_secret_version_id'),
     deliveryBinding: varchar('delivery_binding', { length: 128 }),
+    // What the latest send went through, which a retry of it has to stay on.
+    dispatchedConfigVersion: integer('dispatched_config_version'),
+    dispatchedSecretVersionId: uuid('dispatched_secret_version_id'),
   },
   (table): PgTableExtraConfigValue[] => [
     check(
