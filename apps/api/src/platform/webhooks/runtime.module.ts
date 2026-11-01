@@ -1,8 +1,8 @@
 import {
-  createWebhookTriggerDatabase,
+  createWebhookTriggerStore,
   createWebhookTestEventStore,
   type WebhookTestEventStore,
-  type WebhookTriggerDatabase,
+  type WebhookTriggerStore,
 } from '@pertexo/core/triggers';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { createWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
@@ -41,11 +41,11 @@ export async function createApiWebhookRuntime(
   }>,
 ): Promise<ApiWebhookRuntime> {
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
-  let database: WebhookTriggerDatabase | undefined;
+  let database: WebhookTriggerStore | undefined;
   let envelope: WebhookEnvelopeRuntime | undefined;
   let testEvents: WebhookTestEventStore | undefined;
   try {
-    database = createWebhookTriggerDatabase(databaseConfig, runtime, {
+    database = createWebhookTriggerStore(databaseConfig, runtime, {
       burstLimit,
     });
     envelope = createWebhookTriggerEnvelopeEncryption(
@@ -105,7 +105,7 @@ export async function createApiWebhookRuntime(
 }
 
 async function closeWebhookResources(
-  database: WebhookTriggerDatabase,
+  database: WebhookTriggerStore,
   envelope: WebhookEnvelopeRuntime,
   testEvents: WebhookTestEventStore,
 ): Promise<void> {
@@ -119,7 +119,7 @@ async function closeWebhookResources(
 }
 
 async function collectWebhookCloseFailures(
-  database: WebhookTriggerDatabase | undefined,
+  database: WebhookTriggerStore | undefined,
   envelope: WebhookEnvelopeRuntime | undefined,
   testEvents: WebhookTestEventStore | undefined,
 ): Promise<unknown[]> {

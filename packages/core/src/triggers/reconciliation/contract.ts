@@ -15,7 +15,7 @@ export type WorkflowTriggerHealth = Readonly<{
   reconciledAt: Date | null;
 }>;
 
-export interface WorkflowTriggerReconciliationDatabase {
+export interface WorkflowTriggerReconciliationStore {
   reconcile(
     input: Readonly<{
       workspaceId: string;

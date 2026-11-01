@@ -1,7 +1,7 @@
-import type { WebhookTriggerDatabase } from '@pertexo/core/testing';
+import type { WebhookTriggerStore } from '@pertexo/core/testing';
 
 export type AcceptInput = Parameters<
-  WebhookTriggerDatabase['acceptVerifiedDelivery']
+  WebhookTriggerStore['acceptVerifiedDelivery']
 >[0];
 
 export type Scenario = Readonly<{

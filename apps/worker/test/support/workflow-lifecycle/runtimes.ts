@@ -1,6 +1,6 @@
 import {
   createOutboxDispatcherDatabase,
-  createWorkflowTriggerReconciliationDatabase,
+  createWorkflowTriggerReconciliationStore,
 } from '@pertexo/core/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
@@ -57,7 +57,7 @@ export function createLifecycleRuntimes(
   const createRuntime = async (leaseOwner: string): Promise<TriggerRuntime> => {
     const reconciliation = registerCloseable(
       'trigger reconciliation database',
-      createWorkflowTriggerReconciliationDatabase(workerConfig),
+      createWorkflowTriggerReconciliationStore(workerConfig),
     );
     const runtimePromise = testTriggerRuntime(
       {

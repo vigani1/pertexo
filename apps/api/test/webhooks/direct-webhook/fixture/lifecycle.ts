@@ -6,9 +6,9 @@ import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 
 import {
   createIdentityWorkspaceDatabase,
-  createWebhookTriggerDatabase,
-  createWorkflowTriggerReconciliationDatabase,
-  type WebhookTriggerDatabase,
+  createWebhookTriggerStore,
+  createWorkflowTriggerReconciliationStore,
+  type WebhookTriggerStore,
 } from '@pertexo/core/testing';
 import {
   createWorkspaceDatabase,
@@ -71,10 +71,10 @@ export let identityRuntime!: ApiIdentityRuntime;
 export let authoring!: ReturnType<typeof createCoreWorkflowAuthoringDatabase>;
 
 export let reconciliation!: ReturnType<
-  typeof createWorkflowTriggerReconciliationDatabase
+  typeof createWorkflowTriggerReconciliationStore
 >;
 
-export let webhookDatabase!: ReturnType<typeof createWebhookTriggerDatabase>;
+export let webhookDatabase!: ReturnType<typeof createWebhookTriggerStore>;
 
 let workspaceDatabase!: ReturnType<typeof createWorkspaceDatabase>;
 
@@ -84,7 +84,7 @@ export let service!: WebhookManagementService;
 
 export let testEvents!: ReturnType<typeof createWebhookTestEventStore>;
 
-export let ingressDatabase!: WebhookTriggerDatabase;
+export let ingressDatabase!: WebhookTriggerStore;
 
 export let application!: Awaited<ReturnType<typeof createTestApiApplication>>;
 
@@ -188,12 +188,12 @@ async function createFixture(): Promise<FixtureResourceOwner> {
     );
     reconciliation = resources.acquire(
       'trigger reconciliation database',
-      createWorkflowTriggerReconciliationDatabase(apiConfig),
+      createWorkflowTriggerReconciliationStore(apiConfig),
       (database) => database.close(),
     );
     webhookDatabase = resources.acquire(
       'webhook database',
-      createWebhookTriggerDatabase(apiConfig),
+      createWebhookTriggerStore(apiConfig),
       (database) => database.close(),
     );
     workspaceDatabase = resources.acquire(

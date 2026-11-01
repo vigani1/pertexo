@@ -1,6 +1,6 @@
 import {
   createWebhookTestEventStore,
-  createWebhookTriggerDatabase,
+  createWebhookTriggerStore,
 } from '@pertexo/core/triggers';
 import { initialCheckpointFactory } from '@pertexo/core/execution';
 import {
@@ -26,7 +26,7 @@ export function createEditorWebhookRuntime(
     'webhook',
   );
   const encryption = new WebhookTriggerEnvelopeEncryption(keys);
-  const database = createWebhookTriggerDatabase(databaseConfig);
+  const database = createWebhookTriggerStore(databaseConfig);
   const testEvents = createWebhookTestEventStore(databaseConfig);
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   return Promise.resolve(

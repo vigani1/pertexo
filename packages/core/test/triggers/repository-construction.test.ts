@@ -29,7 +29,7 @@ import { createPublishedWorkflowReader } from '../../src/runs/queries/execution/
 import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/repository.js';
 import { createWorkflowRunDatabase } from '../../src/runs/runs.repository.js';
 import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';
-import { createWebhookTriggerDatabase } from '../../src/triggers/webhooks/store.js';
+import { createWebhookTriggerStore } from '../../src/triggers/webhooks/store.js';
 
 const config: DatabaseConfig = {
   connectionString: 'postgresql://runtime:secret@db/pertexo',
@@ -50,7 +50,7 @@ describe('trigger repository construction ownership', () => {
 
   it('keeps an injected webhook runtime borrowed and closes owned pools once', async () => {
     const runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
-    const borrowed = createWebhookTriggerDatabase(config, runtime);
+    const borrowed = createWebhookTriggerStore(config, runtime);
     expect(database.pools).toHaveLength(1);
 
     await borrowed.close();
@@ -58,7 +58,7 @@ describe('trigger repository construction ownership', () => {
     await runtime.close();
     expect(database.pools[0]?.end).toHaveBeenCalledOnce();
 
-    const owned = createWebhookTriggerDatabase(config);
+    const owned = createWebhookTriggerStore(config);
     await Promise.all([owned.close(), owned.close()]);
     expect(database.pools[1]?.end).toHaveBeenCalledOnce();
   });

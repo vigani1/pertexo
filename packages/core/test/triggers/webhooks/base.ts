@@ -11,9 +11,9 @@ import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/contract.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 
-import { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/store.js';
-import { createWorkflowTriggerReconciliationDatabase } from '../../../src/triggers/reconciliation/store.js';
-import { createScheduleTriggerDatabase } from '../../../src/triggers/schedules/store.js';
+import { createWebhookTriggerStore } from '../../../src/triggers/webhooks/store.js';
+import { createWorkflowTriggerReconciliationStore } from '../../../src/triggers/reconciliation/store.js';
+import { createScheduleTriggerStore } from '../../../src/triggers/schedules/store.js';
 
 import {
   adminUrl,
@@ -40,12 +40,12 @@ import {
 let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
 
 export let reconciliation: ReturnType<
-  typeof createWorkflowTriggerReconciliationDatabase
+  typeof createWorkflowTriggerReconciliationStore
 >;
 
-export let schedules: ReturnType<typeof createScheduleTriggerDatabase>;
+export let schedules: ReturnType<typeof createScheduleTriggerStore>;
 
-export let webhook: ReturnType<typeof createWebhookTriggerDatabase>;
+export let webhook: ReturnType<typeof createWebhookTriggerStore>;
 
 export let owner: Pool;
 
@@ -115,9 +115,9 @@ export async function beforeAllFixture1() {
   });
   workerPool = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
   identity = createIdentityWorkspaceDatabase(apiConfig);
-  reconciliation = createWorkflowTriggerReconciliationDatabase(workerConfig);
-  schedules = createScheduleTriggerDatabase(apiConfig);
-  webhook = createWebhookTriggerDatabase(apiConfig, undefined, {
+  reconciliation = createWorkflowTriggerReconciliationStore(workerConfig);
+  schedules = createScheduleTriggerStore(apiConfig);
+  webhook = createWebhookTriggerStore(apiConfig, undefined, {
     burstLimit: 60,
   });
   authoring = createWorkflowAuthoringDatabase(apiConfig, {

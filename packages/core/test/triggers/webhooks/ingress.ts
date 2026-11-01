@@ -1,10 +1,10 @@
-import type { createWebhookTriggerDatabase } from '../../../src/triggers/webhooks/store.js';
+import type { createWebhookTriggerStore } from '../../../src/triggers/webhooks/store.js';
 
 import { webhook } from './base.js';
 
 export async function acceptWebhook(
   input: Parameters<
-    ReturnType<typeof createWebhookTriggerDatabase>['acceptVerifiedDelivery']
+    ReturnType<typeof createWebhookTriggerStore>['acceptVerifiedDelivery']
   >[0],
 ) {
   const result = await webhook.acceptVerifiedDelivery(input);

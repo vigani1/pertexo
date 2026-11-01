@@ -7,7 +7,7 @@ import {
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import { outboxEvents } from '@pertexo/database/schema';
-import type { WorkflowTriggerReconciliationDatabase } from './contract.js';
+import type { WorkflowTriggerReconciliationStore } from './contract.js';
 import { WorkflowTriggerReconciliationMismatchError } from './errors.js';
 import { reconciliationPayloadSchema } from './input.js';
 
@@ -18,7 +18,7 @@ type ReconciliationEvent = Readonly<{
 
 export async function readReconciliationEvent(
   client: PoolClient,
-  input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
+  input: Parameters<WorkflowTriggerReconciliationStore['reconcile']>[0],
   identity: Readonly<{
     outboxEventId: string;
     versionId: string;
@@ -48,7 +48,7 @@ export async function readReconciliationEvent(
 }
 
 function assertStoredReconciliationIdentity(
-  input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
+  input: Parameters<WorkflowTriggerReconciliationStore['reconcile']>[0],
   eventRow: Awaited<ReturnType<typeof readStoredEvent>>[number],
   payload: z.output<typeof reconciliationPayloadSchema>,
   identity: Readonly<{
@@ -74,9 +74,7 @@ function assertStoredReconciliationIdentity(
 
 export function assertDeliveryIdentity(
   delivery: NonNullable<
-    Parameters<
-      WorkflowTriggerReconciliationDatabase['reconcile']
-    >[0]['delivery']
+    Parameters<WorkflowTriggerReconciliationStore['reconcile']>[0]['delivery']
   >,
   event: ReconciliationEvent,
   outboxEventId: string,

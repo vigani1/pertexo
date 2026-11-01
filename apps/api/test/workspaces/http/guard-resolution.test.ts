@@ -2,8 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type {
-  ScheduleTriggerDatabase,
-  WebhookTriggerDatabase,
+  ScheduleTriggerStore,
+  WebhookTriggerStore,
 } from '@pertexo/core/triggers';
 import {
   WebhookTriggerEnvelopeEncryption,
@@ -89,61 +89,61 @@ const identityDependencies: IdentityWorkspaceDependencies = {
 
 const scheduleDatabase = {
   list: vi
-    .fn<ScheduleTriggerDatabase['list']>()
+    .fn<ScheduleTriggerStore['list']>()
     .mockRejectedValue(new Error('schedule business layer must not be called')),
   setEnabled: vi
-    .fn<ScheduleTriggerDatabase['setEnabled']>()
+    .fn<ScheduleTriggerStore['setEnabled']>()
     .mockRejectedValue(new Error('schedule business layer must not be called')),
   listOccurrences: vi
-    .fn<ScheduleTriggerDatabase['listOccurrences']>()
+    .fn<ScheduleTriggerStore['listOccurrences']>()
     .mockRejectedValue(new Error('schedule business layer must not be called')),
   nextFireTimes: vi
-    .fn<ScheduleTriggerDatabase['nextFireTimes']>()
+    .fn<ScheduleTriggerStore['nextFireTimes']>()
     .mockRejectedValue(new Error('schedule business layer must not be called')),
   previewFireTimes: vi
-    .fn<ScheduleTriggerDatabase['previewFireTimes']>()
+    .fn<ScheduleTriggerStore['previewFireTimes']>()
     .mockRejectedValue(new Error('schedule business layer must not be called')),
   checkReadiness: vi
-    .fn<ScheduleTriggerDatabase['checkReadiness']>()
+    .fn<ScheduleTriggerStore['checkReadiness']>()
     .mockRejectedValue(new Error('schedule business layer must not be called')),
-  close: vi.fn<ScheduleTriggerDatabase['close']>().mockResolvedValue(undefined),
-} satisfies ScheduleTriggerDatabase;
+  close: vi.fn<ScheduleTriggerStore['close']>().mockResolvedValue(undefined),
+} satisfies ScheduleTriggerStore;
 const webhookDatabase = {
   provision: vi
-    .fn<WebhookTriggerDatabase['provision']>()
+    .fn<WebhookTriggerStore['provision']>()
     .mockRejectedValue(new Error('webhook business layer must not be called')),
   rotateEndpoint: vi
-    .fn<WebhookTriggerDatabase['rotateEndpoint']>()
+    .fn<WebhookTriggerStore['rotateEndpoint']>()
     .mockRejectedValue(new Error('webhook business layer must not be called')),
   configureAuthentication: vi
-    .fn<WebhookTriggerDatabase['configureAuthentication']>()
+    .fn<WebhookTriggerStore['configureAuthentication']>()
     .mockRejectedValue(new Error('webhook business layer must not be called')),
   rotateSecret: vi
-    .fn<WebhookTriggerDatabase['rotateSecret']>()
+    .fn<WebhookTriggerStore['rotateSecret']>()
     .mockRejectedValue(new Error('webhook business layer must not be called')),
   getHealth: vi
-    .fn<WebhookTriggerDatabase['getHealth']>()
+    .fn<WebhookTriggerStore['getHealth']>()
     .mockRejectedValue(new Error('webhook business layer must not be called')),
   resolveVerification: vi
-    .fn<WebhookTriggerDatabase['resolveVerification']>()
+    .fn<WebhookTriggerStore['resolveVerification']>()
     .mockResolvedValue(null),
   consumeIngressLimit: vi
-    .fn<WebhookTriggerDatabase['consumeIngressLimit']>()
+    .fn<WebhookTriggerStore['consumeIngressLimit']>()
     .mockResolvedValue(undefined),
   acceptVerifiedDelivery: vi
-    .fn<WebhookTriggerDatabase['acceptVerifiedDelivery']>()
+    .fn<WebhookTriggerStore['acceptVerifiedDelivery']>()
     .mockRejectedValue(new Error('webhook business layer must not be called')),
   listDeliveries: vi
-    .fn<WebhookTriggerDatabase['listDeliveries']>()
+    .fn<WebhookTriggerStore['listDeliveries']>()
     .mockRejectedValue(new Error('webhook business layer must not be called')),
   recordRejectedDelivery: vi
-    .fn<WebhookTriggerDatabase['recordRejectedDelivery']>()
+    .fn<WebhookTriggerStore['recordRejectedDelivery']>()
     .mockResolvedValue(undefined),
   readResponse: vi
-    .fn<WebhookTriggerDatabase['readResponse']>()
+    .fn<WebhookTriggerStore['readResponse']>()
     .mockResolvedValue({ state: 'finished' }),
-  close: vi.fn<WebhookTriggerDatabase['close']>().mockResolvedValue(undefined),
-} satisfies WebhookTriggerDatabase;
+  close: vi.fn<WebhookTriggerStore['close']>().mockResolvedValue(undefined),
+} satisfies WebhookTriggerStore;
 const webhookKeys: WebhookEnvelopeKeyProvider = {
   generateDataKey: vi
     .fn<WebhookEnvelopeKeyProvider['generateDataKey']>()

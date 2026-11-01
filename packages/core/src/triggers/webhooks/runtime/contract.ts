@@ -72,7 +72,7 @@ export type WebhookCommandResult = Readonly<{
   replayed: boolean;
 }>;
 
-export interface WebhookTriggerDatabase extends WebhookDeliveryLog {
+export interface WebhookTriggerStore extends WebhookDeliveryLog {
   readResponse(input: WebhookResponseScope): Promise<WebhookResponseSnapshot>;
   configureAuthentication(
     input: Command &

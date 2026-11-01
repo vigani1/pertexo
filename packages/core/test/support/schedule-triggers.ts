@@ -15,9 +15,9 @@ import {
 } from '@pertexo/database/testing';
 import { createOperatorCommandStore } from '../../src/operator/store.js';
 import { createOperatorRunReplayStore } from '../../src/operator/replay/store.js';
-import { createScheduleTriggerDatabase } from '../../src/triggers/schedules/store.js';
+import { createScheduleTriggerStore } from '../../src/triggers/schedules/store.js';
 import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';
-import { createWorkflowTriggerReconciliationDatabase } from '../../src/triggers/reconciliation/store.js';
+import { createWorkflowTriggerReconciliationStore } from '../../src/triggers/reconciliation/store.js';
 
 export function createScheduleTriggerTestEnvironment(
   options: Readonly<{ includeOperator?: boolean; scannerCount?: 1 | 2 }> = {},
@@ -67,9 +67,9 @@ export function createScheduleTriggerTestEnvironment(
   });
   let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
   let reconciliation: ReturnType<
-    typeof createWorkflowTriggerReconciliationDatabase
+    typeof createWorkflowTriggerReconciliationStore
   >;
-  let schedules: ReturnType<typeof createScheduleTriggerDatabase>;
+  let schedules: ReturnType<typeof createScheduleTriggerStore>;
   let scannerOne: ReturnType<typeof createScheduleTriggerScanner>;
   let scannerTwo: ReturnType<typeof createScheduleTriggerScanner> | undefined;
   let owner: Pool;
@@ -159,8 +159,8 @@ export function createScheduleTriggerTestEnvironment(
     owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
     worker = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
     identity = createIdentityWorkspaceDatabase(apiConfig);
-    reconciliation = createWorkflowTriggerReconciliationDatabase(apiConfig);
-    schedules = createScheduleTriggerDatabase(apiConfig);
+    reconciliation = createWorkflowTriggerReconciliationStore(apiConfig);
+    schedules = createScheduleTriggerStore(apiConfig);
     scannerOne = createScheduleTriggerScanner(workerConfig, apiConfig);
     if (options.scannerCount === 2)
       scannerTwo = createScheduleTriggerScanner(workerConfig, apiConfig);

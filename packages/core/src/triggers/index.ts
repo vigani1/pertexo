@@ -1,7 +1,7 @@
-export { createScheduleTriggerDatabase } from './schedules/store.js';
+export { createScheduleTriggerStore } from './schedules/store.js';
 export { ScheduleTriggerError } from './schedules/errors.js';
 export type {
-  ScheduleTriggerDatabase,
+  ScheduleTriggerStore,
   ScheduleTriggerRecord,
 } from './schedules/management/contract.js';
 export type {
@@ -10,7 +10,7 @@ export type {
   ScheduleOccurrencePosition,
   ScheduleOccurrenceRecord,
 } from './schedules/contract.js';
-export { createWebhookTriggerDatabase } from './webhooks/store.js';
+export { createWebhookTriggerStore } from './webhooks/store.js';
 export {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
@@ -22,7 +22,7 @@ export {
   WebhookWorkflowPausedError,
 } from './webhooks/errors.js';
 export type {
-  WebhookTriggerDatabase,
+  WebhookTriggerStore,
   WebhookVerificationReference,
 } from './webhooks/runtime/contract.js';
 export type {
@@ -33,14 +33,14 @@ export type {
 } from './webhooks/contract.js';
 export type {
   WorkflowTriggerHealth,
-  WorkflowTriggerReconciliationDatabase,
+  WorkflowTriggerReconciliationStore,
 } from './reconciliation/contract.js';
 export { createScheduleTriggerScanner } from './schedules/scanner.js';
 export type {
   ScanDueSchedulesResult,
   ScheduleTriggerScanner,
 } from './schedules/scanning/contract.js';
-export { createWorkflowTriggerReconciliationDatabase } from './reconciliation/store.js';
+export { createWorkflowTriggerReconciliationStore } from './reconciliation/store.js';
 export {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,

@@ -1,6 +1,6 @@
 import type {
   ScheduleTriggerScanner,
-  WorkflowTriggerReconciliationDatabase,
+  WorkflowTriggerReconciliationStore,
 } from '@pertexo/core/testing';
 import type { QueueConsumer, QueueConsumerOptions } from '@pertexo/queue';
 import { vi } from 'vitest';
@@ -35,15 +35,13 @@ export function dependencies() {
   } satisfies ScheduleTriggerScanner;
   const reconciliation = {
     close: vi
-      .fn<NonNullable<WorkflowTriggerReconciliationDatabase['close']>>()
+      .fn<NonNullable<WorkflowTriggerReconciliationStore['close']>>()
       .mockResolvedValue(undefined),
     reconcile:
-      vi.fn<NonNullable<WorkflowTriggerReconciliationDatabase['reconcile']>>(),
+      vi.fn<NonNullable<WorkflowTriggerReconciliationStore['reconcile']>>(),
     recordFailure:
-      vi.fn<
-        NonNullable<WorkflowTriggerReconciliationDatabase['recordFailure']>
-      >(),
-  } satisfies WorkflowTriggerReconciliationDatabase;
+      vi.fn<NonNullable<WorkflowTriggerReconciliationStore['recordFailure']>>(),
+  } satisfies WorkflowTriggerReconciliationStore;
   const coordination = {
     close: vi.fn().mockResolvedValue(undefined),
     scanDue: vi.fn().mockResolvedValue({

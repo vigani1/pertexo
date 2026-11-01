@@ -2,7 +2,7 @@ import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-  type WorkflowTriggerReconciliationDatabase,
+  type WorkflowTriggerReconciliationStore,
 } from '@pertexo/core/triggers';
 import {
   unrecoverableQueueError,
@@ -24,7 +24,7 @@ export interface TriggerReconciliationHandler {
 
 export function createTriggerReconciliationHandler(
   dependencies: Readonly<{
-    reconciliation: WorkflowTriggerReconciliationDatabase;
+    reconciliation: WorkflowTriggerReconciliationStore;
   }>,
 ): TriggerReconciliationHandler {
   return Object.freeze({

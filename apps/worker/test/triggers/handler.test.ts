@@ -1,4 +1,4 @@
-import type { WorkflowTriggerReconciliationDatabase } from '@pertexo/core/testing';
+import type { WorkflowTriggerReconciliationStore } from '@pertexo/core/testing';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 import {
   WorkflowTriggerReconciliationMismatchError,
@@ -37,7 +37,7 @@ function delivery() {
 }
 
 function dependencies() {
-  const reconciliation: WorkflowTriggerReconciliationDatabase = {
+  const reconciliation: WorkflowTriggerReconciliationStore = {
     close: vi.fn().mockResolvedValue(undefined),
     reconcile: vi.fn().mockResolvedValue([]),
     recordFailure: vi.fn().mockResolvedValue(undefined),

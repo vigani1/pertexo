@@ -10,7 +10,7 @@ const outside = vi.hoisted(() => ({ database: vi.fn(), telemetry: vi.fn() }));
 
 vi.mock('@pertexo/core/triggers', async (original) => ({
   ...(await original<object>()),
-  createScheduleTriggerDatabase: outside.database,
+  createScheduleTriggerStore: outside.database,
 }));
 vi.mock('../../src/schedules/telemetry.js', async (original) => ({
   ...(await original<object>()),
