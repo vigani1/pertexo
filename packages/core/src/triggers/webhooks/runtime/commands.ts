@@ -1,8 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 
-import { canManageWorkflowTrigger } from '../../management.queries.js';
-
-import { withTenantScopedClient } from '@pertexo/database/primitives';
+import { withTriggerManagement } from '../../management.js';
 import { WebhookTriggerNotFoundError } from '../errors.js';
 import type { Command } from './contract.js';
 
@@ -11,15 +9,10 @@ export function command<T>(
   input: Command,
   work: (client: PoolClient) => Promise<T>,
 ) {
-  return withTenantScopedClient(
+  return withTriggerManagement(
     pool,
-    {
-      workspaceId: input.workspaceId,
-      actorId: input.actorId,
-    },
-    async (client) => {
-      if (await canManageWorkflowTrigger(client, input)) return work(client);
-      throw new WebhookTriggerNotFoundError();
-    },
+    input,
+    () => new WebhookTriggerNotFoundError(),
+    work,
   );
 }

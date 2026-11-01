@@ -5,15 +5,12 @@ import type {
   DatabaseConfig,
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
-import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { triggerSchedules } from '@pertexo/database/schema';
 
 import { ScheduleTriggerError } from './errors.js';
 
-import { canManageWorkflowTrigger } from '../management.queries.js';
+import { withTriggerManagement } from '../management.js';
 import { refreshWorkflowActivation } from '../reconciliation/health.repository.js';
 import type { ScheduleTriggerStore } from './management/contract.js';
 import {
@@ -29,8 +26,8 @@ import {
   scheduleHealthTransition,
 } from './management/state.queries.js';
 import {
-  authorizeScheduleReader,
   createScheduleTriggerReads,
+  withScheduleReader,
 } from './reads.queries.js';
 export function createScheduleTriggerStore(
   config: DatabaseConfig,
@@ -41,35 +38,15 @@ export function createScheduleTriggerStore(
   return Object.freeze({
     ...createScheduleTriggerReads(pool),
     list: (input: Parameters<ScheduleTriggerStore['list']>[0]) =>
-      withTenantScopedClient(
-        pool,
-        {
-          workspaceId: input.workspaceId,
-          actorId: input.actorId,
-        },
-        async (client) => {
-          const workflowId = input.workflowId;
-          await authorizeScheduleReader(
-            client,
-            input.workspaceId,
-            input.actorId,
-            workflowId,
-          );
-          return readSchedules(client, input.workspaceId, workflowId);
-        },
+      withScheduleReader(pool, input, (client) =>
+        readSchedules(client, input.workspaceId, input.workflowId),
       ),
-    setEnabled: async (
-      input: Parameters<ScheduleTriggerStore['setEnabled']>[0],
-    ) =>
-      withTenantScopedClient(
+    setEnabled: (input: Parameters<ScheduleTriggerStore['setEnabled']>[0]) =>
+      withTriggerManagement(
         pool,
-        {
-          workspaceId: input.workspaceId,
-          actorId: input.actorId,
-        },
+        input,
+        () => new ScheduleTriggerError('not_found'),
         async (client) => {
-          if (!(await canManageWorkflowTrigger(client, input)))
-            throw new ScheduleTriggerError('not_found');
           const identity = scheduleCommandIdentity(input);
           const replay = await claimScheduleCommand(client, input, identity);
           if (replay !== null) return replay;

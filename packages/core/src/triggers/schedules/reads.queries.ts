@@ -1,10 +1,7 @@
 import { and, desc, eq, sql, type SQLWrapper } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-  withTenantScopedReadClient,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import {
   workflowTriggers as triggers,
   workflows,
@@ -21,7 +18,7 @@ import type {
 
 import type { Pool, PoolClient } from 'pg';
 
-import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
+import { withWorkflowAccess } from '../workflow-access.js';
 import { ScheduleTriggerError } from './errors.js';
 import {
   parsePersistedScheduleRecurrence,
@@ -37,25 +34,28 @@ const DEFAULT_PAGE_LIMIT = 25;
 const utcInstant = (column: SQLWrapper) =>
   sql<string>`to_char(${column} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 
-/** Every active member of an active workspace may read schedule state. */
-export async function authorizeScheduleReader(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-  workflowId: string,
-): Promise<void> {
-  if (
-    !(await authorizeWorkflowResource(
-      client,
-      { workspaceId, actorId, workflowId },
-      { capability: 'workflow:read', locking: false, browsing: true },
-    ))
-  )
-    throw new ScheduleTriggerError('not_found');
-}
-
-function tenantScope(read: Pick<TriggerRead, 'workspaceId' | 'actorId'>) {
-  return { workspaceId: read.workspaceId, actorId: read.actorId };
+/** Every member may read schedule state, on a suspended workspace too. */
+export function withScheduleReader<T>(
+  pool: Pool,
+  input: Readonly<{ workspaceId: string; actorId: string; workflowId: string }>,
+  work: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  return withWorkflowAccess(
+    pool,
+    {
+      workspaceId: input.workspaceId,
+      actorId: input.actorId,
+      workflowId: input.workflowId,
+    },
+    {
+      mode: 'read',
+      capability: 'workflow:read',
+      statuses: BROWSABLE_WORKSPACE_STATUSES,
+      folderCapability: 'workflow:read',
+    },
+    () => new ScheduleTriggerError('not_found'),
+    work,
+  );
 }
 
 async function readOccurrencePage(
@@ -194,74 +194,40 @@ export function createScheduleTriggerReads(pool: Pool): ScheduleTriggerReads {
     listOccurrences: (
       input: Parameters<ScheduleTriggerReads['listOccurrences']>[0],
     ) => {
-      const read = input;
       const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
-      const after = input.after;
-      return withTenantScopedClient(pool, tenantScope(read), async (client) => {
-        await authorizeScheduleReader(
-          client,
-          read.workspaceId,
-          read.actorId,
-          read.workflowId,
-        );
+      return withScheduleReader(pool, input, async (client) => {
         const trigger = await drizzle(client)
           .select({ one: sql`1` })
           .from(triggers)
           .where(
             and(
-              eq(triggers.workspaceId, read.workspaceId),
-              eq(triggers.id, read.triggerId),
-              eq(triggers.workflowId, read.workflowId),
+              eq(triggers.workspaceId, input.workspaceId),
+              eq(triggers.id, input.triggerId),
+              eq(triggers.workflowId, input.workflowId),
               eq(triggers.kind, 'schedule'),
             ),
           )
           .catch(rethrowQueryFailure);
         if (trigger.length !== 1) throw new ScheduleTriggerError('not_found');
-        return readOccurrencePage(client, read, limit, after);
+        return readOccurrencePage(client, input, limit, input.after);
       });
     },
     nextFireTimes: async (
       input: Parameters<ScheduleTriggerReads['nextFireTimes']>[0],
     ) => {
-      const read = input;
-      const count = input.count;
-      const row = await withTenantScopedReadClient(
-        pool,
-        tenantScope(read),
-        async (client) => {
-          await authorizeScheduleReader(
-            client,
-            read.workspaceId,
-            read.actorId,
-            read.workflowId,
-          );
-          return readScheduleState(client, read);
-        },
+      const row = await withScheduleReader(pool, input, (client) =>
+        readScheduleState(client, input),
       );
-      return projectPersistedSchedule(row, count);
+      return projectPersistedSchedule(row, input.count);
     },
     previewFireTimes: async (
       input: Parameters<ScheduleTriggerReads['previewFireTimes']>[0],
     ) => {
-      const scope = {
-        workspaceId: input.workspaceId,
-        actorId: input.actorId,
-      };
-      const workflowId = input.workflowId;
-      const count = input.count;
-      const recurrence = input.recurrence;
-      const observedAt = await withTenantScopedReadClient(
+      const { count, recurrence } = input;
+      const observedAt = await withScheduleReader(
         pool,
-        scope,
-        async (client) => {
-          await authorizeScheduleReader(
-            client,
-            scope.workspaceId,
-            scope.actorId,
-            workflowId,
-          );
-          return readDatabaseTime(client);
-        },
+        input,
+        readDatabaseTime,
       );
       // Publication anchors a new schedule at database time (ADR 014), so an
       // unsaved rule is projected as if it were published at this instant.

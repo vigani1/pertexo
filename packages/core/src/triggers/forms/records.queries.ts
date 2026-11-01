@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -8,30 +8,25 @@ import {
   workspaces,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import {
-  rolesForCapability,
-  BROWSABLE_WORKSPACE_STATUSES,
-} from '@pertexo/workflow-model';
+import { rolesForCapability } from '@pertexo/workflow-model';
 import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
 import { readFormDefinition } from './definition.js';
 import type { PoolClient } from 'pg';
 import { FormUnavailableError } from './errors.js';
 import type { FormScope, PublicFormGrant } from './contract.js';
 
+/**
+ * Who may read or submit a published form: someone with its current link, on an
+ * active workspace, or a member. Submitting takes the admission lock before this
+ * check, so it can't use the authority helper, whose share locks must come first.
+ */
 export async function authorizeForm(
   client: PoolClient,
   input: FormScope,
   {
     grant,
     write,
-    manage = false,
-    browsing = false,
-  }: Readonly<{
-    grant: PublicFormGrant | undefined;
-    write: boolean;
-    manage?: boolean | undefined;
-    browsing?: boolean | undefined;
-  }>,
+  }: Readonly<{ grant: PublicFormGrant | undefined; write: boolean }>,
 ): Promise<void> {
   if (grant !== undefined) {
     if (
@@ -42,6 +37,13 @@ export async function authorizeForm(
     const query = drizzle(client)
       .select({ one: sql`1` })
       .from(workflowForms)
+      .innerJoin(
+        workspaces,
+        and(
+          eq(workspaces.id, workflowForms.workspaceId),
+          eq(workspaces.status, 'active'),
+        ),
+      )
       .where(
         and(
           eq(workflowForms.workspaceId, input.workspaceId),
@@ -52,9 +54,9 @@ export async function authorizeForm(
           eq(workflowForms.nodeId, grant.nodeId),
         ),
       );
-    const current = await (write ? query.for('share') : query).catch(
-      rethrowQueryFailure,
-    );
+    const current = await (
+      write ? query.for('share', { of: workflowForms }) : query
+    ).catch(rethrowQueryFailure);
     if (current.length !== 1) throw new FormUnavailableError();
   } else {
     if (input.actorId === undefined) throw new FormUnavailableError();
@@ -63,29 +65,21 @@ export async function authorizeForm(
         client,
         { ...input, actorId: input.actorId },
         {
-          capability: manage && write ? 'workflow:update' : 'workflow:read',
+          capability: 'workflow:read',
           locking: write,
-          browsing,
-          roles: rolesForCapability(
-            manage ? 'workflow:update' : 'workspace:read',
-          ),
+          roles: rolesForCapability('workspace:read'),
         },
       ))
     )
       throw new FormUnavailableError();
   }
 }
+/** The caller has already decided who is asking and which workspace statuses count. */
 export async function readFormVersion(
   client: PoolClient,
   input: FormScope,
   locking: 'read' | 'share' | 'update',
-  {
-    allowPaused = false,
-    browsing = false,
-  }: Readonly<{
-    allowPaused?: boolean | undefined;
-    browsing?: boolean | undefined;
-  }> = {},
+  { allowPaused = false }: Readonly<{ allowPaused?: boolean | undefined }> = {},
 ) {
   // Lock before reading the version: a locked join waiting on a concurrent
   // publication re-checks against the old version row and finds no form.
@@ -94,16 +88,6 @@ export async function readFormVersion(
   const query = db
     .select({ publishedVersionId: workflow.publishedVersionId })
     .from(workflow)
-    .innerJoin(
-      workspaces,
-      and(
-        eq(workspaces.id, workflow.workspaceId),
-        inArray(
-          workspaces.status,
-          browsing ? BROWSABLE_WORKSPACE_STATUSES : ['active'],
-        ),
-      ),
-    )
     .where(
       and(
         eq(workflow.workspaceId, input.workspaceId),

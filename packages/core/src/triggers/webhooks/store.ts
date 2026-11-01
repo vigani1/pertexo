@@ -15,11 +15,10 @@ import { readWebhookResponse } from './responses/records.queries.js';
 import { readHealth } from '../reconciliation/health.repository.js';
 
 import {
-  authorizeWebhookTriggerReader,
   createWebhookDeliveryLog,
+  withWebhookReader,
 } from './deliveries.repository.js';
 
-import { withTenantScopedClient } from '@pertexo/database/primitives';
 import type { WebhookTriggerStore } from './runtime/contract.js';
 
 import { acceptVerifiedWebhookDelivery } from './runtime/accept.repository.js';
@@ -73,24 +72,12 @@ export function createWebhookTriggerStore(
     ) => rotateWebhookEndpoint(pool, input),
     rotateSecret: (input: Parameters<WebhookTriggerStore['rotateSecret']>[0]) =>
       rotateWebhookSecret(pool, input),
-    getHealth: (input: Parameters<WebhookTriggerStore['getHealth']>[0]) => {
-      return withTenantScopedClient(
-        pool,
-        {
-          workspaceId: input.workspaceId,
-          actorId: input.actorId,
-        },
-        async (client) => {
-          await authorizeWebhookTriggerReader(
-            client,
-            input.workspaceId,
-            input.actorId,
-            input.workflowId,
-          );
-          return readHealth(client, input.workspaceId, input.workflowId);
-        },
-      );
-    },
+    getHealth: (input: Parameters<WebhookTriggerStore['getHealth']>[0]) =>
+      withWebhookReader(pool, input, (client) =>
+        readHealth(client, input.workspaceId, input.workflowId),
+      ),
+    // From here on the caller is an HTTP sender, not a member: it has proved only that
+    // it knows the address, and its signature is what gets checked.
     resolveVerification: (
       endpointKeyHashInput: Parameters<
         WebhookTriggerStore['resolveVerification']
