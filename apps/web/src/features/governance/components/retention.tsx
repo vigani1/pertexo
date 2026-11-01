@@ -1,7 +1,7 @@
-import { useId, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useId } from 'react';
 import {
   auditRetentionSchema,
+  AUDIT_RETENTION_MAX_DAYS,
   AUDIT_RETENTION_MIN_DAYS,
   type GovernanceSettings,
 } from '@pertexo/contracts';
@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValues } from '@/components/ui/use-field-validation';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { saveSettings, type GovernanceScope } from '../data/audit.api';
-import { governanceKeys, governanceQueryOptions } from '../data/audit.queries';
+import type { GovernanceScope } from '../data/audit.api';
+import { useSettingForm } from '../hooks/use-setting-form';
+import { AUDIT_RETENTION_RANGE } from '../model/setting-edit';
 export function AuditRetention({
   scope,
   snapshot,
@@ -23,31 +23,20 @@ export function AuditRetention({
   snapshot: GovernanceSettings;
   editable: boolean;
 }>) {
-  const id = useId(),
-    cache = useQueryClient();
-  const [base, setBase] = useState(snapshot);
+  const id = useId();
   const fields = useFieldValues(
     {
       days: (value: string) =>
         auditRetentionSchema.safeParse(Number(value)).success
           ? undefined
-          : 'Choose 30 to 2,555 days.',
+          : `Choose ${AUDIT_RETENTION_RANGE}.`,
     },
     { days: String(snapshot.auditRetentionDays) },
   );
-  const command = useRetainedCommand(
-    (
-      body: { expectedRevision: number; auditRetentionDays: number },
-      key: string,
-    ) => saveSettings(scope, body, key),
-    async (result) => {
-      setBase(result);
-      cache.setQueryData(governanceQueryOptions(scope).queryKey, result);
-      await cache.invalidateQueries({ queryKey: governanceKeys.scope(scope) });
-    },
-    { action: 'saving audit retention' },
-  );
-  const stale = snapshot.revision !== base.revision;
+  const { base, command, stale, expectedRevision, adoptSnapshot } =
+    useSettingForm(scope, snapshot, 'auditRetentionDays', {
+      action: 'saving audit retention',
+    });
   const locked = !editable || command.pending || command.uncertain;
   return (
     <form
@@ -57,7 +46,7 @@ export function AuditRetention({
         const parsed = fields.validate();
         if (parsed !== undefined && !locked && !stale)
           void command.send({
-            expectedRevision: base.revision,
+            expectedRevision,
             auditRetentionDays: Number(parsed.days),
           });
       }}
@@ -74,7 +63,7 @@ export function AuditRetention({
             {...fields.control('days')}
             type="number"
             min={AUDIT_RETENTION_MIN_DAYS}
-            max={2555}
+            max={AUDIT_RETENTION_MAX_DAYS}
             step={1}
             disabled={locked}
           />
@@ -82,17 +71,16 @@ export function AuditRetention({
       </LabelledField>
       {stale ? (
         <Notice tone="warning">
-          Settings changed. Your edit is kept.{' '}
+          Someone else changed this setting. Your edit is kept.{' '}
           <Button
             type="button"
             variant="ghost"
             onClick={() => {
-              setBase(snapshot);
+              adoptSnapshot();
               fields.reset({ days: String(snapshot.auditRetentionDays) });
-              command.reset();
             }}
           >
-            Reload settings
+            Reload setting
           </Button>
         </Notice>
       ) : null}
