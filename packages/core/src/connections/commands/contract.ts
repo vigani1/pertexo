@@ -1,20 +1,13 @@
-import type {
-  ConnectionSharing,
-  ConnectionSharingRequest,
-} from '@pertexo/contracts';
+import type { ConnectionSharingRequest } from '@pertexo/contracts';
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
 
-export type ConnectionSharingStore = Readonly<{
-  readConnectionSharing(
-    input: ResourceActor & { connectionId: string },
-  ): Promise<ConnectionSharing>;
-  replaceConnectionSharing(
-    input: ResourceActor & {
-      connectionId: string;
-      request: ConnectionSharingRequest;
-      idempotencyKey: string;
-      requestId?: string;
-      traceId?: string;
-    },
-  ): Promise<ConnectionSharing & { replayed: boolean }>;
-}>;
+export type ReadConnectionSharingInput = ResourceActor &
+  Readonly<{ connectionId: string }>;
+
+export type ReplaceConnectionSharingInput = ReadConnectionSharingInput &
+  Readonly<{
+    request: ConnectionSharingRequest;
+    idempotencyKey: string;
+    requestId?: string;
+    traceId?: string;
+  }>;

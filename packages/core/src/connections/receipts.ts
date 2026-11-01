@@ -12,7 +12,6 @@ import {
   ConnectionIdempotencyConflictError,
   type ConnectionRecord,
   type ConnectionTestResult,
-  type RequestMetadata,
 } from './contract.js';
 
 const providerKeySchema = z
@@ -53,20 +52,12 @@ export function keyDigest(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
-export function safeOptionalIdentifier(
-  value: string | undefined,
-): string | null {
-  return value ?? null;
-}
-
-export function parseRequestMetadata(input: RequestMetadata): Readonly<{
-  requestId: string | null;
-  traceId: string | null;
-}> {
-  return Object.freeze({
-    requestId: safeOptionalIdentifier(input.requestId),
-    traceId: safeOptionalIdentifier(input.traceId),
-  });
+/** Who a command's key belongs to, for commands on one connection. */
+export function connectionCommandScope(
+  actorId: string,
+  connectionId: string,
+): string {
+  return `${actorId}:${connectionId}`;
 }
 
 const durableConnectionSnapshotSchema = z

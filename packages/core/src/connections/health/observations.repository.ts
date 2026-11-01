@@ -14,12 +14,16 @@ import type {
 } from './contract.js';
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
+import {
+  canonicalOutboxPayloadChecksum,
+  type WorkspaceTransaction,
+} from '@pertexo/database/primitives';
 import {
   consumeInboxMessage,
   InboxReceiptUnavailableError,
 } from '../../outbox/receipts.repository.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
+import { isStaleRunObservation } from './rules.js';
 
 const payloadSchema = z
   .object({
@@ -33,10 +37,6 @@ const payloadSchema = z
   })
   .strict();
 
-type Transaction = Parameters<
-  Parameters<typeof consumeInboxMessage>[2]['operation']
->[0];
-
 /**
  * Applies one run's observation once. Only an observation about the exact
  * connection secret and health revision the attempt dispatched with,
@@ -44,7 +44,7 @@ type Transaction = Parameters<
  * it, any other marks it as needing reauthorization.
  */
 async function applyObservation(
-  transaction: Transaction,
+  transaction: WorkspaceTransaction,
   input: ApplyConnectionHealthObservationInput,
 ): Promise<boolean> {
   const workspaceId = transaction.workspaceId;
@@ -101,14 +101,8 @@ async function applyObservation(
     .from(connections)
     .where(predicate)
     .for('update');
-  const staleObservation =
-    connection === undefined ||
-    connection.status === 'revoked' ||
-    connection.current_secret_version_id !== dispatch.secret_version_id ||
-    connection.health_revision !== dispatch.health_revision ||
-    connection.provider_key !== 'slack' ||
-    connection.auth_type !== 'slack_bot_token';
-  if (staleObservation) return false;
+  if (connection === undefined || isStaleRunObservation(connection, dispatch))
+    return false;
   const ended = await db
     .select({ id: nodeAttempts.id })
     .from(nodeAttempts)

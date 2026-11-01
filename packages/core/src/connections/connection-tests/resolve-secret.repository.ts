@@ -1,127 +1,98 @@
 import { and, eq, getTableName, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
-import type { Pool } from 'pg';
-import { generatePersistedId } from '@pertexo/database/platform';
+import type { PoolClient } from 'pg';
+
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
-  connectionEvents,
   connections,
   idempotencyRecords as records,
 } from '@pertexo/database/schema';
-import { keyDigest, parseRequestMetadata } from '../receipts.js';
-import { requireConnectionUser } from '../authority.queries.js';
+
+import type {
+  ResolveConnectionTestSecretInput,
+  ResolvedConnectionSecretRecord,
+} from '../contract.js';
 import {
+  CONNECTION_EVENT_TYPE,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
 } from '../contract.js';
+import { appendConnectionEvent } from '../events.repository.js';
 import { withOneOAuth2Fact } from '../oauth2/clients.repository.js';
 import { connectionSecrets } from '../runtime/credentials.queries.js';
-import { withConnectionTransaction } from '../transaction.js';
-import { connectionTestClaim, connectionTestScope } from './claim.js';
+import { connectionTestClaim } from './claim.js';
+import {
+  connectionTestClaimRow,
+  CONNECTION_TEST_OPERATION,
+} from './claim.queries.js';
 
-import type { ConnectionTestPersistence } from './contract.js';
-
-export async function resolvePersistedConnectionTestSecret(
-  pool: Pool,
-  input: Parameters<
-    ConnectionTestPersistence['resolveConnectionTestSecret']
-  >[0],
-): ReturnType<ConnectionTestPersistence['resolveConnectionTestSecret']> {
-  const actorId = input.actorId;
-  const connectionId = input.connectionId;
-  const expectedProviderKey = input.expectedProviderKey;
-  const requestHash = input.requestHash;
-  const dispatchToken = input.dispatchToken;
-  const digest = keyDigest(input.idempotencyKey);
-  const scope = connectionTestScope(actorId, connectionId);
-  const metadata = parseRequestMetadata(input);
-  return withConnectionTransaction(pool, input.workspaceId, {
-    actorId,
-    operation: async (client, workspaceId) => {
-      const db = drizzle(client);
-      const identity = and(
-        eq(records.workspaceId, workspaceId),
-        eq(records.operation, 'connection.test'),
-        eq(records.scope, scope),
-        eq(records.keyHash, digest),
-      );
-      await requireConnectionUser(client, workspaceId, actorId, connectionId);
-      const claim = await db
-        .select({ id: records.id })
-        .from(records)
-        .where(
-          and(
-            and(
-              identity,
-              eq(records.requestHash, requestHash),
-              eq(records.status, 'in_progress'),
-              sql`${records.resultRef}->>'dispatchToken'=${dispatchToken}`,
-            ),
-            sql`${records.resultRef}->>'state'='claimed'`,
-          ),
-        )
-        .for('update')
-        .catch(rethrowQueryFailure);
-      if (claim.length !== 1)
-        throw new ConnectionTestInProgressError(
-          'Connection test credential ownership was lost',
-        );
-      // PostgreSQL OF targets use the unqualified relation name.
-      const connectionLock = alias(connections, getTableName(connections));
-      const [row] = await connectionSecrets(db)
-        .where(
-          and(
-            eq(connections.workspaceId, workspaceId),
-            eq(connections.id, connectionId),
-            eq(connections.providerKey, expectedProviderKey),
-            sql`${connections.status}<>'revoked'`,
-          ),
-        )
-        .for('share', { of: connectionLock })
-        .catch(rethrowQueryFailure);
-      if (row === undefined)
-        throw new ConnectionUnavailableError(
-          'Connection is not available for testing',
-        );
-      const connection = Object.freeze(row.connection);
-      const secretVersionId = row.secretVersionId;
-      if (secretVersionId !== connection.currentSecretVersionId)
-        throw new Error('Connection secret pointer is corrupt');
-      // DNS and safety checks may fail before dispatch. Capture their
-      // current-credential fence now, without inventing dispatch evidence.
-      await db
-        .update(records)
-        .set({
-          resultRef: connectionTestClaim(
-            dispatchToken,
-            'claimed',
-            secretVersionId,
-            row.healthRevision,
-          ),
-          updatedAt: sql`transaction_timestamp()`,
-        })
-        .where(identity)
-        .catch(rethrowQueryFailure);
-      await db
-        .insert(connectionEvents)
-        .values({
-          id: generatePersistedId(),
-          workspaceId,
-          connectionId,
-          eventType: 'connection.credential_accessed',
-          actorKind: 'user',
-          actorId,
-          requestId: metadata.requestId,
-          traceId: metadata.traceId,
-          metadata: { purpose: 'connection.test', secretVersionId },
-        })
-        .catch(rethrowQueryFailure);
-      return Object.freeze({
-        connection: await withOneOAuth2Fact(client, workspaceId, connection),
+export async function resolveConnectionTestSecret(
+  client: PoolClient,
+  input: ResolveConnectionTestSecretInput,
+): Promise<ResolvedConnectionSecretRecord> {
+  const { workspaceId, actorId, connectionId } = input;
+  const { identity, stillClaimed } = connectionTestClaimRow(input);
+  const db = drizzle(client);
+  const claim = await db
+    .select({ id: records.id })
+    .from(records)
+    .where(stillClaimed)
+    .for('update')
+    .catch(rethrowQueryFailure);
+  if (claim.length !== 1)
+    throw new ConnectionTestInProgressError(
+      'Connection test credential ownership was lost',
+    );
+  // PostgreSQL OF targets use the unqualified relation name.
+  const connectionLock = alias(connections, getTableName(connections));
+  const [row] = await connectionSecrets(db)
+    .where(
+      and(
+        eq(connections.workspaceId, workspaceId),
+        eq(connections.id, connectionId),
+        eq(connections.providerKey, input.expectedProviderKey),
+        sql`${connections.status}<>'revoked'`,
+      ),
+    )
+    .for('share', { of: connectionLock })
+    .catch(rethrowQueryFailure);
+  if (row === undefined)
+    throw new ConnectionUnavailableError(
+      'Connection is not available for testing',
+    );
+  const connection = Object.freeze(row.connection);
+  const secretVersionId = row.secretVersionId;
+  if (secretVersionId !== connection.currentSecretVersionId)
+    throw new Error('Connection secret pointer is corrupt');
+  // DNS and safety checks may fail before dispatch. Capture their
+  // current-credential fence now, without inventing dispatch evidence.
+  await db
+    .update(records)
+    .set({
+      resultRef: connectionTestClaim(
+        input.dispatchToken,
+        'claimed',
         secretVersionId,
-        sealed: row.sealed,
-      });
-    },
+        row.healthRevision,
+      ),
+      updatedAt: sql`transaction_timestamp()`,
+    })
+    .where(identity)
+    .catch(rethrowQueryFailure);
+  await appendConnectionEvent(client, {
+    workspaceId,
+    connectionId,
+    eventType: CONNECTION_EVENT_TYPE.credentialAccessed,
+    actorKind: 'user',
+    actorId,
+    requestId: input.requestId,
+    traceId: input.traceId,
+    metadata: { purpose: CONNECTION_TEST_OPERATION, secretVersionId },
+  });
+  return Object.freeze({
+    connection: await withOneOAuth2Fact(client, workspaceId, connection),
+    secretVersionId,
+    sealed: row.sealed,
   });
 }

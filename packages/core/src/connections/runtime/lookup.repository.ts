@@ -1,116 +1,68 @@
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  appendAuditFact,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
-import { generatePersistedId } from '@pertexo/database/platform';
-import {
-  connectionEvents,
-  connectionSecretVersions,
-} from '@pertexo/database/schema';
-import { sealedFields } from '../records.queries.js';
-import type { ConnectionLookupStore } from './contract.js';
+import type { PoolClient } from 'pg';
 
-import type { Pool } from 'pg';
-import { parseRequestMetadata } from '../receipts.js';
-import { requireConnectionUser } from '../authority.queries.js';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { connectionSecretVersions } from '@pertexo/database/schema';
+
+import type { ResolvedConnectionSecretRecord } from '../contract.js';
 import {
   CONNECTION_EVENT_TYPE,
   CONNECTION_STATUS,
   ConnectionNotFoundError,
   ConnectionUnavailableError,
 } from '../contract.js';
-import { selectConnection } from '../records.queries.js';
-import { withConnectionTransaction } from '../transaction.js';
+import { recordMemberAction } from '../events.repository.js';
+import { sealedFields, selectConnection } from '../records.queries.js';
+import type { ResolveConnectionLookupSecretInput } from './contract.js';
 
-export function createConnectionLookupPersistence(
-  pool: Pool,
-): ConnectionLookupStore {
-  return Object.freeze({
-    resolveConnectionLookupSecret: async (input) => {
-      const actorId = input.actorId;
-      const connectionId = input.connectionId;
-      const expectedProviderKey = input.expectedProviderKey;
-      const purpose = input.purpose;
-      const metadata = parseRequestMetadata(input);
-      return withConnectionTransaction(pool, input.workspaceId, {
-        actorId,
-        operation: async (client, workspaceId) => {
-          await requireConnectionUser(
-            client,
-            workspaceId,
-            actorId,
-            connectionId,
-          );
-          const connection = await selectConnection(
-            client,
-            workspaceId,
-            connectionId,
-          );
-          if (connection === null)
-            throw new ConnectionNotFoundError('Connection is not visible');
-          if (
-            connection.providerKey !== expectedProviderKey ||
-            connection.status !== CONNECTION_STATUS.active
-          )
-            throw new ConnectionUnavailableError(
-              'Connection is not available for lookups',
-            );
-          const db = drizzle(client);
-          const [row] = await db
-            .select(sealedFields)
-            .from(connectionSecretVersions)
-            .where(
-              and(
-                eq(connectionSecretVersions.workspaceId, workspaceId),
-                eq(connectionSecretVersions.connectionId, connectionId),
-                eq(
-                  connectionSecretVersions.id,
-                  connection.currentSecretVersionId,
-                ),
-              ),
-            )
-            .catch(rethrowQueryFailure);
-          if (row === undefined)
-            throw new Error('Connection secret pointer is corrupt');
-          await db
-            .insert(connectionEvents)
-            .values({
-              id: generatePersistedId(),
-              workspaceId,
-              connectionId,
-              eventType: CONNECTION_EVENT_TYPE.credentialAccessed,
-              actorKind: 'user',
-              actorId,
-              requestId: metadata.requestId,
-              traceId: metadata.traceId,
-              metadata: {
-                purpose,
-                secretVersionId: connection.currentSecretVersionId,
-              },
-            })
-            .catch(rethrowQueryFailure);
-          await appendAuditFact(client, {
-            workspaceId,
-            actorId,
-            action: 'connection.credential_accessed',
-            targetType: 'connection',
-            targetId: connectionId,
-            ...metadata,
-            metadata: {
-              purpose,
-              secretVersionId: connection.currentSecretVersionId,
-            },
-          });
-          return Object.freeze({
-            connection,
-            secretVersionId: connection.currentSecretVersionId,
-            sealed: row,
-          });
-        },
-        options: input.signal === undefined ? {} : { signal: input.signal },
-      });
+/**
+ * The credential for an ADR 046 read-only provider lookup, with its access
+ * audit fact. A lookup never changes connection health.
+ */
+export async function resolveConnectionLookupSecret(
+  client: PoolClient,
+  input: ResolveConnectionLookupSecretInput,
+): Promise<ResolvedConnectionSecretRecord> {
+  const { workspaceId, actorId, connectionId } = input;
+  const connection = await selectConnection(client, workspaceId, connectionId);
+  if (connection === null)
+    throw new ConnectionNotFoundError('Connection is not visible');
+  if (
+    connection.providerKey !== input.expectedProviderKey ||
+    connection.status !== CONNECTION_STATUS.active
+  )
+    throw new ConnectionUnavailableError(
+      'Connection is not available for lookups',
+    );
+  const [row] = await drizzle(client)
+    .select(sealedFields)
+    .from(connectionSecretVersions)
+    .where(
+      and(
+        eq(connectionSecretVersions.workspaceId, workspaceId),
+        eq(connectionSecretVersions.connectionId, connectionId),
+        eq(connectionSecretVersions.id, connection.currentSecretVersionId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (row === undefined)
+    throw new Error('Connection secret pointer is corrupt');
+  await recordMemberAction(client, {
+    workspaceId,
+    connectionId,
+    eventType: CONNECTION_EVENT_TYPE.credentialAccessed,
+    actorId,
+    requestId: input.requestId,
+    traceId: input.traceId,
+    metadata: {
+      purpose: input.purpose,
+      secretVersionId: connection.currentSecretVersionId,
     },
+  });
+  return Object.freeze({
+    connection,
+    secretVersionId: connection.currentSecretVersionId,
+    sealed: row,
   });
 }

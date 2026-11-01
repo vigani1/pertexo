@@ -5,14 +5,11 @@ import {
 } from '@pertexo/database/primitives';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  workspaces,
-  connections,
-  connectionEvents,
-} from '@pertexo/database/schema';
+import { workspaces, connections } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 
-import { generatePersistedId } from '@pertexo/database/platform';
+import { CONNECTION_EVENT_TYPE } from '../contract.js';
+import { appendConnectionEvent } from '../events.repository.js';
 
 /**
  * Whether the secret may still be used: the workspace and the connection are
@@ -64,7 +61,7 @@ export async function recordCredentialAccess(
 ): Promise<void> {
   await appendAuditFact(client, {
     workspaceId: input.workspaceId,
-    action: 'connection.credential_accessed',
+    action: CONNECTION_EVENT_TYPE.credentialAccessed,
     targetType: 'connection',
     targetId: input.connectionId,
     traceId: input.traceId,
@@ -74,20 +71,16 @@ export async function recordCredentialAccess(
       secretVersionId: input.secretVersionId,
     },
   });
-  await drizzle(client)
-    .insert(connectionEvents)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: input.workspaceId,
-      connectionId: input.connectionId,
-      eventType: 'connection.credential_accessed',
-      actorKind: 'worker',
-      actorId: input.workerId,
-      traceId: input.traceId,
-      metadata: {
-        purpose: input.purpose,
-        secretVersionId: input.secretVersionId,
-      },
-    })
-    .catch(rethrowQueryFailure);
+  await appendConnectionEvent(client, {
+    workspaceId: input.workspaceId,
+    connectionId: input.connectionId,
+    eventType: CONNECTION_EVENT_TYPE.credentialAccessed,
+    actorKind: 'worker',
+    actorId: input.workerId,
+    traceId: input.traceId,
+    metadata: {
+      purpose: input.purpose,
+      secretVersionId: input.secretVersionId,
+    },
+  });
 }

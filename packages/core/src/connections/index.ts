@@ -14,20 +14,21 @@ export {
 export {
   createConnectionStore,
   createWorkerConnectionResolutionStore,
+  type ApiConnectionStore,
+  type ConnectionLookupStore,
+  type ConnectionManagementStore,
+  type ConnectionReadStore,
+  type ConnectionResolutionStore,
+  type ConnectionSharingStore,
+  type ConnectionTestStore,
+  type ConnectionUsageStore,
+  type OAuth2ConsentStore,
+  type WorkerConnectionResolutionStore,
 } from './store.js';
-export type { ConnectionSharingStore } from './commands/contract.js';
+export type { OAuth2TokenStore } from './oauth2/tokens.repository.js';
 export type {
-  ApiConnectionStore,
-  ConnectionLookupStore,
-  WorkerConnectionResolutionStore,
-} from './runtime/contract.js';
-export type {
-  ConnectionManagementStore,
   ConnectionPage,
-  ConnectionReadStore,
   ConnectionRecord,
-  ConnectionResolutionStore,
-  ConnectionTestStore,
   ConnectionTestOutcome,
   ConnectionTestResult,
   ListConnectionsInput,
@@ -36,15 +37,14 @@ export type {
 } from './contract.js';
 export type {
   ConnectionUsageCursor,
-  ConnectionUsageStore,
   ConnectionUsagePage,
   ConnectionUsageRecord,
   ListConnectionUsageInput,
 } from './discovery/contract.js';
-export type {
-  ConsumedOAuth2Authorization,
-  OAuth2ConsentStore,
-  OAuth2TokenStore,
-} from './oauth2/contract.js';
+export type { ConsumedOAuth2Authorization } from './oauth2/contract.js';
 export { applyConnectionHealthObservation } from './health/observations.repository.js';
 export type { ConnectionHealthApplicationResult } from './health/contract.js';
+
+// Attempts, authoring, lifecycle, notifications and previews use these directly (ADR 091).
+export type {} from './oauth2/clients.repository.js';
+export type {} from './runtime/credential-use.repository.js';

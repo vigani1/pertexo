@@ -6,12 +6,19 @@ import type {
 import { acquireDatabasePool } from '@pertexo/database/platform';
 import { workflowIntegrationUsage as usage } from '@pertexo/database/schema';
 import type {
+  FindConnectionImpactInput,
+  FindProviderOperationImpactInput,
   WorkflowIntegrationImpactPage,
   WorkflowIntegrationImpactRecord,
-  WorkflowIntegrationUsageStore,
 } from './contract.js';
 
 import { withWorkspaceTransaction } from '@pertexo/database/primitives';
+
+const DEFAULT_IMPACT_PAGE_SIZE = 100;
+
+export type WorkflowIntegrationUsageStore = ReturnType<
+  typeof createWorkflowIntegrationUsageStore
+>;
 
 function page(
   rows: readonly WorkflowIntegrationImpactRecord[],
@@ -31,14 +38,16 @@ function page(
 export function createWorkflowIntegrationUsageStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkflowIntegrationUsageStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
-    findProviderOperationImpact: async (input) => {
+    findProviderOperationImpact: async (
+      input: FindProviderOperationImpactInput,
+    ) => {
       const providerKey = input.providerKey;
       const operationKey = input.operationKey;
-      const limit = input.limit ?? 100;
+      const limit = input.limit ?? DEFAULT_IMPACT_PAGE_SIZE;
       const after =
         input.after === undefined
           ? undefined
@@ -73,9 +82,9 @@ export function createWorkflowIntegrationUsageStore(
         },
       );
     },
-    findConnectionImpact: async (input) => {
+    findConnectionImpact: async (input: FindConnectionImpactInput) => {
       const connectionId = input.connectionId;
-      const limit = input.limit ?? 100;
+      const limit = input.limit ?? DEFAULT_IMPACT_PAGE_SIZE;
       const after =
         input.after === undefined
           ? undefined

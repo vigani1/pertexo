@@ -12,14 +12,16 @@ export {
 export {
   createConnectionStore,
   createWorkerConnectionResolutionStore,
+  type ApiConnectionStore,
+  type ConnectionManagementStore,
+  type ConnectionReadStore,
+  type ConnectionResolutionStore,
+  type ConnectionStore,
+  type ConnectionTestStore,
+  type WorkerConnectionResolutionStore,
 } from './store.js';
 export type {
   ConnectionAuthType,
-  ConnectionStore,
-  ConnectionManagementStore,
-  ConnectionReadStore,
-  ConnectionResolutionStore,
-  ConnectionTestStore,
   ConnectionRecord,
   ConnectionPage,
   ConnectionStatus,
@@ -43,15 +45,13 @@ export type {
   RotateConnectionSecretInput,
   SealedConnectionSecretRecord,
 } from './contract.js';
-export type {
-  ApiConnectionStore,
-  WorkerConnectionResolutionStore,
-} from './runtime/contract.js';
-export { createWorkflowIntegrationUsageStore } from './discovery/integration-usage.queries.js';
+export {
+  createWorkflowIntegrationUsageStore,
+  type WorkflowIntegrationUsageStore,
+} from './discovery/integration-usage.queries.js';
 export type {
   FindConnectionImpactInput,
   FindProviderOperationImpactInput,
   WorkflowIntegrationImpactPage,
   WorkflowIntegrationImpactRecord,
-  WorkflowIntegrationUsageStore,
 } from './discovery/contract.js';

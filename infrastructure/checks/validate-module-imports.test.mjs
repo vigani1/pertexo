@@ -329,7 +329,6 @@ test('the list of areas not yet passed can only shrink', () => {
   const AT_THE_MOVE = [
     'attempts',
     'authoring',
-    'connections',
     'execution',
     'identity',
     'inbox',
