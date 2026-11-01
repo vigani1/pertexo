@@ -1,4 +1,4 @@
-import { FormUploadLimitError } from '@pertexo/core/runs';
+import { FormUploadLimitError } from '@pertexo/core/artifacts';
 import { expect, it } from 'vitest';
 import { toProblem } from '../../../src/problems/registry.js';
 

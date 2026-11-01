@@ -5,7 +5,7 @@ import {
   createArtifactUploadStore,
   createFormUploadStore,
   type FormUploadStore,
-} from '@pertexo/core/runs';
+} from '@pertexo/core/artifacts';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

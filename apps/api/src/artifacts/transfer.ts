@@ -7,7 +7,7 @@ import {
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-} from '@pertexo/core/runs';
+} from '@pertexo/core/artifacts';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import { AuthorizationError } from '../authorization/index.js';
 import {

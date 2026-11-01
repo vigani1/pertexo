@@ -5,17 +5,17 @@ import {
   previewRuns,
 } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type {
-  ArtifactRecord,
-  ClaimDueUnfinalizedArtifactInput,
-  ClaimDueUnfinalizedArtifactsInput,
-  CompleteArtifactRemovalInput,
-  CreatePendingArtifactInput,
-  CreatePendingPreviewArtifactInput,
-  FinalizeArtifactInput,
-} from './contract.js';
 import {
   ARTIFACT_STATUS,
+  type ArtifactRecord,
+  type ClaimDueUnfinalizedArtifactInput,
+  type ClaimDueUnfinalizedArtifactsInput,
+  type CompleteArtifactRemovalInput,
+  type CreatePendingArtifactInput,
+  type CreatePendingPreviewArtifactInput,
+  type FinalizeArtifactInput,
+} from './contract.js';
+import {
   ArtifactFinalizeConflictError,
   ArtifactLifecycleConflictError,
   ArtifactMetadataNotFoundError,
@@ -26,6 +26,19 @@ export function artifactStorageKey(
   artifactId: string,
 ): string {
   return `workspaces/${workspaceId}/artifacts/${artifactId}`;
+}
+
+async function lockArtifact(
+  transaction: WorkspaceTransaction,
+  artifactId: string,
+): Promise<ArtifactRecord> {
+  const [artifact] = await transaction.db
+    .select()
+    .from(artifacts)
+    .where(eq(artifacts.id, artifactId))
+    .for('update');
+  if (artifact === undefined) throw new ArtifactMetadataNotFoundError();
+  return artifact;
 }
 
 function exactMetadataMatches(
@@ -118,13 +131,7 @@ export async function finalizeArtifactUpload(
     throw new ArtifactFinalizeConflictError();
   }
 
-  const locked = await transaction.db
-    .select()
-    .from(artifacts)
-    .where(eq(artifacts.id, input.artifactId))
-    .for('update');
-  const artifact = locked[0];
-  if (artifact === undefined) throw new ArtifactMetadataNotFoundError();
+  const artifact = await lockArtifact(transaction, input.artifactId);
   if (!exactMetadataMatches(artifact, input)) {
     throw new ArtifactFinalizeConflictError();
   }
@@ -204,13 +211,7 @@ export async function claimDueUnfinalizedArtifact(
   transaction: WorkspaceTransaction,
   input: ClaimDueUnfinalizedArtifactInput,
 ): Promise<ArtifactRecord> {
-  const locked = await transaction.db
-    .select()
-    .from(artifacts)
-    .where(eq(artifacts.id, input.artifactId))
-    .for('update');
-  const artifact = locked[0];
-  if (artifact === undefined) throw new ArtifactMetadataNotFoundError();
+  const artifact = await lockArtifact(transaction, input.artifactId);
   if (artifact.status === ARTIFACT_STATUS.deleting) return artifact;
   if (artifact.status !== ARTIFACT_STATUS.pending) {
     throw new ArtifactLifecycleConflictError(
@@ -251,13 +252,7 @@ export async function completeArtifactRemoval(
   transaction: WorkspaceTransaction,
   input: CompleteArtifactRemovalInput,
 ): Promise<ArtifactRecord> {
-  const locked = await transaction.db
-    .select()
-    .from(artifacts)
-    .where(eq(artifacts.id, input.artifactId))
-    .for('update');
-  const artifact = locked[0];
-  if (artifact === undefined) throw new ArtifactMetadataNotFoundError();
+  const artifact = await lockArtifact(transaction, input.artifactId);
   if (artifact.status === ARTIFACT_STATUS.deleted) return artifact;
   if (artifact.status !== ARTIFACT_STATUS.deleting) {
     throw new ArtifactLifecycleConflictError(

@@ -1,5 +1,5 @@
 import type { ArtifactStore } from '@pertexo/artifact-store';
-import { artifactStorageKey } from '@pertexo/core/runs';
+import { artifactStorageKey } from '@pertexo/core/artifacts';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type {
   NodeArtifactRuntime,

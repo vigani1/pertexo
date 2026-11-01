@@ -11,20 +11,19 @@ import { z } from 'zod';
 import { artifacts } from '@pertexo/database/schema';
 import { artifactStorageKey } from '../records.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { ArtifactRecord } from '../contract.js';
-import type { ArtifactMetadataIdentity } from '../metadata/contract.js';
+import type { ArtifactRecord, ArtifactUploadPurpose } from '../contract.js';
+import type { ArtifactMetadataIdentity } from '../metadata.js';
 import { artifactMetadataMatches } from '../metadata.js';
 import {
-  ARTIFACT_UPLOAD_PENDING_MS,
   ArtifactQuotaExceededError,
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-} from './input.js';
-import type { ArtifactUploadResult } from './contract.js';
-
-/** Who may upload decides the purpose; both share one lifecycle and quota. */
-export type ArtifactUploadPurpose = 'user-upload' | 'form-upload';
+} from './errors.js';
+import {
+  ARTIFACT_UPLOAD_PENDING_MS,
+  type ArtifactUploadResult,
+} from './contract.js';
 
 export type ArtifactUploadReservation = Readonly<{
   workspaceId: string;

@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 import { ArtifactIntegrityError } from '@pertexo/artifact-store';
-import type { FormUploadTarget } from '@pertexo/core/runs';
+import type { FormUploadTarget } from '@pertexo/core/artifacts';
 import { FormFileRejectedError } from '@pertexo/workflow-model';
 import {
   ArtifactApiConflictError,

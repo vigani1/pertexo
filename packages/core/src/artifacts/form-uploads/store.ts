@@ -22,18 +22,21 @@ import {
 import { artifacts, formUploads } from '@pertexo/database/schema';
 import { discoverPublicForm } from '../../triggers/forms/repository.js';
 import { FormChangedError } from '../../triggers/forms/errors.js';
-import { ArtifactUploadNotFoundError } from '../uploads/input.js';
+import { ArtifactUploadNotFoundError } from '../uploads/errors.js';
 import {
   completeArtifactUpload,
   reserveArtifactUpload,
 } from '../uploads/reservation.repository.js';
 import { FormUploadLimitError } from './errors.js';
 import { assertUnsentPublicRoom } from './unsent.queries.js';
+import { FORM_UPLOAD_PURPOSE } from '../contract.js';
 import type {
   BeginFormUploadInput,
+  DiscoverFormInput,
+  FinalizeFormUploadInput,
   FormUpload,
-  FormUploadStore,
   FormUploadSession,
+  ReadFormUploadInput,
 } from './contract.js';
 import {
   boundUploadsSql,
@@ -91,7 +94,7 @@ async function beginFormUpload(
     };
     const reserved = await reserveArtifactUpload(client, {
       workspaceId: target.workspaceId,
-      purpose: 'form-upload',
+      purpose: FORM_UPLOAD_PURPOSE,
       scope: `form-upload:${sessionHash}`,
       idempotencyKey: input.idempotencyKey,
       requestHash: canonicalOutboxPayloadChecksum({
@@ -169,7 +172,7 @@ async function readBound(
       and(
         boundUploadsSql(target, input.session),
         eq(formUploads.artifactId, uploadId),
-        eq(artifacts.purpose, 'form-upload'),
+        eq(artifacts.purpose, FORM_UPLOAD_PURPOSE),
         inArray(artifacts.status, ['pending', 'available']),
       ),
     )
@@ -180,7 +183,7 @@ async function readBound(
 
 async function finalizeFormUpload(
   pool: Pool,
-  input: Parameters<FormUploadStore['finalize']>[0],
+  input: FinalizeFormUploadInput,
 ): Promise<FormUpload> {
   return inTarget(pool, input, async (client) => {
     const target = await loadUploadTarget(client, input.target, {
@@ -191,7 +194,7 @@ async function finalizeFormUpload(
     const artifact = await completeArtifactUpload(client, {
       workspaceId: target.workspaceId,
       artifactId: bound.artifact.id,
-      purpose: 'form-upload',
+      purpose: FORM_UPLOAD_PURPOSE,
       expectedMetadata: input.expectedMetadata,
       // Unsent files go after a day, or an hour for a public link; a
       // submission's run keeps them.
@@ -201,16 +204,18 @@ async function finalizeFormUpload(
   });
 }
 
+export type FormUploadStore = ReturnType<typeof createFormUploadStore>;
+
 export function createFormUploadStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): FormUploadStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
-    discover: (input) => discoverPublicForm(pool, input),
-    begin: (input) => beginFormUpload(pool, input),
-    read: (input) =>
+    discover: (input: DiscoverFormInput) => discoverPublicForm(pool, input),
+    begin: (input: BeginFormUploadInput) => beginFormUpload(pool, input),
+    read: (input: ReadFormUploadInput) =>
       inTarget(pool, input, async (client) =>
         readBound(
           client,
@@ -219,8 +224,9 @@ export function createFormUploadStore(
           input.uploadId,
         ),
       ),
-    finalize: (input) => finalizeFormUpload(pool, input),
+    finalize: (input: FinalizeFormUploadInput) =>
+      finalizeFormUpload(pool, input),
     checkReadiness: () => checkDatabaseReadiness(pool),
     close: lease.close,
-  } satisfies FormUploadStore);
+  });
 }

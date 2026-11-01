@@ -1,7 +1,7 @@
 import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
+import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import {
-  ArtifactMetadataNotFoundError,
   WorkflowRunNotExecutableError,
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,

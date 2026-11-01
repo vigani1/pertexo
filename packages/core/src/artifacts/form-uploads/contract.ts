@@ -1,7 +1,6 @@
-import type { DatabaseReadiness } from '@pertexo/database/platform';
 import type { PublicFormGrant } from '../../triggers/forms/contract.js';
 import type { ArtifactRecord } from '../contract.js';
-import type { ArtifactMetadataIdentity } from '../metadata/contract.js';
+import type { ArtifactMetadataIdentity } from '../metadata.js';
 
 /** Where a responder uploads: a published form (by link or as a member) or an input request. */
 export type FormUploadTarget =
@@ -42,27 +41,14 @@ export type FormUpload = Readonly<{
   filename: string;
 }>;
 
-export interface FormUploadStore {
-  discover(
-    input: Readonly<{
-      publicId: string;
-      capability: string;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<PublicFormGrant>;
-  begin(
-    input: BeginFormUploadInput,
-  ): Promise<FormUpload & { replayed: boolean }>;
-  read(
-    input: FormUploadSession & Readonly<{ uploadId: string }>,
-  ): Promise<FormUpload>;
-  finalize(
-    input: FormUploadSession &
-      Readonly<{
-        uploadId: string;
-        expectedMetadata: ArtifactMetadataIdentity;
-      }>,
-  ): Promise<FormUpload>;
-  checkReadiness(): Promise<DatabaseReadiness>;
-  close(): Promise<void>;
-}
+export type DiscoverFormInput = Readonly<{
+  publicId: string;
+  capability: string;
+  signal?: AbortSignal;
+}>;
+
+export type ReadFormUploadInput = FormUploadSession &
+  Readonly<{ uploadId: string }>;
+
+export type FinalizeFormUploadInput = ReadFormUploadInput &
+  Readonly<{ expectedMetadata: ArtifactMetadataIdentity }>;

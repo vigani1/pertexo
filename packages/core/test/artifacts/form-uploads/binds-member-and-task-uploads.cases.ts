@@ -3,7 +3,7 @@ import {
   FormValuesInvalidError,
   inputRequestConfigSchema,
 } from '@pertexo/workflow-model';
-import { ArtifactUploadNotFoundError } from '../../../src/artifacts/uploads/input.js';
+import { ArtifactUploadNotFoundError } from '../../../src/artifacts/uploads/errors.js';
 import { PendingTaskDecisionError } from '../../../src/runs/pending-tasks/responses/errors.js';
 import {
   taskFixture,

@@ -3,7 +3,7 @@ import { FORM_FILE_LIMITS } from '@pertexo/workflow-model';
 import {
   ArtifactQuotaExceededError,
   ArtifactUploadIdempotencyConflictError,
-} from '../../../src/artifacts/uploads/input.js';
+} from '../../../src/artifacts/uploads/errors.js';
 import { FormUploadLimitError } from '../../../src/artifacts/form-uploads/errors.js';
 import {
   admin,

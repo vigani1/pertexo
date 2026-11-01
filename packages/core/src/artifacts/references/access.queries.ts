@@ -6,6 +6,7 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { readTransactionFolderScope } from '../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
+import { ARTIFACT_UPLOAD_PURPOSE } from '../contract.js';
 import { artifactReferenceOwnersSql } from './owners.queries.js';
 
 /** Check stored sources before the caller persists a new reference. */
@@ -35,7 +36,7 @@ export async function visibleTransactionArtifactIds(
       and(
         eq(artifacts.workspaceId, actor.workspaceId),
         inArray(artifacts.id, [...ids]),
-        or(eq(artifacts.purpose, 'user-upload'), owners),
+        or(eq(artifacts.purpose, ARTIFACT_UPLOAD_PURPOSE), owners),
       ),
     );
   return new Set(result.map(({ id }) => id));

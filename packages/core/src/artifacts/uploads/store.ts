@@ -1,67 +1,101 @@
 import {
-  lockBrowsableWorkspaceAuthority,
-  lockWorkspaceAuthority,
-} from '../../shared/authority.queries.js';
-import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
-import { visibleArtifactIds } from '../references/access.queries.js';
-import type { Pool, PoolClient } from 'pg';
-
-import type {
-  DatabaseConfig,
-  DatabaseReadiness,
-} from '@pertexo/database/platform';
-import {
   acquireDatabasePool,
+  type DatabaseConfig,
+  type DatabaseReadiness,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import {
-  checkDatabaseReadiness,
   canonicalOutboxPayloadChecksum,
-  withTenantScopedClient,
+  checkDatabaseReadiness,
 } from '@pertexo/database/primitives';
 import {
+  ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
-  rolesForCapability,
 } from '@pertexo/workflow-model';
-import type { ArtifactRecord } from '../contract.js';
-import { artifactMetadataMatches } from '../metadata.js';
+import type { Pool, PoolClient } from 'pg';
 
-import {
-  completeArtifactUpload,
-  loadArtifact,
-  reserveArtifactUpload,
-} from './reservation.repository.js';
-import {
-  ArtifactUploadConflictError,
-  ArtifactUploadNotFoundError,
-  normalizeBeginInput,
-  normalizeFinalizeInput,
-  normalizeIdentity,
-} from './input.js';
+import { withWorkspaceAccess } from '../../shared/workspace-access.js';
+import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import { ARTIFACT_UPLOAD_PURPOSE, type ArtifactRecord } from '../contract.js';
+import { artifactMetadataMatches } from '../metadata.js';
+import { visibleArtifactIds } from '../references/access.queries.js';
 import type {
   ArtifactUploadAuthorization,
-  ArtifactUploadStore,
   ArtifactUploadResult,
   BeginArtifactUploadInput,
   FinalizeArtifactUploadInput,
   NormalizedBeginArtifactUploadInput,
 } from './contract.js';
+import {
+  ArtifactUploadConflictError,
+  ArtifactUploadNotFoundError,
+} from './errors.js';
+import {
+  normalizeBeginInput,
+  normalizeFinalizeInput,
+  normalizeIdentity,
+} from './input.js';
+import {
+  completeArtifactUpload,
+  loadArtifact,
+  reserveArtifactUpload,
+} from './reservation.repository.js';
 
-async function requireWorkspaceAccess(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-  access: 'upload' | 'read',
-): Promise<void> {
-  const roles = rolesForCapability(
-    access === 'upload' ? 'artifact:upload' : 'artifact:read',
-  );
+export type ArtifactUploadStore = ReturnType<typeof createArtifactUploadStore>;
+
+export function createArtifactUploadStore(
+  config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
+) {
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
+  return Object.freeze({
+    beginUpload: (input: BeginArtifactUploadInput) => beginUpload(pool, input),
+    getForUpload: (input: ArtifactUploadAuthorization) =>
+      readUploadArtifact(pool, input, { access: 'upload' }),
+    finalizeUpload: (input: FinalizeArtifactUploadInput) =>
+      finalizeUpload(pool, input),
+    getMetadata: (input: ArtifactUploadAuthorization) =>
+      readUploadArtifact(pool, input, { access: 'read' }),
+    checkReadiness: (): Promise<DatabaseReadiness> =>
+      checkDatabaseReadiness(pool),
+    close: lease.close,
+  });
+}
+
+/** Someone without access gets "not found" rather than learning a file exists. */
+async function withUploadAccess<T>(
+  pool: Pool,
+  {
+    workspaceId,
+    actorId,
+    access,
+    signal,
+  }: Readonly<{
+    workspaceId: string;
+    actorId: string;
+    access: 'upload' | 'read';
+    signal?: AbortSignal | undefined;
+  }>,
+  work: (client: PoolClient) => Promise<T>,
+): Promise<T> {
   try {
-    await (
-      access === 'read'
-        ? lockBrowsableWorkspaceAuthority
-        : lockWorkspaceAuthority
-    )(client, workspaceId, actorId, roles);
+    return await withWorkspaceAccess(
+      pool,
+      { workspaceId, actorId, ...(signal === undefined ? {} : { signal }) },
+      access === 'upload'
+        ? {
+            mode: 'change',
+            capability: 'artifact:upload',
+            statuses: ACTIVE_WORKSPACE_STATUSES,
+          }
+        : {
+            mode: 'change',
+            capability: 'artifact:read',
+            statuses: BROWSABLE_WORKSPACE_STATUSES,
+          },
+      work,
+    );
   } catch (error) {
     if (error instanceof WorkspaceAccessDeniedError)
       throw new ArtifactUploadNotFoundError();
@@ -85,25 +119,15 @@ async function beginUpload(
   input: BeginArtifactUploadInput,
 ): Promise<ArtifactUploadResult> {
   const parsed = normalizeBeginInput(input);
-  return withTenantScopedClient(
-    pool,
-    { workspaceId: parsed.workspaceId, actorId: parsed.actorId },
-    async (client) => {
-      await requireWorkspaceAccess(
-        client,
-        parsed.workspaceId,
-        parsed.actorId,
-        'upload',
-      );
-      return reserveArtifactUpload(client, {
-        workspaceId: parsed.workspaceId,
-        purpose: 'user-upload',
-        scope: `${parsed.actorId}:artifact-upload`,
-        idempotencyKey: parsed.idempotencyKey,
-        requestHash: uploadRequestHash(parsed),
-        metadata: parsed,
-      });
-    },
+  return withUploadAccess(pool, { ...parsed, access: 'upload' }, (client) =>
+    reserveArtifactUpload(client, {
+      workspaceId: parsed.workspaceId,
+      purpose: ARTIFACT_UPLOAD_PURPOSE,
+      scope: `${parsed.actorId}:artifact-upload`,
+      idempotencyKey: parsed.idempotencyKey,
+      requestHash: uploadRequestHash(parsed),
+      metadata: parsed,
+    }),
   );
 }
 
@@ -121,35 +145,26 @@ async function readUploadArtifact(
   }>,
 ): Promise<ArtifactRecord | null> {
   const parsed = normalizeIdentity(input);
-  return withTenantScopedClient(
+  return withUploadAccess(
     pool,
-    { workspaceId: parsed.workspaceId, actorId: parsed.actorId },
+    { ...parsed, access, signal },
     async (client) => {
-      await requireWorkspaceAccess(
-        client,
-        parsed.workspaceId,
-        parsed.actorId,
-        access,
-      );
       try {
-        if (
-          !(
-            await visibleArtifactIds(
-              client,
-              parsed,
-              [parsed.artifactId],
-              access === 'read' ? BROWSABLE_WORKSPACE_STATUSES : undefined,
-            )
-          ).has(parsed.artifactId)
-        )
-          return null;
+        const visible = await visibleArtifactIds(
+          client,
+          parsed,
+          [parsed.artifactId],
+          access === 'read' ? BROWSABLE_WORKSPACE_STATUSES : undefined,
+        );
+        if (!visible.has(parsed.artifactId)) return null;
         const artifact = await loadArtifact(
           client,
           parsed.workspaceId,
           parsed.artifactId,
           statuses,
         );
-        return access === 'upload' && artifact.purpose !== 'user-upload'
+        return access === 'upload' &&
+          artifact.purpose !== ARTIFACT_UPLOAD_PURPOSE
           ? null
           : artifact;
       } catch (error: unknown) {
@@ -157,41 +172,6 @@ async function readUploadArtifact(
         throw error;
       }
     },
-    signal === undefined ? {} : { signal },
-  );
-}
-
-async function completeUploadFinalization(
-  pool: Pool,
-  input: FinalizeArtifactUploadInput,
-  signal?: AbortSignal,
-): Promise<ArtifactRecord> {
-  const parsed = normalizeFinalizeInput(input);
-  return withTenantScopedClient(
-    pool,
-    { workspaceId: parsed.workspaceId, actorId: parsed.actorId },
-    async (client) => {
-      await requireWorkspaceAccess(
-        client,
-        parsed.workspaceId,
-        parsed.actorId,
-        'upload',
-      );
-      if (
-        !(await visibleArtifactIds(client, parsed, [parsed.artifactId])).has(
-          parsed.artifactId,
-        )
-      )
-        throw new ArtifactUploadNotFoundError();
-      return completeArtifactUpload(client, {
-        workspaceId: parsed.workspaceId,
-        artifactId: parsed.artifactId,
-        purpose: 'user-upload',
-        expectedMetadata: parsed.expectedMetadata,
-        retainFor: '30 days',
-      });
-    },
-    signal === undefined ? {} : { signal },
   );
 }
 
@@ -222,25 +202,22 @@ async function finalizeUpload(
   input.signal?.throwIfAborted();
   // Finalizing requires the artifact to still be pending, so an upload that
   // expiry cleanup started deleting meanwhile fails instead.
-  return completeUploadFinalization(pool, input, input.signal);
-}
-
-export function createArtifactUploadStore(
-  config: DatabaseConfig,
-  runtime?: DatabaseRuntime,
-): ArtifactUploadStore {
-  const lease = acquireDatabasePool(config, runtime);
-  const { pool } = lease;
-  return Object.freeze({
-    beginUpload: (input: BeginArtifactUploadInput) => beginUpload(pool, input),
-    getForUpload: (input: ArtifactUploadAuthorization) =>
-      readUploadArtifact(pool, input, { access: 'upload' }),
-    finalizeUpload: (input: FinalizeArtifactUploadInput) =>
-      finalizeUpload(pool, input),
-    getMetadata: (input: ArtifactUploadAuthorization) =>
-      readUploadArtifact(pool, input, { access: 'read' }),
-    checkReadiness: (): Promise<DatabaseReadiness> =>
-      checkDatabaseReadiness(pool),
-    close: lease.close,
-  });
+  return withUploadAccess(
+    pool,
+    { ...parsed, access: 'upload', signal: input.signal },
+    async (client) => {
+      const visible = await visibleArtifactIds(client, parsed, [
+        parsed.artifactId,
+      ]);
+      if (!visible.has(parsed.artifactId))
+        throw new ArtifactUploadNotFoundError();
+      return completeArtifactUpload(client, {
+        workspaceId: parsed.workspaceId,
+        artifactId: parsed.artifactId,
+        purpose: ARTIFACT_UPLOAD_PURPOSE,
+        expectedMetadata: parsed.expectedMetadata,
+        retainFor: '30 days',
+      });
+    },
+  );
 }

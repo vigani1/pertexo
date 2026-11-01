@@ -78,45 +78,6 @@ export type {
   ReplayOperatorRunInput,
 } from '../operator/contract.js';
 
-export {
-  ARTIFACT_UPLOAD_PENDING_MS,
-  ARTIFACT_UPLOAD_PURPOSE,
-  ArtifactQuotaExceededError,
-  ArtifactUploadConflictError,
-  ArtifactUploadIdempotencyConflictError,
-  ArtifactUploadNotFoundError,
-} from '../artifacts/uploads/input.js';
-export { createArtifactUploadStore } from '../artifacts/uploads/store.js';
-export { createFormUploadStore } from '../artifacts/form-uploads/store.js';
-export { FormUploadLimitError } from '../artifacts/form-uploads/errors.js';
-export type {
-  FormUpload,
-  FormUploadStore,
-  FormUploadTarget,
-} from '../artifacts/form-uploads/contract.js';
-export type {
-  ArtifactUploadActor,
-  ArtifactUploadAuthorization,
-  ArtifactUploadStore,
-  ArtifactUploadIdentity,
-  ArtifactUploadResult,
-  BeginArtifactUploadInput,
-  FinalizeArtifactUploadInput,
-} from '../artifacts/uploads/contract.js';
-export {
-  artifactStorageKey,
-  createPendingArtifact,
-  createPendingPreviewArtifact,
-  finalizeArtifactUpload,
-} from '../artifacts/records.repository.js';
-export {
-  readArtifactCapacity,
-  readExecutionStorageCapacity,
-} from '../artifacts/capacity.queries.js';
-export type { ArtifactCapacityObservation } from '../artifacts/capacity.queries.js';
-export { requireNodeArtifactReference } from '../artifacts/references/locks.repository.js';
-export { ArtifactMetadataNotFoundError } from '../artifacts/errors.js';
-
 export { createWorkflowCallStore } from './calls/repository.js';
 export { WorkflowCallRefusedError } from './calls/errors.js';
 export type { WorkflowCallStore } from './calls/contract.js';

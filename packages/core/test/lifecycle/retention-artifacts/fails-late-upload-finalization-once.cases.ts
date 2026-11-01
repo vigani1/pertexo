@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { ArtifactUploadNotFoundError } from '../../../src/artifacts/uploads/input.js';
+import { ArtifactUploadNotFoundError } from '../../../src/artifacts/uploads/errors.js';
 import { createArtifactUploadStore } from '../../../src/artifacts/uploads/store.js';
 import {
   createRunArtifactRetentionCoordinator,
