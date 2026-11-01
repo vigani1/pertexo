@@ -11,7 +11,7 @@ import type {
 import type {
   ScheduleFireTimes,
   ScheduleOccurrenceRecord,
-  ScheduleTriggerDatabase,
+  ScheduleTriggerStore,
   ScheduleTriggerRecord,
 } from '@pertexo/core/triggers';
 
@@ -26,7 +26,7 @@ import {
 
 export class ScheduleManagementService {
   public constructor(
-    private readonly database: ScheduleTriggerDatabase,
+    private readonly database: ScheduleTriggerStore,
     private readonly telemetry: ScheduleTelemetry = NOOP_SCHEDULE_TELEMETRY,
   ) {}
 

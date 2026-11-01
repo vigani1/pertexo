@@ -3,9 +3,9 @@ import {
   createScheduleTriggerScanner,
   createTriggerEventScanner,
   type TriggerEventScanner,
-  createWorkflowTriggerReconciliationDatabase,
+  createWorkflowTriggerReconciliationStore,
   type ScheduleTriggerScanner,
-  type WorkflowTriggerReconciliationDatabase,
+  type WorkflowTriggerReconciliationStore,
 } from '@pertexo/core/triggers';
 import type {
   DatabaseConfig,
@@ -53,7 +53,7 @@ export type TriggerRuntimeOptions = Readonly<{
 export type TriggerCompositionFactories = Readonly<{
   checkpoints: () => InitialCheckpointFactory;
   consumer: typeof createQueueConsumer;
-  reconciliation: typeof createWorkflowTriggerReconciliationDatabase;
+  reconciliation: typeof createWorkflowTriggerReconciliationStore;
   scanner: typeof createScheduleTriggerScanner;
   coordination: typeof createTriggerEventScanner;
   telemetry: typeof createTriggerRuntimeTelemetry;
@@ -66,7 +66,7 @@ const productionFactories: TriggerCompositionFactories = {
       catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
     }),
   consumer: createQueueConsumer,
-  reconciliation: createWorkflowTriggerReconciliationDatabase,
+  reconciliation: createWorkflowTriggerReconciliationStore,
   scanner: createScheduleTriggerScanner,
   coordination: createTriggerEventScanner,
   telemetry: createTriggerRuntimeTelemetry,
@@ -85,7 +85,7 @@ export async function createTriggerRuntime(
   // database and queue owners so constructor failure cannot strand them.
   const telemetry = factories.telemetry();
   const traceRunner = factories.traceRunner();
-  let reconciliation: WorkflowTriggerReconciliationDatabase | undefined;
+  let reconciliation: WorkflowTriggerReconciliationStore | undefined;
   let scanner: ScheduleTriggerScanner | undefined;
   let coordination: TriggerEventScanner | undefined;
   let consumer: QueueConsumer | undefined;

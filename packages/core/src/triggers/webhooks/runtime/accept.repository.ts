@@ -34,7 +34,7 @@ import {
   withWorkspaceReadTransaction,
   withWorkspaceTransaction,
 } from '@pertexo/database/primitives';
-import type { WebhookConfig, WebhookTriggerDatabase } from './contract.js';
+import type { WebhookConfig, WebhookTriggerStore } from './contract.js';
 
 import { executableProjection, lockEligibleEndpoint } from './state.queries.js';
 import type { WorkspaceTurns } from './workspace-turns.js';
@@ -48,8 +48,8 @@ export async function acceptVerifiedWebhookDelivery(
     eventPreparation: ReturnType<typeof createEventCoordinationPreparation>;
     turns: WorkspaceTurns;
   }>,
-  input: Parameters<WebhookTriggerDatabase['acceptVerifiedDelivery']>[0],
-): ReturnType<WebhookTriggerDatabase['acceptVerifiedDelivery']> {
+  input: Parameters<WebhookTriggerStore['acceptVerifiedDelivery']>[0],
+): ReturnType<WebhookTriggerStore['acceptVerifiedDelivery']> {
   const verification = input.verification;
   const requestFingerprint = input.requestFingerprint;
   // Only a sender's own key names a repeat. Identical bytes without one are separate
@@ -223,7 +223,7 @@ function replayDeliveryReference(
 
 async function acceptNewWebhookDelivery(
   transaction: WorkspaceTransaction,
-  input: Parameters<WebhookTriggerDatabase['acceptVerifiedDelivery']>[0],
+  input: Parameters<WebhookTriggerStore['acceptVerifiedDelivery']>[0],
   {
     requestFingerprint,
     replayIdentity,
@@ -233,7 +233,7 @@ async function acceptNewWebhookDelivery(
     requestFingerprint: string;
     replayIdentity: WebhookReplayIdentity | undefined;
     runInput: Parameters<
-      WebhookTriggerDatabase['acceptVerifiedDelivery']
+      WebhookTriggerStore['acceptVerifiedDelivery']
     >[0]['runInput'];
     prepared: Awaited<
       ReturnType<
@@ -241,7 +241,7 @@ async function acceptNewWebhookDelivery(
       >
     >;
   }>,
-): ReturnType<WebhookTriggerDatabase['acceptVerifiedDelivery']> {
+): ReturnType<WebhookTriggerStore['acceptVerifiedDelivery']> {
   const verification = input.verification;
   const deliveryId = generatePersistedId();
   if (replayIdentity !== undefined)

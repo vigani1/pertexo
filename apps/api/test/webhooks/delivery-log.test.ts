@@ -2,7 +2,7 @@ import { problemResult } from '../support/problem.js';
 import {
   WebhookTriggerNotFoundError,
   type WebhookDeliveryPage,
-  type WebhookTriggerDatabase,
+  type WebhookTriggerStore,
 } from '@pertexo/core/testing';
 import { webhookDeliveryListResponseSchema } from '@pertexo/contracts';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
@@ -50,9 +50,9 @@ const page: WebhookDeliveryPage = {
   nextCursor: position,
 };
 
-function service(listDeliveries: WebhookTriggerDatabase['listDeliveries']) {
+function service(listDeliveries: WebhookTriggerStore['listDeliveries']) {
   return new WebhookManagementService(
-    { listDeliveries } as unknown as WebhookTriggerDatabase,
+    { listDeliveries } as unknown as WebhookTriggerStore,
     {} as WebhookTriggerEnvelopeEncryption,
   );
 }
@@ -60,7 +60,7 @@ function service(listDeliveries: WebhookTriggerDatabase['listDeliveries']) {
 describe('webhook delivery log read', () => {
   it('projects metadata and continues only the same trigger', async () => {
     const listDeliveries = vi
-      .fn<WebhookTriggerDatabase['listDeliveries']>()
+      .fn<WebhookTriggerStore['listDeliveries']>()
       .mockResolvedValueOnce(page)
       .mockResolvedValueOnce({ items: [] });
     const reader = service(listDeliveries);
@@ -104,7 +104,7 @@ describe('webhook delivery log read', () => {
       ),
     ],
   ])('rejects a %s cursor before reading', async (_label, after) => {
-    const listDeliveries = vi.fn<WebhookTriggerDatabase['listDeliveries']>();
+    const listDeliveries = vi.fn<WebhookTriggerStore['listDeliveries']>();
 
     await expect(
       problemResult(
@@ -117,7 +117,7 @@ describe('webhook delivery log read', () => {
   it('hides an invisible trigger behind not found', async () => {
     const reader = service(
       vi
-        .fn<WebhookTriggerDatabase['listDeliveries']>()
+        .fn<WebhookTriggerStore['listDeliveries']>()
         .mockRejectedValue(new WebhookTriggerNotFoundError()),
     );
 

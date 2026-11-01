@@ -16,13 +16,13 @@ import { WebhookIngressRateLimitExceededError } from '../errors.js';
 import type {
   StoredWebhookTriggerSecret,
   WebhookConfig,
-  WebhookTriggerDatabase,
+  WebhookTriggerStore,
 } from './contract.js';
 
 export async function resolveWebhookVerification(
   pool: Pool,
-  endpointKeyHash: Parameters<WebhookTriggerDatabase['resolveVerification']>[0],
-): ReturnType<WebhookTriggerDatabase['resolveVerification']> {
+  endpointKeyHash: Parameters<WebhookTriggerStore['resolveVerification']>[0],
+): ReturnType<WebhookTriggerStore['resolveVerification']> {
   const result = await drizzle(pool)
     .select({
       endpointId: sql<string>`resolution.endpoint_id`,
@@ -102,10 +102,10 @@ export async function resolveWebhookVerification(
 export async function consumeWebhookIngressLimit(
   pool: Pool,
   endpointKeyHashInput: Parameters<
-    WebhookTriggerDatabase['consumeIngressLimit']
+    WebhookTriggerStore['consumeIngressLimit']
   >[0],
   burstLimit: number,
-): ReturnType<WebhookTriggerDatabase['consumeIngressLimit']> {
+): ReturnType<WebhookTriggerStore['consumeIngressLimit']> {
   const result = await drizzle(pool)
     .execute<{ allowed: boolean; retry_after_seconds: number }>(
       sql`select * from app.consume_webhook_ingress_limit(${endpointKeyHashInput}::char(64),${burstLimit}::integer)`,

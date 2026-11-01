@@ -5,7 +5,7 @@ import {
 } from '@pertexo/contracts';
 import {
   ScheduleTriggerError,
-  type ScheduleTriggerDatabase,
+  type ScheduleTriggerStore,
 } from '@pertexo/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -42,13 +42,13 @@ function reads() {
   const unused = () =>
     Promise.reject(new Error('not exercised by schedule reads'));
   const database = {
-    list: vi.fn<ScheduleTriggerDatabase['list']>(unused),
-    setEnabled: vi.fn<ScheduleTriggerDatabase['setEnabled']>(unused),
+    list: vi.fn<ScheduleTriggerStore['list']>(unused),
+    setEnabled: vi.fn<ScheduleTriggerStore['setEnabled']>(unused),
     listOccurrences: vi
-      .fn<ScheduleTriggerDatabase['listOccurrences']>()
+      .fn<ScheduleTriggerStore['listOccurrences']>()
       .mockResolvedValue({ items: [accepted, skipped] }),
     nextFireTimes: vi
-      .fn<ScheduleTriggerDatabase['nextFireTimes']>()
+      .fn<ScheduleTriggerStore['nextFireTimes']>()
       .mockResolvedValue({
         observedAt: new Date('2026-08-25T12:20:00.000Z'),
         items: [
@@ -57,14 +57,14 @@ function reads() {
         ],
       }),
     previewFireTimes: vi
-      .fn<ScheduleTriggerDatabase['previewFireTimes']>()
+      .fn<ScheduleTriggerStore['previewFireTimes']>()
       .mockResolvedValue({
         observedAt: new Date('2026-08-25T12:20:00.000Z'),
         items: [new Date('2026-08-26T07:00:00.000Z')],
       }),
     checkReadiness: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
-  } satisfies ScheduleTriggerDatabase;
+  } satisfies ScheduleTriggerStore;
   const operations: ScheduleOperation[] = [];
   const service = new ScheduleManagementService(database, {
     measure: (operation, work) => {

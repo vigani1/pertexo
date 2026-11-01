@@ -5,7 +5,7 @@ import type { createWebhookResponseWaiter } from '../responses/wait.js';
 import type {
   WebhookTestEventStore,
   TestEventReference,
-  WebhookTriggerDatabase,
+  WebhookTriggerStore,
   WebhookVerificationReference,
 } from '@pertexo/core/triggers';
 import type { InitialCheckpointFactory } from '@pertexo/core/runs';
@@ -17,7 +17,7 @@ import type { RejectedAttempt } from '../management/delivery-log.js';
 import type { WebhookIngressTelemetry } from './telemetry.js';
 
 export type WebhookIngressDependencies = Readonly<{
-  database: WebhookTriggerDatabase;
+  database: WebhookTriggerStore;
   testEvents?: WebhookTestEventStore;
   encryption: WebhookTriggerEnvelopeEncryption;
   checkpointFactory: InitialCheckpointFactory;

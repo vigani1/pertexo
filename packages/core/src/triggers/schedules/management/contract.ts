@@ -14,7 +14,7 @@ export type ScheduleTriggerCommandResult = Readonly<{
   replayed: boolean;
 }>;
 
-export interface ScheduleTriggerDatabase extends ScheduleTriggerReads {
+export interface ScheduleTriggerStore extends ScheduleTriggerReads {
   list(
     input: Readonly<{
       workspaceId: string;
@@ -39,9 +39,7 @@ export interface ScheduleTriggerDatabase extends ScheduleTriggerReads {
   close(): Promise<void>;
 }
 
-export type SetEnabledInput = Parameters<
-  ScheduleTriggerDatabase['setEnabled']
->[0];
+export type SetEnabledInput = Parameters<ScheduleTriggerStore['setEnabled']>[0];
 
 export type ScheduleCommandIdentity = Readonly<{
   idempotencyKey: string;

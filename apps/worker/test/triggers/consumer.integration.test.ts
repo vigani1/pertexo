@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type {
   ScheduleTriggerScanner,
-  WorkflowTriggerReconciliationDatabase,
+  WorkflowTriggerReconciliationStore,
 } from '@pertexo/core/testing';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { Queue } from 'bullmq';
@@ -92,7 +92,7 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
     const workflowId = randomUUID();
     const publishedVersionId = randomUUID();
     const outboxEventId = randomUUID();
-    const reconciliation: WorkflowTriggerReconciliationDatabase = {
+    const reconciliation: WorkflowTriggerReconciliationStore = {
       close: vi.fn().mockResolvedValue(undefined),
       reconcile: vi
         .fn()

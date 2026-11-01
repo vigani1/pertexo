@@ -1,6 +1,6 @@
 import type {
   RejectedWebhookDelivery,
-  WebhookTriggerDatabase,
+  WebhookTriggerStore,
   WebhookVerificationReference,
 } from '@pertexo/core/triggers';
 
@@ -56,7 +56,7 @@ export const REJECTED_ATTEMPT = Object.freeze({
  * is diagnostics: a failure to record never changes the response.
  */
 export async function recordRejectedAttempt(
-  database: Pick<WebhookTriggerDatabase, 'recordRejectedDelivery'>,
+  database: Pick<WebhookTriggerStore, 'recordRejectedDelivery'>,
   verification: WebhookVerificationReference,
   body: Uint8Array,
   attempt: RejectedAttempt,

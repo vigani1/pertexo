@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { ScheduleTriggerError } from '../../src/triggers/schedules/errors.js';
-import { createScheduleTriggerDatabase } from '../../src/triggers/schedules/store.js';
+import { createScheduleTriggerStore } from '../../src/triggers/schedules/store.js';
 import {
   scopedConnectionUrl,
   waitForApplicationLock,
@@ -43,7 +43,7 @@ describe('trigger management authority linearization', () => {
         'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
       databasePath,
     );
-    const commands = createScheduleTriggerDatabase(
+    const commands = createScheduleTriggerStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
     );
     const observer = new Pool({ connectionString: adminUrl, max: 2 });

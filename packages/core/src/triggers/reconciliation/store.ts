@@ -19,7 +19,7 @@ import {
   inboxReceipts,
   transportSecurityAuditFacts,
 } from '@pertexo/database/schema';
-import type { WorkflowTriggerReconciliationDatabase } from './contract.js';
+import type { WorkflowTriggerReconciliationStore } from './contract.js';
 import {
   assertDeliveryIdentity,
   readReconciliationEvent,
@@ -64,20 +64,18 @@ async function completeReceipt(
     );
 }
 
-export function createWorkflowTriggerReconciliationDatabase(
+export function createWorkflowTriggerReconciliationStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkflowTriggerReconciliationDatabase {
+): WorkflowTriggerReconciliationStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
     reconcile: (
-      input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
+      input: Parameters<WorkflowTriggerReconciliationStore['reconcile']>[0],
     ) => reconcileWorkflowTriggers(pool, input),
     recordFailure: (
-      input: Parameters<
-        WorkflowTriggerReconciliationDatabase['recordFailure']
-      >[0],
+      input: Parameters<WorkflowTriggerReconciliationStore['recordFailure']>[0],
     ) => recordTriggerReconciliationFailure(pool, input),
     close: () => lease.close(),
   });
@@ -85,8 +83,8 @@ export function createWorkflowTriggerReconciliationDatabase(
 
 async function reconcileWorkflowTriggers(
   pool: Pool,
-  input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
-): ReturnType<WorkflowTriggerReconciliationDatabase['reconcile']> {
+  input: Parameters<WorkflowTriggerReconciliationStore['reconcile']>[0],
+): ReturnType<WorkflowTriggerReconciliationStore['reconcile']> {
   const outcome = await withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId },
@@ -191,8 +189,8 @@ async function reconcileWorkflowTriggers(
 
 async function recordTriggerReconciliationFailure(
   pool: Pool,
-  input: Parameters<WorkflowTriggerReconciliationDatabase['recordFailure']>[0],
-): ReturnType<WorkflowTriggerReconciliationDatabase['recordFailure']> {
+  input: Parameters<WorkflowTriggerReconciliationStore['recordFailure']>[0],
+): ReturnType<WorkflowTriggerReconciliationStore['recordFailure']> {
   return withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId },

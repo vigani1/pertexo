@@ -15,7 +15,7 @@ import { ScheduleTriggerError } from './errors.js';
 
 import { canManageWorkflowTrigger } from '../management.queries.js';
 import { refreshWorkflowActivation } from '../reconciliation/health.repository.js';
-import type { ScheduleTriggerDatabase } from './management/contract.js';
+import type { ScheduleTriggerStore } from './management/contract.js';
 import {
   applyScheduleHealthTransition,
   claimScheduleCommand,
@@ -32,15 +32,15 @@ import {
   authorizeScheduleReader,
   createScheduleTriggerReads,
 } from './reads.queries.js';
-export function createScheduleTriggerDatabase(
+export function createScheduleTriggerStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): ScheduleTriggerDatabase {
+): ScheduleTriggerStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
     ...createScheduleTriggerReads(pool),
-    list: (input: Parameters<ScheduleTriggerDatabase['list']>[0]) =>
+    list: (input: Parameters<ScheduleTriggerStore['list']>[0]) =>
       withTenantScopedClient(
         pool,
         {
@@ -59,7 +59,7 @@ export function createScheduleTriggerDatabase(
         },
       ),
     setEnabled: async (
-      input: Parameters<ScheduleTriggerDatabase['setEnabled']>[0],
+      input: Parameters<ScheduleTriggerStore['setEnabled']>[0],
     ) =>
       withTenantScopedClient(
         pool,

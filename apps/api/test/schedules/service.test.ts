@@ -1,7 +1,7 @@
 import { problemResult } from '../support/problem.js';
 import {
   ScheduleTriggerError,
-  type ScheduleTriggerDatabase,
+  type ScheduleTriggerStore,
 } from '@pertexo/core/testing';
 import {
   scheduleManagementCommandResponseSchema,
@@ -192,20 +192,19 @@ describe('schedule management service', () => {
 
 function setup() {
   const list = vi
-    .fn<ScheduleTriggerDatabase['list']>()
+    .fn<ScheduleTriggerStore['list']>()
     .mockResolvedValue([trigger]);
   const setEnabled = vi
-    .fn<ScheduleTriggerDatabase['setEnabled']>()
+    .fn<ScheduleTriggerStore['setEnabled']>()
     .mockResolvedValue({ trigger, replayed: false });
   const unused = () => Promise.reject(new Error('not a command or list'));
   return {
     list,
     setEnabled,
-    listOccurrences: vi.fn<ScheduleTriggerDatabase['listOccurrences']>(unused),
-    nextFireTimes: vi.fn<ScheduleTriggerDatabase['nextFireTimes']>(unused),
-    previewFireTimes:
-      vi.fn<ScheduleTriggerDatabase['previewFireTimes']>(unused),
+    listOccurrences: vi.fn<ScheduleTriggerStore['listOccurrences']>(unused),
+    nextFireTimes: vi.fn<ScheduleTriggerStore['nextFireTimes']>(unused),
+    previewFireTimes: vi.fn<ScheduleTriggerStore['previewFireTimes']>(unused),
     checkReadiness: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
-  } satisfies ScheduleTriggerDatabase;
+  } satisfies ScheduleTriggerStore;
 }

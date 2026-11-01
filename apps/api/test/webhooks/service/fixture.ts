@@ -1,4 +1,4 @@
-import type { WebhookTriggerDatabase } from '@pertexo/core/testing';
+import type { WebhookTriggerStore } from '@pertexo/core/testing';
 
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { expect, vi } from 'vitest';
@@ -30,32 +30,32 @@ export function setup(original: boolean) {
   let materialValue = 1;
   const result = { trigger: health, replayed: !original };
   const provision = vi
-    .fn<WebhookTriggerDatabase['provision']>()
+    .fn<WebhookTriggerStore['provision']>()
     .mockResolvedValue(result);
   const database = {
     configureAuthentication: vi
-      .fn<WebhookTriggerDatabase['configureAuthentication']>()
+      .fn<WebhookTriggerStore['configureAuthentication']>()
       .mockResolvedValue({ trigger: health, replayed: false, rotated: true }),
     provision,
     rotateEndpoint: vi
-      .fn<WebhookTriggerDatabase['rotateEndpoint']>()
+      .fn<WebhookTriggerStore['rotateEndpoint']>()
       .mockResolvedValue(result),
     rotateSecret: vi
-      .fn<WebhookTriggerDatabase['rotateSecret']>()
+      .fn<WebhookTriggerStore['rotateSecret']>()
       .mockResolvedValue(result),
     getHealth: vi
-      .fn<WebhookTriggerDatabase['getHealth']>()
+      .fn<WebhookTriggerStore['getHealth']>()
       .mockResolvedValue([health]),
-    resolveVerification: vi.fn<WebhookTriggerDatabase['resolveVerification']>(),
+    resolveVerification: vi.fn<WebhookTriggerStore['resolveVerification']>(),
     consumeIngressLimit: vi.fn().mockResolvedValue(undefined),
     acceptVerifiedDelivery: vi.fn(),
     readResponse: vi
-      .fn<WebhookTriggerDatabase['readResponse']>()
+      .fn<WebhookTriggerStore['readResponse']>()
       .mockResolvedValue({ state: 'finished' }),
-    listDeliveries: vi.fn<WebhookTriggerDatabase['listDeliveries']>(),
+    listDeliveries: vi.fn<WebhookTriggerStore['listDeliveries']>(),
     recordRejectedDelivery: vi.fn(),
     close: vi.fn().mockResolvedValue(undefined),
-  } satisfies WebhookTriggerDatabase;
+  } satisfies WebhookTriggerStore;
   const sealedInputs: Uint8Array[] = [];
   const seal = vi.fn().mockImplementation((secret: Uint8Array) => {
     sealedInputs.push(Uint8Array.from(secret));

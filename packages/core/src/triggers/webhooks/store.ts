@@ -20,7 +20,7 @@ import {
 } from './deliveries.repository.js';
 
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import type { WebhookTriggerDatabase } from './runtime/contract.js';
+import type { WebhookTriggerStore } from './runtime/contract.js';
 
 import { acceptVerifiedWebhookDelivery } from './runtime/accept.repository.js';
 import { createWorkspaceTurns } from './runtime/workspace-turns.js';
@@ -44,13 +44,13 @@ const ACCEPTANCES_AT_ONCE_PER_WORKSPACE = 3;
 /** Long enough for a burst of 80 at 4 a second, and inside a request's 30 second limit. */
 const ACCEPTANCE_MAX_WAIT_MILLIS = 20_000;
 
-export function createWebhookTriggerDatabase(
+export function createWebhookTriggerStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
   {
     burstLimit = DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
   }: Readonly<{ burstLimit?: number }> = {},
-): WebhookTriggerDatabase {
+): WebhookTriggerStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   const eventPreparation = createEventCoordinationPreparation();
@@ -64,17 +64,16 @@ export function createWebhookTriggerDatabase(
       return readWebhookResponse(pool, input);
     },
     configureAuthentication: (
-      input: Parameters<WebhookTriggerDatabase['configureAuthentication']>[0],
+      input: Parameters<WebhookTriggerStore['configureAuthentication']>[0],
     ) => configureWebhookAuthentication(pool, input),
-    provision: (input: Parameters<WebhookTriggerDatabase['provision']>[0]) =>
+    provision: (input: Parameters<WebhookTriggerStore['provision']>[0]) =>
       provisionWebhook(pool, input),
     rotateEndpoint: (
-      input: Parameters<WebhookTriggerDatabase['rotateEndpoint']>[0],
+      input: Parameters<WebhookTriggerStore['rotateEndpoint']>[0],
     ) => rotateWebhookEndpoint(pool, input),
-    rotateSecret: (
-      input: Parameters<WebhookTriggerDatabase['rotateSecret']>[0],
-    ) => rotateWebhookSecret(pool, input),
-    getHealth: (input: Parameters<WebhookTriggerDatabase['getHealth']>[0]) => {
+    rotateSecret: (input: Parameters<WebhookTriggerStore['rotateSecret']>[0]) =>
+      rotateWebhookSecret(pool, input),
+    getHealth: (input: Parameters<WebhookTriggerStore['getHealth']>[0]) => {
       return withTenantScopedClient(
         pool,
         {
@@ -94,13 +93,13 @@ export function createWebhookTriggerDatabase(
     },
     resolveVerification: (
       endpointKeyHashInput: Parameters<
-        WebhookTriggerDatabase['resolveVerification']
+        WebhookTriggerStore['resolveVerification']
       >[0],
     ) => resolveWebhookVerification(pool, endpointKeyHashInput),
     consumeIngressLimit: (endpointKeyHashInput: string) =>
       consumeWebhookIngressLimit(pool, endpointKeyHashInput, burstLimit),
     acceptVerifiedDelivery: (
-      input: Parameters<WebhookTriggerDatabase['acceptVerifiedDelivery']>[0],
+      input: Parameters<WebhookTriggerStore['acceptVerifiedDelivery']>[0],
     ) =>
       acceptVerifiedWebhookDelivery(pool, { eventPreparation, turns }, input),
     ...createWebhookDeliveryLog(pool),

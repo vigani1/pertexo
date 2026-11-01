@@ -16,7 +16,7 @@ const outside = vi.hoisted(() => ({
 
 vi.mock('@pertexo/core/triggers', async (original) => ({
   ...(await original<object>()),
-  createWebhookTriggerDatabase: outside.database,
+  createWebhookTriggerStore: outside.database,
   createWebhookTestEventStore: outside.testEvents,
 }));
 vi.mock('@pertexo/integrations/server', async (original) => ({

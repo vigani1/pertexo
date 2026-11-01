@@ -6,7 +6,7 @@ import { WEBHOOK_PREFLIGHT } from '../../../src/webhooks/tokens.js';
 import { RateLimitModule } from '../../../src/platform/rate-limit/module.js';
 import type { RateLimitConsumer } from '../../../src/platform/rate-limit/admission.js';
 
-import type { WebhookTriggerDatabase } from '@pertexo/core/testing';
+import type { WebhookTriggerStore } from '@pertexo/core/testing';
 import type { StructuredLogger } from '@pertexo/observability';
 
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
@@ -89,7 +89,7 @@ export function createIngressFixture() {
   }> = {}) {
     const database = {
       readResponse: vi
-        .fn<WebhookTriggerDatabase['readResponse']>()
+        .fn<WebhookTriggerStore['readResponse']>()
         .mockResolvedValue({ state: 'pending' }),
       resolveVerification: vi.fn().mockResolvedValue(reference),
       consumeIngressLimit: vi.fn().mockResolvedValue(undefined),
@@ -137,7 +137,7 @@ export function createIngressFixture() {
     const application = Fastify();
     applications.push(application);
     const dependencies = {
-      database: database as unknown as WebhookTriggerDatabase,
+      database: database as unknown as WebhookTriggerStore,
       encryption,
       checkpointFactory: () => ({ checkpoint: {} }),
       telemetry,

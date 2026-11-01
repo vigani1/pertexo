@@ -9,7 +9,7 @@ import type {
 } from '@pertexo/contracts';
 import type {
   WebhookDeliveryRecord,
-  WebhookTriggerDatabase,
+  WebhookTriggerStore,
   WorkflowTriggerHealth,
 } from '@pertexo/core/triggers';
 import { generatePersistedId } from '@pertexo/database/platform';
@@ -51,7 +51,7 @@ export class WebhookManagementService {
   private readonly generateId: () => string;
 
   public constructor(
-    private readonly database: WebhookTriggerDatabase,
+    private readonly database: WebhookTriggerStore,
     private readonly encryption: WebhookTriggerEnvelopeEncryption,
     options: WebhookManagementServiceOptions = {},
   ) {

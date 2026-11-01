@@ -1,7 +1,7 @@
 import { metrics } from '@opentelemetry/api';
 import {
-  createScheduleTriggerDatabase,
-  type ScheduleTriggerDatabase,
+  createScheduleTriggerStore,
+  type ScheduleTriggerStore,
 } from '@pertexo/core/triggers';
 import type {
   DatabaseConfig,
@@ -24,9 +24,9 @@ export async function createApiScheduleRuntime(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ): Promise<ApiScheduleRuntime> {
-  let database: ScheduleTriggerDatabase | undefined;
+  let database: ScheduleTriggerStore | undefined;
   try {
-    database = createScheduleTriggerDatabase(config, runtime);
+    database = createScheduleTriggerStore(config, runtime);
     const telemetry = createProductionScheduleTelemetry();
     const acquiredDatabase = database;
     let closePromise: Promise<void> | undefined;
@@ -72,7 +72,7 @@ function createProductionScheduleTelemetry(): ScheduleTelemetry {
 }
 
 async function collectScheduleCloseFailures(
-  database: ScheduleTriggerDatabase | undefined,
+  database: ScheduleTriggerStore | undefined,
 ): Promise<unknown[]> {
   const result = await Promise.allSettled([
     Promise.resolve().then(() => database?.close()),
