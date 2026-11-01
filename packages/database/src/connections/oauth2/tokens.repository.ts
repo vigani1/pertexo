@@ -20,6 +20,7 @@ import { sealedFields, selectConnection } from '../records.queries.js';
 import { withConnectionTransaction } from '../transactions.repository.js';
 import type {
   IssuedOAuth2Tokens,
+  OAuth2ConsentDatabase,
   OAuth2GrantLossActor,
   OAuth2TokenRecord,
   OAuth2TokenStoreDatabase,
@@ -186,6 +187,39 @@ const versionIs = (
     eq(tokens.connectionId, input.connectionId),
     eq(tokens.id, input.tokenId),
   );
+
+/** The sealed tokens a reconnect would replace, if they share its settings. */
+export async function readEarlierTokens(
+  pool: Pool,
+  input: Parameters<OAuth2ConsentDatabase['readOAuth2EarlierTokens']>[0],
+): ReturnType<OAuth2ConsentDatabase['readOAuth2EarlierTokens']> {
+  const [row] = await withTenantScopedClient(
+    pool,
+    { workspaceId: input.workspaceId },
+    (client) =>
+      drizzle(client)
+        .select({
+          id: tokens.id,
+          sealed: {
+            kmsKeyReference: tokens.kmsKeyReference,
+            encryptedDataKey: tokens.encryptedDataKey,
+            ciphertext: tokens.ciphertext,
+            nonce: tokens.nonce,
+            tag: tokens.authTag,
+          },
+        })
+        .from(tokens)
+        .where(
+          and(
+            eq(tokens.workspaceId, input.workspaceId),
+            eq(tokens.connectionId, input.connectionId),
+            eq(tokens.secretVersionId, input.secretVersionId),
+          ),
+        )
+        .catch(rethrowQueryFailure),
+  );
+  return row === undefined ? null : Object.freeze(row);
+}
 
 /** One statement, so a client and its token can't come from two moments; it holds no lock. */
 async function openGrant(

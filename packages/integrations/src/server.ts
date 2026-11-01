@@ -131,11 +131,16 @@ export type { OAuth2EndpointPolicy } from './oauth2/endpoints.js';
 export {
   decodeClientSettings,
   decodeStoredClientSecret,
+  decodeStoredTokens,
   encodeStoredClientSecret,
   encodeStoredTokens,
   isRenewable,
 } from './oauth2/stored.js';
-export { requestOAuth2Token } from './oauth2/token-endpoint.js';
+export type { OAuth2StoredTokens } from './oauth2/stored.js';
+export {
+  isTemporaryOAuth2Error,
+  requestOAuth2Token,
+} from './oauth2/token-endpoint.js';
 export type { OAuth2TokenAnswer } from './oauth2/token-endpoint.js';
 export type {
   HttpExecutionErrorKind,

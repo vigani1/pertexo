@@ -1,5 +1,6 @@
 import type {
   OAuth2ClientSettings,
+  OAuth2ServiceError,
   OAuth2StepFailureCode,
 } from '@pertexo/contracts';
 
@@ -77,6 +78,7 @@ export class OAuth2TokenFailure extends Error {
   public constructor(
     public readonly code: OAuth2StepFailureCode,
     public readonly retryAfterSeconds?: number,
+    public readonly serviceError?: OAuth2ServiceError,
   ) {
     super(`OAuth2 token unavailable: ${code}`);
   }

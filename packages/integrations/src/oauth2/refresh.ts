@@ -295,7 +295,11 @@ async function actOnAnswer(
       await blockFor(refreshing, answer.retryAfterSeconds);
       return Object.freeze({
         kind: 'temporary',
-        failure: new OAuth2TokenFailure('http.oauth2_token_response_invalid'),
+        failure: new OAuth2TokenFailure(
+          'http.oauth2_token_response_invalid',
+          undefined,
+          answer.serviceError,
+        ),
       });
   }
 }

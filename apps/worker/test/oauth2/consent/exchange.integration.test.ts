@@ -95,7 +95,7 @@ describeOAuth2('exchanging a code', () => {
     const url = harness.authorizationUrl(
       await harness.start(owner.api, owner, connection.id),
     );
-    const callbackUrl = await harness.decide(url, 'error:server_error');
+    const callbackUrl = await harness.decide(url, 'error:invalid_scope');
     expect(new URL(callbackUrl).searchParams.get('error_description')).toBe(
       OAUTH2_STAND_IN_DESCRIPTION,
     );
