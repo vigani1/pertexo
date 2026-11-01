@@ -174,7 +174,7 @@ async function redispatch(
   });
 }
 
-function recordEvidence(
+async function recordEvidence(
   context: OperatorTransactionContext,
   input: RecordUnknownOutcomeEvidenceInput,
 ) {
@@ -198,7 +198,7 @@ function recordEvidence(
   });
 }
 
-function replay(
+async function replay(
   context: OperatorTransactionContext,
   input: ReplayOperatorRunInput,
 ) {
