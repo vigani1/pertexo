@@ -18,7 +18,7 @@ import { canonicalEmailSql } from '../canonical-email.js';
 import { recordIdentitySecurityFact } from '../facts.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
-/** Global identity recovery uses the existing app login, not tenant or maintenance authority. */
+/** Global identity recovery uses the existing app login, not tenant or maintenance authority: an operator acts, not a member, so it stays off `withWorkspaceAccess`. */
 export function createTwoFactorRecoveryStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

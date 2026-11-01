@@ -27,7 +27,7 @@ type AccountLinkAttempt = typeof authMethodLinkAttempts.$inferSelect;
 type LinkCompletion =
   { kind: 'failed' } | { kind: 'already' } | { kind: 'linked'; token: string };
 
-/** Persists a browser-bound provider journey without owning its HTTP protocol. */
+/** Persists a browser-bound provider journey without owning its HTTP protocol. It concerns one person in no workspace, so it stays off `withWorkspaceAccess`. */
 export class AccountLinkingCommands {
   public constructor(
     private readonly input: Readonly<{ pool: Pool; sessionTtlSeconds: number }>,

@@ -19,7 +19,7 @@ type ProofPurpose = 'initial_verification' | 'change_old' | 'change_new';
 type ProofUser = Readonly<{ id: string; email: string; name: string }>;
 type ProofOutcome = ProofPurpose | 'invalid' | 'sign_up_closed';
 
-/** Locks the user before issuing or consuming a single-use email proof. */
+/** Locks the user before issuing or consuming a single-use email proof. No workspace or member is involved, so it stays off `withWorkspaceAccess`. */
 export class EmailProofCommands {
   public constructor(
     private readonly pool: Pool,

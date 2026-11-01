@@ -1,10 +1,8 @@
 import {
-  workspaces,
   authOrganizationWorkspaces,
   authOrganizations,
 } from '@pertexo/database/schema';
 import { eq, getTableName } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   rethrowQueryFailure,
@@ -12,38 +10,43 @@ import {
   appendAuditFact,
 } from '@pertexo/database/primitives';
 import { organizationRecords } from './records.queries.js';
-import { ADMINISTRATIVE_ROLES } from '@pertexo/workflow-model';
-import type { AdministrativeRole } from '@pertexo/workflow-model';
+import { ADMINISTRATIVE_ROLES, type Role } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
-import { lockWorkspaceAuthority } from '../../../shared/authority.queries.js';
+import {
+  lockWorkspaceAuthority,
+  lockWorkspaceRow,
+} from '../../../shared/authority.queries.js';
 import { FederationConflictError } from './errors.js';
 import type { FederationScope } from './contract.js';
 import type { OrganizationRow } from './records.queries.js';
 
+export function requireFederationOwner(
+  role: Role,
+  action: 'manage' | 'change',
+): void {
+  if (role !== 'owner')
+    throw new FederationConflictError(
+      'owner_required',
+      `Only the control workspace owner can ${action} organization sign-in.`,
+    );
+}
+
+/** Takes the row first, as `withWorkspaceAccess` would, for flows that can't sit on it. */
 export async function lockFederationWorkspace(
   client: PoolClient,
   scope: FederationScope,
-  { ownerOnly }: Readonly<{ ownerOnly: boolean }>,
-): Promise<AdministrativeRole> {
-  await drizzle(client)
-    .select({ id: workspaces.id })
-    .from(workspaces)
-    .where(eq(workspaces.id, scope.workspaceId))
-    .for('update')
-    .catch(rethrowQueryFailure);
-  return withWorkspaceScope(client, scope, async (scoped) => {
-    const role = await lockWorkspaceAuthority(
-      scoped,
-      scope.workspaceId,
-      scope.actorId,
-      ADMINISTRATIVE_ROLES,
+): Promise<void> {
+  await lockWorkspaceRow(client, scope.workspaceId);
+  await withWorkspaceScope(client, scope, async (scoped) => {
+    requireFederationOwner(
+      await lockWorkspaceAuthority(
+        scoped,
+        scope.workspaceId,
+        scope.actorId,
+        ADMINISTRATIVE_ROLES,
+      ),
+      'change',
     );
-    if (ownerOnly && role !== 'owner')
-      throw new FederationConflictError(
-        'owner_required',
-        'Only the control workspace owner can change organization sign-in.',
-      );
-    return role === 'owner' ? 'owner' : 'admin';
   });
 }
 export async function organizationForWorkspace(

@@ -12,6 +12,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { Pool, PoolClient } from 'pg';
 import { withPlatformTransaction } from '@pertexo/database/platform';
+import { lockWorkspaceRow } from '../../../shared/authority.queries.js';
 import { DirectoryError } from './errors.js';
 import type { DirectoryPrincipal } from './contract.js';
 
@@ -22,12 +23,7 @@ export async function lockDirectoryOrganization(
 ): Promise<DirectoryOrganization> {
   const linkedWorkspaces = await directoryWorkspaces(client, organizationId);
   for (const workspace of linkedWorkspaces)
-    await drizzle(client)
-      .select({ id: workspaces.id })
-      .from(workspaces)
-      .where(eq(workspaces.id, workspace.workspace_id))
-      .for('update')
-      .catch(rethrowQueryFailure);
+    await lockWorkspaceRow(client, workspace.workspace_id);
   const [organization] = await drizzle(client)
     .select({
       id: authOrganizations.id,
@@ -125,7 +121,11 @@ async function requireDirectoryCredential(
   if (valid.length !== 1) throw new DirectoryError('unauthorized');
 }
 
-/** Shared short reads keep each resource and its reference-list ETag consistent. */
+/**
+ * Shared short reads keep each resource and its reference-list ETag consistent.
+ * SCIM has a credential, not a member, behind it: this and the next stay off
+ * `withWorkspaceAccess`, and check the credential themselves.
+ */
 export function withDirectoryRead<T>(
   pool: Pool,
   principal: DirectoryPrincipal,
@@ -176,7 +176,10 @@ export function withDirectoryTransaction<T>(
   });
 }
 
-function directoryWorkspaces(client: PoolClient, organizationId: string) {
+export function directoryWorkspaces(
+  client: PoolClient,
+  organizationId: string,
+) {
   return drizzle(client)
     .select({
       workspace_id: authOrganizationWorkspaces.workspaceId,

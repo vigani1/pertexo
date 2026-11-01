@@ -22,6 +22,8 @@ import { withPlatformTransaction } from '@pertexo/database/platform';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { recordIdentitySecurityFact } from './facts.repository.js';
 
+// A person changing their own sign-in methods, in no workspace: these stay off
+// `withWorkspaceAccess`, which has no member to check.
 export async function hasCredentialAccount(
   pool: Pool,
   userId: string,
