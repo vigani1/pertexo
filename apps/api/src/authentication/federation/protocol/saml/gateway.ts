@@ -37,10 +37,9 @@ export function createSamlProofGateway(): SamlProofGateway {
         callbackUrl: proof.redirectUri,
       };
       const assertionId = verifyResponseSemantics(xml, expected);
-      const verified = await configureSaml(
-        provider,
-        proof,
-      ).validatePostResponseAsync({ SAMLResponse: response });
+      const verified = await configureSaml(provider, proof)
+        .validatePostResponseAsync({ SAMLResponse: response })
+        .catch(() => invalidSaml('saml_signature_invalid'));
       if (
         verified.loggedOut ||
         verified.profile === null ||

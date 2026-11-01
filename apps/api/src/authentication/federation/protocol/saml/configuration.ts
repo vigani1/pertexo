@@ -34,7 +34,7 @@ export function validateSamlCertificates(
         key.asymmetricKeyType !== 'rsa' ||
         (key.asymmetricKeyDetails?.modulusLength ?? 0) < 2048
       )
-        return invalidSaml();
+        return invalidSaml('saml_certificate');
       return certificate;
     })
     .filter(
@@ -42,7 +42,7 @@ export function validateSamlCertificates(
         Date.parse(certificate.validFrom) <= Date.now() &&
         Date.parse(certificate.validTo) > Date.now(),
     );
-  if (certificates.length === 0) return invalidSaml();
+  if (certificates.length === 0) return invalidSaml('saml_certificate');
   return certificates.map((certificate) => certificate.toString());
 }
 export function configureSaml(

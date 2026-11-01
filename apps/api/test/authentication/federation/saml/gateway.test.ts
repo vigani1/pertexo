@@ -5,6 +5,7 @@ import {
   createSamlProofGateway,
   samlServiceProviderMetadata,
 } from '../../../../src/authentication/federation/protocol/saml/gateway.js';
+import { federationFailureReason } from '../../../../src/authentication/federation/protocol/failure.js';
 import { validateSamlCertificates } from '../../../../src/authentication/federation/protocol/saml/configuration.js';
 import {
   parseXml,
@@ -295,5 +296,26 @@ describe('SAML proof gateway with actual signed protocol responses', () => {
         certificates: [weak.certificate],
       }),
     ).toThrow();
+  });
+});
+
+describe('why a SAML proof was refused', () => {
+  const reasonFor = async (options: ResponseOptions) => {
+    const fixture = samlFixture(material);
+    return gateway
+      .verify(fixture.provider, fixture.proof, fixture.response(options))
+      .catch((error: unknown) => federationFailureReason(error));
+  };
+
+  it('names the wrong destination, without saying what it was', async () => {
+    await expect(
+      reasonFor({ destination: 'https://elsewhere.test/callback' }),
+    ).resolves.toBe('saml_destination');
+  });
+
+  it('names a response whose assertion is the only signed part', async () => {
+    await expect(reasonFor({ signResponse: false })).resolves.toBe(
+      'saml_signature_count',
+    );
   });
 });

@@ -253,6 +253,8 @@ export {
   oidcProviderCreateSchema,
   federationTestStartSchema,
   federationSettingsSchema,
+  federationFailureReasonSchema,
+  type FederationFailureReason,
   type OidcConfiguration,
   type FederationSettings,
   type FederationOrganizationCreate,
