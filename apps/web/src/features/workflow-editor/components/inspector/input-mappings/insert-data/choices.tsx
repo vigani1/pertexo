@@ -18,14 +18,7 @@ import {
   propertyPath,
   type OutputField,
 } from '../../../../model/inspector/input-mappings/schema';
-
-export type InsertedSource =
-  | Readonly<{ kind: 'expression'; expression: string }>
-  | Readonly<{ kind: 'workspace_variable'; name: string }>
-  | Readonly<{ kind: 'node_failure'; nodeId: string; path: string }>
-  | Readonly<{ kind: 'node_output'; nodeId: string; path: string }>
-  | Readonly<{ kind: 'run_input'; path: string }>
-  | Readonly<{ kind: 'structured_input'; port: string; path: string }>;
+import type { InsertedSource } from '../../../../model/inspector/input-mappings/reference';
 
 /** What a body step can read about the item it runs for (ADR 020). */
 const loopFields: Readonly<
