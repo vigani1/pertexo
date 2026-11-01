@@ -168,6 +168,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0065_run_delivery_deadline.sql',
         '0066_outbox_redeliveries.sql',
         '0067_oauth2_connections.sql',
+        '0068_connection_events_retention.sql',
       ]);
       expect(
         (

@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0067_oauth2_connections.sql';
+export const EXPECTED_MIGRATION_HEAD = '0068_connection_events_retention.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**
