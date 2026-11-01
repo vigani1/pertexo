@@ -1,69 +1,22 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
-import { canonicalJson } from '@pertexo/workflow-model';
-import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { OperatorCommandConflictError } from '../../src/operator/contract.js';
-import { createScheduleTriggerTestEnvironment } from '../support/schedule-triggers.js';
-
-const schedule = createScheduleTriggerTestEnvironment({
-  includeOperator: true,
-});
-const { ownerQuery, versionId, workerQuery, workflowId, workspaceId } =
-  schedule;
-let sourceRunId = '';
-/** Only the operator's role writes command rows, so a seeded receipt goes in as it. */
-let maintenance: Pool;
-
-beforeAll(async () => {
-  sourceRunId = await schedule.initialize();
-  const url = new URL(
-    process.env.DATABASE_MAINTENANCE_URL ??
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-  );
-  url.pathname = new URL(schedule.apiConnectionString).pathname;
-  maintenance = new Pool({ connectionString: url.toString(), max: 1 });
-});
-afterAll(async () => {
-  await maintenance.end();
-  await schedule.close();
-});
-
-const actorRef = 'operator:pin';
-const reason = 'pin what the operator pass must not change';
-const base = () => ({
+import {
   actorRef,
-  commandId: randomUUID(),
+  auditFor,
+  base,
+  ownerQuery,
   reason,
+  schedule,
+  sourceRunId,
+  storedCommand,
+  versionId,
+  workflowId,
   workspaceId,
-});
-
-type AuditRow = Readonly<{
-  action: string;
-  target_type: string;
-  target_id: string;
-  request_id: string;
-  metadata: Record<string, unknown>;
-}>;
-
-async function auditFor(commandId: string) {
-  const { rows } = await ownerQuery<AuditRow>(
-    `select action,target_type,target_id,request_id,metadata
-     from app.audit_events where workspace_id=$1 and request_id=$2
-     order by occurred_at,id`,
-    [workspaceId, commandId],
-  );
-  return rows;
-}
-
-async function storedCommand(commandId: string) {
-  const { rows } = await workerQuery<{ outcome: string; status: string }>(
-    'select outcome,status from app.operator_commands where id=$1',
-    [commandId],
-  );
-  return rows[0];
-}
+  type AuditRow,
+} from './commands.support.js';
 
 /** Each command against a target that isn't there, so none needs a stuck run to exist. */
 const COMMANDS = [
@@ -348,206 +301,6 @@ describe('a command ID used again', () => {
       });
     },
   );
-});
-
-describe('a retry from before the pass', () => {
-  const sha256 = (text: string) =>
-    createHash('sha256').update(text).digest('hex');
-
-  async function seedReceipt(
-    commandId: string,
-    type: string,
-    dryRun: boolean,
-    fingerprint: string,
-  ) {
-    const client = await maintenance.connect();
-    try {
-      await client.query('begin');
-      await client.query("select set_config('app.workspace_id',$1,true)", [
-        workspaceId,
-      ]);
-      await client.query(
-        `insert into app.operator_commands(
-           id,workspace_id,command_type,dry_run,request_fingerprint,status,outcome,result,completed_at
-         ) values($1,$2,$3,$4,$5,'completed','stored_outcome','{"stored":true}'::jsonb,clock_timestamp())`,
-        [commandId, workspaceId, type, dryRun, fingerprint],
-      );
-      await client.query('commit');
-    } finally {
-      client.release();
-    }
-  }
-
-  const dryRun = true;
-  const attemptId = randomUUID();
-  const targetRun = randomUUID();
-  const targetOutbox = randomUUID();
-  const targetWorkflow = randomUUID();
-  const targetVersion = randomUUID();
-  const evidenceRef = { receipt: 'r-1' };
-
-  // The request material as it stood before the pass, field by field.
-  const RECEIPTS = [
-    {
-      type: 'outbox.redispatch',
-      dryRun,
-      material: { outboxEventId: targetOutbox },
-      send: (input: ReturnType<typeof base>) =>
-        schedule.operator.redispatchFailedOutbox({
-          ...input,
-          dryRun,
-          outboxEventId: targetOutbox,
-        }),
-    },
-    {
-      type: 'attempt.reconcile',
-      dryRun,
-      material: { action: 'reclaim', expectedFence: 4, targetId: attemptId },
-      send: (input: ReturnType<typeof base>) =>
-        schedule.operator.reconcileAttempt({
-          ...input,
-          dryRun,
-          action: 'reclaim',
-          attemptId,
-          expectedFenceToken: 4,
-        }),
-    },
-    {
-      type: 'due-work.resume',
-      dryRun,
-      material: { targetId: targetRun },
-      send: (input: ReturnType<typeof base>) =>
-        schedule.operator.resumeDueWork({
-          ...input,
-          dryRun,
-          runId: targetRun,
-        }),
-    },
-    {
-      type: 'run.cancel',
-      dryRun,
-      material: { targetId: targetRun },
-      send: (input: ReturnType<typeof base>) =>
-        schedule.operator.cancelRun({ ...input, dryRun, runId: targetRun }),
-    },
-    {
-      type: 'unknown-outcome.record-evidence',
-      dryRun: false,
-      material: {
-        evidenceKind: 'provider.receipt',
-        evidenceRef,
-        targetId: attemptId,
-      },
-      send: (input: ReturnType<typeof base>) =>
-        schedule.operator.recordUnknownOutcomeEvidence({
-          ...input,
-          attemptId,
-          evidenceKind: 'provider.receipt',
-          evidenceRef,
-        }),
-    },
-    {
-      type: 'trigger.reconcile',
-      dryRun,
-      material: { workflowId: targetWorkflow },
-      send: (input: ReturnType<typeof base>) =>
-        schedule.operator.retryTriggerReconciliation({
-          ...input,
-          dryRun,
-          workflowId: targetWorkflow,
-        }),
-    },
-    {
-      type: 'run.replay',
-      dryRun,
-      material: {
-        runInput: { pinned: true },
-        sourceRunId: targetRun,
-        workflowVersionId: targetVersion,
-      },
-      send: (input: ReturnType<typeof base>) =>
-        schedule.operator.replayRun({
-          ...input,
-          dryRun,
-          runInput: { pinned: true },
-          sourceRunId: targetRun,
-          workflowVersionId: targetVersion,
-        }),
-    },
-  ] as const;
-
-  it.each(RECEIPTS.map((receipt) => [receipt.type, receipt] as const))(
-    '%s still matches its stored receipt and gets the stored outcome',
-    async (type, receipt) => {
-      const input = base();
-      const fingerprint = sha256(
-        canonicalJson({
-          ...receipt.material,
-          actorRef,
-          commandType: type,
-          dryRun: receipt.dryRun,
-          reason,
-          workspaceId,
-        }),
-      );
-      await seedReceipt(input.commandId, type, receipt.dryRun, fingerprint);
-
-      await expect(receipt.send(input)).resolves.toMatchObject({
-        commandId: input.commandId,
-        outcome: 'stored_outcome',
-        replayed: true,
-        status: 'completed',
-      });
-    },
-  );
-});
-
-describe('oversized operator input', () => {
-  it('rejects a replay input over 64 KiB as a promise and records nothing', async () => {
-    const input = base();
-    // A JSON string adds its two quotes.
-    const refused = schedule.operator.replayRun({
-      ...input,
-      dryRun: true,
-      runInput: 'a'.repeat(65_535),
-      sourceRunId,
-      workflowVersionId: versionId,
-    });
-    expect(refused).toBeInstanceOf(Promise);
-    await expect(refused).rejects.toThrow(
-      'Operator replay input must not exceed 65536 UTF-8 bytes',
-    );
-    expect(await storedCommand(input.commandId)).toBeUndefined();
-    expect(await auditFor(input.commandId)).toEqual([]);
-  });
-
-  it('takes a replay input of exactly 64 KiB', async () => {
-    await expect(
-      schedule.operator.replayRun({
-        ...base(),
-        dryRun: true,
-        runInput: 'a'.repeat(65_534),
-        sourceRunId,
-        workflowVersionId: versionId,
-      }),
-    ).resolves.toMatchObject({ outcome: 'would_request' });
-  });
-
-  it('rejects evidence over 4 KiB as a promise and records nothing', async () => {
-    const input = base();
-    const refused = schedule.operator.recordUnknownOutcomeEvidence({
-      ...input,
-      attemptId: randomUUID(),
-      evidenceKind: 'provider.receipt',
-      evidenceRef: { value: 'a'.repeat(4085) },
-    });
-    expect(refused).toBeInstanceOf(Promise);
-    await expect(refused).rejects.toThrow(
-      'Unknown outcome evidence must not exceed 4096 UTF-8 bytes',
-    );
-    expect(await storedCommand(input.commandId)).toBeUndefined();
-    expect(await auditFor(input.commandId)).toEqual([]);
-  });
 });
 
 describe('a real workflow target', () => {
