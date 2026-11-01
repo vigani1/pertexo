@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { it } from 'vitest';
 
 import { queryAsOwner } from '../../support/workflow-authoring.js';
 import { addMember } from './world.js';

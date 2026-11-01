@@ -187,8 +187,8 @@ export function registerFilteredWrites(): void {
   it('refuses a filtered write over 1,000 matches, changes nothing, and takes exactly 1,000', async () => {
     const actor = await newWorkspace();
     const table = await ordersTable(actor, 'key');
-    await importOrders(actor, table.id, 0, 1000, 7);
-    await importOrders(actor, table.id, 1000, 1, 8);
+    await importOrders(actor, table.id, { from: 0, count: 1000, amount: 7 });
+    await importOrders(actor, table.id, { from: 1000, count: 1, amount: 8 });
     const everyRow = {
       ...query,
       filters: [
@@ -255,17 +255,15 @@ export function registerFilteredWrites(): void {
 function importOrders(
   actor: Actor,
   tableId: string,
-  from: number,
-  count: number,
-  amount: number,
+  rows: Readonly<{ from: number; count: number; amount: number }>,
 ) {
   return store.importRows({
     ...actor,
     tableId,
     idempotencyKey: randomUUID(),
-    rows: Array.from({ length: count }, (_, index) => ({
-      key: `row_${String(from + index)}`,
-      amount,
+    rows: Array.from({ length: rows.count }, (_, index) => ({
+      key: `row_${String(rows.from + index)}`,
+      amount: rows.amount,
     })),
   });
 }
