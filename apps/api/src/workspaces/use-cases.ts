@@ -1,4 +1,7 @@
-import { parseIdentityMetadata } from '@pertexo/workflow-model';
+import {
+  parseIdentityMetadata,
+  UNPURGED_WORKSPACE_STATUSES,
+} from '@pertexo/workflow-model';
 import {
   authorizeWorkspaceOperation,
   BROWSABLE_WORKSPACE_STATUSES,
@@ -36,12 +39,6 @@ import {
   type IdentityWorkspaceTelemetry,
 } from './telemetry.js';
 import { projectUserProfile } from './commands/user-profile.js';
-
-const LIFECYCLE_VISIBLE_STATUSES = [
-  'active',
-  'suspended',
-  'pending_deletion',
-] as const satisfies readonly WorkspaceStatus[];
 
 type CurrentUserPersistence = Pick<
   IdentityWorkspacePersistence,
@@ -261,7 +258,7 @@ export class WorkspaceLifecycleUseCase {
         await this.authorize(
           input,
           'workspace:manage',
-          LIFECYCLE_VISIBLE_STATUSES,
+          UNPURGED_WORKSPACE_STATUSES,
         );
         const operation =
           await this.persistence.requestWorkspaceLifecycleOperation({
@@ -285,7 +282,7 @@ export class WorkspaceLifecycleUseCase {
         await this.authorize(
           input,
           'workspace:manage',
-          LIFECYCLE_VISIBLE_STATUSES,
+          UNPURGED_WORKSPACE_STATUSES,
         );
         const operation =
           await this.persistence.requestWorkspaceLifecycleOperation({
@@ -309,7 +306,7 @@ export class WorkspaceLifecycleUseCase {
         await this.authorize(
           input,
           'workspace:manage',
-          LIFECYCLE_VISIBLE_STATUSES,
+          UNPURGED_WORKSPACE_STATUSES,
         );
         const operation =
           await this.persistence.requestWorkspaceLifecycleOperation({

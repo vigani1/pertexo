@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createRetentionStore } from '../../../src/lifecycle/retention/store.js';
-import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/change.repository.js';
+import { applyWorkspaceLifecycleChange } from '../../../src/lifecycle/deletion/apply.repository.js';
 import {
   withTenantScopedClient,
   checkDatabaseReadiness,
@@ -212,7 +212,7 @@ describe('connection health retention and tenant purge', () => {
       api,
       { workspaceId: workspaceA, actorId },
       (client) =>
-        changeWorkspaceLifecycle(client, {
+        applyWorkspaceLifecycleChange(client, {
           operationId: randomUUID(),
           workspaceId: workspaceA,
           actorUserId: actorId,

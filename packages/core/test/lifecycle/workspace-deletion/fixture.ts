@@ -1,14 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
-import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/change.repository.js';
+import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/change.js';
 import type { WorkspaceLifecycleChange } from '../../../src/lifecycle/deletion/contract.js';
 import {
   migrateDatabase,
   dropDisconnectedDatabase,
 } from '@pertexo/database/testing';
-
-import { withTenantScopedClient } from '@pertexo/database/primitives';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -93,20 +91,15 @@ export function change(
 ) {
   if (api === undefined) throw new Error('API pool unavailable');
   const actorUserId = input.actorUserId ?? ownerUserId;
-  return withTenantScopedClient(
-    api,
-    { workspaceId, actorId: actorUserId },
-    (client) =>
-      changeWorkspaceLifecycle(client, {
-        operationId: randomUUID(),
-        workspaceId,
-        actorUserId,
-        reason: 'Closing the workspace',
-        idempotencyKeyHash: randomUUID().replaceAll('-', '').padEnd(64, '0'),
-        requestHash: '1'.repeat(64),
-        ...input,
-      }),
-  );
+  return changeWorkspaceLifecycle(api, {
+    operationId: randomUUID(),
+    workspaceId,
+    actorUserId,
+    reason: 'Closing the workspace',
+    idempotencyKeyHash: randomUUID().replaceAll('-', '').padEnd(64, '0'),
+    requestHash: '1'.repeat(64),
+    ...input,
+  });
 }
 
 export async function asOwner(text: string, values: readonly unknown[] = []) {

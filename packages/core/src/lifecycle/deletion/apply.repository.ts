@@ -20,8 +20,6 @@ import {
   workspaceInvitationDeliveryAttempts,
   workspaceInvitationAcceptanceIntents,
   workspaces,
-  users,
-  workspaceMemberships,
   workspaceLifecycleOperations,
   databaseSchema,
 } from '@pertexo/database/schema';
@@ -33,9 +31,10 @@ import { requestActiveRunCancellations } from '../../runs/commands/cancel-active
 import { IdempotencyRequestConflictError } from '../../runs/commands/acceptance/errors.js';
 import { WorkspaceLifecycleConflictError } from '../../tenant-access/errors.js';
 import type { WorkspaceId } from '@pertexo/database/primitives';
-
-/** How long a workspace waits for restore before it is purged. */
-export const WORKSPACE_RECOVERY_DAYS = 30;
+import {
+  LIFECYCLE_TRANSITIONS,
+  WORKSPACE_RECOVERY_DAYS,
+} from './transitions.js';
 
 /** Invitation, then delivery attempt, then acceptance intent. */
 async function cancelPendingInvitations(
@@ -198,42 +197,14 @@ async function applyDeletionSideEffects(
   );
 }
 
-type WorkspaceLifecycleState = Readonly<{
-  status: string;
-  restorable: boolean;
-}>;
-
-const COMMANDS: Readonly<
-  Record<
-    WorkspaceLifecycleCommandType,
-    Readonly<{
-      auditAction: string;
-      appliesTo: (current: WorkspaceLifecycleState) => boolean;
-    }>
-  >
-> = {
-  deletion_requested: {
-    auditAction: 'workspace.deletion_requested',
-    appliesTo: ({ status }) => status === 'active' || status === 'suspended',
-  },
-  deletion_restored: {
-    auditAction: 'workspace.deletion_restored',
-    appliesTo: ({ status, restorable }) =>
-      status === 'pending_deletion' && restorable,
-  },
-  reactivated: {
-    auditAction: 'workspace.reactivated',
-    appliesTo: ({ status }) => status === 'suspended',
-  },
-};
-
 /**
- * Requests deletion of a workspace, restores it or lifts its suspension, in the
- * caller's workspace-scoped transaction. Deletion takes effect at once and the
- * workspace is purged after the recovery period; a repeated request with the
- * same idempotency key returns its first receipt.
+ * Requests deletion of a workspace, restores it or lifts its suspension, in a
+ * transaction that already holds the workspace row and the owner's authority
+ * (`changeWorkspaceLifecycle`). Deletion takes effect at once and the workspace
+ * is purged after the recovery period; a repeated request with the same
+ * idempotency key returns its first receipt.
  */
-export async function changeWorkspaceLifecycle(
+export async function applyWorkspaceLifecycleChange(
   client: PoolClient,
   change: WorkspaceLifecycleChange,
 ): Promise<WorkspaceLifecycleOperation> {
@@ -245,37 +216,16 @@ export async function changeWorkspaceLifecycle(
     })
     .from(workspaces)
     .where(eq(workspaces.id, change.workspaceId))
-    .for('update')
     .catch(rethrowQueryFailure);
   if (current === undefined)
     throw new WorkspaceLifecycleConflictError(
       'invalid_state',
       'Workspace lifecycle transition is not valid',
     );
-  const owner = await db
-    .select({ id: users.id })
-    .from(users)
-    .innerJoin(workspaceMemberships, eq(workspaceMemberships.userId, users.id))
-    .where(
-      and(
-        eq(users.id, change.actorUserId),
-        eq(users.status, 'active'),
-        eq(workspaceMemberships.workspaceId, change.workspaceId),
-        eq(workspaceMemberships.status, 'active'),
-        eq(workspaceMemberships.role, 'owner'),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  if (owner.length !== 1)
-    throw new WorkspaceLifecycleConflictError(
-      'actor_inactive',
-      'Workspace lifecycle actor is not authorized',
-    );
-
   const prior = await readExistingOperation(client, change);
   if (prior !== undefined) return prior;
 
-  if (!COMMANDS[change.commandType].appliesTo(current))
+  if (!LIFECYCLE_TRANSITIONS[change.commandType].appliesTo(current))
     throw new WorkspaceLifecycleConflictError(
       'invalid_state',
       'Workspace lifecycle transition is not valid',
@@ -327,7 +277,7 @@ export async function changeWorkspaceLifecycle(
     id: change.operationId,
     workspaceId: change.workspaceId,
     actorId: change.actorUserId,
-    action: COMMANDS[change.commandType].auditAction,
+    action: LIFECYCLE_TRANSITIONS[change.commandType].auditAction,
     targetType: 'workspace',
     targetId: change.workspaceId,
   });

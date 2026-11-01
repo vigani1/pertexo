@@ -15,7 +15,7 @@ import type {
 } from '@pertexo/database/platform';
 import { workspaces } from '@pertexo/database/schema';
 
-import { changeWorkspaceLifecycle } from '../lifecycle/deletion/change.repository.js';
+import { changeWorkspaceLifecycle } from '../lifecycle/deletion/change.js';
 import type {
   IdentityWorkspaceDatabase,
   RequestWorkspaceLifecycleOperationInput,
@@ -169,25 +169,20 @@ async function requestWorkspaceLifecycleOperation(
   const commandType = input.commandType;
   const reason = input.reason;
   try {
-    return await withTenantScopedClient(
-      pool,
-      { workspaceId, actorId: actorUserId },
-      (client) =>
-        changeWorkspaceLifecycle(client, {
-          operationId: generatePersistedId(),
-          workspaceId,
-          actorUserId,
-          commandType,
-          reason,
-          idempotencyKeyHash: commandKeyHash(input.idempotencyKey),
-          requestHash: commandRequestHash({
-            actorUserId,
-            commandType,
-            reason,
-            workspaceId,
-          }),
-        }),
-    );
+    return await changeWorkspaceLifecycle(pool, {
+      operationId: generatePersistedId(),
+      workspaceId,
+      actorUserId,
+      commandType,
+      reason,
+      idempotencyKeyHash: commandKeyHash(input.idempotencyKey),
+      requestHash: commandRequestHash({
+        actorUserId,
+        commandType,
+        reason,
+        workspaceId,
+      }),
+    });
   } catch (error: unknown) {
     throwWorkspaceLifecycleError(error);
   }

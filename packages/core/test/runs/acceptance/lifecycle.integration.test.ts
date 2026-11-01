@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
 import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/errors.js';
-import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/change.repository.js';
+import { applyWorkspaceLifecycleChange } from '../../../src/lifecycle/deletion/apply.repository.js';
 import { runEvents } from '@pertexo/database/schema';
 import {
   acceptanceInput,
@@ -123,7 +123,7 @@ describe('workflow run lifecycle serialization', () => {
       "select set_config('app.workspace_id',$1,true), set_config('app.actor_id',$2,true)",
       [workspaceA, workspaceCreatorId],
     );
-    const deletion = changeWorkspaceLifecycle(deletionClient, {
+    const deletion = applyWorkspaceLifecycleChange(deletionClient, {
       operationId: randomUUID(),
       workspaceId: workspaceA,
       actorUserId: workspaceCreatorId,
