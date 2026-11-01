@@ -36,8 +36,13 @@ export function createNoticeMailStore(
   config: DatabaseConfig,
   maintenanceConfig: DatabaseConfig,
   seal: NoticeMailSealer,
-  runtime?: DatabaseRuntime,
-  onPersonFailed?: (failure: NoticeMailPersonFailure) => void,
+  {
+    runtime,
+    onPersonFailed,
+  }: Readonly<{
+    runtime?: DatabaseRuntime | undefined;
+    onPersonFailed?: (failure: NoticeMailPersonFailure) => void;
+  }> = {},
 ) {
   const lease = acquireDatabasePool(config, runtime);
   const maintenance = acquireDatabasePool(maintenanceConfig);

@@ -1,4 +1,7 @@
-import { createNoticePreferencesStore, createWorkspaceInboxStore } from '@pertexo/core/inbox';
+import {
+  createNoticePreferencesStore,
+  createWorkspaceInboxStore,
+} from '@pertexo/core/inbox';
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import type { ApiIdentityConfig } from '../config/identity.js';
 import { NoticePreferencesService } from '../../notifications/preferences/service.js';

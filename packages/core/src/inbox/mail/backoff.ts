@@ -4,7 +4,7 @@ const LONGEST_RETRY_MILLIS = 3_600_000;
 type Attempt = Readonly<{ failures: number; retryAt: number }>;
 
 /** How long to leave someone alone after this many failures in a row. */
-export function retryDelayMillis(failures: number): number {
+function retryDelayMillis(failures: number): number {
   return Math.min(
     FIRST_RETRY_MILLIS * 2 ** (failures - 1),
     LONGEST_RETRY_MILLIS,

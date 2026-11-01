@@ -1,5 +1,8 @@
 import { errorRegistration } from '../../platform/http/problems/registry.js';
-import { NoticeConflictError, NoticeUnavailableError } from '@pertexo/core/inbox';
+import {
+  NoticeConflictError,
+  NoticeUnavailableError,
+} from '@pertexo/core/inbox';
 import { applicationError } from '../../platform/http/index.js';
 
 export const preferencesProblems = [
