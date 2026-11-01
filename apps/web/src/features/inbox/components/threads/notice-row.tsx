@@ -12,6 +12,7 @@ import { InboxThreadRow } from './row';
 const labels = {
   workflow_auto_paused: 'Workflow auto-paused',
   connection_attention: 'Connection needs attention',
+  failure_alert_attention: 'Failure alerts not delivered',
   limit_reached: 'Workspace limit reached',
   limit_approaching: 'Workspace nearing a limit',
   approval_waiting: 'Approval waiting',
@@ -23,6 +24,7 @@ const actionNames = {
   publication_review_waiting: 'Review publication',
   approval_waiting: 'Review approval',
   connection_attention: 'Open connection',
+  failure_alert_attention: 'Open alert setup',
   limit_reached: 'Review usage',
   limit_approaching: 'Review usage',
   workflow_auto_paused: 'Review workflow',
@@ -82,6 +84,15 @@ function AttentionLink({
         {...look}
       ></Link>
     );
+  if (thread.noticeKind === 'failure_alert_attention')
+    return (
+      <Link
+        to="/w/$workspaceId/settings/alerts"
+        params={params}
+        search={{ destination: thread.subjectId }}
+        {...look}
+      ></Link>
+    );
   if (
     thread.noticeKind === 'limit_reached' ||
     thread.noticeKind === 'limit_approaching'
@@ -113,6 +124,8 @@ const limitNames = {
 function noticeSummary(thread: WorkspaceInboxAttentionThread): ReactNode {
   if (thread.noticeKind === 'approval_waiting')
     return <TaskDetailsLine details={thread.details} />;
+  if (thread.noticeKind === 'failure_alert_attention')
+    return 'Check that it’s turned on and that its connection works, in Settings.';
   const limits = thread.limits.map((limit) => limitNames[limit]).join(' · ');
   if (thread.noticeKind === 'limit_approaching')
     return (
@@ -122,6 +135,13 @@ function noticeSummary(thread: WorkspaceInboxAttentionThread): ReactNode {
       </>
     );
   return limits === '' ? undefined : limits;
+}
+
+/** What a notice is called. A failure alert's `name` is only where it isn't reaching. */
+function noticeTitle(thread: WorkspaceInboxAttentionThread): string {
+  return thread.noticeKind === 'failure_alert_attention'
+    ? `Failure alerts aren’t reaching ${thread.name}`
+    : thread.name;
 }
 
 export function NoticeThreadRow(
@@ -140,6 +160,7 @@ export function NoticeThreadRow(
     thread.noticeKind === 'approval_waiting' ||
     thread.noticeKind === 'publication_review_waiting';
   const summary = noticeSummary(thread);
+  const title = noticeTitle(thread);
   return (
     <NoticeFrame
       unread={thread.unread}
@@ -152,7 +173,7 @@ export function NoticeThreadRow(
           onOpen={props.onRead}
           className={noticeLinkClass({ unread: thread.unread })}
         >
-          {thread.name}
+          {title}
         </AttentionLink>
       }
       {...(summary === undefined ? {} : { summary })}
@@ -174,7 +195,7 @@ export function NoticeThreadRow(
           {thread.unread ? (
             <NoticeAction
               label="Mark read"
-              name={`Mark ${thread.name} read`}
+              name={`Mark ${title} read`}
               render={
                 <button
                   type="button"

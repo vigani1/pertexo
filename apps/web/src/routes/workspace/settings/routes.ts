@@ -10,6 +10,7 @@ import { pageTitle } from '../../root/page-title';
 import { parseUsageSearch } from '@/features/usage/search.public';
 import { warmPrefetches } from '../../root/route-context';
 import { workspaceShellRoute } from '../routes';
+import { parseAlertsSearch } from '@/features/failure-notifications/search.public';
 
 /** Pathless layout: every Settings page beside the Settings rail. */
 export const settingsHubRoute = createRoute({
@@ -22,6 +23,7 @@ export const alertsRoute = createRoute({
   getParentRoute: () => settingsHubRoute,
   path: 'settings/alerts',
   staticData: { crumb: 'Alerts' },
+  validateSearch: (search) => parseAlertsSearch(search),
   loader: async ({ context }) => {
     const [
       { connectionDiscoveryQueryOptions },
