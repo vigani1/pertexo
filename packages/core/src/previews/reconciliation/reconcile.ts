@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import type {
   PreviewDeliveryReconciliationResult,
   PreviewReconciliationScope,
+  ReconcilePreviewDeliveryInput,
 } from './contract.js';
 import { lockPreviewReconciliationState } from './state.queries.js';
 
@@ -24,7 +25,6 @@ import {
   validatePreviewReconciliationDelivery,
 } from '../attempts/deliveries.repository.js';
 import { appendPreviewTerminalFacts } from '../attempts/facts.repository.js';
-import type { PreviewDelivery } from '../contract.js';
 import { previewReconcilerConsumerName } from '../delivery.js';
 import {
   PreviewAttemptStateError,
@@ -148,14 +148,7 @@ async function completeExpiredOrUnsafePreview(
  */
 export async function reconcilePreviewDelivery(
   pool: Pool,
-  input: Readonly<{
-    attemptFenceToken: number;
-    delivery: PreviewDelivery;
-    previewAttemptId: string;
-    previewRunId: string;
-    signal?: AbortSignal;
-    workspaceId: string;
-  }>,
+  input: ReconcilePreviewDeliveryInput,
 ): Promise<PreviewDeliveryReconciliationResult> {
   const scope = input;
   try {

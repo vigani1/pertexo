@@ -6,7 +6,10 @@ import {
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
-import type { PreviewClaimResult } from './contract.js';
+import type {
+  ClaimPreviewDeliveryInput,
+  PreviewClaimResult,
+} from './contract.js';
 
 import type { PreviewDelivery } from '../contract.js';
 import { previewConsumerName } from '../delivery.js';
@@ -100,15 +103,7 @@ async function terminalizeExpiredPreview(
 
 export async function claimPreviewDelivery(
   pool: Pool,
-  input: Readonly<{
-    delivery: PreviewDelivery;
-    leaseDurationSeconds: number;
-    previewAttemptId: string;
-    previewRunId: string;
-    signal?: AbortSignal;
-    workerId: string;
-    workspaceId: string;
-  }>,
+  input: ClaimPreviewDeliveryInput,
 ): Promise<PreviewClaimResult> {
   try {
     return await withTenantScopedClient(
@@ -209,7 +204,7 @@ export async function claimPreviewDelivery(
 async function claimPreviewLease(
   client: PoolClient,
   parsed: Pick<
-    Parameters<typeof claimPreviewDelivery>[1],
+    ClaimPreviewDeliveryInput,
     | 'workspaceId'
     | 'previewAttemptId'
     | 'previewRunId'

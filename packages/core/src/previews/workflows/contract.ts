@@ -16,13 +16,7 @@ export type WorkflowTestCommand = SampleScope &
       acknowledgeSideEffects: boolean;
     }>;
   }>;
-export interface WorkflowTestStore {
-  prepare(input: SampleScope): Promise<WorkflowTestPreparation>;
-  start(input: WorkflowTestCommand): Promise<{ runId: string }>;
-  list(input: SampleScope): Promise<{ items: readonly WorkflowTestSummary[] }>;
-  get(input: SampleScope & { runId: string }): Promise<WorkflowTestDetail>;
-  cancel(input: SampleScope & { runId: string }): Promise<void>;
-}
+export type WorkflowTestRunInput = SampleScope & Readonly<{ runId: string }>;
 export type WorkflowTestSummary = Readonly<{
   runId: string;
   startedBy: string | null;

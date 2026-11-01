@@ -1,6 +1,6 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import type { z } from 'zod';
 import {
@@ -13,7 +13,6 @@ import {
   outboxEvents,
   transportSecurityAuditFacts,
 } from '@pertexo/database/schema';
-import type { PreviewOutboxClient } from './contract.js';
 
 import type { PreviewDelivery } from '../contract.js';
 import {
@@ -26,7 +25,7 @@ import {
 } from '../errors.js';
 
 export async function insertPreviewOutboxDelivery(
-  client: PreviewOutboxClient,
+  client: PoolClient,
   input:
     | Readonly<{
         availableAt?: Date;
@@ -89,7 +88,7 @@ export async function insertPreviewOutboxDelivery(
 }
 
 async function readDelivery(
-  client: PreviewOutboxClient,
+  client: PoolClient,
   workspaceId: string,
   outboxEventId: string,
 ) {
@@ -113,7 +112,7 @@ async function readDelivery(
 }
 
 export async function validatePreviewDelivery(
-  client: Parameters<Parameters<typeof withTenantScopedClient>[2]>[0],
+  client: PoolClient,
   input: Readonly<{
     delivery: PreviewDelivery;
     previewAttemptId: string;
@@ -153,7 +152,7 @@ export async function validatePreviewDelivery(
 }
 
 export async function validatePreviewReconciliationDelivery(
-  client: PreviewOutboxClient,
+  client: PoolClient,
   input: Readonly<{
     attemptFenceToken: number;
     delivery: PreviewDelivery;
@@ -193,7 +192,7 @@ export async function validatePreviewReconciliationDelivery(
 }
 
 export async function completePreviewReceipt(
-  client: PreviewOutboxClient,
+  client: PoolClient,
   consumerName: string,
   workspaceId: string,
   delivery: PreviewDelivery,
@@ -217,7 +216,7 @@ export async function completePreviewReceipt(
 }
 
 async function loadPreviewReceipt(
-  client: PreviewOutboxClient,
+  client: PoolClient,
   consumerName: string,
   workspaceId: string,
   delivery: PreviewDelivery,
@@ -249,7 +248,7 @@ async function loadPreviewReceipt(
 }
 
 export async function claimPreviewReceipt(
-  client: PreviewOutboxClient,
+  client: PoolClient,
   consumerName: string,
   workspaceId: string,
   delivery: PreviewDelivery,
@@ -272,7 +271,7 @@ export async function claimPreviewReceipt(
 }
 
 export async function readPreviewReceipt(
-  client: PreviewOutboxClient,
+  client: PoolClient,
   consumerName: string,
   workspaceId: string,
   delivery: PreviewDelivery,

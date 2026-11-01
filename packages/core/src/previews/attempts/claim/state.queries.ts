@@ -15,10 +15,8 @@ import type { PreviewAttemptLease } from '../../contract.js';
 import { PreviewAttemptStateError } from '../../errors.js';
 import { previewPairConsistent } from '../../state.js';
 
-import type { withTenantScopedClient } from '@pertexo/database/primitives';
-
 export async function loadPreviewLease(
-  client: Parameters<Parameters<typeof withTenantScopedClient>[2]>[0],
+  client: PoolClient,
   input: Readonly<{
     attemptFenceToken: number;
     previewAttemptId: string;
