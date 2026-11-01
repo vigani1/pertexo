@@ -216,7 +216,7 @@ test('Code runner can use only the credential-free SDK workspace dependency', ()
     '@pertexo/database/platform',
     '@pertexo/queue',
     '@pertexo/integrations',
-    '@pertexo/execution',
+    '@pertexo/core/runs',
   ])
     assert.match(
       validateModuleImports({
@@ -248,9 +248,7 @@ test('keeps the direction apps -> core -> database', () => {
     /only applications depend on core/u,
   );
   assert.match(
-    imports('packages/execution/src/a.ts', '@pertexo/core/variables').join(
-      '\n',
-    ),
+    imports('packages/queue/src/a.ts', '@pertexo/core/variables').join('\n'),
     /only applications depend on core/u,
   );
   assert.deepEqual(imports('apps/api/src/a.ts', '@pertexo/core/variables'), []);
@@ -356,6 +354,61 @@ test('the list of areas not yet passed can only shrink', () => {
   assert.ok(!AREAS_NOT_YET_PASSED.has('shared'));
 });
 
+test('an application reaches the database only through its platform door, and /testing from tests', () => {
+  const imports = (file, specifier) =>
+    validateModuleImports({ [file]: `import { a } from '${specifier}';` }).join(
+      '\n',
+    );
+  for (const file of [
+    'apps/api/src/a.ts',
+    'apps/worker/test/a.test.ts',
+    'apps/web/e2e/a.spec.ts',
+  ])
+    for (const specifier of [
+      '@pertexo/database',
+      '@pertexo/database/runs',
+      '@pertexo/database/authoring',
+      '@pertexo/database/anything-new',
+    ])
+      assert.match(
+        imports(file, specifier),
+        /reach the database only through/u,
+        `${file}: ${specifier}`,
+      );
+  assert.equal(imports('apps/api/src/a.ts', '@pertexo/database/platform'), '');
+  assert.equal(imports('apps/api/test/a.ts', '@pertexo/database/platform'), '');
+  assert.equal(imports('apps/api/test/a.ts', '@pertexo/database/testing'), '');
+  assert.match(
+    imports('apps/api/src/a.ts', '@pertexo/database/testing'),
+    /holds test flows/u,
+  );
+  assert.equal(
+    imports('packages/core/src/a/b.ts', '@pertexo/database/platform'),
+    '',
+  );
+});
+
+test('a listed area with no folder in core is reported, so the list stays true', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'module-imports-'));
+  try {
+    for (const area of AREAS_NOT_YET_PASSED)
+      await mkdir(path.join(directory, 'packages/core/src', area), {
+        recursive: true,
+      });
+    await mkdir(path.join(directory, 'apps'), { recursive: true });
+    assert.deepEqual(await inspectModuleImports(directory), []);
+    await rm(path.join(directory, 'packages/core/src/runs'), {
+      recursive: true,
+    });
+    assert.match(
+      (await inspectModuleImports(directory)).join('\n'),
+      /runs is on AREAS_NOT_YET_PASSED/u,
+    );
+  } finally {
+    await rm(directory, { recursive: true });
+  }
+});
+
 test('a test door never reaches code that ships', () => {
   for (const specifier of [
     '@pertexo/database/testing',
@@ -363,7 +416,7 @@ test('a test door never reaches code that ships', () => {
   ])
     for (const file of [
       'apps/api/src/a.ts',
-      'packages/execution/src/a.ts',
+      'packages/queue/src/a.ts',
       'packages/core/src/variables/a.ts',
     ]) {
       for (const statement of [
@@ -490,7 +543,7 @@ test('a dynamic import in a template literal is held to the same rules', () => {
   );
   assert.match(
     validateModuleImports({
-      'packages/execution/src/a.ts': load('@pertexo/core/variables'),
+      'packages/queue/src/a.ts': load('@pertexo/core/variables'),
     }).join('\n'),
     /only applications depend on core/u,
   );
@@ -512,7 +565,7 @@ test('import-equals is held to the same rules', () => {
   );
   assert.match(
     validateModuleImports({
-      'packages/execution/src/a.ts': load('@pertexo/core/variables'),
+      'packages/queue/src/a.ts': load('@pertexo/core/variables'),
     }).join('\n'),
     /only applications depend on core/u,
   );

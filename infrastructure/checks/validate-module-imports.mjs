@@ -18,6 +18,11 @@ const coreOnlyDatabaseEntries = new Set([
   '@pertexo/database/schema',
   '@pertexo/database/primitives',
 ]);
+// All an application ever needs from the database: pools and startup, plus fixtures.
+const applicationDatabaseEntries = new Set([
+  '@pertexo/database/platform',
+  '@pertexo/database/testing',
+]);
 const webRawFetchOwners = new Set([
   'apps/web/src/lib/api/client.ts',
   'apps/web/src/features/artifacts/data/upload.api.ts',
@@ -158,6 +163,15 @@ function directionViolations(file, specifier) {
   )
     violations.push(
       `${file}: ${specifier} is for core; applications use a core area`,
+    );
+  if (
+    file.startsWith('apps/') &&
+    /^@pertexo\/database(?:\/|$)/u.test(specifier) &&
+    !coreOnlyDatabaseEntries.has(specifier) &&
+    !applicationDatabaseEntries.has(specifier)
+  )
+    violations.push(
+      `${file}: applications reach the database only through @pertexo/database/platform and, from tests, /testing; ${specifier} belongs in a core area`,
     );
   return violations;
 }
@@ -371,7 +385,27 @@ export async function inspectModuleImports(directory = root) {
       }
     }
   }
-  return validateModuleImports(sources);
+  return [
+    ...(await inspectListedAreas(directory)),
+    ...validateModuleImports(sources),
+  ];
+}
+
+/** A listed area with no folder is a pass that forgot to shorten the list. */
+async function inspectListedAreas(directory) {
+  let entries;
+  try {
+    entries = await readdir(path.join(directory, coreSource));
+  } catch (error) {
+    if (error?.code === 'ENOENT') return [];
+    throw error;
+  }
+  return [...AREAS_NOT_YET_PASSED]
+    .filter((area) => !entries.includes(area))
+    .map(
+      (area) =>
+        `${area} is on AREAS_NOT_YET_PASSED, but core has no such area: take it off the list`,
+    );
 }
 
 if (
