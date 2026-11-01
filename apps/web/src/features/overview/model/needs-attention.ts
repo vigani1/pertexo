@@ -5,6 +5,7 @@ import type {
   WorkflowRunReadSummary,
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
+import { needsReconnecting } from '@/features/connections/provider.public';
 import { formatElapsedTime } from '@/lib/format/time';
 
 // "Needs attention" is derived from reads the app already makes: problem
@@ -168,17 +169,15 @@ export function connectionAttentionItems({
   connections: readonly ConnectionResponse[];
   canManage: boolean;
 }>): readonly AttentionItem[] {
-  return connections
-    .filter((connection) => connection.status === 'reauthorization_required')
-    .map((connection) => ({
-      key: `connection:${connection.id}`,
-      tone: 'attention',
-      title: `${connection.name} needs reconnecting`,
-      detail: canManage
-        ? 'Steps that use it fail until it’s reconnected.'
-        : 'Steps that use it fail until an admin reconnects it.',
-      ...(canManage ? { action: { kind: 'connections' } as const } : {}),
-    }));
+  return connections.filter(needsReconnecting).map((connection) => ({
+    key: `connection:${connection.id}`,
+    tone: 'attention',
+    title: `${connection.name} needs reconnecting`,
+    detail: canManage
+      ? 'Steps that use it fail until it’s reconnected.'
+      : 'Steps that use it fail until an admin reconnects it.',
+    ...(canManage ? { action: { kind: 'connections' } as const } : {}),
+  }));
 }
 
 /** Failure alert destinations that are switched off. */

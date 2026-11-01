@@ -31,6 +31,17 @@ export function describeConnectionStatus(
   }
 }
 
+/** Something broke and someone should know: a connection never signed in to hasn't. */
+export function needsReconnecting({
+  status,
+  health,
+}: Pick<ConnectionResponse, 'status' | 'health'>): boolean {
+  return (
+    status === 'reauthorization_required' &&
+    health.lastErrorCode !== 'connection.oauth2_not_authorized'
+  );
+}
+
 const FAILURE_REASONS: Readonly<Record<string, string>> = {
   'connection.credential_rejected': 'credential rejected',
   'connection.slack_account_inactive': 'Slack account inactive',

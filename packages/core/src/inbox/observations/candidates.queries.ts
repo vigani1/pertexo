@@ -20,7 +20,10 @@ import {
   workflowComments as comment,
 } from '@pertexo/database/schema';
 import { capacityWarningCandidates } from './capacity.queries.js';
-import type { AttentionSubject } from './facts.queries.js';
+import {
+  connectionNeedsAttentionSql,
+  type AttentionSubject,
+} from './facts.queries.js';
 import { NOTICE_WINDOW_SQL } from '../lifetime.js';
 type Kind = AttentionSubject['noticeKind'];
 const kind = (value: Kind) => sql<Kind>`${value}::varchar`.as('notice_kind');
@@ -55,7 +58,7 @@ function workflowCandidates(db: Pick<NodePgDatabase, 'select'>) {
       capacity_limit: noLimit,
     })
     .from(connections)
-    .where(eq(connections.status, 'reauthorization_required'));
+    .where(connectionNeedsAttentionSql(connections));
   const review = db
     .select({
       workspace_id: workflowPublicationRequests.workspaceId,

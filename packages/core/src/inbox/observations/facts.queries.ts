@@ -15,6 +15,7 @@ import {
   workspaceExecutionEntitlementVersions as entitlement,
   workspaceArtifactCapacity as capacity,
 } from '@pertexo/database/schema';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
   task,
   run,
@@ -52,6 +53,14 @@ export type AttentionFact = Readonly<{
   commentMentionId: string | null;
   occurredAt: Date | null;
 }>;
+/**
+ * A connection nobody has signed in to yet has broken nothing, so nobody is told.
+ * `is distinct from` because other connections may need attention with no code.
+ */
+export const connectionNeedsAttentionSql = (
+  connection: Readonly<{ status: AnyPgColumn; lastErrorCode: AnyPgColumn }>,
+) =>
+  sql<boolean>`(${connection.status}='reauthorization_required' and ${connection.lastErrorCode} is distinct from 'connection.oauth2_not_authorized')`;
 /** Current source facts, read under the observation's workspace/source fence. */
 export async function readAttentionFact(
   client: PoolClient,
@@ -138,7 +147,7 @@ async function readConnectionAttentionFact(
 ): Promise<AttentionFact> {
   const [row] = await drizzle(client)
     .select({
-      status: connections.status,
+      needs_attention: connectionNeedsAttentionSql(connections),
       health_revision: sql<string>`${connections.healthRevision}::text`,
     })
     .from(connections)
@@ -153,7 +162,7 @@ async function readConnectionAttentionFact(
   return {
     ...base,
     connectionId: subject.subjectId,
-    active: row?.status === 'reauthorization_required',
+    active: row?.needs_attention === true,
     sourceRevision: row?.health_revision ?? 'removed',
   };
 }
