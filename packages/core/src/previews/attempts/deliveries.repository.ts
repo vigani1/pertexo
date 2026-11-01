@@ -215,7 +215,7 @@ export async function completePreviewReceipt(
     throw new PreviewAttemptStateError('receipt_completion_lost');
 }
 
-async function loadPreviewReceipt(
+export async function readPreviewReceipt(
   client: PoolClient,
   consumerName: string,
   workspaceId: string,
@@ -267,19 +267,10 @@ export async function claimPreviewReceipt(
     .returning({ messageId: inboxReceipts.messageId })
     .catch(rethrowQueryFailure);
   if (inserted.length === 1) return 'open';
-  return loadPreviewReceipt(client, consumerName, workspaceId, delivery);
+  return readPreviewReceipt(client, consumerName, workspaceId, delivery);
 }
 
-export async function readPreviewReceipt(
-  client: PoolClient,
-  consumerName: string,
-  workspaceId: string,
-  delivery: PreviewDelivery,
-): Promise<'completed' | 'open'> {
-  return loadPreviewReceipt(client, consumerName, workspaceId, delivery);
-}
-
-export async function auditPreviewDeliveryMismatch(
+async function auditPreviewDeliveryMismatch(
   pool: Pool,
   consumerName: string,
   {
@@ -310,4 +301,35 @@ export async function auditPreviewDeliveryMismatch(
     { signal },
   );
   throw new PreviewDeliveryMismatchError();
+}
+
+/**
+ * A mismatched delivery is a durable tenant-scoped security fact. It is written
+ * in its own transaction because the business transaction rolled back with the
+ * failure.
+ */
+export async function auditingDeliveryMismatch<T>(
+  pool: Pool,
+  consumerName: string,
+  target: Readonly<{
+    workspaceId: string;
+    delivery: PreviewDelivery;
+    signal?: AbortSignal | undefined;
+  }>,
+  work: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await work();
+  } catch (error: unknown) {
+    if (
+      error instanceof PreviewDeliveryMismatchError &&
+      !target.signal?.aborted
+    )
+      await auditPreviewDeliveryMismatch(pool, consumerName, {
+        workspaceId: target.workspaceId,
+        delivery: target.delivery,
+        signal: target.signal ?? new AbortController().signal,
+      });
+    throw error;
+  }
 }

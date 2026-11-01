@@ -15,6 +15,7 @@ import { cancelInTransaction } from '../../runs/commands/cancel-active.repositor
 import { WorkflowRunNotFoundError } from '../../runs/errors.js';
 import { requireTestCapability } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/errors.js';
+import { skipPendingCases } from './cases.queries.js';
 import type { WorkflowTestSuiteInput } from './contract.js';
 
 export async function cancelTestSuite(
@@ -54,17 +55,7 @@ export async function cancelTestSuite(
       ),
     )
     .catch(rethrowQueryFailure);
-  await db
-    .update(workflowTestSuiteCases)
-    .set({ status: 'skipped' })
-    .where(
-      and(
-        eq(workflowTestSuiteCases.workspaceId, input.workspaceId),
-        eq(workflowTestSuiteCases.suiteId, input.suiteId),
-        eq(workflowTestSuiteCases.status, 'pending'),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  await skipPendingCases(client, input.workspaceId, input.suiteId);
   const active = await db
     .select({ runId: workflowTestSuiteCases.runId })
     .from(workflowTestSuiteCases)

@@ -7,6 +7,7 @@ import { cancelInTransaction } from '../../runs/commands/cancel-active.repositor
 import { requireTestCapability } from './access.js';
 import type { WorkflowTestRunInput } from './contract.js';
 import { readTestDetail } from './records.queries.js';
+import { isActiveTestRun } from './rules.js';
 
 export async function cancelWorkflowTest(
   client: PoolClient,
@@ -14,7 +15,7 @@ export async function cancelWorkflowTest(
   input: WorkflowTestRunInput,
 ): Promise<void> {
   const test = await readTestDetail(client, input);
-  if (!['queued', 'running', 'waiting'].includes(test.status)) return;
+  if (!isActiveTestRun(test.status)) return;
   requireTestCapability(role, 'run:cancel');
   // The ordinary cancel command appends the fenced observation and outbox wakeup.
   const transaction = {

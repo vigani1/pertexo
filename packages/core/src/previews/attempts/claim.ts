@@ -13,10 +13,7 @@ import type {
 
 import type { PreviewDelivery } from '../contract.js';
 import { previewConsumerName } from '../delivery.js';
-import {
-  PreviewAttemptStateError,
-  PreviewDeliveryMismatchError,
-} from '../errors.js';
+import { PreviewAttemptStateError } from '../errors.js';
 import { optionsFor } from '../input.js';
 import {
   mayHaveDispatchedUnsafely,
@@ -24,7 +21,7 @@ import {
   UNFINISHED_PREVIEW_STATUSES,
 } from '../state.js';
 import {
-  auditPreviewDeliveryMismatch,
+  auditingDeliveryMismatch,
   claimPreviewReceipt,
   completePreviewReceipt,
   insertPreviewOutboxDelivery,
@@ -109,98 +106,92 @@ export async function claimPreviewDelivery(
   pool: Pool,
   input: ClaimPreviewDeliveryInput,
 ): Promise<PreviewClaimResult> {
-  try {
-    return await withTenantScopedClient(
-      pool,
-      { workspaceId: input.workspaceId },
-      async (client): Promise<PreviewClaimResult> => {
-        await validatePreviewDelivery(client, {
-          delivery: input.delivery,
-          previewAttemptId: input.previewAttemptId,
-          previewRunId: input.previewRunId,
-          workspaceId: input.workspaceId,
-        });
-
-        // A prior claim may have crashed before completing business work;
-        // durable attempt state below decides whether redelivery may proceed.
-        // The receipt completes only together with a terminal outcome.
-        if (
-          (await claimPreviewReceipt(
-            client,
-            previewConsumerName,
-            input.workspaceId,
-            input.delivery,
-          )) === 'completed'
-        )
-          return Object.freeze({ kind: 'duplicate' });
-
-        const state = await lockPreviewClaimState(client, input);
-        if (TERMINAL_PREVIEW_STATUSES.has(state.attemptStatus)) {
-          await completePreviewReceipt(
-            client,
-            previewConsumerName,
-            input.workspaceId,
-            input.delivery,
-          );
-          return Object.freeze({ kind: 'duplicate' });
-        }
-        const leaseStillLive =
-          state.attemptStatus === 'running' && state.liveLease;
-        if (leaseStillLive) {
-          // Another live worker owns the single logical attempt; at-least-once
-          // transport makes this delivery a concurrent duplicate.
-          return Object.freeze({ kind: 'duplicate' });
-        }
-        const unsafeDispatch =
-          state.attemptStatus === 'running' && mayHaveDispatchedUnsafely(state);
-        if (unsafeDispatch)
-          throw new PreviewAttemptStateError('expired_after_dispatch');
-
-        if (state.runDeadlineExpired) {
-          await terminalizeExpiredPreview(client, {
+  return auditingDeliveryMismatch(
+    pool,
+    previewConsumerName,
+    {
+      workspaceId: input.workspaceId,
+      delivery: input.delivery,
+      signal: input.signal,
+    },
+    () =>
+      withTenantScopedClient(
+        pool,
+        { workspaceId: input.workspaceId },
+        async (client): Promise<PreviewClaimResult> => {
+          await validatePreviewDelivery(client, {
             delivery: input.delivery,
             previewAttemptId: input.previewAttemptId,
             previewRunId: input.previewRunId,
             workspaceId: input.workspaceId,
           });
-          return Object.freeze({ kind: 'duplicate' });
-        }
 
-        const { claimedRow, lease } = await claimPreviewLease(client, input);
-        // The lease and its reconciliation wake-up commit together. Redis is
-        // only delivery acceleration: an unpublished delayed outbox row
-        // remains authoritative through queue loss or worker termination.
-        await insertPreviewOutboxDelivery(client, {
-          attemptFenceToken: lease.attemptFenceToken,
-          availableAt: claimedRow.leaseExpiresAt,
-          jobName: 'reconcile-preview-attempt',
-          previewAttemptId: input.previewAttemptId,
-          previewRunId: input.previewRunId,
-          ...(lease.traceparent === undefined
-            ? {}
-            : { traceparent: lease.traceparent }),
-          workspaceId: input.workspaceId,
-        });
-        return Object.freeze({ kind: 'claimed', lease });
-      },
-      optionsFor(input.signal),
-    );
-  } catch (error: unknown) {
-    if (
-      error instanceof PreviewDeliveryMismatchError &&
-      !input.signal?.aborted
-    ) {
-      // A mismatched delivery is a durable tenant-scoped security fact. It
-      // is written in its own transaction because the business transaction
-      // above rolled back with the failure.
-      await auditPreviewDeliveryMismatch(pool, previewConsumerName, {
-        workspaceId: input.workspaceId,
-        delivery: input.delivery,
-        signal: input.signal ?? new AbortController().signal,
-      });
-    }
-    throw error;
-  }
+          // A prior claim may have crashed before completing business work;
+          // durable attempt state below decides whether redelivery may proceed.
+          // The receipt completes only together with a terminal outcome.
+          if (
+            (await claimPreviewReceipt(
+              client,
+              previewConsumerName,
+              input.workspaceId,
+              input.delivery,
+            )) === 'completed'
+          )
+            return Object.freeze({ kind: 'duplicate' });
+
+          const state = await lockPreviewClaimState(client, input);
+          if (TERMINAL_PREVIEW_STATUSES.has(state.attemptStatus)) {
+            await completePreviewReceipt(
+              client,
+              previewConsumerName,
+              input.workspaceId,
+              input.delivery,
+            );
+            return Object.freeze({ kind: 'duplicate' });
+          }
+          const leaseStillLive =
+            state.attemptStatus === 'running' && state.liveLease;
+          if (leaseStillLive) {
+            // Another live worker owns the single logical attempt; at-least-once
+            // transport makes this delivery a concurrent duplicate.
+            return Object.freeze({ kind: 'duplicate' });
+          }
+          const unsafeDispatch =
+            state.attemptStatus === 'running' &&
+            mayHaveDispatchedUnsafely(state);
+          if (unsafeDispatch)
+            throw new PreviewAttemptStateError('expired_after_dispatch');
+
+          if (state.runDeadlineExpired) {
+            await terminalizeExpiredPreview(client, {
+              delivery: input.delivery,
+              previewAttemptId: input.previewAttemptId,
+              previewRunId: input.previewRunId,
+              workspaceId: input.workspaceId,
+            });
+            return Object.freeze({ kind: 'duplicate' });
+          }
+
+          const { claimedRow, lease } = await claimPreviewLease(client, input);
+          // The lease and its reconciliation wake-up commit together. Redis is
+          // only delivery acceleration: an unpublished delayed outbox row
+          // remains authoritative through queue loss or worker termination.
+          await insertPreviewOutboxDelivery(client, {
+            attemptFenceToken: lease.attemptFenceToken,
+            availableAt: claimedRow.leaseExpiresAt,
+            jobName: 'reconcile-preview-attempt',
+            previewAttemptId: input.previewAttemptId,
+            previewRunId: input.previewRunId,
+            ...(lease.traceparent === undefined
+              ? {}
+              : { traceparent: lease.traceparent }),
+            workspaceId: input.workspaceId,
+          });
+          return Object.freeze({ kind: 'claimed', lease });
+        },
+        optionsFor(input.signal),
+      ),
+  );
 }
 
 async function claimPreviewLease(

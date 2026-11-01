@@ -5,6 +5,9 @@ import type { parseStoredExecutionValue } from '../runs/values/stored-execution.
 export type PreviewStatus =
   (typeof PREVIEW_STATUS)[keyof typeof PREVIEW_STATUS];
 
+export type PreviewSideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
+export type PreviewDryRun = 'not_supported' | 'provider_supported';
+
 export type PreviewDelivery = Readonly<{
   outboxEventId: string;
   payloadChecksum: string;
@@ -34,7 +37,7 @@ export type PreviewAttemptLease = Readonly<{
   workspaceId: string;
   definitionKey: string;
   definitionVersion: number;
-  dryRun: 'not_supported' | 'provider_supported';
+  dryRun: PreviewDryRun;
   executableNode: Readonly<Record<string, unknown>>;
   executorKey: string;
   executorVersion: number;
@@ -54,7 +57,7 @@ export type PreviewAttemptLease = Readonly<{
   providerIdempotencyKey?: string;
   providerDispatchBinding?: string;
   providerDispatchUnresolved?: true;
-  sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
+  sideEffectClass: PreviewSideEffectClass;
   traceparent?: string;
   workflowId: string;
 }>;
