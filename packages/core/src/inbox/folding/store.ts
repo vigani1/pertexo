@@ -10,6 +10,7 @@ import {
   type DatabaseRuntime,
   withPlatformTransaction,
 } from '@pertexo/database/platform';
+import { NOTICE_WINDOW_SQL } from '../lifetime.js';
 import { createAttentionObserver } from '../observations/observe.js';
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
@@ -56,7 +57,7 @@ export function createWorkspaceInboxFoldStore(
           // The cross-workspace fold function owns queue claiming and revision allocation.
           const result = await drizzle(client)
             .execute<{ workspace_id: string; revision: string }>(
-              sql`select workspace_id,revision::text from app.fold_workspace_inbox_events(${limit})`,
+              sql`select workspace_id,revision::text from app.fold_workspace_inbox_events(${limit},${NOTICE_WINDOW_SQL})`,
             )
             .catch(rethrowQueryFailure);
           return Object.freeze(

@@ -93,7 +93,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         [randomUUID(), workspaceId, workflowId, runId],
       );
       await database.query(
-        'select * from app.fold_workspace_inbox_events(100)',
+        "select * from app.fold_workspace_inbox_events(100,interval '720 hours')",
       );
       return {
         workspaceId,
