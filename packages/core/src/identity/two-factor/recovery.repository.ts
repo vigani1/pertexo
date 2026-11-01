@@ -5,16 +5,14 @@ import type {
 } from './contract.js';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type {
-  DatabaseConfig,
-  SystemMailInput,
-} from '@pertexo/database/platform';
+import type { DatabaseConfig } from '@pertexo/database/platform';
+import type { SystemMailInput } from '@pertexo/secrets/server';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
-  insertSystemMail,
   withPlatformTransaction,
 } from '@pertexo/database/platform';
+import { insertSystemMail } from '@pertexo/secrets/server';
 import { authTwoFactors, users } from '@pertexo/database/schema';
 import { canonicalEmailSql } from '../canonical-email.js';
 import { recordIdentitySecurityFact } from '../facts.repository.js';

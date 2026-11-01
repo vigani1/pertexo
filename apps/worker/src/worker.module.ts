@@ -7,7 +7,7 @@ import type {
   DatabaseRuntime,
   WorkspaceDatabase,
 } from '@pertexo/database/platform';
-import { createSystemMailDeliveryStore } from '@pertexo/database/platform';
+import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
 import {
   createNoticeMailStore,
   createWorkspaceInboxFoldStore,

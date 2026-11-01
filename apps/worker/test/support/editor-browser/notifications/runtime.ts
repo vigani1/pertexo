@@ -4,10 +4,8 @@ import {
   createWorkspaceInboxFoldStore,
   createNoticeMailStore,
 } from '@pertexo/core/inbox';
-import {
-  createSystemMailDeliveryStore,
-  type DatabaseConfig,
-} from '@pertexo/database/platform';
+import { type DatabaseConfig } from '@pertexo/database/platform';
+import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
 import {
   createApplicationSecretEnvelope,
   createSystemMailClient,

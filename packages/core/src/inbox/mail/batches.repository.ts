@@ -2,10 +2,8 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { noticeMailBatches, noticeMailItems } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
-import {
-  insertSystemMail,
-  generatePersistedId,
-} from '@pertexo/database/platform';
+import { generatePersistedId } from '@pertexo/database/platform';
+import { insertSystemMail } from '@pertexo/secrets/server';
 import type { PreferenceRow } from '../preferences/effective.js';
 import type { NoticeMailPerson, NoticeMailSealer } from './contract.js';
 import { mailItem } from './items.js';

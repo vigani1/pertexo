@@ -1,5 +1,5 @@
 import { sealedPayload as sealedMailPayloadSchema } from './input.js';
-import { authenticationMailAssociatedData } from '@pertexo/database/platform';
+import { authenticationMailAssociatedData } from '@pertexo/secrets/server';
 import { randomUUID } from 'node:crypto';
 
 import type {
@@ -7,7 +7,7 @@ import type {
   SystemMailInput,
   SealedSystemMailPayload,
   SystemMailPurpose,
-} from '@pertexo/database/platform';
+} from '@pertexo/secrets/server';
 import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
 
 export type PreparedAuthenticationProofMail = Readonly<{

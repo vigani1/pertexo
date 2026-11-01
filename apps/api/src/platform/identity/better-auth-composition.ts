@@ -1,4 +1,4 @@
-import { createSystemMailEnqueueStore } from '@pertexo/database/platform';
+import { createSystemMailEnqueueStore } from '@pertexo/secrets/server';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

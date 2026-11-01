@@ -8,11 +8,9 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 
 import { authEmailProofs, authSessions, users } from '@pertexo/database/schema';
-import {
-  withPlatformTransaction,
-  insertSystemMail,
-} from '@pertexo/database/platform';
-import type { SystemMailInput } from '@pertexo/database/platform';
+import { withPlatformTransaction } from '@pertexo/database/platform';
+import { insertSystemMail } from '@pertexo/secrets/server';
+import type { SystemMailInput } from '@pertexo/secrets/server';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { recordIdentitySecurityFact } from './facts.repository.js';
 import { admitNewAccount, type SignUpMode } from './sign-up.js';

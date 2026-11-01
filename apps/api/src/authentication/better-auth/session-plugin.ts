@@ -1,5 +1,5 @@
 import { isSecurityMutationPath } from './transactions/response.js';
-import { insertSystemMail } from '@pertexo/database/platform';
+import { insertSystemMail } from '@pertexo/secrets/server';
 import {
   isAuthenticationSessionAllowed,
   recordIdentitySecurityFact,

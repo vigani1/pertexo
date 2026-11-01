@@ -8,7 +8,7 @@ import { openNoticeUnsubscribe } from '@pertexo/integrations/server';
 import { sealNoticeMail } from '../../../src/mail/notice-content.js';
 import { randomUUID } from 'node:crypto';
 
-import { createSystemMailDeliveryStore } from '@pertexo/database/platform';
+import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
 
 import {
   createApplicationSecretEnvelope,
