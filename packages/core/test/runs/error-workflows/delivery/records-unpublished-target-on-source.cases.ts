@@ -1,6 +1,6 @@
 import { readErrorWorkflow } from '../../../../src/runs/error-workflows/read.queries.js';
 
-import { createWorkspacePurgeCoordinator } from '../../../../src/lifecycle/purge/repository.js';
+import { createWorkspacePurgeCoordinator } from '../../../../src/lifecycle/purge/coordinator.js';
 import { maintenanceUrl } from '../../../lifecycle/retention.support.js';
 
 import { withWorkspaceTransaction } from '@pertexo/database/primitives';

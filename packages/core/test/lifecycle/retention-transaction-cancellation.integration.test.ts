@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { inRetentionTransaction } from '../../src/lifecycle/retention/transactions.repository.js';
+import { inRetentionTransaction } from '../../src/lifecycle/retention/transaction.js';
 import { dropDisconnectedDatabase } from '@pertexo/database/testing';
 
 const adminUrl =

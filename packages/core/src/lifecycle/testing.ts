@@ -1,15 +1,12 @@
 export {
   changeWorkspaceLifecycle,
   WORKSPACE_RECOVERY_DAYS,
-} from './deletion/repository.js';
-export { createRetentionDatabase } from './retention/repository.js';
+} from './deletion/change.repository.js';
+export { createRetentionDatabase } from './retention/store.js';
 export { RETENTION_RULES } from './retention/rules.js';
-export { createRunArtifactRetentionCoordinator } from './artifacts/repository.js';
-export { createWorkspacePurgeCoordinator } from './purge/repository.js';
-export {
-  PURGE_PRESERVED_TABLES,
-  PURGE_STEPS,
-} from './purge/steps.repository.js';
+export { createRunArtifactRetentionCoordinator } from './artifacts/coordinator.js';
+export { createWorkspacePurgeCoordinator } from './purge/coordinator.js';
+export { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './purge/steps.js';
 export type {
   WorkspacePurgeCoordinator,
   WorkspacePurgeObjectStore,
@@ -26,7 +23,7 @@ export type {
   RetentionDatabaseOptions,
   RetentionPassResult,
 } from './retention/contract.js';
-export { createPreviewRetentionCoordinator } from './previews/repository.js';
+export { createPreviewRetentionCoordinator } from './previews/coordinator.js';
 export type {
   PreviewRetentionArtifactStore,
   PreviewRetentionCoordinator,

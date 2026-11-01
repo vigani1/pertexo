@@ -9,7 +9,7 @@ import { parseDatabaseConfig } from '@pertexo/database/platform';
 
 import { RunVariableSnapshotUnavailableError } from '../../../src/runs/commands/variables.repository.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
-import { createRetentionDatabase } from '../../../src/lifecycle/retention/repository.js';
+import { createRetentionDatabase } from '../../../src/lifecycle/retention/store.js';
 import { admin } from '../../lifecycle/calls/fixtures.js';
 import { maintenanceUrl, userId } from '../../lifecycle/retention.support.js';
 import {

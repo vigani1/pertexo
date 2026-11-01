@@ -8,8 +8,8 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createRetentionDatabase } from '../../src/lifecycle/retention/repository.js';
-import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/artifacts/repository.js';
+import { createRetentionDatabase } from '../../src/lifecycle/retention/store.js';
+import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/artifacts/coordinator.js';
 
 export const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

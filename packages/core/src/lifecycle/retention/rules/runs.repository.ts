@@ -30,7 +30,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { expiredRunSql } from '../../../runs/data-policy.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { callHasNoPendingWork } from '../../calls/retention.repository.js';
+import { callHasNoPendingWork } from './calls.repository.js';
 
 // Live human interactions may outlast the normal input window.
 export const runInputs = {

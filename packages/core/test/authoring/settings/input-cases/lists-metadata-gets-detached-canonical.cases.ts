@@ -5,7 +5,7 @@ import {
 } from '../../../../src/authoring/input-cases/errors.js';
 import { WorkflowNotFoundError } from '../../../../src/authoring/workflows/errors.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
-import { createRetentionDatabase } from '../../../../src/lifecycle/retention/repository.js';
+import { createRetentionDatabase } from '../../../../src/lifecycle/retention/store.js';
 import {
   workspaceId,
   dispatcherUrl,

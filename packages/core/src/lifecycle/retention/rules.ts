@@ -3,35 +3,35 @@ import {
   runInputs,
   runDetails,
   runSummaries,
-} from './execution/runs.repository.js';
+} from './rules/runs.repository.js';
 import {
   dataTableReceipts,
   webhookResponses,
   nodeDetails,
   events,
   checkpoints,
-} from './execution/records.repository.js';
-import { auditHistory, connectionHistory } from './audit.repository.js';
+} from './rules/run-records.repository.js';
+import { auditHistory, connectionHistory } from './rules/audit.repository.js';
 import {
   webhookReplays,
   webhookDeliveries,
   coordinatedEvents,
   eventWindows,
   scheduleOccurrences,
-} from './triggers.repository.js';
+} from './rules/triggers.repository.js';
 import {
   testSnapshots,
   inputPayloads,
   deletedInputCases,
   stepSamples,
   webhookTests,
-} from './authoring.repository.js';
-import { unsentAuthenticationMail } from './identity.repository.js';
+} from './rules/authoring.repository.js';
+import { unsentAuthenticationMail } from './rules/identity.repository.js';
 import {
   invitationExpiry,
   acceptanceIntents,
   invitationRecipients,
-} from './invitations.repository.js';
+} from './rules/invitations.repository.js';
 import {
   presence,
   publicationRequests,
@@ -41,7 +41,7 @@ import {
   commandReceipts,
   creationReceipts,
   startRejections,
-} from './metadata.repository.js';
+} from './rules/metadata.repository.js';
 import {
   provisioningCredentials,
   sessions,
@@ -51,18 +51,18 @@ import {
   emailProofs,
   identityFacts,
   authenticationMail,
-} from './identity.repository.js';
+} from './rules/identity.repository.js';
 
 import { CALLBACK_TASK_RETENTION_RULE } from '../../runs/pending-tasks/callbacks/retention.js';
 import { RUN_VALUES_RETENTION_RULE } from '../../runs/values/retention.js';
 
 import { VARIABLE_SET_RETENTION_RULE } from '../../variables/retention.repository.js';
-import { API_TOKEN_RETENTION_RULE } from '../identity/tokens.repository.js';
-import { reapInvitationReplacementClaims } from '../invitations/claims.repository.js';
+import { API_TOKEN_RETENTION_RULE } from './rules/api-tokens.repository.js';
+import { reapInvitationReplacementClaims } from './rules/invitation-claims.repository.js';
 import {
   CALL_CHILD_REFERENCES_RETENTION_RULE,
   CALL_DETAILS_RETENTION_RULE,
-} from '../calls/retention.repository.js';
+} from './rules/calls.repository.js';
 
 /**
  * What retention removes and when. Each rule clears or deletes at most one page

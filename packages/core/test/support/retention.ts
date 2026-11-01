@@ -1,5 +1,5 @@
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createRetentionDatabase } from '../../src/lifecycle/retention/repository.js';
+import { createRetentionDatabase } from '../../src/lifecycle/retention/store.js';
 import type { RetentionRuleName } from '../../src/lifecycle/retention/rules.js';
 
 /**

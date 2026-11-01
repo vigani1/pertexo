@@ -12,7 +12,7 @@ import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { deletionRule } from './rows.repository.js';
+import { deletionRule } from '../deletion-rule.js';
 
 const expiredProvisioning = sql`${authProvisioningCredentials.revokedAt}<=clock_timestamp()-interval '30 days'`;
 export const provisioningCredentials = deletionRule(

@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
 import { WorkspaceRunAdmissionDeniedError } from '../../../src/runs/commands/acceptance/errors.js';
-import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/repository.js';
+import { changeWorkspaceLifecycle } from '../../../src/lifecycle/deletion/change.repository.js';
 import { runEvents } from '@pertexo/database/schema';
 import {
   acceptanceInput,

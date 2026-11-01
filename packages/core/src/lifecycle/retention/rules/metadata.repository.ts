@@ -9,8 +9,8 @@ import {
   workflowManualStartRejections,
 } from '@pertexo/database/schema';
 import { and, eq, inArray, lte, sql } from 'drizzle-orm';
-import { RUN_SUMMARY_RETENTION_SQL } from '../../runs/data-policy.js';
-import { deletionRule } from './rows.repository.js';
+import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/data-policy.js';
+import { deletionRule } from '../deletion-rule.js';
 
 const presenceExpired = lte(
   workflowPresenceLeases.expiresAt,

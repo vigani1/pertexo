@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/repository.js';
+import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/coordinator.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { maintenanceUrl } from '../../lifecycle/retention.support.js';
 import { admin, taskFixture } from './fixtures.js';

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { createRetentionDatabase } from '../../../../src/lifecycle/retention/repository.js';
+import { createRetentionDatabase } from '../../../../src/lifecycle/retention/store.js';
 import { setVariableSet } from '../../../support/variable-sets.js';
 import { workspaceId } from '../../../support/workflow-authoring.js';
 import { command, database, fixture, maintenance, query } from './fixture.js';

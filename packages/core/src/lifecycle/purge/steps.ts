@@ -124,11 +124,11 @@ import {
   workflowVersionDependencies,
   workflowTemplateOrigins,
 } from '@pertexo/database/schema';
-import { purgeDirectoryMemberships } from '../identity/directory.repository.js';
-import { reapInvitationReplacementClaims } from '../invitations/claims.repository.js';
+import { purgeDirectoryMemberships } from './directory.repository.js';
+import { reapInvitationReplacementClaims } from '../retention/rules/invitation-claims.repository.js';
 
 import type { PurgeStep } from './contract.js';
-import { deleteRows } from './rows.repository.js';
+import { deleteRows } from './delete-rows.js';
 
 /**
  * Tables a purge keeps after scrubbing what identifies people or requests:

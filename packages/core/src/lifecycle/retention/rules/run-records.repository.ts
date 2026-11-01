@@ -12,7 +12,7 @@ import {
   expiredRunSql,
   RUN_DETAILS_RETENTION_SQL,
 } from '../../../runs/data-policy.js';
-import { deletionRule } from '../rows.repository.js';
+import { deletionRule } from '../deletion-rule.js';
 
 const query = new QueryBuilder(),
   run = alias(workflowRuns, 'run');
