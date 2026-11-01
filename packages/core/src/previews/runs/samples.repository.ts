@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
   parseWorkflowGraphDraft,
   stepSampleBindings,
@@ -6,6 +6,7 @@ import {
 import { workflowStepSamples } from '@pertexo/database/schema';
 import { parseStoredExecutionValue } from '@pertexo/database/primitives';
 import { WorkflowStepSampleError } from '../../authoring/step-samples/errors.js';
+import { readDatabaseClock } from '../clock.queries.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 export async function resolvePreviewSample(
@@ -37,12 +38,7 @@ export async function resolvePreviewSample(
     throw new WorkflowStepSampleError('changed');
   if (sample === undefined) return undefined;
   // Read time after the row lock: a waiter may have crossed expiry without a row change.
-  const clock = await transaction.db.execute<{ now: Date }>(
-    sql`select clock_timestamp() now`,
-  );
-  const now = clock.rows[0]?.now;
-  if (now === undefined) throw new Error('Preview sample time is unavailable');
-  if (sample.expiresAt <= new Date(now))
+  if (sample.expiresAt <= (await readDatabaseClock(transaction.db)))
     throw new WorkflowStepSampleError('expired');
   const binding = stepSampleBindings(parseWorkflowGraphDraft(graph)).get(
     input.nodeId,

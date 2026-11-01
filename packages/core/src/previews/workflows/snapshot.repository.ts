@@ -17,6 +17,7 @@ import type { WorkflowTestPins } from '@pertexo/workflow-engine';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 
+import { readDatabaseClock } from '../clock.queries.js';
 import { WorkflowTestError } from './errors.js';
 
 export async function loadTestSnapshot(
@@ -39,13 +40,7 @@ export async function loadTestSnapshot(
     .orderBy(asc(workflowStepSamples.nodeId))
     .for('share')
     .catch(rethrowQueryFailure);
-  const clock = await db
-    .execute<{ now: string }>(sql`select clock_timestamp() now`)
-    .catch(rethrowQueryFailure);
-  const databaseTime = clock.rows[0]?.now;
-  if (databaseTime === undefined)
-    throw new Error('Test admission time is unavailable');
-  const now = new Date(databaseTime);
+  const now = await readDatabaseClock(db);
   const pins: Record<string, WorkflowTestPins[string]> = Object.create(
     null,
   ) as Record<string, WorkflowTestPins[string]>;

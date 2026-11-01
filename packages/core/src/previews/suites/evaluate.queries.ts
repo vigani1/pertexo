@@ -21,6 +21,7 @@ import {
   workflowRuns,
   workflowTestSnapshots,
 } from '@pertexo/database/schema';
+import { isActiveTestRun } from '../workflows/rules.js';
 import type { SuiteCaseRow } from './contract.js';
 export interface SuiteRunOutcome {
   status: WorkflowTestSuiteReport['actualOutcome'];
@@ -118,10 +119,7 @@ export async function readSuiteRunOutcome(
   const required = Object.entries(row.dispositions)
     .filter(([, kind]) => kind === 'pin_required')
     .map(([nodeId]) => nodeId);
-  if (
-    required.length === 0 ||
-    ['queued', 'running', 'waiting'].includes(row.status)
-  )
+  if (required.length === 0 || isActiveTestRun(row.status))
     return {
       status: row.status,
       outputRef: row.outputRef,

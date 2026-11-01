@@ -1,4 +1,4 @@
-import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, ne, sql, type SQL } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   workflowTestSuites,
@@ -16,10 +16,13 @@ import {
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
 } from '../../runs/commands/acceptance/errors.js';
+import { readDatabaseClock } from '../clock.queries.js';
 import { lockTestAuthority } from '../workflows/access.js';
+import { isActiveTestRun } from '../workflows/rules.js';
 import type { SuiteRow, SuiteCaseRow } from './contract.js';
 import { admitSuiteCase } from './admit.js';
 import { suiteOutcome } from './rules.js';
+import { skipPendingCases } from './cases.queries.js';
 import { evaluateSuiteCase, readSuiteRunOutcome } from './evaluate.queries.js';
 
 async function stop(
@@ -40,14 +43,20 @@ async function stop(
     )
     .catch(rethrowQueryFailure);
   suite.stopReason ??= reason;
+  await skipPendingCases(client, suite.workspaceId, suite.id);
+}
+async function checkSuiteAgain(
+  client: PoolClient,
+  suite: SuiteRow,
+  after: SQL,
+): Promise<void> {
   await drizzle(client)
-    .update(workflowTestSuiteCases)
-    .set({ status: 'skipped' })
+    .update(workflowTestSuites)
+    .set({ nextCheckAt: sql`clock_timestamp()+${after}` })
     .where(
       and(
-        eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
-        eq(workflowTestSuiteCases.suiteId, suite.id),
-        eq(workflowTestSuiteCases.status, 'pending'),
+        eq(workflowTestSuites.workspaceId, suite.workspaceId),
+        eq(workflowTestSuites.id, suite.id),
       ),
     )
     .catch(rethrowQueryFailure);
@@ -138,12 +147,7 @@ export async function advanceSuite(
       if (error instanceof WorkflowNotFoundError) allowed = false;
       else throw error;
     }
-  const clock = await db
-    .execute<{ now: string }>(sql`select clock_timestamp() now`)
-    .catch(rethrowQueryFailure);
-  const databaseTime = clock.rows[0]?.now;
-  if (databaseTime === undefined) throw new Error('Suite clock is unavailable');
-  const now = new Date(databaseTime);
+  const now = await readDatabaseClock(db);
   if (!allowed) await stop(client, suite, 'authority_lost');
   else if (workflow[0]?.lifecycleStatus !== 'active')
     await stop(client, suite, 'workflow_archived');
@@ -221,17 +225,8 @@ async function completeActiveSuiteCase(
         ),
       )
       .catch(rethrowQueryFailure);
-  } else if (['queued', 'running', 'waiting'].includes(run.status)) {
-    await drizzle(client)
-      .update(workflowTestSuites)
-      .set({ nextCheckAt: sql`clock_timestamp()+interval '1 second'` })
-      .where(
-        and(
-          eq(workflowTestSuites.workspaceId, suite.workspaceId),
-          eq(workflowTestSuites.id, suite.id),
-        ),
-      )
-      .catch(rethrowQueryFailure);
+  } else if (isActiveTestRun(run.status)) {
+    await checkSuiteAgain(client, suite, sql`interval '1 second'`);
     return true;
   } else {
     const result = await evaluateSuiteCase(client, entry, run);
@@ -266,31 +261,13 @@ async function admitNextSuiteCase(
     await drizzle(client)
       .execute(sql`release savepoint suite_case_admission`)
       .catch(rethrowQueryFailure);
-    await drizzle(client)
-      .update(workflowTestSuites)
-      .set({ nextCheckAt: sql`clock_timestamp()+interval '1 second'` })
-      .where(
-        and(
-          eq(workflowTestSuites.workspaceId, suite.workspaceId),
-          eq(workflowTestSuites.id, suite.id),
-        ),
-      )
-      .catch(rethrowQueryFailure);
+    await checkSuiteAgain(client, suite, sql`interval '1 second'`);
   } catch (error) {
     await drizzle(client)
       .execute(sql`rollback to savepoint suite_case_admission`)
       .catch(rethrowQueryFailure);
     if (error instanceof WorkspaceRunQuotaExceededError)
-      await drizzle(client)
-        .update(workflowTestSuites)
-        .set({ nextCheckAt: sql`clock_timestamp()+interval '5 seconds'` })
-        .where(
-          and(
-            eq(workflowTestSuites.workspaceId, suite.workspaceId),
-            eq(workflowTestSuites.id, suite.id),
-          ),
-        )
-        .catch(rethrowQueryFailure);
+      await checkSuiteAgain(client, suite, sql`interval '5 seconds'`);
     else if (error instanceof WorkspaceRunAdmissionDeniedError) {
       await stop(client, suite, 'admission_denied');
       await finish(client, suite);

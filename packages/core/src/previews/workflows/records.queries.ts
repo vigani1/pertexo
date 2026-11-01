@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowRuns, workflowTestSnapshots } from '@pertexo/database/schema';
@@ -12,6 +12,7 @@ import type { PoolClient } from 'pg';
 
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import { WorkflowTestError } from './errors.js';
+import { ACTIVE_TEST_RUN_STATUSES } from './rules.js';
 import type { WorkflowTestDetail, WorkflowTestSummary } from './contract.js';
 
 const run = alias(workflowRuns, 'run');
@@ -48,7 +49,7 @@ function listTestRows(client: PoolClient, input: SampleScope) {
     )
     .where(visibleTest(input))
     .orderBy(
-      sql`(${run.startedBy}=${input.actorId} and ${run.status} in ('queued','running','waiting')) desc nulls last`,
+      sql`(${run.startedBy}=${input.actorId} and ${inArray(run.status, ACTIVE_TEST_RUN_STATUSES)}) desc nulls last`,
       desc(run.createdAt),
       desc(run.id),
     )

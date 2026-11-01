@@ -1,6 +1,10 @@
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 
-import type { PreviewStatus } from '../../contract.js';
+import type {
+  PreviewDryRun,
+  PreviewSideEffectClass,
+  PreviewStatus,
+} from '../../contract.js';
 
 import type { parseStoredExecutionValue } from '@pertexo/database/primitives';
 
@@ -10,7 +14,7 @@ export type AcceptPreviewRunInput = Readonly<{
   definitionVersion: number;
   draftFingerprint: string;
   draftRevision: number;
-  dryRun: 'not_supported' | 'provider_supported';
+  dryRun: PreviewDryRun;
   executableNode: Readonly<Record<string, unknown>> & {
     connectionRefs?: Record<string, string>;
   };
@@ -28,7 +32,7 @@ export type AcceptPreviewRunInput = Readonly<{
   operation: 'preview.execute';
   requestHash: string;
   scope: string;
-  sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
+  sideEffectClass: PreviewSideEffectClass;
   workflowId: string;
   expectedSampleId?: string | null | undefined;
   operationKey?: string | undefined;
@@ -67,10 +71,10 @@ export type PreviewRunRecord = Readonly<{
   draftRevision: number;
   nodeId: string;
   status: PreviewStatus;
-  sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
+  sideEffectClass: PreviewSideEffectClass;
   mayContactProvider: boolean;
   mayCauseExternalSideEffect: boolean;
-  dryRun: 'not_supported' | 'provider_supported';
+  dryRun: PreviewDryRun;
   output: ReturnType<typeof parseStoredExecutionValue> | null;
   pinnedSampleId?: string | null;
   safeErrorCode: string | null;

@@ -1,13 +1,16 @@
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model';
+import {
+  canonicalPreviewOutcome,
+  sameStoredCompletion,
+  type CanonicalCompletionOutcome,
+} from './outcome.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Pool, PoolClient } from 'pg';
 import {
   rethrowQueryFailure,
-  parseStoredExecutionValue,
-  serializeStoredExecutionValue,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
@@ -17,35 +20,17 @@ import type {
 } from './contract.js';
 import { appendPreviewTerminalFacts } from './facts.repository.js';
 
-import type {
-  PreviewDelivery,
-  PreviewStatus,
-  PreviewTerminalOutcome,
-} from '../contract.js';
+import type { PreviewDelivery } from '../contract.js';
 import { previewConsumerName } from '../delivery.js';
-import {
-  PreviewAttemptStateError,
-  PreviewDeliveryMismatchError,
-} from '../errors.js';
+import { PreviewAttemptStateError } from '../errors.js';
 import { optionsFor } from '../input.js';
 import { PREVIEW_STATUS, UNFINISHED_PREVIEW_STATUSES } from '../state.js';
 import {
-  auditPreviewDeliveryMismatch,
+  auditingDeliveryMismatch,
   completePreviewReceipt,
   readPreviewReceipt,
   validatePreviewDelivery,
 } from './deliveries.repository.js';
-
-type CanonicalCompletionOutcome =
-  | Readonly<{
-      outputRef: string;
-      status: typeof PREVIEW_STATUS.succeeded;
-    }>
-  | Readonly<{
-      safeErrorCode: string;
-      errorSummary: string | null;
-      status: Exclude<PreviewStatus, 'queued' | 'running' | 'succeeded'>;
-    }>;
 
 type PreviewCompletionScope = Readonly<{
   attemptFenceToken: number;
@@ -102,36 +87,8 @@ async function exactDuplicateCompletion(
   const row = current[0];
   if (row === undefined || receipt !== 'completed')
     throw new PreviewAttemptStateError('completion_lost');
-  const statusesMatch =
-    row.attemptStatus === outcome.status && row.runStatus === outcome.status;
-  let valuesMatch = false;
-  if (outcome.status === PREVIEW_STATUS.succeeded) {
-    try {
-      valuesMatch =
-        serializeStoredExecutionValue(
-          parseStoredExecutionValue(row.attemptOutputRef),
-        ) === outcome.outputRef &&
-        serializeStoredExecutionValue(
-          parseStoredExecutionValue(row.runOutputRef),
-        ) === outcome.outputRef &&
-        row.attemptSafeErrorCode === null &&
-        row.runSafeErrorCode === null;
-    } catch {
-      valuesMatch = false;
-    }
-  } else {
-    valuesMatch =
-      row.attemptOutputRef === null &&
-      row.runOutputRef === null &&
-      row.attemptSafeErrorCode === outcome.safeErrorCode &&
-      row.runSafeErrorCode === outcome.safeErrorCode &&
-      row.errorSummary === outcome.errorSummary;
-  }
-  const completionMismatch =
-    !statusesMatch ||
-    !valuesMatch ||
-    canonicalJson(row.codeDiagnostics) !== canonicalJson(diagnostics ?? null);
-  if (completionMismatch) throw new PreviewAttemptStateError('completion_lost');
+  if (!sameStoredCompletion(row, outcome, diagnostics))
+    throw new PreviewAttemptStateError('completion_lost');
   return Object.freeze({ kind: 'duplicate' });
 }
 
@@ -146,107 +103,88 @@ export async function completePreviewAttempt(
   };
   const diagnostics = input.codeDiagnostics;
   const outcome = canonicalPreviewOutcome(input.outcome);
-  try {
-    return await withTenantScopedClient(
-      pool,
-      { workspaceId: scope.workspaceId },
-      async (client): Promise<PreviewCompletionResult> => {
-        await validatePreviewDelivery(client, {
-          delivery: input.delivery,
-          previewAttemptId: scope.previewAttemptId,
-          previewRunId: scope.previewRunId,
-          workspaceId: scope.workspaceId,
-        });
-        const receipt = await readPreviewReceipt(
-          client,
-          previewConsumerName,
-          scope.workspaceId,
-          input.delivery,
-        );
-        const terminal = await writePreviewTerminalAttempt(client, scope, {
-          outcome,
-          diagnostics,
-        });
-        if (terminal.length !== 1)
-          return exactDuplicateCompletion(client, scope, {
+  return auditingDeliveryMismatch(
+    pool,
+    previewConsumerName,
+    {
+      workspaceId: scope.workspaceId,
+      delivery: input.delivery,
+      signal: input.signal,
+    },
+    () =>
+      withTenantScopedClient(
+        pool,
+        { workspaceId: scope.workspaceId },
+        async (client): Promise<PreviewCompletionResult> => {
+          await validatePreviewDelivery(client, {
+            delivery: input.delivery,
+            previewAttemptId: scope.previewAttemptId,
+            previewRunId: scope.previewRunId,
+            workspaceId: scope.workspaceId,
+          });
+          const receipt = await readPreviewReceipt(
+            client,
+            previewConsumerName,
+            scope.workspaceId,
+            input.delivery,
+          );
+          const terminal = await writePreviewTerminalAttempt(client, scope, {
             outcome,
-            receipt,
             diagnostics,
           });
-        if (receipt !== 'open')
-          throw new PreviewAttemptStateError('receipt_already_completed');
-        const syncedRuns = await drizzle(client)
-          .update(previewRuns)
-          .set({
+          if (terminal.length !== 1)
+            return exactDuplicateCompletion(client, scope, {
+              outcome,
+              receipt,
+              diagnostics,
+            });
+          if (receipt !== 'open')
+            throw new PreviewAttemptStateError('receipt_already_completed');
+          const syncedRuns = await drizzle(client)
+            .update(previewRuns)
+            .set({
+              status: outcome.status,
+              outputRef: sql`${outcome.status === PREVIEW_STATUS.succeeded ? outcome.outputRef : null}::json`,
+              safeErrorCode:
+                outcome.status === PREVIEW_STATUS.succeeded
+                  ? null
+                  : outcome.safeErrorCode,
+              completedAt: sql`clock_timestamp()`,
+              updatedAt: sql`clock_timestamp()`,
+            })
+            .where(
+              and(
+                eq(previewRuns.workspaceId, scope.workspaceId),
+                eq(previewRuns.id, scope.previewRunId),
+                inArray(previewRuns.status, UNFINISHED_PREVIEW_STATUSES),
+              ),
+            )
+            .returning({ id: previewRuns.id })
+            .catch(rethrowQueryFailure);
+          if (syncedRuns.length !== 1)
+            throw new PreviewAttemptStateError('run_sync_lost');
+          await appendPreviewTerminalFacts(client, {
+            previewAttemptId: scope.previewAttemptId,
+            previewRunId: scope.previewRunId,
             status: outcome.status,
-            outputRef: sql`${outcome.status === PREVIEW_STATUS.succeeded ? outcome.outputRef : null}::json`,
-            safeErrorCode:
-              outcome.status === PREVIEW_STATUS.succeeded
-                ? null
-                : outcome.safeErrorCode,
-            completedAt: sql`clock_timestamp()`,
-            updatedAt: sql`clock_timestamp()`,
-          })
-          .where(
-            and(
-              eq(previewRuns.workspaceId, scope.workspaceId),
-              eq(previewRuns.id, scope.previewRunId),
-              inArray(previewRuns.status, UNFINISHED_PREVIEW_STATUSES),
-            ),
-          )
-          .returning({ id: previewRuns.id })
-          .catch(rethrowQueryFailure);
-        if (syncedRuns.length !== 1)
-          throw new PreviewAttemptStateError('run_sync_lost');
-        await appendPreviewTerminalFacts(client, {
-          previewAttemptId: scope.previewAttemptId,
-          previewRunId: scope.previewRunId,
-          status: outcome.status,
-          workspaceId: scope.workspaceId,
-        });
-        // The inbox receipt completes atomically with the truthful business
-        // outcome, exactly like production attempt transitions.
-        await completePreviewReceipt(
-          client,
-          previewConsumerName,
-          scope.workspaceId,
-          {
-            outboxEventId: scope.delivery.outboxEventId,
-            payloadChecksum: scope.delivery.payloadChecksum,
-          },
-        );
-        return Object.freeze({ kind: 'committed' });
-      },
-      optionsFor(input.signal),
-    );
-  } catch (error: unknown) {
-    if (
-      error instanceof PreviewDeliveryMismatchError &&
-      !input.signal?.aborted
-    ) {
-      await auditPreviewDeliveryMismatch(pool, previewConsumerName, {
-        workspaceId: scope.workspaceId,
-        delivery: input.delivery,
-        signal: input.signal ?? new AbortController().signal,
-      });
-    }
-    throw error;
-  }
-}
-
-function canonicalPreviewOutcome(
-  outcome: PreviewTerminalOutcome,
-): CanonicalCompletionOutcome {
-  return outcome.status === PREVIEW_STATUS.succeeded
-    ? ({
-        status: PREVIEW_STATUS.succeeded,
-        outputRef: serializeStoredExecutionValue(outcome.output),
-      } as const)
-    : ({
-        safeErrorCode: outcome.safeErrorCode,
-        errorSummary: outcome.errorSummary ?? null,
-        status: outcome.status,
-      } as const);
+            workspaceId: scope.workspaceId,
+          });
+          // The inbox receipt completes atomically with the truthful business
+          // outcome, exactly like production attempt transitions.
+          await completePreviewReceipt(
+            client,
+            previewConsumerName,
+            scope.workspaceId,
+            {
+              outboxEventId: scope.delivery.outboxEventId,
+              payloadChecksum: scope.delivery.payloadChecksum,
+            },
+          );
+          return Object.freeze({ kind: 'committed' });
+        },
+        optionsFor(input.signal),
+      ),
+  );
 }
 
 async function writePreviewTerminalAttempt(
