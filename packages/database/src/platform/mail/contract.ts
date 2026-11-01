@@ -1,10 +1,6 @@
-export type SystemMailPurpose =
-  | 'workspace_notice'
-  | 'two_factor_disabled'
-  | 'recovery_code_sign_in'
-  | 'verification'
-  | 'password_reset'
-  | 'email_change_confirmation';
+import type { SystemMailPurpose } from '../../schema/mail/deliveries.js';
+
+export type { SystemMailPurpose };
 
 export type SealedSystemMailPayload = Readonly<{
   ciphertext: string;

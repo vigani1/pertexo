@@ -1,4 +1,3 @@
-import type { SystemMailPurpose } from '../../platform/mail/contract.js';
 import {
   type PgTableExtraConfigValue,
   bigint,
@@ -12,6 +11,14 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
+
+export type SystemMailPurpose =
+  | 'workspace_notice'
+  | 'two_factor_disabled'
+  | 'recovery_code_sign_in'
+  | 'verification'
+  | 'password_reset'
+  | 'email_change_confirmation';
 
 export const systemMailDeliveries = appSchema.table(
   'system_mail_deliveries',

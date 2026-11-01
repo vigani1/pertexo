@@ -1,5 +1,4 @@
-import type { StoredExecutionValue } from '../../platform/stored-execution-value.js';
-import type { NodeAttemptLease } from '../stored-shapes.js';
+import type { NodeAttemptLease, StoredExecutionValue } from '../stored-shapes.js';
 import type { RunStatus } from '@pertexo/workflow-engine';
 import type { PreviewAttemptLease, PreviewStatus } from '../stored-shapes.js';
 import type { RecoveryNode } from '@pertexo/workflow-engine';

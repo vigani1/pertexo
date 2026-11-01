@@ -46,6 +46,7 @@ import { webhookRunResponses } from './schema/triggers/responses.js';
 export { workflowStepSamples } from './schema/authoring/step-samples.js';
 import { workflowStepSamples } from './schema/authoring/step-samples.js';
 import { systemMailDeliveries } from './schema/mail/deliveries.js';
+export type { SystemMailPurpose } from './schema/mail/deliveries.js';
 import {
   noticeWorkspaceSettings,
   noticePreferences,
@@ -547,4 +548,6 @@ export type {
   WebhookReplayCheck,
   WebhookSignatureCheck,
   WorkflowTriggerHealth,
+  StoredExecutionJsonValue,
+  StoredExecutionValue,
 } from './schema/stored-shapes.js';
