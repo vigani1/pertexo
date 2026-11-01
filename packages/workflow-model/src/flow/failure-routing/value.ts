@@ -5,10 +5,26 @@ import { z } from 'zod';
 // can't read, or an error in its code (2026-10-19 amendment). Cancellation,
 // unknown outcomes, deadlines and platform limits never route.
 const routableCodes = {
-  authentication: ['execution.authentication'],
+  authentication: [
+    'execution.authentication',
+    'http.oauth2_not_connected',
+    'http.oauth2_connection_revoked',
+    'http.oauth2_grant_revoked',
+    'http.oauth2_client_rejected',
+    'http.oauth2_token_expired',
+  ],
   network: ['execution.network'],
-  provider: ['execution.provider'],
-  rate_limit: ['execution.rate_limit'],
+  provider: [
+    'execution.provider',
+    'http.oauth2_token_endpoint_unavailable',
+    'http.oauth2_token_response_invalid',
+    'http.oauth2_refresh_busy',
+    'http.pagination_origin_changed',
+    'http.pagination_too_large',
+    'http.pagination_invalid_page',
+    'http.pagination_invalid_navigation',
+  ],
+  rate_limit: ['execution.rate_limit', 'http.oauth2_token_rate_limited'],
   timeout: [
     'execution.timeout',
     'execution.expression_timed_out',
@@ -16,6 +32,9 @@ const routableCodes = {
   ],
   configuration: [
     'execution.configuration',
+    'http.oauth2_token_address_blocked',
+    'http.oauth2_host_not_allowed',
+    'http.pagination_budget_exceeded',
     'execution.attempt_invalid',
     'execution.variable_missing',
     'execution.expression_failed',
