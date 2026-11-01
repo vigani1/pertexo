@@ -3,16 +3,16 @@ import {
   workspaceMemberships,
   authDirectoryGroups,
   authDirectoryGroupMappings,
-  authDirectoryUsers,
   authDirectoryMemberships,
 } from '@pertexo/database/schema';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
 import { readDirectoryRole } from '../roles.queries.js';
+import { readAdoptableDirectoryUser } from './adoption.queries.js';
 import type { Pool } from 'pg';
 import { DirectoryError } from '../errors.js';
 import { projectDirectoryMemberships } from '../projection.repository.js';
@@ -103,21 +103,11 @@ export async function adoptDirectoryMembership(
         (entry) => entry.workspace_id === input.targetWorkspaceId,
       );
       if (workspace === undefined) throw new DirectoryError('invalid_value');
-      const [user] = await drizzle(client)
-        .select({
-          user_id: authDirectoryUsers.userId,
-          revision: authDirectoryUsers.revision,
-        })
-        .from(authDirectoryUsers)
-        .where(
-          and(
-            eq(authDirectoryUsers.organizationId, organization.id),
-            eq(authDirectoryUsers.id, input.directoryUserId),
-            eq(authDirectoryUsers.active, true),
-            isNull(authDirectoryUsers.deletedAt),
-          ),
-        )
-        .catch(rethrowQueryFailure);
+      const user = await readAdoptableDirectoryUser(
+        client,
+        organization.id,
+        input.directoryUserId,
+      );
       if (user?.user_id === null || user === undefined)
         throw new DirectoryError('invalid_value');
       if (user.revision !== input.directoryRevision)
