@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { acceptManualFixtureRun } from '../manual-start.js';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { requestWorkflowRunCancellation } from '@pertexo/core/testing';
-import { createOperatorCommandStore } from '@pertexo/core/runs';
+import { createOperatorCommandStore } from '@pertexo/core/operator';
 
 import {
   buildWorkflowExecutable,

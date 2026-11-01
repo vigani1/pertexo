@@ -3,8 +3,8 @@ import type {
   OperatorCommandRecord,
   OperatorCommandResult,
   GenericOperatorCommandResult,
-  StuckWork,
-} from '@pertexo/core/runs';
+} from '@pertexo/core/operator';
+import type { StuckWork } from '@pertexo/core/runs';
 import type { StructuredLogger } from '@pertexo/observability';
 import type { TelemetryLifecycle } from '@pertexo/observability/startup';
 import { classifyProcessError } from '@pertexo/observability/startup';

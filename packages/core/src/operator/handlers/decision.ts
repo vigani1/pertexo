@@ -9,3 +9,13 @@ export type OperatorDecision = Readonly<{
   pending?: boolean;
   auditMetadata?: AuditMetadata;
 }>;
+
+export function withoutNulls(
+  value: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([, entry]) => entry !== null && entry !== undefined,
+    ),
+  );
+}

@@ -4,8 +4,9 @@ import { serializeBoundedPlainJson } from '@pertexo/database/primitives';
 
 import type { CommandRequest } from './contract.js';
 
-/** Request material is bounded by the largest field, a 64 KiB replay input. */
-const MATERIAL_BYTES = 131_072;
+export const REPLAY_INPUT_BYTES = 65_536;
+/** Request material is bounded by its largest field, a replay input, with room for the rest. */
+const MATERIAL_BYTES = REPLAY_INPUT_BYTES * 2;
 
 export function requestFingerprint(request: CommandRequest): string {
   const material = serializeBoundedPlainJson(

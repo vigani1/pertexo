@@ -2,34 +2,60 @@ import type {
   AuditMetadata,
   WorkspaceTransaction,
 } from '@pertexo/database/primitives';
-import type { StuckWork } from '../runs/stalled/contract.js';
 import type { OperatorDecision } from './handlers/decision.js';
-import type {
-  RedispatchInput,
-  ReconcileAttemptInput,
-  TargetRunInput,
-  TargetWorkflowInput,
-  ReplayRunInput,
-  UnknownEvidenceInput,
-  GetCommandInput,
-  Options,
-} from './input.js';
 
-export type OperatorCommandStoreOptions = Readonly<Options>;
+export class OperatorCommandConflictError extends Error {
+  public constructor() {
+    super('Operator command replay conflicts with the existing request');
+    this.name = 'OperatorCommandConflictError';
+  }
+}
 
-export type RedispatchFailedOutboxInput = Readonly<RedispatchInput>;
+export type OperatorCommandStoreOptions = Readonly<{
+  lockTimeoutMs?: number;
+  statementTimeoutMs?: number;
+}>;
 
-export type ReconcileOperatorAttemptInput = Readonly<ReconcileAttemptInput>;
+type CommandInput = Readonly<{
+  actorRef: string;
+  commandId: string;
+  dryRun: boolean;
+  reason: string;
+  workspaceId: string;
+  signal?: AbortSignal | undefined;
+}>;
 
-export type OperatorRunCommandInput = Readonly<TargetRunInput>;
+export type RedispatchFailedOutboxInput = CommandInput &
+  Readonly<{ outboxEventId: string }>;
 
-export type OperatorWorkflowCommandInput = Readonly<TargetWorkflowInput>;
+export type ReconcileOperatorAttemptInput = CommandInput &
+  Readonly<{
+    action: 'outcome_unknown' | 'reclaim';
+    attemptId: string;
+    expectedFenceToken: number;
+  }>;
 
-export type ReplayOperatorRunInput = Readonly<ReplayRunInput>;
+export type OperatorRunCommandInput = CommandInput &
+  Readonly<{ runId: string }>;
 
-export type RecordUnknownOutcomeEvidenceInput = Readonly<UnknownEvidenceInput>;
+export type OperatorWorkflowCommandInput = CommandInput &
+  Readonly<{ workflowId: string }>;
 
-export type GetOperatorCommandInput = Readonly<GetCommandInput>;
+export type ReplayOperatorRunInput = CommandInput &
+  Readonly<{
+    runInput: unknown;
+    sourceRunId: string;
+    workflowVersionId: string;
+  }>;
+
+export type RecordUnknownOutcomeEvidenceInput = Omit<CommandInput, 'dryRun'> &
+  Readonly<{
+    attemptId: string;
+    evidenceKind: string;
+    evidenceRef: Readonly<Record<string, unknown>>;
+  }>;
+
+export type GetOperatorCommandInput = Omit<CommandInput, 'dryRun'>;
 
 type CommandStatus = 'completed' | 'failed' | 'pending';
 
@@ -79,37 +105,6 @@ export type OperatorCommandRecord = Readonly<{
   requestFingerprint: string;
   status: CommandStatus;
 }>;
-
-export interface OperatorCommandStore {
-  checkReadiness(signal?: AbortSignal): Promise<void>;
-  /** Reads across workspaces: an operator doesn't yet know which one is stuck. */
-  listStuckWork(): Promise<StuckWork>;
-  close(): Promise<void>;
-  getCommand(
-    input: GetOperatorCommandInput,
-  ): Promise<OperatorCommandRecord | null>;
-  cancelRun(
-    input: OperatorRunCommandInput,
-  ): Promise<GenericOperatorCommandResult>;
-  reconcileAttempt(
-    input: ReconcileOperatorAttemptInput,
-  ): Promise<GenericOperatorCommandResult>;
-  recordUnknownOutcomeEvidence(
-    input: RecordUnknownOutcomeEvidenceInput,
-  ): Promise<GenericOperatorCommandResult>;
-  redispatchFailedOutbox(
-    input: RedispatchFailedOutboxInput,
-  ): Promise<OperatorCommandResult>;
-  resumeDueWork(
-    input: OperatorRunCommandInput,
-  ): Promise<GenericOperatorCommandResult>;
-  replayRun(
-    input: ReplayOperatorRunInput,
-  ): Promise<GenericOperatorCommandResult>;
-  retryTriggerReconciliation(
-    input: OperatorWorkflowCommandInput,
-  ): Promise<GenericOperatorCommandResult>;
-}
 
 export type CommandRequest = Readonly<{
   commandId: string;

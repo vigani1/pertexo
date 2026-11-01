@@ -3,7 +3,7 @@ import { JOB_NAME } from '@pertexo/queue';
 
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 
-import { createOperatorCommandStore } from '@pertexo/core/runs';
+import { createOperatorCommandStore } from '@pertexo/core/operator';
 import { parseOperatorDatabaseConfig } from '@pertexo/database/platform';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 

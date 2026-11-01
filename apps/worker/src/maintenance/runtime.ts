@@ -1,8 +1,6 @@
 import { errorWorkflowFactories } from '../notifications/error-workflow.js';
-import type {
-  ErrorWorkflowStore,
-  OperatorRunReplayStore,
-} from '@pertexo/core/runs';
+import type { OperatorRunReplayStore } from '@pertexo/core/operator';
+import type { ErrorWorkflowStore } from '@pertexo/core/runs';
 import { operatorRunReplayFactories } from '../operator/run-replay.js';
 import {
   connectionHealthObservationFactories,

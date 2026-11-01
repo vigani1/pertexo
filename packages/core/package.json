@@ -40,6 +40,10 @@
       "types": "./dist/notifications/index.d.ts",
       "default": "./dist/notifications/index.js"
     },
+    "./operator": {
+      "types": "./dist/operator/index.d.ts",
+      "default": "./dist/operator/index.js"
+    },
     "./outbox": {
       "types": "./dist/outbox/index.d.ts",
       "default": "./dist/outbox/index.js"

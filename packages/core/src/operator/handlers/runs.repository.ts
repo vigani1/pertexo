@@ -7,8 +7,11 @@ import {
 } from '@pertexo/database/schema';
 import { requestWorkflowRunCancellation } from '../../runs/commands/cancel.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type { OperatorDecision } from './decision.js';
-import { withoutNulls, enqueueAdvance } from './enqueue.js';
+import { withoutNulls, type OperatorDecision } from './decision.js';
+import { enqueueAdvance } from './enqueue.js';
+
+/** Due nodes one resume marks; the result says when more remain. */
+const RESUME_PAGE = 100;
 
 /**
  * Wakes a run's due node retries and resumes, one page at a time, and its
@@ -189,6 +192,3 @@ function checkpointIsDue(workspaceId: string, runId: string) {
     ),
   );
 }
-
-/** Due nodes one resume marks; the result says when more remain. */
-const RESUME_PAGE = 100;
