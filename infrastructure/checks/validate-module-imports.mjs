@@ -48,14 +48,39 @@ function isRuntimeImport(statement) {
 }
 
 const coreSource = 'packages/core/src/';
+/**
+ * Areas that have moved into core and haven't had their pass (ADR 091). Reaching
+ * into one isn't checked; its pass takes it off this list. It can only shrink: the
+ * test beside this check pins it.
+ */
+export const AREAS_NOT_YET_PASSED = new Set([
+  'artifacts',
+  'attempts',
+  'authoring',
+  'connections',
+  'data-tables',
+  'execution',
+  'governance',
+  'identity',
+  'inbox',
+  'lifecycle',
+  'notifications',
+  'operator',
+  'outbox',
+  'previews',
+  'runs',
+  'tenant-access',
+  'triggers',
+]);
 // Tests answer only to the direction rules, but they do answer to them.
 const SCANNED_FOLDERS = ['src', 'test', 'e2e', 'e2e-live'];
 
 /**
- * What a relative import inside a core area reaches: another area past its
- * index, or a door at core's root, which sits above every area.
+ * What a relative import inside a core area reaches: a door at core's root, which
+ * sits above every area, or a passed area by anything but a file its index names.
+ * Going through the index itself would turn the areas' cycle into file cycles.
  */
-function coreAreaViolation(file, specifier) {
+function coreAreaViolation(file, specifier, namedFiles) {
   if (!file.startsWith(coreSource) || !specifier.startsWith('.')) return;
   const [area, ...own] = file.slice(coreSource.length).split('/');
   if (own.length === 0) return;
@@ -66,8 +91,39 @@ function coreAreaViolation(file, specifier) {
   const [targetArea, ...rest] = target.slice(coreSource.length).split('/');
   if (rest.length === 0)
     return `core areas don't import core's entry points; ${specifier} sits above them`;
-  if (targetArea === area || rest.join('/') === 'index.js') return;
-  return `core areas meet at their index; import ${targetArea}/index.js`;
+  if (targetArea === area || AREAS_NOT_YET_PASSED.has(targetArea)) return;
+  const reached = rest.join('/');
+  if (reached === 'index.js')
+    return `core areas import the files ${targetArea}/index.ts names, never the index`;
+  if (!namedFiles(targetArea).has(reached))
+    return `core areas import the files ${targetArea}/index.ts names, and it doesn't name ${reached}`;
+}
+
+/** The relative files one core area's index re-exports from: its public files. */
+function indexNamedFiles(sources) {
+  const named = new Map();
+  return (area) => {
+    if (named.has(area)) return named.get(area);
+    const index = `${coreSource}${area}/index.ts`;
+    const files = new Set();
+    const text = sources[index];
+    if (text !== undefined)
+      for (const statement of ts.createSourceFile(
+        index,
+        text,
+        ts.ScriptTarget.Latest,
+        true,
+      ).statements)
+        if (
+          ts.isExportDeclaration(statement) &&
+          statement.moduleSpecifier &&
+          ts.isStringLiteral(statement.moduleSpecifier) &&
+          statement.moduleSpecifier.text.startsWith('./')
+        )
+          files.add(statement.moduleSpecifier.text.slice(2));
+    named.set(area, files);
+    return files;
+  };
 }
 
 /** A database entry point meant for core, by name or by a path around its door. */
@@ -130,6 +186,7 @@ const isSource = (file) => /^(?:apps|packages)\/[^/]+\/src\//u.test(file);
 export function validateModuleImports(sources) {
   const errors = [];
   const graph = new Map();
+  const namedFiles = indexNamedFiles(sources);
   for (const [file, text] of Object.entries(sources)) {
     const source = ts.createSourceFile(
       file,
@@ -194,7 +251,7 @@ export function validateModuleImports(sources) {
       }
       if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return;
       const target = resolveTarget(specifier);
-      const areaViolation = coreAreaViolation(file, specifier);
+      const areaViolation = coreAreaViolation(file, specifier, namedFiles);
       if (areaViolation !== undefined) errors.push(`${file}: ${areaViolation}`);
       if (runtime && target !== undefined) dependencies.push(target);
     };

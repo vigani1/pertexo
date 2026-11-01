@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  AREAS_NOT_YET_PASSED,
   inspectModuleImports,
   validateModuleImports,
 } from './validate-module-imports.mjs';
@@ -263,20 +264,96 @@ test('keeps the direction apps -> core -> database', () => {
   }
 });
 
-test('core areas meet at their index', () => {
-  const area = (specifier) =>
+test('a passed area is reached through the files its index names', () => {
+  const area = (statement) =>
     validateModuleImports({
-      'packages/core/src/runs/start.ts': `import { a } from '${specifier}';`,
+      'packages/core/src/runs/start.ts': statement,
       'packages/core/src/runs/own.ts': 'export const a = 1;',
-      'packages/core/src/variables/index.ts': 'export const a = 1;',
+      'packages/core/src/variables/index.ts':
+        "export { a } from './public.js';\nexport type {} from './internal/named.js';",
+      'packages/core/src/variables/public.ts': 'export const a = 1;',
       'packages/core/src/variables/private.ts': 'export const a = 1;',
+      'packages/core/src/variables/internal/named.ts': 'export const a = 1;',
     });
-  assert.match(
-    area('../variables/private.js').join('\n'),
-    /core areas meet at their index/u,
+  for (const form of [
+    'import { a } from',
+    'import type { A } from',
+    'export { a } from',
+  ]) {
+    assert.match(
+      area(`${form} '../variables/private.js';`).join('\n'),
+      /it doesn't name private\.js/u,
+    );
+    assert.match(
+      area(`${form} '../variables/index.js';`).join('\n'),
+      /never the index/u,
+    );
+    assert.deepEqual(area(`${form} '../variables/public.js';`), []);
+    assert.deepEqual(area(`${form} '../variables/internal/named.js';`), []);
+  }
+  assert.deepEqual(area("import { a } from './own.js';"), []);
+});
+
+test('naming a file with an empty type export adds no runtime edge', () => {
+  assert.deepEqual(
+    validateModuleImports({
+      'packages/core/src/variables/index.ts':
+        "export type {} from './named.js';",
+      'packages/core/src/variables/named.ts':
+        "import { a } from './index.js';\nexport const b = a;",
+    }),
+    [],
   );
-  assert.deepEqual(area('../variables/index.js'), []);
-  assert.deepEqual(area('./own.js'), []);
+});
+
+test("an area not yet passed can be reached past its index, and one that has can't", () => {
+  for (const area of AREAS_NOT_YET_PASSED)
+    assert.deepEqual(
+      validateModuleImports({
+        'packages/core/src/variables/start.ts': `import { a } from '../${area}/deep/file.js';`,
+      }),
+      [],
+      area,
+    );
+  for (const passed of ['variables', 'shared'])
+    assert.match(
+      validateModuleImports({
+        'packages/core/src/runs/start.ts': `import { a } from '../${passed}/deep/file.js';`,
+      }).join('\n'),
+      /doesn't name deep\/file\.js/u,
+      passed,
+    );
+});
+
+test('the list of areas not yet passed can only shrink', () => {
+  // A pass removes its area from both lists. Adding to this one, or to the check's,
+  // is a decision to take in review: the rule exists so areas get off the list.
+  const AT_THE_MOVE = [
+    'artifacts',
+    'attempts',
+    'authoring',
+    'connections',
+    'data-tables',
+    'execution',
+    'governance',
+    'identity',
+    'inbox',
+    'lifecycle',
+    'notifications',
+    'operator',
+    'outbox',
+    'previews',
+    'runs',
+    'tenant-access',
+    'triggers',
+  ];
+  for (const area of AREAS_NOT_YET_PASSED)
+    assert.ok(
+      AT_THE_MOVE.includes(area),
+      `${area} joined the list of areas not yet passed; it may only shrink`,
+    );
+  assert.ok(!AREAS_NOT_YET_PASSED.has('variables'));
+  assert.ok(!AREAS_NOT_YET_PASSED.has('shared'));
 });
 
 test('a test door never reaches code that ships', () => {

@@ -8,4 +8,4 @@ export {
   type ReplaceWorkspaceVariablesInput,
   type VariableUsageInput,
 } from './contract.js';
-export type { WorkspaceActor } from '../shared/index.js';
+export type { WorkspaceActor } from '../shared/workspace-access.js';
