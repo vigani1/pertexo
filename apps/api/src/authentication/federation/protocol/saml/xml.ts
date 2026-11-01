@@ -1,7 +1,9 @@
 import { isUtf8 } from 'node:buffer';
 
-import { SAML_LIMITS } from '@pertexo/contracts';
+import { SAML_LIMITS, type FederationFailureReason } from '@pertexo/contracts';
 import { DOMParser } from '@xmldom/xmldom';
+
+import { FederationProofError } from '../failure.js';
 
 export const SAML = 'urn:oasis:names:tc:SAML:2.0';
 export const SAML_ASSERTION = `${SAML}:assertion`;
@@ -22,8 +24,10 @@ const digests = new Set([
   'http://www.w3.org/2001/04/xmlenc#sha512',
 ]);
 
-export function invalidSaml(): never {
-  throw new Error('SAML identity proof is invalid');
+export function invalidSaml(
+  reason: FederationFailureReason = 'saml_unreadable',
+): never {
+  throw new FederationProofError(reason, 'SAML identity proof is invalid');
 }
 function isElement(node: Node): node is Element {
   return node.nodeType === 1;
@@ -43,19 +47,24 @@ export function onlyChild(
   parent: Element,
   namespace: string,
   name: string,
+  reason?: FederationFailureReason,
 ): Element {
   const found = children(parent, namespace, name);
   return found.length === 1 && found[0] !== undefined
     ? found[0]
-    : invalidSaml();
+    : invalidSaml(reason);
 }
 export function plainText(element: Element): string {
   if (Array.from(element.childNodes).some(isElement)) return invalidSaml();
   return element.textContent;
 }
-export function requiredAttribute(element: Element, name: string): string {
+export function requiredAttribute(
+  element: Element,
+  name: string,
+  reason?: FederationFailureReason,
+): string {
   const value = element.getAttribute(name);
-  return value === null || value.length === 0 ? invalidSaml() : value;
+  return value === null || value.length === 0 ? invalidSaml(reason) : value;
 }
 
 /** Reject recovery/ambiguous XML before the signature library sees the same bytes. */
@@ -63,9 +72,9 @@ export function parseXml(xml: string): Document {
   if (Buffer.byteLength(xml) > SAML_LIMITS.xmlBytes) return invalidSaml();
   const document = new DOMParser({
     errorHandler: {
-      warning: invalidSaml,
-      error: invalidSaml,
-      fatalError: invalidSaml,
+      warning: () => invalidSaml(),
+      error: () => invalidSaml(),
+      fatalError: () => invalidSaml(),
     },
   }).parseFromString(xml, 'application/xml');
   if (document.doctype !== null) return invalidSaml();
@@ -131,7 +140,7 @@ export function requireModernSignature(parent: Element) {
       ),
     )
   )
-    return invalidSaml();
+    return invalidSaml('saml_signature_algorithm');
   const reference = onlyChild(info, DSIG, 'Reference');
   if (
     requiredAttribute(reference, 'URI') !==
@@ -143,7 +152,7 @@ export function requireModernSignature(parent: Element) {
       ),
     )
   )
-    return invalidSaml();
+    return invalidSaml('saml_signature_algorithm');
   const transforms = children(
     onlyChild(reference, DSIG, 'Transforms'),
     DSIG,
@@ -156,7 +165,7 @@ export function requireModernSignature(parent: Element) {
       algorithm !== `${DSIG}enveloped-signature` &&
       !canonicalization.has(algorithm)
     )
-      return invalidSaml();
+      return invalidSaml('saml_signature_algorithm');
   }
 }
 

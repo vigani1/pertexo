@@ -7,6 +7,37 @@ import { delegatedWorkspaceRoleSchema } from '../membership.js';
 export const federationProtocolSchema = z.enum(['oidc', 'saml']);
 export type FederationProtocol = z.output<typeof federationProtocolSchema>;
 
+/** Why a provider's proof was refused: a fixed code, never what the proof said. */
+export const federationFailureReasonSchema = z.enum([
+  'saml_unreadable',
+  'saml_destination',
+  'saml_request',
+  'saml_issuer',
+  'saml_status',
+  'saml_assertion_count',
+  'saml_signature_count',
+  'saml_signature_algorithm',
+  'saml_signature_invalid',
+  'saml_certificate',
+  'saml_time',
+  'saml_audience',
+  'saml_name_id',
+  'saml_subject_confirmation',
+  'oidc_provider',
+  'oidc_token',
+  'oidc_email_unverified',
+  'identity_claims',
+  'email_domain',
+  'account_refused',
+  'callback_invalid',
+  'attempt_unavailable',
+  'test_owner',
+  'unavailable',
+]);
+export type FederationFailureReason = z.output<
+  typeof federationFailureReasonSchema
+>;
+
 const samlXmlBytes = 256 * 1024;
 export const SAML_LIMITS = Object.freeze({
   metadataBytes: 64 * 1024,

@@ -1,10 +1,13 @@
+import { Logger } from '@nestjs/common';
 import type { OrganizationIdentity } from '../protocol/identity.js';
+import { federationFailureReason } from '../protocol/failure.js';
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { OrganizationSignInCommands } from '@pertexo/core/identity';
 import {
   federationProtocolSchema,
   samlServiceProviderUrls,
+  type FederationFailureReason,
   type FederationProtocol,
   federationDiscoveryQuerySchema,
 } from '@pertexo/contracts';
@@ -28,6 +31,11 @@ import { type BrowserSession, prepareOrganizationStart } from './start.js';
 import { failure } from './reply.js';
 
 const callbackPath = '/v1/auth/federation/oidc/callback';
+const logger = new Logger('OrganizationSignIn');
+
+type FoundAttempt = NonNullable<
+  Awaited<ReturnType<OrganizationSignInCommands['find']>>
+>;
 
 export class OrganizationSignIn {
   private readonly commands: OrganizationSignInCommands;
@@ -192,37 +200,31 @@ export class OrganizationSignIn {
       callback === undefined ||
       browser === undefined ||
       !isJourneyToken(browser);
-    if (unavailableCallback) return this.failed();
+    if (unavailableCallback)
+      return this.failed({ protocol, reason: 'callback_invalid' });
     const state = callback.state;
     let destination: string | undefined;
     let testing = false;
+    const fail = (reason: FederationFailureReason) =>
+      this.failed({ protocol, reason, path: destination, testing });
     try {
       const attempt = await this.commands.find(
         journeyDigest(state),
         journeyDigest(browser),
       );
-      if (attempt?.provider.kind !== protocol) return this.failed();
+      if (attempt?.provider.kind !== protocol)
+        return fail('attempt_unavailable');
       testing = attempt.purpose === 'test';
       destination = attempt.returnPath;
-      let ownerSessionId: string | undefined;
-      if (testing && protocol === 'oidc') {
-        const current = await this.input.authenticate(request);
-        if (
-          current?.userId !== attempt.ownerUserId ||
-          current.sessionId !== attempt.ownerSessionId
-        )
-          return this.failed(destination, { testing: true });
-        ownerSessionId = current.sessionId;
-      }
-      if (testing && protocol === 'saml')
-        ownerSessionId = attempt.ownerSessionId ?? undefined;
+      const owner = await this.testOwner(request, attempt);
+      if (owner.refused) return fail('test_owner');
+      const { ownerSessionId } = owner;
       const identity = await this.verifyIdentity(attempt, callback, {
         state,
         browser,
         url,
       });
-      if (identity === undefined)
-        return this.failed(destination, { testing: testing });
+      if (identity === undefined) return fail('unavailable');
       const result = await this.commands.complete({
         attemptId: attempt.id,
         stateDigest: journeyDigest(state),
@@ -231,23 +233,47 @@ export class OrganizationSignIn {
         ...(ownerSessionId === undefined ? {} : { ownerSessionId }),
       });
       if (result.kind === 'failed')
-        return this.failed(destination, { testing: testing });
+        // Core decides and only says no. This names the likeliest cause for the owner.
+        return fail(
+          identity.email.split('@')[1] === attempt.domain
+            ? 'account_refused'
+            : 'email_domain',
+        );
       if (result.kind === 'tested')
         return this.land(result.returnPath, 'passed');
       return await landWithReplacementSession(
         this.input.deliver,
         result.token,
         () => this.land(result.returnPath),
-        () => this.failed(destination),
+        () => fail('unavailable'),
       );
-    } catch {
-      return this.failed(destination, { testing: testing });
+    } catch (error: unknown) {
+      return fail(federationFailureReason(error));
     }
   }
+  /** A SAML callback is cross-site, so it carries no session; the attempt names its owner. */
+  private async testOwner(
+    request: Request,
+    attempt: FoundAttempt,
+  ): Promise<
+    | Readonly<{ refused: true }>
+    | Readonly<{ refused: false; ownerSessionId: string | undefined }>
+  > {
+    if (attempt.purpose !== 'test')
+      return { refused: false, ownerSessionId: undefined };
+    if (attempt.provider.kind === 'saml')
+      return {
+        refused: false,
+        ownerSessionId: attempt.ownerSessionId ?? undefined,
+      };
+    const current = await this.input.authenticate(request);
+    return current?.userId === attempt.ownerUserId &&
+      current.sessionId === attempt.ownerSessionId
+      ? { refused: false, ownerSessionId: current.sessionId }
+      : { refused: true };
+  }
   private async verifyIdentity(
-    attempt: NonNullable<
-      Awaited<ReturnType<OrganizationSignInCommands['find']>>
-    >,
+    attempt: FoundAttempt,
     callback: OrganizationCallback,
     {
       state,
@@ -312,9 +338,16 @@ export class OrganizationSignIn {
         ),
     };
   }
-  private land(path: string, test?: 'passed' | 'failed'): Response {
+  private land(
+    path: string,
+    test?: 'passed' | Readonly<{ failed: FederationFailureReason }>,
+  ): Response {
     const destination = new URL(path, this.input.baseUrl);
-    if (test !== undefined) destination.searchParams.set('ssoTest', test);
+    if (test === 'passed') destination.searchParams.set('ssoTest', 'passed');
+    else if (test !== undefined) {
+      destination.searchParams.set('ssoTest', 'failed');
+      destination.searchParams.set('ssoReason', test.failed);
+    }
     return new Response(null, {
       status: 302,
       headers: {
@@ -323,11 +356,27 @@ export class OrganizationSignIn {
       },
     });
   }
-  private failed(
-    path?: string,
-    { testing = false }: Readonly<{ testing?: boolean | undefined }> = {},
-  ): Response {
-    if (testing && path !== undefined) return this.land(path, 'failed');
+  /**
+   * The operator's log gets a fixed code for every failure, and the owner who
+   * ran a test gets it on the page. A sign-in stays generic, so it can't be used
+   * to probe what a provider's setup expects.
+   */
+  private failed({
+    protocol,
+    reason,
+    path,
+    testing = false,
+  }: Readonly<{
+    protocol: FederationProtocol;
+    reason: FederationFailureReason;
+    path?: string | undefined;
+    testing?: boolean | undefined;
+  }>): Response {
+    logger.warn(
+      `Organization ${testing ? 'test' : 'sign-in'} failed: ${protocol} ${reason}`,
+    );
+    if (testing && path !== undefined)
+      return this.land(path, { failed: reason });
     const destination = new URL('/login', this.input.baseUrl);
     destination.searchParams.set('ssoError', 'true');
     if (path !== undefined && path !== '/workspaces')
