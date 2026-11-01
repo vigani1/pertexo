@@ -12,8 +12,9 @@ Owners and admins see connection attention, and a notice when failure alerts
 aren't reaching a destination: one notice per destination, however many alerts
 failed. It appears when the destination's latest alert in the past week didn't
 arrive, or when a workflow's alert setting points at a destination that's turned
-off or whose connection isn't working. It leaves when a later alert arrives, when
-you change the destination or its credential, or when no workflow depends on it.
+off or whose connection isn't working. It leaves when a later alert arrives or when
+you change the destination or its credential. For a destination that's off, it
+also leaves once no workflow points there.
 Approval cards use the task's actual
 allowed people. Its starter is excluded unless that step explicitly allows
 starter decisions. The Approvals list and authenticated task
