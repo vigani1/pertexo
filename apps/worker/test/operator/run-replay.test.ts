@@ -15,8 +15,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createOperatorRunReplayHandler } from '../../src/operator/run-replay.js';
 
-/* eslint-disable @typescript-eslint/unbound-method -- assertions target injected store spies */
-
 function delivery() {
   const data = {
     commandId: randomUUID(),
