@@ -1,4 +1,3 @@
-type CredentialRow = CredentialRecord;
 import type { DirectoryCredential } from '@pertexo/contracts';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -20,7 +19,9 @@ export type CredentialRecord = Awaited<
   ReturnType<typeof credentialRecords>
 >[number];
 
-export const publicCredential = (row: CredentialRow): DirectoryCredential => ({
+export const publicCredential = (
+  row: CredentialRecord,
+): DirectoryCredential => ({
   id: row.id,
   name: row.name,
   createdAt: row.created_at.toISOString(),

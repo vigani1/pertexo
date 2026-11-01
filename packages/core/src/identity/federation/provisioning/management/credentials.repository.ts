@@ -1,4 +1,3 @@
-import { credentialReceipt } from './receipt.js';
 import { publicCredential } from './credentials.queries.js';
 import { authProvisioningCredentials } from '@pertexo/database/schema';
 import { and, count, eq, isNull, sql } from 'drizzle-orm';
@@ -74,7 +73,7 @@ export async function createDirectoryCredential(
     },
   });
   if (!result.replayed) return { replayed: false, ...result.value };
-  const { credentialId } = credentialReceipt.parse(result.receipt);
+  const { credentialId } = result.receipt;
   // Authority is rechecked after the receipt transaction, before projecting mutable metadata.
   const credential = await withWorkspaceAccess(
     pool,
