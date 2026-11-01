@@ -96,6 +96,8 @@ describe('the deletion lock order', () => {
     ]);
     const workspaceRow =
       'select 1 from app.workspaces where id=$1 for update nowait';
+    const workspaceShared =
+      'select 1 from app.workspaces where id=$1 for share nowait';
     const userRow = (strength: string) =>
       `select 1 from app.users where id=$1 for ${strength} nowait`;
     try {
@@ -111,6 +113,7 @@ describe('the deletion lock order', () => {
       // Stopped at the user: it already holds the workspace row.
       await waitUntilBlocked(applicationName);
       expect(await canLock(workspaceRow, [workspace.id])).toBe(false);
+      expect(await canLock(workspaceShared, [workspace.id])).toBe(false);
 
       await heldUser.release();
       // Stopped at the membership: it holds the user row, but only shared.
