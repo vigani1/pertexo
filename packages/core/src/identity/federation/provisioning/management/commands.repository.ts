@@ -1,4 +1,3 @@
-import type { DirectoryCommand } from '../contract.js';
 import { authOrganizations } from '@pertexo/database/schema';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -32,7 +31,10 @@ import {
   recordFederationAudit,
 } from '../../management/authority.repository.js';
 import { advanceOrganization } from '../../management/commands.repository.js';
-import type { FederationScope } from '../../management/contract.js';
+import type {
+  FederationCommand,
+  FederationScope,
+} from '../../management/contract.js';
 import { DirectoryError } from '../errors.js';
 import {
   directoryWorkspaces,
@@ -140,9 +142,12 @@ export function readDirectoryAdoption(
  * organization and every bound user before authority, in the order a directory
  * fan-out uses, and a fan-out installs a scope per workspace.
  */
-export function runDirectoryCommand<T>(
+export function runDirectoryCommand<
+  Receipt extends Readonly<Record<string, unknown>>,
+  T,
+>(
   pool: Pool,
-  input: DirectoryCommand,
+  input: FederationCommand,
   {
     operation,
     request,
@@ -153,12 +158,10 @@ export function runDirectoryCommand<T>(
     change: (
       client: PoolClient,
       organization: DirectoryOrganization,
-    ) => Promise<
-      Readonly<{ receipt: Readonly<Record<string, unknown>>; value: T }>
-    >;
+    ) => Promise<Readonly<{ receipt: Receipt; value: T }>>;
   }>,
 ): Promise<
-  | Readonly<{ replayed: true; receipt: unknown }>
+  | Readonly<{ replayed: true; receipt: Receipt }>
   | Readonly<{ replayed: false; value: T }>
 > {
   return withPlatformTransaction(
@@ -182,7 +185,7 @@ export function runDirectoryCommand<T>(
         idempotencyKey: input.idempotencyKey,
       };
       const replay = await withWorkspaceScope(client, input, (scoped) =>
-        claimCommand(scoped, {
+        claimCommand<Receipt>(scoped, {
           ...identity,
           request,
           resourceId: generatePersistedId(),

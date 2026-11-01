@@ -1,6 +1,6 @@
 import type { DirectoryAdopt, DirectoryMappings } from '@pertexo/contracts';
 import type { Filter } from 'scim2-parse-filter';
-import type { FederationScope } from '../management/contract.js';
+import type { FederationCommand } from '../management/contract.js';
 
 import type { Role } from '@pertexo/workflow-model';
 
@@ -62,16 +62,13 @@ export type DirectoryOrganization = Readonly<{
   workspaces: readonly DirectoryWorkspace[];
 }>;
 
-export type DirectoryCommand = FederationScope &
-  Readonly<{ idempotencyKey: string; expectedRevision: number }>;
-
-export type CreateCredentialInput = DirectoryCommand &
+export type CreateCredentialInput = FederationCommand &
   Readonly<{ name: string }>;
-export type RevokeCredentialInput = DirectoryCommand &
+export type RevokeCredentialInput = FederationCommand &
   Readonly<{ credentialId: string }>;
-export type ReplaceMappingsInput = DirectoryCommand & DirectoryMappings;
-export type AdoptMembershipInput = DirectoryCommand & DirectoryAdopt;
-export type UnlinkWorkspaceInput = DirectoryCommand &
+export type ReplaceMappingsInput = FederationCommand & DirectoryMappings;
+export type AdoptMembershipInput = FederationCommand & DirectoryAdopt;
+export type UnlinkWorkspaceInput = FederationCommand &
   Readonly<{ targetWorkspaceId: string }>;
 
 export type DirectoryQuery = Readonly<{
