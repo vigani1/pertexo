@@ -16,7 +16,7 @@ import {
   editSchema,
   removeTable,
   configureTables,
-} from './tables/manage.repository.js';
+} from './definitions.repository.js';
 import { writeTableRows, importTableRows } from './rows/write.js';
 
 export function createDataTablesStore(

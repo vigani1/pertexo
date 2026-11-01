@@ -10,12 +10,12 @@ import type { Pool } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 
-import type { DataTablesStore } from '../contract.js';
-import { readQuotas, requireTable } from '../definitions.queries.js';
+import type { DataTablesStore } from './contract.js';
+import { readQuotas, requireTable } from './definitions.queries.js';
 
-import { editTableSchema } from '../columns/edit.repository.js';
+import { editTableSchema } from './columns/edit.repository.js';
 
-import { write, command } from '../command.js';
+import { write, command } from './command.js';
 
 export function createTable(
   pool: Pool,
