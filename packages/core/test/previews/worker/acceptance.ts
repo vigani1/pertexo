@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { drizzle } from 'drizzle-orm/node-postgres';
 
 import type { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { createPreviewRunStore } from '../../../src/previews/runs/store.js';
@@ -9,13 +8,7 @@ import type {
   PreviewAttemptLease,
   PreviewDelivery,
 } from '../../../src/previews/contract.js';
-import {
-  canonicalOutboxPayloadChecksum,
-  parseWorkspaceId,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
-
-import { databaseSchema } from '@pertexo/database/schema';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 
 import {
   workspaceId,
