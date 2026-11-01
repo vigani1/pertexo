@@ -9,14 +9,14 @@ import {
   webhookTriggerEndpoints as endpoints,
 } from '@pertexo/database/schema';
 
-import { and, eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 
 import { WebhookIngressRateLimitExceededError } from '../errors.js';
 import { endpointTakesDeliveries } from './endpoint-rules.js';
+import { readTriggerConfig } from './state.queries.js';
 import type {
   StoredWebhookTriggerSecret,
-  WebhookConfig,
   WebhookVerificationReference,
 } from './contract.js';
 
@@ -62,21 +62,8 @@ export async function resolveWebhookVerification(
   const config = await withWorkspaceReadTransaction(
     pool,
     workspaceId,
-    async (transaction) => {
-      const result = await transaction.db
-        .select({
-          desiredConfig: sql<WebhookConfig>`${workflowTriggers.desiredConfig}`,
-        })
-        .from(workflowTriggers)
-        .where(
-          and(
-            eq(workflowTriggers.workspaceId, workspaceId),
-            eq(workflowTriggers.id, triggerId),
-            eq(workflowTriggers.workflowVersionId, workflowVersionId),
-          ),
-        );
-      return result[0]?.desiredConfig;
-    },
+    (transaction) =>
+      readTriggerConfig(transaction, triggerId, workflowVersionId),
   );
   return Object.freeze({
     endpointId: row.endpointId,

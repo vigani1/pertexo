@@ -18,6 +18,10 @@ import {
 } from '../errors.js';
 
 import { command } from './commands.js';
+import {
+  authenticationChangeRotates,
+  provisionRefusal,
+} from './endpoint-rules.js';
 import type {
   Command,
   ConfigureWebhookAuthenticationInput,
@@ -69,11 +73,7 @@ export function configureWebhookAuthentication(
     const current = result[0]?.authentication;
     if (current === undefined) throw new WebhookTriggerNotFoundError();
     const next = input.authentication;
-    const rotated =
-      current.mode !== next.mode ||
-      (current.mode === 'header_secret' &&
-        next.mode === 'header_secret' &&
-        current.headerName !== next.headerName);
+    const rotated = authenticationChangeRotates(current, next);
     if (rotated) {
       const secret = await insertSecret(client, input, input.secret);
       await db
@@ -134,13 +134,8 @@ export function provisionWebhook(
       .catch(rethrowQueryFailure);
     const row = trigger[0];
     if (row === undefined) throw new WebhookTriggerNotFoundError();
-    const status = row.status;
-    if (status === 'desired' || status === 'pending')
-      throw new WebhookTriggerStateError('setting_up');
-    if (status === 'active' || status === 'degraded')
-      throw new WebhookTriggerStateError('provisioned');
-    if (status !== 'configuration_required')
-      throw new WebhookTriggerStateError('unavailable');
+    const refusal = provisionRefusal(row.status);
+    if (refusal !== undefined) throw new WebhookTriggerStateError(refusal);
     const secret = await insertSecret(client, input, input.secret);
     await db
       .insert(endpoints)
