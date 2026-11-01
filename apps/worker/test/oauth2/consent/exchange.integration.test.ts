@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { OAUTH2_STAND_IN_DESCRIPTION } from '../../../../../infrastructure/testing/oauth2-stand-in.mjs';
 import {
+  CALLBACK_PATH,
   describeOAuth2,
   startOAuth2Harness,
+  WEB_ORIGIN,
   useOAuth2Timeouts,
   type Connection,
   type OAuth2Harness,
@@ -10,6 +12,9 @@ import {
 } from '../../support/oauth2/harness.js';
 
 useOAuth2Timeouts();
+
+/** `identity_callback`'s limit per client address, in the rate limit policy. */
+const CALLBACK_LIMIT = 30;
 
 describeOAuth2('exchanging a code', () => {
   let harness: OAuth2Harness;
@@ -86,6 +91,57 @@ describeOAuth2('exchanging a code', () => {
     });
     expect((await harness.finish(runId)).status).toBe('succeeded');
     expect(harness.standIn.apiCalls(connection.clientId)).toHaveLength(1);
+  });
+
+  // S9 (review): an outage at consent isn't a wrong client ID.
+  it.fails.each(['temporarily_unavailable', 'server_error'])(
+    'S9 consent answering %s lands provider_unavailable',
+    async (error) => {
+      const owner = await harness.newOwner();
+      const connection = await harness.create(owner, 'non-rotating');
+      const url = harness.authorizationUrl(
+        await harness.start(owner.api, owner, connection.id),
+      );
+      const landing = await harness.land(
+        owner.api,
+        await harness.decide(url, `error:${error}`),
+      );
+      expect(landing.result).toBe('provider_unavailable');
+      expect(landing.location).not.toContain(OAUTH2_STAND_IN_DESCRIPTION);
+      expectNothingExchanged(connection);
+    },
+  );
+
+  // S1: "Every outcome is a landing page": a client secret that won't open is the
+  // same unexpected failure as a key service or database going away.
+  it.fails(
+    'S1 an unexpected failure lands on provider_unavailable',
+    async () => {
+      const { owner, connection, callbackUrl } = await pendingConsent();
+      await harness.stack.sql(
+        `update app.connection_secret_versions set ciphertext='AAAA' where connection_id=$1`,
+        [connection.id],
+      );
+      const landing = await harness.land(owner.api, callbackUrl);
+      expect(landing.status).toBe(303);
+      expect(landing).toMatchObject({
+        result: 'provider_unavailable',
+        workspaceId: owner.workspaceId,
+        connectionId: connection.id,
+      });
+      expectNothingExchanged(connection);
+    },
+  );
+
+  // S1: the callback's rate limit is the other way a popup gets a JSON problem.
+  it.fails('S1 a rate-limited callback still lands on a page', async () => {
+    const browser = harness.anonymousBrowser();
+    const callback = `${WEB_ORIGIN}${CALLBACK_PATH}`;
+    for (let sent = 0; sent < CALLBACK_LIMIT; sent += 1)
+      expect((await harness.land(browser, callback)).status).toBe(303);
+    const limited = await harness.land(browser, callback);
+    expect(limited.status).toBe(303);
+    expect(limited.result).toBe('provider_unavailable');
   });
 
   // S9: any other provider error lands token_refused, and its words are never kept.
