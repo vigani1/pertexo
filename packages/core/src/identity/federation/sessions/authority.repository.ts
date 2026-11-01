@@ -20,7 +20,10 @@ import {
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
 import { directorySessionAllowed } from '../provisioning/session.queries.js';
-import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
+import {
+  AUTHENTICATION_PROVIDERS,
+  UNPURGED_WORKSPACE_STATUSES,
+} from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import {
@@ -31,7 +34,6 @@ import {
   type AuthenticationPolicy,
   type SessionAuthenticationProof,
   type CurrentProvider,
-  FEDERATION_WORKSPACE_STATUSES,
 } from './policy.js';
 
 async function readAuthenticationPolicy(
@@ -147,7 +149,7 @@ export async function canCreateAuthenticationSession(
       .where(
         and(
           eq(authProviders.id, proof.providerId),
-          inArray(workspaces.status, FEDERATION_WORKSPACE_STATUSES),
+          inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
         ),
       )
       .catch(rethrowQueryFailure);
