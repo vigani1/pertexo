@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export type RetentionStoreOptions = Readonly<z.input<typeof optionsSchema>>;
+
 export const optionsSchema = z
   .object({
     lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),

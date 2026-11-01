@@ -12,14 +12,16 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
-import { inRetentionTransaction } from '../retention/transaction.js';
+import {
+  inRetentionTransaction,
+  scopeToWorkspace,
+  withDeadline,
+} from '../retention/transaction.js';
 import type {
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
-  WorkspacePurgeCoordinator,
-  WorkspacePurgeOptions,
 } from './contract.js';
-import { optionsSchema } from './input.js';
+import { optionsSchema, type WorkspacePurgeOptions } from './input.js';
 import { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.js';
 
 /** Fails if a workspace table still holds the purged workspace's rows. */
@@ -57,35 +59,39 @@ async function assertNothingLeft(
   }
 }
 
+export type WorkspacePurgeCoordinator = ReturnType<
+  typeof createWorkspacePurgeCoordinator
+>;
+
 /**
  * Purges workspaces whose recovery period has ended. Each call does one
  * bounded unit of work for one workspace: it starts a purge, removes one
  * page of rows or stored objects, or finishes the purge by leaving a
  * tombstone. Any number of workers can call it; each takes a different
- * workspace while it changes rows.
+ * workspace while it changes rows. No member is acting, so this stays off
+ * `withWorkspaceAccess`: it runs on the maintenance role.
  */
 export function createWorkspacePurgeCoordinator(
   config: DatabaseConfig,
   objectStore: WorkspacePurgeObjectStore,
   inputOptions: WorkspacePurgeOptions = {},
   runtime?: DatabaseRuntime,
-): WorkspacePurgeCoordinator {
+) {
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
   return Object.freeze({
     close: () => lease.close(),
-    processNext: async (signal?: AbortSignal) => {
+    processNext: async (
+      signal?: AbortSignal,
+    ): Promise<WorkspacePurgeProcessResult> => {
       const rows = await purgeRows({ pool, options }, signal);
       if (!('rowsPurged' in rows)) return rows;
       const workspaceId = rows.rowsPurged;
       // Stored objects go after rows and outside any transaction.
       const objects = await objectStore.purgeWorkspacePage({
         maxObjects: options.objectPageSize,
-        signal: AbortSignal.any([
-          ...(signal === undefined ? [] : [signal]),
-          AbortSignal.timeout(options.objectTimeoutMs),
-        ]),
+        signal: withDeadline(signal, options.objectTimeoutMs),
         workspaceId,
       });
       if (!objects.completed)
@@ -119,9 +125,7 @@ async function purgeRows(
         .catch(rethrowQueryFailure);
       return { status: 'started' as const, workspaceId: workspace.id };
     }
-    await drizzle(client)
-      .execute(sql`select set_config('app.workspace_id',${workspace.id},true)`)
-      .catch(rethrowQueryFailure);
+    await scopeToWorkspace(client, workspace.id);
     for (const step of PURGE_STEPS) {
       const changed = await step.run(client, workspace.id, options.pageSize);
       if (changed > 0)

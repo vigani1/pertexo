@@ -1,9 +1,5 @@
-import type {
-  RetentionPassResult,
-  RetentionDatabase,
-  RetentionStoreOptions,
-} from './contract.js';
-import { optionsSchema } from './input.js';
+import type { RetentionPassResult } from './contract.js';
+import { optionsSchema, type RetentionStoreOptions } from './input.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -22,11 +18,17 @@ import { inRetentionTransaction } from './transaction.js';
 /** Advisory lock class for the rules; the rule's index is the second key. */
 const RETENTION_LOCK_CLASS = 1_934_781_128;
 
+export type RetentionStore = ReturnType<typeof createRetentionStore>;
+
+/**
+ * Runs the retention rules. No member is acting, so this stays off
+ * `withWorkspaceAccess`: rules cross workspaces on the maintenance role.
+ */
 export function createRetentionStore(
   config: DatabaseConfig,
   inputOptions: RetentionStoreOptions = {},
   runtime?: DatabaseRuntime,
-): RetentionDatabase {
+) {
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
@@ -36,7 +38,8 @@ export function createRetentionStore(
       await checkDatabaseReadiness(pool);
     },
     close: () => lease.close(),
-    enforce: async (signal?: AbortSignal) => {
+    /** Runs every rule once, one page each. */
+    enforce: async (signal?: AbortSignal): Promise<RetentionPassResult> => {
       const removed: Partial<Record<RetentionRuleName, number>> = {};
       // One transaction per rule keeps each page's locks short. A rule
       // another worker is running is skipped this pass.
