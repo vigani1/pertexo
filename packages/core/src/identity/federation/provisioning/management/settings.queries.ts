@@ -17,6 +17,9 @@ import type {
 import type { DirectoryOrganization } from '../contract.js';
 import { publicCredential } from './credentials.queries.js';
 
+/** Live and revoked; only live ones count towards `DIRECTORY_LIMITS.credentials`. */
+const CREDENTIALS_SHOWN = 50;
+
 export async function projectDirectorySettings(
   client: PoolClient,
   organization: DirectoryOrganization,
@@ -44,7 +47,7 @@ export async function projectDirectorySettings(
       desc(authProvisioningCredentials.createdAt),
       desc(authProvisioningCredentials.id),
     )
-    .limit(50)
+    .limit(CREDENTIALS_SHOWN)
     .catch(rethrowQueryFailure);
   const groups = await db
     .select({

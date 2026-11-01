@@ -23,6 +23,11 @@ import type {
 } from './contract.js';
 import { requireResourceCapacity } from './organizations.repository.js';
 
+const newDomainChallenge = () => ({
+  challenge: randomBytes(32).toString('base64url'),
+  challengeExpiresAt: sql`clock_timestamp()+interval '7 days'`,
+});
+
 export async function requireOrganizationDomain(
   client: PoolClient,
   organizationId: string,
@@ -80,8 +85,7 @@ export function createDomain(
           id,
           organizationId: organization.id,
           domain: input.domain,
-          challenge: randomBytes(32).toString('base64url'),
-          challengeExpiresAt: sql`clock_timestamp()+interval '7 days'`,
+          ...newDomainChallenge(),
         })
         .catch(rethrowQueryFailure);
       await recordFederationAudit(client, input, {
@@ -119,8 +123,7 @@ export function renewDomainChallenge(
       await drizzle(client)
         .update(authDomains)
         .set({
-          challenge: randomBytes(32).toString('base64url'),
-          challengeExpiresAt: sql`clock_timestamp()+interval '7 days'`,
+          ...newDomainChallenge(),
           revision: sql`${authDomains.revision}+1`,
         })
         .where(eq(authDomains.id, domain.id))

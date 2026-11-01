@@ -36,7 +36,6 @@ export type {
   DirectoryUserValues,
 } from './federation/provisioning/contract.js';
 export { DirectoryError } from './federation/provisioning/errors.js';
-export { DIRECTORY_LIMITS } from './federation/provisioning/limits.js';
 export {
   createTwoFactorRecoveryStore,
   type TwoFactorRecoveryStore,

@@ -1,4 +1,4 @@
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { DIRECTORY_LIMITS, canonicalEmail } from '@pertexo/workflow-model';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import {
@@ -7,7 +7,7 @@ import {
   NoTarget,
   type ScimPatchOperation,
 } from 'scim-patch';
-import { DirectoryError, DIRECTORY_LIMITS } from '@pertexo/core/identity';
+import { DirectoryError } from '@pertexo/core/identity';
 import {
   canonicalDocument,
   canonicalPath,

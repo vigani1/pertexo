@@ -8,10 +8,10 @@ import type {
 } from 'fastify';
 import {
   DirectoryError,
-  DIRECTORY_LIMITS,
   type DirectoryPrincipal,
   type DirectoryStore,
 } from '@pertexo/core/identity';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import {
   AbuseRateLimitPolicy,
   type RateLimitEndpointClass,
