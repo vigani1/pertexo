@@ -8,7 +8,7 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createRetentionDatabase } from '../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../src/lifecycle/retention/store.js';
 import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/artifacts/coordinator.js';
 
 export const adminUrl =
@@ -77,7 +77,7 @@ export const runIds = [
   randomUUID(),
   randomUUID(),
 ] as const;
-export let retention!: ReturnType<typeof createRetentionDatabase>;
+export let retention!: ReturnType<typeof createRetentionStore>;
 export let owner!: Pool;
 let databaseCreated = false;
 let retentionCreated = false;
@@ -101,7 +101,7 @@ beforeAll(async () => {
         ownerRole: 'pertexo_owner',
       });
     }
-    retention = createRetentionDatabase(
+    retention = createRetentionStore(
       parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
       { pageSize: 2 },
     );

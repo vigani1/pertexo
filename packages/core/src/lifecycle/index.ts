@@ -3,7 +3,7 @@ export type {
   PreviewRetentionCoordinator,
   PreviewRetentionProcessResult,
 } from './previews/contract.js';
-export { createRetentionDatabase } from './retention/store.js';
+export { createRetentionStore } from './retention/store.js';
 export type {
   RetentionDatabase,
   RetentionPassResult,

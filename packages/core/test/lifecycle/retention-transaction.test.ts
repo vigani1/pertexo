@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createRetentionDatabase } from '../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../src/lifecycle/retention/store.js';
 import type { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -13,7 +13,7 @@ describe('retention transaction admission', () => {
       const config = parseDatabaseConfig({
         connectionString: 'postgresql://fixture:fixture@127.0.0.1:1/fixture',
       });
-      expect(() => createRetentionDatabase(config, { lockTimeoutMs })).toThrow(
+      expect(() => createRetentionStore(config, { lockTimeoutMs })).toThrow(
         z.ZodError,
       );
     },

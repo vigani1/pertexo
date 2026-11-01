@@ -2,7 +2,7 @@ import { createArtifactStore } from '@pertexo/artifact-store';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 import {
   createPreviewRetentionCoordinator,
-  createRetentionDatabase,
+  createRetentionStore,
   createRunArtifactRetentionCoordinator,
   createWorkspacePurgeCoordinator,
 } from '@pertexo/core/lifecycle';
@@ -31,7 +31,7 @@ export function configuredRetentionRuntime(
   try {
     return createRetentionRuntime(
       {
-        database: createRetentionDatabase(database, {}, databaseRuntime),
+        database: createRetentionStore(database, {}, databaseRuntime),
         preview: createPreviewRetentionCoordinator(
           database,
           artifacts,

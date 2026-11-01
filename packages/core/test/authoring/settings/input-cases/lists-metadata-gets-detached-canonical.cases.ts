@@ -5,7 +5,7 @@ import {
 } from '../../../../src/authoring/input-cases/errors.js';
 import { WorkflowNotFoundError } from '../../../../src/authoring/workflows/errors.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
-import { createRetentionDatabase } from '../../../../src/lifecycle/retention/store.js';
+import { createRetentionStore } from '../../../../src/lifecycle/retention/store.js';
 import {
   workspaceId,
   dispatcherUrl,
@@ -209,7 +209,7 @@ export function registerListsMetadataGetsDetachedCanonical(): void {
       }
     }
     expect(denied).toBe(true);
-    const retention = createRetentionDatabase(
+    const retention = createRetentionStore(
       parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
       { pageSize: 10 },
     );

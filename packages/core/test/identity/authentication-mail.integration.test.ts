@@ -8,7 +8,7 @@ import {
   createSystemMailDeliveryStore,
 } from '@pertexo/database/platform';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import { createRetentionDatabase } from '../../src/lifecycle/index.js';
+import { createRetentionStore } from '../../src/lifecycle/index.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,
@@ -157,7 +157,7 @@ describe('durable authentication mail', () => {
       connectionString: database.databaseUrl(adminUrl),
       max: 1,
     });
-    const retention = createRetentionDatabase(
+    const retention = createRetentionStore(
       databaseConfig(database.databaseUrl(maintenanceBaseUrl)),
       { pageSize: 7 },
     );

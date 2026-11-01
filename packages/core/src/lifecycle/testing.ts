@@ -2,7 +2,7 @@ export {
   changeWorkspaceLifecycle,
   WORKSPACE_RECOVERY_DAYS,
 } from './deletion/change.repository.js';
-export { createRetentionDatabase } from './retention/store.js';
+export { createRetentionStore } from './retention/store.js';
 export { RETENTION_RULES } from './retention/rules.js';
 export { createRunArtifactRetentionCoordinator } from './artifacts/coordinator.js';
 export { createWorkspacePurgeCoordinator } from './purge/coordinator.js';
@@ -20,7 +20,7 @@ export type {
 } from './artifacts/contract.js';
 export type {
   RetentionDatabase,
-  RetentionDatabaseOptions,
+  RetentionStoreOptions,
   RetentionPassResult,
 } from './retention/contract.js';
 export { createPreviewRetentionCoordinator } from './previews/coordinator.js';

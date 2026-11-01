@@ -15,7 +15,7 @@ export interface RetentionDatabase {
   enforce(signal?: AbortSignal): Promise<RetentionPassResult>;
 }
 
-export type RetentionDatabaseOptions = Readonly<{
+export type RetentionStoreOptions = Readonly<{
   lockTimeoutMs?: number;
   pageSize?: number;
   statementTimeoutMs?: number;
