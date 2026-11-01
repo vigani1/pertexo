@@ -10,7 +10,7 @@ import {
   MIGRATIONS_DIRECTORY,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
-import { createSystemMailDeliveryStore } from '../../src/mail/repository.js';
+import { createSystemMailDeliveryStore } from '../../src/mail/store.js';
 
 it('preserves mail identities through the rename and old messages through subsequent upgrades', async () => {
   const adminUrl =
