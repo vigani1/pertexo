@@ -2,12 +2,12 @@ import { z } from 'zod';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import {
   DirectoryError,
-  DIRECTORY_LIMITS,
   type DirectoryPrincipal,
   type DirectoryStore,
   type DirectoryUser,
   type DirectoryGroup,
 } from '@pertexo/core/identity';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import { directoryDiscovery } from '../protocol/discovery.js';
 import {
   parseDirectoryUser,

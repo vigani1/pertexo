@@ -1,12 +1,9 @@
-import { canonicalEmail } from '@pertexo/workflow-model';
 import type { CompleteFederationJourney } from './contract.js';
 import {
-  authAccounts,
-  authSessions,
   authFederationAttempts,
   authProviderChecks,
 } from '@pertexo/database/schema';
-import { and, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
@@ -18,12 +15,9 @@ import {
   bindDirectorySignIn,
   directorySignInCandidate,
 } from '../provisioning/sign-in.repository.js';
-import { hasSignInMethodCapacity } from '../accounts/limits.queries.js';
-import { randomBytes } from 'node:crypto';
+import { bindVerifiedAccount } from '../accounts/link.repository.js';
 import type { PoolClient } from 'pg';
-import { generatePersistedId } from '@pertexo/database/platform';
 import { lockWorkspaceAuthority } from '../../../shared/authority.queries.js';
-import { revokeUserSessions } from '../../../tenant-access/users/sessions.repository.js';
 import { recordIdentitySecurityFact } from '../../facts.repository.js';
 import { resolveVerifiedSignInUser } from '../accounts/resolve.repository.js';
 import { SignInProofRejectedError } from '../accounts/rejection.js';
@@ -31,6 +25,7 @@ import {
   canCreateAuthenticationSession,
   readEligibleAuthenticationSession,
 } from '../sessions/authority.repository.js';
+import { issueSession } from '../sessions/issue.repository.js';
 import { findFederationAttempt } from './records.queries.js';
 import { grantJustInTimeMemberships } from './membership.repository.js';
 import type { FederationCompletion } from './contract.js';
@@ -91,36 +86,15 @@ export async function completeFederationJourney(
   } as const;
   if (!(await canCreateAuthenticationSession(client, user.id, proof)))
     throw new SignInProofRejectedError();
-  const [linked] = await drizzle(client)
-    .select({ user_id: authAccounts.userId })
-    .from(authAccounts)
-    .where(
-      and(
-        eq(authAccounts.providerId, attempt.provider.id),
-        eq(authAccounts.accountId, input.identity.subject),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
-  if (linked !== undefined && linked.user_id !== user.id)
+  if (
+    !(await bindVerifiedAccount(client, {
+      user,
+      providerId: attempt.provider.id,
+      subject: input.identity.subject,
+      email: input.identity.email,
+    }))
+  )
     throw new SignInProofRejectedError();
-  if (linked === undefined) {
-    if (!(await hasSignInMethodCapacity(client, user.id)))
-      throw new SignInProofRejectedError();
-    if (canonicalEmail(user.email) !== canonicalEmail(input.identity.email))
-      throw new SignInProofRejectedError();
-    await drizzle(client)
-      .insert(authAccounts)
-      .values({
-        id: generatePersistedId(),
-        userId: user.id,
-        providerId: attempt.provider.id,
-        accountId: input.identity.subject,
-      })
-      .catch(rethrowQueryFailure);
-    await revokeUserSessions(client, user.id);
-    await recordIdentitySecurityFact(client, user.id, 'method.linked');
-  }
   if (directory === undefined && attempt.provider.configuration.jitEnabled)
     await grantJustInTimeMemberships(
       client,
@@ -128,19 +102,7 @@ export async function completeFederationJourney(
       user.id,
       attempt.provider.organizationId,
     );
-  const token = randomBytes(32).toString('base64url');
-  await drizzle(client)
-    .insert(authSessions)
-    .values({
-      id: generatePersistedId(),
-      userId: user.id,
-      token,
-      expiresAt: sql`clock_timestamp()+(${ttlSeconds}::integer*interval '1 second')`,
-      authenticationMethod: 'organization',
-      federationProviderId: attempt.provider.id,
-      federationProviderRevision: attempt.provider.revision,
-    })
-    .catch(rethrowQueryFailure);
+  const token = await issueSession(client, user.id, ttlSeconds, proof);
   await recordIdentitySecurityFact(client, user.id, 'session.signed_in');
   await withWorkspaceScope(
     client,
@@ -155,11 +117,7 @@ export async function completeFederationJourney(
         metadata: { providerId: attempt.provider.id },
       }),
   );
-  await drizzle(client)
-    .update(authFederationAttempts)
-    .set({ consumedAt: sql`clock_timestamp()` })
-    .where(eq(authFederationAttempts.id, attempt.id))
-    .catch(rethrowQueryFailure);
+  await consumeAttempt(client, attempt.id);
   return { kind: 'signed_in', token, returnPath: attempt.returnPath };
 }
 
@@ -230,10 +188,17 @@ async function completeProviderTest(
         },
       }),
   );
+  await consumeAttempt(client, attempt.id);
+  return { kind: 'tested', returnPath: attempt.returnPath };
+}
+
+async function consumeAttempt(
+  client: PoolClient,
+  attemptId: string,
+): Promise<void> {
   await drizzle(client)
     .update(authFederationAttempts)
     .set({ consumedAt: sql`clock_timestamp()` })
-    .where(eq(authFederationAttempts.id, attempt.id))
+    .where(eq(authFederationAttempts.id, attemptId))
     .catch(rethrowQueryFailure);
-  return { kind: 'tested', returnPath: attempt.returnPath };
 }

@@ -1,5 +1,6 @@
 import SCIMMY from 'scimmy';
-import { DirectoryError, DIRECTORY_LIMITS } from '@pertexo/core/identity';
+import { DirectoryError } from '@pertexo/core/identity';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 
 export type DirectoryResourceType = 'User' | 'Group';
 export const coreSchema = (kind: DirectoryResourceType) =>

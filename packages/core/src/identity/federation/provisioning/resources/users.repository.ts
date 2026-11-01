@@ -16,7 +16,7 @@ import { withDirectoryTransaction } from '../authority.repository.js';
 import { DirectoryError } from '../errors.js';
 import type { DirectoryPrincipal, DirectoryUserValues } from '../contract.js';
 
-import { DIRECTORY_LIMITS } from '../limits.js';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import { projectDirectoryMemberships } from '../projection.repository.js';
 import {
   assertDirectoryRevision,

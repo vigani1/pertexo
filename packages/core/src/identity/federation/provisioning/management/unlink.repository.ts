@@ -1,8 +1,5 @@
-import {
-  authOrganizationWorkspaces,
-  authOrganizations,
-} from '@pertexo/database/schema';
-import { and, eq, sql } from 'drizzle-orm';
+import { authOrganizationWorkspaces } from '@pertexo/database/schema';
+import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
@@ -24,12 +21,13 @@ import {
   organizationForWorkspace,
   recordFederationAudit,
 } from '../../management/authority.repository.js';
+import { advanceOrganization } from '../../management/commands.repository.js';
 import {
   lockDirectoryOrganization,
   lockDirectoryParticipants,
 } from '../authority.repository.js';
 import { DirectoryError } from '../errors.js';
-import { DIRECTORY_LIMITS } from '../limits.js';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import type { UnlinkWorkspaceInput } from '../contract.js';
 import { detachDirectoryMemberships } from './detach.repository.js';
 
@@ -105,11 +103,7 @@ export async function unlinkDirectoryWorkspace(
         ),
       )
       .catch(rethrowQueryFailure);
-    await drizzle(client)
-      .update(authOrganizations)
-      .set({ revision: sql`${authOrganizations.revision}+1` })
-      .where(eq(authOrganizations.id, organization.id))
-      .catch(rethrowQueryFailure);
+    await advanceOrganization(client, organization);
     for (const workspaceId of [
       organization.control_workspace_id,
       input.targetWorkspaceId,

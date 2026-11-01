@@ -119,7 +119,7 @@ export async function runFederationCommand(
 }
 export async function advanceOrganization(
   client: PoolClient,
-  organization: OrganizationRow,
+  organization: Pick<OrganizationRow, 'id'>,
 ): Promise<OrganizationRow> {
   const [row] = await drizzle(client)
     .update(authOrganizations)

@@ -1,19 +1,12 @@
-import { canonicalEmail } from '@pertexo/workflow-model';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  authSignInAttempts,
-  authAccounts,
-  authSessions,
-} from '@pertexo/database/schema';
+import { authSignInAttempts } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { hasSignInMethodCapacity } from '../accounts/limits.queries.js';
+import { bindVerifiedAccount } from '../accounts/link.repository.js';
 import { resolveVerifiedSignInUser } from '../accounts/resolve.repository.js';
 import { canCreateAuthenticationSession } from '../sessions/authority.repository.js';
-import { randomBytes } from 'node:crypto';
+import { issueSession } from '../sessions/issue.repository.js';
 import type { PoolClient } from 'pg';
-import { generatePersistedId } from '@pertexo/database/platform';
-import { revokeUserSessions } from '../../../tenant-access/users/sessions.repository.js';
 import { recordIdentitySecurityFact } from '../../facts.repository.js';
 import { admitNewAccount, type SignUpMode } from '../../sign-up.js';
 import type { ProvenSocialSignIn, SocialSignInResult } from './contract.js';
@@ -56,51 +49,18 @@ export async function completeSocialSignIn(
     }))
   )
     return { kind: 'failed' };
-  // Membership commands and method removal lock the user before changing sessions.
-  const [account] = await db
-    .select({ user_id: authAccounts.userId })
-    .from(authAccounts)
-    .where(
-      and(
-        eq(authAccounts.providerId, input.provider),
-        eq(authAccounts.accountId, input.identity.accountId),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
-  if (account !== undefined && account.user_id !== user.id)
+  if (
+    !(await bindVerifiedAccount(client, {
+      user,
+      providerId: input.provider,
+      subject: input.identity.accountId,
+      email: input.identity.email,
+    }))
+  )
     return { kind: 'failed' };
-  if (account === undefined) {
-    if (!(await hasSignInMethodCapacity(client, user.id)))
-      return { kind: 'failed' };
-    if (
-      input.identity.email === null ||
-      canonicalEmail(input.identity.email) !== canonicalEmail(user.email)
-    )
-      return { kind: 'failed' };
-    await db
-      .insert(authAccounts)
-      .values({
-        id: generatePersistedId(),
-        userId: user.id,
-        providerId: input.provider,
-        accountId: input.identity.accountId,
-      })
-      .catch(rethrowQueryFailure);
-    await revokeUserSessions(client, user.id);
-    await recordIdentitySecurityFact(client, user.id, 'method.linked');
-  }
-  const token = randomBytes(32).toString('base64url');
-  await db
-    .insert(authSessions)
-    .values({
-      id: generatePersistedId(),
-      userId: user.id,
-      token,
-      expiresAt: sql`clock_timestamp()+(${sessionTtlSeconds}::integer*interval '1 second')`,
-      authenticationMethod: 'social',
-    })
-    .catch(rethrowQueryFailure);
+  const token = await issueSession(client, user.id, sessionTtlSeconds, {
+    method: 'social',
+  });
   await recordIdentitySecurityFact(client, user.id, 'session.signed_in');
   await db
     .update(authSignInAttempts)

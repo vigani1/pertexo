@@ -1,8 +1,9 @@
 import { isUniqueConstraintFailure } from '@pertexo/database/primitives';
 import { hasSignInMethodCapacity } from './federation/accounts/limits.queries.js';
 import { readEligibleAuthenticationSession } from './federation/sessions/authority.repository.js';
+import { issueSession } from './federation/sessions/issue.repository.js';
 import type { AuthenticationSession } from './federation/sessions/contract.js';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -182,22 +183,12 @@ export class AccountLinkingCommands {
         await db
           .delete(authSessions)
           .where(eq(authSessions.userId, attempt.userId));
-        const token = randomBytes(32).toString('base64url');
-        await db.insert(authSessions).values({
-          id: randomUUID(),
-          expiresAt: sql`clock_timestamp()+(${this.input.sessionTtlSeconds}::integer*interval '1 second')`,
-          token,
-          userId: attempt.userId,
-          authenticationMethod: sourceSession.proof.method,
-          federationProviderId:
-            sourceSession.proof.method === 'organization'
-              ? sourceSession.proof.providerId
-              : null,
-          federationProviderRevision:
-            sourceSession.proof.method === 'organization'
-              ? sourceSession.proof.providerRevision
-              : null,
-        });
+        const token = await issueSession(
+          client,
+          attempt.userId,
+          this.input.sessionTtlSeconds,
+          sourceSession.proof,
+        );
         await completeAttempt(client, attempt.id);
         return { kind: 'linked', token };
       },

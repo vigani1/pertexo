@@ -1,6 +1,6 @@
 import type { DirectoryCommand } from '../contract.js';
 import { authOrganizations } from '@pertexo/database/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
@@ -31,6 +31,7 @@ import {
   organizationForWorkspace,
   recordFederationAudit,
 } from '../../management/authority.repository.js';
+import { advanceOrganization } from '../../management/commands.repository.js';
 import type { FederationScope } from '../../management/contract.js';
 import { DirectoryError } from '../errors.js';
 import {
@@ -191,11 +192,7 @@ export function runDirectoryCommand<T>(
       if (organization.revision !== input.expectedRevision)
         throw new DirectoryError('stale');
       const result = await change(client, organization);
-      await drizzle(client)
-        .update(authOrganizations)
-        .set({ revision: sql`${authOrganizations.revision}+1` })
-        .where(eq(authOrganizations.id, organization.id))
-        .catch(rethrowQueryFailure);
+      await advanceOrganization(client, organization);
       await withWorkspaceScope(client, input, (scoped) =>
         completeCommand(scoped, identity, result.receipt),
       );

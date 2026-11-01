@@ -1,9 +1,8 @@
-import { canonicalEmail } from '@pertexo/workflow-model';
+import { DIRECTORY_LIMITS, canonicalEmail } from '@pertexo/workflow-model';
 import SCIMMY from 'scimmy';
 import { z } from 'zod';
 import {
   DirectoryError,
-  DIRECTORY_LIMITS,
   type DirectoryUser,
   type DirectoryGroup,
   type DirectoryUserValues,
