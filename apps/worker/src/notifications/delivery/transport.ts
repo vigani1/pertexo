@@ -3,11 +3,7 @@ import {
   resolvedResendApiKeyCredentialSchema as resendCredentialSchema,
   resolvedSlackBotTokenCredentialSchema as slackCredentialSchema,
 } from '@pertexo/integrations';
-import {
-  FailureNotificationStateError,
-  type FailureNotificationResolvedDestination,
-  type FailureNotificationStore,
-} from '@pertexo/core/notifications';
+import { FailureNotificationStateError, type FailureNotificationResolvedDestination, type FailureNotificationStore } from '@pertexo/core/notifications';
 import type {
   ConnectionEnvelopeEncryption,
   ResendClient,

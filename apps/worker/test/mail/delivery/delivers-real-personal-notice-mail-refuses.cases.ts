@@ -1,8 +1,4 @@
-import {
-  createNoticePreferencesStore,
-  createNoticeMailStore,
-  createWorkspaceInboxFoldStore,
-} from '@pertexo/core/notifications';
+import { createNoticePreferencesStore, createNoticeMailStore, createWorkspaceInboxFoldStore } from '@pertexo/core/inbox';
 import { createIdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
 import { openNoticeUnsubscribe } from '@pertexo/integrations/server';
 import { sealNoticeMail } from '../../../src/mail/notice-content.js';

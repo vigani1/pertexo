@@ -2,10 +2,7 @@ import {
   sealNoticeUnsubscribe,
   type ApplicationSecretEnvelope,
 } from '@pertexo/integrations/server';
-import type {
-  NoticeMailItem,
-  NoticeMailToSeal,
-} from '@pertexo/core/notifications';
+import type { NoticeMailItem, NoticeMailToSeal } from '@pertexo/core/inbox';
 const labels = {
   workflow_failure: 'Workflow failed',
   workflow_auto_paused: 'Workflow auto-paused',

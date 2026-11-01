@@ -1,5 +1,5 @@
 import { NoticePreferencesService } from '../../../src/notifications/preferences/service.js';
-import { NoticeConflictError } from '@pertexo/core/notifications';
+import { NoticeConflictError } from '@pertexo/core/inbox';
 import {
   createApplicationSecretEnvelope,
   sealNoticeUnsubscribe,

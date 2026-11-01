@@ -10,7 +10,7 @@ import {
   type WorkspaceInboxReadResponse,
   type WorkspaceInboxSummaryResponse,
 } from '@pertexo/contracts';
-import type { WorkspaceInboxStore } from '@pertexo/core/notifications';
+import type { WorkspaceInboxStore } from '@pertexo/core/inbox';
 
 import {
   decodeWorkspaceInboxCursor,
