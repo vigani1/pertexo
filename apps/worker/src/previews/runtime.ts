@@ -1,7 +1,7 @@
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-} from '@pertexo/database/previews';
+} from '@pertexo/core/previews';
 import {
   PreviewMappingSourceError,
   resolveSingleNodePreviewInput,

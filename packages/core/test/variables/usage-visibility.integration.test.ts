@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { CONNECTION_AUTH_TYPE } from '../../../database/src/connections/contract.js';
-import { createConnectionDatabase } from '../../../database/src/connections/repository.js';
+import { CONNECTION_AUTH_TYPE } from '../../src/connections/contract.js';
+import { createConnectionDatabase } from '../../src/connections/repository.js';
 import {
   actorId,
   apiUrl,
@@ -12,7 +12,7 @@ import {
   queryAsOwner,
   workflowId,
   workspaceId,
-} from '../../../database/test/support/workflow-authoring.js';
+} from '../support/workflow-authoring.js';
 import {
   afterAllFixture2,
   beforeAllFixture1,
@@ -20,7 +20,7 @@ import {
   folderId,
   folders,
   publicId,
-} from '../../../database/test/tenant-access/resources/folders/fixture.js';
+} from '../tenant-access/resources/folders/fixture.js';
 import { createWorkspaceVariablesStore } from '../../src/variables/index.js';
 beforeAll(beforeAllFixture1, 30_000);
 afterAll(afterAllFixture2);

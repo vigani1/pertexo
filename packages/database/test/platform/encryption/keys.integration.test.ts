@@ -7,7 +7,7 @@ import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../../../src/config.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 import { createEncryptionKeyRepository } from '../../../src/platform/encryption/keys.repository.js';
-import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
+import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

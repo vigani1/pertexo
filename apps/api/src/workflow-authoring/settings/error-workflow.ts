@@ -5,7 +5,7 @@ import {
   workflowErrorSettingsRequestSchema,
   workflowErrorSettingsResponseSchema,
 } from '@pertexo/contracts';
-import type { WorkflowErrorDatabase } from '@pertexo/database/authoring';
+import type { WorkflowErrorDatabase } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

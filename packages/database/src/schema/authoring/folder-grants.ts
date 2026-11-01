@@ -1,4 +1,4 @@
-import type { FolderAccess } from '../../tenant-access/resources/contract.js';
+import type { FolderAccess } from '../stored-shapes.js';
 import { sql } from 'drizzle-orm';
 import {
   check,

@@ -1,9 +1,9 @@
-import type { FormStore } from '@pertexo/database/triggers';
+import type { FormStore } from '@pertexo/core/triggers';
 
-import type { PendingTaskStore } from '@pertexo/database/runs';
+import type { PendingTaskStore } from '@pertexo/core/runs';
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import type { WorkflowAuthoringDatabase } from '@pertexo/database/authoring';
+import type { WorkflowAuthoringDatabase } from '@pertexo/core/authoring';
 import type {
   JsonataEvaluator,
   WorkflowAuthoringValidator,

@@ -1,4 +1,4 @@
-import type { NodeAttemptLease } from '@pertexo/database/attempts';
+import type { NodeAttemptLease } from '@pertexo/core/attempts';
 import type { RunEventNotificationPublisher } from '@pertexo/queue';
 
 /** Completion remains authoritative even when its realtime resync hint fails. */

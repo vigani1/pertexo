@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { NoticeMailToSeal } from '@pertexo/database/notifications';
+import type { NoticeMailToSeal } from '@pertexo/core/notifications';
 import {
   createApplicationSecretEnvelope,
   openNoticeUnsubscribe,

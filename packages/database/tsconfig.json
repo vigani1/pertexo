@@ -19,9 +19,6 @@
       "path": "../contracts/tsconfig.json"
     },
     {
-      "path": "../nodes-core/tsconfig.json"
-    },
-    {
       "path": "../workflow-engine/tsconfig.json"
     },
     {

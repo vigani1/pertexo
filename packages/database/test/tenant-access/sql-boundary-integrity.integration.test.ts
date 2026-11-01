@@ -5,7 +5,7 @@ import type { DatabaseError } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase } from '../../src/migrations.js';
-import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
+import { createDisposableDatabaseFixture } from '../../src/testing/postgres/disposable-database.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

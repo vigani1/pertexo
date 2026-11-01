@@ -1,7 +1,7 @@
 import {
   NodeAttemptStateCorruptError,
   type NodeAttemptRunStore,
-} from '@pertexo/database/attempts';
+} from '@pertexo/core/attempts';
 import type { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
 const dataExecutorSummaryCodes = new Set([

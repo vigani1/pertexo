@@ -1,7 +1,7 @@
 import type {
   DestinationConfig,
   StoredDestinationConfig,
-} from '../notifications/destinations/contract.js';
+} from './stored-shapes.js';
 import {
   type PgTableExtraConfigValue,
   check,

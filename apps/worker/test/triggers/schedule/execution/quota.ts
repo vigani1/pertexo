@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createOutboxDispatcherDatabase } from '@pertexo/database/testing';
+import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
 import {

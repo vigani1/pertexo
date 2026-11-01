@@ -11,7 +11,7 @@ import {
 import type {
   WorkflowInputCaseDatabase,
   WorkflowInputCaseMetadata,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

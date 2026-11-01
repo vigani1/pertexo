@@ -14,7 +14,7 @@ import { authorizeWorkspace } from '../../../src/authorization/index.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import { RenameWorkflowUseCase } from '../../../src/workflow-authoring/commands/rename.js';
 

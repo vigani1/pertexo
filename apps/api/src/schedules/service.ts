@@ -13,7 +13,7 @@ import type {
   ScheduleOccurrenceRecord,
   ScheduleTriggerDatabase,
   ScheduleTriggerRecord,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 
 import {
   decodeScheduleOccurrenceCursor,

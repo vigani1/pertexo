@@ -10,13 +10,13 @@ import {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
   WorkflowTemplateOriginUnavailableError,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import {
   applicationError,

@@ -1,4 +1,4 @@
-import { ConnectionSharingRevisionConflictError } from '@pertexo/database/connections';
+import { ConnectionSharingRevisionConflictError } from '@pertexo/core/connections';
 
 import { expect, it } from 'vitest';
 import { createTestApiApplication } from '../../support/api-application.js';

@@ -1,4 +1,4 @@
-import type { WebhookVerificationReference } from '@pertexo/database/testing';
+import type { WebhookVerificationReference } from '@pertexo/core/testing';
 
 export const endpointKey = 'a'.repeat(43);
 

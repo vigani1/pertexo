@@ -1,11 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { initialCheckpointFactory } from '@pertexo/execution';
-import { createWorkflowRunDatabase } from '@pertexo/database/runs';
-import {
-  createOutboxDispatcherDatabase,
-  parseDatabaseConfig,
-} from '@pertexo/database/testing';
+import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { createWorkflowRunDatabase } from '@pertexo/core/runs';
+import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';

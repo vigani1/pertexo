@@ -2,7 +2,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type {
   WebhookResponseScope,
   WebhookResponseSnapshot,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 
 const MAX_WAITS = 32;
 const READ_INTERVAL_MS = 250;

@@ -6,9 +6,9 @@ import { FastifyAdapter } from '@nestjs/platform-fastify';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '@pertexo/database/authoring';
-import { ConnectionSecretVersionConflictError } from '@pertexo/database/connections';
-import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
+} from '@pertexo/core/authoring';
+import { ConnectionSecretVersionConflictError } from '@pertexo/core/connections';
+import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
 import { HttpPlatformModule } from '../../../src/platform/http/index.js';

@@ -1,4 +1,4 @@
-import { createWorkerConnectionResolutionDatabase } from '@pertexo/database/connections';
+import { createWorkerConnectionResolutionDatabase } from '@pertexo/core/connections';
 import { generatePersistedId } from '@pertexo/database/platform';
 
 import {

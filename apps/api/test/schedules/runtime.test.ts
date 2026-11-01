@@ -8,7 +8,7 @@ import { createApiScheduleRuntime } from '../../src/platform/schedules/runtime.m
 
 const outside = vi.hoisted(() => ({ database: vi.fn(), telemetry: vi.fn() }));
 
-vi.mock('@pertexo/database/triggers', async (original) => ({
+vi.mock('@pertexo/core/triggers', async (original) => ({
   ...(await original<object>()),
   createScheduleTriggerDatabase: outside.database,
 }));

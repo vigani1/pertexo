@@ -7,10 +7,10 @@ import {
   parseDatabaseConfig,
   randomUUID,
   queryAsOwner,
-} from '../../../database/test/support/workflow-authoring.js';
+} from '../support/workflow-authoring.js';
 import { createWorkspaceVariablesStore } from '../../src/variables/index.js';
-import { readVariableSetValues } from '../../../database/src/variables/values.queries.js';
-import { withTenantScopedClient } from '../../../database/src/tenant-access/transactions.js';
+import { readVariableSetValues } from '../../src/variables/values.queries.js';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { Pool } from 'pg';
 import { workspaceVariablesRequestSchema } from '@pertexo/contracts';
 import { IdempotencyConflictError } from '@pertexo/database/platform';

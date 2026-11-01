@@ -4,7 +4,7 @@ import {
   createStalledWorkStore,
   type StalledWorkRecovery,
   type StalledWorkStore,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import type { StructuredLogger } from '@pertexo/observability';
 
 import type { WorkerConfig } from '../config/worker.js';

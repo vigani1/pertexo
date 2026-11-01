@@ -1,7 +1,7 @@
 import {
   parseApiTokenCredential,
   type ParsedApiTokenCredential,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import type { RequestHeaders } from '../../platform/http/request-headers.js';
 
 export type AuthorizationHeaderSource = Readonly<{

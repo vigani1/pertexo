@@ -5,7 +5,7 @@ import {
   formSubmissionResponseSchema,
   publicFormSubmissionResponseSchema,
 } from '@pertexo/contracts';
-import type { FormStore, PublicFormGrant } from '@pertexo/database/triggers';
+import type { FormStore, PublicFormGrant } from '@pertexo/core/triggers';
 
 export class FormService {
   constructor(private readonly store: FormStore) {}

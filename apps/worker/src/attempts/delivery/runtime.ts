@@ -1,11 +1,11 @@
 import type { CallbackKeyConfig } from '@pertexo/integrations/server';
 import type { WorkerCodeRunnerConfig } from '../code/client.js';
-import { createNodeAttemptRunStore } from '@pertexo/database/attempts';
+import { createNodeAttemptRunStore } from '@pertexo/core/attempts';
 import {
   createRunFailureStore,
   createWorkflowExecutionReader,
   type RunFailureStore,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

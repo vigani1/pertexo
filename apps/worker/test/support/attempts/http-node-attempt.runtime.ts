@@ -7,11 +7,11 @@ import {
 import {
   createNodeAttemptRunStore,
   type NodeAttemptRunStore,
-} from '@pertexo/database/attempts';
+} from '@pertexo/core/attempts';
 import {
   createWorkerConnectionResolutionDatabase,
   type WorkerConnectionResolutionDatabase,
-} from '@pertexo/database/connections';
+} from '@pertexo/core/connections';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import type { ConnectionEnvelopeEncryption } from '@pertexo/integrations/server';
 

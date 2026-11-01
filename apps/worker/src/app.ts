@@ -1,5 +1,5 @@
 import { verifyWorkerCallbacks } from './runtime/startup/verify-callbacks.js';
-import type { createCallbackStore } from '@pertexo/database/runs';
+import type { createCallbackStore } from '@pertexo/core/runs';
 import { verifyWorkerEncryption } from './runtime/startup/verify-encryption.js';
 import type {
   DynamicModule,

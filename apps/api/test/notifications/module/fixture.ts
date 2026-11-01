@@ -2,11 +2,13 @@ import type { Role } from '@pertexo/workflow-model';
 import { registerWorkflowPortabilityJsonParser } from '../../../src/workflow-authoring/portability/json-parser.js';
 import { registerNoticeUnsubscribeTransport } from '../../../src/notifications/preferences/transport.js';
 import type { NoticePreferencesService } from '../../../src/notifications/preferences/service.js';
-import type { NoticePreferencesStore } from '@pertexo/database/notifications';
+import type {
+  NoticePreferencesStore,
+  WorkspaceInboxDatabase,
+} from '@pertexo/core/notifications';
 
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import type { WorkspaceInboxDatabase } from '@pertexo/database/notifications';
 import { vi } from 'vitest';
 
 import { NotificationsModule } from '../../../src/notifications/module.js';

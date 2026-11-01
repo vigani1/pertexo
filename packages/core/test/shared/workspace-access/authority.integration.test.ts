@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
+import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/index.js';
 import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
@@ -12,15 +12,15 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { withWorkspaceAccess } from '../../../src/shared/index.js';
 
-import { admin } from '../../../../database/test/lifecycle/calls/fixtures.js';
+import { admin } from '../../lifecycle/calls/fixtures.js';
 import {
   adminUrl,
   apiUrl,
   userId,
   withApplicationName,
   withDatabase,
-} from '../../../../database/test/lifecycle/retention.support.js';
-import { waitForApplicationLock } from '../../../../database/test/support/postgres/lock-coordination.js';
+} from '../../lifecycle/retention.support.js';
+import { waitForApplicationLock } from '../../support/postgres/lock-coordination.js';
 import {
   afterAllFixture2,
   beforeAllFixture1,

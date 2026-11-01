@@ -5,7 +5,7 @@ import {
   WorkflowNotFoundError,
   WorkflowTagConflictError,
   type WorkflowOrganizationBatchItemResult,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 
 import {
   actorId,

@@ -11,7 +11,7 @@ import {
   workflowPromotionApplySchema,
   workflowPromotionResultSchema,
 } from '@pertexo/contracts';
-import type { WorkflowPromotionStore } from '@pertexo/database/authoring';
+import type { WorkflowPromotionStore } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

@@ -1,4 +1,4 @@
-import { createWebhookResponseStore } from '@pertexo/database/triggers';
+import { createWebhookResponseStore } from '@pertexo/core/triggers';
 
 import type { CapabilityAssembly } from './contract.js';
 import { assertCapabilityRuntimeOpen } from './lifecycle.js';

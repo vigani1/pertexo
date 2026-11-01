@@ -2,7 +2,7 @@ import type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 
 import {
   workflowCreateResponseSchema,

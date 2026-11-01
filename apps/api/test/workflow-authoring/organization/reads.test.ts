@@ -6,7 +6,7 @@ import {
   WorkflowNotFoundError,
   WorkflowTemplateOriginUnavailableError,
   type WorkflowWithOrganization,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import {
   createActorContext,
   AuthorizationError,

@@ -6,12 +6,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WorkspaceVariablesConflictError } from '../../src/variables/contract.js';
 import { createWorkspaceVariablesStore } from '../../src/variables/store.js';
 
-import { admin } from '../../../database/test/lifecycle/calls/fixtures.js';
-import {
-  apiUrl,
-  withApplicationName,
-} from '../../../database/test/lifecycle/retention.support.js';
-import { waitForApplicationLock } from '../../../database/test/support/postgres/lock-coordination.js';
+import { admin } from '../lifecycle/calls/fixtures.js';
+import { apiUrl, withApplicationName } from '../lifecycle/retention.support.js';
+import { waitForApplicationLock } from '../support/postgres/lock-coordination.js';
 import {
   afterAllFixture2,
   beforeAllFixture1,

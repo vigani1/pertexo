@@ -16,8 +16,8 @@ import {
   UserProfileCommandConflictError,
   type WorkspaceMemberRoleCommandConflictReason,
   type WorkspaceMemberRemovalCommandConflictReason,
-} from '@pertexo/database/tenant-access';
-import { IdempotencyRequestConflictError } from '@pertexo/database/runs';
+} from '@pertexo/core/tenant-access';
+import { IdempotencyRequestConflictError } from '@pertexo/core/runs';
 import {
   applicationError,
   type ApplicationError,

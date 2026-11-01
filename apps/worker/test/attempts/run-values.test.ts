@@ -3,7 +3,7 @@ import {
   RunValuesLimitError,
   ExecutionCapabilityExpiredError,
   type RunValuesStore,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { createRunValuesRuntime } from '../../src/attempts/execution/run-values.js';
 const context = {
   workspaceId: 'workspace',

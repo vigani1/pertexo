@@ -4,12 +4,12 @@ import {
   EventCoordinationUnavailableError,
   FormChangedError,
   FormAccessConflictError,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import {
   FormFileRejectedError,
   FormValuesInvalidError,
 } from '@pertexo/workflow-model';
-import { FormUploadLimitError } from '@pertexo/database/runs';
+import { FormUploadLimitError } from '@pertexo/core/runs';
 import { applicationError } from '../../platform/http/index.js';
 
 export const formsProblems = [

@@ -1,5 +1,5 @@
 import { errorRegistration } from '../../platform/http/problems/registry.js';
-import { DirectoryError } from '@pertexo/database/tenant-access';
+import { DirectoryError } from '@pertexo/core/tenant-access';
 import { applicationError } from '../../platform/http/index.js';
 
 export const directoryProblems = [

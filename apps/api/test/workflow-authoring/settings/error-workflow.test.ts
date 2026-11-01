@@ -1,6 +1,6 @@
 import type { Role } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
-import type { WorkflowErrorDatabase } from '@pertexo/database/authoring';
+import type { WorkflowErrorDatabase } from '@pertexo/core/authoring';
 import { WorkflowErrorUseCase } from '../../../src/workflow-authoring/settings/error-workflow.js';
 import { createActorContext } from '../../../src/authorization/index.js';
 

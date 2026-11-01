@@ -1,5 +1,5 @@
-import type { NodeAttemptRunStore } from '@pertexo/database/attempts';
-import type { WorkerConnectionResolutionDatabase } from '@pertexo/database/connections';
+import type { NodeAttemptRunStore } from '@pertexo/core/attempts';
+import type { WorkerConnectionResolutionDatabase } from '@pertexo/core/connections';
 
 import type {
   ResendClient,

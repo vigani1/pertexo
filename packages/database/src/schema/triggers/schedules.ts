@@ -1,5 +1,5 @@
-import type { RecordedScheduleOccurrence } from '../../triggers/schedules/contract.js';
-import type { ScheduleTriggerRecord } from '../../triggers/schedules/management/contract.js';
+import type { RecordedScheduleOccurrence } from '../stored-shapes.js';
+import type { ScheduleTriggerRecord } from '../stored-shapes.js';
 import { workflowTriggers } from '../authoring/workflows.js';
 import { workflowRuns } from '../runs/execution.js';
 import {

@@ -6,7 +6,7 @@ import {
   type UnknownOutcomeReconciliationResult,
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
-} from '@pertexo/database/outbox';
+} from '@pertexo/core/outbox';
 import {
   createWorkspaceDatabase,
   type DatabaseConfig,

@@ -1,6 +1,6 @@
 import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import type { PreviewTerminalOutcome } from '@pertexo/database/previews';
+import type { PreviewTerminalOutcome } from '@pertexo/core/previews';
 
 type PreviewFailure = Exclude<
   PreviewTerminalOutcome,

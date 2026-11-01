@@ -10,7 +10,7 @@ import {
   RunRequiresFormError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import {
   type ApplicationError,

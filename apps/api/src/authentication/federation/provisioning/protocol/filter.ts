@@ -1,8 +1,5 @@
 import { parse, type Filter } from 'scim2-parse-filter';
-import {
-  DirectoryError,
-  DIRECTORY_LIMITS,
-} from '@pertexo/database/tenant-access';
+import { DirectoryError, DIRECTORY_LIMITS } from '@pertexo/core/tenant-access';
 
 /** Budget the source before invoking the parser, then its linear AST before walking it. */
 export function parseDirectoryFilter(source: string): Filter {

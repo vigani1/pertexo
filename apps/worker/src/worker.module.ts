@@ -11,7 +11,7 @@ import { createSystemMailDeliveryStore } from '@pertexo/database/platform';
 import {
   createNoticeMailStore,
   createWorkspaceInboxFoldStore,
-} from '@pertexo/database/notifications';
+} from '@pertexo/core/notifications';
 import {
   createApplicationSecretEnvelope,
   createSystemMailClient,

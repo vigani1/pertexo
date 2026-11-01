@@ -1,14 +1,14 @@
-import type { GovernanceStore } from '@pertexo/database/governance';
+import type { GovernanceStore } from '@pertexo/core/governance';
 
-import type { DataTablesStore } from '@pertexo/database/data-tables';
+import type { DataTablesStore } from '@pertexo/core/data-tables';
 
 import type { WorkspaceVariablesStore } from '@pertexo/core/variables';
-import type { FormStore } from '@pertexo/database/triggers';
+import type { FormStore } from '@pertexo/core/triggers';
 
-import type { PendingTaskStore } from '@pertexo/database/runs';
+import type { PendingTaskStore } from '@pertexo/core/runs';
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import type { WorkflowAuthoringDatabase } from '@pertexo/database/authoring';
+import type { WorkflowAuthoringDatabase } from '@pertexo/core/authoring';
 import type {
   JsonataEvaluator,
   WorkflowAuthoringValidator,

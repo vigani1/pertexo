@@ -4,7 +4,7 @@ import type { ApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import {
   FederationConflictError,
   type FederationManagementStore,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 
 import { canonicalJson } from '@pertexo/workflow-model';
 import {

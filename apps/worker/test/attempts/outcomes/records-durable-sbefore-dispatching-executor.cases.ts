@@ -1,7 +1,7 @@
 import type {
   NodeAttemptRunStore,
   PublishedWorkflowReader,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { expect, it, vi } from 'vitest';

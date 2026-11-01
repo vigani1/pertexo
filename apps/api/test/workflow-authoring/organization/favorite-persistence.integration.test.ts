@@ -1,17 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createIdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
+import { createIdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
 import {
   createWorkflowFavoriteDatabase,
   createWorkflowOrganizationReadDatabase,
   type WorkflowFavoriteDatabase,
   type WorkflowOrganizationReadDatabase,
-} from '@pertexo/database/authoring';
-import {
-  parseDatabaseConfig,
-  WorkflowNotFoundError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/authoring';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
+import { WorkflowNotFoundError } from '@pertexo/core/testing';
 import { createWorkflowOrganizationOwnedDatabase } from './support/owned-database.js';
 
 const fixture = createWorkflowOrganizationOwnedDatabase();

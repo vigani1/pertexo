@@ -9,12 +9,14 @@ import {
 } from '@pertexo/artifact-store';
 import {
   artifactStorageKey,
-  artifacts as artifactsTable,
   claimDueUnfinalizedArtifact,
   completeArtifactRemoval,
   createPendingArtifact,
-  createWorkspaceDatabase,
   finalizeArtifactUpload,
+} from '@pertexo/core/testing';
+import {
+  artifacts as artifactsTable,
+  createWorkspaceDatabase,
 } from '@pertexo/database/testing';
 
 import { eq } from 'drizzle-orm';

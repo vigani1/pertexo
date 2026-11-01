@@ -1,4 +1,4 @@
-import type { OutboxDispatcherDatabase } from '@pertexo/database/outbox';
+import type { OutboxDispatcherDatabase } from '@pertexo/core/outbox';
 
 import type { QueueProducer } from '@pertexo/queue';
 

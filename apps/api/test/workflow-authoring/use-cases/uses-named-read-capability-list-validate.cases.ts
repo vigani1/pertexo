@@ -9,7 +9,7 @@ import {
 } from '../../../src/workflow-authoring/use-cases.js';
 import { createDraftRepresentationTag } from '../../../src/workflow-authoring/http/etag.js';
 
-import type { WorkflowRecord } from '@pertexo/database/testing';
+import type { WorkflowRecord } from '@pertexo/core/testing';
 
 import {
   actorId,

@@ -3,7 +3,7 @@ import type {
   RetentionDatabase,
   RunArtifactRetentionCoordinator,
   WorkspacePurgeCoordinator,
-} from '@pertexo/database/lifecycle';
+} from '@pertexo/core/lifecycle';
 import type { StructuredLogger } from '@pertexo/observability';
 
 import {

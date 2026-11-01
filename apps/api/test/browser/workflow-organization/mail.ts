@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
   createWorkspaceInvitationDeliveryStore,
   type WorkspaceInvitationDeliveryStore,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   createApplicationSecretEnvelope,

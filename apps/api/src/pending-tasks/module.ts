@@ -1,5 +1,5 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import type { PendingTaskStore } from '@pertexo/database/runs';
+import type { PendingTaskStore } from '@pertexo/core/runs';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { PendingTasksController } from './controller.js';
 import { PendingTaskService } from './service.js';

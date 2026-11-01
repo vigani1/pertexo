@@ -9,7 +9,7 @@ import {
   workflowFailureNotificationPolicyRequestSchema,
 } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { FailureNotificationDestinationDatabase } from '@pertexo/database/notifications';
+import type { FailureNotificationDestinationDatabase } from '@pertexo/core/notifications';
 import { z } from 'zod';
 
 import {

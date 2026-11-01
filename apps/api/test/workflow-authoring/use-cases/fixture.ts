@@ -7,7 +7,7 @@ import type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import { validateWorkflowGraph } from '@pertexo/workflow-model';
 

@@ -1,7 +1,5 @@
-import {
-  parseDatabaseConfig,
-  type FailureNotificationStore,
-} from '@pertexo/database/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
+import type { FailureNotificationStore } from '@pertexo/core/testing';
 
 import { expect, it, vi } from 'vitest';
 

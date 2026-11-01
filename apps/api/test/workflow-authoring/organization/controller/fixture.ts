@@ -13,7 +13,7 @@ import { vi } from 'vitest';
 import type {
   WorkflowTagDatabase,
   WorkflowFavoriteDatabase,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import { WorkflowOrganizationController } from '../../../../src/workflow-authoring/organization/controller.js';
 import { WorkflowOrganizationCommandsUseCase } from '../../../../src/workflow-authoring/organization/commands.js';
 import { WorkflowOrganizationReadsUseCase } from '../../../../src/workflow-authoring/organization/reads.js';

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createInitialCheckpoint } from '@pertexo/execution';
+import { createInitialCheckpoint } from '@pertexo/core/execution';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import {

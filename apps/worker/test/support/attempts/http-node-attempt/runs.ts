@@ -1,10 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { acceptManualFixtureRun } from '../manual-start.js';
-import {
-  parseDatabaseConfig,
-  requestWorkflowRunCancellation,
-} from '@pertexo/database/testing';
-import { createOperatorCommandDatabase } from '@pertexo/database/runs';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
+import { requestWorkflowRunCancellation } from '@pertexo/core/testing';
+import { createOperatorCommandDatabase } from '@pertexo/core/runs';
 
 import {
   buildWorkflowExecutable,

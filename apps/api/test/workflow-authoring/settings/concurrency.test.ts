@@ -5,12 +5,12 @@ import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { GUARDS_METADATA, HEADERS_METADATA } from '@nestjs/common/constants.js';
-import type { WorkflowConcurrencyDatabase } from '@pertexo/database/authoring';
+import type { WorkflowConcurrencyDatabase } from '@pertexo/core/authoring';
 import {
   WorkflowConcurrencyRevisionConflictError,
   WorkflowConcurrencyLimitExceededError,
   WorkflowConcurrencyLimitUnavailableError,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import { WorkflowConcurrencyUseCase } from '../../../src/workflow-authoring/settings/concurrency.js';
 import { WorkflowConcurrencyController } from '../../../src/workflow-authoring/settings/concurrency-controller.js';
 import {

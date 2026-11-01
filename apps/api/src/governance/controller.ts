@@ -37,7 +37,7 @@ import { decodeCsvDownloadRequest } from '../platform/http/csv/request.js';
 import { sendCsvDownload } from '../platform/http/csv/response.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { GovernanceManageGuard, GovernanceGuard } from './guard.js';
-import type { GovernanceStore } from '@pertexo/database/governance';
+import type { GovernanceStore } from '@pertexo/core/governance';
 import { GOVERNANCE_STORE } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../problems/context/normalize.js';

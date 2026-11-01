@@ -1,9 +1,9 @@
 import type { NodeExecutionCapabilityFactories } from '../../../src/attempts/execution/capabilities.js';
 import { createHash, randomUUID } from 'node:crypto';
-import { createDeadlineWakeupScanner } from '@pertexo/database/runs';
+import { createDeadlineWakeupScanner } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
-import { createInitialCheckpoint } from '@pertexo/execution';
+import { createOutboxDispatcherDatabase } from '@pertexo/core/outbox';
+import { createInitialCheckpoint } from '@pertexo/core/execution';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';

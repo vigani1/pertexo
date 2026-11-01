@@ -1,7 +1,7 @@
 import {
   createOutboxDispatcherDatabase,
   createScheduleTriggerScanner,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
 import { WorkerDrainState } from '../../../../src/runtime/shutdown/drain-state.js';

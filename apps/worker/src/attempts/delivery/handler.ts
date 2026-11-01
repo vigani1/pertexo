@@ -1,12 +1,15 @@
 import { executorFailureCompletion } from './executor-failure.js';
 import { codeCompletionFields } from '../code/diagnostics.js';
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
-} from '@pertexo/database/attempts';
+} from '@pertexo/core/attempts';
 
-import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/execution';
+import {
+  loadAttemptInputs,
+  type NodeAttemptInputs,
+} from '@pertexo/core/execution';
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import type { QueueHandlerContext } from '@pertexo/queue';
 import type { NodeAttemptOutcome } from '@pertexo/workflow-engine';

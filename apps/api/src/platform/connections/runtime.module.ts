@@ -4,8 +4,8 @@ import { metrics, trace } from '@opentelemetry/api';
 import {
   createConnectionDatabase,
   type ApiConnectionDatabase,
-} from '@pertexo/database/connections';
-import { createFailureNotificationDestinationDatabase } from '@pertexo/database/notifications';
+} from '@pertexo/core/connections';
+import { createFailureNotificationDestinationDatabase } from '@pertexo/core/notifications';
 import {
   generatePersistedId,
   type DatabaseConfig,

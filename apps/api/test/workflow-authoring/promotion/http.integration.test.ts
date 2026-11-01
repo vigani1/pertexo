@@ -4,7 +4,7 @@ import {
 } from '../../support/better-auth/builders.js';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { testExecutableCompiler } from '@pertexo/database/testing';
+import { testExecutableCompiler } from '@pertexo/core/testing';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
   workflowPromotionPreviewSchema,

@@ -2,7 +2,7 @@ import { problemResult } from '../support/problem.js';
 import {
   ScheduleTriggerError,
   type ScheduleTriggerDatabase,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import {
   scheduleManagementCommandResponseSchema,
   scheduleTriggerListResponseSchema,

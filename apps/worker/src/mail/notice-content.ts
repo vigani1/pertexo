@@ -5,7 +5,7 @@ import {
 import type {
   NoticeMailItem,
   NoticeMailToSeal,
-} from '@pertexo/database/notifications';
+} from '@pertexo/core/notifications';
 const labels = {
   workflow_failure: 'Workflow failed',
   workflow_auto_paused: 'Workflow auto-paused',

@@ -1,5 +1,5 @@
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createRetentionDatabase } from '@pertexo/database/lifecycle';
+import { createRetentionDatabase } from '@pertexo/core/lifecycle';
 
 import { parseCheckpoint } from '@pertexo/workflow-engine';
 

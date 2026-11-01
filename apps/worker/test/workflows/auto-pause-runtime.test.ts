@@ -1,7 +1,7 @@
 import type {
   WorkflowTriggerPauseDecision,
   WorkflowTriggerPauseFoldStore,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createWorkflowAutoPauseRuntime } from '../../src/workflows/auto-pause-runtime.js';

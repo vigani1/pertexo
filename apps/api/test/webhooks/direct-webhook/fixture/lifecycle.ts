@@ -1,5 +1,5 @@
 import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/database/platform';
-import { createWebhookTestEventStore } from '@pertexo/database/triggers';
+import { createWebhookTestEventStore } from '@pertexo/core/triggers';
 import { WebhookTestEventService } from '../../../../src/webhooks/test-events/service.js';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
@@ -8,10 +8,12 @@ import {
   createIdentityWorkspaceDatabase,
   createWebhookTriggerDatabase,
   createWorkflowTriggerReconciliationDatabase,
+  type WebhookTriggerDatabase,
+} from '@pertexo/core/testing';
+import {
   createWorkspaceDatabase,
   migrateDatabase,
   parseDatabaseConfig,
-  type WebhookTriggerDatabase,
 } from '@pertexo/database/testing';
 import { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
@@ -21,7 +23,7 @@ import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import { Pool } from 'pg';
 import { vi } from 'vitest';
 import { createTestApiApplication } from '../../../support/api-application.js';
-import { createInitialCheckpoint } from '@pertexo/execution';
+import { createInitialCheckpoint } from '@pertexo/core/execution';
 import type { ApiConfig } from '../../../../src/platform/config/api.js';
 import {
   createApiIdentityRuntime,

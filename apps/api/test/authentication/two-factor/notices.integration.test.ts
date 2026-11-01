@@ -1,4 +1,4 @@
-import { createTwoFactorRecoveryStore } from '@pertexo/database/tenant-access';
+import { createTwoFactorRecoveryStore } from '@pertexo/core/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';

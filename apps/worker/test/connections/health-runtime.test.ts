@@ -2,7 +2,7 @@ import {
   canonicalOutboxPayloadChecksum,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from '@pertexo/database/outbox';
+} from '@pertexo/core/outbox';
 import {
   InvalidQueueDeliveryError,
   JOB_NAME,

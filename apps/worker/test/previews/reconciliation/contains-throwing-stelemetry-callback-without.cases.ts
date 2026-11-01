@@ -1,9 +1,9 @@
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
-  parseDatabaseConfig,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
   type FailureNotificationStore,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import { expect, it, vi } from 'vitest';
 import {

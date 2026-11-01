@@ -1,4 +1,4 @@
-import type { ConnectionRecord } from '@pertexo/database/testing';
+import type { ConnectionRecord } from '@pertexo/core/testing';
 import { vi } from 'vitest';
 
 import type {

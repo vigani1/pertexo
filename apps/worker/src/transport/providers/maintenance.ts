@@ -1,6 +1,6 @@
 import type { Provider } from '@nestjs/common';
-import type { FailureNotificationStore } from '@pertexo/database/notifications';
-import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
+import type { FailureNotificationStore } from '@pertexo/core/notifications';
+import type { WorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
 import type { ConnectionEnvelopeEncryptionRuntime } from '@pertexo/integrations/server';
 import type { QueueConsumerObserver } from '@pertexo/queue';
 

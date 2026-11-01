@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
-} from '@pertexo/database/outbox';
+} from '@pertexo/core/outbox';
 import {
   createTransportMetrics,
   type StructuredLogger,

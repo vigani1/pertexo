@@ -1,11 +1,8 @@
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { Client } from 'pg';
 
-import { admin } from '../../../../database/test/lifecycle/calls/fixtures.js';
-import {
-  adminUrl,
-  withDatabase,
-} from '../../../../database/test/lifecycle/retention.support.js';
+import { admin } from '../../lifecycle/calls/fixtures.js';
+import { adminUrl, withDatabase } from '../../lifecycle/retention.support.js';
 
 export const MODES = ['read', 'change'] as const;
 

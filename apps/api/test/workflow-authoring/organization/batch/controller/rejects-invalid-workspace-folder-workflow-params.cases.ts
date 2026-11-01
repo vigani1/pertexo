@@ -5,7 +5,7 @@ import {
   WorkflowFolderConflictError,
   WorkflowTagConflictError,
   WorkflowNotFoundError,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 
 import {
   actorId,

@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import type { PoolClient } from 'pg';
 
-import { withTenantScopedClient } from '@pertexo/database/testing';
+import { withTenantScopedClient } from '@pertexo/core/testing';
 
 import { workspaceId } from './environment.js';
 import { apiPool, workerPool } from './lifecycle.js';

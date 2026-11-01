@@ -1,4 +1,4 @@
-import type { ConnectionDatabase } from '@pertexo/database/testing';
+import type { ConnectionDatabase } from '@pertexo/core/testing';
 
 import { expect, it, vi } from 'vitest';
 

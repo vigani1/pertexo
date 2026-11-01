@@ -1,4 +1,4 @@
-import { ConnectionNotFoundError } from '@pertexo/database/connections';
+import { ConnectionNotFoundError } from '@pertexo/core/connections';
 
 import { connectionResponseSchema } from '@pertexo/contracts';
 import {

@@ -1,7 +1,5 @@
-import type {
-  DatabaseConfig,
-  WorkflowAuthoringDatabase,
-} from '@pertexo/database/testing';
+import type { DatabaseConfig } from '@pertexo/database/testing';
+import type { WorkflowAuthoringDatabase } from '@pertexo/core/testing';
 
 import type { Queue } from 'bullmq';
 import type { QueryResult, QueryResultRow } from 'pg';

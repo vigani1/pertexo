@@ -1,4 +1,4 @@
-import { isAuthenticationSessionAllowed } from '@pertexo/database/tenant-access';
+import { isAuthenticationSessionAllowed } from '@pertexo/core/tenant-access';
 import type { Pool } from 'pg';
 
 import type { PertexoBetterAuth } from './options.js';

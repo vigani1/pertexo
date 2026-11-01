@@ -1,7 +1,7 @@
 import { restrictAcceptedWorkflows } from '../../../support/resources/sharing.js';
 import { callbackResources } from './fixtures.js';
 import { randomUUID } from 'node:crypto';
-import { createWorkflowAuthoringDatabase } from '@pertexo/database/authoring';
+import { createWorkflowAuthoringDatabase } from '@pertexo/core/authoring';
 import {
   buildWorkflowExecutable,
   buildWorkflowTestExecutable,
@@ -10,7 +10,7 @@ import {
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { startCallbackReceiver } from './receiver.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createDueNodeWakeupScanner } from '@pertexo/database/runs';
+import { createDueNodeWakeupScanner } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { callbackTokenHash } from '@pertexo/integrations/server';
 import {

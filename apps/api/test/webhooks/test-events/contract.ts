@@ -1,9 +1,9 @@
 import type { Pool, QueryResultRow, QueryResult } from 'pg';
-import type { WorkflowAuthoringDatabase } from '@pertexo/database/authoring';
+import type { WorkflowAuthoringDatabase } from '@pertexo/core/authoring';
 import type {
   WebhookTestEventStore,
   TestEventScope,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import type { WebhookIngressDependencies } from '../../../src/webhooks/ingress/register.js';
 import type { HttpSessionCookies } from '../support/browser-session.fixture.js';
 

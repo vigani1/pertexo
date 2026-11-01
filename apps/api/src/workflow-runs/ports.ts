@@ -1,4 +1,4 @@
-import type { WorkflowRunDatabase } from '@pertexo/database/runs';
+import type { WorkflowRunDatabase } from '@pertexo/core/runs';
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,

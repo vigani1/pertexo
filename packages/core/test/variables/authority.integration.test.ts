@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
+import { WorkspaceAccessDeniedError } from '../../src/tenant-access/index.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { admin } from '../../../database/test/lifecycle/calls/fixtures.js';
-import { userId } from '../../../database/test/lifecycle/retention.support.js';
+import { admin } from '../lifecycle/calls/fixtures.js';
+import { userId } from '../lifecycle/retention.support.js';
 import {
   afterAllFixture2,
   beforeAllFixture1,

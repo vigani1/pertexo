@@ -1,6 +1,6 @@
 import { failureContext } from '../../support/notification-context.js';
 import { vi } from 'vitest';
-import type { FailureNotificationStore } from '@pertexo/database/testing';
+import type { FailureNotificationStore } from '@pertexo/core/testing';
 
 export const context = failureContext();
 

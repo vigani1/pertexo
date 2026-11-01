@@ -1,4 +1,4 @@
-import type { NodeAttemptRunStore } from '@pertexo/database/testing';
+import type { NodeAttemptRunStore } from '@pertexo/core/testing';
 
 import { expect, it, vi } from 'vitest';
 import { createNodeAttemptHandler } from '../../../src/testing.js';

@@ -17,7 +17,7 @@ const outside = vi.hoisted(() => ({
   validator: vi.fn(),
 }));
 
-vi.mock('@pertexo/database/authoring', async (original) => ({
+vi.mock('@pertexo/core/authoring', async (original) => ({
   ...(await original<object>()),
   createWorkflowAuthoringDatabase: outside.authoring,
   createWorkflowInputCaseDatabase: outside.inputCases,

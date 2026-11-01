@@ -3,12 +3,10 @@ import { JOB_NAME } from '@pertexo/queue';
 import {
   createNodeAttemptRunStore,
   type NodeAttemptLease,
-} from '@pertexo/database/attempts';
+} from '@pertexo/core/attempts';
 
-import {
-  NodeAttemptReconciliationRequiredError,
-  parseDatabaseConfig,
-} from '@pertexo/database/testing';
+import { NodeAttemptReconciliationRequiredError } from '@pertexo/core/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { expect, it } from 'vitest';
 

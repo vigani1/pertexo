@@ -8,7 +8,7 @@ import {
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
   FailureNotificationDestinationError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import {
   ConnectionSecretEncryptionError,
   SecureHttpError,

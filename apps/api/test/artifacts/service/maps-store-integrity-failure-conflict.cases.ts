@@ -5,7 +5,7 @@ import {
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { expect, it, vi } from 'vitest';
 import {
   ArtifactApiConflictError,

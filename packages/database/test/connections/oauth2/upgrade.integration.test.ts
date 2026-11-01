@@ -10,9 +10,12 @@ import {
   migrateDatabase,
   MIGRATIONS_DIRECTORY,
 } from '../../../src/migrations.js';
-import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
+import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
-import { OAUTH2_TABLES, seedWorkspace } from './fixture.js';
+import {
+  OAUTH2_TABLES,
+  seedWorkspace,
+} from '../../../src/testing/connections/oauth2/fixture.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

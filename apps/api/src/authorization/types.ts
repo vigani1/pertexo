@@ -1,4 +1,4 @@
-import type { IdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
+import type { IdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
 import type { ApiTokenScope } from '@pertexo/contracts';
 import {
   ACTIVE_WORKSPACE_STATUSES,

@@ -17,11 +17,11 @@ const outside = vi.hoisted(() => ({
   email: vi.fn(),
 }));
 
-vi.mock('@pertexo/database/connections', async (original) => ({
+vi.mock('@pertexo/core/connections', async (original) => ({
   ...(await original<object>()),
   createConnectionDatabase: outside.database,
 }));
-vi.mock('@pertexo/database/notifications', async (original) => ({
+vi.mock('@pertexo/core/notifications', async (original) => ({
   ...(await original<object>()),
   createFailureNotificationDestinationDatabase: outside.destination,
 }));

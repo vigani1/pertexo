@@ -13,7 +13,7 @@ export function createTransportLedgerSetup(
   const applyLedgerFixture = async (): Promise<void> => {
     const source = await readFile(
       new URL(
-        '../../../../../packages/database/test/fixtures/queue-duplicate-proof.sql',
+        '../../../../../packages/core/test/fixtures/queue-duplicate-proof.sql',
         import.meta.url,
       ),
       'utf8',

@@ -12,7 +12,7 @@ import { vi } from 'vitest';
 import type {
   WorkflowFolderDatabase,
   WorkflowOrganizationBatchDatabase,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import { WorkflowFoldersController } from '../../../../../src/workflow-authoring/organization/folders/controller.js';
 import { WorkflowOrganizationBatchesController } from '../../../../../src/workflow-authoring/organization/batch/controller.js';
 import { WorkflowOrganizationController } from '../../../../../src/workflow-authoring/organization/controller.js';

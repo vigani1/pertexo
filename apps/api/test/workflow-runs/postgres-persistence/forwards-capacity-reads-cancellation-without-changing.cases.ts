@@ -2,7 +2,7 @@ import { problemResult } from '../../support/problem.js';
 import { runFailure } from '../../../src/problems/context/normalize.js';
 
 import { expect, it, vi } from 'vitest';
-import { WorkflowPublishedVersionConflictError } from '@pertexo/database/runs';
+import { WorkflowPublishedVersionConflictError } from '@pertexo/core/runs';
 
 import { createPostgresWorkflowRunPersistence } from '../../../src/workflow-runs/postgres-persistence.js';
 import { usageCapacitySnapshot } from '../usage/capacity.fixture.js';
@@ -15,7 +15,7 @@ import {
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   type WorkflowRunDatabase,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import {
   workspaceId,
   workflowVersionId,

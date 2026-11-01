@@ -8,7 +8,7 @@ import {
 import type {
   DataTablesStore,
   DataTableDefinition,
-} from '@pertexo/database/data-tables';
+} from '@pertexo/core/data-tables';
 export class DataTablesService {
   constructor(readonly store: DataTablesStore) {}
   async importCsv(

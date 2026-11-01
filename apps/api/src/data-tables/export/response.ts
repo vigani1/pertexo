@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { DataTablesStore } from '@pertexo/database/data-tables';
+import type { DataTablesStore } from '@pertexo/core/data-tables';
 import { sendCsvDownload } from '../../platform/http/csv/response.js';
 type ExportInput = Omit<
   Parameters<DataTablesStore['exportCsv']>[0],

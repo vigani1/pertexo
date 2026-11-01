@@ -2,8 +2,8 @@ import type { Role } from '@pertexo/workflow-model';
 import { toProblem } from '../../../src/problems/registry.js';
 import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import { expect, it, vi } from 'vitest';
-import type { PublicationReviewStore } from '@pertexo/database/authoring';
-import { PublicationReviewError } from '@pertexo/database/authoring';
+import type { PublicationReviewStore } from '@pertexo/core/authoring';
+import { PublicationReviewError } from '@pertexo/core/authoring';
 import { createActorContext } from '../../../src/authorization/index.js';
 import { PublicationReviewUseCase } from '../../../src/workflow-authoring/reviews/use-case.js';
 

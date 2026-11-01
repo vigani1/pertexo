@@ -18,7 +18,7 @@ import {
   workflowFolderPlacementRequestSchema,
   workflowFolderPlacementResponseSchema,
 } from '@pertexo/contracts';
-import type { WorkflowFolderDatabase } from '@pertexo/database/authoring';
+import type { WorkflowFolderDatabase } from '@pertexo/core/authoring';
 import type { WorkspaceAuthorizationSource } from '../../../authorization/index.js';
 import {
   authorizeWorkflowOrganization,

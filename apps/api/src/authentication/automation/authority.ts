@@ -5,7 +5,7 @@ import {
 import type {
   ApiTokenDatabase,
   VerifiedApiToken,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import type { RequestHeaders } from '../../platform/http/request-headers.js';
 import type { HttpRateLimitAdmission } from '../../platform/rate-limit/admission.js';
 import { bearerCredential } from './headers.js';

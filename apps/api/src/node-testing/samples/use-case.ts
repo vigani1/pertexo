@@ -8,7 +8,7 @@ import {
 import type {
   WorkflowStepSampleStore,
   SampleMetadata,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/database/platform';
 import {
   authorizeWorkspaceOperation,

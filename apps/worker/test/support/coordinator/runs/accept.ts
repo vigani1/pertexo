@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createWorkflowRunDatabase } from '@pertexo/database/runs';
+import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 
 import { createCheckpoint } from '@pertexo/workflow-engine';
 

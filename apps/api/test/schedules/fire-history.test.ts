@@ -6,7 +6,7 @@ import {
 import {
   ScheduleTriggerError,
   type ScheduleTriggerDatabase,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

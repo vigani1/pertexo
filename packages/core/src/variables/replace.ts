@@ -3,9 +3,9 @@ import {
   appendAuditFact,
   claimCommand,
   completeCommand,
-  lockVariableSet,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
+import { lockVariableSet } from './head.queries.js';
 import {
   workspaceVariables,
   workspaceVariableSetRevisions,

@@ -1,7 +1,7 @@
 import { toProblem } from '../../src/problems/registry.js';
 import { nodeTestingFailure } from '../../src/problems/context/normalize.js';
 import { nodeTestingSamples } from './fixture.js';
-import type { AcceptedPreviewRun } from '@pertexo/database/testing';
+import type { AcceptedPreviewRun } from '@pertexo/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeTestingController } from '../../src/node-testing/controller.js';

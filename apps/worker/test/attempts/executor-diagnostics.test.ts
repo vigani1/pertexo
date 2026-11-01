@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import { NodeAttemptStateCorruptError } from '@pertexo/database/attempts';
+import { NodeAttemptStateCorruptError } from '@pertexo/core/attempts';
 import { executorFailureCompletion } from '../../src/attempts/delivery/executor-failure.js';
 
 describe('executor diagnostic persistence boundary', () => {

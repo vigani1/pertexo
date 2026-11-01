@@ -5,7 +5,7 @@ import {
   pendingTaskListResponseSchema,
   pendingTaskDecisionResponseSchema,
 } from '@pertexo/contracts';
-import type { PendingTaskStore } from '@pertexo/database/runs';
+import type { PendingTaskStore } from '@pertexo/core/runs';
 
 /** Transport contracts surround the same transaction-owned task rules. */
 export class PendingTaskService {

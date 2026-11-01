@@ -8,7 +8,7 @@ import {
   migrateDatabase,
   MIGRATIONS_DIRECTORY,
 } from '../../../../src/migrations.js';
-import { createDisposableDatabaseFixture } from '../../../support/postgres/disposable-database.js';
+import { createDisposableDatabaseFixture } from '../../../../src/testing/postgres/disposable-database.js';
 
 it('upgrades populated human tasks without changing their decisions or context', async () => {
   const adminUrl =

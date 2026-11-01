@@ -2,13 +2,8 @@ import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   PublicationReviewError,
   WorkflowPromotionError,
-} from '@pertexo/database/authoring';
-import {
   WorkflowErrorSettingsConflictError,
   WorkflowErrorTargetUnavailableError,
-} from '@pertexo/database/authoring';
-import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
-import {
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
   WorkflowConcurrencyRevisionConflictError,
@@ -22,7 +17,8 @@ import {
   WorkflowPauseRevisionConflictError,
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
+import { ArtifactMetadataNotFoundError } from '@pertexo/core/runs';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import { apiProblemIssueSchema } from '@pertexo/contracts';

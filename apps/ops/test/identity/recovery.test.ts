@@ -4,7 +4,7 @@ import {
   authenticationMailAssociatedData,
   type SystemMailInput,
 } from '@pertexo/database/platform';
-import type { TwoFactorRecoveryStore } from '@pertexo/database/tenant-access';
+import type { TwoFactorRecoveryStore } from '@pertexo/core/tenant-access';
 import { parseTwoFactorRecoveryConfig } from '../../src/identity/config.js';
 import { disableTwoFactor } from '../../src/identity/run.js';
 

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { IdentityWorkspaceDatabase } from '@pertexo/database/testing';
+import type { IdentityWorkspaceDatabase } from '@pertexo/core/testing';
 
 import { expect } from 'vitest';
 

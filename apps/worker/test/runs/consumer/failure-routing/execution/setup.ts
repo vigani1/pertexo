@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { createWorkflowRunDatabase } from '@pertexo/database/runs';
+import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';

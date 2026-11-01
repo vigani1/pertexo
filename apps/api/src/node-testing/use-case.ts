@@ -9,11 +9,11 @@ import {
   WorkflowStepSampleError,
   WorkflowRevisionConflictError,
   type WorkflowDraftRecord,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import {
   PREVIEW_EXECUTION_TIMEOUT_MAX_MS,
   PREVIEW_RETENTION_MAX_MS,
-} from '@pertexo/database/previews';
+} from '@pertexo/core/previews';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
   type ExpressionEvaluator,

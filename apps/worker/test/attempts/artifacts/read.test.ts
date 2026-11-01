@@ -7,7 +7,7 @@ import { ArtifactScratchSpace } from '../../../src/attempts/artifacts/scratch/sp
 import { Readable } from 'node:stream';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ArtifactIntegrityError } from '@pertexo/artifact-store';
-import { ArtifactMetadataNotFoundError } from '@pertexo/database/runs';
+import { ArtifactMetadataNotFoundError } from '@pertexo/core/runs';
 import { createArtifactReader } from '../../../src/attempts/artifacts/read.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';

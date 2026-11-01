@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
-import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
+import { createDisposableDatabaseFixture } from '../../src/testing/postgres/disposable-database.js';
 
 it('backfills stable IDs without changing populated rows or published graphs and retains forced RLS', async () => {
   const adminUrl =

@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  createOutboxDispatcherDatabase,
-  parseDatabaseConfig,
-} from '@pertexo/database/testing';
+import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';

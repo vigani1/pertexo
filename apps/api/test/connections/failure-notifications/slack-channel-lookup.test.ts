@@ -2,7 +2,7 @@ import type { Role } from '@pertexo/workflow-model';
 import {
   ConnectionNotFoundError,
   ConnectionUnavailableError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import {
   ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,

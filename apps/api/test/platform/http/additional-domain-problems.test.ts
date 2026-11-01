@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Controller, Get } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
-import { PreviewIdempotencyConflictError } from '@pertexo/database/previews';
+import { PreviewIdempotencyConflictError } from '@pertexo/core/previews';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
 import { HttpPlatformModule } from '../../../src/platform/http/index.js';

@@ -1,5 +1,5 @@
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
-import type { LeasedOutboxEvent } from '@pertexo/database/outbox';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
+import type { LeasedOutboxEvent } from '@pertexo/core/outbox';
 import type { TransportErrorClass, TransportJob } from '@pertexo/observability';
 import {
   JOB_NAME,

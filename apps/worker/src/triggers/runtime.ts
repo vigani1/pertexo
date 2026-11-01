@@ -1,4 +1,4 @@
-import type { InitialCheckpointFactory } from '@pertexo/database/runs';
+import type { InitialCheckpointFactory } from '@pertexo/core/runs';
 import {
   createScheduleTriggerScanner,
   createTriggerEventScanner,
@@ -6,7 +6,7 @@ import {
   createWorkflowTriggerReconciliationDatabase,
   type ScheduleTriggerScanner,
   type WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -26,7 +26,7 @@ import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import { createTriggerReconciliationHandler } from './handler.js';
 import { createTriggerRuntimeTelemetry } from './telemetry.js';
-import { initialCheckpointFactory } from '@pertexo/execution';
+import { initialCheckpointFactory } from '@pertexo/core/execution';
 import { reportDiagnostic } from '../runtime/polling.js';
 import {
   closeOwners,

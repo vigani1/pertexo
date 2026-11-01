@@ -4,7 +4,7 @@ import {
   WebhookIngressRateLimitExceededError,
   WebhookWorkflowPausedError,
   WorkspaceRunQuotaExceededError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import { expect, it } from 'vitest';
 

@@ -1,6 +1,6 @@
-import { createRunValuesStore } from '@pertexo/database/runs';
+import { createRunValuesStore } from '@pertexo/core/runs';
 import { createRunValuesRuntime } from '../run-values.js';
-import { createWorkerDataTablesStore } from '@pertexo/database/data-tables';
+import { createWorkerDataTablesStore } from '@pertexo/core/data-tables';
 
 import type { CapabilityAssembly } from './contract.js';
 import { assertCapabilityRuntimeOpen } from './lifecycle.js';

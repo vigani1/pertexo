@@ -4,7 +4,7 @@ import {
   connectionTestPersistence,
   sealed,
 } from '../../support/use-case-fixture.js';
-import { FailureNotificationDestinationError } from '@pertexo/database/testing';
+import { FailureNotificationDestinationError } from '@pertexo/core/testing';
 import { expect, it, vi } from 'vitest';
 import { FailureNotificationDestinationsController } from '../../../../src/connections/failure-notifications/controller.js';
 import { FailureNotificationDestinationUseCases } from '../../../../src/connections/failure-notifications/destinations.js';

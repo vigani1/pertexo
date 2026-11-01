@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
-import type { OperatorCommandDatabase } from '@pertexo/database/runs';
-import type * as OperatorDatabaseModule from '@pertexo/database/runs';
+import type { OperatorCommandDatabase } from '@pertexo/core/runs';
+import type * as OperatorDatabaseModule from '@pertexo/core/runs';
 import type { StructuredLogger } from '@pertexo/observability';
 import type * as LoggingModule from '@pertexo/observability';
 import type { createTelemetryLifecycle } from '@pertexo/observability/startup';
@@ -35,7 +35,7 @@ export interface OperatorCommandBootstrapDependencies {
 
 async function loadModules(): Promise<OperatorCommandBootstrapModules> {
   const [database, logging, command] = await Promise.all([
-    import('@pertexo/database/runs'),
+    import('@pertexo/core/runs'),
     import('@pertexo/observability'),
     import('./run.js'),
   ]);

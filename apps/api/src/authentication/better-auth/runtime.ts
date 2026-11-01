@@ -19,7 +19,7 @@ import type { BetterAuthOptions } from 'better-auth';
 import {
   SignUpAvailability,
   type SignUpMode,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import { surviveConnectionLoss } from '@pertexo/database/platform';
 import { Pool } from 'pg';
 import { refuseClosedSignUp } from './sign-up-gate.js';

@@ -1,4 +1,4 @@
-import { WebhookIngressRateLimitExceededError } from '@pertexo/database/testing';
+import { WebhookIngressRateLimitExceededError } from '@pertexo/core/testing';
 
 import { expect, it } from 'vitest';
 

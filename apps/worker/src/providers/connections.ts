@@ -4,7 +4,7 @@ import {
   ConnectionUnavailableError,
   type ConnectionResolutionDatabase,
   type ResolvedConnectionSecretRecord,
-} from '@pertexo/database/connections';
+} from '@pertexo/core/connections';
 import {
   OAuth2TokenFailure,
   type ConnectionEnvelopeEncryption,

@@ -9,7 +9,7 @@ const mergeKey = `${workflowVersionId}|merge|b:|i:`;
 const joinConformanceCases = JSON.parse(
   readFileSync(
     new URL(
-      '../../../database/test/fixtures/checkpoint-join-conformance.json',
+      '../../../core/test/fixtures/checkpoint-join-conformance.json',
       import.meta.url,
     ),
     'utf8',

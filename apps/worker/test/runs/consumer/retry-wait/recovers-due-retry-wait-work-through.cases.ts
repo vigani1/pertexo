@@ -1,9 +1,9 @@
 import {
   createDueNodeWakeupScanner,
   createRunAdvanceStore,
-  parseDatabaseConfig,
   type RunAdvanceStore,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { QUEUE_NAME } from '@pertexo/queue';
 import {
   invocationKey,

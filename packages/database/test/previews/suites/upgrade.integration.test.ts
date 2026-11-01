@@ -8,7 +8,7 @@ import {
   migrateDatabase,
   MIGRATIONS_DIRECTORY,
 } from '../../../src/migrations.js';
-import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
+import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 it('upgrades a populated standalone test without changing its source identity or legacy case charge', async () => {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??

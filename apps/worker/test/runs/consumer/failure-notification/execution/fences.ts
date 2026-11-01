@@ -1,7 +1,5 @@
-import {
-  createFailureNotificationStore,
-  parseDatabaseConfig,
-} from '@pertexo/database/testing';
+import { createFailureNotificationStore } from '@pertexo/core/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { databaseUrl, workerUrl } from '../fixture.js';
 import type { FailureNotificationScenario } from './contract.js';

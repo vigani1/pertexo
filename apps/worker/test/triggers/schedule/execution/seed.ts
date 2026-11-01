@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import {
   createIdentityWorkspaceDatabase,
   createWorkflowAuthoringDatabase,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import {
   workflowCompatibilityReport,

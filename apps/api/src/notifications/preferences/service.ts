@@ -3,8 +3,8 @@ import {
   noticeSubscriptionSchema,
   noticeCommandResponseSchema,
 } from '@pertexo/contracts';
-import type { NoticePreferencesStore } from '@pertexo/database/notifications';
-import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
+import type { NoticePreferencesStore } from '@pertexo/core/notifications';
+import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 
 import {
   openNoticeUnsubscribe,

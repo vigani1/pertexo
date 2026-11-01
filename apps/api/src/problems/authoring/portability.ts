@@ -5,7 +5,7 @@ import {
   WorkflowPortabilityCompatibilityConflictError,
   WorkflowPortabilityReviewConflictError,
   WorkflowPortabilityValidationError,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import { applicationError } from '../../platform/http/index.js';
 
 export const portabilityProblems = [

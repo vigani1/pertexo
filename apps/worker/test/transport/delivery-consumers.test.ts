@@ -1,4 +1,4 @@
-import { DELIVERY_CONSUMER } from '@pertexo/database/outbox';
+import { DELIVERY_CONSUMER } from '@pertexo/core/outbox';
 import { JOB_NAME } from '@pertexo/queue';
 import { expect, it } from 'vitest';
 

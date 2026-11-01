@@ -5,7 +5,7 @@ import {
   WorkflowTagConflictError,
   type WorkflowFolderConflictKind,
   type WorkflowTagConflictKind,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import {
   applicationError,
   type ApplicationError,

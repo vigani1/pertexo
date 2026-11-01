@@ -2,7 +2,7 @@ import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   NoticeConflictError,
   NoticeUnavailableError,
-} from '@pertexo/database/notifications';
+} from '@pertexo/core/notifications';
 import { applicationError } from '../../platform/http/index.js';
 
 export const preferencesProblems = [

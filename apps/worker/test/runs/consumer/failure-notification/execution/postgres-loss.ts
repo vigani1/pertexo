@@ -1,8 +1,8 @@
 import {
   canonicalOutboxPayloadChecksum,
-  createOutboxDispatcherDatabase,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
+import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 
 import { expect } from 'vitest';
 import { createProviderFailureNotificationDelivery } from '../../../../../src/notifications/failure-delivery.js';

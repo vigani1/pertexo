@@ -2,7 +2,7 @@ import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { applicationError } from '../../platform/http/index.js';
 
 export const tasksProblems = [

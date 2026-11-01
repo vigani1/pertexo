@@ -3,7 +3,7 @@ import { codeCompletionFields } from '../code/diagnostics.js';
 import {
   NodeAttemptOutputInvalidError,
   type NodeAttemptLease,
-} from '@pertexo/database/attempts';
+} from '@pertexo/core/attempts';
 
 import type { NodeAttemptOutcome } from '@pertexo/workflow-engine';
 

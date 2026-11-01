@@ -12,7 +12,7 @@ import {
   connectionIdParamSchema,
   connectionUsageResponseSchema,
 } from '@pertexo/contracts';
-import type { ConnectionUsageDatabase } from '@pertexo/database/connections';
+import type { ConnectionUsageDatabase } from '@pertexo/core/connections';
 import { z } from 'zod';
 
 import { SessionAuthenticationGuard } from '../../workspaces/index.js';

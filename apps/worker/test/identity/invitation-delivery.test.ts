@@ -1,4 +1,4 @@
-import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
+import type { WorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
 import {
   createSystemMailClient,
   type SystemMailClient,

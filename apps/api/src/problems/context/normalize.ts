@@ -1,4 +1,4 @@
-import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
+import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   ArtifactMetadataNotFoundError,
@@ -6,7 +6,7 @@ import {
   IdempotencyRequestConflictError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import {
   CallableInputInvalidError,
   InvalidWorkflowGraphError,

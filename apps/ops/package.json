@@ -10,10 +10,11 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@pertexo/core": "workspace:*",
     "@pertexo/database": "workspace:*",
+    "@pertexo/integrations": "workspace:*",
     "@pertexo/observability": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
-    "zod": "4.6.7",
-    "@pertexo/integrations": "workspace:*"
+    "zod": "4.6.7"
   }
 }

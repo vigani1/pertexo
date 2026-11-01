@@ -1,8 +1,8 @@
-import type { OrganizationSignInCommands } from '@pertexo/database/tenant-access';
+import type { OrganizationSignInCommands } from '@pertexo/core/tenant-access';
 import {
   FederationConflictError,
   WorkspaceAccessDeniedError,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import {
   federationSignInStartSchema,
   federationTestStartSchema,

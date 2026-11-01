@@ -3,12 +3,12 @@ import {
   createCallbackTokenKeys,
   callbackTokenHash,
 } from '@pertexo/integrations/server';
-import type { CallbackStore } from '@pertexo/database/runs';
+import type { CallbackStore } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createApiCallbackRuntime } from '../../../src/platform/webhooks/callback-runtime.module.js';
 
 const createCallbackStore = vi.hoisted(() => vi.fn());
-vi.mock('@pertexo/database/runs', async (original) => ({
+vi.mock('@pertexo/core/runs', async (original) => ({
   ...(await original<object>()),
   createCallbackStore,
 }));

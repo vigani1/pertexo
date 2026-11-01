@@ -2,7 +2,7 @@ import type {
   RejectedWebhookDelivery,
   WebhookTriggerDatabase,
   WebhookVerificationReference,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 
 export type RejectedAttempt = Pick<
   RejectedWebhookDelivery,

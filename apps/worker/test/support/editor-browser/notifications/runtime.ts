@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
   createWorkspaceInboxFoldStore,
   createNoticeMailStore,
-} from '@pertexo/database/notifications';
+} from '@pertexo/core/notifications';
 import {
   createSystemMailDeliveryStore,
   type DatabaseConfig,

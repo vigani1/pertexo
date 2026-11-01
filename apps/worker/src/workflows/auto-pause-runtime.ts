@@ -2,7 +2,7 @@ import { metrics, type Meter } from '@opentelemetry/api';
 import type {
   WorkflowTriggerPauseDecision,
   WorkflowTriggerPauseFoldStore,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 
 import {
   createPollingRuntime,

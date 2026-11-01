@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { PreviewAttemptLease } from '@pertexo/database/testing';
+import type { PreviewAttemptLease } from '@pertexo/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { startPreviewAttemptSupervisor } from '../../src/previews/supervisor.js';

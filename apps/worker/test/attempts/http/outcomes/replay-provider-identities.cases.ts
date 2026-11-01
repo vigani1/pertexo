@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { JOB_NAME } from '@pertexo/queue';
 
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 
-import { createOperatorCommandDatabase } from '@pertexo/database/runs';
+import { createOperatorCommandDatabase } from '@pertexo/core/runs';
 import { parseOperatorDatabaseConfig } from '@pertexo/database/platform';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 

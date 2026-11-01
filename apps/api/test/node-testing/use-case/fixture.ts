@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { JsonValue } from '@pertexo/workflow-model';
 
-import type { AcceptedPreviewRun } from '@pertexo/database/testing';
+import type { AcceptedPreviewRun } from '@pertexo/core/testing';
 
 import { vi } from 'vitest';
 

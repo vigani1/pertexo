@@ -8,7 +8,7 @@ import {
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceRenameCommandConflictError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 

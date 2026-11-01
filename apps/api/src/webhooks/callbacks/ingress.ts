@@ -2,7 +2,7 @@ import { toProblem } from '../../problems/registry.js';
 import { hasHttpStatus } from '../../platform/http/problems/status.js';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { CallbackResponseError } from '@pertexo/database/runs';
+import { CallbackResponseError } from '@pertexo/core/runs';
 import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
 import { callbackTokenHash, redactText } from '@pertexo/integrations/server';
 import type { StructuredLogger } from '@pertexo/observability';

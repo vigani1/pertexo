@@ -6,8 +6,8 @@ import {
 import { createDraftRepresentationTag } from '../../../src/workflow-authoring/http/etag.js';
 import { createActorContext } from '../../../src/authorization/index.js';
 import type { WorkflowAuthoringPersistence } from '../../../src/workflow-authoring/ports.js';
-import type { PublishWorkflowInput as DatabasePublishWorkflowInput } from '@pertexo/database/testing';
-import { WorkflowRevisionConflictError } from '@pertexo/database/testing';
+import type { PublishWorkflowInput as DatabasePublishWorkflowInput } from '@pertexo/core/testing';
+import { WorkflowRevisionConflictError } from '@pertexo/core/testing';
 
 import {
   actorId,

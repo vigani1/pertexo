@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { it, expect } from 'vitest';
 
-import { createPendingTaskStore } from '@pertexo/database/runs';
+import { createPendingTaskStore } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   accept,

@@ -3,11 +3,13 @@ import { randomUUID } from 'node:crypto';
 import {
   createIdentityWorkspaceDatabase,
   createWorkflowAuthoringDatabase,
-  migrateDatabase,
-  parseDatabaseConfig,
   testExecutableCompiler,
   type IdentityWorkspaceDatabase,
   type WorkflowAuthoringDatabase,
+} from '@pertexo/core/testing';
+import {
+  migrateDatabase,
+  parseDatabaseConfig,
 } from '@pertexo/database/testing';
 import {
   JOB_NAME,

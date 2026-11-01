@@ -1,9 +1,7 @@
 import type { Role } from '@pertexo/workflow-model';
 
-import type {
-  IdentityWorkspaceDatabase,
-  WorkspaceDatabase,
-} from '@pertexo/database/testing';
+import type { IdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import type { WorkspaceDatabase } from '@pertexo/database/testing';
 
 import type { createApiApplication } from '../../../src/app.js';
 

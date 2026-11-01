@@ -1,5 +1,5 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import type { DataTablesStore } from '@pertexo/database/data-tables';
+import type { DataTablesStore } from '@pertexo/core/data-tables';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { DataTablesController } from './controller.js';
 import { DataTablesService } from './service.js';

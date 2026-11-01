@@ -1,5 +1,5 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import type { FormStore } from '@pertexo/database/triggers';
+import type { FormStore } from '@pertexo/core/triggers';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { FormService } from './service.js';
 import { MemberFormsController } from './members.controller.js';

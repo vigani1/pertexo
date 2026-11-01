@@ -2,7 +2,7 @@ import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
-import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
+import { createOutboxDispatcherDatabase } from '@pertexo/core/outbox';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createStructuredLogger } from '@pertexo/observability';
 import { parseWorkerConfig } from '../../../dist/config/worker.js';

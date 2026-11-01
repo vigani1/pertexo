@@ -16,7 +16,7 @@ import {
   workflowPresenceHeartbeatResultSchema,
   workspacePeoplePageSchema,
 } from '@pertexo/contracts';
-import type { WorkflowCollaborationStore } from '@pertexo/database/authoring';
+import type { WorkflowCollaborationStore } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
   BROWSABLE_WORKSPACE_STATUSES,

@@ -1,6 +1,6 @@
 import { failureContext } from '../../support/notification-context.js';
 import { vi } from 'vitest';
-import type { FailureNotificationStore } from '@pertexo/database/testing';
+import type { FailureNotificationStore } from '@pertexo/core/testing';
 import type { SlackClient } from '@pertexo/integrations/server';
 import { createProviderFailureNotificationDelivery } from '../../../src/notifications/failure-delivery.js';
 

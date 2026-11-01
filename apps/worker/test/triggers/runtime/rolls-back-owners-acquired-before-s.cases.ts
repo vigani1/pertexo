@@ -1,4 +1,4 @@
-import type { ScheduleTriggerScanner } from '@pertexo/database/testing';
+import type { ScheduleTriggerScanner } from '@pertexo/core/testing';
 
 import { expect, it, vi } from 'vitest';
 

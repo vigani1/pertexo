@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { withWorkspaceAccess } from '../../../src/shared/index.js';
 
-import { userId } from '../../../../database/test/lifecycle/retention.support.js';
+import { userId } from '../../lifecycle/retention.support.js';
 import {
   afterAllFixture2,
   beforeAllFixture1,

@@ -4,12 +4,12 @@ import {
   canonicalOutboxPayloadChecksum,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from '@pertexo/database/outbox';
+} from '@pertexo/core/outbox';
 import {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
   type OperatorRunReplayStore,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { JOB_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 

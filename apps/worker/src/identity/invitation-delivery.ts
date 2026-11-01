@@ -1,5 +1,5 @@
-import type { WorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
-import { createWorkspaceInvitationDeliveryStore } from '@pertexo/database/tenant-access';
+import type { WorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
+import { createWorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
 import {
   createApplicationSecretEnvelope,
   createSystemMailClient,

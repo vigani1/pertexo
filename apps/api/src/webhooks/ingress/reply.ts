@@ -6,11 +6,11 @@ import {
   WebhookDeliveryReplayMismatchError,
   WebhookIntakeBusyError,
   WebhookWorkflowPausedError,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import type { FastifyReply } from 'fastify';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import {

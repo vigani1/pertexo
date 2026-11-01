@@ -1,10 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import type { createWorkspaceDatabase } from '@pertexo/database/testing';
-import {
-  consumeInboxMessage,
-  insertOutboxEvent,
-} from '@pertexo/database/testing';
+import { consumeInboxMessage } from '@pertexo/core/testing';
+import { insertOutboxEvent } from '@pertexo/database/testing';
 import { JOB_NAME } from '@pertexo/queue';
 
 import { sql } from 'drizzle-orm';

@@ -1,7 +1,7 @@
 import type {
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import type { QueueConsumer, QueueConsumerOptions } from '@pertexo/queue';
 import { vi } from 'vitest';
 import type { StructuredLogger } from '@pertexo/observability';

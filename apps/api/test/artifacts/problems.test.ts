@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { z } from 'zod';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
-import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
+import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 import { Test } from '@nestjs/testing';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import {
@@ -13,7 +13,7 @@ import {
   ArtifactUploadConflictError,
   ArtifactUploadIdempotencyConflictError,
   ArtifactUploadNotFoundError,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
 import { HttpPlatformModule } from '../../src/platform/http/index.js';

@@ -1,7 +1,7 @@
 import type { transportMetrics } from '../../support/transport/metrics.js';
 import { randomUUID } from 'node:crypto';
 
-import type { createOutboxDispatcherDatabase } from '@pertexo/database/testing';
+import type { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 
 import { JOB_NAME } from '@pertexo/queue';
 

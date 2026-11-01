@@ -1,5 +1,5 @@
-import type { RunAdvanceStore } from '@pertexo/database/testing';
-import { CoordinatorDeliveryMismatchError } from '@pertexo/database/testing';
+import type { RunAdvanceStore } from '@pertexo/core/testing';
+import { CoordinatorDeliveryMismatchError } from '@pertexo/core/testing';
 import {
   JOB_NAME,
   QUEUE_NAME,

@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
-import { createWorkflowCallStore } from '@pertexo/database/runs';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
+import { createWorkflowCallStore } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createInitialCheckpoint } from '@pertexo/execution';
+import { createInitialCheckpoint } from '@pertexo/core/execution';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import { expect, it } from 'vitest';

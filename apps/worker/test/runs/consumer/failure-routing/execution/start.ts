@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { initialCheckpointFactory } from '@pertexo/execution';
+import { initialCheckpointFactory } from '@pertexo/core/execution';
 
-import { createOutboxDispatcherDatabase } from '@pertexo/database/testing';
+import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';

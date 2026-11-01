@@ -3,7 +3,7 @@ import {
   workflowConcurrencySettingsRequestSchema,
   workflowConcurrencyCommandResponseSchema,
 } from '@pertexo/contracts';
-import type { WorkflowConcurrencyDatabase } from '@pertexo/database/authoring';
+import type { WorkflowConcurrencyDatabase } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

@@ -3,7 +3,7 @@ import type { z } from 'zod';
 import {
   createOutboxDispatcherDatabase,
   type LeasedOutboxEvent,
-} from '@pertexo/database/outbox';
+} from '@pertexo/core/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 import { createTransportMetrics } from '@pertexo/observability';

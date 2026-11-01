@@ -3,7 +3,7 @@ import {
   type NodeConnectionHealthObservation,
 } from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
-import type { NodeAttemptRunStore } from '@pertexo/database/attempts';
+import type { NodeAttemptRunStore } from '@pertexo/core/attempts';
 
 import { createNodeAttemptHandler } from '../../src/attempts/delivery/handler.js';
 import { createNodeExecutionEnvironment } from '../../src/attempts/execution/environment.js';

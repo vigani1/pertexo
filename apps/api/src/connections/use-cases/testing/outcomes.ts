@@ -1,5 +1,5 @@
 import type { OAuth2StepFailureCode } from '@pertexo/contracts';
-import type { ConnectionTestOutcome } from '@pertexo/database/connections';
+import type { ConnectionTestOutcome } from '@pertexo/core/connections';
 import type { SecureHttpError } from '@pertexo/integrations/server';
 import { classifySlackConnectionHealth } from '@pertexo/integrations/server';
 

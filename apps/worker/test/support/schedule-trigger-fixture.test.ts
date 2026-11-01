@@ -1,4 +1,4 @@
-import type { WorkflowAuthoringDatabaseOptions } from '@pertexo/database/testing';
+import type { WorkflowAuthoringDatabaseOptions } from '@pertexo/core/testing';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/server';

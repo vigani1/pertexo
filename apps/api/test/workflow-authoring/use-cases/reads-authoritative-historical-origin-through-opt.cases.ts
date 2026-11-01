@@ -3,7 +3,7 @@ import { GetWorkflowUseCase } from '../../../src/workflow-authoring/use-cases.js
 import { createDraftRepresentationTag } from '../../../src/workflow-authoring/http/etag.js';
 import { authorizeWorkspace } from '../../../src/authorization/index.js';
 
-import { WorkflowNotFoundError } from '@pertexo/database/testing';
+import { WorkflowNotFoundError } from '@pertexo/core/testing';
 import { TransitionWorkflowLifecycleUseCase } from '../../../src/workflow-authoring/commands/lifecycle.js';
 
 import { RestoreWorkflowVersionUseCase } from '../../../src/workflow-authoring/commands/restore-version.js';

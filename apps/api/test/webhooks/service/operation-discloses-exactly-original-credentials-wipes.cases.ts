@@ -1,5 +1,5 @@
 import { problemResult } from '../../support/problem.js';
-import { WebhookTriggerNotFoundError } from '@pertexo/database/testing';
+import { WebhookTriggerNotFoundError } from '@pertexo/core/testing';
 import { webhookManagementCommandResponseSchema } from '@pertexo/contracts';
 
 import { expect, it } from 'vitest';

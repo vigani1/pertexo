@@ -3,7 +3,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import type {
   WebhookTestEventStore,
   TestEventScope,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 
 import {
   webhookTestEventStartedSchema,

@@ -4,7 +4,7 @@ import type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
   ReleaseOutboxResult,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import { JOB_NAME, type QueueProducer } from '@pertexo/queue';
 import { vi } from 'vitest';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/runtime.js';

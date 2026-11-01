@@ -1,4 +1,4 @@
-import type { createFailureNotificationStore } from '@pertexo/database/testing';
+import type { createFailureNotificationStore } from '@pertexo/core/testing';
 
 import type { seedFailureNotificationProof } from './seed.js';
 
