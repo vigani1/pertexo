@@ -1,5 +1,5 @@
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createWorkspaceInboxFoldStore } from '@pertexo/core/notifications';
+import { createWorkspaceInboxFoldStore } from '@pertexo/core/inbox';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
