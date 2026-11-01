@@ -1,10 +1,23 @@
-export { createDataTablesStore } from './store.js';
-export { createWorkerDataTablesStore } from './worker-store.js';
+export { createDataTablesStore, type DataTablesStore } from './store.js';
+export {
+  createWorkerDataTablesStore,
+  type WorkerDataTablesStore,
+} from './worker-store.js';
 export type {
-  DataTablesStore,
+  ConfigureTablesInput,
+  CreateTableInput,
+  DataTableAttempt,
   DataTableDefinition,
   DataTableQuotas,
-  DataTableScope,
-  DataTableAttempt,
-  WorkerDataTablesStore,
+  EditTableSchemaInput,
+  ExportTableInput,
+  FindRowsInput,
+  ImportRowsInput,
+  RemoveTableInput,
+  WriteRowsInput,
 } from './contract.js';
+export type { WorkspaceActor } from '../shared/workspace-access.js';
+
+// Runs and authoring check table references directly (ADR 091).
+export type {} from './columns/references.queries.js';
+export type {} from './definitions.queries.js';

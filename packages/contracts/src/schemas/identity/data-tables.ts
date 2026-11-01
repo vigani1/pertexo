@@ -95,7 +95,6 @@ export const dataTableWriteReceiptSchema = z
     affected: z.number().int().nonnegative(),
   })
   .strict();
-export type DataTableWriteReceipt = z.infer<typeof dataTableWriteReceiptSchema>;
 
 export const dataTableSchemaEditSchema = z
   .object({

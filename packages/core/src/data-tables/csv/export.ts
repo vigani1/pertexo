@@ -12,6 +12,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workspaceDataTableRows as rows } from '@pertexo/database/schema';
+import type { ExportTableInput } from '../contract.js';
 import { requireTable } from '../definitions.queries.js';
 import { queryClause } from '../rows/find.queries.js';
 
@@ -19,8 +20,20 @@ const BATCH_ROWS = 256;
 const BATCH_BYTES = 4 * 1024 * 1024;
 type ExportRead = <T>(work: (client: PoolClient) => Promise<T>) => Promise<T>;
 
+export async function exportTable(read: ExportRead, input: ExportTableInput) {
+  const table = await read((client) =>
+    requireTable(client, input.workspaceId, { id: input.tableId }),
+  );
+  const csv = exportTableCsv(read, input.workspaceId, {
+    table,
+    query: input.query,
+    signal: input.signal,
+  });
+  await input.consume(csv, table);
+}
+
 /** Each checkout finishes before yielding any bytes to the consumer. */
-export function exportTableCsv(
+function exportTableCsv(
   read: ExportRead,
   workspaceId: string,
   {

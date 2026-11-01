@@ -187,7 +187,6 @@ export {
   type DataTableCreate,
   type DataTableWrite,
   type DataTableLimits,
-  type DataTableWriteReceipt,
 } from './schemas/identity/data-tables.js';
 
 export {
