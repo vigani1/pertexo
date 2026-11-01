@@ -23,7 +23,7 @@ import {
 } from '../fixture.js';
 
 export function registerEnforcesDestinationDisableDispatchFencing(): void {
-  it('enforces destination disable and dispatch fencing against the pinned configuration', async () => {
+  it('enforces destination disable and dispatch fencing against the current configuration', async () => {
     const { runId } = await commitPinnedFailureNotificationRun();
     const first = await failureNotificationIdentity(runId);
 
@@ -101,7 +101,7 @@ export function registerEnforcesDestinationDisableDispatchFencing(): void {
       ).resolves.toMatchObject({
         kind: 'email',
         secretVersionId: notificationSecretVersionId,
-        toEmail: 'run-store@example.test',
+        toEmail: 'changed@example.test',
       });
       const credentialAudit = await asOwner(workspaceA, (client) =>
         client.query<{
