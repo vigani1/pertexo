@@ -47,9 +47,10 @@
 
 ## Code conventions
 
-- Dependencies run `apps -> core -> database, workflow-engine, workflow-model`;
-  only applications depend on `core` ([ADR 091](docs/adr/091-core-layer.md)). The
-  `secrets` package it names doesn't exist yet; it's created in a step of its own.
+- Dependencies run `apps -> core -> secrets -> database`, and
+  `core -> database, workflow-engine, workflow-model`; only applications depend on
+  `core`, and only applications and `core` on `secrets`
+  ([ADR 091](docs/adr/091-core-layer.md)).
 - A core flow opens its transaction through `withWorkspaceAccess`
   (`core/src/shared/`), which checks authority inside it and hands the flow the
   role it found. Keep a flow's lock order; if a flow doesn't fit the helper, stop
@@ -67,9 +68,9 @@
   exceptions, all Node only:
   - `core` has one entry point per area (`@pertexo/core/<area>`) and `/testing`;
     it has no root and no `/server`.
-  - The database has `/schema` and `/primitives` for `core` alone, `/platform` for
-    pools and startup, and `/testing` for fixtures. Applications may import only
-    `/platform`, plus `/testing` from tests (a check enforces it).
+  - The database has `/schema` and `/primitives` for `core` and `secrets` alone,
+    `/platform` for pools and startup, and `/testing` for fixtures. Applications may
+    import only `/platform`, plus `/testing` from tests (a check enforces it).
   - `@pertexo/observability/startup`: instrumentation must load before the
     dependencies it instruments.
 

@@ -262,11 +262,14 @@ export default tseslint.config(
                 '@pertexo/core',
                 '@pertexo/core/*',
                 '**/core/src/**',
+                '@pertexo/secrets',
+                '@pertexo/secrets/*',
+                '**/secrets/src/**',
                 'bullmq',
                 'ioredis',
               ],
               message:
-                'The database package is a server persistence leaf and cannot depend on core, actions, frameworks, queues, observability, or applications.',
+                'The database package is a server persistence leaf and cannot depend on core, secrets, actions, frameworks, queues, observability, or applications.',
             },
           ],
         },
@@ -498,9 +501,54 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@pertexo/core', '@pertexo/core/*', '**/core/src/**'],
+              group: [
+                '@pertexo/core',
+                '@pertexo/core/*',
+                '**/core/src/**',
+                '@pertexo/secrets',
+                '@pertexo/secrets/*',
+                '**/secrets/src/**',
+              ],
               message:
-                'Core depends on the database, never the reverse. A test that needs a core flow lives in packages/core/test.',
+                'Core and secrets depend on the database, never the reverse. A test that needs their flows lives in their own package.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/secrets/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@pertexo/database',
+              message:
+                'Import a database entry point, such as @pertexo/database/primitives.',
+            },
+          ],
+          patterns: [
+            {
+              group: [
+                '**/apps/**',
+                '@nestjs/*',
+                '@pertexo/api',
+                '@pertexo/api/*',
+                '@pertexo/worker',
+                '@pertexo/worker/*',
+                '@pertexo/core',
+                '@pertexo/core/*',
+                '**/core/src/**',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
+                'bullmq',
+                'ioredis',
+              ],
+              message:
+                'Secrets sits on the database, below core: it holds system mail and encryption keys, with no frameworks, queues, areas or applications.',
             },
           ],
         },

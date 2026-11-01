@@ -11,4 +11,5 @@
 /packages/core/src/ @vigani1
 /packages/database/src/ @vigani1
 /packages/integrations/src/credentials/ @vigani1
+/packages/secrets/src/ @vigani1
 /docs/adr/ @vigani1
