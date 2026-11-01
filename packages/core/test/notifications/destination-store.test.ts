@@ -7,7 +7,7 @@ vi.mock('../../../database/dist/tenant-access/transactions.js', () => ({
   withTenantScopedClient,
 }));
 
-import { createFailureNotificationDestinationStore } from '../../src/notifications/destinations/dispatch.repository.js';
+import { createFailureNotificationDestinationStore } from '../../src/notifications/delivery/destination.repository.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const intentId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

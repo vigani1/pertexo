@@ -27,7 +27,7 @@ import { FailureNotificationContextSchema } from '@pertexo/workflow-model';
 import type { FailureNotificationStore } from './contract.js';
 import { createFailureNotificationCompletionStore } from './delivery/completion.repository.js';
 import { auditFailureNotification as audit } from './delivery/evidence.repository.js';
-import { createFailureNotificationDestinationStore } from './destinations/dispatch.repository.js';
+import { createFailureNotificationDestinationStore } from './delivery/destination.repository.js';
 import { FailureNotificationStateError } from './errors.js';
 
 type FailureNotificationTransaction = Readonly<{

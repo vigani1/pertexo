@@ -1,7 +1,7 @@
-export { createFailureNotificationDestinationDatabase } from './destinations/repository.js';
+export { createNotificationDestinationStore } from './destinations/store.js';
 export { FailureNotificationDestinationError } from './destinations/errors.js';
-export type { FailureNotificationDestinationDatabase } from './destinations/contract.js';
-export { createFailureNotificationStore } from './repository.js';
+export type { NotificationDestinationStore } from './destinations/contract.js';
+export { createFailureNotificationStore } from './store.js';
 export { FailureNotificationStateError } from './errors.js';
 export type {
   FailureNotificationResolvedDestination,

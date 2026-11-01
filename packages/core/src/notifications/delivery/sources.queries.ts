@@ -7,7 +7,7 @@ import {
   connections as connection,
 } from '@pertexo/database/schema';
 import { notificationProviderRequirements } from '../policies/admission.queries.js';
-import { destinationConfigSql } from './records.queries.js';
+import { destinationConfigSql } from '../destinations/records.queries.js';
 export const currentDestinationSql = and(
   eq(destination.status, 'enabled'),
   eq(destination.kind, version.kind),

@@ -1,4 +1,4 @@
-import type { FailureNotificationDestinationDatabase } from '@pertexo/core/testing';
+import type { NotificationDestinationStore } from '@pertexo/core/testing';
 import { vi } from 'vitest';
 
 import { createActorContext } from '../../../../src/authorization/index.js';
@@ -57,27 +57,27 @@ export const command = {
 export function persistence() {
   return {
     create: vi
-      .fn<FailureNotificationDestinationDatabase['create']>()
+      .fn<NotificationDestinationStore['create']>()
       .mockResolvedValue(record),
     get: vi
-      .fn<FailureNotificationDestinationDatabase['get']>()
+      .fn<NotificationDestinationStore['get']>()
       .mockResolvedValue(record),
     list: vi
-      .fn<FailureNotificationDestinationDatabase['list']>()
+      .fn<NotificationDestinationStore['list']>()
       .mockResolvedValue([record]),
     appendVersion: vi
-      .fn<FailureNotificationDestinationDatabase['appendVersion']>()
+      .fn<NotificationDestinationStore['appendVersion']>()
       .mockResolvedValue(record),
     setStatus: vi
-      .fn<FailureNotificationDestinationDatabase['setStatus']>()
+      .fn<NotificationDestinationStore['setStatus']>()
       .mockResolvedValue(record),
     setWorkflowPolicy:
-      vi.fn<FailureNotificationDestinationDatabase['setWorkflowPolicy']>(),
+      vi.fn<NotificationDestinationStore['setWorkflowPolicy']>(),
     clearWorkflowPolicy:
-      vi.fn<FailureNotificationDestinationDatabase['clearWorkflowPolicy']>(),
+      vi.fn<NotificationDestinationStore['clearWorkflowPolicy']>(),
     getWorkflowPolicy: vi
-      .fn<FailureNotificationDestinationDatabase['getWorkflowPolicy']>()
+      .fn<NotificationDestinationStore['getWorkflowPolicy']>()
       .mockResolvedValue(record),
-    close: vi.fn<FailureNotificationDestinationDatabase['close']>(),
-  } satisfies FailureNotificationDestinationDatabase;
+    close: vi.fn<NotificationDestinationStore['close']>(),
+  } satisfies NotificationDestinationStore;
 }

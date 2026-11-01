@@ -5,7 +5,7 @@ import {
   createConnectionDatabase,
   type ApiConnectionDatabase,
 } from '@pertexo/core/connections';
-import { createFailureNotificationDestinationDatabase } from '@pertexo/core/notifications';
+import { createNotificationDestinationStore } from '@pertexo/core/notifications';
 import {
   generatePersistedId,
   type DatabaseConfig,
@@ -56,11 +56,11 @@ export async function createApiConnectionRuntime(
 ): Promise<ApiConnectionRuntime> {
   let database: ApiConnectionDatabase | undefined;
   let destinationDatabase:
-    ReturnType<typeof createFailureNotificationDestinationDatabase> | undefined;
+    ReturnType<typeof createNotificationDestinationStore> | undefined;
   let encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   try {
     database = createConnectionDatabase(databaseConfig, runtime);
-    destinationDatabase = createFailureNotificationDestinationDatabase(
+    destinationDatabase = createNotificationDestinationStore(
       databaseConfig,
       runtime,
     );
@@ -178,7 +178,7 @@ function createOAuth2Runtime(
 async function closeResources(
   database: ApiConnectionDatabase,
   destinationDatabase: ReturnType<
-    typeof createFailureNotificationDestinationDatabase
+    typeof createNotificationDestinationStore
   >,
   encryption: ConnectionEnvelopeEncryptionRuntime | undefined,
 ): Promise<void> {
@@ -194,7 +194,7 @@ async function closeResources(
 async function collectCloseFailures(
   database: ApiConnectionDatabase | undefined,
   destinationDatabase:
-    ReturnType<typeof createFailureNotificationDestinationDatabase> | undefined,
+    ReturnType<typeof createNotificationDestinationStore> | undefined,
   encryption: ConnectionEnvelopeEncryptionRuntime | undefined,
 ): Promise<unknown[]> {
   const results = await Promise.allSettled([
