@@ -102,6 +102,20 @@ describe('isTransientDatabaseFailure', () => {
     },
   );
 
+  it('calls a failure and its failed rollback transient only when both are', () => {
+    const lost = failure('57P01');
+    const rollback = failure(undefined, 'Connection terminated unexpectedly');
+    expect(
+      isTransientDatabaseFailure(new AggregateError([lost, rollback])),
+    ).toBe(true);
+    expect(
+      isTransientDatabaseFailure(
+        new AggregateError([new Error('a bug'), rollback]),
+      ),
+    ).toBe(false);
+    expect(isTransientDatabaseFailure(new AggregateError([]))).toBe(false);
+  });
+
   it('never retries an ordinary error or a thrown value', () => {
     expect(isTransientDatabaseFailure(new Error('stale lease'))).toBe(false);
     expect(isTransientDatabaseFailure('nope')).toBe(false);
