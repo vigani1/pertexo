@@ -484,6 +484,13 @@
       "when": 1793536784118,
       "tag": "0068_connection_events_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1793552029157,
+      "tag": "0069_alert_dispatch_identity",
+      "breakpoints": true
     }
   ]
 }

@@ -13,9 +13,10 @@ import { destinationConfigSql } from '../destinations/records.queries.js';
  * since a run can wait days and rotating a credential mustn't silence its alert.
  * The exception is a retry after a send that may have gone out: it stays on what
  * that send used, so the provider can recognise it, or fails if that has changed.
+ * An intent from before these were recorded used what its run pinned.
  */
-const deliveredVersion = sql<number>`case when ${intent.possiblyDispatched} then ${intent.destinationConfigVersion} else ${destination.currentConfigVersion} end`;
-const deliveredSecret = sql<string>`case when ${intent.possiblyDispatched} then ${intent.connectionSecretVersionId} else ${connection.currentSecretVersionId} end`;
+const deliveredVersion = sql<number>`case when ${intent.possiblyDispatched} then coalesce(${intent.dispatchedConfigVersion},${intent.destinationConfigVersion}) else ${destination.currentConfigVersion} end`;
+const deliveredSecret = sql<string>`case when ${intent.possiblyDispatched} then coalesce(${intent.dispatchedSecretVersionId},${intent.connectionSecretVersionId}) else ${connection.currentSecretVersionId} end`;
 
 export const currentDestinationSql = and(
   eq(destination.status, 'enabled'),
@@ -31,6 +32,7 @@ export function deliverySources(db: Pick<NodePgDatabase, 'select'>) {
   return db
     .select({
       config: destinationConfigSql.as('config'),
+      configVersion: deliveredVersion.as('config_version'),
       secretVersionId: deliveredSecret.as('secret_version_id'),
     })
     .from(intent)

@@ -168,9 +168,13 @@ export async function fenceDispatch(
             ),
           ),
       );
-      const available = exists(
-        deliverySources(db).where(and(scope, currentDestinationSql)),
-      );
+      const [source] = await deliverySources(db)
+        .where(and(scope, currentDestinationSql))
+        .catch(rethrowQueryFailure);
+      if (source === undefined)
+        throw new FailureNotificationStateError(
+          'Delivery dispatch fence failed',
+        );
       const fenced = await db
         .update(intent)
         .set({
@@ -178,12 +182,13 @@ export async function fenceDispatch(
           dispatchMarkedAt: sql`clock_timestamp()`,
           // Only a send that may have gone out holds the next attempt to its identity.
           deliveryBinding: sql`case when ${intent.possiblyDispatched} then coalesce(${intent.deliveryBinding},${binding}) else ${binding} end`,
+          dispatchedConfigVersion: source.configVersion,
+          dispatchedSecretVersionId: source.secretVersionId,
           updatedAt: sql`clock_timestamp()`,
         })
         .where(
           and(
             scope,
-            available,
             activeWorkspace,
             sql`(${intent.possiblyDispatched} is not true or (${binding}::text is null and ${intent.deliveryBinding} is null) or (${binding}::text is not null and (${intent.deliveryBinding} is null or ${intent.deliveryBinding}=${binding})))`,
           ),
