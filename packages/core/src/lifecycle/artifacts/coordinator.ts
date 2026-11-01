@@ -1,10 +1,9 @@
-import type {
-  RunArtifactRetentionStore,
-  RunArtifactRetentionProcessResult,
-  RunArtifactRetentionCoordinator,
-  RunArtifactRetentionCoordinatorOptions,
-} from './contract.js';
-import { optionsSchema } from './input.js';
+import type { RunArtifactRetentionProcessResult } from './contract.js';
+import {
+  optionsSchema,
+  type RunArtifactRetentionCoordinatorOptions,
+} from './input.js';
+import { eraseArtifact, type RetentionArtifactStore } from './erase.js';
 import {
   and,
   asc,
@@ -30,34 +29,32 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
-import { inRetentionTransaction } from '../retention/transaction.js';
+import {
+  inRetentionTransaction,
+  scopeToWorkspace,
+} from '../retention/transaction.js';
 
-async function retryLater(
-  client: PoolClient,
-  artifactId: string,
-  delay: string,
-): Promise<void> {
-  await drizzle(client)
-    .update(artifactRecords)
-    .set({
-      retentionRetryAt: sql`clock_timestamp()+${delay}::interval`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(eq(artifactRecords.id, artifactId))
-    .catch(rethrowQueryFailure);
-}
+/** Something still refers to it, so it's looked at again much later. */
+const REFERENCED_RETRY = sql`interval '1 day'`;
+/** Long enough for this worker to erase it; another takes over after that. */
+const ERASE_RETRY = sql`interval '1 minute'`;
+
+export type RunArtifactRetentionCoordinator = ReturnType<
+  typeof createRunArtifactRetentionCoordinator
+>;
 
 /**
  * Deletes expired run artifacts and abandoned uploads: the artifact is marked
  * deleting, its bytes are erased outside any transaction, and its row goes
- * once the store no longer has them.
+ * once the store no longer has them. No member is acting, so this stays off
+ * `withWorkspaceAccess`: it runs on the maintenance role.
  */
 export function createRunArtifactRetentionCoordinator(
   config: DatabaseConfig,
-  artifacts: RunArtifactRetentionStore,
+  artifacts: RetentionArtifactStore,
   inputOptions: RunArtifactRetentionCoordinatorOptions = {},
   runtime?: DatabaseRuntime,
-): RunArtifactRetentionCoordinator {
+) {
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
@@ -69,11 +66,7 @@ export function createRunArtifactRetentionCoordinator(
     inRetentionTransaction(pool, options, signal, async (client) => {
       // Artifact capacity is charged in the artifact's own workspace.
       if (workspaceId !== undefined)
-        await drizzle(client)
-          .execute(
-            sql`select set_config('app.workspace_id',${workspaceId},true)`,
-          )
-          .catch(rethrowQueryFailure);
+        await scopeToWorkspace(client, workspaceId);
       return work(client);
     });
 
@@ -132,11 +125,7 @@ export function createRunArtifactRetentionCoordinator(
           .for('update', { skipLocked: true })
           .catch(rethrowQueryFailure);
         if (artifact === undefined) return undefined;
-        await db
-          .execute(
-            sql`select set_config('app.workspace_id',${artifact.workspaceId},true)`,
-          )
-          .catch(rethrowQueryFailure);
+        await scopeToWorkspace(client, artifact.workspaceId);
         const [reference] = await db
           .select({
             referenced: sql<boolean>`(${artifactReferenceOwnersSql(sql`${artifact.workspaceId}`, sql`${artifact.id}`)})`,
@@ -150,14 +139,21 @@ export function createRunArtifactRetentionCoordinator(
           )
           .catch(rethrowQueryFailure);
         if (reference?.referenced ?? false) {
-          await retryLater(client, artifact.id, '1 day');
+          await db
+            .update(artifactRecords)
+            .set({
+              retentionRetryAt: sql`clock_timestamp()+${REFERENCED_RETRY}`,
+              updatedAt: sql`clock_timestamp()`,
+            })
+            .where(eq(artifactRecords.id, artifact.id))
+            .catch(rethrowQueryFailure);
           return { ...artifact, referenced: true };
         }
         await db
           .update(artifactRecords)
           .set({
             status: 'deleting',
-            retentionRetryAt: sql`clock_timestamp()+interval '1 minute'`,
+            retentionRetryAt: sql`clock_timestamp()+${ERASE_RETRY}`,
             updatedAt: sql`clock_timestamp()`,
           })
           .where(eq(artifactRecords.id, artifact.id))
@@ -170,19 +166,16 @@ export function createRunArtifactRetentionCoordinator(
       if (prepared.referenced)
         return Object.freeze({ artifactId, status: 'referenced', workspaceId });
 
-      const external = AbortSignal.any([
-        ...(signal === undefined ? [] : [signal]),
-        AbortSignal.timeout(options.externalOperationTimeoutMs),
-      ]);
-      await artifacts.delete({ artifactId, signal: external, workspaceId });
-      if (
-        (await artifacts.head({
-          artifactId,
-          signal: external,
-          workspaceId,
-        })) !== null
-      )
-        // The store still has the bytes; the retry time brings it back.
+      const erased = await eraseArtifact(
+        artifacts,
+        { artifactId, workspaceId },
+        {
+          ...(signal === undefined ? {} : { signal }),
+          timeoutMs: options.externalOperationTimeoutMs,
+        },
+      );
+      if (!erased)
+        // The retry time brings it back.
         return Object.freeze({ artifactId, status: 'waiting', workspaceId });
 
       await transaction(signal, workspaceId, (client) =>

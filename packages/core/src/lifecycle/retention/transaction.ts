@@ -11,6 +11,27 @@ export type RetentionTransactionOptions = Readonly<{
   statementTimeoutMs: number;
 }>;
 
+/** Writes and counters in a maintenance transaction belong to this workspace. */
+export async function scopeToWorkspace(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  await drizzle(client)
+    .execute(sql`select set_config('app.workspace_id',${workspaceId},true)`)
+    .catch(rethrowQueryFailure);
+}
+
+/** Work outside a transaction gives up when the caller does or the time is up. */
+export function withDeadline(
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+): AbortSignal {
+  return AbortSignal.any([
+    ...(signal === undefined ? [] : [signal]),
+    AbortSignal.timeout(timeoutMs),
+  ]);
+}
+
 export async function inRetentionTransaction<T>(
   pool: Pool,
   options: RetentionTransactionOptions,

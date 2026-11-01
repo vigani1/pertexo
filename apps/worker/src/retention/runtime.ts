@@ -1,6 +1,6 @@
 import type {
   PreviewRetentionCoordinator,
-  RetentionDatabase,
+  RetentionStore,
   RunArtifactRetentionCoordinator,
   WorkspacePurgeCoordinator,
 } from '@pertexo/core/lifecycle';
@@ -18,7 +18,7 @@ export type RetentionRuntime = PollingRuntime;
 export const RETENTION_RUNTIME = Symbol('RETENTION_RUNTIME');
 
 export type RetentionRuntimeResources = Readonly<{
-  database: RetentionDatabase;
+  database: RetentionStore;
   preview: PreviewRetentionCoordinator;
   runArtifacts: RunArtifactRetentionCoordinator;
   workspacePurge: WorkspacePurgeCoordinator;

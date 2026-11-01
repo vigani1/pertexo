@@ -7,16 +7,3 @@ export type RetentionPassResult = Readonly<{
   /** Some rule filled its page, so more rows are due now. */
   more: boolean;
 }>;
-
-export interface RetentionDatabase {
-  checkReadiness(signal?: AbortSignal): Promise<void>;
-  close(): Promise<void>;
-  /** Runs every rule once, one page each. */
-  enforce(signal?: AbortSignal): Promise<RetentionPassResult>;
-}
-
-export type RetentionStoreOptions = Readonly<{
-  lockTimeoutMs?: number;
-  pageSize?: number;
-  statementTimeoutMs?: number;
-}>;

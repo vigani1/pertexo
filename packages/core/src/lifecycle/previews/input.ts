@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+export type PreviewRetentionCoordinatorOptions = Readonly<
+  z.input<typeof optionsSchema>
+>;
+
 export const optionsSchema = z
   .object({
     artifactQuiescenceSeconds: z.number().int().min(1).max(120).default(60),

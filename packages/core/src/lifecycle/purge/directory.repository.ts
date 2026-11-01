@@ -10,6 +10,10 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { detachDirectoryMemberships } from '../../identity/federation/provisioning/management/detach.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { scopeToWorkspace } from '../retention/transaction.js';
+
+/** How many due workspaces one claim tries before reporting nothing to do. */
+const PURGE_CLAIM_CANDIDATES = 10;
 
 async function linkedWorkspaceIds(
   client: PoolClient,
@@ -52,7 +56,7 @@ export async function claimPurgeWorkspace(
     .from(workspaces)
     .where(purgeIsDue())
     .orderBy(asc(workspaces.purgeAfter), asc(workspaces.id))
-    .limit(10)
+    .limit(PURGE_CLAIM_CANDIDATES)
     .catch(rethrowQueryFailure);
   for (const candidate of candidates) {
     const plan = await linkedWorkspaceIds(client, candidate.id);
@@ -120,8 +124,6 @@ export async function purgeDirectoryMemberships(
     source.organizationId,
     { workspaceId: source.workspaceId, limit },
   );
-  await db
-    .execute(sql`select set_config('app.workspace_id',${workspaceId},true)`)
-    .catch(rethrowQueryFailure);
+  await scopeToWorkspace(client, workspaceId);
   return changed;
 }

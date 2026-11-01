@@ -6,25 +6,14 @@ export { createRunArtifactRetentionCoordinator } from './artifacts/coordinator.j
 export { createWorkspacePurgeCoordinator } from './purge/coordinator.js';
 export { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './purge/steps.js';
 export type {
-  WorkspacePurgeCoordinator,
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
 } from './purge/contract.js';
-export type {
-  RunArtifactRetentionCoordinator,
-  RunArtifactRetentionCoordinatorOptions,
-  RunArtifactRetentionProcessResult,
-  RunArtifactRetentionStore,
-} from './artifacts/contract.js';
-export type {
-  RetentionDatabase,
-  RetentionStoreOptions,
-  RetentionPassResult,
-} from './retention/contract.js';
+export type { WorkspacePurgeCoordinator } from './purge/coordinator.js';
+export type { RunArtifactRetentionProcessResult } from './artifacts/contract.js';
+export type { RunArtifactRetentionCoordinator } from './artifacts/coordinator.js';
+export type { RetentionPassResult } from './retention/contract.js';
+export type { RetentionStore } from './retention/store.js';
 export { createPreviewRetentionCoordinator } from './previews/coordinator.js';
-export type {
-  PreviewRetentionArtifactStore,
-  PreviewRetentionCoordinator,
-  PreviewRetentionCoordinatorOptions,
-  PreviewRetentionProcessResult,
-} from './previews/contract.js';
+export type { PreviewRetentionCoordinator } from './previews/coordinator.js';
+export type { PreviewRetentionProcessResult } from './previews/contract.js';

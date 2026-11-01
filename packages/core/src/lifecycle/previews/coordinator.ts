@@ -1,10 +1,12 @@
-import type {
-  PreviewRetentionArtifactStore,
-  PreviewRetentionProcessResult,
-  PreviewRetentionCoordinator,
-  PreviewRetentionCoordinatorOptions,
-} from './contract.js';
-import { optionsSchema } from './input.js';
+import type { PreviewRetentionProcessResult } from './contract.js';
+import {
+  optionsSchema,
+  type PreviewRetentionCoordinatorOptions,
+} from './input.js';
+import {
+  eraseArtifact,
+  type RetentionArtifactStore,
+} from '../artifacts/erase.js';
 import {
   previewAttempts,
   previewRuns,
@@ -34,7 +36,10 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
-import { inRetentionTransaction } from '../retention/transaction.js';
+import {
+  inRetentionTransaction,
+  scopeToWorkspace,
+} from '../retention/transaction.js';
 
 /** Deletes a preview whose artifacts are all gone, with its attempts. */
 async function removePreview(
@@ -102,17 +107,23 @@ async function removePreview(
     .catch(rethrowQueryFailure);
 }
 
+export type PreviewRetentionCoordinator = ReturnType<
+  typeof createPreviewRetentionCoordinator
+>;
+
 /**
  * Deletes expired previews. A preview's artifacts are marked deleting, left
  * alone long enough for in-flight uploads to time out, erased outside any
- * transaction, and marked deleted; the preview goes once none remain.
+ * transaction, and marked deleted; the preview goes once none remain. No member
+ * is acting, so this stays off `withWorkspaceAccess`: it runs on the maintenance
+ * role.
  */
 export function createPreviewRetentionCoordinator(
   config: DatabaseConfig,
-  artifacts: PreviewRetentionArtifactStore,
+  artifacts: RetentionArtifactStore,
   inputOptions: PreviewRetentionCoordinatorOptions = {},
   runtime?: DatabaseRuntime,
-): PreviewRetentionCoordinator {
+) {
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
@@ -128,19 +139,15 @@ export function createPreviewRetentionCoordinator(
       if (step.status !== 'erase') return Object.freeze(step);
 
       const { artifactId, previewRunId, workspaceId } = step;
-      const external = AbortSignal.any([
-        ...(signal === undefined ? [] : [signal]),
-        AbortSignal.timeout(options.externalOperationTimeoutMs),
-      ]);
-      await artifacts.delete({ artifactId, signal: external, workspaceId });
-      if (
-        (await artifacts.head({
-          artifactId,
-          signal: external,
-          workspaceId,
-        })) !== null
-      )
-        return Object.freeze({ ...step, status: 'waiting' });
+      const erased = await eraseArtifact(
+        artifacts,
+        { artifactId, workspaceId },
+        {
+          ...(signal === undefined ? {} : { signal }),
+          timeoutMs: options.externalOperationTimeoutMs,
+        },
+      );
+      if (!erased) return Object.freeze({ ...step, status: 'waiting' });
       const finished = await finishPreview(context, step, signal);
       return Object.freeze({
         artifactId,
@@ -156,16 +163,6 @@ type PreviewContext = Readonly<{
   pool: Pool;
   options: z.output<typeof optionsSchema>;
 }>;
-async function inWorkspace(
-  client: PoolClient,
-  workspaceId: string,
-): Promise<void> {
-  // Artifact capacity is charged in the artifact's own workspace.
-  await drizzle(client)
-    .execute(sql`select set_config('app.workspace_id',${workspaceId},true)`)
-    .catch(rethrowQueryFailure);
-}
-
 async function preparePreview(
   { pool, options }: PreviewContext,
   signal: AbortSignal | undefined,
@@ -202,7 +199,7 @@ async function preparePreview(
       previewRunId: preview.id,
       workspaceId: preview.workspaceId,
     };
-    await inWorkspace(client, preview.workspaceId);
+    await scopeToWorkspace(client, preview.workspaceId);
     const [artifact] = await db
       .select({
         id: artifactRecords.id,
@@ -269,7 +266,7 @@ async function finishPreview(
 ) {
   const { artifactId, previewRunId, workspaceId } = step;
   return inRetentionTransaction(pool, options, signal, async (client) => {
-    await inWorkspace(client, workspaceId);
+    await scopeToWorkspace(client, workspaceId);
     const db = drizzle(client);
     await db
       .update(artifactRecords)

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+export type RunArtifactRetentionCoordinatorOptions = Readonly<
+  z.input<typeof optionsSchema>
+>;
+
 export const optionsSchema = z
   .object({
     externalOperationTimeoutMs: z

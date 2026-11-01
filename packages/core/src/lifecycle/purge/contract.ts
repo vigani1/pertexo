@@ -22,11 +22,6 @@ export type WorkspacePurgeProcessResult =
       step: string;
     }>;
 
-export interface WorkspacePurgeCoordinator {
-  close(): Promise<void>;
-  processNext(signal?: AbortSignal): Promise<WorkspacePurgeProcessResult>;
-}
-
 /** One bounded change to a purging workspace's rows. */
 export type PurgeStep = Readonly<{
   name: string;
@@ -35,12 +30,4 @@ export type PurgeStep = Readonly<{
     workspaceId: string,
     pageSize: number,
   ): Promise<number>;
-}>;
-
-export type WorkspacePurgeOptions = Readonly<{
-  lockTimeoutMs?: number;
-  objectPageSize?: number;
-  objectTimeoutMs?: number;
-  pageSize?: number;
-  statementTimeoutMs?: number;
 }>;
