@@ -26,8 +26,8 @@ import {
   FirstFormFiles,
   LoopInputChoices,
   NodeOutputChoices,
-  type InsertedSource,
 } from './choices';
+import type { InsertedSource } from '../../../../model/inspector/input-mappings/reference';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 
 /**
