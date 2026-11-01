@@ -98,7 +98,7 @@ export class WebhookManagementController {
   public provision(
     @Req() request: Request,
     @Param() params: unknown,
-    @Body() body: unknown,
+    @Body() body?: unknown,
   ) {
     noBodySchema.parse(body ?? {});
     return this.command('provision', request, params);
@@ -139,7 +139,7 @@ export class WebhookManagementController {
   public rotateEndpoint(
     @Req() request: Request,
     @Param() params: unknown,
-    @Body() body: unknown,
+    @Body() body?: unknown,
   ) {
     noBodySchema.parse(body ?? {});
     return this.command('rotateEndpoint', request, params);
