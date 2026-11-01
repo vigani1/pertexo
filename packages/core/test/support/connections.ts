@@ -15,7 +15,7 @@ import {
   type ConnectionDatabase,
   type CreateConnectionInput,
 } from '../../src/connections/contract.js';
-import { createConnectionDatabase } from '../../src/connections/repository.js';
+import { createConnectionDatabase } from '../../src/connections/store.js';
 import type { ConnectionLookupDatabase } from '../../src/connections/runtime/contract.js';
 import { createNotificationDestinationStore } from '../../src/notifications/destinations/store.js';
 import { FailureNotificationDestinationError } from '../../src/notifications/destinations/errors.js';

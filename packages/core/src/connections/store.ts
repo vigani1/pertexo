@@ -9,12 +9,12 @@ import type {
 
 import { createConnectionLookupPersistence } from './runtime/lookup.repository.js';
 import type { ConnectionLookupDatabase } from './runtime/contract.js';
-import { createConnectionManagementPersistence } from './commands/management.repository.js';
-import { createConnectionResolutionPersistence } from './runtime/secrets.repository.js';
+import { createConnectionManagementPersistence } from './commands/manage.repository.js';
+import { createConnectionResolutionPersistence } from './runtime/resolve.repository.js';
 import { createConnectionReadPersistence } from './discovery/reads.queries.js';
 import { createConnectionUsagePersistence } from './discovery/usage.queries.js';
 import type { ConnectionUsageDatabase } from './discovery/contract.js';
-import { createConnectionSecretPersistence } from './commands/secrets.repository.js';
+import { createConnectionSecretPersistence } from './commands/rotate.repository.js';
 import { createConnectionTestPersistence } from './connection-tests/results.repository.js';
 import type { ConnectionDatabase } from './contract.js';
 import { createOAuth2AuthorizationPersistence } from './oauth2/authorizations.repository.js';

@@ -1,4 +1,4 @@
-import { createConnectionDatabase } from '../../src/connections/repository.js';
+import { createConnectionDatabase } from '../../src/connections/store.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { createWorkflowFolderDatabase } from '../../src/authoring/organization/folders/commands.repository.js';

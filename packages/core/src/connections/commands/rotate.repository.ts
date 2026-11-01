@@ -21,7 +21,7 @@ import {
   decodeDurableConnectionReplay,
   parseRequestMetadata,
   serializeConnectionSnapshot,
-} from '../admission.js';
+} from '../receipts.js';
 import { requireConnectionManager } from '../authority.queries.js';
 import type { ConnectionDatabase } from '../contract.js';
 import {
@@ -38,7 +38,7 @@ import {
   withOneOAuth2Fact,
 } from '../oauth2/clients.repository.js';
 import { selectConnection } from '../records.queries.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { withConnectionTransaction } from '../transaction.js';
 
 /** Owns secret rotation idempotency and current-version fencing. */
 

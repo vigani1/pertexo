@@ -13,7 +13,7 @@ import { sealedFields } from '../records.queries.js';
 import type { ConnectionLookupDatabase } from './contract.js';
 
 import type { Pool } from 'pg';
-import { parseRequestMetadata } from '../admission.js';
+import { parseRequestMetadata } from '../receipts.js';
 import { requireConnectionUser } from '../authority.queries.js';
 import {
   CONNECTION_EVENT_TYPE,
@@ -22,7 +22,7 @@ import {
   ConnectionUnavailableError,
 } from '../contract.js';
 import { selectConnection } from '../records.queries.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { withConnectionTransaction } from '../transaction.js';
 
 export function createConnectionLookupPersistence(
   pool: Pool,

@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { idempotencyRecords as records } from '@pertexo/database/schema';
-import { keyDigest, parseConnectionTestResult } from '../admission.js';
+import { keyDigest, parseConnectionTestResult } from '../receipts.js';
 import { requireConnectionUser } from '../authority.queries.js';
 import {
   CONNECTION_STATUS,
@@ -13,7 +13,7 @@ import {
   ConnectionUnavailableError,
 } from '../contract.js';
 import { selectConnection } from '../records.queries.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { withConnectionTransaction } from '../transaction.js';
 import {
   connectionTestClaim,
   connectionTestClaimSchema,

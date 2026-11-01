@@ -7,7 +7,7 @@ import {
 } from '@pertexo/database/primitives';
 import { previewAttempts } from '@pertexo/database/schema';
 
-import { isConnectionFenceCurrent } from '../../connections/runtime/dispatch.repository.js';
+import { isConnectionFenceCurrent } from '../../connections/runtime/credential-use.repository.js';
 import type { PreviewAttemptLease } from '../contract.js';
 import { PreviewAttemptStateError } from '../errors.js';
 import { optionsFor } from '../input.js';

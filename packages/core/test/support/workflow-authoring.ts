@@ -11,7 +11,7 @@ import {
   IdempotencyConflictError,
 } from '@pertexo/database/platform';
 import { CONNECTION_AUTH_TYPE } from '../../src/connections/contract.js';
-import { createConnectionDatabase } from '../../src/connections/repository.js';
+import { createConnectionDatabase } from '../../src/connections/store.js';
 
 import { checkDatabaseReadiness } from '@pertexo/database/primitives';
 import {

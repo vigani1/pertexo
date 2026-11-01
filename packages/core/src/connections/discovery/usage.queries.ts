@@ -23,7 +23,7 @@ import type {
 import type { Pool } from 'pg';
 
 import { ConnectionNotFoundError } from '../contract.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { withConnectionTransaction } from '../transaction.js';
 
 /** The projection index pages version identities before bounded metadata joins. */
 export function connectionUsagePage(

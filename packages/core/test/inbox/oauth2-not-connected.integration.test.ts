@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
 
-import { createConnectionDatabase } from '../../src/connections/repository.js';
+import { createConnectionDatabase } from '../../src/connections/store.js';
 import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
 import {
   config,

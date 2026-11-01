@@ -1,8 +1,8 @@
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createConnectionDatabase } from '../../src/connections/repository.js';
-import { createWorkerConnectionResolutionDatabase } from '../../src/connections/repository.js';
+import { createConnectionDatabase } from '../../src/connections/store.js';
+import { createWorkerConnectionResolutionDatabase } from '../../src/connections/store.js';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 import type {
   ApiConnectionDatabase,

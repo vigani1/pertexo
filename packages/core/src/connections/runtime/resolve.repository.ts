@@ -5,7 +5,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { connections, workspaces } from '@pertexo/database/schema';
 import { connectionSecrets } from './credentials.queries.js';
 
-import { safeOptionalIdentifier } from '../admission.js';
+import { safeOptionalIdentifier } from '../receipts.js';
 import type {
   ConnectionDatabase,
   ResolvedConnectionSecretRecord,
@@ -18,11 +18,11 @@ import {
   ConnectionUnavailableError,
 } from '../contract.js';
 import { selectConnection } from '../records.queries.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { withConnectionTransaction } from '../transaction.js';
 import {
   isConnectionFenceCurrent,
   recordCredentialAccess,
-} from './dispatch.repository.js';
+} from './credential-use.repository.js';
 
 /** Owns worker credential resolution and its access audit fact. */
 

@@ -14,7 +14,7 @@ export {
 export {
   createConnectionDatabase,
   createWorkerConnectionResolutionDatabase,
-} from './repository.js';
+} from './store.js';
 export type { ConnectionSharingDatabase } from './commands/contract.js';
 export type {
   ApiConnectionDatabase,

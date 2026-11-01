@@ -17,7 +17,7 @@ import {
 } from '@pertexo/database/schema';
 import { CONNECTION_AUTH_TYPE, CONNECTION_STATUS } from '../contract.js';
 import { sealedFields, selectConnection } from '../records.queries.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { withConnectionTransaction } from '../transaction.js';
 import type {
   IssuedOAuth2Tokens,
   OAuth2ConsentDatabase,

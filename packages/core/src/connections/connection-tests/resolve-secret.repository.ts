@@ -9,7 +9,7 @@ import {
   connections,
   idempotencyRecords as records,
 } from '@pertexo/database/schema';
-import { keyDigest, parseRequestMetadata } from '../admission.js';
+import { keyDigest, parseRequestMetadata } from '../receipts.js';
 import { requireConnectionUser } from '../authority.queries.js';
 import {
   ConnectionTestInProgressError,
@@ -17,7 +17,7 @@ import {
 } from '../contract.js';
 import { withOneOAuth2Fact } from '../oauth2/clients.repository.js';
 import { connectionSecrets } from '../runtime/credentials.queries.js';
-import { withConnectionTransaction } from '../transactions.repository.js';
+import { withConnectionTransaction } from '../transaction.js';
 import { connectionTestClaim, connectionTestScope } from './claim.js';
 
 import type { ConnectionTestPersistence } from './contract.js';

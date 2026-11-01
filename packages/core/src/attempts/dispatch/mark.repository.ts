@@ -21,7 +21,7 @@ import {
   NodeAttemptReconciliationRequiredError,
 } from '../errors.js';
 import type { NodeAttemptRunStore } from '../contract.js';
-import { isConnectionFenceCurrent } from '../../connections/runtime/dispatch.repository.js';
+import { isConnectionFenceCurrent } from '../../connections/runtime/credential-use.repository.js';
 
 export async function markNodeAttemptDispatched(
   pool: Pool,

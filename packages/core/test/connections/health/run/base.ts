@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { createConnectionDatabase } from '../../../../src/connections/repository.js';
+import { createConnectionDatabase } from '../../../../src/connections/store.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 
 import type {
