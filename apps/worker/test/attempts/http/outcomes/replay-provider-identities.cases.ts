@@ -119,7 +119,7 @@ export function registerReplayProviderIdentities(): void {
           },
           workspaceId,
         });
-        if (replayed.kind !== 'processed' || replayed.runId === undefined)
+        if (replayed.kind !== 'processed')
           throw new Error('Replay run was not created');
         expect(replayed.runId).not.toBe(source.accepted.runId);
 
