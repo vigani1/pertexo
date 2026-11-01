@@ -28,7 +28,8 @@
           "infrastructure/single-server/backup/prepare.mjs",
           "infrastructure/single-server/backup/copy-objects.mjs",
           "infrastructure/single-server/backup/recovery-points.mjs",
-          "infrastructure/images/code/*-probe.mjs"
+          "infrastructure/images/code/*-probe.mjs",
+          "scripts/refactor/*.mjs"
         ]
       },
       "apps/web": {
