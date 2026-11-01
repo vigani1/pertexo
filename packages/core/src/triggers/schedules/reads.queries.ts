@@ -54,8 +54,8 @@ export function withScheduleReader<T>(
       capability: 'workflow:read',
       statuses: BROWSABLE_WORKSPACE_STATUSES,
       folderCapability: 'workflow:read',
+      denied: () => new ScheduleTriggerError('not_found'),
     },
-    () => new ScheduleTriggerError('not_found'),
     work,
   );
 }

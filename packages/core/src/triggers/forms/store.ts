@@ -106,8 +106,8 @@ async function readForm(
       capability: 'workspace:read',
       statuses: BROWSABLE_WORKSPACE_STATUSES,
       folderCapability: 'workflow:read',
+      denied: () => new FormUnavailableError(),
     },
-    () => new FormUnavailableError(),
     async (client) =>
       publishedForm(await readFormVersion(client, input, 'read')),
   );
@@ -203,8 +203,8 @@ function withFormManager<T>(
       capability: 'workflow:update',
       statuses: BROWSABLE_WORKSPACE_STATUSES,
       folderCapability: 'workflow:read',
+      denied: () => new FormUnavailableError(),
     },
-    () => new FormUnavailableError(),
     work,
   );
 }
@@ -246,8 +246,8 @@ function setManagedFormAccess(
       capability: 'workflow:update',
       statuses: ACTIVE_WORKSPACE_STATUSES,
       folderCapability: 'workflow:update',
+      denied: () => new FormUnavailableError(),
     },
-    () => new FormUnavailableError(),
     async (client) => {
       const { nodeId } = await readFormVersion(client, input, 'update', {
         allowPaused: true,
