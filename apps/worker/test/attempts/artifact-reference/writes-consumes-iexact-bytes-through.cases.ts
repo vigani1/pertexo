@@ -20,6 +20,7 @@ import { expect, it, vi } from 'vitest';
 
 import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import { runWithCleanup } from '../../support/infrastructure/test-operation.js';
+import { headerConnection } from '../../support/attempts/header-connection.js';
 
 export function registerWritesConsumesIExactBytesThrough(): void {
   it.each([70_000, 1_048_576])(
@@ -184,22 +185,9 @@ export function registerWritesConsumesIExactBytesThrough(): void {
                 sideEffectClass: 'unsafe',
                 artifacts,
                 beforeDispatch,
-                connections: {
-                  resolve: () =>
-                    Promise.resolve({
-                      connectionId,
-                      providerKey: 'http',
-                      authType: 'http_headers',
-                      secretVersionId: randomUUID(),
-                      secret: new TextEncoder().encode(
-                        JSON.stringify({
-                          type: 'http_headers',
-                          headers: { authorization: destination.authorization },
-                        }),
-                      ),
-                    }),
-                  assertCurrent: () => Promise.resolve(),
-                },
+                connections: headerConnection(connectionId, randomUUID(), {
+                  authorization: destination.authorization,
+                }),
               },
             });
             expect(result).toMatchObject({ status: 200 });

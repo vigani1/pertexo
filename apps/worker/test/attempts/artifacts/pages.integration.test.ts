@@ -25,6 +25,7 @@ import {
 } from './http-destination.js';
 import { runWithCleanup } from '../../support/infrastructure/test-operation.js';
 import { assertPagedHttpSource } from './paging/http.js';
+import { headerConnection } from '../../support/attempts/header-connection.js';
 
 const enabled =
   process.env.ARTIFACT_STORE_INTEGRATION === 'true' &&
@@ -298,22 +299,9 @@ const enabled =
             runtime: {
               ...runtime,
               sideEffectClass: 'unsafe',
-              connections: {
-                resolve: () =>
-                  Promise.resolve({
-                    connectionId,
-                    providerKey: 'http',
-                    authType: 'http_headers',
-                    secretVersionId: randomUUID(),
-                    secret: Buffer.from(
-                      JSON.stringify({
-                        type: 'http_headers',
-                        headers: { authorization: target.authorization },
-                      }),
-                    ),
-                  }),
-                assertCurrent: () => Promise.resolve(),
-              },
+              connections: headerConnection(connectionId, randomUUID(), {
+                authorization: target.authorization,
+              }),
             },
           });
           expect(sent).toMatchObject({

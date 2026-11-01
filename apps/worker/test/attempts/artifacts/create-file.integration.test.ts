@@ -22,6 +22,7 @@ import {
   artifactDestinationUrl,
   createArtifactDestination,
 } from './http-destination.js';
+import { headerConnection } from '../../support/attempts/header-connection.js';
 
 const integration =
   process.env.ARTIFACT_STORE_INTEGRATION === 'true' &&
@@ -227,24 +228,9 @@ const integration =
             runtime: {
               ...runtime,
               sideEffectClass: 'unsafe',
-              connections: {
-                resolve: () =>
-                  Promise.resolve({
-                    connectionId,
-                    providerKey: 'http',
-                    authType: 'http_headers',
-                    secretVersionId: randomUUID(),
-                    secret: new TextEncoder().encode(
-                      JSON.stringify({
-                        type: 'http_headers',
-                        headers: {
-                          authorization: ownedDestination.authorization,
-                        },
-                      }),
-                    ),
-                  }),
-                assertCurrent: () => Promise.resolve(),
-              },
+              connections: headerConnection(connectionId, randomUUID(), {
+                authorization: ownedDestination.authorization,
+              }),
             },
           });
           expect(result).toMatchObject({

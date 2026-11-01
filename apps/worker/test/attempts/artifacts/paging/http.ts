@@ -14,6 +14,7 @@ import type {
   NodeArtifactReference,
   NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
+import { headerConnection } from '../../../support/attempts/header-connection.js';
 
 type FileStepExecutor = (
   key: string,
@@ -59,22 +60,9 @@ export async function assertPagedHttpSource(
     runtime: {
       ...runtime,
       sideEffectClass: 'unsafe',
-      connections: {
-        resolve: () =>
-          Promise.resolve({
-            connectionId: httpConnectionId,
-            providerKey: 'http',
-            authType: 'http_headers',
-            secretVersionId: randomUUID(),
-            secret: Buffer.from(
-              JSON.stringify({
-                type: 'http_headers',
-                headers: { authorization: pagedSource.authorization },
-              }),
-            ),
-          }),
-        assertCurrent: () => Promise.resolve(),
-      },
+      connections: headerConnection(httpConnectionId, randomUUID(), {
+        authorization: pagedSource.authorization,
+      }),
     },
   });
   const output = httpOutput as {
