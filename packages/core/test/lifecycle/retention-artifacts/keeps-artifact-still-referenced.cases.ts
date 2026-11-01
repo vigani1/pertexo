@@ -9,10 +9,7 @@ import {
   runIds,
   workspaceId,
 } from '../retention.support.js';
-import {
-  readArtifactRetentionState,
-  withOwnerTransaction,
-} from './fixture.js';
+import { readArtifactRetentionState, withOwnerTransaction } from './fixture.js';
 
 type Client = Parameters<Parameters<typeof withOwnerTransaction>[0]>[0];
 type Reference = string;

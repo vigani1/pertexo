@@ -166,14 +166,14 @@ export function registerOpensDataFromBeforeTheSecretsMove(): void {
         client.release();
       }
     };
-    const verify = async () => {
+    const verify = async (encryption: object = RING) => {
       const repository = createEncryptionKeyRepository({
         ...storeConfig(databaseUrl(maintenanceUrl)),
       });
       const signal = AbortSignal.timeout(10_000);
       try {
         return await verifyStoredEncryptionKeys(
-          { mode: 'self-managed', encryption: RING } as never,
+          { mode: 'self-managed', encryption } as never,
           repository.read(signal),
           signal,
         );
@@ -187,6 +187,26 @@ export function registerOpensDataFromBeforeTheSecretsMove(): void {
         connectionKeys: 1,
         webhookKeys: 0,
       });
+
+      // Rotating the master key keeps the old one readable as a previous key.
+      await expect(
+        verify({
+          current: {
+            version: 'v2',
+            key: Buffer.alloc(32, 8).toString('base64'),
+          },
+          previous: [RING.current],
+        }),
+      ).resolves.toEqual({ connectionKeys: 1, webhookKeys: 0 });
+      // Without it, the record no longer opens.
+      await expect(
+        verify({
+          current: {
+            version: 'v2',
+            key: Buffer.alloc(32, 8).toString('base64'),
+          },
+        }),
+      ).rejects.toBeInstanceOf(StoredKeyVerificationError);
 
       // The workspace is part of the key's associated data.
       await seed(KEY_RECORD.connectionId);

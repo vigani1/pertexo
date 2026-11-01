@@ -269,3 +269,41 @@ describe('run values', () => {
     expect(await values(live)).toBe(1);
   });
 });
+
+describe('variable sets', () => {
+  // References, not age, own a set's lifetime.
+  async function revisionExists(revision: number): Promise<boolean> {
+    const result = await admin.query(
+      `select 1 from app.workspace_variable_set_revisions
+        where workspace_id=$1 and revision=$2`,
+      [workspaceId, revision],
+    );
+    return result.rowCount === 1;
+  }
+
+  it('removes a set nothing names and keeps the current one and one a run used', async () => {
+    await admin.query(
+      `insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json)
+       select $1,n,'{}' from generate_series(1,3) n`,
+      [workspaceId],
+    );
+    await admin.query(
+      `insert into app.workspace_variables(workspace_id,revision) values($1,3)
+       on conflict (workspace_id) do update set revision=excluded.revision`,
+      [workspaceId],
+    );
+    await admin.query(
+      `insert into app.workflow_runs
+        (id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
+         variable_set_revision,started_at,created_at,updated_at)
+       values($1,$2,$3,$4,'manual','running',2,$5,$5,$5)`,
+      [randomUUID(), workspaceId, randomUUID(), randomUUID(), new Date()],
+    );
+
+    await untilIdle();
+
+    expect(await revisionExists(1)).toBe(false);
+    expect(await revisionExists(2)).toBe(true);
+    expect(await revisionExists(3)).toBe(true);
+  });
+});
