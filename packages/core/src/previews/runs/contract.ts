@@ -1,6 +1,10 @@
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
-import type { PreviewStatus } from '../contract.js';
+import type {
+  PreviewDryRun,
+  PreviewSideEffectClass,
+  PreviewStatus,
+} from '../contract.js';
 
 export type ResolvePreviewReplayInput = Readonly<{
   actorUserId: string;
@@ -18,10 +22,10 @@ export type PreviewReplayRecord = Readonly<{
   draftRevision: number;
   nodeId: string;
   status: PreviewStatus;
-  sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
+  sideEffectClass: PreviewSideEffectClass;
   mayContactProvider: boolean;
   mayCauseExternalSideEffect: boolean;
-  dryRun: 'not_supported' | 'provider_supported';
+  dryRun: PreviewDryRun;
   pinnedSampleId?: string | null;
   output?: ReturnType<typeof parseStoredExecutionValue> | null;
   completedAt?: Date | null;

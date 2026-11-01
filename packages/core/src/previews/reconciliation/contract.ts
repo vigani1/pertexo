@@ -1,5 +1,5 @@
 import type { PREVIEW_STATUS } from '../state.js';
-import type { PreviewDelivery } from '../contract.js';
+import type { PreviewDelivery, PreviewSideEffectClass } from '../contract.js';
 import type { createPreviewReconciliationStore } from './store.js';
 
 export type PreviewDeliveryReconciliationResult =
@@ -19,7 +19,7 @@ export type PreviewDeliveryReconciliationResult =
       operationKey?: string;
       possiblyDispatched: boolean;
       providerKey?: string;
-      sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
+      sideEffectClass: PreviewSideEffectClass;
       status:
         typeof PREVIEW_STATUS.outcomeUnknown | typeof PREVIEW_STATUS.timedOut;
       usesConnection: boolean;

@@ -20,7 +20,7 @@ import type { StoredExecutionValue } from '@pertexo/database/schema';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 
 import {
-  auditPreviewDeliveryMismatch,
+  auditingDeliveryMismatch,
   claimPreviewReceipt,
   completePreviewReceipt,
   insertPreviewOutboxDelivery,
@@ -28,10 +28,7 @@ import {
 } from '../attempts/deliveries.repository.js';
 import { appendPreviewTerminalFacts } from '../attempts/facts.repository.js';
 import { previewReconcilerConsumerName } from '../delivery.js';
-import {
-  PreviewAttemptStateError,
-  PreviewDeliveryMismatchError,
-} from '../errors.js';
+import { PreviewAttemptStateError } from '../errors.js';
 import { optionsFor } from '../input.js';
 import {
   mayHaveDispatchedUnsafely,
@@ -142,94 +139,90 @@ export async function reconcilePreviewDelivery(
   input: ReconcilePreviewDeliveryInput,
 ): Promise<PreviewDeliveryReconciliationResult> {
   const scope = input;
-  try {
-    return await withTenantScopedClient(
-      pool,
-      { workspaceId: scope.workspaceId },
-      async (client): Promise<PreviewDeliveryReconciliationResult> => {
-        const payload = await validatePreviewReconciliationDelivery(client, {
-          attemptFenceToken: scope.attemptFenceToken,
-          delivery: input.delivery,
-          previewAttemptId: scope.previewAttemptId,
-          previewRunId: scope.previewRunId,
-          workspaceId: scope.workspaceId,
-        });
-        if (
-          (await claimPreviewReceipt(
-            client,
-            previewReconcilerConsumerName,
-            scope.workspaceId,
-            input.delivery,
-          )) === 'completed'
-        )
-          return Object.freeze({ kind: 'duplicate' });
-
-        const state = await lockPreviewReconciliationState(client, scope);
-        const completeReceipt = async (): Promise<void> =>
-          completePreviewReceipt(
-            client,
-            previewReconcilerConsumerName,
-            scope.workspaceId,
-            input.delivery,
-          );
-        const staleReconciliation =
-          TERMINAL_PREVIEW_STATUSES.has(state.attemptStatus) ||
-          state.attemptStatus !== PREVIEW_STATUS.running ||
-          state.fenceToken !== scope.attemptFenceToken;
-        if (staleReconciliation) {
-          await completeReceipt();
-          return Object.freeze({ kind: 'duplicate' });
-        }
-
-        if (state.leaseLive) {
-          if (state.leaseExpiresAt === null)
-            throw new PreviewAttemptStateError('lease_shape_invalid');
-          const successor = await insertPreviewOutboxDelivery(client, {
+  return auditingDeliveryMismatch(
+    pool,
+    previewReconcilerConsumerName,
+    {
+      workspaceId: scope.workspaceId,
+      delivery: input.delivery,
+      signal: input.signal,
+    },
+    () =>
+      withTenantScopedClient(
+        pool,
+        { workspaceId: scope.workspaceId },
+        async (client): Promise<PreviewDeliveryReconciliationResult> => {
+          const payload = await validatePreviewReconciliationDelivery(client, {
             attemptFenceToken: scope.attemptFenceToken,
-            availableAt: state.leaseExpiresAt,
-            jobName: 'reconcile-preview-attempt',
+            delivery: input.delivery,
             previewAttemptId: scope.previewAttemptId,
             previewRunId: scope.previewRunId,
-            ...(payload.traceparent === undefined
-              ? {}
-              : { traceparent: payload.traceparent }),
             workspaceId: scope.workspaceId,
           });
-          await completeReceipt();
-          return Object.freeze({
-            kind: 'rescheduled',
-            reconciliationOutboxEventId: successor.outboxEventId,
-          });
-        }
+          if (
+            (await claimPreviewReceipt(
+              client,
+              previewReconcilerConsumerName,
+              scope.workspaceId,
+              input.delivery,
+            )) === 'completed'
+          )
+            return Object.freeze({ kind: 'duplicate' });
 
-        if (mayHaveDispatchedUnsafely(state) || state.runDeadlineExpired)
-          return completeExpiredOrUnsafePreview(
-            client,
-            scope,
-            state,
+          const state = await lockPreviewReconciliationState(client, scope);
+          const completeReceipt = async (): Promise<void> =>
+            completePreviewReceipt(
+              client,
+              previewReconcilerConsumerName,
+              scope.workspaceId,
+              input.delivery,
+            );
+          const staleReconciliation =
+            TERMINAL_PREVIEW_STATUSES.has(state.attemptStatus) ||
+            state.attemptStatus !== PREVIEW_STATUS.running ||
+            state.fenceToken !== scope.attemptFenceToken;
+          if (staleReconciliation) {
+            await completeReceipt();
+            return Object.freeze({ kind: 'duplicate' });
+          }
+
+          if (state.leaseLive) {
+            if (state.leaseExpiresAt === null)
+              throw new PreviewAttemptStateError('lease_shape_invalid');
+            const successor = await insertPreviewOutboxDelivery(client, {
+              attemptFenceToken: scope.attemptFenceToken,
+              availableAt: state.leaseExpiresAt,
+              jobName: 'reconcile-preview-attempt',
+              previewAttemptId: scope.previewAttemptId,
+              previewRunId: scope.previewRunId,
+              ...(payload.traceparent === undefined
+                ? {}
+                : { traceparent: payload.traceparent }),
+              workspaceId: scope.workspaceId,
+            });
+            await completeReceipt();
+            return Object.freeze({
+              kind: 'rescheduled',
+              reconciliationOutboxEventId: successor.outboxEventId,
+            });
+          }
+
+          if (mayHaveDispatchedUnsafely(state) || state.runDeadlineExpired)
+            return completeExpiredOrUnsafePreview(
+              client,
+              scope,
+              state,
+              completeReceipt,
+            );
+
+          return redeliverExpiredPreview(client, scope, {
+            payload,
             completeReceipt,
-          );
-
-        return redeliverExpiredPreview(client, scope, {
-          payload,
-          completeReceipt,
-        });
-      },
-      optionsFor(input.signal),
-    );
-  } catch (error: unknown) {
-    if (
-      error instanceof PreviewDeliveryMismatchError &&
-      !input.signal?.aborted
-    ) {
-      await auditPreviewDeliveryMismatch(pool, previewReconcilerConsumerName, {
-        workspaceId: scope.workspaceId,
-        delivery: input.delivery,
-        signal: input.signal ?? new AbortController().signal,
-      });
-    }
-    throw error;
-  }
+          });
+        },
+        optionsFor(input.signal),
+      ),
+  );
 }
 
 async function redeliverExpiredPreview(

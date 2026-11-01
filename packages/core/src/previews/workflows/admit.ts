@@ -17,6 +17,7 @@ import {
   prepareWorkflowRunAcceptance,
 } from '../../runs/commands/acceptance.repository.js';
 import { WorkflowTestError } from './errors.js';
+import { ACTIVE_TEST_RUN_STATUSES } from './rules.js';
 import { testRunSql } from '../../runs/data-policy.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 
@@ -33,7 +34,7 @@ export async function requireNoActiveTest(
         eq(workflowRuns.workflowId, input.workflowId),
         eq(workflowRuns.startedBy, input.actorId),
         testRunSql(),
-        inArray(workflowRuns.status, ['queued', 'running', 'waiting']),
+        inArray(workflowRuns.status, ACTIVE_TEST_RUN_STATUSES),
       ),
     )
     .limit(1)
