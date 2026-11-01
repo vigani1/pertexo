@@ -7,7 +7,6 @@ import {
 import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
-/* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
 import { createTriggerReconciliationHandler } from '../../src/triggers/handler.js';
 
