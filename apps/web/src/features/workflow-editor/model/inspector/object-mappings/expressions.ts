@@ -8,11 +8,15 @@ type ObjectEntry = Readonly<{
   source?: ValueSource;
 }>;
 
+/** What the server's expression policy accepts, checked again when it saves. */
+export const EXPRESSION_BYTES_LIMIT = 16_384;
+
 /** Use the existing parser's key positions; never interpret/evaluate expressions in the browser. */
 export function objectExpressions(
   expression: string,
 ): readonly ObjectEntry[] | undefined {
-  if (new TextEncoder().encode(expression).length > 16384) return undefined;
+  if (new TextEncoder().encode(expression).length > EXPRESSION_BYTES_LIMIT)
+    return undefined;
   try {
     const ast: unknown = jsonata(expression).ast();
     if (!isObjectConstruction(ast, expression)) return undefined;
@@ -60,7 +64,8 @@ export function objectExpressions(
 export function listExpressions(
   expression: string,
 ): readonly (readonly ObjectEntry[])[] | undefined {
-  if (new TextEncoder().encode(expression).length > 16384) return undefined;
+  if (new TextEncoder().encode(expression).length > EXPRESSION_BYTES_LIMIT)
+    return undefined;
   try {
     const ast: unknown = jsonata(expression).ast();
     if (!isListConstruction(ast, expression)) return undefined;
