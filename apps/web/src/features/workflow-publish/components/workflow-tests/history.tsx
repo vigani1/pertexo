@@ -32,12 +32,12 @@ export function WorkflowTestHistory({
   tests,
   ensureSaved,
   currentRevision,
-  canCancel,
+  canCancelAny,
 }: Readonly<{
   tests: WorkflowTests;
   ensureSaved: () => Promise<{ revision: number }>;
   currentRevision: number;
-  canCancel: boolean;
+  canCancelAny: boolean;
 }>) {
   if (!tests.enabled) return null;
   const progress = tests.progress.data;
@@ -69,7 +69,7 @@ export function WorkflowTestHistory({
               else tests.showHistory();
             }}
             currentRevision={currentRevision}
-            canCancel={canCancel}
+            canCancelAny={canCancelAny}
           />
           <div className="min-h-0 flex-1 overflow-y-auto">
             {tests.cancel.error === undefined ? null : (
@@ -105,7 +105,7 @@ export function WorkflowTestHistory({
               <TestHistoryContents
                 tests={tests}
                 ensureSaved={ensureSaved}
-                canCancel={canCancel}
+                canCancelAny={canCancelAny}
               />
             ) : null}
           </div>
@@ -117,11 +117,11 @@ export function WorkflowTestHistory({
 function TestHistoryContents({
   tests,
   ensureSaved,
-  canCancel,
+  canCancelAny,
 }: Readonly<{
   tests: WorkflowTests;
   ensureSaved: () => Promise<{ revision: number }>;
-  canCancel: boolean;
+  canCancelAny: boolean;
 }>) {
   return (
     <div className="mt-3 flex flex-col gap-3">
@@ -132,7 +132,7 @@ function TestHistoryContents({
       <WorkflowTestResults tests={tests} ensureSaved={ensureSaved} />
       <TestSuiteHistory
         suites={tests.suites}
-        canCancel={canCancel}
+        canCancelAny={canCancelAny}
         onViewRun={tests.selectRun}
       />
     </div>
@@ -145,14 +145,14 @@ function WorkflowTestRunControls({
   running,
   onToggle,
   currentRevision,
-  canCancel,
+  canCancelAny,
 }: Readonly<{
   tests: WorkflowTests;
   expanded: boolean;
   running: boolean;
   onToggle: () => void;
   currentRevision: number;
-  canCancel: boolean;
+  canCancelAny: boolean;
 }>) {
   const snapshot = tests.snapshot.data;
   const progress = tests.progress.data;
@@ -186,7 +186,9 @@ function WorkflowTestRunControls({
         >
           {expanded ? 'Hide history' : 'Test history'}
         </Button>
-        {canCancel && running && tests.activeId !== undefined ? (
+        {(canCancelAny || snapshot?.startedBy === tests.scope.userId) &&
+        running &&
+        tests.activeId !== undefined ? (
           <Button
             size="sm"
             variant="outline"

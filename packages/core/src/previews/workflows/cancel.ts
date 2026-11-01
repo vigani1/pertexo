@@ -4,7 +4,7 @@ import { databaseSchema } from '@pertexo/database/schema';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
 import type { Role } from '@pertexo/workflow-model';
 import { cancelInTransaction } from '../../runs/commands/cancel-active.repository.js';
-import { requireTestCapability } from './access.js';
+import { requireTestStopAuthority } from './access.js';
 import type { WorkflowTestRunInput } from './contract.js';
 import { readTestDetail } from './records.queries.js';
 import { isActiveTestRun } from './rules.js';
@@ -15,8 +15,8 @@ export async function cancelWorkflowTest(
   input: WorkflowTestRunInput,
 ): Promise<void> {
   const test = await readTestDetail(client, input);
+  requireTestStopAuthority(role, test.startedBy, input.actorId);
   if (!isActiveTestRun(test.status)) return;
-  requireTestCapability(role, 'run:cancel');
   // The ordinary cancel command appends the fenced observation and outbox wakeup.
   const transaction = {
     db: drizzle(client, { schema: databaseSchema }),

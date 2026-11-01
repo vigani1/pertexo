@@ -6,7 +6,6 @@ import {
   workflowTestDetailSchema,
 } from '@pertexo/contracts';
 import type { WorkflowTestStore } from '@pertexo/core/previews';
-import { authorizeWorkspaceOperation } from '../../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import {
   authorizeWorkflowTesting,
@@ -48,16 +47,9 @@ export class WorkflowTestsUseCase {
       }),
     );
   }
+  /** Core decides who may stop this test: only it knows who started it. */
   async cancel(input: Input & { runId: string }) {
     await this.authorize(input);
-    await authorizeWorkspaceOperation({
-      access: this.authorization,
-      actor: input.actor,
-      routeWorkspaceId: input.routeWorkspaceId,
-      capability: 'run:cancel',
-      allowedWorkspaceStatuses: ['active'],
-      disclosure: 'not_found',
-    });
     await this.store.cancel({ ...this.scope(input), runId: input.runId });
     return { canceled: true };
   }

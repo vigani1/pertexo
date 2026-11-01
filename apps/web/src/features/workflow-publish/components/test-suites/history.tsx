@@ -25,11 +25,11 @@ const tones: Record<string, StatusTone> = {
 };
 export function TestSuiteHistory({
   suites,
-  canCancel,
+  canCancelAny,
   onViewRun,
 }: Readonly<{
   suites: TestSuites;
-  canCancel: boolean;
+  canCancelAny: boolean;
   onViewRun: (runId: string) => void;
 }>) {
   const detail = suites.detail.data;
@@ -82,7 +82,7 @@ export function TestSuiteHistory({
           key={detail.suiteId}
           detail={detail}
           suites={suites}
-          canCancel={canCancel}
+          canCancelAny={canCancelAny}
           onViewRun={onViewRun}
         />
       )}
@@ -106,12 +106,12 @@ export function TestSuiteHistory({
 function SuiteResult({
   detail,
   suites,
-  canCancel,
+  canCancelAny,
   onViewRun,
 }: Readonly<{
   detail: WorkflowTestSuiteDetail;
   suites: TestSuites;
-  canCancel: boolean;
+  canCancelAny: boolean;
   onViewRun: (runId: string) => void;
 }>) {
   const [reportOrdinal, setReportOrdinal] = useState<number>();
@@ -125,7 +125,8 @@ function SuiteResult({
           {detail.passed}/{detail.total} passed · {detail.failed} failed ·{' '}
           {detail.errors} errors · {detail.skipped} skipped
         </span>
-        {detail.status === 'running' && canCancel ? (
+        {detail.status === 'running' &&
+        (canCancelAny || detail.startedBy === suites.scope.userId) ? (
           <Button
             size="sm"
             variant="outline"
