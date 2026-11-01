@@ -9,7 +9,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { deletionRule } from './rows.repository.js';
+import { deletionRule } from '../deletion-rule.js';
 
 export const auditHistory = {
   name: 'audit_events',

@@ -30,7 +30,7 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
-import { inRetentionTransaction } from '../retention/transactions.repository.js';
+import { inRetentionTransaction } from '../retention/transaction.js';
 
 async function retryLater(
   client: PoolClient,

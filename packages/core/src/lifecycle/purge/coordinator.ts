@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { workspaces } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { z } from 'zod';
-import { claimPurgeWorkspace } from '../identity/directory.repository.js';
+import { claimPurgeWorkspace } from './directory.repository.js';
 
 import type { Pool, PoolClient } from 'pg';
 
@@ -12,7 +12,7 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
-import { inRetentionTransaction } from '../retention/transactions.repository.js';
+import { inRetentionTransaction } from '../retention/transaction.js';
 import type {
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
@@ -20,7 +20,7 @@ import type {
   WorkspacePurgeOptions,
 } from './contract.js';
 import { optionsSchema } from './input.js';
-import { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.repository.js';
+import { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.js';
 
 /** Fails if a workspace table still holds the purged workspace's rows. */
 async function assertNothingLeft(

@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import {
   PURGE_PRESERVED_TABLES,
   PURGE_STEPS,
-} from '../../../src/lifecycle/purge/steps.repository.js';
+} from '../../../src/lifecycle/purge/steps.js';
 
 import {
   makeWorkspaceDueForPurge,

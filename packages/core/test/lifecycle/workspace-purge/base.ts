@@ -5,7 +5,7 @@ import {
   migrateDatabase,
   dropDisconnectedDatabase,
 } from '@pertexo/database/testing';
-import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/repository.js';
+import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/coordinator.js';
 import { emptyObjectStore } from '../../support/workspace-purge.js';
 import { seedPurgeRelationships } from './seed/relations.js';
 import { seedPurgeEvidence } from './seed/evidence.js';

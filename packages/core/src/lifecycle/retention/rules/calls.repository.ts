@@ -23,7 +23,7 @@ import type { PoolClient } from 'pg';
 import {
   RUN_DETAILS_RETENTION_SQL,
   RUN_SUMMARY_RETENTION_SQL,
-} from '../../runs/data-policy.js';
+} from '../../../runs/data-policy.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
 type CallWorkColumns = Readonly<{

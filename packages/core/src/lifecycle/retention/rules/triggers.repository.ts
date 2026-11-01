@@ -7,7 +7,7 @@ import {
 } from '@pertexo/database/schema';
 import { and, eq, lte, ne, notExists, sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
-import { deletionRule } from './rows.repository.js';
+import { deletionRule } from '../deletion-rule.js';
 
 const query = new QueryBuilder();
 // Webhook replay records keep their own expiry.

@@ -17,7 +17,7 @@ import type {
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
 import { RETENTION_RULES, type RetentionRuleName } from './rules.js';
-import { inRetentionTransaction } from './transactions.repository.js';
+import { inRetentionTransaction } from './transaction.js';
 
 /** Advisory lock class for the rules; the rule's index is the second key. */
 const RETENTION_LOCK_CLASS = 1_934_781_128;

@@ -15,7 +15,7 @@ import type {
 } from '@pertexo/database/platform';
 import { workspaces } from '@pertexo/database/schema';
 
-import { changeWorkspaceLifecycle } from '../lifecycle/deletion/repository.js';
+import { changeWorkspaceLifecycle } from '../lifecycle/deletion/change.repository.js';
 import type {
   IdentityWorkspaceDatabase,
   RequestWorkspaceLifecycleOperationInput,

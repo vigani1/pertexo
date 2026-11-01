@@ -1,4 +1,4 @@
-import { createRetentionDatabase } from '../../../src/lifecycle/retention/repository.js';
+import { createRetentionDatabase } from '../../../src/lifecycle/retention/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
 import { expect, it } from 'vitest';

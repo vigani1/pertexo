@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createRetentionDatabase } from '../../src/lifecycle/retention/repository.js';
+import { createRetentionDatabase } from '../../src/lifecycle/retention/store.js';
 import type { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { inRetentionTransaction } from '../../src/lifecycle/retention/transactions.repository.js';
+import { inRetentionTransaction } from '../../src/lifecycle/retention/transaction.js';
 
 describe('retention transaction admission', () => {
   it.each([0, -1, 1.5, Number.NaN, 2_147_483_648])(
