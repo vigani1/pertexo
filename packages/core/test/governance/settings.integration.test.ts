@@ -12,7 +12,7 @@ async function setup() {
   if (typeof connectionString !== 'string')
     throw new Error('Missing fixture database');
   const store = createGovernanceStore(
-    parseDatabaseConfig({ connectionString, max: 2 }),
+    parseDatabaseConfig({ connectionString, max: 5 }),
   );
   const scope = { workspaceId, actorId: owner.id };
   return {
@@ -186,4 +186,31 @@ describe('publication approval enablement', () => {
       await f.store.close();
     }
   });
+});
+
+it('allows exactly one of five concurrent settings saves', async () => {
+  const f = await setup();
+  try {
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 5 }, (_, i) =>
+        f.store.configure({
+          ...f.scope,
+          expectedRevision: 1,
+          auditRetentionDays: 100 + i,
+          idempotencyKey: randomUUID(),
+        }),
+      ),
+    );
+    expect(
+      attempts.filter((attempt) => attempt.status === 'fulfilled'),
+    ).toHaveLength(1);
+    const failures = attempts.filter(
+      (attempt) => attempt.status === 'rejected',
+    );
+    expect(failures).toHaveLength(4);
+    for (const failure of failures)
+      expect(failure).toMatchObject({ reason: { reason: 'conflict' } });
+  } finally {
+    await f.store.close();
+  }
 });
