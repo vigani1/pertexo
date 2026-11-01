@@ -19,9 +19,8 @@ remain in `docs/adr/`, with supersession noted where their decisions changed.
 | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `workflow-model`  | Graph and JSON contracts, portable authoring, expressions and validation                                           |
 | `workflow-engine` | Pure execution decisions and the checkpoint shape                                                                  |
-| `execution`       | Run advancement orchestration, initial checkpoints, persisted projection verification and attempt input projection |
-| `core`            | Whole product areas, each with its flows, queries and decisions; every area moves in from `database` at once       |
-| `database`        | Drizzle tables, migrations, transactions, repositories, reads, command persistence, admission and outbox           |
+| `core`            | Whole product areas, each with its flows, queries and decisions; its `execution` area advances runs               |
+| `database`        | Drizzle tables, migrations, transactions, row security, and the shared outbox, audit and idempotency helpers       |
 | `contracts`       | Zod HTTP request/response/problem schemas and server-side OpenAPI generation                                       |
 | `node-sdk`        | Node definitions, config/port contracts and executor interfaces                                                    |
 | `nodes-core`      | Built-in deterministic and control nodes                                                                           |
@@ -34,23 +33,20 @@ remain in `docs/adr/`, with supersession noted where their decisions changed.
 | `rate-limit`      | Abuse policies and atomic Redis counters                                                                           |
 
 Packages expose a browser-safe root and, when needed, `/server`. The database
-exposes area doors because its consumers need distinct storage capabilities:
-`/attempts`, `/authoring`, `/connections`, `/lifecycle`, `/notifications`,
-`/outbox`, `/platform`, `/previews`, `/runs`, `/tenant-access` and `/triggers`.
-`/schema` and `/primitives` hold the tables and helpers core builds on; a check
-keeps them out of the applications. `/testing` supplies fixtures. Observability's `/startup` must load before the
-instrumented runtime libraries. Artifact storage, execution, queue and rate
-limiting are server-side packages despite having a single root door.
+exposes `/schema` and `/primitives` for what core builds on, `/platform` for pools
+and startup, and `/testing` for fixtures; a check keeps applications to `/platform`,
+plus `/testing` from tests. Observability's `/startup` must load before the
+instrumented runtime libraries. Artifact storage, queue and rate limiting are
+server-side packages despite having a single root door.
 
 Applications depend on `core`, and `core` on `database`, the engine and the
 model; a check refuses the reverse ([ADR 091](adr/091-core-layer.md)). Each core
 area has an `index.ts` behind its `@pertexo/core/<area>` entry point; from the
 one-shot move on, other areas import the files it names directly, so no barrel edges
-appear. Test flows go through `@pertexo/core/testing`. Functions that database
-areas still call stay in `database` until every area moves at once.
+appear. Test flows go through `@pertexo/core/testing`.
 
-The model supplies the engine's data contracts; execution connects pure engine
-decisions to database stores; the API and worker assemble those dependencies.
+The model supplies the engine's data contracts; core's `execution` area connects
+pure engine decisions to the stores; the API and worker assemble those dependencies.
 The database uses engine plan/checkpoint types and the built-in schedule config
 schema from `nodes-core`, without running node executors. The webhook configuration
 contract lives in `workflow-model` and is re-exported by its node definition. The catalog combines
@@ -108,7 +104,7 @@ run wording/status under `model/presentation/`. Existing list, timeline, loom
 and step-inspection owners remain separate; live-update reconciliation stays
 beside these owners. Public feature interfaces and rendered UI stay unchanged.
 
-Database run recovery owns its contract, acceptance and reads under
+Run recovery owns its contract, acceptance and reads under
 `runs/recovery/`. Run events and published-workflow reads live in `runs/queries/`;
 the initial checkpoint interface belongs to `runs/commands/`. The existing
 repository and `/runs` public entry retain their interfaces, with no persistence
@@ -123,9 +119,9 @@ scanner acts when that time passes, so a crash or lost job delays a run but neve
 strands it (ADR 007).
 Published workflow versions contain their immutable graph, executable and
 checksums. The engine selects the next transition from the executable,
-checkpoint and facts. `execution/src/runs/advance.ts` verifies the stored
+checkpoint and facts. `core/src/execution/runs/advance.ts` verifies the stored
 projection and calls the pure engine through the run store's decision callback.
-`database/src/runs/advance/` locks and loads state, checks deliveries, persists
+`core/src/runs/advance/` locks and loads state, checks deliveries, persists
 transitions and completes receipts in a transaction.
 
 Finished For Each iteration scopes leave the checkpoint once every owner is
@@ -154,7 +150,7 @@ intents consumed under each child’s own lock. There is no recursive executor o
 separate family ledger.
 
 Manual acceptance, cancellation and replay persist through
-`database/src/runs/commands/`. HTTP owns actor authorization. Accepted commands
+`core/src/runs/commands/`. HTTP owns actor authorization. Accepted commands
 share workspace idempotency records; manual starts serialize a key with one
 transaction advisory lock. Attempts persist through `/attempts`; execution
 projects their inputs and the worker runs the pinned executor. The database and
@@ -264,5 +260,5 @@ one source-run intent and outbox delivery; the existing maintenance consumer
 admits the captured version through ordinary run admission. Only a strict safe
 summary crosses that interface. Error-origin flags propagate through Calls,
 replays and recovery to prevent notification loops. Settings belong to authoring,
-intent production/admission to database `/runs`, and delivery to the worker’s
+intent production/admission to core's `/runs`, and delivery to the worker’s
 existing maintenance runtime. See [the guide](guides/error-workflows.md).
