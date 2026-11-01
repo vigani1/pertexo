@@ -6,6 +6,7 @@ import {
   appendAuditFact,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { parseStoredExecutionValue } from '../../../runs/values/stored-execution.js';
 import type { Pool, PoolClient } from 'pg';
 
@@ -18,7 +19,11 @@ import { inlineSampleOutput } from '../../../authoring/step-samples/records.repo
 import { WorkflowStepSampleError } from '../../../authoring/step-samples/errors.js';
 import { WorkflowNotFoundError } from '../../../authoring/workflows/errors.js';
 import { WebhookIngressRateLimitExceededError } from '../errors.js';
-import { testEventDraft } from './authority.queries.js';
+import { withWorkflowAccess } from '../../workflow-access.js';
+import {
+  readTestEventDraft,
+  testEventDraftForCreator,
+} from './authority.queries.js';
 import { WebhookTestEventError } from './errors.js';
 import type { TestEventScope, WebhookTestEventStore } from './contract.js';
 
@@ -56,16 +61,23 @@ export function createWebhookTestEventStore(
   };
 }
 
+/** Starting, watching and stopping a listener lock it, so even the read is a change. */
 function transact<T>(
   pool: Pool,
   input: TestEventScope,
   work: (client: PoolClient) => Promise<T>,
 ) {
-  return withTenantScopedClient(
+  return withWorkflowAccess(
     pool,
-    { workspaceId: input.workspaceId, actorId: input.actorId },
+    input,
+    {
+      mode: 'change',
+      capability: 'workflow:update',
+      statuses: ACTIVE_WORKSPACE_STATUSES,
+      folderCapability: 'workflow:update',
+    },
+    () => new WorkflowNotFoundError('Workflow is not visible'),
     work,
-    input.signal === undefined ? {} : { signal: input.signal },
   );
 }
 async function find(client: PoolClient, scope: TestEventScope, id: string) {
@@ -90,7 +102,7 @@ function startTestEventListener(
   input: Parameters<WebhookTestEventStore['start']>[0],
 ): ReturnType<WebhookTestEventStore['start']> {
   return transact(pool, input, async (client) => {
-    const draft = await testEventDraft(client, input);
+    const draft = await readTestEventDraft(client, input);
     if (draft.revision !== input.expectedDraftRevision)
       throw new WebhookTestEventError('changed');
     const db = drizzle(client);
@@ -158,7 +170,7 @@ function readTestEventListener(
   input: Parameters<WebhookTestEventStore['get']>[0],
 ): ReturnType<WebhookTestEventStore['get']> {
   return transact(pool, input, async (client) => {
-    const draft = await testEventDraft(client, input);
+    const draft = await readTestEventDraft(client, input);
     const row = await find(client, input, input.id);
     if (row === undefined || row.expired)
       return { state: 'expired', expiresAt: null, output: null };
@@ -184,7 +196,7 @@ function stopTestEventListener(
   input: Parameters<WebhookTestEventStore['stop']>[0],
 ): ReturnType<WebhookTestEventStore['stop']> {
   return transact(pool, input, async (client) => {
-    await testEventDraft(client, input);
+    await readTestEventDraft(client, input);
     await drizzle(client)
       .delete(listeners)
       .where(
@@ -230,7 +242,7 @@ async function resolveTestEventListener(
           .catch(rethrowQueryFailure);
         const row = result[0];
         if (row === undefined || row.expired) return null;
-        const draft = await testEventDraft(client, scopeOf(row));
+        const draft = await testEventDraftForCreator(client, scopeOf(row));
         if (draft.binding !== row.binding) return null;
         return {
           endpointId: row.id,
@@ -338,7 +350,7 @@ async function captureTestEvent(
       if (candidate === undefined) return false;
       let draft;
       try {
-        draft = await testEventDraft(client, scopeOf(candidate));
+        draft = await testEventDraftForCreator(client, scopeOf(candidate));
       } catch (error) {
         if (
           error instanceof WorkflowNotFoundError ||

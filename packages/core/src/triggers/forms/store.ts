@@ -18,9 +18,15 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
+import {
+  ACTIVE_WORKSPACE_STATUSES,
+  BROWSABLE_WORKSPACE_STATUSES,
+} from '@pertexo/workflow-model';
+import type { PoolClient } from 'pg';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
+import { withWorkflowAccess } from '../workflow-access.js';
 import { FormUnavailableError } from './errors.js';
-import type { FormStore } from './contract.js';
+import type { FormScope, FormStore, PublicFormGrant } from './contract.js';
 import { authorizeForm, readFormVersion } from './records.queries.js';
 import {
   capabilityHash,
@@ -52,6 +58,7 @@ export function createFormStore(
   } satisfies FormStore);
 }
 
+/** No member behind this one either: it turns a link into a grant. */
 export async function discoverPublicForm(
   pool: Pool,
   input: Parameters<FormStore['discover']>[0],
@@ -74,10 +81,49 @@ export async function discoverPublicForm(
   };
 }
 
-function readForm(
+function publishedForm(
+  loaded: Awaited<ReturnType<typeof readFormVersion>>,
+): Awaited<ReturnType<FormStore['read']>> {
+  const { version, form } = loaded;
+  return {
+    versionId: version.id,
+    form: {
+      title: form.title,
+      instructions: form.instructions,
+      fields: form.fields,
+    },
+  };
+}
+
+/** A member still reads a suspended workspace's form; the public never does. */
+async function readForm(
   pool: Pool,
   input: Parameters<FormStore['read']>[0],
   grant: Parameters<FormStore['read']>[1],
+): ReturnType<FormStore['read']> {
+  if (grant !== undefined) return readPublicForm(pool, input, grant);
+  const { actorId } = input;
+  if (actorId === undefined) throw new FormUnavailableError();
+  return withWorkflowAccess(
+    pool,
+    { ...input, actorId },
+    {
+      mode: 'read',
+      capability: 'workspace:read',
+      statuses: BROWSABLE_WORKSPACE_STATUSES,
+      folderCapability: 'workflow:read',
+    },
+    () => new FormUnavailableError(),
+    async (client) =>
+      publishedForm(await readFormVersion(client, input, 'read')),
+  );
+}
+
+/** No member behind this one: the link is the authority, so it stays off the helper. */
+function readPublicForm(
+  pool: Pool,
+  input: Parameters<FormStore['read']>[0],
+  grant: PublicFormGrant,
 ): ReturnType<FormStore['read']> {
   return withTenantScopedReadClient(
     pool,
@@ -86,30 +132,16 @@ function readForm(
       ...(input.actorId === undefined ? {} : { actorId: input.actorId }),
     },
     async (client) => {
-      // A member still reads a suspended workspace's form; the public never does.
-      const browsing = grant === undefined;
-      await authorizeForm(client, input, { grant, write: false, browsing });
-      const { version, nodeId, form } = await readFormVersion(
-        client,
-        input,
-        'read',
-        { browsing },
-      );
-      if (grant !== undefined && grant.nodeId !== nodeId)
-        throw new FormUnavailableError();
-      return {
-        versionId: version.id,
-        form: {
-          title: form.title,
-          instructions: form.instructions,
-          fields: form.fields,
-        },
-      };
+      await authorizeForm(client, input, { grant, write: false });
+      const loaded = await readFormVersion(client, input, 'read');
+      if (grant.nodeId !== loaded.nodeId) throw new FormUnavailableError();
+      return publishedForm(loaded);
     },
     input.signal === undefined ? {} : { signal: input.signal },
   );
 }
 
+/** Either door; `authorizeForm` says why it isn't on the authority helper. */
 async function submitFormEvent(
   {
     pool,
@@ -163,74 +195,70 @@ async function submitFormEvent(
   );
 }
 
-function readFormHistory(
+/** What only editors read about a form, on a suspended workspace too. */
+function withFormManager<T>(
+  pool: Pool,
+  input: FormScope & Readonly<{ actorId: string }>,
+  work: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  return withWorkflowAccess(
+    pool,
+    input,
+    {
+      mode: 'read',
+      capability: 'workflow:update',
+      statuses: BROWSABLE_WORKSPACE_STATUSES,
+      folderCapability: 'workflow:read',
+    },
+    () => new FormUnavailableError(),
+    work,
+  );
+}
+
+async function readFormHistory(
   pool: Pool,
   input: Parameters<FormStore['history']>[0],
 ): ReturnType<FormStore['history']> {
-  return withTenantScopedReadClient(
-    pool,
-    { workspaceId: input.workspaceId, actorId: input.actorId },
-    async (client) => {
-      try {
-        await authorizeForm(client, input, {
-          grant: undefined,
-          write: false,
-          manage: true,
-          browsing: true,
-        });
-      } catch (error) {
-        if (!(error instanceof FormUnavailableError)) throw error;
-        // History is a list: unavailable workflow identities disclose no events.
-        return { items: [], next: null };
-      }
-      return readCoordinatedEventHistory(client, input);
-    },
-    input.signal === undefined ? {} : { signal: input.signal },
-  );
+  try {
+    return await withFormManager(pool, input, (client) =>
+      readCoordinatedEventHistory(client, input),
+    );
+  } catch (error) {
+    if (!(error instanceof FormUnavailableError)) throw error;
+    // History is a list: unavailable workflow identities disclose no events.
+    return { items: [], next: null };
+  }
 }
 
 function readManagedFormAccess(
   pool: Pool,
   input: Parameters<FormStore['access']>[0],
 ): ReturnType<FormStore['access']> {
-  return withTenantScopedReadClient(
-    pool,
-    { workspaceId: input.workspaceId, actorId: input.actorId },
-    async (client) => {
-      await authorizeForm(client, input, {
-        grant: undefined,
-        write: false,
-        manage: true,
-        browsing: true,
-      });
-      await readFormVersion(client, input, 'read', {
-        allowPaused: true,
-        browsing: true,
-      });
-      return readFormAccess(client, input);
-    },
-    input.signal === undefined ? {} : { signal: input.signal },
-  );
+  return withFormManager(pool, input, async (client) => {
+    await readFormVersion(client, input, 'read', { allowPaused: true });
+    return readFormAccess(client, input);
+  });
 }
 
 function setManagedFormAccess(
   pool: Pool,
   input: Parameters<FormStore['setAccess']>[0],
 ): ReturnType<FormStore['setAccess']> {
-  return withTenantScopedClient(
+  return withWorkflowAccess(
     pool,
-    { workspaceId: input.workspaceId, actorId: input.actorId },
+    input,
+    {
+      mode: 'change',
+      capability: 'workflow:update',
+      statuses: ACTIVE_WORKSPACE_STATUSES,
+      folderCapability: 'workflow:update',
+    },
+    () => new FormUnavailableError(),
     async (client) => {
-      await authorizeForm(client, input, {
-        grant: undefined,
-        write: true,
-        manage: true,
-      });
       const { nodeId } = await readFormVersion(client, input, 'update', {
         allowPaused: true,
       });
       return changeFormAccess(client, input, nodeId);
     },
-    input.signal === undefined ? {} : { signal: input.signal },
   );
 }
