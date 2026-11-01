@@ -183,7 +183,11 @@ export const workflowProblems = [
         (issue) => !apiProblemIssueSchema.safeParse(issue).success,
       )
     )
-      return validationUnavailable(error);
+      // Not the error itself: its issues hold what the person wrote, which stays
+      // out of the log.
+      return validationUnavailable(
+        new Error('A validation issue fits no problem response'),
+      );
     return applicationError('workflow.invalid', {
       safeDetail: 'The workflow cannot be published in its current form.',
       details: { issues: error.issues },

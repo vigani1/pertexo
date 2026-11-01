@@ -169,7 +169,9 @@ describe('authoring API admission adapter', () => {
         code: 'workflow.validation_unavailable',
         details: { retryAfterSeconds: 1 },
       });
-      expect(mapped.cause).toBeUndefined();
+      // The cause reaches the log, so what the person wrote stays out of it.
+      expect(JSON.stringify(mapped)).not.toContain('xxxx');
+      expect(String(mapped.cause)).not.toContain('xxxx');
       expect(mapped.details).not.toHaveProperty('issues');
     },
   );
@@ -184,7 +186,9 @@ describe('authoring API admission adapter', () => {
       code: 'workflow.validation_unavailable',
       details: { retryAfterSeconds: 1 },
     });
-    expect(mapped.cause).toBeUndefined();
+    // The log needs the reason; the response only says to retry.
+    expect(mapped.cause).toBeInstanceOf(AuthoringValidationUnavailableError);
+    expect(mapped.details).toEqual({ retryAfterSeconds: 1 });
   });
 
   it('does not cancel on ordinary request completion but does cancel disposal and removes listeners', async () => {
