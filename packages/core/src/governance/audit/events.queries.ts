@@ -1,8 +1,4 @@
-import {
-  rethrowQueryFailure,
-  projectAuditMetadata,
-} from '@pertexo/database/primitives';
-import { z } from 'zod';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import {
   and,
@@ -18,45 +14,12 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import { auditEvents, users } from '@pertexo/database/schema';
-import type { AuditFilter, AuditEvent } from '@pertexo/contracts';
-import { GovernanceError } from '../contract.js';
-const cursorSchema = z
-  .object({ time: z.iso.datetime(), id: z.uuid() })
-  .strict();
-export type AuditCursor = z.output<typeof cursorSchema>;
-export function decodeAuditCursor(
-  encoded: string | undefined,
-): AuditCursor | undefined {
-  if (encoded === undefined) return undefined;
-  try {
-    return cursorSchema.parse(
-      JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')),
-    );
-  } catch {
-    throw new GovernanceError(
-      'invalid',
-      'The audit cursor is invalid. Reload the audit log.',
-    );
-  }
-}
+import type { AuditFilter } from '@pertexo/contracts';
+
+import type { AuditCursor } from './cursor.js';
+
 export type AuditRow = Awaited<ReturnType<typeof readAuditBatch>>[number];
-export function encodeAuditCursor(row: AuditRow): string {
-  return Buffer.from(
-    JSON.stringify({ time: row.cursorTime, id: row.id }),
-  ).toString('base64url');
-}
-export function projectAuditEvent(row: AuditRow): AuditEvent {
-  return {
-    id: row.id,
-    actorId: row.actorId,
-    actorName: row.actorName,
-    action: row.action,
-    targetType: row.targetType,
-    targetId: row.targetId,
-    occurredAt: row.occurredAt.toISOString(),
-    metadata: projectAuditMetadata(row.metadata),
-  };
-}
+
 function auditWhere(
   client: PoolClient,
   workspaceId: string,
@@ -147,10 +110,12 @@ export async function readAuditBatch(
     .catch(rethrowQueryFailure);
 }
 
-export async function countAuditExport(
+/** Counts no further than `atMost`, so a huge log can't make the count itself slow. */
+export async function countAuditEvents(
   client: PoolClient,
   workspaceId: string,
   query: AuditFilter,
+  atMost: number,
 ): Promise<number> {
   const db = drizzle(client);
   const bounded = db.$with('bounded').as(
@@ -158,7 +123,7 @@ export async function countAuditExport(
       .select({ id: auditEvents.id })
       .from(auditEvents)
       .where(auditWhere(client, workspaceId, query))
-      .limit(100_001),
+      .limit(atMost),
   );
   const [result] = await db
     .with(bounded)

@@ -333,7 +333,6 @@ test('the list of areas not yet passed can only shrink', () => {
     'connections',
     'data-tables',
     'execution',
-    'governance',
     'identity',
     'inbox',
     'lifecycle',

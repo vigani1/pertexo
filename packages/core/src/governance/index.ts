@@ -1,2 +1,7 @@
-export { createGovernanceStore } from './store.js';
-export { GovernanceError, type GovernanceStore } from './contract.js';
+export { createGovernanceStore, type GovernanceStore } from './store.js';
+export {
+  GovernanceError,
+  type ConfigureGovernanceInput,
+  type ExportAuditInput,
+  type ListAuditInput,
+} from './contract.js';

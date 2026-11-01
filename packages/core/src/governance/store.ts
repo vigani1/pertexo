@@ -1,110 +1,77 @@
 import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-  withTenantScopedReadClient,
-} from '@pertexo/database/primitives';
-import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaces } from '@pertexo/database/schema';
-import type { PoolClient } from 'pg';
-import type { DatabaseConfig } from '@pertexo/database/platform';
-import {
   acquireDatabasePool,
+  type DatabaseConfig,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import {
-  lockWorkspaceAuthority,
-  readWorkspaceAuthority,
-} from '../shared/authority.queries.js';
-import {
-  rolesForCapability,
-  type AuthorizationCapability,
+  ACTIVE_WORKSPACE_STATUSES,
+  UNPURGED_WORKSPACE_STATUSES,
 } from '@pertexo/workflow-model';
-import type { GovernanceStore, GovernanceScope } from './contract.js';
+import type { PoolClient } from 'pg';
+
 import {
-  readAuditBatch,
-  decodeAuditCursor,
-  encodeAuditCursor,
-  projectAuditEvent,
-} from './audit/events.queries.js';
-import { prepareAuditExport } from './audit/export.js';
+  withWorkspaceAccess,
+  type WorkspaceActor,
+} from '../shared/workspace-access.js';
+import { decodeAuditCursor } from './audit/cursor.js';
+import { streamAuditExport } from './audit/export.js';
+import { readAuditPage } from './audit/page.js';
+import type {
+  ConfigureGovernanceInput,
+  ExportAuditInput,
+  ListAuditInput,
+} from './contract.js';
 import { configureGovernance } from './settings/configure.js';
 import { readGovernanceSettings } from './settings/policy.queries.js';
+
+export type GovernanceStore = ReturnType<typeof createGovernanceStore>;
+
+/** Each action opens its own transaction and decides authority inside it. */
 export function createGovernanceStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): GovernanceStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const read = <T>(
-    input: GovernanceScope,
-    capability: AuthorizationCapability,
+    actor: WorkspaceActor,
     work: (client: PoolClient) => Promise<T>,
   ) =>
-    withTenantScopedReadClient(
+    withWorkspaceAccess(
       lease.pool,
-      input,
-      async (client) => {
-        await readWorkspaceAuthority(client, input.workspaceId, {
-          actorId: input.actorId,
-          roles: rolesForCapability(capability),
-          allowedStatuses: ['active', 'suspended', 'pending_deletion'],
-        });
-        return work(client);
+      actor,
+      {
+        mode: 'read',
+        capability: 'audit:read',
+        statuses: UNPURGED_WORKSPACE_STATUSES,
       },
-      input.signal === undefined ? {} : { signal: input.signal },
+      work,
     );
   return {
     close: () => lease.close(),
-    list: async (input) => {
+    list: async (input: ListAuditInput) => {
       const after = decodeAuditCursor(input.query.after);
-      return read(input, 'audit:read', async (client) => {
-        const rows = await readAuditBatch(client, input.workspaceId, {
-          query: input.query,
-          limit: input.query.limit + 1,
-          after,
-        });
-        const items = rows.slice(0, input.query.limit);
-        const last = items.at(-1);
-        return {
-          items: items.map(projectAuditEvent),
-          nextCursor:
-            rows.length > input.query.limit && last !== undefined
-              ? encodeAuditCursor(last)
-              : null,
-        };
-      });
+      return read(input, (client) => readAuditPage(client, input, after));
     },
-    settings: (input) =>
-      read(input, 'audit:read', (client) =>
-        readGovernanceSettings(client, input.workspaceId),
+    settings: (actor: WorkspaceActor) =>
+      read(actor, (client) =>
+        readGovernanceSettings(client, actor.workspaceId),
       ),
-    configure: (input) =>
-      withTenantScopedClient(
+    configure: (input: ConfigureGovernanceInput) =>
+      withWorkspaceAccess(
         lease.pool,
         input,
-        async (client) => {
-          await drizzle(client)
-            .select({ id: workspaces.id })
-            .from(workspaces)
-            .where(eq(workspaces.id, input.workspaceId))
-            .for('update')
-            .catch(rethrowQueryFailure);
-          await lockWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('governance:manage'),
-          );
-          return configureGovernance(client, input);
+        {
+          // Saving updates the workspace row itself.
+          mode: 'exclusive',
+          capability: 'governance:manage',
+          statuses: ACTIVE_WORKSPACE_STATUSES,
         },
-        input.signal === undefined ? {} : { signal: input.signal },
+        (client) => configureGovernance(client, input),
       ),
-    exportCsv: async (input) => {
-      const prepared = await prepareAuditExport(
-        (work) => read(input, 'audit:read', work),
-        input.workspaceId,
-        input.query,
-        input.signal,
+    exportCsv: async (input: ExportAuditInput) => {
+      const prepared = await streamAuditExport(
+        (work) => read(input, work),
+        input,
       );
       await input.consume(prepared.csv, prepared.metadata);
     },
