@@ -57,7 +57,11 @@ export function createProviderFailureNotificationDelivery(
           { deliveryUnresolved: input.deliveryUnresolved },
         );
       }
-      if (destination.secretVersionId !== input.connectionSecretVersionId)
+      // A retry of a send that may have gone out must use the same credential.
+      if (
+        input.deliveryUnresolved &&
+        destination.secretVersionId !== input.connectionSecretVersionId
+      )
         return settleUnresolvedDelivery(
           {
             kind: 'definite_failure',
