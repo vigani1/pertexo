@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
 
-import { classifyConnectionTestCompletion } from '../../src/connections/connection-tests/results.repository.js';
+import { classifyConnectionTestCompletion } from '@pertexo/workflow-model';
 import { decodeDurableConnectionReplay } from '../../src/connections/receipts.js';
 
 const secretVersionId = '11111111-1111-4111-8111-111111111111';

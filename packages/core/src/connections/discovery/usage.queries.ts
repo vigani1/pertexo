@@ -1,29 +1,24 @@
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   workflowIntegrationUsage as usage,
   workflowVersions as version,
   workflows as workflow,
-  connections,
 } from '@pertexo/database/schema';
-import {
-  connectionScope,
-  connectionScopeSql,
-} from '../../tenant-access/resources/connections/scope.js';
+import type { Role } from '@pertexo/workflow-model';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import { readFolderScope } from '../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
-import { requireConnectionReader } from '../authority.queries.js';
-import type {
-  ConnectionUsageStore,
-  ConnectionUsageRecord,
-} from './contract.js';
-
-import type { Pool } from 'pg';
-
 import { ConnectionNotFoundError } from '../contract.js';
-import { withConnectionTransaction } from '../transaction.js';
+import { requireVisibleConnection } from '../records.queries.js';
+import type {
+  ConnectionUsagePage,
+  ConnectionUsageRecord,
+  ListConnectionUsageInput,
+} from './contract.js';
+import { DEFAULT_CONNECTION_PAGE_SIZE } from './reads.queries.js';
 
 /** The projection index pages version identities before bounded metadata joins. */
 export function connectionUsagePage(
@@ -99,104 +94,73 @@ export function connectionUsagePage(
     .orderBy(page.workflowVersionId);
 }
 
-export function createConnectionUsagePersistence(
-  pool: Pool,
-): ConnectionUsageStore {
+export async function listConnectionUsage(
+  client: PoolClient,
+  input: ListConnectionUsageInput,
+  role: Role,
+): Promise<ConnectionUsagePage> {
+  const { workspaceId, connectionId } = input;
+  const limit = input.limit ?? DEFAULT_CONNECTION_PAGE_SIZE;
+  const after = input.after?.workflowVersionId;
+  const resources = await readFolderScope(client, input, role);
+  await requireVisibleConnection(
+    client,
+    input,
+    connectionId,
+    role,
+    'connection:read',
+  );
+  const db = drizzle(client);
+  if (after !== undefined) {
+    const anchor = await db
+      .select({ id: usage.workflowVersionId })
+      .from(usage)
+      .innerJoin(
+        version,
+        and(
+          eq(version.workspaceId, usage.workspaceId),
+          eq(version.id, usage.workflowVersionId),
+        ),
+      )
+      .where(
+        and(
+          eq(usage.workspaceId, workspaceId),
+          eq(usage.connectionId, connectionId),
+          eq(usage.workflowVersionId, after),
+          workflowScopeSql(resources, sql`${version.workflowId}`),
+        ),
+      )
+      .limit(1)
+      .catch(rethrowQueryFailure);
+    if (anchor.length !== 1)
+      throw new ConnectionNotFoundError(
+        'Connection usage cursor is not visible',
+      );
+  }
+  const result = await connectionUsagePage(db, {
+    workspaceId,
+    connectionId,
+    after,
+    limit: limit + 1,
+    resources,
+  });
+  const items = Object.freeze(
+    result.slice(0, limit).map((row) =>
+      Object.freeze({
+        ...row,
+        operationKeys: Object.freeze(row.operationKeys),
+      }),
+    ),
+  );
+  const last = items.at(-1);
   return Object.freeze({
-    listConnectionUsage: (input) => {
-      const actorId = input.actorId;
-      const connectionId = input.connectionId;
-      const limit = input.limit ?? 50;
-      const after =
-        input.after === undefined ? undefined : input.after.workflowVersionId;
-      return withConnectionTransaction(pool, input.workspaceId, {
-        actorId,
-        operation: async (client, workspaceId) => {
-          const role = await requireConnectionReader(
-            client,
-            workspaceId,
-            actorId,
-          );
-          const resources = await readFolderScope(
-            client,
-            { workspaceId, actorId },
-            role,
-          );
-          const db = drizzle(client);
-          const found = await db
-            .select({ id: connections.id })
-            .from(connections)
-            .where(
-              and(
-                eq(connections.workspaceId, workspaceId),
-                eq(connections.id, connectionId),
-                connectionScopeSql(
-                  connectionScope(
-                    { workspaceId, actorId },
-                    role,
-                    'connection:read',
-                  ),
-                  connections,
-                ),
-              ),
-            )
-            .catch(rethrowQueryFailure);
-          if (found.length !== 1)
-            throw new ConnectionNotFoundError('Connection is not visible');
-          if (after !== undefined) {
-            const anchor = await db
-              .select({ id: usage.workflowVersionId })
-              .from(usage)
-              .innerJoin(
-                version,
-                and(
-                  eq(version.workspaceId, usage.workspaceId),
-                  eq(version.id, usage.workflowVersionId),
-                ),
-              )
-              .where(
-                and(
-                  eq(usage.workspaceId, workspaceId),
-                  eq(usage.connectionId, connectionId),
-                  eq(usage.workflowVersionId, after),
-                  workflowScopeSql(resources, sql`${version.workflowId}`),
-                ),
-              )
-              .limit(1)
-              .catch(rethrowQueryFailure);
-            if (anchor.length !== 1)
-              throw new ConnectionNotFoundError(
-                'Connection usage cursor is not visible',
-              );
-          }
-          const result = await connectionUsagePage(db, {
-            workspaceId,
-            connectionId,
-            after,
-            limit: limit + 1,
-            resources,
-          });
-          const items = Object.freeze(
-            result.slice(0, limit).map((row) =>
-              Object.freeze({
-                ...row,
-                operationKeys: Object.freeze(row.operationKeys),
-              }),
-            ),
-          );
-          const last = items.at(-1);
-          return Object.freeze({
-            items,
-            ...(result.length > limit && last !== undefined
-              ? {
-                  nextCursor: Object.freeze({
-                    workflowVersionId: last.workflowVersionId,
-                  }),
-                }
-              : {}),
-          });
-        },
-      });
-    },
+    items,
+    ...(result.length > limit && last !== undefined
+      ? {
+          nextCursor: Object.freeze({
+            workflowVersionId: last.workflowVersionId,
+          }),
+        }
+      : {}),
   });
 }

@@ -4,14 +4,16 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { generatePersistedId } from '@pertexo/database/platform';
-import { connectionEvents, connections } from '@pertexo/database/schema';
-import type {
-  ConnectionRecord,
-  ConnectionStatus,
-  ConnectionTestOutcome,
+import { connections } from '@pertexo/database/schema';
+import {
+  CONNECTION_EVENT_TYPE,
+  type ConnectionRecord,
+  type ConnectionStatus,
+  type ConnectionTestOutcome,
 } from '../contract.js';
+import { appendConnectionEvent } from '../events.repository.js';
 import { connectionFields } from '../records.queries.js';
+import { isStaleTestObservation } from './rules.js';
 
 /** Transaction-private revision transitions; callers already own the connection lock. */
 export async function revokeConnectionHealth(
@@ -78,16 +80,12 @@ export async function applyCurrentConnectionTestHealth(
     healthRevision: string | undefined;
     outcome: ConnectionTestOutcome;
     actorId: string;
-    requestId: string | null;
-    traceId: string | null;
+    requestId: string | undefined;
+    traceId: string | undefined;
   }>,
 ): Promise<ConnectionRecord> {
   const { current, outcome } = input;
-  const staleObservation =
-    current.status === 'revoked' ||
-    current.currentSecretVersionId !== input.secretVersionId ||
-    input.healthRevision === undefined;
-  if (staleObservation) return current;
+  if (isStaleTestObservation(current, input)) return current;
   const db = drizzle(client);
   const predicate = and(
     eq(connections.workspaceId, current.workspaceId),
@@ -121,26 +119,22 @@ export async function applyCurrentConnectionTestHealth(
   if (row === undefined)
     throw new Error('Connection test health update returned no row');
   if (outcome.ok || current.status !== nextStatus) {
-    await db
-      .insert(connectionEvents)
-      .values({
-        id: generatePersistedId(),
-        workspaceId: current.workspaceId,
-        connectionId: current.id,
-        eventType: outcome.ok
-          ? 'connection.health_changed'
-          : 'connection.reauthorization_required',
-        actorKind: 'user',
-        actorId: input.actorId,
-        requestId: input.requestId,
-        traceId: input.traceId,
-        metadata: {
-          source: 'test',
-          status: nextStatus,
-          ...(outcome.ok ? {} : { reasonCode: outcome.errorCode }),
-        },
-      })
-      .catch(rethrowQueryFailure);
+    await appendConnectionEvent(client, {
+      workspaceId: current.workspaceId,
+      connectionId: current.id,
+      eventType: outcome.ok
+        ? 'connection.health_changed'
+        : CONNECTION_EVENT_TYPE.reauthorizationRequired,
+      actorKind: 'user',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      metadata: {
+        source: 'test',
+        status: nextStatus,
+        ...(outcome.ok ? {} : { reasonCode: outcome.errorCode }),
+      },
+    });
   }
   return Object.freeze(row);
 }

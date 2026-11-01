@@ -58,70 +58,51 @@ export type ConsumedOAuth2Authorization =
       clientSecret: SealedConnectionSecretRecord;
     }>;
 
-/** Every write that replaces or removes tokens is conditional on the version read. */
-export type OAuth2TokenStore = Readonly<{
-  openOAuth2Grant(
-    input: TokenScope & Readonly<{ signal?: AbortSignal }>,
-  ): Promise<OAuth2GrantRecord | null>;
-  readOAuth2Token(
-    input: TokenScope & Readonly<{ signal?: AbortSignal }>,
-  ): Promise<OAuth2TokenRecord | null>;
-  claimOAuth2Refresh(
-    input: TokenVersion &
-      Readonly<{ blockSeconds: number; signal?: AbortSignal }>,
-  ): Promise<boolean>;
-  blockOAuth2Refresh(
-    input: TokenVersion & Readonly<{ blockSeconds: number }>,
-  ): Promise<void>;
-  commitOAuth2Refresh(
-    input: TokenVersion & Readonly<{ issued: IssuedOAuth2Tokens }>,
-  ): Promise<boolean>;
-  loseOAuth2Grant(
-    input: TokenVersion &
-      Readonly<{ errorCode: string; actor: OAuth2GrantLossActor }>,
-  ): Promise<boolean>;
-  rejectOAuth2Token(
-    input: TokenVersion &
-      Readonly<{ minimumAgeSeconds: number; signal?: AbortSignal }>,
-  ): Promise<boolean>;
+export type OpenOAuth2GrantInput = TokenScope &
+  Readonly<{ signal?: AbortSignal }>;
+
+export type ReadOAuth2TokenInput = OpenOAuth2GrantInput;
+
+export type ClaimOAuth2RefreshInput = TokenVersion &
+  Readonly<{ blockSeconds: number; signal?: AbortSignal }>;
+
+export type BlockOAuth2RefreshInput = TokenVersion &
+  Readonly<{ blockSeconds: number }>;
+
+export type CommitOAuth2RefreshInput = TokenVersion &
+  Readonly<{ issued: IssuedOAuth2Tokens }>;
+
+export type LoseOAuth2GrantInput = TokenVersion &
+  Readonly<{ errorCode: string; actor: OAuth2GrantLossActor }>;
+
+export type RejectOAuth2TokenInput = TokenVersion &
+  Readonly<{ minimumAgeSeconds: number; signal?: AbortSignal }>;
+
+export type ReadOAuth2ClientInput = TokenScope & Readonly<{ actorId: string }>;
+
+export type StartOAuth2AuthorizationInput = TokenScope &
+  Readonly<{
+    actorId: string;
+    secretVersionId: string;
+    stateDigest: Buffer;
+    bindingDigest: Buffer;
+    lifetimeSeconds: number;
+  }>;
+
+export type ConsumeOAuth2AuthorizationInput = Readonly<{
+  workspaceId: string;
+  stateDigest: Buffer;
+  bindingDigests: readonly Buffer[];
 }>;
 
-export type OAuth2ConsentStore = Readonly<{
-  readOAuth2Client(
-    input: TokenScope & Readonly<{ actorId: string }>,
-  ): Promise<OAuth2ClientRecord>;
-  startOAuth2Authorization(
-    input: TokenScope &
-      Readonly<{
-        actorId: string;
-        secretVersionId: string;
-        stateDigest: Buffer;
-        bindingDigest: Buffer;
-        lifetimeSeconds: number;
-      }>,
-  ): Promise<Readonly<{ expiresAt: Date }>>;
-  consumeOAuth2Authorization(
-    input: Readonly<{
-      workspaceId: string;
-      stateDigest: Buffer;
-      bindingDigests: readonly Buffer[];
-    }>,
-  ): Promise<ConsumedOAuth2Authorization>;
-  /** The sealed tokens a reconnect would replace, if they share its settings. */
-  readOAuth2EarlierTokens(
-    input: TokenScope & Readonly<{ secretVersionId: string }>,
-  ): Promise<Readonly<{
-    id: string;
-    sealed: SealedConnectionSecretRecord;
-  }> | null>;
-  authorizeOAuth2Connection(
-    input: TokenScope &
-      Readonly<{
-        actorId: string;
-        secretVersionId: string;
-        issued: IssuedOAuth2Tokens;
-        requestId?: string;
-        traceId?: string;
-      }>,
-  ): Promise<ConnectionRecord | null>;
-}>;
+export type ReadOAuth2EarlierTokensInput = TokenScope &
+  Readonly<{ secretVersionId: string }>;
+
+export type AuthorizeOAuth2ConnectionInput = TokenScope &
+  Readonly<{
+    actorId: string;
+    secretVersionId: string;
+    issued: IssuedOAuth2Tokens;
+    requestId?: string;
+    traceId?: string;
+  }>;

@@ -1,10 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { folderScope } from '../../src/tenant-access/resources/policy.js';
 import { describe, expect, it } from 'vitest';
-import {
-  connectionUsagePage,
-  createConnectionUsagePersistence,
-} from '../../src/connections/discovery/usage.queries.js';
+import { connectionUsagePage } from '../../src/connections/discovery/usage.queries.js';
 import {
   Pool,
   apiBaseUrl,
@@ -36,7 +33,7 @@ describe('authorized published connection usage', () => {
       max: 1,
     });
     try {
-      const usage = createConnectionUsagePersistence(apiPool);
+      const usage = connections.api;
       const owner = await ownerPool.connect();
       try {
         await owner.query('begin');
@@ -137,7 +134,7 @@ describe('authorized published connection usage', () => {
         await owner.query('rollback');
         owner.release();
       }
-      const usage = createConnectionUsagePersistence(apiPool);
+      const usage = connections.api;
       const observed = [];
       let after: { workflowVersionId: string } | undefined;
       do {

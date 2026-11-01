@@ -6,8 +6,16 @@ import {
   connections,
   connectionSecretVersions,
 } from '@pertexo/database/schema';
+import type { Role } from '@pertexo/workflow-model';
 
-import type { ConnectionRecord } from './contract.js';
+import {
+  connectionScope,
+  connectionScopeSql,
+  type ConnectionCapability,
+} from '../tenant-access/resources/connections/scope.js';
+import type { ResourceActor } from '../tenant-access/resources/contract.js';
+import { ConnectionNotFoundError, type ConnectionRecord } from './contract.js';
+
 export const connectionFields = {
   id: connections.id,
   workspaceId: connections.workspaceId,
@@ -55,4 +63,30 @@ export async function selectConnection(
     rethrowQueryFailure,
   );
   return row === undefined ? null : Object.freeze(row);
+}
+
+/** A restricted connection only exists for the members its shares and role reach. */
+export async function requireVisibleConnection(
+  client: PoolClient,
+  actor: ResourceActor,
+  connectionId: string,
+  role: Role,
+  capability: ConnectionCapability,
+): Promise<void> {
+  const found = await drizzle(client)
+    .select({ id: connections.id })
+    .from(connections)
+    .where(
+      and(
+        eq(connections.workspaceId, actor.workspaceId),
+        eq(connections.id, connectionId),
+        connectionScopeSql(
+          connectionScope(actor, role, capability),
+          connections,
+        ),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (found.length !== 1)
+    throw new ConnectionNotFoundError('Connection is not visible');
 }

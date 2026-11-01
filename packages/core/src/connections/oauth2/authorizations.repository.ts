@@ -4,13 +4,10 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 
 import {
-  appendAuditFact,
   rethrowQueryFailure,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
-import { generatePersistedId } from '@pertexo/database/platform';
 import {
-  connectionEvents,
   connections,
   connectionSecretVersions,
   connectionOAuth2Authorizations as authorizations,
@@ -20,15 +17,16 @@ import {
 } from '@pertexo/database/schema';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { lockWorkspaceAuthority } from '../../shared/authority.queries.js';
-import { requireConnectionManager } from '../authority.queries.js';
 import {
   CONNECTION_AUTH_TYPE,
+  CONNECTION_EVENT_TYPE,
   CONNECTION_STATUS,
   ConnectionNotFoundError,
   ConnectionNotOAuth2Error,
   ConnectionUnavailableError,
   type ConnectionRecord,
 } from '../contract.js';
+import { recordMemberAction } from '../events.repository.js';
 import {
   connectionFields,
   sealedFields,
@@ -37,28 +35,15 @@ import {
 import { withConnectionTransaction } from '../transaction.js';
 import { withOneOAuth2Fact } from './clients.repository.js';
 import type {
+  AuthorizeOAuth2ConnectionInput,
   ConsumedOAuth2Authorization,
+  ConsumeOAuth2AuthorizationInput,
   IssuedOAuth2Tokens,
   OAuth2ClientRecord,
-  OAuth2ConsentStore,
+  ReadOAuth2ClientInput,
+  StartOAuth2AuthorizationInput,
 } from './contract.js';
-import {
-  expiryOf,
-  readEarlierTokens,
-  sealedColumns,
-} from './tokens.repository.js';
-
-export function createOAuth2AuthorizationPersistence(
-  pool: Pool,
-): OAuth2ConsentStore {
-  return Object.freeze({
-    readOAuth2Client: (input) => readClient(pool, input),
-    startOAuth2Authorization: (input) => startAuthorization(pool, input),
-    consumeOAuth2Authorization: (input) => consumeAuthorization(pool, input),
-    readOAuth2EarlierTokens: (input) => readEarlierTokens(pool, input),
-    authorizeOAuth2Connection: (input) => authorize(pool, input),
-  });
-}
+import { expiryOf, sealedColumns } from './tokens.repository.js';
 
 /** Only a connection that can still be connected may start consent. */
 function requireConnectable(
@@ -113,84 +98,76 @@ async function selectClient(
   return row;
 }
 
-async function readClient(
-  pool: Pool,
-  input: Parameters<OAuth2ConsentStore['readOAuth2Client']>[0],
+export async function readOAuth2Client(
+  client: PoolClient,
+  input: ReadOAuth2ClientInput,
 ): Promise<OAuth2ClientRecord> {
-  return withConnectionTransaction(pool, input.workspaceId, {
-    actorId: input.actorId,
-    operation: async (client, workspaceId) => {
-      await requireConnectionManager(client, workspaceId, input.actorId);
-      const connection = requireConnectable(
-        await selectConnection(client, workspaceId, input.connectionId),
-      );
-      const row = await selectClient(
-        client,
-        workspaceId,
-        input.connectionId,
-        connection.currentSecretVersionId,
-      );
-      if (row === undefined)
-        throw new Error('OAuth2 connection has no client for its version');
-      return Object.freeze({
-        connection: await withOneOAuth2Fact(client, workspaceId, connection),
-        settings: row.settings,
-        clientSecret: row.clientSecret,
-      });
-    },
+  const { workspaceId } = input;
+  const connection = requireConnectable(
+    await selectConnection(client, workspaceId, input.connectionId),
+  );
+  const row = await selectClient(
+    client,
+    workspaceId,
+    input.connectionId,
+    connection.currentSecretVersionId,
+  );
+  if (row === undefined)
+    throw new Error('OAuth2 connection has no client for its version');
+  return Object.freeze({
+    connection: await withOneOAuth2Fact(client, workspaceId, connection),
+    settings: row.settings,
+    clientSecret: row.clientSecret,
   });
 }
 
-async function startAuthorization(
-  pool: Pool,
-  input: Parameters<OAuth2ConsentStore['startOAuth2Authorization']>[0],
+export async function startOAuth2Authorization(
+  client: PoolClient,
+  input: StartOAuth2AuthorizationInput,
 ): Promise<Readonly<{ expiresAt: Date }>> {
-  return withConnectionTransaction(pool, input.workspaceId, {
-    actorId: input.actorId,
-    operation: async (client, workspaceId) => {
-      await requireConnectionManager(client, workspaceId, input.actorId);
-      const connection = requireConnectable(
-        await selectConnection(client, workspaceId, input.connectionId, {
-          lock: true,
-        }),
-      );
-      if (connection.currentSecretVersionId !== input.secretVersionId)
-        throw new ConnectionUnavailableError('Connection settings changed');
-      const expiresAt = sql`clock_timestamp()+make_interval(secs=>${input.lifetimeSeconds}::double precision)`;
-      const values = {
-        stateDigest: input.stateDigest,
-        bindingDigest: input.bindingDigest,
-        startedBy: input.actorId,
-        secretVersionId: input.secretVersionId,
-        expiresAt,
-      };
-      const [row] = await drizzle(client)
-        .insert(authorizations)
-        .values({
-          workspaceId,
-          connectionId: input.connectionId,
-          ...values,
-        })
-        .onConflictDoUpdate({
-          target: [authorizations.workspaceId, authorizations.connectionId],
-          set: values,
-        })
-        .returning({ expiresAt: authorizations.expiresAt })
-        .catch(rethrowQueryFailure);
-      if (row === undefined)
-        throw new Error('OAuth2 authorization returned no row');
-      return Object.freeze(row);
-    },
-  });
+  const { workspaceId } = input;
+  const connection = requireConnectable(
+    await selectConnection(client, workspaceId, input.connectionId, {
+      lock: true,
+    }),
+  );
+  if (connection.currentSecretVersionId !== input.secretVersionId)
+    throw new ConnectionUnavailableError('Connection settings changed');
+  const expiresAt = sql`clock_timestamp()+make_interval(secs=>${input.lifetimeSeconds}::double precision)`;
+  const values = {
+    stateDigest: input.stateDigest,
+    bindingDigest: input.bindingDigest,
+    startedBy: input.actorId,
+    secretVersionId: input.secretVersionId,
+    expiresAt,
+  };
+  const [row] = await drizzle(client)
+    .insert(authorizations)
+    .values({
+      workspaceId,
+      connectionId: input.connectionId,
+      ...values,
+    })
+    .onConflictDoUpdate({
+      target: [authorizations.workspaceId, authorizations.connectionId],
+      set: values,
+    })
+    .returning({ expiresAt: authorizations.expiresAt })
+    .catch(rethrowQueryFailure);
+  if (row === undefined)
+    throw new Error('OAuth2 authorization returned no row');
+  return Object.freeze(row);
 }
 
 /**
  * One statement decides who holds a state: two callbacks can't both consume it,
  * and a browser without the binding cookie leaves the row for the one that has it.
+ * The callback has no session member: authority is checked for whoever started
+ * consent, after the state is consumed, so it stays off `withWorkspaceAccess`.
  */
-async function consumeAuthorization(
+export async function consumeOAuth2Authorization(
   pool: Pool,
-  input: Parameters<OAuth2ConsentStore['consumeOAuth2Authorization']>[0],
+  input: ConsumeOAuth2AuthorizationInput,
 ): Promise<ConsumedOAuth2Authorization> {
   if (input.bindingDigests.length === 0) return { kind: 'unknown' };
   return withTenantScopedClient(
@@ -298,83 +275,65 @@ async function replaceTokenRow(
  * Consent or a server-to-server start succeeded. It answers for the settings it
  * ran with: replaced or revoked since then, the new tokens are discarded.
  */
-async function authorize(
+export async function authorizeOAuth2Connection(
   pool: Pool,
-  input: Parameters<OAuth2ConsentStore['authorizeOAuth2Connection']>[0],
-): ReturnType<OAuth2ConsentStore['authorizeOAuth2Connection']> {
-  return withConnectionTransaction(pool, input.workspaceId, {
-    actorId: undefined,
-    operation: async (client, workspaceId) => {
-      // Deletion may have been requested during the exchange. Shared, so it can't
-      // commit between this check and the insert and leave tokens behind.
-      const [workspace] = await drizzle(client)
-        .select({ status: workspaces.status })
-        .from(workspaces)
-        .where(eq(workspaces.id, workspaceId))
-        .for('share')
-        .catch(rethrowQueryFailure);
-      if (workspace?.status !== 'active') return null;
-      const current = await selectConnection(
-        client,
-        workspaceId,
-        input.connectionId,
-        { lock: true },
-      );
-      if (
-        current === null ||
-        current.status === CONNECTION_STATUS.revoked ||
-        current.currentSecretVersionId !== input.secretVersionId
+  input: AuthorizeOAuth2ConnectionInput,
+): Promise<ConnectionRecord | null> {
+  const { workspaceId } = input;
+  return withConnectionTransaction(pool, { workspaceId }, async (client) => {
+    // Deletion may have been requested during the exchange. Shared, so it can't
+    // commit between this check and the insert and leave tokens behind.
+    const [workspace] = await drizzle(client)
+      .select({ status: workspaces.status })
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .for('share')
+      .catch(rethrowQueryFailure);
+    if (workspace?.status !== 'active') return null;
+    const current = await selectConnection(
+      client,
+      workspaceId,
+      input.connectionId,
+      { lock: true },
+    );
+    if (
+      current === null ||
+      current.status === CONNECTION_STATUS.revoked ||
+      current.currentSecretVersionId !== input.secretVersionId
+    )
+      return null;
+    await replaceTokenRow(client, workspaceId, input);
+    const db = drizzle(client);
+    const [row] = await db
+      .update(connections)
+      .set({
+        status: CONNECTION_STATUS.active,
+        lastErrorCode: null,
+        lastHealthyAt: sql`clock_timestamp()`,
+        healthRevision: sql`${connections.healthRevision}+1`,
+        lastHealthTransitionAt: sql`clock_timestamp()`,
+        lastHealthTransitionSource: 'rotation',
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(
+        and(
+          eq(connections.workspaceId, workspaceId),
+          eq(connections.id, input.connectionId),
+        ),
       )
-        return null;
-      await replaceTokenRow(client, workspaceId, input);
-      const db = drizzle(client);
-      const [row] = await db
-        .update(connections)
-        .set({
-          status: CONNECTION_STATUS.active,
-          lastErrorCode: null,
-          lastHealthyAt: sql`clock_timestamp()`,
-          healthRevision: sql`${connections.healthRevision}+1`,
-          lastHealthTransitionAt: sql`clock_timestamp()`,
-          lastHealthTransitionSource: 'rotation',
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(
-          and(
-            eq(connections.workspaceId, workspaceId),
-            eq(connections.id, input.connectionId),
-          ),
-        )
-        .returning(connectionFields)
-        .catch(rethrowQueryFailure);
-      if (row === undefined)
-        throw new Error('OAuth2 authorization returned no connection');
-      const metadata = { secretVersionId: input.secretVersionId };
-      await db
-        .insert(connectionEvents)
-        .values({
-          id: generatePersistedId(),
-          workspaceId,
-          connectionId: input.connectionId,
-          eventType: 'connection.oauth2_authorized',
-          actorKind: 'user',
-          actorId: input.actorId,
-          requestId: input.requestId ?? null,
-          traceId: input.traceId ?? null,
-          metadata,
-        })
-        .catch(rethrowQueryFailure);
-      await appendAuditFact(client, {
-        workspaceId,
-        actorId: input.actorId,
-        action: 'connection.oauth2_authorized',
-        targetType: 'connection',
-        targetId: input.connectionId,
-        requestId: input.requestId ?? null,
-        traceId: input.traceId ?? null,
-        metadata,
-      });
-      return withOneOAuth2Fact(client, workspaceId, Object.freeze(row));
-    },
+      .returning(connectionFields)
+      .catch(rethrowQueryFailure);
+    if (row === undefined)
+      throw new Error('OAuth2 authorization returned no connection');
+    await recordMemberAction(client, {
+      workspaceId,
+      connectionId: input.connectionId,
+      eventType: CONNECTION_EVENT_TYPE.oauth2Authorized,
+      actorId: input.actorId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      metadata: { secretVersionId: input.secretVersionId },
+    });
+    return withOneOAuth2Fact(client, workspaceId, Object.freeze(row));
   });
 }

@@ -12,11 +12,13 @@ import {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-  type ConnectionStore,
   type CreateConnectionInput,
 } from '../../src/connections/contract.js';
-import { createConnectionStore } from '../../src/connections/store.js';
-import type { ConnectionLookupStore } from '../../src/connections/runtime/contract.js';
+import {
+  createConnectionStore,
+  type ConnectionLookupStore,
+  type ConnectionStore,
+} from '../../src/connections/store.js';
 import { createNotificationDestinationStore } from '../../src/notifications/destinations/store.js';
 import { FailureNotificationDestinationError } from '../../src/notifications/destinations/errors.js';
 import type { NotificationDestinationStore } from '../../src/notifications/destinations/store.js';

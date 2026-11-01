@@ -26,12 +26,6 @@ export type ListConnectionUsageInput = Readonly<{
   after?: ConnectionUsageCursor;
 }>;
 
-export type ConnectionUsageStore = Readonly<{
-  listConnectionUsage(
-    input: ListConnectionUsageInput,
-  ): Promise<ConnectionUsagePage>;
-}>;
-
 export type WorkflowIntegrationImpactRecord = Pick<
   typeof workflowIntegrationUsage.$inferSelect,
   'workflowVersionId' | 'providerKey' | 'operationKey' | 'connectionId'
@@ -59,14 +53,4 @@ export type FindConnectionImpactInput = Readonly<{
     providerKey: string;
     operationKey: string;
   }>;
-}>;
-
-export type WorkflowIntegrationUsageStore = Readonly<{
-  findProviderOperationImpact(
-    input: FindProviderOperationImpactInput,
-  ): Promise<WorkflowIntegrationImpactPage>;
-  findConnectionImpact(
-    input: FindConnectionImpactInput,
-  ): Promise<WorkflowIntegrationImpactPage>;
-  close(): Promise<void>;
 }>;

@@ -1,10 +1,19 @@
 import { z } from 'zod';
 
-export function connectionTestScope(
-  actorId: string,
-  connectionId: string,
-): string {
-  return `${actorId}:${connectionId}`;
+import type { ConnectionTestOutcome } from '../contract.js';
+
+/** A claim that hasn't moved in this long lost its request, so a retry may take it over. */
+export const CONNECTION_TEST_CLAIM_STALE_SECONDS = 120;
+
+const healthRevisionSchema = z.string().regex(/^[1-9][0-9]*$/u);
+
+/** A definite answer from the provider can't exist unless the request went out. */
+export function completionNeedsDispatchEvidence(
+  outcome: ConnectionTestOutcome,
+): boolean {
+  return (
+    outcome.ok || outcome.httpStatus !== null || outcome.reauthorizationRequired
+  );
 }
 
 export function connectionTestClaim(
@@ -24,12 +33,7 @@ export function connectionTestClaim(
     secretVersionId: secretVersionId,
     ...(healthRevision === undefined
       ? {}
-      : {
-          healthRevision: z
-            .string()
-            .regex(/^[1-9][0-9]*$/u)
-            .parse(healthRevision),
-        }),
+      : { healthRevision: healthRevisionSchema.parse(healthRevision) }),
   });
 }
 
@@ -39,10 +43,7 @@ export const connectionTestClaimSchema = z.discriminatedUnion('state', [
       state: z.literal('claimed'),
       dispatchToken: z.uuid(),
       secretVersionId: z.uuid().optional(),
-      healthRevision: z
-        .string()
-        .regex(/^[1-9][0-9]*$/u)
-        .optional(),
+      healthRevision: healthRevisionSchema.optional(),
     })
     .strict(),
   z
@@ -51,10 +52,7 @@ export const connectionTestClaimSchema = z.discriminatedUnion('state', [
       dispatchToken: z.uuid(),
       // Optional only for already-persisted version-1 in-flight claims.
       secretVersionId: z.uuid().optional(),
-      healthRevision: z
-        .string()
-        .regex(/^[1-9][0-9]*$/u)
-        .optional(),
+      healthRevision: healthRevisionSchema.optional(),
     })
     .strict(),
 ]);
