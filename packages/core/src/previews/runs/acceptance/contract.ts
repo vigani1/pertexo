@@ -39,6 +39,11 @@ export type AcceptPreviewRunInput = Readonly<{
   traceparent?: string | undefined;
 }>;
 
+export type ReadPreviewRunInput = Readonly<{
+  actorUserId: string;
+  previewRunId: string;
+}>;
+
 export type AcceptedPreviewRun = Readonly<{
   acceptedAt: Date;
   duplicate: boolean;

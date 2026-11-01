@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm';
 
 import { expect, it } from 'vitest';
 
-import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { readPreviewRun } from '../../../src/previews/runs/records.queries.js';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 
@@ -14,15 +13,16 @@ import {
   workerDatabase,
   input,
   ownerWorkspaceQuery,
+  apiPreviews,
 } from './fixture.js';
 import { hasPostgresCode } from './fixture.js';
 
 export function registerReadsUnexpiredTenantScopedPreview(): void {
   it('reads only an unexpired tenant-scoped preview and its stored output', async () => {
-    const accepted = await apiDatabase.withWorkspace(
-      workspaceA,
-      (transaction) => acceptPreviewRun(transaction, input()),
-    );
+    const accepted = await apiPreviews.acceptPreview({
+      workspaceId: workspaceA,
+      ...input(),
+    });
     await ownerWorkspaceQuery(
       workspaceA,
       `update app.preview_runs
@@ -32,12 +32,11 @@ export function registerReadsUnexpiredTenantScopedPreview(): void {
       [accepted.previewRunId],
     );
     await expect(
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        readPreviewRun(transaction, {
-          actorUserId: actorId,
-          previewRunId: accepted.previewRunId,
-        }),
-      ),
+      apiPreviews.readPreview({
+        workspaceId: workspaceA,
+        actorUserId: actorId,
+        previewRunId: accepted.previewRunId,
+      }),
     ).resolves.toMatchObject({
       id: accepted.previewRunId,
       status: 'succeeded',
@@ -53,22 +52,20 @@ export function registerReadsUnexpiredTenantScopedPreview(): void {
       [accepted.previewRunId],
     );
     await expect(
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        readPreviewRun(transaction, {
-          actorUserId: actorId,
-          previewRunId: accepted.previewRunId,
-        }),
-      ),
+      apiPreviews.readPreview({
+        workspaceId: workspaceA,
+        actorUserId: actorId,
+        previewRunId: accepted.previewRunId,
+      }),
     ).resolves.toMatchObject({
       output: { kind: 'inline', value: { ok: true } },
     });
     await expect(
-      apiDatabase.withWorkspace(workspaceB, (transaction) =>
-        readPreviewRun(transaction, {
-          actorUserId: actorId,
-          previewRunId: accepted.previewRunId,
-        }),
-      ),
+      apiPreviews.readPreview({
+        workspaceId: workspaceB,
+        actorUserId: actorId,
+        previewRunId: accepted.previewRunId,
+      }),
     ).resolves.toBeNull();
 
     await expect(
@@ -79,6 +76,7 @@ export function registerReadsUnexpiredTenantScopedPreview(): void {
             actorUserId: actorId,
             previewRunId: accepted.previewRunId,
           },
+          'builder',
           accepted.expiresAt,
         ),
       ),
@@ -86,10 +84,10 @@ export function registerReadsUnexpiredTenantScopedPreview(): void {
   });
 
   it('scopes preview reads and keeps the provider idempotency key fixed', async () => {
-    const accepted = await apiDatabase.withWorkspace(
-      workspaceA,
-      (transaction) => acceptPreviewRun(transaction, input()),
-    );
+    const accepted = await apiPreviews.acceptPreview({
+      workspaceId: workspaceA,
+      ...input(),
+    });
     const attemptId = accepted.previewAttemptId;
     if (attemptId === null)
       throw new Error('Fixture requires a real preview attempt');

@@ -1,9 +1,8 @@
 import type { PoolClient } from 'pg';
-import { canonicalJson, rolesForCapability } from '@pertexo/workflow-model';
+import { canonicalJson, type Role } from '@pertexo/workflow-model';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
-import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
@@ -13,6 +12,7 @@ import {
   requireNoActiveSuite,
   requireNoActiveTest,
 } from './admit.js';
+import { requireTestCapability } from './access.js';
 import type { WorkflowTestCommand } from './contract.js';
 import { WorkflowTestError } from './errors.js';
 import {
@@ -23,6 +23,7 @@ import {
 
 export async function startWorkflowTest(
   client: PoolClient,
+  role: Role,
   input: WorkflowTestCommand,
   catalogs: AuthoringCatalogs,
 ): Promise<{ runId: string }> {
@@ -61,11 +62,7 @@ export async function startWorkflowTest(
     !input.request.acknowledgeSideEffects
   )
     throw new WorkflowTestError('effects_acknowledgement_required');
-  if (snapshot.usesConnections)
-    await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
-      actorId: input.actorId,
-      roles: rolesForCapability('connection:use'),
-    });
+  if (snapshot.usesConnections) requireTestCapability(role, 'connection:use');
   await requireNoActiveSuite(client, input);
   await requireNoActiveTest(client, input);
   await requireWorkflowCallTargets(client, input, snapshot.graph);

@@ -132,9 +132,7 @@ export {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from './runs/commands/acceptance/errors.js';
-export { acceptPreviewRun } from './previews/runs/accept.js';
-export { readPreviewRun } from './previews/runs/records.queries.js';
-export { resolvePreviewReplay } from './previews/runs/resolve-replay.js';
+export { createPreviewRunStore } from './previews/runs/store.js';
 export { claimPreviewDelivery } from './previews/attempts/claim.js';
 export { markPreviewDispatched } from './previews/attempts/mark-dispatched.js';
 export { heartbeatPreviewLease } from './previews/attempts/heartbeat.js';
