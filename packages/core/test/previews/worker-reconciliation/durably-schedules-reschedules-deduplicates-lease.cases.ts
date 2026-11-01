@@ -1,10 +1,10 @@
 import { expect, it, vi } from 'vitest';
-import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.repository.js';
-import { completePreviewAttempt } from '../../../src/previews/attempts/completion.repository.js';
-import { heartbeatPreviewLease } from '../../../src/previews/attempts/heartbeat.repository.js';
-import { markPreviewDispatched } from '../../../src/previews/attempts/dispatch.repository.js';
+import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.js';
+import { completePreviewAttempt } from '../../../src/previews/attempts/complete.js';
+import { heartbeatPreviewLease } from '../../../src/previews/attempts/heartbeat.js';
+import { markPreviewDispatched } from '../../../src/previews/attempts/mark-dispatched.js';
 import { PREVIEW_STATUS } from '../../../src/previews/state.js';
-import { reconcilePreviewDelivery } from '../../../src/previews/reconciliation/deliveries.repository.js';
+import { reconcilePreviewDelivery } from '../../../src/previews/reconciliation/reconcile.js';
 import {
   acceptFixture,
   claimFixture,

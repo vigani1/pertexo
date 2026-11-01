@@ -24,12 +24,12 @@ import {
   sameTestSamples,
   saveTestSnapshot,
 } from './snapshot.repository.js';
-import { withTestAuthority, withTestRead } from './authority.queries.js';
+import { withTestAuthority, withTestRead } from './access.js';
 import {
   requireNoActiveSuite,
   requireNoActiveTest,
   admitTestRun,
-} from './admit.repository.js';
+} from './admit.js';
 import { readTestDetail, listTests } from './records.queries.js';
 
 export function createWorkflowTestStore(

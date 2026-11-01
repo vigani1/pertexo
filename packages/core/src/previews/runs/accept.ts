@@ -30,7 +30,7 @@ import {
   assertAdmission,
   assertPreviewActor,
   assertPreviewWorkflow,
-} from './acceptance/authority.queries.js';
+} from './acceptance/admission.queries.js';
 import type {
   AcceptPreviewRunInput,
   AcceptedPreviewRun,

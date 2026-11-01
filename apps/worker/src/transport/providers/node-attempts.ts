@@ -1,5 +1,5 @@
 import type { Provider } from '@nestjs/common';
-import { createDatabasePreviewAttemptRunStore } from '@pertexo/core/previews';
+import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { createNodeSecureHttpClient } from '@pertexo/integrations/server';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import type { QueueConsumerObserver } from '@pertexo/queue';
@@ -18,18 +18,18 @@ import {
 
 type NodeAttemptRuntimeProviderFactories = Readonly<{
   createPreviewInvoker: typeof createPlatformPreviewNodeInvoker;
-  createPreviewRunStore: typeof createDatabasePreviewAttemptRunStore;
+  createPreviewRunStore: typeof createPreviewAttemptRunStore;
   createRuntime: typeof createNodeAttemptRuntime;
 }>;
 
 const defaultFactories: NodeAttemptRuntimeProviderFactories = {
   createPreviewInvoker: createPlatformPreviewNodeInvoker,
-  createPreviewRunStore: createDatabasePreviewAttemptRunStore,
+  createPreviewRunStore: createPreviewAttemptRunStore,
   createRuntime: createNodeAttemptRuntime,
 };
 
 async function closePreviewStoreAfterFailure(
-  store: ReturnType<typeof createDatabasePreviewAttemptRunStore>,
+  store: ReturnType<typeof createPreviewAttemptRunStore>,
   primary: unknown,
 ): Promise<never> {
   try {
@@ -92,7 +92,7 @@ async function composeNodeAttemptRuntime(
     databaseRuntime: TransportModuleDependencies['databaseRuntime'];
     preview: Readonly<{
       invoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
-      runStore: ReturnType<typeof createDatabasePreviewAttemptRunStore>;
+      runStore: ReturnType<typeof createPreviewAttemptRunStore>;
     }>;
     factories: NodeAttemptRuntimeProviderFactories;
   }>,

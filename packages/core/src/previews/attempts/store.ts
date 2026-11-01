@@ -3,14 +3,14 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { claimPreviewDelivery } from './claim.repository.js';
-import { completePreviewAttempt } from './completion.repository.js';
+import { claimPreviewDelivery } from './claim.js';
+import { completePreviewAttempt } from './complete.js';
 import type { PreviewAttemptRunStore } from './contract.js';
-import { markPreviewDispatched } from './dispatch.repository.js';
-import { heartbeatPreviewLease } from './heartbeat.repository.js';
+import { markPreviewDispatched } from './mark-dispatched.js';
+import { heartbeatPreviewLease } from './heartbeat.js';
 
 /** The store owns its pool lease; injected runtimes retain their own lifetime. */
-export function createDatabasePreviewAttemptRunStore(
+export function createPreviewAttemptRunStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
 ): PreviewAttemptRunStore & { close(): Promise<void> } {

@@ -1,7 +1,7 @@
 import { v7 as uuidv7 } from 'uuid';
 import { expect, it } from 'vitest';
-import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.repository.js';
-import { completePreviewAttempt } from '../../../src/previews/attempts/completion.repository.js';
+import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.js';
+import { completePreviewAttempt } from '../../../src/previews/attempts/complete.js';
 import { PREVIEW_STATUS } from '../../../src/previews/state.js';
 import { PreviewDeliveryMismatchError } from '../../../src/previews/errors.js';
 import type { PreviewDelivery } from '../../../src/previews/contract.js';

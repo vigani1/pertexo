@@ -16,9 +16,9 @@ import {
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
 } from '../../runs/commands/acceptance/errors.js';
-import { lockTestAuthority } from '../workflows/authority.queries.js';
+import { lockTestAuthority } from '../workflows/access.js';
 import type { SuiteRow, SuiteCaseRow } from './contract.js';
-import { admitSuiteCase } from './admit.repository.js';
+import { admitSuiteCase } from './admit.js';
 import { evaluateSuiteCase, readSuiteRunOutcome } from './evaluate.queries.js';
 
 async function stop(

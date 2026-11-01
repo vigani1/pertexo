@@ -2,7 +2,7 @@ import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
 } from '@pertexo/database/platform';
-import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
+import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';

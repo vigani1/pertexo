@@ -1,9 +1,9 @@
 import type { PreviewAttemptLease } from '../contract.js';
 import type { withTenantScopedClient } from '@pertexo/database/primitives';
-import type { claimPreviewDelivery } from './claim.repository.js';
-import type { completePreviewAttempt } from './completion.repository.js';
-import type { markPreviewDispatched } from './dispatch.repository.js';
-import type { heartbeatPreviewLease } from './heartbeat.repository.js';
+import type { claimPreviewDelivery } from './claim.js';
+import type { completePreviewAttempt } from './complete.js';
+import type { markPreviewDispatched } from './mark-dispatched.js';
+import type { heartbeatPreviewLease } from './heartbeat.js';
 
 export type PreviewClaimResult =
   | Readonly<{ kind: 'claimed'; lease: PreviewAttemptLease }>

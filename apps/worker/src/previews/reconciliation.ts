@@ -1,6 +1,6 @@
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import {
-  createDatabasePreviewReconciliationStore,
+  createPreviewReconciliationStore,
   type PreviewDeliveryReconciliationResult,
   type PreviewReconciliationStore,
   PreviewAttemptStateError,
@@ -9,7 +9,7 @@ import {
 export type { PreviewReconciliationStore } from '@pertexo/core/previews';
 export const previewReconciliationFactories = Object.freeze({
   handler: createPreviewReconciliationHandler,
-  store: createDatabasePreviewReconciliationStore,
+  store: createPreviewReconciliationStore,
 });
 import {
   unrecoverableQueueError,

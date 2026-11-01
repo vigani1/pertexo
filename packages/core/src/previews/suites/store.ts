@@ -35,18 +35,15 @@ import { captureWorkspaceVariableRevision } from '../../variables/head.queries.j
 import {
   requireNoActiveSuite,
   requireNoActiveTest,
-} from '../workflows/admit.repository.js';
-import {
-  withTestAuthority,
-  withTestRead,
-} from '../workflows/authority.queries.js';
+} from '../workflows/admit.js';
+import { withTestAuthority, withTestRead } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/errors.js';
 import {
   loadTestSnapshot,
   sameTestSamples,
   saveTestSnapshot,
 } from '../workflows/snapshot.repository.js';
-import { admitSuiteCase } from './admit.repository.js';
+import { admitSuiteCase } from './admit.js';
 import type { WorkflowTestSuiteStore } from './contract.js';
 import { readSuiteCasePayloads, readSuiteCurrent } from './current.queries.js';
 import { listSuites, readCaseReport, readSuite } from './records.queries.js';
