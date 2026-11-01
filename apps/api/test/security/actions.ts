@@ -5,6 +5,9 @@ import type { Reply, Stack } from './stack.js';
 
 export const PASSWORD = 'a long enough integration password';
 
+const PUBLISH_ATTEMPTS = 10;
+const PUBLISH_RETRY_MS = 1_000;
+
 export type Browser = Readonly<{ cookie: string; csrf: string }>;
 
 export function browserFrom(reply: Reply): Browser {
@@ -97,18 +100,24 @@ export async function publishWorkflow(
     body: { graph: { settings: {}, ...graph } },
   });
   if (saved.status !== 200) throw new Error(saved.text.slice(200));
-  const published = await stack.send('POST', `${path}/publish`, {
-    browser,
-    headers: {
-      'if-match': saved.headers.get('etag') ?? '',
-      'idempotency-key': randomUUID(),
-    },
-    body: {},
-  });
-  if (published.status !== 200 && published.status !== 201)
-    throw new Error(
-      `Publish: ${String(published.status)} ${published.text.slice(0, 1_000)}`,
-    );
+  // Validation answers 503 when its worker thread is starved on a loaded host,
+  // and asks for a retry: it says nothing about the workflow.
+  for (let attempt = 1; ; attempt += 1) {
+    const published = await stack.send('POST', `${path}/publish`, {
+      browser,
+      headers: {
+        'if-match': saved.headers.get('etag') ?? '',
+        'idempotency-key': randomUUID(),
+      },
+      body: {},
+    });
+    if (published.status === 200 || published.status === 201) break;
+    if (published.status !== 503 || attempt === PUBLISH_ATTEMPTS)
+      throw new Error(
+        `Publish: ${String(published.status)} ${published.text.slice(0, 1_000)}`,
+      );
+    await delay(PUBLISH_RETRY_MS);
+  }
   return { workflowId, path };
 }
 
