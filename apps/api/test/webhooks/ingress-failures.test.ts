@@ -1,4 +1,10 @@
+import {
+  EventCoordinationUnavailableError,
+  WebhookIntakeBusyError,
+} from '@pertexo/database/triggers';
 import type { StructuredLogger } from '@pertexo/observability';
+import { setTimeout as delay } from 'node:timers/promises';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { createIngressFixture } from './ingress/fixture.js';
@@ -33,6 +39,99 @@ describe('webhook ingress failures', () => {
     expect(response.json()).toMatchObject({ code: 'webhook.unavailable' });
     expect(response.payload).not.toContain('connection terminated');
     expect(health).toHaveBeenCalledWith('degraded');
+  });
+
+  it('tells the sender when to retry if the database is only busy or away', async () => {
+    const { application } = setup({
+      reference: undefined,
+      acceptanceError: new Error('timeout exceeded when trying to connect'),
+      logger: logger(),
+    });
+    const response = await application.inject(request('{}', currentSecret));
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ code: 'webhook.unavailable' });
+    expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
+  });
+
+  it('promises no retry time for a failure that time will not cure', async () => {
+    const { application } = setup({
+      reference: undefined,
+      acceptanceError: new TypeError('a bug, not an outage'),
+      logger: logger(),
+    });
+    const response = await application.inject(request('{}', currentSecret));
+    expect(response.statusCode).toBe(503);
+    expect(response.headers['retry-after']).toBeUndefined();
+  });
+
+  it('refuses a delivery that outwaited a full workspace like any other full workspace', async () => {
+    const log = logger();
+    const { application, database, health } = setup({
+      reference: undefined,
+      acceptanceError: new WebhookIntakeBusyError(),
+      logger: log,
+    });
+    const response = await application.inject(request('{}', currentSecret));
+    expect(response.statusCode).toBe(429);
+    expect(response.json()).toMatchObject({ code: 'webhook.rate_limited' });
+    expect(response.headers['retry-after']).toBe('5');
+    expect(database.recordRejectedDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'rate_limited' }),
+    );
+    expect(log.warn.mock.calls[0]?.[0]).toBe('webhook.intake_busy');
+    expect(log.error).not.toHaveBeenCalled();
+    expect(health).not.toHaveBeenCalledWith('degraded');
+  });
+
+  it('tells the sender when to retry if event coordination is away', async () => {
+    const { application } = setup({
+      reference: undefined,
+      acceptanceError: new EventCoordinationUnavailableError(),
+      logger: logger(),
+    });
+    const response = await application.inject(request('{}', currentSecret));
+    expect(response.statusCode).toBe(503);
+    expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
+  });
+
+  it('does not report an outage when a sender leaves while its delivery waits', async () => {
+    const log = logger();
+    const { application, database, health } = setup({
+      reference: undefined,
+      logger: log,
+    });
+    let sawAbort = (): void => undefined;
+    const aborted = new Promise<void>((resolve) => {
+      sawAbort = resolve;
+    });
+    database.acceptVerifiedDelivery.mockImplementation(
+      ({ signal }: { signal: AbortSignal }) =>
+        new Promise((_, reject) => {
+          signal.addEventListener('abort', () => {
+            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- what the wait in line does with it
+            reject(signal.reason);
+            sawAbort();
+          });
+        }),
+    );
+    const origin = await application.listen({ port: 0, host: '127.0.0.1' });
+    const sent = request('{}', currentSecret);
+    const sender = new AbortController();
+    const delivery = fetch(`${origin}${sent.url}`, {
+      method: sent.method,
+      headers: sent.headers,
+      body: sent.payload,
+      signal: sender.signal,
+    });
+    await vi.waitFor(() => {
+      expect(database.acceptVerifiedDelivery).toHaveBeenCalled();
+    });
+    sender.abort();
+    await expect(delivery).rejects.toThrow();
+    await aborted;
+    await delay(20);
+    expect(log.error).not.toHaveBeenCalled();
+    expect(health).not.toHaveBeenCalledWith('degraded');
   });
 
   it('logs the cause of an unexpected acceptance failure', async () => {

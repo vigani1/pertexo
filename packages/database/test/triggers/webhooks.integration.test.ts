@@ -13,6 +13,8 @@ import { registerKeepsGraphDisabledTriggerNodes } from './webhooks/ingress/keeps
 import { registerInvalidatesOldEndpointReferencesAt } from './webhooks/ingress/invalidates-old-endpoint-references-at.cases.js';
 import { registerRecordsMetadataDeliveryOutcomesPages } from './webhooks/ingress/records-metadata-delivery-outcomes-pages.cases.js';
 import { registerSaysWebhookAlreadyHasEndpoint } from './webhooks/ingress/says-webhook-already-has-endpoint.cases.js';
+import { registerKeepsOtherWorkServedDuringBurst } from './webhooks/ingress/keeps-other-work-served-during-burst.cases.js';
+import { registerRefusesDeliveryOutOfTime } from './webhooks/ingress/refuses-delivery-out-of-time.cases.js';
 beforeAll(beforeAllFixture1, 60_000);
 afterAll(afterAllFixture2);
 describe('generic webhook database seam', () => {
@@ -39,4 +41,8 @@ describe('generic webhook database seam', () => {
   registerRecordsMetadataDeliveryOutcomesPages();
 
   registerSaysWebhookAlreadyHasEndpoint();
+
+  registerKeepsOtherWorkServedDuringBurst();
+
+  registerRefusesDeliveryOutOfTime();
 });

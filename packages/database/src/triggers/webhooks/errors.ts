@@ -26,6 +26,15 @@ export class WebhookWorkflowPausedError extends Error {
     super('webhook.workflow_paused');
   }
 }
+/** The workspace stayed full for this delivery's whole wait, so nothing started. */
+export class WebhookIntakeBusyError extends Error {
+  public override readonly name = 'WebhookIntakeBusyError';
+  public readonly retryAfterSeconds = 5;
+
+  public constructor() {
+    super('webhook.intake_busy');
+  }
+}
 export class WebhookIngressRateLimitExceededError extends Error {
   public override readonly name = 'WebhookIngressRateLimitExceededError';
   public constructor(public readonly retryAfterSeconds: number) {

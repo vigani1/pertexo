@@ -18,7 +18,7 @@ import {
   recordRejectedAttempt,
   type RejectedAttempt,
 } from '../management/delivery-log.js';
-import { authenticationFailed, problem, record } from './reply.js';
+import { authenticationFailed, problem, record, unavailable } from './reply.js';
 import {
   createWebhookIngressTelemetry,
   type WebhookIngressTelemetry,
@@ -87,7 +87,7 @@ export function registerWebhookIngress(
           error,
         );
       });
-      await problem(reply, 'webhook.unavailable', requestId);
+      await unavailable(reply, requestId, error);
     });
     scope.removeAllContentTypeParsers();
     scope.addContentTypeParser(
@@ -251,7 +251,7 @@ export function createWebhookPreflight(
           error,
         );
       });
-      await problem(reply, 'webhook.unavailable', requestId);
+      await unavailable(reply, requestId, error);
     }
   };
 }

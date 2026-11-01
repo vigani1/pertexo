@@ -35,10 +35,17 @@ import {
 import type { WebhookConfig, WebhookTriggerDatabase } from './contract.js';
 
 import { executableProjection, lockEligibleEndpoint } from './state.queries.js';
+import type { WorkspaceTurns } from './workspace-turns.js';
 
 export async function acceptVerifiedWebhookDelivery(
   pool: Pool,
-  eventPreparation: ReturnType<typeof createEventCoordinationPreparation>,
+  {
+    eventPreparation,
+    turns,
+  }: Readonly<{
+    eventPreparation: ReturnType<typeof createEventCoordinationPreparation>;
+    turns: WorkspaceTurns;
+  }>,
   input: Parameters<WebhookTriggerDatabase['acceptVerifiedDelivery']>[0],
 ): ReturnType<WebhookTriggerDatabase['acceptVerifiedDelivery']> {
   const verification = input.verification;
@@ -106,56 +113,69 @@ export async function acceptVerifiedWebhookDelivery(
           candidate.runInput,
           input.signal,
         );
-    const receipt = await withWorkspaceTransaction(
-      pool,
+    const receipt = await turns.take(
       verification.workspaceId,
-      async (transaction) => {
-        await transaction.db.execute(
-          sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
-        );
-        if (prepared !== undefined)
-          await lockEventCoordination(transaction.workspaceId, transaction.db);
-        const replay =
-          replayIdentity === undefined
-            ? undefined
-            : await readReplayUnderLock(transaction, replayIdentity);
-        await lockEligibleEndpoint(
-          transaction,
-          verification,
-          input.verifiedSecretVersionId,
-          { replaying: replay?.active ?? false },
-        );
-        if (replay?.active) {
-          const replayed = resolveExactReplay(replay, requestFingerprint);
-          await insertWebhookDelivery(transaction, verification, {
-            outcome: replayDeliveryOutcome(replayed),
-            signatureCheck: 'verified',
-            replayCheck: 'duplicate',
-            bodyBytes: input.bodyBytes,
-            ...(replay.coordination_event_id === null
-              ? {}
-              : { coordinationEventId: replay.coordination_event_id }),
-            ...replayDeliveryReference(replayed),
-          });
-          if ('skipped' in replayed || 'coordinated' in replayed)
-            return replayed;
-          const seconds = await webhookReplayWait(transaction, replayed.runId);
-          return {
-            ...replayed,
-            ...(seconds === undefined ? {} : { responseWaitSeconds: seconds }),
-          };
-        }
-        if (candidate.replay) return undefined;
-        if (replay !== undefined && replayIdentity !== undefined)
-          await deleteExpiredReplay(transaction, replayIdentity);
+      input.signal,
+      () =>
+        withWorkspaceTransaction(
+          pool,
+          verification.workspaceId,
+          async (transaction) => {
+            await transaction.db.execute(
+              sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
+            );
+            if (prepared !== undefined)
+              await lockEventCoordination(
+                transaction.workspaceId,
+                transaction.db,
+              );
+            const replay =
+              replayIdentity === undefined
+                ? undefined
+                : await readReplayUnderLock(transaction, replayIdentity);
+            await lockEligibleEndpoint(
+              transaction,
+              verification,
+              input.verifiedSecretVersionId,
+              { replaying: replay?.active ?? false },
+            );
+            if (replay?.active) {
+              const replayed = resolveExactReplay(replay, requestFingerprint);
+              await insertWebhookDelivery(transaction, verification, {
+                outcome: replayDeliveryOutcome(replayed),
+                signatureCheck: 'verified',
+                replayCheck: 'duplicate',
+                bodyBytes: input.bodyBytes,
+                ...(replay.coordination_event_id === null
+                  ? {}
+                  : { coordinationEventId: replay.coordination_event_id }),
+                ...replayDeliveryReference(replayed),
+              });
+              if ('skipped' in replayed || 'coordinated' in replayed)
+                return replayed;
+              const seconds = await webhookReplayWait(
+                transaction,
+                replayed.runId,
+              );
+              return {
+                ...replayed,
+                ...(seconds === undefined
+                  ? {}
+                  : { responseWaitSeconds: seconds }),
+              };
+            }
+            if (candidate.replay) return undefined;
+            if (replay !== undefined && replayIdentity !== undefined)
+              await deleteExpiredReplay(transaction, replayIdentity);
 
-        return acceptNewWebhookDelivery(transaction, input, {
-          requestFingerprint,
-          replayIdentity,
-          runInput,
-          prepared,
-        });
-      },
+            return acceptNewWebhookDelivery(transaction, input, {
+              requestFingerprint,
+              replayIdentity,
+              runInput,
+              prepared,
+            });
+          },
+        ),
     );
     if (receipt !== undefined) return receipt;
     // The preliminary live receipt expired behind the admission fence.
