@@ -214,6 +214,13 @@ describe('platform server registry composition', () => {
       NonNullable<HttpRequestExecutorDependencies['telemetry']>['measure']
     >((work) => work());
     const beforeDispatch = vi.fn().mockResolvedValue(undefined);
+    const credential = {
+      connectionId,
+      providerKey: 'http',
+      authType: 'http_headers',
+      secretVersionId: '66666666-6666-4666-8666-666666666666',
+      secret,
+    };
     const runtime = {
       workspaceId: '22222222-2222-4222-8222-222222222222',
       runId: '33333333-3333-4333-8333-333333333333',
@@ -226,13 +233,8 @@ describe('platform server registry composition', () => {
       beforeDispatch,
       connections: {
         assertCurrent: vi.fn().mockResolvedValue(undefined),
-        resolve: vi.fn().mockResolvedValue({
-          connectionId,
-          providerKey: 'http',
-          authType: 'http_headers',
-          secretVersionId: '66666666-6666-4666-8666-666666666666',
-          secret,
-        }),
+        resolve: vi.fn().mockResolvedValue(credential),
+        resolveHttpCredential: vi.fn().mockResolvedValue(credential),
       },
     } satisfies NodeExecutionRuntime;
     const registry = createPlatformNodeRegistry({
