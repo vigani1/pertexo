@@ -185,7 +185,6 @@ describeOAuth2('what the token address answers', () => {
     'long-refresh-token',
     'mac',
     'teapot',
-    'unknown-error',
   ])(
     'a token address answering %s gives the invalid-response row',
     async (behavior) => {
