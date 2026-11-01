@@ -4,7 +4,7 @@ export {
   createSystemMailDeliveryStore,
   createSystemMailEnqueueStore,
   insertSystemMail,
-} from './mail/repository.js';
+} from './mail/store.js';
 export type {
   SealedSystemMailPayload,
   SystemMailDeliveryClaim,
