@@ -36,7 +36,8 @@ export type OAuth2StandIn = Readonly<{
   expectSecret: (clientId: string, secret: string) => void;
   setBehavior: (clientId: string, behavior: string) => void;
   setExpiresIn: (clientId: string, seconds: number) => void;
-  setRetryAfter: (clientId: string, seconds: number) => void;
+  /** Seconds, or any other header text such as an HTTP date. */
+  setRetryAfter: (clientId: string, value: number | string) => void;
   acceptAnyRefresh: (clientId: string) => void;
   scriptAnswers: (clientId: string, behaviors: readonly string[]) => void;
   holdNextToken: (clientId: string) => OAuth2StandInHold;
