@@ -473,6 +473,35 @@ test('secrets builds on the database and only applications and core use it', () 
   );
 });
 
+test('the path around the secrets door is refused in both directions', () => {
+  const imports = (file, specifier) =>
+    validateModuleImports({
+      [file]: `import { a } from '${specifier}';`,
+    }).join('\n');
+  for (const file of [
+    'packages/database/src/a.ts',
+    'packages/database/test/a.ts',
+  ])
+    assert.notEqual(
+      imports(file, '../../secrets/src/mail/store.js'),
+      '',
+      `${file} reached secrets by a relative path`,
+    );
+  for (const file of [
+    'packages/secrets/src/a.ts',
+    'packages/secrets/test/a.ts',
+  ])
+    assert.notEqual(
+      imports(file, '../../core/src/runs/index.js'),
+      '',
+      `${file} reached core by a relative path`,
+    );
+  assert.match(
+    imports('packages/secrets/test/a.ts', '@pertexo/core/testing'),
+    /only applications depend on core/u,
+  );
+});
+
 test("an application's tests stay out of core's database entry points", () => {
   for (const entry of ['schema', 'primitives'])
     for (const file of [
