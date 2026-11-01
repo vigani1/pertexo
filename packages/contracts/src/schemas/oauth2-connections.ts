@@ -292,23 +292,39 @@ export const oauth2CallbackQuerySchema = z
       : { kind: 'code' as const, state, code },
   );
 
-/** Only a callback bound to this browser names its connection. */
-export const oauth2CallbackLandingSchema = z.discriminatedUnion('result', [
+/**
+ * A service's short `error` code, as a person may be shown it. Letters and
+ * underscores can't carry a token or markup; its free-text description is never kept.
+ */
+export const oauth2ServiceErrorSchema = z
+  .string()
+  .max(64)
+  .regex(/^[a-z_]+$/u);
+
+const landingConnection = { workspaceId: z.uuid(), connectionId: z.uuid() };
+
+/**
+ * Only a callback bound to this browser names its connection. An outage can land
+ * unnamed too, when it struck before the state could be read.
+ */
+export const oauth2CallbackLandingSchema = z.union([
   z
     .object({
-      result: z.enum([
-        'connected',
-        'denied',
-        'token_refused',
-        'provider_unavailable',
-      ]),
-      workspaceId: z.uuid(),
-      connectionId: z.uuid(),
+      result: z.enum(['connected', 'denied', 'provider_unavailable']),
+      ...landingConnection,
     })
     .strict()
     .readonly(),
   z
-    .object({ result: z.literal('invalid') })
+    .object({
+      result: z.literal('token_refused'),
+      serviceError: oauth2ServiceErrorSchema.optional(),
+      ...landingConnection,
+    })
+    .strict()
+    .readonly(),
+  z
+    .object({ result: z.enum(['invalid', 'provider_unavailable']) })
     .strict()
     .readonly(),
 ]);
@@ -330,3 +346,4 @@ export type OAuth2AuthorizationStartResponse = z.output<
 export type OAuth2CallbackLanding = z.output<
   typeof oauth2CallbackLandingSchema
 >;
+export type OAuth2ServiceError = z.output<typeof oauth2ServiceErrorSchema>;

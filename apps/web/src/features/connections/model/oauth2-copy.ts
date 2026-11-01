@@ -11,7 +11,7 @@ import {
 /** The tab that opened consent hears from the tab it opened on this channel. */
 export const OAUTH2_CHANNEL = 'pertexo.connections.oauth2';
 
-export const LANDING_TEXT: Readonly<
+const LANDING_TEXT: Readonly<
   Record<OAuth2CallbackLanding['result'], string>
 > = {
   connected: 'Connected. You can close this tab.',
@@ -23,6 +23,14 @@ export const LANDING_TEXT: Readonly<
   invalid:
     'This sign-in link is no longer valid. Start again from Connections.',
 };
+
+/** How a sign-in ended, with the service's own code when it gave one worth acting on. */
+export function landingMessage(landing: OAuth2CallbackLanding): string {
+  return landing.result === 'token_refused' &&
+    landing.serviceError !== undefined
+    ? `${LANDING_TEXT.token_refused} The service's code: ${landing.serviceError}.`
+    : LANDING_TEXT[landing.result];
+}
 
 /** What a person registers with the service: the same path the API answers on. */
 export function oauth2RedirectUrl(origin: string): string {

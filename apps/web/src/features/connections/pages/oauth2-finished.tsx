@@ -1,7 +1,7 @@
 import { oauth2CallbackLandingSchema } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useMemo } from 'react';
-import { LANDING_TEXT, OAUTH2_CHANNEL } from '../model/oauth2-copy';
+import { landingMessage, OAUTH2_CHANNEL } from '../model/oauth2-copy';
 
 /**
  * Where a consent ends, in the tab it opened. It reads no data and needs no
@@ -28,8 +28,8 @@ export function OAuth2FinishedPage({ search }: Readonly<{ search: unknown }>) {
     >
       <div className="ambient" aria-hidden="true" />
       <div className="relative z-10 flex max-w-md flex-col gap-4 text-center">
-        <p className="text-lg text-pretty">{LANDING_TEXT[landing.result]}</p>
-        {landing.result === 'invalid' ? null : (
+        <p className="text-lg text-pretty">{landingMessage(landing)}</p>
+        {!('connectionId' in landing) ? null : (
           <Link
             to="/w/$workspaceId/connections"
             params={{ workspaceId: landing.workspaceId }}

@@ -1,18 +1,23 @@
+import { Logger } from '@nestjs/common';
 import { generatePersistedId } from '@pertexo/database/platform';
 import {
   OAUTH2_LANDING_PATH,
   oauth2CallbackQuerySchema,
+  oauth2ServiceErrorSchema,
   type OAuth2CallbackLanding,
 } from '@pertexo/contracts';
 import {
   decodeClientSettings,
   decodeStoredClientSecret,
+  decodeStoredTokens,
   encodeStoredTokens,
   isRenewable,
+  isTemporaryOAuth2Error,
   oauth2Digest,
   oauth2StateWorkspace,
   requestOAuth2Token,
   withCommitAttempts,
+  type OAuth2StoredTokens,
   type OAuth2TokenAnswer,
 } from '@pertexo/integrations/server';
 
@@ -47,7 +52,19 @@ export type FinishedOAuth2 = Readonly<{
   clearCookie?: string;
 }>;
 
+type Named = Readonly<{ workspaceId: string; connectionId: string }>;
+type IssuedAnswer = Extract<OAuth2TokenAnswer, { kind: 'issued' }>;
+
 const INVALID: OAuth2CallbackLanding = Object.freeze({ result: 'invalid' });
+
+const logger = new Logger('OAuth2Callback');
+
+/** Only the error's name: its message may quote what the callback carried. */
+export function logOAuth2CallbackFailure(error: unknown): void {
+  logger.error(
+    `OAuth2 callback failed: ${error instanceof Error ? error.name : 'unknown'}`,
+  );
+}
 
 function bindingDigests(cookieHeader: string | undefined): readonly Buffer[] {
   return (cookieHeader ?? '')
@@ -59,18 +76,41 @@ function bindingDigests(cookieHeader: string | undefined): readonly Buffer[] {
 }
 
 function landingOfAnswer(
-  answer: OAuth2TokenAnswer,
-): 'token_refused' | 'provider_unavailable' {
-  return answer.kind === 'rate_limited' || answer.kind === 'unavailable'
-    ? 'provider_unavailable'
-    : 'token_refused';
+  answer: Exclude<OAuth2TokenAnswer, IssuedAnswer>,
+  named: Named,
+): OAuth2CallbackLanding {
+  if (answer.kind === 'rate_limited' || answer.kind === 'unavailable')
+    return { result: 'provider_unavailable', ...named };
+  return {
+    result: 'token_refused',
+    ...named,
+    ...(answer.kind === 'invalid' && answer.serviceError !== undefined
+      ? { serviceError: answer.serviceError }
+      : {}),
+  };
+}
+
+/** S9: the service's short code may be shown, never its description. */
+function landingOfConsentError(
+  error: string,
+  named: Named,
+): OAuth2CallbackLanding {
+  if (error === 'access_denied') return { result: 'denied', ...named };
+  if (isTemporaryOAuth2Error(error))
+    return { result: 'provider_unavailable', ...named };
+  const shown = oauth2ServiceErrorSchema.safeParse(error);
+  return {
+    result: 'token_refused',
+    ...named,
+    ...(shown.success ? { serviceError: shown.data } : {}),
+  };
 }
 
 /**
  * Where a provider returns the browser. The state and its binding cookie stand in
  * for a session, which `SameSite=Strict` hides on the way back. Every outcome is a
- * landing page; exchange and commit don't follow the request, so closing the tab
- * can't lose a code that has already been spent.
+ * landing page, an unexpected failure included; exchange and commit don't follow
+ * the request, so closing the tab can't lose a code that has already been spent.
  */
 export class FinishOAuth2AuthorizationUseCase {
   public constructor(
@@ -97,40 +137,38 @@ export class FinishOAuth2AuthorizationUseCase {
     const named = { workspaceId, connectionId: consumed.connectionId };
     if (query.data.kind === 'error')
       return this.land(
-        {
-          result:
-            query.data.error === 'access_denied' ? 'denied' : 'token_refused',
-          ...named,
-        },
+        landingOfConsentError(query.data.error, named),
         clearCookie,
       );
-    const result = await this.exchange(
-      workspaceId,
+    const landing = await this.exchange(
+      named,
       consumed,
       query.data.code,
       query.data.state,
-    );
-    return this.land(
-      result === 'invalid' ? INVALID : { result, ...named },
-      clearCookie,
-    );
+    ).catch((error: unknown): OAuth2CallbackLanding => {
+      logOAuth2CallbackFailure(error);
+      return { result: 'provider_unavailable', ...named };
+    });
+    return this.land(landing, clearCookie);
+  }
+
+  /** For a failure before any row was read, so it names no connection. */
+  public interrupted(): FinishedOAuth2 {
+    return this.land({ result: 'provider_unavailable' });
   }
 
   /** A code is sent once: a failure here is shown, never retried. */
   private async exchange(
-    workspaceId: string,
+    named: Named,
     consumed: Consumed,
     code: string,
     state: string,
-  ): Promise<
-    'connected' | 'invalid' | 'token_refused' | 'provider_unavailable'
-  > {
+  ): Promise<OAuth2CallbackLanding> {
     const settings = decodeClientSettings(consumed.settings);
     const bytes = await this.encryption.open(
       consumed.clientSecret,
       {
-        workspaceId,
-        connectionId: consumed.connectionId,
+        ...named,
         secretVersionId: consumed.secretVersionId,
       },
       AbortSignal.timeout(CIPHER_TIMEOUT_MILLIS),
@@ -157,42 +195,82 @@ export class FinishOAuth2AuthorizationUseCase {
           : {}),
       },
     );
-    if (answer.kind !== 'issued') return landingOfAnswer(answer);
-    const tokens = {
-      accessToken: answer.accessToken,
-      ...(answer.refreshToken === undefined
-        ? {}
-        : { refreshToken: answer.refreshToken }),
-    };
+    if (answer.kind !== 'issued') return landingOfAnswer(answer, named);
+    return (await this.commit(named, consumed, answer))
+      ? { result: 'connected', ...named }
+      : INVALID;
+  }
+
+  /** The code is spent: both the seal and the write get their attempts (L8). */
+  private async commit(
+    named: Named,
+    consumed: Consumed,
+    answer: IssuedAnswer,
+  ): Promise<boolean> {
     const id = generatePersistedId();
+    let held: Awaited<ReturnType<typeof this.seal>> | undefined;
+    const connection = await withCommitAttempts(async () => {
+      held ??= await this.seal(named, consumed, answer, id);
+      return this.oauth2.persistence.authorizeOAuth2Connection({
+        ...named,
+        actorId: consumed.startedBy,
+        secretVersionId: consumed.secretVersionId,
+        issued: { id, expiresInSeconds: answer.expiresInSeconds, ...held },
+      });
+    });
+    return connection !== null;
+  }
+
+  private async seal(
+    named: Named,
+    consumed: Consumed,
+    answer: IssuedAnswer,
+    id: string,
+  ) {
+    const tokens = await this.tokensToKeep(named, consumed, answer);
     const plaintext = encodeStoredTokens(tokens);
     try {
-      const sealed = await this.encryption.seal(
-        plaintext,
-        {
-          workspaceId,
-          connectionId: consumed.connectionId,
-          secretVersionId: id,
-        },
-        AbortSignal.timeout(CIPHER_TIMEOUT_MILLIS),
-      );
-      const connection = await withCommitAttempts(() =>
-        this.oauth2.persistence.authorizeOAuth2Connection({
-          workspaceId,
-          connectionId: consumed.connectionId,
-          actorId: consumed.startedBy,
-          secretVersionId: consumed.secretVersionId,
-          issued: {
-            id,
-            sealed,
-            expiresInSeconds: answer.expiresInSeconds,
-            renewable: isRenewable(settings, tokens),
-          },
-        }),
-      );
-      return connection === null ? 'invalid' : 'connected';
+      return {
+        sealed: await this.encryption.seal(
+          plaintext,
+          { ...named, secretVersionId: id },
+          AbortSignal.timeout(CIPHER_TIMEOUT_MILLIS),
+        ),
+        renewable: isRenewable(decodeClientSettings(consumed.settings), tokens),
+      };
     } finally {
       plaintext.fill(0);
+    }
+  }
+
+  /**
+   * Some services give a refresh token only on first consent, so reconnecting under
+   * the same settings keeps the earlier one rather than silently ending renewal.
+   */
+  private async tokensToKeep(
+    named: Named,
+    consumed: Consumed,
+    { accessToken, refreshToken }: IssuedAnswer,
+  ): Promise<OAuth2StoredTokens> {
+    if (refreshToken !== undefined) return { accessToken, refreshToken };
+    const earlier = await this.oauth2.persistence.readOAuth2EarlierTokens({
+      ...named,
+      secretVersionId: consumed.secretVersionId,
+    });
+    if (earlier === null) return { accessToken };
+    const bytes = await this.encryption.open(
+      earlier.sealed,
+      { ...named, secretVersionId: earlier.id },
+      AbortSignal.timeout(CIPHER_TIMEOUT_MILLIS),
+    );
+    try {
+      const kept = decodeStoredTokens(bytes).refreshToken;
+      return {
+        accessToken,
+        ...(kept === undefined ? {} : { refreshToken: kept }),
+      };
+    } finally {
+      bytes.fill(0);
     }
   }
 
@@ -205,7 +283,7 @@ export class FinishOAuth2AuthorizationUseCase {
       this.oauth2.endpointPolicy.publicWebOrigin,
     );
     for (const [name, value] of Object.entries(landing))
-      url.searchParams.set(name, value);
+      if (value !== undefined) url.searchParams.set(name, value);
     return Object.freeze({
       location: url.toString(),
       ...(clearCookie === undefined ? {} : { clearCookie }),

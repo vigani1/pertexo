@@ -107,6 +107,13 @@ export type OAuth2ConsentDatabase = Readonly<{
       bindingDigests: readonly Buffer[];
     }>,
   ): Promise<ConsumedOAuth2Authorization>;
+  /** The sealed tokens a reconnect would replace, if they share its settings. */
+  readOAuth2EarlierTokens(
+    input: TokenScope & Readonly<{ secretVersionId: string }>,
+  ): Promise<Readonly<{
+    id: string;
+    sealed: SealedConnectionSecretRecord;
+  }> | null>;
   authorizeOAuth2Connection(
     input: TokenScope &
       Readonly<{

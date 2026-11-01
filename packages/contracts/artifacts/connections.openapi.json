@@ -8443,7 +8443,7 @@
       },
       "OAuth2CallbackLanding": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "oneOf": [
+        "anyOf": [
           {
             "readOnly": true,
             "type": "object",
@@ -8453,7 +8453,6 @@
                 "enum": [
                   "connected",
                   "denied",
-                  "token_refused",
                   "provider_unavailable"
                 ]
               },
@@ -8481,7 +8480,41 @@
             "properties": {
               "result": {
                 "type": "string",
-                "const": "invalid"
+                "const": "token_refused"
+              },
+              "serviceError": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z_]+$"
+              },
+              "workspaceId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "connectionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": [
+              "result",
+              "workspaceId",
+              "connectionId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "string",
+                "enum": [
+                  "invalid",
+                  "provider_unavailable"
+                ]
               }
             },
             "required": [

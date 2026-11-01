@@ -1,14 +1,19 @@
 import {
+  Catch,
   Controller,
   Get,
   HttpCode,
+  Injectable,
   Param,
   Post,
   Query,
   Req,
   Res,
+  UseFilters,
   UseGuards,
   UseInterceptors,
+  type ArgumentsHost,
+  type ExceptionFilter,
 } from '@nestjs/common';
 import { OAUTH2_CALLBACK_PATH } from '@pertexo/contracts';
 
@@ -22,12 +27,43 @@ import {
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { ConnectionManageGuard } from '../http/guards.js';
 import { connectionIdParamSchema, type ConnectionRequest } from '../types.js';
-import { FinishOAuth2AuthorizationUseCase } from './finish-authorization.js';
+import {
+  FinishOAuth2AuthorizationUseCase,
+  logOAuth2CallbackFailure,
+} from './finish-authorization.js';
 import { StartOAuth2AuthorizationUseCase } from './start-authorization.js';
 
 type OAuth2Reply = Readonly<{
   header(name: string, value: string): unknown;
 }>;
+
+/**
+ * A person arrives here in a popup, so even a rate limit or a database outage ends
+ * on a landing page: a problem document would strand them and the tab that opened it.
+ */
+@Injectable()
+@Catch()
+class OAuth2CallbackFailureFilter implements ExceptionFilter {
+  public constructor(
+    private readonly finish: FinishOAuth2AuthorizationUseCase,
+  ) {}
+
+  public catch(exception: unknown, host: ArgumentsHost): void {
+    logOAuth2CallbackFailure(exception);
+    void host
+      .switchToHttp()
+      .getResponse<
+        Readonly<{
+          code(status: number): Readonly<{
+            header(name: string, value: string): Readonly<{ send(): unknown }>;
+          }>;
+        }>
+      >()
+      .code(303)
+      .header('location', this.finish.interrupted().location)
+      .send();
+  }
+}
 
 @UseInterceptors(domainErrors(connectionFailure))
 @Controller()
@@ -66,6 +102,7 @@ export class ConnectionOAuth2Controller {
   /** S11's headers are set for this path when a request arrives, so errors carry them too. */
   @Get(OAUTH2_CALLBACK_PATH.slice(1))
   @RateLimit('identity_callback')
+  @UseFilters(OAuth2CallbackFailureFilter)
   @HttpCode(303)
   public async finishAuthorization(
     @Req() request: Readonly<{ headers: Readonly<Record<string, unknown>> }>,

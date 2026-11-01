@@ -1,6 +1,10 @@
 import { Buffer } from 'node:buffer';
 
-import type { OAuth2ClientSettings } from '@pertexo/contracts';
+import {
+  oauth2ServiceErrorSchema,
+  type OAuth2ClientSettings,
+  type OAuth2ServiceError,
+} from '@pertexo/contracts';
 
 import { parseBoundedRetryAfterMillis } from '../http/retry-after.js';
 import {
@@ -19,14 +23,25 @@ const MAXIMUM_RETRY_AFTER_MILLIS = 60_000;
 const DEFAULT_BLOCK_SECONDS = 15;
 
 const PRINTABLE_ASCII = /^[\x21-\x7e]+$/u;
-const GRANT_LOST = new Set(['invalid_grant']);
+/** Standard names, plus what Entra and GitHub send for the same thing. */
+const GRANT_LOST = new Set([
+  'invalid_grant',
+  'interaction_required',
+  'consent_required',
+  'bad_refresh_token',
+]);
 const CLIENT_REFUSED = new Set([
   'invalid_client',
   'unauthorized_client',
   'invalid_scope',
   'unsupported_grant_type',
+  'incorrect_client_credentials',
 ]);
 const TEMPORARY = new Set(['server_error', 'temporarily_unavailable']);
+
+/** The two names RFC 6749 gives an outage, at the token address and at consent alike. */
+export const isTemporaryOAuth2Error = (error: string): boolean =>
+  TEMPORARY.has(error);
 /** The service answered, or the address is wrong: another try won't help. */
 const UNUSABLE_FAILURES: ReadonlySet<SecureHttpErrorCode> = new Set([
   SECURE_HTTP_ERROR_CODE.redirectRejected,
@@ -57,7 +72,12 @@ export type OAuth2TokenAnswer =
   | Readonly<{ kind: 'client_refused' }>
   | Readonly<{ kind: 'rate_limited'; retryAfterSeconds: number }>
   | Readonly<{ kind: 'unavailable'; retryAfterSeconds: number }>
-  | Readonly<{ kind: 'invalid'; retryAfterSeconds: number }>
+  | Readonly<{
+      kind: 'invalid';
+      retryAfterSeconds: number;
+      /** The service's own `error`, when it names one safely: something to act on. */
+      serviceError?: OAuth2ServiceError;
+    }>
   | Readonly<{ kind: 'address_blocked' }>;
 
 const UNAVAILABLE = Object.freeze({
@@ -139,11 +159,13 @@ function parseExpiresIn(value: unknown): number | null {
 }
 
 function parseIssued(body: Record<string, unknown>): OAuth2TokenAnswer {
-  const {
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    token_type: tokenType,
-  } = body;
+  const { access_token: accessToken, expires_in: expiresIn } = body;
+  // Some services write an absent field as null or, for this one, an empty string.
+  const refreshToken =
+    body.refresh_token === null || body.refresh_token === ''
+      ? undefined
+      : body.refresh_token;
+  const tokenType = body.token_type ?? undefined;
   const usableAccessToken =
     typeof accessToken === 'string' &&
     accessToken.length <= MAXIMUM_ACCESS_TOKEN_LENGTH &&
@@ -162,7 +184,7 @@ function parseIssued(body: Record<string, unknown>): OAuth2TokenAnswer {
     kind: 'issued',
     accessToken,
     ...(typeof refreshToken === 'string' ? { refreshToken } : {}),
-    expiresInSeconds: parseExpiresIn(body.expires_in),
+    expiresInSeconds: parseExpiresIn(expiresIn),
   });
 }
 
@@ -181,23 +203,25 @@ function parseBody(bytes: Uint8Array): Record<string, unknown> | undefined {
   }
 }
 
+/** A date or a zero says nothing useful about when to ask again, so the default stands. */
+function rateLimitBlockSeconds(retryAfter: string | undefined): number {
+  return retryAfter !== undefined && /^0*[1-9]\d{0,8}$/u.test(retryAfter)
+    ? parseBoundedRetryAfterMillis(retryAfter, MAXIMUM_RETRY_AFTER_MILLIS) /
+        1_000
+    : DEFAULT_BLOCK_SECONDS;
+}
+
 function classifyAnswer(
   status: number,
   retryAfter: string | undefined,
   bytes: Uint8Array,
 ): OAuth2TokenAnswer {
   const body = parseBody(bytes);
-  if (status === 429) {
-    const millis = parseBoundedRetryAfterMillis(
-      retryAfter,
-      MAXIMUM_RETRY_AFTER_MILLIS,
-    );
+  if (status === 429)
     return Object.freeze({
       kind: 'rate_limited',
-      retryAfterSeconds:
-        retryAfter === undefined ? DEFAULT_BLOCK_SECONDS : millis / 1_000,
+      retryAfterSeconds: rateLimitBlockSeconds(retryAfter),
     });
-  }
   if (status >= 500) return UNAVAILABLE;
   if (body === undefined) return INVALID;
   // Some services, GitHub among them, answer 200 with an `error` field.
@@ -206,7 +230,11 @@ function classifyAnswer(
     if (GRANT_LOST.has(error)) return Object.freeze({ kind: 'grant_lost' });
     if (CLIENT_REFUSED.has(error))
       return Object.freeze({ kind: 'client_refused' });
-    return TEMPORARY.has(error) ? UNAVAILABLE : INVALID;
+    if (TEMPORARY.has(error)) return UNAVAILABLE;
+    const named = oauth2ServiceErrorSchema.safeParse(error);
+    return named.success
+      ? Object.freeze({ ...INVALID, serviceError: named.data })
+      : INVALID;
   }
   return status >= 200 && status <= 299 ? parseIssued(body) : INVALID;
 }

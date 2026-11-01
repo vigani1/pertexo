@@ -91,18 +91,22 @@ describe('the callback query', () => {
       workspaceId: connectionFields.workspaceId,
       connectionId: connectionFields.id,
     };
-    for (const result of [
-      'connected',
-      'denied',
-      'token_refused',
-      'provider_unavailable',
-    ]) {
+    for (const result of ['connected', 'denied', 'token_refused']) {
       expect(
         oauth2CallbackLandingSchema.safeParse({ result, ...ids }).success,
       ).toBe(true);
       expect(oauth2CallbackLandingSchema.safeParse({ result }).success).toBe(
         false,
       );
+    }
+    // An outage may strike before the state is read, with no connection to name.
+    for (const landing of [{}, ids]) {
+      expect(
+        oauth2CallbackLandingSchema.safeParse({
+          result: 'provider_unavailable',
+          ...landing,
+        }).success,
+      ).toBe(true);
     }
     expect(
       oauth2CallbackLandingSchema.safeParse({ result: 'invalid' }).success,
