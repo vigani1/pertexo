@@ -48,6 +48,30 @@ export const READS_OPEN_UNTIL_PURGE: readonly Read[] = [
       expect(body.totalWorkflows).toBeGreaterThan(0);
     },
   },
+  {
+    name: 'the data tables',
+    as: 'viewer',
+    path: (world) => `${root(world)}/data-tables`,
+    shows: (
+      body: { tables: readonly { id: string; rowCount: number }[] },
+      world,
+    ) => {
+      expect(body.tables.find(({ id }) => id === world.tableId)).toMatchObject({
+        rowCount: 1,
+      });
+    },
+  },
+  {
+    name: "a data table's rows",
+    as: 'viewer',
+    path: (world) => `${root(world)}/data-tables/${world.tableId}/rows/query`,
+    query: { filters: [], limit: 10, offset: 0 },
+    shows: (body: { rows: readonly { values: unknown }[] }) => {
+      expect(body.rows.map(({ values }) => values)).toEqual([
+        { note: 'still here' },
+      ]);
+    },
+  },
 ];
 
 /** The reads a suspended workspace already answers. */
@@ -80,21 +104,6 @@ export const READS_OPEN_TODAY: readonly Read[] = [
     shows: (body: { total: number }) => {
       expect(body.total).toBeGreaterThan(0);
     },
-  },
-  {
-    name: 'the data tables',
-    as: 'viewer',
-    path: (world) => `${root(world)}/data-tables`,
-    shows: (body: { tables: readonly { id: string }[] }, world) => {
-      expect(body.tables.map(({ id }) => id)).toContain(world.tableId);
-    },
-  },
-  {
-    name: "a data table's rows",
-    as: 'viewer',
-    path: (world) => `${root(world)}/data-tables/${world.tableId}/rows/query`,
-    query: { filters: [], limit: 10, offset: 0 },
-    shows: answers,
   },
   {
     name: 'the audit log',
