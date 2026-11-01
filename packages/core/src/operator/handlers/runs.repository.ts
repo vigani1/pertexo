@@ -7,7 +7,7 @@ import {
 } from '@pertexo/database/schema';
 import { requestWorkflowRunCancellation } from '../../runs/commands/cancel.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type { OperatorDecision } from './contract.js';
+import type { OperatorDecision } from './decision.js';
 import { withoutNulls, enqueueAdvance } from './enqueue.js';
 
 /**

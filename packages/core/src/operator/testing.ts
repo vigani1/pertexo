@@ -2,9 +2,9 @@ export {
   createOperatorRunReplayStore,
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-} from './replay/repository.js';
+} from './replay/store.js';
 export { type OperatorRunReplayStore } from './replay/contract.js';
-export { createOperatorCommandDatabase } from './repository.js';
+export { createOperatorCommandDatabase } from './store.js';
 export { OperatorCommandConflictError } from './input.js';
 export {
   type GetOperatorCommandInput,

@@ -11,7 +11,7 @@ import {
   operatorRunReplayRequests,
 } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type { OperatorDecision } from './contract.js';
+import type { OperatorDecision } from './decision.js';
 import { withoutNulls, enqueue } from './enqueue.js';
 
 /** Asks a worker to reconcile a published workflow's triggers again. */
