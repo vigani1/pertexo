@@ -1,11 +1,13 @@
 import { DirectoryManagementModule } from '../../authentication/federation/provisioning/management/module.js';
 import {
-  createDirectoryStore,
-  type DirectoryStore,
   createIdentityWorkspaceDatabase,
-  createFederationManagementStore,
   createApiTokenDatabase,
 } from '@pertexo/core/tenant-access';
+import {
+  createDirectoryStore,
+  type DirectoryStore,
+  createFederationManagementStore,
+} from '@pertexo/core/identity';
 import { FederationManagementModule } from '../../authentication/federation/management/module.js';
 import { FederationManagementService } from '../../authentication/federation/management/service.js';
 import { federationSecretContext } from '../../authentication/federation/protocol/oidc.js';

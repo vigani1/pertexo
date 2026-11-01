@@ -1,5 +1,5 @@
 import SCIMMY from 'scimmy';
-import { DirectoryError, DIRECTORY_LIMITS } from '@pertexo/core/tenant-access';
+import { DirectoryError, DIRECTORY_LIMITS } from '@pertexo/core/identity';
 
 export type DirectoryResourceType = 'User' | 'Group';
 export const coreSchema = (kind: DirectoryResourceType) =>

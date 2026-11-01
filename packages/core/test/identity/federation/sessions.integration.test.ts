@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
-import { isAuthenticationSessionAllowed } from '../../../src/tenant-access/index.js';
+import { isAuthenticationSessionAllowed } from '../../../src/identity/index.js';
 import { useIdentityCommandDatabase } from '../command.support.js';
 
 const db = useIdentityCommandDatabase('session_lookup');

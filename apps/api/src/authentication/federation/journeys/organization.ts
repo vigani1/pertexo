@@ -1,7 +1,7 @@
 import type { OrganizationIdentity } from '../protocol/identity.js';
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
-import { OrganizationSignInCommands } from '@pertexo/core/tenant-access';
+import { OrganizationSignInCommands } from '@pertexo/core/identity';
 import {
   federationProtocolSchema,
   samlServiceProviderUrls,

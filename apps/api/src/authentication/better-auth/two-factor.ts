@@ -4,7 +4,7 @@ import {
   createAuthMiddleware,
   getAuthoritativeSessionFromCtx,
 } from 'better-auth/api';
-import { isAuthenticationSessionAllowed } from '@pertexo/core/tenant-access';
+import { isAuthenticationSessionAllowed } from '@pertexo/core/identity';
 import type { Pool } from 'pg';
 import type { AuthenticationTransactions } from './transactions/context.js';
 import { requireDoubleSubmitCsrf } from './csrf.js';

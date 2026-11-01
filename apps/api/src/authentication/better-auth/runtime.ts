@@ -16,10 +16,7 @@ import {
   type OidcProofGateway,
 } from '../federation/protocol/oidc.js';
 import type { BetterAuthOptions } from 'better-auth';
-import {
-  SignUpAvailability,
-  type SignUpMode,
-} from '@pertexo/core/tenant-access';
+import { SignUpAvailability, type SignUpMode } from '@pertexo/core/identity';
 import { surviveConnectionLoss } from '@pertexo/database/platform';
 import { Pool } from 'pg';
 import { refuseClosedSignUp } from './sign-up-gate.js';

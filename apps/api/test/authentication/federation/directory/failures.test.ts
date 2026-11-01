@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import { expect, it } from 'vitest';
-import { DirectoryError } from '@pertexo/core/tenant-access';
+import { DirectoryError } from '@pertexo/core/identity';
 import { directoryFailure } from '../../../../src/authentication/federation/provisioning/transport/errors.js';
 
 it.each([

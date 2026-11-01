@@ -36,6 +36,10 @@
       "types": "./dist/governance/index.d.ts",
       "default": "./dist/governance/index.js"
     },
+    "./identity": {
+      "types": "./dist/identity/index.d.ts",
+      "default": "./dist/identity/index.js"
+    },
     "./inbox": {
       "types": "./dist/inbox/index.d.ts",
       "default": "./dist/inbox/index.js"

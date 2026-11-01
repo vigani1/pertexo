@@ -3,7 +3,7 @@ import {
   OrganizationSignInCommands,
   authorizeCredentialSignIn,
   isAuthenticationSessionAllowed,
-} from '../../../../src/tenant-access/index.js';
+} from '../../../../src/identity/index.js';
 
 import {
   db,

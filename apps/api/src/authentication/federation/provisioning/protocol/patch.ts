@@ -7,7 +7,7 @@ import {
   NoTarget,
   type ScimPatchOperation,
 } from 'scim-patch';
-import { DirectoryError, DIRECTORY_LIMITS } from '@pertexo/core/tenant-access';
+import { DirectoryError, DIRECTORY_LIMITS } from '@pertexo/core/identity';
 import {
   canonicalDocument,
   canonicalPath,

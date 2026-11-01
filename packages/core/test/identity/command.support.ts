@@ -13,7 +13,7 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createFederationManagementStore } from '../../src/tenant-access/index.js';
+import { createFederationManagementStore } from '../../src/identity/index.js';
 
 export type IdentityCommandFixture = Readonly<{
   federation: (

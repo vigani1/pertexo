@@ -1,4 +1,5 @@
-import * as identityStores from '@pertexo/core/tenant-access';
+import * as identityStores from '@pertexo/core/identity';
+import * as tenantAccessStores from '@pertexo/core/tenant-access';
 import type { IdentityWorkspaceDatabase } from '@pertexo/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -43,9 +44,10 @@ function identityDatabase(
 }
 
 function createsIdentityDatabase(database: IdentityWorkspaceDatabase) {
-  vi.spyOn(identityStores, 'createIdentityWorkspaceDatabase').mockReturnValue(
-    database,
-  );
+  vi.spyOn(
+    tenantAccessStores,
+    'createIdentityWorkspaceDatabase',
+  ).mockReturnValue(database);
 }
 
 /** Lets the real store be built and records how often its close runs. */
@@ -55,25 +57,29 @@ function ownedClose(
     | 'createApiTokenDatabase'
     | 'createDirectoryStore',
 ) {
-  const original = identityStores[factory] as (...arguments_: unknown[]) => {
-    close(): Promise<void>;
-  };
+  const stores = (factory === 'createDirectoryStore'
+    ? identityStores
+    : tenantAccessStores) as unknown as Record<
+    typeof factory,
+    (...arguments_: unknown[]) => { close(): Promise<void> }
+  >;
+  const original = stores[factory];
   let close: ReturnType<typeof vi.fn> | undefined;
-  vi.spyOn(identityStores, factory).mockImplementation(((
-    ...arguments_: unknown[]
-  ) => {
-    const store = original(...arguments_);
-    const closeStore = vi.fn(() => store.close());
-    close = closeStore;
-    // The stores are frozen; shadow close on an object that inherits the rest.
-    return Object.defineProperty(
-      Object.create(store) as typeof store,
-      'close',
-      {
-        value: closeStore,
-      },
-    );
-  }) as never);
+  vi.spyOn(stores as Record<typeof factory, never>, factory).mockImplementation(
+    ((...arguments_: unknown[]) => {
+      const store = original(...arguments_);
+      const closeStore = vi.fn(() => store.close());
+      close = closeStore;
+      // The stores are frozen; shadow close on an object that inherits the rest.
+      return Object.defineProperty(
+        Object.create(store) as typeof store,
+        'close',
+        {
+          value: closeStore,
+        },
+      );
+    }) as never,
+  );
   return () => {
     if (close === undefined) throw new Error(`${factory} was never called`);
     return close;

@@ -1,9 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import {
-  DIRECTORY_LIMITS,
-  type DirectoryGroup,
-} from '@pertexo/core/tenant-access';
+import { DIRECTORY_LIMITS, type DirectoryGroup } from '@pertexo/core/identity';
 import { directoryGroupDocument } from '../../../../src/authentication/federation/provisioning/protocol/resources.js';
 import { parseDirectoryFilter } from '../../../../src/authentication/federation/provisioning/protocol/filter.js';
 

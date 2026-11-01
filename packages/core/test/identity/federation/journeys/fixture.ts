@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from 'node:crypto';
 
-import { OrganizationSignInCommands } from '../../../../src/tenant-access/index.js';
+import { OrganizationSignInCommands } from '../../../../src/identity/index.js';
 import { useIdentityCommandDatabase } from '../../command.support.js';
 
 export const db = useIdentityCommandDatabase('oidc_proof');
