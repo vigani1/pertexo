@@ -11,6 +11,20 @@ import type { WebhookAuthentication } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 import { workflowActivationAfterReconciliation } from '@pertexo/workflow-model';
 
+/** A subquery for the workflow's published version, to compare a trigger row against. */
+export function publishedVersionOf(
+  client: PoolClient,
+  workspaceId: string,
+  workflowId: string,
+) {
+  return drizzle(client)
+    .select({ id: workflows.publishedVersionId })
+    .from(workflows)
+    .where(
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
+    );
+}
+
 export async function refreshWorkflowActivation(
   client: PoolClient,
   workspaceId: string,
@@ -66,12 +80,7 @@ export async function readHealth(
   workflowId: string,
 ): Promise<readonly WorkflowTriggerHealth[]> {
   const db = drizzle(client);
-  const published = db
-    .select({ id: workflows.publishedVersionId })
-    .from(workflows)
-    .where(
-      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
-    );
+  const published = publishedVersionOf(client, workspaceId, workflowId);
   const rows = await db
     .select({
       id: workflowTriggers.id,

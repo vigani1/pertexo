@@ -5,12 +5,9 @@ import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import {
-  workflowTriggers,
-  workflows,
-  triggerSchedules,
-} from '@pertexo/database/schema';
+import { workflowTriggers, triggerSchedules } from '@pertexo/database/schema';
 
+import { publishedVersionOf } from '../../reconciliation/health.repository.js';
 import { ScheduleTriggerError } from '../errors.js';
 import {
   parsePersistedScheduleRecurrence,
@@ -25,6 +22,8 @@ import type {
   SetEnabledInput,
 } from './contract.js';
 import { scheduleTriggerSchema } from './receipt.js';
+
+const SCHEDULE_LIST_LIMIT = 1000;
 
 function scheduleQuery(client: PoolClient) {
   return drizzle(client)
@@ -89,12 +88,7 @@ export async function readSchedules(
   workspaceId: string,
   workflowId: string,
 ) {
-  const published = drizzle(client)
-    .select({ id: workflows.publishedVersionId })
-    .from(workflows)
-    .where(
-      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
-    );
+  const published = publishedVersionOf(client, workspaceId, workflowId);
   const rows = await scheduleQuery(client)
     .where(
       and(
@@ -105,7 +99,7 @@ export async function readSchedules(
       ),
     )
     .orderBy(workflowTriggers.nodeId, workflowTriggers.id)
-    .limit(1000)
+    .limit(SCHEDULE_LIST_LIMIT)
     .catch(rethrowQueryFailure);
   return Object.freeze(rows.map(scheduleRecord));
 }
@@ -139,15 +133,11 @@ export async function readScheduleCommandTarget(
   const db = drizzle(client);
   const schedule = alias(triggerSchedules, 'schedule');
   const trigger = alias(workflowTriggers, 'trigger');
-  const published = db
-    .select({ id: workflows.publishedVersionId })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, identity.workflowId),
-      ),
-    );
+  const published = publishedVersionOf(
+    client,
+    input.workspaceId,
+    identity.workflowId,
+  );
   const result = await db
     .select({
       workflow_id: trigger.workflowId,

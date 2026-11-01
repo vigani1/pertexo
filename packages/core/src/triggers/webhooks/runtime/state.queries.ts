@@ -21,7 +21,10 @@ import {
   WebhookWorkflowPausedError,
 } from '../errors.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type { WebhookVerificationReference } from './contract.js';
+import type {
+  WebhookConfig,
+  WebhookVerificationReference,
+} from './contract.js';
 import { endpointTakesDeliveries } from './endpoint-rules.js';
 
 export async function oneHealth(
@@ -45,6 +48,25 @@ export async function oneHealth(
   const trigger = health.find(({ id }) => id === triggerId);
   if (trigger === undefined) throw new WebhookTriggerNotFoundError();
   return trigger;
+}
+
+/** The config this version of the trigger was published with. */
+export async function readTriggerConfig(
+  transaction: WorkspaceTransaction,
+  triggerId: string,
+  workflowVersionId: string,
+): Promise<WebhookConfig | undefined> {
+  const result = await transaction.db
+    .select({ config: sql<WebhookConfig>`${workflowTriggers.desiredConfig}` })
+    .from(workflowTriggers)
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, transaction.workspaceId),
+        eq(workflowTriggers.id, triggerId),
+        eq(workflowTriggers.workflowVersionId, workflowVersionId),
+      ),
+    );
+  return result[0]?.config;
 }
 
 export async function executableProjection(

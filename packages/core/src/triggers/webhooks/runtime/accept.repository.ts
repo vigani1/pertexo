@@ -1,13 +1,13 @@
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/errors.js';
-import {
-  workflowTriggers,
-  webhookTriggerReplayRecords as replays,
-} from '@pertexo/database/schema';
+import { webhookTriggerReplayRecords as replays } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { lockEventCoordination } from '../../coordination/keys.repository.js';
 import type { createEventCoordinationPreparation } from '../../coordination/prepare.js';
 import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
-import { coordinateVerifiedWebhook } from '../coordinate.repository.js';
+import {
+  coordinateVerifiedWebhook,
+  startWebhookRun,
+} from '../coordinate.repository.js';
 
 import {
   openWebhookResponse,
@@ -15,19 +15,22 @@ import {
 } from '../responses/admission.repository.js';
 
 import { and, eq, sql } from 'drizzle-orm';
-import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
-import { acceptWorkflowRun } from '../../../runs/commands/acceptance.repository.js';
 
 import type { WebhookReplayIdentity } from '../contract.js';
 import { insertWebhookDelivery } from '../deliveries.repository.js';
 import {
+  replayDeliveryOutcome,
+  replayDeliveryReference,
+  resolveExactReplay,
+} from '../replay-receipt.js';
+import {
   deleteExpiredReplay,
   lockEndpointDedupeKey,
   readLockedReplay,
-  resolveExactReplay,
+  recordReplayResult,
 } from '../replay.repository.js';
 
 import {
@@ -37,10 +40,13 @@ import {
 import type {
   AcceptVerifiedWebhookDeliveryInput,
   WebhookAcceptance,
-  WebhookConfig,
 } from './contract.js';
 
-import { executableProjection, lockEligibleEndpoint } from './state.queries.js';
+import {
+  executableProjection,
+  lockEligibleEndpoint,
+  readTriggerConfig,
+} from './state.queries.js';
 import type { WorkspaceTurns } from './workspace-turns.js';
 
 export async function acceptVerifiedWebhookDelivery(
@@ -84,24 +90,11 @@ export async function acceptVerifiedWebhookDelivery(
             );
           if (replay.length > 0) return { replay: true as const };
         }
-        const row = (
-          await transaction.db
-            .select({
-              config: sql<WebhookConfig>`${workflowTriggers.desiredConfig}`,
-            })
-            .from(workflowTriggers)
-            .where(
-              and(
-                eq(workflowTriggers.workspaceId, transaction.workspaceId),
-                eq(workflowTriggers.id, verification.triggerId),
-                eq(
-                  workflowTriggers.workflowVersionId,
-                  verification.workflowVersionId,
-                ),
-              ),
-            )
-        )[0];
-        const config = row?.config;
+        const config = await readTriggerConfig(
+          transaction,
+          verification.triggerId,
+          verification.workflowVersionId,
+        );
         return {
           replay: false as const,
           policy: config?.coordination,
@@ -198,33 +191,6 @@ async function readReplayUnderLock(
   return readLockedReplay(transaction, identity);
 }
 
-function replayDeliveryOutcome(
-  replayed: ReturnType<typeof resolveExactReplay>,
-): Parameters<typeof insertWebhookDelivery>[2]['outcome'] {
-  if ('skipped' in replayed) {
-    return 'skipped';
-  }
-  if ('coordinated' in replayed) {
-    return 'coordinated';
-  }
-  return 'replayed';
-}
-
-function replayDeliveryReference(
-  replayed: ReturnType<typeof resolveExactReplay>,
-): Pick<
-  Parameters<typeof insertWebhookDelivery>[2],
-  'runId' | 'coordinationEventId'
-> {
-  if ('runId' in replayed) {
-    return { runId: replayed.runId };
-  }
-  if ('coordinated' in replayed) {
-    return { coordinationEventId: replayed.eventId };
-  }
-  return {};
-}
-
 async function acceptNewWebhookDelivery(
   transaction: WorkspaceTransaction,
   input: AcceptVerifiedWebhookDeliveryInput,
@@ -270,23 +236,13 @@ async function acceptNewWebhookDelivery(
   let accepted;
   await transaction.db.execute(sql`savepoint webhook_run_admission`);
   try {
-    accepted = await acceptWorkflowRun(transaction, {
-      initialCheckpoint: initial.checkpoint,
-      ...(initial.validateInput === undefined
-        ? {}
-        : { validateInput: initial.validateInput }),
-      keyHash: createHash('sha256').update(deliveryId).digest('hex'),
-      operation: 'workflow.run.accept',
-      requestHash: requestFingerprint,
-      scope: `webhook:${verification.endpointId}`,
-      triggerType: 'webhook',
-      workflowId: verification.workflowId,
-      workflowVersionId: verification.workflowVersionId,
+    accepted = await startWebhookRun(
+      transaction,
+      input,
+      initial,
+      deliveryId,
       runInput,
-      ...(input.traceparent === undefined
-        ? {}
-        : { traceparent: input.traceparent }),
-    });
+    );
   } catch (error) {
     if (!(error instanceof WorkflowAlreadyRunningError)) throw error;
     await transaction.db.execute(
@@ -300,15 +256,9 @@ async function acceptNewWebhookDelivery(
       replayCheck: 'new',
       bodyBytes: input.bodyBytes,
     });
-    await transaction.db
-      .update(replays)
-      .set({ skipReason: 'concurrency_limit' })
-      .where(
-        and(
-          eq(replays.workspaceId, transaction.workspaceId),
-          eq(replays.deliveryId, deliveryId),
-        ),
-      );
+    await recordReplayResult(transaction, deliveryId, {
+      skipReason: 'concurrency_limit',
+    });
     await recordWorkflowTriggerSkip(
       transaction,
       verification.workflowId,
@@ -328,15 +278,9 @@ async function acceptNewWebhookDelivery(
     bodyBytes: input.bodyBytes,
     runId: accepted.runId,
   });
-  await transaction.db
-    .update(replays)
-    .set({ workflowRunId: accepted.runId })
-    .where(
-      and(
-        eq(replays.workspaceId, transaction.workspaceId),
-        eq(replays.deliveryId, deliveryId),
-      ),
-    );
+  await recordReplayResult(transaction, deliveryId, {
+    workflowRunId: accepted.runId,
+  });
   const seconds = await openWebhookResponse(
     transaction,
     verification.triggerId,

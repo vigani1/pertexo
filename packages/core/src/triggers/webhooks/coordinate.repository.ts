@@ -5,11 +5,43 @@ import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type { PublishedWorkflow } from '../../runs/queries/execution/contract.js';
 import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js';
+import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import type { AcceptVerifiedWebhookDeliveryInput } from './runtime/contract.js';
 import { coordinateEvent } from '../coordination/accept.repository.js';
 import type { PreparedEventCoordination } from '../coordination/contract.js';
+import type { WebhookDeliveryOutcome } from './contract.js';
 import { insertWebhookDelivery } from './deliveries.repository.js';
+import { recordReplayResult } from './replay.repository.js';
 import { openWebhookResponse } from './responses/admission.repository.js';
+
+/** A delivery's run, whichever way it starts: the key is the delivery or event it answers. */
+export function startWebhookRun(
+  transaction: WorkspaceTransaction,
+  input: AcceptVerifiedWebhookDeliveryInput,
+  initial: ReturnType<InitialCheckpointFactory>,
+  key: string,
+  runInput: unknown,
+) {
+  const { verification } = input;
+  return acceptWorkflowRun(transaction, {
+    initialCheckpoint: initial.checkpoint,
+    ...(initial.validateInput === undefined
+      ? {}
+      : { validateInput: initial.validateInput }),
+    keyHash: createHash('sha256').update(key).digest('hex'),
+    operation: 'workflow.run.accept',
+    requestHash: input.requestFingerprint,
+    scope: `webhook:${verification.endpointId}`,
+    triggerType: 'webhook',
+    workflowId: verification.workflowId,
+    workflowVersionId: verification.workflowVersionId,
+    runInput,
+    ...(input.traceparent === undefined
+      ? {}
+      : { traceparent: input.traceparent }),
+  });
+}
+
 export async function coordinateVerifiedWebhook(
   transaction: WorkspaceTransaction,
   input: AcceptVerifiedWebhookDeliveryInput,
@@ -38,24 +70,7 @@ export async function coordinateVerifiedWebhook(
       version: projection,
       prepared,
     },
-    (tx, eventId) =>
-      acceptWorkflowRun(tx, {
-        initialCheckpoint: initial.checkpoint,
-        ...(initial.validateInput === undefined
-          ? {}
-          : { validateInput: initial.validateInput }),
-        keyHash: createHash('sha256').update(eventId).digest('hex'),
-        operation: 'workflow.run.accept',
-        requestHash: input.requestFingerprint,
-        scope: `webhook:${verification.endpointId}`,
-        triggerType: 'webhook',
-        workflowId: verification.workflowId,
-        workflowVersionId: verification.workflowVersionId,
-        runInput,
-        ...(input.traceparent === undefined
-          ? {}
-          : { traceparent: input.traceparent }),
-      }),
+    (tx, eventId) => startWebhookRun(tx, input, initial, eventId, runInput),
   );
   const runId = 'runId' in result ? result.runId : undefined;
   if ('coordinated' in result && asksSenderToRetry(result)) {
@@ -79,19 +94,11 @@ export async function coordinateVerifiedWebhook(
     coordinationEventId: deliveryId,
     ...(runId === undefined ? {} : { runId }),
   });
-  await transaction.db
-    .update(replays)
-    .set({
-      coordinationEventId: deliveryId,
-      workflowRunId: runId ?? null,
-      skipReason: 'skipped' in result ? 'concurrency_limit' : null,
-    })
-    .where(
-      and(
-        eq(replays.workspaceId, transaction.workspaceId),
-        eq(replays.deliveryId, deliveryId),
-      ),
-    );
+  await recordReplayResult(transaction, deliveryId, {
+    coordinationEventId: deliveryId,
+    workflowRunId: runId ?? null,
+    skipReason: 'skipped' in result ? 'concurrency_limit' : null,
+  });
   if (runId === undefined) return result;
   const seconds = await openWebhookResponse(
     transaction,
@@ -106,12 +113,7 @@ export async function coordinateVerifiedWebhook(
 
 function coordinatedDeliveryOutcome(
   result: Awaited<ReturnType<typeof coordinateEvent>>,
-): Parameters<typeof insertWebhookDelivery>[2]['outcome'] {
-  if ('coordinated' in result) {
-    return 'coordinated';
-  }
-  if ('skipped' in result) {
-    return 'skipped';
-  }
-  return 'accepted';
+): WebhookDeliveryOutcome {
+  if ('coordinated' in result) return 'coordinated';
+  return 'skipped' in result ? 'skipped' : 'accepted';
 }

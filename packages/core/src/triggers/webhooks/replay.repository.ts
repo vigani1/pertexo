@@ -8,16 +8,36 @@ import type {
   EventCoordinationReceipt,
   EventCoordinationReason,
 } from '@pertexo/workflow-model';
-import { coordinatedReceipt } from '../coordination/events.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { WebhookDeliveryReplayMismatchError } from './errors.js';
 
 /** Endpoint-scoped records of an `Idempotency-Key` for ADR 026 webhook replay. */
 export type WebhookReplayRecord = NonNullable<
   Awaited<ReturnType<typeof readLockedReplay>>
 >;
+
+/** Writes what this delivery ended as onto its replay record, if it has one. */
+export async function recordReplayResult(
+  transaction: WorkspaceTransaction,
+  deliveryId: string,
+  result: Partial<
+    Pick<
+      typeof webhookTriggerReplayRecords.$inferInsert,
+      'coordinationEventId' | 'skipReason' | 'workflowRunId'
+    >
+  >,
+): Promise<void> {
+  await transaction.db
+    .update(webhookTriggerReplayRecords)
+    .set(result)
+    .where(
+      and(
+        eq(webhookTriggerReplayRecords.workspaceId, transaction.workspaceId),
+        eq(webhookTriggerReplayRecords.deliveryId, deliveryId),
+      ),
+    );
+}
 export async function lockEndpointDedupeKey(
   transaction: WorkspaceTransaction,
   identity: WebhookReplayIdentity,
@@ -65,40 +85,6 @@ export async function readLockedReplay(
     )
     .for('update', { of: replay });
   return result[0];
-}
-export function resolveExactReplay(
-  replay: WebhookReplayRecord,
-  requestFingerprint: string,
-):
-  | Readonly<{ runId: string; replayed: true }>
-  | Readonly<{ skipped: true; reason: 'concurrency_limit' }>
-  | EventCoordinationReceipt {
-  if (replay.request_fingerprint !== requestFingerprint)
-    throw new WebhookDeliveryReplayMismatchError();
-  if (replay.skip_reason === 'concurrency_limit')
-    return Object.freeze({ skipped: true, reason: 'concurrency_limit' });
-  const {
-    coordination_event_id,
-    workflow_run_id,
-    initial_outcome,
-    initial_status,
-    coordination_reason,
-  } = replay;
-  const coordinatedWithoutRun =
-    coordination_event_id !== null &&
-    workflow_run_id === null &&
-    initial_outcome !== null &&
-    initial_status !== null;
-  if (coordinatedWithoutRun)
-    return coordinatedReceipt(
-      coordination_event_id,
-      initial_outcome,
-      initial_status,
-      initial_status === 'pending' ? null : coordination_reason,
-    );
-  if (workflow_run_id === null)
-    throw new Error('Webhook replay record is incomplete');
-  return Object.freeze({ runId: workflow_run_id, replayed: true });
 }
 export async function deleteExpiredReplay(
   transaction: WorkspaceTransaction,
