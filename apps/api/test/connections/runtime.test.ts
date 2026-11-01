@@ -23,7 +23,7 @@ vi.mock('@pertexo/core/connections', async (original) => ({
 }));
 vi.mock('@pertexo/core/notifications', async (original) => ({
   ...(await original<object>()),
-  createFailureNotificationDestinationDatabase: outside.destination,
+  createNotificationDestinationStore: outside.destination,
 }));
 vi.mock('@pertexo/integrations/server', async (original) => ({
   ...(await original<object>()),

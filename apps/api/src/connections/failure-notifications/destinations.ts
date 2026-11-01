@@ -9,7 +9,7 @@ import {
   workflowFailureNotificationPolicyRequestSchema,
 } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { FailureNotificationDestinationDatabase } from '@pertexo/core/notifications';
+import type { NotificationDestinationStore } from '@pertexo/core/notifications';
 import { z } from 'zod';
 
 import {
@@ -45,7 +45,7 @@ function idempotentCommand(
 }
 
 function response(
-  record: Awaited<ReturnType<FailureNotificationDestinationDatabase['get']>>,
+  record: Awaited<ReturnType<NotificationDestinationStore['get']>>,
 ): FailureNotificationDestinationResponse {
   return {
     id: record.id,
@@ -101,7 +101,7 @@ export type GetWorkflowFailureNotificationPolicyInput =
 @Injectable()
 export class FailureNotificationDestinationUseCases {
   public constructor(
-    private readonly database: FailureNotificationDestinationDatabase,
+    private readonly database: NotificationDestinationStore,
     private readonly applicationSecret: string,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
   ) {}

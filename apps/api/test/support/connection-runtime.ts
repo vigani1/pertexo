@@ -1,5 +1,5 @@
 import { createConnectionDatabase } from '@pertexo/core/connections';
-import { createFailureNotificationDestinationDatabase } from '@pertexo/core/notifications';
+import { createNotificationDestinationStore } from '@pertexo/core/notifications';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   createNodeSecureHttpClient,
@@ -42,7 +42,7 @@ export function createFixtureConnectionRuntime(
 ): ApiConnectionRuntime {
   const database = createConnectionDatabase(databaseConfig);
   const destinations =
-    createFailureNotificationDestinationDatabase(databaseConfig);
+    createNotificationDestinationStore(databaseConfig);
   const httpClient = services.http ?? createNodeSecureHttpClient();
   return Object.freeze({
     dependencies: Object.freeze({

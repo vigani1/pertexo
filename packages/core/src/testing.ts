@@ -49,13 +49,13 @@ export {
   UnknownOutcomeReconciliationStateError,
   type UnknownOutcomeReconciliationResult,
 } from './outbox/reconciliation.repository.js';
-export { createFailureNotificationDestinationDatabase } from './notifications/destinations/repository.js';
+export { createNotificationDestinationStore } from './notifications/destinations/store.js';
 export { FailureNotificationDestinationError } from './notifications/destinations/errors.js';
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/contract.js';
-export type { FailureNotificationDestinationDatabase } from './notifications/destinations/contract.js';
+export type { NotificationDestinationStore } from './notifications/destinations/contract.js';
 export { createDueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.repository.js';
 export type { DueNodeWakeupScanner } from './runs/wakeups/contract.js';
-export { createFailureNotificationStore } from './notifications/repository.js';
+export { createFailureNotificationStore } from './notifications/store.js';
 export { FailureNotificationStateError } from './notifications/errors.js';
 export type {
   FailureNotificationClaimResult,

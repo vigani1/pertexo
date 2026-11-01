@@ -21,19 +21,19 @@ import {
   clearWorkflowFailureNotificationPolicy,
   readWorkflowFailureNotificationPolicy,
   setWorkflowFailureNotificationPolicy,
-} from '../policies/settings.repository.js';
+} from '../policies/workflow-policy.js';
 import {
   audit,
   authorize,
   claimNotificationCommand,
   completeNotificationCommand,
   destinationError,
-} from './commands.repository.js';
+} from './command.js';
 import type {
   CommandMetadata,
   DestinationConfig,
   DestinationTransaction,
-  FailureNotificationDestinationDatabase,
+  NotificationDestinationStore,
   FailureNotificationDestinationRecord,
 } from './contract.js';
 import {
@@ -98,7 +98,7 @@ async function insertVersion(
 
 async function setDestinationStatus(
   transaction: DestinationTransaction,
-  input: Parameters<FailureNotificationDestinationDatabase['setStatus']>[0],
+  input: Parameters<NotificationDestinationStore['setStatus']>[0],
 ): Promise<FailureNotificationDestinationRecord> {
   return transaction(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, { manage: true });
@@ -155,47 +155,36 @@ async function setDestinationStatus(
   });
 }
 
-export function createFailureNotificationDestinationDatabase(
+export function createNotificationDestinationStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): FailureNotificationDestinationDatabase {
+): NotificationDestinationStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
 
   const transact: DestinationTransaction = (input, work) =>
     transaction(pool, input, work);
   return Object.freeze({
-    create: (
-      input: Parameters<FailureNotificationDestinationDatabase['create']>[0],
-    ) => createNotificationDestination(transact, input),
-    get: (
-      input: Parameters<FailureNotificationDestinationDatabase['get']>[0],
-    ) => readNotificationDestination(transact, input),
-    list: (
-      input: Parameters<FailureNotificationDestinationDatabase['list']>[0],
-    ) => listNotificationDestinations(transact, input),
+    create: (input: Parameters<NotificationDestinationStore['create']>[0]) =>
+      createNotificationDestination(transact, input),
+    get: (input: Parameters<NotificationDestinationStore['get']>[0]) =>
+      readNotificationDestination(transact, input),
+    list: (input: Parameters<NotificationDestinationStore['list']>[0]) =>
+      listNotificationDestinations(transact, input),
     appendVersion: (
-      input: Parameters<
-        FailureNotificationDestinationDatabase['appendVersion']
-      >[0],
+      input: Parameters<NotificationDestinationStore['appendVersion']>[0],
     ) => appendNotificationDestinationVersion(transact, input),
     setStatus: (
-      input: Parameters<FailureNotificationDestinationDatabase['setStatus']>[0],
+      input: Parameters<NotificationDestinationStore['setStatus']>[0],
     ) => setDestinationStatus(transact, input),
     setWorkflowPolicy: (
-      input: Parameters<
-        FailureNotificationDestinationDatabase['setWorkflowPolicy']
-      >[0],
+      input: Parameters<NotificationDestinationStore['setWorkflowPolicy']>[0],
     ) => setWorkflowFailureNotificationPolicy(transact, input),
     clearWorkflowPolicy: (
-      input: Parameters<
-        FailureNotificationDestinationDatabase['clearWorkflowPolicy']
-      >[0],
+      input: Parameters<NotificationDestinationStore['clearWorkflowPolicy']>[0],
     ) => clearWorkflowFailureNotificationPolicy(transact, input),
     getWorkflowPolicy: (
-      input: Parameters<
-        FailureNotificationDestinationDatabase['getWorkflowPolicy']
-      >[0],
+      input: Parameters<NotificationDestinationStore['getWorkflowPolicy']>[0],
     ) => readWorkflowFailureNotificationPolicy(transact, input),
     close: () => lease.close(),
   });
@@ -218,8 +207,8 @@ function transaction<T>(
 
 function createNotificationDestination(
   transact: DestinationTransaction,
-  input: Parameters<FailureNotificationDestinationDatabase['create']>[0],
-): ReturnType<FailureNotificationDestinationDatabase['create']> {
+  input: Parameters<NotificationDestinationStore['create']>[0],
+): ReturnType<NotificationDestinationStore['create']> {
   return transact(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, {
       manage: true,
@@ -278,8 +267,8 @@ function createNotificationDestination(
 
 function readNotificationDestination(
   transact: DestinationTransaction,
-  input: Parameters<FailureNotificationDestinationDatabase['get']>[0],
-): ReturnType<FailureNotificationDestinationDatabase['get']> {
+  input: Parameters<NotificationDestinationStore['get']>[0],
+): ReturnType<NotificationDestinationStore['get']> {
   return transact(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, {
       manage: false,
@@ -295,8 +284,8 @@ function readNotificationDestination(
 
 function listNotificationDestinations(
   transact: DestinationTransaction,
-  input: Parameters<FailureNotificationDestinationDatabase['list']>[0],
-): ReturnType<FailureNotificationDestinationDatabase['list']> {
+  input: Parameters<NotificationDestinationStore['list']>[0],
+): ReturnType<NotificationDestinationStore['list']> {
   return transact(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, {
       manage: false,
@@ -313,8 +302,8 @@ function listNotificationDestinations(
 
 function appendNotificationDestinationVersion(
   transact: DestinationTransaction,
-  input: Parameters<FailureNotificationDestinationDatabase['appendVersion']>[0],
-): ReturnType<FailureNotificationDestinationDatabase['appendVersion']> {
+  input: Parameters<NotificationDestinationStore['appendVersion']>[0],
+): ReturnType<NotificationDestinationStore['appendVersion']> {
   return transact(input, async (client) => {
     await authorize(client, input.workspaceId, input.actorId, {
       manage: true,

@@ -17,10 +17,10 @@ import {
 } from '../../src/connections/contract.js';
 import { createConnectionDatabase } from '../../src/connections/repository.js';
 import type { ConnectionLookupDatabase } from '../../src/connections/runtime/contract.js';
-import { createFailureNotificationDestinationDatabase } from '../../src/notifications/destinations/repository.js';
+import { createNotificationDestinationStore } from '../../src/notifications/destinations/store.js';
 import { FailureNotificationDestinationError } from '../../src/notifications/destinations/errors.js';
-import type { FailureNotificationDestinationDatabase } from '../../src/notifications/destinations/contract.js';
-import { createFailureNotificationStore } from '../../src/notifications/repository.js';
+import type { NotificationDestinationStore } from '../../src/notifications/destinations/contract.js';
+import { createFailureNotificationStore } from '../../src/notifications/store.js';
 import {
   parseDatabaseConfig,
   generatePersistedId,
@@ -69,7 +69,7 @@ export const historicalOutboxByIntent = new Map(
 export type CurrentConnectionsFixture = Readonly<{
   api: ConnectionDatabase & ConnectionLookupDatabase;
   worker: ConnectionDatabase;
-  destinations: FailureNotificationDestinationDatabase;
+  destinations: NotificationDestinationStore;
 }>;
 
 export function databaseUrl(base: string, name = databaseName): string {
@@ -204,7 +204,7 @@ export function createInput(
 export function registerCurrentConnectionsFixture(): CurrentConnectionsFixture {
   let api: (ConnectionDatabase & ConnectionLookupDatabase) | undefined;
   let worker: ConnectionDatabase | undefined;
-  let destinations: FailureNotificationDestinationDatabase | undefined;
+  let destinations: NotificationDestinationStore | undefined;
   const resources: { close(): Promise<void> }[] = [];
   beforeAll(async () => {
     await createDatabase(databaseName);
@@ -224,7 +224,7 @@ export function registerCurrentConnectionsFixture(): CurrentConnectionsFixture {
       }),
     );
     resources.push(worker);
-    destinations = createFailureNotificationDestinationDatabase(
+    destinations = createNotificationDestinationStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(apiBaseUrl),
         max: 4,
