@@ -56,3 +56,34 @@ it('selects uncertainty before timeout before failure with stable invocation ord
     's',
   ]);
 });
+
+it('excludes handled failures when identifying and counting failures', () => {
+  const checkpoint = {
+    ...createCheckpoint({
+      workflowVersionId: '33333333-3333-4333-8333-333333333333',
+      iterationBudget: 10,
+      nextEventSequence: 1,
+    }),
+    invocations: [
+      {
+        nodeId: 'a-handled',
+        invocationKey: 'a-handled',
+        status: 'failed' as const,
+        attemptNumber: 1,
+        failureHandling: {
+          sinkInvocationKey: 'handler',
+          disposition: 'handled' as const,
+        },
+      },
+      {
+        nodeId: 'z-failed',
+        invocationKey: 'z-failed',
+        status: 'failed' as const,
+        attemptNumber: 1,
+      },
+    ],
+  };
+  const failures = notificationFailures(checkpoint);
+  expect(failures).toHaveLength(1);
+  expect(failures[0]?.nodeId).toBe('z-failed');
+});
