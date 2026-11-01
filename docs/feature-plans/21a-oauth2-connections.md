@@ -22,7 +22,7 @@ reconnected without touching the workflows that use it.
 | Extra parameters | Authorization and token parameters, reserved names refused | Google needs `access_type=offline`; Auth0 needs `audience` |
 | Consent window | Opens in a new window; the page you were on stays | Keeps an unsaved editor draft, as n8n, Zapier and Make do |
 | Where tokens live | A new row per connection, not `connection_secret_versions` | Refresh must not change `secretVersionId`: it fences in-flight steps and is the replace form's version check |
-| New connection's status | `reauthorization_required`, code `connection.oauth2_not_authorized`, no new status | Everything already fails closed on "not active"; a fourth status touches every consumer for no behavior |
+| New connection's status | `reauthorization_required`, code `connection.oauth2_not_authorized`, no new status | Everything already fails closed on "not active"; a fourth status touches every consumer for no behavior. Only attention surfaces read the code: the inbox, mail and overview stay quiet about a connection nobody has signed in to |
 | Who may consent | `connection:manage`, like every other credential change | Consistent with today |
 | Serialization | A blocking time on the token row plus a version check, not a lock across HTTP | `withConnectionTransaction` takes the workspace's run-admission lock, so holding it through a 15 s call would stall run admission |
 | Refresh timing | On use only; no background job | No scanner needed; an unused grant that lapses shows at next use |
@@ -88,11 +88,13 @@ channel, tries `window.close()`, and otherwise shows:
 |---|---|
 | `connected` | "Connected. You can close this tab." |
 | `denied` | "You didn't allow access. Nothing changed." |
-| `token_refused` | "The service refused the sign-in. Check the client ID, secret and token URL. If they're right, try sending them in the request body." |
+| `token_refused` | "The service refused the sign-in. Check the client ID, secret and token URL. If they're right, try sending them in the request body." With the service's code when it gave one that says more: "The service's code: `<code>`." |
 | `provider_unavailable` | "The service didn't answer. Try again in a few minutes." |
 | `invalid` | "This sign-in link is no longer valid. Start again from Connections." |
 
-With a connection, it also links to that connection.
+With a connection, it also links to that connection. Every outcome is a landing page,
+including a rate limit and an unexpected failure such as a KMS or database outage; those
+land on `provider_unavailable`, naming the connection if the state had been read by then.
 
 ### Using it
 
@@ -147,9 +149,10 @@ revoke it there too."
 - **S8** The callback refuses a connection that is revoked or whose current secret
   version differs from the row's.
 - **S9** A code is exchanged once and never retried. A provider `error` exchanges
-  nothing: `access_denied` lands on `denied`, anything else on `token_refused`. The
-  service's `error_description` is never stored or shown. Tokens already held stay
-  in force, so a cancelled reconnect breaks nothing.
+  nothing: `access_denied` lands on `denied`, `server_error` and `temporarily_unavailable`
+  on `provider_unavailable`, anything else on `token_refused` with the service's `error`
+  code when it is at most 64 of `[a-z_]`. The service's `error_description` is never stored
+  or shown. Tokens already held stay in force, so a cancelled reconnect breaks nothing.
 - **S10** Exchange and commit don't use the request's signal, so closing the tab
   doesn't lose a consumed code.
 - **S11** Every callback answer has `Cache-Control: no-store` and
@@ -161,28 +164,35 @@ revoke it there too."
   from a request. The web form derives the same value from the same constant, and
   responses carry the server's value.
 - **S13** The callback bypasses nginx logs: a Caddy `handle` as for `/v1/auth/*`,
-  since its query holds a code and state. Nothing logged or traced contains them.
+  since its query holds a code and state; an install with nginx in front turns off that
+  location's access and error logs. Nothing logged or traced contains them.
 
 **Addresses**
 
 The contract checks shape (S14). One function in the API process decides the rest
-(S15) at create, replace and start.
+(S15) at create, replace and start; start also asks where the token address resolves.
 
 - **S14** Refused by shape: anything but `http:`/`https:` (including `javascript:`),
   credentials, a fragment, over 2,048 bytes, reserved parameters already in the query.
+  All settings together are at most 16,000 bytes, so what the contract accepts fits the
+  database's 16,384.
 - **S15** With `HTTP_ALLOWED_PRIVATE_NETWORKS` empty, refused: `http:`; every IP
   literal; `localhost`, `*.localhost`, `*.local`, `*.internal`, `*.intranet`, `*.lan`,
-  `*.home.arpa`; single-label names. With networks set, those pass only if an IP
-  literal is inside them; names are settled at dispatch. Always refused: the hostname of
-  `PUBLIC_WEB_ORIGIN`, whatever the port. The answer is `connection.oauth2_endpoint_refused`, naming the
-  field.
+  `*.home.arpa`; single-label names. With networks set, an IP literal passes only inside
+  them, and names are settled at dispatch, with one exception: the authorization URL is never
+  dispatched (S16), so it needs https unless it is such a literal or a local name above.
+  Always refused: the hostname of `PUBLIC_WEB_ORIGIN`, whatever the port. The answer is
+  `connection.oauth2_endpoint_refused`, naming the field. Start also resolves the token
+  address under S17's rules and refuses it the same way, so a blocked address fails before
+  a code is spent; a name that doesn't resolve there is left to the token request.
 - **S16** Pertexo's server never requests the authorization URL; only the person's
   browser does, so its redirects aren't followed by us.
 - **S17** Token requests go through `SecureHttpClient` with an address policy always
   passed (empty when no networks are set), because the transport only refuses plain
   http to a public address when a policy exists. Both API and worker read
   `HTTP_ALLOWED_PRIVATE_NETWORKS`. Every dispatch re-resolves and rechecks, so DNS
-  rebinding and metadata addresses stay refused.
+  rebinding and metadata addresses stay refused, including a metadata address carried
+  inside IPv6 (mapped, translated, NAT64, 6to4), however wide the operator's networks.
 - **S18** Token requests use `maxRedirects: 0`: any redirect from the token address
   is a failure, and the secret never follows one.
 
@@ -213,10 +223,10 @@ The contract checks shape (S14). One function in the API process decides the res
 **Size limits**
 
 - **S25** A token response over 65,536 bytes fails. `access_token` is 1–8,000
-  printable ASCII chars; `refresh_token` at most 16,384. Others are ignored and
-  `id_token` is never stored.
-- **S26** `token_type` must be `bearer` in any case, or absent. Anything else fails
-  as an invalid response.
+  printable ASCII chars; `refresh_token` at most 16,384, and null or empty counts as
+  absent. Others are ignored and `id_token` is never stored.
+- **S26** `token_type` must be `bearer` in any case, or absent (null counts as absent).
+  Anything else fails as an invalid response.
 - **S27** A token response must be JSON. `Accept: application/json` is always sent.
   An `error` field means failure even with status 200 (GitHub does this).
 
@@ -232,7 +242,7 @@ The contract checks shape (S14). One function in the API process decides the res
 | Renew when the token expires within | 60 s |
 | Token request timeout | 15 s |
 | Refresh block while one is in flight | 45 s |
-| Block after a temporary failure | 15 s, or `Retry-After` up to 60 s |
+| Block after a temporary failure | 15 s, or `Retry-After` in seconds, 1 to 60; a date or 0 counts as absent |
 | Wait for another worker's refresh | 20 s, checking every 250 ms |
 | Token too young to be rejected | 60 s since issue |
 | Commit attempts | 3, 1 s apart |
@@ -253,12 +263,16 @@ connection tests share it.
 5. Claim lost, token not expired: return the current token. Expired: re-read every
    250 ms until the version changes or the block lifts, then start again; after 20 s
    fail with `http.oauth2_refresh_busy`.
-6. Claim won: request the token, then branch on the table below.
+6. Claim won: request the token, then branch on the table below. Step 4 opens the tokens
+   and client secret before it claims, so nothing but the token request stands between a
+   claim and its answer.
 
 ### Rules
 
 - **L1** Two workers needing the same refresh make one token request; both then use
-  the new token.
+  the new token. The 45 s block outlasts the 15 s request, because secrets are opened before
+  the claim, and it is set again before each seal and commit, because the service may
+  already have rotated. Only a process frozen past the block can break this (L8).
 - **L2** Every write that replaces or removes tokens is conditional on the version it
   read. A loser writes nothing and starts again.
 - **L3** Before losing a grant to `invalid_grant`, the same check applies: if the
@@ -268,16 +282,22 @@ connection tests share it.
 - **L4** A refresh isn't tied to the step's signal. Canceling a step lets the request
   and commit finish, because the provider may already have rotated.
 - **L5** A response with no `refresh_token` keeps the stored one (RFC 6749 §6). One
-  with a new one replaces it. Client credentials has no refresh token: renewing is a new
-  token request, so it is always `renewable`.
+  with a new one replaces it. Consent does the same under an unchanged secret version,
+  since some services give a refresh token only on first consent; the cost is that a reconnect
+  as another account, on a service that gives none, renews as the old account. Client
+  credentials has no refresh token: renewing is a new token request, so it is always
+  `renewable`.
 - **L6** `expires_in` is a positive integer or numeric string up to 315,360,000, and
   anything else counts as absent. Expiry is commit time plus it, by database time. No
   expiry means no scheduled renewal.
 - **L7** A connection is `active` exactly when it has a token row for its current
-  secret version. Only `connections/oauth2` repositories and rotate and revoke change
-  this, each in one transaction taking the workspace lock, then the connection row.
-- **L8** Commit after a failure retries up to 3 times with the tokens held in memory,
-  then zeroes them. If it still fails, or the process dies first, a rotating provider
+  secret version. Only `connections/oauth2` repositories, rotate, revoke and a workspace
+  deletion request change this, each in one transaction. The first three take the workspace
+  lock, then the connection row; a deletion request holds the workspace row and removes every
+  token and pending row in the workspace, so nothing waits out the recovery window and a
+  restored workspace reconnects. A consent answered during that request is discarded.
+- **L8** Sealing and committing after a failure retry up to 3 times together with the
+  tokens held in memory, then zero them. If it still fails, or the process dies first, a rotating provider
   answers `invalid_grant` next time and the connection shows reconnect. That window
   is accepted: no design closes it, it needs a crash within milliseconds, and it costs
   one visible reconnect. A second window is accepted the same way: if the worker told
@@ -292,8 +312,8 @@ Failure codes are in `oauth2ConnectionErrorCodeSchema` and `oauth2StepFailureCod
 | Answer | Connection | Step code | Step outcome |
 |---|---|---|---|
 | Valid JSON with a token | Stays active, `lastHealthyAt` set | — | Continues |
-| `invalid_grant` | `connection.oauth2_grant_revoked`; tokens deleted | `http.oauth2_grant_revoked` | failed, authentication |
-| `invalid_client`, `unauthorized_client`, `invalid_scope`, `unsupported_grant_type` | `connection.oauth2_client_rejected`; tokens deleted | `http.oauth2_client_rejected` | failed, authentication |
+| `invalid_grant`, `interaction_required`, `consent_required`, `bad_refresh_token` | `connection.oauth2_grant_revoked`; tokens deleted | `http.oauth2_grant_revoked` | failed, authentication |
+| `invalid_client`, `unauthorized_client`, `invalid_scope`, `unsupported_grant_type`, `incorrect_client_credentials` | `connection.oauth2_client_rejected`; tokens deleted | `http.oauth2_client_rejected` | failed, authentication |
 | 429 | Unchanged; blocked for `Retry-After` | `http.oauth2_token_rate_limited` | retry, rate_limit, with that delay |
 | 5xx, `server_error`, `temporarily_unavailable`, network, DNS, timeout | Unchanged; blocked 15 s | `http.oauth2_token_endpoint_unavailable` | retry, provider |
 | Redirect, over limit, not JSON, no usable token, other 4xx, unknown `error` | Unchanged; blocked 15 s | `http.oauth2_token_response_invalid` | retry, provider |
@@ -301,10 +321,12 @@ Failure codes are in `oauth2ConnectionErrorCodeSchema` and `oauth2StepFailureCod
 
 **L9** A temporary failure while the token is still valid isn't a failure: the step
 uses the valid token. Once it has expired, the step retries. **L10** Only the
-`invalid_*` rows change the connection; an outage never does.
+two refusal rows change the connection; an outage never does. An unknown `error` stays
+temporary, but its code is shown when it is at most 64 of `[a-z_]`.
 
-Every failure here has `possiblyDispatched: false`, because the service's API was
-never called. A retried attempt whose dispatch is unresolved stays `outcome_unknown`
+A step's terminal failure with any of these codes takes its failure route, under the
+error kind above. Every failure here has `possiblyDispatched: false`, because the service's
+API was never called. A retried attempt whose dispatch is unresolved stays `outcome_unknown`
 for non-repeatable methods, through the existing branch in `resolveRequestConnection`.
 
 ### Step failure text
@@ -312,12 +334,13 @@ for non-repeatable methods, through the existing branch in `resolveRequestConnec
 | Code | `errorSummary` |
 |---|---|
 | `http.oauth2_not_connected` | "This connection isn't connected. Reconnect it in Connections." |
+| `http.oauth2_connection_revoked` (failed, authentication) | "This connection was revoked. Choose another connection for this step." |
 | `http.oauth2_grant_revoked` | "The service no longer accepts this connection's sign-in. Reconnect it in Connections." |
 | `http.oauth2_client_rejected` | "The service refused the client ID or secret. Replace them in Connections, then reconnect." |
 | `http.oauth2_token_expired` | "The access token expired and the service gave no way to renew it. Reconnect it in Connections." |
 | `http.oauth2_token_rate_limited` | "The service's token address asked Pertexo to slow down." |
 | `http.oauth2_token_endpoint_unavailable` | "The service's token address didn't answer." |
-| `http.oauth2_token_response_invalid` | "The service's token address gave an answer Pertexo can't use. Check the token URL." |
+| `http.oauth2_token_response_invalid` | "The service's token address gave an answer Pertexo can't use. Check the token URL." With the service's code when it gave one: "The service's code: `<code>`." |
 | `http.oauth2_token_address_blocked` | "The token URL points to a private or blocked address." |
 | `http.oauth2_refresh_busy` | "Another step is renewing this connection's token." |
 | `http.oauth2_host_not_allowed` (failed, configuration) | "This connection can't send its token to that host. Change the URL or the connection's allowed hosts." |
@@ -349,7 +372,7 @@ Same route, same `{ url }` body (HTTPS only), `connection:use`. Gets a token thr
 
 | Situation | `errorCode` | `reauthorizationRequired` |
 |---|---|---|
-| Not active | Its current `connection.oauth2_*` code; no network | false |
+| Not active | Its current code; no network | false |
 | Host not allowed | `connection.oauth2_host_not_allowed`; no network | false |
 | Token address temporary failure | `connection.provider_unavailable` or `connection.provider_rate_limited` | false |
 | Token address unusable answer | `connection.provider_invalid_response` | false |
@@ -406,14 +429,15 @@ connection_oauth2_authorizations          -- at most one pending per connection
   pending rows, and sets `reauthorization_required` with `connection.oauth2_not_authorized`.
   An OAuth2 connection can't become a header one or the reverse, as rotation refuses type
   changes today.
-- **D5** Consent or client-credentials success: replace the token row, status active, clear
+- **D5** Consent or client-credentials success in an active workspace: replace the token row (L5), status active, clear
   `lastErrorCode`, `healthRevision + 1`, source `rotation`, `lastHealthyAt` now, event
   `connection.oauth2_authorized`, audit fact. A refresh updates only the token row and
   `lastHealthyAt`.
 - **D6** Losing a grant: delete the token row, status and code, `healthRevision + 1`, event
   `connection.reauthorization_required`, source `run` from a worker and `test` from a test.
-- **D7** Revoke deletes token and pending rows in its transaction. The sealed client secret
-  stays with its secret version, as for every connection, until workspace purge.
+- **D7** Revoke and a workspace deletion request delete token and pending rows in their
+  transaction. The sealed client secret stays with its secret version, as for every connection,
+  until workspace purge.
 - **D8** Retention: no sweep. Pending rows are bounded by one per connection and replaced on
   the next start. Workspace purge removes all three through the cascade from secret versions.
 - **D9** Backup holds sealed rows only. A restored backup may hold a refresh token the provider
@@ -495,7 +519,8 @@ and loosens no assertion.
 `/token`, and `/api` (checks the bearer token, counts calls). It records every request. Each
 client ID selects behavior: rotating refresh tokens **with reuse detection that revokes the whole
 family**; rotating without it; non-rotating; no refresh token; no `expires_in`; delayed; 503; 429 with `Retry-After`;
-`invalid_grant`; `invalid_client`; `error` with status 200; a redirect; an oversized body;
+`invalid_grant`; `invalid_client`; `error` with status 200; each provider-specific refusal in the
+answer table; a refresh token only on first consent; null fields; a date in `Retry-After`; a redirect; an oversized body;
 non-JSON; a `token_type` of `mac`; `/api` always 401; `/api` 401 once.
 
 **Contract** — schemas accept and refuse per S14, reserved parameters and limits; the callback
