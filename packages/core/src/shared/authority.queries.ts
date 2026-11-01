@@ -86,6 +86,19 @@ export function lockWorkspaceAuthority(
   });
 }
 
+/** Runs flows on one workspace one at a time. Take it before any share lock on the row. */
+export async function lockWorkspaceRow(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  await drizzle(client)
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .for('update')
+    .catch(rethrowQueryFailure);
+}
+
 /** The fence for core's one authority helper, which names its status list. */
 export function lockWorkspaceAuthorityInStatuses(
   client: PoolClient,
