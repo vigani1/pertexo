@@ -3,13 +3,12 @@ import {
   type WorkflowErrorInput,
 } from '@pertexo/workflow-model';
 import type { WorkflowTransitionPlan as RunTransitionPlan } from '../types.js';
+import { wasHandled } from './failure-notification.js';
 
 export function errorWorkflowFailure(plan: RunTransitionPlan) {
   const status = plan.checkpoint.runStatus;
   const failures = plan.checkpoint.invocations.filter(
-    (invocation) =>
-      invocation.status === status &&
-      invocation.failureHandling?.disposition !== 'handled',
+    (invocation) => invocation.status === status && !wasHandled(invocation),
   );
   // A failed handler explains settlement ahead of the source it could not handle.
   return (
