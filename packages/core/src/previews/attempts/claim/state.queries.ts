@@ -3,10 +3,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import {
-  rethrowQueryFailure,
-  parseStoredExecutionValue,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { parseStoredExecutionValue } from '../../../runs/values/stored-execution.js';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import { readVariableSetValues } from '../../../variables/values.queries.js';
 import { executableNodeSchema } from '../../executable-node.js';

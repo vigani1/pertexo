@@ -13,10 +13,8 @@ import {
 } from '@pertexo/core/runs';
 import type { FastifyReply } from 'fastify';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
-import {
-  isTransientDatabaseFailure,
-  StoredExecutionValueInvalidError,
-} from '@pertexo/database/platform';
+import { isTransientDatabaseFailure } from '@pertexo/database/platform';
+import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 import type { StructuredLogger } from '@pertexo/observability';
 
 import {

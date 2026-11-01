@@ -10,10 +10,8 @@ import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '@pertexo/database/primitives';
-import {
-  generatePersistedId,
-  prepareStoredExecutionValue,
-} from '@pertexo/database/platform';
+import { generatePersistedId } from '@pertexo/database/platform';
+import { prepareStoredExecutionValue } from '../values/stored-execution.js';
 import {
   idempotencyRecords,
   runCheckpoints,

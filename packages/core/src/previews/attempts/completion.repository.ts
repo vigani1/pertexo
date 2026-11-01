@@ -6,10 +6,12 @@ import { alias } from 'drizzle-orm/pg-core';
 import type { Pool, PoolClient } from 'pg';
 import {
   rethrowQueryFailure,
-  parseStoredExecutionValue,
-  serializeStoredExecutionValue,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
+import {
+  parseStoredExecutionValue,
+  serializeStoredExecutionValue,
+} from '../../runs/values/stored-execution.js';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
 import type { PreviewCompletionResult } from './contract.js';
 import { appendPreviewTerminalFacts } from './facts.repository.js';

@@ -12,11 +12,9 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { WorkflowCallIntent } from '@pertexo/workflow-engine';
-import {
-  generatePersistedId,
-  prepareStoredExecutionValue,
-  STORED_EXECUTION_VALUE_LIMITS,
-} from '@pertexo/database/platform';
+import { generatePersistedId } from '@pertexo/database/platform';
+import { prepareStoredExecutionValue } from '../values/stored-execution.js';
+import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import { CoordinatorRunStateCorruptError } from '../state-errors.js';
 import {
   terminalRunStatuses,

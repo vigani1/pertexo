@@ -1,5 +1,5 @@
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
-import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
+import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 
 import { expect, it } from 'vitest';
 

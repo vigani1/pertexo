@@ -6,10 +6,8 @@ import {
   formAdmissionRequirement,
   capturedFormReplayMatches,
 } from '@pertexo/workflow-model';
-import type {
-  WorkspaceTransaction,
-  StoredExecutionValue,
-} from '@pertexo/database/primitives';
+import type { WorkspaceTransaction } from '@pertexo/database/primitives';
+import type { StoredExecutionValue } from '@pertexo/database/schema';
 export class RunRequiresFormError extends Error {
   override readonly name = 'RunRequiresFormError';
 }

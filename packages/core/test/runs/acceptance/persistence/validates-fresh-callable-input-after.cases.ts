@@ -19,7 +19,7 @@ import {
   runEvents,
   workflowRuns,
 } from '@pertexo/database/schema';
-import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/database/platform';
+import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import {
   acceptanceInput,
   apiDatabase,

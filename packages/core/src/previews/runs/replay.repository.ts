@@ -4,7 +4,7 @@ import type {
 } from './contract.js';
 
 import { and, eq, gt } from 'drizzle-orm';
-import { parseStoredExecutionValue } from '@pertexo/database/primitives';
+import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 
 import { PreviewAcceptanceCorruptError } from '../errors.js';
 import {

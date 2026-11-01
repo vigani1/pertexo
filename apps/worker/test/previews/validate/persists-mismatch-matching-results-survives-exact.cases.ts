@@ -1,4 +1,4 @@
-import { parseStoredExecutionValue } from '@pertexo/database/testing';
+import { parseStoredExecutionValue } from '@pertexo/core/runs';
 
 import {
   CORE_VALIDATE_CONFIG_SCHEMA,

@@ -1,10 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { createDatabasePreviewAttemptRunStore } from '@pertexo/core/previews';
 
-import {
-  parseDatabaseConfig,
-  parseStoredExecutionValue,
-} from '@pertexo/database/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
+import { parseStoredExecutionValue } from '@pertexo/core/runs';
 import type { AcceptPreviewRunInput } from '@pertexo/core/testing';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { createQueueProducer } from '@pertexo/queue';

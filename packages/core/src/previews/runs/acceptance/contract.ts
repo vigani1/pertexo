@@ -2,7 +2,7 @@ import type { CodeDiagnostics } from '@pertexo/node-sdk';
 
 import type { PreviewStatus } from '../../contract.js';
 
-import type { parseStoredExecutionValue } from '@pertexo/database/primitives';
+import type { parseStoredExecutionValue } from '../../../runs/values/stored-execution.js';
 
 export type AcceptPreviewRunInput = Readonly<{
   actorUserId: string;

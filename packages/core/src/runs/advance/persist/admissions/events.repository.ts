@@ -2,10 +2,8 @@ import type { PgInsertValue } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { nodeRuns, runEvents } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  serializeStoredExecutionJsonValue,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../../../values/stored-execution.js';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../../state-errors.js';
 import type { PendingCoordinatorFailure } from '../../load/state.queries.js';

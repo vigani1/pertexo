@@ -1,5 +1,5 @@
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
-import type { parseStoredExecutionValue } from '@pertexo/database/primitives';
+import type { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import type { PreviewStatus } from '../contract.js';
 
 export type ResolvePreviewReplayInput = Readonly<{

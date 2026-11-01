@@ -5,11 +5,11 @@ import {
   workflowDrafts,
   workflowStepSamples,
 } from '@pertexo/database/schema';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
-  rethrowQueryFailure,
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
-} from '@pertexo/database/primitives';
+} from '../../runs/values/stored-execution.js';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import {

@@ -7,8 +7,8 @@ import {
 import {
   rethrowQueryFailure,
   parseWorkspaceId,
-  parseStoredExecutionValue,
 } from '@pertexo/database/primitives';
+import { parseStoredExecutionValue } from '../values/stored-execution.js';
 import {
   lockCallParent,
   lockPendingCall,

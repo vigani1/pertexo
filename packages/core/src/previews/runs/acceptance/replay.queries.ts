@@ -3,7 +3,7 @@ import { and, eq, gt } from 'drizzle-orm';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
-} from '@pertexo/database/primitives';
+} from '../../../runs/values/stored-execution.js';
 import { idempotencyRecords, previewRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { PREVIEW_STATUS } from '../../state.js';

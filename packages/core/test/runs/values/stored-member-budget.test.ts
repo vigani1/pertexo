@@ -1,9 +1,9 @@
 import { expect, it } from 'vitest';
-import { parseStoredExecutionValue } from '../../src/testing.js';
+import { parseStoredExecutionValue } from '../../../src/runs/values/stored-execution.js';
 import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
-} from '../../src/platform/index.js';
+} from '@pertexo/node-sdk';
 
 const remaining = STORED_EXECUTION_VALUE_LIMITS.members - 2;
 const leftCount = Math.floor(remaining / 2);

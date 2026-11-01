@@ -8,12 +8,7 @@ import { types as nodeTypes } from 'node:util';
 import type {
   StoredExecutionJsonValue,
   StoredExecutionValue,
-} from '../schema/stored-shapes.js';
-export type { StoredExecutionJsonValue, StoredExecutionValue };
-export {
-  STORED_EXECUTION_VALUE_LIMITS,
-  StoredExecutionValueInvalidError,
-} from '@pertexo/node-sdk';
+} from '@pertexo/database/schema';
 
 // PostgreSQL jsonb::text is only a storage backstop, not the application byte
 // definition. Numeric exponents may expand by hundreds of bytes per member.

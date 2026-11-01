@@ -7,10 +7,8 @@ import type {
   DatabaseRuntime,
   DatabaseConfig,
 } from '@pertexo/database/platform';
-import {
-  acquireDatabasePool,
-  DEFAULT_INSTANCE_LIMITS,
-} from '@pertexo/database/platform';
+import { acquireDatabasePool } from '@pertexo/database/platform';
+import { DEFAULT_INSTANCE_LIMITS } from '../../runs/instance-limits.js';
 import type { WebhookResponseScope } from './responses/contract.js';
 import { readWebhookResponse } from './responses/records.queries.js';
 

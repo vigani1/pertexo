@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto';
 
 import {
   rethrowQueryFailure,
-  serializeStoredExecutionJsonValue,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
 import {
   inboxReceipts,
   outboxEvents,

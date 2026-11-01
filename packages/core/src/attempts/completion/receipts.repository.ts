@@ -1,8 +1,8 @@
 import {
   withTenantScopedClient,
   rethrowQueryFailure,
-  serializeStoredExecutionJsonValue,
 } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
 import type { NodeAttemptRunStore } from '../contract.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
