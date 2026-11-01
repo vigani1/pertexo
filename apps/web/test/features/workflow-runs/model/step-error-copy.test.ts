@@ -7,6 +7,33 @@ import {
 const fallback = describeStepError('nothing.known');
 
 describe('step error copy', () => {
+  // M3: every OAuth2 step failure says what happened, not "the code tells support".
+  it.fails.each([
+    'http.oauth2_not_connected',
+    'http.oauth2_grant_revoked',
+    'http.oauth2_client_rejected',
+    'http.oauth2_token_expired',
+    'http.oauth2_token_rate_limited',
+    'http.oauth2_token_endpoint_unavailable',
+    'http.oauth2_token_response_invalid',
+    'http.oauth2_token_address_blocked',
+    'http.oauth2_refresh_busy',
+    'http.oauth2_host_not_allowed',
+  ])('M3 says in words what %s means, here and in the history', (code) => {
+    expect(describeStepError(code)).not.toEqual(fallback);
+    expect(shortStepError(code)).not.toEqual(shortStepError('nothing.known'));
+  });
+
+  // M3: these four are fixed by signing in again, so the step offers Reconnect.
+  it.fails.each([
+    'http.oauth2_not_connected',
+    'http.oauth2_grant_revoked',
+    'http.oauth2_client_rejected',
+    'http.oauth2_token_expired',
+  ])('M3 %s offers Reconnect', (code) => {
+    expect(describeStepError(code).fix).toBe('reconnect');
+  });
+
   it('says in words what each kind of step failure means', () => {
     for (const code of [
       'execution.provider',
