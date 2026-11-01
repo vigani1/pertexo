@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
-import { type InstanceCapacity } from '@pertexo/database/platform';
+import type { InstanceCapacity } from '@pertexo/database/platform';
 import { DEFAULT_INSTANCE_LIMITS } from '../../src/runs/instance-limits.js';
 
 async function apply(
