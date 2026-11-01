@@ -13,7 +13,7 @@ const value = {
 };
 describe('safe selected failure fields', () => {
   // M2: the writer's fixed OAuth2 codes, each under the kind a step reports it as.
-  it.fails.each([
+  it.each([
     ['authentication', 'http.oauth2_not_connected'],
     ['authentication', 'http.oauth2_grant_revoked'],
     ['authentication', 'http.oauth2_client_rejected'],

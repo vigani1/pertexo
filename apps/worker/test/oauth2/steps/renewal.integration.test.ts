@@ -179,28 +179,25 @@ describeOAuth2('when an OAuth2 step renews its token', () => {
   });
 
   // S11: a revoked connection can't be reconnected, so saying so sends a person nowhere.
-  it.fails(
-    'S11 a revoked connection’s step doesn’t say to reconnect it',
-    async () => {
-      const connection = await harness.connected(owner, 'non-rotating');
-      const workflowId = await owner.api.publish(
-        owner.workspaceId,
-        `Revoked ${connection.id.slice(0, 8)}`,
-        httpStepGraph({ ...get(connection), retry: ONE_ATTEMPT }),
-      );
-      const revoked = await owner.api.call(
-        'DELETE',
-        `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}`,
-      );
-      expect(revoked.status).toBeLessThan(300);
-      const runId = await owner.api.startRun(owner.workspaceId, workflowId);
-      expect((await harness.finish(runId)).status).toBe('failed');
-      const [attempt] = await harness.attempts(runId);
-      expect(attempt?.safe_error_code).toMatch(/^http\.oauth2_/u);
-      expect(attempt?.error_summary).not.toBeNull();
-      expect(attempt?.error_summary).not.toMatch(/reconnect/iu);
-    },
-  );
+  it('S11 a revoked connection’s step doesn’t say to reconnect it', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    const workflowId = await owner.api.publish(
+      owner.workspaceId,
+      `Revoked ${connection.id.slice(0, 8)}`,
+      httpStepGraph({ ...get(connection), retry: ONE_ATTEMPT }),
+    );
+    const revoked = await owner.api.call(
+      'DELETE',
+      `/v1/workspaces/${owner.workspaceId}/connections/${connection.id}`,
+    );
+    expect(revoked.status).toBeLessThan(300);
+    const runId = await owner.api.startRun(owner.workspaceId, workflowId);
+    expect((await harness.finish(runId)).status).toBe('failed');
+    const [attempt] = await harness.attempts(runId);
+    expect(attempt?.safe_error_code).toMatch(/^http\.oauth2_/u);
+    expect(attempt?.error_summary).not.toBeNull();
+    expect(attempt?.error_summary).not.toMatch(/reconnect/iu);
+  });
 
   // L16: a step retried across a refresh keeps its dispatch binding.
   it('L16 a refresh between attempts keeps the dispatch binding', async () => {

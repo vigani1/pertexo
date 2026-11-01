@@ -17,25 +17,22 @@ describe('same-origin web proxy configuration', () => {
 
   // S8: `access_log off` leaves the error log, which writes the code and state
   // from the callback's query whenever the API is away.
-  it.fails(
-    'S8 keeps the OAuth2 callback out of nginx error logs too',
-    async () => {
-      const configuration = await readFile(
-        new URL('../deployment/nginx.conf.template', import.meta.url),
-        'utf8',
-      );
-      const start = configuration.indexOf(
-        'location = /v1/connections/oauth2/callback {',
-      );
-      expect(start).toBeGreaterThan(-1);
-      const block = configuration.slice(
-        start,
-        configuration.indexOf('\n  }', start),
-      );
-      expect(block).toContain('access_log off;');
-      expect(block).toContain('error_log /dev/null crit;');
-    },
-  );
+  it('S8 keeps the OAuth2 callback out of nginx error logs too', async () => {
+    const configuration = await readFile(
+      new URL('../deployment/nginx.conf.template', import.meta.url),
+      'utf8',
+    );
+    const start = configuration.indexOf(
+      'location = /v1/connections/oauth2/callback {',
+    );
+    expect(start).toBeGreaterThan(-1);
+    const block = configuration.slice(
+      start,
+      configuration.indexOf('\n  }', start),
+    );
+    expect(block).toContain('access_log off;');
+    expect(block).toContain('error_log /dev/null crit;');
+  });
 
   it('keeps API routes out of the SPA fallback and disables SSE buffering in production', async () => {
     const configuration = await readFile(

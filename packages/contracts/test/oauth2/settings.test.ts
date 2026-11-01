@@ -195,7 +195,7 @@ describe('OAuth2 client settings', () => {
 
   // S10: sixteen largest parameters pass each limit but not the database's 16,384
   // bytes, so without a total the person gets a database failure, not a field error.
-  it.fails('S10 refuses parameters too large to store, in total', () => {
+  it('S10 refuses parameters too large to store, in total', () => {
     expect(
       accepts({
         ...consentSettings,

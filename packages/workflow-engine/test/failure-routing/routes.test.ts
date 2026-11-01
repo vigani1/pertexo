@@ -36,7 +36,7 @@ describe('failure routing through public engine transitions', () => {
     },
   );
   // M2: a revoked grant is the failure people most want an error path for.
-  it.fails.each([
+  it.each([
     ['authentication', 'http.oauth2_not_connected'],
     ['authentication', 'http.oauth2_grant_revoked'],
     ['authentication', 'http.oauth2_client_rejected'],
