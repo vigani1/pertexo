@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { CONNECTION_AUTH_TYPE } from '../../src/connections/contract.js';
-import { createConnectionDatabase } from '../../src/connections/store.js';
+import { createConnectionStore } from '../../src/connections/store.js';
 import {
   actorId,
   apiUrl,
@@ -45,7 +45,7 @@ it('omits hidden workflow identities from variable and connection usage before p
   }
   const config = parseDatabaseConfig({ connectionString: apiUrl, max: 2 });
   const variables = createWorkspaceVariablesStore(config);
-  const connections = createConnectionDatabase(config);
+  const connections = createConnectionStore(config);
   const connectionId = randomUUID();
   try {
     const usage = await variables.usage({

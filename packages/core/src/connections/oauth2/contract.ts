@@ -59,7 +59,7 @@ export type ConsumedOAuth2Authorization =
     }>;
 
 /** Every write that replaces or removes tokens is conditional on the version read. */
-export type OAuth2TokenStoreDatabase = Readonly<{
+export type OAuth2TokenStore = Readonly<{
   openOAuth2Grant(
     input: TokenScope & Readonly<{ signal?: AbortSignal }>,
   ): Promise<OAuth2GrantRecord | null>;
@@ -86,7 +86,7 @@ export type OAuth2TokenStoreDatabase = Readonly<{
   ): Promise<boolean>;
 }>;
 
-export type OAuth2ConsentDatabase = Readonly<{
+export type OAuth2ConsentStore = Readonly<{
   readOAuth2Client(
     input: TokenScope & Readonly<{ actorId: string }>,
   ): Promise<OAuth2ClientRecord>;

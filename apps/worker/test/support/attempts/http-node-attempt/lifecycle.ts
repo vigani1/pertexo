@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
-  createConnectionDatabase,
-  type ConnectionDatabase,
+  createConnectionStore,
+  type ConnectionStore,
 } from '@pertexo/core/testing';
 import {
   createWorkspaceDatabase,
@@ -61,7 +61,7 @@ let databaseCreated = false;
 
 let redisNamespaceAcquired = false;
 
-export let connectionDatabase: ConnectionDatabase | undefined;
+export let connectionDatabase: ConnectionStore | undefined;
 
 export async function withOwner<T>(work: (client: PoolClient) => Promise<T>) {
   const client = await ownerPool.connect();
@@ -151,7 +151,7 @@ export async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
     connectionId,
     secretVersionId,
   });
-  const connections = createConnectionDatabase(
+  const connections = createConnectionStore(
     parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 2 }),
   );
   connectionDatabase = connections;

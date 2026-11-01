@@ -12,7 +12,7 @@ import {
   connectionIdParamSchema,
   connectionUsageResponseSchema,
 } from '@pertexo/contracts';
-import type { ConnectionUsageDatabase } from '@pertexo/core/connections';
+import type { ConnectionUsageStore } from '@pertexo/core/connections';
 import { z } from 'zod';
 
 import { SessionAuthenticationGuard } from '../../workspaces/index.js';
@@ -69,7 +69,7 @@ export function decodeConnectionUsageCursor(
 
 export class ListConnectionUsageUseCase {
   public constructor(
-    private readonly persistence: ConnectionUsageDatabase,
+    private readonly persistence: ConnectionUsageStore,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
   ) {}

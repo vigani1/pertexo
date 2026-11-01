@@ -12,11 +12,11 @@ import {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-  type ConnectionDatabase,
+  type ConnectionStore,
   type CreateConnectionInput,
 } from '../../src/connections/contract.js';
-import { createConnectionDatabase } from '../../src/connections/store.js';
-import type { ConnectionLookupDatabase } from '../../src/connections/runtime/contract.js';
+import { createConnectionStore } from '../../src/connections/store.js';
+import type { ConnectionLookupStore } from '../../src/connections/runtime/contract.js';
 import { createNotificationDestinationStore } from '../../src/notifications/destinations/store.js';
 import { FailureNotificationDestinationError } from '../../src/notifications/destinations/errors.js';
 import type { NotificationDestinationStore } from '../../src/notifications/destinations/store.js';
@@ -67,8 +67,8 @@ export const historicalOutboxByIntent = new Map(
 );
 
 export type CurrentConnectionsFixture = Readonly<{
-  api: ConnectionDatabase & ConnectionLookupDatabase;
-  worker: ConnectionDatabase;
+  api: ConnectionStore & ConnectionLookupStore;
+  worker: ConnectionStore;
   destinations: NotificationDestinationStore;
 }>;
 
@@ -202,22 +202,22 @@ export function createInput(
 }
 
 export function registerCurrentConnectionsFixture(): CurrentConnectionsFixture {
-  let api: (ConnectionDatabase & ConnectionLookupDatabase) | undefined;
-  let worker: ConnectionDatabase | undefined;
+  let api: (ConnectionStore & ConnectionLookupStore) | undefined;
+  let worker: ConnectionStore | undefined;
   let destinations: NotificationDestinationStore | undefined;
   const resources: { close(): Promise<void> }[] = [];
   beforeAll(async () => {
     await createDatabase(databaseName);
     await migrateDatabase(migrationConfig());
     await seedWorkspaces();
-    api = createConnectionDatabase(
+    api = createConnectionStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(apiBaseUrl),
         max: 4,
       }),
     );
     resources.push(api);
-    worker = createConnectionDatabase(
+    worker = createConnectionStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(workerBaseUrl),
         max: 4,

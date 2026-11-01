@@ -1,4 +1,4 @@
-import { createConnectionDatabase } from '../../src/connections/store.js';
+import { createConnectionStore } from '../../src/connections/store.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { createWorkflowFolderDatabase } from '../../src/authoring/organization/folders/commands.repository.js';
@@ -131,7 +131,7 @@ it('keeps restricted connection health notices confined to administrators', asyn
   expect(
     (await read.listThreads({ ...f.scope, filter: 'all', limit: 1 })).items,
   ).toHaveLength(1);
-  const connections = own(createConnectionDatabase(config()));
+  const connections = own(createConnectionStore(config()));
   await connections.replaceConnectionSharing({
     ...f.scope,
     connectionId,

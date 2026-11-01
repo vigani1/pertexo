@@ -11,7 +11,7 @@ import {
   IdempotencyConflictError,
 } from '@pertexo/database/platform';
 import { CONNECTION_AUTH_TYPE } from '../../src/connections/contract.js';
-import { createConnectionDatabase } from '../../src/connections/store.js';
+import { createConnectionStore } from '../../src/connections/store.js';
 
 import { checkDatabaseReadiness } from '@pertexo/database/primitives';
 import {
@@ -19,7 +19,7 @@ import {
   WorkflowRevisionConflictError,
 } from '../../src/authoring/workflows/errors.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './workflow-authoring-admission.fixture.js';
-import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/discovery/integration-usage.queries.js';
+import { createWorkflowIntegrationUsageStore } from '../../src/connections/discovery/integration-usage.queries.js';
 
 export {
   CONNECTION_AUTH_TYPE,
@@ -29,10 +29,10 @@ export {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   checkDatabaseReadiness,
-  createConnectionDatabase,
+  createConnectionStore,
   createHash,
   createWorkflowAuthoringDatabase,
-  createWorkflowIntegrationUsageDatabase,
+  createWorkflowIntegrationUsageStore,
   parseDatabaseConfig,
   randomUUID,
   workflowCompatibilityReport,

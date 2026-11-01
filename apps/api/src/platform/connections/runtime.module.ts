@@ -2,8 +2,8 @@ import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
-  createConnectionDatabase,
-  type ApiConnectionDatabase,
+  createConnectionStore,
+  type ApiConnectionStore,
 } from '@pertexo/core/connections';
 import { createNotificationDestinationStore } from '@pertexo/core/notifications';
 import {
@@ -54,12 +54,12 @@ export async function createApiConnectionRuntime(
     runtime?: DatabaseRuntime | undefined;
   }>,
 ): Promise<ApiConnectionRuntime> {
-  let database: ApiConnectionDatabase | undefined;
+  let database: ApiConnectionStore | undefined;
   let destinationDatabase:
     ReturnType<typeof createNotificationDestinationStore> | undefined;
   let encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   try {
-    database = createConnectionDatabase(databaseConfig, runtime);
+    database = createConnectionStore(databaseConfig, runtime);
     destinationDatabase = createNotificationDestinationStore(
       databaseConfig,
       runtime,
@@ -146,7 +146,7 @@ function createOAuth2Runtime(
     encryption,
     apiClient,
   }: Readonly<{
-    database: ApiConnectionDatabase;
+    database: ApiConnectionStore;
     encryption: ConnectionEnvelopeEncryptionRuntime['encryption'];
     apiClient: SecureHttpClient;
   }>,
@@ -176,7 +176,7 @@ function createOAuth2Runtime(
 }
 
 async function closeResources(
-  database: ApiConnectionDatabase,
+  database: ApiConnectionStore,
   destinationDatabase: ReturnType<typeof createNotificationDestinationStore>,
   encryption: ConnectionEnvelopeEncryptionRuntime | undefined,
 ): Promise<void> {
@@ -190,7 +190,7 @@ async function closeResources(
 }
 
 async function collectCloseFailures(
-  database: ApiConnectionDatabase | undefined,
+  database: ApiConnectionStore | undefined,
   destinationDatabase:
     ReturnType<typeof createNotificationDestinationStore> | undefined,
   encryption: ConnectionEnvelopeEncryptionRuntime | undefined,

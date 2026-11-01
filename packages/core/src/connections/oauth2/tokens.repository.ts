@@ -20,10 +20,10 @@ import { sealedFields, selectConnection } from '../records.queries.js';
 import { withConnectionTransaction } from '../transaction.js';
 import type {
   IssuedOAuth2Tokens,
-  OAuth2ConsentDatabase,
+  OAuth2ConsentStore,
   OAuth2GrantLossActor,
   OAuth2TokenRecord,
-  OAuth2TokenStoreDatabase,
+  OAuth2TokenStore,
 } from './contract.js';
 
 const tokenFields = {
@@ -84,9 +84,7 @@ export const expiryOf = (issued: IssuedOAuth2Tokens) =>
     ? null
     : sql`clock_timestamp()+make_interval(secs=>${issued.expiresInSeconds}::double precision)`;
 
-export function createOAuth2TokenPersistence(
-  pool: Pool,
-): OAuth2TokenStoreDatabase {
+export function createOAuth2TokenPersistence(pool: Pool): OAuth2TokenStore {
   return Object.freeze({
     openOAuth2Grant: (input) => openGrant(pool, input),
     readOAuth2Token: async (input) => {
@@ -191,8 +189,8 @@ const versionIs = (
 /** The sealed tokens a reconnect would replace, if they share its settings. */
 export async function readEarlierTokens(
   pool: Pool,
-  input: Parameters<OAuth2ConsentDatabase['readOAuth2EarlierTokens']>[0],
-): ReturnType<OAuth2ConsentDatabase['readOAuth2EarlierTokens']> {
+  input: Parameters<OAuth2ConsentStore['readOAuth2EarlierTokens']>[0],
+): ReturnType<OAuth2ConsentStore['readOAuth2EarlierTokens']> {
   const [row] = await withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId },
@@ -224,8 +222,8 @@ export async function readEarlierTokens(
 /** One statement, so a client and its token can't come from two moments; it holds no lock. */
 async function openGrant(
   pool: Pool,
-  input: Parameters<OAuth2TokenStoreDatabase['openOAuth2Grant']>[0],
-): ReturnType<OAuth2TokenStoreDatabase['openOAuth2Grant']> {
+  input: Parameters<OAuth2TokenStore['openOAuth2Grant']>[0],
+): ReturnType<OAuth2TokenStore['openOAuth2Grant']> {
   const { workspaceId } = input;
   const [row] = await withTenantScopedClient(
     pool,
@@ -288,7 +286,7 @@ async function openGrant(
 /** A refresh changes the token row and lastHealthyAt: never an event or a revision. */
 async function commitRefresh(
   pool: Pool,
-  input: Parameters<OAuth2TokenStoreDatabase['commitOAuth2Refresh']>[0],
+  input: Parameters<OAuth2TokenStore['commitOAuth2Refresh']>[0],
 ): Promise<boolean> {
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId: undefined,
@@ -344,7 +342,7 @@ function lossActor(actor: OAuth2GrantLossActor) {
 
 async function loseGrant(
   pool: Pool,
-  input: Parameters<OAuth2TokenStoreDatabase['loseOAuth2Grant']>[0],
+  input: Parameters<OAuth2TokenStore['loseOAuth2Grant']>[0],
 ): Promise<boolean> {
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId: undefined,

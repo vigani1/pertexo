@@ -9,8 +9,8 @@ import {
   type NodeAttemptRunStore,
 } from '@pertexo/core/attempts';
 import {
-  createWorkerConnectionResolutionDatabase,
-  type WorkerConnectionResolutionDatabase,
+  createWorkerConnectionResolutionStore,
+  type WorkerConnectionResolutionStore,
 } from '@pertexo/core/connections';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import type { ConnectionEnvelopeEncryption } from '@pertexo/integrations/server';
@@ -61,15 +61,14 @@ export async function createHttpNodeAttemptProofRuntime(
       telemetry,
       executionRegistry,
     } = createHttpProofProviders(options);
-    let injectedConnectionDatabase:
-      WorkerConnectionResolutionDatabase | undefined;
+    let injectedConnectionDatabase: WorkerConnectionResolutionStore | undefined;
     if (
       options.afterConnectionAssertCurrent !== undefined ||
       options.beforeConnectionResolve !== undefined
     ) {
       const baseConnectionDatabase = own(
         'connection database',
-        createWorkerConnectionResolutionDatabase(
+        createWorkerConnectionResolutionStore(
           parseDatabaseConfig({
             connectionString: databaseUrl(workerUrl),
             max: 3,
@@ -81,7 +80,7 @@ export async function createHttpNodeAttemptProofRuntime(
         ...baseConnectionDatabase,
         assertConnectionSecretCurrent: async (
           input: Parameters<
-            WorkerConnectionResolutionDatabase['assertConnectionSecretCurrent']
+            WorkerConnectionResolutionStore['assertConnectionSecretCurrent']
           >[0],
         ): Promise<void> => {
           await baseConnectionDatabase.assertConnectionSecretCurrent(input);
@@ -120,11 +119,11 @@ export async function createHttpNodeAttemptProofRuntime(
       (runtime) => runtime.close(),
     );
     if (injectedConnectionDatabase !== undefined) {
-      const ownedConnectionDatabase = injectedConnectionDatabase;
+      const ownedConnectionStore = injectedConnectionDatabase;
       const unwrappedCapabilities = capabilities;
       const closeCapabilities = capabilities.close;
       transfer(unwrappedCapabilities);
-      transfer(ownedConnectionDatabase);
+      transfer(ownedConnectionStore);
       let closePromise: Promise<void> | undefined;
       capabilities = Object.freeze({
         ...capabilities,
@@ -134,7 +133,7 @@ export async function createHttpNodeAttemptProofRuntime(
             await closeCapabilities().catch((error: unknown) =>
               errors.push(error),
             );
-            await ownedConnectionDatabase
+            await ownedConnectionStore
               .close()
               .catch((error: unknown) => errors.push(error));
             if (errors.length > 0)

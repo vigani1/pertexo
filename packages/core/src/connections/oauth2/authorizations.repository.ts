@@ -40,7 +40,7 @@ import type {
   ConsumedOAuth2Authorization,
   IssuedOAuth2Tokens,
   OAuth2ClientRecord,
-  OAuth2ConsentDatabase,
+  OAuth2ConsentStore,
 } from './contract.js';
 import {
   expiryOf,
@@ -50,7 +50,7 @@ import {
 
 export function createOAuth2AuthorizationPersistence(
   pool: Pool,
-): OAuth2ConsentDatabase {
+): OAuth2ConsentStore {
   return Object.freeze({
     readOAuth2Client: (input) => readClient(pool, input),
     startOAuth2Authorization: (input) => startAuthorization(pool, input),
@@ -115,7 +115,7 @@ async function selectClient(
 
 async function readClient(
   pool: Pool,
-  input: Parameters<OAuth2ConsentDatabase['readOAuth2Client']>[0],
+  input: Parameters<OAuth2ConsentStore['readOAuth2Client']>[0],
 ): Promise<OAuth2ClientRecord> {
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId: input.actorId,
@@ -143,7 +143,7 @@ async function readClient(
 
 async function startAuthorization(
   pool: Pool,
-  input: Parameters<OAuth2ConsentDatabase['startOAuth2Authorization']>[0],
+  input: Parameters<OAuth2ConsentStore['startOAuth2Authorization']>[0],
 ): Promise<Readonly<{ expiresAt: Date }>> {
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId: input.actorId,
@@ -190,7 +190,7 @@ async function startAuthorization(
  */
 async function consumeAuthorization(
   pool: Pool,
-  input: Parameters<OAuth2ConsentDatabase['consumeOAuth2Authorization']>[0],
+  input: Parameters<OAuth2ConsentStore['consumeOAuth2Authorization']>[0],
 ): Promise<ConsumedOAuth2Authorization> {
   if (input.bindingDigests.length === 0) return { kind: 'unknown' };
   return withTenantScopedClient(
@@ -300,8 +300,8 @@ async function replaceTokenRow(
  */
 async function authorize(
   pool: Pool,
-  input: Parameters<OAuth2ConsentDatabase['authorizeOAuth2Connection']>[0],
-): ReturnType<OAuth2ConsentDatabase['authorizeOAuth2Connection']> {
+  input: Parameters<OAuth2ConsentStore['authorizeOAuth2Connection']>[0],
+): ReturnType<OAuth2ConsentStore['authorizeOAuth2Connection']> {
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId: undefined,
     operation: async (client, workspaceId) => {

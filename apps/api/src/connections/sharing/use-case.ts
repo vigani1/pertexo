@@ -1,5 +1,5 @@
 import { connectionSharingRequestSchema } from '@pertexo/contracts';
-import type { ConnectionSharingDatabase } from '@pertexo/core/connections';
+import type { ConnectionSharingStore } from '@pertexo/core/connections';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import { authorizeConnectionOperation } from '../authorization.js';
 import type { ConnectionCommandInput } from '../use-cases/support.js';
@@ -12,7 +12,7 @@ import {
 type SharingInput = ConnectionCommandInput & Readonly<{ connectionId: string }>;
 export class ConnectionSharingUseCases {
   constructor(
-    private readonly persistence: ConnectionSharingDatabase,
+    private readonly persistence: ConnectionSharingStore,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
   ) {}

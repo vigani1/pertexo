@@ -7,7 +7,7 @@ import { connectionSecrets } from './credentials.queries.js';
 
 import { safeOptionalIdentifier } from '../receipts.js';
 import type {
-  ConnectionDatabase,
+  ConnectionStore,
   ResolvedConnectionSecretRecord,
 } from '../contract.js';
 import {
@@ -27,7 +27,7 @@ import {
 /** Owns worker credential resolution and its access audit fact. */
 
 export type ConnectionResolutionPersistence = Pick<
-  ConnectionDatabase,
+  ConnectionStore,
   'resolveConnectionSecret'
 >;
 

@@ -1,6 +1,6 @@
-import type { WorkerConnectionResolutionDatabase } from './runtime/contract.js';
+import type { WorkerConnectionResolutionStore } from './runtime/contract.js';
 import { createConnectionSharingPersistence } from './commands/sharing.repository.js';
-import type { ConnectionSharingDatabase } from './commands/contract.js';
+import type { ConnectionSharingStore } from './commands/contract.js';
 import { acquireDatabasePool } from '@pertexo/database/platform';
 import type {
   DatabaseRuntime,
@@ -8,31 +8,31 @@ import type {
 } from '@pertexo/database/platform';
 
 import { createConnectionLookupPersistence } from './runtime/lookup.repository.js';
-import type { ConnectionLookupDatabase } from './runtime/contract.js';
+import type { ConnectionLookupStore } from './runtime/contract.js';
 import { createConnectionManagementPersistence } from './commands/manage.repository.js';
 import { createConnectionResolutionPersistence } from './runtime/resolve.repository.js';
 import { createConnectionReadPersistence } from './discovery/reads.queries.js';
 import { createConnectionUsagePersistence } from './discovery/usage.queries.js';
-import type { ConnectionUsageDatabase } from './discovery/contract.js';
+import type { ConnectionUsageStore } from './discovery/contract.js';
 import { createConnectionSecretPersistence } from './commands/rotate.repository.js';
 import { createConnectionTestPersistence } from './connection-tests/results.repository.js';
-import type { ConnectionDatabase } from './contract.js';
+import type { ConnectionStore } from './contract.js';
 import { createOAuth2AuthorizationPersistence } from './oauth2/authorizations.repository.js';
 import { createOAuth2TokenPersistence } from './oauth2/tokens.repository.js';
 import type {
-  OAuth2ConsentDatabase,
-  OAuth2TokenStoreDatabase,
+  OAuth2ConsentStore,
+  OAuth2TokenStore,
 } from './oauth2/contract.js';
 
-export function createConnectionDatabase(
+export function createConnectionStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): ConnectionDatabase &
-  ConnectionLookupDatabase &
-  ConnectionUsageDatabase &
-  ConnectionSharingDatabase &
-  OAuth2ConsentDatabase &
-  OAuth2TokenStoreDatabase {
+): ConnectionStore &
+  ConnectionLookupStore &
+  ConnectionUsageStore &
+  ConnectionSharingStore &
+  OAuth2ConsentStore &
+  OAuth2TokenStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
@@ -50,11 +50,11 @@ export function createConnectionDatabase(
   });
 }
 
-export function createWorkerConnectionResolutionDatabase(
+export function createWorkerConnectionResolutionStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkerConnectionResolutionDatabase {
-  const database = createConnectionDatabase(config, runtime);
+): WorkerConnectionResolutionStore {
+  const database = createConnectionStore(config, runtime);
   return Object.freeze({
     assertConnectionSecretCurrent:
       database.assertConnectionSecretCurrent.bind(database),

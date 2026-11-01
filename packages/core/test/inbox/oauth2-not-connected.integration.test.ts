@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
 
-import { createConnectionDatabase } from '../../src/connections/store.js';
+import { createConnectionStore } from '../../src/connections/store.js';
 import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
 import {
   config,
@@ -21,7 +21,7 @@ const GRANT_LOST = 'connection.oauth2_grant_revoked';
 /** Made the way the API makes one: nobody has signed in yet. */
 async function newOAuth2Connection(workspaceId: string, owner: string) {
   const connectionId = randomUUID();
-  await own(createConnectionDatabase(config())).createConnection({
+  await own(createConnectionStore(config())).createConnection({
     workspaceId,
     actorId: owner,
     connectionId,

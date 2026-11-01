@@ -10,7 +10,7 @@ import {
   connectionSecretVersions,
 } from '@pertexo/database/schema';
 import { sealedFields } from '../records.queries.js';
-import type { ConnectionLookupDatabase } from './contract.js';
+import type { ConnectionLookupStore } from './contract.js';
 
 import type { Pool } from 'pg';
 import { parseRequestMetadata } from '../receipts.js';
@@ -26,7 +26,7 @@ import { withConnectionTransaction } from '../transaction.js';
 
 export function createConnectionLookupPersistence(
   pool: Pool,
-): ConnectionLookupDatabase {
+): ConnectionLookupStore {
   return Object.freeze({
     resolveConnectionLookupSecret: async (input) => {
       const actorId = input.actorId;

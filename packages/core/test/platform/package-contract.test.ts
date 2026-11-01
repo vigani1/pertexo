@@ -1,12 +1,12 @@
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createConnectionDatabase } from '../../src/connections/store.js';
-import { createWorkerConnectionResolutionDatabase } from '../../src/connections/store.js';
+import { createConnectionStore } from '../../src/connections/store.js';
+import { createWorkerConnectionResolutionStore } from '../../src/connections/store.js';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 import type {
-  ApiConnectionDatabase,
-  WorkerConnectionResolutionDatabase,
+  ApiConnectionStore,
+  WorkerConnectionResolutionStore,
 } from '../../src/connections/runtime/contract.js';
 
 describe('@pertexo/database package contract', () => {
@@ -23,11 +23,11 @@ describe('@pertexo/database package contract', () => {
       monitorLockWaits: false,
       role: 'api',
     });
-    let api: ApiConnectionDatabase | undefined;
-    let worker: WorkerConnectionResolutionDatabase | undefined;
+    let api: ApiConnectionStore | undefined;
+    let worker: WorkerConnectionResolutionStore | undefined;
     try {
-      api = createConnectionDatabase(config, runtime);
-      worker = createWorkerConnectionResolutionDatabase(config, runtime);
+      api = createConnectionStore(config, runtime);
+      worker = createWorkerConnectionResolutionStore(config, runtime);
       expect(connect).not.toHaveBeenCalled();
     } finally {
       await Promise.allSettled([

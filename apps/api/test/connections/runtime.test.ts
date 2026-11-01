@@ -19,7 +19,7 @@ const outside = vi.hoisted(() => ({
 
 vi.mock('@pertexo/core/connections', async (original) => ({
   ...(await original<object>()),
-  createConnectionDatabase: outside.database,
+  createConnectionStore: outside.database,
 }));
 vi.mock('@pertexo/core/notifications', async (original) => ({
   ...(await original<object>()),

@@ -23,7 +23,7 @@ import {
   identity,
   WorkflowNotFoundError,
   Pool,
-  createConnectionDatabase,
+  createConnectionStore,
   CONNECTION_AUTH_TYPE,
   createHash,
   waitForOperationEntry,
@@ -38,7 +38,7 @@ import { portableCatalog, database, command } from './fixture.js';
 export function registerSerializesConnectionRevocationBothOrders(): void {
   it('serializes connection revocation in both orders and permits accepted replay after health loss', async () => {
     const connectionApplication = `portable-connection-${randomUUID()}`;
-    const connections = createConnectionDatabase(
+    const connections = createConnectionStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(apiUrl, connectionApplication),
         max: 2,
