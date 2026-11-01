@@ -1,15 +1,15 @@
 export { createEncryptionKeyRepository } from './encryption/keys.repository.js';
-export type { EncryptionKeyRepository } from './encryption/contract.js';
+export type { EncryptionKeyRepository } from './encryption/keys.repository.js';
+export { insertSystemMail } from './mail/deliveries.queries.js';
 export {
   createSystemMailDeliveryStore,
   createSystemMailEnqueueStore,
-  insertSystemMail,
+  type SystemMailDeliveryStore,
+  type SystemMailEnqueueStore,
 } from './mail/store.js';
 export type {
   SealedSystemMailPayload,
   SystemMailDeliveryClaim,
-  SystemMailDeliveryStore,
-  SystemMailEnqueueStore,
   SystemMailInput,
   SystemMailPurpose,
 } from './mail/contract.js';

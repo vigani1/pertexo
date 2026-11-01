@@ -6,8 +6,3 @@ export type StoredEncryptionKey = Readonly<{
   keyReference: string;
   encryptedDataKey: string;
 }>;
-
-export type EncryptionKeyRepository = Readonly<{
-  read(signal: AbortSignal): AsyncIterable<StoredEncryptionKey>;
-  close(): Promise<void>;
-}>;
