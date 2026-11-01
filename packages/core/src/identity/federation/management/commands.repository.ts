@@ -1,4 +1,4 @@
-import { workspaces, authOrganizations } from '@pertexo/database/schema';
+import { authOrganizations } from '@pertexo/database/schema';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -14,6 +14,7 @@ import {
   generatePersistedId,
   withPlatformTransaction,
 } from '@pertexo/database/platform';
+import { lockWorkspaceRow } from '../../../shared/authority.queries.js';
 import { FederationConflictError } from './errors.js';
 import type { FederationScope } from './contract.js';
 import type { OrganizationRow } from './records.queries.js';
@@ -49,6 +50,13 @@ export function assertOrganizationRevision(
       'Sign-in settings changed. Reload before saving.',
     );
 }
+/**
+ * Doesn't fit `withWorkspaceAccess`. A command can span two workspaces, and it
+ * locks the organization and every bound user before authority: a directory
+ * fan-out locks users in id order, so a share lock on the actor taken first
+ * could deadlock against it. Its audit facts also install their own scopes,
+ * and a scope can't be installed inside the helper's.
+ */
 export async function runFederationCommand(
   pool: Pool,
   input: FederationScope & Readonly<{ idempotencyKey: string }>,
@@ -71,12 +79,7 @@ export async function runFederationCommand(
         ...new Set([input.workspaceId, ...additionalWorkspaceIds]),
       ].sort();
       for (const workspaceId of workspaceIds)
-        await drizzle(client)
-          .select({ id: workspaces.id })
-          .from(workspaces)
-          .where(eq(workspaces.id, workspaceId))
-          .for('update')
-          .catch(rethrowQueryFailure);
+        await lockWorkspaceRow(client, workspaceId);
       const organization = await organizationForWorkspace(
         client,
         input.workspaceId,
@@ -84,11 +87,7 @@ export async function runFederationCommand(
       );
       await lockDirectoryParticipants(client, organization?.id, input.actorId);
       for (const workspaceId of workspaceIds)
-        await lockFederationWorkspace(
-          client,
-          { ...input, workspaceId },
-          { ownerOnly: true },
-        );
+        await lockFederationWorkspace(client, { ...input, workspaceId });
       const identity = {
         workspaceId: input.workspaceId,
         scope: input.actorId,

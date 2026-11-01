@@ -1,4 +1,3 @@
-import { previewDirectoryAdoption } from './management/adoption.queries.js';
 import type { DirectoryAdoptionQuery } from '@pertexo/contracts';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
@@ -34,7 +33,10 @@ import {
   listDirectoryGroups,
 } from './resources/records.queries.js';
 import type { DirectoryQuery } from './contract.js';
-import { readDirectoryManagement } from './management/commands.repository.js';
+import {
+  readDirectoryAdoption,
+  readDirectoryManagement,
+} from './management/commands.repository.js';
 import type { DirectoryCommand } from './contract.js';
 import {
   createDirectoryCredential,
@@ -120,15 +122,7 @@ export function createDirectoryStore(
       expectedRevision: number | undefined,
     ) => deleteDirectoryGroup(pool, principal, id, expectedRevision),
     adoption: (scope: FederationScope, query: DirectoryAdoptionQuery) =>
-      readDirectoryManagement(
-        pool,
-        scope,
-        (client, organization, { canManage }) =>
-          previewDirectoryAdoption(client, organization, {
-            canManage,
-            query,
-          }),
-      ),
+      readDirectoryAdoption(pool, scope, query),
     settings: (scope: FederationScope) =>
       readDirectoryManagement(pool, scope, projectDirectorySettings),
     people: (scope: FederationScope, query: DirectoryPeopleQuery) =>

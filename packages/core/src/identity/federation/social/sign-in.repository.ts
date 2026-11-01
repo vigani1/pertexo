@@ -16,7 +16,7 @@ import type {
   SocialSignInResult,
 } from './contract.js';
 
-/** A provider proves identity before this owner acquires a transaction. */
+/** A provider proves identity before this owner acquires a transaction. Nobody is signed in yet, so it stays off `withWorkspaceAccess`. */
 export class SocialSignInCommands {
   public constructor(
     private readonly input: Readonly<{

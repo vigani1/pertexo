@@ -1,9 +1,6 @@
 import type { DirectoryCommand } from '../contract.js';
-import {
-  authOrganizations,
-  authOrganizationWorkspaces,
-} from '@pertexo/database/schema';
-import { asc, eq, sql } from 'drizzle-orm';
+import { authOrganizations } from '@pertexo/database/schema';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   rethrowQueryFailure,
@@ -12,9 +9,14 @@ import {
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
 import {
-  ADMINISTRATIVE_ROLES,
   BROWSABLE_WORKSPACE_STATUSES,
+  rolesForCapability,
+  type Role,
 } from '@pertexo/workflow-model';
+import type {
+  DirectoryAdoptionPreview,
+  DirectoryAdoptionQuery,
+} from '@pertexo/contracts';
 import type { Pool, PoolClient } from 'pg';
 import {
   generatePersistedId,
@@ -24,6 +26,7 @@ import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from '../../../../shared/authority.queries.js';
+import { withWorkspaceAccess } from '../../../../shared/workspace-access.js';
 import {
   organizationForWorkspace,
   recordFederationAudit,
@@ -31,11 +34,44 @@ import {
 import type { FederationScope } from '../../management/contract.js';
 import { DirectoryError } from '../errors.js';
 import {
+  directoryWorkspaces,
   lockDirectoryOrganization,
   lockDirectoryParticipants,
 } from '../authority.repository.js';
 import type { DirectoryOrganization } from '../contract.js';
-export async function readDirectoryManagement<T>(
+import { previewDirectoryAdoption } from './adoption.queries.js';
+type ManagedOrganization = Readonly<{
+  organization: DirectoryOrganization;
+  canManage: boolean;
+}>;
+
+/** A shared organization lock gives a read one coherent revision without blocking other readers. */
+async function readManagedOrganization(
+  client: PoolClient,
+  workspaceId: string,
+  role: Role,
+): Promise<ManagedOrganization> {
+  const preview = await organizationForWorkspace(client, workspaceId);
+  if (preview === undefined) throw new DirectoryError('not_found');
+  await drizzle(client)
+    .select({ id: authOrganizations.id })
+    .from(authOrganizations)
+    .where(eq(authOrganizations.id, preview.id))
+    .for('share')
+    .catch(rethrowQueryFailure);
+  const row = await organizationForWorkspace(client, workspaceId);
+  if (row?.id !== preview.id) throw new DirectoryError('not_found');
+  return {
+    organization: {
+      ...row,
+      workspaces: await directoryWorkspaces(client, preview.id),
+    },
+    canManage: role === 'owner' && row.control_workspace_id === workspaceId,
+  };
+}
+
+/** What an owner or admin may see of the directory. These reads lock, so `change`. */
+export function readDirectoryManagement<T>(
   pool: Pool,
   scope: FederationScope,
   read: (
@@ -44,50 +80,65 @@ export async function readDirectoryManagement<T>(
     options: Readonly<{ canManage: boolean }>,
   ) => Promise<T>,
 ): Promise<T> {
+  return withWorkspaceAccess(
+    pool,
+    scope,
+    {
+      mode: 'change',
+      capability: 'member:read',
+      statuses: BROWSABLE_WORKSPACE_STATUSES,
+    },
+    async (client, role) => {
+      const { organization, canManage } = await readManagedOrganization(
+        client,
+        scope.workspaceId,
+        role,
+      );
+      return read(client, organization, { canManage });
+    },
+  );
+}
+
+/**
+ * Doesn't fit `withWorkspaceAccess`: the preview reads a membership in the
+ * target workspace, which needs a scope of its own, and a scope can't be
+ * installed inside the helper's.
+ */
+export function readDirectoryAdoption(
+  pool: Pool,
+  scope: FederationScope,
+  query: DirectoryAdoptionQuery,
+): Promise<DirectoryAdoptionPreview> {
   return withPlatformTransaction(
     pool,
     async (client) => {
       const role = await withWorkspaceScope(client, scope, (scoped) =>
         readWorkspaceAuthority(scoped, scope.workspaceId, {
           actorId: scope.actorId,
-          roles: ADMINISTRATIVE_ROLES,
+          roles: rolesForCapability('member:read'),
           allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
         }),
       );
-      const preview = await organizationForWorkspace(client, scope.workspaceId);
-      if (preview === undefined) throw new DirectoryError('not_found');
-      // A shared organization lock gives settings one coherent revision without blocking other readers.
-      await drizzle(client)
-        .select({ id: authOrganizations.id })
-        .from(authOrganizations)
-        .where(eq(authOrganizations.id, preview.id))
-        .for('share')
-        .catch(rethrowQueryFailure);
-      const row = await organizationForWorkspace(client, scope.workspaceId);
-      if (row?.id !== preview.id) throw new DirectoryError('not_found');
-      const workspaces = await drizzle(client)
-        .select({
-          workspace_id: authOrganizationWorkspaces.workspaceId,
-          default_role: authOrganizationWorkspaces.defaultRole,
-        })
-        .from(authOrganizationWorkspaces)
-        .where(eq(authOrganizationWorkspaces.organizationId, preview.id))
-        .orderBy(asc(authOrganizationWorkspaces.workspaceId))
-        .catch(rethrowQueryFailure);
-      return read(
+      const { organization, canManage } = await readManagedOrganization(
         client,
-        { ...row, workspaces },
-        {
-          canManage:
-            role === 'owner' && row.control_workspace_id === scope.workspaceId,
-        },
+        scope.workspaceId,
+        role,
       );
+      return previewDirectoryAdoption(client, organization, {
+        canManage,
+        query,
+      });
     },
     scope.signal === undefined ? {} : { signal: scope.signal },
   );
 }
 
-/** Receipts are safe metadata; a first-response secret can only leave through `value`. */
+/**
+ * Receipts are safe metadata; a first-response secret can only leave through `value`.
+ * Doesn't fit `withWorkspaceAccess`: it locks every linked workspace, the
+ * organization and every bound user before authority, in the order a directory
+ * fan-out uses, and a fan-out installs a scope per workspace.
+ */
 export function runDirectoryCommand<T>(
   pool: Pool,
   input: DirectoryCommand,

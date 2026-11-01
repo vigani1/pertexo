@@ -1,5 +1,4 @@
 import {
-  workspaces,
   authOrganizationWorkspaces,
   authOrganizations,
 } from '@pertexo/database/schema';
@@ -17,7 +16,10 @@ import {
   generatePersistedId,
   withPlatformTransaction,
 } from '@pertexo/database/platform';
-import { lockWorkspaceAuthority } from '../../../../shared/authority.queries.js';
+import {
+  lockWorkspaceAuthority,
+  lockWorkspaceRow,
+} from '../../../../shared/authority.queries.js';
 import {
   organizationForWorkspace,
   recordFederationAudit,
@@ -31,6 +33,10 @@ import { DIRECTORY_LIMITS } from '../limits.js';
 import type { DirectoryCommand } from '../contract.js';
 import { detachDirectoryMemberships } from './detach.repository.js';
 
+/**
+ * Doesn't fit `withWorkspaceAccess`, for the reasons `runDirectoryCommand` gives:
+ * the same locks come before authority, and its audit facts span two workspaces.
+ */
 export async function unlinkDirectoryWorkspace(
   pool: Pool,
   input: DirectoryCommand & Readonly<{ targetWorkspaceId: string }>,
@@ -39,14 +45,8 @@ export async function unlinkDirectoryWorkspace(
     // The workspace remains the command's receipt authority even after unlinking.
     // Lock the receipt workspace before deciding whether the old link still exists.
     const preview = await organizationForWorkspace(client, input.workspaceId);
-    if (preview === undefined) {
-      await drizzle(client)
-        .select({ id: workspaces.id })
-        .from(workspaces)
-        .where(eq(workspaces.id, input.workspaceId))
-        .for('update')
-        .catch(rethrowQueryFailure);
-    }
+    if (preview === undefined)
+      await lockWorkspaceRow(client, input.workspaceId);
     const organization =
       preview === undefined
         ? undefined

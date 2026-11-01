@@ -11,14 +11,19 @@ import {
   rethrowQueryFailure,
   isUniqueConstraintFailure,
 } from '@pertexo/database/primitives';
-import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
+import {
+  ACTIVE_WORKSPACE_STATUSES,
+  FEDERATION_LIMITS,
+} from '@pertexo/workflow-model';
 import { FEDERATION_WORKSPACE_STATUSES } from '../sessions/policy.js';
 import type { Pool } from 'pg';
 import type { FederationDiscovery } from '@pertexo/contracts';
 import { withPlatformTransaction } from '@pertexo/database/platform';
+import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
 import {
   lockFederationWorkspace,
   organizationForWorkspace,
+  requireFederationOwner,
 } from '../management/authority.repository.js';
 import { FederationConflictError } from '../management/errors.js';
 import type { FederationScope } from '../management/contract.js';
@@ -35,6 +40,11 @@ import type {
   FederationCompletion,
 } from './contract.js';
 
+/**
+ * Sign-in has no member behind it, so all but the owner's provider test stay
+ * off `withWorkspaceAccess`. `start` learns the workspace from the provider and
+ * only a test has an owner; `complete` spans every linked workspace.
+ */
 export class OrganizationSignInCommands {
   constructor(
     private readonly input: Readonly<{ pool: Pool; sessionTtlSeconds: number }>,
@@ -85,49 +95,58 @@ export class OrganizationSignInCommands {
   provider(providerId: string, domain: string) {
     return readFederationProvider(this.input.pool, providerId, domain);
   }
-  async testProvider(
+  testProvider(
     input: FederationScope & Readonly<{ providerId: string; domainId: string }>,
   ) {
-    return withPlatformTransaction(this.input.pool, async (client) => {
-      await lockFederationWorkspace(client, input, { ownerOnly: true });
-      const organization = await organizationForWorkspace(
-        client,
-        input.workspaceId,
-      );
-      if (organization?.control_workspace_id !== input.workspaceId)
-        throw new FederationConflictError(
-          'unavailable',
-          'The provider or verified domain is unavailable.',
+    return withWorkspaceAccess(
+      this.input.pool,
+      input,
+      {
+        mode: 'exclusive',
+        capability: 'governance:manage',
+        statuses: ACTIVE_WORKSPACE_STATUSES,
+      },
+      async (client, role) => {
+        requireFederationOwner(role, 'change');
+        const organization = await organizationForWorkspace(
+          client,
+          input.workspaceId,
         );
-      const [domain] = await drizzle(client)
-        .select({ domain: authDomains.domain })
-        .from(authDomains)
-        .where(
-          and(
-            eq(authDomains.id, input.domainId),
-            eq(authDomains.organizationId, organization.id),
-            isNotNull(authDomains.verifiedAt),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      if (domain === undefined)
-        throw new FederationConflictError(
-          'unavailable',
-          'The provider or verified domain is unavailable.',
+        if (organization?.control_workspace_id !== input.workspaceId)
+          throw new FederationConflictError(
+            'unavailable',
+            'The provider or verified domain is unavailable.',
+          );
+        const [domain] = await drizzle(client)
+          .select({ domain: authDomains.domain })
+          .from(authDomains)
+          .where(
+            and(
+              eq(authDomains.id, input.domainId),
+              eq(authDomains.organizationId, organization.id),
+              isNotNull(authDomains.verifiedAt),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+        if (domain === undefined)
+          throw new FederationConflictError(
+            'unavailable',
+            'The provider or verified domain is unavailable.',
+          );
+        const material = await readFederationProvider(
+          client,
+          input.providerId,
+          domain.domain,
+          { testing: true },
         );
-      const material = await readFederationProvider(
-        client,
-        input.providerId,
-        domain.domain,
-        { testing: true },
-      );
-      if (material?.provider.organizationId !== organization.id)
-        throw new FederationConflictError(
-          'unavailable',
-          'The provider or verified domain is unavailable.',
-        );
-      return material;
-    });
+        if (material?.provider.organizationId !== organization.id)
+          throw new FederationConflictError(
+            'unavailable',
+            'The provider or verified domain is unavailable.',
+          );
+        return material;
+      },
+    );
   }
   async start(input: StartFederationJourney): Promise<void> {
     await withPlatformTransaction(this.input.pool, async (client) => {
@@ -147,14 +166,10 @@ export class OrganizationSignInCommands {
           input.ownerSessionId === undefined
         )
           throw new SignInProofRejectedError();
-        await lockFederationWorkspace(
-          client,
-          {
-            workspaceId: provider.control_workspace_id,
-            actorId: input.ownerUserId,
-          },
-          { ownerOnly: true },
-        );
+        await lockFederationWorkspace(client, {
+          workspaceId: provider.control_workspace_id,
+          actorId: input.ownerUserId,
+        });
         if (
           (
             await readEligibleAuthenticationSession(

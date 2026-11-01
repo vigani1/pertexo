@@ -13,6 +13,9 @@ export type OrganizationSnapshot = NonNullable<
 export type FederationCommand = FederationScope &
   Readonly<{ idempotencyKey: string; expectedRevision: number }>;
 
+export type DomainChallengeInput = FederationScope &
+  Readonly<{ domainId: string }>;
+
 export type FederationManagementStore = ReturnType<
   typeof createFederationManagementStore
 >;
