@@ -37,10 +37,13 @@ type OperatorSpec = Readonly<{
 
 const asText = (field: string) => `$lowercase($string(${field}))`;
 const lower = (value: string) => `$lowercase(${value})`;
+/** Null, a list and an object aren't text, so they never match one, as in n8n. */
+const readsAsText = (field: string) =>
+  `$type(${field}) in ["string", "number", "boolean"]`;
 const equals = (field: string, value: string) =>
-  `${asText(field)} = ${lower(value)}`;
+  `${readsAsText(field)} and ${asText(field)} = ${lower(value)}`;
 const contains = (field: string, value: string) =>
-  `$exists(${field}) and $substringBefore(${asText(field)}, ${lower(value)}) != ${asText(field)}`;
+  `${readsAsText(field)} and $substringBefore(${asText(field)}, ${lower(value)}) != ${asText(field)}`;
 const isEmpty = (field: string) =>
   `$not($exists(${field})) or ${field} = null or ${field} = "" or ${field} = {} or ${field} = []`;
 const compares = (symbol: string) => (field: string, value: string) =>
@@ -67,13 +70,13 @@ const OPERATORS = {
     label: 'starts with',
     takes: 'text',
     write: (field, value) =>
-      `$substring(${asText(field)}, 0, $length(${lower(value)})) = ${lower(value)}`,
+      `${readsAsText(field)} and $substring(${asText(field)}, 0, $length(${lower(value)})) = ${lower(value)}`,
   },
   ends_with: {
     label: 'ends with',
     takes: 'text',
     write: (field, value) =>
-      `$substring(${asText(field)}, -$length(${lower(value)})) = ${lower(value)}`,
+      `${readsAsText(field)} and $substring(${asText(field)}, -$length(${lower(value)})) = ${lower(value)}`,
   },
   greater: {
     label: 'is greater than',
