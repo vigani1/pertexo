@@ -176,7 +176,8 @@ export async function fenceDispatch(
         .set({
           status: 'dispatching',
           dispatchMarkedAt: sql`clock_timestamp()`,
-          deliveryBinding: sql`coalesce(${intent.deliveryBinding},${binding})`,
+          // Only a send that may have gone out holds the next attempt to its identity.
+          deliveryBinding: sql`case when ${intent.possiblyDispatched} then coalesce(${intent.deliveryBinding},${binding}) else ${binding} end`,
           updatedAt: sql`clock_timestamp()`,
         })
         .where(
@@ -184,7 +185,7 @@ export async function fenceDispatch(
             scope,
             available,
             activeWorkspace,
-            sql`((${binding}::text is null and ${intent.deliveryBinding} is null) or (${binding}::text is not null and (${intent.deliveryBinding} is null or ${intent.deliveryBinding}=${binding})))`,
+            sql`(${intent.possiblyDispatched} is not true or (${binding}::text is null and ${intent.deliveryBinding} is null) or (${binding}::text is not null and (${intent.deliveryBinding} is null or ${intent.deliveryBinding}=${binding})))`,
           ),
         )
         .returning({ id: intent.id })
