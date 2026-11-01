@@ -1,10 +1,13 @@
 import { classifyConnectionTestCompletion } from '@pertexo/workflow-model';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { idempotencyRecords as records } from '@pertexo/database/schema';
+import {
+  idempotencyRecords as records,
+  workspaces,
+} from '@pertexo/database/schema';
 
 import type {
   CompleteConnectionTestInput,
@@ -79,18 +82,27 @@ export async function completeConnectionTest(
           current.currentSecretVersionId === secretVersionId,
       },
     );
+    // Integrations stay off outside an active workspace, so a test that finishes
+    // after the workspace left that state reports what it found and changes nothing.
+    const [workspace] = await db
+      .select({ status: workspaces.status })
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .catch(rethrowQueryFailure);
     const connection = await withOneOAuth2Fact(
       client,
       workspaceId,
-      await applyCurrentConnectionTestHealth(client, {
-        current,
-        secretVersionId,
-        healthRevision: claimState.healthRevision,
-        outcome,
-        actorId,
-        requestId: input.requestId,
-        traceId: input.traceId,
-      }),
+      workspace?.status === 'active'
+        ? await applyCurrentConnectionTestHealth(client, {
+            current,
+            secretVersionId,
+            healthRevision: claimState.healthRevision,
+            outcome,
+            actorId,
+            requestId: input.requestId,
+            traceId: input.traceId,
+          })
+        : current,
     );
     await appendConnectionEvent(client, {
       workspaceId,
