@@ -44,7 +44,7 @@ import type {
   OperatorCommandDatabase,
   CommandRequest,
 } from './contract.js';
-import { commandRecord } from './commands.queries.js';
+import { commandRecord } from './command-record.js';
 import { requestFingerprint } from './fingerprint.js';
 /** Seed of the advisory lock that serializes requests reusing one command id. */
 const COMMAND_LOCK_SEED = 7_166_118_813;

@@ -15,7 +15,7 @@ import {
   RUN_EVENT_TYPE,
 } from '../../runs/queries/history/events.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type { OperatorDecision } from './contract.js';
+import type { OperatorDecision } from './decision.js';
 import { withoutNulls, enqueue, enqueueAdvance } from './enqueue.js';
 
 /** Where a settlement came from, kept on the attempt and in its event. */

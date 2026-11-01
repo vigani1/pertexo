@@ -2,7 +2,7 @@ import { redispatchOutcome } from '@pertexo/workflow-engine';
 import { and, eq, sql } from 'drizzle-orm';
 import { outboxEvents } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type { OperatorDecision } from './contract.js';
+import type { OperatorDecision } from './decision.js';
 
 /** Makes a failed outbox event available to the dispatcher again. */
 export async function redispatchFailedOutbox(

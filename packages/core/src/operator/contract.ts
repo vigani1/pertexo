@@ -3,7 +3,7 @@ import type {
   WorkspaceTransaction,
 } from '@pertexo/database/primitives';
 import type { StuckWork } from '../runs/stalled/contract.js';
-import type { OperatorDecision } from './handlers/contract.js';
+import type { OperatorDecision } from './handlers/decision.js';
 import type {
   RedispatchInput,
   ReconcileAttemptInput,
