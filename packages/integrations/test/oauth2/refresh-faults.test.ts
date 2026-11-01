@@ -147,7 +147,7 @@ describe('a refresh meeting a key service fault', () => {
   });
 
   // S2: the service has already rotated, so a blip here would lose the new tokens.
-  it.fails('S2 a seal that fails once still keeps the new tokens', async () => {
+  it('S2 a seal that fails once still keeps the new tokens', async () => {
     const { service, committed } = connection({ sealFailures: 1 });
     await expect(
       service.accessToken(SCOPE, new AbortController().signal),
@@ -165,20 +165,15 @@ describe('a refresh meeting a key service fault', () => {
 
   // S3: a slow key service must not let the block lapse during the token request,
   // or a second worker sends the same refresh token and reuse detection ends the family.
-  it.fails(
-    'S3 the block outlasts the token request after a slow key service',
-    async () => {
-      vi.useFakeTimers({ toFake: ['Date', 'setTimeout'] });
-      const { service, blockLeftAtRequest } = connection({
-        openDelayMillis: 16_000,
-      });
-      const token = service.accessToken(SCOPE, new AbortController().signal);
-      await vi.advanceTimersByTimeAsync(60_000);
-      await token;
-      expect(blockLeftAtRequest).toHaveLength(1);
-      expect(blockLeftAtRequest[0]).toBeGreaterThanOrEqual(
-        TOKEN_REQUEST_MILLIS,
-      );
-    },
-  );
+  it('S3 the block outlasts the token request after a slow key service', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout'] });
+    const { service, blockLeftAtRequest } = connection({
+      openDelayMillis: 16_000,
+    });
+    const token = service.accessToken(SCOPE, new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(60_000);
+    await token;
+    expect(blockLeftAtRequest).toHaveLength(1);
+    expect(blockLeftAtRequest[0]).toBeGreaterThanOrEqual(TOKEN_REQUEST_MILLIS);
+  });
 });

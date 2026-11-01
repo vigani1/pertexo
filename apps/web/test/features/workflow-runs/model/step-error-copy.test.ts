@@ -8,7 +8,7 @@ const fallback = describeStepError('nothing.known');
 
 describe('step error copy', () => {
   // M3: every OAuth2 step failure says what happened, not "the code tells support".
-  it.fails.each([
+  it.each([
     'http.oauth2_not_connected',
     'http.oauth2_grant_revoked',
     'http.oauth2_client_rejected',
@@ -25,7 +25,7 @@ describe('step error copy', () => {
   });
 
   // M3: these four are fixed by signing in again, so the step offers Reconnect.
-  it.fails.each([
+  it.each([
     'http.oauth2_not_connected',
     'http.oauth2_grant_revoked',
     'http.oauth2_client_rejected',

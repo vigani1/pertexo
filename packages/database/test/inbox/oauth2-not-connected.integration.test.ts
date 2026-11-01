@@ -63,7 +63,7 @@ const setErrorCode = (
   );
 
 // M4: a brand-new connection isn't broken; nothing uses it and nobody has connected it.
-it.fails('M4 a connection nobody has connected opens no notice', async () => {
+it('M4 a connection nobody has connected opens no notice', async () => {
   const f = await seedNoticeWorkspace();
   await newOAuth2Connection(f.workspaceId, f.members.owner);
   await observer().observeCurrent?.();
@@ -116,6 +116,6 @@ it('a connection still without its grant is mailed to its manager', async () => 
 });
 
 // M4: replacing a client's settings returns it to not connected: no longer worth a mail.
-it.fails('M4 a connection back to not connected is not mailed', async () => {
+it('M4 a connection back to not connected is not mailed', async () => {
   expect(await mailedAfter(NOT_CONNECTED)).toBe(0);
 });
