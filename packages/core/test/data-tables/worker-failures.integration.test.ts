@@ -7,7 +7,7 @@ import {
   createDataTablesStore,
   createWorkerDataTablesStore,
 } from '../../src/data-tables/index.js';
-import { markPreviewDispatched } from '../../src/previews/attempts/dispatch.repository.js';
+import { markPreviewDispatched } from '../../src/previews/attempts/mark-dispatched.js';
 import {
   acceptFixture,
   actorUserId,

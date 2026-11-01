@@ -2,7 +2,7 @@ import { beforeAll, afterAll, it, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { createRunValuesStore } from '../../../src/runs/values/repository.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { completePreviewAttempt } from '../../../src/previews/attempts/completion.repository.js';
+import { completePreviewAttempt } from '../../../src/previews/attempts/complete.js';
 import { createPreviewRetentionCoordinator } from '../../../src/lifecycle/previews/repository.js';
 import {
   acceptFixture,

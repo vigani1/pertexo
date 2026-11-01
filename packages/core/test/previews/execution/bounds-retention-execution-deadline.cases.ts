@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
+import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { PreviewAdmissionDeniedError } from '../../../src/previews/errors.js';
 
 import { workspaceA, apiDatabase, input } from './fixture.js';

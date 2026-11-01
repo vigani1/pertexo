@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createDatabasePreviewAttemptRunStore } from '@pertexo/core/previews';
+import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 
 import {
   parseDatabaseConfig,
@@ -30,7 +30,7 @@ const describeIntegration = workerTransportIntegrationEnabled
 describeIntegration('preview delivery transport', () => {
   it('executes an accepted preview through BullMQ once and duplicates safely', async () => {
     const delivery = await acceptDelivery(validTraceparent);
-    const previewStore = createDatabasePreviewAttemptRunStore(
+    const previewStore = createPreviewAttemptRunStore(
       parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
     );
     const registry = createPlatformNodeRegistry();

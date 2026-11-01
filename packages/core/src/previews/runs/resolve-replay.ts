@@ -10,7 +10,7 @@ import { PreviewAcceptanceCorruptError } from '../errors.js';
 import {
   assertPreviewActor,
   previewWorkflowVisible,
-} from './acceptance/authority.queries.js';
+} from './acceptance/admission.queries.js';
 import { readExistingAcceptance } from './acceptance/replay.queries.js';
 
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';

@@ -1,7 +1,7 @@
 import { ROLES } from '@pertexo/workflow-model';
 import { acquireDatabasePool } from '@pertexo/database/platform';
-import { createWorkflowTestSuiteStore } from '../../previews/suites/repository.js';
-import { createWorkflowTestStore } from '../../previews/workflows/repository.js';
+import { createWorkflowTestSuiteStore } from '../../previews/suites/store.js';
+import { createWorkflowTestStore } from '../../previews/workflows/store.js';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import type { FolderScope } from '../../tenant-access/resources/contract.js';
 import { readFolderScope } from '../../shared/facts.queries.js';
@@ -22,9 +22,9 @@ import type { Pool, PoolClient } from 'pg';
 
 import { rolesForCapability } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import { acceptPreviewRun } from '../../previews/runs/acceptance.repository.js';
+import { acceptPreviewRun } from '../../previews/runs/accept.js';
 import { readPreviewRun } from '../../previews/runs/records.queries.js';
-import { resolvePreviewReplay } from '../../previews/runs/replay.repository.js';
+import { resolvePreviewReplay } from '../../previews/runs/resolve-replay.js';
 import {
   withMultiWorkspaceTransaction,
   withTenantScopedClient,

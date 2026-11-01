@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createDatabasePreviewAttemptRunStore } from '@pertexo/core/previews';
+import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 
@@ -37,7 +37,7 @@ export const validateConfigInput = {
 };
 
 export async function createValidateRuntime() {
-  const previewStore = createDatabasePreviewAttemptRunStore(
+  const previewStore = createPreviewAttemptRunStore(
     parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
   );
   const registry = createPlatformNodeRegistry();

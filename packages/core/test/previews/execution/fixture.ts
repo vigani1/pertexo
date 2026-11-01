@@ -10,7 +10,7 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import type { acceptPreviewRun } from '../../../src/previews/runs/acceptance.repository.js';
+import type { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

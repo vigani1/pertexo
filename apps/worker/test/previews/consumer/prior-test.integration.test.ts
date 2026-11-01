@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createDatabasePreviewAttemptRunStore } from '@pertexo/core/previews';
+import { createPreviewAttemptRunStore } from '@pertexo/core/previews';
 
 import {
   parseDatabaseConfig,
@@ -53,7 +53,7 @@ describeIntegration('step test fed by a prior test', () => {
         invoker: createPlatformPreviewNodeInvoker({
           registry: createPlatformNodeRegistry(),
         }),
-        runStore: createDatabasePreviewAttemptRunStore(
+        runStore: createPreviewAttemptRunStore(
           parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
         ),
       },

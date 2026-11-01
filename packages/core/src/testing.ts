@@ -132,14 +132,14 @@ export {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from './runs/commands/acceptance/errors.js';
-export { acceptPreviewRun } from './previews/runs/acceptance.repository.js';
+export { acceptPreviewRun } from './previews/runs/accept.js';
 export { readPreviewRun } from './previews/runs/records.queries.js';
-export { resolvePreviewReplay } from './previews/runs/replay.repository.js';
-export { claimPreviewDelivery } from './previews/attempts/claim.repository.js';
-export { markPreviewDispatched } from './previews/attempts/dispatch.repository.js';
-export { heartbeatPreviewLease } from './previews/attempts/heartbeat.repository.js';
-export { completePreviewAttempt } from './previews/attempts/completion.repository.js';
-export { reconcilePreviewDelivery } from './previews/reconciliation/deliveries.repository.js';
+export { resolvePreviewReplay } from './previews/runs/resolve-replay.js';
+export { claimPreviewDelivery } from './previews/attempts/claim.js';
+export { markPreviewDispatched } from './previews/attempts/mark-dispatched.js';
+export { heartbeatPreviewLease } from './previews/attempts/heartbeat.js';
+export { completePreviewAttempt } from './previews/attempts/complete.js';
+export { reconcilePreviewDelivery } from './previews/reconciliation/reconcile.js';
 export {
   PreviewAcceptanceCorruptError,
   PreviewAdmissionDeniedError,
@@ -220,7 +220,7 @@ export type {
   InboxConsumeResult,
   InboxMessage,
 } from './outbox/receipts.repository.js';
-export { isValidStoredExecutionOutput } from './previews/reconciliation/deliveries.repository.js';
+export { isValidStoredExecutionOutput } from './previews/reconciliation/reconcile.js';
 export { PREVIEW_RETENTION_MAX_MS } from './previews/runs/acceptance/limits.js';
 export { PREVIEW_STATUS } from './previews/state.js';
 export { createNodeAttemptRunStore } from './attempts/repository.js';

@@ -5,8 +5,8 @@ import {
   createWorkerDataTablesStore,
 } from '../../src/data-tables/index.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { markPreviewDispatched } from '../../src/previews/attempts/dispatch.repository.js';
-import { completePreviewAttempt } from '../../src/previews/attempts/completion.repository.js';
+import { markPreviewDispatched } from '../../src/previews/attempts/mark-dispatched.js';
+import { completePreviewAttempt } from '../../src/previews/attempts/complete.js';
 import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/repository.js';
 import {
   actorUserId,

@@ -11,11 +11,11 @@ const database = vi.hoisted(() => ({
 vi.mock('../../../database/dist/platform/pool/runtime.js', () => ({
   acquireDatabasePool: database.acquire,
 }));
-vi.mock('../../src/previews/attempts/dispatch.repository.js', () => ({
+vi.mock('../../src/previews/attempts/mark-dispatched.js', () => ({
   markPreviewDispatched: database.markDispatched,
 }));
 
-import { createDatabasePreviewAttemptRunStore } from '../../src/previews/attempts/repository.js';
+import { createPreviewAttemptRunStore } from '../../src/previews/attempts/store.js';
 
 const config = {
   connectionString: 'postgresql://worker:password@localhost/pertexo',
@@ -94,7 +94,7 @@ describe('database preview attempt store adapter', () => {
       },
     ],
   ] as const)('forwards %s exactly', async (_label, authority, expected) => {
-    const store = createDatabasePreviewAttemptRunStore(config);
+    const store = createPreviewAttemptRunStore(config);
     const scope = lease();
     const signal = new AbortController().signal;
 

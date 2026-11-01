@@ -1,20 +1,20 @@
-export { claimPreviewDelivery } from './attempts/claim.repository.js';
-export { completePreviewAttempt } from './attempts/completion.repository.js';
-export { heartbeatPreviewLease } from './attempts/heartbeat.repository.js';
+export { claimPreviewDelivery } from './attempts/claim.js';
+export { completePreviewAttempt } from './attempts/complete.js';
+export { heartbeatPreviewLease } from './attempts/heartbeat.js';
 export {
   isValidStoredExecutionOutput,
   reconcilePreviewDelivery,
-} from './reconciliation/deliveries.repository.js';
-export { markPreviewDispatched } from './attempts/dispatch.repository.js';
+} from './reconciliation/reconcile.js';
+export { markPreviewDispatched } from './attempts/mark-dispatched.js';
 export {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
 } from './errors.js';
-export { createDatabasePreviewAttemptRunStore } from './attempts/repository.js';
+export { createPreviewAttemptRunStore } from './attempts/store.js';
 export type { PreviewAttemptRunStore } from './attempts/contract.js';
-export { createDatabasePreviewReconciliationStore } from './reconciliation/repository.js';
+export { createPreviewReconciliationStore } from './reconciliation/store.js';
 export type { PreviewReconciliationStore } from './reconciliation/contract.js';
 export type {
   PreviewAttemptLease,
@@ -28,7 +28,7 @@ export type {
   PreviewHeartbeatResult,
 } from './attempts/contract.js';
 export type { PreviewDeliveryReconciliationResult } from './reconciliation/contract.js';
-export { createWorkflowTestSuiteScanner } from './suites/scanner.repository.js';
+export { createWorkflowTestSuiteScanner } from './suites/scanner.js';
 export type { WorkflowTestSuiteScanner } from './suites/contract.js';
 export {
   PREVIEW_EXECUTION_TIMEOUT_MAX_MS,

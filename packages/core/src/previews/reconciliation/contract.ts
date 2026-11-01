@@ -1,5 +1,5 @@
 import type { PREVIEW_STATUS } from '../state.js';
-import type { reconcilePreviewDelivery } from './deliveries.repository.js';
+import type { reconcilePreviewDelivery } from './reconcile.js';
 
 export type PreviewDeliveryReconciliationResult =
   | Readonly<{ kind: 'duplicate' }>

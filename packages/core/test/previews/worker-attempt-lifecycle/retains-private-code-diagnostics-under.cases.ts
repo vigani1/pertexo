@@ -2,7 +2,7 @@ import { withWorkspaceTransaction } from '@pertexo/database/primitives';
 import { readPreviewRun } from '../../../src/previews/runs/records.queries.js';
 
 import { expect, it } from 'vitest';
-import { completePreviewAttempt } from '../../../src/previews/attempts/completion.repository.js';
+import { completePreviewAttempt } from '../../../src/previews/attempts/complete.js';
 import { PreviewAttemptStateError } from '../../../src/previews/errors.js';
 import {
   acceptFixture,

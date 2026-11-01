@@ -9,7 +9,7 @@ import {
 } from '../../src/artifacts/records.repository.js';
 import { ArtifactLifecycleConflictError } from '../../src/artifacts/errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { completePreviewAttempt } from '../../src/previews/attempts/completion.repository.js';
+import { completePreviewAttempt } from '../../src/previews/attempts/complete.js';
 import { PREVIEW_STATUS } from '../../src/previews/state.js';
 import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/repository.js';
 import { databaseSchema } from '@pertexo/database/schema';
