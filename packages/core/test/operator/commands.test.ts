@@ -8,7 +8,7 @@ vi.mock('../../../database/dist/tenant-access/transactions.js', () => ({
   withWorkspaceTransaction: transaction,
 }));
 
-import { createOperatorCommandDatabase } from '../../src/operator/repository.js';
+import { createOperatorCommandStore } from '../../src/operator/store.js';
 
 const config = {
   connectionString: 'postgresql://operator.invalid/pertexo',
@@ -30,7 +30,7 @@ const base = Object.freeze({
 });
 
 function database() {
-  return createOperatorCommandDatabase(config);
+  return createOperatorCommandStore(config);
 }
 
 describe('bounded operator JSON', () => {

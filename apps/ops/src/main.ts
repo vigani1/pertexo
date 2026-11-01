@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-import type { OperatorCommandDatabase } from '@pertexo/core/runs';
+import type { OperatorCommandStore } from '@pertexo/core/runs';
 import type * as OperatorDatabaseModule from '@pertexo/core/runs';
 import type { StructuredLogger } from '@pertexo/observability';
 import type * as LoggingModule from '@pertexo/observability';
@@ -21,7 +21,7 @@ export interface OperatorCommandBootstrapModules {
   readonly command: Pick<typeof OperatorRunModule, 'runOperatorCommand'>;
   readonly database: Pick<
     typeof OperatorDatabaseModule,
-    'createOperatorCommandDatabase'
+    'createOperatorCommandStore'
   >;
   readonly logging: Pick<typeof LoggingModule, 'createStructuredLogger'>;
 }
@@ -67,14 +67,14 @@ export async function bootstrapOperatorCommand(
   const processRuntime = dependencies.process ?? process;
   processRuntime.once('SIGINT', stop);
   processRuntime.once('SIGTERM', stop);
-  let database: OperatorCommandDatabase | undefined;
+  let database: OperatorCommandStore | undefined;
   let logger: StructuredLogger | undefined;
   let commandInvoked = false;
   try {
     telemetry.start();
     const modules = await (dependencies.loadModules ?? loadModules)();
     logger = modules.logging.createStructuredLogger(config.observability);
-    database = modules.database.createOperatorCommandDatabase(config.database, {
+    database = modules.database.createOperatorCommandStore(config.database, {
       lockTimeoutMs: config.timeoutMs,
       statementTimeoutMs: config.timeoutMs,
     });

@@ -15,7 +15,7 @@ import type {
   Options,
 } from './input.js';
 
-export type OperatorCommandDatabaseOptions = Readonly<Options>;
+export type OperatorCommandStoreOptions = Readonly<Options>;
 
 export type RedispatchFailedOutboxInput = Readonly<RedispatchInput>;
 
@@ -80,7 +80,7 @@ export type OperatorCommandRecord = Readonly<{
   status: CommandStatus;
 }>;
 
-export interface OperatorCommandDatabase {
+export interface OperatorCommandStore {
   checkReadiness(signal?: AbortSignal): Promise<void>;
   /** Reads across workspaces: an operator doesn't yet know which one is stuck. */
   listStuckWork(): Promise<StuckWork>;

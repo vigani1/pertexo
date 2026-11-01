@@ -55,9 +55,9 @@ export {
   createOperatorRunReplayStore,
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-} from '../operator/replay/repository.js';
+} from '../operator/replay/store.js';
 export type { OperatorRunReplayStore } from '../operator/replay/contract.js';
-export { createOperatorCommandDatabase } from '../operator/repository.js';
+export { createOperatorCommandStore } from '../operator/store.js';
 export { createRunFailureStore } from './advance/run-failure-store.js';
 export type { RunFailureStore } from './advance/run-failure-store.js';
 export { createStalledWorkStore } from './stalled/repository.js';
@@ -71,7 +71,7 @@ export type {
 } from './stalled/contract.js';
 export type {
   GenericOperatorCommandResult,
-  OperatorCommandDatabase,
+  OperatorCommandStore,
   OperatorCommandRecord,
   OperatorCommandResult,
   RedispatchFailedOutboxInput,

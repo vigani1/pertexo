@@ -81,7 +81,7 @@ try {
             });
           },
         },
-        database: { createOperatorCommandDatabase: () => database },
+        database: { createOperatorCommandStore: () => database },
         logging: { createStructuredLogger: () => logger },
       }),
   });

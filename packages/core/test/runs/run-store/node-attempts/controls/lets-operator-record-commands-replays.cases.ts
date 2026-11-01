@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest';
 
-import { createOperatorCommandDatabase } from '../../../../../src/operator/repository.js';
+import { createOperatorCommandStore } from '../../../../../src/operator/store.js';
 
 import {
   apiBaseUrl,
@@ -21,7 +21,7 @@ export function registerLetsOperatorRecordCommandsReplays(): void {
     const operatorBaseUrl =
       process.env.DATABASE_MAINTENANCE_URL ??
       'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
-    const operator = createOperatorCommandDatabase(
+    const operator = createOperatorCommandStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(operatorBaseUrl),
         max: 1,
@@ -123,7 +123,7 @@ export function registerLetsOperatorRecordCommandsReplays(): void {
     const operatorBaseUrl =
       process.env.DATABASE_MAINTENANCE_URL ??
       'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
-    const operator = createOperatorCommandDatabase(
+    const operator = createOperatorCommandStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(operatorBaseUrl),
         max: 1,

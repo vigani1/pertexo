@@ -13,8 +13,8 @@ import {
   migrateDatabase,
   dropDisconnectedDatabase,
 } from '@pertexo/database/testing';
-import { createOperatorCommandDatabase } from '../../src/operator/repository.js';
-import { createOperatorRunReplayStore } from '../../src/operator/replay/repository.js';
+import { createOperatorCommandStore } from '../../src/operator/store.js';
+import { createOperatorRunReplayStore } from '../../src/operator/replay/store.js';
 import { createScheduleTriggerDatabase } from '../../src/triggers/schedules/repository.js';
 import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';
 import { createWorkflowTriggerReconciliationDatabase } from '../../src/triggers/reconciliation/repository.js';
@@ -74,7 +74,7 @@ export function createScheduleTriggerTestEnvironment(
   let scannerTwo: ReturnType<typeof createScheduleTriggerScanner> | undefined;
   let owner: Pool;
   let worker: Pool;
-  let operator: ReturnType<typeof createOperatorCommandDatabase> | undefined;
+  let operator: ReturnType<typeof createOperatorCommandStore> | undefined;
 
   async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
     statement: string,
@@ -165,7 +165,7 @@ export function createScheduleTriggerTestEnvironment(
     if (options.scannerCount === 2)
       scannerTwo = createScheduleTriggerScanner(workerConfig, apiConfig);
     if (options.includeOperator === true) {
-      operator = createOperatorCommandDatabase(
+      operator = createOperatorCommandStore(
         parseDatabaseConfig({
           connectionString: url(operatorBaseUrl),
           max: 1,

@@ -4,7 +4,7 @@ export {
   OperatorRunReplayNotExecutableError,
 } from './replay/store.js';
 export { type OperatorRunReplayStore } from './replay/contract.js';
-export { createOperatorCommandDatabase } from './store.js';
+export { createOperatorCommandStore } from './store.js';
 export { OperatorCommandConflictError } from './input.js';
 export {
   type GetOperatorCommandInput,
@@ -12,8 +12,8 @@ export {
   type OperatorRunCommandInput,
   type OperatorWorkflowCommandInput,
   type ReplayOperatorRunInput,
-  type OperatorCommandDatabase,
-  type OperatorCommandDatabaseOptions,
+  type OperatorCommandStore,
+  type OperatorCommandStoreOptions,
   type OperatorCommandOutcome,
   type OperatorCommandRecord,
   type OperatorCommandResult,

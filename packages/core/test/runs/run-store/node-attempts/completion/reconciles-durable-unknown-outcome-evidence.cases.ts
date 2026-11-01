@@ -1,7 +1,7 @@
 import { it, expect } from 'vitest';
 import { NodeAttemptReconciliationRequiredError } from '../../../../../src/testing.js';
 
-import { createOperatorCommandDatabase } from '../../../../../src/operator/repository.js';
+import { createOperatorCommandStore } from '../../../../../src/operator/store.js';
 import {
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
@@ -49,7 +49,7 @@ export function registerReconcilesDurableUnknownOutcomeEvidence(): void {
       ).resolves.toMatchObject({ kind: 'committed' });
 
       const evidenceCommandId = randomUUID();
-      const operator = createOperatorCommandDatabase(
+      const operator = createOperatorCommandStore(
         parseDatabaseConfig({
           connectionString: databaseUrl(
             process.env.DATABASE_MAINTENANCE_URL ??

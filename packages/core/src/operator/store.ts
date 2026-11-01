@@ -31,7 +31,7 @@ import {
 } from './handlers/workflows.repository.js';
 import { OperatorCommandConflictError, optionsSchema } from './input.js';
 import type {
-  OperatorCommandDatabaseOptions,
+  OperatorCommandStoreOptions,
   RedispatchFailedOutboxInput,
   ReconcileOperatorAttemptInput,
   OperatorRunCommandInput,
@@ -41,7 +41,7 @@ import type {
   GetOperatorCommandInput,
   GenericOperatorCommandResult,
   OperatorCommandOutcome,
-  OperatorCommandDatabase,
+  OperatorCommandStore,
   CommandRequest,
 } from './contract.js';
 import { commandRecord } from './command-record.js';
@@ -49,11 +49,11 @@ import { requestFingerprint } from './fingerprint.js';
 /** Seed of the advisory lock that serializes requests reusing one command id. */
 const COMMAND_LOCK_SEED = 7_166_118_813;
 
-export function createOperatorCommandDatabase(
+export function createOperatorCommandStore(
   config: DatabaseConfig,
-  inputOptions: OperatorCommandDatabaseOptions = {},
+  inputOptions: OperatorCommandStoreOptions = {},
   runtime?: DatabaseRuntime,
-): OperatorCommandDatabase {
+): OperatorCommandStore {
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
@@ -87,7 +87,7 @@ export function createOperatorCommandDatabase(
 
 type OperatorTransactionContext = Readonly<{
   pool: Pool;
-  options: Required<OperatorCommandDatabaseOptions>;
+  options: Required<OperatorCommandStoreOptions>;
 }>;
 
 function withOperatorTransaction<T>(
@@ -208,8 +208,8 @@ async function runOperatorCommand(
 }
 async function readOperatorCommand(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandDatabase['getCommand']>[0],
-): ReturnType<OperatorCommandDatabase['getCommand']> {
+  input: Parameters<OperatorCommandStore['getCommand']>[0],
+): ReturnType<OperatorCommandStore['getCommand']> {
   return withOperatorTransaction(
     context,
     input.workspaceId,
@@ -243,8 +243,8 @@ async function readOperatorCommand(
 
 async function redispatchOperatorOutbox(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandDatabase['redispatchFailedOutbox']>[0],
-): ReturnType<OperatorCommandDatabase['redispatchFailedOutbox']> {
+  input: Parameters<OperatorCommandStore['redispatchFailedOutbox']>[0],
+): ReturnType<OperatorCommandStore['redispatchFailedOutbox']> {
   const result = await runOperatorCommand(context, {
     ...input,
     commandType: 'outbox.redispatch',
@@ -262,8 +262,8 @@ async function redispatchOperatorOutbox(
 
 async function reconcileOperatorAttempt(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandDatabase['reconcileAttempt']>[0],
-): ReturnType<OperatorCommandDatabase['reconcileAttempt']> {
+  input: Parameters<OperatorCommandStore['reconcileAttempt']>[0],
+): ReturnType<OperatorCommandStore['reconcileAttempt']> {
   return runOperatorCommand(context, {
     ...input,
     commandType: 'attempt.reconcile',
@@ -279,8 +279,8 @@ async function reconcileOperatorAttempt(
 
 async function resumeOperatorRun(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandDatabase['resumeDueWork']>[0],
-): ReturnType<OperatorCommandDatabase['resumeDueWork']> {
+  input: Parameters<OperatorCommandStore['resumeDueWork']>[0],
+): ReturnType<OperatorCommandStore['resumeDueWork']> {
   return runOperatorCommand(context, {
     ...input,
     commandType: 'due-work.resume',
@@ -292,8 +292,8 @@ async function resumeOperatorRun(
 
 async function cancelOperatorRun(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandDatabase['cancelRun']>[0],
-): ReturnType<OperatorCommandDatabase['cancelRun']> {
+  input: Parameters<OperatorCommandStore['cancelRun']>[0],
+): ReturnType<OperatorCommandStore['cancelRun']> {
   return runOperatorCommand(context, {
     ...input,
     commandType: 'run.cancel',
@@ -305,8 +305,8 @@ async function cancelOperatorRun(
 
 async function recordOperatorOutcomeEvidence(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandDatabase['recordUnknownOutcomeEvidence']>[0],
-): ReturnType<OperatorCommandDatabase['recordUnknownOutcomeEvidence']> {
+  input: Parameters<OperatorCommandStore['recordUnknownOutcomeEvidence']>[0],
+): ReturnType<OperatorCommandStore['recordUnknownOutcomeEvidence']> {
   const evidenceRef = serializeBoundedPlainJson(
     input.evidenceRef,
     4096,
@@ -329,8 +329,8 @@ async function recordOperatorOutcomeEvidence(
 
 async function retryOperatorTriggerReconciliation(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandDatabase['retryTriggerReconciliation']>[0],
-): ReturnType<OperatorCommandDatabase['retryTriggerReconciliation']> {
+  input: Parameters<OperatorCommandStore['retryTriggerReconciliation']>[0],
+): ReturnType<OperatorCommandStore['retryTriggerReconciliation']> {
   return runOperatorCommand(context, {
     ...input,
     commandType: 'trigger.reconcile',
@@ -342,8 +342,8 @@ async function retryOperatorTriggerReconciliation(
 
 async function replayOperatorRun(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandDatabase['replayRun']>[0],
-): ReturnType<OperatorCommandDatabase['replayRun']> {
+  input: Parameters<OperatorCommandStore['replayRun']>[0],
+): ReturnType<OperatorCommandStore['replayRun']> {
   const runInput = serializeBoundedPlainJson(
     input.runInput,
     65_536,

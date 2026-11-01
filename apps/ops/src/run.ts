@@ -1,5 +1,5 @@
 import type {
-  OperatorCommandDatabase,
+  OperatorCommandStore,
   OperatorCommandRecord,
   OperatorCommandResult,
   GenericOperatorCommandResult,
@@ -14,7 +14,7 @@ import type { OperatorCommandConfig } from './config.js';
 export interface OperatorCommandResources {
   readonly cleanupTimeoutMs: number;
   readonly command: OperatorCommandConfig['command'];
-  readonly database: OperatorCommandDatabase;
+  readonly database: OperatorCommandStore;
   readonly logger: StructuredLogger;
   readonly signal: AbortSignal;
   readonly telemetry: TelemetryLifecycle;

@@ -12,7 +12,7 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createOperatorCommandDatabase } from '../../src/operator/repository.js';
+import { createOperatorCommandStore } from '../../src/operator/store.js';
 
 function deferredHandle<T extends object>(resolve: () => T): T {
   return new Proxy(Object.create(null) as T, {
@@ -69,7 +69,7 @@ export function createTransportTestEnvironment() {
 
   type ApiDatabase = ReturnType<typeof createWorkspaceDatabase>;
   type Dispatcher = ReturnType<typeof createOutboxDispatcherDatabase>;
-  type Operator = ReturnType<typeof createOperatorCommandDatabase>;
+  type Operator = ReturnType<typeof createOperatorCommandStore>;
   let apiDatabaseResource: ApiDatabase | undefined;
   let workerDatabaseResource: ApiDatabase | undefined;
   let dispatcherResource: Dispatcher | undefined;
@@ -244,10 +244,10 @@ export function createTransportTestEnvironment() {
         dispatcherResource = createOutboxDispatcherDatabase(
           parseDatabaseConfig({ connectionString: dispatcherUrl, max: 2 }),
         );
-        operatorResource = createOperatorCommandDatabase(
+        operatorResource = createOperatorCommandStore(
           parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
         );
-        operatorReplicaResource = createOperatorCommandDatabase(
+        operatorReplicaResource = createOperatorCommandStore(
           parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
         );
       } catch (error: unknown) {
