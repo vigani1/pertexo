@@ -9,7 +9,11 @@ import {
   connectionOAuth2Clients,
   connectionOAuth2Tokens,
 } from '@pertexo/database/schema';
-import { CONNECTION_AUTH_TYPE, CONNECTION_STATUS, type ConnectionRecord } from '../contract.js';
+import {
+  CONNECTION_AUTH_TYPE,
+  CONNECTION_STATUS,
+  type ConnectionRecord,
+} from '../contract.js';
 
 /** A connection's client for one secret version: inserted beside that version. */
 export async function insertOAuth2Client(
