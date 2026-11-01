@@ -60,10 +60,12 @@ function ownedClose(
   const stores = (factory === 'createDirectoryStore'
     ? identityStores
     : tenantAccessStores) as unknown as Record<
-    typeof factory,
+    string,
     (...arguments_: unknown[]) => { close(): Promise<void> }
   >;
-  const original = stores[factory];
+  const original = stores[factory] as (...arguments_: unknown[]) => {
+    close(): Promise<void>;
+  };
   let close: ReturnType<typeof vi.fn> | undefined;
   vi.spyOn(stores as Record<typeof factory, never>, factory).mockImplementation(
     ((...arguments_: unknown[]) => {
