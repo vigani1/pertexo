@@ -1,7 +1,7 @@
 import {
   createWorkflowRunDatabase,
   type WorkflowRunDatabase,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 
 import type {
   DatabaseConfig,
@@ -11,7 +11,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   recoveryPreparation,
   initialCheckpointFactory,
-} from '@pertexo/execution';
+} from '@pertexo/core/execution';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import type {

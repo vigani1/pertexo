@@ -1,10 +1,10 @@
-import { CallbackResponseError } from '@pertexo/database/runs';
+import { CallbackResponseError } from '@pertexo/core/runs';
 import { errorRegistration } from '../../platform/http/problems/registry.js';
 import {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
   WebhookTriggerStateError,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import { applicationError } from '../../platform/http/index.js';
 import { InvalidWebhookDeliveryCursorError } from '../../webhooks/management/cursor.js';
 

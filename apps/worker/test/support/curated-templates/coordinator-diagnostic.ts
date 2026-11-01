@@ -1,7 +1,7 @@
 import {
   CoordinatorRunStateCorruptError,
   CoordinatorDeliveryMismatchError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { createQueueConsumer } from '@pertexo/queue';
 

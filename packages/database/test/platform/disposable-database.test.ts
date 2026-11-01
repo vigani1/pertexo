@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createDisposableDatabaseFixture,
   type DisposableDatabaseAdmin,
-} from '../support/postgres/disposable-database.js';
+} from '../../src/testing/postgres/disposable-database.js';
 
 function fixtureWithAdmin(
   admin: DisposableDatabaseAdmin,

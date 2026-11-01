@@ -9,7 +9,7 @@ import { createWorkflowInputCaseTag } from '@pertexo/contracts';
 import {
   WorkflowInputCaseRevisionConflictError,
   WorkflowInputCaseLimitError,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 
 import {
   caseId,

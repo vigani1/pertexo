@@ -5,7 +5,7 @@ import {
   createRetentionDatabase,
   createRunArtifactRetentionCoordinator,
   createWorkspacePurgeCoordinator,
-} from '@pertexo/database/lifecycle';
+} from '@pertexo/core/lifecycle';
 import type { StructuredLogger } from '@pertexo/observability';
 
 import type { WorkerConfig } from '../config/worker.js';

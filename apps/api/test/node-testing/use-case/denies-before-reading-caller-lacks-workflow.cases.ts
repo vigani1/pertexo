@@ -1,4 +1,4 @@
-import { WorkflowNotFoundError } from '@pertexo/database/testing';
+import { WorkflowNotFoundError } from '@pertexo/core/testing';
 import { expect, it, vi } from 'vitest';
 
 import { GetPreviewRunUseCase } from '../../../src/node-testing/use-case.js';

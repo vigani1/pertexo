@@ -1,13 +1,11 @@
-import type {
-  WorkspaceDatabase,
-  WorkspaceTransaction,
-} from '@pertexo/database/testing';
-import { readRunEventsAfter } from '@pertexo/database/runs';
+import type { WorkspaceDatabase } from '@pertexo/database/testing';
+import type { WorkspaceTransaction } from '@pertexo/core/testing';
+import { readRunEventsAfter } from '@pertexo/core/runs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPostgresRunEventReader } from '../../../src/workflow-runs/events/postgres-reader.js';
 
-vi.mock('@pertexo/database/runs', () => ({ readRunEventsAfter: vi.fn() }));
+vi.mock('@pertexo/core/runs', () => ({ readRunEventsAfter: vi.fn() }));
 
 const readEvents = vi.mocked(readRunEventsAfter);
 beforeEach(() => readEvents.mockReset());

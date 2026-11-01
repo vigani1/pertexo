@@ -1,4 +1,4 @@
-import { createCallbackStore } from '@pertexo/database/runs';
+import { createCallbackStore } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createCallbackTokenKeys } from '@pertexo/integrations/server';
 import { createCallbackRuntime } from '../../../../src/attempts/callbacks/runtime.js';

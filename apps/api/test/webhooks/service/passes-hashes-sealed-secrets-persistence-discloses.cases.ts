@@ -1,5 +1,5 @@
 import { problemResult } from '../../support/problem.js';
-import { WebhookTriggerIdempotencyConflictError } from '@pertexo/database/testing';
+import { WebhookTriggerIdempotencyConflictError } from '@pertexo/core/testing';
 import { webhookTriggerListResponseSchema } from '@pertexo/contracts';
 
 import { expect, it } from 'vitest';

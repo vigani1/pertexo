@@ -5,8 +5,8 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 
 import { WorkspaceVariablesConflictError } from '../../src/variables/contract.js';
 
-import { admin } from '../../../database/test/lifecycle/calls/fixtures.js';
-import { userId } from '../../../database/test/lifecycle/retention.support.js';
+import { admin } from '../lifecycle/calls/fixtures.js';
+import { userId } from '../lifecycle/retention.support.js';
 import {
   afterAllFixture2,
   beforeAllFixture1,

@@ -1,7 +1,7 @@
 import { toProblem } from '../../../../src/problems/registry.js';
 import { workspaceFailure } from '../../../../src/problems/context/normalize.js';
 import { expect, it, vi } from 'vitest';
-import { InvitationAcceptanceConflictError } from '@pertexo/database/tenant-access';
+import { InvitationAcceptanceConflictError } from '@pertexo/core/tenant-access';
 import {
   DoubleSubmitCsrfPolicy,
   IdentityError,

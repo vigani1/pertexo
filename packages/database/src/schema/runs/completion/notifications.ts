@@ -1,4 +1,4 @@
-import type { FailureNotificationClaimResult } from '../../../notifications/contract.js';
+import type { FailureNotificationClaimResult } from '../../stored-shapes.js';
 import {
   type PgTableExtraConfigValue,
   boolean,

@@ -1,8 +1,8 @@
 import {
   NodeAttemptDeliveryMismatchError,
   NodeAttemptStateCorruptError,
-} from '@pertexo/database/attempts';
-import type { RunFailureStore } from '@pertexo/database/runs';
+} from '@pertexo/core/attempts';
+import type { RunFailureStore } from '@pertexo/core/runs';
 
 import {
   InvalidQueueDeliveryError,

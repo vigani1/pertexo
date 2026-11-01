@@ -1,5 +1,5 @@
 import { errorRegistration } from '../../platform/http/problems/registry.js';
-import { GovernanceError } from '@pertexo/database/governance';
+import { GovernanceError } from '@pertexo/core/governance';
 import { applicationError } from '../../platform/http/index.js';
 
 export const governanceProblems = [

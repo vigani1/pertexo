@@ -1,4 +1,4 @@
-import type { acceptWorkflowRun } from '@pertexo/database/testing';
+import type { acceptWorkflowRun } from '@pertexo/core/testing';
 
 import type { Queue } from 'bullmq';
 import type { QueueProducer } from '@pertexo/queue';

@@ -1,7 +1,7 @@
 import {
   EventCoordinationUnavailableError,
   WebhookIntakeBusyError,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import type { StructuredLogger } from '@pertexo/observability';
 import { setTimeout as delay } from 'node:timers/promises';
 

@@ -5,9 +5,8 @@ import {
   consumeInboxMessage,
   createOutboxDispatcherDatabase,
   InboxReceiptUnavailableError,
-  outboxEvents,
-  parseDatabaseConfig,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
+import { outboxEvents, parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {

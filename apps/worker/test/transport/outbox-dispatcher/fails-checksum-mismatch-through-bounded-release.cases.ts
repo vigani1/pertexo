@@ -2,7 +2,7 @@ import { transportMetrics } from '../../support/transport/metrics.js';
 import type {
   LeasedOutboxEvent,
   ReleaseOutboxResult,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import { JOB_NAME, type QueueProducer } from '@pertexo/queue';
 import { expect, it, vi } from 'vitest';

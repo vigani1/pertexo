@@ -4,7 +4,7 @@ import {
   isAuthenticationSessionAllowed,
   recordIdentitySecurityFact,
   identityEmailChangeEligibility,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
 import {
   APIError,

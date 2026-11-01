@@ -1,7 +1,7 @@
 import type {
   GenericOperatorCommandResult,
   OperatorCommandRecord,
-} from '../../operator/contract.js';
+} from '../stored-shapes.js';
 import {
   boolean,
   char,

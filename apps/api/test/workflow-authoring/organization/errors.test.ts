@@ -10,7 +10,7 @@ import {
   WorkflowTagConflictError,
   type WorkflowFolderConflictKind,
   type WorkflowTagConflictKind,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { describe, expect, it } from 'vitest';
 

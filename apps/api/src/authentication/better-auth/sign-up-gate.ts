@@ -1,4 +1,4 @@
-import type { SignUpAvailability } from '@pertexo/database/tenant-access';
+import type { SignUpAvailability } from '@pertexo/core/tenant-access';
 
 const SIGN_UP_PATH = '/v1/auth/sign-up/email';
 

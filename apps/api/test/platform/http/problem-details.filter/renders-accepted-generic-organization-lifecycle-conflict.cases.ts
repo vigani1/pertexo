@@ -12,7 +12,7 @@ import {
 
 import { APPLICATION_ERROR_MAPPERS } from '../../../../src/application-errors.js';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
-import { WorkflowTagConflictError } from '@pertexo/database/authoring';
+import { WorkflowTagConflictError } from '@pertexo/core/authoring';
 import {
   responseMock,
   hostFor,

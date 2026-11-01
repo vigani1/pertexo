@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { createGovernanceStore } from '@pertexo/database/governance';
+import { createGovernanceStore } from '../../src/governance/index.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   apiUrl,
   actorId,
   workspaceId,
   queryAsOwner,
-} from '../../../database/test/support/workflow-authoring.js';
+} from '../support/workflow-authoring.js';
 import { createWorkspaceVariablesStore } from '../../src/variables/index.js';
 const scope = () => ({ actorId, workspaceId });
 let store: ReturnType<typeof createGovernanceStore>;

@@ -1,9 +1,9 @@
-import type { NodeAttemptRunStore } from '@pertexo/database/testing';
+import type { NodeAttemptRunStore } from '@pertexo/core/testing';
 import {
   NodeAttemptConnectionFenceError,
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 import { expect, it, vi } from 'vitest';

@@ -10,10 +10,7 @@ import {
   callbackTokenHash,
   createCallbackTokenKeys,
 } from '@pertexo/integrations/server';
-import {
-  CallbackResponseError,
-  type CallbackStore,
-} from '@pertexo/database/runs';
+import { CallbackResponseError, type CallbackStore } from '@pertexo/core/runs';
 import { registerCallbackIngress } from '../../../src/webhooks/callbacks/ingress.js';
 import { silentLogger } from '../../support/silent-logger.js';
 const close: (() => Promise<unknown>)[] = [];

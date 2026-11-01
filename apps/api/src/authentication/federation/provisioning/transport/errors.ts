@@ -1,5 +1,5 @@
 import type { FastifyReply } from 'fastify';
-import { DirectoryError } from '@pertexo/database/tenant-access';
+import { DirectoryError } from '@pertexo/core/tenant-access';
 
 export function sendDirectoryError(
   reply: FastifyReply,

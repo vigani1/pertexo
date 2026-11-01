@@ -1,7 +1,7 @@
 import type {
   NodeAttemptRunStore,
   PublishedWorkflowReader,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import {
   JOB_NAME,
   QUEUE_NAME,

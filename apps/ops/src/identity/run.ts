@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { TwoFactorRecoveryStore } from '@pertexo/database/tenant-access';
+import type { TwoFactorRecoveryStore } from '@pertexo/core/tenant-access';
 import {
   authenticationMailAssociatedData,
   type SystemMailInput,

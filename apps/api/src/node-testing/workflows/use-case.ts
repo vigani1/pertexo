@@ -5,7 +5,7 @@ import {
   workflowTestListSchema,
   workflowTestDetailSchema,
 } from '@pertexo/contracts';
-import type { WorkflowTestStore } from '@pertexo/database/authoring';
+import type { WorkflowTestStore } from '@pertexo/core/authoring';
 import { authorizeWorkspaceOperation } from '../../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import {

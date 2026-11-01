@@ -2,7 +2,7 @@ import { metrics } from '@opentelemetry/api';
 import {
   createScheduleTriggerDatabase,
   type ScheduleTriggerDatabase,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

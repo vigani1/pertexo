@@ -4,8 +4,8 @@ import {
   hasCallbackMapping,
   inspectExpression,
 } from '@pertexo/workflow-model/server';
-import type { NodeAttemptLease } from '@pertexo/database/attempts';
-import type { WorkflowExecutionProjection } from '@pertexo/database/runs';
+import type { NodeAttemptLease } from '@pertexo/core/attempts';
+import type { WorkflowExecutionProjection } from '@pertexo/core/runs';
 import type {
   ExecuteNodeAttemptInput,
   NodeExecutionRegistry,
@@ -27,7 +27,7 @@ import {
   type NodeAttemptInputs,
   verifyPersistedWorkflowProjection,
   type PersistedWorkflowProjectionVerificationOptions,
-} from '@pertexo/execution';
+} from '@pertexo/core/execution';
 
 export type NodeAttemptExecutionEngineOptions = Readonly<
   PersistedWorkflowProjectionVerificationOptions & {

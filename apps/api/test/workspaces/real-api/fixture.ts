@@ -3,13 +3,15 @@ import { randomUUID } from 'node:crypto';
 
 import {
   auditEvents,
-  createIdentityWorkspaceDatabase,
   createWorkspaceDatabase,
   workspaceMemberships,
   workspaces,
   type WorkspaceDatabase,
-  type IdentityWorkspaceDatabase,
 } from '@pertexo/database/testing';
+import {
+  createIdentityWorkspaceDatabase,
+  type IdentityWorkspaceDatabase,
+} from '@pertexo/core/testing';
 
 import { afterAll, beforeAll, expect } from 'vitest';
 import { createTestApiApplication } from '../../support/api-application.js';

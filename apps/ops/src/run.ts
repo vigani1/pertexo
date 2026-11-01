@@ -4,7 +4,7 @@ import type {
   OperatorCommandResult,
   GenericOperatorCommandResult,
   StuckWork,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import type { StructuredLogger } from '@pertexo/observability';
 import type { TelemetryLifecycle } from '@pertexo/observability/startup';
 import { classifyProcessError } from '@pertexo/observability/startup';

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DIRECTORY_LIMITS,
   type DirectoryGroup,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import { directoryGroupDocument } from '../../../../src/authentication/federation/provisioning/protocol/resources.js';
 import { parseDirectoryFilter } from '../../../../src/authentication/federation/provisioning/protocol/filter.js';
 

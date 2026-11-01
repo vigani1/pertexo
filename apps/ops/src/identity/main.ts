@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { createTwoFactorRecoveryStore } from '@pertexo/database/tenant-access';
+import { createTwoFactorRecoveryStore } from '@pertexo/core/tenant-access';
 import { parseTwoFactorRecoveryConfig } from './config.js';
 import { disableTwoFactor } from './run.js';
 

@@ -9,7 +9,7 @@ import type { WorkspaceDatabase } from '../../../src/database.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 
 import { rlsProbeRecords } from '../../../src/schema.js';
-import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
+import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

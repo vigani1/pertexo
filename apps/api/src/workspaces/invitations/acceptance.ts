@@ -2,7 +2,7 @@ import { canonicalEmail } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 
-import { InvitationAcceptanceConflictError } from '@pertexo/database/tenant-access';
+import { InvitationAcceptanceConflictError } from '@pertexo/core/tenant-access';
 import {
   digestSha256Hex,
   encodeBase64Url,

@@ -1,22 +1,20 @@
-import type { CallbackStore } from '@pertexo/database/runs';
+import type { CallbackStore, RunValuesStore } from '@pertexo/core/runs';
 import type {
   CallbackKeyConfig,
   CallbackTokenKeys,
 } from '@pertexo/integrations/server';
 
-import type { RunValuesStore } from '@pertexo/database/runs';
-
-import type { WorkerDataTablesStore } from '@pertexo/database/data-tables';
+import type { WorkerDataTablesStore } from '@pertexo/core/data-tables';
 
 import type { createCodeRunnerClient } from '../../code/client.js';
 import type { WorkerCodeRunnerConfig } from '../../code/client.js';
 
-import type { WebhookResponseStore } from '@pertexo/database/triggers';
+import type { WebhookResponseStore } from '@pertexo/core/triggers';
 import type {
   ArtifactStore,
   ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import type { WorkerConnectionResolutionDatabase } from '@pertexo/database/connections';
+import type { WorkerConnectionResolutionDatabase } from '@pertexo/core/connections';
 
 import type {
   DatabaseConfig,

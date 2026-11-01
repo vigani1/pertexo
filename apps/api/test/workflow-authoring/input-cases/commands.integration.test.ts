@@ -6,7 +6,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import { testExecutableCompiler } from '@pertexo/database/testing';
+import { testExecutableCompiler } from '@pertexo/core/testing';
 import {
   workflowInputCaseCommandResponseSchema,
   workflowInputCaseResponseSchema,

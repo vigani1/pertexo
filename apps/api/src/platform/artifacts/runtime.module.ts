@@ -5,7 +5,7 @@ import {
   createArtifactUploadDatabase,
   createFormUploadDatabase,
   type FormUploadDatabase,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

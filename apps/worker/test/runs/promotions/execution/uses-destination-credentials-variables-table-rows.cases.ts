@@ -1,14 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { createWorkflowAuthoringDatabase } from '@pertexo/database/authoring';
+import { createWorkflowAuthoringDatabase } from '@pertexo/core/authoring';
 import {
   createConnectionDatabase,
   CONNECTION_AUTH_TYPE,
-} from '@pertexo/database/connections';
-import { createDataTablesStore } from '@pertexo/database/data-tables';
+} from '@pertexo/core/connections';
+import { createDataTablesStore } from '@pertexo/core/data-tables';
 import { createWorkspaceVariablesStore } from '@pertexo/core/variables';
-import { createWorkflowRunDatabase } from '@pertexo/database/runs';
-import { createIdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
+import { createWorkflowRunDatabase } from '@pertexo/core/runs';
+import { createIdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   createConnectionEnvelopeEncryption,
@@ -20,7 +20,7 @@ import {
   platformPortableDefinitionPolicy,
 } from '@pertexo/node-catalog/server';
 import { buildWorkflowExecutable } from '@pertexo/workflow-engine';
-import { initialCheckpointFactory } from '@pertexo/execution';
+import { initialCheckpointFactory } from '@pertexo/core/execution';
 import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,

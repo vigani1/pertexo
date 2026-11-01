@@ -1,8 +1,6 @@
-import {
-  readFolderScope,
-  rethrowQueryFailure,
-  workflowScopeSql,
-} from '@pertexo/database/primitives';
+import { readFolderScope } from '../shared/facts.queries.js';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { workflowScopeSql } from '../shared/scope.queries.js';
 import {
   workflows,
   workflowDrafts,

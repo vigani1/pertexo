@@ -7,7 +7,7 @@ import {
   FailureNotificationStateError,
   type FailureNotificationResolvedDestination,
   type FailureNotificationStore,
-} from '@pertexo/database/notifications';
+} from '@pertexo/core/notifications';
 import type {
   ConnectionEnvelopeEncryption,
   ResendClient,

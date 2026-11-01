@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
-import { WorkflowNotFoundError } from '@pertexo/database/testing';
+import { WorkflowNotFoundError } from '@pertexo/core/testing';
 import { expect, it, vi } from 'vitest';
 
 import { TestWorkflowNodeUseCase } from '../../../src/node-testing/use-case.js';

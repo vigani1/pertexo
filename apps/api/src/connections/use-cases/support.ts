@@ -6,7 +6,7 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import type {
   ConnectionRecord,
   ConnectionTestResult,
-} from '@pertexo/database/connections';
+} from '@pertexo/core/connections';
 
 import type {
   ActorContext,

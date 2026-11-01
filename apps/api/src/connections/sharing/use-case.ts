@@ -1,5 +1,5 @@
 import { connectionSharingRequestSchema } from '@pertexo/contracts';
-import type { ConnectionSharingDatabase } from '@pertexo/database/connections';
+import type { ConnectionSharingDatabase } from '@pertexo/core/connections';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import { authorizeConnectionOperation } from '../authorization.js';
 import type { ConnectionCommandInput } from '../use-cases/support.js';

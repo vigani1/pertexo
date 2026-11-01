@@ -1,5 +1,5 @@
 import { errorRegistration } from '../../platform/http/problems/registry.js';
-import { ScheduleTriggerError } from '@pertexo/database/triggers';
+import { ScheduleTriggerError } from '@pertexo/core/triggers';
 import { applicationError } from '../../platform/http/index.js';
 import { InvalidScheduleOccurrenceCursorError } from '../../schedules/cursor.js';
 

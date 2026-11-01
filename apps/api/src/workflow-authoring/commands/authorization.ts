@@ -9,8 +9,8 @@ import type {
   WorkflowAuthoringPersistence,
   WorkflowApplicationInput,
 } from '../ports.js';
-import type { WorkflowDraftRecord } from '@pertexo/database/authoring';
-import { WorkflowRevisionConflictError } from '@pertexo/database/authoring';
+import type { WorkflowDraftRecord } from '@pertexo/core/authoring';
+import { WorkflowRevisionConflictError } from '@pertexo/core/authoring';
 
 export type AuthoringPersistence<
   Method extends keyof WorkflowAuthoringPersistence,

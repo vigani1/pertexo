@@ -3,7 +3,7 @@ import { createWebhookResponseWaiter } from '../../../src/webhooks/responses/wai
 import type {
   WebhookResponseScope,
   WebhookResponseSnapshot,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 // Node promises timers need their own controlled-clock seam. Wake one ms early
 // to exercise the real boundary without relying on CI scheduling luck.
 vi.mock('node:timers/promises', () => ({

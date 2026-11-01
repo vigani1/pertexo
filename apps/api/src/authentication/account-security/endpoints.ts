@@ -1,5 +1,11 @@
 import { randomUUID, randomBytes } from 'node:crypto';
-import { isAuthenticationSessionAllowed } from '@pertexo/database/tenant-access';
+import {
+  isAuthenticationSessionAllowed,
+  changePasswordAndRevokeSessions,
+  resetPasswordAndRevokeSessions,
+  setupPasswordAndRevokeSessions,
+  unlinkMethodAndRevokeSessions,
+} from '@pertexo/core/tenant-access';
 import {
   APIError,
   createAuthEndpoint,
@@ -12,12 +18,6 @@ import type { Pool } from 'pg';
 import { z } from 'zod';
 
 import type { SocialProviderGateway } from '../providers/contract.js';
-import {
-  changePasswordAndRevokeSessions,
-  resetPasswordAndRevokeSessions,
-  setupPasswordAndRevokeSessions,
-  unlinkMethodAndRevokeSessions,
-} from '@pertexo/database/tenant-access';
 import { requireDoubleSubmitCsrf } from '../better-auth/csrf.js';
 
 type EndpointContext = Parameters<typeof setSessionCookie>[0];

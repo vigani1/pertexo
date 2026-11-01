@@ -3,7 +3,7 @@ import { mkdtemp, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { PutArtifactRequest } from '@pertexo/artifact-store';
-import { ConnectionUnavailableError } from '@pertexo/database/connections';
+import { ConnectionUnavailableError } from '@pertexo/core/connections';
 
 import { ProviderCredentialInvalidError } from '@pertexo/node-sdk/server';
 

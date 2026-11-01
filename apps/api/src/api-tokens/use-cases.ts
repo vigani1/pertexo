@@ -7,11 +7,11 @@ import {
   apiTokenRevokeResponseSchema,
   type ApiTokenListResponse,
 } from '@pertexo/contracts';
-import type { ApiTokenDatabase } from '@pertexo/database/tenant-access';
 import type {
+  ApiTokenDatabase,
   ApiTokenOwner,
   ApiTokenCommand,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import { assertRecentSignIn, type IdentityClock } from '../identity/index.js';
 import {
   applicationError,

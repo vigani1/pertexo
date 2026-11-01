@@ -69,7 +69,7 @@ export function registerClassifiesPreFenceSDestinationStore(): void {
       const persistence = store(kind);
       vi.mocked(persistence.loadDestination).mockRejectedValue(
         new (
-          await import('@pertexo/database/testing')
+          await import('@pertexo/core/testing')
         ).FailureNotificationStateError('destination disabled'),
       );
       const sendMessage = vi.fn();
@@ -100,9 +100,9 @@ export function registerClassifiesPreFenceSDestinationStore(): void {
   it('preserves unresolved truth when destination identity can no longer load', async () => {
     const persistence = store('email');
     vi.mocked(persistence.loadDestination).mockRejectedValue(
-      new (
-        await import('@pertexo/database/testing')
-      ).FailureNotificationStateError('destination changed'),
+      new (await import('@pertexo/core/testing')).FailureNotificationStateError(
+        'destination changed',
+      ),
     );
     const delivery = createProviderFailureNotificationDelivery({
       store: persistence,

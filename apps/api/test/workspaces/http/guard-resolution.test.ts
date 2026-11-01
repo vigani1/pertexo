@@ -4,7 +4,7 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type {
   ScheduleTriggerDatabase,
   WebhookTriggerDatabase,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import {
   WebhookTriggerEnvelopeEncryption,
   type WebhookEnvelopeKeyProvider,

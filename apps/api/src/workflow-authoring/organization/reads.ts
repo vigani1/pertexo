@@ -14,7 +14,7 @@ import {
   WorkflowTemplateOriginUnavailableError,
   type WorkflowOrganizationReadDatabase,
   type WorkflowTagDatabase,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import type { WorkflowAuthoringPersistence } from '../ports.js';
 import {

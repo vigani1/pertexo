@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { PreviewAttemptLease } from '@pertexo/database/testing';
+import type { PreviewAttemptLease } from '@pertexo/core/testing';
 
 import { createPlatformPreviewNodeInvoker as createUnownedPlatformPreviewNodeInvoker } from '../../../src/testing.js';
 import type { PreviewNodeInvoker } from '../../../src/previews/handler.js';

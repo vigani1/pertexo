@@ -14,8 +14,8 @@ import {
 } from './telemetry.js';
 import type { WorkflowSummary, WorkflowVersionsResponse } from './types.js';
 import type { WorkflowApplicationInput } from './ports.js';
-import type { WorkflowDraftRecord } from '@pertexo/database/authoring';
-import { WorkflowNotFoundError } from '@pertexo/database/authoring';
+import type { WorkflowDraftRecord } from '@pertexo/core/authoring';
+import { WorkflowNotFoundError } from '@pertexo/core/authoring';
 import {
   serializeWorkflowDraft,
   serializeWorkflowList,

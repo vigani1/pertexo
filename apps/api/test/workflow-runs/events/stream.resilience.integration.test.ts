@@ -8,8 +8,10 @@ import {
   acceptWorkflowRun,
   appendRunEvent,
   createIdentityWorkspaceDatabase,
-  createWorkspaceDatabase,
   lockRunAcceptanceCommand,
+} from '@pertexo/core/testing';
+import {
+  createWorkspaceDatabase,
   parseDatabaseConfig,
   type WorkspaceDatabase,
 } from '@pertexo/database/testing';

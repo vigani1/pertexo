@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createWorkflowRunDatabase } from '@pertexo/database/runs';
+import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 type OwnerQuery = <T extends Record<string, unknown>>(

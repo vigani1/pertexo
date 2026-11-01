@@ -1,5 +1,5 @@
 import { metrics, type Meter } from '@opentelemetry/api';
-import type { ScanDueSchedulesResult } from '@pertexo/database/triggers';
+import type { ScanDueSchedulesResult } from '@pertexo/core/triggers';
 
 export interface TriggerRuntimeTelemetry {
   reconciliationCompleted(outcome: 'succeeded' | 'failed'): void;

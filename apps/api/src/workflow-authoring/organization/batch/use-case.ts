@@ -14,7 +14,7 @@ import {
   WorkflowTagConflictError,
   type WorkflowOrganizationBatchDatabase,
   type WorkflowOrganizationBatchRequest,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import {
   AuthorizationError,
   type WorkspaceAuthorizationSource,

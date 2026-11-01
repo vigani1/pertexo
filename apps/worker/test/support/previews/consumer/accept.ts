@@ -4,12 +4,12 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 
 import {
   acceptPreviewRun,
-  databaseSchema,
   parseWorkspaceId,
   withTenantScopedClient,
   type AcceptWorkflowRunInput,
   type AcceptPreviewRunInput,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
+import { databaseSchema } from '@pertexo/database/testing';
 
 import { createCheckpoint } from '@pertexo/workflow-engine';
 

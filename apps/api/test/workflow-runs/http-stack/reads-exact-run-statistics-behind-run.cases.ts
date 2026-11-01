@@ -2,7 +2,7 @@ import {
   IdempotencyRequestConflictError,
   ExecutionStateConflictError,
   WorkflowRunNotExecutableError,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { WorkflowRunNotFoundError } from '../../../src/workflow-runs/use-cases.js';
 import { expect, it } from 'vitest';
 

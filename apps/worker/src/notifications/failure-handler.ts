@@ -1,5 +1,5 @@
-import type { FailureNotificationStore } from '@pertexo/database/notifications';
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
+import type { FailureNotificationStore } from '@pertexo/core/notifications';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
 import type {
   FailureNotificationContext,

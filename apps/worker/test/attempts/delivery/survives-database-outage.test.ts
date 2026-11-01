@@ -1,7 +1,7 @@
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
-} from '@pertexo/database/attempts';
+} from '@pertexo/core/attempts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { completingThroughOutage } from '../../../src/attempts/delivery/complete-through-outage.js';

@@ -1,6 +1,6 @@
 import { it, expect, vi } from 'vitest';
 import { z } from 'zod';
-import type { RunValuesStore } from '@pertexo/database/runs';
+import type { RunValuesStore } from '@pertexo/core/runs';
 import { createRunValuesRuntime } from '../../src/attempts/execution/run-values.js';
 import {
   controlledActionUrl,

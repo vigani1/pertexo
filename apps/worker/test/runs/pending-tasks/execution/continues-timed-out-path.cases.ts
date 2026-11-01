@@ -8,7 +8,7 @@ import {
   createDueNodeWakeupScanner,
   createPendingTaskStore,
   createWorkflowRunDatabase,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   accept,

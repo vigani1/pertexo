@@ -3,7 +3,7 @@ import {
   ExecutionCapabilityExpiredError,
   RunValuesLimitError,
   type RunValuesStore,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import type { NodeRunValuesRuntime } from '@pertexo/node-sdk';
 import type { NodeExecutionCapabilityContext } from './capabilities.js';

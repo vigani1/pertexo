@@ -1,8 +1,5 @@
 import { callbackWaitConfigSchema } from '@pertexo/workflow-model';
-import {
-  CallbackCapacityError,
-  type CallbackStore,
-} from '@pertexo/database/runs';
+import { CallbackCapacityError, type CallbackStore } from '@pertexo/core/runs';
 import {
   callbackTokenHash,
   type CallbackTokenKeys,

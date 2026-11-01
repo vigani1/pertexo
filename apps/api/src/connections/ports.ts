@@ -6,8 +6,8 @@ import type {
   ConnectionTestDatabase,
   ConnectionUsageDatabase,
   OAuth2ConsentDatabase,
-} from '@pertexo/database/connections';
-import type { FailureNotificationDestinationDatabase } from '@pertexo/database/notifications';
+} from '@pertexo/core/connections';
+import type { FailureNotificationDestinationDatabase } from '@pertexo/core/notifications';
 import type {
   ConnectionSecretContext,
   OAuth2EndpointPolicy,

@@ -1,11 +1,11 @@
 import {
   createGovernanceStore,
   type GovernanceStore,
-} from '@pertexo/database/governance';
+} from '@pertexo/core/governance';
 import {
   createDataTablesStore,
   type DataTablesStore,
-} from '@pertexo/database/data-tables';
+} from '@pertexo/core/data-tables';
 import {
   createWorkspaceVariablesStore,
   type WorkspaceVariablesStore,
@@ -18,7 +18,7 @@ import {
   createWorkflowFolderDatabase,
   createWorkflowOrganizationBatchDatabase,
   type WorkflowInputCaseDatabase,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

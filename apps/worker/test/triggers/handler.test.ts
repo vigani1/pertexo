@@ -1,9 +1,9 @@
-import type { WorkflowTriggerReconciliationDatabase } from '@pertexo/database/testing';
+import type { WorkflowTriggerReconciliationDatabase } from '@pertexo/core/testing';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 import {
-  canonicalOutboxPayloadChecksum,
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 

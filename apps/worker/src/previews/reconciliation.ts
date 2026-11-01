@@ -1,12 +1,12 @@
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import {
   createDatabasePreviewReconciliationStore,
   type PreviewDeliveryReconciliationResult,
   type PreviewReconciliationStore,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-} from '@pertexo/database/previews';
-export type { PreviewReconciliationStore } from '@pertexo/database/previews';
+} from '@pertexo/core/previews';
+export type { PreviewReconciliationStore } from '@pertexo/core/previews';
 export const previewReconciliationFactories = Object.freeze({
   handler: createPreviewReconciliationHandler,
   store: createDatabasePreviewReconciliationStore,

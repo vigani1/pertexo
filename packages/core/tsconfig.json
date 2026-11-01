@@ -26,6 +26,15 @@
     },
     {
       "path": "../workflow-model/tsconfig.json"
+    },
+    {
+      "path": "../node-sdk/tsconfig.json"
+    },
+    {
+      "path": "../nodes-core/tsconfig.json"
+    },
+    {
+      "path": "../workflow-engine/tsconfig.json"
     }
   ]
 }

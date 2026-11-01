@@ -1,6 +1,8 @@
 import {
   lockWorkspaceAuthorityInStatuses,
   readWorkspaceAuthority,
+} from './authority.queries.js';
+import {
   withTenantScopedClient,
   withTenantScopedReadClient,
 } from '@pertexo/database/primitives';

@@ -5,7 +5,7 @@ import {
   publicationReviewOverviewSchema,
   publicationReviewDetailSchema,
 } from '@pertexo/contracts';
-import type { PublicationReviewStore } from '@pertexo/database/authoring';
+import type { PublicationReviewStore } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

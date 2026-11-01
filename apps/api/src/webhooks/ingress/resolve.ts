@@ -1,7 +1,7 @@
 import {
   WebhookTestEventError,
   WebhookIngressRateLimitExceededError,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 
 import type { FastifyReply } from 'fastify';
 

@@ -4,10 +4,8 @@ import {
 } from '../support/federation.js';
 import { nodeTestingSamples } from '../node-testing/fixture.js';
 
-import type {
-  WorkflowAuthoringDatabase,
-  WorkspaceDatabase,
-} from '@pertexo/database/testing';
+import type { WorkflowAuthoringDatabase } from '@pertexo/core/testing';
+import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type { TelemetryLifecycle } from '@pertexo/observability';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import { vi } from 'vitest';

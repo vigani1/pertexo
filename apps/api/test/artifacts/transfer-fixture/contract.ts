@@ -4,10 +4,8 @@ import type {
   ArtifactDownloadCapability,
   ArtifactStore,
 } from '@pertexo/artifact-store';
-import type {
-  IdentityWorkspaceDatabase,
-  WorkspaceDatabase,
-} from '@pertexo/database/testing';
+import type { IdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type { StructuredLogger } from '@pertexo/observability';
 import type { PoolClient } from 'pg';
 

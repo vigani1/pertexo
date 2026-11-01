@@ -1,4 +1,4 @@
-import { reconcileWorkflowTriggersPayload } from '@pertexo/database/testing';
+import { reconcileWorkflowTriggersPayload } from '@pertexo/core/testing';
 import { ReconcileWorkflowTriggersJobSchema } from '@pertexo/queue';
 import { describe, expect, it } from 'vitest';
 

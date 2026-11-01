@@ -9,7 +9,7 @@ import type {
   WorkspaceMemberRecord,
   WorkspaceRenameResult,
   SealedInvitationToken as StoredInvitationToken,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 
 import type {
   IdentityClock,

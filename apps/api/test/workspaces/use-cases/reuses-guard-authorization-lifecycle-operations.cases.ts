@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { WorkspaceLifecycleConflictError } from '@pertexo/database/testing';
+import { WorkspaceLifecycleConflictError } from '@pertexo/core/testing';
 import {
   CreateWorkspaceUseCase,
   WorkspaceLifecycleUseCase,

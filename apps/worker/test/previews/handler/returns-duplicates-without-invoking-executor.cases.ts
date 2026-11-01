@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { PreviewAttemptStateError } from '@pertexo/database/previews';
+import { PreviewAttemptStateError } from '@pertexo/core/previews';
 
 import { NodeDispatchEvidenceError } from '@pertexo/node-sdk/server';
 

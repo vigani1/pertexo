@@ -1,7 +1,7 @@
 import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import {
   NodeConfigValidationError,

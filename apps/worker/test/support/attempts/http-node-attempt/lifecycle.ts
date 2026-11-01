@@ -2,9 +2,11 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import {
   createConnectionDatabase,
+  type ConnectionDatabase,
+} from '@pertexo/core/testing';
+import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
-  type ConnectionDatabase,
 } from '@pertexo/database/testing';
 
 import { ConnectionEnvelopeEncryption } from '@pertexo/integrations/server';

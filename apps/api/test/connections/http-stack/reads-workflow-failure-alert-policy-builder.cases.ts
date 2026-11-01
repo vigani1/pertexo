@@ -1,4 +1,4 @@
-import { FailureNotificationDestinationError } from '@pertexo/database/notifications';
+import { FailureNotificationDestinationError } from '@pertexo/core/notifications';
 
 import { ConnectionSecretEncryptionError } from '@pertexo/integrations/server';
 import { expect, it } from 'vitest';

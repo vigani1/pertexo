@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';

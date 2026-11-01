@@ -1,5 +1,5 @@
-import { createConnectionDatabase } from '@pertexo/database/connections';
-import { createFailureNotificationDestinationDatabase } from '@pertexo/database/notifications';
+import { createConnectionDatabase } from '@pertexo/core/connections';
+import { createFailureNotificationDestinationDatabase } from '@pertexo/core/notifications';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   createNodeSecureHttpClient,

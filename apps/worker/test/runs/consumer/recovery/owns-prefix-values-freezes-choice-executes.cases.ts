@@ -3,18 +3,16 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   initialCheckpointFactory,
   recoveryPreparation,
-} from '@pertexo/execution';
+} from '@pertexo/core/execution';
 import {
   createWorkflowRunDatabase,
   WorkflowRecoveryUnavailableError,
   IdempotencyRequestConflictError,
   WorkflowRunNotFoundError,
   WorkspaceRunQuotaExceededError,
-} from '@pertexo/database/runs';
-import {
-  createOutboxDispatcherDatabase,
-  parseDatabaseConfig,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/runs';
+import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 

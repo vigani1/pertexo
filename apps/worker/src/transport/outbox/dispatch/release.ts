@@ -1,7 +1,7 @@
 import type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
-} from '@pertexo/database/outbox';
+} from '@pertexo/core/outbox';
 import type { TransportMetrics } from '@pertexo/observability';
 
 import { bounded } from '../operation-deadline.js';

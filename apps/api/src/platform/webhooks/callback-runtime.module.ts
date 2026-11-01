@@ -1,7 +1,4 @@
-import {
-  createCallbackStore,
-  type CallbackStore,
-} from '@pertexo/database/runs';
+import { createCallbackStore, type CallbackStore } from '@pertexo/core/runs';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import {
   createCallbackTokenKeys,

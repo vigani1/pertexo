@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common/constants.js';
 
 import { expect, it } from 'vitest';
-import { WorkflowTagConflictError } from '@pertexo/database/authoring';
+import { WorkflowTagConflictError } from '@pertexo/core/authoring';
 import { WorkflowOrganizationController } from '../../../../src/workflow-authoring/organization/controller.js';
 
 import {

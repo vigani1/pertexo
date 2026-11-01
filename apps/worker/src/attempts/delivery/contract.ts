@@ -1,12 +1,15 @@
 import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
-} from '@pertexo/database/attempts';
+} from '@pertexo/core/attempts';
 import type {
   WorkflowExecutionReader,
   WorkflowExecutionProjection,
-} from '@pertexo/database/runs';
-import type { ForEachUpstream, NodeAttemptInputs } from '@pertexo/execution';
+} from '@pertexo/core/runs';
+import type {
+  ForEachUpstream,
+  NodeAttemptInputs,
+} from '@pertexo/core/execution';
 
 import type {
   QueueDelivery,

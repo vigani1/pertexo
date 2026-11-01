@@ -1,4 +1,4 @@
-import type { CallbackStore } from '@pertexo/database/runs';
+import type { CallbackStore } from '@pertexo/core/runs';
 
 /** Startup composition tests provide their own store; no configured database is contacted. */
 export function emptyCallbackStore(): CallbackStore {

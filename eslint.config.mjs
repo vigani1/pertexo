@@ -35,8 +35,6 @@ const workflowModelLayer = {
     '@pertexo/node-catalog/*',
     '@pertexo/contracts',
     '@pertexo/contracts/*',
-    '@pertexo/execution',
-    '@pertexo/execution/*',
     '@pertexo/templates',
     '@pertexo/templates/*',
     'bullmq',
@@ -196,7 +194,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'Import a database area entry point, such as @pertexo/database/runs.',
+                'Import a database entry point, such as @pertexo/database/platform.',
             },
           ],
           patterns: [
@@ -232,7 +230,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'Import a database area entry point, such as @pertexo/database/runs.',
+                'Import a database entry point, such as @pertexo/database/platform.',
             },
           ],
           patterns: [
@@ -264,8 +262,6 @@ export default tseslint.config(
                 '@pertexo/core',
                 '@pertexo/core/*',
                 '**/core/src/**',
-                '@pertexo/execution',
-                '@pertexo/execution/*',
                 'bullmq',
                 'ioredis',
               ],
@@ -519,6 +515,13 @@ export default tseslint.config(
         {
           paths: [
             {
+              name: '@pertexo/nodes-core',
+              allowImportNames: ['CORE_SCHEDULE_CONFIG_SCHEMA'],
+              allowTypeImports: true,
+              message:
+                'Core may read the shared schedule configuration; node execution and request projection belong to callers.',
+            },
+            {
               name: '@pertexo/database',
               message:
                 'Import a database entry point, such as @pertexo/database/primitives.',
@@ -546,42 +549,6 @@ export default tseslint.config(
               ],
               message:
                 'Core holds areas: flows, queries and decisions. Frameworks, queues and applications stay outside it.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['packages/execution/**/*.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@pertexo/database',
-              message:
-                'Import a database area entry point, such as @pertexo/database/runs.',
-            },
-          ],
-          patterns: [
-            {
-              group: [
-                '**/apps/**',
-                '@nestjs/*',
-                '@pertexo/api',
-                '@pertexo/api/*',
-                '@pertexo/worker',
-                '@pertexo/worker/*',
-                '@pertexo/queue',
-                '@pertexo/queue/*',
-                'bullmq',
-                'ioredis',
-                'pg',
-              ],
-              message:
-                'Execution holds run actions; transactions, queues and transport belong to the database package and the apps.',
             },
           ],
         },
@@ -682,7 +649,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'Import a database area entry point, such as @pertexo/database/runs.',
+                'Import a database entry point, such as @pertexo/database/platform.',
             },
           ],
           patterns: [
@@ -710,7 +677,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'Import a database area entry point, such as @pertexo/database/runs.',
+                'Import a database entry point, such as @pertexo/database/platform.',
             },
           ],
           patterns: [
@@ -772,7 +739,7 @@ export default tseslint.config(
             {
               name: '@pertexo/database',
               message:
-                'Import a database area entry point, such as @pertexo/database/runs.',
+                'Import a database entry point, such as @pertexo/database/platform.',
             },
           ],
         },
@@ -787,9 +754,13 @@ export default tseslint.config(
     rules: readabilityRules,
   },
   {
-    files: readableWorkspaces.map(
-      (workspace) => `${workspace}/test/**/*.{ts,tsx}`,
-    ),
+    files: [
+      ...readableWorkspaces.map(
+        (workspace) => `${workspace}/test/**/*.{ts,tsx}`,
+      ),
+      // Test helpers behind @pertexo/database/testing, used by two packages' tests.
+      'packages/database/src/testing/**/*.ts',
+    ],
     rules: { 'max-lines-per-function': 'off' },
   },
   {
@@ -798,9 +769,12 @@ export default tseslint.config(
   },
   {
     // Declarative protocol, schema, retention and OpenAPI tables stay together,
-    // as does the workflow-model entry point, which only lists its exports.
+    // as do the entry points that only list their exports.
     files: [
+      'packages/database/src/schema.ts',
       'packages/workflow-model/src/index.ts',
+      // At the limit already; the move split its test-door import in two.
+      'apps/worker/test/support/workflow-lifecycle.integration.support.ts',
       'packages/database/src/schema/foundation.ts',
       'packages/database/src/schema/runs/execution.ts',
       'packages/contracts/src/errors/api-problem.ts',

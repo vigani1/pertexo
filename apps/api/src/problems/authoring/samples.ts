@@ -1,4 +1,4 @@
-import type { WorkflowStepSampleError } from '@pertexo/database/authoring';
+import type { WorkflowStepSampleError } from '@pertexo/core/authoring';
 import { applicationError } from '../../platform/http/index.js';
 
 const messages: Readonly<Record<WorkflowStepSampleError['reason'], string>> = {

@@ -5,7 +5,7 @@ import { authenticationReturnPathSchema } from '@pertexo/contracts';
 import {
   EmailProofCommands,
   type SignUpMode,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 

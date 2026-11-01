@@ -1,4 +1,4 @@
-import type { DirectoryStore } from '@pertexo/database/tenant-access';
+import type { DirectoryStore } from '@pertexo/core/tenant-access';
 import { FederationManagementService } from '../../src/authentication/federation/management/service.js';
 /** Unrelated API tests still construct the real module; federation storage is deliberately unavailable. */
 export function stubFederationService(): FederationManagementService {

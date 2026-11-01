@@ -2,7 +2,10 @@ import { DirectoryManagementModule } from '../../authentication/federation/provi
 import {
   createDirectoryStore,
   type DirectoryStore,
-} from '@pertexo/database/tenant-access';
+  createIdentityWorkspaceDatabase,
+  createFederationManagementStore,
+  createApiTokenDatabase,
+} from '@pertexo/core/tenant-access';
 import { FederationManagementModule } from '../../authentication/federation/management/module.js';
 import { FederationManagementService } from '../../authentication/federation/management/service.js';
 import { federationSecretContext } from '../../authentication/federation/protocol/oidc.js';
@@ -13,11 +16,6 @@ import {
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
-import {
-  createIdentityWorkspaceDatabase,
-  createFederationManagementStore,
-  createApiTokenDatabase,
-} from '@pertexo/database/tenant-access';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

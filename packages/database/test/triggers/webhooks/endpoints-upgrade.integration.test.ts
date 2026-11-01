@@ -10,7 +10,7 @@ import {
   migrateDatabase,
   MIGRATIONS_DIRECTORY,
 } from '../../../src/migrations.js';
-import { createDisposableDatabaseFixture } from '../../support/postgres/disposable-database.js';
+import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 const liveKey = 'a'.repeat(64);
 const replacedKey = 'b'.repeat(64);

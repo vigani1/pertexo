@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  createIdentityWorkspaceDatabase,
-  createWorkspaceDatabase,
-} from '@pertexo/database/testing';
+import { createIdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import { createWorkspaceDatabase } from '@pertexo/database/testing';
 
 import { createTestApiApplication } from '../../support/api-application.js';
 import { createApiIdentityRuntime } from '../../../src/platform/identity/runtime.module.js';

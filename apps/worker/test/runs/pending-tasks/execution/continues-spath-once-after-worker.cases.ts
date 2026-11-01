@@ -4,7 +4,7 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
   createPendingTaskStore,
   createDueNodeWakeupScanner,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   accept,

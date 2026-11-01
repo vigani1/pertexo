@@ -1,4 +1,4 @@
-import type { FailureNotificationStore } from '@pertexo/database/notifications';
+import type { FailureNotificationStore } from '@pertexo/core/notifications';
 import type { AwsConnectionEnvelopeEncryptionRuntime } from '@pertexo/integrations/server';
 import type { QueueConsumerObserver } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';

@@ -8,8 +8,8 @@ import {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from '@pertexo/database/connections';
-import { FailureNotificationDestinationError } from '@pertexo/database/notifications';
+} from '@pertexo/core/connections';
+import { FailureNotificationDestinationError } from '@pertexo/core/notifications';
 import {
   ConnectionSecretEncryptionError,
   SecureHttpError,

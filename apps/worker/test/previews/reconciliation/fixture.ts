@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import {
-  parseDatabaseConfig,
-  type FailureNotificationStore,
-} from '@pertexo/database/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
+import type { FailureNotificationStore } from '@pertexo/core/testing';
 import { jobIdForOutboxEvent, JOB_NAME } from '@pertexo/queue';
 import { vi } from 'vitest';
 import { testMaintenanceRuntime } from '../../support/runtime-factories.js';

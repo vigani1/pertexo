@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
-import { SocialSignInCommands } from '@pertexo/database/tenant-access';
+import { SocialSignInCommands } from '@pertexo/core/tenant-access';
 import { SocialSignIn } from '../../../src/authentication/federation/social.js';
 import type { SocialProviderGateway } from '../../../src/authentication/providers/contract.js';
 

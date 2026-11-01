@@ -1,7 +1,7 @@
 import { toProblem } from '../../../../src/problems/registry.js';
 import { workspaceFailure } from '../../../../src/problems/context/normalize.js';
 import { expect, it, vi } from 'vitest';
-import { WorkspaceInvitationCommandConflictError } from '@pertexo/database/tenant-access';
+import { WorkspaceInvitationCommandConflictError } from '@pertexo/core/tenant-access';
 import { nodeIdentityCrypto } from '../../../../src/identity/index.js';
 import { WorkspaceInvitationManagementUseCase } from '../../../../src/workspaces/index.js';
 import type {

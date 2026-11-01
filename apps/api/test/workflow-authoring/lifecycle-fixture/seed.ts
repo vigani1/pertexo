@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import { testExecutableCompiler } from '@pertexo/database/testing';
+import { testExecutableCompiler } from '@pertexo/core/testing';
 
 import type { Pool } from 'pg';
 import type { PoolClient } from 'pg';

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DataTableError } from '@pertexo/node-sdk';
-import type { DataTablesStore } from '@pertexo/database/data-tables';
+import type { DataTablesStore } from '@pertexo/core/data-tables';
 import { DataTablesService } from '../../src/data-tables/service.js';
 function fixture() {
   const prepared: unknown[] = [];

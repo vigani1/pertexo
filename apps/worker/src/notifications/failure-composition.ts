@@ -1,4 +1,4 @@
-import { createFailureNotificationStore } from '@pertexo/database/notifications';
+import { createFailureNotificationStore } from '@pertexo/core/notifications';
 import {
   createConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,

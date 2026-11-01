@@ -15,7 +15,7 @@ export { isTransientDatabaseFailure } from './query-errors.js';
 export {
   DEFAULT_INSTANCE_LIMITS,
   type InstanceCapacity,
-} from '../runs/capacity/instance-limits.js';
+} from './instance-limits.js';
 export {
   IdempotencyConflictError,
   credentialCommandScope,

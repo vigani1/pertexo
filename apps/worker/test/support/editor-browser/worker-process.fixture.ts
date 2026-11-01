@@ -2,7 +2,7 @@ import type { createArtifactDestination } from '../../attempts/artifacts/http-de
 
 import { createEditorPreview } from './previews.js';
 import { createHash, randomUUID } from 'node:crypto';
-import { createOutboxDispatcherDatabase } from '@pertexo/database/outbox';
+import { createOutboxDispatcherDatabase } from '@pertexo/core/outbox';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 

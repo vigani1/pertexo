@@ -7,7 +7,7 @@ import {
   verifyStoredEncryptionKeys,
   StoredKeyVerificationError,
 } from '../../../packages/integrations/dist/server.js';
-import { createCallbackStore } from '../../../packages/database/dist/runs/index.js';
+import { createCallbackStore } from '../../../packages/core/dist/runs/index.js';
 import { parseDatabaseConfig } from '../../../packages/database/dist/config.js';
 import {
   parseCallbackKeyConfig,

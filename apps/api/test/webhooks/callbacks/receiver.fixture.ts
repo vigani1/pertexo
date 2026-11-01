@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createCallbackStore } from '@pertexo/database/runs';
+import { createCallbackStore } from '@pertexo/core/runs';
 import { createCallbackTokenKeys } from '@pertexo/integrations/server';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { registerCallbackIngress } from '../../../src/webhooks/callbacks/ingress.js';

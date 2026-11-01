@@ -6,7 +6,7 @@ import {
   PriorPreviewInputUnavailableError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,

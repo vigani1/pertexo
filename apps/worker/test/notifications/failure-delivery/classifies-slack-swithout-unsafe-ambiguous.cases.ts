@@ -65,7 +65,7 @@ export function registerClassifiesSlackSWithoutUnsafeAmbiguous(): void {
       const providerCalls: string[] = [];
       vi.mocked(persistence.fenceDispatch).mockRejectedValue(
         new (
-          await import('@pertexo/database/testing')
+          await import('@pertexo/core/testing')
         ).FailureNotificationStateError('fence rejected'),
       );
       const delivery = createProviderFailureNotificationDelivery({
@@ -127,9 +127,9 @@ export function registerClassifiesSlackSWithoutUnsafeAmbiguous(): void {
   it('uses persisted unresolved dispatch truth rather than binding presence', async () => {
     const persistence = store('email');
     vi.mocked(persistence.fenceDispatch).mockRejectedValue(
-      new (
-        await import('@pertexo/database/testing')
-      ).FailureNotificationStateError('fence rejected'),
+      new (await import('@pertexo/core/testing')).FailureNotificationStateError(
+        'fence rejected',
+      ),
     );
     const delivery = createProviderFailureNotificationDelivery({
       store: persistence,

@@ -1,4 +1,4 @@
-import type { NodeAttemptLease } from '@pertexo/database/testing';
+import type { NodeAttemptLease } from '@pertexo/core/testing';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import { createCoreNodeRegistry } from '@pertexo/nodes-core/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';

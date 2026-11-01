@@ -15,7 +15,7 @@ import {
 import { appSchema } from '../../../namespace.js';
 import { users } from '../../../foundation.js';
 import { authOrganizations } from '../organizations.js';
-import type { DirectoryUserProfile } from '../../../../identity/federation/provisioning/contract.js';
+import type { DirectoryUserProfile } from '../../../stored-shapes.js';
 
 export const authDirectoryUsers = appSchema.table(
   'auth_directory_users',

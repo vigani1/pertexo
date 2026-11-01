@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { WorkflowNotFoundError } from '@pertexo/database/authoring';
+import { WorkflowNotFoundError } from '@pertexo/core/authoring';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import { AuthorizationError } from '../../../../../src/authorization/index.js';
 

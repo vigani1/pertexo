@@ -1,9 +1,9 @@
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
   type WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import {
   unrecoverableQueueError,
   type QueueDelivery,

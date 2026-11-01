@@ -25,9 +25,6 @@
       "path": "../../packages/database/tsconfig.json"
     },
     {
-      "path": "../../packages/execution/tsconfig.json"
-    },
-    {
       "path": "../../packages/integrations/tsconfig.json"
     },
     {
@@ -53,6 +50,9 @@
     },
     {
       "path": "../../packages/workflow-model/tsconfig.json"
+    },
+    {
+      "path": "../../packages/core/tsconfig.json"
     }
   ]
 }

@@ -7,8 +7,8 @@ import type {
   TestEventReference,
   WebhookTriggerDatabase,
   WebhookVerificationReference,
-} from '@pertexo/database/triggers';
-import type { InitialCheckpointFactory } from '@pertexo/database/runs';
+} from '@pertexo/core/triggers';
+import type { InitialCheckpointFactory } from '@pertexo/core/runs';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import type { StructuredLogger } from '@pertexo/observability';
 

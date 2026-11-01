@@ -14,10 +14,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import type {
-  ConnectionAuthType,
-  ConnectionStatus,
-} from '../connections/contract.js';
+import type { ConnectionAuthType, ConnectionStatus } from './stored-shapes.js';
 import { users, workspaceMemberships, workspaces } from './foundation.js';
 
 import { appSchema } from './namespace.js';

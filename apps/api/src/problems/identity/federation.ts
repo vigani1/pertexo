@@ -1,6 +1,6 @@
 import type { ApiProblemCode } from '@pertexo/contracts';
 import { errorRegistration } from '../../platform/http/problems/registry.js';
-import { FederationConflictError } from '@pertexo/database/tenant-access';
+import { FederationConflictError } from '@pertexo/core/tenant-access';
 import { applicationError } from '../../platform/http/index.js';
 
 export const federationProblems = [

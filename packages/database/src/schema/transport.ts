@@ -1,5 +1,5 @@
 import type { JsonValue } from '@pertexo/workflow-model';
-import type { ArtifactStatus } from '../artifacts/contract.js';
+import type { ArtifactStatus } from './stored-shapes.js';
 import {
   type PgTableExtraConfigValue,
   bigint,

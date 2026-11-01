@@ -2,7 +2,7 @@ import type { Role } from '@pertexo/workflow-model';
 import type {
   ConnectionRecord,
   FailureNotificationDestinationDatabase,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 import { expect, vi } from 'vitest';
 import { createTestApiApplication } from '../../support/api-application.js';

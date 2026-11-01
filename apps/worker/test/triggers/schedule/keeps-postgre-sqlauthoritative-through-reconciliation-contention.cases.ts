@@ -1,7 +1,5 @@
-import {
-  canonicalOutboxPayloadChecksum,
-  createScheduleTriggerScanner,
-} from '@pertexo/database/testing';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
+import { createScheduleTriggerScanner } from '@pertexo/core/testing';
 import {
   createQueueProducer,
   JOB_NAME,

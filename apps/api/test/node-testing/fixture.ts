@@ -1,9 +1,9 @@
 import { vi } from 'vitest';
-import type { WorkflowStepSampleStore } from '@pertexo/database/authoring';
+import type { WorkflowStepSampleStore } from '@pertexo/core/authoring';
 import type {
   PreviewRunRecord,
   WorkflowDraftRecord,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 
 export const nodeTestingIds = Object.freeze({
   actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

@@ -1,9 +1,9 @@
-import { applyConnectionHealthObservation } from '@pertexo/database/connections';
+import { applyConnectionHealthObservation } from '@pertexo/core/connections';
 import {
   canonicalOutboxPayloadChecksum,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from '@pertexo/database/outbox';
+} from '@pertexo/core/outbox';
 import {
   createWorkspaceDatabase,
   type DatabaseConfig,

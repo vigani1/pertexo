@@ -7,7 +7,7 @@ import {
   type DirectoryStore,
   type DirectoryUser,
   type DirectoryGroup,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import { directoryDiscovery } from '../protocol/discovery.js';
 import {
   parseDirectoryUser,

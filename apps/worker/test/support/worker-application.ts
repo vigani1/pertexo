@@ -1,9 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
-import type {
-  OutboxDispatcherDatabase,
-  WorkspaceDatabase,
-} from '@pertexo/database/testing';
+import type { OutboxDispatcherDatabase } from '@pertexo/core/testing';
+import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type {
   StructuredLogger,
   TransportMetrics,

@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { createIdentityWorkspaceDatabase } from '@pertexo/database/tenant-access';
+import { createIdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { Pool } from 'pg';

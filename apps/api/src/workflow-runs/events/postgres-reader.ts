@@ -1,4 +1,4 @@
-import { readRunEventsAfter } from '@pertexo/database/runs';
+import { readRunEventsAfter } from '@pertexo/core/runs';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 
 import type { PersistedRunEvent, PersistedRunEventReader } from './stream.js';

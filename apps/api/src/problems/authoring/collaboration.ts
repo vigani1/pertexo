@@ -1,6 +1,6 @@
 import type { ApiProblemCode } from '@pertexo/contracts';
 import { errorRegistration } from '../../platform/http/problems/registry.js';
-import { WorkflowCollaborationError } from '@pertexo/database/authoring';
+import { WorkflowCollaborationError } from '@pertexo/core/authoring';
 import { applicationError } from '../../platform/http/index.js';
 
 export const collaborationProblems = [

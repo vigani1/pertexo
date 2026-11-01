@@ -4,11 +4,11 @@ import { expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 
 import { WorkspaceVariablesConflictError } from '../../../src/variables/index.js';
-import { WorkspaceAccessDeniedError } from '@pertexo/database/tenant-access';
+import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/index.js';
 
-import { withWorkspaceTransaction } from '../../../../database/src/tenant-access/transactions.js';
+import { withWorkspaceTransaction } from '@pertexo/database/primitives';
 
-import { admin } from '../../../../database/test/lifecycle/calls/fixtures.js';
+import { admin } from '../../lifecycle/calls/fixtures.js';
 
 import { store, pool, fixture, scope } from './fixture.js';
 

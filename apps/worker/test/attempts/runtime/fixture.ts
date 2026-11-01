@@ -3,7 +3,7 @@ import type {
   NodeAttemptLease,
   NodeAttemptRunStore,
   PublishedWorkflow,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import {
   JOB_NAME,
   type QueueDelivery,

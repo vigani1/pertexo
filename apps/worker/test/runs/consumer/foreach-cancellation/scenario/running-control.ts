@@ -1,8 +1,8 @@
 import {
   createDeadlineWakeupScanner,
   createNodeAttemptRunStore,
-  parseDatabaseConfig,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { parseCheckpoint } from '@pertexo/workflow-engine';
 

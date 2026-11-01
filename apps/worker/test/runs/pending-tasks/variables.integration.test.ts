@@ -7,10 +7,10 @@ import {
 import {
   createPendingTaskStore,
   createWorkflowRunDatabase,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import { createWorkspaceVariablesStore } from '@pertexo/core/variables';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { initialCheckpointFactory } from '@pertexo/execution';
+import { initialCheckpointFactory } from '@pertexo/core/execution';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import {

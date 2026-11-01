@@ -1,4 +1,4 @@
-import type { NodeAttemptRunStore } from '@pertexo/database/testing';
+import type { NodeAttemptRunStore } from '@pertexo/core/testing';
 
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 

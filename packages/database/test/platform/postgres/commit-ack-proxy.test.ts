@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createPostgresCommitAckProxy } from '../../support/postgres/commit-ack-proxy.js';
+import { createPostgresCommitAckProxy } from '../../../src/testing/postgres/commit-ack-proxy.js';
 
 describe('PostgreSQL COMMIT acknowledgement proxy lifecycle', () => {
   it('settles an armed milestone on idempotent close without leaving sockets', async () => {

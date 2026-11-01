@@ -385,3 +385,166 @@ export const databaseSchema = {
   workflowRuns,
   workspaceCreationIdempotencyRecords,
 };
+export {
+  authEmailProofs,
+  authMethodLinkAttempts,
+  authTwoFactors,
+  identitySecurityAuditFacts,
+  userProfileCommandReceipts,
+} from './schema/authentication.js';
+export { workflowComments } from './schema/authoring/collaboration/comments.js';
+export { workflowCommentMentions } from './schema/authoring/collaboration/mentions.js';
+export { workflowPresenceLeases } from './schema/authoring/collaboration/presence.js';
+export { workflowCommentThreads } from './schema/authoring/collaboration/threads.js';
+export { workflowConcurrencyPolicies } from './schema/authoring/concurrency.js';
+export { workflowVersionDependencies } from './schema/authoring/dependencies.js';
+export { workflowErrorPolicies } from './schema/authoring/error-workflow.js';
+export { workflowFolderGrants } from './schema/authoring/folder-grants.js';
+export {
+  workflowInputCasePayloads,
+  workflowInputCases,
+} from './schema/authoring/input-cases.js';
+export {
+  workflowFavorites,
+  workflowFolders,
+  workflowOrganizationState,
+  workflowTagAssignments,
+  workflowTags,
+} from './schema/authoring/organization.js';
+export { workflowPromotionOrigins } from './schema/authoring/promotions/origins.js';
+export { workspacePromotionTargets } from './schema/authoring/promotions/targets.js';
+export { workflowVersionPromotions } from './schema/authoring/promotions/versions.js';
+export { workflowPublicationRequests } from './schema/authoring/publication-requests.js';
+export { workflowTemplateOrigins } from './schema/authoring/template-origin.js';
+export {
+  connectionEvents,
+  connectionHealthObservations,
+  connections,
+  connectionSecretVersions,
+  connectionShares,
+  nodeAttemptConnectionDispatches,
+} from './schema/connections.js';
+export {
+  dataTableWriteReceipts,
+  workspaceDataTableQuotas,
+  workspaceDataTableRows,
+  workspaceDataTables,
+} from './schema/data-tables.js';
+export {
+  triggerCoordinatedEvents,
+  triggerEventWindows,
+} from './schema/event-coordination/records.js';
+export {
+  workspaceInboxRevisionSequence,
+  workspaceInvitationAcceptanceIntents,
+  workspaceInvitationBindingReplacementClaims,
+  workspaceInvitationDeliveryAttempts,
+  workspaceInvitations,
+  workspaceLifecycleOperations,
+} from './schema/foundation.js';
+export { apiTokens } from './schema/identity/api-tokens.js';
+export { authProvisioningCredentials } from './schema/identity/federation/directory/credentials.js';
+export { authDirectoryGroups } from './schema/identity/federation/directory/groups.js';
+export { authDirectoryGroupMappings } from './schema/identity/federation/directory/mappings.js';
+export { authDirectoryGroupMembers } from './schema/identity/federation/directory/members.js';
+export { authDirectoryMemberships } from './schema/identity/federation/directory/sources.js';
+export { authDirectoryUsers } from './schema/identity/federation/directory/users.js';
+export { authDomains } from './schema/identity/federation/domains.js';
+export { authFederationAttempts } from './schema/identity/federation/journeys.js';
+export {
+  authOrganizations,
+  authOrganizationWorkspaces,
+} from './schema/identity/federation/organizations.js';
+export {
+  authProviderChecks,
+  authProviders,
+} from './schema/identity/federation/providers.js';
+export { authSignInAttempts } from './schema/identity/sign-in.js';
+export {
+  workspaceInboxEvents,
+  workspaceInboxReads,
+  workspaceInboxThreads,
+} from './schema/inbox/core.js';
+export { noticeMailBatches, noticeMailItems } from './schema/inbox/mail.js';
+export {
+  noticePreferences,
+  noticeSubscriptions,
+  noticeWorkspaceSettings,
+} from './schema/inbox/preferences.js';
+export { systemMailDeliveries } from './schema/mail/deliveries.js';
+export {
+  failureNotificationDestinations,
+  failureNotificationDestinationVersions,
+  workflowFailureNotificationPolicies,
+} from './schema/notifications.js';
+export {
+  connectionOAuth2Authorizations,
+  connectionOAuth2Clients,
+  connectionOAuth2Tokens,
+} from './schema/oauth2-connections.js';
+export { workflowCalls } from './schema/runs/calls.js';
+export {
+  workflowRunActiveAdmissions,
+  workspaceExecutionAdmissionCounters,
+} from './schema/runs/capacity/admission.js';
+export {
+  workspaceExecutionEntitlements,
+  workspaceExecutionEntitlementVersions,
+} from './schema/runs/capacity/entitlements.js';
+export { runErrorWorkflowIntents } from './schema/runs/completion/error-workflow.js';
+export {
+  runFailureNotificationAuditFacts,
+  runFailureNotificationIntents,
+} from './schema/runs/completion/notifications.js';
+export { workflowManualStartRejections } from './schema/runs/manual-start.js';
+export {
+  operatorCommands,
+  operatorRunReplayRequests,
+  operatorUnknownOutcomeEvidence,
+} from './schema/runs/operator.js';
+export { pendingRunTasks } from './schema/runs/pending-task.js';
+export {
+  workflowTestSuiteCases,
+  workflowTestSuites,
+} from './schema/runs/suites.js';
+export {
+  type FrozenWorkflowTestPins,
+  workflowTestSnapshots,
+} from './schema/runs/tests.js';
+export {
+  DEFAULT_ARTIFACT_BYTE_LIMIT,
+  outboxFairDispatchCursor,
+  workspaceArtifactCapacity,
+} from './schema/transport.js';
+export {
+  workflowFailureStreaks,
+  workflowTriggerOutcomes,
+  workflowTriggerPausePeriods,
+} from './schema/trigger-pause.js';
+export { webhookEndpointIngressLimits } from './schema/triggers/deliveries.js';
+export { formUploads, workflowForms } from './schema/triggers/forms.js';
+export { webhookRunResponses } from './schema/triggers/responses.js';
+export { webhookTestEvents } from './schema/triggers/test-events.js';
+export type {
+  AcceptanceInput,
+  ArtifactStatus,
+  ConnectionAuthType,
+  ConnectionStatus,
+  DestinationConfig,
+  DirectoryUserProfile,
+  FailureNotificationClaimResult,
+  FolderAccess,
+  FolderFact,
+  GenericOperatorCommandResult,
+  NodeAttemptLease,
+  OperatorCommandRecord,
+  PreviewAttemptLease,
+  PreviewStatus,
+  RecordedScheduleOccurrence,
+  ScheduleTriggerRecord,
+  StoredDestinationConfig,
+  WebhookDeliveryOutcome,
+  WebhookReplayCheck,
+  WebhookSignatureCheck,
+  WorkflowTriggerHealth,
+} from './schema/stored-shapes.js';

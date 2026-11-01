@@ -1,4 +1,4 @@
-import type { WebhookTriggerDatabase } from '@pertexo/database/testing';
+import type { WebhookTriggerDatabase } from '@pertexo/core/testing';
 
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { expect, vi } from 'vitest';

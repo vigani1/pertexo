@@ -1,5 +1,5 @@
 import { errorRegistration } from '../../platform/http/problems/registry.js';
-import { ApiTokenPolicyError } from '@pertexo/database/tenant-access';
+import { ApiTokenPolicyError } from '@pertexo/core/tenant-access';
 import { applicationError } from '../../platform/http/index.js';
 
 export const tokensProblems = [

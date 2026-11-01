@@ -1,4 +1,4 @@
-import { createCallbackStore } from '@pertexo/database/runs';
+import { createCallbackStore } from '@pertexo/core/runs';
 import {
   createCallbackTokenKeys,
   verifyCallbackTokenKeys,

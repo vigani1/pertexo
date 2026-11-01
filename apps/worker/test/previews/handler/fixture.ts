@@ -5,7 +5,7 @@ import { jobIdForOutboxEvent } from '@pertexo/queue';
 import type {
   PreviewAttemptLease,
   PreviewTerminalOutcome,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import { vi } from 'vitest';
 import type { createPreviewAttemptHandler } from '../../../src/previews/handler.js';
 import type {

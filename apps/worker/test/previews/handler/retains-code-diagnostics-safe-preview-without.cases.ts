@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 
 import { expect, it, vi } from 'vitest';
 import {

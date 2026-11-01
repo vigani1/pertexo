@@ -1,4 +1,4 @@
-import { createWorkflowRunDatabase } from '@pertexo/database/runs';
+import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { afterAll, beforeAll, expect } from 'vitest';
 import type { runtime } from '../fixtures.js';

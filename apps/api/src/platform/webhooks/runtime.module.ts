@@ -3,7 +3,7 @@ import {
   createWebhookTestEventStore,
   type WebhookTestEventStore,
   type WebhookTriggerDatabase,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { createWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import type { StructuredLogger } from '@pertexo/observability';
@@ -11,7 +11,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import type { ApiConfig } from '../config/api.js';
-import { initialCheckpointFactory } from '@pertexo/execution';
+import { initialCheckpointFactory } from '@pertexo/core/execution';
 import { WebhookTestEventService } from '../../webhooks/test-events/service.js';
 import { WebhookManagementService } from '../../webhooks/management/service.js';
 import type { WebhookIngressDependencies } from '../../webhooks/ingress/register.js';

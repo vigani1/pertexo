@@ -1,4 +1,4 @@
-import type { FailureNotificationDestinationDatabase } from '@pertexo/database/testing';
+import type { FailureNotificationDestinationDatabase } from '@pertexo/core/testing';
 import { vi } from 'vitest';
 
 import { createActorContext } from '../../../../src/authorization/index.js';

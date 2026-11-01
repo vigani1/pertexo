@@ -4,7 +4,7 @@ import 'reflect-metadata';
 import { vi } from 'vitest';
 
 import { createWorkflowInputCaseTag } from '@pertexo/contracts';
-import type { WorkflowInputCaseDatabase } from '@pertexo/database/authoring';
+import type { WorkflowInputCaseDatabase } from '@pertexo/core/authoring';
 import { WorkflowInputCasesUseCase } from '../../../../src/workflow-authoring/input-cases/use-case.js';
 
 import { createActorContext } from '../../../../src/authorization/index.js';

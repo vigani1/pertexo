@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 
 import { it } from 'vitest';
 
-import { createInitialCheckpoint } from '@pertexo/execution';
+import { createInitialCheckpoint } from '@pertexo/core/execution';
 
 import { issueBrowserSession } from '../support/browser-session.fixture.js';
 

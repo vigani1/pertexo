@@ -1,0 +1,91 @@
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import type {
+  CreateWorkflowInput,
+  SaveWorkflowDraftInput,
+} from '../../src/authoring/workflows/contract.js';
+import {
+  AuthoringValidationUnavailableError,
+  EMPTY_DEFINITION_CATALOG,
+  WorkflowAuthoringValidator,
+  type WorkflowDefinitionCatalog,
+} from '@pertexo/workflow-model/server';
+import type { DatabaseConfig } from '@pertexo/database/platform';
+import { createWorkflowAuthoringDatabase } from '../../src/authoring/workflows/repository.js';
+import { testExecutableCompiler } from '../../src/authoring/test-executable-compiler.js';
+import type {
+  WorkflowAuthoringDatabaseOptions,
+  WorkflowAuthoringGraphValidator,
+} from '../../src/authoring/workflows/types.js';
+
+/** Synthetic authoring fixtures explicitly pin the canonical restricted policy.
+ * Production derives these references from actual registry manifests instead.
+ * This is a real compiled model owner, never a structural-only admission stub.
+ */
+export function createWorkflowAuthoringFixtureDatabase(
+  config: DatabaseConfig,
+  options: Partial<WorkflowAuthoringDatabaseOptions> = {},
+) {
+  let validator: WorkflowAuthoringValidator | undefined;
+  let closed = false;
+  function admission(
+    catalog: WorkflowDefinitionCatalog,
+  ): WorkflowAuthoringGraphValidator {
+    const projection = {
+      definitions: catalog.definitions.map(({ key, version }) => ({
+        definition: { key, version },
+        policyReferences: [{ key: 'jsonata.restricted', version: 1 }],
+      })),
+    };
+    return (graph, command) => {
+      if (closed) throw new AuthoringValidationUnavailableError('closed');
+      validator ??= new WorkflowAuthoringValidator();
+      return validator.validate(graph, projection, command);
+    };
+  }
+  const database = createWorkflowAuthoringDatabase(config, {
+    ...options,
+    executableCompiler: options.executableCompiler ?? testExecutableCompiler,
+    validateAuthoringGraph:
+      options.validateAuthoringGraph ??
+      admission(options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG),
+  });
+  let closePromise: Promise<void> | undefined;
+  async function dispose() {
+    const failures: unknown[] = [];
+    try {
+      await validator?.shutdown();
+    } catch (error) {
+      failures.push(error);
+    }
+    try {
+      await database.close();
+    } catch (error) {
+      failures.push(error);
+    }
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Authoring fixture shutdown failed');
+  }
+  return Object.freeze({
+    ...database,
+    // Synthetic callers enter through the graph boundary used by the API.
+    createWorkflow: async (
+      input: Omit<CreateWorkflowInput, 'emptyGraph'> & { emptyGraph: unknown },
+    ) =>
+      database.createWorkflow({
+        ...input,
+        emptyGraph: parseWorkflowGraphDraft(input.emptyGraph),
+      }),
+    saveDraft: async (
+      input: Omit<SaveWorkflowDraftInput, 'graphJson'> & { graphJson: unknown },
+    ) =>
+      database.saveDraft({
+        ...input,
+        graphJson: parseWorkflowGraphDraft(input.graphJson),
+      }),
+    close: () => {
+      closed = true;
+      closePromise ??= dispose();
+      return closePromise;
+    },
+  });
+}

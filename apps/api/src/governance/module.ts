@@ -1,5 +1,5 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import type { GovernanceStore } from '@pertexo/database/governance';
+import type { GovernanceStore } from '@pertexo/core/governance';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { GovernanceController } from './controller.js';
 import { GOVERNANCE_STORE } from './tokens.js';

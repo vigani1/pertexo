@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import {
   consumeInboxMessage,
   InboxChecksumMismatchError,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import {
   createQueueConsumer,
   QUEUE_NAME,

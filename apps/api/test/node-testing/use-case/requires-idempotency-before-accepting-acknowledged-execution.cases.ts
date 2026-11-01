@@ -1,4 +1,4 @@
-import { PreviewIdempotencyConflictError } from '@pertexo/database/testing';
+import { PreviewIdempotencyConflictError } from '@pertexo/core/testing';
 import { expect, it, vi } from 'vitest';
 
 import { TestWorkflowNodeUseCase } from '../../../src/node-testing/use-case.js';

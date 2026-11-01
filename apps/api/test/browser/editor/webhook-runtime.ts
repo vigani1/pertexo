@@ -1,8 +1,8 @@
 import {
   createWebhookTestEventStore,
   createWebhookTriggerDatabase,
-} from '@pertexo/database/triggers';
-import { initialCheckpointFactory } from '@pertexo/execution';
+} from '@pertexo/core/triggers';
+import { initialCheckpointFactory } from '@pertexo/core/execution';
 import {
   WebhookTriggerEnvelopeEncryption,
   type WebhookTriggerSecretContext,

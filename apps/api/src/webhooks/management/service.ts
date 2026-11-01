@@ -11,7 +11,7 @@ import type {
   WebhookDeliveryRecord,
   WebhookTriggerDatabase,
   WorkflowTriggerHealth,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 

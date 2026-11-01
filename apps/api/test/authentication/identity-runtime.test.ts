@@ -1,5 +1,5 @@
-import * as identityStores from '@pertexo/database/tenant-access';
-import type { IdentityWorkspaceDatabase } from '@pertexo/database/testing';
+import * as identityStores from '@pertexo/core/tenant-access';
+import type { IdentityWorkspaceDatabase } from '@pertexo/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ApiIdentityConfig } from '../../src/platform/config/identity.js';

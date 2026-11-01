@@ -1,7 +1,7 @@
 import type {
   ConnectionRecord,
   ConnectionTestOutcome,
-} from '@pertexo/database/connections';
+} from '@pertexo/core/connections';
 import {
   createOAuth2RenewalClient,
   decodeClientSettings,

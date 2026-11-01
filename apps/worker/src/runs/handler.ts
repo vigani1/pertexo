@@ -1,5 +1,5 @@
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/outbox';
-import type { RunAdvanceInput, RunAdvanceResult } from '@pertexo/database/runs';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
+import type { RunAdvanceInput, RunAdvanceResult } from '@pertexo/core/runs';
 import type {
   QueueDelivery,
   QueueHandlerContext,

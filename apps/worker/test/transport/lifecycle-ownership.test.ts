@@ -1,5 +1,5 @@
 import { transportMetrics } from '../support/transport/metrics.js';
-import type { OutboxDispatcherDatabase } from '@pertexo/database/testing';
+import type { OutboxDispatcherDatabase } from '@pertexo/core/testing';
 import {
   JOB_NAME,
   type QueueConsumer,

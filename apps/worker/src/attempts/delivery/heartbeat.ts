@@ -1,4 +1,4 @@
-import type { NodeAttemptLease } from '@pertexo/database/attempts';
+import type { NodeAttemptLease } from '@pertexo/core/attempts';
 import { isTransientDatabaseFailure } from '@pertexo/database/platform';
 
 import { waitForCancelableDelay } from '../../runtime/abortable-delay.js';

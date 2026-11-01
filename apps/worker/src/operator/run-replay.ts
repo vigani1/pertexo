@@ -2,13 +2,13 @@ import {
   canonicalOutboxPayloadChecksum,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from '@pertexo/database/outbox';
+} from '@pertexo/core/outbox';
 import {
   createOperatorRunReplayStore,
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
   type OperatorRunReplayStore,
-} from '@pertexo/database/runs';
+} from '@pertexo/core/runs';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
@@ -23,7 +23,7 @@ import {
   composeExecutableCatalog,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
-import { initialCheckpointFactory } from '@pertexo/execution';
+import { initialCheckpointFactory } from '@pertexo/core/execution';
 
 export const operatorRunReplayFactories = Object.freeze({
   handler: createOperatorRunReplayHandler,

@@ -2,7 +2,7 @@ import type { Role } from '@pertexo/workflow-model';
 import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import { problemResult } from '../../support/problem.js';
 import { describe, expect, it, vi } from 'vitest';
-import type { WorkflowAutoPauseDatabase } from '@pertexo/database/authoring';
+import type { WorkflowAutoPauseDatabase } from '@pertexo/core/authoring';
 import { WorkflowAutoPauseUseCase } from '../../../src/workflow-authoring/settings/auto-pause.js';
 import {
   WorkflowAutoPauseController,

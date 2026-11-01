@@ -6,7 +6,7 @@ import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import {
   createWorkflowAuthoringDatabase,
   type WorkflowAuthoringDatabase,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

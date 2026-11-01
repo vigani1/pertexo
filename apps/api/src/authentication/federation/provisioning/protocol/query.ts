@@ -3,7 +3,7 @@ import {
   DirectoryError,
   DIRECTORY_LIMITS,
   type DirectoryQuery,
-} from '@pertexo/database/tenant-access';
+} from '@pertexo/core/tenant-access';
 import {
   canonicalPath,
   supportedAttributes,

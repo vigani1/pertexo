@@ -2,7 +2,7 @@ import { acquireDatabasePool } from './platform/pool/runtime.js';
 import type { DatabaseRuntime } from './platform/pool/runtime.js';
 
 import type { DatabaseConfig } from './config.js';
-import type { InstanceCapacity } from './runs/capacity/instance-limits.js';
+import type { InstanceCapacity } from './platform/instance-limits.js';
 import {
   checkDatabaseReadiness,
   checkDatabaseWrites,

@@ -1,4 +1,4 @@
-import type { WorkflowAuthoringDatabase } from '@pertexo/database/authoring';
+import type { WorkflowAuthoringDatabase } from '@pertexo/core/authoring';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';

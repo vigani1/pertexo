@@ -7,7 +7,7 @@ import { expect, it } from 'vitest';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
 import { createSystemMailDeliveryStore } from '../../src/platform/mail/repository.js';
 import { parseDatabaseConfig } from '../../src/config.js';
-import { createDisposableDatabaseFixture } from '../support/postgres/disposable-database.js';
+import { createDisposableDatabaseFixture } from '../../src/testing/postgres/disposable-database.js';
 
 it('preserves mail identities through the rename and old messages through subsequent upgrades', async () => {
   const adminUrl =

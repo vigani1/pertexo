@@ -3,11 +3,9 @@ import { createArtifactStore } from '@pertexo/artifact-store';
 import {
   createArtifactUploadDatabase,
   createFormUploadDatabase,
-} from '@pertexo/database/runs';
-import {
-  createIdentityWorkspaceDatabase,
-  createWorkspaceDatabase,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/runs';
+import { createIdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import { createWorkspaceDatabase } from '@pertexo/database/testing';
 
 import { Pool, type PoolClient } from 'pg';
 

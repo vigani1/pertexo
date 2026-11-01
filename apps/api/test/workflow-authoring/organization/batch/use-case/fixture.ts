@@ -4,7 +4,7 @@ import type {
   WorkflowOrganizationBatchDatabase,
   WorkflowOrganizationBatchInput,
   WorkflowOrganizationBatchItemResult,
-} from '@pertexo/database/authoring';
+} from '@pertexo/core/authoring';
 
 import {
   createActorContext,

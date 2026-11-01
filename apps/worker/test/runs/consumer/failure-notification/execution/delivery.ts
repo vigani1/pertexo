@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
-import {
-  createFailureNotificationStore,
-  parseDatabaseConfig,
-} from '@pertexo/database/testing';
+import { createFailureNotificationStore } from '@pertexo/core/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import {
   createQueueConsumer,

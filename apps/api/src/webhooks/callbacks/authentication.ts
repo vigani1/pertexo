@@ -1,4 +1,4 @@
-import type { CallbackStore } from '@pertexo/database/runs';
+import type { CallbackStore } from '@pertexo/core/runs';
 import {
   verifyWebhookSignature,
   type CallbackTokenKeys,

@@ -1,5 +1,8 @@
 import { errorWorkflowFactories } from '../notifications/error-workflow.js';
-import type { ErrorWorkflowStore } from '@pertexo/database/runs';
+import type {
+  ErrorWorkflowStore,
+  OperatorRunReplayStore,
+} from '@pertexo/core/runs';
 import { operatorRunReplayFactories } from '../operator/run-replay.js';
 import {
   connectionHealthObservationFactories,
@@ -9,9 +12,8 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import type { FailureNotificationStore } from '@pertexo/database/notifications';
-import type { OperatorRunReplayStore } from '@pertexo/database/runs';
-import type { PreviewReconciliationStore } from '@pertexo/database/previews';
+import type { FailureNotificationStore } from '@pertexo/core/notifications';
+import type { PreviewReconciliationStore } from '@pertexo/core/previews';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,

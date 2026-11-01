@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { Pool } from 'pg';
-import { AccountLinkingCommands } from '@pertexo/database/tenant-access';
+import { AccountLinkingCommands } from '@pertexo/core/tenant-access';
 import {
   accountSecurityLinkStartRequestSchema,
   authenticationProviderSchema,

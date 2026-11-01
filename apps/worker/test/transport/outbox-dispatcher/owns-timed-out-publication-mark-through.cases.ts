@@ -1,5 +1,5 @@
 import { transportMetrics } from '../../support/transport/metrics.js';
-import type { LeasedOutboxEvent } from '@pertexo/database/testing';
+import type { LeasedOutboxEvent } from '@pertexo/core/testing';
 
 import { expect, it, vi } from 'vitest';
 

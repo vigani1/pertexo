@@ -2,12 +2,12 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import {
   acceptWorkflowRun,
-  databaseSchema,
   lockRunAcceptanceCommand,
   parseWorkspaceId,
   type AcceptWorkflowRunInput,
   type WorkspaceTransaction,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
+import { databaseSchema } from '@pertexo/database/testing';
 
 /** Worker fixtures use the same key serialization as manual commands. */
 export async function acceptManualFixtureRun(

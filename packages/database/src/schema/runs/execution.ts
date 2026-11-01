@@ -1,13 +1,10 @@
 import type { StoredExecutionValue } from '../../platform/stored-execution-value.js';
-import type { NodeAttemptLease } from '../../attempts/contract.js';
+import type { NodeAttemptLease } from '../stored-shapes.js';
 import type { RunStatus } from '@pertexo/workflow-engine';
-import type {
-  PreviewAttemptLease,
-  PreviewStatus,
-} from '../../previews/contract.js';
+import type { PreviewAttemptLease, PreviewStatus } from '../stored-shapes.js';
 import type { RecoveryNode } from '@pertexo/workflow-engine';
 import type { WorkflowRecoveryEffectRisk } from '@pertexo/workflow-model';
-import type { AcceptanceInput } from '../../runs/commands/acceptance/input.js';
+import type { AcceptanceInput } from '../stored-shapes.js';
 import {
   NODE_IDENTITY_KEY_PATTERN,
   type CodeDiagnostics,

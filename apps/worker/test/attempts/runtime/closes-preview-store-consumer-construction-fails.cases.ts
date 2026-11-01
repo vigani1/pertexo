@@ -1,7 +1,7 @@
 import type {
   NodeAttemptRunStore,
   PublishedWorkflowReader,
-} from '@pertexo/database/testing';
+} from '@pertexo/core/testing';
 import type { RunEventNotificationPublisher } from '@pertexo/queue';
 
 import { expect, it, vi } from 'vitest';

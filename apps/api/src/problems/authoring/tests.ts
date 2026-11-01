@@ -5,14 +5,16 @@ import {
 } from '../../node-testing/errors.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/database/platform';
 
-import { WorkflowTestError } from '@pertexo/database/authoring';
+import {
+  WorkflowTestError,
+  WorkflowStepSampleError,
+} from '@pertexo/core/authoring';
 
 import { sampleApplicationError } from './samples.js';
 import {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
-} from '@pertexo/database/previews';
-import { WorkflowStepSampleError } from '@pertexo/database/authoring';
+} from '@pertexo/core/previews';
 import { applicationError } from '../../platform/http/index.js';
 
 export const nodeTestProblems = [

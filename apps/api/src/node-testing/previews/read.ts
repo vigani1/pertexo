@@ -3,7 +3,7 @@ import {
   type PreviewRunResponse,
 } from '@pertexo/contracts';
 
-import { WorkflowNotFoundError } from '@pertexo/database/authoring';
+import { WorkflowNotFoundError } from '@pertexo/core/authoring';
 
 import { authorizeWorkspaceOperation } from '../../authorization/index.js';
 import type {

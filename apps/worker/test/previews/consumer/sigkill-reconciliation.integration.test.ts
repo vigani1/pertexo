@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import {
   canonicalOutboxPayloadChecksum,
-  createOutboxDispatcherDatabase,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
+import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { createQueueProducer, JOB_NAME, parseQueueJob } from '@pertexo/queue';
 import { describe, expect, it } from 'vitest';
 

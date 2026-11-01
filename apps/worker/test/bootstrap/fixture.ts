@@ -1,9 +1,7 @@
 import { transportMetrics as createTransportMetrics } from '../support/transport/metrics.js';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
-import type {
-  OutboxDispatcherDatabase,
-  WorkspaceDatabase,
-} from '@pertexo/database/testing';
+import type { OutboxDispatcherDatabase } from '@pertexo/core/testing';
+import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type { QueueConsumer, QueueProducer } from '@pertexo/queue';
 import type {
   StructuredLogger,

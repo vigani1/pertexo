@@ -8,6 +8,58 @@
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.js"
     },
+    "./attempts": {
+      "types": "./dist/attempts/index.d.ts",
+      "default": "./dist/attempts/index.js"
+    },
+    "./authoring": {
+      "types": "./dist/authoring/index.d.ts",
+      "default": "./dist/authoring/index.js"
+    },
+    "./connections": {
+      "types": "./dist/connections/index.d.ts",
+      "default": "./dist/connections/index.js"
+    },
+    "./data-tables": {
+      "types": "./dist/data-tables/index.d.ts",
+      "default": "./dist/data-tables/index.js"
+    },
+    "./execution": {
+      "types": "./dist/execution/index.d.ts",
+      "default": "./dist/execution/index.js"
+    },
+    "./governance": {
+      "types": "./dist/governance/index.d.ts",
+      "default": "./dist/governance/index.js"
+    },
+    "./lifecycle": {
+      "types": "./dist/lifecycle/index.d.ts",
+      "default": "./dist/lifecycle/index.js"
+    },
+    "./notifications": {
+      "types": "./dist/notifications/index.d.ts",
+      "default": "./dist/notifications/index.js"
+    },
+    "./outbox": {
+      "types": "./dist/outbox/index.d.ts",
+      "default": "./dist/outbox/index.js"
+    },
+    "./previews": {
+      "types": "./dist/previews/index.d.ts",
+      "default": "./dist/previews/index.js"
+    },
+    "./runs": {
+      "types": "./dist/runs/index.d.ts",
+      "default": "./dist/runs/index.js"
+    },
+    "./tenant-access": {
+      "types": "./dist/tenant-access/index.d.ts",
+      "default": "./dist/tenant-access/index.js"
+    },
+    "./triggers": {
+      "types": "./dist/triggers/index.d.ts",
+      "default": "./dist/triggers/index.js"
+    },
     "./variables": {
       "types": "./dist/variables/index.d.ts",
       "default": "./dist/variables/index.js"
@@ -22,12 +74,20 @@
   "dependencies": {
     "@pertexo/contracts": "workspace:*",
     "@pertexo/database": "workspace:*",
+    "@pertexo/node-sdk": "workspace:*",
+    "@pertexo/nodes-core": "workspace:*",
+    "@pertexo/workflow-engine": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
-    "drizzle-orm": "0.45.4"
+    "cron-parser": "5.10.2",
+    "drizzle-orm": "0.45.4",
+    "scimmy": "1.3.5",
+    "uuid": "13.0.2",
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "@pertexo/workflow-engine": "workspace:*",
+    "@pertexo/templates": "workspace:*",
     "@types/pg": "8.23.1",
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "scim2-parse-filter": "0.3.0"
   }
 }

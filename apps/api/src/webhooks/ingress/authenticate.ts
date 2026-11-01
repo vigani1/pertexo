@@ -13,7 +13,7 @@ import {
 import type {
   TestEventReference,
   WebhookVerificationReference,
-} from '@pertexo/database/triggers';
+} from '@pertexo/core/triggers';
 
 import {
   verifyWebhookSignature,

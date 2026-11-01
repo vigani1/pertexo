@@ -5,10 +5,10 @@ import { DataTablesModule } from '../../data-tables/module.js';
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import { WorkspaceVariablesModule } from '../../workspace-variables/module.js';
 
-import { createFormStore } from '@pertexo/database/triggers';
-import { initialCheckpointFactory } from '@pertexo/execution';
+import { createFormStore } from '@pertexo/core/triggers';
+import { initialCheckpointFactory } from '@pertexo/core/execution';
 import { FormsModule } from '../../forms/module.js';
-import { createPendingTaskStore } from '@pertexo/database/runs';
+import { createPendingTaskStore } from '@pertexo/core/runs';
 import { PendingTasksModule } from '../../pending-tasks/module.js';
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
@@ -19,7 +19,7 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 
-import { createWorkflowAuthoringDatabase } from '@pertexo/database/authoring';
+import { createWorkflowAuthoringDatabase } from '@pertexo/core/authoring';
 import {
   JsonataEvaluator,
   WorkflowAuthoringValidator,

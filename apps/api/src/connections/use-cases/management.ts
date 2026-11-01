@@ -1,4 +1,4 @@
-import { ConnectionNotFoundError } from '@pertexo/database/connections';
+import { ConnectionNotFoundError } from '@pertexo/core/connections';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { OAuth2Credential } from '@pertexo/contracts';
 import { refusedEndpoint } from '@pertexo/integrations/server';

@@ -6,7 +6,7 @@ import { WEBHOOK_PREFLIGHT } from '../../../src/webhooks/tokens.js';
 import { RateLimitModule } from '../../../src/platform/rate-limit/module.js';
 import type { RateLimitConsumer } from '../../../src/platform/rate-limit/admission.js';
 
-import type { WebhookTriggerDatabase } from '@pertexo/database/testing';
+import type { WebhookTriggerDatabase } from '@pertexo/core/testing';
 import type { StructuredLogger } from '@pertexo/observability';
 
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';

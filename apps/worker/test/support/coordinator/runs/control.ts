@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import {
-  createRunAdvanceStore,
-  parseDatabaseConfig,
-} from '@pertexo/database/testing';
-import { createWorkflowRunDatabase } from '@pertexo/database/runs';
+import { createRunAdvanceStore } from '@pertexo/core/testing';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
+import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 
 import {
   createCheckpoint,

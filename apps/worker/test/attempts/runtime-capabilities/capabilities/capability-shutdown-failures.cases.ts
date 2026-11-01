@@ -1,4 +1,4 @@
-import type { ConnectionDatabase } from '@pertexo/database/testing';
+import type { ConnectionDatabase } from '@pertexo/core/testing';
 import { ProviderExecutionRateLimitError } from '@pertexo/node-sdk/server';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { expect, it, vi } from 'vitest';
