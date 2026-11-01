@@ -35,6 +35,41 @@ describe('failure routing through public engine transitions', () => {
       );
     },
   );
+  // M2: a revoked grant is the failure people most want an error path for.
+  it.fails.each([
+    ['authentication', 'http.oauth2_not_connected'],
+    ['authentication', 'http.oauth2_grant_revoked'],
+    ['authentication', 'http.oauth2_client_rejected'],
+    ['authentication', 'http.oauth2_token_expired'],
+    ['rate_limit', 'http.oauth2_token_rate_limited'],
+    ['provider', 'http.oauth2_token_endpoint_unavailable'],
+    ['provider', 'http.oauth2_token_response_invalid'],
+    ['provider', 'http.oauth2_refresh_busy'],
+    ['configuration', 'http.oauth2_token_address_blocked'],
+    ['configuration', 'http.oauth2_host_not_allowed'],
+  ] as const)(
+    'M2 routes %s failure %s to the handler',
+    async (errorKind, code) => {
+      const f = fixture();
+      await f.step();
+      await f.success('manual');
+      const routed = await f.fail({
+        nodeId: 'set',
+        failureKind: 'failed',
+        errorKind,
+        attemptNumber: 1,
+        safeErrorCode: code,
+      });
+      expect(routed.attempts.map((attempt) => attempt.nodeId)).toEqual([
+        'handler',
+      ]);
+      expect(routed.failureValues).toMatchObject([
+        { value: { errorKind, safeErrorCode: code } },
+      ]);
+      expect(routed.checkpoint.runStatus).toBe('running');
+    },
+  );
+
   it.each([
     'utility.xml_size',
     'utility.xml_depth',

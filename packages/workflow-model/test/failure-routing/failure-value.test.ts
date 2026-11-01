@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isRoutableExecutorFailure,
   resolveValueSource,
   workflowNodeFailureValueSchema,
 } from '../../src/index.js';
@@ -11,6 +12,31 @@ const value = {
   safeErrorCode: 'execution.authentication',
 };
 describe('safe selected failure fields', () => {
+  // M2: the writer's fixed OAuth2 codes, each under the kind a step reports it as.
+  it.fails.each([
+    ['authentication', 'http.oauth2_not_connected'],
+    ['authentication', 'http.oauth2_grant_revoked'],
+    ['authentication', 'http.oauth2_client_rejected'],
+    ['authentication', 'http.oauth2_token_expired'],
+    ['rate_limit', 'http.oauth2_token_rate_limited'],
+    ['provider', 'http.oauth2_token_endpoint_unavailable'],
+    ['provider', 'http.oauth2_token_response_invalid'],
+    ['provider', 'http.oauth2_refresh_busy'],
+    ['configuration', 'http.oauth2_token_address_blocked'],
+    ['configuration', 'http.oauth2_host_not_allowed'],
+  ])('M2 accepts %s failure %s', (errorKind, safeErrorCode) => {
+    expect(isRoutableExecutorFailure({ errorKind, safeErrorCode })).toBe(true);
+  });
+
+  it('M2 keeps an OAuth2 code from routing under another kind', () => {
+    expect(
+      isRoutableExecutorFailure({
+        errorKind: 'network',
+        safeErrorCode: 'http.oauth2_grant_revoked',
+      }),
+    ).toBe(false);
+  });
+
   it.each(['authentication', 'network', 'provider', 'rate_limit', 'timeout'])(
     'accepts fixed %s classification',
     (kind) => {
