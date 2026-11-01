@@ -13,11 +13,8 @@ import {
   withApplicationName,
   withDatabase,
 } from './retention.support.js';
-import {
-  REVIVED_RULES,
-  WINDOWED_RULES,
-  type WindowedRule,
-} from './retention-windows/rows.js';
+import { REVIVED_RULES } from './retention-windows/revived.js';
+import { WINDOWED_RULES, type WindowedRule } from './retention-windows/rows.js';
 
 const DAY = 86_400_000;
 const MINUTE = 60_000;

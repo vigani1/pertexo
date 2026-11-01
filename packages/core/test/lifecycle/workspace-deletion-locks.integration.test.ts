@@ -19,11 +19,14 @@ afterAll(afterAllFixture2);
 const DEADLOCK = '40P01';
 
 /** A transaction that holds rows until told to let go. */
-async function holding(statements: readonly (readonly [string, unknown[]])[]) {
+async function holding(
+  statements: readonly (readonly [string, readonly unknown[]])[],
+) {
   const pool = new Pool({ connectionString: ownerUrl(), max: 1 });
   const client = await pool.connect();
   await client.query('begin');
-  for (const [text, values] of statements) await client.query(text, values);
+  for (const [text, values] of statements)
+    await client.query(text, [...values]);
   return {
     release: async () => {
       await client.query('commit');

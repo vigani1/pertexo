@@ -135,10 +135,14 @@ describe('writing to a run after its details were purged', () => {
   it('a late dispatch mark, heartbeat or recorded input writes nothing', async () => {
     const lease = await purgedRunWithLiveLease();
 
-    await refused(nodeAttemptStore.heartbeat({ lease, signal } as never));
-    await refused(nodeAttemptStore.markDispatched({ lease, signal } as never));
     await refused(
-      nodeAttemptStore.recordInput({ lease, input: {}, signal } as never),
+      nodeAttemptStore.heartbeat({ lease, leaseDurationSeconds: 30, signal }),
+    );
+    await refused(nodeAttemptStore.markDispatched({ lease, signal }));
+    await refused(
+      Promise.resolve(
+        nodeAttemptStore.recordInput?.({ lease, input: {}, signal }),
+      ),
     );
 
     expect(await detailRows(lease.runId)).toEqual(NOTHING);
@@ -146,6 +150,17 @@ describe('writing to a run after its details were purged', () => {
 
   it('a duplicate attempt job writes nothing', async () => {
     const lease = await purgedRunWithLiveLease();
+    // The real outbox row: a redelivery of the job the attempt was admitted by.
+    const outbox = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{ id: string; payload_checksum: string }>(
+        `select id,payload_checksum from app.outbox_events
+          where workspace_id=$1 and aggregate_id=$2
+            and job_name='execute-node-attempt'`,
+        [workspaceA, lease.attemptId],
+      ),
+    );
+    const delivery = outbox.rows[0];
+    if (delivery === undefined) throw new Error('Expected the attempt job');
     const store = createNodeAttemptRunStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(workerBaseUrl),
@@ -160,14 +175,13 @@ describe('writing to a run after its details were purged', () => {
           nodeRunId: lease.nodeRunId,
           attemptId: lease.attemptId,
           delivery: {
-            eventId: randomUUID(),
-            consumerName: 'node-attempt',
-            payloadChecksum: 'a'.repeat(64),
+            outboxEventId: delivery.id,
+            payloadChecksum: delivery.payload_checksum,
           },
           leaseDurationSeconds: 30,
           workerId: 'late-worker',
           signal,
-        } as never),
+        }),
       );
     } finally {
       await store.close();
