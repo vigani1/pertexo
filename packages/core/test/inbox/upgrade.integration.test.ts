@@ -10,7 +10,7 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createWorkspaceInboxDatabase } from '../../src/inbox/threads/store.js';
+import { createWorkspaceInboxStore } from '../../src/inbox/threads/store.js';
 it('upgrades populated workflow threads and private read revisions without changing their cut or precision', async () => {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??
@@ -23,7 +23,7 @@ it('upgrades populated workflow threads and private read revisions without chang
   });
   const directory = await mkdtemp(join(tmpdir(), 'pertexo-notice-upgrade-'));
   let admin: Pool | undefined;
-  let read: ReturnType<typeof createWorkspaceInboxDatabase> | undefined;
+  let read: ReturnType<typeof createWorkspaceInboxStore> | undefined;
   try {
     await fixture.create();
     for (const name of await readdir(MIGRATIONS_DIRECTORY)) {
@@ -134,7 +134,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       '0068_connection_events_retention.sql',
       '0069_alert_dispatch_identity.sql',
     ]);
-    read = createWorkspaceInboxDatabase(
+    read = createWorkspaceInboxStore(
       parseDatabaseConfig({
         connectionString: fixture.databaseUrl(
           process.env.DATABASE_URL ??

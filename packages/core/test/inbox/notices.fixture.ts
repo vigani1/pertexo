@@ -11,7 +11,7 @@ import {
 } from '../support/workflow-authoring.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/store.js';
-import { createWorkspaceInboxDatabase } from '../../src/inbox/threads/store.js';
+import { createWorkspaceInboxStore } from '../../src/inbox/threads/store.js';
 import { createNoticePreferencesStore } from '../../src/inbox/preferences/store.js';
 import { createNoticeMailStore } from '../../src/inbox/mail/store.js';
 import { createConnectionStore } from '../../src/connections/store.js';
@@ -32,7 +32,7 @@ export const maintenance = () =>
   parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 });
 export const preferences = (available = true) =>
   own(createNoticePreferencesStore(config(), { emailAvailable: available }));
-export const inbox = () => own(createWorkspaceInboxDatabase(config()));
+export const inbox = () => own(createWorkspaceInboxStore(config()));
 export const observer = () =>
   own(createWorkspaceInboxFoldStore(config(), undefined, maintenance()));
 export function mail(captured: NoticeMailToSeal[] = []) {

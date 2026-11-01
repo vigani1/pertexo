@@ -23,7 +23,7 @@ export type ReaderScope = Readonly<{
   actorId: string;
   signal?: AbortSignal;
 }>;
-export interface WorkspaceInboxDatabase {
+export interface WorkspaceInboxStore {
   listThreads(
     input: ReaderScope &
       Readonly<{

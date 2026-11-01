@@ -1,6 +1,6 @@
 import type {
   ReaderScope,
-  WorkspaceInboxDatabase,
+  WorkspaceInboxStore,
   WorkspaceInboxThreadPage,
   WorkspaceInboxSummary,
 } from './contract.js';
@@ -52,10 +52,10 @@ async function noticeAccess(
   }
 }
 
-export function createWorkspaceInboxDatabase(
+export function createWorkspaceInboxStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkspaceInboxDatabase {
+): WorkspaceInboxStore {
   const lease = acquireDatabasePool(config, runtime);
   return {
     close: () => lease.close(),
@@ -100,7 +100,7 @@ function options(input: ReaderScope) {
 }
 async function listThreads(
   client: PoolClient,
-  input: Parameters<WorkspaceInboxDatabase['listThreads']>[0],
+  input: Parameters<WorkspaceInboxStore['listThreads']>[0],
 ): Promise<WorkspaceInboxThreadPage> {
   const db = drizzle(client);
   const resources = await noticeAccess(client, input, { write: false });
@@ -189,7 +189,7 @@ const readConflict = {
 };
 async function markThreadRead(
   client: PoolClient,
-  input: Parameters<WorkspaceInboxDatabase['markThreadRead']>[0],
+  input: Parameters<WorkspaceInboxStore['markThreadRead']>[0],
 ) {
   const db = drizzle(client);
   const resources = await noticeAccess(client, input, { write: true });
@@ -237,7 +237,7 @@ async function markThreadRead(
 }
 async function markAllRead(
   client: PoolClient,
-  input: Parameters<WorkspaceInboxDatabase['markAllRead']>[0],
+  input: Parameters<WorkspaceInboxStore['markAllRead']>[0],
 ) {
   const db = drizzle(client);
   const resources = await noticeAccess(client, input, { write: true });

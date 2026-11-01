@@ -1,6 +1,6 @@
 import {
   createNoticePreferencesStore,
-  createWorkspaceInboxDatabase,
+  createWorkspaceInboxStore,
 } from '@pertexo/core/notifications';
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import type { ApiIdentityConfig } from '../config/identity.js';
@@ -16,7 +16,7 @@ import {
 } from '../../notifications/inbox-hint-hub.js';
 import { WorkspaceInboxService } from '../../notifications/service.js';
 
-/** ADR 055: the inbox's database reader and its per-process hint hub. */
+/** ADR 055: the inbox's store and its per-process hint hub. */
 export type ApiNotificationRuntime = Readonly<{
   service: WorkspaceInboxService;
   preferences?: NoticePreferencesService;
@@ -36,12 +36,12 @@ export function createApiNotificationRuntime(
     mail?: ApiIdentityConfig['betterAuth']['durableMail'] | undefined;
   }> = {},
 ): ApiNotificationRuntime {
-  const database = createWorkspaceInboxDatabase(config, runtime);
+  const store = createWorkspaceInboxStore(config, runtime);
   let hints: InboxHintSource;
   try {
     hints = new RedisInboxHintHub({ redisUrl });
   } catch (error: unknown) {
-    void database.close().catch(() => undefined);
+    void store.close().catch(() => undefined);
     throw error;
   }
   const preferences = createNoticePreferencesStore(config, {
@@ -56,7 +56,7 @@ export function createApiNotificationRuntime(
   );
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
-    service: new WorkspaceInboxService(database),
+    service: new WorkspaceInboxService(store),
     preferences: preferenceService,
     hints,
     checkReadiness: () => hints.checkReadiness(),
@@ -64,7 +64,7 @@ export function createApiNotificationRuntime(
       closePromise ??= (async () => {
         const closed = await Promise.allSettled([
           hints.close(),
-          database.close(),
+          store.close(),
           preferences.close(),
         ]);
         const failures = closed.flatMap((result) =>
