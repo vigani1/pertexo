@@ -7,7 +7,8 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 type DeletionPage = Readonly<{
   table: PgTable;
   keys: readonly [AnyPgColumn, ...AnyPgColumn[]];
-  condition: SQL | undefined;
+  /** A function when the condition itself picks a page's worth of owners. */
+  condition: SQL | undefined | ((pageSize: number) => SQL);
   orderBy: readonly (AnyPgColumn | SQL)[];
   recheck?: SQL | undefined;
 }>;
@@ -27,7 +28,11 @@ export function deletionRule<const Name extends string>(
         db
           .select(columns)
           .from(options.table)
-          .where(options.condition)
+          .where(
+            typeof options.condition === 'function'
+              ? options.condition(pageSize)
+              : options.condition,
+          )
           .orderBy(...options.orderBy)
           .limit(pageSize),
       );
