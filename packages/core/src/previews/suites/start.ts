@@ -40,7 +40,7 @@ import {
   saveTestSnapshot,
 } from '../workflows/snapshot.repository.js';
 import { admitSuiteCase } from './admit.js';
-import type { WorkflowTestSuiteStore } from './contract.js';
+import type { WorkflowTestSuiteStartInput } from './contract.js';
 import { readSuiteCasePayloads, readSuiteCurrent } from './current.queries.js';
 
 export async function prepareTestSuite(
@@ -69,7 +69,7 @@ export async function prepareTestSuite(
 export async function startTestSuite(
   client: PoolClient,
   role: Role,
-  input: Parameters<WorkflowTestSuiteStore['start']>[0],
+  input: WorkflowTestSuiteStartInput,
   catalogs: AuthoringCatalogs,
 ): Promise<{ suiteId: string }> {
   const suiteId = generatePersistedId();
@@ -191,7 +191,7 @@ export async function startTestSuite(
 }
 
 function assertPreparedSuite(
-  input: Parameters<WorkflowTestSuiteStore['start']>[0],
+  input: WorkflowTestSuiteStartInput,
   {
     snapshot,
     current,

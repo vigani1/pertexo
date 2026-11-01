@@ -6,7 +6,7 @@ import {
   workflowTestSuiteDetailSchema,
   workflowTestSuiteCaseReportSchema,
 } from '@pertexo/contracts';
-import type { WorkflowTestSuiteStore } from '@pertexo/core/authoring';
+import type { WorkflowTestSuiteStore } from '@pertexo/core/previews';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,

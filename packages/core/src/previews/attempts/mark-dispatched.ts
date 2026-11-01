@@ -8,27 +8,13 @@ import {
 import { previewAttempts } from '@pertexo/database/schema';
 
 import { isConnectionFenceCurrent } from '../../connections/runtime/credential-use.repository.js';
-import type { PreviewAttemptLease } from '../contract.js';
 import { PreviewAttemptStateError } from '../errors.js';
+import type { MarkPreviewDispatchedInput } from './contract.js';
 import { optionsFor } from '../input.js';
 
 export async function markPreviewDispatched(
   pool: Pool,
-  input: Readonly<{
-    lease: Pick<
-      PreviewAttemptLease,
-      'attemptFenceToken' | 'previewAttemptId' | 'previewRunId' | 'workspaceId'
-    >;
-    connectionFence?: Readonly<{
-      connectionId: string;
-      expectedProviderKey: string;
-      expectedAuthType: string;
-      secretVersionId: string;
-    }>;
-    providerDispatchBinding?: string;
-    signal?: AbortSignal;
-    workerId: string;
-  }>,
+  input: MarkPreviewDispatchedInput,
 ): Promise<'committed'> {
   const scope = {
     ...input.lease,

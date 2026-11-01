@@ -18,8 +18,8 @@ import type {
   PreviewReplayRecord,
   ResolvePreviewReplayInput,
 } from '../../previews/runs/contract.js';
-import type { WorkflowTestSuiteStore } from '../../previews/suites/contract.js';
-import type { WorkflowTestStore } from '../../previews/workflows/contract.js';
+import type { WorkflowTestSuiteStore } from '../../previews/suites/store.js';
+import type { WorkflowTestStore } from '../../previews/workflows/store.js';
 import type { WorkflowCollaborationStore } from '../collaboration/contract.js';
 import type { WorkflowPromotionStore } from '../promotion/contract.js';
 import type { PublicationReviewStore } from '../reviews/contract.js';

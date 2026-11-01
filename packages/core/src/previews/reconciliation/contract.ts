@@ -1,5 +1,6 @@
 import type { PREVIEW_STATUS } from '../state.js';
-import type { reconcilePreviewDelivery } from './reconcile.js';
+import type { PreviewDelivery } from '../contract.js';
+import type { createPreviewReconciliationStore } from './store.js';
 
 export type PreviewDeliveryReconciliationResult =
   | Readonly<{ kind: 'duplicate' }>
@@ -31,8 +32,13 @@ export type PreviewReconciliationScope = Readonly<{
   workspaceId: string;
 }>;
 
-export interface PreviewReconciliationStore {
-  reconcile(
-    input: Parameters<typeof reconcilePreviewDelivery>[1],
-  ): ReturnType<typeof reconcilePreviewDelivery>;
-}
+export type ReconcilePreviewDeliveryInput = PreviewReconciliationScope &
+  Readonly<{
+    delivery: PreviewDelivery;
+    signal?: AbortSignal;
+  }>;
+
+export type PreviewReconciliationStore = Omit<
+  ReturnType<typeof createPreviewReconciliationStore>,
+  'close'
+>;

@@ -13,11 +13,13 @@ import {
   serializeStoredExecutionValue,
 } from '../../runs/values/stored-execution.js';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
-import type { PreviewCompletionResult } from './contract.js';
+import type {
+  CompletePreviewAttemptInput,
+  PreviewCompletionResult,
+} from './contract.js';
 import { appendPreviewTerminalFacts } from './facts.repository.js';
 
 import type {
-  PreviewAttemptLease,
   PreviewDelivery,
   PreviewStatus,
   PreviewTerminalOutcome,
@@ -137,17 +139,7 @@ async function exactDuplicateCompletion(
 
 export async function completePreviewAttempt(
   pool: Pool,
-  input: Readonly<{
-    delivery: PreviewDelivery;
-    lease: Pick<
-      PreviewAttemptLease,
-      'attemptFenceToken' | 'previewAttemptId' | 'previewRunId' | 'workspaceId'
-    >;
-    outcome: PreviewTerminalOutcome;
-    codeDiagnostics?: CodeDiagnostics;
-    signal?: AbortSignal;
-    workerId: string;
-  }>,
+  input: CompletePreviewAttemptInput,
 ): Promise<PreviewCompletionResult> {
   const scope = {
     ...input.lease,

@@ -11,16 +11,16 @@ import {
   workflowTestSuites,
 } from '@pertexo/database/schema';
 import type { Role } from '@pertexo/workflow-model';
-import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import { cancelInTransaction } from '../../runs/commands/cancel-active.repository.js';
 import { WorkflowRunNotFoundError } from '../../runs/errors.js';
 import { requireTestCapability } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/errors.js';
+import type { WorkflowTestSuiteInput } from './contract.js';
 
 export async function cancelTestSuite(
   client: PoolClient,
   role: Role,
-  input: SampleScope & Readonly<{ suiteId: string }>,
+  input: WorkflowTestSuiteInput,
 ): Promise<void> {
   requireTestCapability(role, 'run:cancel');
   const db = drizzle(client);

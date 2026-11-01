@@ -6,23 +6,17 @@ import {
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import { previewAttempts, previewRuns } from '@pertexo/database/schema';
-import type { PreviewHeartbeatResult } from './contract.js';
+import type {
+  HeartbeatPreviewLeaseInput,
+  PreviewHeartbeatResult,
+} from './contract.js';
 
-import type { PreviewAttemptLease } from '../contract.js';
 import { PreviewAttemptStateError } from '../errors.js';
 import { optionsFor } from '../input.js';
 
 export async function heartbeatPreviewLease(
   pool: Pool,
-  input: Readonly<{
-    lease: Pick<
-      PreviewAttemptLease,
-      'attemptFenceToken' | 'previewAttemptId' | 'previewRunId' | 'workspaceId'
-    >;
-    leaseDurationSeconds: number;
-    signal?: AbortSignal;
-    workerId: string;
-  }>,
+  input: HeartbeatPreviewLeaseInput,
 ): Promise<PreviewHeartbeatResult> {
   const scope = {
     ...input.lease,
