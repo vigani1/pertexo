@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RetentionMetrics } from '../../src/retention/metrics.js';
 import { createRetentionRuntime } from '../../src/retention/runtime.js';
 
-function setup() {
+function setup(pollMillis = 60_000) {
   const resources = {
     database: {
       checkReadiness: vi.fn().mockResolvedValue(undefined),
@@ -36,7 +36,7 @@ function setup() {
     resources,
     metrics,
     logger as never,
-    60_000,
+    pollMillis,
   );
   return { logger, metrics, resources, runtime };
 }
@@ -82,6 +82,31 @@ describe('retention runtime', () => {
     );
     expect(resources.runArtifacts.processNext).toHaveBeenCalledOnce();
     expect(resources.workspacePurge.processNext).toHaveBeenCalledOnce();
+    await runtime.close();
+  });
+
+  it('polls the other operations but runs the rules once while no page is full', async () => {
+    const { resources, runtime } = setup(1);
+    runtime.start();
+    await vi.waitFor(() => {
+      expect(
+        resources.workspacePurge.processNext.mock.calls.length,
+      ).toBeGreaterThan(3);
+    });
+    await runtime.close();
+
+    expect(resources.database.enforce).toHaveBeenCalledOnce();
+  });
+
+  it('comes straight back to the rules after a full page, and after a failure', async () => {
+    const { resources, runtime } = setup(1);
+    resources.database.enforce
+      .mockResolvedValueOnce({ removed: {}, more: true })
+      .mockRejectedValueOnce(new Error('database unavailable'));
+    runtime.start();
+    await vi.waitFor(() => {
+      expect(resources.database.enforce).toHaveBeenCalledTimes(3);
+    });
     await runtime.close();
   });
 
