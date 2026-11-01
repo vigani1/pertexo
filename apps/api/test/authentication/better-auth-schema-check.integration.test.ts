@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
 import {
+  type MockInstance,
   afterAll,
   afterEach,
   beforeAll,
@@ -78,9 +79,9 @@ async function logsOf(auth: ReturnType<typeof boot>): Promise<string> {
   return errorOutput();
 }
 
-let errors: ReturnType<typeof vi.spyOn>;
+let errors: MockInstance<typeof console.error>;
 const errorOutput = () =>
-  errors.mock.calls.map((call: unknown[]) => call.join(' ')).join('\n');
+  errors.mock.calls.map((call) => call.join(' ')).join('\n');
 
 beforeAll(async () => {
   await Promise.all(fixtures.map((fixture) => fixture.create()));

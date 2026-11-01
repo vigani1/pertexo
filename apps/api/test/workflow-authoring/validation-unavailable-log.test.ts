@@ -31,7 +31,7 @@ function render(error: unknown) {
 const flatten = (value: unknown): string =>
   value instanceof Error
     ? `${value.name} ${value.message} ${JSON.stringify(value)} ${flatten(value.cause)}`
-    : (JSON.stringify(value) ?? '');
+    : JSON.stringify(value);
 
 describe('publish validation that could not run', () => {
   it.each([
