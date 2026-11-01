@@ -15,6 +15,7 @@ import {
   authorizeWorkspace,
   assertAuthorizedWorkspaceContext,
   BROWSABLE_WORKSPACE_STATUSES,
+  UNPURGED_WORKSPACE_STATUSES,
   createActorContext,
   isCanonicalUuid,
   type AuthorizationCapability,
@@ -182,7 +183,7 @@ export const WorkspaceManageGuard = capabilityGuard(
   'workspace:manage',
   {
     disclosure: 'forbidden',
-    allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+    allowedWorkspaceStatuses: UNPURGED_WORKSPACE_STATUSES,
   },
 );
 

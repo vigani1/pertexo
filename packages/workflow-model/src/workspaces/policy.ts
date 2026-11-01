@@ -23,11 +23,21 @@ export const UNPURGED_WORKSPACE_STATUSES = Object.freeze([
   ...BROWSABLE_WORKSPACE_STATUSES,
   'pending_deletion',
 ] as const);
+/**
+ * For a flow that decides for itself what each status allows, so a member of a
+ * workspace being purged gets that flow's answer rather than a denial.
+ */
+export const ALL_WORKSPACE_STATUSES = Object.freeze([
+  ...UNPURGED_WORKSPACE_STATUSES,
+  'purging',
+  'deleted',
+] as const);
 /** A rule names the list it means, so two with different values can't be mistaken. */
 export type WorkspaceStatusList =
   | typeof ACTIVE_WORKSPACE_STATUSES
   | typeof BROWSABLE_WORKSPACE_STATUSES
-  | typeof UNPURGED_WORKSPACE_STATUSES;
+  | typeof UNPURGED_WORKSPACE_STATUSES
+  | typeof ALL_WORKSPACE_STATUSES;
 export const DELEGATED_ROLES = Object.freeze(
   ROLES.filter((role) => role !== 'owner'),
 );
