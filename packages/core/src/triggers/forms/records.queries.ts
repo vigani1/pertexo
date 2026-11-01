@@ -34,28 +34,29 @@ export async function authorizeForm(
       input.workflowId !== grant.workflowId
     )
       throw new FormUnavailableError();
+    const form = alias(workflowForms, 'form');
     const query = drizzle(client)
       .select({ one: sql`1` })
-      .from(workflowForms)
+      .from(form)
       .innerJoin(
         workspaces,
         and(
-          eq(workspaces.id, workflowForms.workspaceId),
+          eq(workspaces.id, form.workspaceId),
           eq(workspaces.status, 'active'),
         ),
       )
       .where(
         and(
-          eq(workflowForms.workspaceId, input.workspaceId),
-          eq(workflowForms.workflowId, input.workflowId),
-          eq(workflowForms.publicId, grant.publicId),
-          eq(workflowForms.access, 'public'),
-          eq(workflowForms.capabilityHash, grant.capabilityHash),
-          eq(workflowForms.nodeId, grant.nodeId),
+          eq(form.workspaceId, input.workspaceId),
+          eq(form.workflowId, input.workflowId),
+          eq(form.publicId, grant.publicId),
+          eq(form.access, 'public'),
+          eq(form.capabilityHash, grant.capabilityHash),
+          eq(form.nodeId, grant.nodeId),
         ),
       );
     const current = await (
-      write ? query.for('share', { of: workflowForms }) : query
+      write ? query.for('share', { of: form }) : query
     ).catch(rethrowQueryFailure);
     if (current.length !== 1) throw new FormUnavailableError();
   } else {
