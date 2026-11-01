@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 
 import {
   ArtifactUploadConflictError,
@@ -187,15 +187,38 @@ export function registerHoldsRetriesAndFinalize(): void {
         [workspaceId, artifact.id],
       );
     });
+    // Its bytes are gone or going, so checking them would only give a misleading answer.
+    const verifyUpload = vi.fn(() => Promise.resolve());
     await expect(
       database.finalizeUpload({
         actor: actor(),
         identity: { artifactId: artifact.id, workspaceId },
         expectedMetadata: FILE,
+        verifyUpload,
       }),
     ).rejects.toMatchObject({
       name: 'ArtifactUploadConflictError',
       message: 'Artifact upload is not pending',
     });
+    expect(verifyUpload).not.toHaveBeenCalled();
+  });
+
+  it('refuses a finalize retried with other metadata after the upload finished', async () => {
+    const { artifact } = await begin('retried-finalize');
+    const identity = {
+      actor: actor(),
+      identity: { artifactId: artifact.id, workspaceId },
+    };
+    const finished = await database.finalizeUpload({
+      ...identity,
+      expectedMetadata: FILE,
+    });
+    await expect(
+      database.finalizeUpload({
+        ...identity,
+        expectedMetadata: { ...FILE, sha256: 'a'.repeat(64) },
+      }),
+    ).rejects.toBeInstanceOf(ArtifactUploadConflictError);
+    await expect(database.getMetadata(identity)).resolves.toEqual(finished);
   });
 }
