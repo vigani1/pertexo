@@ -23,21 +23,26 @@ const COMPARISONS_BEFORE_YIELD = 4_096;
 const NOT_FOUND = -1;
 const NOT_SEARCHED = -2;
 
+type RedactionStep = Readonly<{
+  /** How many leading bytes the previous step already redacted. */
+  covered: number;
+  final: boolean;
+  outputBudget: number;
+  signal: AbortSignal;
+  deadline: number;
+}>;
+
+type RedactionResult = Readonly<{
+  emitted: Uint8Array;
+  remaining: Uint8Array;
+  covered: number;
+}>;
+
 async function redactAvailable(
   value: Uint8Array,
   patterns: readonly Uint8Array[],
-  {
-    final,
-    outputBudget,
-    signal,
-    deadline,
-  }: Readonly<{
-    final: boolean;
-    outputBudget: number;
-    signal: AbortSignal;
-    deadline: number;
-  }>,
-): Promise<Readonly<{ emitted: Uint8Array; remaining: Uint8Array }>> {
+  { covered, final, outputBudget, signal, deadline }: RedactionStep,
+): Promise<RedactionResult> {
   if (patterns.length === 0) {
     if (value.byteLength > outputBudget)
       throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, {
@@ -47,6 +52,7 @@ async function redactAvailable(
     return Object.freeze({
       emitted: new Uint8Array(value),
       remaining: new Uint8Array(),
+      covered: 0,
     });
   }
   const maximumPatternBytes = patterns[0]?.byteLength ?? 0;
@@ -104,8 +110,11 @@ async function redactAvailable(
   };
   // Each pattern's next match holds until the scan passes it, so every pattern
   // walks the bytes once. Patterns come longest first, so where several start at
-  // the same byte the longest wins.
+  // the same byte the longest wins. The scan moves one byte past a match rather
+  // than past its end: a secret can start inside the one just found, and none of
+  // it may come out, so overlapping matches redact as one range.
   const searches = patterns.map((pattern) => ({ pattern, at: NOT_SEARCHED }));
+  let written = covered;
   let index = 0;
   while (index < decidedEnd) {
     let earliest: (typeof searches)[number] | undefined;
@@ -118,44 +127,37 @@ async function redactAvailable(
       )
         earliest = search;
     }
-    if (earliest === undefined) {
-      append(value.subarray(index, decidedEnd));
-      index = decidedEnd;
-      break;
+    if (earliest === undefined) break;
+    const end = earliest.at + earliest.pattern.byteLength;
+    if (earliest.at < written) written = Math.max(written, end);
+    else {
+      append(value.subarray(written, earliest.at));
+      append(REDACTED_BYTES);
+      written = end;
     }
-    append(value.subarray(index, earliest.at));
-    append(REDACTED_BYTES);
-    index = earliest.at + earliest.pattern.byteLength;
+    index = earliest.at + 1;
   }
+  if (written < decidedEnd) {
+    append(value.subarray(written, decidedEnd));
+    written = decidedEnd;
+  }
+  // Starts from the first byte no search has tried, even if a match already
+  // covers it: the next chunk can finish a secret that starts there.
   return Object.freeze({
     emitted: emitted.slice(0, emittedLength),
-    remaining: value.slice(index),
+    remaining: value.slice(decidedEnd),
+    covered: written - decidedEnd,
   });
 }
 
 async function redactAndClear(
   value: Uint8Array,
   patterns: readonly Uint8Array[],
-  {
-    final,
-    outputBudget,
-    signal,
-    deadline,
-  }: Readonly<{
-    final: boolean;
-    outputBudget: number;
-    signal: AbortSignal;
-    deadline: number;
-  }>,
-): ReturnType<typeof redactAvailable> {
+  step: RedactionStep,
+): Promise<RedactionResult> {
   try {
-    assertBodyDeadline(signal, deadline);
-    return await redactAvailable(value, patterns, {
-      final,
-      outputBudget,
-      signal,
-      deadline,
-    });
+    assertBodyDeadline(step.signal, step.deadline);
+    return await redactAvailable(value, patterns, step);
   } finally {
     value.fill(0);
   }
@@ -181,6 +183,7 @@ export async function* boundedRedactedBody(
   let rawBytes = 0;
   let emittedBytes = 0;
   let pending: Uint8Array = new Uint8Array();
+  let covered = 0;
   const emit = (value: Uint8Array): Uint8Array | undefined => {
     if (value.byteLength === 0) return undefined;
     emittedBytes += value.byteLength;
@@ -220,12 +223,14 @@ export async function* boundedRedactedBody(
         await yieldToEventLoop();
         const candidate = pending;
         const redacted = await redactAndClear(candidate, patterns, {
+          covered,
           final: false,
           outputBudget: limit - emittedBytes,
           signal,
           deadline,
         });
         pending = redacted.remaining;
+        covered = redacted.covered;
         const output = emit(redacted.emitted);
         if (output !== undefined) yield output;
       } finally {
@@ -235,6 +240,7 @@ export async function* boundedRedactedBody(
     }
     const candidate = pending;
     const redacted = await redactAndClear(candidate, patterns, {
+      covered,
       final: true,
       outputBudget: limit - emittedBytes,
       signal,

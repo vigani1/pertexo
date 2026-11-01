@@ -146,12 +146,7 @@ describe('a secret in a response body', () => {
     }
   });
 
-  /**
-   * This fails today, and `stream-redaction-rules.test.ts` pins the opposite in
-   * "removes the earlier secret when two overlap". The earlier secret takes the
-   * shared bytes and the scan moves on, so the rest of the later one is shown.
-   * It isn't new: the byte-by-byte scan before PR #580 did the same.
-   */
+  // A secret can start inside the one just found, so overlaps redact as one range.
   it.each([
     {
       shape: 'two secrets sharing a byte',
