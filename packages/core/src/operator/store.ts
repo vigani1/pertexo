@@ -1,59 +1,67 @@
-import type { AuditMetadata } from '@pertexo/database/primitives';
 import {
   appendAuditFact,
-  serializeBoundedPlainJson,
   checkDatabaseReadiness,
-  withWorkspaceTransaction,
-  type WorkspaceTransaction,
+  serializeBoundedPlainJson,
 } from '@pertexo/database/primitives';
-import type { Pool } from 'pg';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import type {
-  DatabaseConfig,
-  DatabaseRuntime,
-} from '@pertexo/database/platform';
 import {
   acquireDatabasePool,
   generatePersistedId,
+  type DatabaseConfig,
+  type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { readStuckWork } from '../runs/stalled/overdue.queries.js';
 import { operatorCommands } from '@pertexo/database/schema';
-import { cancelRun, resumeDueWork } from './handlers/runs.repository.js';
+import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { z } from 'zod';
+
+import { readStuckWork } from '../runs/stalled/overdue.queries.js';
+import { commandRecord } from './command-record.js';
+import type {
+  GetOperatorCommandInput,
+  OperatorCommandOutcome,
+  OperatorCommandResult,
+  OperatorCommandStoreOptions,
+  OperatorRunCommandInput,
+  OperatorWorkflowCommandInput,
+  ReconcileOperatorAttemptInput,
+  RecordUnknownOutcomeEvidenceInput,
+  RedispatchFailedOutboxInput,
+  ReplayOperatorRunInput,
+} from './contract.js';
+import { REPLAY_INPUT_BYTES } from './fingerprint.js';
 import {
   reconcileAttempt,
   recordUnknownOutcomeEvidence,
 } from './handlers/attempts.repository.js';
 import { redispatchFailedOutbox } from './handlers/outbox.repository.js';
+import { cancelRun, resumeDueWork } from './handlers/runs.repository.js';
 import {
   requestRunReplay,
   retryTriggerReconciliation,
 } from './handlers/workflows.repository.js';
-import { OperatorCommandConflictError, optionsSchema } from './input.js';
-import type {
-  OperatorCommandStoreOptions,
-  RedispatchFailedOutboxInput,
-  ReconcileOperatorAttemptInput,
-  OperatorRunCommandInput,
-  OperatorWorkflowCommandInput,
-  ReplayOperatorRunInput,
-  RecordUnknownOutcomeEvidenceInput,
-  GetOperatorCommandInput,
-  GenericOperatorCommandResult,
-  OperatorCommandOutcome,
-  OperatorCommandStore,
-  CommandRequest,
-} from './contract.js';
-import { commandRecord } from './command-record.js';
-import { requestFingerprint } from './fingerprint.js';
-/** Seed of the advisory lock that serializes requests reusing one command id. */
-const COMMAND_LOCK_SEED = 7_166_118_813;
+import {
+  runOperatorCommand,
+  withOperatorTransaction,
+  type OperatorTransactionContext,
+} from './run-command.js';
+
+const EVIDENCE_REF_BYTES = 4096;
+
+// These constructor options have no upstream configuration parser.
+const optionsSchema = z.object({
+  lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
+  statementTimeoutMs: z.number().int().min(1_000).max(300_000).default(30_000),
+});
+
+export type OperatorCommandStore = ReturnType<
+  typeof createOperatorCommandStore
+>;
 
 export function createOperatorCommandStore(
   config: DatabaseConfig,
   inputOptions: OperatorCommandStoreOptions = {},
   runtime?: DatabaseRuntime,
-): OperatorCommandStore {
+) {
   const options = optionsSchema.parse(inputOptions);
   const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
   const { pool } = lease;
@@ -65,151 +73,57 @@ export function createOperatorCommandStore(
       await checkDatabaseReadiness(pool);
     },
     close: () => lease.close(),
+    /** Reads across workspaces: an operator doesn't yet know which one is stuck. */
     listStuckWork: () => readStuckWork(drizzle(pool)),
-    getCommand: (input: GetOperatorCommandInput) =>
-      readOperatorCommand(context, input),
+    getCommand: (input: GetOperatorCommandInput) => readCommand(context, input),
     redispatchFailedOutbox: (input: RedispatchFailedOutboxInput) =>
-      redispatchOperatorOutbox(context, input),
+      redispatch(context, input),
     reconcileAttempt: (input: ReconcileOperatorAttemptInput) =>
-      reconcileOperatorAttempt(context, input),
+      runOperatorCommand(context, {
+        ...input,
+        commandType: 'attempt.reconcile',
+        material: {
+          action: input.action,
+          expectedFence: input.expectedFenceToken,
+          targetId: input.attemptId,
+        },
+        target: { type: 'operator-command-target', id: input.attemptId },
+        decide: (transaction) => reconcileAttempt(transaction, input),
+      }),
     resumeDueWork: (input: OperatorRunCommandInput) =>
-      resumeOperatorRun(context, input),
+      runOperatorCommand(context, {
+        ...input,
+        commandType: 'due-work.resume',
+        material: { targetId: input.runId },
+        target: { type: 'operator-command-target', id: input.runId },
+        decide: (transaction) => resumeDueWork(transaction, input),
+      }),
     cancelRun: (input: OperatorRunCommandInput) =>
-      cancelOperatorRun(context, input),
+      runOperatorCommand(context, {
+        ...input,
+        commandType: 'run.cancel',
+        material: { targetId: input.runId },
+        target: { type: 'operator-command-target', id: input.runId },
+        decide: (transaction) => cancelRun(transaction, input),
+      }),
     recordUnknownOutcomeEvidence: (input: RecordUnknownOutcomeEvidenceInput) =>
-      recordOperatorOutcomeEvidence(context, input),
+      recordEvidence(context, input),
     retryTriggerReconciliation: (input: OperatorWorkflowCommandInput) =>
-      retryOperatorTriggerReconciliation(context, input),
-    replayRun: (input: ReplayOperatorRunInput) =>
-      replayOperatorRun(context, input),
+      runOperatorCommand(context, {
+        ...input,
+        commandType: 'trigger.reconcile',
+        material: { workflowId: input.workflowId },
+        target: { type: 'workflow', id: input.workflowId },
+        decide: (transaction) => retryTriggerReconciliation(transaction, input),
+      }),
+    replayRun: (input: ReplayOperatorRunInput) => replay(context, input),
   });
 }
 
-type OperatorTransactionContext = Readonly<{
-  pool: Pool;
-  options: Required<OperatorCommandStoreOptions>;
-}>;
-
-function withOperatorTransaction<T>(
-  { pool, options }: OperatorTransactionContext,
-  workspaceId: string,
-  signal: AbortSignal | undefined,
-  work: (transaction: WorkspaceTransaction) => Promise<T>,
-): Promise<T> {
-  return withWorkspaceTransaction(
-    pool,
-    workspaceId,
-    async (transaction) => {
-      await transaction.db.execute(
-        sql`select set_config('lock_timeout', ${String(options.lockTimeoutMs)}, true)`,
-      );
-      return work(transaction);
-    },
-    {
-      statementTimeoutMillis: options.statementTimeoutMs,
-      ...(signal === undefined ? {} : { signal }),
-    },
-  );
-}
-function appendOperatorAudit(
-  transaction: WorkspaceTransaction,
-  request: CommandRequest,
-  metadata: AuditMetadata,
-): Promise<unknown> {
-  return appendAuditFact(transaction, {
-    workspaceId: transaction.workspaceId,
-    action: `operator.${request.commandType.replaceAll('.', '_')}`,
-    targetType: request.target.type,
-    targetId: request.target.id,
-    requestId: request.commandId,
-    metadata: {
-      ...request.auditMetadata,
-      ...metadata,
-      actorRef: request.actorRef,
-      dryRun: request.dryRun,
-      reason: request.reason,
-    },
-  });
-}
-/**
- * Runs one command in one transaction: a request that reuses a command id
- * replays the stored outcome when it is the same request and conflicts
- * otherwise; a new request decides, applies and records its outcome.
- */
-async function runOperatorCommand(
+function readCommand(
   context: OperatorTransactionContext,
-  request: CommandRequest,
-): Promise<GenericOperatorCommandResult> {
-  const fingerprint = requestFingerprint(request);
-  const outcome = await withOperatorTransaction(
-    context,
-    request.workspaceId,
-    request.signal,
-    async (transaction): Promise<GenericOperatorCommandResult | 'conflict'> => {
-      await transaction.db.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${request.commandId}, ${COMMAND_LOCK_SEED}))`,
-      );
-      const [existing] = await transaction.db
-        .select({
-          outcome: operatorCommands.outcome,
-          requestFingerprint: operatorCommands.requestFingerprint,
-          result: operatorCommands.result,
-          status: operatorCommands.status,
-        })
-        .from(operatorCommands)
-        .where(eq(operatorCommands.id, request.commandId));
-      if (existing !== undefined) {
-        const same = existing.requestFingerprint === fingerprint;
-        await appendOperatorAudit(transaction, request, {
-          outcome: same ? existing.outcome : 'conflict',
-          replayed: true,
-          requestFingerprint: fingerprint,
-        });
-        if (!same) return 'conflict';
-        return Object.freeze({
-          commandId: request.commandId,
-          outcome: existing.outcome,
-          replayed: true,
-          result: Object.freeze(existing.result),
-          status: existing.status,
-        });
-      }
-
-      const decision = await request.decide(transaction, fingerprint);
-      const status = (decision.pending ?? false) ? 'pending' : 'completed';
-      await transaction.db.insert(operatorCommands).values({
-        id: request.commandId,
-        workspaceId: transaction.workspaceId,
-        commandType: request.commandType,
-        dryRun: request.dryRun,
-        requestFingerprint: fingerprint,
-        status,
-        outcome: decision.outcome,
-        result: decision.result,
-        completedAt: status === 'pending' ? null : sql`clock_timestamp()`,
-      });
-      await appendOperatorAudit(transaction, request, {
-        ...decision.auditMetadata,
-        outcome: decision.outcome,
-        requestFingerprint: fingerprint,
-      });
-      return Object.freeze({
-        commandId: request.commandId,
-        outcome: decision.outcome,
-        replayed: false,
-        result: Object.freeze(decision.result),
-        status,
-      });
-    },
-  );
-  // The conflicting attempt is audited before it is refused.
-  if (outcome === 'conflict') throw new OperatorCommandConflictError();
-  return outcome;
-}
-async function readOperatorCommand(
-  context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandStore['getCommand']>[0],
-): ReturnType<OperatorCommandStore['getCommand']> {
+  input: GetOperatorCommandInput,
+) {
   return withOperatorTransaction(
     context,
     input.workspaceId,
@@ -241,10 +155,10 @@ async function readOperatorCommand(
   );
 }
 
-async function redispatchOperatorOutbox(
+async function redispatch(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandStore['redispatchFailedOutbox']>[0],
-): ReturnType<OperatorCommandStore['redispatchFailedOutbox']> {
+  input: RedispatchFailedOutboxInput,
+): Promise<OperatorCommandResult> {
   const result = await runOperatorCommand(context, {
     ...input,
     commandType: 'outbox.redispatch',
@@ -260,56 +174,13 @@ async function redispatchOperatorOutbox(
   });
 }
 
-async function reconcileOperatorAttempt(
+function recordEvidence(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandStore['reconcileAttempt']>[0],
-): ReturnType<OperatorCommandStore['reconcileAttempt']> {
-  return runOperatorCommand(context, {
-    ...input,
-    commandType: 'attempt.reconcile',
-    material: {
-      action: input.action,
-      expectedFence: input.expectedFenceToken,
-      targetId: input.attemptId,
-    },
-    target: { type: 'operator-command-target', id: input.attemptId },
-    decide: (transaction) => reconcileAttempt(transaction, input),
-  });
-}
-
-async function resumeOperatorRun(
-  context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandStore['resumeDueWork']>[0],
-): ReturnType<OperatorCommandStore['resumeDueWork']> {
-  return runOperatorCommand(context, {
-    ...input,
-    commandType: 'due-work.resume',
-    material: { targetId: input.runId },
-    target: { type: 'operator-command-target', id: input.runId },
-    decide: (transaction) => resumeDueWork(transaction, input),
-  });
-}
-
-async function cancelOperatorRun(
-  context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandStore['cancelRun']>[0],
-): ReturnType<OperatorCommandStore['cancelRun']> {
-  return runOperatorCommand(context, {
-    ...input,
-    commandType: 'run.cancel',
-    material: { targetId: input.runId },
-    target: { type: 'operator-command-target', id: input.runId },
-    decide: (transaction) => cancelRun(transaction, input),
-  });
-}
-
-async function recordOperatorOutcomeEvidence(
-  context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandStore['recordUnknownOutcomeEvidence']>[0],
-): ReturnType<OperatorCommandStore['recordUnknownOutcomeEvidence']> {
+  input: RecordUnknownOutcomeEvidenceInput,
+) {
   const evidenceRef = serializeBoundedPlainJson(
     input.evidenceRef,
-    4096,
+    EVIDENCE_REF_BYTES,
     'Unknown outcome evidence',
   );
   return runOperatorCommand(context, {
@@ -327,26 +198,13 @@ async function recordOperatorOutcomeEvidence(
   });
 }
 
-async function retryOperatorTriggerReconciliation(
+function replay(
   context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandStore['retryTriggerReconciliation']>[0],
-): ReturnType<OperatorCommandStore['retryTriggerReconciliation']> {
-  return runOperatorCommand(context, {
-    ...input,
-    commandType: 'trigger.reconcile',
-    material: { workflowId: input.workflowId },
-    target: { type: 'workflow', id: input.workflowId },
-    decide: (transaction) => retryTriggerReconciliation(transaction, input),
-  });
-}
-
-async function replayOperatorRun(
-  context: OperatorTransactionContext,
-  input: Parameters<OperatorCommandStore['replayRun']>[0],
-): ReturnType<OperatorCommandStore['replayRun']> {
+  input: ReplayOperatorRunInput,
+) {
   const runInput = serializeBoundedPlainJson(
     input.runInput,
-    65_536,
+    REPLAY_INPUT_BYTES,
     'Operator replay input',
   );
   return runOperatorCommand(context, {

@@ -51,13 +51,6 @@ export { createDueNodeWakeupScanner } from './wakeups/due-node-scanner.repositor
 export type { DueNodeWakeupScanner } from './wakeups/contract.js';
 export { createPublishedWorkflowReader } from './queries/execution/published.queries.js';
 
-export {
-  createOperatorRunReplayStore,
-  OperatorRunReplayMismatchError,
-  OperatorRunReplayNotExecutableError,
-} from '../operator/replay/store.js';
-export type { OperatorRunReplayStore } from '../operator/replay/contract.js';
-export { createOperatorCommandStore } from '../operator/store.js';
 export { createRunFailureStore } from './advance/run-failure-store.js';
 export type { RunFailureStore } from './advance/run-failure-store.js';
 export { createStalledWorkStore } from './stalled/repository.js';
@@ -69,14 +62,6 @@ export type {
   StuckRun,
   StuckWork,
 } from './stalled/contract.js';
-export type {
-  GenericOperatorCommandResult,
-  OperatorCommandStore,
-  OperatorCommandRecord,
-  OperatorCommandResult,
-  RedispatchFailedOutboxInput,
-  ReplayOperatorRunInput,
-} from '../operator/contract.js';
 
 export {
   ARTIFACT_UPLOAD_PENDING_MS,

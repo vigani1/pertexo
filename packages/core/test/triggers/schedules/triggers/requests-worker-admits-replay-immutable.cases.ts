@@ -65,7 +65,8 @@ export function registerRequestsWorkerAdmitsReplayImmutable(): void {
       },
       workspaceId,
     });
-    expect(processed.kind).toBe('processed');
+    if (processed.kind !== 'processed')
+      throw new Error('Expected the replay to be processed');
     expect(typeof processed.runId).toBe('string');
     const replayRunId = processed.runId;
     await expect(

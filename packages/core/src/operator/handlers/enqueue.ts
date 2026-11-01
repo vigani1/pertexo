@@ -6,16 +6,6 @@ import { generatePersistedId } from '@pertexo/database/platform';
 
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
-export function withoutNulls(
-  value: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
-  return Object.fromEntries(
-    Object.entries(value).filter(
-      ([, entry]) => entry !== null && entry !== undefined,
-    ),
-  );
-}
-
 export async function enqueue(
   transaction: WorkspaceTransaction,
   job: Readonly<{

@@ -13,7 +13,7 @@ import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { OperatorCommandConflictError } from '../../../src/operator/input.js';
+import { OperatorCommandConflictError } from '../../../src/operator/contract.js';
 import { insertOutboxEvent } from '@pertexo/database/primitives';
 import { auditEvents, outboxEvents } from '@pertexo/database/schema';
 
