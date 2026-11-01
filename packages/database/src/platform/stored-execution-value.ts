@@ -5,6 +5,11 @@ import {
 } from '@pertexo/node-sdk';
 import { UUID_PATTERN, utf8ByteLength } from '@pertexo/workflow-model';
 import { types as nodeTypes } from 'node:util';
+import type {
+  StoredExecutionJsonValue,
+  StoredExecutionValue,
+} from '../schema/stored-shapes.js';
+export type { StoredExecutionJsonValue, StoredExecutionValue };
 export {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
@@ -13,24 +18,6 @@ export {
 // PostgreSQL jsonb::text is only a storage backstop, not the application byte
 // definition. Numeric exponents may expand by hundreds of bytes per member.
 export const EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES = 4_194_304;
-
-export type StoredExecutionJsonValue =
-  | null
-  | boolean
-  | number
-  | string
-  | readonly StoredExecutionJsonValue[]
-  | Readonly<{ [key: string]: StoredExecutionJsonValue }>;
-
-export type StoredExecutionValue =
-  | Readonly<{
-      kind: 'inline';
-      value: StoredExecutionJsonValue;
-    }>
-  | Readonly<{
-      kind: 'artifact';
-      artifactId: string;
-    }>;
 
 function invalid(): never {
   throw new StoredExecutionValueInvalidError();
