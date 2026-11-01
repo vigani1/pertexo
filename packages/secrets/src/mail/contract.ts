@@ -9,10 +9,17 @@ export type SealedSystemMailPayload = Readonly<{
   keyVersion: string;
 }>;
 
-export interface SystemMailEnqueueStore {
-  enqueue(input: SystemMailInput): Promise<void>;
-  close(): Promise<void>;
-}
+export type SystemMailInput = Readonly<{
+  id: string;
+  purpose: SystemMailPurpose;
+  expiresAt: Date;
+  sealedPayload: SealedSystemMailPayload;
+}>;
+
+export type SystemMailClaimRequest = Readonly<{
+  workerId: string;
+  limit: number;
+}>;
 
 export type SystemMailDeliveryClaim = Readonly<{
   id: string;
@@ -25,27 +32,22 @@ export type SystemMailDeliveryClaim = Readonly<{
   sealedPayload: SealedSystemMailPayload;
 }>;
 
-export interface SystemMailDeliveryStore {
-  claim(
-    input: Readonly<{ workerId: string; limit: number }>,
-  ): Promise<readonly SystemMailDeliveryClaim[]>;
-  settle(
-    input: Readonly<{
-      id: string;
-      leaseToken: string;
-      leaseGeneration: number;
-      outcome: 'submitted' | 'failed' | 'retry' | 'reconciliation_required';
-      providerReference?: string;
-      failureCode?: string;
-      retryAt?: Date;
-    }>,
-  ): Promise<boolean>;
-  close(): Promise<void>;
-}
-
-export type SystemMailInput = Readonly<{
+/** Only a retry has a next attempt time, and a retry always has one. */
+export type SystemMailSettlement = Readonly<{
   id: string;
-  purpose: SystemMailPurpose;
-  expiresAt: Date;
-  sealedPayload: SealedSystemMailPayload;
-}>;
+  leaseToken: string;
+  leaseGeneration: number;
+  failureCode?: string;
+}> &
+  (
+    | Readonly<{
+        outcome: 'submitted' | 'failed' | 'reconciliation_required';
+        providerReference?: string;
+        retryAt?: undefined;
+      }>
+    | Readonly<{
+        outcome: 'retry';
+        retryAt: Date;
+        providerReference?: undefined;
+      }>
+  );
