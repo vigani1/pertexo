@@ -1,10 +1,15 @@
-import { auditEvents, workspaces } from '@pertexo/database/schema';
+import {
+  auditEvents,
+  connectionEvents,
+  workspaces,
+} from '@pertexo/database/schema';
 import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/workflow-model';
 import { and, asc, eq, getTableName, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { deletionRule } from './rows.repository.js';
 
 export const auditHistory = {
   name: 'audit_events',
@@ -38,3 +43,16 @@ export const auditHistory = {
     ).length;
   },
 } as const;
+
+// Every credential use writes one of these, so without a rule they grow for as
+// long as the workspace lives. They follow the workspace's audit setting. Nothing
+// updates them, so unlike the audit rule this needs no lock to skip.
+export const connectionHistory = deletionRule('connection_events', {
+  table: connectionEvents,
+  keys: [connectionEvents.id],
+  condition: and(
+    sql`${connectionEvents.createdAt}<=statement_timestamp()-${AUDIT_RETENTION_MIN_DAYS}*interval '1 day'`,
+    sql`${connectionEvents.createdAt}<=statement_timestamp()-(select ${workspaces.auditRetentionDays} from ${workspaces} where ${workspaces.id}=${connectionEvents.workspaceId})*interval '1 day'`,
+  ),
+  orderBy: [connectionEvents.createdAt, connectionEvents.id],
+});

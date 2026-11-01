@@ -14,7 +14,8 @@ compliance. Whoever runs an install decides whether these suit their data and la
 | Run artifacts | 30 days unless referenced by a longer-retained record |
 | Preview runs | 7 days |
 | Run and trigger summaries | 90 days |
-| Audit and security events | 365 days, subject to approved legal policy |
+| Audit log and connection events, including each credential use | The workspace's "Keep audit events" setting: 365 days by default, 30 to 2,555 |
+| Sign-in and message-transport security facts | 365 days. Evidence for incidents: read by an operator, not shown in the app |
 | Off-server backups (database dump and file copies) | 14 days |
 
 Idempotency and replay records remain at least as long as their operation's
