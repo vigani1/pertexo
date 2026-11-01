@@ -2,7 +2,6 @@ import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
 } from '@pertexo/database/platform';
-import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -312,32 +311,31 @@ it('admits a real preview only while the author can use every credential', async
       idempotencyKey: randomUUID(),
     });
     const preview = (key: string) =>
-      database.withWorkspace(workspaceId, (transaction) =>
-        acceptPreviewRun(transaction, {
-          actorUserId: builder,
-          workflowId: created.workflowId,
-          nodeId: node.id,
-          draftRevision: 1,
-          draftFingerprint: 'a'.repeat(64),
-          definitionKey: node.definition.key,
-          definitionVersion: node.definition.version,
-          executorKey: node.definition.key,
-          executorVersion: node.definition.version,
-          executableNode: node,
-          executionDeadlineAt: new Date(Date.now() + 60_000),
-          expiresAt: new Date(Date.now() + 3600_000),
-          dryRun: 'not_supported',
-          input: { kind: 'manual', value: {} },
-          keyHash: key.repeat(64),
-          requestHash: 'c'.repeat(64),
-          mayContactProvider: true,
-          mayCauseExternalSideEffect: true,
-          operation: 'preview.execute',
-          scope: `${builder}:${created.workflowId}`,
-          sideEffectClass: 'unsafe',
-          traceparent: undefined,
-        }),
-      );
+      authoring.acceptPreview({
+        workspaceId,
+        actorUserId: builder,
+        workflowId: created.workflowId,
+        nodeId: node.id,
+        draftRevision: 1,
+        draftFingerprint: 'a'.repeat(64),
+        definitionKey: node.definition.key,
+        definitionVersion: node.definition.version,
+        executorKey: node.definition.key,
+        executorVersion: node.definition.version,
+        executableNode: node,
+        executionDeadlineAt: new Date(Date.now() + 60_000),
+        expiresAt: new Date(Date.now() + 3600_000),
+        dryRun: 'not_supported',
+        input: { kind: 'manual', value: {} },
+        keyHash: key.repeat(64),
+        requestHash: 'c'.repeat(64),
+        mayContactProvider: true,
+        mayCauseExternalSideEffect: true,
+        operation: 'preview.execute',
+        scope: `${builder}:${created.workflowId}`,
+        sideEffectClass: 'unsafe',
+        traceparent: undefined,
+      });
     await share(restricted, [builder]);
     await expect(preview('a')).resolves.toMatchObject({ status: 'queued' });
     await share(restricted, []);

@@ -15,14 +15,13 @@ import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
 import {
   canonicalJson,
   DEFAULT_TEST_EXPECTATIONS,
-  rolesForCapability,
+  type Role,
 } from '@pertexo/workflow-model';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import { lockInputCaseQuota } from '../../authoring/input-cases/metadata.queries.js';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
-import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import type { AuthoringCatalogs } from '../../authoring/workflows/catalogs.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
@@ -33,6 +32,7 @@ import {
   requireNoActiveSuite,
   requireNoActiveTest,
 } from '../workflows/admit.js';
+import { requireTestCapability } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/errors.js';
 import {
   loadTestSnapshot,
@@ -68,6 +68,7 @@ export async function prepareTestSuite(
 }
 export async function startTestSuite(
   client: PoolClient,
+  role: Role,
   input: Parameters<WorkflowTestSuiteStore['start']>[0],
   catalogs: AuthoringCatalogs,
 ): Promise<{ suiteId: string }> {
@@ -86,11 +87,7 @@ export async function startTestSuite(
   if (replay !== null) return replay as { suiteId: string };
   const { snapshot, current } = await prepareTestSuite(client, input, catalogs);
   assertPreparedSuite(input, { snapshot, current });
-  if (snapshot.usesConnections)
-    await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
-      actorId: input.actorId,
-      roles: rolesForCapability('connection:use'),
-    });
+  if (snapshot.usesConnections) requireTestCapability(role, 'connection:use');
   await requireNoActiveSuite(client, input);
   await requireNoActiveTest(client, input);
   const db = drizzle(client);

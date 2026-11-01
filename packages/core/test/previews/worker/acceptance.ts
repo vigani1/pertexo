@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
-import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
+import type { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
+import { createPreviewRunStore } from '../../../src/previews/runs/store.js';
 import { claimPreviewDelivery } from '../../../src/previews/attempts/claim.js';
 import type { AcceptPreviewRunInput } from '../../../src/previews/runs/acceptance/contract.js';
 import type {
@@ -83,18 +84,10 @@ export async function acceptFixture(
   overrides: Partial<AcceptPreviewRunInput> = {},
 ): Promise<AcceptedFixture> {
   const input = acceptanceInput(overrides);
-  const accepted = await withTenantScopedClient(
-    apiPool,
-    { workspaceId },
-    (client) =>
-      acceptPreviewRun(
-        {
-          db: drizzle(client, { schema: databaseSchema }),
-          workspaceId: parseWorkspaceId(workspaceId),
-        },
-        input,
-      ),
-  );
+  const accepted = await createPreviewRunStore(apiPool).acceptPreview({
+    workspaceId,
+    ...input,
+  });
   if (accepted.outboxEventId === null || accepted.previewAttemptId === null)
     throw new Error('Worker fixture requires a dispatched preview');
   // The transport payload mirrors acceptance exactly, including optional

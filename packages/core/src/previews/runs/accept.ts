@@ -9,6 +9,7 @@ import { connectionScope } from '../../tenant-access/resources/connections/scope
 
 import { resolvePreviewSample } from './samples.repository.js';
 
+import type { Role } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { lockActorArtifactReferences } from '../../artifacts/references/locks.repository.js';
@@ -28,7 +29,6 @@ import {
 } from '../errors.js';
 import {
   assertAdmission,
-  assertPreviewActor,
   assertPreviewWorkflow,
 } from './acceptance/admission.queries.js';
 import type {
@@ -46,13 +46,13 @@ import {
 export async function acceptPreviewRun(
   transaction: WorkspaceTransaction,
   input: AcceptPreviewRunInput,
+  role: Role,
 ): Promise<AcceptedPreviewRun> {
-  await assertPreviewActor(transaction, input.actorUserId);
   const resources = await assertPreviewWorkflow(
     transaction,
+    role,
     input.actorUserId,
     input.workflowId,
-    'workflow:update',
   );
   await transaction.db.execute(
     sql`select pg_advisory_xact_lock(hashtextextended(${`preview:${transaction.workspaceId}:${input.scope}:${input.keyHash}`},0))`,

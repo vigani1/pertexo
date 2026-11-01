@@ -3,7 +3,7 @@ import { acceptManualFixtureRun } from '../../attempts/manual-start.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
 import {
-  acceptPreviewRun,
+  createPreviewRunStore,
   parseWorkspaceId,
   withTenantScopedClient,
   type AcceptWorkflowRunInput,
@@ -91,18 +91,10 @@ export async function acceptDelivery(
 }
 
 export async function withTenantAccept(input: AcceptPreviewRunInput) {
-  const accepted = await withTenantScopedClient(
-    apiPool,
-    { workspaceId },
-    async (client) =>
-      acceptPreviewRun(
-        {
-          db: drizzle(client, { schema: databaseSchema }),
-          workspaceId: parseWorkspaceId(workspaceId),
-        },
-        input,
-      ),
-  );
+  const accepted = await createPreviewRunStore(apiPool).acceptPreview({
+    workspaceId,
+    ...input,
+  });
   if (accepted.outboxEventId === null || accepted.previewAttemptId === null)
     throw new Error('Consumer fixture requires a dispatched preview');
   return {

@@ -1,17 +1,11 @@
 import { readTransactionFolderScope } from '../../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 
-import { rolesForCapability } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/workflow-model';
 
 import { and, eq, sql } from 'drizzle-orm';
 
-import {
-  workflowDrafts,
-  workspaceMemberships,
-  workspaces,
-  users,
-  workflows,
-} from '@pertexo/database/schema';
+import { workflowDrafts, workflows } from '@pertexo/database/schema';
 
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
@@ -54,59 +48,17 @@ export async function assertAdmission(
   return drafts[0].graph;
 }
 
-export async function assertPreviewActor(
-  transaction: WorkspaceTransaction,
-  actorUserId: string,
-): Promise<void> {
-  const workspace = await transaction.db
-    .select({ id: workspaces.id })
-    .from(workspaces)
-    .where(
-      and(
-        eq(workspaces.id, transaction.workspaceId),
-        eq(workspaces.status, 'active'),
-      ),
-    )
-    .for('share')
-    .limit(1);
-  const actor = await transaction.db
-    .select({ id: users.id })
-    .from(users)
-    .where(and(eq(users.id, actorUserId), eq(users.status, 'active')))
-    .for('share')
-    .limit(1);
-  const membership = await transaction.db
-    .select({ role: workspaceMemberships.role })
-    .from(workspaceMemberships)
-    .where(
-      and(
-        eq(workspaceMemberships.workspaceId, transaction.workspaceId),
-        eq(workspaceMemberships.userId, actorUserId),
-        eq(workspaceMemberships.status, 'active'),
-      ),
-    )
-    .for('share')
-    .limit(1);
-  const authorUnavailable =
-    workspace.length !== 1 ||
-    actor.length !== 1 ||
-    membership[0] === undefined ||
-    !rolesForCapability('workflow:update').some(
-      (role) => role === membership[0]?.role,
-    );
-  if (authorUnavailable) throw new PreviewAdmissionDeniedError('actor');
-}
-
 async function previewWorkflowScope(
   transaction: WorkspaceTransaction,
+  role: Role,
   actorId: string,
   workflowId: string,
-  capability: 'workflow:read' | 'workflow:update',
 ) {
-  const scope = await readTransactionFolderScope(transaction, {
-    workspaceId: transaction.workspaceId,
-    actorId,
-  });
+  const scope = await readTransactionFolderScope(
+    transaction,
+    { workspaceId: transaction.workspaceId, actorId },
+    role,
+  );
   const visible = await transaction.db
     .select({ one: sql`1` })
     .from(workflows)
@@ -114,7 +66,7 @@ async function previewWorkflowScope(
       and(
         eq(workflows.workspaceId, transaction.workspaceId),
         eq(workflows.id, workflowId),
-        workflowScopeSql(scope, sql`${workflows.id}`, capability),
+        workflowScopeSql(scope, sql`${workflows.id}`, 'workflow:update'),
       ),
     );
   return visible.length === 1 ? scope : undefined;
@@ -122,31 +74,27 @@ async function previewWorkflowScope(
 
 export async function previewWorkflowVisible(
   transaction: WorkspaceTransaction,
+  role: Role,
   actorId: string,
   workflowId: string,
-  capability: 'workflow:read' | 'workflow:update',
 ): Promise<boolean> {
   return (
-    (await previewWorkflowScope(
-      transaction,
-      actorId,
-      workflowId,
-      capability,
-    )) !== undefined
+    (await previewWorkflowScope(transaction, role, actorId, workflowId)) !==
+    undefined
   );
 }
 
 export async function assertPreviewWorkflow(
   transaction: WorkspaceTransaction,
+  role: Role,
   actorId: string,
   workflowId: string,
-  capability: 'workflow:read' | 'workflow:update',
 ) {
   const resources = await previewWorkflowScope(
     transaction,
+    role,
     actorId,
     workflowId,
-    capability,
   );
   if (resources === undefined) throw new PreviewAdmissionDeniedError('draft');
   return resources;

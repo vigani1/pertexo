@@ -23,17 +23,14 @@ import {
   apiDatabase,
   input,
   ownerWorkspaceQuery,
+  apiPreviews,
 } from './fixture.js';
 
 export function registerKeepsSimultaneousFirstRequestsBehind(): void {
   it('keeps simultaneous first requests behind one atomic acceptance', async () => {
     const results = await Promise.all([
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        acceptPreviewRun(transaction, input()),
-      ),
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        acceptPreviewRun(transaction, input()),
-      ),
+      apiPreviews.acceptPreview({ workspaceId: workspaceA, ...input() }),
+      apiPreviews.acceptPreview({ workspaceId: workspaceA, ...input() }),
     ]);
 
     expect(results.map(({ duplicate }) => duplicate).sort()).toEqual([
@@ -57,18 +54,15 @@ export function registerKeepsSimultaneousFirstRequestsBehind(): void {
   });
 
   it('denies revoked replay lookup and hides another workspace claim', async () => {
-    await apiDatabase.withWorkspace(workspaceA, (transaction) =>
-      acceptPreviewRun(transaction, input()),
-    );
+    await apiPreviews.acceptPreview({ workspaceId: workspaceA, ...input() });
     await expect(
-      apiDatabase.withWorkspace(workspaceB, (transaction) =>
-        resolvePreviewReplay(transaction, {
-          actorUserId: actorId,
-          workflowId: workflowA,
-          keyHash,
-          requestHash,
-        }),
-      ),
+      apiPreviews.resolvePreviewReplay({
+        workspaceId: workspaceB,
+        actorUserId: actorId,
+        workflowId: workflowA,
+        keyHash,
+        requestHash,
+      }),
     ).resolves.toBeNull();
 
     await ownerWorkspaceQuery(
@@ -78,21 +72,20 @@ export function registerKeepsSimultaneousFirstRequestsBehind(): void {
       [workspaceA, actorId],
     );
     await expect(
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        resolvePreviewReplay(transaction, {
-          actorUserId: actorId,
-          workflowId: workflowA,
-          keyHash,
-          requestHash,
-        }),
-      ),
+      apiPreviews.resolvePreviewReplay({
+        workspaceId: workspaceA,
+        actorUserId: actorId,
+        workflowId: workflowA,
+        keyHash,
+        requestHash,
+      }),
     ).rejects.toBeInstanceOf(PreviewAdmissionDeniedError);
   });
 
   it('rolls every acceptance fact back with its caller transaction', async () => {
     await expect(
       apiDatabase.withWorkspace(workspaceA, async (transaction) => {
-        await acceptPreviewRun(transaction, input());
+        await acceptPreviewRun(transaction, input(), 'builder');
         throw new Error('force rollback');
       }),
     ).rejects.toThrow('force rollback');
@@ -112,9 +105,10 @@ export function registerKeepsSimultaneousFirstRequestsBehind(): void {
 
   it('rejects stale draft and inactive builder admission before persistence', async () => {
     await expect(
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        acceptPreviewRun(transaction, input({ draftRevision: 2 })),
-      ),
+      apiPreviews.acceptPreview({
+        workspaceId: workspaceA,
+        ...input({ draftRevision: 2 }),
+      }),
     ).rejects.toBeInstanceOf(PreviewAdmissionDeniedError);
     await ownerWorkspaceQuery(
       workspaceA,
@@ -123,9 +117,7 @@ export function registerKeepsSimultaneousFirstRequestsBehind(): void {
       [workspaceA, actorId],
     );
     await expect(
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        acceptPreviewRun(transaction, input()),
-      ),
+      apiPreviews.acceptPreview({ workspaceId: workspaceA, ...input() }),
     ).rejects.toBeInstanceOf(PreviewAdmissionDeniedError);
   });
 }

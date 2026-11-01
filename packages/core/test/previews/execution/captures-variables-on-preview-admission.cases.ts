@@ -5,7 +5,6 @@ import { createRetentionDatabase } from '../../../src/lifecycle/retention/reposi
 import { createPreviewRetentionCoordinator } from '../../../src/lifecycle/previews/repository.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
-import { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { PreviewIdempotencyConflictError } from '../../../src/previews/errors.js';
 import { resolvePreviewReplay } from '../../../src/previews/runs/resolve-replay.js';
 import {
@@ -28,6 +27,7 @@ import {
   digest,
   input,
   ownerWorkspaceQuery,
+  apiPreviews,
 } from './fixture.js';
 
 export function registerCapturesVariablesOnPreviewAdmission(): void {
@@ -38,23 +38,25 @@ export function registerCapturesVariablesOnPreviewAdmission(): void {
        insert into app.workspace_variables(workspace_id,revision) select workspace_id,revision from revision`,
       [workspaceA],
     );
-    const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
-      acceptPreviewRun(transaction, input()),
-    );
+    const first = await apiPreviews.acceptPreview({
+      workspaceId: workspaceA,
+      ...input(),
+    });
     await ownerWorkspaceQuery(
       workspaceA,
       `with revision as (insert into app.workspace_variable_set_revisions(workspace_id,revision,values_json) values($1,2,'{"RATE":20}') returning workspace_id,revision)
        update app.workspace_variables head set revision=revision.revision from revision where head.workspace_id=revision.workspace_id`,
       [workspaceA],
     );
-    const duplicate = await apiDatabase.withWorkspace(
-      workspaceA,
-      (transaction) => acceptPreviewRun(transaction, input()),
-    );
+    const duplicate = await apiPreviews.acceptPreview({
+      workspaceId: workspaceA,
+      ...input(),
+    });
     expect(duplicate.previewRunId).toBe(first.previewRunId);
-    const next = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
-      acceptPreviewRun(transaction, input({ keyHash: digest('new-preview') })),
-    );
+    const next = await apiPreviews.acceptPreview({
+      workspaceId: workspaceA,
+      ...input({ keyHash: digest('new-preview') }),
+    });
     const stored = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
       transaction.db
         .select({
@@ -127,10 +129,10 @@ export function registerCapturesVariablesOnPreviewAdmission(): void {
   });
 
   it('atomically pins one preview, attempt, safe audit fact, and identifier-only job', async () => {
-    const accepted = await apiDatabase.withWorkspace(
-      workspaceA,
-      (transaction) => acceptPreviewRun(transaction, input()),
-    );
+    const accepted = await apiPreviews.acceptPreview({
+      workspaceId: workspaceA,
+      ...input(),
+    });
     expect(accepted).toMatchObject({ duplicate: false, status: 'queued' });
 
     await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
@@ -187,25 +189,22 @@ export function registerCapturesVariablesOnPreviewAdmission(): void {
   });
 
   it('returns the exact replay after a later draft edit and rejects a conflicting replay', async () => {
-    const accepted = await apiDatabase.withWorkspace(
-      workspaceA,
-      (transaction) => acceptPreviewRun(transaction, input()),
-    );
+    const accepted = await apiPreviews.acceptPreview({
+      workspaceId: workspaceA,
+      ...input(),
+    });
     await ownerWorkspaceQuery(
       workspaceA,
       'update app.workflow_drafts set revision = 2 where workflow_id = $1',
       [workflowA],
     );
-    const resolved = await apiDatabase.withWorkspace(
-      workspaceA,
-      (transaction) =>
-        resolvePreviewReplay(transaction, {
-          actorUserId: actorId,
-          workflowId: workflowA,
-          keyHash,
-          requestHash,
-        }),
-    );
+    const resolved = await apiPreviews.resolvePreviewReplay({
+      workspaceId: workspaceA,
+      actorUserId: actorId,
+      workflowId: workflowA,
+      keyHash,
+      requestHash,
+    });
     expect(resolved).toMatchObject({
       id: accepted.previewRunId,
       workflowId: workflowA,
@@ -213,25 +212,25 @@ export function registerCapturesVariablesOnPreviewAdmission(): void {
       nodeId: 'http',
       status: 'queued',
     });
-    const replayed = await apiDatabase.withWorkspace(
-      workspaceA,
-      (transaction) => acceptPreviewRun(transaction, input()),
-    );
+    const replayed = await apiPreviews.acceptPreview({
+      workspaceId: workspaceA,
+      ...input(),
+    });
     expect(replayed).toEqual({ ...accepted, duplicate: true });
     await expect(
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        resolvePreviewReplay(transaction, {
-          actorUserId: actorId,
-          workflowId: workflowA,
-          keyHash,
-          requestHash: otherRequestHash,
-        }),
-      ),
+      apiPreviews.resolvePreviewReplay({
+        workspaceId: workspaceA,
+        actorUserId: actorId,
+        workflowId: workflowA,
+        keyHash,
+        requestHash: otherRequestHash,
+      }),
     ).rejects.toBeInstanceOf(PreviewIdempotencyConflictError);
     await expect(
-      apiDatabase.withWorkspace(workspaceA, (transaction) =>
-        acceptPreviewRun(transaction, input({ requestHash: otherRequestHash })),
-      ),
+      apiPreviews.acceptPreview({
+        workspaceId: workspaceA,
+        ...input({ requestHash: otherRequestHash }),
+      }),
     ).rejects.toBeInstanceOf(PreviewIdempotencyConflictError);
   });
 }
