@@ -41,6 +41,46 @@ describeOAuth2('what an OAuth2 step sends', () => {
   const apiCalls = (connection: Connection): number =>
     harness.standIn.apiCalls(connection.clientId).length;
 
+  // Review test gap: the token must not follow a redirect to another origin. This
+  // depends on the renewal client marking the token as sensitive for the transport.
+  it('a redirect to another origin is refused and never receives the token', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    const port = new URL(harness.standIn.origin).port;
+    const target = `http://other.example.test:${port}/redirect-target`;
+    const before = harness.standIn.redirectTargetRequests().length;
+    const runId = await harness.run(
+      owner,
+      get(connection, {
+        url: harness.apiUrl(`/api/redirect?to=${encodeURIComponent(target)}`),
+        maxRedirects: 3,
+        retry: ONE_ATTEMPT,
+      }),
+    );
+    expect((await harness.finish(runId)).status).toBe('failed');
+    expect(harness.standIn.redirectTargetRequests().length).toBe(before);
+    expect(apiCalls(connection)).toBe(1);
+    const [attempt] = await harness.attempts(runId);
+    expect(attempt?.safe_error_code).toBe('execution.configuration');
+  });
+
+  // The other half: a same-origin redirect keeps the token, as it should.
+  it('a redirect within the origin carries the token', async () => {
+    const connection = await harness.connected(owner, 'non-rotating');
+    const runId = await harness.run(
+      owner,
+      get(connection, {
+        url: harness.apiUrl(`/api/redirect?to=${encodeURIComponent('/api')}`),
+        maxRedirects: 3,
+      }),
+    );
+    expect((await harness.finish(runId)).status).toBe('succeeded');
+    const calls = harness.standIn.apiCalls(connection.clientId);
+    expect(calls.map(({ path }) => path)).toEqual(['/api/redirect', '/api']);
+    expect(calls[1]?.headers.authorization).toBe(
+      calls[0]?.headers.authorization,
+    );
+  });
+
   // Proof list: reaches /api with Bearer <token>, and the token isn't in its output.
   it('calls the API with the bearer token and doesn’t store it', async () => {
     const connection = await harness.connected(owner, 'non-rotating');
