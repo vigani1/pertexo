@@ -255,6 +255,8 @@ export const connectionEvents = appSchema.table(
       table.createdAt.desc().nullsFirst(),
       table.id,
     ),
+    // Retention pages through the oldest rows of every workspace.
+    index('connection_events_time_idx').on(table.createdAt, table.id),
   ],
 );
 

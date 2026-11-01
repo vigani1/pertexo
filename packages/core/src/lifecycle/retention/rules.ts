@@ -11,7 +11,7 @@ import {
   events,
   checkpoints,
 } from './execution/records.repository.js';
-import { auditHistory } from './audit.repository.js';
+import { auditHistory, connectionHistory } from './audit.repository.js';
 import {
   webhookReplays,
   webhookDeliveries,
@@ -100,6 +100,7 @@ export const RETENTION_RULES = Object.freeze([
   CALL_CHILD_REFERENCES_RETENTION_RULE,
   runSummaries,
   auditHistory,
+  connectionHistory,
   transportFacts,
   commandReceipts,
   creationReceipts,
