@@ -157,6 +157,7 @@ export function NodeInspector({
 
                 form={form}
                 graph={graph}
+                loopPorts={loopPorts}
                 onOpenInputs={() => {
                   onTabChange('inputs');
                 }}

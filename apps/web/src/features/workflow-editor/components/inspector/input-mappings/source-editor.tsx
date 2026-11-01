@@ -342,7 +342,7 @@ function PathField({
   );
 }
 
-function ExpressionSource({
+export function ExpressionSource({
   row,
   controlId,
   loopPorts,

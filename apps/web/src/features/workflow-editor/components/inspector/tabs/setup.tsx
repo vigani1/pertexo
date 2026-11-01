@@ -4,6 +4,7 @@ import { useScratchForm } from '../use-draft-field';
 import { StepRetrySetup } from '../retries/setup';
 
 import { CallTargetField } from '../fields/call-target';
+import { ConditionSetup } from '../condition/setup';
 
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { BracesIcon, ListIcon } from 'lucide-react';
@@ -38,6 +39,8 @@ type SetupTabProps = Readonly<{
   form: NodeFormApi;
   /** The steps around this one and their links. */
   graph: GraphLevel;
+  /** The body's inputs when the step is inside a For each; else empty. */
+  loopPorts: readonly string[];
   /** Shows the Inputs tab, where a step with no setup is decided. */
   onOpenInputs: () => void;
 }>;
@@ -56,6 +59,7 @@ function CatalogSetupTab({
   definition,
   form,
   graph,
+  loopPorts,
   onOpenInputs,
 }: SetupTabProps) {
   const { connections } = useInspectorSession();
@@ -110,6 +114,7 @@ function CatalogSetupTab({
           definition,
           form: setupForm,
           graph,
+          loopPorts,
           onOpenInputs,
         }}
         fields={fields}
@@ -206,6 +211,16 @@ function PrimarySetup(props: SetupTabProps) {
         graph={props.graph}
         form={props.form}
         variableScope={callScope}
+      />
+    );
+  if (props.node.definition.key === 'core.condition')
+    return (
+      <ConditionSetup
+        node={props.node}
+        graph={props.graph}
+        loopPorts={props.loopPorts}
+        form={props.form}
+        onOpenInputs={props.onOpenInputs}
       />
     );
   if (props.node.definition.key === 'core.call')
