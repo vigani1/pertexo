@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { IdempotencyRequestConflictError } from '../../src/runs/commands/acceptance/errors.js';
 import {
   afterAllFixture2,
+  asOwner,
   beforeAllFixture1,
   change,
 } from './workspace-deletion/fixture.js';
@@ -38,14 +39,19 @@ const RESULT_STATUS: Readonly<Record<(typeof COMMANDS)[number], Status>> = {
 };
 
 describe('the workspace status list', () => {
-  it('holds exactly the statuses the old literal did', () => {
-    expect([...ALL_WORKSPACE_STATUSES]).toEqual([
-      'active',
-      'suspended',
-      'pending_deletion',
-      'purging',
-      'deleted',
-    ]);
+  // The flow read the status with no list before it moved to the helper, so
+  // "every status" is what it must keep meaning: all a workspace row can hold.
+  it('holds every status the table allows, and only those', async () => {
+    const result = await asOwner(
+      `select pg_get_constraintdef(oid) "definition" from pg_constraint
+        where conname='workspaces_status_valid'`,
+    );
+    const [row] = result.rows as readonly { definition: string }[];
+    const allowed = [...(row?.definition ?? '').matchAll(/'([a-z_]+)'/gu)].map(
+      ([, status]) => status,
+    );
+
+    expect(new Set(allowed)).toEqual(new Set(ALL_WORKSPACE_STATUSES));
   });
 });
 
