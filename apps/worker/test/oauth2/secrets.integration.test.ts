@@ -221,15 +221,48 @@ describeOAuth2('where OAuth2 secrets never appear', () => {
   it('S20 the token is not in a step’s stored output', async () => {
     const owner = await harness.newOwner();
     const connection = await harness.connected(owner, 'non-rotating');
+    const marker = randomUUID();
     const runId = await harness.run(owner, {
       connectionId: connection.id,
       method: 'GET',
-      url: harness.apiUrl(`/api?marker=${randomUUID()}`),
+      url: harness.apiUrl(`/api/echo?marker=${marker}`),
     });
     expect((await harness.finish(runId)).status).toBe('succeeded');
     const [call] = harness.standIn.apiCalls(connection.clientId);
     const token = String(call?.headers.authorization).replace('Bearer ', '');
-    expect(token).not.toBe('undefined');
-    expect(await harness.storedOutput(runId)).not.toContain(token);
+    expect(token).toMatch(/^stand-in-at-/u);
+    const stored = await harness.storedOutput(runId);
+    // The echo really is stored, so the absence below means something.
+    expect(stored).toContain(marker);
+    expect(stored).toContain('[Redacted]');
+    expect(stored).not.toContain(token);
+  });
+
+  // S20: the token a step renews to is new to the request, so only the renewal
+  // client can mark it. An API echoing the repeat must not store it either.
+  it('S20 a token renewed mid-step is not in the stored output', async () => {
+    const owner = await harness.newOwner();
+    const connection = await harness.connected(owner, 'api-401-once');
+    await harness.ageToken(connection.id);
+    const marker = randomUUID();
+    const runId = await harness.run(owner, {
+      connectionId: connection.id,
+      method: 'GET',
+      url: harness.apiUrl(`/api/echo?marker=${marker}`),
+    });
+    expect((await harness.finish(runId)).status).toBe('succeeded');
+    const calls = harness.standIn.apiCalls(connection.clientId);
+    expect(calls).toHaveLength(2);
+    const renewed = String(calls[1]?.headers.authorization).replace(
+      'Bearer ',
+      '',
+    );
+    expect(renewed).toMatch(/^stand-in-at-/u);
+    expect(calls[0]?.headers.authorization).not.toBe(
+      calls[1]?.headers.authorization,
+    );
+    const stored = await harness.storedOutput(runId);
+    expect(stored).toContain(marker);
+    expect(stored).not.toContain(renewed);
   });
 });
