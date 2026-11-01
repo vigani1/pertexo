@@ -74,10 +74,10 @@ describe('response redaction', () => {
       expected: '[Redacted]',
     },
     {
-      rule: 'the earlier secret when two overlap',
+      rule: 'both secrets when two overlap',
       chunks: ['abcde'],
       sensitiveValues: ['bcde', 'ab'],
-      expected: '[Redacted]cde',
+      expected: '[Redacted]',
     },
     {
       rule: 'every occurrence, including ones that touch',
