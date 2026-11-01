@@ -127,11 +127,18 @@ export const deletedInputCases = deletionRule('deleted_input_cases', {
   ),
   orderBy: [workflowInputCases.workspaceId, workflowInputCases.id],
 });
+const sampleExpired = lte(
+  workflowStepSamples.expiresAt,
+  sql`clock_timestamp()`,
+);
+// Capturing a step again replaces its sample in place, so the delete may be
+// waiting for a row that has just been renewed.
 export const stepSamples = deletionRule('workflow_step_samples', {
   table: workflowStepSamples,
   keys: [workflowStepSamples.workspaceId, workflowStepSamples.id],
-  condition: lte(workflowStepSamples.expiresAt, sql`clock_timestamp()`),
+  condition: sampleExpired,
   orderBy: [workflowStepSamples.expiresAt, workflowStepSamples.id],
+  recheck: sampleExpired,
 });
 export const webhookTests = {
   name: 'webhook_test_events',
