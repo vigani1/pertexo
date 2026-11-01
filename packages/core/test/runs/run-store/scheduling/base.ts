@@ -40,10 +40,16 @@ export const predecessorFailureNotificationContextV1Schema =
   });
 
 export async function commitPinnedFailureNotificationRun(
-  pin = {
+  pin: Readonly<{
+    destinationId: string;
+    secretVersionId: string;
+    sideEffectClass?: 'idempotent_with_key' | 'unsafe';
+  }> = {
     destinationId: notificationDestinationId,
     secretVersionId: notificationSecretVersionId,
   },
+  /** What happens between the run being accepted and it failing. */
+  duringRun: () => Promise<void> = () => Promise.resolve(),
 ): Promise<{
   invocationKey: string;
   runId: string;
@@ -65,10 +71,11 @@ export async function commitPinnedFailureNotificationRun(
     failureNotificationPolicy: {
       destinationId: pin.destinationId,
       destinationConfigVersion: 1,
-      sideEffectClass: 'idempotent_with_key',
+      sideEffectClass: pin.sideEffectClass ?? 'idempotent_with_key',
       connectionSecretVersionId: pin.secretVersionId,
     },
   });
+  await duringRun();
   const nodeRunId = randomUUID();
   const attemptId = randomUUID();
   await asRuntime(workerBaseUrl, workspaceA, async (client) => {
