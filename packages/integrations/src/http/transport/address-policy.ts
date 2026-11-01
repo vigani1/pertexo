@@ -188,6 +188,44 @@ function inNetwork(
   return matchesIpv6Prefix(padded, base, network.prefix);
 }
 
+// IPv6 forms that carry an IPv4 address in their last 32 bits, which a wide
+// allowlist such as ::/0 would otherwise wave through to the metadata service.
+const TRAILING_IPV4_NETWORKS = Object.freeze(
+  (
+    [
+      // IPv4-compatible and IPv4-mapped.
+      ['::', 80],
+      // IPv4-translated.
+      ['::ffff:0:0:0', 96],
+      // NAT64, well-known and local-use.
+      ['64:ff9b::', 96],
+      ['64:ff9b:1::', 48],
+    ] as const
+  ).map(([network, prefix]) => ({ network: ipv6Words(network), prefix })),
+);
+const SIX_TO_FOUR = Object.freeze(ipv6Words('2002::'));
+
+function embeddedIpv4(words: readonly number[]): readonly number[] | undefined {
+  if (matchesIpv6Prefix(words, SIX_TO_FOUR, 16)) return words.slice(1, 3);
+  return TRAILING_IPV4_NETWORKS.some(({ network, prefix }) =>
+    matchesIpv6Prefix(words, network, prefix),
+  )
+    ? words.slice(6)
+    : undefined;
+}
+
+function isMetadataAddress(family: 4 | 6, words: readonly number[]): boolean {
+  const embedded = family === 6 ? embeddedIpv4(words) : undefined;
+  const [checkedFamily, checked] =
+    embedded === undefined ? [family, words] : ([4, embedded] as const);
+  return METADATA_NETWORKS.some((network) =>
+    inNetwork(checkedFamily, checked, {
+      ...network,
+      prefix: network.family === 4 ? network.prefix + 96 : network.prefix,
+    }),
+  );
+}
+
 /** Whether the operator allowed this private address; metadata never is. */
 export function isAllowedPrivateAddress(
   address: string,
@@ -197,12 +235,6 @@ export function isAllowedPrivateAddress(
   const family = isIP(address);
   if (family !== 4 && family !== 6) return false;
   const words = family === 4 ? ipv4Words(address) : ipv6Words(address);
-  const metadata = METADATA_NETWORKS.map((network) =>
-    network.family === 4
-      ? { ...network, prefix: network.prefix + 96 }
-      : network,
-  );
-  if (metadata.some((network) => inNetwork(family, words, network)))
-    return false;
+  if (isMetadataAddress(family, words)) return false;
   return networks.some((network) => inNetwork(family, words, network));
 }
