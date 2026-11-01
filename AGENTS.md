@@ -67,9 +67,9 @@
   exceptions, all Node only:
   - `core` has one entry point per area (`@pertexo/core/<area>`) and `/testing`;
     it has no root and no `/server`.
-  - The database has `/schema` and `/primitives` for `core` alone, `/testing`, and
-    one entry point per area (`/runs`, `/authoring`, `/platform`, etc.) until the
-    area moves to `core`.
+  - The database has `/schema` and `/primitives` for `core` alone, `/platform` for
+    pools and startup, and `/testing` for fixtures. Applications may import only
+    `/platform`, plus `/testing` from tests (a check enforces it).
   - `@pertexo/observability/startup`: instrumentation must load before the
     dependencies it instruments.
 
