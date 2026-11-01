@@ -140,7 +140,13 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
     ],
     databaseHooks: identityChangeHooks(pool, input.transactions),
     disabledPaths: [...DISABLED_NATIVE_PATHS],
-    advanced: cookiePolicy({ secureCookies: input.secureCookies }),
+    advanced: cookiePolicy({
+      secureCookies: input.secureCookies,
+      // The security instance only has a connection inside a request's transaction,
+      // so its check at boot has none and reports a false error. The plain instance
+      // runs the same check on the same options.
+      validateSchema: input.transactions === undefined,
+    }),
     telemetry: { enabled: false },
   });
 }
@@ -254,9 +260,12 @@ function identityChangeHooks(
   } satisfies BetterAuthOptions['databaseHooks'];
 }
 
-function cookiePolicy({ secureCookies }: Readonly<{ secureCookies: boolean }>) {
+function cookiePolicy({
+  secureCookies,
+  validateSchema,
+}: Readonly<{ secureCookies: boolean; validateSchema: boolean }>) {
   return {
-    database: { generateId: () => randomUUID() },
+    database: { generateId: () => randomUUID(), validateSchema },
     cookiePrefix: 'pertexo-auth',
     // A `__Secure-` name prefix would rename `pertexo_session`, which the
     // guards, the CSRF bridge and session lookup read by name; HTTPS
