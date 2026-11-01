@@ -2,6 +2,7 @@ import { createHash, createHmac } from 'node:crypto';
 
 import { encodeStoredClientSecret } from '@pertexo/integrations/server';
 import { canonicalJson } from '@pertexo/workflow-model';
+import type { z } from 'zod';
 
 import type {
   ConnectionRecord,
@@ -84,11 +85,26 @@ function oauth2Fields(
   };
 }
 
+/**
+ * A ZodError here means Pertexo built a wrong answer. The area's error mapping would
+ * report that as the caller's bad request, hiding a server bug behind a 400.
+ */
+function validResponse<Schema extends z.ZodType>(
+  schema: Schema,
+  response: unknown,
+): z.output<Schema> {
+  const parsed = schema.safeParse(response);
+  if (parsed.success) return parsed.data;
+  throw new Error('A connection response failed its schema', {
+    cause: parsed.error,
+  });
+}
+
 export function toResponse(
   record: ConnectionRecord,
   oauth2RedirectUri?: string,
 ): ConnectionResponse {
-  return connectionResponseSchema.parse({
+  return validResponse(connectionResponseSchema, {
     id: record.id,
     workspaceId: record.workspaceId,
     providerKey: record.providerKey,
@@ -117,7 +133,7 @@ export function toListResponse(
   nextCursor: string | null,
   oauth2RedirectUri?: string,
 ): ConnectionListResponse {
-  return connectionListResponseSchema.parse({
+  return validResponse(connectionListResponseSchema, {
     items: records.map((record) => toResponse(record, oauth2RedirectUri)),
     nextCursor,
   });
@@ -127,7 +143,7 @@ export function toTestResponse(
   result: ConnectionTestResult,
   oauth2RedirectUri?: string,
 ): ConnectionTestResponse {
-  return connectionTestResponseSchema.parse({
+  return validResponse(connectionTestResponseSchema, {
     connection: toResponse(result.connection, oauth2RedirectUri),
     outcome: result.outcome.ok
       ? {

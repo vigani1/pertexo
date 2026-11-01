@@ -9,7 +9,7 @@ import {
   connectionOAuth2Clients,
   connectionOAuth2Tokens,
 } from '@pertexo/database/schema';
-import { CONNECTION_AUTH_TYPE, type ConnectionRecord } from '../contract.js';
+import { CONNECTION_AUTH_TYPE, CONNECTION_STATUS, type ConnectionRecord } from '../contract.js';
 
 /** A connection's client for one secret version: inserted beside that version. */
 export async function insertOAuth2Client(
@@ -51,6 +51,25 @@ export async function deleteOAuth2Grant(
         eq(connectionOAuth2Authorizations.connectionId, connectionId),
       ),
     )
+    .catch(rethrowQueryFailure);
+}
+
+/**
+ * Deletion was requested, so no connection here stays active: a refresh token
+ * doesn't wait out the recovery window, and a restored workspace reconnects.
+ */
+export async function deleteWorkspaceOAuth2Grants(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  const db = drizzle(client);
+  await db
+    .delete(connectionOAuth2Tokens)
+    .where(eq(connectionOAuth2Tokens.workspaceId, workspaceId))
+    .catch(rethrowQueryFailure);
+  await db
+    .delete(connectionOAuth2Authorizations)
+    .where(eq(connectionOAuth2Authorizations.workspaceId, workspaceId))
     .catch(rethrowQueryFailure);
 }
 
@@ -114,7 +133,9 @@ export async function withOAuth2Facts(
       oauth2: Object.freeze({
         settings: fact.settings,
         grant:
-          fact.authorizedAt === null || fact.renewable === null
+          record.status !== CONNECTION_STATUS.active ||
+          fact.authorizedAt === null ||
+          fact.renewable === null
             ? null
             : Object.freeze({
                 authorizedAt: fact.authorizedAt,

@@ -16,6 +16,7 @@ import {
   connectionOAuth2Authorizations as authorizations,
   connectionOAuth2Clients,
   connectionOAuth2Tokens as tokens,
+  workspaces,
 } from '@pertexo/database/schema';
 import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
 import { lockWorkspaceAuthority } from '../../shared/authority.queries.js';
@@ -299,6 +300,15 @@ async function authorize(
   return withConnectionTransaction(pool, input.workspaceId, {
     actorId: undefined,
     operation: async (client, workspaceId) => {
+      // Deletion may have been requested during the exchange. Shared, so it can't
+      // commit between this check and the insert and leave tokens behind.
+      const [workspace] = await drizzle(client)
+        .select({ status: workspaces.status })
+        .from(workspaces)
+        .where(eq(workspaces.id, workspaceId))
+        .for('share')
+        .catch(rethrowQueryFailure);
+      if (workspace?.status !== 'active') return null;
       const current = await selectConnection(
         client,
         workspaceId,
