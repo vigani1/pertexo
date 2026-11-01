@@ -1,9 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { PROMOTION_LIMITS } from '../../src/schemas/workflows/promotions/settings.js';
 import { COLLABORATION_LIMITS } from '../../src/schemas/workflows/collaboration/comments.js';
 import { FEDERATION_LIMITS } from '../../src/schemas/identity/federation/settings.js';
 import {
   AUDIT_RETENTION_MIN_DAYS,
+  AUDIT_RETENTION_MAX_DAYS,
   auditRetentionSchema,
 } from '../../src/schemas/identity/governance.js';
 import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '../../src/schemas/identity/authentication.js';
@@ -63,5 +65,17 @@ it('retains canonical token UUID routing and base64url padding bits', () => {
   ).toBe(false);
   expect(apiTokenCredentialSchema.safeParse(credential + '=').success).toBe(
     false,
+  );
+});
+
+it('keeps the audit retention maximum aligned with the database constraint', () => {
+  expect(AUDIT_RETENTION_MAX_DAYS).toBe(2555);
+  expect(auditRetentionSchema.safeParse(2556).success).toBe(false);
+  const schema = readFileSync(
+    new URL('../../../database/src/schema/foundation.ts', import.meta.url),
+    'utf8',
+  );
+  expect(schema).toContain(
+    `audit_retention_days between 30 and ${String(AUDIT_RETENTION_MAX_DAYS)}`,
   );
 });
