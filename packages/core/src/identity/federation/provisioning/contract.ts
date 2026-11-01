@@ -1,5 +1,5 @@
 import type { Filter } from 'scim2-parse-filter';
-import type { createDirectoryStore } from './repository.js';
+import type { createDirectoryStore } from './store.js';
 import type { FederationScope } from '../management/contract.js';
 
 import type { Role } from '@pertexo/workflow-model';

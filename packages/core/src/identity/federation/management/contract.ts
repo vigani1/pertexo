@@ -1,4 +1,4 @@
-import type { createFederationManagementStore } from './repository.js';
+import type { createFederationManagementStore } from './store.js';
 
 import type { FederationSettings } from '@pertexo/contracts';
 export type FederationScope = Readonly<{

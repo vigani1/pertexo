@@ -7,15 +7,15 @@ import {
   authSessions,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { hasSignInMethodCapacity } from './accounts/limits.queries.js';
-import { resolveVerifiedSignInUser } from './accounts/resolve.repository.js';
-import { canCreateAuthenticationSession } from './sessions/authority.repository.js';
+import { hasSignInMethodCapacity } from '../accounts/limits.queries.js';
+import { resolveVerifiedSignInUser } from '../accounts/resolve.repository.js';
+import { canCreateAuthenticationSession } from '../sessions/authority.repository.js';
 import { randomBytes } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { revokeUserSessions } from '../../tenant-access/users/sessions.repository.js';
-import { recordIdentitySecurityFact } from '../facts.repository.js';
-import { admitNewAccount, type SignUpMode } from '../sign-up.js';
+import { revokeUserSessions } from '../../../tenant-access/users/sessions.repository.js';
+import { recordIdentitySecurityFact } from '../../facts.repository.js';
+import { admitNewAccount, type SignUpMode } from '../../sign-up.js';
 import type { ProvenSocialSignIn, SocialSignInResult } from './contract.js';
 
 export async function completeSocialSignIn(

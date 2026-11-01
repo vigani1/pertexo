@@ -6,7 +6,7 @@ import { canonicalEmailSql } from '../../canonical-email.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { ProvenSocialSignIn } from '../contract.js';
+import type { ProvenSocialSignIn } from '../social/contract.js';
 
 const signInUser = {
   id: users.id,
