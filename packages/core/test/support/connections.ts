@@ -19,7 +19,7 @@ import { createConnectionDatabase } from '../../src/connections/repository.js';
 import type { ConnectionLookupDatabase } from '../../src/connections/runtime/contract.js';
 import { createNotificationDestinationStore } from '../../src/notifications/destinations/store.js';
 import { FailureNotificationDestinationError } from '../../src/notifications/destinations/errors.js';
-import type { NotificationDestinationStore } from '../../src/notifications/destinations/contract.js';
+import type { NotificationDestinationStore } from '../../src/notifications/destinations/store.js';
 import { createFailureNotificationStore } from '../../src/notifications/store.js';
 import {
   parseDatabaseConfig,

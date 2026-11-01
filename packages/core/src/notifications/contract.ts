@@ -41,50 +41,38 @@ export type FailureNotificationResolvedDestination =
   | (FailureNotificationResolvedDestinationBase &
       Readonly<{ kind: 'email'; toEmail: string }>);
 
-export interface FailureNotificationStore {
-  claimDelivery(
-    input: Readonly<{
-      workspaceId: string;
-      intentId: string;
-      delivery: FailureNotificationDelivery;
-      recoverySeconds: number;
-      maxAttempts: number;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<FailureNotificationClaimResult>;
-  completeDelivery(
-    input: Readonly<{
-      workspaceId: string;
-      intentId: string;
-      attemptNumber: number;
-      maxAttempts: number;
-      retryDelaySeconds: number;
-      result: FailureNotificationDeliveryResult;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<'completed' | 'stale'>;
-  loadDestination(
-    input: Readonly<{
-      workspaceId: string;
-      intentId: string;
-      attemptNumber: number;
-      workerId: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<FailureNotificationResolvedDestination>;
-  fenceDispatch(
-    input: Readonly<{
-      workspaceId: string;
-      intentId: string;
-      attemptNumber: number;
-      deliveryBinding?: string;
-      signal?: AbortSignal;
-    }>,
-  ): Promise<void>;
-  recoverDue(
-    limit: number,
-    maxAttempts: number,
-    signal?: AbortSignal,
-  ): Promise<number>;
-  close(): Promise<void>;
-}
+type NotificationAttempt = Readonly<{
+  workspaceId: string;
+  intentId: string;
+}>;
+
+export type ClaimDeliveryInput = NotificationAttempt &
+  Readonly<{
+    delivery: FailureNotificationDelivery;
+    recoverySeconds: number;
+    maxAttempts: number;
+    signal?: AbortSignal;
+  }>;
+
+export type CompleteDeliveryInput = NotificationAttempt &
+  Readonly<{
+    attemptNumber: number;
+    maxAttempts: number;
+    retryDelaySeconds: number;
+    result: FailureNotificationDeliveryResult;
+    signal?: AbortSignal;
+  }>;
+
+export type LoadDestinationInput = NotificationAttempt &
+  Readonly<{
+    attemptNumber: number;
+    workerId: string;
+    signal: AbortSignal;
+  }>;
+
+export type FenceDispatchInput = NotificationAttempt &
+  Readonly<{
+    attemptNumber: number;
+    deliveryBinding?: string;
+    signal?: AbortSignal;
+  }>;

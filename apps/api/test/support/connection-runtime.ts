@@ -41,8 +41,7 @@ export function createFixtureConnectionRuntime(
   }>,
 ): ApiConnectionRuntime {
   const database = createConnectionDatabase(databaseConfig);
-  const destinations =
-    createNotificationDestinationStore(databaseConfig);
+  const destinations = createNotificationDestinationStore(databaseConfig);
   const httpClient = services.http ?? createNodeSecureHttpClient();
   return Object.freeze({
     dependencies: Object.freeze({

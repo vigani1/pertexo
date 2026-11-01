@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { vi } from 'vitest';
 import type * as FailureNotificationStoreSupport from '../../../src/notifications/delivery/evidence.repository.js';
-import { createFailureNotificationCompletionStore } from '../../../src/notifications/delivery/completion.repository.js';
+import { completeDelivery } from '../../../src/notifications/delivery/completion.repository.js';
 
 const tenantState = vi.hoisted<{ client: unknown }>(() => ({
   client: undefined,
@@ -61,8 +61,8 @@ export function completionHarness(row: LockedIntent | undefined) {
     .mockResolvedValue({ rows: [['2026-09-11T00:00:00.000Z']] });
   tenantState.client = { query };
   return {
-    complete: createFailureNotificationCompletionStore({} as Pool)
-      .completeDelivery,
+    complete: (input: Parameters<typeof completeDelivery>[1]) =>
+      completeDelivery({} as Pool, input),
     query,
   };
 }

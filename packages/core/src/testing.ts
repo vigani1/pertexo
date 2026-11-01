@@ -52,16 +52,18 @@ export {
 export { createNotificationDestinationStore } from './notifications/destinations/store.js';
 export { FailureNotificationDestinationError } from './notifications/destinations/errors.js';
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/contract.js';
-export type { NotificationDestinationStore } from './notifications/destinations/contract.js';
+export type { NotificationDestinationStore } from './notifications/destinations/store.js';
 export { createDueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.repository.js';
 export type { DueNodeWakeupScanner } from './runs/wakeups/contract.js';
-export { createFailureNotificationStore } from './notifications/store.js';
+export {
+  createFailureNotificationStore,
+  type FailureNotificationStore,
+} from './notifications/store.js';
 export { FailureNotificationStateError } from './notifications/errors.js';
 export type {
   FailureNotificationClaimResult,
   FailureNotificationDelivery,
   FailureNotificationResolvedDestination,
-  FailureNotificationStore,
 } from './notifications/contract.js';
 export { createDeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.repository.js';
 export type { DeadlineWakeupScanner } from './runs/wakeups/contract.js';

@@ -7,7 +7,10 @@ vi.mock('../../../database/dist/tenant-access/transactions.js', () => ({
   withTenantScopedClient,
 }));
 
-import { createFailureNotificationDestinationStore } from '../../src/notifications/delivery/destination.repository.js';
+import {
+  fenceDispatch,
+  loadDestination,
+} from '../../src/notifications/delivery/destination.repository.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const intentId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -21,9 +24,8 @@ describe('failure notification destination attempt validation', () => {
     'accepts load attempt boundary %s at the transaction seam',
     async (attemptNumber) => {
       withTenantScopedClient.mockResolvedValueOnce(undefined);
-      const store = createFailureNotificationDestinationStore({} as Pool);
       await expect(
-        store.loadDestination({
+        loadDestination({} as Pool, {
           attemptNumber,
           intentId,
           signal: new AbortController().signal,
@@ -39,9 +41,8 @@ describe('failure notification destination attempt validation', () => {
     'accepts fence attempt boundary %s at the transaction seam',
     async (attemptNumber) => {
       withTenantScopedClient.mockResolvedValueOnce(undefined);
-      const store = createFailureNotificationDestinationStore({} as Pool);
       await expect(
-        store.fenceDispatch({ attemptNumber, intentId, workspaceId }),
+        fenceDispatch({} as Pool, { attemptNumber, intentId, workspaceId }),
       ).resolves.toBeUndefined();
       expect(withTenantScopedClient).toHaveBeenCalledOnce();
     },
