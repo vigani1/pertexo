@@ -73,7 +73,7 @@ function boot(database: string, security: boolean) {
 /** Whatever the check logs once the context it runs from has settled. */
 async function logsOf(auth: ReturnType<typeof boot>): Promise<string> {
   const context = await auth.$context;
-  await context.checkSchema?.().catch(() => undefined);
+  await context.checkSchema?.()?.catch(() => undefined);
   await new Promise((resolve) => setTimeout(resolve, 100));
   return errorOutput();
 }

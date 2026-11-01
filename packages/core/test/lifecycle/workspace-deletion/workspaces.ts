@@ -45,7 +45,7 @@ export async function statusOf(workspaceId: string): Promise<string> {
     'select status from app.workspaces where id=$1',
     [workspaceId],
   );
-  return String(result.rows[0]?.status);
+  return (result.rows as readonly { status: string }[])[0]?.status ?? 'missing';
 }
 
 /** Receipts written for the workspace: one per change that took effect. */
@@ -55,7 +55,7 @@ export async function lifecycleWrites(workspaceId: string): Promise<number> {
       where workspace_id=$1`,
     [workspaceId],
   );
-  return Number(result.rows[0]?.count);
+  return (result.rows as readonly { count: number }[])[0]?.count ?? 0;
 }
 
 async function insertUser(): Promise<string> {

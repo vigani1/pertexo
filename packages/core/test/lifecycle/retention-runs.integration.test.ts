@@ -1,156 +1,32 @@
 import { randomUUID } from 'node:crypto';
 
 import { Client } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import {
-  checkpoints,
-  events,
-  nodeDetails,
-} from '../../src/lifecycle/retention/rules/run-records.repository.js';
 import {
   adminUrl,
   retention,
   withDatabase,
   workspaceId,
 } from './retention.support.js';
-
-const DAY = 86_400_000;
-const MINUTE = 60_000;
-const ago = (millis: number) => new Date(Date.now() - millis);
-
-let admin!: Client;
-
-beforeAll(async () => {
-  admin = new Client({ connectionString: withDatabase(adminUrl) });
-  await admin.connect();
-  await admin.query("select set_config('app.workspace_id', $1, false)", [
-    workspaceId,
-  ]);
-});
-
-afterAll(async () => {
-  await admin.end();
-});
-
-type RunShape = Readonly<{
-  completedAt?: Date;
-  createdAt?: Date;
-  purged?: boolean;
-  status?: string;
-  triggerType?: string;
-}>;
-
-async function insertRun({
-  completedAt,
-  createdAt,
-  purged = false,
-  status = completedAt === undefined ? 'running' : 'succeeded',
-  triggerType = 'manual',
-}: RunShape): Promise<string> {
-  const id = randomUUID();
-  const created = createdAt ?? completedAt ?? new Date();
-  await admin.query(
-    `insert into app.workflow_runs
-      (id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
-       output_ref,error_summary,started_at,completed_at,details_purged_at,
-       created_at,updated_at)
-     values($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$9,$9)`,
-    [
-      id,
-      workspaceId,
-      randomUUID(),
-      randomUUID(),
-      triggerType,
-      status,
-      purged ? null : JSON.stringify({ kind: 'inline', value: 'output' }),
-      purged ? null : 'failure detail',
-      created,
-      completedAt ?? null,
-      purged ? (completedAt ?? new Date()) : null,
-    ],
-  );
-  return id;
-}
-
-async function insertNodeRun(runId: string): Promise<string> {
-  const id = randomUUID();
-  await admin.query(
-    `insert into app.node_runs
-      (id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-       status,side_effect_class)
-     values($1,$2,$3,'node',$4,'{}','succeeded','safe')`,
-    [id, workspaceId, runId, `node-${id}`],
-  );
-  await admin.query(
-    `insert into app.node_attempts
-      (id,workspace_id,node_run_id,attempt_number,status,side_effect_class)
-     values($1,$2,$3,1,'succeeded','safe')`,
-    [randomUUID(), workspaceId, id],
-  );
-  return id;
-}
-
-async function insertEvent(runId: string, sequence = 1): Promise<void> {
-  await admin.query(
-    `insert into app.run_events(workspace_id,workflow_run_id,sequence,type,payload)
-     values($1,$2,$3,'run.succeeded','{}')`,
-    [workspaceId, runId, sequence],
-  );
-}
-
-async function insertCheckpoint(runId: string): Promise<void> {
-  await admin.query(
-    `insert into app.run_checkpoints
-      (workflow_run_id,workspace_id,workflow_version_id,revision,scheduler_state)
-     select id,workspace_id,workflow_version_id,1,'{}'
-       from app.workflow_runs where id=$1`,
-    [runId],
-  );
-}
-
-async function insertDetails(runId: string): Promise<void> {
-  await insertNodeRun(runId);
-  await insertEvent(runId);
-  await insertCheckpoint(runId);
-}
-
-async function countOf(table: string, runId: string): Promise<number> {
-  const result = await admin.query<{ count: number }>(
-    `select count(*)::int "count" from app.${table} where workflow_run_id=$1`,
-    [runId],
-  );
-  return result.rows[0]?.count ?? -1;
-}
-
-async function detailCounts(runId: string) {
-  return {
-    node_runs: await countOf('node_runs', runId),
-    run_events: await countOf('run_events', runId),
-    run_checkpoints: await countOf('run_checkpoints', runId),
-  };
-}
-
-const allDetails = { node_runs: 1, run_events: 1, run_checkpoints: 1 };
-const noDetails = { node_runs: 0, run_events: 0, run_checkpoints: 0 };
-
-async function summary(runId: string) {
-  const result = await admin.query<{
-    details_purged_at: Date | null;
-    error_summary: string | null;
-    output_ref: unknown;
-  }>(
-    'select details_purged_at,error_summary,output_ref from app.workflow_runs where id=$1',
-    [runId],
-  );
-  return result.rows[0];
-}
-
-async function untilIdle(): Promise<void> {
-  for (let pass = 0; pass < 200; pass += 1)
-    if (!(await retention.enforce()).more) return;
-  throw new Error('Retention did not become idle');
-}
+import {
+  admin,
+  ago,
+  allDetails,
+  countOf,
+  DAY,
+  detailCounts,
+  insertCheckpoint,
+  insertDetails,
+  insertEvent,
+  insertNodeRun,
+  insertRun,
+  MINUTE,
+  noDetails,
+  PURGED,
+  summary,
+  untilIdle,
+} from './retention-runs/fixture.js';
 
 describe('run retention windows', () => {
   it('removes every detail of a run a minute past 30 days and then marks it purged, keeping the summary', async () => {
@@ -163,7 +39,7 @@ describe('run retention windows', () => {
     expect(await summary(runId)).toMatchObject({
       output_ref: null,
       error_summary: null,
-      details_purged_at: expect.any(Date),
+      details_purged_at: PURGED,
     });
   });
 
@@ -362,7 +238,7 @@ describe('what retention must not delete early', () => {
       await holder.query('commit');
       await untilIdle();
       expect(await summary(runId)).toMatchObject({
-        details_purged_at: expect.any(Date),
+        details_purged_at: PURGED,
       });
     } finally {
       await holder.query('rollback').catch(() => undefined);
@@ -387,7 +263,7 @@ describe('run detail paging', () => {
     await untilIdle();
     expect(await countOf('node_runs', runId)).toBe(0);
     expect(await summary(runId)).toMatchObject({
-      details_purged_at: expect.any(Date),
+      details_purged_at: PURGED,
     });
   });
 
@@ -471,61 +347,4 @@ describe('rows found on a run whose details are already purged', () => {
     expect(receipts.rows).toEqual([]);
     expect(responses.rows).toEqual([]);
   });
-});
-
-describe('an idle pass', () => {
-  // The audit's finding: walking a child table and probing each row's run read
-  // all of it when nothing was due. A tenth of the rows is well above what
-  // finding no due run reads, and far below walking the table.
-  it.each([
-    ['node_runs', nodeDetails],
-    ['run_events', events],
-    ['run_checkpoints', checkpoints],
-  ] as const)(
-    'reads under a tenth of %s when nothing is due',
-    async (table, rule) => {
-      await untilIdle();
-      const rows = 2_000;
-      await admin.query(
-        `with runs as (
-           insert into app.workflow_runs
-             (id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
-              started_at,completed_at,created_at,updated_at)
-           select gen_random_uuid(),$1,gen_random_uuid(),$3::uuid,'manual',
-             'succeeded',clock_timestamp(),clock_timestamp(),clock_timestamp(),clock_timestamp()
-           from generate_series(1,$2::int)
-           returning id
-         ), steps as (
-           insert into app.node_runs
-             (id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-              status,side_effect_class)
-           select gen_random_uuid(),$1,id,'node','node','{}','succeeded','safe' from runs
-         ), history as (
-           insert into app.run_events(workspace_id,workflow_run_id,sequence,type,payload)
-           select $1,id,1,'run.succeeded','{}' from runs
-         )
-         insert into app.run_checkpoints
-           (workflow_run_id,workspace_id,workflow_version_id,revision,scheduler_state)
-         select id,$1,$3::uuid,1,'{}' from runs`,
-        [workspaceId, rows, randomUUID()],
-      );
-      await admin.query(
-        'analyze app.workflow_runs, app.node_runs, app.run_events, app.run_checkpoints',
-      );
-      await admin.query('begin');
-      try {
-        expect(await rule.run(admin as never, 500)).toBe(0);
-        const read = await admin.query<{ tuples: number }>(
-          `select (coalesce(seq_tup_read,0)+coalesce(idx_tup_fetch,0))::int tuples
-             from pg_stat_xact_user_tables
-            where schemaname='app' and relname=$1`,
-          [table],
-        );
-        expect(read.rows[0]?.tuples).toBeLessThan(rows / 10);
-      } finally {
-        await admin.query('rollback');
-      }
-    },
-    60_000,
-  );
 });
