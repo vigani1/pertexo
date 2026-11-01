@@ -118,3 +118,16 @@ export {
   type PreparedCallback,
   type CallbackIdentity,
 } from './pending-tasks/callbacks/contract.js';
+export { DEFAULT_INSTANCE_LIMITS } from './instance-limits.js';
+export {
+  parseStoredExecutionValue,
+  prepareStoredExecutionValue,
+  serializeStoredExecutionJsonValue,
+  serializeStoredExecutionValue,
+  serializeWrittenJsonValue,
+  storedExecutionValuesEqual,
+} from './values/stored-execution.js';
+export type {
+  StoredExecutionJsonValue,
+  StoredExecutionValue,
+} from '@pertexo/database/schema';

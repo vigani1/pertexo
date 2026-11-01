@@ -1,11 +1,11 @@
 import {
   appendAuditFact,
   rethrowQueryFailure,
-  serializeStoredExecutionJsonValue,
   claimCommand,
   completeCommand,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
 import { and, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { apiTokens } from '@pertexo/database/schema';

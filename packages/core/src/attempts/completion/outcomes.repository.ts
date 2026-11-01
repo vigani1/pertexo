@@ -4,8 +4,8 @@ import { nodeRuns, nodeAttempts, outboxEvents } from '@pertexo/database/schema';
 import {
   rethrowQueryFailure,
   canonicalOutboxPayloadChecksum,
-  serializeStoredExecutionJsonValue,
 } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
 import { appendAttemptEvent } from '../events.repository.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';

@@ -1,8 +1,8 @@
+import { prepareStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import {
-  prepareStoredExecutionValue,
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
-} from '@pertexo/database/platform';
+} from '@pertexo/node-sdk';
 import type { RunAdvanceState } from '../../runs/index.js';
 import type { CallableResultDecision } from '@pertexo/workflow-engine';
 import {

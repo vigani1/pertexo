@@ -3,8 +3,8 @@ import { expect, it } from 'vitest';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
-  StoredExecutionValueInvalidError,
-} from '../../../src/platform/stored-execution-value.js';
+} from '../../../../src/runs/values/stored-execution.js';
+import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 
 export function registerRoundTripsArtifactReferenceRejects(): void {
   it('round-trips an artifact reference and rejects malformed envelopes', () => {

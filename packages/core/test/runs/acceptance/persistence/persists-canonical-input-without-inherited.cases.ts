@@ -14,7 +14,7 @@ import {
 import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
-} from '@pertexo/database/platform';
+} from '@pertexo/node-sdk';
 import {
   acceptanceInput,
   apiDatabase,

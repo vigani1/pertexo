@@ -1,9 +1,11 @@
 import {
   withTenantScopedReadClient,
   rethrowQueryFailure,
+} from '@pertexo/database/primitives';
+import {
   parseStoredExecutionValue,
   storedExecutionValuesEqual,
-} from '@pertexo/database/primitives';
+} from '../../runs/values/stored-execution.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { nodeRuns, nodeAttempts } from '@pertexo/database/schema';

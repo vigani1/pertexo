@@ -10,8 +10,8 @@ import {
 import {
   rethrowQueryFailure,
   canonicalOutboxPayloadChecksum,
-  serializeStoredExecutionJsonValue,
 } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../../values/stored-execution.js';
 import { auditFailureNotification } from '../../../notifications/delivery/evidence.repository.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';

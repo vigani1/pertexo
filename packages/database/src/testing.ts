@@ -5,10 +5,6 @@ export {
   insertOutboxEvent,
   outboxChecksumSchema,
 } from './outbox/events.repository.js';
-export {
-  parseStoredExecutionValue,
-  serializeStoredExecutionValue,
-} from './platform/stored-execution-value.js';
 export type {
   InsertedOutboxEvent,
   OutboxEventInput,

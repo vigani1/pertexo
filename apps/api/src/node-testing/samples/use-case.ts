@@ -9,7 +9,7 @@ import type {
   WorkflowStepSampleStore,
   SampleMetadata,
 } from '@pertexo/core/authoring';
-import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/database/platform';
+import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import {
   authorizeWorkspaceOperation,
   BROWSABLE_WORKSPACE_STATUSES,

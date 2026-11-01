@@ -2,7 +2,7 @@ import type {
   InitialCheckpointFactory,
   PublishedWorkflow,
 } from '../../runs/index.js';
-import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/database/platform';
+import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import {
   createCheckpoint,
   type WorkflowCheckpoint,

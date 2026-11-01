@@ -1,10 +1,8 @@
 import { copyRecoveryRunValues } from '../values/records.queries.js';
 import { sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import {
-  generatePersistedId,
-  prepareStoredExecutionValue,
-} from '@pertexo/database/platform';
+import { generatePersistedId } from '@pertexo/database/platform';
+import { prepareStoredExecutionValue } from '../values/stored-execution.js';
 import { nodeRuns, runEvents } from '@pertexo/database/schema';
 import { readRecoveryEvidence } from './records.queries.js';
 import { WorkflowRecoveryUnavailableError } from './errors.js';

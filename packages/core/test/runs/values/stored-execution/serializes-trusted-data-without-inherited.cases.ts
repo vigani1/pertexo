@@ -2,9 +2,11 @@ import { expect, it } from 'vitest';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
+} from '../../../../src/runs/values/stored-execution.js';
+import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
-} from '../../../src/platform/stored-execution-value.js';
+} from '@pertexo/node-sdk';
 import { canonicalJsonOracle, seededJsonCases } from './fixture.js';
 
 export function registerSerializesTrustedDataWithoutInherited(): void {

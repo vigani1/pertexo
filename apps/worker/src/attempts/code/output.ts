@@ -1,9 +1,9 @@
 import type { CodeResult } from '@pertexo/node-sdk';
+import { prepareStoredExecutionValue } from '@pertexo/core/runs';
 import {
-  prepareStoredExecutionValue,
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
-} from '@pertexo/database/platform';
+} from '@pertexo/node-sdk';
 
 /** The runner wire envelope is larger than the retained run-data envelope. */
 export function retainCodeOutput(result: CodeResult): CodeResult {

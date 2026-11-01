@@ -4,10 +4,12 @@ import {
   EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES,
   serializeStoredExecutionJsonValue,
   serializeStoredExecutionValue,
+  storedExecutionValuesEqual,
+} from '../../../../src/runs/values/stored-execution.js';
+import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
-  storedExecutionValuesEqual,
-} from '../../../src/platform/stored-execution-value.js';
+} from '@pertexo/node-sdk';
 
 export function registerPreservesFormatLikeFieldNames(): void {
   it('preserves format-like field names in user JSON', () => {

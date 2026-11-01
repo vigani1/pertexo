@@ -1,7 +1,7 @@
 import type { workflowStepSamples } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 import type { StepSampleSource } from '@pertexo/workflow-model';
-import type { StoredExecutionValue } from '@pertexo/database/primitives';
+import type { StoredExecutionValue } from '@pertexo/database/schema';
 
 export type SampleScope = Readonly<{
   workspaceId: string;

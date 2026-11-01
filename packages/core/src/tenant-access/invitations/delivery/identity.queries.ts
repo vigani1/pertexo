@@ -3,10 +3,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { outboxEvents } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  serializeStoredExecutionJsonValue,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../../../runs/values/stored-execution.js';
 
 export async function assertInvitationDeliveryIdentity(
   client: PoolClient,

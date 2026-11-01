@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { it, expect } from 'vitest';
 
-import { serializeStoredExecutionValue } from '@pertexo/database/primitives';
+import { serializeStoredExecutionValue } from '../../../../src/runs/values/stored-execution.js';
 import {
   workspaceId,
   enforceTestRetention,

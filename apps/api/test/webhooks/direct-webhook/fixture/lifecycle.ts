@@ -1,4 +1,4 @@
-import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/database/platform';
+import { DEFAULT_INSTANCE_LIMITS } from '@pertexo/core/runs';
 import { createWebhookTestEventStore } from '@pertexo/core/triggers';
 import { WebhookTestEventService } from '../../../../src/webhooks/test-events/service.js';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';

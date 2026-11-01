@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { serializeStoredExecutionJsonValue } from '@pertexo/database/primitives';
+import { serializeStoredExecutionJsonValue } from '../values/stored-execution.js';
 
 /**
  * Serializes a new run's first checkpoint. The checkpoint comes from the

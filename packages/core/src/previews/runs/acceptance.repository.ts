@@ -2,8 +2,8 @@ import {
   appendAuditFact,
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-  serializeStoredExecutionValue,
 } from '@pertexo/database/primitives';
+import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { requireTransactionConnectionBindings } from '../../tenant-access/resources/connections/bindings.queries.js';
 import { connectionScope } from '../../tenant-access/resources/connections/scope.js';
 
