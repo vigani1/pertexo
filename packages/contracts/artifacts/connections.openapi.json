@@ -7502,6 +7502,7 @@
         "type": "string",
         "enum": [
           "http.oauth2_not_connected",
+          "http.oauth2_connection_revoked",
           "http.oauth2_grant_revoked",
           "http.oauth2_client_rejected",
           "http.oauth2_token_expired",

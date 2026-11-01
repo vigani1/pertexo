@@ -1,6 +1,7 @@
 import {
   CONNECTION_AUTH_TYPE,
   ConnectionOAuth2NotConnectedError,
+  ConnectionOAuth2RevokedError,
   ConnectionUnavailableError,
   type ConnectionResolutionDatabase,
   type ResolvedConnectionSecretRecord,
@@ -139,6 +140,8 @@ export function createProviderConnectionRuntimeFactory(
       } catch (error: unknown) {
         if (error instanceof ConnectionOAuth2NotConnectedError)
           throw new OAuth2TokenFailure('http.oauth2_not_connected');
+        if (error instanceof ConnectionOAuth2RevokedError)
+          throw new OAuth2TokenFailure('http.oauth2_connection_revoked');
         if (error instanceof ConnectionUnavailableError)
           throw new ProviderCredentialInvalidError();
         throw error;

@@ -13,7 +13,9 @@ import type {
 } from '../contract.js';
 import {
   CONNECTION_AUTH_TYPE,
+  CONNECTION_STATUS,
   ConnectionOAuth2NotConnectedError,
+  ConnectionOAuth2RevokedError,
   ConnectionUnavailableError,
 } from '../contract.js';
 import { selectConnection } from '../records.queries.js';
@@ -63,6 +65,13 @@ export function createConnectionResolutionPersistence(
               workspaceId,
               connectionId,
             );
+            if (
+              connection?.authType === CONNECTION_AUTH_TYPE.oauth2 &&
+              connection.status === CONNECTION_STATUS.revoked
+            )
+              throw new ConnectionOAuth2RevokedError(
+                'OAuth2 connection is revoked',
+              );
             if (connection?.authType === CONNECTION_AUTH_TYPE.oauth2)
               throw new ConnectionOAuth2NotConnectedError(
                 'OAuth2 connection has no usable grant',

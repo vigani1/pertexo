@@ -339,6 +339,9 @@ export class ConnectionUnavailableError extends Error {
 /** An OAuth2 connection with no usable grant: it says so rather than just being unavailable. */
 export class ConnectionOAuth2NotConnectedError extends ConnectionUnavailableError {}
 
+/** Revoked for good: it can't be reconnected, so a step needs another connection. */
+export class ConnectionOAuth2RevokedError extends ConnectionUnavailableError {}
+
 export class ConnectionSharingRevisionConflictError extends Error {
   override readonly name = 'ConnectionSharingRevisionConflictError';
   constructor() {

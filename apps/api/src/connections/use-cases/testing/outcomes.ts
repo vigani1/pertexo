@@ -106,6 +106,7 @@ export function responseOutcome(status: number): ConnectionTestOutcome {
 const OAUTH2_TEST_CODE: Readonly<
   Record<Exclude<OAuth2StepFailureCode, 'http.oauth2_not_connected'>, string>
 > = Object.freeze({
+  'http.oauth2_connection_revoked': 'connection.revoked',
   'http.oauth2_grant_revoked': 'connection.oauth2_grant_revoked',
   'http.oauth2_client_rejected': 'connection.oauth2_client_rejected',
   'http.oauth2_token_expired': 'connection.oauth2_token_expired',
