@@ -242,13 +242,15 @@ function systemMailProvider(
                   sender.publicWebOrigin,
                   input,
                 ),
-              dependencies.databaseRuntime,
-              ({ error, ...fields }) => {
-                dependencies.logger.error(
-                  'notice_mail.person_failed',
-                  fields,
-                  error,
-                );
+              {
+                runtime: dependencies.databaseRuntime,
+                onPersonFailed: ({ error, ...fields }) => {
+                  dependencies.logger.error(
+                    'notice_mail.person_failed',
+                    fields,
+                    error,
+                  );
+                },
               },
             );
       const handler = createSystemMailDeliveryHandler({

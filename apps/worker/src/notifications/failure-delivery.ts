@@ -1,4 +1,7 @@
-import { FailureNotificationStateError, type FailureNotificationStore } from '@pertexo/core/notifications';
+import {
+  FailureNotificationStateError,
+  type FailureNotificationStore,
+} from '@pertexo/core/notifications';
 
 import {
   assertNever,

@@ -1,6 +1,9 @@
 import { SMTPServer } from 'smtp-server';
 import { z } from 'zod';
-import { createWorkspaceInboxFoldStore, createNoticeMailStore } from '@pertexo/core/inbox';
+import {
+  createWorkspaceInboxFoldStore,
+  createNoticeMailStore,
+} from '@pertexo/core/inbox';
 import {
   createSystemMailDeliveryStore,
   type DatabaseConfig,
