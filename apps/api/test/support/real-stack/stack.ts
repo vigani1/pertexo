@@ -20,6 +20,7 @@ const SUITE_REDIS_DATABASES = {
   capacity: 9,
   'timed-waits': 8,
   'webhook-endpoints': 7,
+  'failure-alerts': 6,
 } as const;
 
 /** Enough to read what went wrong, without growing without bound on a broken stack. */
@@ -265,7 +266,13 @@ export function createRealStack(suite: keyof typeof SUITE_REDIS_DATABASES) {
     );
   }
 
-  return { create, boot, bootExitCode, close, verifyEmail };
+  /** A change only an outside failure could make, on the stack's database. */
+  async function queryAsOwner(text: string, values: readonly unknown[]) {
+    if (owner === undefined) throw new Error('Stack not created');
+    return owner.query(text, [...values]);
+  }
+
+  return { create, boot, bootExitCode, close, verifyEmail, queryAsOwner };
 }
 
 export type RealStack = ReturnType<typeof createRealStack>;
