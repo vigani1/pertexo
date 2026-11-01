@@ -33,6 +33,13 @@ type RetentionOperationStep = (signal: AbortSignal) => Promise<boolean>;
 const MAX_STEPS_PER_OPERATION = 20;
 
 /**
+ * Retention windows are days long, so a pass needn't run every poll: all its
+ * rules together are about 50 transactions. A full page brings the next one
+ * straight back. A failed pass retries on the next poll, as other operations do.
+ */
+const RULE_PASS_MILLIS = 5 * 60 * 1_000;
+
+/**
  * Retention rules, preview and artifact cleanup and workspace purge. Every
  * worker may run it; locks in the database keep the work disjoint. A failing
  * operation is logged and retried on the next cycle without stopping the
@@ -56,6 +63,8 @@ export function createRetentionRuntime(
     return result;
   };
 
+  let nextRulePassAt = 0;
+
   const operations: readonly (readonly [
     RetentionOperation,
     RetentionOperationStep,
@@ -63,12 +72,14 @@ export function createRetentionRuntime(
     [
       'retention',
       async (signal) => {
+        if (performance.now() < nextRulePassAt) return false;
         const result = await timed(
           () => resources.database.enforce(signal),
           (result, seconds) => {
             metrics.recordRetention(result, seconds);
           },
         );
+        nextRulePassAt = result.more ? 0 : performance.now() + RULE_PASS_MILLIS;
         return result.more;
       },
     ],
