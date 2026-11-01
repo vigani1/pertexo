@@ -59,7 +59,6 @@ const coreSource = 'packages/core/src/';
  * test beside this check pins it.
  */
 export const AREAS_NOT_YET_PASSED = new Set([
-  'artifacts',
   'attempts',
   'authoring',
   'connections',

@@ -1,4 +1,8 @@
-import type { ArtifactMetadataIdentity } from './metadata/contract.js';
+export type ArtifactMetadataIdentity = Readonly<{
+  byteLength: number;
+  mediaType: string;
+  sha256: string;
+}>;
 
 export function artifactMetadataMatches(
   actual: ArtifactMetadataIdentity,

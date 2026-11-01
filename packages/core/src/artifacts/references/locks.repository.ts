@@ -28,6 +28,7 @@ import {
 import { isRecord } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { artifactMetadataMatches } from '../metadata.js';
+import { ARTIFACT_UPLOAD_PURPOSE } from '../contract.js';
 import { ArtifactMetadataNotFoundError } from '../errors.js';
 
 type ArtifactRow = Awaited<ReturnType<typeof referenceRows>>[number];
@@ -124,12 +125,14 @@ export async function lockArtifactReferences(
   const visible = await visibleArtifactIds(
     client,
     { workspaceId, actorId },
-    result.filter((row) => row.purpose !== 'user-upload').map((row) => row.id),
+    result
+      .filter((row) => row.purpose !== ARTIFACT_UPLOAD_PURPOSE)
+      .map((row) => row.id),
   );
   assertRows(
     references,
     result.filter(
-      (row) => row.purpose === 'user-upload' || visible.has(row.id),
+      (row) => row.purpose === ARTIFACT_UPLOAD_PURPOSE || visible.has(row.id),
     ),
   );
 }

@@ -7,7 +7,7 @@ import {
 } from '../../src/problems/context/normalize.js';
 import { ArtifactUploadTooLargeError } from '../../src/artifacts/index.js';
 import { describe, expect, it } from 'vitest';
-import { ArtifactMetadataNotFoundError } from '@pertexo/core/runs';
+import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 
 describe('unavailable artifact reference feedback', () => {
   it.each([

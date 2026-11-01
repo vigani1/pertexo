@@ -8,7 +8,7 @@ import {
   createPendingPreviewArtifact,
   finalizeArtifactUpload,
   requireNodeArtifactReference,
-} from '@pertexo/core/runs';
+} from '@pertexo/core/artifacts';
 import {
   createWorkspaceDatabase,
   type WorkspaceDatabase,

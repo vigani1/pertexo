@@ -3,7 +3,7 @@ import {
   FormFileRejectedError,
   FormValuesInvalidError,
 } from '@pertexo/workflow-model';
-import { ArtifactUploadNotFoundError } from '../../../src/artifacts/uploads/input.js';
+import { ArtifactUploadNotFoundError } from '../../../src/artifacts/uploads/errors.js';
 import {
   FormChangedError,
   FormUnavailableError,

@@ -3,7 +3,7 @@ import { createArtifactStore } from '@pertexo/artifact-store';
 import {
   createArtifactUploadStore,
   createFormUploadStore,
-} from '@pertexo/core/runs';
+} from '@pertexo/core/artifacts';
 import { createIdentityWorkspaceDatabase } from '@pertexo/core/testing';
 import { createWorkspaceDatabase } from '@pertexo/database/testing';
 

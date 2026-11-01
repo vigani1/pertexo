@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
 
-import { ArtifactUploadNotFoundError } from '../../../src/artifacts/uploads/input.js';
+import { ArtifactUploadNotFoundError } from '../../../src/artifacts/uploads/errors.js';
 
 import {
   database,

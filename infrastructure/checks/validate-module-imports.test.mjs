@@ -327,7 +327,6 @@ test('the list of areas not yet passed can only shrink', () => {
   // A pass removes its area from both lists. Adding to this one, or to the check's,
   // is a decision to take in review: the rule exists so areas get off the list.
   const AT_THE_MOVE = [
-    'artifacts',
     'attempts',
     'authoring',
     'connections',

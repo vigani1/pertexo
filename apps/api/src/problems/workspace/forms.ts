@@ -9,7 +9,7 @@ import {
   FormFileRejectedError,
   FormValuesInvalidError,
 } from '@pertexo/workflow-model';
-import { FormUploadLimitError } from '@pertexo/core/runs';
+import { FormUploadLimitError } from '@pertexo/core/artifacts';
 import { applicationError } from '../../platform/http/index.js';
 
 export const formsProblems = [

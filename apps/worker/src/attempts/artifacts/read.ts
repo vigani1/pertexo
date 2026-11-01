@@ -4,7 +4,7 @@ import {
   type ArtifactStore,
 } from '@pertexo/artifact-store';
 import { ARTIFACT_INPUT_MAX_BYTES, FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
-import { ArtifactMetadataNotFoundError } from '@pertexo/core/runs';
+import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
 import {
   FileInputFailure,
   NodeExecutorFailure,

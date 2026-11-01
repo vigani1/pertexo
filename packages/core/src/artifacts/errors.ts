@@ -1,10 +1,3 @@
-export const ARTIFACT_STATUS = {
-  available: 'available',
-  deleted: 'deleted',
-  deleting: 'deleting',
-  pending: 'pending',
-} as const;
-
 export class ArtifactFinalizeConflictError extends Error {
   public constructor() {
     super('Validated object metadata does not match the pending artifact');

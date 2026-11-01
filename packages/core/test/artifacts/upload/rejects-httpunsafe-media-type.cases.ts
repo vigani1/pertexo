@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import {
   ArtifactQuotaExceededError,
   ArtifactUploadIdempotencyConflictError,
-} from '../../../src/artifacts/uploads/input.js';
+} from '../../../src/artifacts/uploads/errors.js';
 
 import {
   database,

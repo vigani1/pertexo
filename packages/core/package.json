@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./artifacts": {
+      "types": "./dist/artifacts/index.d.ts",
+      "default": "./dist/artifacts/index.js"
+    },
     "./testing": {
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.js"

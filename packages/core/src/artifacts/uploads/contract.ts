@@ -1,7 +1,7 @@
 import type { ArtifactRecord } from '../contract.js';
-import type { ArtifactMetadataIdentity } from '../metadata/contract.js';
+import type { ArtifactMetadataIdentity } from '../metadata.js';
 
-import type { DatabaseReadiness } from '@pertexo/database/platform';
+export const ARTIFACT_UPLOAD_PENDING_MS = 15 * 60 * 1_000;
 
 export type ArtifactUploadActor = Readonly<{
   [key: string]: unknown;
@@ -41,17 +41,4 @@ export type NormalizedFinalizeArtifactUploadInput = NormalizedArtifactIdentity &
 export type ArtifactUploadResult = Readonly<{
   artifact: ArtifactRecord;
   replayed: boolean;
-}>;
-
-export type ArtifactUploadStore = Readonly<{
-  beginUpload(input: BeginArtifactUploadInput): Promise<ArtifactUploadResult>;
-  getForUpload(
-    input: ArtifactUploadAuthorization,
-  ): Promise<ArtifactRecord | null>;
-  finalizeUpload(input: FinalizeArtifactUploadInput): Promise<ArtifactRecord>;
-  getMetadata(
-    input: ArtifactUploadAuthorization,
-  ): Promise<ArtifactRecord | null>;
-  checkReadiness(): Promise<DatabaseReadiness>;
-  close(): Promise<void>;
 }>;
