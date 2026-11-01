@@ -1,4 +1,5 @@
 export const AUDIT_RETENTION_MIN_DAYS = 30;
+export const AUDIT_RETENTION_MAX_DAYS = 2555;
 
 /** A stale settings write must conflict before asking for another reviewer. */
 export function requiresPublicationReviewer(

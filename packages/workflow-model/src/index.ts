@@ -390,7 +390,10 @@ export {
   FOLDER_GRANT_LIMIT,
 } from './workspaces/authoring-limits.js';
 
-export { AUDIT_RETENTION_MIN_DAYS } from './workspaces/governance.js';
+export {
+  AUDIT_RETENTION_MAX_DAYS,
+  AUDIT_RETENTION_MIN_DAYS,
+} from './workspaces/governance.js';
 
 export {
   FEDERATION_LIMITS,
