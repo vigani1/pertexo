@@ -8,7 +8,10 @@ import {
   UNPURGED_WORKSPACE_STATUSES,
 } from '@pertexo/workflow-model';
 
-import { withWorkspaceAccess, type WorkspaceActor } from '../shared/index.js';
+import {
+  withWorkspaceAccess,
+  type WorkspaceActor,
+} from '../shared/workspace-access.js';
 import type {
   ReplaceWorkspaceVariablesInput,
   VariableUsageInput,
