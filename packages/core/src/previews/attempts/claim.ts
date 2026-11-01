@@ -18,7 +18,11 @@ import {
   PreviewDeliveryMismatchError,
 } from '../errors.js';
 import { optionsFor } from '../input.js';
-import { TERMINAL_PREVIEW_STATUSES } from '../state.js';
+import {
+  mayHaveDispatchedUnsafely,
+  TERMINAL_PREVIEW_STATUSES,
+  UNFINISHED_PREVIEW_STATUSES,
+} from '../state.js';
 import {
   auditPreviewDeliveryMismatch,
   claimPreviewReceipt,
@@ -61,7 +65,7 @@ async function terminalizeExpiredPreview(
         eq(previewAttempts.workspaceId, input.workspaceId),
         eq(previewAttempts.id, input.previewAttemptId),
         eq(previewAttempts.previewRunId, input.previewRunId),
-        inArray(previewAttempts.status, ['queued', 'running']),
+        inArray(previewAttempts.status, UNFINISHED_PREVIEW_STATUSES),
       ),
     )
     .returning({ id: previewAttempts.id })
@@ -81,7 +85,7 @@ async function terminalizeExpiredPreview(
       and(
         eq(previewRuns.workspaceId, input.workspaceId),
         eq(previewRuns.id, input.previewRunId),
-        inArray(previewRuns.status, ['queued', 'running']),
+        inArray(previewRuns.status, UNFINISHED_PREVIEW_STATUSES),
       ),
     )
     .returning({ id: previewRuns.id })
@@ -148,9 +152,7 @@ export async function claimPreviewDelivery(
           return Object.freeze({ kind: 'duplicate' });
         }
         const unsafeDispatch =
-          state.attemptStatus === 'running' &&
-          state.dispatchMarkedAt !== null &&
-          state.sideEffectClass === 'unsafe';
+          state.attemptStatus === 'running' && mayHaveDispatchedUnsafely(state);
         if (unsafeDispatch)
           throw new PreviewAttemptStateError('expired_after_dispatch');
 
@@ -229,7 +231,7 @@ async function claimPreviewLease(
         eq(previewAttempts.workspaceId, parsed.workspaceId),
         eq(previewAttempts.id, parsed.previewAttemptId),
         eq(previewAttempts.previewRunId, parsed.previewRunId),
-        inArray(previewAttempts.status, ['queued', 'running']),
+        inArray(previewAttempts.status, UNFINISHED_PREVIEW_STATUSES),
         eq(previewRuns.workspaceId, previewAttempts.workspaceId),
         eq(previewRuns.id, previewAttempts.previewRunId),
         sql`${previewRuns.executionDeadlineAt}>clock_timestamp()`,

@@ -23,10 +23,7 @@ import {
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { PREVIEW_STATUS } from '../state.js';
 
-import {
-  PreviewAcceptanceCorruptError,
-  PreviewAdmissionDeniedError,
-} from '../errors.js';
+import { PreviewAcceptanceCorruptError } from '../errors.js';
 import {
   assertAdmission,
   assertPreviewWorkflow,
@@ -35,10 +32,7 @@ import type {
   AcceptPreviewRunInput,
   AcceptedPreviewRun,
 } from './acceptance/contract.js';
-import {
-  PREVIEW_EXECUTION_TIMEOUT_MAX_MS,
-  PREVIEW_RETENTION_MAX_MS,
-} from './acceptance/limits.js';
+import { assertPreviewDeadlines } from './acceptance/limits.js';
 import {
   readExistingAcceptance,
   resolveInput,
@@ -180,19 +174,6 @@ export async function acceptPreviewRun(
 }
 
 type PreviewSample = Awaited<ReturnType<typeof resolvePreviewSample>>;
-function assertPreviewDeadlines(input: AcceptPreviewRunInput, now: Date): void {
-  if (
-    input.expiresAt.getTime() <= now.getTime() ||
-    input.expiresAt.getTime() - now.getTime() > PREVIEW_RETENTION_MAX_MS
-  )
-    throw new PreviewAdmissionDeniedError('retention');
-  const invalidDeadline =
-    input.executionDeadlineAt.getTime() <= now.getTime() ||
-    input.executionDeadlineAt.getTime() - now.getTime() >
-      PREVIEW_EXECUTION_TIMEOUT_MAX_MS ||
-    input.executionDeadlineAt.getTime() > input.expiresAt.getTime();
-  if (invalidDeadline) throw new PreviewAdmissionDeniedError('deadline');
-}
 async function assertPreviewInputAuthority(
   transaction: WorkspaceTransaction,
   input: AcceptPreviewRunInput,

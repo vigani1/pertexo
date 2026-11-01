@@ -1,10 +1,8 @@
 export { claimPreviewDelivery } from './attempts/claim.js';
 export { completePreviewAttempt } from './attempts/complete.js';
 export { heartbeatPreviewLease } from './attempts/heartbeat.js';
-export {
-  isValidStoredExecutionOutput,
-  reconcilePreviewDelivery,
-} from './reconciliation/reconcile.js';
+export { isValidStoredExecutionOutput } from './output.js';
+export { reconcilePreviewDelivery } from './reconciliation/reconcile.js';
 export { markPreviewDispatched } from './attempts/mark-dispatched.js';
 export {
   PreviewAttemptStateError,

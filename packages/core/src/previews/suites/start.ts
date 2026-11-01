@@ -34,14 +34,15 @@ import {
 } from '../workflows/admit.js';
 import { requireTestCapability } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/errors.js';
+import { testRunDurationMs } from '../workflows/rules.js';
 import {
   loadTestSnapshot,
-  sameTestSamples,
   saveTestSnapshot,
 } from '../workflows/snapshot.repository.js';
 import { admitSuiteCase } from './admit.js';
 import type { WorkflowTestSuiteStartInput } from './contract.js';
 import { readSuiteCasePayloads, readSuiteCurrent } from './current.queries.js';
+import { assertPreparedSuite, SUITE_MAX_DURATION_MS } from './rules.js';
 
 export async function prepareTestSuite(
   client: PoolClient,
@@ -79,14 +80,14 @@ export async function startTestSuite(
     scope: `${input.actorId}:${input.workflowId}`,
     idempotencyKey: input.idempotencyKey,
   };
-  const replay = await claimCommand(client, {
+  const replay = await claimCommand<{ suiteId: string }>(client, {
     ...command,
     request: input.request,
     resourceId: suiteId,
   });
-  if (replay !== null) return replay as { suiteId: string };
+  if (replay !== null) return replay;
   const { snapshot, current } = await prepareTestSuite(client, input, catalogs);
-  assertPreparedSuite(input, { snapshot, current });
+  assertPreparedSuite(input, current, snapshot.preparation.effectfulSteps);
   if (snapshot.usesConnections) requireTestCapability(role, 'connection:use');
   await requireNoActiveSuite(client, input);
   await requireNoActiveTest(client, input);
@@ -143,13 +144,12 @@ export async function startTestSuite(
       signature: current.signature,
       variableSetRevision: current.variableSetRevision,
       usesConnections: snapshot.usesConnections,
-      caseDurationMs: Math.min(
-        300000,
-        snapshot.graph.settings.maxRunDurationMs ?? 300000,
+      caseDurationMs: testRunDurationMs(
+        snapshot.graph.settings.maxRunDurationMs,
       ),
       initialCheckpoint: sql`${JSON.stringify(snapshot.compiled.initialCheckpoint(snapshotId))}::jsonb`,
       createdAt: snapshot.now,
-      deadlineAt: new Date(snapshot.now.getTime() + 5 * 60 * 60 * 1000),
+      deadlineAt: new Date(snapshot.now.getTime() + SUITE_MAX_DURATION_MS),
       expiresAt: new Date(snapshot.now.getTime() + TEST_RUN_RETENTION_MILLIS),
     })
     .returning()
@@ -188,37 +188,4 @@ export async function startTestSuite(
   const result = { suiteId };
   await completeCommand(client, command, result);
   return result;
-}
-
-function assertPreparedSuite(
-  input: WorkflowTestSuiteStartInput,
-  {
-    snapshot,
-    current,
-  }: Pick<Awaited<ReturnType<typeof prepareTestSuite>>, 'snapshot' | 'current'>,
-): void {
-  if (current.cases.length === 0) throw new WorkflowTestError('cases_required');
-  if (current.draftRevision !== input.request.expectedRevision)
-    throw new WorkflowTestError('draft_changed');
-  if (!sameTestSamples(current.samples, input.request.expectedSamples))
-    throw new WorkflowTestError('samples_changed');
-  const suiteChanged =
-    current.variableSetRevision !== input.request.expectedVariableSetRevision ||
-    current.signature !== input.request.signature ||
-    canonicalJson(
-      current.cases.map(({ id, revision }) => ({ id, revision })),
-    ) !== canonicalJson(input.request.expectedCases);
-  if (suiteChanged) throw new WorkflowTestError('cases_changed');
-  if (
-    canonicalJson([...input.request.expectedEffectfulSteps].sort()) !==
-    canonicalJson(
-      snapshot.preparation.effectfulSteps.map((step) => step.nodeId).sort(),
-    )
-  )
-    throw new WorkflowTestError('effects_changed');
-  if (
-    snapshot.preparation.effectfulSteps.length > 0 &&
-    !input.request.acknowledgeSideEffects
-  )
-    throw new WorkflowTestError('effects_acknowledgement_required');
 }
