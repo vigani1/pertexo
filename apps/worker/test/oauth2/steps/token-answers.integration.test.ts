@@ -200,8 +200,12 @@ describeOAuth2('what the token address answers', () => {
       const [attempt] = await harness.attempts(runId);
       expect(attempt).toMatchObject({
         safe_error_code: 'http.oauth2_token_response_invalid',
-        error_summary:
-          "The service's token address gave an answer Pertexo can't use. Check the token URL.",
+        // L10: an unknown `error` stays temporary, and its short code is shown.
+        error_summary: `The service's token address gave an answer Pertexo can't use. Check the token URL.${
+          behavior === 'unknown-error'
+            ? " The service's code: stand_in_unknown_error."
+            : ''
+        }`,
         executor_failure_kind: 'retry',
         executor_error_kind: 'provider',
         executor_possibly_dispatched: false,

@@ -42,7 +42,11 @@ import type {
   OAuth2ClientRecord,
   OAuth2ConsentDatabase,
 } from './contract.js';
-import { expiryOf, sealedColumns } from './tokens.repository.js';
+import {
+  expiryOf,
+  readEarlierTokens,
+  sealedColumns,
+} from './tokens.repository.js';
 
 export function createOAuth2AuthorizationPersistence(
   pool: Pool,
@@ -51,6 +55,7 @@ export function createOAuth2AuthorizationPersistence(
     readOAuth2Client: (input) => readClient(pool, input),
     startOAuth2Authorization: (input) => startAuthorization(pool, input),
     consumeOAuth2Authorization: (input) => consumeAuthorization(pool, input),
+    readOAuth2EarlierTokens: (input) => readEarlierTokens(pool, input),
     authorizeOAuth2Connection: (input) => authorize(pool, input),
   });
 }

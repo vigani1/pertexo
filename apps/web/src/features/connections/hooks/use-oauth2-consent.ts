@@ -10,7 +10,7 @@ import type { ConnectionMutationScope } from '../data/connections.mutations';
 import { connectionKeys } from '../data/connections.queries';
 import { startOAuth2Authorization } from '../data/oauth2.api';
 import { connectionCommandError } from '../model/connection-errors';
-import { LANDING_TEXT, OAUTH2_CHANNEL } from '../model/oauth2-copy';
+import { landingMessage, OAUTH2_CHANNEL } from '../model/oauth2-copy';
 
 export type OAuth2ConsentState =
   | Readonly<{ kind: 'idle' }>
@@ -82,8 +82,9 @@ export function useOAuth2Consent(
     channel.onmessage = (event: MessageEvent<unknown>) => {
       const landing = oauth2CallbackLandingSchema.safeParse(event.data);
       if (!landing.success) return;
-      if (landing.data.result === 'invalid') {
-        setState({ kind: 'failed', message: LANDING_TEXT.invalid });
+      // Naming no connection, it can only be the consent this tab is waiting on.
+      if (!('connectionId' in landing.data)) {
+        setState({ kind: 'failed', message: landingMessage(landing.data) });
         return;
       }
       if (landing.data.connectionId !== connectionId) return;
@@ -91,7 +92,7 @@ export function useOAuth2Consent(
         void refresh();
         return;
       }
-      setState({ kind: 'failed', message: LANDING_TEXT[landing.data.result] });
+      setState({ kind: 'failed', message: landingMessage(landing.data) });
     };
     const onFocus = (): void => {
       void refresh();

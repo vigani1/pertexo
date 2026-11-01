@@ -84,7 +84,10 @@ export class HttpOAuth2Failure extends NodeExecutorFailure {
       errorKind: outcome.errorKind,
       possiblyDispatched: false,
       safeErrorCode: failure.code,
-      errorSummary: outcome.summary,
+      errorSummary:
+        failure.serviceError === undefined
+          ? outcome.summary
+          : `${outcome.summary} The service's code: ${failure.serviceError}.`,
       ...(failure.retryAfterSeconds === undefined
         ? {}
         : { minimumRetryDelayMillis: failure.retryAfterSeconds * 1_000 }),
