@@ -86,11 +86,15 @@ export async function unlinkDirectoryWorkspace(
       throw new DirectoryError('not_found');
     if (organization.revision !== input.expectedRevision)
       throw new DirectoryError('stale');
-    await detachDirectoryMemberships(client, organization.id, {
-      workspaceId: input.targetWorkspaceId,
-      limit: DIRECTORY_LIMITS.users,
-      actorId: input.actorId,
-    });
+    // Deleted directory users keep their row, so a workspace can hold more than a page.
+    let detached: number;
+    do {
+      detached = await detachDirectoryMemberships(client, organization.id, {
+        workspaceId: input.targetWorkspaceId,
+        limit: DIRECTORY_LIMITS.users,
+        actorId: input.actorId,
+      });
+    } while (detached === DIRECTORY_LIMITS.users);
     await removeDirectoryFolderGrants(client, organization.id, [
       input.targetWorkspaceId,
     ]);

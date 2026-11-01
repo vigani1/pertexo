@@ -61,7 +61,12 @@ export function createDirectoryUser(
       const [row] = await drizzle(client)
         .select({ count: count() })
         .from(authDirectoryUsers)
-        .where(eq(authDirectoryUsers.organizationId, principal.organizationId))
+        .where(
+          and(
+            eq(authDirectoryUsers.organizationId, principal.organizationId),
+            isNull(authDirectoryUsers.deletedAt),
+          ),
+        )
         .catch(rethrowQueryFailure);
       if ((row?.count ?? 0) >= DIRECTORY_LIMITS.users)
         throw new DirectoryError('limit');
