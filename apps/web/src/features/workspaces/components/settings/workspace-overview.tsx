@@ -11,7 +11,10 @@ import {
 import type { ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
-import { PROVIDERS } from '@/features/connections/provider.public';
+import {
+  needsReconnecting,
+  PROVIDERS,
+} from '@/features/connections/provider.public';
 import { connectionsInfiniteQueryOptions } from '@/features/connections/queries.public';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/queries.public';
 import { countWorkflowStates } from '@/features/workflows/counts.public';
@@ -231,9 +234,7 @@ function ConnectionsTile({
       connections.map((connection) => PROVIDERS[connection.providerKey].name),
     ),
   ];
-  const needsAttention = connections.filter(
-    (connection) => connection.status === 'reauthorization_required',
-  ).length;
+  const needsAttention = connections.filter(needsReconnecting).length;
   return (
     <OverviewTile
       workspaceId={workspaceId}
