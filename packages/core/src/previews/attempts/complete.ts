@@ -30,7 +30,7 @@ import {
   PreviewDeliveryMismatchError,
 } from '../errors.js';
 import { optionsFor } from '../input.js';
-import { PREVIEW_STATUS } from '../state.js';
+import { PREVIEW_STATUS, UNFINISHED_PREVIEW_STATUSES } from '../state.js';
 import {
   auditPreviewDeliveryMismatch,
   completePreviewReceipt,
@@ -193,7 +193,7 @@ export async function completePreviewAttempt(
             and(
               eq(previewRuns.workspaceId, scope.workspaceId),
               eq(previewRuns.id, scope.previewRunId),
-              inArray(previewRuns.status, ['queued', 'running']),
+              inArray(previewRuns.status, UNFINISHED_PREVIEW_STATUSES),
             ),
           )
           .returning({ id: previewRuns.id })

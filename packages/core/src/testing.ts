@@ -218,7 +218,7 @@ export type {
   InboxConsumeResult,
   InboxMessage,
 } from './outbox/receipts.repository.js';
-export { isValidStoredExecutionOutput } from './previews/reconciliation/reconcile.js';
+export { isValidStoredExecutionOutput } from './previews/output.js';
 export { PREVIEW_RETENTION_MAX_MS } from './previews/runs/acceptance/limits.js';
 export { PREVIEW_STATUS } from './previews/state.js';
 export { createNodeAttemptRunStore } from './attempts/repository.js';

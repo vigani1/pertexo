@@ -14,6 +14,7 @@ import type { WorkflowTestSuiteCurrent } from '@pertexo/contracts';
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
 import { WorkflowTestError } from '../workflows/errors.js';
+import { SUITE_MAX_CASES } from './rules.js';
 /** The same metadata signature prepares suites and labels publish freshness. */
 export async function readSuiteCurrent(
   client: PoolClient,
@@ -48,9 +49,10 @@ export async function readSuiteCurrent(
       ),
     )
     .orderBy(asc(workflowInputCases.createdAt), asc(workflowInputCases.id))
-    .limit(51)
+    .limit(SUITE_MAX_CASES + 1)
     .catch(rethrowQueryFailure);
-  if (cases.length > 50) throw new WorkflowTestError('cases_changed');
+  if (cases.length > SUITE_MAX_CASES)
+    throw new WorkflowTestError('cases_changed');
   const pins = await db
     .select({
       nodeId: workflowStepSamples.nodeId,
@@ -132,6 +134,6 @@ export function readSuiteCasePayloads(client: PoolClient, input: SampleScope) {
       ),
     )
     .orderBy(asc(workflowInputCases.createdAt), asc(workflowInputCases.id))
-    .limit(50)
+    .limit(SUITE_MAX_CASES)
     .catch(rethrowQueryFailure);
 }
