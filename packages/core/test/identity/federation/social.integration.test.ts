@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { SocialSignInCommands } from '../../../src/tenant-access/index.js';
+import { SocialSignInCommands } from '../../../src/identity/index.js';
 import { useIdentityCommandDatabase } from '../command.support.js';
 
 const db = useIdentityCommandDatabase('social_proof');

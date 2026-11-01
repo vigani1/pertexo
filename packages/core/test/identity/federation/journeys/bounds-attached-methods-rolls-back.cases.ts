@@ -1,7 +1,7 @@
 import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/contracts';
 
 import { expect, it } from 'vitest';
-import { isAuthenticationSessionAllowed } from '../../../../src/tenant-access/index.js';
+import { isAuthenticationSessionAllowed } from '../../../../src/identity/index.js';
 
 import {
   db,

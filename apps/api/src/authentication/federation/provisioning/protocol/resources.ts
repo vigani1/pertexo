@@ -8,7 +8,7 @@ import {
   type DirectoryGroup,
   type DirectoryUserValues,
   type DirectoryGroupValues,
-} from '@pertexo/core/tenant-access';
+} from '@pertexo/core/identity';
 import { canonicalDocument, requireSupportedInput } from './core.js';
 
 const email = z.object({

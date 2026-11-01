@@ -11,7 +11,7 @@ import {
   DIRECTORY_LIMITS,
   type DirectoryPrincipal,
   type DirectoryStore,
-} from '@pertexo/core/tenant-access';
+} from '@pertexo/core/identity';
 import {
   AbuseRateLimitPolicy,
   type RateLimitEndpointClass,

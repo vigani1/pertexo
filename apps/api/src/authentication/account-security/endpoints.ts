@@ -5,7 +5,7 @@ import {
   resetPasswordAndRevokeSessions,
   setupPasswordAndRevokeSessions,
   unlinkMethodAndRevokeSessions,
-} from '@pertexo/core/tenant-access';
+} from '@pertexo/core/identity';
 import {
   APIError,
   createAuthEndpoint,

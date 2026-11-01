@@ -2,10 +2,7 @@ import { canonicalEmail } from '@pertexo/workflow-model';
 import { createHash, randomBytes } from 'node:crypto';
 
 import { authenticationReturnPathSchema } from '@pertexo/contracts';
-import {
-  EmailProofCommands,
-  type SignUpMode,
-} from '@pertexo/core/tenant-access';
+import { EmailProofCommands, type SignUpMode } from '@pertexo/core/identity';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 

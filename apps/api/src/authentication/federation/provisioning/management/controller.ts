@@ -35,7 +35,7 @@ import {
 } from '../../../../workspaces/index.js';
 import { withRequestOperationSignal } from '../../../../platform/http/index.js';
 import { RateLimit } from '../../../../platform/rate-limit/metadata.js';
-import type { DirectoryStore } from '@pertexo/core/tenant-access';
+import type { DirectoryStore } from '@pertexo/core/identity';
 import { DIRECTORY_STORE } from './tokens.js';
 import { domainErrors } from '../../../../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../../../../problems/context/normalize.js';

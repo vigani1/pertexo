@@ -1,7 +1,7 @@
 import { Module, type DynamicModule } from '@nestjs/common';
 import { DirectoryManagementController } from './controller.js';
 import { DIRECTORY_STORE } from './tokens.js';
-import type { DirectoryStore } from '@pertexo/core/tenant-access';
+import type { DirectoryStore } from '@pertexo/core/identity';
 @Module({})
 // Nest dynamic modules require a class container.
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class

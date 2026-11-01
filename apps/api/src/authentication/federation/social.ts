@@ -1,8 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import {
-  SocialSignInCommands,
-  type SignUpMode,
-} from '@pertexo/core/tenant-access';
+import { SocialSignInCommands, type SignUpMode } from '@pertexo/core/identity';
 import {
   authenticationProviderSchema,
   authenticationReturnPathSchema,

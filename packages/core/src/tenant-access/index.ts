@@ -62,20 +62,6 @@ export type {
   WorkspaceInvitationDeliveryStore,
 } from './invitations/delivery/contract.js';
 
-export {
-  hasCredentialAccount,
-  changePasswordAndRevokeSessions,
-  setupPasswordAndRevokeSessions,
-  resetPasswordAndRevokeSessions,
-  unlinkMethodAndRevokeSessions,
-} from '../identity/security.repository.js';
-
-export { AccountLinkingCommands } from '../identity/linking.repository.js';
-export { SocialSignInCommands } from '../identity/federation/social/sign-in.repository.js';
-
-export { EmailProofCommands } from '../identity/email.repository.js';
-export { SignUpAvailability, type SignUpMode } from '../identity/sign-up.js';
-
 export { createApiTokenDatabase } from './tokens/repository.js';
 export { ApiTokenPolicyError } from './tokens/errors.js';
 export type {
@@ -87,40 +73,4 @@ export type {
 export { parseApiTokenCredential } from './tokens/credential.js';
 export type { ParsedApiTokenCredential } from './tokens/credential.js';
 
-export { createFederationManagementStore } from '../identity/federation/management/store.js';
-export { type FederationManagementStore } from '../identity/federation/management/contract.js';
-export { FederationConflictError } from '../identity/federation/management/errors.js';
-
-export {
-  identityEmailChangeEligibility,
-  authorizeCredentialSignIn,
-} from '../identity/federation/sessions/authority.repository.js';
-
-export { OrganizationSignInCommands } from '../identity/federation/journeys/organization-sign-in.repository.js';
-
-export { DirectoryError } from '../identity/federation/provisioning/errors.js';
-export type {
-  DirectoryPrincipal,
-  DirectoryUserValues,
-  DirectoryUserProfile,
-  DirectoryGroupValues,
-  DirectoryRole,
-} from '../identity/federation/provisioning/contract.js';
-export type { DirectoryUser } from '../identity/federation/provisioning/contract.js';
-export type { DirectoryGroup } from '../identity/federation/provisioning/contract.js';
-export { DIRECTORY_LIMITS } from '../identity/federation/provisioning/limits.js';
-
-export { createDirectoryStore } from '../identity/federation/provisioning/store.js';
-export { type DirectoryStore } from '../identity/federation/provisioning/contract.js';
-export type { DirectoryQuery } from '../identity/federation/provisioning/contract.js';
-
 export { DirectoryManagedMembershipError } from './errors.js';
-
-export { isAuthenticationSessionAllowed } from '../identity/federation/sessions/lookup.queries.js';
-
-export { createTwoFactorRecoveryStore } from '../identity/two-factor/store.js';
-export { recordIdentitySecurityFact } from '../identity/facts.repository.js';
-export type {
-  TwoFactorRecoveryStore,
-  TwoFactorRecoveryResult,
-} from '../identity/two-factor/contract.js';

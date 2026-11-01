@@ -4,7 +4,7 @@ import { APIError } from 'better-auth/api';
 import {
   authorizeCredentialSignIn,
   hasCredentialAccount,
-} from '@pertexo/core/tenant-access';
+} from '@pertexo/core/identity';
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { PostgresDialect } from 'kysely';
 import type { Pool } from 'pg';
