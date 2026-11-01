@@ -7,7 +7,7 @@ import {
   authoring,
   createHash,
   createWorkflowAuthoringDatabase,
-  createConnectionDatabase,
+  createConnectionStore,
   currentRepresentationTag,
   saveCurrentDraft,
   draftNode,
@@ -34,7 +34,7 @@ export function registerRollsBackEveryMaterialPublication(): void {
       'idempotency',
     ] as const;
     const connectionId = randomUUID();
-    const connectionDatabase = createConnectionDatabase(
+    const connectionDatabase = createConnectionStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
     );
     const rollbackCatalog = Object.freeze({

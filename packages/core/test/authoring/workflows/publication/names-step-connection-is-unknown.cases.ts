@@ -5,7 +5,7 @@ import {
   CONNECTION_AUTH_TYPE,
   actorId,
   apiUrl,
-  createConnectionDatabase,
+  createConnectionStore,
   createHash,
   createWorkflowAuthoringDatabase,
   currentRepresentationTag,
@@ -19,7 +19,7 @@ import {
 export function registerNamesStepConnectionIsUnknown(): void {
   it('names the step when its connection is unknown or revoked', async () => {
     const connectionId = randomUUID();
-    const connectionDatabase = createConnectionDatabase(
+    const connectionDatabase = createConnectionStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     );
     const catalog = Object.freeze({

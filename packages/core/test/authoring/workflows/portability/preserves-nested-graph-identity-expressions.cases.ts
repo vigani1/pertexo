@@ -18,7 +18,7 @@ import {
   draftNode,
   randomUUID,
   queryAsOwner,
-  createConnectionDatabase,
+  createConnectionStore,
   CONNECTION_AUTH_TYPE,
   createHash,
 } from '../../../support/workflow-authoring.js';
@@ -32,7 +32,7 @@ import {
 
 export function registerPreservesNestedGraphIdentityExpressions(): void {
   it('preserves nested graph identity and expressions, rebinds explicit destination slots and never accesses secret bytes', async () => {
-    const connections = createConnectionDatabase(
+    const connections = createConnectionStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     );
     const scopedCatalog = {

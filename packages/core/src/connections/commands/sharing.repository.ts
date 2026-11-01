@@ -16,7 +16,7 @@ import {
   workspaceMemberships,
   workspaces,
 } from '@pertexo/database/schema';
-import type { ConnectionSharingDatabase } from './contract.js';
+import type { ConnectionSharingStore } from './contract.js';
 
 import { CONNECTION_SHARE_LIMIT } from '@pertexo/workflow-model';
 import type { ConnectionSharing } from '@pertexo/contracts';
@@ -86,7 +86,7 @@ async function readSharing(
 
 export function createConnectionSharingPersistence(
   pool: Pool,
-): ConnectionSharingDatabase {
+): ConnectionSharingStore {
   return {
     readConnectionSharing: async (input) => {
       const actor = {

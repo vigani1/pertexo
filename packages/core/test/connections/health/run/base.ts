@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { createConnectionDatabase } from '../../../../src/connections/store.js';
+import { createConnectionStore } from '../../../../src/connections/store.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 
 import type {
@@ -34,9 +34,9 @@ export const sealedHealthSecret = (marker = 1) => ({
 });
 
 export async function withHealthApi<T>(
-  operation: (api: ReturnType<typeof createConnectionDatabase>) => Promise<T>,
+  operation: (api: ReturnType<typeof createConnectionStore>) => Promise<T>,
 ): Promise<T> {
-  const api = createConnectionDatabase(
+  const api = createConnectionStore(
     parseDatabaseConfig({ connectionString: databaseUrl(apiBaseUrl) }),
   );
   try {

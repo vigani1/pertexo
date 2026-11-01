@@ -1,11 +1,11 @@
 import type {
-  ConnectionSharingDatabase,
-  ConnectionLookupDatabase,
-  ConnectionManagementDatabase,
-  ConnectionReadDatabase,
-  ConnectionTestDatabase,
-  ConnectionUsageDatabase,
-  OAuth2ConsentDatabase,
+  ConnectionSharingStore,
+  ConnectionLookupStore,
+  ConnectionManagementStore,
+  ConnectionReadStore,
+  ConnectionTestStore,
+  ConnectionUsageStore,
+  OAuth2ConsentStore,
 } from '@pertexo/core/connections';
 import type { NotificationDestinationStore } from '@pertexo/core/notifications';
 import type {
@@ -21,13 +21,13 @@ import type {
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import type { ConnectionTelemetry } from './telemetry.js';
 
-export type ConnectionCommandPersistence = ConnectionManagementDatabase;
+export type ConnectionCommandPersistence = ConnectionManagementStore;
 
-export type ConnectionReadPersistence = ConnectionReadDatabase;
+export type ConnectionReadPersistence = ConnectionReadStore;
 
-export type ConnectionTestPersistence = ConnectionTestDatabase;
+export type ConnectionTestPersistence = ConnectionTestStore;
 
-export type ConnectionLookupPersistence = ConnectionLookupDatabase;
+export type ConnectionLookupPersistence = ConnectionLookupStore;
 
 export type ConnectionPersistence = ConnectionCommandPersistence &
   ConnectionReadPersistence &
@@ -57,7 +57,7 @@ export type ConnectionEmailClient = Pick<ResendClient, 'sendNotification'>;
 
 /** What OAuth2 connections add; an install has them or the routes don't exist. */
 export type ConnectionOAuth2Dependencies = Readonly<{
-  persistence: OAuth2ConsentDatabase;
+  persistence: OAuth2ConsentStore;
   endpointPolicy: OAuth2EndpointPolicy;
   /** Token requests only: it carries the operator's address policy (S17). */
   tokenClient: Pick<SecureHttpClient, 'execute' | 'isAddressBlocked'>;
@@ -76,7 +76,7 @@ export type ConnectionDependencies = Readonly<{
   emailClient?: ConnectionEmailClient;
   telemetry?: ConnectionTelemetry;
   destinationPersistence?: NotificationDestinationStore;
-  usagePersistence?: ConnectionUsageDatabase;
-  sharingPersistence?: ConnectionSharingDatabase;
+  usagePersistence?: ConnectionUsageStore;
+  sharingPersistence?: ConnectionSharingStore;
   oauth2?: ConnectionOAuth2Dependencies;
 }>;

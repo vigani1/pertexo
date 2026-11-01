@@ -18,7 +18,7 @@ import {
   queryAsOwner,
   workspaceId,
 } from '../../support/workflow-authoring.js';
-import { createConnectionDatabase } from '../../../src/connections/store.js';
+import { createConnectionStore } from '../../../src/connections/store.js';
 import {
   CONNECTION_AUTH_TYPE,
   ConnectionNotFoundError,
@@ -28,7 +28,7 @@ import {
 const builder = randomUUID(),
   viewer = randomUUID(),
   creator = randomUUID();
-let connections: ReturnType<typeof createConnectionDatabase>;
+let connections: ReturnType<typeof createConnectionStore>;
 let authoring: ReturnType<typeof createWorkflowAuthoringFixtureDatabase>;
 let restricted = '',
   workspaceShared = '',
@@ -89,7 +89,7 @@ beforeAll(async () => {
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     { definitionCatalog: testDefinitionCatalog },
   );
-  connections = createConnectionDatabase(
+  connections = createConnectionStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
   );
   for (const [id, role] of [

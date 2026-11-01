@@ -5,10 +5,10 @@ import {
   actorId,
   apiPool,
   apiUrl,
-  createConnectionDatabase,
+  createConnectionStore,
   createHash,
   createWorkflowAuthoringDatabase,
-  createWorkflowIntegrationUsageDatabase,
+  createWorkflowIntegrationUsageStore,
   currentRepresentationTag,
   draftNode,
   emptyGraph,
@@ -24,10 +24,10 @@ export function registerTransactionallyRebuildsDerivedIntegrationUsage(): void {
   it('transactionally rebuilds derived integration usage and serves bounded impact queries', async () => {
     const connectionId = randomUUID();
     const secretVersionId = randomUUID();
-    const connectionDatabase = createConnectionDatabase(
+    const connectionDatabase = createConnectionStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     );
-    const usageDatabase = createWorkflowIntegrationUsageDatabase(
+    const usageDatabase = createWorkflowIntegrationUsageStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     );
     const usageCatalog = Object.freeze({

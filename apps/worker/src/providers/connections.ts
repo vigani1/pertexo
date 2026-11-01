@@ -3,7 +3,7 @@ import {
   ConnectionOAuth2NotConnectedError,
   ConnectionOAuth2RevokedError,
   ConnectionUnavailableError,
-  type ConnectionResolutionDatabase,
+  type ConnectionResolutionStore,
   type ResolvedConnectionSecretRecord,
 } from '@pertexo/core/connections';
 import {
@@ -67,7 +67,7 @@ async function openSecret(
 }
 
 async function assertSecretCurrent(
-  database: ConnectionResolutionDatabase,
+  database: ConnectionResolutionStore,
   workspaceId: string,
   input: Parameters<NonNullable<NodeConnectionRuntime['assertCurrent']>>[0],
 ): Promise<void> {
@@ -97,7 +97,7 @@ async function assertSecretCurrent(
 }
 
 export function createProviderConnectionRuntimeFactory(
-  database: ConnectionResolutionDatabase,
+  database: ConnectionResolutionStore,
   encryption: Pick<ConnectionEnvelopeEncryption, 'open'>,
   providerRateLimiter: ProviderRateLimiter,
   tokens?: Pick<OAuth2TokenService, 'accessToken' | 'rejectToken'>,

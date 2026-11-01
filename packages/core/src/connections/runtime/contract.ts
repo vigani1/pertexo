@@ -1,34 +1,34 @@
-import type { ConnectionSharingDatabase } from '../commands/contract.js';
-import type { ConnectionUsageDatabase } from '../discovery/contract.js';
+import type { ConnectionSharingStore } from '../commands/contract.js';
+import type { ConnectionUsageStore } from '../discovery/contract.js';
 import type {
-  OAuth2ConsentDatabase,
-  OAuth2TokenStoreDatabase,
+  OAuth2ConsentStore,
+  OAuth2TokenStore,
 } from '../oauth2/contract.js';
 import type {
-  ConnectionDatabase,
-  ConnectionManagementDatabase,
-  ConnectionReadDatabase,
-  ConnectionResolutionDatabase,
-  ConnectionTestDatabase,
+  ConnectionStore,
+  ConnectionManagementStore,
+  ConnectionReadStore,
+  ConnectionResolutionStore,
+  ConnectionTestStore,
   RequestMetadata,
   ResolvedConnectionSecretRecord,
 } from '../contract.js';
 
 /** API capability plus the lifecycle operation owned by its runtime factory. */
-export type ApiConnectionDatabase = ConnectionSharingDatabase &
-  ConnectionManagementDatabase &
-  ConnectionReadDatabase &
-  ConnectionTestDatabase &
-  ConnectionLookupDatabase &
-  ConnectionUsageDatabase &
-  OAuth2ConsentDatabase &
-  OAuth2TokenStoreDatabase &
-  Pick<ConnectionDatabase, 'close'>;
+export type ApiConnectionStore = ConnectionSharingStore &
+  ConnectionManagementStore &
+  ConnectionReadStore &
+  ConnectionTestStore &
+  ConnectionLookupStore &
+  ConnectionUsageStore &
+  OAuth2ConsentStore &
+  OAuth2TokenStore &
+  Pick<ConnectionStore, 'close'>;
 
 /** Worker resolution capability plus the lifecycle operation owned by its runtime factory. */
-export type WorkerConnectionResolutionDatabase = ConnectionResolutionDatabase &
-  OAuth2TokenStoreDatabase &
-  Pick<ConnectionDatabase, 'close'>;
+export type WorkerConnectionResolutionStore = ConnectionResolutionStore &
+  OAuth2TokenStore &
+  Pick<ConnectionStore, 'close'>;
 
 /**
  * Owns API credential resolution for ADR 046 read-only provider lookups and
@@ -45,7 +45,7 @@ export type ResolveConnectionLookupSecretInput = RequestMetadata &
     signal?: AbortSignal;
   }>;
 
-export type ConnectionLookupDatabase = Readonly<{
+export type ConnectionLookupStore = Readonly<{
   resolveConnectionLookupSecret(
     input: ResolveConnectionLookupSecretInput,
   ): Promise<ResolvedConnectionSecretRecord>;

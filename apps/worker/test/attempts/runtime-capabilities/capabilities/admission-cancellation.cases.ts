@@ -1,4 +1,4 @@
-import type { ConnectionDatabase } from '@pertexo/core/testing';
+import type { ConnectionStore } from '@pertexo/core/testing';
 
 import { expect, it, vi } from 'vitest';
 
@@ -162,7 +162,7 @@ export function registerAdmissionCancellation(): void {
           resolveConnectionSecret,
           assertConnectionSecretCurrent,
         } satisfies Pick<
-          ConnectionDatabase,
+          ConnectionStore,
           'assertConnectionSecretCurrent' | 'resolveConnectionSecret'
         >,
         connectionEncryption: {

@@ -23,7 +23,7 @@ import {
   serializeConnectionSnapshot,
 } from '../receipts.js';
 import { requireConnectionManager } from '../authority.queries.js';
-import type { ConnectionDatabase } from '../contract.js';
+import type { ConnectionStore } from '../contract.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_STATUS,
@@ -42,7 +42,7 @@ import { withConnectionTransaction } from '../transaction.js';
 /** Owns atomic creation/idempotency, reads, and revocation transactions. */
 
 export type ConnectionManagementPersistence = Pick<
-  ConnectionDatabase,
+  ConnectionStore,
   | 'createConnection'
   | 'findConnectionCreateReplay'
   | 'getConnection'

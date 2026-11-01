@@ -30,8 +30,8 @@ export function closeCapabilityResources(
         state.resources.ownedWebhookResponses?.close.bind(
           state.resources.ownedWebhookResponses,
         ),
-        state.resources.ownedConnectionDatabase?.close.bind(
-          state.resources.ownedConnectionDatabase,
+        state.resources.ownedConnectionStore?.close.bind(
+          state.resources.ownedConnectionStore,
         ),
         state.resources.ownedArtifactDatabase?.close.bind(
           state.resources.ownedArtifactDatabase,

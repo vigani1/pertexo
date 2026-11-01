@@ -12,22 +12,22 @@ export {
   ConnectionUnavailableError,
 } from './contract.js';
 export {
-  createConnectionDatabase,
-  createWorkerConnectionResolutionDatabase,
+  createConnectionStore,
+  createWorkerConnectionResolutionStore,
 } from './store.js';
-export type { ConnectionSharingDatabase } from './commands/contract.js';
+export type { ConnectionSharingStore } from './commands/contract.js';
 export type {
-  ApiConnectionDatabase,
-  ConnectionLookupDatabase,
-  WorkerConnectionResolutionDatabase,
+  ApiConnectionStore,
+  ConnectionLookupStore,
+  WorkerConnectionResolutionStore,
 } from './runtime/contract.js';
 export type {
-  ConnectionManagementDatabase,
+  ConnectionManagementStore,
   ConnectionPage,
-  ConnectionReadDatabase,
+  ConnectionReadStore,
   ConnectionRecord,
-  ConnectionResolutionDatabase,
-  ConnectionTestDatabase,
+  ConnectionResolutionStore,
+  ConnectionTestStore,
   ConnectionTestOutcome,
   ConnectionTestResult,
   ListConnectionsInput,
@@ -36,15 +36,15 @@ export type {
 } from './contract.js';
 export type {
   ConnectionUsageCursor,
-  ConnectionUsageDatabase,
+  ConnectionUsageStore,
   ConnectionUsagePage,
   ConnectionUsageRecord,
   ListConnectionUsageInput,
 } from './discovery/contract.js';
 export type {
   ConsumedOAuth2Authorization,
-  OAuth2ConsentDatabase,
-  OAuth2TokenStoreDatabase,
+  OAuth2ConsentStore,
+  OAuth2TokenStore,
 } from './oauth2/contract.js';
 export { applyConnectionHealthObservation } from './health/observations.repository.js';
 export type { ConnectionHealthApplicationResult } from './health/contract.js';

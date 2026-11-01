@@ -234,7 +234,7 @@ export type AbandonConnectionTestInput = Readonly<{
   dispatchToken: string;
 }>;
 
-export interface ConnectionDatabase {
+export interface ConnectionStore {
   listConnections(input: ListConnectionsInput): Promise<ConnectionPage>;
   readConnection(input: ReadConnectionInput): Promise<ConnectionRecord | null>;
   createConnection(input: CreateConnectionInput): Promise<ConnectionRecord>;
@@ -281,8 +281,8 @@ export interface ConnectionDatabase {
  * operations.  The implementation remains shared by the role-specific
  * factories below, but callers receive only the behavior they own.
  */
-export type ConnectionManagementDatabase = Pick<
-  ConnectionDatabase,
+export type ConnectionManagementStore = Pick<
+  ConnectionStore,
   | 'createConnection'
   | 'findConnectionCreateReplay'
   | 'findConnectionRotateReplay'
@@ -291,14 +291,14 @@ export type ConnectionManagementDatabase = Pick<
 >;
 
 /** Safe metadata reads for authenticated API consumers. */
-export type ConnectionReadDatabase = Pick<
-  ConnectionDatabase,
+export type ConnectionReadStore = Pick<
+  ConnectionStore,
   'listConnections' | 'readConnection'
 >;
 
 /** API-owned connection-test state transitions. */
-export type ConnectionTestDatabase = Pick<
-  ConnectionDatabase,
+export type ConnectionTestStore = Pick<
+  ConnectionStore,
   | 'startConnectionTest'
   | 'resolveConnectionTestSecret'
   | 'markConnectionTestDispatched'
@@ -307,8 +307,8 @@ export type ConnectionTestDatabase = Pick<
 >;
 
 /** The only connection behavior required by a worker node executor. */
-export type ConnectionResolutionDatabase = Pick<
-  ConnectionDatabase,
+export type ConnectionResolutionStore = Pick<
+  ConnectionStore,
   'assertConnectionSecretCurrent' | 'resolveConnectionSecret'
 >;
 

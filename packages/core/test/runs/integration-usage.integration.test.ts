@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/discovery/integration-usage.queries.js';
+import { createWorkflowIntegrationUsageStore } from '../../src/connections/discovery/integration-usage.queries.js';
 import {
   Pool,
   apiBaseUrl,
@@ -95,7 +95,7 @@ describe('workflow integration usage pagination', () => {
       await ownerPool.end();
     }
 
-    const usage = createWorkflowIntegrationUsageDatabase(
+    const usage = createWorkflowIntegrationUsageStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(apiBaseUrl),
         max: 1,

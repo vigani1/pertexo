@@ -9,14 +9,14 @@ import {
 } from '../../tenant-access/resources/connections/scope.js';
 
 import { requireConnectionReader } from '../authority.queries.js';
-import type { ConnectionPage, ConnectionReadDatabase } from '../contract.js';
+import type { ConnectionPage, ConnectionReadStore } from '../contract.js';
 import { connectionFields } from '../records.queries.js';
 import { withOAuth2Facts } from '../oauth2/clients.repository.js';
 import { withConnectionTransaction } from '../transaction.js';
 
 export function createConnectionReadPersistence(
   pool: Pool,
-): ConnectionReadDatabase {
+): ConnectionReadStore {
   return Object.freeze({
     listConnections: (input): Promise<ConnectionPage> => {
       const actorId = input.actorId;

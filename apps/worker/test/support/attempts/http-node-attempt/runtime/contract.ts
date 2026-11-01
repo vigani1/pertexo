@@ -1,5 +1,5 @@
 import type { NodeAttemptRunStore } from '@pertexo/core/attempts';
-import type { WorkerConnectionResolutionDatabase } from '@pertexo/core/connections';
+import type { WorkerConnectionResolutionStore } from '@pertexo/core/connections';
 
 import type {
   ResendClient,
@@ -31,7 +31,7 @@ export type HttpNodeAttemptProofRuntimeOptions = Readonly<{
   ) => Promise<void>;
   beforeConnectionResolve?: (
     input: Parameters<
-      WorkerConnectionResolutionDatabase['resolveConnectionSecret']
+      WorkerConnectionResolutionStore['resolveConnectionSecret']
     >[0],
   ) => Promise<void>;
   beforeMarkDispatched?: (

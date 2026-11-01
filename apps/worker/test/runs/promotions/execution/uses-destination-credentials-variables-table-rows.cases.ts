@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { createWorkflowAuthoringDatabase } from '@pertexo/core/authoring';
 import {
-  createConnectionDatabase,
+  createConnectionStore,
   CONNECTION_AUTH_TYPE,
 } from '@pertexo/core/connections';
 import { createDataTablesStore } from '@pertexo/core/data-tables';
@@ -62,7 +62,7 @@ export function registerUsesDestinationCredentialsVariablesTableRows(): void {
       },
     });
     const identity = createIdentityWorkspaceDatabase(config),
-      connections = createConnectionDatabase(config),
+      connections = createConnectionStore(config),
       tables = createDataTablesStore(config),
       variables = createWorkspaceVariablesStore(config),
       runs = createWorkflowRunDatabase(config);

@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import type { ResourceActor } from '../../tenant-access/resources/contract.js';
 
-export type ConnectionSharingDatabase = Readonly<{
+export type ConnectionSharingStore = Readonly<{
   readConnectionSharing(
     input: ResourceActor & { connectionId: string },
   ): Promise<ConnectionSharing>;

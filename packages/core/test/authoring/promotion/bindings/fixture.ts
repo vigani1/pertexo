@@ -14,7 +14,7 @@ import {
   currentRepresentationTag,
   queryAsOwner,
   saveCurrentDraft,
-  createConnectionDatabase,
+  createConnectionStore,
   CONNECTION_AUTH_TYPE,
 } from '../../../support/workflow-authoring.js';
 
@@ -51,7 +51,7 @@ export const db = createWorkflowAuthoringFixtureDatabase(config, {
   },
 });
 
-const connections = createConnectionDatabase(config);
+const connections = createConnectionStore(config);
 
 export const tables = createDataTablesStore(config);
 

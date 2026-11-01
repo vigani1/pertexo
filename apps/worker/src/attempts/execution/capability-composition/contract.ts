@@ -14,7 +14,7 @@ import type {
   ArtifactStore,
   ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import type { WorkerConnectionResolutionDatabase } from '@pertexo/core/connections';
+import type { WorkerConnectionResolutionStore } from '@pertexo/core/connections';
 
 import type {
   DatabaseConfig,
@@ -84,7 +84,7 @@ interface OwnedCapabilityResources {
   ownedWebhookResponses: WebhookResponseStore | undefined;
   encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
   oauth2Tokens: OAuth2TokenService | undefined;
-  ownedConnectionDatabase: WorkerConnectionResolutionDatabase | undefined;
+  ownedConnectionStore: WorkerConnectionResolutionStore | undefined;
   ownedArtifactDatabase: WorkspaceDatabase | undefined;
   ownedArtifactStore: ArtifactStore | undefined;
   ownedProviderRateLimiter: RedisRateLimitRuntime | undefined;

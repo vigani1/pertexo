@@ -1,4 +1,4 @@
-import type { ConnectionDatabase } from '@pertexo/core/testing';
+import type { ConnectionStore } from '@pertexo/core/testing';
 import { ProviderExecutionRateLimitError } from '@pertexo/node-sdk/server';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { expect, it, vi } from 'vitest';
@@ -83,7 +83,7 @@ export function registerCapabilityShutdownFailures(): void {
           resolveConnectionSecret,
           assertConnectionSecretCurrent,
         } satisfies Pick<
-          ConnectionDatabase,
+          ConnectionStore,
           'assertConnectionSecretCurrent' | 'resolveConnectionSecret'
         >,
         connectionEncryption: { open },

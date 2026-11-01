@@ -1,4 +1,4 @@
-import { createWorkerConnectionResolutionDatabase } from '@pertexo/core/connections';
+import { createWorkerConnectionResolutionStore } from '@pertexo/core/connections';
 import { generatePersistedId } from '@pertexo/database/platform';
 
 import {
@@ -24,8 +24,8 @@ export function prepareConnectionCapability(state: CapabilityAssembly): void {
     throw new Error('Worker provider rate limiter is incomplete');
   const ownedDatabase =
     state.dependencies.connectionDatabase === undefined
-      ? (state.resources.ownedConnectionDatabase =
-          createWorkerConnectionResolutionDatabase(
+      ? (state.resources.ownedConnectionStore =
+          createWorkerConnectionResolutionStore(
             state.options.database,
             state.dependencies.databaseRuntime,
           ))

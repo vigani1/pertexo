@@ -10,16 +10,16 @@ export {
   ConnectionUnavailableError,
 } from './contract.js';
 export {
-  createConnectionDatabase,
-  createWorkerConnectionResolutionDatabase,
+  createConnectionStore,
+  createWorkerConnectionResolutionStore,
 } from './store.js';
 export type {
   ConnectionAuthType,
-  ConnectionDatabase,
-  ConnectionManagementDatabase,
-  ConnectionReadDatabase,
-  ConnectionResolutionDatabase,
-  ConnectionTestDatabase,
+  ConnectionStore,
+  ConnectionManagementStore,
+  ConnectionReadStore,
+  ConnectionResolutionStore,
+  ConnectionTestStore,
   ConnectionRecord,
   ConnectionPage,
   ConnectionStatus,
@@ -44,14 +44,14 @@ export type {
   SealedConnectionSecretRecord,
 } from './contract.js';
 export type {
-  ApiConnectionDatabase,
-  WorkerConnectionResolutionDatabase,
+  ApiConnectionStore,
+  WorkerConnectionResolutionStore,
 } from './runtime/contract.js';
-export { createWorkflowIntegrationUsageDatabase } from './discovery/integration-usage.queries.js';
+export { createWorkflowIntegrationUsageStore } from './discovery/integration-usage.queries.js';
 export type {
   FindConnectionImpactInput,
   FindProviderOperationImpactInput,
   WorkflowIntegrationImpactPage,
   WorkflowIntegrationImpactRecord,
-  WorkflowIntegrationUsageDatabase,
+  WorkflowIntegrationUsageStore,
 } from './discovery/contract.js';

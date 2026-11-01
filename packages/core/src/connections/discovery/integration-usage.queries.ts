@@ -8,7 +8,7 @@ import { workflowIntegrationUsage as usage } from '@pertexo/database/schema';
 import type {
   WorkflowIntegrationImpactPage,
   WorkflowIntegrationImpactRecord,
-  WorkflowIntegrationUsageDatabase,
+  WorkflowIntegrationUsageStore,
 } from './contract.js';
 
 import { withWorkspaceTransaction } from '@pertexo/database/primitives';
@@ -28,10 +28,10 @@ function page(
   });
 }
 
-export function createWorkflowIntegrationUsageDatabase(
+export function createWorkflowIntegrationUsageStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkflowIntegrationUsageDatabase {
+): WorkflowIntegrationUsageStore {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({

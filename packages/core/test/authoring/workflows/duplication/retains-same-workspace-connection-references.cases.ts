@@ -7,7 +7,7 @@ import {
   enforceTestRetention,
   authoring,
   createWorkflowAuthoringDatabase,
-  createConnectionDatabase,
+  createConnectionStore,
   createHash,
   draftNode,
   emptyGraph,
@@ -22,7 +22,7 @@ import { source, command, facts, commandFacts } from './fixture.js';
 
 export function registerRetainsSameWorkspaceConnectionReferences(): void {
   it('retains same-workspace connection references without reading or duplicating secrets and rejects foreign refs in arbitrary slots', async () => {
-    const connections = createConnectionDatabase(
+    const connections = createConnectionStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
     );
     const database = createWorkflowAuthoringDatabase(

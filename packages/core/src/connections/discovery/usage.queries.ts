@@ -16,7 +16,7 @@ import { readFolderScope } from '../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
 import { requireConnectionReader } from '../authority.queries.js';
 import type {
-  ConnectionUsageDatabase,
+  ConnectionUsageStore,
   ConnectionUsageRecord,
 } from './contract.js';
 
@@ -101,7 +101,7 @@ export function connectionUsagePage(
 
 export function createConnectionUsagePersistence(
   pool: Pool,
-): ConnectionUsageDatabase {
+): ConnectionUsageStore {
   return Object.freeze({
     listConnectionUsage: (input) => {
       const actorId = input.actorId;

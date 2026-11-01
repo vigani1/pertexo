@@ -26,7 +26,7 @@ export type ListConnectionUsageInput = Readonly<{
   after?: ConnectionUsageCursor;
 }>;
 
-export type ConnectionUsageDatabase = Readonly<{
+export type ConnectionUsageStore = Readonly<{
   listConnectionUsage(
     input: ListConnectionUsageInput,
   ): Promise<ConnectionUsagePage>;
@@ -61,7 +61,7 @@ export type FindConnectionImpactInput = Readonly<{
   }>;
 }>;
 
-export type WorkflowIntegrationUsageDatabase = Readonly<{
+export type WorkflowIntegrationUsageStore = Readonly<{
   findProviderOperationImpact(
     input: FindProviderOperationImpactInput,
   ): Promise<WorkflowIntegrationImpactPage>;
