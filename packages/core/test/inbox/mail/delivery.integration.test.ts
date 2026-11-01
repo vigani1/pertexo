@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { createSystemMailDeliveryStore } from '@pertexo/database/platform';
+import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
 import type { NoticeMailToSeal } from '../../../src/inbox/mail/contract.js';
 import { purgeTestWorkspace } from '../../support/workflow-authoring.js';
 import {

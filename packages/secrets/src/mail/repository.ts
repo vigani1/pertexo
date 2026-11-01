@@ -11,7 +11,7 @@ import {
   sql,
 } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import { rethrowQueryFailure } from '../query-errors.js';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type {
   SystemMailDeliveryClaim,
   SystemMailDeliveryStore,
@@ -21,10 +21,13 @@ import type {
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import { systemMailDeliveries } from '../../schema/mail/deliveries.js';
+import { systemMailDeliveries } from '@pertexo/database/schema';
 
-import type { DatabaseConfig } from '../../config.js';
-import { acquireDatabasePool, type DatabaseRuntime } from '../pool/runtime.js';
+import {
+  acquireDatabasePool,
+  type DatabaseConfig,
+  type DatabaseRuntime,
+} from '@pertexo/database/platform';
 
 /** Queues one sealed system mail in the caller's transaction. */
 export async function insertSystemMail(

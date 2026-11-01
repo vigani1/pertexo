@@ -1,6 +1,6 @@
-import { authenticationMailAssociatedData } from '@pertexo/database/platform';
+import { authenticationMailAssociatedData } from '@pertexo/secrets/server';
 
-import { createSystemMailEnqueueStore } from '@pertexo/database/platform';
+import { createSystemMailEnqueueStore } from '@pertexo/secrets/server';
 
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 

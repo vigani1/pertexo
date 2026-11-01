@@ -1,4 +1,4 @@
-import type { SystemMailDeliveryStore } from '@pertexo/database/platform';
+import type { SystemMailDeliveryStore } from '@pertexo/secrets/server';
 import {
   createApplicationSecretEnvelope,
   createSystemMailClient,

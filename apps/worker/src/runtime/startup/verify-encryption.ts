@@ -1,4 +1,4 @@
-import { createEncryptionKeyRepository } from '@pertexo/database/platform';
+import { createEncryptionKeyRepository } from '@pertexo/secrets/server';
 import { verifyStoredEncryptionKeys } from '@pertexo/integrations/server';
 import type { WorkerConfig } from '../../config/worker.js';
 

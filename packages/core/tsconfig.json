@@ -19,6 +19,9 @@
   "exclude": ["dist", "test"],
   "references": [
     {
+      "path": "../secrets/tsconfig.json"
+    },
+    {
       "path": "../contracts/tsconfig.json"
     },
     {

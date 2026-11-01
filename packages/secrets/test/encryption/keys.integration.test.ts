@@ -4,10 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
-import { parseDatabaseConfig } from '../../../src/config.js';
-import { migrateDatabase } from '../../../src/migrations.js';
-import { createEncryptionKeyRepository } from '../../../src/platform/encryption/keys.repository.js';
-import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
+import {
+  createDisposableDatabaseFixture,
+  migrateDatabase,
+  parseDatabaseConfig,
+} from '@pertexo/database/testing';
+import { createEncryptionKeyRepository } from '../../src/encryption/keys.repository.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -205,7 +207,7 @@ describe('retained encryption key inventory', () => {
     const execute = promisify(execFile);
     const script = fileURLToPath(
       new URL(
-        '../../../../../infrastructure/single-server/encryption/verify.mjs',
+        '../../../../infrastructure/single-server/encryption/verify.mjs',
         import.meta.url,
       ),
     );

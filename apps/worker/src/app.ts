@@ -9,10 +9,10 @@ import type {
 import { NestFactory } from '@nestjs/core';
 import {
   createDatabaseRuntime,
-  type createEncryptionKeyRepository,
   type DatabaseRuntime,
   type WorkspaceDatabase,
 } from '@pertexo/database/platform';
+import { type createEncryptionKeyRepository } from '@pertexo/secrets/server';
 import type { TransportMetrics } from '@pertexo/observability';
 
 import type { WorkerConfig } from './config/worker.js';

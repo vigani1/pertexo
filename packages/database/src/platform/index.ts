@@ -29,25 +29,4 @@ export {
 export { createWorkspaceDatabase } from '../database.js';
 export type { WorkspaceDatabase } from '../database.js';
 
-export { createEncryptionKeyRepository } from './encryption/keys.repository.js';
-export type { EncryptionKeyRepository } from './encryption/contract.js';
-
-export {
-  createSystemMailDeliveryStore,
-  createSystemMailEnqueueStore,
-} from './mail/repository.js';
-
-export type {
-  SystemMailDeliveryClaim,
-  SystemMailDeliveryStore,
-  SystemMailEnqueueStore,
-  SystemMailInput,
-  SystemMailPurpose,
-  SealedSystemMailPayload,
-} from './mail/contract.js';
-
-export { authenticationMailAssociatedData } from './mail/payload.js';
-
-export { insertSystemMail } from './mail/repository.js';
-
 export { withPlatformTransaction } from '../tenant-access/transactions.js';
