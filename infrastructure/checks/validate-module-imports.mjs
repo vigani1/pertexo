@@ -65,7 +65,6 @@ export const AREAS_NOT_YET_PASSED = new Set([
   'outbox',
   'runs',
   'tenant-access',
-  'triggers',
 ]);
 // Tests answer only to the direction rules, but they do answer to them.
 const SCANNED_FOLDERS = ['src', 'test', 'e2e', 'e2e-live'];

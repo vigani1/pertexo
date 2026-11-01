@@ -42,11 +42,8 @@ import type {
   SubmitFormInput,
 } from './contract.js';
 import { authorizeForm, readFormVersion } from './records.queries.js';
-import {
-  capabilityHash,
-  readFormAccess,
-  changeFormAccess,
-} from './access.repository.js';
+import { discoverPublicForm } from './discover.queries.js';
+import { readFormAccess, changeFormAccess } from './access.repository.js';
 import { submitForm } from './submit.repository.js';
 export type FormStore = ReturnType<typeof createFormStore>;
 
@@ -76,29 +73,6 @@ export function createFormStore(
     setAccess: (input: SetFormAccessInput) =>
       setManagedFormAccess(lease.pool, input),
   });
-}
-
-/** No member behind this one either: it turns a link into a grant. */
-export async function discoverPublicForm(
-  pool: Pool,
-  input: DiscoverFormInput,
-): Promise<PublicFormGrant> {
-  const result = await drizzle(pool)
-    .execute<{
-      workspaceId: string;
-      workflowId: string;
-      nodeId: string;
-    }>(
-      sql`select workspace_id "workspaceId",workflow_id "workflowId",node_id "nodeId" from app.lookup_public_form(${input.publicId},${capabilityHash(input.capability)})`,
-    )
-    .catch(rethrowQueryFailure);
-  const row = result.rows[0];
-  if (row === undefined) throw new FormUnavailableError();
-  return {
-    ...row,
-    publicId: input.publicId,
-    capabilityHash: capabilityHash(input.capability),
-  };
 }
 
 function publishedForm(
