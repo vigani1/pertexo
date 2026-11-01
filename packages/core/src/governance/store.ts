@@ -27,8 +27,8 @@ import {
   encodeAuditCursor,
   projectAuditEvent,
 } from './audit/events.queries.js';
-import { prepareAuditExport } from './audit/export.queries.js';
-import { configureGovernance } from './settings/policy.repository.js';
+import { prepareAuditExport } from './audit/export.js';
+import { configureGovernance } from './settings/configure.js';
 import { readGovernanceSettings } from './settings/policy.queries.js';
 export function createGovernanceStore(
   config: DatabaseConfig,
