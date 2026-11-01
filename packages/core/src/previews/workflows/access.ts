@@ -3,6 +3,7 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   hasCapability,
   rolesForCapability,
+  type AuthorizationCapability,
   type Role,
 } from '@pertexo/workflow-model';
 import type { SampleScope } from '../../authoring/step-samples/contract.js';
@@ -39,18 +40,25 @@ export async function lockTestAuthority(
   });
 }
 
+/** A further capability a flow needs, answered like every other denial here. */
+export function requireTestCapability(
+  role: Role,
+  capability: AuthorizationCapability,
+): void {
+  if (!hasCapability(role, capability)) throw workflowNotVisible();
+}
+
 /**
  * Whoever started a test or suite can stop it. Stopping someone else's takes
- * `run:cancel`, answered like every other denial here. Real runs don't come
- * through this: `run:cancel` itself isn't wider.
+ * `run:cancel`. Real runs don't come through this: `run:cancel` itself isn't
+ * wider.
  */
 export function requireTestStopAuthority(
   role: Role,
   startedBy: string | null,
   actorId: string,
 ): void {
-  if (startedBy !== actorId && !hasCapability(role, 'run:cancel'))
-    throw workflowNotVisible();
+  if (startedBy !== actorId) requireTestCapability(role, 'run:cancel');
 }
 
 async function requireVisibleWorkflow(
