@@ -37,6 +37,14 @@ type RuleControls = Readonly<{
   onChange: (rule: Rule) => void;
 }>;
 
+/**
+ * Focuses a just-added rule's Field as it appears. It's one stable function
+ * because a new one each render would run again and pull focus from the Value.
+ */
+function focusOnMount(element: HTMLButtonElement | null) {
+  element?.focus();
+}
+
 const RULE_TITLES: Readonly<Record<ConditionCombinator, string>> = {
   and: 'And',
   or: 'Or',
@@ -184,13 +192,7 @@ function RuleField({
             buttonVariants({ variant: 'outline' }),
             'w-full justify-between font-normal',
           ),
-          ...(focusField
-            ? {
-                ref: (element: HTMLButtonElement | null) => {
-                  element?.focus();
-                },
-              }
-            : {}),
+          ...(focusField ? { ref: focusOnMount } : {}),
           content: (
             <>
               <span
