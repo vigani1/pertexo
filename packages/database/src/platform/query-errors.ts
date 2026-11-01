@@ -68,6 +68,12 @@ const TRANSIENT_CLIENT_MESSAGE =
 export function isTransientDatabaseFailure(error: unknown): boolean {
   try {
     const failure = queryFailure(error);
+    // A connection lost mid-transaction fails its rollback too, and arrives as both.
+    if (failure instanceof AggregateError)
+      return (
+        failure.errors.length > 0 &&
+        failure.errors.every(isTransientDatabaseFailure)
+      );
     if (!(failure instanceof Error)) return false;
     const { code } = postgresFailure(failure);
     if (code !== undefined) {
