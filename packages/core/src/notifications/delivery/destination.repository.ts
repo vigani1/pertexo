@@ -15,36 +15,19 @@ import {
 import { currentDestinationSql, deliverySources } from './sources.queries.js';
 
 import { recordCredentialAccess } from '../../connections/runtime/dispatch.repository.js';
-import type { FailureNotificationStore } from '../contract.js';
+import type {
+  FailureNotificationResolvedDestination,
+  FenceDispatchInput,
+  LoadDestinationInput,
+} from '../contract.js';
 import { auditFailureNotification } from './evidence.repository.js';
 import { FailureNotificationStateError } from '../errors.js';
 
-type DestinationStore = Pick<
-  FailureNotificationStore,
-  'fenceDispatch' | 'loadDestination'
->;
-
-export function createFailureNotificationDestinationStore(
+export function loadDestination(
   pool: Pool,
-): DestinationStore {
-  return Object.freeze({
-    loadDestination: (
-      raw: Parameters<FailureNotificationStore['loadDestination']>[0],
-    ) => loadNotificationDestination(pool, raw),
-    fenceDispatch: (
-      raw: Parameters<FailureNotificationStore['fenceDispatch']>[0],
-    ) => fenceNotificationDispatch(pool, raw),
-  });
-}
-
-async function loadNotificationDestination(
-  pool: Pool,
-  raw: Parameters<DestinationStore['loadDestination']>[0],
-): ReturnType<DestinationStore['loadDestination']> {
-  const workspaceId = raw.workspaceId;
-  const intentId = raw.intentId;
-  const workerId = raw.workerId;
-  const attemptNumber = raw.attemptNumber;
+  input: LoadDestinationInput,
+): Promise<FailureNotificationResolvedDestination> {
+  const { workspaceId, intentId, workerId, attemptNumber } = input;
   return withTenantScopedClient(
     pool,
     { workspaceId },
@@ -121,22 +104,20 @@ async function loadNotificationDestination(
             toEmail: config.toEmail,
           });
     },
-    { signal: raw.signal, statementTimeoutMillis: 30_000 },
+    { signal: input.signal, statementTimeoutMillis: 30_000 },
   );
 }
 
-async function fenceNotificationDispatch(
+export async function fenceDispatch(
   pool: Pool,
-  raw: Parameters<DestinationStore['fenceDispatch']>[0],
-): ReturnType<DestinationStore['fenceDispatch']> {
-  const workspaceId = raw.workspaceId;
-  const intentId = raw.intentId;
-  const attemptNumber = raw.attemptNumber;
+  input: FenceDispatchInput,
+): Promise<void> {
+  const { workspaceId, intentId, attemptNumber } = input;
   await withTenantScopedClient(
     pool,
     { workspaceId },
     async (client) => {
-      const parsedBinding = raw.deliveryBinding ?? null;
+      const binding = input.deliveryBinding ?? null;
       // The workspace must be active and the claimed intent's destination
       // enabled; both stay locked until the dispatch is marked.
       const db = drizzle(client);
@@ -195,7 +176,7 @@ async function fenceNotificationDispatch(
         .set({
           status: 'dispatching',
           dispatchMarkedAt: sql`clock_timestamp()`,
-          deliveryBinding: sql`coalesce(${intent.deliveryBinding},${parsedBinding})`,
+          deliveryBinding: sql`coalesce(${intent.deliveryBinding},${binding})`,
           updatedAt: sql`clock_timestamp()`,
         })
         .where(
@@ -203,7 +184,7 @@ async function fenceNotificationDispatch(
             scope,
             available,
             activeWorkspace,
-            sql`((${parsedBinding}::text is null and ${intent.deliveryBinding} is null) or (${parsedBinding}::text is not null and (${intent.deliveryBinding} is null or ${intent.deliveryBinding}=${parsedBinding})))`,
+            sql`((${binding}::text is null and ${intent.deliveryBinding} is null) or (${binding}::text is not null and (${intent.deliveryBinding} is null or ${intent.deliveryBinding}=${binding})))`,
           ),
         )
         .returning({ id: intent.id })
@@ -220,6 +201,6 @@ async function fenceNotificationDispatch(
         possiblyDispatched: false,
       });
     },
-    raw.signal === undefined ? {} : { signal: raw.signal },
+    input.signal === undefined ? {} : { signal: input.signal },
   ).catch(rethrowQueryFailure);
 }

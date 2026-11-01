@@ -177,9 +177,7 @@ function createOAuth2Runtime(
 
 async function closeResources(
   database: ApiConnectionDatabase,
-  destinationDatabase: ReturnType<
-    typeof createNotificationDestinationStore
-  >,
+  destinationDatabase: ReturnType<typeof createNotificationDestinationStore>,
   encryption: ConnectionEnvelopeEncryptionRuntime | undefined,
 ): Promise<void> {
   const failures = await collectCloseFailures(

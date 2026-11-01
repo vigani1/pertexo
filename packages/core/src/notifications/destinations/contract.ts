@@ -1,52 +1,6 @@
 import type { FailureNotificationDestinationConfig } from '@pertexo/workflow-model';
-import type { PoolClient } from 'pg';
 
 export type DestinationConfig = FailureNotificationDestinationConfig;
-
-export interface NotificationDestinationStore {
-  create(
-    input: IdempotentCommandMetadata &
-      Readonly<{
-        destinationId: string;
-        config: DestinationConfig;
-      }>,
-  ): Promise<FailureNotificationDestinationRecord>;
-  get(
-    input: CommandMetadata & Readonly<{ destinationId: string }>,
-  ): Promise<FailureNotificationDestinationRecord>;
-  list(
-    input: CommandMetadata,
-  ): Promise<readonly FailureNotificationDestinationRecord[]>;
-  appendVersion(
-    input: IdempotentCommandMetadata &
-      Readonly<{
-        destinationId: string;
-        expectedVersion: number;
-        config: DestinationConfig;
-      }>,
-  ): Promise<FailureNotificationDestinationRecord>;
-  setStatus(
-    input: IdempotentCommandMetadata &
-      Readonly<{
-        destinationId: string;
-        status: 'enabled' | 'disabled';
-      }>,
-  ): Promise<FailureNotificationDestinationRecord>;
-  setWorkflowPolicy(
-    input: IdempotentCommandMetadata &
-      Readonly<{
-        workflowId: string;
-        destinationId: string;
-      }>,
-  ): Promise<void>;
-  clearWorkflowPolicy(
-    input: IdempotentCommandMetadata & Readonly<{ workflowId: string }>,
-  ): Promise<void>;
-  getWorkflowPolicy(
-    input: CommandMetadata & Readonly<{ workflowId: string }>,
-  ): Promise<FailureNotificationDestinationRecord | null>;
-  close(): Promise<void>;
-}
 
 export type StoredDestinationConfig =
   | Omit<Extract<DestinationConfig, { kind: 'email' }>, 'kind'>
@@ -82,7 +36,27 @@ export type DestinationAuditTarget = Readonly<{
   type: 'failure_notification_destination' | 'workflow';
 }>;
 
-export type DestinationTransaction = <T>(
-  input: CommandMetadata,
-  work: (client: PoolClient) => Promise<T>,
-) => Promise<T>;
+export type CreateDestinationInput = IdempotentCommandMetadata &
+  Readonly<{ destinationId: string; config: DestinationConfig }>;
+
+export type DestinationInput = CommandMetadata &
+  Readonly<{ destinationId: string }>;
+
+export type AppendDestinationVersionInput = IdempotentCommandMetadata &
+  Readonly<{
+    destinationId: string;
+    expectedVersion: number;
+    config: DestinationConfig;
+  }>;
+
+export type SetDestinationStatusInput = IdempotentCommandMetadata &
+  Readonly<{ destinationId: string; status: 'enabled' | 'disabled' }>;
+
+export type SetWorkflowPolicyInput = IdempotentCommandMetadata &
+  Readonly<{ workflowId: string; destinationId: string }>;
+
+export type ClearWorkflowPolicyInput = IdempotentCommandMetadata &
+  Readonly<{ workflowId: string }>;
+
+export type WorkflowPolicyInput = CommandMetadata &
+  Readonly<{ workflowId: string }>;

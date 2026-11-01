@@ -59,9 +59,7 @@ export function persistence() {
     create: vi
       .fn<NotificationDestinationStore['create']>()
       .mockResolvedValue(record),
-    get: vi
-      .fn<NotificationDestinationStore['get']>()
-      .mockResolvedValue(record),
+    get: vi.fn<NotificationDestinationStore['get']>().mockResolvedValue(record),
     list: vi
       .fn<NotificationDestinationStore['list']>()
       .mockResolvedValue([record]),
