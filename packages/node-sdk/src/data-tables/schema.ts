@@ -1,5 +1,6 @@
 import {
   DataTableError,
+  isDataTableKeyColumn,
   type DataTableColumn,
   type DataTableSchemaChange,
   type DataTableValues,
@@ -77,9 +78,7 @@ export function changeDataTableDefinition<T extends DataTableSchemaState>(
       const column = columns.find((column) => column.id === change.columnId);
       const invalidKeyColumn =
         change.columnId !== null &&
-        (column === undefined ||
-          !column.required ||
-          !['text', 'number', 'date'].includes(column.type));
+        (column === undefined || !isDataTableKeyColumn(column));
       if (invalidKeyColumn)
         throw new DataTableError(
           'invalid_values',

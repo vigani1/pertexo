@@ -31,7 +31,17 @@ export const DATA_TABLE_LIMITS = Object.freeze({
   rowBytes: 65_536,
   batchRows: 1_000,
   resultBytes: 1_048_576,
+  keyBytes: 1024,
 });
+
+const KEY_COLUMN_TYPES: readonly string[] = ['text', 'number', 'date'];
+
+/** A unique key must always have a value that compares exactly. */
+export function isDataTableKeyColumn(
+  column: Readonly<{ type: string; required: boolean }>,
+): boolean {
+  return column.required && KEY_COLUMN_TYPES.includes(column.type);
+}
 /** What a row or filter value may hold, checked before any recursive parse. */
 export const DATA_TABLE_JSON_LIMITS = Object.freeze({
   bytes: DATA_TABLE_LIMITS.rowBytes,

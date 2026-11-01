@@ -5,6 +5,7 @@ import { Notice } from '@/components/ui/notice';
 import { FieldLabel as Label } from '@/components/ui/field';
 import { TableChoice } from '../choice';
 import type { ColumnEditIntent, ColumnEditFields } from '../../model/columns';
+import { isDataTableKeyColumn } from '@pertexo/node-sdk';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 const types = ['text', 'number', 'boolean', 'date', 'json'] as const;
@@ -87,16 +88,10 @@ export function ColumnFields({
             value={fields.keyId}
             choices={[
               { value: '', label: 'No unique key' },
-              ...table.columns
-                .filter(
-                  (column) =>
-                    column.required &&
-                    ['text', 'number', 'date'].includes(column.type),
-                )
-                .map((column) => ({
-                  value: column.id,
-                  label: column.name,
-                })),
+              ...table.columns.filter(isDataTableKeyColumn).map((column) => ({
+                value: column.id,
+                label: column.name,
+              })),
             ]}
             onChange={(keyId) => {
               onChange({ keyId });

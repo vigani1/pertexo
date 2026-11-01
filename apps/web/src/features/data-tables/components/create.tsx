@@ -4,7 +4,10 @@ import {
   dataTableCreateSchema,
   type DataTableCreate,
 } from '@pertexo/contracts';
-import type { DataTableNewColumn } from '@pertexo/node-sdk';
+import {
+  isDataTableKeyColumn,
+  type DataTableNewColumn,
+} from '@pertexo/node-sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldLabel as Label } from '@/components/ui/field';
@@ -249,10 +252,7 @@ function NewTableKey({
           { value: '', label: 'No unique key' },
           ...columns
             .filter(
-              (column) =>
-                column.required &&
-                column.name !== '' &&
-                ['text', 'number', 'date'].includes(column.type),
+              (column) => column.name !== '' && isDataTableKeyColumn(column),
             )
             .map((column) => ({
               value: column.name,
