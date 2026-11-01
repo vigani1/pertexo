@@ -13,7 +13,7 @@ import {
 import type { Role } from '@pertexo/workflow-model';
 import { cancelInTransaction } from '../../runs/commands/cancel-active.repository.js';
 import { WorkflowRunNotFoundError } from '../../runs/errors.js';
-import { requireTestCapability } from '../workflows/access.js';
+import { requireTestStopAuthority } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/errors.js';
 import { skipPendingCases } from './cases.queries.js';
 import type { WorkflowTestSuiteInput } from './contract.js';
@@ -23,7 +23,6 @@ export async function cancelTestSuite(
   role: Role,
   input: WorkflowTestSuiteInput,
 ): Promise<void> {
-  requireTestCapability(role, 'run:cancel');
   const db = drizzle(client);
   const found = await db
     .select()
@@ -40,6 +39,7 @@ export async function cancelTestSuite(
     .catch(rethrowQueryFailure);
   const suite = found[0];
   if (suite === undefined) throw new WorkflowTestError('not_found');
+  requireTestStopAuthority(role, suite.startedBy, input.actorId);
   if (suite.status !== 'running') return;
   await db
     .update(workflowTestSuites)

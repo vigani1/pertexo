@@ -103,7 +103,7 @@ export function EditorWorkspace({
           tests={tests}
           ensureSaved={ensureSaved}
           currentRevision={revision}
-          canCancel={workspace.capabilities.includes('run:cancel')}
+          canCancelAny={workspace.capabilities.includes('run:cancel')}
         />
       }
       bottomLens={
