@@ -42,7 +42,7 @@ const equals = (field: string, value: string) =>
 const contains = (field: string, value: string) =>
   `$exists(${field}) and $substringBefore(${asText(field)}, ${lower(value)}) != ${asText(field)}`;
 const isEmpty = (field: string) =>
-  `$not($exists(${field})) or ${field} = null or ${field} = "" or ${field} = {}`;
+  `$not($exists(${field})) or ${field} = null or ${field} = "" or ${field} = {} or ${field} = []`;
 const compares = (symbol: string) => (field: string, value: string) =>
   `$type(${field}) = "number" and ${field} ${symbol} ${value}`;
 
@@ -67,13 +67,13 @@ const OPERATORS = {
     label: 'starts with',
     takes: 'text',
     write: (field, value) =>
-      `$substring(${asText(field)}, 0, $length(${value})) = ${lower(value)}`,
+      `$substring(${asText(field)}, 0, $length(${lower(value)})) = ${lower(value)}`,
   },
   ends_with: {
     label: 'ends with',
     takes: 'text',
     write: (field, value) =>
-      `$substring(${asText(field)}, -$length(${value})) = ${lower(value)}`,
+      `$substring(${asText(field)}, -$length(${lower(value)})) = ${lower(value)}`,
   },
   greater: {
     label: 'is greater than',
