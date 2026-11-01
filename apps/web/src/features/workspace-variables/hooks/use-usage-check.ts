@@ -14,15 +14,18 @@ export function useVariableUsageCheck(scope: WorkspaceApiScope, name: string) {
   const options = variableUsageQueryOptions(scope, name);
   const query = useInfiniteQuery(options);
   const {
+    dataUpdatedAt,
     hasNextPage,
+    isError,
     isFetchingNextPage,
-    isFetchNextPageError,
     fetchNextPage,
   } = query;
+  // dataUpdatedAt: a page can answer without any of the other values changing,
+  // and the walk would then stop for good, with Remove off and nothing to press.
   useEffect(() => {
-    if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError)
+    if (hasNextPage && !isFetchingNextPage && !isError)
       void fetchNextPage({ cancelRefetch: false });
-  }, [hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
+  }, [dataUpdatedAt, hasNextPage, isError, isFetchingNextPage, fetchNextPage]);
 
   /** A changed workflow refuses its cursor for good, so only a new check helps. */
   const workflowChanged =

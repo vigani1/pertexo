@@ -300,30 +300,26 @@ describe('losing access during the check', () => {
     retry.release();
   });
 
-  // Bug variables-dialog-02: a Retry that answers changes nothing the walk's effect watches, so the walk stops for good.
-  it.fails(
-    'walks on from the first page when Retry finds access back',
-    async () => {
-      const retry = held(page50);
-      const { asked } = serveUsage({
-        first: [page50, retry.reply],
-        c1: [accessLost, lastPage],
-      });
-      const event = await openDialog({ onRemove: vi.fn() });
-      await screen.findByText(
-        'Your role no longer has access to workflow references here.',
-      );
+  it('walks on from the first page when Retry finds access back', async () => {
+    const retry = held(page50);
+    const { asked } = serveUsage({
+      first: [page50, retry.reply],
+      c1: [accessLost, lastPage],
+    });
+    const event = await openDialog({ onRemove: vi.fn() });
+    await screen.findByText(
+      'Your role no longer has access to workflow references here.',
+    );
 
-      await event.click(screen.getByRole('button', { name: 'Retry' }));
-      await settle();
-      retry.release();
-      expect(
-        await screen.findByText('Checked all 201 workflows you can see.'),
-      ).toBeVisible();
-      expect(asked).toEqual([null, 'c1', null, 'c1']);
-      expect(removeOff()).toBeEnabled();
-    },
-  );
+    await event.click(screen.getByRole('button', { name: 'Retry' }));
+    await settle();
+    retry.release();
+    expect(
+      await screen.findByText('Checked all 201 workflows you can see.'),
+    ).toBeVisible();
+    expect(asked).toEqual([null, 'c1', null, 'c1']);
+    expect(removeOff()).toBeEnabled();
+  });
 
   it('stays refused, with Retry on offer, when Retry is refused too', async () => {
     serveUsage({
@@ -345,25 +341,21 @@ describe('losing access during the check', () => {
     expect(removeAnyway()).toBeEnabled();
   });
 
-  // Bug variables-dialog-01: a refused Retry clears the "next page failed" state, so the walk asks the refused page once more by itself.
-  it.fails(
-    'does not ask a refused page again by itself after a refused Retry',
-    async () => {
-      const { asked } = serveUsage({
-        first: [page50, accessLost],
-        c1: [accessLost, accessLost],
-      });
-      const event = await openDialog({ onRemove: vi.fn() });
-      await screen.findByText(
-        'Your role no longer has access to workflow references here.',
-      );
+  it('does not ask a refused page again by itself after a refused Retry', async () => {
+    const { asked } = serveUsage({
+      first: [page50, accessLost],
+      c1: [accessLost, accessLost],
+    });
+    const event = await openDialog({ onRemove: vi.fn() });
+    await screen.findByText(
+      'Your role no longer has access to workflow references here.',
+    );
 
-      await event.click(screen.getByRole('button', { name: 'Retry' }));
-      await waitFor(() => {
-        expect(asked.length).toBeGreaterThanOrEqual(3);
-      });
-      await settle();
-      expect(asked).toEqual([null, 'c1', null]);
-    },
-  );
+    await event.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => {
+      expect(asked.length).toBeGreaterThanOrEqual(3);
+    });
+    await settle();
+    expect(asked).toEqual([null, 'c1', null]);
+  });
 });

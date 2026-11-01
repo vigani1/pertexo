@@ -197,8 +197,7 @@ describe('a tab whose timers run late, as a hidden one’s do', () => {
     notifyManager.setScheduler((callback) => setTimeout(callback, 0));
   });
 
-  // Bug variables-dialog-02: a page that answers before "fetching" is rendered changes nothing the walk's effect watches, so the walk stops for good.
-  it.fails('still walks to the end', async () => {
+  it('still walks to the end', async () => {
     serveUsage({
       first: [usagePage({ checked: 1, total: 3 }, { next: 'c1' })],
       c1: [usagePage({ checked: 2, total: 3 }, { next: 'c2' })],
