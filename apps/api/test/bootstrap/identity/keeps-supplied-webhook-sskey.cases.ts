@@ -115,6 +115,19 @@ export function registerKeepsSuppliedWebhookSSKey(): void {
           status: 400,
         });
         expect(provision).not.toHaveBeenCalled();
+        if (operation !== 'rotate-secret') {
+          // api-design-18: a body naming settings used to be ignored, and a signed
+          // endpoint came back for a caller who asked for a secret URL.
+          const unaskedFor = await applicationFixture.application.inject({
+            method: 'POST',
+            url: path,
+            headers: validHeaders,
+            payload: { authentication: { mode: 'secret_url' } },
+          });
+          expect(unaskedFor.statusCode).toBe(400);
+          expect(unaskedFor.json()).toMatchObject({ code: 'request.invalid' });
+          expect(provision).not.toHaveBeenCalled();
+        }
         const accepted = await applicationFixture.application.inject({
           method: 'POST',
           url: path,
