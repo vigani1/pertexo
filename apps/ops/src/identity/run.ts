@@ -3,7 +3,7 @@ import type { TwoFactorRecoveryStore } from '@pertexo/core/tenant-access';
 import {
   authenticationMailAssociatedData,
   type SystemMailInput,
-} from '@pertexo/database/platform';
+} from '@pertexo/secrets/server';
 import { createApplicationSecretEnvelope } from '@pertexo/integrations/server';
 import type { TwoFactorRecoveryConfig } from './config.js';
 

@@ -1,7 +1,5 @@
-import {
-  createEncryptionKeyRepository,
-  parseMaintenanceDatabaseConfig,
-} from '../../../packages/database/dist/platform/index.js';
+import { parseMaintenanceDatabaseConfig } from '../../../packages/database/dist/platform/index.js';
+import { createEncryptionKeyRepository } from '../../../packages/secrets/dist/server.js';
 import {
   parseConnectionEncryptionConfig,
   verifyStoredEncryptionKeys,

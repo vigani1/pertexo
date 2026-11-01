@@ -5,16 +5,14 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import {
-  parseDatabaseConfig,
-  createSystemMailDeliveryStore,
-} from '@pertexo/database/platform';
+import { parseDatabaseConfig } from '@pertexo/database/platform';
+import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
 import { createTwoFactorRecoveryStore } from '../../../src/identity/two-factor/recovery.repository.js';
 import type { TwoFactorRecoveryStore } from '../../../src/identity/two-factor/contract.js';
 import type {
   SystemMailDeliveryStore,
   SystemMailInput,
-} from '@pertexo/database/platform';
+} from '@pertexo/secrets/server';
 
 describe('privileged two-factor recovery with application grants', () => {
   const adminUrl =

@@ -1,5 +1,5 @@
-import { authenticationMailAssociatedData } from '@pertexo/database/platform';
-import type { SystemMailEnqueueStore } from '@pertexo/database/platform';
+import { authenticationMailAssociatedData } from '@pertexo/secrets/server';
+import type { SystemMailEnqueueStore } from '@pertexo/secrets/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

@@ -1,4 +1,4 @@
-import type { SystemMailInput } from '@pertexo/database/platform';
+import type { SystemMailInput } from '@pertexo/secrets/server';
 
 export type RecoveryUser = Readonly<{ email: string; displayName: string }>;
 

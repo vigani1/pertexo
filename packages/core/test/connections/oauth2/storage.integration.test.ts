@@ -3,10 +3,8 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import {
-  parseDatabaseConfig,
-  createEncryptionKeyRepository,
-} from '@pertexo/database/platform';
+import { parseDatabaseConfig } from '@pertexo/database/platform';
+import { createEncryptionKeyRepository } from '@pertexo/secrets/server';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,

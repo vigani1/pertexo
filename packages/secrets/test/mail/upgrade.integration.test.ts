@@ -4,10 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
-import { createSystemMailDeliveryStore } from '../../src/platform/mail/repository.js';
-import { parseDatabaseConfig } from '../../src/config.js';
-import { createDisposableDatabaseFixture } from '../../src/testing/postgres/disposable-database.js';
+import {
+  createDisposableDatabaseFixture,
+  migrateDatabase,
+  MIGRATIONS_DIRECTORY,
+  parseDatabaseConfig,
+} from '@pertexo/database/testing';
+import { createSystemMailDeliveryStore } from '../../src/mail/repository.js';
 
 it('preserves mail identities through the rename and old messages through subsequent upgrades', async () => {
   const adminUrl =

@@ -1,4 +1,4 @@
-import type { SystemMailPurpose } from '../../schema/mail/deliveries.js';
+import type { SystemMailPurpose } from '@pertexo/database/schema';
 
 export type { SystemMailPurpose };
 

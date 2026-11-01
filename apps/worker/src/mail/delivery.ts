@@ -1,9 +1,9 @@
-import { authenticationMailAssociatedData } from '@pertexo/database/platform';
+import { authenticationMailAssociatedData } from '@pertexo/secrets/server';
 import { z } from 'zod';
 import type {
   SystemMailDeliveryClaim,
   SystemMailDeliveryStore,
-} from '@pertexo/database/platform';
+} from '@pertexo/secrets/server';
 import type {
   ApplicationSecretEnvelope,
   SystemMailResult,

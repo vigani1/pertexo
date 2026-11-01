@@ -107,6 +107,9 @@ importers:
       '@pertexo/rate-limit':
         specifier: workspace:*
         version: link:../../packages/rate-limit
+      '@pertexo/secrets':
+        specifier: workspace:*
+        version: link:../../packages/secrets
       '@pertexo/templates':
         specifier: workspace:*
         version: link:../../packages/templates
@@ -213,6 +216,9 @@ importers:
       '@pertexo/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@pertexo/secrets':
+        specifier: workspace:*
+        version: link:../../packages/secrets
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../../packages/workflow-model
@@ -403,6 +409,9 @@ importers:
       '@pertexo/rate-limit':
         specifier: workspace:*
         version: link:../../packages/rate-limit
+      '@pertexo/secrets':
+        specifier: workspace:*
+        version: link:../../packages/secrets
       '@pertexo/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine
@@ -492,6 +501,9 @@ importers:
       '@pertexo/nodes-core':
         specifier: workspace:*
         version: link:../nodes-core
+      '@pertexo/secrets':
+        specifier: workspace:*
+        version: link:../secrets
       '@pertexo/workflow-engine':
         specifier: workspace:*
         version: link:../workflow-engine

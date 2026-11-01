@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { createSystemMailEnqueueStore } from '@pertexo/database/platform';
-import { createSystemMailDeliveryStore } from '@pertexo/database/platform';
+import { createSystemMailEnqueueStore } from '@pertexo/secrets/server';
+import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
 
 import {
   createApplicationSecretEnvelope,

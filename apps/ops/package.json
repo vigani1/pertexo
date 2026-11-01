@@ -15,6 +15,7 @@
     "@pertexo/database": "workspace:*",
     "@pertexo/integrations": "workspace:*",
     "@pertexo/observability": "workspace:*",
+    "@pertexo/secrets": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "zod": "4.6.7"
   }

@@ -1,4 +1,4 @@
-// What core areas build on: applications never import this (a check enforces it).
+// What core areas and secrets build on: applications never import this (a check enforces it).
 export {
   appendAuditFact,
   appendAuditFacts,
@@ -21,6 +21,7 @@ export {
   isIntegerInRange,
   sha256HexSchema,
 } from './platform/persisted-primitives.js';
+export { acquireAbortablePoolClient } from './platform/pool/abortable-checkout.js';
 export { destroyCanceledPoolClient } from './platform/pool/client-disposal.js';
 export {
   isUniqueConstraintFailure,

@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createSystemMailEnqueueStore,
   createSystemMailDeliveryStore,
-} from '@pertexo/database/platform';
+} from '@pertexo/secrets/server';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import { createRetentionDatabase } from '../../src/lifecycle/index.js';
 import {
