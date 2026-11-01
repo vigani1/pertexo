@@ -201,6 +201,69 @@ describe.runIf(requested)('workspace variables over the real store', () => {
     });
   });
 
+  describe('a continuation issued before pages spanned workflows', () => {
+    // Written out, not worked out: an open tab's cursor outlives a deploy. This
+    // digest means draft revision 1 with nothing published.
+    const OLD_STAMP =
+      '28f6766b5fb80e872afcf27841930088024e6e9fd95a0a0d8df076b911376978';
+    const oldCursor = (workflowId: string, offset: number) =>
+      Buffer.from(
+        `{"workflowId":"${workflowId}","offset":${String(offset)},"stamp":"${OLD_STAMP}"}`,
+      ).toString('base64url');
+
+    it('resumes inside a workflow, above offset 0', async () => {
+      const scope = await workspace();
+      const workflowId = await workflowOverOnePage(scope);
+      const page = await service.usage({
+        ...scope,
+        name: 'RATE',
+        limit: 25,
+        after: oldCursor(workflowId, 100),
+      });
+      expect(page.items.map((item) => [item.workflowId, item.input])).toEqual([
+        [workflowId, 'last'],
+      ]);
+      expect(page.nextCursor).toBeNull();
+    });
+
+    it('passes the workflow it names, at offset 0', async () => {
+      const scope = await workspace();
+      const [first, second] = [
+        await workflowOverOnePage(scope),
+        await workflowOverOnePage(scope),
+      ].sort();
+      if (first === undefined || second === undefined)
+        throw new Error('Workflows missing');
+      const page = await service.usage({
+        ...scope,
+        name: 'RATE',
+        limit: 25,
+        after: oldCursor(first, 0),
+      });
+      expect(page.items).toEqual([]);
+      if (page.nextCursor === null) throw new Error('Expected a continuation');
+      const next = await service.usage({
+        ...scope,
+        name: 'RATE',
+        limit: 25,
+        after: page.nextCursor,
+      });
+      expect(next.items.map((item) => item.workflowId)).toEqual([second]);
+    });
+
+    it('is refused above offset 0 when its workflow has moved on', async () => {
+      const scope = await workspace();
+      const workflowId = await workflowOverOnePage(scope);
+      await admin.query(
+        'update app.workflow_drafts set revision=revision+1 where workflow_id=$1',
+        [workflowId],
+      );
+      await expect(
+        usageProblem(scope, oldCursor(workflowId, 100)),
+      ).rejects.toMatchObject({ code: 'variables.usage_changed' });
+    });
+  });
+
   it('refuses a continuation that is not one it issued', async () => {
     const scope = await workspace();
     await expect(usageProblem(scope, 'e30')).rejects.toMatchObject({
