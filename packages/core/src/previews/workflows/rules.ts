@@ -6,7 +6,7 @@ import type {
 import { WorkflowTestError } from './errors.js';
 
 /** A test of one step at a time, however long the workflow itself may run. */
-export const TEST_RUN_MAX_DURATION_MS = 5 * 60 * 1_000;
+const TEST_RUN_MAX_DURATION_MS = 5 * 60 * 1_000;
 
 /** A test still taking up its place: only one may run per person and workflow. */
 export const ACTIVE_TEST_RUN_STATUSES = [
