@@ -11,9 +11,9 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import { createIdentityWorkspaceDatabase } from '../../../src/testing.js';
-import { createWorkspaceInboxFoldStore } from '../../../src/inbox/folding/processor.repository.js';
+import { createWorkspaceInboxFoldStore } from '../../../src/inbox/folding/store.js';
 import { persistWorkspaceInboxEvent } from '../../../src/inbox/folding/events.repository.js';
-import { createWorkspaceInboxDatabase } from '../../../src/inbox/threads/reader.repository.js';
+import { createWorkspaceInboxDatabase } from '../../../src/inbox/threads/store.js';
 
 type Kind = 'failed' | 'timed_out' | 'outcome_unknown';
 

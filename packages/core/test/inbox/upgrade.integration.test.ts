@@ -10,7 +10,7 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createWorkspaceInboxDatabase } from '../../src/inbox/threads/reader.repository.js';
+import { createWorkspaceInboxDatabase } from '../../src/inbox/threads/store.js';
 it('upgrades populated workflow threads and private read revisions without changing their cut or precision', async () => {
   const adminUrl =
     process.env.DATABASE_ADMIN_URL ??
