@@ -1,5 +1,8 @@
-import { AUDIT_RETENTION_MIN_DAYS } from '@pertexo/workflow-model';
-export { AUDIT_RETENTION_MIN_DAYS };
+import {
+  AUDIT_RETENTION_MAX_DAYS,
+  AUDIT_RETENTION_MIN_DAYS,
+} from '@pertexo/workflow-model';
+export { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS };
 import { z } from 'zod';
 
 const identifier = z
@@ -65,7 +68,7 @@ export const auditRetentionSchema = z
   .number()
   .int()
   .min(AUDIT_RETENTION_MIN_DAYS)
-  .max(2555);
+  .max(AUDIT_RETENTION_MAX_DAYS);
 export const governanceSettingsSchema = z
   .object({
     revision: z.number().int().positive(),

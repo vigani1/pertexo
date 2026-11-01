@@ -202,6 +202,7 @@ export {
   auditQuerySchema,
   auditPageSchema,
   auditRetentionSchema,
+  AUDIT_RETENTION_MAX_DAYS,
   AUDIT_RETENTION_MIN_DAYS,
   governanceSettingsSchema,
   governanceUpdateSchema,
