@@ -219,6 +219,7 @@ export const oauth2ConnectionErrorCodeSchema = z.enum([
 /** What a person sees on an HTTP Request step that couldn't get a token. */
 export const oauth2StepFailureCodeSchema = z.enum([
   'http.oauth2_not_connected',
+  'http.oauth2_connection_revoked',
   'http.oauth2_grant_revoked',
   'http.oauth2_client_rejected',
   'http.oauth2_token_expired',

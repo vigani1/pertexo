@@ -16,6 +16,12 @@ const outcomes: Readonly<Record<OAuth2StepFailureCode, Outcome>> =
       errorKind: 'authentication',
       summary: "This connection isn't connected. Reconnect it in Connections.",
     },
+    'http.oauth2_connection_revoked': {
+      kind: 'failed',
+      errorKind: 'authentication',
+      summary:
+        'This connection was revoked. Choose another connection for this step.',
+    },
     'http.oauth2_grant_revoked': {
       kind: 'failed',
       errorKind: 'authentication',
