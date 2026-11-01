@@ -16,7 +16,11 @@ import {
   requireControlOrganization,
   runFederationCommand,
 } from './commands.repository.js';
-import type { FederationCommand } from './contract.js';
+import type {
+  CreateDomainInput,
+  DomainCommand,
+  VerifyDomainInput,
+} from './contract.js';
 import { requireResourceCapacity } from './organizations.repository.js';
 
 export async function requireOrganizationDomain(
@@ -42,7 +46,7 @@ export async function requireOrganizationDomain(
 }
 export function createDomain(
   pool: Pool,
-  input: FederationCommand & Readonly<{ domain: string }>,
+  input: CreateDomainInput,
 ): Promise<FederationSettings> {
   return runFederationCommand(pool, input, {
     operation: 'identity.domain.create',
@@ -91,7 +95,7 @@ export function createDomain(
 }
 export function renewDomainChallenge(
   pool: Pool,
-  input: FederationCommand & Readonly<{ domainId: string }>,
+  input: DomainCommand,
 ): Promise<FederationSettings> {
   return runFederationCommand(pool, input, {
     operation: 'identity.domain.renew',
@@ -133,8 +137,7 @@ export function renewDomainChallenge(
 /** DNS is resolved before this transaction; the exact observed challenge is consumed under lock. */
 export function verifyDomain(
   pool: Pool,
-  input: FederationCommand &
-    Readonly<{ domainId: string; observedChallenge: string }>,
+  input: VerifyDomainInput,
 ): Promise<FederationSettings> {
   return runFederationCommand(pool, input, {
     operation: 'identity.domain.verify',
@@ -214,7 +217,7 @@ export function verifyDomain(
 }
 export function removeDomain(
   pool: Pool,
-  input: FederationCommand & Readonly<{ domainId: string }>,
+  input: DomainCommand,
 ): Promise<FederationSettings> {
   return runFederationCommand(pool, input, {
     operation: 'identity.domain.remove',

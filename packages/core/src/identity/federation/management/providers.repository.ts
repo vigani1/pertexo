@@ -9,11 +9,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { providerRecords } from './records.queries.js';
 import type { Pool, PoolClient } from 'pg';
-import type {
-  FederationSettings,
-  OidcConfiguration,
-  SamlConfiguration,
-} from '@pertexo/contracts';
+import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { FederationConflictError } from './errors.js';
 import type { ProviderRow } from './records.queries.js';
@@ -24,16 +20,14 @@ import {
   requireControlOrganization,
   runFederationCommand,
 } from './commands.repository.js';
-import type { FederationCommand } from './contract.js';
+import type {
+  CreateProviderInput,
+  RemoveProviderInput,
+  UpdateProviderInput,
+} from './contract.js';
 import { requireResourceCapacity } from './organizations.repository.js';
 import { assertRequiredDomainsReady } from './enforcement.repository.js';
 
-type SealedSecret = Readonly<Record<string, unknown>>;
-type ProviderValues = Readonly<{ name: string; enabled: boolean }> &
-  (
-    | Readonly<{ kind?: 'oidc'; configuration: OidcConfiguration }>
-    | Readonly<{ kind: 'saml'; configuration: SamlConfiguration }>
-  );
 async function requireOrganizationProvider(
   client: PoolClient,
   organizationId: string,
@@ -55,27 +49,9 @@ async function requireOrganizationProvider(
     );
   return provider;
 }
-/** The API seals the secret and computes a purpose-bound HMAC for exact retries. Neither plaintext nor an unkeyed secret digest crosses this boundary. */
 export function createProvider(
   pool: Pool,
-  input: FederationCommand &
-    Readonly<{ issuer: string }> &
-    (
-      | Readonly<{
-          kind?: 'oidc';
-          name: string;
-          enabled: boolean;
-          configuration: OidcConfiguration;
-          sealSecret: (providerId: string) => SealedSecret;
-          secretFingerprint: string;
-        }>
-      | Readonly<{
-          kind: 'saml';
-          name: string;
-          enabled: boolean;
-          configuration: SamlConfiguration;
-        }>
-    ),
+  input: CreateProviderInput,
 ): Promise<FederationSettings> {
   return runFederationCommand(pool, input, {
     operation: 'identity.provider.create',
@@ -121,13 +97,7 @@ export function createProvider(
 }
 export function updateProvider(
   pool: Pool,
-  input: FederationCommand &
-    ProviderValues &
-    Readonly<{
-      providerId: string;
-      sealedSecret?: SealedSecret;
-      secretFingerprint?: string;
-    }>,
+  input: UpdateProviderInput,
 ): Promise<FederationSettings> {
   return runFederationCommand(pool, input, {
     operation: 'identity.provider.update',
@@ -190,7 +160,7 @@ export function updateProvider(
 }
 export function removeProvider(
   pool: Pool,
-  input: FederationCommand & Readonly<{ providerId: string }>,
+  input: RemoveProviderInput,
 ): Promise<FederationSettings> {
   return runFederationCommand(pool, input, {
     operation: 'identity.provider.remove',

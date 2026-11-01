@@ -7,8 +7,10 @@ import {
 } from '@pertexo/database/testing';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
-import { createTwoFactorRecoveryStore } from '../../../src/identity/two-factor/store.js';
-import type { TwoFactorRecoveryStore } from '../../../src/identity/two-factor/contract.js';
+import {
+  createTwoFactorRecoveryStore,
+  type TwoFactorRecoveryStore,
+} from '../../../src/identity/two-factor/store.js';
 import type {
   SystemMailDeliveryStore,
   SystemMailInput,

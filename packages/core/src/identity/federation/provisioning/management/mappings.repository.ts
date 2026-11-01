@@ -14,18 +14,20 @@ import {
 } from '@pertexo/database/primitives';
 import { readDirectoryRole } from '../roles.queries.js';
 import type { Pool } from 'pg';
-import type { DirectoryMappings, DirectoryAdopt } from '@pertexo/contracts';
 import { DirectoryError } from '../errors.js';
 import { projectDirectoryMemberships } from '../projection.repository.js';
 import {
   auditDirectoryManagement,
   runDirectoryCommand,
 } from './commands.repository.js';
-import type { DirectoryCommand } from '../contract.js';
+import type {
+  AdoptMembershipInput,
+  ReplaceMappingsInput,
+} from '../contract.js';
 
 export async function replaceDirectoryMappings(
   pool: Pool,
-  input: DirectoryCommand & DirectoryMappings,
+  input: ReplaceMappingsInput,
 ): Promise<void> {
   await runDirectoryCommand(pool, input, {
     operation: 'identity.directory.mappings.replace',
@@ -84,7 +86,7 @@ export async function replaceDirectoryMappings(
 
 export async function adoptDirectoryMembership(
   pool: Pool,
-  input: DirectoryCommand & DirectoryAdopt,
+  input: AdoptMembershipInput,
 ): Promise<void> {
   await runDirectoryCommand(pool, input, {
     operation: 'identity.directory.membership.adopt',

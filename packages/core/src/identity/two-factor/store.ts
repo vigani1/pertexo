@@ -1,8 +1,4 @@
-import type {
-  RecoveryUser,
-  TwoFactorRecoveryResult,
-  TwoFactorRecoveryStore,
-} from './contract.js';
+import type { RecoveryUser, TwoFactorRecoveryResult } from './contract.js';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { DatabaseConfig } from '@pertexo/database/platform';
@@ -18,11 +14,15 @@ import { canonicalEmailSql } from '../canonical-email.js';
 import { recordIdentitySecurityFact } from '../facts.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
+export type TwoFactorRecoveryStore = ReturnType<
+  typeof createTwoFactorRecoveryStore
+>;
+
 /** Global identity recovery uses the existing app login, not tenant or maintenance authority: an operator acts, not a member, so it stays off `withWorkspaceAccess`. */
 export function createTwoFactorRecoveryStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): TwoFactorRecoveryStore {
+) {
   const lease = acquireDatabasePool(config, runtime, { role: 'api' });
   return Object.freeze({
     disable: async (

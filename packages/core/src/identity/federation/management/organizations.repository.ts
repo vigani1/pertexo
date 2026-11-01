@@ -9,13 +9,11 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { organizationSelection } from './records.queries.js';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
-import type { DelegatedRole } from '@pertexo/workflow-model';
 import { projectDirectoryMemberships } from '../provisioning/projection.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { FederationConflictError } from './errors.js';
-import type { FederationScope } from './contract.js';
 import {
   organizationForWorkspace,
   recordFederationAudit,
@@ -26,11 +24,14 @@ import {
   requireControlOrganization,
   runFederationCommand,
 } from './commands.repository.js';
-import type { FederationCommand } from './contract.js';
+import type {
+  CreateOrganizationInput,
+  LinkWorkspaceInput,
+} from './contract.js';
 
 export function createOrganization(
   pool: Pool,
-  input: FederationScope & Readonly<{ name: string; idempotencyKey: string }>,
+  input: CreateOrganizationInput,
 ): Promise<FederationSettings> {
   return runFederationCommand(pool, input, {
     operation: 'identity.organization.create',
@@ -66,11 +67,7 @@ export function createOrganization(
 }
 export function linkOrganizationWorkspace(
   pool: Pool,
-  input: FederationCommand &
-    Readonly<{
-      targetWorkspaceId: string;
-      defaultRole: DelegatedRole;
-    }>,
+  input: LinkWorkspaceInput,
 ): Promise<FederationSettings> {
   return runFederationCommand(pool, input, {
     operation: 'identity.organization.link.workspace',

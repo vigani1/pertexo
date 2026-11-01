@@ -16,8 +16,20 @@ import {
   type WorkspaceActor,
 } from '../../../shared/workspace-access.js';
 import { requireFederationOwner } from './authority.repository.js';
-import type { FederationCommand, FederationScope } from './contract.js';
-import type { DomainChallengeInput } from './contract.js';
+import type {
+  ConfigureEnforcementInput,
+  CreateDomainInput,
+  CreateOrganizationInput,
+  CreateProviderInput,
+  DomainChallengeInput,
+  DomainCommand,
+  FederationCommand,
+  FederationScope,
+  LinkWorkspaceInput,
+  RemoveProviderInput,
+  UpdateProviderInput,
+  VerifyDomainInput,
+} from './contract.js';
 import {
   createDomain,
   removeDomain,
@@ -40,6 +52,10 @@ import {
   readDomainVerificationResult,
   readFederationSettings,
 } from './reads.queries.js';
+
+export type FederationManagementStore = ReturnType<
+  typeof createFederationManagementStore
+>;
 
 export function createFederationManagementStore(
   config: DatabaseConfig,
@@ -79,26 +95,22 @@ export function createFederationManagementStore(
     ) => checkFederationStoredSecrets(lease.pool, check),
     verificationResult: (input: FederationCommand & DomainChallengeInput) =>
       ownerRead(input, (client) => readDomainVerificationResult(client, input)),
-    createOrganization: (input: Parameters<typeof createOrganization>[1]) =>
+    createOrganization: (input: CreateOrganizationInput) =>
       createOrganization(lease.pool, input),
-    linkWorkspace: (input: Parameters<typeof linkOrganizationWorkspace>[1]) =>
+    linkWorkspace: (input: LinkWorkspaceInput) =>
       linkOrganizationWorkspace(lease.pool, input),
-    createDomain: (input: Parameters<typeof createDomain>[1]) =>
-      createDomain(lease.pool, input),
-    renewDomainChallenge: (input: Parameters<typeof renewDomainChallenge>[1]) =>
+    createDomain: (input: CreateDomainInput) => createDomain(lease.pool, input),
+    renewDomainChallenge: (input: DomainCommand) =>
       renewDomainChallenge(lease.pool, input),
-    verifyDomain: (input: Parameters<typeof verifyDomain>[1]) =>
-      verifyDomain(lease.pool, input),
-    removeDomain: (input: Parameters<typeof removeDomain>[1]) =>
-      removeDomain(lease.pool, input),
-    createProvider: (input: Parameters<typeof createProvider>[1]) =>
+    verifyDomain: (input: VerifyDomainInput) => verifyDomain(lease.pool, input),
+    removeDomain: (input: DomainCommand) => removeDomain(lease.pool, input),
+    createProvider: (input: CreateProviderInput) =>
       createProvider(lease.pool, input),
-    updateProvider: (input: Parameters<typeof updateProvider>[1]) =>
+    updateProvider: (input: UpdateProviderInput) =>
       updateProvider(lease.pool, input),
-    removeProvider: (input: Parameters<typeof removeProvider>[1]) =>
+    removeProvider: (input: RemoveProviderInput) =>
       removeProvider(lease.pool, input),
-    configureEnforcement: (
-      input: Parameters<typeof configureDomainEnforcement>[1],
-    ) => configureDomainEnforcement(lease.pool, input),
+    configureEnforcement: (input: ConfigureEnforcementInput) =>
+      configureDomainEnforcement(lease.pool, input),
   };
 }
