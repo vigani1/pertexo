@@ -1,10 +1,7 @@
-import { DELEGATED_ROLES } from '@pertexo/workflow-model';
 import type { Pool } from 'pg';
-import { z } from 'zod';
 import { updateMembership } from './records.repository.js';
 
 import { canChangeWorkspaceMemberRole } from '@pertexo/workflow-model';
-import { commandRevisionSchema } from '../command-keys.js';
 import type {
   ChangeWorkspaceMemberRoleInput,
   WorkspaceMemberRoleChangeResult,
@@ -13,19 +10,9 @@ import { WorkspaceMemberRoleCommandConflictError } from '../errors.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,
-  isActiveMemberManager,
   recordMemberCommandAudit,
 } from './commands.repository.js';
-
-const inputRole = z.enum(DELEGATED_ROLES);
-const durableResult = z
-  .object({
-    userId: z.uuid(),
-    role: inputRole,
-    roleRevision: commandRevisionSchema,
-    changed: z.boolean(),
-  })
-  .strict();
+import { isActiveMemberManager } from './manager.js';
 
 function conflict(
   reason: ConstructorParameters<
@@ -43,14 +30,15 @@ export function createIdentityWorkspaceRoleCommandStore(pool: Pool) {
     ): Promise<WorkspaceMemberRoleChangeResult> => {
       const role = raw.role;
       const expectedRoleRevision = raw.expectedRoleRevision;
-      return executeMemberCommand(pool, {
+      return executeMemberCommand<
+        Omit<WorkspaceMemberRoleChangeResult, 'replayed'>
+      >(pool, {
         operation: 'workspace.member.role',
         workspaceId: raw.workspaceId,
         actorUserId: raw.actorUserId,
         targetUserId: raw.targetUserId,
         idempotencyKey: raw.idempotencyKey,
         request: { expectedRoleRevision, role },
-        result: durableResult,
         conflict,
         admit: ({ actor, target }, scope) => {
           if (!isActiveMemberManager(actor))

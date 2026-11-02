@@ -29,6 +29,7 @@ import type {
   WorkspaceStatus,
 } from '../contract.js';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
+import { DEFAULT_PAGE_LIMIT } from '../state.js';
 
 /** Spans the actor's workspaces, so no one workspace's authority can decide it. */
 async function listAccessibleWorkspaces(
@@ -37,7 +38,7 @@ async function listAccessibleWorkspaces(
   input: ListAccessibleWorkspacesInput = {},
 ): Promise<AccessibleWorkspacesPage> {
   const after = input.after;
-  const limit = input.limit ?? 50;
+  const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
   return withActorScopedClient(pool, actorId, async (client) => {
     const rowsFound = await drizzle(client)
       .select({
@@ -141,7 +142,7 @@ async function listWorkspaceMembers(
   actorId: string,
   input: ListWorkspaceMembersInput = {},
 ): Promise<WorkspaceMembersPage> {
-  const limit = input.limit ?? 50;
+  const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
   const afterUserId =
     input.after === undefined ? undefined : input.after.userId;
   const afterCreatedAt =

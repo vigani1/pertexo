@@ -5,47 +5,20 @@ import {
   completeCommand,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
-import { and, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { alias } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
-import { z } from 'zod';
-import {
-  users,
-  workspaceMemberships,
-  workspaces,
-} from '@pertexo/database/schema';
+import { users, workspaces } from '@pertexo/database/schema';
 
 import type { CommandIdentity } from '@pertexo/database/primitives';
-import { commandRevisionSchema } from '../command-keys.js';
 import type {
   RenameWorkspaceInput,
   WorkspaceRenameResult,
 } from '../contract.js';
 import { WorkspaceRenameCommandConflictError } from '../errors.js';
+import { readLockedMembers } from '../members/commands.repository.js';
+import { isActiveMemberManager } from '../members/manager.js';
 import { workspaceRecord, workspaceSelection } from './projection.js';
-
-const durableResultSchema = z
-  .object({
-    workspace: z
-      .object({
-        id: z.uuid(),
-        name: z.string().min(1).max(128),
-        slug: z.string(),
-        status: z.literal('active'),
-        revision: commandRevisionSchema,
-        createdBy: z.uuid(),
-        deletionRequestedAt: z.null(),
-        deletionRequestedBy: z.null(),
-        deletionReason: z.null(),
-        purgeAfter: z.null(),
-        createdAt: z.iso.datetime(),
-        updatedAt: z.iso.datetime(),
-      })
-      .strict(),
-    changed: z.boolean(),
-  })
-  .strict();
 
 function durableResult(result: WorkspaceRenameResult) {
   return {
@@ -58,8 +31,10 @@ function durableResult(result: WorkspaceRenameResult) {
   };
 }
 
-function replayedResult(value: unknown): WorkspaceRenameResult {
-  const { workspace, changed } = durableResultSchema.parse(value);
+function replayedResult({
+  workspace,
+  changed,
+}: ReturnType<typeof durableResult>): WorkspaceRenameResult {
   return Object.freeze({
     workspace: Object.freeze({
       ...workspace,
@@ -112,39 +87,22 @@ export function createIdentityWorkspaceRenameStore(pool: Pool) {
             .where(eq(users.id, actorUserId))
             .for('update')
             .catch(rethrowQueryFailure);
-          const membership = alias(workspaceMemberships, 'membership');
-          const actorTable = alias(users, 'actor');
-          const access = await db
-            .select({
-              role: membership.role,
-              membershipStatus: membership.status,
-              userStatus: actorTable.status,
-            })
-            .from(membership)
-            .innerJoin(actorTable, eq(actorTable.id, membership.userId))
-            .where(
-              and(
-                eq(membership.workspaceId, workspaceId),
-                eq(membership.userId, actorUserId),
-              ),
-            )
-            .for('update', { of: [membership, actorTable] })
-            .catch(rethrowQueryFailure);
-          const actor = access[0];
-          const managerUnavailable =
-            actor?.membershipStatus !== 'active' ||
-            actor.userStatus !== 'active' ||
-            (actor.role !== 'owner' && actor.role !== 'admin');
-          if (managerUnavailable)
+          const [actor] = await readLockedMembers(client, workspaceId, [
+            actorUserId,
+          ]);
+          if (!isActiveMemberManager(actor))
             throw new WorkspaceRenameCommandConflictError(
               'actor_inactive',
               'The actor cannot manage this workspace',
             );
-          const stored = await claimCommand(client, {
-            ...key,
-            request: { name, expectedRevision },
-            resourceId: workspaceId,
-          });
+          const stored = await claimCommand<ReturnType<typeof durableResult>>(
+            client,
+            {
+              ...key,
+              request: { name, expectedRevision },
+              resourceId: workspaceId,
+            },
+          );
           if (stored !== null) return replayedResult(stored);
           const currentWorkspace = workspaceRecord(current);
           if (currentWorkspace.revision !== expectedRevision)

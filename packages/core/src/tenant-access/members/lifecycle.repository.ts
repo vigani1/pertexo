@@ -1,5 +1,4 @@
 import type { Pool } from 'pg';
-import { z } from 'zod';
 import { canTransferRecoveryOwnership } from '../../identity/federation/sessions/recovery.queries.js';
 import { updateMembership } from './records.repository.js';
 
@@ -8,7 +7,6 @@ import {
   canSuspendWorkspaceMember,
   canTransferWorkspaceOwnership,
 } from '@pertexo/workflow-model';
-import { commandRevisionSchema } from '../command-keys.js';
 import type {
   LeaveWorkspaceInput,
   TransferWorkspaceOwnershipInput,
@@ -24,30 +22,11 @@ import {
 import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,
-  isActiveMemberManager,
   recordMemberCommandAudit,
   type AdmittedMemberCommand,
   type LockedMember,
 } from './commands.repository.js';
-
-const departureResult = z
-  .object({ userId: z.uuid(), roleRevision: commandRevisionSchema })
-  .strict();
-const statusResult = z
-  .object({
-    userId: z.uuid(),
-    roleRevision: commandRevisionSchema,
-    membershipStatus: z.enum(['active', 'suspended']),
-  })
-  .strict();
-const transferResult = z
-  .object({
-    ownerUserId: z.uuid(),
-    ownerRoleRevision: commandRevisionSchema,
-    previousOwnerUserId: z.uuid(),
-    previousOwnerRoleRevision: commandRevisionSchema,
-  })
-  .strict();
+import { isActiveMemberManager } from './manager.js';
 
 /** Suspension and reactivation are one command in two directions. */
 const STATUS_CHANGES = Object.freeze({
@@ -108,51 +87,53 @@ function leaveWorkspace(
   pool: Pool,
   raw: LeaveWorkspaceInput,
 ): Promise<WorkspaceMemberRemovalResult> {
-  return executeMemberCommand(pool, {
-    operation: 'workspace.member.departure',
-    workspaceId: raw.workspaceId,
-    actorUserId: raw.actorUserId,
-    targetUserId: raw.actorUserId,
-    idempotencyKey: raw.idempotencyKey,
-    request: { operation: 'leave' },
-    result: departureResult,
-    conflict,
-    // A completed departure still replays: the removed row stays.
-    admit: ({ actor }) => {
-      if (actor === undefined)
-        throw conflict('actor_inactive', 'The actor is not a member');
-      return { actor, target: actor };
-    },
-    apply: async (client, { actor }, scope) => {
-      if (actor.status !== 'active' || actor.user_status !== 'active')
-        throw conflict('actor_inactive', 'Only active members can leave');
-      if (!canLeaveWorkspace(actor.role))
-        throw conflict(
-          'owner_departure',
-          'The owner must transfer ownership before leaving',
-        );
-      const nextRevision = actor.role_revision + 1;
-      await updateMembership(client, scope.workspaceId, {
-        userId: actor.user_id,
-        role: actor.role,
-        status: 'removed',
-        roleRevision: nextRevision,
-      });
-      await revokeUserSessions(client, actor.user_id);
-      await recordMemberCommandAudit(client, {
-        ...scope,
-        action: 'workspace.member_left',
-        requestId: raw.requestId,
-        traceId: raw.traceId,
-        metadata: {
+  return executeMemberCommand<Omit<WorkspaceMemberRemovalResult, 'replayed'>>(
+    pool,
+    {
+      operation: 'workspace.member.departure',
+      workspaceId: raw.workspaceId,
+      actorUserId: raw.actorUserId,
+      targetUserId: raw.actorUserId,
+      idempotencyKey: raw.idempotencyKey,
+      request: { operation: 'leave' },
+      conflict,
+      // A completed departure still replays: the removed row stays.
+      admit: ({ actor }) => {
+        if (actor === undefined)
+          throw conflict('actor_inactive', 'The actor is not a member');
+        return { actor, target: actor };
+      },
+      apply: async (client, { actor }, scope) => {
+        if (actor.status !== 'active' || actor.user_status !== 'active')
+          throw conflict('actor_inactive', 'Only active members can leave');
+        if (!canLeaveWorkspace(actor.role))
+          throw conflict(
+            'owner_departure',
+            'The owner must transfer ownership before leaving',
+          );
+        const nextRevision = actor.role_revision + 1;
+        await updateMembership(client, scope.workspaceId, {
+          userId: actor.user_id,
           role: actor.role,
-          fromRevision: actor.role_revision,
-          toRevision: nextRevision,
-        },
-      });
-      return { userId: actor.user_id, roleRevision: nextRevision };
+          status: 'removed',
+          roleRevision: nextRevision,
+        });
+        await revokeUserSessions(client, actor.user_id);
+        await recordMemberCommandAudit(client, {
+          ...scope,
+          action: 'workspace.member_left',
+          requestId: raw.requestId,
+          traceId: raw.traceId,
+          metadata: {
+            role: actor.role,
+            fromRevision: actor.role_revision,
+            toRevision: nextRevision,
+          },
+        });
+        return { userId: actor.user_id, roleRevision: nextRevision };
+      },
     },
-  });
+  );
 }
 
 /**
@@ -166,61 +147,63 @@ function changeMemberStatus(
 ): Promise<WorkspaceMemberStatusResult> {
   const change = STATUS_CHANGES[direction];
   const expectedRoleRevision = raw.expectedRoleRevision;
-  return executeMemberCommand(pool, {
-    operation: 'workspace.member.suspension',
-    workspaceId: raw.workspaceId,
-    actorUserId: raw.actorUserId,
-    targetUserId: raw.targetUserId,
-    idempotencyKey: raw.idempotencyKey,
-    request: { expectedRoleRevision, operation: direction },
-    result: statusResult,
-    conflict,
-    admit: admitManagedTarget,
-    apply: async (client, { actor, target }, scope) => {
-      requireTargetPresent(target);
-      if (target.role === 'owner')
-        throw conflict('owner_target', 'The workspace owner cannot change');
-      if (!canSuspendWorkspaceMember(actor.role, target.role))
-        throw conflict(
-          'command_forbidden',
-          'This member cannot be changed by the actor',
-        );
-      if (target.status !== change.from || target.user_status !== 'active')
-        throw conflict(
-          'target_inactive',
-          `Only ${change.from} members can be changed this way`,
-        );
-      if (target.role_revision !== expectedRoleRevision)
-        throw conflict(
-          'revision_conflict',
-          'The member changed since it was loaded',
-        );
-      const nextRevision = target.role_revision + 1;
-      await updateMembership(client, scope.workspaceId, {
-        userId: target.user_id,
-        role: target.role,
-        status: change.to,
-        roleRevision: nextRevision,
-      });
-      await revokeUserSessions(client, target.user_id);
-      await recordMemberCommandAudit(client, {
-        ...scope,
-        action: change.action,
-        requestId: raw.requestId,
-        traceId: raw.traceId,
-        metadata: {
+  return executeMemberCommand<Omit<WorkspaceMemberStatusResult, 'replayed'>>(
+    pool,
+    {
+      operation: 'workspace.member.suspension',
+      workspaceId: raw.workspaceId,
+      actorUserId: raw.actorUserId,
+      targetUserId: raw.targetUserId,
+      idempotencyKey: raw.idempotencyKey,
+      request: { expectedRoleRevision, operation: direction },
+      conflict,
+      admit: admitManagedTarget,
+      apply: async (client, { actor, target }, scope) => {
+        requireTargetPresent(target);
+        if (target.role === 'owner')
+          throw conflict('owner_target', 'The workspace owner cannot change');
+        if (!canSuspendWorkspaceMember(actor.role, target.role))
+          throw conflict(
+            'command_forbidden',
+            'This member cannot be changed by the actor',
+          );
+        if (target.status !== change.from || target.user_status !== 'active')
+          throw conflict(
+            'target_inactive',
+            `Only ${change.from} members can be changed this way`,
+          );
+        if (target.role_revision !== expectedRoleRevision)
+          throw conflict(
+            'revision_conflict',
+            'The member changed since it was loaded',
+          );
+        const nextRevision = target.role_revision + 1;
+        await updateMembership(client, scope.workspaceId, {
+          userId: target.user_id,
           role: target.role,
-          fromRevision: target.role_revision,
-          toRevision: nextRevision,
-        },
-      });
-      return {
-        userId: target.user_id,
-        roleRevision: nextRevision,
-        membershipStatus: change.to,
-      };
+          status: change.to,
+          roleRevision: nextRevision,
+        });
+        await revokeUserSessions(client, target.user_id);
+        await recordMemberCommandAudit(client, {
+          ...scope,
+          action: change.action,
+          requestId: raw.requestId,
+          traceId: raw.traceId,
+          metadata: {
+            role: target.role,
+            fromRevision: target.role_revision,
+            toRevision: nextRevision,
+          },
+        });
+        return {
+          userId: target.user_id,
+          roleRevision: nextRevision,
+          membershipStatus: change.to,
+        };
+      },
     },
-  });
+  );
 }
 
 /**
@@ -234,7 +217,9 @@ function transferWorkspaceOwnership(
 ): Promise<WorkspaceOwnershipTransferResult> {
   const expectedRoleRevision = raw.expectedRoleRevision;
   const expectedOwnerRoleRevision = raw.expectedOwnerRoleRevision;
-  return executeMemberCommand(pool, {
+  return executeMemberCommand<
+    Omit<WorkspaceOwnershipTransferResult, 'replayed'>
+  >(pool, {
     operation: 'workspace.ownership.transfer',
     workspaceId: raw.workspaceId,
     actorUserId: raw.actorUserId,
@@ -245,7 +230,6 @@ function transferWorkspaceOwnership(
       expectedRoleRevision,
       operation: 'transfer_ownership',
     },
-    result: transferResult,
     conflict,
     // The previous owner is an admin afterwards, so a completed transfer
     // still replays for them.
