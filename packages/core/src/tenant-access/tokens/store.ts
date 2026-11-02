@@ -26,6 +26,7 @@ import type { CommandIdentity } from '@pertexo/database/primitives';
 import { hasCapability } from '@pertexo/workflow-model';
 import { issueApiTokenCredential } from './credential.js';
 import { apiTokenMetadata, type ApiTokenRow } from './metadata.js';
+import { requireReadableReceipt, tokenReceipt } from '../receipts.js';
 import { tokenOwnerAuthority } from './authority.queries.js';
 import { availableApiTokenScopes } from './policy.js';
 import { authenticateApiToken } from './authenticate.repository.js';
@@ -181,7 +182,8 @@ function createApiToken(
         resourceId: tokenId,
       });
       const now = await databaseNow(client);
-      if (replay !== null)
+      if (replay !== null) {
+        requireReadableReceipt(tokenReceipt, replay);
         return {
           token: apiTokenMetadata(
             await tokenRow(client, input, replay.tokenId),
@@ -190,6 +192,7 @@ function createApiToken(
           ),
           replayed: true as const,
         };
+      }
       const count = await drizzle(client)
         .select({ count: sql<number>`count(*)::int` })
         .from(apiTokens)

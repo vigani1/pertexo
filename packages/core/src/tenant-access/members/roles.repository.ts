@@ -7,6 +7,7 @@ import type {
   WorkspaceMemberRoleChangeResult,
 } from '../contract.js';
 import { WorkspaceMemberRoleCommandConflictError } from '../errors.js';
+import { roleReceipt } from '../receipts.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,
@@ -39,6 +40,7 @@ export function createIdentityWorkspaceRoleCommandStore(pool: Pool) {
         targetUserId: raw.targetUserId,
         idempotencyKey: raw.idempotencyKey,
         request: { expectedRoleRevision, role },
+        receipt: roleReceipt,
         conflict,
         admit: ({ actor, target }, scope) => {
           if (!isActiveMemberManager(actor))
