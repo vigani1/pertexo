@@ -57,7 +57,7 @@ export function failUnadvanceableRun(
         type,
         payload: { reasonCode: safeErrorCode },
       });
-      const occurredAt = new Date().toISOString();
+      const occurredAt = await readDatabaseTime(client);
       const plan: RunTransitionPlan = {
         expectedRevision: run.revision,
         expectedNextEventSequence: sequence,
@@ -93,6 +93,13 @@ export function failUnadvanceableRun(
       return status;
     },
   );
+}
+
+async function readDatabaseTime(client: PoolClient): Promise<string> {
+  const { rows } = await drizzle(client)
+    .execute<{ now: string }>(sql`select clock_timestamp() now`)
+    .catch(rethrowQueryFailure);
+  return new Date(rows[0]?.now ?? Number.NaN).toISOString();
 }
 
 /** Returns whether a possibly dispatched unsafe step was among them. */

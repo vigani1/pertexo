@@ -37,10 +37,13 @@ export async function persistedFactCapacity(
     lastSequence: number;
     maximumStorageBytes: number;
     storageBytes: number;
+    /** Database time, read once the run is locked: every fact this advance records uses it. */
+    observedAt: Date;
   }>
 > {
   const [row] = await drizzle(client)
     .select({
+      observed_at: sql<string>`clock_timestamp()`,
       fact_count: sql<number>`count(*)::int`,
       last_sequence: sql<number | null>`max(${runEvents.sequence})::int`,
       storage_bytes: sql<string>`coalesce(sum(octet_length(${runEvents.payload}::text)),0)::bigint`,
@@ -73,6 +76,7 @@ export async function persistedFactCapacity(
     lastSequence: row?.last_sequence ?? firstSequence - 1,
     maximumStorageBytes,
     storageBytes,
+    observedAt: new Date(row?.observed_at ?? Number.NaN),
   });
 }
 

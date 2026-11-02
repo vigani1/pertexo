@@ -87,6 +87,17 @@ function scheduledOccurrence(
   return canonicalTimestamp(scheduleInput.data.scheduledAt);
 }
 
+async function secondsSince(client: PoolClient, moment: string) {
+  const { rows } = await drizzle(client)
+    .execute<{ seconds: number }>(
+      sql`select extract(epoch from clock_timestamp()-${moment}::timestamptz)::float8 seconds`,
+    )
+    .catch(rethrowQueryFailure);
+  const seconds = rows[0]?.seconds;
+  if (seconds === undefined) throw new CoordinatorRunStateCorruptError();
+  return seconds;
+}
+
 export async function persistCoordinatorRunTransition(
   client: PoolClient,
   input: Readonly<{
@@ -98,7 +109,7 @@ export async function persistCoordinatorRunTransition(
     workflowVersionId: string;
     workspaceId: string;
   }>,
-): Promise<Readonly<{ scheduleDueAt?: string }>> {
+): Promise<Readonly<{ scheduleToStartSeconds?: number }>> {
   const { plan, row, runId, workspaceId } = input;
   await persistRunNotices(client, input);
   const checkpointUpdate = await drizzle(client)
@@ -178,9 +189,15 @@ export async function persistCoordinatorRunTransition(
   if (row.status === 'queued' && plan.checkpoint.runStatus !== 'queued')
     await wakeErrorWorkflowsForCapacity(client, workspaceId);
   await persistCallCompletion(client, input);
-  const scheduleDueAt = scheduledOccurrence(row, plan);
   await persistDerivedContinuation(client, input);
-  return Object.freeze(scheduleDueAt === undefined ? {} : { scheduleDueAt });
+  const scheduleDueAt = scheduledOccurrence(row, plan);
+  return Object.freeze(
+    scheduleDueAt === undefined
+      ? {}
+      : {
+          scheduleToStartSeconds: await secondsSince(client, scheduleDueAt),
+        },
+  );
 }
 
 async function persistRunNotices(

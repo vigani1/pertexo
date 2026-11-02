@@ -7,6 +7,7 @@ import {
 import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.queries.js';
 import { readPendingTaskFacts } from '../../pending-tasks/lifecycle/facts.queries.js';
 import type { PoolClient } from 'pg';
+import { z } from 'zod';
 import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
 
 import { projectExecutionSource } from '../../queries/execution/source.queries.js';
@@ -127,11 +128,11 @@ export async function loadRunForAdvance(
     });
   // Only invocations already waiting in the stored checkpoint can come due;
   // a wait recorded by a new fact comes due on the next advance.
-  const due = await readDueInvocations(client, {
-    workspaceId,
-    runId,
-    schedulerState: row.scheduler_state,
-  });
+  const waitingKeys = waitingInvocationKeys(row.scheduler_state);
+  const due =
+    waitingKeys.length === 0
+      ? []
+      : await readDueInvocations(client, { workspaceId, runId, waitingKeys });
   observations.push(
     ...due.map((dueRow) => ({
       kind: 'due_at',
@@ -156,6 +157,7 @@ export async function loadRunForAdvance(
       taskOutcomes,
       runId,
       workflowVersionId: row.workflow_version_id,
+      occurredAt: capacity.observedAt.toISOString(),
       checkpoint: row.scheduler_state,
       observations: Object.freeze(observations),
       completedOutputs: Object.freeze(
@@ -174,6 +176,21 @@ export async function loadRunForAdvance(
         }),
     }),
   });
+}
+
+const storedInvocationsSchema = z.object({
+  invocations: z.array(
+    z.object({ invocationKey: z.string(), status: z.string() }),
+  ),
+});
+
+/** Just what this needs of the checkpoint, which the engine parses in full afterwards. */
+function waitingInvocationKeys(schedulerState: unknown): readonly string[] {
+  const stored = storedInvocationsSchema.safeParse(schedulerState);
+  if (!stored.success) throw new CoordinatorRunStateCorruptError();
+  return stored.data.invocations.flatMap(({ invocationKey, status }) =>
+    status === 'waiting' ? [invocationKey] : [],
+  );
 }
 
 /** A run parked on a person or a timer has given its slot back, and so has a parent lending it. */

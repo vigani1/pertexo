@@ -19,7 +19,6 @@ import {
   DeliveryMismatch,
   validateAuthoritativeAdvanceDelivery,
 } from './receipts.repository.js';
-import { observeScheduleToStartSeconds } from './schedule-observation.repository.js';
 import { loadRunForAdvance } from './load/state.queries.js';
 import {
   assertCoordinatorNotAborted,
@@ -36,9 +35,8 @@ async function advance(
   const runId = input.runId;
   const delivery = input.delivery;
   const { signal, traceparent } = input;
-  let result: RunAdvanceResult & Readonly<{ scheduleDueAt?: string }>;
   try {
-    result = await withCoordinatorWriteClient(
+    return await withCoordinatorWriteClient(
       pool,
       workspaceId,
       signal,
@@ -90,18 +88,6 @@ async function advance(
       );
     throw error;
   }
-  if (result.kind !== 'committed' || !('scheduleDueAt' in result))
-    return result;
-  const { scheduleDueAt, ...committed } = result;
-  const scheduleToStartSeconds = await observeScheduleToStartSeconds(
-    pool,
-    scheduleDueAt,
-    signal,
-  );
-  return Object.freeze({
-    ...committed,
-    ...(scheduleToStartSeconds === undefined ? {} : { scheduleToStartSeconds }),
-  });
 }
 
 export function createRunAdvanceStore(

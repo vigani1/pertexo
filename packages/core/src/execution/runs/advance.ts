@@ -27,7 +27,6 @@ export type AdvanceRunDependencies = Readonly<{
   verification: PersistedWorkflowProjectionVerificationOptions;
   /** Most node attempts one transition may admit. */
   maximumAdmissions: number;
-  now(): string;
   expressionEvaluator?: ExpressionEvaluator;
 }>;
 
@@ -65,7 +64,7 @@ export async function advanceRun(
       callOutcomes: state.callOutcomes,
       taskOutcomes: state.taskOutcomes,
       hasExecutionSlot: state.hasExecutionSlot,
-      occurredAt: dependencies.now(),
+      occurredAt: state.occurredAt,
       maximumAdmissions: dependencies.maximumAdmissions,
       ...(state.workflow.test === undefined
         ? {}

@@ -33,6 +33,7 @@ export function createDecisionEngine(
               decision = await decide({
                 runId: input.runId,
                 workflowVersionId: input.workflowVersionId,
+                occurredAt: input.occurredAt,
                 checkpoint: input.checkpoint,
                 observations: input.observations,
                 hasExecutionSlot: true,
@@ -56,7 +57,6 @@ export function createDecisionEngine(
           },
           verification,
           maximumAdmissions: input.maximumAdmissions,
-          now: () => input.occurredAt,
         },
         {
           delivery: {
