@@ -36,7 +36,7 @@ import {
 
 type Scenario = Awaited<ReturnType<typeof createWebhookScenario>>;
 
-const SHARE_LOCK = /for share of "workflow"/iu;
+const SHARE_LOCK = /for share of /iu;
 const WORKSPACE_LOCK = /lock_workspace_run_admission/iu;
 
 let holders: Pool;
