@@ -22,10 +22,10 @@ const URL_VARIABLES = [
 export function slotEnvironment(base, slot) {
   const port = (name) => Number(base[name]) + slot * SLOT_PORT_STEP;
   const environment = {
-    // Still `pertexo-ci-<n>-<n>-browser`, the only form ownership checks accept.
+    // Still `pertexo-ci-<n>-<n>-<suffix>`, the only form ownership checks accept.
     COMPOSE_PROJECT_NAME: base.COMPOSE_PROJECT_NAME.replace(
-      /-browser$/u,
-      `${String(slot)}-browser`,
+      /-(browser|integration)$/u,
+      `${String(slot)}-$1`,
     ),
     POSTGRES_PORT: String(port('POSTGRES_PORT')),
     REDIS_PORT: String(port('REDIS_PORT')),
@@ -162,6 +162,15 @@ export function stopStacks(environments) {
       }),
     ),
   );
+}
+
+export async function printServiceLogs(environment) {
+  const { stdout } = await execute(
+    'docker',
+    ['compose', 'logs', '--no-color', '--timestamps'],
+    { env: environment, maxBuffer: 64 * 1024 * 1024 },
+  );
+  console.log(stdout);
 }
 
 export function summary(results) {

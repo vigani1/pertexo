@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { parse } from 'yaml';
 
 import { journeyCommand } from './run-browser-journeys.mjs';
+import { shardCommand } from './run-worker-suite.mjs';
 import { runSideBySide, slotEnvironment } from './side-by-side.mjs';
 
 const base = {
@@ -86,4 +87,22 @@ test('CI runs the journeys Code steps need where their Python is installed', () 
   );
   const withCode = live.find(({ journeys }) => /\bcode\b/u.test(journeys));
   assert.ok(python.if.includes(withCode.suite));
+});
+
+test('the worker suite runs every shard, each on a stack of its own', () => {
+  const commands = [0, 1, 2].map((shard) => shardCommand(shard, 3));
+  assert.deepEqual(
+    commands.map(({ args }) => args.find((a) => a.startsWith('--shard'))),
+    ['--shard=1/3', '--shard=2/3', '--shard=3/3'],
+  );
+  const projects = [0, 1, 2].map(
+    (slot) =>
+      slotEnvironment(
+        { ...base, COMPOSE_PROJECT_NAME: 'pertexo-ci-1-1-integration' },
+        slot,
+      ).COMPOSE_PROJECT_NAME,
+  );
+  assert.equal(new Set(projects).size, 3);
+  for (const project of projects)
+    assert.match(project, /^pertexo-ci-\d+-\d+-integration$/u);
 });
