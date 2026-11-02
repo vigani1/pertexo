@@ -30,3 +30,15 @@ describe('dates in an English interface', () => {
     expect(formatDate('2026-10-20T15:09:00.000Z')).toContain('Oct');
   });
 });
+
+describe('formatMoment', () => {
+  it('says the day unless it is today', async () => {
+    const { formatClock, formatDateTime, formatMoment } =
+      await import('../../../src/lib/format/time');
+    const today = new Date().toISOString();
+    const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60_000).toISOString();
+    expect(formatMoment(today)).toBe(formatClock(today));
+    expect(formatMoment(lastWeek)).toBe(formatDateTime(lastWeek));
+    expect(formatMoment(lastWeek)).not.toBe(formatClock(lastWeek));
+  });
+});
