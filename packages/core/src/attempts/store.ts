@@ -4,18 +4,18 @@ import type {
   DatabaseConfig,
 } from '@pertexo/database/platform';
 
-import { claimNodeAttemptDelivery } from './leases/claim.repository.js';
-import { completeNodeAttempt } from './completion/complete.repository.js';
-import { markNodeAttemptDispatched } from './dispatch/mark.repository.js';
-import { heartbeatNodeAttempt } from './leases/heartbeat.repository.js';
-import { recordNodeAttemptInput } from './inputs/record.repository.js';
-import { loadNodeAttemptInputs } from './inputs/load.queries.js';
+import { claimNodeAttemptDelivery } from './leases/claim.js';
+import { completeNodeAttempt } from './completion/complete.js';
+import { markNodeAttemptDispatched } from './dispatch/mark.js';
+import { heartbeatNodeAttempt } from './leases/heartbeat.js';
+import { recordNodeAttemptInput } from './inputs/record.js';
+import { loadNodeAttemptInputs } from './inputs/load.js';
 import {
   readNodeAttemptLoopDeclaration,
   readNodeAttemptOutputs,
   listNodeRunOutcomes,
   readNodeRunOutputs,
-} from './queries/outputs.queries.js';
+} from './outputs.queries.js';
 
 import type { NodeAttemptRunStore } from './contract.js';
 

@@ -16,7 +16,7 @@ import type { PoolClient } from 'pg';
 import {
   lockCapabilityExecution,
   assertCapabilityExecution,
-} from '../../../attempts/dispatch/fence.repository.js';
+} from '../../../attempts/dispatch/fence.queries.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { CallbackCapacityError } from './errors.js';
 import type { CallbackStore, PreparedCallback } from './contract.js';

@@ -4,10 +4,10 @@ import type { PoolClient } from 'pg';
 
 import { NodeAttemptStateCorruptError } from '../errors.js';
 import type { CompleteNodeAttemptResult } from '../contract.js';
-import { completeReceipt } from './receipts.repository.js';
+import { completeReceipt } from './receipts.queries.js';
 
 import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
-import { assertConnectionHealthReplay } from './connection-health.repository.js';
+import { assertConnectionHealthReplay } from './connection-health.queries.js';
 import type {
   CompletionInput,
   CompletionReceiptRow,
