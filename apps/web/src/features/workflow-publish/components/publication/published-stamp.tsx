@@ -19,6 +19,7 @@ export function PublishedStamp({
   reused,
   liveAgain,
   hasTriggers,
+  needsTriggerSetup,
   canRun,
   onRunNow,
   onDismiss,
@@ -28,6 +29,8 @@ export function PublishedStamp({
   reused: boolean;
   liveAgain: boolean;
   hasTriggers: boolean;
+  /** Published, but nothing can start it until its webhook address exists. */
+  needsTriggerSetup: boolean;
   canRun: boolean;
   onRunNow: () => void;
   onDismiss: () => void;
@@ -66,8 +69,9 @@ export function PublishedStamp({
           <div className="flex items-center justify-between gap-2">
             <Status tone="success">
               <span className="font-heading text-[0.95rem] font-semibold text-foreground">
-                v{versionNumber} is{' '}
-                {publicationStateLabel({ reused, liveAgain })}
+                {needsTriggerSetup
+                  ? `v${String(versionNumber)} is published`
+                  : `v${String(versionNumber)} is ${publicationStateLabel({ reused, liveAgain })}`}
               </span>
             </Status>
             <Button
@@ -80,15 +84,22 @@ export function PublishedStamp({
               <XIcon />
             </Button>
           </div>
+          {needsTriggerSetup ? (
+            <p className="text-sm text-muted-foreground">
+              One step left: create the webhook address.
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
-            {hasTriggers ? (
+            {hasTriggers || needsTriggerSetup ? (
               <Link
                 to="/w/$workspaceId/workflows/$workflowId/triggers"
                 params={{ workspaceId, workflowId }}
                 className={buttonVariants({ size: 'sm', variant: 'outline' })}
               >
                 <ZapIcon data-icon="inline-start" />
-                Open Triggers
+                {needsTriggerSetup
+                  ? 'Create the webhook address'
+                  : 'Open Triggers'}
               </Link>
             ) : null}
             {canRun ? (
