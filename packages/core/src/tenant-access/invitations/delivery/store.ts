@@ -8,7 +8,14 @@ import {
   outboxEvents,
 } from '@pertexo/database/schema';
 import { lockDeliveryScope } from './authority.queries.js';
-import type { WorkspaceInvitationDeliveryStore } from './contract.js';
+import type {
+  ClaimInvitationDeliveryInput,
+  CompleteInvitationDeliveryInput,
+  ConfirmInvitationDeliveryInput,
+  MarkInvitationDeliveryDispatchingInput,
+  RetryInvitationDeliveryInput,
+  WorkspaceInvitationDeliveryClaim,
+} from './contract.js';
 import { assertInvitationDeliveryIdentity } from './identity.queries.js';
 import { sealedToken } from '../input.js';
 import { DELIVERY_CONSUMER } from '../../../outbox/delivery-consumers.js';
@@ -27,26 +34,27 @@ import {
 } from '@pertexo/database/platform';
 
 /** Off withWorkspaceAccess: the worker delivers it, with no member behind it. */
+export type WorkspaceInvitationDeliveryStore = ReturnType<
+  typeof createWorkspaceInvitationDeliveryStore
+>;
+
 export function createWorkspaceInvitationDeliveryStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkspaceInvitationDeliveryStore {
+) {
   const lease = acquireDatabasePool(config, runtime, { role: 'worker' });
 
   return Object.freeze({
-    claim: (raw: Parameters<WorkspaceInvitationDeliveryStore['claim']>[0]) =>
+    claim: (raw: ClaimInvitationDeliveryInput) =>
       claimInvitationDelivery(lease.pool, raw),
-    markDispatching: (
-      raw: Parameters<WorkspaceInvitationDeliveryStore['markDispatching']>[0],
-    ) => markInvitationDeliveryDispatching(lease.pool, raw),
-    retry: (raw: Parameters<WorkspaceInvitationDeliveryStore['retry']>[0]) =>
+    markDispatching: (raw: MarkInvitationDeliveryDispatchingInput) =>
+      markInvitationDeliveryDispatching(lease.pool, raw),
+    retry: (raw: RetryInvitationDeliveryInput) =>
       retryInvitationDelivery(lease.pool, raw),
-    complete: (
-      raw: Parameters<WorkspaceInvitationDeliveryStore['complete']>[0],
-    ) => completeInvitationDelivery(lease.pool, raw),
-    confirm: (
-      raw: Parameters<WorkspaceInvitationDeliveryStore['confirm']>[0],
-    ) => confirmInvitationDelivery(lease.pool, raw),
+    complete: (raw: CompleteInvitationDeliveryInput) =>
+      completeInvitationDelivery(lease.pool, raw),
+    confirm: (raw: ConfirmInvitationDeliveryInput) =>
+      confirmInvitationDelivery(lease.pool, raw),
     close: () => lease.close(),
   });
 }
@@ -66,8 +74,8 @@ function transaction<T>(
 }
 async function claimInvitationDelivery(
   pool: Pool,
-  raw: Parameters<WorkspaceInvitationDeliveryStore['claim']>[0],
-): ReturnType<WorkspaceInvitationDeliveryStore['claim']> {
+  raw: ClaimInvitationDeliveryInput,
+): Promise<WorkspaceInvitationDeliveryClaim> {
   const workspaceId = raw.workspaceId;
   const invitationId = raw.invitationId;
   const deliveryAttemptId = raw.deliveryAttemptId;
@@ -194,10 +202,11 @@ async function claimInvitationDelivery(
   });
 }
 
+/** This event's job is done: nothing needs to deliver it again. */
 async function confirmInvitationDelivery(
   pool: Pool,
-  raw: Parameters<WorkspaceInvitationDeliveryStore['confirm']>[0],
-): ReturnType<WorkspaceInvitationDeliveryStore['confirm']> {
+  raw: ConfirmInvitationDeliveryInput,
+): Promise<void> {
   await transaction(pool, raw.workspaceId, raw.signal, async (client) => {
     await drizzle(client)
       .execute(
@@ -212,10 +221,15 @@ async function confirmInvitationDelivery(
   });
 }
 
+/**
+ * False when another delivery of this attempt got there first. A claim of a
+ * `queued` attempt may only take it from `queued`: two copies of one job can
+ * both read it, and only one of them may send.
+ */
 async function markInvitationDeliveryDispatching(
   pool: Pool,
-  raw: Parameters<WorkspaceInvitationDeliveryStore['markDispatching']>[0],
-): ReturnType<WorkspaceInvitationDeliveryStore['markDispatching']> {
+  raw: MarkInvitationDeliveryDispatchingInput,
+): Promise<boolean> {
   const workspaceId = raw.workspaceId;
   return transaction(pool, workspaceId, raw.signal, async (client) => {
     const invitationId = raw.invitationId;
@@ -245,8 +259,8 @@ async function markInvitationDeliveryDispatching(
 
 async function retryInvitationDelivery(
   pool: Pool,
-  raw: Parameters<WorkspaceInvitationDeliveryStore['retry']>[0],
-): ReturnType<WorkspaceInvitationDeliveryStore['retry']> {
+  raw: RetryInvitationDeliveryInput,
+): Promise<boolean> {
   const workspaceId = raw.workspaceId;
   const invitationId = raw.invitationId;
   const deliveryAttemptId = raw.deliveryAttemptId;
@@ -293,8 +307,8 @@ async function retryInvitationDelivery(
 
 async function completeInvitationDelivery(
   pool: Pool,
-  raw: Parameters<WorkspaceInvitationDeliveryStore['complete']>[0],
-): ReturnType<WorkspaceInvitationDeliveryStore['complete']> {
+  raw: CompleteInvitationDeliveryInput,
+): Promise<void> {
   const workspaceId = raw.workspaceId;
   await transaction(pool, workspaceId, raw.signal, async (client) => {
     const invitationId = raw.invitationId;

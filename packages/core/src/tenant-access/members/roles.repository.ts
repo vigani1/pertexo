@@ -7,7 +7,6 @@ import { canChangeWorkspaceMemberRole } from '@pertexo/workflow-model';
 import { commandRevisionSchema } from '../command-keys.js';
 import type {
   ChangeWorkspaceMemberRoleInput,
-  IdentityWorkspaceStore,
   WorkspaceMemberRoleChangeResult,
 } from '../contract.js';
 import { WorkspaceMemberRoleCommandConflictError } from '../errors.js';
@@ -17,11 +16,6 @@ import {
   isActiveMemberManager,
   recordMemberCommandAudit,
 } from './commands.repository.js';
-
-type RoleCommandStore = Pick<
-  IdentityWorkspaceStore,
-  'changeWorkspaceMemberRole'
->;
 
 const inputRole = z.enum(DELEGATED_ROLES);
 const durableResult = z
@@ -42,11 +36,11 @@ function conflict(
   return new WorkspaceMemberRoleCommandConflictError(reason, message);
 }
 
-export function createIdentityWorkspaceRoleCommandStore(
-  pool: Pool,
-): RoleCommandStore {
+export function createIdentityWorkspaceRoleCommandStore(pool: Pool) {
   return Object.freeze({
-    changeWorkspaceMemberRole: (raw: ChangeWorkspaceMemberRoleInput) => {
+    changeWorkspaceMemberRole: (
+      raw: ChangeWorkspaceMemberRoleInput,
+    ): Promise<WorkspaceMemberRoleChangeResult> => {
       const role = raw.role;
       const expectedRoleRevision = raw.expectedRoleRevision;
       return executeMemberCommand(pool, {

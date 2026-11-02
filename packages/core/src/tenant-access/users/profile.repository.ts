@@ -16,15 +16,12 @@ import {
   hashIdentityCommandKey,
 } from '../command-keys.js';
 import type {
-  IdentityWorkspaceStore,
   UpdateUserProfileInput,
   UserProfileUpdateResult,
   UserRecord,
 } from '../contract.js';
 import { UserProfileCommandConflictError } from '../errors.js';
 import { userRecord, userSelection } from './projection.js';
-
-type ProfileStore = Pick<IdentityWorkspaceStore, 'updateUserProfile'>;
 
 const displayNameSchema = z
   .string()
@@ -102,7 +99,7 @@ async function claimProfileReceipt(
  * command on the actor's own platform user row. It never reads or changes
  * email, status, credentials or sessions.
  */
-export function createIdentityWorkspaceProfileStore(pool: Pool): ProfileStore {
+export function createIdentityWorkspaceProfileStore(pool: Pool) {
   return Object.freeze({
     updateUserProfile: async (
       raw: UpdateUserProfileInput,

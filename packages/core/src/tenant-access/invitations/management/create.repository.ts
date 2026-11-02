@@ -17,7 +17,10 @@ import {
   canonicalEmail,
 } from '@pertexo/workflow-model';
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
-import type { InvitationStore } from './contract.js';
+import type {
+  CreateWorkspaceInvitationInput,
+  WorkspaceInvitationCommandResult,
+} from '../../contract.js';
 import {
   claimInvitationCommand,
   completeInvitationCommand,
@@ -29,8 +32,8 @@ import { invitationSelection, lockAuthorizedActor } from './state.queries.js';
 
 export async function createWorkspaceInvitation(
   pool: Pool,
-  raw: Parameters<InvitationStore['createWorkspaceInvitation']>[0],
-): ReturnType<InvitationStore['createWorkspaceInvitation']> {
+  raw: CreateWorkspaceInvitationInput,
+): Promise<WorkspaceInvitationCommandResult> {
   const workspaceId = raw.workspaceId;
   const actorUserId = raw.actorUserId;
   const invitationId = raw.invitationId ?? generatePersistedId();

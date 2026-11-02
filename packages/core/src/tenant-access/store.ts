@@ -17,7 +17,6 @@ import { workspaces } from '@pertexo/database/schema';
 
 import { changeWorkspaceLifecycle } from '../lifecycle/deletion/change.js';
 import type {
-  IdentityWorkspaceStore,
   RequestWorkspaceLifecycleOperationInput,
   WorkspaceLifecycleOperation,
   WorkspaceRecord,
@@ -48,14 +47,18 @@ import {
 } from './workspaces/projection.js';
 import { createIdentityWorkspaceRenameStore } from './workspaces/rename.repository.js';
 
+export type IdentityWorkspaceStore = ReturnType<
+  typeof createIdentityWorkspaceStore
+>;
+
 export function createIdentityWorkspaceStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): IdentityWorkspaceStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
 
-  const database = {
+  return Object.freeze({
     ...createUserStore(pool),
     ...createIdentityWorkspaceMemberStore(pool),
     ...createIdentityWorkspaceRoleCommandStore(pool),
@@ -74,9 +77,7 @@ export function createIdentityWorkspaceStore(
     ) => requestWorkspaceLifecycleOperation(pool, input),
 
     close: () => lease.close(),
-  } satisfies IdentityWorkspaceStore;
-
-  return Object.freeze(database);
+  });
 }
 
 /** Off the helper: the workspace and its first member don't exist yet. */

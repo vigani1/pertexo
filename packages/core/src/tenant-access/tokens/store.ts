@@ -14,7 +14,10 @@ import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { ApiTokenCreateRequest } from '@pertexo/contracts';
+import type {
+  ApiTokenCreateResponse,
+  ApiTokenRevokeResponse,
+} from '@pertexo/contracts';
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
@@ -32,7 +35,14 @@ import {
 } from './authority.queries.js';
 import { authenticateApiToken } from './authenticate.repository.js';
 import { ApiTokenPolicyError } from './errors.js';
-import type { ApiTokenCommand, ApiTokenStore } from './contract.js';
+import type {
+  ApiTokenCommand,
+  ApiTokensPage,
+  CreateApiTokenInput,
+  ListApiTokensInput,
+  RevokeApiTokenInput,
+} from './contract.js';
+import type { ParsedApiTokenCredential } from './credential.js';
 
 const receipt = z.object({ tokenId: z.uuid() }).strict();
 const commandIdentity = (
@@ -96,27 +106,27 @@ async function recordTokenAudit(
   });
 }
 
+export type ApiTokenStore = ReturnType<typeof createApiTokenStore>;
+
 export function createApiTokenStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): ApiTokenStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
-  const store: ApiTokenStore = {
+  return Object.freeze({
     close: () => lease.close(),
-    authenticate: (input, signal) =>
+    authenticate: (input: ParsedApiTokenCredential, signal?: AbortSignal) =>
       authenticateApiToken(lease.pool, input, signal),
-    list: (input) => listApiTokens(lease.pool, input),
-    create: (input: ApiTokenCommand & ApiTokenCreateRequest) =>
-      createApiToken(lease.pool, input),
-    revoke: (input) => revokeApiToken(lease.pool, input),
-  };
-  return Object.freeze(store);
+    list: (input: ListApiTokensInput) => listApiTokens(lease.pool, input),
+    create: (input: CreateApiTokenInput) => createApiToken(lease.pool, input),
+    revoke: (input: RevokeApiTokenInput) => revokeApiToken(lease.pool, input),
+  });
 }
 
 function listApiTokens(
   pool: Pool,
-  input: Parameters<ApiTokenStore['list']>[0],
-): ReturnType<ApiTokenStore['list']> {
+  input: ListApiTokensInput,
+): Promise<ApiTokensPage> {
   return withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId, actorId: input.ownerUserId },
@@ -153,8 +163,8 @@ function listApiTokens(
 
 function createApiToken(
   pool: Pool,
-  input: Parameters<ApiTokenStore['create']>[0],
-): ReturnType<ApiTokenStore['create']> {
+  input: CreateApiTokenInput,
+): Promise<ApiTokenCreateResponse> {
   return withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId, actorId: input.ownerUserId },
@@ -231,8 +241,8 @@ function createApiToken(
 
 function revokeApiToken(
   pool: Pool,
-  input: Parameters<ApiTokenStore['revoke']>[0],
-): ReturnType<ApiTokenStore['revoke']> {
+  input: RevokeApiTokenInput,
+): Promise<ApiTokenRevokeResponse> {
   return withTenantScopedClient(
     pool,
     { workspaceId: input.workspaceId, actorId: input.ownerUserId },

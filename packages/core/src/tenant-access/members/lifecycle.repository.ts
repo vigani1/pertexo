@@ -10,10 +10,12 @@ import {
 } from '@pertexo/workflow-model';
 import { commandRevisionSchema } from '../command-keys.js';
 import type {
-  IdentityWorkspaceStore,
   LeaveWorkspaceInput,
   TransferWorkspaceOwnershipInput,
+  WorkspaceMemberRemovalResult,
   WorkspaceMemberStatusCommandInput,
+  WorkspaceMemberStatusResult,
+  WorkspaceOwnershipTransferResult,
 } from '../contract.js';
 import {
   WorkspaceMembershipCommandConflictError,
@@ -27,14 +29,6 @@ import {
   type AdmittedMemberCommand,
   type LockedMember,
 } from './commands.repository.js';
-
-type MembershipLifecycleStore = Pick<
-  IdentityWorkspaceStore,
-  | 'leaveWorkspace'
-  | 'suspendWorkspaceMember'
-  | 'reactivateWorkspaceMember'
-  | 'transferWorkspaceOwnership'
->;
 
 const departureResult = z
   .object({ userId: z.uuid(), roleRevision: commandRevisionSchema })
@@ -110,7 +104,10 @@ function requireTargetPresent(target: LockedMember): void {
  * membership. It is recorded like a removal, and every session of the person
  * ends, including the one that asked.
  */
-function leaveWorkspace(pool: Pool, raw: LeaveWorkspaceInput) {
+function leaveWorkspace(
+  pool: Pool,
+  raw: LeaveWorkspaceInput,
+): Promise<WorkspaceMemberRemovalResult> {
   return executeMemberCommand(pool, {
     operation: 'workspace.member.departure',
     workspaceId: raw.workspaceId,
@@ -166,7 +163,7 @@ function changeMemberStatus(
   pool: Pool,
   raw: WorkspaceMemberStatusCommandInput,
   direction: keyof typeof STATUS_CHANGES,
-) {
+): Promise<WorkspaceMemberStatusResult> {
   const change = STATUS_CHANGES[direction];
   const expectedRoleRevision = raw.expectedRoleRevision;
   return executeMemberCommand(pool, {
@@ -234,7 +231,7 @@ function changeMemberStatus(
 function transferWorkspaceOwnership(
   pool: Pool,
   raw: TransferWorkspaceOwnershipInput,
-) {
+): Promise<WorkspaceOwnershipTransferResult> {
   const expectedRoleRevision = raw.expectedRoleRevision;
   const expectedOwnerRoleRevision = raw.expectedOwnerRoleRevision;
   return executeMemberCommand(pool, {
@@ -324,16 +321,14 @@ function transferWorkspaceOwnership(
 }
 
 /** ADR 047 leave, suspend, reactivate and ownership transfer commands. */
-export function createIdentityWorkspaceMembershipLifecycleStore(
-  pool: Pool,
-): MembershipLifecycleStore {
+export function createIdentityWorkspaceMembershipLifecycleStore(pool: Pool) {
   return Object.freeze({
-    leaveWorkspace: (input) => leaveWorkspace(pool, input),
-    suspendWorkspaceMember: (input) =>
+    leaveWorkspace: (input: LeaveWorkspaceInput) => leaveWorkspace(pool, input),
+    suspendWorkspaceMember: (input: WorkspaceMemberStatusCommandInput) =>
       changeMemberStatus(pool, input, 'suspend'),
-    reactivateWorkspaceMember: (input) =>
+    reactivateWorkspaceMember: (input: WorkspaceMemberStatusCommandInput) =>
       changeMemberStatus(pool, input, 'reactivate'),
-    transferWorkspaceOwnership: (input) =>
+    transferWorkspaceOwnership: (input: TransferWorkspaceOwnershipInput) =>
       transferWorkspaceOwnership(pool, input),
   });
 }

@@ -15,14 +15,17 @@ import {
 } from '@pertexo/database/schema';
 
 import { withPlatformTransaction } from '@pertexo/database/platform';
-import type { AcceptanceStore } from './contract.js';
+import type {
+  InvitationAcceptanceIntentRecord,
+  RecordInvitationAcceptanceProofInput,
+} from '../../contract.js';
 import { selectIntent } from './state.queries.js';
 
 export async function readInvitationAcceptance(
   pool: Pool,
-  workspaceId: Parameters<AcceptanceStore['readInvitationAcceptance']>[0],
-  bindingDigest: Parameters<AcceptanceStore['readInvitationAcceptance']>[1],
-): ReturnType<AcceptanceStore['readInvitationAcceptance']> {
+  workspaceId: string,
+  bindingDigest: string,
+): Promise<InvitationAcceptanceIntentRecord | null> {
   return withPlatformTransaction(pool, async (client) => {
     const intent = await withWorkspaceScope(client, { workspaceId }, (scoped) =>
       selectIntent(
@@ -48,8 +51,8 @@ export async function readInvitationAcceptance(
 
 export async function recordInvitationAcceptanceProof(
   pool: Pool,
-  raw: Parameters<AcceptanceStore['recordInvitationAcceptanceProof']>[0],
-): ReturnType<AcceptanceStore['recordInvitationAcceptanceProof']> {
+  raw: RecordInvitationAcceptanceProofInput,
+): Promise<InvitationAcceptanceIntentRecord | null> {
   const workspaceId = raw.workspaceId;
   const intentId = raw.intentId;
   const userId = raw.userId;
@@ -120,10 +123,10 @@ export async function recordInvitationAcceptanceProof(
 
 export async function abandonInvitationAcceptance(
   pool: Pool,
-  workspaceId: Parameters<AcceptanceStore['abandonInvitationAcceptance']>[0],
-  intentId: Parameters<AcceptanceStore['abandonInvitationAcceptance']>[1],
-  bindingDigest: Parameters<AcceptanceStore['abandonInvitationAcceptance']>[2],
-): ReturnType<AcceptanceStore['abandonInvitationAcceptance']> {
+  workspaceId: string,
+  intentId: string,
+  bindingDigest: string,
+): Promise<boolean> {
   return withTenantScopedClient(pool, { workspaceId }, async (client) => {
     const updated = await drizzle(client)
       .update(intents)

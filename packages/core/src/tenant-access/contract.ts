@@ -124,7 +124,7 @@ export type WorkspaceOwnershipTransferResult = Readonly<{
 }>;
 export type WorkspaceMembersPage = Readonly<{
   items: readonly WorkspaceMemberRecord[];
-  nextCursor?: Readonly<{ createdAt: string; userId: string }>;
+  nextCursor?: WorkspaceMembersPosition;
 }>;
 export type WorkspaceInvitationStatus =
   'pending' | 'accepted' | 'revoked' | 'expired';
@@ -180,7 +180,7 @@ export type WorkspaceInvitationCommandResult = Readonly<{
 }>;
 export type WorkspaceInvitationsPage = Readonly<{
   items: readonly WorkspaceInvitationRecord[];
-  nextCursor?: Readonly<{ createdAt: string; invitationId: string }>;
+  nextCursor?: WorkspaceInvitationsPosition;
 }>;
 // Intent joined to workspace, invitation and recipient receipt data.
 export type InvitationAcceptanceIntentRecord = Readonly<{
@@ -302,96 +302,33 @@ export type RequestWorkspaceLifecycleOperationInput = Readonly<{
   idempotencyKey: string;
 }>;
 
-export type IdentityWorkspaceStore = Readonly<{
-  createUser(input: CreateUserInput): Promise<UserRecord>;
-  findUserById(userId: string): Promise<UserRecord | null>;
-  findWorkspaceAccess(
-    actorId: string,
-    workspaceId: string,
-    options?: Readonly<{ signal?: AbortSignal }>,
-  ): Promise<WorkspaceAccessRecord | null>;
-  listWorkspaceMembers(
-    workspaceId: string,
-    actorId: string,
-    input?: Readonly<{
-      limit?: number;
-      after?: Readonly<{ createdAt: string; userId: string }>;
-    }>,
-  ): Promise<WorkspaceMembersPage>;
-  changeWorkspaceMemberRole(
-    input: ChangeWorkspaceMemberRoleInput,
-  ): Promise<WorkspaceMemberRoleChangeResult>;
-  removeWorkspaceMember(
-    input: RemoveWorkspaceMemberInput,
-  ): Promise<WorkspaceMemberRemovalResult>;
-  leaveWorkspace(
-    input: LeaveWorkspaceInput,
-  ): Promise<WorkspaceMemberRemovalResult>;
-  suspendWorkspaceMember(
-    input: WorkspaceMemberStatusCommandInput,
-  ): Promise<WorkspaceMemberStatusResult>;
-  reactivateWorkspaceMember(
-    input: WorkspaceMemberStatusCommandInput,
-  ): Promise<WorkspaceMemberStatusResult>;
-  transferWorkspaceOwnership(
-    input: TransferWorkspaceOwnershipInput,
-  ): Promise<WorkspaceOwnershipTransferResult>;
-  updateUserProfile(
-    input: UpdateUserProfileInput,
-  ): Promise<UserProfileUpdateResult>;
-  listWorkspaceInvitations(
-    workspaceId: string,
-    actorId: string,
-    input?: Readonly<{
-      limit?: number;
-      after?: Readonly<{ createdAt: string; invitationId: string }>;
-    }>,
-  ): Promise<WorkspaceInvitationsPage>;
-  createWorkspaceInvitation(
-    input: CreateWorkspaceInvitationInput,
-  ): Promise<WorkspaceInvitationCommandResult>;
-  resendWorkspaceInvitation(
-    input: ChangeWorkspaceInvitationInput,
-  ): Promise<WorkspaceInvitationCommandResult>;
-  revokeWorkspaceInvitation(
-    input: ChangeWorkspaceInvitationInput,
-  ): Promise<WorkspaceInvitationCommandResult>;
-  resolveInvitationAcceptance(
-    input: ResolveInvitationAcceptanceInput,
-  ): Promise<InvitationAcceptanceIntentRecord | null>;
-  readInvitationAcceptance(
-    workspaceId: string,
-    bindingDigest: string,
-  ): Promise<InvitationAcceptanceIntentRecord | null>;
-  recordInvitationAcceptanceProof(
-    input: Readonly<{
-      workspaceId: string;
-      intentId: string;
-      bindingDigest: string;
-      userId: string;
-      sessionId: string;
-      verifiedEmail: string;
-      verifiedAt: Date;
-    }>,
-  ): Promise<InvitationAcceptanceIntentRecord | null>;
-  completeInvitationAcceptance(
-    input: CompleteInvitationAcceptanceInput,
-  ): Promise<InvitationAcceptanceResult>;
-  abandonInvitationAcceptance(
-    workspaceId: string,
-    intentId: string,
-    bindingDigest: string,
-  ): Promise<boolean>;
-  listAccessibleWorkspaces(
-    actorId: string,
-    input?: Readonly<{ limit?: number; after?: string }>,
-  ): Promise<AccessibleWorkspacesPage>;
-  createWorkspaceWithOwner(
-    input: WorkspaceWithOwnerInput,
-  ): Promise<WorkspaceRecord>;
-  renameWorkspace(input: RenameWorkspaceInput): Promise<WorkspaceRenameResult>;
-  requestWorkspaceLifecycleOperation(
-    input: RequestWorkspaceLifecycleOperationInput,
-  ): Promise<WorkspaceLifecycleOperation>;
-  close(): Promise<void>;
+export type WorkspaceMembersPosition = Readonly<{
+  createdAt: string;
+  userId: string;
+}>;
+export type ListWorkspaceMembersInput = Readonly<{
+  limit?: number;
+  after?: WorkspaceMembersPosition;
+}>;
+export type WorkspaceInvitationsPosition = Readonly<{
+  createdAt: string;
+  invitationId: string;
+}>;
+export type ListWorkspaceInvitationsInput = Readonly<{
+  limit?: number;
+  after?: WorkspaceInvitationsPosition;
+}>;
+export type ListAccessibleWorkspacesInput = Readonly<{
+  limit?: number;
+  after?: string;
+}>;
+export type FindWorkspaceAccessOptions = Readonly<{ signal?: AbortSignal }>;
+export type RecordInvitationAcceptanceProofInput = Readonly<{
+  workspaceId: string;
+  intentId: string;
+  bindingDigest: string;
+  userId: string;
+  sessionId: string;
+  verifiedEmail: string;
+  verifiedAt: Date;
 }>;
