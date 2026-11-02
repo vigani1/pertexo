@@ -1,10 +1,7 @@
 import type {
   AudienceReview,
-  FolderSharing,
   FolderSharingRequest,
-  SharingPrincipals,
   SharingPrincipalsQuery,
-  WorkflowMoveReview,
   WorkflowMoveReviewRequest,
 } from '@pertexo/contracts';
 import type { workflowFolders } from '@pertexo/database/schema';
@@ -42,44 +39,32 @@ export type WorkflowFolderPlacementResult = Readonly<{
   replayed: boolean;
 }>;
 
-export interface WorkflowFolderStore {
-  sharingPrincipals(
-    input: OrganizationRequestScope & { query: SharingPrincipalsQuery },
-  ): Promise<SharingPrincipals>;
-  readSharing(
-    input: OrganizationRequestScope & { folderId: string },
-  ): Promise<FolderSharing>;
-  replaceSharing(
-    input: Command & { folderId: string; request: FolderSharingRequest },
-  ): Promise<FolderSharing & { replayed: boolean }>;
-  reviewMove(
-    input: OrganizationRequestScope & { request: WorkflowMoveReviewRequest },
-  ): Promise<WorkflowMoveReview>;
-  listFolders(
-    input: OrganizationRequestScope,
-  ): Promise<Readonly<{ items: readonly WorkflowFolderRecord[] }>>;
-  createFolder(
-    input: Command & Readonly<{ name: string; parentId: string | null }>,
-  ): Promise<WorkflowFolderCommandResult>;
-  renameFolder(
-    input: FolderCommand & Readonly<{ name: string }>,
-  ): Promise<WorkflowFolderCommandResult>;
-  moveFolder(
-    input: FolderCommand &
-      Readonly<{
-        parentId: string | null;
-        audienceReview?: AudienceReview | undefined;
-      }>,
-  ): Promise<WorkflowFolderCommandResult>;
-  deleteFolder(input: FolderCommand): Promise<WorkflowFolderDeleteResult>;
-  placeWorkflow(
-    input: Command &
-      Readonly<{
-        workflowId: string;
-        folderId: string | null;
-        expectedOrganizationRevision: number;
-        audienceReview?: AudienceReview | undefined;
-      }>,
-  ): Promise<WorkflowFolderPlacementResult>;
-  close(): Promise<void>;
-}
+export type SharingPrincipalsInput = OrganizationRequestScope & {
+  query: SharingPrincipalsQuery;
+};
+export type ReadFolderSharingInput = OrganizationRequestScope & {
+  folderId: string;
+};
+export type ReplaceFolderSharingInput = Command & {
+  folderId: string;
+  request: FolderSharingRequest;
+};
+export type ReviewMoveInput = OrganizationRequestScope & {
+  request: WorkflowMoveReviewRequest;
+};
+export type CreateFolderInput = Command &
+  Readonly<{ name: string; parentId: string | null }>;
+export type RenameFolderInput = FolderCommand & Readonly<{ name: string }>;
+export type MoveFolderInput = FolderCommand &
+  Readonly<{
+    parentId: string | null;
+    audienceReview?: AudienceReview | undefined;
+  }>;
+export type DeleteFolderInput = FolderCommand;
+export type PlaceWorkflowInput = Command &
+  Readonly<{
+    workflowId: string;
+    folderId: string | null;
+    expectedOrganizationRevision: number;
+    audienceReview?: AudienceReview | undefined;
+  }>;

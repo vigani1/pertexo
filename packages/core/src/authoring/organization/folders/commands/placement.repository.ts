@@ -1,3 +1,4 @@
+import type { WorkflowMoveReview } from '@pertexo/contracts';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { reviewMoveAudience } from '../../sharing/audience.queries.js';
 
@@ -8,13 +9,17 @@ import {
   organizeWorkflow,
 } from '../../placement.repository.js';
 import type { createOrganizationSession } from '../../session.js';
-import type { WorkflowFolderStore } from '../contract.js';
+import type {
+  PlaceWorkflowInput,
+  ReviewMoveInput,
+  WorkflowFolderPlacementResult,
+} from '../contract.js';
 import { placementResult } from '../input.js';
 
 export function reviewFolderMove(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderStore['reviewMove']>[0],
-): ReturnType<WorkflowFolderStore['reviewMove']> {
+  input: ReviewMoveInput,
+): Promise<WorkflowMoveReview> {
   return session.read(
     input,
     'workflow:update',
@@ -27,8 +32,8 @@ export function reviewFolderMove(
 
 export async function placeWorkflow(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderStore['placeWorkflow']>[0],
-): ReturnType<WorkflowFolderStore['placeWorkflow']> {
+  input: PlaceWorkflowInput,
+): Promise<WorkflowFolderPlacementResult> {
   const workflowId = input.workflowId;
   const request = {
     folderId: input.folderId,

@@ -1,3 +1,4 @@
+import type { OrganizationRequestScope } from '../session.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -9,12 +10,12 @@ import { FOLDER_DEPTH_LIMIT } from '../limits.js';
 import { FOLDER_LIMIT } from '../../../shared/folder-policy.js';
 
 import type { createOrganizationSession } from '../session.js';
-import type { WorkflowFolderStore } from './contract.js';
+import type { WorkflowFolderRecord } from './contract.js';
 
 export function listFolders(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderStore['listFolders']>[0],
-): ReturnType<WorkflowFolderStore['listFolders']> {
+  input: OrganizationRequestScope,
+): Promise<Readonly<{ items: readonly WorkflowFolderRecord[] }>> {
   return session.read(
     input,
     'workflow:read',

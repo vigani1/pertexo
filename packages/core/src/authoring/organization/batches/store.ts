@@ -45,17 +45,9 @@ export type WorkflowOrganizationBatchItemResult = Readonly<{
   replayed: boolean;
   folderId?: string | null;
 }>;
-export interface WorkflowOrganizationBatchStore {
-  /** Claims the batch's key for its whole request, before any item runs. */
-  admitBatch(
-    input: WorkflowOrganizationBatchInput,
-  ): Promise<Readonly<{ admitted: true }>>;
-  /** Applies the batch to one of its workflows, as its own command. */
-  executeBatchItem(
-    input: WorkflowOrganizationBatchInput & Readonly<{ workflowId: string }>,
-  ): Promise<WorkflowOrganizationBatchItemResult>;
-  close(): Promise<void>;
-}
+export type WorkflowOrganizationBatchStore = ReturnType<
+  typeof createWorkflowOrganizationBatchStore
+>;
 
 const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -88,7 +80,7 @@ function changeOf(body: BatchRequest): OrganizationChange {
 export function createWorkflowOrganizationBatchStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowOrganizationBatchStore {
+) {
   const session = createOrganizationSession(config, options.runtime);
   return Object.freeze({
     admitBatch: async (input: WorkflowOrganizationBatchInput) => {

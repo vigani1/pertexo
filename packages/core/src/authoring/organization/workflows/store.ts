@@ -64,39 +64,36 @@ export type WorkflowWithOrganization = Readonly<{
   workflow: WorkflowRecord;
   organization: WorkflowOrganizationMetadata;
 }>;
-export interface WorkflowOrganizationReadStore {
-  getWorkflow(
-    input: Scope & Readonly<{ workflowId: string }>,
-  ): Promise<WorkflowWithOrganization | null>;
-  listWorkflows(
-    input: Scope &
-      WorkflowOrganizationFilters &
-      Readonly<{
-        limit?: number;
-        order?: 'created_asc' | 'updated_desc';
-        after?: Position;
-      }>,
-  ): Promise<
-    Readonly<{
-      items: readonly WorkflowWithOrganization[];
-      nextCursor: Position | null;
-    }>
-  >;
-  close(): Promise<void>;
-}
+export type GetOrganizedWorkflowInput = Scope &
+  Readonly<{ workflowId: string }>;
+export type ListOrganizedWorkflowsInput = Scope &
+  WorkflowOrganizationFilters &
+  Readonly<{
+    limit?: number;
+    order?: 'created_asc' | 'updated_desc';
+    after?: Position;
+  }>;
+type OrganizedPage = Readonly<{
+  items: readonly WorkflowWithOrganization[];
+  nextCursor: Position | null;
+}>;
+export type WorkflowOrganizationReadStore = ReturnType<
+  typeof createWorkflowOrganizationReadStore
+>;
 /** Applies resource and organization filters before one bounded keyset page. */
 export function createWorkflowOrganizationReadStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowOrganizationReadStore {
+) {
   const lease = acquireDatabasePool(config, options.runtime);
 
-  const store: WorkflowOrganizationReadStore = {
-    getWorkflow: (input) => readOrganizedWorkflow(lease.pool, input),
-    listWorkflows: (input) => listOrganizedWorkflows(lease.pool, input),
+  return Object.freeze({
+    getWorkflow: (input: GetOrganizedWorkflowInput) =>
+      readOrganizedWorkflow(lease.pool, input),
+    listWorkflows: (input: ListOrganizedWorkflowsInput) =>
+      listOrganizedWorkflows(lease.pool, input),
     close: lease.close,
-  };
-  return Object.freeze(store);
+  });
 }
 
 /** Any active member reads organization, rechecked on every page. */
@@ -320,8 +317,8 @@ function organizedPredicates({
 
 function readOrganizedWorkflow(
   pool: Pool,
-  input: Parameters<WorkflowOrganizationReadStore['getWorkflow']>[0],
-): ReturnType<WorkflowOrganizationReadStore['getWorkflow']> {
+  input: GetOrganizedWorkflowInput,
+): Promise<WorkflowWithOrganization | null> {
   return transact(
     pool,
     input,
@@ -338,8 +335,8 @@ function readOrganizedWorkflow(
 
 function listOrganizedWorkflows(
   pool: Pool,
-  input: Parameters<WorkflowOrganizationReadStore['listWorkflows']>[0],
-): ReturnType<WorkflowOrganizationReadStore['listWorkflows']> {
+  input: ListOrganizedWorkflowsInput,
+): Promise<OrganizedPage> {
   const limit = input.limit ?? 50;
   const order = input.order ?? 'created_asc';
   return transact(pool, input, (client, scope) =>

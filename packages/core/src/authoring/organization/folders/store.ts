@@ -14,7 +14,17 @@ import {
   createOrganizationSession,
   type OrganizationRequestScope,
 } from '../session.js';
-import type { WorkflowFolderStore } from './contract.js';
+import type {
+  CreateFolderInput,
+  DeleteFolderInput,
+  MoveFolderInput,
+  PlaceWorkflowInput,
+  ReadFolderSharingInput,
+  RenameFolderInput,
+  ReplaceFolderSharingInput,
+  ReviewMoveInput,
+  SharingPrincipalsInput,
+} from './contract.js';
 
 import {
   createFolder,
@@ -28,14 +38,16 @@ import {
 } from './commands/placement.repository.js';
 import { listFolders } from './list.queries.js';
 
+export type WorkflowFolderStore = ReturnType<typeof createWorkflowFolderStore>;
+
 export function createWorkflowFolderStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowFolderStore {
+) {
   const session = createOrganizationSession(config, options.runtime);
 
-  const store: WorkflowFolderStore = {
-    sharingPrincipals: (input) => {
+  return Object.freeze({
+    sharingPrincipals: (input: SharingPrincipalsInput) => {
       return session.member(
         input,
         {
@@ -46,7 +58,7 @@ export function createWorkflowFolderStore(
         (client, scope) => readSharingPrincipals(client, scope, input.query),
       );
     },
-    readSharing: (input) => {
+    readSharing: (input: ReadFolderSharingInput) => {
       return session.read(
         input,
         'governance:manage',
@@ -54,7 +66,7 @@ export function createWorkflowFolderStore(
         (client, scope) => readFolderSharing(client, scope, input.folderId),
       );
     },
-    replaceSharing: (input) => {
+    replaceSharing: (input: ReplaceFolderSharingInput) => {
       return session.command(input, 'governance:manage', (client, scope) =>
         replaceFolderSharing(client, scope, {
           ...input,
@@ -62,21 +74,20 @@ export function createWorkflowFolderStore(
         }),
       );
     },
-    reviewMove: (input) => reviewFolderMove(session, input),
+    reviewMove: (input: ReviewMoveInput) => reviewFolderMove(session, input),
     listFolders: (input: OrganizationRequestScope) =>
       listFolders(session, input),
 
-    createFolder: (input) => createFolder(session, input),
+    createFolder: (input: CreateFolderInput) => createFolder(session, input),
 
-    renameFolder: (input) => renameFolder(session, input),
+    renameFolder: (input: RenameFolderInput) => renameFolder(session, input),
 
-    moveFolder: (input) => moveFolder(session, input),
+    moveFolder: (input: MoveFolderInput) => moveFolder(session, input),
 
-    deleteFolder: (input) => deleteFolder(session, input),
+    deleteFolder: (input: DeleteFolderInput) => deleteFolder(session, input),
 
-    placeWorkflow: (input) => placeWorkflow(session, input),
+    placeWorkflow: (input: PlaceWorkflowInput) => placeWorkflow(session, input),
 
     close: session.close,
-  };
-  return Object.freeze(store);
+  });
 }

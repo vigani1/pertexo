@@ -43,25 +43,12 @@ export type WorkflowTagAssignmentResult = WorkflowTagAssignment &
 export type WorkflowTagReplaceResult = WorkflowTagAssignmentResult &
   Readonly<{ tagIds: readonly string[] }>;
 
-/** Tags, their workflows and tag commands. Page positions are tag and
- * workflow UUIDs; signed wire continuations belong to the API. */
-export interface WorkflowTagStore {
-  listTags(input: PageInput): Promise<Page<WorkflowTagRecord>>;
-  listTagAssignments(
-    input: PageInput & Readonly<{ tagId: string }>,
-  ): Promise<Page<WorkflowTagAssignment>>;
-  createTag(
-    input: Command & Readonly<{ key: string }>,
-  ): Promise<WorkflowTagCommandResult>;
-  renameTag(
-    input: TaggedCommand & Readonly<{ key: string }>,
-  ): Promise<WorkflowTagCommandResult>;
-  deleteTag(input: TaggedCommand): Promise<WorkflowTagDeleteResult>;
-  replaceTags(
-    input: AssignmentCommand & Readonly<{ tagIds: readonly string[] }>,
-  ): Promise<WorkflowTagReplaceResult>;
-  detachTag(
-    input: AssignmentCommand & Readonly<{ tagId: string }>,
-  ): Promise<WorkflowTagAssignmentResult>;
-  close(): Promise<void>;
-}
+/** Page positions are tag and workflow UUIDs; signed wire continuations belong to the API. */
+export type ListTagsInput = PageInput;
+export type ListTagAssignmentsInput = PageInput & Readonly<{ tagId: string }>;
+export type CreateTagInput = Command & Readonly<{ key: string }>;
+export type RenameTagInput = TaggedCommand & Readonly<{ key: string }>;
+export type DeleteTagInput = TaggedCommand;
+export type ReplaceTagsInput = AssignmentCommand &
+  Readonly<{ tagIds: readonly string[] }>;
+export type DetachTagInput = AssignmentCommand & Readonly<{ tagId: string }>;

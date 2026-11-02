@@ -1,8 +1,10 @@
-export { createWorkflowFolderStore } from './organization/folders/store.js';
+export {
+  createWorkflowFolderStore,
+  type WorkflowFolderStore,
+} from './organization/folders/store.js';
 export { WorkflowFolderConflictError } from './organization/errors.js';
 export type {
   WorkflowFolderCommandResult,
-  WorkflowFolderStore,
   WorkflowFolderDeleteResult,
   WorkflowFolderPlacementResult,
   WorkflowFolderRecord,
@@ -23,13 +25,15 @@ export type {
   WorkflowOrganizationReadStore,
   WorkflowWithOrganization,
 } from './organization/workflows/store.js';
-export { createWorkflowTagStore } from './organization/tags/store.js';
+export {
+  createWorkflowTagStore,
+  type WorkflowTagStore,
+} from './organization/tags/store.js';
 export { WorkflowTagConflictError } from './organization/errors.js';
 export type {
   WorkflowTagAssignment,
   WorkflowTagAssignmentResult,
   WorkflowTagCommandResult,
-  WorkflowTagStore,
   WorkflowTagDeleteResult,
   WorkflowTagRecord,
   WorkflowTagReplaceResult,

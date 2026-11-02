@@ -20,21 +20,21 @@ export type WorkflowFavoriteCommand = OrganizationRequestScope &
   Readonly<{ workflowId: string; favorite: boolean }>;
 export type WorkflowFavoriteState = Readonly<{ isFavorite: boolean }>;
 
-export interface WorkflowFavoriteStore {
-  /** Marks or unmarks a workflow as one of the actor's favorites. Asking for
-   * the state it already has changes nothing, so retries are safe. */
-  setFavorite(input: WorkflowFavoriteCommand): Promise<WorkflowFavoriteState>;
-  close(): Promise<void>;
-}
+export type WorkflowFavoriteStore = ReturnType<
+  typeof createWorkflowFavoriteStore
+>;
 
 /** Favorites are private to each member and go when the member leaves. */
 export function createWorkflowFavoriteStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowFavoriteStore {
+) {
   const session = createOrganizationSession(config, options.runtime);
   return Object.freeze({
-    setFavorite: async (input: WorkflowFavoriteCommand) => {
+    /** Asking for the state it already has changes nothing, so retries are safe. */
+    setFavorite: async (
+      input: WorkflowFavoriteCommand,
+    ): Promise<WorkflowFavoriteState> => {
       const workflowId = input.workflowId;
       return session.read(
         input,
