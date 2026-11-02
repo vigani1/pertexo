@@ -15,7 +15,14 @@ import { runOrganizationCommand } from '../../run-command.js';
 import { WorkflowFolderConflictError } from '../../errors.js';
 
 import type { createOrganizationSession } from '../../session.js';
-import type { WorkflowFolderStore } from '../contract.js';
+import type {
+  CreateFolderInput,
+  DeleteFolderInput,
+  MoveFolderInput,
+  RenameFolderInput,
+  WorkflowFolderCommandResult,
+  WorkflowFolderDeleteResult,
+} from '../contract.js';
 import {
   folderDepth,
   folderProjection,
@@ -28,8 +35,8 @@ import { folderCommand } from './receipt.js';
 
 export async function createFolder(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderStore['createFolder']>[0],
-): ReturnType<WorkflowFolderStore['createFolder']> {
+  input: CreateFolderInput,
+): Promise<WorkflowFolderCommandResult> {
   const request = {
     name: input.name,
     parentId: input.parentId,
@@ -78,8 +85,8 @@ export async function createFolder(
 
 export async function renameFolder(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderStore['renameFolder']>[0],
-): ReturnType<WorkflowFolderStore['renameFolder']> {
+  input: RenameFolderInput,
+): Promise<WorkflowFolderCommandResult> {
   const folderId = input.folderId;
   const request = {
     name: input.name,
@@ -119,8 +126,8 @@ export async function renameFolder(
 
 export async function moveFolder(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderStore['moveFolder']>[0],
-): ReturnType<WorkflowFolderStore['moveFolder']> {
+  input: MoveFolderInput,
+): Promise<WorkflowFolderCommandResult> {
   const folderId = input.folderId;
   const request = {
     parentId: input.parentId,
@@ -197,8 +204,8 @@ export async function moveFolder(
 
 export async function deleteFolder(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderStore['deleteFolder']>[0],
-): ReturnType<WorkflowFolderStore['deleteFolder']> {
+  input: DeleteFolderInput,
+): Promise<WorkflowFolderDeleteResult> {
   const folderId = input.folderId;
   const request = {
     expectedFolderRevision: input.expectedFolderRevision,

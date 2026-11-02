@@ -4,7 +4,15 @@ import type {
 } from '@pertexo/database/platform';
 
 import { createOrganizationSession } from '../session.js';
-import type { WorkflowTagStore } from './contract.js';
+import type {
+  CreateTagInput,
+  DeleteTagInput,
+  DetachTagInput,
+  ListTagAssignmentsInput,
+  ListTagsInput,
+  RenameTagInput,
+  ReplaceTagsInput,
+} from './contract.js';
 
 import {
   createTag,
@@ -15,27 +23,30 @@ import {
 } from './commands/mutations.repository.js';
 import { listTags, listTagAssignments } from './list.queries.js';
 
+export type WorkflowTagStore = ReturnType<typeof createWorkflowTagStore>;
+
 export function createWorkflowTagStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowTagStore {
+) {
   const session = createOrganizationSession(config, options.runtime);
 
-  const store: WorkflowTagStore = {
-    listTags: (input) => listTags(session, input),
-    listTagAssignments: (input) => listTagAssignments(session, input),
+  return Object.freeze({
+    listTags: (input: ListTagsInput) => listTags(session, input),
+    listTagAssignments: (input: ListTagAssignmentsInput) =>
+      listTagAssignments(session, input),
 
-    createTag: (input) => createTag(session, input),
+    createTag: (input: CreateTagInput) => createTag(session, input),
 
-    renameTag: (input) => renameTag(session, input),
+    renameTag: (input: RenameTagInput) => renameTag(session, input),
 
-    deleteTag: (input) => deleteTagCommand(session, input),
+    deleteTag: (input: DeleteTagInput) => deleteTagCommand(session, input),
 
-    replaceTags: (input) => replaceWorkflowTags(session, input),
+    replaceTags: (input: ReplaceTagsInput) =>
+      replaceWorkflowTags(session, input),
 
-    detachTag: (input) => detachTag(session, input),
+    detachTag: (input: DetachTagInput) => detachTag(session, input),
 
     close: session.close,
-  };
-  return Object.freeze(store);
+  });
 }

@@ -12,13 +12,19 @@ import {
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 
 import type { createOrganizationSession } from '../session.js';
-import type { WorkflowTagStore } from './contract.js';
+import type {
+  ListTagAssignmentsInput,
+  ListTagsInput,
+  Page,
+  WorkflowTagAssignment,
+  WorkflowTagRecord,
+} from './contract.js';
 import { page, pagination, tagProjection } from './state.queries.js';
 
 export async function listTags(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowTagStore['listTags']>[0],
-): ReturnType<WorkflowTagStore['listTags']> {
+  input: ListTagsInput,
+): Promise<Page<WorkflowTagRecord>> {
   const { limit, after } = page(input);
   return session.read(
     input,
@@ -44,8 +50,8 @@ export async function listTags(
 
 export async function listTagAssignments(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowTagStore['listTagAssignments']>[0],
-): ReturnType<WorkflowTagStore['listTagAssignments']> {
+  input: ListTagAssignmentsInput,
+): Promise<Page<WorkflowTagAssignment>> {
   const { limit, after } = page(input),
     tagId = input.tagId;
   return session.read(
