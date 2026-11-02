@@ -5,7 +5,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 
 import { DELIVERY_CONSUMER } from '../../../src/outbox/delivery-consumers.js';
 import { insertOutboxEvent } from '@pertexo/database/primitives';
-import { settleOverdueDeliveries } from '../../../src/outbox/overdue-deliveries.repository.js';
+import { settleOverdueDeliveries } from '../../../src/outbox/overdue-deliveries.queries.js';
 import { inboxReceipts, outboxEvents } from '@pertexo/database/schema';
 import {
   apiDatabase,

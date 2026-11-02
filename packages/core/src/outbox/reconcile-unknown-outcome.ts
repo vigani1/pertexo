@@ -6,7 +6,7 @@ import {
 } from '@pertexo/database/schema';
 import { z } from 'zod';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import { consumeInboxMessage } from './receipts.repository.js';
+import { consumeInboxMessage } from './consume-message.js';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 import { DELIVERY_CONSUMER } from './delivery-consumers.js';
 

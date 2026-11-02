@@ -14,7 +14,7 @@ vi.mock('../../../../database/dist/database.js', () => ({
   createWorkspaceDatabase: mocks.createWorkspaceDatabase,
 }));
 
-vi.mock('../../../src/outbox/receipts.repository.js', () => ({
+vi.mock('../../../src/outbox/consume-message.js', () => ({
   consumeInboxMessage: mocks.consumeInboxMessage,
 }));
 

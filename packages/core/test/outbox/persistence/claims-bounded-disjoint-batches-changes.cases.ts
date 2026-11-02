@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
-import { createOutboxDispatcherDatabase } from '../../../src/outbox/dispatcher/repository.js';
+import { createOutboxDispatcherDatabase } from '../../../src/outbox/dispatcher/store.js';
 
 import { insertOutboxEvent } from '@pertexo/database/primitives';
 
