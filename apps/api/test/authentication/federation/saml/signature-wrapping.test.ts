@@ -34,11 +34,10 @@ function genuine() {
 function parts(xml: string) {
   const assertion = /<saml:Assertion[\s\S]*<\/saml:Assertion>/u.exec(xml)?.[0];
   if (assertion === undefined) throw new Error('No assertion in the fixture');
-  const responseSignature = /<\/saml:Assertion>/u.test(xml)
-    ? /<samlp:Response[^>]*>[\s\S]*?(<(?:ds:)?Signature[\s\S]*?<\/(?:ds:)?Signature>)/u.exec(
-        xml.replace(assertion, ''),
-      )?.[1]
-    : undefined;
+  const responseSignature =
+    /<samlp:Response[^>]*>[\s\S]*?(<(?:ds:)?Signature[\s\S]*?<\/(?:ds:)?Signature>)/u.exec(
+      xml.replace(assertion, ''),
+    )?.[1];
   if (responseSignature === undefined)
     throw new Error('No response signature in the fixture');
   const assertionSignature =
