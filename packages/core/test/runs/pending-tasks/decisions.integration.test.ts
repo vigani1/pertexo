@@ -2,7 +2,10 @@ import {
   waitForPostgresLock,
   apiUrl,
 } from '../../lifecycle/retention.support.js';
-import { parseDatabaseConfig } from '@pertexo/database/platform';
+import {
+  IdempotencyConflictError,
+  parseDatabaseConfig,
+} from '@pertexo/database/platform';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { readPendingTaskFacts } from '../../../src/runs/pending-tasks/lifecycle/facts.queries.js';
 import { describe, it, expect } from 'vitest';
@@ -96,6 +99,23 @@ describe('current authority and atomic human decisions', () => {
       [f.workspaceId, f.taskId],
     );
     expect(count.rows[0]).toEqual({ n: 1 });
+  });
+  it('refuses a replay whose stored receipt no longer reads, without deciding again', async () => {
+    const f = await taskFixture();
+    const request = {
+      ...f.scope,
+      decision: 'approved' as const,
+      idempotencyKey: 'damaged',
+    };
+    await store.decide(request);
+    await admin.query(
+      `update app.idempotency_records set result_ref='{"taskId":"not-a-task"}'::jsonb
+        where workspace_id=$1 and operation='pending.task.decide'`,
+      [f.workspaceId],
+    );
+    await expect(store.decide(request)).rejects.toBeInstanceOf(
+      IdempotencyConflictError,
+    );
   });
   it.each(['role', 'removed', 'inactive'] as const)(
     'rechecks %s loss before deciding',

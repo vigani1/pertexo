@@ -92,7 +92,7 @@ export {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
 } from './pending-tasks/responses/errors.js';
-export { type PendingTaskStore } from './pending-tasks/responses/contract.js';
+export type { PendingTaskStore } from './pending-tasks/responses/store.js';
 
 export { RunVariableSnapshotUnavailableError } from './commands/acceptance/variables.queries.js';
 

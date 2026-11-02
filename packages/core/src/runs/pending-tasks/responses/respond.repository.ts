@@ -29,17 +29,19 @@ import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
 } from './errors.js';
-import type { PendingTaskStore } from './contract.js';
+import type { PendingTaskDecision, PendingTaskSubmission } from './contract.js';
 import { projectTask, readTaskRow } from './records.repository.js';
 import { resolveFormFiles } from '../../../artifacts/form-uploads/resolve.queries.js';
+import { requireReadableReceipt } from '../../../shared/receipts.js';
+import { z } from 'zod';
+
+const responseReceipt = z.object({ taskId: z.uuid(), status: z.string() });
 
 export async function respondToTask(
   client: PoolClient,
   input:
-    | (Parameters<PendingTaskStore['decide']>[0] &
-        Readonly<{ kind: 'approval' }>)
-    | (Parameters<PendingTaskStore['submit']>[0] &
-        Readonly<{ kind: 'input_request' }>),
+    | (PendingTaskDecision & Readonly<{ kind: 'approval' }>)
+    | (PendingTaskSubmission & Readonly<{ kind: 'input_request' }>),
   role: Role,
   resources: FolderScope,
 ) {
@@ -104,7 +106,10 @@ export async function respondToTask(
     request,
     resourceId: input.taskId,
   });
-  if (replay !== null) return { task: projectTask(row), replayed: true };
+  if (replay !== null) {
+    requireReadableReceipt(responseReceipt, replay);
+    return { task: projectTask(row), replayed: true };
+  }
   if (row.blocked_reason !== null)
     throw new PendingTaskDecisionError(row.blocked_reason);
   const values =
