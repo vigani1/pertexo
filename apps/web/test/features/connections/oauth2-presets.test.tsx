@@ -317,6 +317,24 @@ describe('choosing a service for an OAuth2 connection', () => {
       expect(lens().queryByLabelText('Hosts')).toBeNull();
     });
 
+    // Parameters a person typed for one service mean nothing to the next, and they're
+    // out of sight under Advanced by then, on their way to its token address.
+    it('doesn’t carry extra token parameters over to the service you choose', async () => {
+      const event = await openForm();
+      await openAdvanced(event);
+      await event.type(
+        lens().getByLabelText('Extra token parameters'),
+        'audience=https://api.example.test',
+      );
+      await typeClient(event);
+
+      await choose(event, 'Google');
+
+      expect(value('Extra token parameters')).toBe('');
+      const { settings } = await save(event);
+      expect(settings.tokenParameters).toEqual({});
+    });
+
     it('takes Google back to signing in with consent after Server to server', async () => {
       const event = await openForm();
       await event.click(

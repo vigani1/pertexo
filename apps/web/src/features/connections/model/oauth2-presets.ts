@@ -14,6 +14,7 @@ type Preset = Readonly<{
     | 'clientAuthentication'
     | 'pkce'
     | 'authorizationParameters'
+    | 'tokenParameters'
     | 'hostMode'
     | 'hosts'
   >;
@@ -39,6 +40,7 @@ const PRESETS: Readonly<Record<Exclude<OAuth2Service, 'custom'>, Preset>> = {
       // Without these Google gives no refresh token, and the connection stops
       // working after an hour.
       authorizationParameters: 'access_type=offline\nprompt=consent',
+      tokenParameters: '',
       hostMode: 'listed',
       hosts: '*.googleapis.com',
     },
@@ -56,6 +58,7 @@ const PRESETS: Readonly<Record<Exclude<OAuth2Service, 'custom'>, Preset>> = {
       clientAuthentication: 'body',
       pkce: 's256',
       authorizationParameters: '',
+      tokenParameters: '',
       hostMode: 'listed',
       hosts: 'graph.microsoft.com',
     },
@@ -101,6 +104,7 @@ export function withOAuth2Service(
     clientAuthentication: 'basic',
     pkce: 's256',
     authorizationParameters: '',
+    tokenParameters: '',
     hostMode: 'any',
     hosts: '',
   };
