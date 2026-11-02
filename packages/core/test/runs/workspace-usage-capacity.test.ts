@@ -1,12 +1,9 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { databaseSchema } from '@pertexo/database/schema';
 import type { Pool, PoolClient } from 'pg';
-import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const fixture = vi.hoisted(() => ({ query: vi.fn(), transaction: vi.fn() }));
-vi.mock('../../../database/dist/tenant-access/transactions.js', () => ({
-  withWorkspaceReadTransaction: fixture.transaction,
+vi.mock('../../src/shared/workspace-access.js', () => ({
+  withWorkspaceAccess: fixture.transaction,
 }));
 import { readWorkspaceUsageCapacity } from '../../src/runs/queries/usage/capacity.queries.js';
 
@@ -50,21 +47,18 @@ beforeEach(() => {
   fixture.transaction.mockImplementation(
     (
       _pool: Pool,
-      scope: string,
-      operation: (transaction: WorkspaceTransaction) => Promise<unknown>,
-    ) =>
-      operation({
-        workspaceId: scope,
-        db: drizzle({
-          client: { query: fixture.query } as unknown as PoolClient,
-          schema: databaseSchema,
-        }),
-      } as unknown as WorkspaceTransaction),
+      _actor: unknown,
+      _access: unknown,
+      operation: (client: PoolClient, role: string) => Promise<unknown>,
+    ) => operation({ query: fixture.query } as unknown as PoolClient, 'owner'),
   );
 });
 describe('workspace capacity snapshot', () => {
   it('preserves exact byte precision and distinguishes reservations from active runs', async () => {
-    const result = await readWorkspaceUsageCapacity(pool, { workspaceId });
+    const result = await readWorkspaceUsageCapacity(pool, {
+      workspaceId,
+      actorId: workspaceId,
+    });
     expect(result.execution).toMatchObject({
       activeRuns: 2,
       reservedActiveSlots: 1,

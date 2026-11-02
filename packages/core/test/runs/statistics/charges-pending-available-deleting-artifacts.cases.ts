@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { expect, it } from 'vitest';
 
-import { runs, busyWorkspace, inWorkspace } from './fixture.js';
+import { runs, busyWorkspace, inWorkspace, person } from './fixture.js';
 
 export function registerChargesPendingAvailableDeletingArtifacts(): void {
   it('charges pending, available and deleting artifacts until completed deletion; zero limits remain zero', async () => {
@@ -19,7 +19,12 @@ export function registerChargesPendingAvailableDeletingArtifacts(): void {
           values: [busyWorkspace, artifact, state],
         });
       expect(
-        (await runs.usageCapacity({ workspaceId: busyWorkspace })).artifacts,
+        (
+          await runs.usageCapacity({
+            workspaceId: busyWorkspace,
+            actorId: person,
+          })
+        ).artifacts,
       ).toMatchObject({
         chargedBytes: '123',
         chargedCount: 1,
@@ -31,7 +36,12 @@ export function registerChargesPendingAvailableDeletingArtifacts(): void {
       values: [busyWorkspace],
     });
     expect(
-      (await runs.usageCapacity({ workspaceId: busyWorkspace })).artifacts,
+      (
+        await runs.usageCapacity({
+          workspaceId: busyWorkspace,
+          actorId: person,
+        })
+      ).artifacts,
     ).toEqual({
       chargedBytes: '123',
       byteLimit: '0',
@@ -44,16 +54,24 @@ export function registerChargesPendingAvailableDeletingArtifacts(): void {
       values: [busyWorkspace, artifact],
     });
     expect(
-      (await runs.usageCapacity({ workspaceId: busyWorkspace })).artifacts
-        .chargedBytes,
+      (
+        await runs.usageCapacity({
+          workspaceId: busyWorkspace,
+          actorId: person,
+        })
+      ).artifacts.chargedBytes,
     ).toBe('0');
     await inWorkspace('owner', busyWorkspace, {
       text: 'update app.workspace_artifact_capacity set byte_limit=9223372036854775807 where workspace_id=$1',
       values: [busyWorkspace],
     });
     expect(
-      (await runs.usageCapacity({ workspaceId: busyWorkspace })).artifacts
-        .byteLimit,
+      (
+        await runs.usageCapacity({
+          workspaceId: busyWorkspace,
+          actorId: person,
+        })
+      ).artifacts.byteLimit,
     ).toBe('9223372036854775807');
   });
 }

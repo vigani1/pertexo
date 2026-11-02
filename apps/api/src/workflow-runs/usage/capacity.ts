@@ -38,6 +38,7 @@ export class GetUsageCapacityUseCase {
     return usageCapacityResponseSchema.parse(
       await this.persistence.usageCapacity({
         workspaceId: input.routeWorkspaceId,
+        actorId: input.actor.actorId,
         ...(input.signal === undefined ? {} : { signal: input.signal }),
       }),
     );

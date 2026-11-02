@@ -29,7 +29,7 @@ export function registerScalarReadInheritsBoundedStatement(): void {
         'lock table app.workflow_run_active_admissions in access exclusive mode',
       );
       await expect(
-        runs.usageCapacity({ workspaceId: busyWorkspace }),
+        runs.usageCapacity({ workspaceId: busyWorkspace, actorId: person }),
       ).rejects.toMatchObject({ cause: { code: '57014' } });
     } finally {
       await blocker.query('rollback');
@@ -43,7 +43,7 @@ export function registerScalarReadInheritsBoundedStatement(): void {
       values: [busyWorkspace],
     });
     await expect(
-      runs.usageCapacity({ workspaceId: busyWorkspace }),
+      runs.usageCapacity({ workspaceId: busyWorkspace, actorId: person }),
     ).resolves.toMatchObject({ execution: { activeRuns: 0 } });
   });
 
@@ -60,19 +60,22 @@ export function registerScalarReadInheritsBoundedStatement(): void {
         values: [busyWorkspace, status, person],
       });
       await expect(
-        runs.usageCapacity({ workspaceId: busyWorkspace }),
+        runs.usageCapacity({ workspaceId: busyWorkspace, actorId: person }),
       ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
     },
   );
 
   it('does not return lazy defaults for a missing workspace', async () => {
     await expect(
-      runs.usageCapacity({ workspaceId: randomUUID() }),
+      runs.usageCapacity({ workspaceId: randomUUID(), actorId: person }),
     ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
   });
 
   it('reports provisioned execution and lazy artifact defaults', async () => {
-    const result = await runs.usageCapacity({ workspaceId: busyWorkspace });
+    const result = await runs.usageCapacity({
+      workspaceId: busyWorkspace,
+      actorId: person,
+    });
     expect(result.execution).toEqual({
       activeRuns: 0,
       reservedActiveSlots: 0,
@@ -136,7 +139,10 @@ export function registerScalarReadInheritsBoundedStatement(): void {
         values: [workspace],
       });
     }
-    const result = await runs.usageCapacity({ workspaceId: busyWorkspace });
+    const result = await runs.usageCapacity({
+      workspaceId: busyWorkspace,
+      actorId: person,
+    });
     expect(result.execution).toMatchObject({
       activeRuns: 2,
       reservedActiveSlots: 1,
@@ -187,8 +193,12 @@ export function registerScalarReadInheritsBoundedStatement(): void {
         values: [busyWorkspace],
       });
       expect(
-        (await runs.usageCapacity({ workspaceId: busyWorkspace })).execution
-          .policy,
+        (
+          await runs.usageCapacity({
+            workspaceId: busyWorkspace,
+            actorId: person,
+          })
+        ).execution.policy,
       ).toEqual({ state, version: 2, activeRunLimit: 7, queuedRunLimit: 120 });
     },
   );
@@ -199,8 +209,12 @@ export function registerScalarReadInheritsBoundedStatement(): void {
       values: [busyWorkspace],
     });
     expect(
-      (await runs.usageCapacity({ workspaceId: busyWorkspace })).execution
-        .policy,
+      (
+        await runs.usageCapacity({
+          workspaceId: busyWorkspace,
+          actorId: person,
+        })
+      ).execution.policy,
     ).toEqual({
       state: 'unavailable',
       version: 1,
@@ -212,8 +226,12 @@ export function registerScalarReadInheritsBoundedStatement(): void {
       values: [busyWorkspace],
     });
     expect(
-      (await runs.usageCapacity({ workspaceId: busyWorkspace })).execution
-        .policy,
+      (
+        await runs.usageCapacity({
+          workspaceId: busyWorkspace,
+          actorId: person,
+        })
+      ).execution.policy,
     ).toEqual({
       state: 'unavailable',
       version: null,

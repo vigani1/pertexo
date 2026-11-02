@@ -11,11 +11,9 @@ import {
   sql,
   type SQLWrapper,
 } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import type { PoolClient } from 'pg';
 import { workspaces, workflows, workflowRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { FolderScope } from '../../../shared/contract.js';
+import type { ResourceTransaction } from '../../../shared/contract.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { ordinaryRunSql } from '../../data-policy.js';
@@ -24,11 +22,11 @@ import { emptyRunCounts, type RunStatusCounts } from '../counts.js';
 const timestamp = (expression: SQLWrapper) =>
   sql<string>`to_char(${expression} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 export function readTrendBounds(
-  client: PoolClient,
-  { workspaceId, days }: Readonly<{ workspaceId: string; days: number }>,
+  { db, workspaceId }: ResourceTransaction,
+  days: number,
 ) {
   const from = sql`(date_trunc('day',transaction_timestamp() at time zone 'UTC')-make_interval(days=>${days}::integer-1)) at time zone 'UTC'`;
-  return drizzle(client)
+  return db
     .select({
       as_of: timestamp(sql`transaction_timestamp()`),
       from_at: timestamp(from),
@@ -44,16 +42,10 @@ export function readTrendBounds(
     .catch(rethrowQueryFailure);
 }
 type TrendBounds = Awaited<ReturnType<typeof readTrendBounds>>[number];
-type TrendWindow = Readonly<{
-  workspaceId: string;
-  bounds: TrendBounds;
-  scope: FolderScope;
-}>;
 function windowRuns(
-  client: PoolClient,
-  { workspaceId, bounds, scope }: TrendWindow,
+  { db, workspaceId, resources }: ResourceTransaction,
+  bounds: TrendBounds,
 ) {
-  const db = drizzle(client);
   return db.$with('window_runs').as(
     db
       .select({
@@ -71,7 +63,7 @@ function windowRuns(
           ordinaryRunSql('workflow_runs'),
           gte(workflowRuns.createdAt, sql`${bounds.from_at}::timestamptz`),
           lt(workflowRuns.createdAt, sql`${bounds.as_of}::timestamptz`),
-          workflowScopeSql(scope, sql`${workflowRuns.workflowId}`),
+          workflowScopeSql(resources, sql`${workflowRuns.workflowId}`),
         ),
       ),
   );
@@ -83,9 +75,12 @@ function statusCounts(status: SQLWrapper) {
   ]);
   return sql<RunStatusCounts>`jsonb_build_object(${sql.join(fields, sql`,`)})`;
 }
-export function readTrendDays(client: PoolClient, input: TrendWindow) {
-  const db = drizzle(client),
-    window = windowRuns(client, input);
+export function readTrendDays(
+  transaction: ResourceTransaction,
+  bounds: TrendBounds,
+) {
+  const { db } = transaction;
+  const window = windowRuns(transaction, bounds);
   const elapsed = sql<
     number | null
   >`case when ${window.status} not in ('queued','running','waiting') then extract(epoch from (${window.completed_at}-${window.started_at}))*1000 end`;
@@ -109,7 +104,7 @@ export function readTrendDays(client: PoolClient, input: TrendWindow) {
       .from(window)
       .groupBy(utcDay),
   );
-  const buckets = sql`generate_series(${input.bounds.from_at}::timestamptz at time zone 'UTC',(${input.bounds.as_of}::timestamptz at time zone 'UTC')::date,interval '1 day') as bucket(utc_day)`;
+  const buckets = sql`generate_series(${bounds.from_at}::timestamptz at time zone 'UTC',(${bounds.as_of}::timestamptz at time zone 'UTC')::date,interval '1 day') as bucket(utc_day)`;
   return db
     .with(window, daily)
     .select({
@@ -127,11 +122,11 @@ export function readTrendDays(client: PoolClient, input: TrendWindow) {
 }
 export type TrendDay = Awaited<ReturnType<typeof readTrendDays>>[number];
 export function readTrendRankings(
-  client: PoolClient,
-  input: TrendWindow & Readonly<{ includeWorkflowNames: boolean }>,
+  transaction: ResourceTransaction,
+  input: Readonly<{ bounds: TrendBounds; includeWorkflowNames: boolean }>,
 ) {
-  const db = drizzle(client),
-    window = windowRuns(client, input);
+  const { db, workspaceId } = transaction;
+  const window = windowRuns(transaction, input.bounds);
   const totals = db.$with('totals').as(
     db
       .select({
@@ -178,7 +173,7 @@ export function readTrendRankings(
     .leftJoin(
       workflows,
       and(
-        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.workspaceId, workspaceId),
         eq(workflows.id, ranked.workflow_id),
       ),
     )
