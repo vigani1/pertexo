@@ -1,9 +1,6 @@
-import {
-  withTenantScopedClient,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
+import { lockWorkspaceRunAdmission } from '../../runs/admission-locks.queries.js';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
-import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   lockCompletionReceipt,
@@ -49,11 +46,10 @@ export async function completeNodeAttempt(
       pool,
       { workspaceId: input.lease.workspaceId },
       async (client) => {
-        await drizzle(client)
-          .execute(
-            sql`select app.lock_workspace_run_admission(${input.lease.workspaceId})`,
-          )
-          .catch(rethrowQueryFailure);
+        await lockWorkspaceRunAdmission(
+          drizzle(client),
+          input.lease.workspaceId,
+        );
         await validateDelivery(client, {
           workspaceId: input.lease.workspaceId,
           runId: input.lease.runId,

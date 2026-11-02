@@ -13,6 +13,7 @@ import { serializeStoredExecutionJsonValue } from '../values/stored-execution.js
 import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '@pertexo/database/platform';
+import { activeCapacityAvailable } from '../admission-locks.queries.js';
 
 import type { Pool, PoolClient } from 'pg';
 
@@ -154,14 +155,14 @@ export async function deferCoordinatorForActiveCapacity(
     traceparent?: string;
   }>,
 ): Promise<RunAdvanceResult | undefined> {
-  const capacity = await drizzle(client)
-    .execute<{ available: boolean }>(
-      sql`select app.workflow_run_active_capacity_available(${input.workspaceId},${input.entitlementVersion},${input.runId}) as available`,
-    )
-    .catch(rethrowQueryFailure);
-  const row = capacity.rows[0];
-  if (row === undefined) throw new CoordinatorRunStateCorruptError();
-  if (row.available) return undefined;
+  if (
+    await activeCapacityAvailable(drizzle(client), {
+      workspaceId: input.workspaceId,
+      entitlementVersion: input.entitlementVersion,
+      runId: input.runId,
+    })
+  )
+    return undefined;
 
   const outboxEventId = generatePersistedId();
   const payload = {

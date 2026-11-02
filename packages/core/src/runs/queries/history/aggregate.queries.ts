@@ -3,6 +3,7 @@ import type { ResourceTransaction } from '../../../shared/contract.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import { workflowRuns, workflows, usageEvents } from '@pertexo/database/schema';
 import { ordinaryRunSql } from '../../data-policy.js';
+import { ACTIVE_RUN_STATUSES } from '../../statuses.js';
 
 function runWindow(transaction: ResourceTransaction, hours: number) {
   return and(
@@ -35,7 +36,7 @@ export async function readStatisticsCounts(
           transaction.resources,
           sql`${workflowRuns.workflowId}`,
         ),
-        inArray(workflowRuns.status, ['queued', 'running', 'waiting']),
+        inArray(workflowRuns.status, ACTIVE_RUN_STATUSES),
       ),
     );
   const statuses = await db

@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { workflowRuns, workflowCalls } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { activeCapacityAvailable } from '../../admission-locks.queries.js';
 import { pauseHumanWait, resumeHumanWait } from './clock.repository.js';
 import { readHumanWaitFacts } from './human-wait.queries.js';
 import type { PoolClient } from 'pg';
@@ -116,17 +117,12 @@ async function humanWaitCapacityAvailable(
     ancestorWaiting,
   }: Readonly<{ runId: string; run: RunClock; ancestorWaiting: boolean }>,
 ): Promise<boolean> {
-  let available = false;
-  if (!ancestorWaiting) {
-    const capacity = await drizzle(client)
-      .execute<{ available: boolean }>(
-        sql`select app.workflow_run_active_capacity_available(${workspaceId},${run.execution_entitlement_version},${runId}) available`,
-      )
-      .catch(rethrowQueryFailure);
-    available = capacity.rows[0]?.available ?? false;
-  }
-
-  return available;
+  if (ancestorWaiting) return false;
+  return activeCapacityAvailable(drizzle(client), {
+    workspaceId,
+    entitlementVersion: run.execution_entitlement_version,
+    runId,
+  });
 }
 
 function readRunClock(

@@ -1,3 +1,4 @@
+import { lockWorkspaceExecutionCounter } from '../../admission-locks.queries.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
 import {
@@ -55,11 +56,7 @@ export async function prepareCallbacks(
     throw new Error('The callback execution scope is unavailable.');
   const iteration = owner.branch_context.iterationPath ?? [];
   const scopeHash = callbackScopeHash(iteration);
-  await db
-    .execute(
-      sql`select app.lock_workspace_execution_counter(${input.workspaceId})`,
-    )
-    .catch(rethrowQueryFailure);
+  await lockWorkspaceExecutionCounter(db, input.workspaceId);
   const allowance = await readPendingTaskAllowance(client, input.workspaceId);
   let count = allowance.count;
   const result: PreparedCallback[] = [];

@@ -1,6 +1,7 @@
 import { workflowRuns } from '@pertexo/database/schema';
 import { and, eq, sql } from 'drizzle-orm';
 import { ExecutionStateConflictError } from '../state-errors.js';
+import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import {
   appendLockedRunEvent,
   RUN_EVENT_TYPE,
@@ -12,13 +13,6 @@ interface Cancellation {
   runId: string;
   reason?: string | null | undefined;
 }
-const terminalRunStatuses = new Set([
-  'succeeded',
-  'failed',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-]);
 
 export async function requestWorkflowRunCancellation(
   transaction: WorkspaceTransaction,
@@ -47,7 +41,7 @@ export async function requestWorkflowRunCancellation(
     .for('update');
   if (row === undefined)
     throw new ExecutionStateConflictError('execution.run_not_found');
-  if (terminalRunStatuses.has(row.status))
+  if (TERMINAL_RUN_STATUSES.has(row.status))
     throw new ExecutionStateConflictError('execution.run_terminal');
   if (row.cancel_requested_at !== null) {
     if (

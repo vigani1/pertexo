@@ -1,3 +1,4 @@
+import { lockWorkspaceExecutionCounter } from '../admission-locks.queries.js';
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
@@ -5,6 +6,7 @@ import type { PoolClient } from 'pg';
 
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowCalls, workflowRuns } from '@pertexo/database/schema';
+import { activeCapacityAvailable } from '../admission-locks.queries.js';
 import { deferWorkflowRun } from '../calls/wakeup.repository.js';
 import { readHumanWaitFacts } from '../pending-tasks/lifecycle/human-wait.queries.js';
 
@@ -48,11 +50,7 @@ export async function releaseSlotDuringTimedWait(
   )
     return;
   const db = drizzle(client);
-  await db
-    .execute(
-      sql`select app.lock_workspace_execution_counter(${scope.workspaceId})`,
-    )
-    .catch(rethrowQueryFailure);
+  await lockWorkspaceExecutionCounter(db, scope.workspaceId);
   await db
     .update(workflowRuns)
     .set({
@@ -96,12 +94,13 @@ async function slotTakenBack(
   if (facts === undefined || (!facts.timer_due && !facts.resume_work))
     return false;
   const db = drizzle(client);
-  const capacity = await db
-    .execute<{ available: boolean }>(
-      sql`select app.workflow_run_active_capacity_available(${scope.workspaceId},${entitlementVersion},${scope.runId}) available`,
-    )
-    .catch(rethrowQueryFailure);
-  if (capacity.rows[0]?.available !== true) {
+  if (
+    !(await activeCapacityAvailable(db, {
+      workspaceId: scope.workspaceId,
+      entitlementVersion,
+      runId: scope.runId,
+    }))
+  ) {
     await deferWorkflowRun(client, scope.workspaceId, scope.runId);
     return false;
   }

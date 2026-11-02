@@ -1,3 +1,4 @@
+import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import { createCheckpoint } from '@pertexo/workflow-engine';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -8,7 +9,7 @@ import { nodeAttempts, nodeRuns } from '@pertexo/database/schema';
 import type { CoordinatorAdvanceDelivery } from './contract.js';
 import { lockRunForAdvance } from './load/locks.queries.js';
 import { persistCoordinatorRunTransition } from './persist/run-transition.repository.js';
-import { terminalRunStatuses, type RunTransitionPlan } from './plan.js';
+import type { RunTransitionPlan } from './plan.js';
 import {
   claimCoordinatorReceipt,
   completeCoordinatorReceipt,
@@ -42,7 +43,7 @@ export function failUnadvanceableRun(
       const [selected] = await lockRunForAdvance(client, workspaceId, runId);
       if (
         selected === undefined ||
-        terminalRunStatuses.has(selected.run.status)
+        TERMINAL_RUN_STATUSES.has(selected.run.status)
       )
         return 'not_active';
       const { run } = selected;

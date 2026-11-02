@@ -1,3 +1,4 @@
+import { lockWorkspaceRunAdmission } from '../admission-locks.queries.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import {
@@ -29,9 +30,7 @@ export function withCoordinatorWriteClient<T>(
         .catch(rethrowQueryFailure);
       // Lifecycle/purge holds workspace before run rows. Acquire the shared
       // workspace lock before any coordinator run/checkpoint lock or FK write.
-      await drizzle(client)
-        .execute(sql`select app.lock_workspace_run_admission(${workspaceId})`)
-        .catch(rethrowQueryFailure);
+      await lockWorkspaceRunAdmission(drizzle(client), workspaceId);
       return operation(client);
     },
     { signal },

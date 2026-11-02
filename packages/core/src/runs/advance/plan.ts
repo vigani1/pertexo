@@ -11,11 +11,3 @@ export const scheduleRunInputSchema = z
     scheduledAt: z.iso.datetime({ offset: true }),
   })
   .strict();
-
-export const terminalRunStatuses: ReadonlySet<string> = new Set([
-  'succeeded',
-  'failed',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-]);

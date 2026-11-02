@@ -1,5 +1,6 @@
+import { lockWorkspaceRunAdmission } from '../admission-locks.queries.js';
 import { workflowRuns } from '@pertexo/database/schema';
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
@@ -8,12 +9,13 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { requestWorkflowRunCancellation } from './request-cancellation.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
+import { ACTIVE_RUN_STATUSES } from '../statuses.js';
 import {
   insertWorkflowRunAudit,
   readWorkflowRunRecord,
 } from './records.repository.js';
 import type { WorkflowRunRecord } from './records.repository.js';
-import type { CancelInput } from './input.js';
+import type { CancelWorkflowRunInput } from './contract.js';
 
 /**
  * Requests cancellation of every run in the workspace that has not finished
@@ -29,7 +31,7 @@ export async function requestActiveRunCancellations(
     .where(
       and(
         eq(workflowRuns.workspaceId, transaction.workspaceId),
-        inArray(workflowRuns.status, ['queued', 'running', 'waiting']),
+        inArray(workflowRuns.status, ACTIVE_RUN_STATUSES),
         isNull(workflowRuns.cancelRequestedAt),
       ),
     )
@@ -47,7 +49,7 @@ export async function requestActiveRunCancellations(
 
 export async function cancelInTransaction(
   transaction: WorkspaceTransaction,
-  input: CancelInput,
+  input: CancelWorkflowRunInput,
 ): Promise<
   Readonly<{
     run: WorkflowRunRecord;
@@ -57,9 +59,7 @@ export async function cancelInTransaction(
 > {
   // The cancellation audit references workspace. Lifecycle/purge owns that
   // row before runs, so take its shared lock before the exclusive run lock.
-  await transaction.db.execute(
-    sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
-  );
+  await lockWorkspaceRunAdmission(transaction.db, transaction.workspaceId);
   const cancellation = await requestWorkflowRunCancellation(transaction, {
     actor: input.actorId,
     runId: input.runId,

@@ -1,6 +1,5 @@
-import { sql } from 'drizzle-orm';
+import { lockWorkspaceRunAdmission } from '../../runs/admission-locks.queries.js';
 import {
-  rethrowQueryFailure,
   withTenantScopedClient,
   withTenantScopedReadClient,
 } from '@pertexo/database/primitives';
@@ -157,11 +156,7 @@ async function submitFormEvent(
       ...(input.actorId === undefined ? {} : { actorId: input.actorId }),
     },
     async (client) => {
-      await drizzle(client)
-        .execute(
-          sql`select app.lock_workspace_run_admission(${input.workspaceId})`,
-        )
-        .catch(rethrowQueryFailure);
+      await lockWorkspaceRunAdmission(drizzle(client), input.workspaceId);
       const coordinatesEvent =
         prepared !== undefined &&
         !('error' in prepared) &&

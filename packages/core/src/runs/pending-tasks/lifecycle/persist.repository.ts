@@ -1,3 +1,5 @@
+import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
+import { lockWorkspaceExecutionCounter } from '../../admission-locks.queries.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   and,
@@ -22,7 +24,6 @@ import { bindCallbackTask } from '../callbacks/bind.repository.js';
 import { callbackScopeHash } from '../callbacks/scope-hash.js';
 import type { PoolClient } from 'pg';
 import type { RunTransitionPlan } from '../../advance/plan.js';
-import { terminalRunStatuses } from '../../advance/plan.js';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { wakeWorkflowRun } from '../../calls/wakeup.repository.js';
@@ -38,12 +39,11 @@ export async function persistTaskIntents(
 ): Promise<void> {
   const { workspaceId, runId, plan } = input;
   if ((plan.taskIntents?.length ?? 0) === 0) return;
-  await drizzle(client)
-    .execute(sql`select app.lock_workspace_execution_counter(${workspaceId})`)
-    .catch(rethrowQueryFailure);
+  await lockWorkspaceExecutionCounter(drizzle(client), workspaceId);
   for (const intent of plan.taskIntents ?? []) {
     let status: 'canceled' | 'pending' | 'refused';
-    if (terminalRunStatuses.has(plan.checkpoint.runStatus)) status = 'canceled';
+    if (TERMINAL_RUN_STATUSES.has(plan.checkpoint.runStatus))
+      status = 'canceled';
     else if (intent.kind === 'callback') status = 'pending';
     else
       status = hasPendingTaskCapacity(
@@ -56,7 +56,7 @@ export async function persistTaskIntents(
         ? await bindCallbackTask(client, workspaceId, {
             runId,
             intent,
-            closed: terminalRunStatuses.has(plan.checkpoint.runStatus),
+            closed: TERMINAL_RUN_STATUSES.has(plan.checkpoint.runStatus),
           })
         : await insertDeclaredTask(client, {
             workspaceId,
@@ -137,7 +137,7 @@ export async function persistConsumedTasks(
       .catch(rethrowQueryFailure);
     if (updated.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
   }
-  if (terminalRunStatuses.has(plan.checkpoint.runStatus)) {
+  if (TERMINAL_RUN_STATUSES.has(plan.checkpoint.runStatus)) {
     await closeUnboundCallbacks(client, { workspaceId, runId });
   } else {
     const closed = [

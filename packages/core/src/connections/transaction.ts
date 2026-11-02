@@ -1,11 +1,8 @@
-import { sql } from 'drizzle-orm';
+import { lockWorkspaceRunAdmission } from '../runs/admission-locks.queries.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 
-import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 
 /**
  * For flows that don't answer to a member's current authority, so they stay off
@@ -30,9 +27,7 @@ export async function withConnectionTransaction<T>(
     pool,
     actorId === undefined ? { workspaceId } : { workspaceId, actorId },
     async (client) => {
-      await drizzle(client)
-        .execute(sql`select app.lock_workspace_run_admission(${workspaceId})`)
-        .catch(rethrowQueryFailure);
+      await lockWorkspaceRunAdmission(drizzle(client), workspaceId);
       return operation(client);
     },
     signal === undefined ? {} : { signal },
