@@ -1,97 +1,58 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Put,
-  Param,
-  Query,
-  Req,
-  UseGuards,
-  Header,
-  UseInterceptors,
-} from '@nestjs/common';
-import {
-  workspaceIdentifierSchema,
-  workspaceVariablesRequestSchema,
-  workspaceVariableUsageQuerySchema,
-} from '@pertexo/contracts';
-import {
-  SessionAuthenticationGuard,
-  CsrfProtectionGuard,
-  authenticatedSession,
-} from '../workspaces/index.js';
+import { Controller, Req, UseInterceptors } from '@nestjs/common';
+import { variableRoutes, type RouteInput } from '@pertexo/contracts/server';
+import { authenticatedSession } from '../workspaces/index.js';
+import { In, Route } from '../workspaces/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/types.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
-import {
-  requestIdempotencyKey,
-  withRequestOperationSignal,
-} from '../platform/http/index.js';
+import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
-import { RateLimit } from '../platform/rate-limit/metadata.js';
-import {
-  WorkspaceVariablesReadGuard,
-  WorkspaceVariablesManageGuard,
-} from './guards.js';
 import { WorkspaceVariablesService } from './service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../problems/context/normalize.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 @UseInterceptors(domainErrors(resourceFailure))
-@Controller('v1/workspaces/:workspaceId/variables')
-@UseGuards(SessionAuthenticationGuard)
-@RateLimit('authenticated_read')
+@Controller()
 export class WorkspaceVariablesController {
   constructor(private readonly variables: WorkspaceVariablesService) {}
-  @Get()
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(WorkspaceVariablesReadGuard)
-  read(@Req() request: Request, @Param('workspaceId') workspace: unknown) {
-    const workspaceId = workspaceIdentifierSchema.parse(workspace);
+  @Route(variableRoutes.read)
+  read(
+    @Req() request: Request,
+    @In() { params }: RouteInput<typeof variableRoutes.read>,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
       this.variables.read({
-        workspaceId,
+        workspaceId: params.workspaceId,
         actorId: authenticatedSession(request).userId,
         signal,
       }),
     );
   }
-  @Get('usage')
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(WorkspaceVariablesReadGuard)
+  @Route(variableRoutes.usage)
   usage(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Query() query: unknown,
+    @In() { params, query }: RouteInput<typeof variableRoutes.usage>,
   ) {
-    const workspaceId = workspaceIdentifierSchema.parse(workspace);
-    const input = workspaceVariableUsageQuerySchema.parse(query);
     return withRequestOperationSignal(request, (signal) =>
       this.variables.usage({
-        workspaceId,
+        workspaceId: params.workspaceId,
         actorId: authenticatedSession(request).userId,
-        ...input,
+        ...query,
         signal,
       }),
     );
   }
-  @Put()
-  @Header('Cache-Control', 'private, no-store')
-  @UseGuards(WorkspaceVariablesManageGuard, CsrfProtectionGuard)
-  @RateLimit('ordinary_mutation')
+  @Route(variableRoutes.replace)
   replace(
     @Req() request: Request,
-    @Param('workspaceId') workspace: unknown,
-    @Body() body: unknown,
+    @In()
+    { params, body, idempotencyKey }: RouteInput<typeof variableRoutes.replace>,
   ) {
-    const workspaceId = workspaceIdentifierSchema.parse(workspace);
-    const input = workspaceVariablesRequestSchema.parse(body);
-    const idempotencyKey = requestIdempotencyKey(request.headers);
     return withRequestOperationSignal(request, (signal) =>
       this.variables.replace({
-        workspaceId,
+        workspaceId: params.workspaceId,
         actorId: authenticatedSession(request).userId,
-        ...input,
+        ...body,
         idempotencyKey,
         ...authenticatedRequestIdentifiers(request),
         signal,

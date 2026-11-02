@@ -42,3 +42,12 @@ export {
   workspaceInboxClientContract,
   workspaceInboxOpenApiDocument,
 } from './openapi/identity/inbox.js';
+export {
+  defineRoute,
+  named,
+  type AnyRoute,
+  type RouteCapability,
+  type RouteDeclaration,
+  type RouteInput,
+} from './routes/define.js';
+export { variableRoutes } from './routes/identity/variables.js';
