@@ -19,9 +19,13 @@ import {
 } from '../data/collaboration.api';
 import { presenceQuery } from '../data/collaboration.queries';
 import { PresenceContext, useWorkflowPresence } from '../model/context';
-import { VIEWING_PRESENCE, type EditingPresence } from '../model/presence';
-// One identity per browser document; route remounts retain the server lease.
-const tabId = crypto.randomUUID();
+import {
+  browserTabId,
+  VIEWING_PRESENCE,
+  type EditingPresence,
+} from '../model/presence';
+// Route remounts and reloads retain the server lease.
+const tabId = browserTabId(window.sessionStorage);
 let sequence = 0;
 
 export function WorkflowPresenceProvider({
