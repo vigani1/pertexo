@@ -4,6 +4,7 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { withRetainedRunRead } from '../../../src/runs/queries/access.queries.js';
+import type { ResourceTransaction } from '../../../src/shared/contract.js';
 import {
   admin,
   adminDatabaseUrl,
@@ -257,6 +258,41 @@ describe('what the read still bounds', () => {
 });
 
 describe('the visible read under concurrency', () => {
+  it('sees one snapshot from start to end, and cannot write', async () => {
+    const { workspaceId, owner } = await team();
+    const statusOf = (transaction: ResourceTransaction) =>
+      transaction.db.execute(`select name from app.workspaces where id='${workspaceId}'`);
+    const other = new Client({ connectionString: adminDatabaseUrl });
+    await other.connect();
+    try {
+      const names = await withRetainedRunRead(
+        pool,
+        { workspaceId, actorId: owner },
+        async (transaction) => {
+          const first = await statusOf(transaction);
+          await other.query("update app.workspaces set name='Renamed' where id=$1", [
+            workspaceId,
+          ]);
+          const second = await statusOf(transaction);
+          return [first.rows, second.rows];
+        },
+      );
+      expect(names[1]).toEqual(names[0]);
+      expect(names[1]).not.toEqual([{ name: 'Renamed' }]);
+    } finally {
+      await other.end();
+    }
+    const write = await withRetainedRunRead(
+      pool,
+      { workspaceId, actorId: owner },
+      (transaction) =>
+        transaction.db.execute(
+          `update app.workspaces set name='Written' where id='${workspaceId}'`,
+        ),
+    ).catch((error: unknown) => postgresCode(error));
+    expect(write).toBe('25006');
+  });
+
   it('holds no lock: a removal goes through while it is open, and the read keeps its snapshot', async () => {
     const { workspaceId, owner, viewer } = await team();
     const { runId } = await seedRun(workspaceId, owner);
