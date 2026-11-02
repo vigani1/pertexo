@@ -286,7 +286,11 @@ export function ReplayRunDialog({
   }
 
   const needsCapturedInput = formReplay && originalText === undefined;
-  const cannotStart = replay.expired || version.pending || needsCapturedInput;
+  // Until the read answers, an untouched field's {} isn't the run's input, and the
+  // steps that call other services would run again on it. Typing goes ahead.
+  const awaitingInput = original.isPending && runInput.input === '{}';
+  const cannotStart =
+    replay.expired || version.pending || needsCapturedInput || awaitingInput;
   return (
     <ConfirmDialog
       state={{ open: open, onOpenChange: changeOpen, locked: replay.pending }}

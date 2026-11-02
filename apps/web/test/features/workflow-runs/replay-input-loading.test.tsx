@@ -201,4 +201,21 @@ describe('Replay while the run’s input is still loading', () => {
     await opened(router);
     expect(bodies).toEqual([sent(RUN_INPUT)]);
   });
+
+  // The dialog promises the run's own input. An untouched field reads {} only because
+  // the answer hasn't come, and steps that call other services run again on it.
+  it('doesn’t send an empty input for a field nobody has typed in', async () => {
+    const { event, dialog, router } = await openWhileLoading();
+
+    await event.click(dialog.getByRole('button', { name: 'Replay run' }));
+    expect(bodies).toEqual([]);
+
+    answerInput();
+    await waitFor(() => {
+      expect(dialog.getByLabelText(LABEL)).toHaveValue(RUN_INPUT_TEXT);
+    });
+    await event.click(dialog.getByRole('button', { name: 'Replay run' }));
+    await opened(router);
+    expect(bodies).toEqual([sent(RUN_INPUT)]);
+  });
 });
