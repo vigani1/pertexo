@@ -106,7 +106,7 @@ describe('Replay while the run’s input is still loading', () => {
     );
   });
 
-  const openWhileLoading = async () => {
+  const openReplay = async () => {
     const view = renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
     const event = userEvent.setup();
     await event.click(
@@ -115,8 +115,13 @@ describe('Replay while the run’s input is still loading', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'Replay this run',
     });
-    await inputAsked.promise;
     return { ...view, event, dialog: within(dialog) };
+  };
+
+  const openWhileLoading = async () => {
+    const opened = await openReplay();
+    await inputAsked.promise;
+    return opened;
   };
 
   const opened = (router: ReturnType<typeof renderApp>['router']) =>
@@ -228,4 +233,37 @@ describe('Replay while the run’s input is still loading', () => {
     await opened(router);
     expect(bodies).toEqual([sent(RUN_INPUT)]);
   });
+
+  // Nobody's input is on its way any more, and the dialog says to enter one.
+  it.each([
+    ['refused', 403],
+    ['broken', 500],
+  ])(
+    'lets a replay through once the read has %s',
+    async (_name, status) => {
+      mockServer.use(
+        http.get(`${apiBase}/runs/:runId/input`, () =>
+          HttpResponse.json(
+            { type: 'about:blank', title: 'No', status },
+            { status },
+          ),
+        ),
+      );
+      const { event, dialog, router } = await openReplay();
+
+      await waitFor(
+        () => {
+          expect(
+            dialog.getByRole('button', { name: 'Replay run' }),
+          ).toBeEnabled();
+        },
+        { timeout: 15_000 },
+      );
+      await event.click(dialog.getByRole('button', { name: 'Replay run' }));
+
+      await opened(router);
+      expect(bodies).toEqual([sent({})]);
+    },
+    30_000,
+  );
 });
