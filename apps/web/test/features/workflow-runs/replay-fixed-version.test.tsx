@@ -1,5 +1,5 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -135,6 +135,33 @@ function captureReplay() {
 }
 
 describe('replaying a failed run after a fix is published', () => {
+  it('reads the run input only once someone opens Replay', async () => {
+    install({ id: sourceVersionId, versionNumber: 2 });
+    let reads = 0;
+    mockServer.use(
+      http.get(`${apiBase}/runs/:runId/input`, () => {
+        reads += 1;
+        return HttpResponse.json({
+          input: { kind: 'inline', value: { order: 'A-17' } },
+        });
+      }),
+    );
+    renderApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    const event = userEvent.setup();
+    const replay = await screen.findByRole(
+      'button',
+      { name: 'Replay' },
+      coldStart,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(reads).toBe(0);
+    await event.click(replay);
+    await screen.findByRole('dialog', { name: 'Replay this run' });
+    await waitFor(() => {
+      expect(reads).toBeGreaterThan(0);
+    });
+  });
+
   it('offers the fixed version and starts on it by default', async () => {
     install({ id: fixedVersionId, versionNumber: 3 });
     const bodies = captureReplay();
