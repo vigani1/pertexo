@@ -18,7 +18,7 @@ import {
 } from '../errors.js';
 import type {
   CompleteNodeAttemptResult,
-  NodeAttemptRunStore,
+  CompleteAttemptInput,
 } from '../contract.js';
 import { auditMismatch, validateDelivery } from './receipts.queries.js';
 import { applyNodeAttemptCompletion } from './outcomes.js';
@@ -26,7 +26,7 @@ import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 
 export async function completeNodeAttempt(
   pool: Pool,
-  input: Parameters<NodeAttemptRunStore['complete']>[0],
+  input: CompleteAttemptInput,
 ): Promise<CompleteNodeAttemptResult> {
   let serializedOutput: string | null = null;
   if (
@@ -60,9 +60,6 @@ export async function completeNodeAttempt(
           nodeRunId: input.lease.nodeRunId,
           attemptId: input.lease.attemptId,
           delivery: input.lease.delivery,
-          leaseDurationSeconds: 1,
-          workerId: input.lease.workerId,
-          signal: input.signal,
         });
         const receipt = await lockCompletionReceipt(client, input);
         const receiptRow = receipt[0];

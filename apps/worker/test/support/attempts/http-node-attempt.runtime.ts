@@ -201,6 +201,7 @@ export async function createHttpNodeAttemptProofRuntime(
         (store) => store.close(),
       );
       injectedRunStore = Object.freeze({
+        recordInput: (input) => baseRunStore.recordInput(input),
         claimDelivery: async (
           input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
         ) => {

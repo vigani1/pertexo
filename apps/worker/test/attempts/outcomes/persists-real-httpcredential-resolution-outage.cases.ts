@@ -26,6 +26,7 @@ export function registerPersistsRealHTTPCredentialResolutionOutage(): void {
       .fn<NodeAttemptRunStore['markDispatched']>()
       .mockResolvedValue({ dispatchedAt: new Date() });
     const store = executionStore({
+      recordInput: vi.fn(),
       claimDelivery: vi
         .fn()
         .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
@@ -160,6 +161,7 @@ export function registerPersistsRealHTTPCredentialResolutionOutage(): void {
           control: { kind: 'abort', reason: abortReason },
         });
       const store = {
+        recordInput: vi.fn(),
         claimDelivery: vi
           .fn()
           .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),

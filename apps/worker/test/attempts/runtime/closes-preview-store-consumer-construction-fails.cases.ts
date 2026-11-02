@@ -47,6 +47,7 @@ export function registerClosesPreviewStoreConsumerConstructionFails(): void {
     };
     const closeRunStore = vi.fn().mockResolvedValue(undefined);
     const runStore = {
+      recordInput: vi.fn(),
       claimDelivery: vi.fn<NonNullable<NodeAttemptRunStore['claimDelivery']>>(),
       close: closeRunStore,
       complete: vi.fn<NonNullable<NodeAttemptRunStore['complete']>>(),

@@ -10,13 +10,13 @@ import {
   inboxReceipts,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { CompletionInput } from './contract.js';
+import type { CompleteAttemptInput } from '../contract.js';
 import { nodeAttemptConsumerName } from './receipts.queries.js';
 import { runAbortReason } from '../control.js';
 
 export async function lockCompletionReceipt(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
 ) {
   return drizzle(client)
     .select({
@@ -37,7 +37,7 @@ export async function lockCompletionReceipt(
 
 export async function lockCompletionRun(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
 ) {
   return drizzle(client)
     .select({ abortReason: runAbortReason })
@@ -55,7 +55,7 @@ export async function lockCompletionRun(
 
 export async function lockCompletionAttempt(
   client: PoolClient,
-  { lease }: CompletionInput,
+  { lease }: CompleteAttemptInput,
 ) {
   const db = drizzle(client);
   const attempt = alias(nodeAttempts, 'attempt');

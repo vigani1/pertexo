@@ -47,6 +47,7 @@ export function registerCleansEveryTransferredResourceCapabilityConstruction(): 
         },
         registry: { execute: vi.fn() },
         runStore: {
+          recordInput: vi.fn(),
           claimDelivery: vi.fn(),
           close: closeRunStore,
           complete: vi.fn(),
@@ -118,6 +119,7 @@ export function registerCleansEveryTransferredResourceCapabilityConstruction(): 
         },
         registry: { execute: vi.fn() },
         runStore: {
+          recordInput: vi.fn(),
           claimDelivery: vi.fn(),
           close: storeClose,
           complete: vi.fn(),
@@ -191,6 +193,7 @@ export function registerCleansEveryTransferredResourceCapabilityConstruction(): 
         },
         registry: { execute: vi.fn() },
         runStore: {
+          recordInput: vi.fn(),
           claimDelivery: vi.fn(),
           close: vi.fn().mockResolvedValue(undefined),
           complete: vi.fn(),

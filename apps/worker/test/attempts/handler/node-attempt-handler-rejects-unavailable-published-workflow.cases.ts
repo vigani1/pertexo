@@ -22,6 +22,7 @@ export function registerNodeAttemptHandlerRejectsUnavailablePublishedWorkflow():
       },
       registry: { execute: vi.fn() },
       runStore: {
+        recordInput: vi.fn(),
         claimDelivery: vi
           .fn()
           .mockResolvedValue({ kind: 'claimed', lease: lease() }),
@@ -66,6 +67,7 @@ export function registerNodeAttemptHandlerRejectsUnavailablePublishedWorkflow():
       },
       registry: { execute: vi.fn() },
       runStore: {
+        recordInput: vi.fn(),
         claimDelivery: vi
           .fn()
           .mockResolvedValue({ kind: 'claimed', lease: lease() }),
@@ -130,6 +132,7 @@ export function registerNodeAttemptHandlerRejectsUnavailablePublishedWorkflow():
       },
       registry: { execute: vi.fn() },
       runStore: {
+        recordInput: vi.fn(),
         claimDelivery: vi.fn().mockResolvedValue({
           kind: 'claimed',
           lease: { ...lease(), admissionKind: 'wait_resume' },

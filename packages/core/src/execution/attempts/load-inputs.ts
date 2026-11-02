@@ -1,8 +1,9 @@
-import {
-  NodeAttemptStateCorruptError,
-  type NodeAttemptRunStore,
-  type NodeAttemptStoredInputs,
-} from '../../attempts/index.js';
+import type {
+  LoadInputsInput,
+  NodeAttemptRunStore,
+  NodeAttemptStoredInputs,
+} from '../../attempts/contract.js';
+import { NodeAttemptStateCorruptError } from '../../attempts/errors.js';
 import {
   loopIterationOrdinal,
   NODE_ATTEMPT_INPUT_LIMITS,
@@ -34,8 +35,6 @@ export type NodeAttemptInputs = Omit<NodeAttemptStoredInputs, 'checkpoint'> &
     loopResultsTooLarge?: true;
   }>;
 
-type LoadInputsRequest = Parameters<NodeAttemptRunStore['loadInputs']>[0];
-
 /** A finished For Each step that feeds the attempt, and its body's last step. */
 export type ForEachUpstream = Readonly<{
   nodeId: string;
@@ -64,7 +63,7 @@ async function withLoopResults({
   maxBytes,
 }: Readonly<{
   store: Pick<NodeAttemptRunStore, 'listNodeOutcomes' | 'readNodeOutputs'>;
-  request: LoadInputsRequest;
+  request: LoadInputsInput;
   output: CompletedOutput;
   loop: ForEachUpstream;
   maxBytes: number;
@@ -122,7 +121,7 @@ async function withLoopResults({
  */
 async function coordinatorInput(
   store: Pick<NodeAttemptRunStore, 'readAttemptOutputs'>,
-  request: LoadInputsRequest,
+  request: LoadInputsInput,
   checkpoint: WorkflowCheckpoint,
 ): Promise<NodeAttemptInputs['coordinatorInput']> {
   const join = checkpoint.joins.find(
@@ -188,7 +187,7 @@ function innermostLoop(
   return { loop, scope };
 }
 
-function assertUpstreamInputs(input: LoadInputsRequest): void {
+function assertUpstreamInputs(input: LoadInputsInput): void {
   if (
     input.upstreamNodeOutputs.length >
       NODE_ATTEMPT_INPUT_LIMITS.upstreamNodeOutputs ||
@@ -212,7 +211,7 @@ export async function loadAttemptInputs(
     | 'listNodeOutcomes'
     | 'readNodeOutputs'
   >,
-  input: LoadInputsRequest,
+  input: LoadInputsInput,
   loopResults?: LoopResultsRequest,
 ): Promise<NodeAttemptInputs> {
   assertUpstreamInputs(input);

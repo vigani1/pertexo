@@ -7,11 +7,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
 import type { Pool } from 'pg';
-import type { NodeAttemptRunStore } from '../contract.js';
-
-type RecordInputRequest = Parameters<
-  NonNullable<NodeAttemptRunStore['recordInput']>
->[0];
+import type { RecordInputInput } from '../contract.js';
 
 /**
  * Writes an attempt's resolved input onto its node run while the caller still
@@ -22,7 +18,7 @@ type RecordInputRequest = Parameters<
  */
 export async function recordNodeAttemptInput(
   pool: Pool,
-  request: RecordInputRequest,
+  request: RecordInputInput,
 ): Promise<Readonly<{ recorded: boolean }>> {
   if (request.signal.aborted) return { recorded: false };
   const { lease, signal } = request;
