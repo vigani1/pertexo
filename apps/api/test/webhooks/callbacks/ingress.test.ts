@@ -202,7 +202,7 @@ it('redacts JSON-escaped URL and secret echoes and excludes authorization and pr
   expect(retained).not.toContain('private');
   expect(retained).toContain('[Redacted]');
 });
-it('does not consume a callback during preflight or a GET/HEAD probe and fails closed when rate limiting is unavailable', async () => {
+it('does not consume a callback during preflight or a GET/HEAD probe, and still takes one when Redis is out', async () => {
   const f = fixture({
     mode: 'secret_url',
     allowedOrigins: ['https://caller.test'],
@@ -226,9 +226,9 @@ it('does not consume a callback during preflight or a GET/HEAD probe and fails c
   expect(f.retained).toEqual([]);
   f.unavailable();
   expect((await f.app.inject({ method: 'POST', url: f.url })).statusCode).toBe(
-    503,
+    202,
   );
-  expect(f.retained).toEqual([]);
+  expect(f.retained).toHaveLength(1);
 });
 it('refuses oversized or malformed input without accepting the callback', async () => {
   const f = fixture({ mode: 'secret_url', allowedOrigins: [] });
