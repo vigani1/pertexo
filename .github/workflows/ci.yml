@@ -16,12 +16,15 @@ permissions:
 # A job that reaches its limit gets split or sped up. Raise one only with a reason in
 # the commit, and lower it whenever a job gets faster.
 #
-# A new push replaces a pull request's older run. Runs on main all finish, each in
-# its own group.
+# A new push replaces a pull request's older run. main tests one commit at a time and
+# never cancels the run under way: a merge waits its turn, and a newer merge replaces
+# it, since testing the newer commit covers both. A full run for every merge, when
+# merges come faster than a run takes, kept pull requests queueing behind main for
+# runners.
 concurrency:
   group:
     ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' &&
-    github.ref || github.sha }}
+    github.ref || 'main' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Service-consuming jobs run on their own runner and Compose project, so

@@ -27,7 +27,9 @@ pull request skips the heavy jobs, and `self-host-drill` runs only for changes t
 what it covers. A matrix that was skipped never reports its per-leg names, so
 protection can't require those directly. The `faults` job runs on `main` and
 nightly, outside `ci-passed`, so no pull request waits for it; a failed run still
-blocks releases and deploys, which need the commit's whole run green. A cancelled,
+blocks releases and deploys, which need the commit's whole run green. `main` tests
+one commit at a time, and a newer merge replaces one still waiting. Those commits
+have images but no green run, so they can't be released or deployed. A cancelled,
 missing or stale `ci-passed` is not success.
 
 ## Solo-maintainer review exception
