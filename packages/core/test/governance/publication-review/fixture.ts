@@ -23,25 +23,30 @@ export function reviews() {
   return authoring.publicationReviews;
 }
 
-export async function request(requester = builder) {
+/** A new workflow and the request for it, not yet sent. */
+export async function requestFor(requester = builder, space = workspaceId) {
   const created = await authoring.createWorkflow({
-    workspaceId,
+    workspaceId: space,
     actorId: requester,
     name: 'Reviewed workflow',
     emptyGraph,
     idempotencyKey: randomUUID(),
   });
-  const command = {
-    workspaceId,
+  return {
+    workspaceId: space,
     actorId: requester,
     workflowId: created.workflowId,
-    representationTag: await currentRepresentationTag(authoring, workspaceId, {
+    representationTag: await currentRepresentationTag(authoring, space, {
       scopedWorkflowId: created.workflowId,
       scopedActorId: requester,
     }),
     note: 'PRIVATE_REVIEW_NOTE',
     idempotencyKey: randomUUID(),
   };
+}
+
+export async function request(requester = builder) {
+  const command = await requestFor(requester);
   return { command, review: await reviews().request(command) };
 }
 
