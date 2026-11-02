@@ -66,6 +66,12 @@ function ContextFields(props: ContextFieldsProps) {
           ? 'Details for the person responding'
           : 'Prefill fields'}
       </legend>
+      {model.group === 'details' && model.draft.text.length === 0 ? (
+        <Notice tone="warning">
+          The person responding will see only the title. Add what they need to
+          decide, such as a value from the trigger.
+        </Notice>
+      ) : null}
       {model.draft.text.map((row) => {
         return (
           <ContextFieldRow
@@ -160,12 +166,18 @@ function useContextMappings({
       const checked = validateInputMappingRows(rows, graph, node.id, {
         checkGraph: false,
       });
-      if (checked.inputMappings === undefined)
+      if (checked.inputMappings === undefined) {
+        const unnamed = rows.findIndex(
+          (row) => row.destinationKey.trim() === '',
+        );
         return {
           ok: false,
           error:
-            'Give each field a unique label and complete its value or mapping.',
+            unnamed === -1
+              ? 'Give each field a unique label and complete its value or mapping.'
+              : `Field ${String(unnamed + 1)} needs a label.`,
         };
+      }
       const mapping = contextMapping(checked.inputMappings);
       if (mapping === undefined)
         return {
