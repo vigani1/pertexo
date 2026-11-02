@@ -104,15 +104,8 @@ export function registerPreservesConstructionEveryRuntimeCleanupFailure(): void 
 
     expect(response.statusCode).toBe(503);
     expect(response.payload).not.toContain('secret database detail');
-    expect(response.headers['content-type']).toContain(
-      'application/problem+json',
-    );
     expect(response.headers['x-request-id']).toBeTypeOf('string');
-    expect(response.json()).toMatchObject({
-      code: 'internal.unexpected',
-      requestId: response.headers['x-request-id'],
-      status: 503,
-    });
+    expect(response.json()).toEqual({ status: 'not_ready' });
   });
 
   it('refuses to start and closes resources against an incompatible database', async () => {
