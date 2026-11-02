@@ -251,7 +251,7 @@ it('a publish in flight finishes with a request waiting behind it', async () => 
       actorId: builder,
       workflowId: other,
       representationTag: otherTag,
-      note: null,
+      note: 'Please review',
       idempotencyKey: randomUUID(),
     }),
   ).rejects.toMatchObject({ reason: 'disabled' });
