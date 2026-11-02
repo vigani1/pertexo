@@ -22,6 +22,7 @@ import {
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
 import type { PoolClient } from 'pg';
+import type { z } from 'zod';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import type { CommandIdentity } from '@pertexo/database/primitives';
 import {
@@ -60,14 +61,14 @@ import type {
   PublicationCandidateInput,
   PublicationClaim,
 } from './contract.js';
-import { executableSchema } from './input.js';
+import { requireReadableReceipt } from '../../shared/receipts.js';
+import { executableSchema, publicationReceipt } from './input.js';
 import {
   finalizePublication,
   persistPublicationProjections,
 } from './projections.repository.js';
 
-/** A retry gets back the version its first attempt published. */
-type PublicationReceipt = Readonly<{ versionId: string; reused: boolean }>;
+type PublicationReceipt = z.output<typeof publicationReceipt>;
 
 async function claimPublication(
   client: PoolClient,
@@ -90,6 +91,7 @@ async function claimPublication(
   });
   if (stored === null)
     return Object.freeze({ command, replay: null, workflowId });
+  requireReadableReceipt(publicationReceipt, stored);
   const { versionId, reused } = stored;
   const [row] = await drizzle(client)
     .select(versionProjection)

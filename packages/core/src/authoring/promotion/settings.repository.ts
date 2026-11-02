@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { requireReadableReceipt } from '../../shared/receipts.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -26,6 +28,12 @@ import {
   readPromotionLink,
   requirePromotionAuthority,
 } from './authority.queries.js';
+
+/** What choosing a target stored. */
+const targetReceipt = z.object({
+  revision: z.number(),
+  targetWorkspaceId: z.uuid().nullable(),
+});
 
 export function promotionSettings(context: PromotionContext) {
   return {
@@ -183,11 +191,13 @@ function setPromotionTarget(
             },
           },
         );
-        if (stored !== null)
+        if (stored !== null) {
+          requireReadableReceipt(targetReceipt, stored);
           return {
             ...stored,
             replayed: true,
           };
+        }
         const current = await readPromotionLink(client, input.workspaceId);
         if (
           current.revision !== input.expectedRevision ||

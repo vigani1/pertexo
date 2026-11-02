@@ -7,6 +7,7 @@ import {
 
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import type { CommandIdentity } from '@pertexo/database/primitives';
+import { requireReadableReceipt } from '../../shared/receipts.js';
 import type { WorkflowRecord } from './representation/contract.js';
 
 const uuidSchema = z.uuid();
@@ -34,6 +35,9 @@ const storedResultSchema = z
       .strict(),
   })
   .strict();
+
+/** What creating or duplicating a workflow stored. */
+export const createdWorkflowReceipt = z.object({ workflowId: uuidSchema });
 
 /** A command on one workflow, keyed per actor and workflow. */
 export type WorkflowCommand = Readonly<{
@@ -65,6 +69,7 @@ export async function claimWorkflowCommand(
     resourceId: command.workflowId,
   });
   if (stored === null) return null;
+  requireReadableReceipt(storedResultSchema, stored);
   const { workflow } = storedResultSchema.parse(stored);
   if (
     workflow.workspaceId !== command.workspaceId ||

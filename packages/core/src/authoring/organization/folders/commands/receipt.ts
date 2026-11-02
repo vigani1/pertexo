@@ -30,6 +30,7 @@ export function folderCommand(
 ): Promise<WorkflowFolderCommandResult> {
   return session.command(input, 'governance:manage', async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {
+      receipt: folderResult,
       operation,
       target,
       idempotencyKey: input.idempotencyKey,

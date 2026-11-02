@@ -18,7 +18,9 @@ import { lockArtifactReferences } from '../../../artifacts/references/locks.repo
 import { readFolderScope } from '../../../shared/facts.queries.js';
 import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bindings.queries.js';
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
+import { requireReadableReceipt } from '../../../shared/receipts.js';
 import { requireWorkflowInScope } from '../access.js';
+import { createdWorkflowReceipt } from '../receipts.repository.js';
 import type { AuthoringCatalogs } from '../catalogs.js';
 import type { CreateWorkflowInput, CreateWorkflowResult } from '../contract.js';
 import { WorkflowNotFoundError } from '../errors.js';
@@ -72,6 +74,7 @@ export async function createWorkflow(
   });
   let createdId = workflowId;
   if (stored !== null) {
+    requireReadableReceipt(createdWorkflowReceipt, stored);
     createdId = stored.workflowId;
     await requireWorkflowInScope(
       client,

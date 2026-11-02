@@ -46,6 +46,7 @@ export async function placeWorkflow(
   };
   return session.command(input, 'workflow:update', async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {
+      receipt: placementResult,
       operation: 'folder.place',
       target: workflowId,
       idempotencyKey: input.idempotencyKey,

@@ -26,7 +26,9 @@ import { requireConnectionBindings } from '../../../tenant-access/resources/conn
 
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { FolderScope } from '../../../shared/contract.js';
+import { requireReadableReceipt } from '../../../shared/receipts.js';
 import { requireWorkflowInScope } from '../access.js';
+import { createdWorkflowReceipt } from '../receipts.repository.js';
 import type { AuthoringCatalogs } from '../catalogs.js';
 import type {
   DuplicateWorkflowInput,
@@ -113,6 +115,7 @@ export async function duplicateWorkflow(
     resourceId: destinationId,
   });
   if (stored !== null) {
+    requireReadableReceipt(createdWorkflowReceipt, stored);
     const replay = stored;
     await requireWorkflowInScope(
       client,

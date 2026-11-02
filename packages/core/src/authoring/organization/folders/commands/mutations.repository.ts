@@ -212,6 +212,7 @@ export async function deleteFolder(
   };
   return session.command(input, 'governance:manage', async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {
+      receipt: deleteResult,
       operation: 'folder.delete',
       target: folderId,
       idempotencyKey: input.idempotencyKey,

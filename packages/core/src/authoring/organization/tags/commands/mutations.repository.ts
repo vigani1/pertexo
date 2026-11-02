@@ -181,6 +181,7 @@ export async function deleteTagCommand(
   };
   return session.command(input, 'governance:manage', async (client, scope) => {
     const { result, replayed } = await runOrganizationCommand(client, scope, {
+      receipt: deleteResult,
       operation: 'tag.delete',
       target: tagId,
       idempotencyKey: input.idempotencyKey,

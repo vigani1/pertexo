@@ -1,3 +1,4 @@
+import { requireReadableReceipt } from '../../shared/receipts.js';
 import {
   appendAuditFact,
   rethrowQueryFailure,
@@ -187,6 +188,7 @@ function importPortableWorkflow(
       resourceId: destinationId,
     });
     if (stored !== null) {
+      requireReadableReceipt(importResultSchema, stored);
       const replay = importResultSchema.parse(stored);
       const destination = await drizzle(client)
         .select({ id: workflows.id })
