@@ -152,16 +152,20 @@ describe('someone whose standing changed', () => {
       );
       await change(workspaceId, manager);
       for (const command of [
-        identities.createWorkspaceInvitation(invitation(workspaceId, manager)),
-        identities.revokeWorkspaceInvitation({
-          workspaceId,
-          actorUserId: manager,
-          invitationId: created.invitation.id,
-          expectedRevision: created.invitation.revision,
-          ...key(),
-        }),
+        () =>
+          identities.createWorkspaceInvitation(
+            invitation(workspaceId, manager),
+          ),
+        () =>
+          identities.revokeWorkspaceInvitation({
+            workspaceId,
+            actorUserId: manager,
+            invitationId: created.invitation.id,
+            expectedRevision: created.invitation.revision,
+            ...key(),
+          }),
       ])
-        expect(await answer(command)).toEqual(refusal('actor_inactive'));
+        expect(await answer(command())).toEqual(refusal('actor_inactive'));
     },
   );
 
