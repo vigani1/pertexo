@@ -57,6 +57,7 @@ export async function assembleApiApplication(
     webhookRuntime,
   } = runtimes;
   const fastifyAdapter = new FastifyAdapter({
+    routerOptions: { ignoreTrailingSlash: true },
     trustProxy:
       config.trustedProxyCidrs === undefined ||
       config.trustedProxyCidrs.length === 0

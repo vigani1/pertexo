@@ -249,7 +249,11 @@ function routeWorkspace(request: IdentityWorkspaceRequest): string {
   const workspaceId = params.workspaceId;
   if (!isCanonicalUuid(workspaceId))
     return throwApplicationError(applicationError('request.invalid'));
-  return workspaceId;
+  // Handlers and core compare this id as text, and a UUID's case means nothing,
+  // so it's canonical from here on. Otherwise a token's own workspace reads as another.
+  const canonical = workspaceId.toLowerCase();
+  Object.assign(params, { workspaceId: canonical });
+  return canonical;
 }
 
 export function readCookie(
