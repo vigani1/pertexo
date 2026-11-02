@@ -67,7 +67,7 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
       .int()
       .min(10)
       .max(60_000)
-      .default(250),
+      .default(1_000),
     OUTBOX_DISPATCH_RETRY_MILLIS: z.coerce
       .number()
       .int()

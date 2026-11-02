@@ -254,6 +254,7 @@ export function dependencies(
   const queueClose = vi.fn().mockResolvedValue(undefined);
   const dispatcherDatabase = {
     checkReadiness: dispatcherReadiness,
+    watchForRows: () => Promise.resolve(),
     claimBatch: vi
       .fn<NonNullable<OutboxDispatcherDatabase['claimBatch']>>()
       .mockResolvedValue({ events: [] }),
