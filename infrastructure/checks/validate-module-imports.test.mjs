@@ -323,6 +323,29 @@ test("an area not yet passed can be reached past its index, and one that has can
     );
 });
 
+test('shared imports no other area, named by its index or not, passed or not', () => {
+  const shared = (statement) =>
+    validateModuleImports({
+      'packages/core/src/shared/rule.ts': statement,
+      'packages/core/src/shared/own.ts': 'export const a = 1;',
+      'packages/core/src/tenant-access/index.ts':
+        "export { a } from './public.js';",
+      'packages/core/src/tenant-access/public.ts': 'export const a = 1;',
+    });
+  for (const form of ['import { a } from', 'import type { A } from'])
+    for (const target of [
+      '../tenant-access/public.js',
+      '../tenant-access/private.js',
+      '../runs/deep/file.js',
+    ])
+      assert.match(
+        shared(`${form} '${target}';`).join('\n'),
+        /shared imports no other area/u,
+        `${form} ${target}`,
+      );
+  assert.deepEqual(shared("import { a } from './own.js';"), []);
+});
+
 test('the list of areas not yet passed can only shrink', () => {
   // A pass removes its area from both lists. Adding to this one, or to the check's,
   // is a decision to take in review: the rule exists so areas get off the list.
