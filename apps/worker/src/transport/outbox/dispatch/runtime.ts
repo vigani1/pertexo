@@ -365,11 +365,8 @@ export class OutboxDispatcher {
           resolve();
           return;
         }
-        let settled = false;
         const timer = setTimeout(resolve, polling.intervalMillis);
         const wake = () => {
-          if (settled) return;
-          settled = true;
           clearTimeout(timer);
           resolve();
         };
