@@ -7,6 +7,7 @@ import type {
   WorkspaceMemberRemovalResult,
 } from '../contract.js';
 import { WorkspaceMemberRemovalCommandConflictError } from '../errors.js';
+import { memberReceipt } from '../receipts.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,
@@ -43,6 +44,7 @@ export function createIdentityWorkspaceMemberRemovalStore(pool: Pool) {
         targetUserId: raw.targetUserId,
         idempotencyKey: raw.idempotencyKey,
         request: { expectedRoleRevision, operation: 'remove' },
+        receipt: memberReceipt,
         conflict,
         admit: ({ actor, target }, scope) => {
           if (!isActiveMemberManager(actor))

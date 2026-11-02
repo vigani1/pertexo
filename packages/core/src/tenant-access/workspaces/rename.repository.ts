@@ -17,6 +17,7 @@ import type {
 } from '../contract.js';
 import { WorkspaceRenameCommandConflictError } from '../errors.js';
 import { readLockedMembers } from '../members/commands.repository.js';
+import { renameReceipt, requireReadableReceipt } from '../receipts.js';
 import { isActiveMemberManager } from '../members/manager.js';
 import { workspaceRecord, workspaceSelection } from './projection.js';
 
@@ -103,7 +104,10 @@ export function createIdentityWorkspaceRenameStore(pool: Pool) {
               resourceId: workspaceId,
             },
           );
-          if (stored !== null) return replayedResult(stored);
+          if (stored !== null) {
+            requireReadableReceipt(renameReceipt, stored);
+            return replayedResult(stored);
+          }
           const currentWorkspace = workspaceRecord(current);
           if (currentWorkspace.revision !== expectedRevision)
             throw new WorkspaceRenameCommandConflictError(

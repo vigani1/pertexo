@@ -27,6 +27,11 @@ import {
   type LockedMember,
 } from './commands.repository.js';
 import { isActiveMemberManager } from './manager.js';
+import {
+  memberReceipt,
+  memberStatusReceipt,
+  ownershipReceipt,
+} from '../receipts.js';
 
 /** Suspension and reactivation are one command in two directions. */
 const STATUS_CHANGES = Object.freeze({
@@ -96,6 +101,7 @@ function leaveWorkspace(
       targetUserId: raw.actorUserId,
       idempotencyKey: raw.idempotencyKey,
       request: { operation: 'leave' },
+      receipt: memberReceipt,
       conflict,
       // A completed departure still replays: the removed row stays.
       admit: ({ actor }) => {
@@ -156,6 +162,7 @@ function changeMemberStatus(
       targetUserId: raw.targetUserId,
       idempotencyKey: raw.idempotencyKey,
       request: { expectedRoleRevision, operation: direction },
+      receipt: memberStatusReceipt,
       conflict,
       admit: admitManagedTarget,
       apply: async (client, { actor, target }, scope) => {
@@ -230,6 +237,7 @@ function transferWorkspaceOwnership(
       expectedRoleRevision,
       operation: 'transfer_ownership',
     },
+    receipt: ownershipReceipt,
     conflict,
     // The previous owner is an admin afterwards, so a completed transfer
     // still replays for them.

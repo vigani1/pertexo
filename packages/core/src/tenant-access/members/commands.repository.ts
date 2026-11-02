@@ -13,6 +13,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Pool, PoolClient } from 'pg';
+import type { ZodType } from 'zod';
 import {
   users,
   workspaceMemberships,
@@ -21,6 +22,7 @@ import {
 
 import { lockWorkspaceRow } from '../../shared/authority.queries.js';
 import { DirectoryManagedMembershipError } from '../errors.js';
+import { requireReadableReceipt } from '../receipts.js';
 
 /*
  * The shared half of the existing-member commands (ADR 037 role change,
@@ -170,6 +172,8 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
     idempotencyKey: string;
     /** The command body; identifiers are added to its request hash. */
     request: Readonly<Record<string, string | number>>;
+    /** What its stored result must hold to be replayed. */
+    receipt: ZodType;
     conflict: (reason: 'actor_inactive', message: string) => Error;
     admit: (
       locked: Readonly<{
@@ -214,11 +218,13 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
         request: { ...command.request, targetUserId: scope.targetUserId },
         resourceId: scope.targetUserId,
       });
-      if (stored !== null)
+      if (stored !== null) {
+        requireReadableReceipt(command.receipt, stored);
         return Object.freeze({
           ...stored,
           replayed: true,
         });
+      }
       const directoryMembership = await drizzle(client)
         .select({ one: sql`1` })
         .from(authDirectoryMemberships)
