@@ -1,4 +1,4 @@
-import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input-cases/store.js';
+import { createWorkflowInputCaseStore } from '../../../../src/authoring/input-cases/store.js';
 
 import {
   actorId,
@@ -11,7 +11,7 @@ import {
   parseDatabaseConfig,
 } from '../../../support/workflow-authoring.js';
 
-export let database: ReturnType<typeof createWorkflowInputCaseDatabase>;
+export let database: ReturnType<typeof createWorkflowInputCaseStore>;
 
 export async function fixture(selectedWorkspaceId = workspaceId) {
   const created = await authoring.createWorkflow({
@@ -43,7 +43,7 @@ export async function fixture(selectedWorkspaceId = workspaceId) {
 }
 
 export function beforeAllFixture1() {
-  database = createWorkflowInputCaseDatabase(
+  database = createWorkflowInputCaseStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
   );
 }

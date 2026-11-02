@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input-cases/store.js';
+import { createWorkflowInputCaseStore } from '../../../../src/authoring/input-cases/store.js';
 import { WorkflowNotFoundError } from '../../../../src/authoring/workflows/errors.js';
 
 import {
@@ -103,7 +103,7 @@ export function registerRejectsBoundsCyclesPostgreSQLInvalid(): void {
   it('locks workspace before membership and rejects a revocation that wins admission', async () => {
     const scope = await fixture();
     const appName = `case-revocation-${randomUUID()}`;
-    const contender = createWorkflowInputCaseDatabase(
+    const contender = createWorkflowInputCaseStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(apiUrl, appName),
         max: 1,

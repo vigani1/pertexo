@@ -8,7 +8,7 @@ import {
 } from '@pertexo/workflow-engine';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { createWorkflowAuthoringStore } from '../../../../src/authoring/workflows/store.js';
-import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input-cases/store.js';
+import { createWorkflowInputCaseStore } from '../../../../src/authoring/input-cases/store.js';
 import { createWorkflowTestSuiteScanner } from '../../../../src/previews/suites/scanner.js';
 import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.queries.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
@@ -31,7 +31,7 @@ export const maintenance = () =>
 
 export let database: ReturnType<typeof createWorkflowAuthoringStore>;
 
-export let cases: ReturnType<typeof createWorkflowInputCaseDatabase>;
+export let cases: ReturnType<typeof createWorkflowInputCaseStore>;
 
 export let scanner: Awaited<ReturnType<typeof createWorkflowTestSuiteScanner>>;
 
@@ -168,7 +168,7 @@ export async function beforeAllFixture1() {
     workflowTestCompiler: (graph, pins) =>
       buildWorkflowTestExecutable({ graph, pins, catalog }),
   });
-  cases = createWorkflowInputCaseDatabase(config());
+  cases = createWorkflowInputCaseStore(config());
   scanner = await createWorkflowTestSuiteScanner(config(), maintenance());
   reader = createWorkflowExecutionReader(config());
 }

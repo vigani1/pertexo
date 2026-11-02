@@ -46,13 +46,13 @@ export type {
   WorkflowFavoriteState,
 } from './organization/favorites/store.js';
 export { WorkflowOrganizationValidationError } from './organization/errors.js';
-export { createWorkflowInputCaseDatabase } from './input-cases/store.js';
+export { createWorkflowInputCaseStore } from './input-cases/store.js';
 export {
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
 } from './input-cases/errors.js';
 export type {
-  WorkflowInputCaseDatabase,
+  WorkflowInputCaseStore,
   WorkflowInputCaseMetadata,
   WorkflowInputCaseResult,
 } from './input-cases/contract.js';

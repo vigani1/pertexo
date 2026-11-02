@@ -6,7 +6,7 @@ import type {
   WorkflowAutoPauseStore,
   WorkflowConcurrencyStore,
   WorkflowErrorStore,
-  WorkflowInputCaseDatabase,
+  WorkflowInputCaseStore,
   WorkflowTagStore,
   WorkflowFavoriteStore,
   WorkflowOrganizationReadStore,
@@ -58,7 +58,7 @@ export type WorkflowAuthoringDependencies = Readonly<{
   autoPausePersistence?: WorkflowAutoPauseStore;
   concurrencyPersistence?: WorkflowConcurrencyStore;
   errorWorkflowPersistence?: WorkflowErrorStore;
-  inputCasePersistence?: WorkflowInputCaseDatabase;
+  inputCasePersistence?: WorkflowInputCaseStore;
   collaborationPersistence?: WorkflowCollaborationStore;
   promotionPersistence?: WorkflowPromotionStore;
   publicationReviewPersistence?: PublicationReviewStore;

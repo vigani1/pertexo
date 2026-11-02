@@ -12,13 +12,13 @@ import {
 } from '@pertexo/database/schema';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import type { CaseTransaction, WorkflowInputCaseDatabase } from './contract.js';
+import type { CaseTransaction, WorkflowInputCaseStore } from './contract.js';
 import { metadataProjection, workflow } from './metadata.queries.js';
 
 export function listInputCases(
   transact: CaseTransaction,
-  input: Parameters<WorkflowInputCaseDatabase['listCases']>[0],
-): ReturnType<WorkflowInputCaseDatabase['listCases']> {
+  input: Parameters<WorkflowInputCaseStore['listCases']>[0],
+): ReturnType<WorkflowInputCaseStore['listCases']> {
   return transact(input, {
     write: false,
     work: async (client) => {
@@ -54,8 +54,8 @@ export function listInputCases(
 
 export function getInputCase(
   transact: CaseTransaction,
-  input: Parameters<WorkflowInputCaseDatabase['getCase']>[0],
-): ReturnType<WorkflowInputCaseDatabase['getCase']> {
+  input: Parameters<WorkflowInputCaseStore['getCase']>[0],
+): ReturnType<WorkflowInputCaseStore['getCase']> {
   return transact(input, {
     write: false,
     work: async (client) => {

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input-cases/store.js';
+import { createWorkflowInputCaseStore } from '../../../../src/authoring/input-cases/store.js';
 import { WorkflowNotFoundError } from '../../../../src/authoring/workflows/errors.js';
 
 import {
@@ -186,7 +186,7 @@ export function registerRemovesExpiredReceiptsRejectionsSo(): void {
       database.createCase({ ...command, idempotencyKey: randomUUID() }),
     ).rejects.toBeInstanceOf(WorkflowNotFoundError);
     expect((await database.createCase(command)).replayed).toBe(true);
-    const restarted = createWorkflowInputCaseDatabase(
+    const restarted = createWorkflowInputCaseStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
     );
     try {

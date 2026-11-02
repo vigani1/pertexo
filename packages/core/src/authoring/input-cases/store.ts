@@ -10,7 +10,7 @@ import { rolesForCapability } from '@pertexo/workflow-model';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 
-import type { Scope, WorkflowInputCaseDatabase } from './contract.js';
+import type { Scope, WorkflowInputCaseStore } from './contract.js';
 
 import {
   createInputCase,
@@ -20,10 +20,10 @@ import {
 import { getInputCase, listInputCases } from './read.queries.js';
 
 /** Durable bounded authoring commands; no caller manages locks or quota counters. */
-export function createWorkflowInputCaseDatabase(
+export function createWorkflowInputCaseStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowInputCaseDatabase {
+): WorkflowInputCaseStore {
   const lease = acquireDatabasePool(config, options.runtime);
   const pending = new Set<Promise<unknown>>();
   let closed = false;
@@ -62,7 +62,7 @@ export function createWorkflowInputCaseDatabase(
       pending.delete(operation);
     }
   }
-  return Object.freeze<WorkflowInputCaseDatabase>({
+  return Object.freeze<WorkflowInputCaseStore>({
     listCases: (input) => listInputCases(transact, input),
     getCase: (input) => getInputCase(transact, input),
     createCase: (input) => createInputCase(transact, input),

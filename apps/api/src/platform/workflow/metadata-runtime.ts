@@ -11,13 +11,13 @@ import {
   type WorkspaceVariablesStore,
 } from '@pertexo/core/variables';
 import {
-  createWorkflowInputCaseDatabase,
+  createWorkflowInputCaseStore,
   createWorkflowTagStore,
   createWorkflowFavoriteStore,
   createWorkflowOrganizationReadStore,
   createWorkflowFolderStore,
   createWorkflowOrganizationBatchStore,
-  type WorkflowInputCaseDatabase,
+  type WorkflowInputCaseStore,
 } from '@pertexo/core/authoring';
 import type {
   DatabaseConfig,
@@ -26,7 +26,7 @@ import type {
 import type { WorkflowAuthoringDependencies } from '../../workflow-authoring/index.js';
 
 export type ApiWorkflowMetadataRuntime = Readonly<{
-  inputCases: WorkflowInputCaseDatabase;
+  inputCases: WorkflowInputCaseStore;
   variables: WorkspaceVariablesStore;
   dataTables: DataTablesStore;
   governance: GovernanceStore;
@@ -59,7 +59,7 @@ export async function createApiWorkflowMetadataRuntime(
   }
   try {
     const lease = runtime === undefined ? {} : { runtime };
-    const inputCases = createWorkflowInputCaseDatabase(config, lease);
+    const inputCases = createWorkflowInputCaseStore(config, lease);
     resources.push(inputCases);
     const governance = createGovernanceStore(config, runtime);
     resources.push(governance);
