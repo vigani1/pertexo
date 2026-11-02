@@ -25,9 +25,9 @@ const run = {
   conclusion: 'success',
 };
 // The job that makes the final image tags, whatever CI calls it, so renaming it in
-// ci.yml without updating the verifier fails here rather than on the first deploy.
+// publish.yml without updating the verifier fails here rather than on the first deploy.
 const publisher = () => {
-  const { jobs } = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
+  const { jobs } = parse(readFileSync('.github/workflows/publish.yml', 'utf8'));
   const publishing = Object.entries(jobs).filter(
     ([, definition]) => definition.permissions?.packages === 'write',
   );
@@ -86,7 +86,9 @@ test('CI verifier rejects missing evidence, wrong ancestry and unsafe SHA before
 import os,sys,json
 run=json.loads(${JSON.stringify(JSON.stringify({ ...run, id: 42 }))})
 job=json.loads(${JSON.stringify(JSON.stringify(job))})
-if 'ci.yml/runs' in sys.argv[-1]: print(json.dumps({'workflow_runs':[] if os.environ.get('NO_RUN') else [run]}))
+path=sys.argv[-1]
+if 'ci.yml/runs' in path: print(json.dumps({'workflow_runs':[] if os.environ.get('NO_RUN') else [run]}))
+elif 'publish.yml/runs' in path: print(json.dumps({'workflow_runs':[] if os.environ.get('NO_PUBLISH_RUN') else [run]}))
 else: print(json.dumps({'jobs':[job]}))
 `,
     { mode: 0o755 },
@@ -111,6 +113,7 @@ else: print(json.dumps({'jobs':[job]}))
     ['short', {}],
     ['$(touch bad)', {}],
     [commit, { NO_RUN: 'true' }],
+    [commit, { NO_PUBLISH_RUN: 'true' }],
     [commit, { FIXTURE_GIT_STATUS: '1' }],
     [commit, { GITHUB_REF: 'refs/heads/feature' }],
   ])
