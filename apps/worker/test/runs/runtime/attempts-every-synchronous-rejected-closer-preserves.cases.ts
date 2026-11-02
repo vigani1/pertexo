@@ -22,6 +22,7 @@ export function registerAttemptsEverySynchronousRejectedCloserPreserves(): void 
         close: vi.fn(() => {
           throw failures.consumer;
         }),
+        hasStopped: () => false,
         isReady: vi.fn().mockReturnValue(true),
         waitUntilReady: vi.fn().mockResolvedValue(undefined),
       }),
@@ -82,6 +83,7 @@ export function registerAttemptsEverySynchronousRejectedCloserPreserves(): void 
       close: vi
         .fn<NonNullable<QueueConsumer['close']>>()
         .mockResolvedValue({ abortedJobs: 0, forced: false }),
+      hasStopped: () => false,
       isReady: vi
         .fn<NonNullable<QueueConsumer['isReady']>>()
         .mockReturnValue(true),
@@ -176,6 +178,7 @@ export function registerAttemptsEverySynchronousRejectedCloserPreserves(): void 
         close: vi
           .fn<NonNullable<QueueConsumer['close']>>()
           .mockResolvedValue({ abortedJobs: 0, forced: false }),
+        hasStopped: () => false,
         isReady: vi
           .fn<NonNullable<QueueConsumer['isReady']>>()
           .mockReturnValue(true),

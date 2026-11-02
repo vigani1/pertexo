@@ -22,7 +22,7 @@ export type WorkflowAutoPauseRuntimeOptions = Readonly<{
 }>;
 
 export type WorkflowAutoPauseDiagnostics = Readonly<{
-  cycleFailed(): void;
+  cycleFailed(error: unknown): void;
   decided(decision: WorkflowTriggerPauseDecision): void;
 }>;
 

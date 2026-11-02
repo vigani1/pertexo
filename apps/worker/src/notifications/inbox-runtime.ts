@@ -22,7 +22,7 @@ export type WorkspaceInboxRuntimeOptions = Readonly<{
 }>;
 
 export type WorkspaceInboxDiagnostics = Readonly<{
-  cycleFailed(): void;
+  cycleFailed(error: unknown): void;
   hintFailed(): void;
 }>;
 

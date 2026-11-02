@@ -61,6 +61,16 @@ import { WorkerDrainState } from './runtime/shutdown/drain-state.js';
 import { WorkerProcessKeepalive } from './runtime/process-keepalive.js';
 import { WorkerShutdownCoordinator } from './runtime/shutdown/coordinator.js';
 import { TransportModule } from './transport/module.js';
+import {
+  COORDINATOR_RUNTIME,
+  MAINTENANCE_RUNTIME,
+  NODE_ATTEMPT_RUNTIME,
+  TRIGGER_RUNTIME,
+} from './transport/tokens.js';
+import type { NodeAttemptRuntime } from './attempts/delivery/runtime.js';
+import type { MaintenanceRuntime } from './maintenance/runtime.js';
+import type { CoordinatorRuntime } from './runs/runtime.js';
+import type { TriggerRuntime } from './triggers/runtime.js';
 import { OutboxDispatcherLifecycle } from './transport/lifecycle.js';
 
 export type WorkerModuleDependencies = Readonly<{
@@ -112,8 +122,12 @@ export class WorkerModule {
               }),
               config.workspaceInbox,
               {
-                cycleFailed: () => {
-                  dependencies.logger.error('workspace_inbox.cycle_failed');
+                cycleFailed: (error) => {
+                  dependencies.logger.error(
+                    'workspace_inbox.cycle_failed',
+                    {},
+                    error,
+                  );
                 },
                 hintFailed: () => {
                   dependencies.logger.warn('workspace_inbox.hint_failed');
@@ -131,11 +145,7 @@ export class WorkerModule {
           useFactory: (): RetentionRuntime =>
             configuredRetentionRuntime(config, dependencies.logger),
         },
-        {
-          provide: STALLED_WORK_RUNTIME,
-          useFactory: (): StalledWorkRuntime =>
-            configuredStalledWorkRuntime(config, dependencies.logger),
-        },
+        stalledWorkProvider(config, dependencies),
         {
           provide: WorkerReadinessMonitor,
           inject: [WorkerReadiness],
@@ -270,10 +280,42 @@ function systemMailProvider(
           },
         },
         mail.pollIntervalMillis,
-        () => {
-          dependencies.logger.error('system_mail.delivery_cycle_failed');
+        (error) => {
+          dependencies.logger.error(
+            'system_mail.delivery_cycle_failed',
+            {},
+            error,
+          );
         },
       );
     },
+  };
+}
+
+/** Handed the consumers so a stopped one reaches the worker's health check. */
+function stalledWorkProvider(
+  config: WorkerConfig,
+  { logger }: WorkerModuleDependencies,
+) {
+  return {
+    provide: STALLED_WORK_RUNTIME,
+    inject: [
+      NODE_ATTEMPT_RUNTIME,
+      COORDINATOR_RUNTIME,
+      TRIGGER_RUNTIME,
+      MAINTENANCE_RUNTIME,
+    ],
+    useFactory: (
+      attempts: NodeAttemptRuntime,
+      coordinator: CoordinatorRuntime,
+      triggers: TriggerRuntime,
+      maintenance: MaintenanceRuntime,
+    ): StalledWorkRuntime =>
+      configuredStalledWorkRuntime(config, logger, {
+        attempts: attempts.consumer,
+        coordinator: coordinator.consumer,
+        triggers: triggers.consumer,
+        maintenance: maintenance.consumer,
+      }),
   };
 }

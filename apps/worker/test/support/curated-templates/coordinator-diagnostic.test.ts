@@ -30,6 +30,7 @@ it('records at most 32 failures and preserves the actual rejected error', async 
   let installed: Parameters<typeof createQueueConsumer>[0] | undefined;
   const consumer = {
     close: vi.fn(),
+    hasStopped: () => false,
     isReady: () => true,
     waitUntilReady: vi.fn(),
   };

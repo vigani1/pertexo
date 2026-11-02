@@ -14,7 +14,7 @@ export function createSystemMailRuntime(
   handler: SystemMailDeliveryHandler,
   store: Pick<SystemMailDeliveryStore, 'close'>,
   pollIntervalMillis: number,
-  onFailure: () => void,
+  onFailure: (error: unknown) => void,
 ): SystemMailRuntime {
   return createPollingRuntime({
     name: 'System mail',

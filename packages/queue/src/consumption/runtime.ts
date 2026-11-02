@@ -139,6 +139,10 @@ export class BullMqQueueConsumer implements QueueConsumer {
     );
   }
 
+  public hasStopped(): boolean {
+    return this.lifecycle === 'open' && !this.worker.isRunning();
+  }
+
   public async waitUntilReady(timeoutMs = this.readyTimeoutMs): Promise<void> {
     return observeRedisOperation(
       this.redisTelemetry,
@@ -353,9 +357,8 @@ export class BullMqQueueConsumer implements QueueConsumer {
       try {
         await bounded(this.worker.disconnect(), 1_000);
       } catch {
-        // The owned connection below is still disconnected defensively. The
-        // bounded BullMQ disconnect is the best-effort teardown for its
-        // separately duplicated blocking connection.
+        // The owned connection below still disconnects. This bounded call is the
+        // best-effort teardown of BullMQ's own blocking connection.
       }
       this.redis.disconnect();
       return true;

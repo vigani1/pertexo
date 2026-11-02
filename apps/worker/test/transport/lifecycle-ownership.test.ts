@@ -36,6 +36,7 @@ function database(close: () => Promise<void> | void): OutboxDispatcherDatabase {
 function producer(close: () => Promise<void> | void): QueueProducer {
   return {
     close,
+    hasStopped: () => false,
     isReady: () => true,
     observe: () => Promise.resolve([]),
     publish: () => Promise.reject(new Error('not exercised')),
@@ -47,6 +48,7 @@ const metrics = transportMetrics();
 
 const consumer: QueueConsumer = {
   close: () => Promise.resolve({ abortedJobs: 0, forced: false }),
+  hasStopped: () => false,
   isReady: () => true,
   waitUntilReady: () => Promise.resolve(),
 };
