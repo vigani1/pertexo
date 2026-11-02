@@ -245,6 +245,10 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
               reused={stamp.receipt.reused}
               liveAgain={stamp.liveAgain}
               hasTriggers={stamp.hasTriggers}
+              needsTriggerSetup={
+                model.workflow?.activationStatus === 'activating' &&
+                model.workflow.webhookSetupRequired
+              }
               canRun={model.canRun}
               onRunNow={() => {
                 model.setStamp(undefined);
