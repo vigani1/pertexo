@@ -1,5 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 
+import type { WorkflowNode } from '@pertexo/workflow-model';
+
 import {
   PLATFORM_NODE_CATALOG,
   resolvePlatformNodeDefinition,
@@ -48,8 +50,22 @@ export function platformPortableDefinitionPolicy() {
       },
     });
   });
+  const registrations = new Map(
+    PLATFORM_NODE_CATALOG.definitions.map((manifest) => [
+      `${manifest.definition.key}@${String(manifest.definition.version)}`,
+      resolvePlatformNodeDefinition(manifest.definition),
+    ]),
+  );
   return Object.freeze({
     definitions: Object.freeze(definitions),
+    // The check a run makes, not validateConfig's: a default is fine here. A step
+    // not in the catalog has its own refusal.
+    acceptsStepConfig: (node: WorkflowNode): boolean => {
+      const registration = registrations.get(
+        `${node.definition.key}@${String(node.definition.version)}`,
+      );
+      return registration?.configSchema.safeParse(node.config).success ?? true;
+    },
     // Template setup checks inputs too; validateConfig stays config-only.
     validateTemplateSetup: validateRegisteredCuratedTemplateSetup,
   });

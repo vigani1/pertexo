@@ -53,6 +53,7 @@ import {
   versionProjection,
 } from '../workflows/representation/records.queries.js';
 
+import { stepSettingsIssues } from './step-settings.js';
 import { validatePublicationCalls } from './calls.repository.js';
 import { connectionReferenceIssues } from './connections.queries.js';
 
@@ -179,6 +180,9 @@ async function lockAndCompilePublication(
     draft.graphJson,
     variant.definitionCatalog,
   );
+  const settingsIssues = stepSettingsIssues(graph, variant.portableCatalog);
+  if (settingsIssues.length > 0)
+    throw new InvalidWorkflowGraphError(settingsIssues);
   const tableIssues = await dataTableReferenceIssues(
     client,
     input.workspaceId,
