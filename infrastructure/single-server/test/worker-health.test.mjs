@@ -114,6 +114,35 @@ for (const [name, check] of [
     assert.notEqual(status, 0);
     assert.equal(await stoppedWithin(exited, 200), false);
   });
+
+  // Reporting not ready used to skip the marker, so such a worker stayed forever.
+  test(`${name}: a worker that reports not ready with a stale marker is ended`, async (t) => {
+    const { status, exited } = runCheck(t, check, {
+      ready: true,
+      revoked: true,
+      progressAgeMinutes: 6,
+    });
+    assert.notEqual(status, 0);
+    assert.equal(await stoppedWithin(exited, 2_000), true);
+  });
+
+  test(`${name}: a worker that has only reported not ready, with a stale marker, is ended`, async (t) => {
+    const { status, exited } = runCheck(t, check, {
+      revoked: true,
+      progressAgeMinutes: 6,
+    });
+    assert.notEqual(status, 0);
+    assert.equal(await stoppedWithin(exited, 2_000), true);
+  });
+
+  test(`${name}: a worker that has only reported not ready, with a fresh marker, is left alone`, async (t) => {
+    const { status, exited } = runCheck(t, check, {
+      revoked: true,
+      progressAgeMinutes: 1,
+    });
+    assert.notEqual(status, 0);
+    assert.equal(await stoppedWithin(exited, 200), false);
+  });
 }
 
 // Docker never restarts for `unhealthy`, so ending the worker has to reach it.

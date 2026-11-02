@@ -215,6 +215,97 @@ describe('retention runtime', () => {
     await runtime.close();
   });
 
+  describe('how long it waits between cycles', () => {
+    const MINUTE = 60_000;
+
+    const nextCycleAfter = async (
+      cycles: () => number,
+      millis: number,
+    ): Promise<boolean> => {
+      const before = cycles();
+      await vi.advanceTimersByTimeAsync(millis);
+      return cycles() > before;
+    };
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('comes back in a second when an operation stopped at its bound with work left', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const { resources, runtime } = setup(MINUTE);
+      const finished = () =>
+        resources.workspacePurge.processNext.mock.calls.length;
+      resources.preview.processNext.mockResolvedValue({ status: 'completed' });
+      runtime.start();
+      await runtime.checkReadiness();
+      expect(resources.preview.processNext).toHaveBeenCalledTimes(20);
+      expect(finished()).toBe(1);
+
+      expect(await nextCycleAfter(finished, 999)).toBe(false);
+      expect(await nextCycleAfter(finished, 1)).toBe(true);
+      expect(resources.preview.processNext).toHaveBeenCalledTimes(40);
+      await runtime.close();
+    });
+
+    it('rests a minute once nothing is left', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const { resources, runtime } = setup(MINUTE);
+      const finished = () =>
+        resources.workspacePurge.processNext.mock.calls.length;
+      runtime.start();
+      await runtime.checkReadiness();
+
+      expect(await nextCycleAfter(finished, MINUTE - 1)).toBe(false);
+      expect(await nextCycleAfter(finished, 1)).toBe(true);
+      await runtime.close();
+    });
+
+    it('goes from the busy rate to the rest when the backlog runs out', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const { resources, runtime } = setup(MINUTE);
+      const finished = () =>
+        resources.workspacePurge.processNext.mock.calls.length;
+      for (let step = 0; step < 20; step += 1)
+        resources.runArtifacts.processNext.mockResolvedValueOnce({
+          status: 'completed',
+        });
+      runtime.start();
+      await runtime.checkReadiness();
+
+      expect(await nextCycleAfter(finished, 1_000)).toBe(true);
+      expect(await nextCycleAfter(finished, MINUTE - 1)).toBe(false);
+      expect(await nextCycleAfter(finished, 1)).toBe(true);
+      await runtime.close();
+    });
+
+    it('does not read a failed operation as work left', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const { resources, runtime } = setup(MINUTE);
+      const finished = () =>
+        resources.workspacePurge.processNext.mock.calls.length;
+      resources.preview.processNext.mockRejectedValueOnce(new Error('down'));
+      runtime.start();
+      await runtime.checkReadiness();
+
+      expect(await nextCycleAfter(finished, MINUTE - 1)).toBe(false);
+      await runtime.close();
+    });
+
+    it('never waits longer than its poll while work is left', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const { resources, runtime } = setup(100);
+      const finished = () =>
+        resources.workspacePurge.processNext.mock.calls.length;
+      resources.preview.processNext.mockResolvedValue({ status: 'completed' });
+      runtime.start();
+      await runtime.checkReadiness();
+
+      expect(await nextCycleAfter(finished, 100)).toBe(true);
+      await runtime.close();
+    });
+  });
+
   it('closes every coordinator and the shared resources on shutdown', async () => {
     const { resources, runtime } = setup();
     runtime.start();
