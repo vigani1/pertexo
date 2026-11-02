@@ -88,18 +88,20 @@ test('issues a personal token through Settings, authenticates without cookies, r
         expect(
           (await machine.get(`/v1/workspaces/${workspaceId}/runs`)).status(),
         ).toBe(200);
-        expect(
-          (
-            await machine.get(`/v1/workspaces/${workspaceId}/api-tokens`)
-          ).status(),
-        ).toBe(401);
+        const browserOnly = await machine.get(
+          `/v1/workspaces/${workspaceId}/api-tokens`,
+        );
+        expect(browserOnly.status()).toBe(403);
+        expect(await browserOnly.json()).toMatchObject({
+          code: 'auth.token_not_supported',
+        });
         const scopeDenied = await machine.post(
           `/v1/workspaces/${workspaceId}/workflows/import/preview`,
           { data: {} },
         );
-        expect(scopeDenied.status()).toBe(404);
+        expect(scopeDenied.status()).toBe(403);
         expect(await scopeDenied.json()).toMatchObject({
-          code: 'resource.not_found',
+          code: 'auth.token_scope_required',
         });
         await page
           .getByRole('button', {
