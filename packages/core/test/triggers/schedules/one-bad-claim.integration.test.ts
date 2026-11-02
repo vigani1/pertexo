@@ -1,8 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 
+import {
+  acquireDatabasePool,
+  createDatabaseRuntime,
+  parseDatabaseConfig,
+} from '@pertexo/database/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { InitialCheckpointFactory } from '../../../src/runs/commands/initial-checkpoint.js';
+import { createScheduleTriggerScanner } from '../../../src/triggers/schedules/scanner.js';
 import { createScheduleTriggerTestEnvironment } from '../../support/schedule-triggers.js';
 
 type WorkspaceId = ReturnType<typeof randomUUID>;
@@ -289,6 +295,52 @@ describe('a schedule that cannot fire', () => {
     await scan();
     expect(await firedRuns(second, next.triggerId)).toBe(1);
     expect(await firedRuns(third, last.triggerId)).toBe(1);
+  }, 30_000);
+
+  // The scan checks before each claim, so this stops it between two: the first has
+  // committed, and a connection going back to its pool is the first thing after that.
+  it('gives back what it hasn’t started when cancelled between claims', async () => {
+    const [first, second, third] = [
+      await createWorkspace(),
+      await createWorkspace(),
+      await createWorkspace(),
+    ];
+    const done = await dueSchedule(first, '4 hours');
+    const next = await dueSchedule(second, '3 hours');
+    const last = await dueSchedule(third, '2 hours');
+    const config = parseDatabaseConfig({
+      connectionString: schedule.apiConnectionString,
+    });
+    const acceptance = createDatabaseRuntime(config, { role: 'api' });
+    const scanner = createScheduleTriggerScanner(config, config, {
+      acceptance,
+    });
+    const shutdown = new AbortController();
+    const reason = new Error('the worker is stopping');
+    acquireDatabasePool(config, acceptance).pool.once('release', () => {
+      shutdown.abort(reason);
+    });
+    try {
+      await expect(
+        scanner.scanDue({
+          leaseOwner: 'scanner',
+          limit: 10,
+          leaseSeconds: 30,
+          onTimeWindowSeconds: 300,
+          signal: shutdown.signal,
+          checkpointFactory,
+        }),
+      ).rejects.toBeDefined();
+    } finally {
+      await scanner.close();
+      await acceptance.close();
+    }
+
+    expect(await firedRuns(first, done.triggerId)).toBe(1);
+    expect(await firedRuns(second, next.triggerId)).toBe(0);
+    expect(await firedRuns(third, last.triggerId)).toBe(0);
+    expect(await leaseOf(second, next.triggerId)).toBeNull();
+    expect(await leaseOf(third, last.triggerId)).toBeNull();
   }, 30_000);
 
   // A database that can't record the failure can't be trusted with the rest, and what
