@@ -191,6 +191,19 @@ describe('directory reads against writers that lock the organization', () => {
         profile: { emails: [{ value: email, primary: true }] },
       };
     };
+    // Bound to the owner, so changing them fans out over a user commands also lock.
+    const bound = await createDirectoryUser(writers, principal, person());
+    await db.asAdmin(
+      'update app.auth_directory_users set user_id=$2 where id=$1',
+      [bound.id, f.owner.id],
+    );
+    const replayed = {
+      ...f.scope,
+      name: 'Replayed client',
+      expectedRevision: await revisionOf(f.organizationId),
+      idempotencyKey: randomUUID(),
+    };
+    await createDirectoryCredential(writers, replayed);
     const results: PromiseSettledResult<unknown>[] = [];
     for (let round = 0; round < 8; round++) {
       results.push(
@@ -206,7 +219,15 @@ describe('directory reads against writers that lock the organization', () => {
             peopleQuery,
           ),
           addDomain(f),
+          addDomain(f),
+          createDirectoryCredential(writers, replayed),
           createDirectoryUser(writers, principal, person()),
+          readers.changeUser(principal, bound.id, undefined, (current) => ({
+            userName: current.user_name,
+            active: true,
+            externalId: `round-${String(round)}`,
+            profile: current.profile,
+          })),
           revisionOf(f.organizationId).then((expectedRevision) =>
             replaceDirectoryMappings(writers, {
               ...f.scope,
