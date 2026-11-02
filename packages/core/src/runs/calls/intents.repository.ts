@@ -1,3 +1,4 @@
+import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
 import {
@@ -16,10 +17,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { prepareStoredExecutionValue } from '../values/stored-execution.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import { CoordinatorRunStateCorruptError } from '../state-errors.js';
-import {
-  terminalRunStatuses,
-  type RunTransitionPlan,
-} from '../advance/plan.js';
+import type { RunTransitionPlan } from '../advance/plan.js';
 
 async function preparedInput(
   client: PoolClient,
@@ -84,7 +82,7 @@ export async function persistCallIntents(
   }>,
 ): Promise<void> {
   const { workspaceId, runId, plan } = input;
-  const closed = terminalRunStatuses.has(plan.checkpoint.runStatus);
+  const closed = TERMINAL_RUN_STATUSES.has(plan.checkpoint.runStatus);
   for (const intent of plan.callIntents ?? []) {
     const prepared = await preparedInput(client, workspaceId, runId, intent);
     const refusal = closed ? 'call_parent_closed' : prepared.refusal;

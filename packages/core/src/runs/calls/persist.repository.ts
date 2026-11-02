@@ -1,13 +1,11 @@
+import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
 import { workflowCalls, nodeRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../state-errors.js';
-import {
-  terminalRunStatuses,
-  type RunTransitionPlan,
-} from '../advance/plan.js';
+import type { RunTransitionPlan } from '../advance/plan.js';
 import { wakeWorkflowRun } from './wakeup.repository.js';
 
 /** Child facts never take the existing parent's run or checkpoint lock. */
@@ -23,7 +21,7 @@ export async function persistCallCompletion(
   if (
     !input.plan.events.some(
       ({ name }) =>
-        name.startsWith('run.') && terminalRunStatuses.has(name.slice(4)),
+        name.startsWith('run.') && TERMINAL_RUN_STATUSES.has(name.slice(4)),
     )
   )
     return;
@@ -127,7 +125,7 @@ export async function persistConsumedCalls(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (terminalRunStatuses.has(plan.checkpoint.runStatus)) {
+  if (TERMINAL_RUN_STATUSES.has(plan.checkpoint.runStatus)) {
     const controls = await drizzle(client)
       .update(c)
       .set({

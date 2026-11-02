@@ -1,3 +1,4 @@
+import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
 import { releaseSlotDuringTimedWait } from '../timed-wait-slot.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
@@ -23,11 +24,7 @@ import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import type { CoordinatorCommitRow } from '../load/state.queries.js';
 import { canonicalTimestamp } from '../load/fact-admission.js';
-import {
-  scheduleRunInputSchema,
-  terminalRunStatuses,
-  type RunTransitionPlan,
-} from '../plan.js';
+import { scheduleRunInputSchema, type RunTransitionPlan } from '../plan.js';
 import { persistFailureNotificationIntent } from './failure-notification.repository.js';
 import { persistWorkspaceInboxEvent } from '../../../inbox/folding/events.repository.js';
 import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcomes.repository.js';
@@ -47,7 +44,7 @@ async function persistDerivedContinuation(
   // that wakeup durable in the same checkpoint/outbox transaction.
   const cannotContinueImmediately =
     !(input.plan.immediateContinuation ?? false) ||
-    terminalRunStatuses.has(input.plan.checkpoint.runStatus) ||
+    TERMINAL_RUN_STATUSES.has(input.plan.checkpoint.runStatus) ||
     input.plan.attempts.length > 0;
   if (cannotContinueImmediately) return;
   const outboxEventId = generatePersistedId();
@@ -131,7 +128,7 @@ export async function persistCoordinatorRunTransition(
   )?.occurredAt;
   const completedAt = plan.events.find(
     ({ name }) =>
-      name.startsWith('run.') && terminalRunStatuses.has(name.slice(4)),
+      name.startsWith('run.') && TERMINAL_RUN_STATUSES.has(name.slice(4)),
   )?.occurredAt;
   const runFailure = plan.events.find(
     ({ name }) => name === 'run.failed',

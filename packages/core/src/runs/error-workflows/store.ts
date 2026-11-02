@@ -1,3 +1,4 @@
+import { lockWorkspaceRunAdmission } from '../admission-locks.queries.js';
 import { outboxEvents, inboxReceipts } from '@pertexo/database/schema';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -57,11 +58,7 @@ export function createErrorWorkflowStore(
           )
             throw new ErrorWorkflowDeliveryMismatchError();
           // The unique receipt serializes duplicates before the intent can change delivery.
-          await db
-            .execute(
-              sql`select app.lock_workspace_run_admission(${input.workspaceId})`,
-            )
-            .catch(rethrowQueryFailure);
+          await lockWorkspaceRunAdmission(db, input.workspaceId);
           const claimed = await db
             .insert(inboxReceipts)
             .values({

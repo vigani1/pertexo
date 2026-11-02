@@ -1,3 +1,4 @@
+import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import {
   workflowCalls,
@@ -11,7 +12,6 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { requestWorkflowRunCancellation } from '../commands/request-cancellation.js';
-import { terminalRunStatuses } from '../advance/plan.js';
 import { wakeWorkflowRun } from './wakeup.repository.js';
 
 /** A child consumes its direct parent's intent under its own run lock only. */
@@ -45,7 +45,7 @@ export async function applyIncomingCallCancellation(
     .catch(rethrowQueryFailure);
   if (row === undefined) return false;
   if (
-    !terminalRunStatuses.has(row.status) &&
+    !TERMINAL_RUN_STATUSES.has(row.status) &&
     row.cancel_requested_at === null
   ) {
     await requestWorkflowRunCancellation(

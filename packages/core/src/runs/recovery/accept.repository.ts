@@ -1,3 +1,4 @@
+import { lockWorkspaceRunAdmission } from '../admission-locks.queries.js';
 import { copyRecoveryRunValues } from '../values/rows.queries.js';
 import { sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
@@ -160,9 +161,7 @@ async function prepareRecoveryEvidence(
   input: RecoverWorkflowRunInput,
 ) {
   // Same order as coordinator writes: workspace, source run/details, then admission counter.
-  await transaction.db.execute(
-    sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
-  );
+  await lockWorkspaceRunAdmission(transaction.db, transaction.workspaceId);
   const evidence = await readRecoveryEvidence(transaction, {
     runId: input.sourceRunId,
     mode: 'locked',

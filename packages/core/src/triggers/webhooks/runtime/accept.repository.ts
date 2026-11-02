@@ -1,3 +1,4 @@
+import { lockWorkspaceRunAdmission } from '../../../runs/admission-locks.queries.js';
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/errors.js';
 import { webhookTriggerReplayRecords as replays } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
@@ -120,8 +121,9 @@ export async function acceptVerifiedWebhookDelivery(
           pool,
           verification.workspaceId,
           async (transaction) => {
-            await transaction.db.execute(
-              sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
+            await lockWorkspaceRunAdmission(
+              transaction.db,
+              transaction.workspaceId,
             );
             if (prepared !== undefined)
               await lockEventCoordination(

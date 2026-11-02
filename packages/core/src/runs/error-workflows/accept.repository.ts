@@ -1,3 +1,4 @@
+import { lockWorkspaceExecutionCounter } from '../admission-locks.queries.js';
 import {
   runErrorWorkflowIntents,
   workflows,
@@ -57,11 +58,7 @@ export async function acceptErrorWorkflow(
   }
   // Keep the capacity fence outside the savepoint: a refusal and its deferred
   // wakeup must commit before a releasing run can observe the pending intent.
-  await db
-    .execute(
-      sql`select app.lock_workspace_execution_counter(${input.workspaceId})`,
-    )
-    .catch(rethrowQueryFailure);
+  await lockWorkspaceExecutionCounter(db, input.workspaceId);
   if (
     row.queue_wait_expires_at !== null &&
     (

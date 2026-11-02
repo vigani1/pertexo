@@ -1,3 +1,4 @@
+import { lockWorkspaceExecutionCounter } from '../../admission-locks.queries.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -11,11 +12,7 @@ export async function pauseHumanWait(
 ) {
   const db = drizzle(client),
     r = workflowRuns;
-  await db
-    .execute(
-      sql`select app.lock_workspace_execution_counter(${input.workspaceId})`,
-    )
-    .catch(rethrowQueryFailure);
+  await lockWorkspaceExecutionCounter(db, input.workspaceId);
   const update = db
     .update(r)
     .set({

@@ -1,9 +1,9 @@
+import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import { readPendingCall } from './admission.queries.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
 import { workflowCalls, workflowRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { terminalRunStatuses } from '../advance/plan.js';
 import type { Pool, PoolClient } from 'pg';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
@@ -81,7 +81,7 @@ async function performOutgoingActions(
         )
         .where(and(eq(c.workspaceId, workspaceId), eq(c.id, loan.id)))
         .catch(rethrowQueryFailure);
-      if (child[0] !== undefined && terminalRunStatuses.has(child[0].status))
+      if (child[0] !== undefined && TERMINAL_RUN_STATUSES.has(child[0].status))
         await deferWorkflowRun(client, workspaceId, runId, input.traceparent);
     }
     return;

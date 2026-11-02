@@ -10,6 +10,7 @@ import {
 } from '@pertexo/workflow-model';
 import { workflowRuns, pendingRunTasks } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { ACTIVE_RUN_STATUSES } from '../../statuses.js';
 import { serializeStoredExecutionValue } from '../../values/stored-execution.js';
 
 /**
@@ -37,7 +38,7 @@ export async function expireDueTasks(
         sql`${task.expiresAt}<=clock_timestamp()`,
         eq(run.workspaceId, task.workspaceId),
         eq(run.id, task.runId),
-        inArray(run.status, ['queued', 'running', 'waiting']),
+        inArray(run.status, ACTIVE_RUN_STATUSES),
         isNull(run.cancelRequestedAt),
       ),
     )
