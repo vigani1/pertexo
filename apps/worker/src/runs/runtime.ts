@@ -20,7 +20,7 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { advanceRun } from '@pertexo/core/execution';
+import { advanceRun } from '@pertexo/core/runs';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   createQueueTraceRunner,

@@ -2,8 +2,8 @@ import type {
   LoadInputsInput,
   NodeAttemptRunStore,
   NodeAttemptStoredInputs,
-} from '../../attempts/contract.js';
-import { NodeAttemptStateCorruptError } from '../../attempts/errors.js';
+} from '../attempts/contract.js';
+import { NodeAttemptStateCorruptError } from '../attempts/errors.js';
 import {
   loopIterationOrdinal,
   NODE_ATTEMPT_INPUT_LIMITS,

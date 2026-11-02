@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';

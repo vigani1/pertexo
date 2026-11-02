@@ -20,7 +20,7 @@ import {
   platformPortableDefinitionPolicy,
 } from '@pertexo/node-catalog/server';
 import { buildWorkflowExecutable } from '@pertexo/workflow-engine';
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,

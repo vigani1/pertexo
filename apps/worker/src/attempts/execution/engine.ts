@@ -27,7 +27,7 @@ import {
   type NodeAttemptInputs,
   verifyPersistedWorkflowProjection,
   type PersistedWorkflowProjectionVerificationOptions,
-} from '@pertexo/core/execution';
+} from '@pertexo/core/runs';
 
 export type NodeAttemptExecutionEngineOptions = Readonly<
   PersistedWorkflowProjectionVerificationOptions & {

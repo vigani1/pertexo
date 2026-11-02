@@ -1,13 +1,10 @@
 import { isDeepStrictEqual } from 'node:util';
 
-import type {
-  RunAdvanceInput,
-  RunAdvanceResult,
-  RunAdvanceStore,
-  WorkflowCallStore,
-} from '../../runs/index.js';
-import { WorkflowCallRefusedError } from '../../runs/index.js';
-import { createInitialCheckpoint } from './initial-checkpoint.js';
+import type { RunAdvanceInput, RunAdvanceResult } from './contract.js';
+import type { RunAdvanceStore } from './store.js';
+import type { WorkflowCallStore } from '../calls/store.js';
+import { WorkflowCallRefusedError } from '../calls/errors.js';
+import { createInitialCheckpoint } from '../commands/create-initial-checkpoint.js';
 import {
   advanceWorkflow,
   parseCheckpoint,
@@ -19,7 +16,7 @@ import { resolveRunResult } from './resolve-result.js';
 import {
   verifyPersistedWorkflowProjection,
   type PersistedWorkflowProjectionVerificationOptions,
-} from '../workflows/verify-projection.js';
+} from '../queries/execution/verify-projection.js';
 
 export type AdvanceRunDependencies = Readonly<{
   runs: RunAdvanceStore;

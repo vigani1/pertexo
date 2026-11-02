@@ -11,7 +11,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import type { ApiConfig } from '../config/api.js';
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 import { WebhookTestEventService } from '../../webhooks/test-events/service.js';
 import { WebhookManagementService } from '../../webhooks/management/service.js';
 import type { WebhookIngressDependencies } from '../../webhooks/ingress/register.js';

@@ -1,4 +1,4 @@
-import type { PublishedWorkflow } from '../../runs/index.js';
+import type { PublishedWorkflow } from './contract.js';
 import { verifyWorkflowExecutable } from '@pertexo/workflow-engine';
 
 /** The served catalog (node catalog plus engine policies) stored executables run on. */

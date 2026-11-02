@@ -6,10 +6,10 @@ import {
   invocationKey,
   type RecoveryNode,
 } from '@pertexo/workflow-engine';
-import type { WorkflowRecoveryMetadata } from '../../../src/runs/index.js';
+import type { WorkflowRecoveryMetadata } from '../../../../src/runs/index.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
-import { recoveryPreparation } from '../../../src/execution/runs/prepare-recovery.js';
+import { recoveryPreparation } from '../../../../src/runs/recovery/prepare.js';
 import {
   RUN_ID,
   VERSION_ID,

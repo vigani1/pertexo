@@ -6,7 +6,7 @@ import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import { WorkspaceVariablesModule } from '../../workspace-variables/module.js';
 
 import { createFormStore } from '@pertexo/core/triggers';
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 import { FormsModule } from '../../forms/module.js';
 import { createPendingTaskStore } from '@pertexo/core/runs';
 import { PendingTasksModule } from '../../pending-tasks/module.js';

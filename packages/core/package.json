@@ -28,10 +28,6 @@
       "types": "./dist/data-tables/index.d.ts",
       "default": "./dist/data-tables/index.js"
     },
-    "./execution": {
-      "types": "./dist/execution/index.d.ts",
-      "default": "./dist/execution/index.js"
-    },
     "./governance": {
       "types": "./dist/governance/index.d.ts",
       "default": "./dist/governance/index.js"

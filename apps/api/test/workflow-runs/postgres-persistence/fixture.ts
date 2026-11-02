@@ -2,7 +2,7 @@ import { parseCheckpoint } from '@pertexo/workflow-engine';
 
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { expect, vi } from 'vitest';
-import type { createInitialCheckpoint } from '@pertexo/core/execution';
+import type { createInitialCheckpoint } from '@pertexo/core/runs';
 import type { createPostgresWorkflowRunPersistence } from '../../../src/workflow-runs/postgres-persistence.js';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import type { WorkflowRunDatabase } from '@pertexo/core/testing';

@@ -9,7 +9,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 
 import { expect, it, vi } from 'vitest';
 
-import { createInitialCheckpoint } from '@pertexo/core/execution';
+import { createInitialCheckpoint } from '@pertexo/core/runs';
 import { createPostgresWorkflowRunPersistence } from '../../../src/workflow-runs/postgres-persistence.js';
 
 import { parseDatabaseConfig } from '@pertexo/database/testing';

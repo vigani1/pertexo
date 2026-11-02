@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { recoveryPreparation } from '@pertexo/core/execution';
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import type { recoveryPreparation } from '@pertexo/core/runs';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 import type { createWorkflowRunDatabase } from '@pertexo/core/runs';
 import { IdempotencyRequestConflictError } from '@pertexo/core/runs';
 

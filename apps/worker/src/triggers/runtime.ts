@@ -26,7 +26,7 @@ import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import { createTriggerReconciliationHandler } from './handler.js';
 import { createTriggerRuntimeTelemetry } from './telemetry.js';
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 import { reportDiagnostic } from '../runtime/polling.js';
 import {
   closeOwners,

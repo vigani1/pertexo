@@ -1,5 +1,5 @@
 import { validateCallableValue } from '@pertexo/workflow-model';
-import type { WorkflowRecoveryPreparation } from '../../runs/index.js';
+import type { WorkflowRecoveryPreparation } from './contract.js';
 import {
   parseCheckpoint,
   planRecovery,
@@ -10,7 +10,7 @@ import {
 import {
   verifyPersistedWorkflowProjection,
   type PersistedWorkflowProjectionVerificationOptions,
-} from '../workflows/verify-projection.js';
+} from '../queries/execution/verify-projection.js';
 
 /** Preview and atomic acceptance share the same verified source and pure policy. */
 export function recoveryPreparation(

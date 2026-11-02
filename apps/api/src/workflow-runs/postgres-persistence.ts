@@ -11,7 +11,7 @@ import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   recoveryPreparation,
   initialCheckpointFactory,
-} from '@pertexo/core/execution';
+} from '@pertexo/core/runs';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 
 import type {

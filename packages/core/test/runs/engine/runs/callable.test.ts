@@ -11,8 +11,8 @@ import {
   type JsonValue,
 } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
-import { createInitialCheckpoint } from '../../../src/execution/runs/initial-checkpoint.js';
-import { resolveRunResult } from '../../../src/execution/runs/resolve-result.js';
+import { createInitialCheckpoint } from '../../../../src/runs/commands/create-initial-checkpoint.js';
+import { resolveRunResult } from '../../../../src/runs/advance/resolve-result.js';
 import {
   VERSION_ID,
   WORKFLOW_ID,

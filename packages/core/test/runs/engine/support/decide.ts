@@ -1,11 +1,11 @@
 import type {
   PublishedWorkflow,
   RunAdvanceDecision,
-} from '../../../src/runs/index.js';
+} from '../../../../src/runs/index.js';
 import { parseCheckpoint } from '@pertexo/workflow-engine';
 
-import { advanceRun } from '../../../src/execution/runs/advance.js';
-import type { PersistedWorkflowProjectionVerificationOptions } from '../../../src/execution/workflows/verify-projection.js';
+import { advanceRun } from '../../../../src/runs/advance/advance-run.js';
+import type { PersistedWorkflowProjectionVerificationOptions } from '../../../../src/runs/queries/execution/verify-projection.js';
 
 type DecideInput = Readonly<{
   runId: string;

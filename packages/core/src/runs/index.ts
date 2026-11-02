@@ -132,3 +132,18 @@ export type {
   StoredExecutionJsonValue,
   StoredExecutionValue,
 } from '@pertexo/database/schema';
+export { advanceRun } from './advance/advance-run.js';
+export type { AdvanceRunDependencies } from './advance/advance-run.js';
+export { verifyPersistedWorkflowProjection } from './queries/execution/verify-projection.js';
+export type { PersistedWorkflowProjectionVerificationOptions } from './queries/execution/verify-projection.js';
+export {
+  createInitialCheckpoint,
+  initialCheckpointFactory,
+} from './commands/create-initial-checkpoint.js';
+export { loadAttemptInputs } from './load-attempt-inputs.js';
+export type {
+  ForEachUpstream,
+  LoopResultsRequest,
+  NodeAttemptInputs,
+} from './load-attempt-inputs.js';
+export { recoveryPreparation } from './recovery/prepare.js';
