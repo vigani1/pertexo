@@ -1,10 +1,14 @@
 import {
+  Catch,
   Controller,
   Get,
   Inject,
   Optional,
   ServiceUnavailableException,
+  UseFilters,
 } from '@nestjs/common';
+import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
+import type { FastifyReply } from 'fastify';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import type { StructuredLogger } from '@pertexo/observability';
 
@@ -23,8 +27,24 @@ export interface ApiRuntimeReadiness {
   checkReadiness(): Promise<void>;
 }
 
+/** A probe reads this route's own answer. A not-ready API isn't a problem with a request. */
+@Catch(ServiceUnavailableException)
+class NotReadyFilter implements ExceptionFilter<ServiceUnavailableException> {
+  public catch(
+    exception: ServiceUnavailableException,
+    host: ArgumentsHost,
+  ): void {
+    void host
+      .switchToHttp()
+      .getResponse<FastifyReply>()
+      .status(exception.getStatus())
+      .send(exception.getResponse());
+  }
+}
+
 @Controller('health')
 @RateLimitExempt()
+@UseFilters(NotReadyFilter)
 export class ReadyController {
   public constructor(
     @Inject(WORKSPACE_DATABASE)

@@ -46,6 +46,8 @@ export const API_PROBLEM_CODES = [
   'request.idempotency_conflict',
   'request.rate_limited',
   'request.rate_limit_unavailable',
+  'request.too_large',
+  'request.unsupported_media_type',
   'workspace.quota_exceeded',
   'artifact.too_large',
   'artifact.conflict',
@@ -306,6 +308,18 @@ const apiProblemDetails = {
     status: 503,
     title: 'Request rate limiter unavailable',
     severity: 'error',
+    exposeDetail: false,
+  },
+  'request.too_large': {
+    status: 413,
+    title: 'Request body too large',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'request.unsupported_media_type': {
+    status: 415,
+    title: 'Unsupported media type',
+    severity: 'info',
     exposeDetail: false,
   },
   'workspace.quota_exceeded': {
