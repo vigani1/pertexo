@@ -98,7 +98,6 @@ export {
   workspaceVariablesResponseSchema,
   workspaceVariablesRequestSchema,
   workspaceVariablesCommandResponseSchema,
-  workspaceVariableUsageQuerySchema,
   workspaceVariableUsageCursorSchema,
   workspaceVariableUsageResponseSchema,
   workflowRunVariablesResponseSchema,
