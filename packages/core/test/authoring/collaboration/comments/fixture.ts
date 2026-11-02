@@ -31,8 +31,6 @@ export const database = createWorkflowAuthoringFixtureDatabase(
 );
 
 export function store() {
-  if (database.collaboration === undefined)
-    throw new Error('Discussion store missing');
   return database.collaboration;
 }
 

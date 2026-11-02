@@ -70,8 +70,6 @@ export async function withConcurrencyControls<T>(
     { executableCompiler: testExecutableCompiler },
   );
   try {
-    if (authoring.concurrency === undefined)
-      throw new Error('Missing concurrency store');
     return await operation(authoring.concurrency, {
       workspaceId: workspaceA,
       workflowId,

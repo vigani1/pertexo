@@ -101,11 +101,6 @@ export function registerUsesSharedInboxAudiencePersonal(): void {
       },
     );
     try {
-      if (
-        drifted.publicationReviews === undefined ||
-        broken.publicationReviews === undefined
-      )
-        throw new Error('Review persistence missing');
       expect(
         await drifted.publicationReviews.read({
           workspaceId,

@@ -51,26 +51,14 @@ export function assembleWorkflowRuntime({
     dependencies: Object.freeze({
       persistence: database,
       portabilityPersistence: database,
-      ...(database.collaboration === undefined
-        ? {}
-        : { collaborationPersistence: database.collaboration }),
-      ...(database.promotions === undefined
-        ? {}
-        : { promotionPersistence: database.promotions }),
-      ...(database.publicationReviews === undefined
-        ? {}
-        : { publicationReviewPersistence: database.publicationReviews }),
+      collaborationPersistence: database.collaboration,
+      promotionPersistence: database.promotions,
+      publicationReviewPersistence: database.publicationReviews,
       inputCasePersistence: metadataRuntime.inputCases,
       organization: metadataRuntime.organization,
-      ...(database.errorWorkflow === undefined
-        ? {}
-        : { errorWorkflowPersistence: database.errorWorkflow }),
-      ...(database.concurrency === undefined
-        ? {}
-        : { concurrencyPersistence: database.concurrency }),
-      ...(database.autoPause === undefined
-        ? {}
-        : { autoPausePersistence: database.autoPause }),
+      errorWorkflowPersistence: database.errorWorkflow,
+      concurrencyPersistence: database.concurrency,
+      autoPausePersistence: database.autoPause,
       authorization: identityRuntime.dependencies.authorization,
       telemetry,
     }),

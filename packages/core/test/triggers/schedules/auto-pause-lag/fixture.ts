@@ -72,7 +72,6 @@ export async function pausedIn(
 
 export function controls() {
   const value = authoring.autoPause;
-  if (value === undefined) throw new Error('Missing auto pause commands');
   return value;
 }
 

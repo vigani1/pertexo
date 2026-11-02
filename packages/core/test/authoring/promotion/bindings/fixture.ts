@@ -58,7 +58,6 @@ export const tables = createDataTablesStore(config);
 export const scope = () => ({ workspaceId, actorId });
 
 export function promotions() {
-  if (db.promotions === undefined) throw new Error('Promotion store missing');
   return db.promotions;
 }
 
