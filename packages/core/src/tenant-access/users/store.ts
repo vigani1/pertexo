@@ -8,7 +8,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod';
 
 import type { CreateUserInput, UserRecord } from '../contract.js';
-import { throwIdentityDatabaseConflict } from '../support.js';
+import { throwIdentityDatabaseConflict } from '../conflicts.js';
 import { userRecord, userSelection } from './projection.js';
 
 const EMAIL_MIN_LENGTH = 3;

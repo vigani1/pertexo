@@ -32,7 +32,7 @@ import { createIdentityWorkspaceRoleCommandStore } from './members/roles.reposit
 import {
   throwIdentityDatabaseConflict,
   throwWorkspaceLifecycleError,
-} from './support.js';
+} from './conflicts.js';
 import { createIdentityWorkspaceProfileStore } from './users/profile.repository.js';
 import { createUserStore } from './users/store.js';
 import {
