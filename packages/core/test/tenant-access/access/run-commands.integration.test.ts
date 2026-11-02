@@ -96,13 +96,22 @@ describe('a run command someone may not make', () => {
   );
 
   it('reads the same for a run outside the actor’s folders', async () => {
-    const { workspaceId, owner, builder } = await team();
+    const { workspaceId, owner, operator } = await team();
     const { runId, workflowId } = await seedRun(workspaceId, owner, 'queued');
+    const other = await seedRun(workspaceId, owner, 'queued');
     await restrict(workspaceId, workflowId);
     await expect(
-      runs.cancel({ workspaceId, actorId: builder, runId, reason: 'No' }),
+      runs.cancel({ workspaceId, actorId: operator, runId, reason: 'No' }),
     ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
     expect(await cancelRequested(runId)).toBeNull();
+    // The same person can cancel a run they can see: it was the folder that refused.
+    await runs.cancel({
+      workspaceId,
+      actorId: operator,
+      runId: other.runId,
+      reason: 'Stop',
+    });
+    expect(await cancelRequested(other.runId)).toBeInstanceOf(Date);
   });
 
   it('reads the same for a run in another workspace, asked for through your own', async () => {
