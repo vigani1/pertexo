@@ -326,13 +326,7 @@ test("an area not yet passed can be reached past its index, and one that has can
 test('the list of areas not yet passed can only shrink', () => {
   // A pass removes its area from both lists. Adding to this one, or to the check's,
   // is a decision to take in review: the rule exists so areas get off the list.
-  const AT_THE_MOVE = [
-    'attempts',
-    'authoring',
-    'execution',
-    'outbox',
-    'runs',
-  ];
+  const AT_THE_MOVE = ['attempts', 'authoring', 'execution', 'outbox', 'runs'];
   for (const area of AREAS_NOT_YET_PASSED)
     assert.ok(
       AT_THE_MOVE.includes(area),
