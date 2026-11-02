@@ -14,13 +14,13 @@ import { WorkflowNotFoundError } from '../../workflows/errors.js';
 
 import type { createOrganizationSession } from '../session.js';
 import { ADMINISTRATORS } from './commands/receipts.js';
-import type { WorkflowTagDatabase } from './contract.js';
+import type { WorkflowTagStore } from './contract.js';
 import { page, pagination, tagProjection } from './state.queries.js';
 
 export async function listTags(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowTagDatabase['listTags']>[0],
-): ReturnType<WorkflowTagDatabase['listTags']> {
+  input: Parameters<WorkflowTagStore['listTags']>[0],
+): ReturnType<WorkflowTagStore['listTags']> {
   const { limit, after } = page(input);
   return session.transact(input, async (client, scope) => {
     await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
@@ -46,8 +46,8 @@ export async function listTags(
 
 export async function listTagAssignments(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowTagDatabase['listTagAssignments']>[0],
-): ReturnType<WorkflowTagDatabase['listTagAssignments']> {
+  input: Parameters<WorkflowTagStore['listTagAssignments']>[0],
+): ReturnType<WorkflowTagStore['listTagAssignments']> {
   const { limit, after } = page(input),
     tagId = input.tagId;
   return session.transact(input, async (client, scope) => {

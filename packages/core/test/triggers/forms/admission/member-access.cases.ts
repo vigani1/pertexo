@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { createWorkflowFolderDatabase } from '../../../../src/authoring/organization/folders/store.js';
+import { createWorkflowFolderStore } from '../../../../src/authoring/organization/folders/store.js';
 import { FormUnavailableError } from '../../../../src/triggers/forms/errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { admin } from '../../../lifecycle/calls/fixtures.js';
@@ -145,7 +145,7 @@ export function registerMemberAccess(): void {
     });
 
     it('limits a builder in a restricted folder to what the grant allows', async () => {
-      const folders = createWorkflowFolderDatabase(
+      const folders = createWorkflowFolderStore(
         parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       );
       try {

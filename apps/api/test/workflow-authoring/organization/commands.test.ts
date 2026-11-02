@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
   WorkflowTagConflictError,
-  type WorkflowTagDatabase,
-  type WorkflowFavoriteDatabase,
+  type WorkflowTagStore,
+  type WorkflowFavoriteStore,
 } from '@pertexo/core/authoring';
 import {
   AuthorizationError,
@@ -58,11 +58,11 @@ function fixture(role: Role = 'owner') {
     renameTag: vi.fn().mockResolvedValue(tagResult),
     deleteTag: vi.fn().mockResolvedValue(deleteResult),
     replaceTags: vi.fn().mockResolvedValue(replaceResult),
-  } satisfies WorkflowTagDatabase;
+  } satisfies WorkflowTagStore;
   const favorites = {
     close: vi.fn(),
     setFavorite: vi.fn().mockResolvedValue(favoriteResult),
-  } satisfies WorkflowFavoriteDatabase;
+  } satisfies WorkflowFavoriteStore;
   const authorization = {
     findAccess: vi.fn().mockResolvedValue({
       actorId,

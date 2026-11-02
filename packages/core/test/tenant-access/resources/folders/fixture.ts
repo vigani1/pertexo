@@ -13,8 +13,8 @@ import {
   workflowId,
 } from '../../../support/workflow-authoring.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createWorkflowFolderDatabase } from '../../../../src/authoring/organization/folders/store.js';
-import { createWorkflowOrganizationReadDatabase } from '../../../../src/authoring/organization/workflows/store.js';
+import { createWorkflowFolderStore } from '../../../../src/authoring/organization/folders/store.js';
+import { createWorkflowOrganizationReadStore } from '../../../../src/authoring/organization/workflows/store.js';
 import { createWorkflowRunDatabase } from '../../../../src/runs/runs.repository.js';
 
 export const builder = randomUUID(),
@@ -25,18 +25,16 @@ export let folderId = '',
   privateRun = '',
   publicRun = '';
 
-export let folders: ReturnType<typeof createWorkflowFolderDatabase>;
+export let folders: ReturnType<typeof createWorkflowFolderStore>;
 
-export let organization: ReturnType<
-  typeof createWorkflowOrganizationReadDatabase
->;
+export let organization: ReturnType<typeof createWorkflowOrganizationReadStore>;
 
 export let runs: ReturnType<typeof createWorkflowRunDatabase>;
 
 export async function beforeAllFixture1() {
   const config = parseDatabaseConfig({ connectionString: apiUrl, max: 3 });
-  folders = createWorkflowFolderDatabase(config);
-  organization = createWorkflowOrganizationReadDatabase(config);
+  folders = createWorkflowFolderStore(config);
+  organization = createWorkflowOrganizationReadStore(config);
   runs = createWorkflowRunDatabase(config);
   for (const id of [builder, viewer])
     await identity.createUser({

@@ -12,11 +12,11 @@ import {
 } from '@pertexo/core/variables';
 import {
   createWorkflowInputCaseDatabase,
-  createWorkflowTagDatabase,
-  createWorkflowFavoriteDatabase,
-  createWorkflowOrganizationReadDatabase,
-  createWorkflowFolderDatabase,
-  createWorkflowOrganizationBatchDatabase,
+  createWorkflowTagStore,
+  createWorkflowFavoriteStore,
+  createWorkflowOrganizationReadStore,
+  createWorkflowFolderStore,
+  createWorkflowOrganizationBatchStore,
   type WorkflowInputCaseDatabase,
 } from '@pertexo/core/authoring';
 import type {
@@ -67,15 +67,15 @@ export async function createApiWorkflowMetadataRuntime(
     resources.push(dataTables);
     const variables = createWorkspaceVariablesStore(config, runtime);
     resources.push(variables);
-    const tags = createWorkflowTagDatabase(config, lease);
+    const tags = createWorkflowTagStore(config, lease);
     resources.push(tags);
-    const favorites = createWorkflowFavoriteDatabase(config, lease);
+    const favorites = createWorkflowFavoriteStore(config, lease);
     resources.push(favorites);
-    const reader = createWorkflowOrganizationReadDatabase(config, lease);
+    const reader = createWorkflowOrganizationReadStore(config, lease);
     resources.push(reader);
-    const folders = createWorkflowFolderDatabase(config, lease);
+    const folders = createWorkflowFolderStore(config, lease);
     resources.push(folders);
-    const batches = createWorkflowOrganizationBatchDatabase(config, lease);
+    const batches = createWorkflowOrganizationBatchStore(config, lease);
     resources.push(batches);
     return Object.freeze({
       variables,

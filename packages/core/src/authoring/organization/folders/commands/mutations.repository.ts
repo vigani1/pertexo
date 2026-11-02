@@ -15,7 +15,7 @@ import { runOrganizationCommand } from '../../run-command.js';
 import { WorkflowFolderConflictError } from '../../errors.js';
 
 import type { createOrganizationSession } from '../../session.js';
-import type { WorkflowFolderDatabase } from '../contract.js';
+import type { WorkflowFolderStore } from '../contract.js';
 import {
   folderDepth,
   folderProjection,
@@ -28,8 +28,8 @@ import { ADMINISTRATORS, folderCommand } from './receipt.js';
 
 export async function createFolder(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderDatabase['createFolder']>[0],
-): ReturnType<WorkflowFolderDatabase['createFolder']> {
+  input: Parameters<WorkflowFolderStore['createFolder']>[0],
+): ReturnType<WorkflowFolderStore['createFolder']> {
   const request = {
     name: input.name,
     parentId: input.parentId,
@@ -78,8 +78,8 @@ export async function createFolder(
 
 export async function renameFolder(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderDatabase['renameFolder']>[0],
-): ReturnType<WorkflowFolderDatabase['renameFolder']> {
+  input: Parameters<WorkflowFolderStore['renameFolder']>[0],
+): ReturnType<WorkflowFolderStore['renameFolder']> {
   const folderId = input.folderId;
   const request = {
     name: input.name,
@@ -119,8 +119,8 @@ export async function renameFolder(
 
 export async function moveFolder(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderDatabase['moveFolder']>[0],
-): ReturnType<WorkflowFolderDatabase['moveFolder']> {
+  input: Parameters<WorkflowFolderStore['moveFolder']>[0],
+): ReturnType<WorkflowFolderStore['moveFolder']> {
   const folderId = input.folderId;
   const request = {
     parentId: input.parentId,
@@ -197,8 +197,8 @@ export async function moveFolder(
 
 export async function deleteFolder(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderDatabase['deleteFolder']>[0],
-): ReturnType<WorkflowFolderDatabase['deleteFolder']> {
+  input: Parameters<WorkflowFolderStore['deleteFolder']>[0],
+): ReturnType<WorkflowFolderStore['deleteFolder']> {
   const folderId = input.folderId;
   const request = {
     expectedFolderRevision: input.expectedFolderRevision,

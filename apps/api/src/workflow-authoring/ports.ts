@@ -7,11 +7,11 @@ import type {
   WorkflowConcurrencyStore,
   WorkflowErrorStore,
   WorkflowInputCaseDatabase,
-  WorkflowTagDatabase,
-  WorkflowFavoriteDatabase,
-  WorkflowOrganizationReadDatabase,
-  WorkflowFolderDatabase,
-  WorkflowOrganizationBatchDatabase,
+  WorkflowTagStore,
+  WorkflowFavoriteStore,
+  WorkflowOrganizationReadStore,
+  WorkflowFolderStore,
+  WorkflowOrganizationBatchStore,
 } from '@pertexo/core/authoring';
 import type {
   ActorContext,
@@ -63,11 +63,11 @@ export type WorkflowAuthoringDependencies = Readonly<{
   promotionPersistence?: WorkflowPromotionStore;
   publicationReviewPersistence?: PublicationReviewStore;
   organization: Readonly<{
-    tags: WorkflowTagDatabase;
-    favorites: WorkflowFavoriteDatabase;
-    reader: WorkflowOrganizationReadDatabase;
-    folders: WorkflowFolderDatabase;
-    batches: WorkflowOrganizationBatchDatabase;
+    tags: WorkflowTagStore;
+    favorites: WorkflowFavoriteStore;
+    reader: WorkflowOrganizationReadStore;
+    folders: WorkflowFolderStore;
+    batches: WorkflowOrganizationBatchStore;
   }>;
   authorization: WorkspaceAuthorizationSource;
   telemetry?: WorkflowAuthoringTelemetry;

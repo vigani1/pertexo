@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import {
   WorkflowFolderConflictError,
-  type WorkflowFolderDatabase,
+  type WorkflowFolderStore,
 } from '@pertexo/core/authoring';
 import {
   createActorContext,
@@ -108,7 +108,7 @@ function setup(role: Role = 'owner') {
     deleteFolder: vi.fn(),
     placeWorkflow: vi.fn(),
     close: vi.fn(),
-  } satisfies WorkflowFolderDatabase;
+  } satisfies WorkflowFolderStore;
   for (const operation of operations)
     store[operation.port].mockResolvedValue(operation.result);
   const useCase = new WorkflowFoldersUseCase(store, authorization);

@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/database/platform';
 
 import { createOrganizationSession } from '../session.js';
-import type { WorkflowTagDatabase } from './contract.js';
+import type { WorkflowTagStore } from './contract.js';
 
 import {
   createTag,
@@ -15,13 +15,13 @@ import {
 } from './commands/mutations.repository.js';
 import { listTags, listTagAssignments } from './list.queries.js';
 
-export function createWorkflowTagDatabase(
+export function createWorkflowTagStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowTagDatabase {
+): WorkflowTagStore {
   const session = createOrganizationSession(config, options.runtime);
 
-  const store: WorkflowTagDatabase = {
+  const store: WorkflowTagStore = {
     listTags: (input) => listTags(session, input),
     listTagAssignments: (input) => listTagAssignments(session, input),
 

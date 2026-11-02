@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { createWorkflowOrganizationReadDatabase } from '../../../src/authoring/organization/workflows/store.js';
+import { createWorkflowOrganizationReadStore } from '../../../src/authoring/organization/workflows/store.js';
 
 import {
   apiUrl,
@@ -50,7 +50,7 @@ describe('persisted workflow activation projection', () => {
       ],
       workspaceId,
     );
-    const organization = createWorkflowOrganizationReadDatabase(
+    const organization = createWorkflowOrganizationReadStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
     );
     try {

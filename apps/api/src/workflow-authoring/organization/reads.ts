@@ -12,8 +12,8 @@ import {
 import {
   WorkflowNotFoundError,
   WorkflowTemplateOriginUnavailableError,
-  type WorkflowOrganizationReadDatabase,
-  type WorkflowTagDatabase,
+  type WorkflowOrganizationReadStore,
+  type WorkflowTagStore,
 } from '@pertexo/core/authoring';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import type { WorkflowAuthoringPersistence } from '../ports.js';
@@ -39,11 +39,11 @@ type QueryInput = WorkflowOrganizationInput & Readonly<{ query: unknown }>;
 export class WorkflowOrganizationReadsUseCase {
   public constructor(
     private readonly reader: Pick<
-      WorkflowOrganizationReadDatabase,
+      WorkflowOrganizationReadStore,
       'getWorkflow' | 'listWorkflows'
     >,
     private readonly tags: Pick<
-      WorkflowTagDatabase,
+      WorkflowTagStore,
       'listTags' | 'listTagAssignments'
     >,
     private readonly authorization: WorkspaceAuthorizationSource,

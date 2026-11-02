@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { createWorkflowFolderDatabase } from '../../../src/authoring/organization/folders/store.js';
+import { createWorkflowFolderStore } from '../../../src/authoring/organization/folders/store.js';
 import { NoticeUnavailableError } from '../../../src/inbox/preferences/contract.js';
 import { adminDatabaseUrl } from '../../support/workflow-authoring/base.js';
 import {
@@ -126,7 +126,7 @@ describe('a workspace that is not active', () => {
 describe('a workflow in a folder the reader has no grant for', () => {
   async function restricted() {
     const f = await workspaceWithThread();
-    const folders = own(createWorkflowFolderDatabase(config()));
+    const folders = own(createWorkflowFolderStore(config()));
     const { folder } = await folders.createFolder({
       ...f.scope,
       name: 'Reviewed access',

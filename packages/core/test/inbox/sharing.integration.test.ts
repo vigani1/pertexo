@@ -1,7 +1,7 @@
 import { createConnectionStore } from '../../src/connections/store.js';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { createWorkflowFolderDatabase } from '../../src/authoring/organization/folders/store.js';
+import { createWorkflowFolderStore } from '../../src/authoring/organization/folders/store.js';
 import { createPendingTaskStore } from '../../src/runs/pending-tasks/responses/repository.js';
 import { PendingTaskNotFoundError } from '../../src/runs/pending-tasks/responses/errors.js';
 import type { NoticeMailToSeal } from '../../src/inbox/mail/contract.js';
@@ -21,7 +21,7 @@ import {
 it('revokes followed notices, waiting approvals and already prepared mail through the same current folder scope', async () => {
   const f = await seedNoticeWorkspace();
   const scope = { workspaceId: f.workspaceId, actorId: f.members.viewer };
-  const folders = own(createWorkflowFolderDatabase(config()));
+  const folders = own(createWorkflowFolderStore(config()));
   const folder = (
     await folders.createFolder({
       ...f.scope,

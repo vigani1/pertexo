@@ -11,8 +11,8 @@ import {
   workflowFavoriteResponseSchema,
 } from '@pertexo/contracts';
 import type {
-  WorkflowTagDatabase,
-  WorkflowFavoriteDatabase,
+  WorkflowTagStore,
+  WorkflowFavoriteStore,
 } from '@pertexo/core/authoring';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import { parseRequestBody } from '../../platform/http/index.js';
@@ -30,8 +30,8 @@ type WorkflowInput = CommandInput & Readonly<{ workflowId: string }>;
 /** Transport validation and role fences; persistence owns transactional authority. */
 export class WorkflowOrganizationCommandsUseCase {
   public constructor(
-    private readonly tags: WorkflowTagDatabase,
-    private readonly favorites: WorkflowFavoriteDatabase,
+    private readonly tags: WorkflowTagStore,
+    private readonly favorites: WorkflowFavoriteStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
