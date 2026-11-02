@@ -32,6 +32,17 @@
           "type": "string",
           "maxLength": 128
         },
+        "stepName": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "nodeRunId": {
           "type": "string",
           "format": "uuid",
@@ -186,6 +197,7 @@
         "workflowName",
         "runId",
         "nodeId",
+        "stepName",
         "nodeRunId",
         "iterationPath",
         "kind",
@@ -235,6 +247,17 @@
             "nodeId": {
               "type": "string",
               "maxLength": 128
+            },
+            "stepName": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "nodeRunId": {
               "type": "string",
@@ -485,6 +508,7 @@
             "workflowName",
             "runId",
             "nodeId",
+            "stepName",
             "nodeRunId",
             "iterationPath",
             "kind",
@@ -535,6 +559,17 @@
             "nodeId": {
               "type": "string",
               "maxLength": 128
+            },
+            "stepName": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "nodeRunId": {
               "type": "string",
@@ -1212,6 +1247,7 @@
             "workflowName",
             "runId",
             "nodeId",
+            "stepName",
             "nodeRunId",
             "iterationPath",
             "kind",
@@ -1272,6 +1308,17 @@
                 "nodeId": {
                   "type": "string",
                   "maxLength": 128
+                },
+                "stepName": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "nodeRunId": {
                   "type": "string",
@@ -1522,6 +1569,7 @@
                 "workflowName",
                 "runId",
                 "nodeId",
+                "stepName",
                 "nodeRunId",
                 "iterationPath",
                 "kind",
@@ -1572,6 +1620,17 @@
                 "nodeId": {
                   "type": "string",
                   "maxLength": 128
+                },
+                "stepName": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "nodeRunId": {
                   "type": "string",
@@ -2249,6 +2308,7 @@
                 "workflowName",
                 "runId",
                 "nodeId",
+                "stepName",
                 "nodeRunId",
                 "iterationPath",
                 "kind",
@@ -2316,6 +2376,17 @@
               "nodeId": {
                 "type": "string",
                 "maxLength": 128
+              },
+              "stepName": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "nodeRunId": {
                 "type": "string",
@@ -2471,6 +2542,7 @@
               "workflowName",
               "runId",
               "nodeId",
+              "stepName",
               "nodeRunId",
               "iterationPath",
               "kind",
@@ -2570,6 +2642,17 @@
                 "nodeId": {
                   "type": "string",
                   "maxLength": 128
+                },
+                "stepName": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "nodeRunId": {
                   "type": "string",
@@ -2820,6 +2903,7 @@
                 "workflowName",
                 "runId",
                 "nodeId",
+                "stepName",
                 "nodeRunId",
                 "iterationPath",
                 "kind",
@@ -2870,6 +2954,17 @@
                 "nodeId": {
                   "type": "string",
                   "maxLength": 128
+                },
+                "stepName": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "nodeRunId": {
                   "type": "string",
@@ -3547,6 +3642,7 @@
                 "workflowName",
                 "runId",
                 "nodeId",
+                "stepName",
                 "nodeRunId",
                 "iterationPath",
                 "kind",
