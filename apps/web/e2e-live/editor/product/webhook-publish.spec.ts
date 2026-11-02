@@ -49,7 +49,7 @@ async function publishedWebhook(
     field: 'batch',
     value: 1,
   });
-  await publishNext(page, 1);
+  await publishNext(page, 1, 'needs-webhook-address');
   await expect
     .poll(async () => {
       const response = await page.request.get(`${path}/triggers`);
