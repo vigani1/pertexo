@@ -4,7 +4,7 @@ import {
   createArtifactUploadStore,
   createFormUploadStore,
 } from '@pertexo/core/artifacts';
-import { createIdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import { createIdentityWorkspaceStore } from '@pertexo/core/testing';
 import { createWorkspaceDatabase } from '@pertexo/database/testing';
 
 import { Pool, type PoolClient } from 'pg';
@@ -50,7 +50,7 @@ export async function createArtifactTransferApiFixture(): Promise<ArtifactTransf
   try {
     const identityDatabase = resources.acquire(
       'identity database',
-      createIdentityWorkspaceDatabase(artifactTransferDatabaseConfig),
+      createIdentityWorkspaceStore(artifactTransferDatabaseConfig),
       (database) => database.close(),
     );
     const workspaceDatabase = resources.acquire(

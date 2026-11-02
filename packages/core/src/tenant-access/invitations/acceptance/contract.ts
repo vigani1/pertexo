@@ -1,7 +1,7 @@
-import type { IdentityWorkspaceDatabase } from '../../contract.js';
+import type { IdentityWorkspaceStore } from '../../contract.js';
 
 export type AcceptanceStore = Pick<
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   | 'resolveInvitationAcceptance'
   | 'readInvitationAcceptance'
   | 'recordInvitationAcceptanceProof'

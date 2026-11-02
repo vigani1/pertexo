@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   acceptWorkflowRun,
   appendRunEvent,
-  createIdentityWorkspaceDatabase,
+  createIdentityWorkspaceStore,
   lockRunAcceptanceCommand,
 } from '@pertexo/core/testing';
 import {
@@ -184,7 +184,7 @@ describe.runIf(enabled)('destructive Redis-loss SSE reconstruction', () => {
   it('reconnects after Redis loss and reconstructs durable events exactly once', async () => {
     const workspaceId = randomUUID();
     const actorId = randomUUID();
-    const identityDatabase = createIdentityWorkspaceDatabase(
+    const identityDatabase = createIdentityWorkspaceStore(
       databaseConfig(apiUrl ?? ''),
     );
     try {

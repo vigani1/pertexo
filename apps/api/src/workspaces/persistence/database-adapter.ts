@@ -1,4 +1,4 @@
-import type { IdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
+import type { IdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 
 import type {
   IdentityWorkspacePersistence,
@@ -15,7 +15,7 @@ import type { WorkspaceAccess } from '../../authorization/index.js';
 export class DatabaseIdentityWorkspaceAdapter
   implements IdentityWorkspacePersistence, WorkspaceAuthorizationReader
 {
-  public constructor(private readonly database: IdentityWorkspaceDatabase) {}
+  public constructor(private readonly database: IdentityWorkspaceStore) {}
 
   public async findUserById(
     userId: string,
@@ -25,21 +25,21 @@ export class DatabaseIdentityWorkspaceAdapter
   }
 
   public async updateUserProfile(
-    input: Parameters<IdentityWorkspaceDatabase['updateUserProfile']>[0],
-  ): ReturnType<IdentityWorkspaceDatabase['updateUserProfile']> {
+    input: Parameters<IdentityWorkspaceStore['updateUserProfile']>[0],
+  ): ReturnType<IdentityWorkspaceStore['updateUserProfile']> {
     const result = await this.database.updateUserProfile(input);
     return Object.freeze({ ...result, user: mapUserProfile(result.user) });
   }
 
   public async createWorkspaceWithOwner(
-    input: Parameters<IdentityWorkspaceDatabase['createWorkspaceWithOwner']>[0],
+    input: Parameters<IdentityWorkspaceStore['createWorkspaceWithOwner']>[0],
   ) {
     const result = await this.database.createWorkspaceWithOwner(input);
     return mapWorkspace(result);
   }
 
   public async renameWorkspace(
-    input: Parameters<IdentityWorkspaceDatabase['renameWorkspace']>[0],
+    input: Parameters<IdentityWorkspaceStore['renameWorkspace']>[0],
   ) {
     const result = await this.database.renameWorkspace(input);
     return Object.freeze({
@@ -78,94 +78,80 @@ export class DatabaseIdentityWorkspaceAdapter
   }
 
   public changeWorkspaceMemberRole(
-    input: Parameters<
-      IdentityWorkspaceDatabase['changeWorkspaceMemberRole']
-    >[0],
+    input: Parameters<IdentityWorkspaceStore['changeWorkspaceMemberRole']>[0],
   ) {
     return this.database.changeWorkspaceMemberRole(input);
   }
 
   public removeWorkspaceMember(
-    input: Parameters<IdentityWorkspaceDatabase['removeWorkspaceMember']>[0],
+    input: Parameters<IdentityWorkspaceStore['removeWorkspaceMember']>[0],
   ) {
     return this.database.removeWorkspaceMember(input);
   }
 
   public leaveWorkspace(
-    input: Parameters<IdentityWorkspaceDatabase['leaveWorkspace']>[0],
+    input: Parameters<IdentityWorkspaceStore['leaveWorkspace']>[0],
   ) {
     return this.database.leaveWorkspace(input);
   }
 
   public suspendWorkspaceMember(
-    input: Parameters<IdentityWorkspaceDatabase['suspendWorkspaceMember']>[0],
+    input: Parameters<IdentityWorkspaceStore['suspendWorkspaceMember']>[0],
   ) {
     return this.database.suspendWorkspaceMember(input);
   }
 
   public reactivateWorkspaceMember(
-    input: Parameters<
-      IdentityWorkspaceDatabase['reactivateWorkspaceMember']
-    >[0],
+    input: Parameters<IdentityWorkspaceStore['reactivateWorkspaceMember']>[0],
   ) {
     return this.database.reactivateWorkspaceMember(input);
   }
 
   public transferWorkspaceOwnership(
-    input: Parameters<
-      IdentityWorkspaceDatabase['transferWorkspaceOwnership']
-    >[0],
+    input: Parameters<IdentityWorkspaceStore['transferWorkspaceOwnership']>[0],
   ) {
     return this.database.transferWorkspaceOwnership(input);
   }
 
   public listWorkspaceInvitations(
-    ...input: Parameters<IdentityWorkspaceDatabase['listWorkspaceInvitations']>
+    ...input: Parameters<IdentityWorkspaceStore['listWorkspaceInvitations']>
   ) {
     return this.database.listWorkspaceInvitations(...input);
   }
 
   public createWorkspaceInvitation(
-    input: Parameters<
-      IdentityWorkspaceDatabase['createWorkspaceInvitation']
-    >[0],
+    input: Parameters<IdentityWorkspaceStore['createWorkspaceInvitation']>[0],
   ) {
     return this.database.createWorkspaceInvitation(input);
   }
 
   public resendWorkspaceInvitation(
-    input: Parameters<
-      IdentityWorkspaceDatabase['resendWorkspaceInvitation']
-    >[0],
+    input: Parameters<IdentityWorkspaceStore['resendWorkspaceInvitation']>[0],
   ) {
     return this.database.resendWorkspaceInvitation(input);
   }
 
   public revokeWorkspaceInvitation(
-    input: Parameters<
-      IdentityWorkspaceDatabase['revokeWorkspaceInvitation']
-    >[0],
+    input: Parameters<IdentityWorkspaceStore['revokeWorkspaceInvitation']>[0],
   ) {
     return this.database.revokeWorkspaceInvitation(input);
   }
 
   public resolveInvitationAcceptance(
-    input: Parameters<
-      IdentityWorkspaceDatabase['resolveInvitationAcceptance']
-    >[0],
+    input: Parameters<IdentityWorkspaceStore['resolveInvitationAcceptance']>[0],
   ): Promise<InvitationAcceptanceIntentPersistenceRecord | null> {
     return this.database.resolveInvitationAcceptance(input);
   }
 
   public readInvitationAcceptance(
-    ...input: Parameters<IdentityWorkspaceDatabase['readInvitationAcceptance']>
+    ...input: Parameters<IdentityWorkspaceStore['readInvitationAcceptance']>
   ): Promise<InvitationAcceptanceIntentPersistenceRecord | null> {
     return this.database.readInvitationAcceptance(...input);
   }
 
   public recordInvitationAcceptanceProof(
     input: Parameters<
-      IdentityWorkspaceDatabase['recordInvitationAcceptanceProof']
+      IdentityWorkspaceStore['recordInvitationAcceptanceProof']
     >[0],
   ): Promise<InvitationAcceptanceIntentPersistenceRecord | null> {
     return this.database.recordInvitationAcceptanceProof(input);
@@ -173,16 +159,14 @@ export class DatabaseIdentityWorkspaceAdapter
 
   public completeInvitationAcceptance(
     input: Parameters<
-      IdentityWorkspaceDatabase['completeInvitationAcceptance']
+      IdentityWorkspaceStore['completeInvitationAcceptance']
     >[0],
   ): Promise<InvitationAcceptancePersistenceResult> {
     return this.database.completeInvitationAcceptance(input);
   }
 
   public abandonInvitationAcceptance(
-    ...input: Parameters<
-      IdentityWorkspaceDatabase['abandonInvitationAcceptance']
-    >
+    ...input: Parameters<IdentityWorkspaceStore['abandonInvitationAcceptance']>
   ) {
     return this.database.abandonInvitationAcceptance(...input);
   }
@@ -196,7 +180,7 @@ export class DatabaseIdentityWorkspaceAdapter
 
   public requestWorkspaceLifecycleOperation(
     ...input: Parameters<
-      IdentityWorkspaceDatabase['requestWorkspaceLifecycleOperation']
+      IdentityWorkspaceStore['requestWorkspaceLifecycleOperation']
     >
   ): Promise<WorkspaceLifecycleOperationRecord> {
     return this.database.requestWorkspaceLifecycleOperation(...input);

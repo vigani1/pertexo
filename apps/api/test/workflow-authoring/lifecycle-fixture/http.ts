@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { IdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import type { IdentityWorkspaceStore } from '@pertexo/core/testing';
 
 import { expect } from 'vitest';
 
@@ -41,7 +41,7 @@ export function expectProblem(
 }
 
 export async function resolveIdentity(
-  database: IdentityWorkspaceDatabase,
+  database: IdentityWorkspaceStore,
   subject: string,
 ) {
   return {

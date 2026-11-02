@@ -10,7 +10,7 @@ import {
 } from '@pertexo/workflow-model';
 import { commandRevisionSchema } from '../command-keys.js';
 import type {
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   LeaveWorkspaceInput,
   TransferWorkspaceOwnershipInput,
   WorkspaceMemberStatusCommandInput,
@@ -29,7 +29,7 @@ import {
 } from './commands.repository.js';
 
 type MembershipLifecycleStore = Pick<
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   | 'leaveWorkspace'
   | 'suspendWorkspaceMember'
   | 'reactivateWorkspaceMember'

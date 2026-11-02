@@ -3,7 +3,7 @@ import { workspaceFailure } from '../../../src/problems/context/normalize.js';
 import {
   UserProfileCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,
-  type IdentityWorkspaceDatabase,
+  type IdentityWorkspaceStore,
 } from '@pertexo/core/tenant-access';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -189,7 +189,7 @@ describe('member removal and self profile commands', () => {
         changed: false,
         replayed: true,
       }),
-    } as unknown as IdentityWorkspaceDatabase;
+    } as unknown as IdentityWorkspaceStore;
     const adapter = new DatabaseIdentityWorkspaceAdapter(database);
     const removal = {
       workspaceId,

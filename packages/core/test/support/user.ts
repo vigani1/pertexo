@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { Role } from '@pertexo/workflow-model';
-import type { createIdentityWorkspaceDatabase } from '../../src/tenant-access/store.js';
+import type { createIdentityWorkspaceStore } from '../../src/tenant-access/store.js';
 
 type Identity = Pick<
-  ReturnType<typeof createIdentityWorkspaceDatabase>,
+  ReturnType<typeof createIdentityWorkspaceStore>,
   'createUser'
 >;
 

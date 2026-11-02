@@ -10,7 +10,7 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../../src/tenant-access/store.js';
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 import { createWorkflowTagDatabase } from '../../../src/authoring/organization/tags/commands.repository.js';
 import {
@@ -136,7 +136,7 @@ export async function createOrganizationOwnedFixture() {
       connectionString: disposable.databaseUrl(attestation.urls.DATABASE_URL),
       max: 4,
     });
-    const identity = createIdentityWorkspaceDatabase(config);
+    const identity = createIdentityWorkspaceStore(config);
     const authoring = createWorkflowAuthoringFixtureDatabase(config);
     const tags = createWorkflowTagDatabase(config);
     const favorites = createWorkflowFavoriteDatabase(config);

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { createIdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import { createIdentityWorkspaceStore } from '@pertexo/core/testing';
 import { createWorkspaceDatabase } from '@pertexo/database/testing';
 
 import { createTestApiApplication } from '../../support/api-application.js';
@@ -47,7 +47,7 @@ export async function createWorkflowLifecycleApiFixture(): Promise<WorkflowLifec
   try {
     const identityDatabase = resources.acquire(
       'identity database',
-      createIdentityWorkspaceDatabase(workflowLifecycleDatabaseConfig),
+      createIdentityWorkspaceStore(workflowLifecycleDatabaseConfig),
       (database) => database.close(),
     );
     const identityConfig = apiConfig().identity;

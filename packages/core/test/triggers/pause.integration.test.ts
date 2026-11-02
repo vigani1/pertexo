@@ -8,7 +8,7 @@ import {
   parseDatabaseConfig,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createIdentityWorkspaceDatabase } from '../../src/testing.js';
+import { createIdentityWorkspaceStore } from '../../src/testing.js';
 import { createWorkflowTriggerPauseFoldStore } from '../../src/triggers/pause/fold.store.js';
 import { persistWorkflowTriggerOutcome } from '../../src/triggers/pause/outcomes.repository.js';
 
@@ -40,7 +40,7 @@ const workerUrl = url(
   'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
 );
 
-let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
+let identity: ReturnType<typeof createIdentityWorkspaceStore>;
 let fold: ReturnType<typeof createWorkflowTriggerPauseFoldStore>;
 let admin: Pool;
 let worker: Pool;
@@ -53,7 +53,7 @@ beforeAll(async () => {
     maintenanceRole: 'pertexo_maintenance',
     ownerRole: 'pertexo_owner',
   });
-  identity = createIdentityWorkspaceDatabase(
+  identity = createIdentityWorkspaceStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
   );
   fold = createWorkflowTriggerPauseFoldStore(

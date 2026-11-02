@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { Pool, type QueryResultRow } from 'pg';
 
-import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../../src/tenant-access/store.js';
 import {
   migrateDatabase,
   dropDisconnectedDatabase,
@@ -37,7 +37,7 @@ import {
   triggerCatalog,
 } from './context.js';
 
-let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
+let identity: ReturnType<typeof createIdentityWorkspaceStore>;
 
 export let reconciliation: ReturnType<
   typeof createWorkflowTriggerReconciliationStore
@@ -114,7 +114,7 @@ export async function beforeAllFixture1() {
     max: 1,
   });
   workerPool = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
-  identity = createIdentityWorkspaceDatabase(apiConfig);
+  identity = createIdentityWorkspaceStore(apiConfig);
   reconciliation = createWorkflowTriggerReconciliationStore(workerConfig);
   schedules = createScheduleTriggerStore(apiConfig);
   webhook = createWebhookTriggerStore(apiConfig, undefined, {

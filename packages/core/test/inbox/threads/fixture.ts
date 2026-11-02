@@ -10,7 +10,7 @@ import {
   workspaceMemberships,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createIdentityWorkspaceDatabase } from '../../../src/testing.js';
+import { createIdentityWorkspaceStore } from '../../../src/testing.js';
 import { createWorkspaceInboxFoldStore } from '../../../src/inbox/folding/store.js';
 import { persistWorkspaceInboxEvent } from '../../../src/inbox/folding/events.repository.js';
 import { createWorkspaceInboxStore } from '../../../src/inbox/threads/store.js';
@@ -51,7 +51,7 @@ export const maintenanceUrl = url(
   'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
 
-let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
+let identity: ReturnType<typeof createIdentityWorkspaceStore>;
 
 let tenant: ReturnType<typeof createWorkspaceDatabase>;
 
@@ -233,7 +233,7 @@ export async function beforeAllFixture1() {
     maintenanceRole: 'pertexo_maintenance',
     ownerRole: 'pertexo_owner',
   });
-  identity = createIdentityWorkspaceDatabase(
+  identity = createIdentityWorkspaceStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
   );
   tenant = createWorkspaceDatabase(

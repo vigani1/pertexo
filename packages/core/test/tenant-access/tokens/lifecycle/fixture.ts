@@ -3,10 +3,10 @@ import { Pool } from 'pg';
 
 import { apiTokenCreateRequestSchema } from '@pertexo/contracts';
 import {
-  createApiTokenDatabase,
+  createApiTokenStore,
   parseApiTokenCredential,
 } from '../../../../src/tenant-access/index.js';
-import { createIdentityWorkspaceDatabase } from '../../../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../../../src/tenant-access/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   migrateDatabase,
@@ -46,9 +46,9 @@ export const admin = new Pool({
   max: 1,
 });
 
-export let identities: ReturnType<typeof createIdentityWorkspaceDatabase>;
+export let identities: ReturnType<typeof createIdentityWorkspaceStore>;
 
-export let tokens: ReturnType<typeof createApiTokenDatabase>;
+export let tokens: ReturnType<typeof createApiTokenStore>;
 
 export let workspaceId: string;
 
@@ -89,8 +89,8 @@ export async function beforeAllFixture1() {
     ownerRole: 'pertexo_owner',
     connectionString: fixture.databaseUrl(migrationUrl),
   });
-  identities = createIdentityWorkspaceDatabase(config);
-  tokens = createApiTokenDatabase(config);
+  identities = createIdentityWorkspaceStore(config);
+  tokens = createApiTokenStore(config);
   ({ workspaceId, ownerUserId } = await createOwner());
   builderUserId = (
     await identities.createUser({
@@ -124,5 +124,5 @@ export async function afterAllFixture2() {
 
 export async function restartTokenRepository(): Promise<void> {
   await tokens.close();
-  tokens = createApiTokenDatabase(config);
+  tokens = createApiTokenStore(config);
 }

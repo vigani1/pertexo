@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 import type {
   CreateUserInput,
-  IdentityWorkspaceDatabase,
+  IdentityWorkspaceStore,
   UserRecord,
 } from '../contract.js';
 import { throwIdentityDatabaseConflict } from '../support.js';
@@ -26,7 +26,7 @@ function parseUserIdentityFields(
   return userIdentityFieldsSchema.parse(input);
 }
 
-type UserStore = Pick<IdentityWorkspaceDatabase, 'createUser' | 'findUserById'>;
+type UserStore = Pick<IdentityWorkspaceStore, 'createUser' | 'findUserById'>;
 
 async function createUser(
   pool: Pool,

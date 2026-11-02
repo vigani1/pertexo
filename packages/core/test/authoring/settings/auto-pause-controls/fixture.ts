@@ -8,7 +8,7 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import {
-  createIdentityWorkspaceDatabase,
+  createIdentityWorkspaceStore,
   createWorkflowAuthoringDatabase,
 } from '../../../../src/testing.js';
 
@@ -50,7 +50,7 @@ export const maintenanceUrl = url(
   'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
 );
 
-export let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
+export let identity: ReturnType<typeof createIdentityWorkspaceStore>;
 
 export let authoring: ReturnType<typeof createWorkflowAuthoringDatabase>;
 
@@ -194,7 +194,7 @@ export async function beforeAllFixture1() {
     appRole: 'pertexo_app',
     maintenanceRole: 'pertexo_maintenance',
   });
-  identity = createIdentityWorkspaceDatabase(
+  identity = createIdentityWorkspaceStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
   );
   authoring = createWorkflowAuthoringDatabase(

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createIdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
+import { createIdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import {
   createWorkflowFavoriteDatabase,
   createWorkflowOrganizationReadDatabase,
@@ -15,7 +15,7 @@ import { createWorkflowOrganizationOwnedDatabase } from './support/owned-databas
 const fixture = createWorkflowOrganizationOwnedDatabase();
 const resources: { close(): Promise<void> }[] = [];
 let owner: Pool;
-let identity: ReturnType<typeof createIdentityWorkspaceDatabase>;
+let identity: ReturnType<typeof createIdentityWorkspaceStore>;
 let favorites: WorkflowFavoriteDatabase;
 let organization: WorkflowOrganizationReadDatabase;
 async function ownerQuery(
@@ -121,7 +121,7 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
         connectionString: fixture.apiUrl,
         max: 4,
       });
-      identity = createIdentityWorkspaceDatabase(config);
+      identity = createIdentityWorkspaceStore(config);
       favorites = createWorkflowFavoriteDatabase(config);
       organization = createWorkflowOrganizationReadDatabase(config);
       resources.push(identity, favorites, organization);

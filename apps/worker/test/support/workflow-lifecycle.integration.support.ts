@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-  createIdentityWorkspaceDatabase,
+  createIdentityWorkspaceStore,
   createWorkflowAuthoringDatabase,
   testExecutableCompiler,
-  type IdentityWorkspaceDatabase,
+  type IdentityWorkspaceStore,
   type WorkflowAuthoringDatabase,
 } from '@pertexo/core/testing';
 import {
@@ -108,7 +108,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
   let owner: Pool | undefined;
   let apiPool: Pool | undefined;
   let worker: Pool | undefined;
-  let identity: IdentityWorkspaceDatabase | undefined;
+  let identity: IdentityWorkspaceStore | undefined;
   let authoring: WorkflowAuthoringDatabase | undefined;
   let queue: Queue | undefined;
   let databaseCreated = false;
@@ -245,7 +245,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
       );
       identity = registerCloseable(
         'identity database',
-        createIdentityWorkspaceDatabase(apiConfig),
+        createIdentityWorkspaceStore(apiConfig),
       );
       authoring = registerCloseable(
         'authoring database',

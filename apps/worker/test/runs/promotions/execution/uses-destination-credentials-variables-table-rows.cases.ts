@@ -8,7 +8,7 @@ import {
 import { createDataTablesStore } from '@pertexo/core/data-tables';
 import { createWorkspaceVariablesStore } from '@pertexo/core/variables';
 import { createWorkflowRunDatabase } from '@pertexo/core/runs';
-import { createIdentityWorkspaceDatabase } from '@pertexo/core/tenant-access';
+import { createIdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   createConnectionEnvelopeEncryption,
@@ -61,7 +61,7 @@ export function registerUsesDestinationCredentialsVariablesTableRows(): void {
         };
       },
     });
-    const identity = createIdentityWorkspaceDatabase(config),
+    const identity = createIdentityWorkspaceStore(config),
       connections = createConnectionStore(config),
       tables = createDataTablesStore(config),
       variables = createWorkspaceVariablesStore(config),

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { createWorkspaceInboxFoldStore } from '@pertexo/core/inbox';
-import { createIdentityWorkspaceDatabase } from '@pertexo/core/testing';
+import { createIdentityWorkspaceStore } from '@pertexo/core/testing';
 import {
   migrateDatabase,
   parseDatabaseConfig,
@@ -74,7 +74,7 @@ afterAll(async () => {
 
 /** A workspace with one workflow and one terminal failure pending fold. */
 async function recordFailure() {
-  const identity = createIdentityWorkspaceDatabase(
+  const identity = createIdentityWorkspaceStore(
     parseDatabaseConfig({ connectionString: databaseUrl(apiBaseUrl), max: 1 }),
   );
   const workflowId = randomUUID();

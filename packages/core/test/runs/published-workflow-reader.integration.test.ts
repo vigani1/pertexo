@@ -5,7 +5,7 @@ import type { DatabaseError } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/store.js';
+import { createIdentityWorkspaceStore } from '../../src/tenant-access/store.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,
@@ -44,7 +44,7 @@ const migrationConfig = {
 const ownerPool = new Pool({ connectionString: migrationUrl, max: 2 });
 const apiPool = new Pool({ connectionString: apiUrl, max: 1 });
 const workerPool = new Pool({ connectionString: workerUrl, max: 1 });
-const identity = createIdentityWorkspaceDatabase(
+const identity = createIdentityWorkspaceStore(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
 );
 const authoring = createWorkflowAuthoringDatabase(

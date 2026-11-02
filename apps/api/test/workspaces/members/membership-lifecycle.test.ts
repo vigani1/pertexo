@@ -2,7 +2,7 @@ import { toProblem } from '../../../src/problems/registry.js';
 import { workspaceFailure } from '../../../src/problems/context/normalize.js';
 import {
   WorkspaceMembershipCommandConflictError,
-  type IdentityWorkspaceDatabase,
+  type IdentityWorkspaceStore,
 } from '@pertexo/core/tenant-access';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -216,7 +216,7 @@ describe('membership lifecycle commands (ADR 047)', () => {
   it('passes each command to the database unchanged', async () => {
     const store = persistence();
     const adapter = new DatabaseIdentityWorkspaceAdapter(
-      store as unknown as IdentityWorkspaceDatabase,
+      store as unknown as IdentityWorkspaceStore,
     );
     const member = {
       ...delivery,
