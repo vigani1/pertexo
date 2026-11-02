@@ -46,6 +46,20 @@ test('main tests one commit at a time and never cancels the run under way', () =
   );
 });
 
+// Faults kill Postgres and check what survives, which an fsync-off database can't show.
+test('turns off Postgres durability only where nothing tests it', () => {
+  assert.equal(ci.env.POSTGRES_DURABILITY, 'off');
+  assert.equal(ci.jobs.faults.env.POSTGRES_DURABILITY, 'on');
+  const compose = parse(readFileSync('compose.yaml', 'utf8'));
+  for (const setting of ['fsync', 'synchronous_commit', 'full_page_writes'])
+    assert.ok(
+      compose.services.postgres.command.includes(
+        `${setting}=\${POSTGRES_DURABILITY:-on}`,
+      ),
+      setting,
+    );
+});
+
 // A leg dropped from a matrix takes its tests with it while every other leg stays green.
 test('the gate requires a split suite, and every one of its shards exists', () => {
   const shards = ci.jobs.browser.strategy.matrix.include.flatMap(

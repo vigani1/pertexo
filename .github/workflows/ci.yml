@@ -31,6 +31,9 @@ concurrency:
 # databases and Redis are disposable.
 env:
   POSTGRES_DB: pertexo
+  # Every database here is thrown away with its job, so nothing needs to survive a
+  # power cut, and syncing each commit to disk slowed every suite that uses one.
+  POSTGRES_DURABILITY: 'off'
   POSTGRES_PORT: '5432'
   POSTGRES_SUPERUSER: postgres
   POSTGRES_SUPERUSER_PASSWORD: pertexo-local-superuser
@@ -283,6 +286,8 @@ jobs:
     # A stuck run makes a fault test wait out its full recovery limit.
     timeout-minutes: 90
     env:
+      # These kill Postgres on purpose and check what survives, so it stays real.
+      POSTGRES_DURABILITY: 'on'
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-integration
     steps:
