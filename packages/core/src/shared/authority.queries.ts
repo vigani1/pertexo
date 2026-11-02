@@ -91,17 +91,21 @@ export function lockWorkspaceAuthority(
   });
 }
 
-/** Runs flows on one workspace one at a time. Take it before any share lock on the row. */
+/**
+ * Runs flows on one workspace one at a time. Take it before any share lock on the
+ * row. Returns the status it locked, or undefined for a workspace this scope can't see.
+ */
 export async function lockWorkspaceRow(
   client: PoolClient,
   workspaceId: string,
-): Promise<void> {
-  await drizzle(client)
-    .select({ id: workspaces.id })
+): Promise<string | undefined> {
+  const rows = await drizzle(client)
+    .select({ status: workspaces.status })
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId))
     .for('update')
     .catch(rethrowQueryFailure);
+  return rows[0]?.status;
 }
 
 /** The fence for core's one authority helper, which names its status list. */

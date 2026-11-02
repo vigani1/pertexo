@@ -1,9 +1,7 @@
 import type { Pool } from 'pg';
-import { z } from 'zod';
 import { updateMembership } from './records.repository.js';
 
 import { canRemoveWorkspaceMember } from '@pertexo/workflow-model';
-import { commandRevisionSchema } from '../command-keys.js';
 import type {
   RemoveWorkspaceMemberInput,
   WorkspaceMemberRemovalResult,
@@ -12,13 +10,9 @@ import { WorkspaceMemberRemovalCommandConflictError } from '../errors.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,
-  isActiveMemberManager,
   recordMemberCommandAudit,
 } from './commands.repository.js';
-
-const durableResult = z
-  .object({ userId: z.uuid(), roleRevision: commandRevisionSchema })
-  .strict();
+import { isActiveMemberManager } from './manager.js';
 
 function conflict(
   reason: ConstructorParameters<
@@ -40,14 +34,15 @@ export function createIdentityWorkspaceMemberRemovalStore(pool: Pool) {
       raw: RemoveWorkspaceMemberInput,
     ): Promise<WorkspaceMemberRemovalResult> => {
       const expectedRoleRevision = raw.expectedRoleRevision;
-      return executeMemberCommand(pool, {
+      return executeMemberCommand<
+        Omit<WorkspaceMemberRemovalResult, 'replayed'>
+      >(pool, {
         operation: 'workspace.member.removal',
         workspaceId: raw.workspaceId,
         actorUserId: raw.actorUserId,
         targetUserId: raw.targetUserId,
         idempotencyKey: raw.idempotencyKey,
         request: { expectedRoleRevision, operation: 'remove' },
-        result: durableResult,
         conflict,
         admit: ({ actor, target }, scope) => {
           if (!isActiveMemberManager(actor))

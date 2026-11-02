@@ -3,7 +3,6 @@ import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   users,
-  workspaces,
   workspaceMemberships,
   workspaceInvitations,
 } from '@pertexo/database/schema';
@@ -12,7 +11,9 @@ import type { Role } from '@pertexo/workflow-model';
 
 import type { PoolClient } from 'pg';
 
+import { lockWorkspaceRow } from '../../../shared/authority.queries.js';
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
+import { isActiveMemberManager } from '../../members/manager.js';
 
 /**
  * A command takes the workspace, then the actor's user and membership, for
@@ -27,13 +28,7 @@ export async function lockAuthorizedActor(
   actorUserId: string,
 ): Promise<Role> {
   const db = drizzle(client);
-  const workspace = await db
-    .select({ status: workspaces.status })
-    .from(workspaces)
-    .where(eq(workspaces.id, workspaceId))
-    .for('update')
-    .catch(rethrowQueryFailure);
-  if (workspace[0]?.status !== 'active')
+  if ((await lockWorkspaceRow(client, workspaceId)) !== 'active')
     throw new WorkspaceInvitationCommandConflictError(
       'actor_inactive',
       'The workspace is not active',
@@ -43,7 +38,7 @@ export async function lockAuthorizedActor(
   const actor = await db
     .select({
       role: membership.role,
-      membership_status: membership.status,
+      status: membership.status,
       user_status: person.status,
     })
     .from(person)
@@ -54,11 +49,7 @@ export async function lockAuthorizedActor(
     .for('update', { of: [person, membership] })
     .catch(rethrowQueryFailure);
   const row = actor[0];
-  const managerUnavailable =
-    row?.user_status !== 'active' ||
-    row.membership_status !== 'active' ||
-    (row.role !== 'owner' && row.role !== 'admin');
-  if (managerUnavailable)
+  if (!isActiveMemberManager(row))
     throw new WorkspaceInvitationCommandConflictError(
       'actor_inactive',
       'The actor is no longer allowed to manage invitations',

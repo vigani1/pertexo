@@ -9,19 +9,17 @@ import {
   completeCommand,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
-import { isAdministrativeRole } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Pool, PoolClient } from 'pg';
-import type { z } from 'zod';
 import {
   users,
   workspaceMemberships,
-  workspaces,
   authDirectoryMemberships,
 } from '@pertexo/database/schema';
 
+import { lockWorkspaceRow } from '../../shared/authority.queries.js';
 import { DirectoryManagedMembershipError } from '../errors.js';
 
 /*
@@ -51,7 +49,7 @@ const memberSelection = {
 export type LockedMember = Awaited<
   ReturnType<typeof readLockedMembers>
 >[number];
-function readLockedMembers(
+export function readLockedMembers(
   client: PoolClient,
   workspaceId: string,
   userIds: readonly string[],
@@ -88,12 +86,7 @@ async function lockMemberCommandParticipants(
   }>
 > {
   const db = drizzle(client);
-  const workspace = await db
-    .select({ status: workspaces.status })
-    .from(workspaces)
-    .where(eq(workspaces.id, workspaceId))
-    .for('update')
-    .catch(rethrowQueryFailure);
+  const workspaceStatus = await lockWorkspaceRow(client, workspaceId);
   const userIds = [actorUserId, targetUserId].sort();
   await db
     .select({ id: users.id })
@@ -104,21 +97,10 @@ async function lockMemberCommandParticipants(
     .catch(rethrowQueryFailure);
   const memberships = await readLockedMembers(client, workspaceId, userIds);
   return Object.freeze({
-    workspaceActive: workspace[0]?.status === 'active',
+    workspaceActive: workspaceStatus === 'active',
     actor: memberships.find((item) => item.user_id === actorUserId),
     target: memberships.find((item) => item.user_id === targetUserId),
   });
-}
-
-/** An owner or admin whose membership and user are both active. */
-export function isActiveMemberManager(
-  actor: LockedMember | undefined,
-): actor is LockedMember {
-  return (
-    actor?.status === 'active' &&
-    actor.user_status === 'active' &&
-    isAdministrativeRole(actor.role)
-  );
 }
 
 /** Appends the command's safe workspace audit fact. */
@@ -188,7 +170,6 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
     idempotencyKey: string;
     /** The command body; identifiers are added to its request hash. */
     request: Readonly<Record<string, string | number>>;
-    result: z.ZodType<Result>;
     conflict: (reason: 'actor_inactive', message: string) => Error;
     admit: (
       locked: Readonly<{
@@ -228,14 +209,14 @@ export async function executeMemberCommand<Result extends MemberCommandResult>(
       if (!locked.workspaceActive)
         throw command.conflict('actor_inactive', 'The workspace is not active');
       const admitted = command.admit(locked, scope);
-      const stored = await claimCommand(client, {
+      const stored = await claimCommand<Result>(client, {
         ...key,
         request: { ...command.request, targetUserId: scope.targetUserId },
         resourceId: scope.targetUserId,
       });
       if (stored !== null)
         return Object.freeze({
-          ...command.result.parse(stored),
+          ...stored,
           replayed: true,
         });
       const directoryMembership = await drizzle(client)
