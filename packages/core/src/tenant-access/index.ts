@@ -75,3 +75,18 @@ export { parseApiTokenCredential } from './tokens/credential.js';
 export type { ParsedApiTokenCredential } from './tokens/credential.js';
 
 export { DirectoryManagedMembershipError } from './errors.js';
+
+// Other areas import these files directly (ADR 091); the door gains nothing.
+export type {} from './errors.js';
+export type {} from './members/contract.js';
+export type {} from './members/discovery.queries.js';
+export type {} from './members/records.repository.js';
+export type {} from './resources/authority.js';
+export type {} from './resources/bindings.queries.js';
+export type {} from './resources/connections/bindings.queries.js';
+export type {} from './resources/connections/scope.js';
+export type {} from './resources/principals.queries.js';
+export type {} from './resources/revocation.repository.js';
+export type {} from './resources/workflows.queries.js';
+export type {} from './users/contract.js';
+export type {} from './users/sessions.repository.js';
