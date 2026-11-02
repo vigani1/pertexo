@@ -156,6 +156,9 @@ export function betterAuthIdentityRuntime() {
   return { runtime, requests };
 }
 
+/** Stores no bootstrap route reaches. */
+const notUsed = {} as never;
+
 export function workflowAuthoringDatabase(
   close = vi.fn().mockResolvedValue(undefined),
 ): WorkflowAuthoringStore {
@@ -196,6 +199,12 @@ export function workflowAuthoringDatabase(
     importWorkflow: () => Promise.reject(new Error('not used')),
     transitionWorkflowLifecycle: () => Promise.reject(new Error('not used')),
     renameWorkflow: () => Promise.reject(new Error('not used')),
+    collaboration: notUsed,
+    promotions: notUsed,
+    publicationReviews: notUsed,
+    autoPause: notUsed,
+    concurrency: notUsed,
+    errorWorkflow: notUsed,
     close,
   };
 }

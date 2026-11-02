@@ -20,8 +20,6 @@ export const builder = randomUUID(),
 export let settings: ReturnType<typeof createGovernanceStore>;
 
 export function reviews() {
-  if (authoring.publicationReviews === undefined)
-    throw new Error('Review persistence is missing');
   return authoring.publicationReviews;
 }
 

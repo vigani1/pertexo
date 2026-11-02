@@ -15,8 +15,6 @@ import {
 } from './notices.fixture.js';
 const database = own(createWorkflowAuthoringFixtureDatabase(config()));
 function discussions() {
-  if (database.collaboration === undefined)
-    throw new Error('Discussion store missing');
   return database.collaboration;
 }
 it('notifies only explicit current recipients, preserves identity across edits, and seals safe discussion links', async () => {

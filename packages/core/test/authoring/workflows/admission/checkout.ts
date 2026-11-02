@@ -3,7 +3,10 @@ import { Pool, type PoolClient } from 'pg';
 import { vi } from 'vitest';
 
 type Statement = string | { text: string; rowMode?: 'array' };
-type Answer = { rows: unknown[]; rowCount?: number };
+interface Answer {
+  rows: unknown[];
+  rowCount?: number;
+}
 
 export const CONNECTION = {
   connectionString: 'postgresql://invalid.invalid/pertexo',
