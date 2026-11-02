@@ -27,6 +27,9 @@ export const webhooksProblems = [
   errorRegistration(WebhookTriggerStateError, (error) => {
     return applicationError('workspace.conflict', {
       safeDetail: TRIGGER_STATE_COPY[error.reason],
+      ...(error.reason === 'setting_up'
+        ? { details: { retryAfterSeconds: SETUP_RETRY_AFTER_SECONDS } }
+        : {}),
     });
   }),
   errorRegistration(WebhookTriggerIdempotencyConflictError, () => {
@@ -35,6 +38,9 @@ export const webhooksProblems = [
     });
   }),
 ];
+
+/** Publishing sets the endpoint up shortly after, so a client should come back soon. */
+const SETUP_RETRY_AFTER_SECONDS = 5;
 
 const TRIGGER_STATE_COPY = {
   setting_up:
