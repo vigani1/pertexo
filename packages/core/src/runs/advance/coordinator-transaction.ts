@@ -12,6 +12,7 @@ export function assertCoordinatorNotAborted(signal: AbortSignal): void {
     throw new DOMException('The operation was aborted', 'AbortError');
 }
 
+/** A delivery or worker action: no member behind it, so it stays off withWorkspaceAccess. */
 export function withCoordinatorWriteClient<T>(
   pool: Pool,
   workspaceId: string,

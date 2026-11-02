@@ -11,8 +11,7 @@ import {
   createDeadlineWakeupScanner,
   createRunAdvanceStore,
   createWorkflowCallStore,
-  type DueNodeWakeupScanner,
-  type DeadlineWakeupScanner,
+  type WakeupScanner,
   type RunAdvanceStore,
   type RunFailureStore,
   type WorkflowCallStore,
@@ -177,8 +176,8 @@ export async function createCoordinatorRuntime(
   let runFailures: RunFailureStore | undefined;
   let callStore: WorkflowCallStore | undefined;
   let notifications: RunEventNotificationPublisher | undefined;
-  let dueWakeupScanner: DueNodeWakeupScanner | undefined;
-  let deadlineWakeupScanner: DeadlineWakeupScanner | undefined;
+  let dueWakeupScanner: WakeupScanner | undefined;
+  let deadlineWakeupScanner: WakeupScanner | undefined;
   let testSuiteScanner: WorkflowTestSuiteScanner | undefined;
   let consumer: QueueConsumer | undefined;
   const expressionEvaluator = new JsonataEvaluator();

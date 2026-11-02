@@ -57,8 +57,8 @@ export { createNotificationDestinationStore } from './notifications/destinations
 export { FailureNotificationDestinationError } from './notifications/destinations/errors.js';
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/contract.js';
 export type { NotificationDestinationStore } from './notifications/destinations/store.js';
-export { createDueNodeWakeupScanner } from './runs/wakeups/due-node-scanner.repository.js';
-export type { DueNodeWakeupScanner } from './runs/wakeups/contract.js';
+export { createDueNodeWakeupScanner } from './runs/wakeups/scanners.js';
+export type { WakeupScanner } from './runs/wakeups/scanners.js';
 export {
   createFailureNotificationStore,
   type FailureNotificationStore,
@@ -69,8 +69,7 @@ export type {
   FailureNotificationDelivery,
   FailureNotificationResolvedDestination,
 } from './notifications/contract.js';
-export { createDeadlineWakeupScanner } from './runs/wakeups/deadline-scanner.repository.js';
-export type { DeadlineWakeupScanner } from './runs/wakeups/contract.js';
+export { createDeadlineWakeupScanner } from './runs/wakeups/scanners.js';
 export { ARTIFACT_STATUS } from './artifacts/contract.js';
 export {
   ArtifactFinalizeConflictError,
@@ -271,8 +270,8 @@ export {
 export type {
   CoordinatorAdvanceDelivery,
   RunAdvanceResult,
-  RunAdvanceStore,
 } from './runs/advance/contract.js';
 export { createRunAdvanceStore } from './runs/advance/store.js';
+export type { RunAdvanceStore } from './runs/advance/store.js';
 export { acceptWorkflowRun } from './runs/commands/acceptance/accept.js';
 export { createWorkflowRunDatabase } from './runs/store.js';

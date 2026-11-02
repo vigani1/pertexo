@@ -1,14 +1,10 @@
 import { lockWorkspaceRunAdmission } from '../admission-locks.queries.js';
 import { workflowRuns } from '@pertexo/database/schema';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
-import {
-  canonicalOutboxPayloadChecksum,
-  insertOutboxEvent,
-} from '@pertexo/database/primitives';
-import { generatePersistedId } from '@pertexo/database/platform';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { requestWorkflowRunCancellation } from './request-cancellation.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
+import { enqueueAdvance } from '../wakeups/advance.queries.js';
 import { ACTIVE_RUN_STATUSES } from '../statuses.js';
 import {
   insertWorkflowRunAudit,
@@ -66,22 +62,10 @@ export async function cancelInTransaction(
     ...(input.reason === undefined ? {} : { reason: input.reason }),
   });
   if (!cancellation.duplicate) {
-    const outboxEventId = generatePersistedId();
-    const payload = {
+    await enqueueAdvance(transaction.db, {
       workspaceId: transaction.workspaceId,
       runId: input.runId,
-      outboxEventId,
-      ...(input.traceparent === undefined
-        ? {}
-        : { traceparent: input.traceparent }),
-    } as const;
-    await insertOutboxEvent(transaction, {
-      id: outboxEventId,
-      jobName: 'advance-workflow-run',
-      aggregateType: 'workflow-run',
-      aggregateId: input.runId,
-      payload,
-      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+      traceparent: input.traceparent,
     });
     await insertWorkflowRunAudit(transaction, {
       action: 'workflow.run.cancel_requested',

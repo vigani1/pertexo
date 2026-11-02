@@ -18,6 +18,15 @@ import { withCoordinatorWriteClient } from './coordinator-transaction.js';
 
 const OPEN_STATUSES = ['pending', 'ready', 'running', 'waiting'] as const;
 
+export type FailUnadvanceableInput = Readonly<{
+  workspaceId: string;
+  runId: string;
+  safeErrorCode: string;
+  /** The advance that found the run unadvanceable, whose slot binding ends here. */
+  delivery?: CoordinatorAdvanceDelivery;
+  signal: AbortSignal;
+}>;
+
 /**
  * Ends a run the engine can never move, so it stops holding a slot and someone
  * finds out. Its checkpoint may be the very thing that's broken, so this reads
@@ -25,14 +34,7 @@ const OPEN_STATUSES = ['pending', 'ready', 'running', 'waiting'] as const;
  */
 export function failUnadvanceableRun(
   pool: Pool,
-  input: Readonly<{
-    workspaceId: string;
-    runId: string;
-    safeErrorCode: string;
-    /** The advance that found the run unadvanceable, whose slot binding ends here. */
-    delivery?: CoordinatorAdvanceDelivery;
-    signal: AbortSignal;
-  }>,
+  input: FailUnadvanceableInput,
 ): Promise<'failed' | 'outcome_unknown' | 'not_active'> {
   const { workspaceId, runId, safeErrorCode, signal, delivery } = input;
   return withCoordinatorWriteClient(
