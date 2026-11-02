@@ -114,9 +114,7 @@ describe('Duplicate command lifecycle recovery', () => {
     // The first request never committed; now a real mutation rejection is definitive
     // for this retry, unlike an authority read outage or a retained accepted result.
     await event.click(screen.getByRole('button', { name: 'Retry exact copy' }));
-    await screen.findByText(
-      /An older copy may still exist/u,
-    );
+    await screen.findByText(/An older copy may still exist/u);
     expect(requests).toHaveLength(2);
     expect(requests[1]).toEqual(requests[0]);
     expect(onCreated).not.toHaveBeenCalled();

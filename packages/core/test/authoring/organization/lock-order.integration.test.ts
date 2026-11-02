@@ -9,7 +9,7 @@ import {
 /** Postgres ends one side of a deadlock with 40P01, however the flow words it. */
 function deadlocked(result: PromiseSettledResult<unknown>) {
   if (result.status === 'fulfilled') return false;
-  for (let error: unknown = result.reason; error instanceof Object; ) {
+  for (let error: unknown = result.reason; error instanceof Object;) {
     if ('code' in error && error.code === '40P01') return true;
     error = 'cause' in error ? error.cause : undefined;
   }
