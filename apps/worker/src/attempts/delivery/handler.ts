@@ -74,7 +74,7 @@ async function recordAttemptInput(
   signal: AbortSignal,
 ): Promise<void> {
   try {
-    await runStore.recordInput?.({ lease, input, signal });
+    await runStore.recordInput({ lease, input, signal });
   } catch {
     // The attempt's outcome never depends on recording its input.
   }

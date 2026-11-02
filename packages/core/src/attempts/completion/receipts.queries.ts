@@ -3,7 +3,6 @@ import {
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import { serializeStoredExecutionJsonValue } from '../../runs/values/stored-execution.js';
-import type { NodeAttemptRunStore } from '../contract.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -21,7 +20,10 @@ import {
   NodeAttemptStateCorruptError,
 } from '../errors.js';
 import { attemptJobPayloadSchema } from '../validation/delivery.js';
-import type { NodeAttemptDelivery } from '../contract.js';
+import type {
+  NodeAttemptDelivery,
+  NodeAttemptDeliveryIdentity,
+} from '../contract.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 
 export const nodeAttemptConsumerName =
@@ -29,7 +31,7 @@ export const nodeAttemptConsumerName =
 
 export async function validateDelivery(
   client: PoolClient,
-  input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
+  input: NodeAttemptDeliveryIdentity,
 ): Promise<void> {
   const result = await drizzle(client)
     .select({

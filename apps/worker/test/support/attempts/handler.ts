@@ -109,6 +109,7 @@ export function executionStore(
   overrides: Partial<NodeAttemptRunStore> = {},
 ): NodeAttemptRunStore {
   return {
+    recordInput: vi.fn(),
     claimDelivery: vi
       .fn()
       .mockResolvedValue({ kind: 'claimed', lease: lease() }),

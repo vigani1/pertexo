@@ -3,13 +3,16 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 
 import { NodeAttemptStateCorruptError } from '../errors.js';
-import type { CompleteNodeAttemptResult } from '../contract.js';
+import {
+  SETTLED_ATTEMPT_STATUSES,
+  type CompleteAttemptInput,
+  type CompleteNodeAttemptResult,
+} from '../contract.js';
 import { completeReceipt } from './receipts.queries.js';
 
 import { serializeStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import { assertConnectionHealthReplay } from './connection-health.queries.js';
 import type {
-  CompletionInput,
   CompletionReceiptRow,
   LockedAttemptRow,
   CompletionFields,
@@ -17,7 +20,7 @@ import type {
 
 export async function duplicateCompletion(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
   {
     row,
     receipt,
@@ -30,17 +33,7 @@ export async function duplicateCompletion(
     fields: CompletionFields;
   }>,
 ): Promise<CompleteNodeAttemptResult | undefined> {
-  if (
-    ![
-      'succeeded',
-      'failed',
-      'canceled',
-      'timed_out',
-      'outcome_unknown',
-    ].includes(row.attemptStatus)
-  ) {
-    return undefined;
-  }
+  if (!SETTLED_ATTEMPT_STATUSES.includes(row.attemptStatus)) return undefined;
   await assertConnectionHealthReplay(client, input);
   const persistedOutput =
     row.outputRef === null

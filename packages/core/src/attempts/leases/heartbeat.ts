@@ -8,17 +8,12 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
 import type { Pool } from 'pg';
 import { NodeAttemptReconciliationRequiredError } from '../errors.js';
-import type { NodeAttemptControl, NodeAttemptRunStore } from '../contract.js';
+import type { HeartbeatInput, NodeAttemptHeartbeat } from '../contract.js';
 
 export async function heartbeatNodeAttempt(
   pool: Pool,
-  input: Parameters<NodeAttemptRunStore['heartbeat']>[0],
-): Promise<
-  Readonly<{
-    leaseExpiresAt: Date;
-    control: NodeAttemptControl;
-  }>
-> {
+  input: HeartbeatInput,
+): Promise<NodeAttemptHeartbeat> {
   return withTenantScopedClient(
     pool,
     { workspaceId: input.lease.workspaceId },

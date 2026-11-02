@@ -1,4 +1,4 @@
-import type { NodeAttemptRunStore } from '../contract.js';
+import type { CompleteAttemptInput } from '../contract.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -15,12 +15,10 @@ import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { NodeAttemptStateCorruptError } from '../errors.js';
 
-type CompletionInput = Parameters<NodeAttemptRunStore['complete']>[0];
-
 /** Completion replay compares evidence; absence is a meaningful identity too. */
 export async function assertConnectionHealthReplay(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
 ): Promise<void> {
   const result = await drizzle(client)
     .select({
@@ -51,7 +49,7 @@ export async function assertConnectionHealthReplay(
 /** Called only after the owned lease is accepted, in its outcome transaction. */
 export async function persistConnectionHealthObservation(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
 ): Promise<void> {
   const observation = input.connectionHealthObservation;
   if (observation === undefined) return;

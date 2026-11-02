@@ -20,12 +20,12 @@ import {
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptReconciliationRequiredError,
 } from '../errors.js';
-import type { NodeAttemptRunStore } from '../contract.js';
+import type { MarkDispatchedInput } from '../contract.js';
 import { isConnectionFenceCurrent } from '../../connections/runtime/credential-use.repository.js';
 
 export async function markNodeAttemptDispatched(
   pool: Pool,
-  input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
+  input: MarkDispatchedInput,
 ): Promise<Readonly<{ dispatchedAt: Date }>> {
   return withTenantScopedClient(
     pool,
@@ -148,7 +148,7 @@ export async function markNodeAttemptDispatched(
 
 async function persistSlackDispatch(
   client: PoolClient,
-  input: Parameters<NodeAttemptRunStore['markDispatched']>[0],
+  input: MarkDispatchedInput,
 ): Promise<void> {
   const db = drizzle(client);
   const lease = input.lease;

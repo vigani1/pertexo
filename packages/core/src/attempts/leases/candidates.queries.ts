@@ -1,4 +1,4 @@
-import type { NodeAttemptRunStore } from '../contract.js';
+import type { ClaimDeliveryInput } from '../contract.js';
 import { and, eq, exists, lt, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -9,7 +9,7 @@ import { NodeAttemptStateCorruptError } from '../errors.js';
 
 export async function lockClaimCandidate(
   client: PoolClient,
-  input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
+  input: ClaimDeliveryInput,
 ) {
   const db = drizzle(client);
   const candidate = await db
