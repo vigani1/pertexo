@@ -150,6 +150,16 @@ export function heartbeatPresence(
   });
 }
 
+/** Ends this tab's lease as the page goes, so it can't read as another tab. */
+export function leavePresence(scope: CollaborationScope, tabId: string) {
+  return scope.apiClient.request({
+    path: path(scope, 'presence/' + tabId),
+    method: 'DELETE',
+    keepalive: true,
+    response: { kind: 'empty' },
+  });
+}
+
 const DISCUSSION_METHODS = {
   create: 'POST',
   reply: 'POST',

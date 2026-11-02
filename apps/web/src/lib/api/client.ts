@@ -21,6 +21,8 @@ type ApiRequestBase = Readonly<{
   headers?: Readonly<Record<string, string>>;
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** For a request that has to outlive the page sending it. */
+  keepalive?: boolean;
   csrf?: 'session' | 'external';
   decodeProblem?: ApiResponseDecoder<unknown>;
 }>;
@@ -212,6 +214,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         headers,
         credentials: 'same-origin',
         signal: call.signal,
+        ...(request.keepalive === true ? { keepalive: true } : {}),
         ...(body === undefined ? {} : { body }),
       });
       if (call.timedOut())

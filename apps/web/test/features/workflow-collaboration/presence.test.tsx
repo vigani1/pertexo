@@ -253,6 +253,58 @@ it('reuses the current tab lease and increases its sequence after route remount'
   expect(screen.queryByText('Also in another tab')).not.toBeInTheDocument();
 });
 
+it("ends this tab's lease when the page goes, in a request that outlives it", async () => {
+  const leaves: { url: string; init: RequestInit | undefined }[] = [];
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockImplementation((input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (init?.method === 'DELETE') {
+        leaves.push({ url, init });
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      return Promise.resolve(
+        init?.method === 'PUT'
+          ? Response.json({ accepted: true })
+          : Response.json({ people: [] }),
+      );
+    });
+  const rendered = renderInRouter(
+    <WorkflowPresenceProvider
+      scope={{
+        apiClient: createApiClient({
+          fetch,
+          readCsrfToken: () =>
+            'csrf-token-for-component-tests-12345678901234567890',
+        }),
+        userId,
+        workspaceId,
+        workflowId,
+      }}
+    >
+      <WorkflowPresenceSummary />
+    </WorkflowPresenceProvider>,
+  );
+  await waitFor(() => {
+    expect(fetch).toHaveBeenCalled();
+  });
+  const announced = fetch.mock.calls.find(
+    ([, init]) => init?.method === 'PUT',
+  )?.[0];
+  act(() => {
+    window.dispatchEvent(new Event('pagehide'));
+  });
+  await waitFor(() => {
+    expect(leaves).toHaveLength(1);
+  });
+  expect(leaves[0]?.url).toBe(String(announced));
+  expect(leaves[0]?.init?.keepalive).toBe(true);
+  // A route change keeps the lease: only the page going ends it.
+  rendered.unmount();
+  window.dispatchEvent(new Event('pagehide'));
+  expect(leaves).toHaveLength(1);
+});
+
 it('shows who is here without announcing anything while paused', async () => {
   const methods: (string | undefined)[] = [];
   const fetch = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
