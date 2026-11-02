@@ -36,6 +36,7 @@ export function fromApplicationError(
     error.code === 'request.rate_limited' ||
     error.code === 'request.rate_limit_unavailable' ||
     error.code === 'workspace.quota_exceeded' ||
+    error.code === 'workspace.conflict' ||
     error.code === 'workflow.validation_unavailable';
   if (retryableProblem) return retryableApplicationProblem(base, error);
   if (error.code === 'run.recovery_unavailable') {
