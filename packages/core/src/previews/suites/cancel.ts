@@ -11,7 +11,7 @@ import {
   workflowTestSuites,
 } from '@pertexo/database/schema';
 import type { Role } from '@pertexo/workflow-model';
-import { cancelInTransaction } from '../../runs/commands/cancel-active.repository.js';
+import { cancelInTransaction } from '../../runs/commands/cancel-run.js';
 import { WorkflowRunNotFoundError } from '../../runs/errors.js';
 import { requireTestStopAuthority } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/errors.js';

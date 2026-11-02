@@ -1,13 +1,13 @@
 import { Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, afterEach } from 'vitest';
-import { createRunValuesStore } from '../../../src/runs/values/repository.js';
+import { createRunValuesStore } from '../../../src/runs/values/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   withTenantScopedClient,
   withWorkspaceReadTransaction,
 } from '@pertexo/database/primitives';
-import { runValuesInTransaction } from '../../../src/runs/values/records.queries.js';
+import { runValuesInTransaction } from '../../../src/runs/values/rows.queries.js';
 import {
   apiUrl,
   apiPool,

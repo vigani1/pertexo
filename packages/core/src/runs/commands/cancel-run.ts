@@ -6,7 +6,7 @@ import {
 } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { requestWorkflowRunCancellation } from './cancel.repository.js';
+import { requestWorkflowRunCancellation } from './request-cancellation.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
 import {
   insertWorkflowRunAudit,

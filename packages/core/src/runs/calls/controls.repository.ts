@@ -10,7 +10,7 @@ import {
 } from '@pertexo/database/primitives';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { requestWorkflowRunCancellation } from '../commands/cancel.repository.js';
+import { requestWorkflowRunCancellation } from '../commands/request-cancellation.js';
 import { terminalRunStatuses } from '../advance/plan.js';
 import { wakeWorkflowRun } from './wakeup.repository.js';
 

@@ -8,7 +8,7 @@ import {
   parseDatabaseConfig,
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
-import { acceptWorkflowRun } from '../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../src/runs/commands/acceptance/accept.js';
 import { ExecutionStateConflictError } from '../../src/runs/state-errors.js';
 import {
   migrateDatabase,

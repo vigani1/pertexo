@@ -18,7 +18,7 @@ vi.mock('../../../src/outbox/receipts.repository.js', () => ({
   consumeInboxMessage: mocks.consumeInboxMessage,
 }));
 
-vi.mock('../../../src/runs/commands/acceptance.repository.js', () => ({
+vi.mock('../../../src/runs/commands/acceptance/accept.js', () => ({
   acceptWorkflowRun: mocks.acceptWorkflowRun,
 }));
 

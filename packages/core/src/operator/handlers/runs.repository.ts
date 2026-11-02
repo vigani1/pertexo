@@ -5,7 +5,7 @@ import {
   runCheckpoints,
   workflowRuns,
 } from '@pertexo/database/schema';
-import { requestWorkflowRunCancellation } from '../../runs/commands/cancel.repository.js';
+import { requestWorkflowRunCancellation } from '../../runs/commands/request-cancellation.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { withoutNulls, type OperatorDecision } from './decision.js';
 import { enqueueAdvance } from './enqueue.js';

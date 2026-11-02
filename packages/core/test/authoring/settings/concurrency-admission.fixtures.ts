@@ -4,7 +4,7 @@ import { Pool, type PoolClient } from 'pg';
 import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/store.js';
 import type { WorkflowConcurrencyStore } from '../../../src/authoring/settings/concurrency/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
 import {
   acceptanceInput,
   apiDatabase,

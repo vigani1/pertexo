@@ -22,7 +22,7 @@ import {
   DEFAULT_FORM_THANK_YOU_MESSAGE,
   type FormConfig,
 } from '@pertexo/workflow-model';
-import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../runs/commands/acceptance/accept.js';
 import { readWorkflowRunAcceptanceReplay } from '../../runs/commands/acceptance/replay.repository.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { FormChangedError, FormUnavailableError } from './errors.js';

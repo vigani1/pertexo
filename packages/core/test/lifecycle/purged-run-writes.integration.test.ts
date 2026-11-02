@@ -12,10 +12,10 @@ import {
 import { databaseSchema } from '@pertexo/database/schema';
 import { createRetentionStore } from '../../src/lifecycle/retention/store.js';
 import { failUnadvanceableRun } from '../../src/runs/advance/fail-unadvanceable.repository.js';
-import { requestWorkflowRunCancellation } from '../../src/runs/commands/cancel.repository.js';
+import { requestWorkflowRunCancellation } from '../../src/runs/commands/request-cancellation.js';
 import { createNodeAttemptRunStore } from '../../src/attempts/store.js';
 import { settleExpiredAttempt } from '../../src/operator/handlers/attempts.repository.js';
-import { readRecoveryEvidence } from '../../src/runs/recovery/records.queries.js';
+import { readRecoveryEvidence } from '../../src/runs/recovery/evidence.queries.js';
 import {
   actorId,
   asAdmin,

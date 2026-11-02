@@ -1,6 +1,6 @@
 import { waitForApplicationLock } from '../../../support/postgres/lock-coordination.js';
 
-import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance/accept.js';
 import {
   withWorkspaceTransaction,
   withTenantScopedClient,
@@ -8,7 +8,7 @@ import {
 
 import { expect, it } from 'vitest';
 import { createCheckpoint } from '@pertexo/workflow-engine';
-import { createErrorWorkflowStore } from '../../../../src/runs/error-workflows/repository.js';
+import { createErrorWorkflowStore } from '../../../../src/runs/error-workflows/store.js';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { admin, insertHint } from '../../../lifecycle/calls/fixtures.js';

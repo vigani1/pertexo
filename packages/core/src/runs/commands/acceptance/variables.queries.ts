@@ -1,8 +1,8 @@
-import { RUN_DETAILS_RETENTION_SQL } from '../data-policy.js';
+import { RUN_DETAILS_RETENTION_SQL } from '../../data-policy.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { workflowRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { captureWorkspaceVariableRevision } from '../../variables/head.queries.js';
+import { captureWorkspaceVariableRevision } from '../../../variables/head.queries.js';
 export class RunVariableSnapshotUnavailableError extends Error {
   override readonly name = 'RunVariableSnapshotUnavailableError';
   constructor() {

@@ -1,38 +1,38 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { requireRunTableReferences } from '../../data-tables/columns/references.queries.js';
+import { requireRunTableReferences } from '../../../data-tables/columns/references.queries.js';
 import { requireWorkflowConcurrency } from './concurrency.queries.js';
-import { runInputRetentionSql } from '../data-policy.js';
-import { variableRevisionForAcceptance } from './variables.repository.js';
+import { runInputRetentionSql } from '../../data-policy.js';
+import { variableRevisionForAcceptance } from './variables.queries.js';
 import { requireFormAdmission } from './forms.queries.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { lockExecutionArtifactReferences } from '../../artifacts/references/locks.repository.js';
+import { lockExecutionArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { prepareStoredExecutionValue } from '../values/stored-execution.js';
+import { prepareStoredExecutionValue } from '../../values/stored-execution.js';
 import {
   idempotencyRecords,
   runCheckpoints,
   runEvents,
   workflowRuns,
 } from '@pertexo/database/schema';
-import { resolveWorkflowFailureNotificationPolicy } from '../../notifications/policies/admission.queries.js';
+import { resolveWorkflowFailureNotificationPolicy } from '../../../notifications/policies/admission.queries.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { prepareWorkflowRunAcceptanceInput } from './acceptance-input.js';
-import { RUN_STATUS, IDEMPOTENCY_STATUS } from './acceptance/vocabulary.js';
+import { prepareWorkflowRunAcceptanceInput } from './checkpoint.js';
+import { RUN_STATUS, IDEMPOTENCY_STATUS } from './vocabulary.js';
 import type {
   AcceptWorkflowRunInput,
   AcceptedWorkflowRun,
   PreparedWorkflowRunAcceptance,
-} from './acceptance/contract.js';
-import { IdempotencyRecordCorruptError } from './acceptance/errors.js';
-import { readExistingAcceptance } from './acceptance/replay.repository.js';
+} from './contract.js';
+import { IdempotencyRecordCorruptError } from './errors.js';
+import { readExistingAcceptance } from './replay.repository.js';
 import {
   throwWorkflowRunAdmissionError,
   assertWorkspaceAcceptsNewRuns,
-} from './acceptance/admission.repository.js';
+} from './admission.repository.js';
 /** Call spawn acquires ordinary admission prerequisites before its parent lock. */
 export async function prepareWorkflowRunAcceptance(
   transaction: WorkspaceTransaction,

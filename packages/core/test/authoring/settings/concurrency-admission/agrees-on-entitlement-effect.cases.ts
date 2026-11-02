@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { readWorkspaceUsageCapacity } from '../../../../src/runs/queries/usage-capacity.queries.js';
+import { readWorkspaceUsageCapacity } from '../../../../src/runs/queries/usage/capacity.queries.js';
 import { WorkspaceRunAdmissionDeniedError } from '../../../../src/runs/commands/acceptance/errors.js';
 import { apiUrl, workspaceA } from '../../../runs/acceptance/fixtures.js';
 import {

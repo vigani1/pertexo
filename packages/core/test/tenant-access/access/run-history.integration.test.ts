@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { withRetainedRunRead } from '../../../src/runs/queries/access.queries.js';
+import { withRetainedRunRead } from '../../../src/runs/access.js';
 import type { ResourceTransaction } from '../../../src/shared/contract.js';
 import {
   admin,

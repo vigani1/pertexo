@@ -1,4 +1,4 @@
-import { requestWorkflowRunCancellation } from '../../../../src/runs/commands/cancel.repository.js';
+import { requestWorkflowRunCancellation } from '../../../../src/runs/commands/request-cancellation.js';
 import { expect, it } from 'vitest';
 import {
   callbacks,

@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { beforeAll, afterAll } from 'vitest';
 import { approvalConfigSchema } from '@pertexo/workflow-model';
-import { createPendingTaskStore } from '../../../src/runs/pending-tasks/responses/repository.js';
+import { createPendingTaskStore } from '../../../src/runs/pending-tasks/responses/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { synchronizeHumanWait } from '../../../src/runs/pending-tasks/lifecycle/time-capacity.queries.js';

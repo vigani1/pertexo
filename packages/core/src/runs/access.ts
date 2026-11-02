@@ -5,15 +5,15 @@ import {
   UNPURGED_WORKSPACE_STATUSES,
 } from '@pertexo/workflow-model';
 import type { Pool } from 'pg';
-import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
-import { readResourceTransaction } from '../../shared/facts.queries.js';
-import { withWorkspaceAccess } from '../../shared/workspace-access.js';
-import type { ResourceActor } from '../../shared/contract.js';
+import { WorkspaceAccessDeniedError } from '../shared/errors.js';
+import { readResourceTransaction } from '../shared/facts.queries.js';
+import { withWorkspaceAccess } from '../shared/workspace-access.js';
+import type { ResourceActor } from '../shared/contract.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { WorkflowRunNotFoundError } from '../errors.js';
-import type { ResourceTransaction } from '../../shared/contract.js';
-import { workflowScopeSql } from '../../shared/scope.queries.js';
-import type { WorkflowResourceCapability } from '../../shared/contract.js';
+import { WorkflowRunNotFoundError } from './errors.js';
+import type { ResourceTransaction } from '../shared/contract.js';
+import { workflowScopeSql } from '../shared/scope.queries.js';
+import type { WorkflowResourceCapability } from '../shared/contract.js';
 
 /** The command already holds the workspace authority fence before touching run rows. */
 export async function requireRunAccess(

@@ -1,5 +1,5 @@
 import type { ResourceTransaction } from '../../../shared/contract.js';
-import { withRetainedRunRead } from '../access.queries.js';
+import { withRetainedRunRead } from '../../access.js';
 import type { Pool } from 'pg';
 import type { RunStatus } from '@pertexo/workflow-engine';
 import { emptyRunCounts } from '../counts.js';

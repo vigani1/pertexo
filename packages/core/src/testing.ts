@@ -46,7 +46,7 @@ export {
   WorkspaceAutoPauseSettingsRevisionConflictError,
 } from './authoring/settings/auto-pause/errors.js';
 export * from './connections/testing.js';
-export { lockRunAcceptanceCommand } from './runs/commands/lock-acceptance.repository.js';
+export { lockRunAcceptanceCommand } from './runs/commands/acceptance/lock.queries.js';
 export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
@@ -194,7 +194,7 @@ export {
   ExecutionStateConflictError,
   RunEventGapError,
 } from './runs/state-errors.js';
-export { requestWorkflowRunCancellation } from './runs/commands/cancel.repository.js';
+export { requestWorkflowRunCancellation } from './runs/commands/request-cancellation.js';
 export { createPublishedWorkflowReader } from './runs/queries/execution/published.queries.js';
 export type {
   PublishedWorkflowReader,
@@ -258,7 +258,7 @@ export type {
   GetWorkflowRunInput,
   WorkflowNodeRunRecord as ApiWorkflowNodeRunRecord,
   WorkflowRunReadModel as ApiWorkflowRunReadModel,
-} from './runs/queries/read.queries.js';
+} from './runs/queries/run.queries.js';
 export type { WorkflowRunRecord as ApiWorkflowRunRecord } from './runs/commands/records.repository.js';
 export * from './lifecycle/testing.js';
 export * from './operator/testing.js';
@@ -274,5 +274,5 @@ export type {
   RunAdvanceStore,
 } from './runs/advance/contract.js';
 export { createRunAdvanceStore } from './runs/advance/store.js';
-export { acceptWorkflowRun } from './runs/commands/acceptance.repository.js';
-export { createWorkflowRunDatabase } from './runs/runs.repository.js';
+export { acceptWorkflowRun } from './runs/commands/acceptance/accept.js';
+export { createWorkflowRunDatabase } from './runs/store.js';
