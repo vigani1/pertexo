@@ -3,6 +3,7 @@ import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import type { ResourceTransaction } from '../../../shared/contract.js';
 import { withRetainedRunRead } from '../../access.js';
 import { ordinaryRunSql, expiredRunSql } from '../../data-policy.js';
+import { UNSUCCESSFUL_STATUSES } from '../../statuses.js';
 import {
   workflowRunValues,
   workflows,
@@ -12,7 +13,7 @@ import {
   workflowRunReadQuery,
   runAdmissionBlockers,
 } from '../admission.queries.js';
-import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, or, sql, type SQL } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import {
   readWorkflowRunFailedSteps,
@@ -24,11 +25,7 @@ import {
 } from '../../commands/records.repository.js';
 
 /** Outcomes a step can explain; a canceled run explains itself. */
-const UNSUCCESSFUL_STATUSES: ReadonlySet<string> = new Set([
-  'failed',
-  'timed_out',
-  'outcome_unknown',
-]);
+const EXPLAINED_BY_A_STEP: ReadonlySet<string> = new Set(UNSUCCESSFUL_STATUSES);
 
 export type WorkflowRunListPosition = Readonly<{
   createdAt: string;
@@ -102,49 +99,54 @@ async function listWorkflowRunsInTransaction(
     'workspaceId' | 'actorId' | 'signal'
   >,
 ): Promise<WorkflowRunListPage> {
-  const escapedPrefix =
-    input.workflowNamePrefix === undefined
-      ? null
-      : escapeLikePattern(input.workflowNamePrefix);
+  const filters = and(
+    eq(workflowRuns.workspaceId, transaction.workspaceId),
+    workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`),
+    ordinaryRunSql('workflow_runs'),
+    input.runValueKey === undefined
+      ? undefined
+      : sql`not (${expiredRunSql('workflow_runs')}) and exists (
+          select 1 from ${workflowRunValues} value
+          where value.workspace_id=${workflowRuns.workspaceId} and value.workflow_run_id=${workflowRuns.id}
+            and value.key=${input.runValueKey} and value.value=${input.runValue}
+        )`,
+    input.workflowId === undefined
+      ? undefined
+      : eq(workflowRuns.workflowId, input.workflowId),
+    input.status === undefined
+      ? undefined
+      : eq(workflowRuns.status, input.status),
+    input.createdAtFrom === undefined
+      ? undefined
+      : sql`${workflowRuns.createdAt} >= ${input.createdAtFrom}::timestamptz`,
+    input.createdAtBefore === undefined
+      ? undefined
+      : sql`${workflowRuns.createdAt} < ${input.createdAtBefore}::timestamptz`,
+    input.after === undefined
+      ? undefined
+      : or(
+          sql`${workflowRuns.createdAt} < ${input.after.createdAt}::timestamptz`,
+          and(
+            sql`${workflowRuns.createdAt} = ${input.after.createdAt}::timestamptz`,
+            lt(workflowRuns.id, input.after.id),
+          ),
+        ),
+  );
   const result = await workflowRunReadQuery(transaction, {
     includeWorkflowName: input.includeWorkflowName ?? false,
   })
     .where(
       and(
-        eq(workflowRuns.workspaceId, transaction.workspaceId),
-        workflowScopeSql(transaction.resources, sql`workflow_runs.workflow_id`),
-        ordinaryRunSql('workflow_runs'),
-        input.runValueKey === undefined
-          ? undefined
-          : sql`not (${expiredRunSql('workflow_runs')}) and exists (
-          select 1 from ${workflowRunValues} value
-          where value.workspace_id=${workflowRuns.workspaceId} and value.workflow_run_id=${workflowRuns.id}
-            and value.key=${input.runValueKey} and value.value=${input.runValue}
-        )`,
-        input.workflowId === undefined
-          ? undefined
-          : eq(workflowRuns.workflowId, input.workflowId),
-        !input.includeWorkflowName || escapedPrefix === null
-          ? undefined
-          : sql`lower(${workflows.name}) like lower(${escapedPrefix}::text) || '%' escape '\\'`,
-        input.status === undefined
-          ? undefined
-          : eq(workflowRuns.status, input.status),
-        input.createdAtFrom === undefined
-          ? undefined
-          : sql`${workflowRuns.createdAt} >= ${input.createdAtFrom}::timestamptz`,
-        input.createdAtBefore === undefined
-          ? undefined
-          : sql`${workflowRuns.createdAt} < ${input.createdAtBefore}::timestamptz`,
-        input.after === undefined
-          ? undefined
-          : or(
-              sql`${workflowRuns.createdAt} < ${input.after.createdAt}::timestamptz`,
-              and(
-                sql`${workflowRuns.createdAt} = ${input.after.createdAt}::timestamptz`,
-                lt(workflowRuns.id, input.after.id),
-              ),
-            ),
+        filters,
+        input.includeWorkflowName === true &&
+          input.workflowNamePrefix !== undefined
+          ? newestRunsOfMatchingWorkflows(
+              transaction,
+              input.workflowNamePrefix,
+              filters,
+              input.limit + 1,
+            )
+          : undefined,
       ),
     )
     .orderBy(desc(workflowRuns.createdAt), desc(workflowRuns.id))
@@ -164,7 +166,7 @@ async function listWorkflowRunsInTransaction(
     transaction,
     visible
       .map(({ run }) => run)
-      .filter((run) => UNSUCCESSFUL_STATUSES.has(run.status))
+      .filter((run) => EXPLAINED_BY_A_STEP.has(run.status))
       .map((run) => run.id),
   );
   return Object.freeze({
@@ -182,6 +184,33 @@ async function listWorkflowRunsInTransaction(
         }
       : {}),
   });
+}
+
+/**
+ * Walks each matching workflow's own newest runs through its index, so a prefix that
+ * matches most of a million runs reads a page per workflow rather than all of them.
+ * The page can only come from these. The filters apply inside, or a workflow's newest
+ * runs could all be filtered out afterwards.
+ */
+function newestRunsOfMatchingWorkflows(
+  transaction: ResourceTransaction,
+  prefix: string,
+  filters: SQL | undefined,
+  limit: number,
+): SQL {
+  const { db, workspaceId } = transaction;
+  const newest = db
+    .select({ id: workflowRuns.id })
+    .from(workflowRuns)
+    .where(and(filters, sql`${workflowRuns.workflowId}=matching.id`))
+    .orderBy(desc(workflowRuns.createdAt), desc(workflowRuns.id))
+    .limit(limit);
+  return sql`${workflowRuns.id} in (
+    select newest.id from ${workflows} matching
+    cross join lateral (${newest}) newest
+    where matching.workspace_id=${workspaceId}
+      and lower(matching.name) like lower(${escapeLikePattern(prefix)}::text) || '%' escape '\\'
+  )`;
 }
 
 function escapeLikePattern(value: string): string {
