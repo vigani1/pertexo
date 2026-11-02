@@ -2,12 +2,12 @@ import type { FolderScope } from '../../../shared/contract.js';
 
 import type { PoolClient } from 'pg';
 
-import type { WorkflowAuthoringDatabase } from '../contract.js';
+import type { WorkflowAuthoringStore } from '../contract.js';
 
 import type { AuthoringCatalogs } from '../catalogs.js';
 
 export type ReadStore = Pick<
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
   | 'getDraft'
   | 'validateDraft'
   | 'getVersion'

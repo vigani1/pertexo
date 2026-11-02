@@ -1,7 +1,7 @@
 import { restrictAcceptedWorkflows } from '../../../support/resources/sharing.js';
 import { callbackResources } from './fixtures.js';
 import { randomUUID } from 'node:crypto';
-import { createWorkflowAuthoringDatabase } from '@pertexo/core/authoring';
+import { createWorkflowAuthoringStore } from '@pertexo/core/authoring';
 import {
   buildWorkflowExecutable,
   buildWorkflowTestExecutable,
@@ -68,7 +68,7 @@ async function acceptDraft(
     ],
   );
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
-  const authoring = createWorkflowAuthoringDatabase(
+  const authoring = createWorkflowAuthoringStore(
     parseDatabaseConfig({
       connectionString: fixture.databaseUrl(fixture.apiUrl),
       max: 2,

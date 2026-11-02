@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import {
   actorId,
   apiUrl,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   emptyGraph,
   parseDatabaseConfig,
@@ -21,7 +21,7 @@ export function registerAtomicallyPersistsInjectedExecutablePublication(): void 
     const executableJson = {
       marker: 'compiled-in-api',
     };
-    const executableAuthoring = createWorkflowAuthoringDatabase(
+    const executableAuthoring = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
         definitionCatalog: executableDefinitionCatalog,
@@ -74,7 +74,7 @@ export function registerAtomicallyPersistsInjectedExecutablePublication(): void 
         },
       ]);
 
-      const drifted = createWorkflowAuthoringDatabase(
+      const drifted = createWorkflowAuthoringStore(
         parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
         {
           definitionCatalog: {

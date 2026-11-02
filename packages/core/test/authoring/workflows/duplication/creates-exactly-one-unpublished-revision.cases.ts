@@ -6,7 +6,7 @@ import {
   actorId,
   apiUrl,
   authoring,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   emptyGraph,
   otherActorId,
@@ -110,7 +110,7 @@ export function registerCreatesExactlyOneUnpublishedRevision(): void {
       expectedRevision: 1,
       graphJson: { ...emptyGraph, settings: { maxRunDurationMs: 1000 } },
     });
-    const restarted = createWorkflowAuthoringDatabase(
+    const restarted = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     );
     try {

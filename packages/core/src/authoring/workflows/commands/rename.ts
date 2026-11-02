@@ -12,7 +12,7 @@ import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   RenameWorkflowInput,
   RenameWorkflowResult,
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
 } from '../contract.js';
 import {
   WorkflowNameRevisionConflictError,
@@ -26,7 +26,7 @@ import {
 import type { WorkflowRecord } from '../representation/contract.js';
 import { workflowProjection } from '../representation/records.queries.js';
 
-type WorkflowRenameStore = Pick<WorkflowAuthoringDatabase, 'renameWorkflow'>;
+type WorkflowRenameStore = Pick<WorkflowAuthoringStore, 'renameWorkflow'>;
 type WorkflowRenameContext = Pick<
   WorkflowAuthoringWriteContext,
   'requireAuthor' | 'transact'

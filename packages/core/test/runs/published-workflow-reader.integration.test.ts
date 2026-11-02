@@ -11,7 +11,7 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import { createPublishedWorkflowReader } from '../../src/runs/queries/execution/published.queries.js';
-import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from '../support/workflow-authoring-admission.fixture.js';
+import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../support/workflow-authoring-admission.fixture.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -47,7 +47,7 @@ const workerPool = new Pool({ connectionString: workerUrl, max: 1 });
 const identity = createIdentityWorkspaceStore(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
 );
-const authoring = createWorkflowAuthoringDatabase(
+const authoring = createWorkflowAuthoringStore(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
 );
 const apiReader = createPublishedWorkflowReader(

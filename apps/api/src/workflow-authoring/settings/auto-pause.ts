@@ -7,7 +7,7 @@ import {
   workspaceAutoPauseSettingsRequestSchema,
   workspaceAutoPauseCommandResponseSchema,
 } from '@pertexo/contracts';
-import type { WorkflowAutoPauseDatabase } from '@pertexo/core/authoring';
+import type { WorkflowAutoPauseStore } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
@@ -24,7 +24,7 @@ type CommandInput = WorkflowApplicationInput &
 /** Operational controls never modify a draft, a published version or trigger enablement. */
 export class WorkflowAutoPauseUseCase {
   public constructor(
-    private readonly persistence: WorkflowAutoPauseDatabase,
+    private readonly persistence: WorkflowAutoPauseStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 

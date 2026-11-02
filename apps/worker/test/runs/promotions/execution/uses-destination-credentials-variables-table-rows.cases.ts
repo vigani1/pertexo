@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { createWorkflowAuthoringDatabase } from '@pertexo/core/authoring';
+import { createWorkflowAuthoringStore } from '@pertexo/core/authoring';
 import {
   createConnectionStore,
   CONNECTION_AUTH_TYPE,
@@ -48,7 +48,7 @@ export function registerUsesDestinationCredentialsVariablesTableRows(): void {
       max: 6,
     });
     const validator = new WorkflowAuthoringValidator();
-    const authoring = createWorkflowAuthoringDatabase(config, {
+    const authoring = createWorkflowAuthoringStore(config, {
       definitionCatalog: definitions,
       portableCatalog: platformPortableDefinitionPolicy(),
       validateAuthoringGraph: (graph, options) =>

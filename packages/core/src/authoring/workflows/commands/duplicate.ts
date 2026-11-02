@@ -32,7 +32,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   DuplicateWorkflowInput,
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
 } from '../contract.js';
 import {
   WorkflowNotFoundError,
@@ -94,7 +94,7 @@ async function selectedGraph(
 
 export function createWorkflowDuplicationStore(
   context: WorkflowAuthoringWriteContext,
-): Pick<WorkflowAuthoringDatabase, 'duplicateWorkflow'> {
+): Pick<WorkflowAuthoringStore, 'duplicateWorkflow'> {
   return {
     duplicateWorkflow: async (input) => {
       return context.transact(

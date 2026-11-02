@@ -8,12 +8,12 @@ import { verifyCuratedTemplateManifest } from '@pertexo/templates';
 
 import type { ImportWorkflowInput } from '../../../../src/authoring/workflows/contract.js';
 
-import type { WorkflowAuthoringDatabaseOptions } from '../../../../src/authoring/workflows/types.js';
+import type { WorkflowAuthoringStoreOptions } from '../../../../src/authoring/workflows/types.js';
 import {
   actorId,
   workspaceId,
   apiUrl,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   parseDatabaseConfig,
   emptyGraph,
   randomUUID,
@@ -36,18 +36,18 @@ export const portableCatalog: WorkflowPortabilityCatalog = {
   ],
 };
 
-const options: Partial<WorkflowAuthoringDatabaseOptions> = {
+const options: Partial<WorkflowAuthoringStoreOptions> = {
   definitionCatalog: catalog,
   portableCatalog,
 };
 
-const databases: ReturnType<typeof createWorkflowAuthoringDatabase>[] = [];
+const databases: ReturnType<typeof createWorkflowAuthoringStore>[] = [];
 
 export function database(
-  extra: Partial<WorkflowAuthoringDatabaseOptions> = {},
+  extra: Partial<WorkflowAuthoringStoreOptions> = {},
   url = apiUrl,
 ) {
-  const result = createWorkflowAuthoringDatabase(
+  const result = createWorkflowAuthoringStore(
     parseDatabaseConfig({ connectionString: url, max: 4 }),
     { ...options, ...extra },
   );

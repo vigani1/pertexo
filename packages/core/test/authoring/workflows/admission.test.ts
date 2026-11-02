@@ -14,7 +14,7 @@ import {
   IdempotencyConflictError,
   createDatabaseRuntime,
 } from '@pertexo/database/platform';
-import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/store.js';
+import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/store.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 import {
   workspaceId,
@@ -40,7 +40,7 @@ describe('snapshot validation and publication ordering', () => {
       max: 1,
       ownerRole: 'pertexo_owner',
     } as const;
-    const database = createWorkflowAuthoringDatabase(config, {
+    const database = createWorkflowAuthoringStore(config, {
       executableCompiler: testExecutableCompiler,
     });
     const connect = vi
@@ -142,7 +142,7 @@ describe('snapshot validation and publication ordering', () => {
       .spyOn(checkout, 'connect')
       .mockResolvedValue({ query, release } as unknown as PoolClient);
     const runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
-    const database = createWorkflowAuthoringDatabase(config, {
+    const database = createWorkflowAuthoringStore(config, {
       executableCompiler: testExecutableCompiler,
       runtime,
       validateAuthoringGraph: () =>

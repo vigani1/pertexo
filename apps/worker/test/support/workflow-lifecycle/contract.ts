@@ -1,5 +1,5 @@
 import type { DatabaseConfig } from '@pertexo/database/testing';
-import type { WorkflowAuthoringDatabase } from '@pertexo/core/testing';
+import type { WorkflowAuthoringStore } from '@pertexo/core/testing';
 
 import type { Queue } from 'bullmq';
 import type { QueryResult, QueryResultRow } from 'pg';
@@ -87,7 +87,7 @@ export type WorkflowLifecycleWorkerEnvironment = Readonly<{
   actorId: string;
   workspaceId: string;
   ids: LifecycleIds;
-  authoring: WorkflowAuthoringDatabase;
+  authoring: WorkflowAuthoringStore;
   queue: Queue;
   initialize(): Promise<void>;
   ownerQuery<Row extends QueryResultRow = QueryResultRow>(
@@ -102,7 +102,7 @@ export type WorkflowLifecycleWorkerEnvironment = Readonly<{
     command: 'archive' | 'restore',
     expectedLifecycleRevision: number,
     idempotencyKey: string,
-  ): ReturnType<WorkflowAuthoringDatabase['transitionWorkflowLifecycle']>;
+  ): ReturnType<WorkflowAuthoringStore['transitionWorkflowLifecycle']>;
   readProjection(): Promise<LifecycleProjection>;
   readRunSnapshot(): Promise<RunSnapshot>;
   readOutboxEvent(id: string): Promise<LifecycleOutboxEvent>;

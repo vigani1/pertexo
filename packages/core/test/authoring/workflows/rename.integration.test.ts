@@ -8,7 +8,7 @@ import {
   apiPool,
   apiUrl,
   authoring,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   emptyGraph,
   failAtWrite,
   holdAtWrite,
@@ -313,13 +313,13 @@ describe('workflow rename command persistence (ADR 041)', () => {
     const firstHold = await holdAtWrite(renameWrite('workflow', workflowId));
     const firstApplication = `rnf-${randomUUID()}`;
     const secondApplication = `rns-${randomUUID()}`;
-    const first = createWorkflowAuthoringDatabase(
+    const first = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(apiUrl, firstApplication),
         max: 1,
       }),
     );
-    const second = createWorkflowAuthoringDatabase(
+    const second = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(apiUrl, secondApplication),
         max: 1,

@@ -19,7 +19,7 @@ import { pruneStepSamples } from '../../step-samples/records.repository.js';
 import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   RestoreWorkflowVersionInput,
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
 } from '../contract.js';
 import {
   WorkflowNotFoundError,
@@ -34,7 +34,7 @@ import {
 } from '../representation/records.queries.js';
 
 type VersionRestoreStore = Pick<
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
   'restoreWorkflowVersion'
 >;
 

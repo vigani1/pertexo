@@ -7,7 +7,7 @@ import {
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import { createWorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/store.js';
+import { createWorkflowAuthoringStore } from '../../../../src/authoring/workflows/store.js';
 import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input-cases/repository.js';
 import { createWorkflowTestSuiteScanner } from '../../../../src/previews/suites/scanner.js';
 import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.queries.js';
@@ -29,7 +29,7 @@ export const config = () =>
 export const maintenance = () =>
   parseDatabaseConfig({ connectionString: dispatcherUrl, max: 2 });
 
-export let database: ReturnType<typeof createWorkflowAuthoringDatabase>;
+export let database: ReturnType<typeof createWorkflowAuthoringStore>;
 
 export let cases: ReturnType<typeof createWorkflowInputCaseDatabase>;
 
@@ -157,7 +157,7 @@ export function runId(
 }
 
 export async function beforeAllFixture1() {
-  database = createWorkflowAuthoringDatabase(config(), {
+  database = createWorkflowAuthoringStore(config(), {
     executableCompiler: (graph) => {
       const executable = buildWorkflowExecutable({ graph, catalog });
       return {

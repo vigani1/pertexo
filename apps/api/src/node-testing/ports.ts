@@ -1,10 +1,10 @@
-import type { WorkflowAuthoringDatabase } from '@pertexo/core/authoring';
+import type { WorkflowAuthoringStore } from '@pertexo/core/authoring';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 
 export type NodeTestingPersistence = Pick<
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
   | 'acceptPreview'
   | 'getDraft'
   | 'readPreview'

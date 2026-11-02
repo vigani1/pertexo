@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import {
   actorId,
   apiUrl,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   draftNode,
   emptyGraph,
@@ -16,7 +16,7 @@ import { WorkflowDefinitionPlacementError } from '../../../../src/authoring/work
 
 export function registerReplaysCompletedCommandBeforeCatalog(): void {
   it('replays a completed command before catalog admission while new copies cannot grandfather removed definitions', async () => {
-    const current = createWorkflowAuthoringDatabase(
+    const current = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
         definitionCatalog: {
@@ -24,7 +24,7 @@ export function registerReplaysCompletedCommandBeforeCatalog(): void {
         },
       },
     );
-    const removed = createWorkflowAuthoringDatabase(
+    const removed = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
         definitionCatalog: { definitions: [] },
@@ -65,7 +65,7 @@ export function registerReplaysCompletedCommandBeforeCatalog(): void {
         { key: 'core.merge', version: 1 },
       ],
     };
-    const database = createWorkflowAuthoringDatabase(
+    const database = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
         definitionCatalog: catalog,
@@ -155,7 +155,7 @@ export function registerReplaysCompletedCommandBeforeCatalog(): void {
   });
 
   it('publishes and edits source and copy independently even when every graph ID is shared', async () => {
-    const database = createWorkflowAuthoringDatabase(
+    const database = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
         definitionCatalog: {

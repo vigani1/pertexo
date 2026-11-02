@@ -1,5 +1,5 @@
 import type { Pool, QueryResultRow, QueryResult } from 'pg';
-import type { WorkflowAuthoringDatabase } from '@pertexo/core/authoring';
+import type { WorkflowAuthoringStore } from '@pertexo/core/authoring';
 import type {
   WebhookTestEventStore,
   TestEventScope,
@@ -14,7 +14,7 @@ export interface Fixture {
   session: HttpSessionCookies;
   store: WebhookTestEventStore;
   ingress: WebhookIngressDependencies;
-  authoring: WorkflowAuthoringDatabase;
+  authoring: WorkflowAuthoringStore;
   apiPool: Pool;
   issueSession: (userId: string) => Promise<HttpSessionCookies>;
   query: <Row extends QueryResultRow = QueryResultRow>(

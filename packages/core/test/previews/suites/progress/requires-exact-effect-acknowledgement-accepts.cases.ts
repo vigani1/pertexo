@@ -7,7 +7,7 @@ import {
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 
-import { createWorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/store.js';
+import { createWorkflowAuthoringStore } from '../../../../src/authoring/workflows/store.js';
 
 import {
   workspaceId,
@@ -37,7 +37,7 @@ export function registerRequiresExactEffectAcknowledgementAccepts(): void {
           : definition,
       ),
     });
-    const effects = createWorkflowAuthoringDatabase(config(), {
+    const effects = createWorkflowAuthoringStore(config(), {
       executableCompiler: (graph) => {
         const executable = buildWorkflowExecutable({
           graph,

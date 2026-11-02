@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import {
   createIdentityWorkspaceStore,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
 } from '@pertexo/core/testing';
 
 import {
@@ -20,10 +20,7 @@ import {
 export async function seedScheduleQualification() {
   const identity = registerResource(createIdentityWorkspaceStore(apiConfig));
   const authoring = registerResource(
-    createWorkflowAuthoringDatabase(
-      apiConfig,
-      authoringOptions.databaseOptions,
-    ),
+    createWorkflowAuthoringStore(apiConfig, authoringOptions.databaseOptions),
   );
   await identity.createUser({
     id: actorId,

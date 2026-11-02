@@ -13,7 +13,7 @@ import {
   parseDatabaseConfig,
   randomUUID,
   createHash,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   testDefinitionCatalog,
   emptyGraph,
   draftNode,
@@ -24,18 +24,18 @@ import { setVariableSet } from '../support/variable-sets.js';
 import { waitForApplicationLock } from '../support/postgres/lock-coordination.js';
 import { adminDatabaseUrl } from '../support/workflow-authoring/base.js';
 const publishingApplication = `variable-publication-${randomUUID()}`;
-let authoring: ReturnType<typeof createWorkflowAuthoringDatabase>;
-let publishing: ReturnType<typeof createWorkflowAuthoringDatabase>;
+let authoring: ReturnType<typeof createWorkflowAuthoringStore>;
+let publishing: ReturnType<typeof createWorkflowAuthoringStore>;
 let admin: Pool;
 beforeAll(() => {
   admin = new Pool({ connectionString: adminDatabaseUrl, max: 2 });
   const config = parseDatabaseConfig({ connectionString: apiUrl, max: 3 });
-  authoring = createWorkflowAuthoringDatabase(config, {
+  authoring = createWorkflowAuthoringStore(config, {
     definitionCatalog: testDefinitionCatalog,
   });
   const named = new URL(apiUrl);
   named.searchParams.set('application_name', publishingApplication);
-  publishing = createWorkflowAuthoringDatabase(
+  publishing = createWorkflowAuthoringStore(
     parseDatabaseConfig({ connectionString: named.toString(), max: 1 }),
     { definitionCatalog: testDefinitionCatalog },
   );

@@ -23,9 +23,9 @@ import type { WorkflowTestStore } from '../../previews/workflows/store.js';
 import type { WorkflowCollaborationStore } from '../collaboration/contract.js';
 import type { WorkflowPromotionStore } from '../promotion/contract.js';
 import type { PublicationReviewStore } from '../reviews/contract.js';
-import type { WorkflowAutoPauseDatabase } from '../settings/auto-pause/contract.js';
-import type { WorkflowConcurrencyDatabase } from '../settings/concurrency/store.js';
-import type { WorkflowErrorDatabase } from '../settings/error-workflow/store.js';
+import type { WorkflowAutoPauseStore } from '../settings/auto-pause/contract.js';
+import type { WorkflowConcurrencyStore } from '../settings/concurrency/store.js';
+import type { WorkflowErrorStore } from '../settings/error-workflow/store.js';
 import type { WorkflowStepSampleStore } from '../step-samples/contract.js';
 import type {
   WorkflowDraftRecord,
@@ -203,7 +203,7 @@ export type RenameWorkflowResult = Readonly<{
   replayed: boolean;
 }>;
 
-export type WorkflowAuthoringDatabase = Readonly<{
+export type WorkflowAuthoringStore = Readonly<{
   readonly collaboration?: WorkflowCollaborationStore;
   readonly promotions?: WorkflowPromotionStore;
   readonly publicationReviews?: PublicationReviewStore;
@@ -282,7 +282,7 @@ export type WorkflowAuthoringDatabase = Readonly<{
   ): Promise<TransitionWorkflowLifecycleResult>;
   renameWorkflow(input: RenameWorkflowInput): Promise<RenameWorkflowResult>;
   close(): Promise<void>;
-  readonly autoPause?: WorkflowAutoPauseDatabase;
-  readonly concurrency?: WorkflowConcurrencyDatabase;
-  readonly errorWorkflow?: WorkflowErrorDatabase;
+  readonly autoPause?: WorkflowAutoPauseStore;
+  readonly concurrency?: WorkflowConcurrencyStore;
+  readonly errorWorkflow?: WorkflowErrorStore;
 }>;
