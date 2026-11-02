@@ -204,3 +204,20 @@ it('rechecks F29 at deferred admission and records a visible concurrency skip', 
     ),
   ).toEqual([{ reason: 'concurrency_limit' }]);
 });
+
+it('releases each due event once with several workers racing', async () => {
+  const f = await fixture({ mode: 'debounce', key, quietSeconds: 3600 });
+  for (const value of ['a', 'b', 'c']) await f.submit(value, value);
+  await due(f);
+  await Promise.all([scan(), scan(), scan(), scan()]);
+  expect(await counts(f)).toMatchObject({ runs: 3 });
+  const events = await f.query<{ status: string; run: string | null }>(
+    'select status,run_id run from app.trigger_coordinated_events',
+  );
+  expect(events).toHaveLength(3);
+  expect(new Set(events.map(({ run }) => run)).size).toBe(3);
+  for (const event of events) expect(event.run).not.toBeNull();
+  await due(f);
+  await scan();
+  expect(await counts(f)).toMatchObject({ runs: 3 });
+}, 30_000);
