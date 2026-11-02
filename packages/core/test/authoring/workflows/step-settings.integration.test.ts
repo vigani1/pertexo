@@ -30,7 +30,7 @@ const step = (limit: number) => ({
 const accepting = database({
   portableCatalog: {
     definitions: [],
-    acceptsStepConfig: (node) => (node.config['limit'] as number) <= 120_000,
+    acceptsStepConfig: (node) => (node.config.limit as number) <= 120_000,
   },
   definitionCatalog: catalog,
 });

@@ -101,7 +101,6 @@ export function registerQualifies20WorkflowBatchWithin(): void {
       otherWorkspaceId,
     );
     const reviews = database.publicationReviews;
-    if (reviews === undefined) throw new Error('Review owner missing');
     let targetWorkflowId = '';
     try {
       const review = await promotions().preview({

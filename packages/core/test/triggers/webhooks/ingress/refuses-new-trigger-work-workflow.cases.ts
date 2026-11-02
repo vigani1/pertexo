@@ -92,7 +92,6 @@ export function registerRefusesNewTriggerWorkWorkflow(): void {
       claim.lease_token,
     ]);
     const controls = authoring.autoPause;
-    if (controls === undefined) throw new Error('Auto pause controls missing');
     const scope = { workspaceId, workflowId: pausedWorkflowId, actorId };
     await controls.resumeWorkflow({
       ...scope,

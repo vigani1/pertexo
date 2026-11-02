@@ -72,7 +72,6 @@ function closePool(pool: Pool | undefined) {
 
 export const controls = () => {
   const result = authoring.autoPause;
-  if (result === undefined) throw new Error('Missing controls');
   return result;
 };
 

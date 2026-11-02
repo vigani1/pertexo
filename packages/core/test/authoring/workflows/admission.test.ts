@@ -30,7 +30,7 @@ describe('effective authoring idle budget', () => {
   registerIdleTimeoutSettings();
 });
 describe('snapshot validation and publication ordering', () => {
-  const cleanups: (() => Promise<unknown> | void)[] = [];
+  const cleanups: (() => Promise<unknown>)[] = [];
   afterEach(async () => {
     for (const cleanup of cleanups.splice(0)) await cleanup();
   });

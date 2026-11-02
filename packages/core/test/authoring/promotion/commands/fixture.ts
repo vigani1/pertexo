@@ -37,8 +37,6 @@ export const database = createWorkflowAuthoringFixtureDatabase(
 export const scope = () => ({ workspaceId, actorId });
 
 export function promotions() {
-  if (database.promotions === undefined)
-    throw new Error('Promotion store missing');
   return database.promotions;
 }
 

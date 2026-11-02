@@ -17,8 +17,6 @@ const database = createWorkflowAuthoringFixtureDatabase(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
 );
 function store() {
-  if (database.collaboration === undefined)
-    throw new Error('Presence store missing');
   return database.collaboration;
 }
 const scope = () => ({ workspaceId, workflowId, actorId });
