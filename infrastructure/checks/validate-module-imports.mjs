@@ -84,7 +84,11 @@ function coreAreaViolation(file, specifier, namedFiles) {
   const [targetArea, ...rest] = target.slice(coreSource.length).split('/');
   if (rest.length === 0)
     return `core areas don't import core's entry points; ${specifier} sits above them`;
-  if (targetArea === area || AREAS_NOT_YET_PASSED.has(targetArea)) return;
+  if (targetArea === area) return;
+  // Every area builds on shared, so one import back up would make a cycle of them.
+  if (area === 'shared')
+    return `shared imports no other area; ${specifier} reaches ${targetArea}`;
+  if (AREAS_NOT_YET_PASSED.has(targetArea)) return;
   const reached = rest.join('/');
   if (reached === 'index.js')
     return `core areas import the files ${targetArea}/index.ts names, never the index`;
