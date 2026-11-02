@@ -11,8 +11,8 @@ import {
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { CompletionInput } from './contract.js';
-import { nodeAttemptConsumerName } from './receipts.repository.js';
-import { runAbortReason } from '../queries/control.js';
+import { nodeAttemptConsumerName } from './receipts.queries.js';
+import { runAbortReason } from '../control.js';
 
 export async function lockCompletionReceipt(
   client: PoolClient,

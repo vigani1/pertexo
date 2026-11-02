@@ -27,7 +27,7 @@ import type { PoolClient } from 'pg';
 import {
   assertCapabilityExecution,
   lockCapabilityExecution,
-} from '../attempts/dispatch/fence.repository.js';
+} from '../attempts/dispatch/fence.queries.js';
 import type {
   DataTableAttempt,
   DataTableDefinition,

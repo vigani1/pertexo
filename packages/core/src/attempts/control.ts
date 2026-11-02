@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { workflowRuns } from '@pertexo/database/schema';
-import type { NodeAttemptControl } from '../contract.js';
+import type { NodeAttemptControl } from './contract.js';
 
 /** Cancellation takes precedence over a deadline, including during heartbeats. */
 export const runAbortReason = sql<
