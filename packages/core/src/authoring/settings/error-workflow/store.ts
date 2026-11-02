@@ -26,6 +26,8 @@ import type { AuthoringAccess, WorkflowActor } from '../../workflows/access.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 
+const TARGETS_PAGE = 50;
+
 type Scope = WorkflowActor & Readonly<{ requestId?: string; traceId?: string }>;
 export type ListErrorWorkflowTargetsInput = Scope &
   Readonly<{ after?: string }>;
@@ -118,14 +120,14 @@ async function listErrorWorkflowTargets(
       ),
     )
     .orderBy(asc(workflows.id))
-    .limit(51)
+    .limit(TARGETS_PAGE + 1)
     .catch(rethrowQueryFailure);
-  const page = rows.slice(0, 50);
+  const page = rows.slice(0, TARGETS_PAGE);
   return {
     items: page
       .filter((row) => isWorkflowErrorTarget(row.graph))
       .map((row) => ({ id: row.id, name: row.name })),
-    nextCursor: rows.length > 50 ? (page.at(-1)?.id ?? null) : null,
+    nextCursor: rows.length > TARGETS_PAGE ? (page.at(-1)?.id ?? null) : null,
   };
 }
 

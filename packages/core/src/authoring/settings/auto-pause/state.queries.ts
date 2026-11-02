@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows, workspaces } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
@@ -37,7 +38,7 @@ export async function lockWorkspace(
   workspaceId: string,
   {
     exclusive,
-    statuses = ['active'],
+    statuses = ACTIVE_WORKSPACE_STATUSES,
   }: Readonly<{ exclusive: boolean; statuses?: readonly string[] }>,
 ) {
   const db = drizzle(client);

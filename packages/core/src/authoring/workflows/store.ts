@@ -194,9 +194,8 @@ export function createWorkflowAuthoringStore(
         validateDraft(
           client,
           scope,
-          { workspaceId, workflowId },
+          { workspaceId, workflowId, signal },
           catalogs,
-          signal,
         ),
       ),
     getVersion: (

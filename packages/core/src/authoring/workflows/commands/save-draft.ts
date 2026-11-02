@@ -11,8 +11,6 @@ import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bin
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
 
-import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
-
 import type { AuthoringCatalogs } from '../catalogs.js';
 import type { SaveWorkflowDraftInput } from '../contract.js';
 import {
@@ -20,6 +18,7 @@ import {
   WorkflowRevisionConflictError,
 } from '../errors.js';
 import type { WorkflowDraftRecord } from '../representation/contract.js';
+import { draftRepresentationTag } from '../representation/tag.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import {
   draftProjection,
@@ -120,18 +119,6 @@ function throwRevisionConflict(
     draft.revision,
     draftRepresentationTag(workflowId, draft),
   );
-}
-
-function draftRepresentationTag(
-  workflowId: string,
-  draft: WorkflowDraftRecord,
-): string {
-  return workflowDraftRepresentationTag({
-    workflowId,
-    revision: draft.revision,
-    graph: draft.graphJson,
-    compatibilityFingerprint: draft.compatibility.fingerprint,
-  });
 }
 
 function readActiveDraft(

@@ -2,7 +2,6 @@ import {
   appendAuditFact,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
-import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { and, eq, exists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -23,6 +22,8 @@ import {
   WorkflowRevisionConflictError,
 } from '../errors.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
+import { draftRepresentationTag } from '../representation/tag.js';
+import { lockActiveWorkflow, lockDraft } from './locks.queries.js';
 import type { WorkflowDraftRecord } from '../representation/contract.js';
 import {
   draftProjection,
@@ -43,40 +44,12 @@ export async function restoreWorkflowVersion(
   const representationTag = input.representationTag;
 
   const db = drizzle(client);
-  const [workflow] = await db
-    .select({ id: workflows.id })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, workspaceId),
-        eq(workflows.id, workflowId),
-        eq(workflows.lifecycleStatus, 'active'),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
-  if (workflow === undefined)
-    throw new WorkflowNotFoundError('Workflow is not visible');
-  const [draftRow] = await db
-    .select(draftProjection)
-    .from(workflowDrafts)
-    .where(
-      and(
-        eq(workflowDrafts.workspaceId, workspaceId),
-        eq(workflowDrafts.workflowId, workflowId),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
+  await lockActiveWorkflow(client, input);
+  const draftRow = await lockDraft(client, input);
   if (draftRow === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
   const currentDraft = projectDraft(draftRow, definitionCatalog);
-  const currentTag = workflowDraftRepresentationTag({
-    workflowId,
-    revision: currentDraft.revision,
-    graph: currentDraft.graphJson,
-    compatibilityFingerprint: currentDraft.compatibility.fingerprint,
-  });
+  const currentTag = draftRepresentationTag(workflowId, currentDraft);
   if (currentTag !== representationTag)
     throw new WorkflowRevisionConflictError(currentDraft.revision, currentTag);
 
