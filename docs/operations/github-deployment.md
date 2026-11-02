@@ -7,9 +7,10 @@ same thing by hand.
 
 The `Deploy beta` workflow runs only through `workflow_dispatch` from `main`.
 Supply a full lowercase 40-character main commit SHA. It verifies ancestry and
-queries the latest push run of `ci.yml` for that exact SHA; the entire run and
-`publish-images` job must have succeeded. A PR check, scheduled run, pending
-publisher or previous successful run followed by a failed retry is insufficient.
+queries the latest push runs of `ci.yml` and `publish.yml` for that exact SHA; the
+entire CI run and the `publish-images` job must have succeeded. A PR check,
+scheduled run, pending publisher or previous successful run followed by a failed
+retry is insufficient.
 No deployment follows a push automatically.
 
 First update the server's clean control checkout with `git pull --ff-only origin

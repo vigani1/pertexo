@@ -5,7 +5,7 @@ name: Retry a lost runner
 # a real deadlock. So is any run with a real failure, which a retry could only hide.
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [CI, Publish images]
     types: [completed]
 
 permissions:

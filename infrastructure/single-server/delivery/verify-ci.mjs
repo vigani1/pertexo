@@ -46,15 +46,19 @@ if (
         stdio: ['ignore', 'pipe', 'inherit'],
       }),
     );
-  const runs = api(
-    `repos/${repository}/actions/workflows/ci.yml/runs?head_sha=${commit}&branch=main&event=push&per_page=1`,
+  const latestPushRun = (workflow) => {
+    const runs = api(
+      `repos/${repository}/actions/workflows/${workflow}/runs?head_sha=${commit}&branch=main&event=push&per_page=1`,
+    );
+    const run = runs.workflow_runs?.[0];
+    if (!run || !Number.isSafeInteger(run.id))
+      throw new Error(`No push run of ${workflow} exists for this main commit`);
+    return run;
+  };
+  const run = latestPushRun('ci.yml');
+  const publication = api(
+    `repos/${repository}/actions/runs/${latestPushRun('publish.yml').id}/jobs?filter=latest&per_page=100`,
   );
-  const run = runs.workflow_runs?.[0];
-  if (!run || !Number.isSafeInteger(run.id))
-    throw new Error('No push CI run exists for this main commit');
-  const result = api(
-    `repos/${repository}/actions/runs/${run.id}/jobs?filter=latest&per_page=100`,
-  );
-  verifyReleaseEvidence(commit, run, result.jobs);
+  verifyReleaseEvidence(commit, run, publication.jobs);
   console.log(`Verified main CI and image publication: ${commit}`);
 }

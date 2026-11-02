@@ -7,8 +7,9 @@ import { it } from './support/it.mjs';
 // CI can't be run from here, so these read the workflow files for the promises the
 // operator depends on. What only a real run can prove is listed in the batch notes.
 const ci = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
+const publish = parse(readFileSync('.github/workflows/publish.yml', 'utf8'));
 const jobText = (job) => JSON.stringify(job);
-const publishingJobs = Object.entries(ci.jobs).filter(
+const publishingJobs = Object.entries(publish.jobs).filter(
   ([, job]) => job.permissions?.packages === 'write',
 );
 const neededBy = (name) => {
@@ -55,19 +56,21 @@ test('the gate requires a split suite, and every one of its shards exists', () =
 // Tags name commits; only a release says a commit is good.
 it('publishes an image for every merged commit, whatever the test jobs did', () => {
   assert.ok(publishingJobs.length > 0);
-  for (const [name, job] of publishingJobs) {
-    for (const blocker of [
-      'check',
-      'unit',
-      'integration',
-      'browser',
-      'e2e',
-      'security',
-    ])
-      assert.ok(!neededBy(name).has(blocker), `${name} waits for ${blocker}`);
-    assert.match(job.if ?? '', /refs\/heads\/main/u);
-    assert.doesNotMatch(job.if ?? '', /docs|changes|paths/u);
-  }
+  // Its own workflow, so nothing in CI can hold it up or replace it.
+  assert.deepEqual(Object.keys(publish.on), ['push']);
+  assert.deepEqual(publish.on.push, { branches: ['main'] });
+  assert.equal(publish.concurrency, undefined);
+  for (const [name, job] of publishingJobs)
+    assert.equal(job.if, undefined, name);
+});
+
+// A lost runner mustn't leave a commit without images, or a job without its retry.
+test('retries a lost runner in publishing as well as in CI', () => {
+  const retry = parse(
+    readFileSync('.github/workflows/retry-lost-runner.yml', 'utf8'),
+  );
+  for (const { name } of [ci, publish])
+    assert.ok(retry.on.workflow_run.workflows.includes(name), name);
 });
 
 // ops-09, docs-deps-product-17
