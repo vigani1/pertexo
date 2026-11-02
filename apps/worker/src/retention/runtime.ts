@@ -32,6 +32,9 @@ type RetentionOperationStep = (signal: AbortSignal) => Promise<boolean>;
 /** Repeats an operation back to back while it has work, then yields. */
 const MAX_STEPS_PER_OPERATION = 20;
 
+/** The wait while an operation still has work, so a backlog keeps its rate. */
+const BUSY_POLL_MILLIS = 1_000;
+
 /**
  * Retention windows are days long, so a pass needn't run every poll: all its
  * rules together are about 50 transactions. A full page brings the next one
@@ -125,11 +128,12 @@ export function createRetentionRuntime(
     operation: RetentionOperation,
     step: RetentionOperationStep,
     signal: AbortSignal,
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     const startedAt = performance.now();
     try {
       for (let count = 0; count < MAX_STEPS_PER_OPERATION; count += 1)
-        if (!(await step(signal))) return;
+        if (!(await step(signal))) return false;
+      return true;
     } catch (error: unknown) {
       if (signal.aborted) throw error;
       reportDiagnostic(() => {
@@ -139,18 +143,25 @@ export function createRetentionRuntime(
         );
         logger.error('retention.operation_failed', { operation }, error);
       });
+      return false;
     }
   };
 
+  let more = false;
   return createPollingRuntime({
     name: 'Retention',
     pollMillis,
+    whenBusy: {
+      pollMillis: Math.min(pollMillis, BUSY_POLL_MILLIS),
+      hasMore: () => more,
+    },
     checkStore: async (signal) => {
       await resources.database.checkReadiness(signal);
     },
     cycle: async (signal) => {
+      more = false;
       for (const [operation, step] of operations)
-        await run(operation, step, signal);
+        if (await run(operation, step, signal)) more = true;
     },
     cycleFailed: (error) => {
       logger.error('retention.cycle_failed', {}, error);

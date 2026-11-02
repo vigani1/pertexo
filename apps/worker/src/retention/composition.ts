@@ -12,7 +12,12 @@ import type { WorkerConfig } from '../config/worker.js';
 import { createRetentionMetrics } from './metrics.js';
 import { createRetentionRuntime, type RetentionRuntime } from './runtime.js';
 
-const RETENTION_POLL_MILLIS = 1_000;
+/**
+ * The wait once nothing is left. Nobody waits on this work: windows are days long,
+ * and a backlog keeps the runtime's busy rate. A shorter poll only costs an idle
+ * install lock attempts it never needs.
+ */
+const RETENTION_POLL_MILLIS = 60_000;
 
 export function configuredRetentionRuntime(
   config: WorkerConfig,
