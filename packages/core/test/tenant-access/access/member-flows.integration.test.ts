@@ -133,7 +133,13 @@ describe('the members list', () => {
       world[role],
     );
     expect(page.items.map(({ userId }) => userId).sort()).toEqual(
-      [world.owner, world.admin, world.builder, world.operator, world.viewer].sort(),
+      [
+        world.owner,
+        world.admin,
+        world.builder,
+        world.operator,
+        world.viewer,
+      ].sort(),
     );
   });
 
@@ -234,28 +240,33 @@ describe('the invitations list', () => {
 });
 
 describe('who can make a member command', () => {
-  it.each(COMMAND_NAMES)('%s goes through for an owner and an admin', async (name) => {
-    const world = await team();
-    await expect(
-      answer(COMMANDS[name](world.workspaceId, world.owner)),
-    ).resolves.toBe('answered');
-    const second = await team();
-    await expect(
-      answer(COMMANDS[name](second.workspaceId, second.admin)),
-    ).resolves.toBe('answered');
-  });
+  it.each(COMMAND_NAMES)(
+    '%s goes through for an owner and an admin',
+    async (name) => {
+      const world = await team();
+      await expect(
+        answer(COMMANDS[name](world.workspaceId, world.owner)),
+      ).resolves.toBe('answered');
+      const second = await team();
+      await expect(
+        answer(COMMANDS[name](second.workspaceId, second.admin)),
+      ).resolves.toBe('answered');
+    },
+  );
 
   it.each(
-    COMMAND_NAMES.flatMap((name) => LOST_ROLES.map((role) => [name, role] as const)),
+    COMMAND_NAMES.flatMap((name) =>
+      LOST_ROLES.map((role) => [name, role] as const),
+    ),
   )('%s is refused for a %s, and changes nothing', async (name, role) => {
     const world = await team();
     const revisionBefore = await admin.query(
       'select revision,name from app.workspaces where id=$1',
       [world.workspaceId],
     );
-    expect(await answer(COMMANDS[name](world.workspaceId, world[role]))).toEqual(
-      refusal('actor_inactive'),
-    );
+    expect(
+      await answer(COMMANDS[name](world.workspaceId, world[role])),
+    ).toEqual(refusal('actor_inactive'));
     const after = await admin.query(
       'select revision,name from app.workspaces where id=$1',
       [world.workspaceId],
@@ -435,48 +446,57 @@ describe('someone whose standing changed', () => {
       'a suspended member',
       (workspaceId, member) => setMembership(workspaceId, member, 'suspended'),
     ],
-    ['a suspended user', (_workspaceId, member) => setUserStatus(member, 'suspended')],
+    [
+      'a suspended user',
+      (_workspaceId, member) => setUserStatus(member, 'suspended'),
+    ],
   ];
 
-  it.each(standings)('%s cannot make an invitation command', async (_who, change) => {
-    const { workspaceId, owner, admin: manager } = await team();
-    const created = await identities.createWorkspaceInvitation(
-      invitation(workspaceId, owner),
-    );
-    await change(workspaceId, manager);
-    for (const command of [
-      identities.createWorkspaceInvitation(invitation(workspaceId, manager)),
-      identities.revokeWorkspaceInvitation({
-        workspaceId,
-        actorUserId: manager,
-        invitationId: created.invitation.id,
-        expectedRevision: created.invitation.revision,
-        ...key(),
-      }),
-    ])
-      expect(await answer(command)).toEqual(refusal('actor_inactive'));
-  });
-
-  it.each(standings)('%s cannot change another member', async (_who, change) => {
-    const { workspaceId, admin: manager, viewer } = await team();
-    await change(workspaceId, manager);
-    expect(
-      await answer(
-        identities.changeWorkspaceMemberRole({
+  it.each(standings)(
+    '%s cannot make an invitation command',
+    async (_who, change) => {
+      const { workspaceId, owner, admin: manager } = await team();
+      const created = await identities.createWorkspaceInvitation(
+        invitation(workspaceId, owner),
+      );
+      await change(workspaceId, manager);
+      for (const command of [
+        identities.createWorkspaceInvitation(invitation(workspaceId, manager)),
+        identities.revokeWorkspaceInvitation({
           workspaceId,
           actorUserId: manager,
-          targetUserId: viewer,
-          role: 'builder',
-          expectedRoleRevision: 1,
+          invitationId: created.invitation.id,
+          expectedRevision: created.invitation.revision,
           ...key(),
         }),
-      ),
-    ).toEqual(refusal('actor_inactive'));
-    expect(await membership(workspaceId, viewer)).toEqual({
-      role: 'viewer',
-      status: 'active',
-    });
-  });
+      ])
+        expect(await answer(command)).toEqual(refusal('actor_inactive'));
+    },
+  );
+
+  it.each(standings)(
+    '%s cannot change another member',
+    async (_who, change) => {
+      const { workspaceId, admin: manager, viewer } = await team();
+      await change(workspaceId, manager);
+      expect(
+        await answer(
+          identities.changeWorkspaceMemberRole({
+            workspaceId,
+            actorUserId: manager,
+            targetUserId: viewer,
+            role: 'builder',
+            expectedRoleRevision: 1,
+            ...key(),
+          }),
+        ),
+      ).toEqual(refusal('actor_inactive'));
+      expect(await membership(workspaceId, viewer)).toEqual({
+        role: 'viewer',
+        status: 'active',
+      });
+    },
+  );
 
   it('an exact retry by someone since demoted is refused, not replayed', async () => {
     const { workspaceId, admin: manager, viewer } = await team();

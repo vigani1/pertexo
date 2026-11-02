@@ -1,4 +1,8 @@
-import { API_TOKEN_SCOPES, ROLES, hasCapability } from '@pertexo/workflow-model';
+import {
+  API_TOKEN_SCOPES,
+  ROLES,
+  hasCapability,
+} from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
 import { isActiveMemberManager } from '../../../src/tenant-access/members/manager.js';
@@ -32,11 +36,14 @@ describe('tokenOwnerMayAct', () => {
     [undefined, 'create', false],
     [undefined, 'read', false],
     [undefined, 'revoke', false],
-  ] as const)('on a workspace %s, %s is %s', (workspaceStatus, mode, allowed) => {
-    expect(tokenOwnerMayAct(mode, { ...standing, workspaceStatus })).toBe(
-      allowed,
-    );
-  });
+  ] as const)(
+    'on a workspace %s, %s is %s',
+    (workspaceStatus, mode, allowed) => {
+      expect(tokenOwnerMayAct(mode, { ...standing, workspaceStatus })).toBe(
+        allowed,
+      );
+    },
+  );
 
   it.each(['create', 'read', 'revoke'] as const)(
     'refuses %s to an inactive user or membership, or none at all',

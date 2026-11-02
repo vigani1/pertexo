@@ -123,7 +123,9 @@ describe('a link that has gone stale', () => {
       `update app.workspace_invitations set expires_at=clock_timestamp()-interval '1 minute' where id=$1`,
       [invitationId],
     );
-    expect(await open(workspaceId, invitationId, tokenDigest).opened).toBeNull();
+    expect(
+      await open(workspaceId, invitationId, tokenDigest).opened,
+    ).toBeNull();
     const { rows } = await admin.query<{ status: string }>(
       'select status from app.workspace_invitations where id=$1',
       [invitationId],
@@ -149,18 +151,31 @@ describe('a link that has gone stale', () => {
       sealedToken: invitation(workspaceId, owner).sealedToken,
       expiresAt: new Date(Date.now() + 60_000),
     });
-    expect(await open(workspaceId, invitationId, tokenDigest).opened).toBeNull();
+    expect(
+      await open(workspaceId, invitationId, tokenDigest).opened,
+    ).toBeNull();
     expect(
       await open(workspaceId, invitationId, replacement).opened,
     ).toMatchObject({ invitationStatus: 'pending' });
   });
 
   it('does not let a revoked invitation be finished, even by a journey already open', async () => {
-    const { workspaceId, owner, recipient, invitationId, tokenDigest, revision } =
-      await invited();
+    const {
+      workspaceId,
+      owner,
+      recipient,
+      invitationId,
+      tokenDigest,
+      revision,
+    } = await invited();
     const journey = open(workspaceId, invitationId, tokenDigest);
     await journey.opened;
-    await prove(workspaceId, journey.intentId, journey.bindingDigest, recipient);
+    await prove(
+      workspaceId,
+      journey.intentId,
+      journey.bindingDigest,
+      recipient,
+    );
     await identities.revokeWorkspaceInvitation({
       workspaceId,
       actorUserId: owner,
@@ -177,7 +192,8 @@ describe('a link that has gone stale', () => {
 
 describe('a token used twice', () => {
   it('adds one membership, and a second person with the same link gets nothing', async () => {
-    const { workspaceId, recipient, invitationId, tokenDigest } = await invited();
+    const { workspaceId, recipient, invitationId, tokenDigest } =
+      await invited();
     const first = open(workspaceId, invitationId, tokenDigest);
     await first.opened;
     await prove(workspaceId, first.intentId, first.bindingDigest, recipient);
@@ -218,11 +234,17 @@ describe('the wrong person accepting', () => {
   });
 
   it('cannot finish a journey someone else proved', async () => {
-    const { workspaceId, recipient, invitationId, tokenDigest } = await invited();
+    const { workspaceId, recipient, invitationId, tokenDigest } =
+      await invited();
     const stranger = await person();
     const journey = open(workspaceId, invitationId, tokenDigest);
     await journey.opened;
-    await prove(workspaceId, journey.intentId, journey.bindingDigest, recipient);
+    await prove(
+      workspaceId,
+      journey.intentId,
+      journey.bindingDigest,
+      recipient,
+    );
     await expect(
       complete(workspaceId, journey.intentId, stranger),
     ).rejects.toBeInstanceOf(InvitationAcceptanceConflictError);
@@ -254,10 +276,20 @@ describe('ending an invitation', () => {
     await pending.opened;
     const verified = open(workspaceId, invitationId, tokenDigest);
     await verified.opened;
-    await prove(workspaceId, verified.intentId, verified.bindingDigest, recipient);
+    await prove(
+      workspaceId,
+      verified.intentId,
+      verified.bindingDigest,
+      recipient,
+    );
     const wrong = open(workspaceId, invitationId, tokenDigest);
     await wrong.opened;
-    await prove(workspaceId, wrong.intentId, wrong.bindingDigest, await person());
+    await prove(
+      workspaceId,
+      wrong.intentId,
+      wrong.bindingDigest,
+      await person(),
+    );
     return { pending, verified, wrong };
   }
 
@@ -271,9 +303,9 @@ describe('ending an invitation', () => {
       expectedRevision: world.revision,
       idempotencyKey: randomUUID(),
     });
-    expect(
-      new Set(await intentStatuses(world.invitationId)),
-    ).toEqual(new Set(['superseded']));
+    expect(new Set(await intentStatuses(world.invitationId))).toEqual(
+      new Set(['superseded']),
+    );
     expect(await sealedDeliveries(world.invitationId)).toEqual([
       expect.objectContaining({ status: 'canceled', token_ciphertext: null }),
     ]);
@@ -287,9 +319,9 @@ describe('ending an invitation', () => {
       [world.invitationId],
     );
     await identities.listWorkspaceInvitations(world.workspaceId, world.owner);
-    expect(
-      new Set(await intentStatuses(world.invitationId)),
-    ).toEqual(new Set(['superseded']));
+    expect(new Set(await intentStatuses(world.invitationId))).toEqual(
+      new Set(['superseded']),
+    );
     expect(await sealedDeliveries(world.invitationId)).toEqual([
       expect.objectContaining({ token_ciphertext: null }),
     ]);
@@ -306,7 +338,12 @@ describe('ending an invitation', () => {
     );
     const finished = open(workspaceId, invitationId, tokenDigest);
     await finished.opened;
-    await prove(workspaceId, finished.intentId, finished.bindingDigest, recipient);
+    await prove(
+      workspaceId,
+      finished.intentId,
+      finished.bindingDigest,
+      recipient,
+    );
     await complete(workspaceId, finished.intentId, recipient);
     const before = await intentStatuses(invitationId);
     expect(before).toContain('completed');

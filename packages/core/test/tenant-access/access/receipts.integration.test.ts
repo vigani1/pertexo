@@ -273,8 +273,14 @@ describe('a malformed stored receipt on replay', () => {
   });
 
   it('of a member command is refused, never a result with no member in it', async () => {
-    const { workspaceId, owner, viewer, operator, builder, admin: second } =
-      await team();
+    const {
+      workspaceId,
+      owner,
+      viewer,
+      operator,
+      builder,
+      admin: second,
+    } = await team();
     const commands: readonly (readonly [
       string,
       string,

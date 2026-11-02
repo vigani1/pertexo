@@ -114,7 +114,9 @@ describe('run history for someone with no access', () => {
       const { workspaceId, owner } = await team();
       const { runId, workflowId } = await seedRun(workspaceId, owner);
       const actorId = await makeOutsider(workspaceId);
-      expectNothing(await historyAs({ workspaceId, actorId }, runId, workflowId));
+      expectNothing(
+        await historyAs({ workspaceId, actorId }, runId, workflowId),
+      );
     },
   );
 
@@ -194,7 +196,9 @@ describe('what the read still bounds', () => {
     const blocker = await admin.connect();
     try {
       await blocker.query('begin');
-      await blocker.query('lock table app.workflow_runs in access exclusive mode');
+      await blocker.query(
+        'lock table app.workflow_runs in access exclusive mode',
+      );
       const started = Date.now();
       const failure = await runs
         .statistics({ workspaceId, actorId: owner, window: '24h' })
@@ -261,7 +265,9 @@ describe('the visible read under concurrency', () => {
   it('sees one snapshot from start to end, and cannot write', async () => {
     const { workspaceId, owner } = await team();
     const statusOf = (transaction: ResourceTransaction) =>
-      transaction.db.execute(`select name from app.workspaces where id='${workspaceId}'`);
+      transaction.db.execute(
+        `select name from app.workspaces where id='${workspaceId}'`,
+      );
     const other = new Client({ connectionString: adminDatabaseUrl });
     await other.connect();
     try {
@@ -270,9 +276,10 @@ describe('the visible read under concurrency', () => {
         { workspaceId, actorId: owner },
         async (transaction) => {
           const first = await statusOf(transaction);
-          await other.query("update app.workspaces set name='Renamed' where id=$1", [
-            workspaceId,
-          ]);
+          await other.query(
+            "update app.workspaces set name='Renamed' where id=$1",
+            [workspaceId],
+          );
           const second = await statusOf(transaction);
           return [first.rows, second.rows];
         },

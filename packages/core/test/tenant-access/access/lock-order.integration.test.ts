@@ -225,15 +225,16 @@ describe('everyone acting in one workspace at once', () => {
         `insert into app.workspace_memberships(workspace_id,user_id,role) values($1,$3,'viewer'),($2,$4,'viewer')`,
         [left, right, second, first],
       );
-      const change = (workspaceId: string, actor: string, target: string) => () =>
-        identities.changeWorkspaceMemberRole({
-          workspaceId,
-          actorUserId: actor,
-          targetUserId: target,
-          role: 'builder',
-          expectedRoleRevision: 1,
-          idempotencyKey: randomUUID(),
-        });
+      const change =
+        (workspaceId: string, actor: string, target: string) => () =>
+          identities.changeWorkspaceMemberRole({
+            workspaceId,
+            actorUserId: actor,
+            targetUserId: target,
+            role: 'builder',
+            expectedRoleRevision: 1,
+            idempotencyKey: randomUUID(),
+          });
       expect(
         await outcomes([
           change(left, first, second),

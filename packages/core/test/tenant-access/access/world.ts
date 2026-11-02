@@ -125,11 +125,7 @@ export async function team(): Promise<
 }
 
 export type WorkspaceStatus =
-  | 'active'
-  | 'suspended'
-  | 'pending_deletion'
-  | 'purging'
-  | 'deleted';
+  'active' | 'suspended' | 'pending_deletion' | 'purging' | 'deleted';
 
 export async function setStatus(
   workspaceId: string,
