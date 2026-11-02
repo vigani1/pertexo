@@ -1,6 +1,7 @@
 import {
   apiTokenCreateRequestSchema,
   apiTokenCreateResponseSchema,
+  apiTokenInfoResponseSchema,
   apiTokenListResponseSchema,
   apiTokenListQuerySchema,
   apiTokenRevokeRequestSchema,
@@ -20,6 +21,7 @@ import {
 export const apiTokenContractSchemas = {
   ApiTokenCreateRequest: jsonSchema(apiTokenCreateRequestSchema, 'input'),
   ApiTokenCreateResponse: jsonSchema(apiTokenCreateResponseSchema, 'output'),
+  ApiTokenInfoResponse: jsonSchema(apiTokenInfoResponseSchema, 'output'),
   ApiTokenListResponse: jsonSchema(apiTokenListResponseSchema, 'output'),
   ApiTokenRevokeRequest: jsonSchema(apiTokenRevokeRequestSchema, 'input'),
   ApiTokenRevokeResponse: jsonSchema(apiTokenRevokeResponseSchema, 'output'),
@@ -42,6 +44,24 @@ const errors = {
   '500': problemResponse('Unexpected server error'),
 };
 export const apiTokenContractPaths = {
+  '/v1/token': {
+    get: {
+      operationId: 'readCurrentApiToken',
+      description:
+        'The calling token itself: its workspace, scopes and expiry. Secrets stay unavailable.',
+      security: [{ apiToken: [] }],
+      responses: {
+        '200': {
+          ...jsonResponse('This token', 'ApiTokenInfoResponse'),
+          headers: noStore,
+        },
+        '401': problemResponse('Valid API token required'),
+        '429': problemResponse('Rate limited'),
+        '503': problemResponse('Automation tokens or rate limiter unavailable'),
+        '500': problemResponse('Unexpected server error'),
+      },
+    },
+  },
   '/v1/workspaces/{workspaceId}/api-tokens': {
     get: {
       operationId: 'listApiTokens',

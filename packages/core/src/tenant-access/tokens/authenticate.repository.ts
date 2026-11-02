@@ -84,7 +84,9 @@ export function authenticateApiToken(
         workspaceId: row.workspaceId,
         ownerUserId: row.ownerUserId,
         tokenId: row.id,
+        name: row.name,
         scopes: Object.freeze([...row.scopes]),
+        expiresAt: row.expiresAt,
       });
     },
     { ...(signal === undefined ? {} : { signal }) },

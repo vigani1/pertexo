@@ -9,6 +9,7 @@ export function registerDocumentsAllPublicRouteTemplatesRequest(): void {
   it('documents all public route templates and their request/response schemas', () => {
     expect(identityWorkspaceOpenApiDocument.openapi).toBe('3.1.0');
     expect(Object.keys(identityWorkspaceOpenApiDocument.paths)).toEqual([
+      '/v1/token',
       '/v1/workspaces/{workspaceId}/api-tokens',
       '/v1/workspaces/{workspaceId}/api-tokens/{tokenId}/revoke',
       '/v1/workspaces/{workspaceId}/variables',

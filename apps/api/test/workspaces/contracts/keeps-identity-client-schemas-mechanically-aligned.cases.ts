@@ -40,6 +40,7 @@ import {
   workspaceVariableUsageResponseSchema,
   apiTokenCreateRequestSchema,
   apiTokenCreateResponseSchema,
+  apiTokenInfoResponseSchema,
   apiTokenListResponseSchema,
   apiTokenRevokeRequestSchema,
   apiTokenRevokeResponseSchema,
@@ -178,6 +179,7 @@ export function registerKeepsIdentityClientSchemasMechanicallyAligned(): void {
           apiTokenCreateResponseSchema,
           'output',
         ),
+        ApiTokenInfoResponse: generated(apiTokenInfoResponseSchema, 'output'),
         ApiTokenListResponse: generated(apiTokenListResponseSchema, 'output'),
         ApiTokenRevokeRequest: generated(apiTokenRevokeRequestSchema, 'input'),
         ApiTokenRevokeResponse: generated(

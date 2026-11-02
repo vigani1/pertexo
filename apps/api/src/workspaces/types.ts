@@ -1,3 +1,4 @@
+import type { VerifiedApiToken } from '@pertexo/core/tenant-access';
 import type { ApiTokenActorContext } from '../authorization/types.js';
 export {
   accessibleWorkspacesQuerySchema,
@@ -76,6 +77,7 @@ export interface CookieResponse {
 export interface IdentityWorkspaceRequest {
   ip?: string;
   apiTokenActor?: ApiTokenActorContext;
+  verifiedApiToken?: VerifiedApiToken;
   method?: string;
   headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
   cookies?: Readonly<Record<string, string | undefined>>;
