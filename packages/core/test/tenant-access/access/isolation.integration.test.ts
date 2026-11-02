@@ -349,7 +349,8 @@ describe('other areas on the helper, one for each mode', () => {
       await expect(
         variables.replace({
           ...actor,
-          variables: [],
+          values: {},
+          descriptions: {},
           expectedRevision: 1,
           ...key(),
         }),
