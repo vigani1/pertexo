@@ -31,7 +31,11 @@ export type StalledWorkFailure = Readonly<{
 
 /** A whole stage of the scan that couldn't run, such as reading expired leases. */
 export type StalledWorkStageFailure = Readonly<{
-  stage: 'expired_leases' | 'overdue_deliveries' | 'failed_run_jobs';
+  stage:
+    | 'expired_leases'
+    | 'overdue_deliveries'
+    | 'failed_run_jobs'
+    | 'undated_deliveries';
   error: unknown;
 }>;
 
