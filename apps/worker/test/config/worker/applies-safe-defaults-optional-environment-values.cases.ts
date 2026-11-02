@@ -41,7 +41,7 @@ export function registerAppliesSafeDefaultsOptionalEnvironmentValues(): void {
       },
       coordinator: {
         dueWakeupBatchSize: 25,
-        dueWakeupPollIntervalMillis: 250,
+        dueWakeupPollIntervalMillis: 1_000,
         maximumAdmissions: 32,
       },
       workspaceInbox: {
@@ -95,7 +95,7 @@ export function registerAppliesSafeDefaultsOptionalEnvironmentValues(): void {
         leaseDurationSeconds: 30,
         leaseOwner: 'schedule:worker-local',
         onTimeWindowSeconds: 300,
-        pollIntervalMillis: 250,
+        pollIntervalMillis: 1_000,
       },
       redisUrl: 'redis://:secret@localhost:6379/0',
       resourceSafety: {
