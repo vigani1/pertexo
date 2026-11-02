@@ -109,7 +109,8 @@ export class WorkflowRunsController {
     @Body() body: unknown,
   ) {
     const route = workflowRunStartParamsSchema.parse(params);
-    const input = workflowRunStartRequestSchema.parse(body);
+    // No body means run the current version with its default input.
+    const input = workflowRunStartRequestSchema.parse(body ?? {});
     return this.startWorkflowRun.execute({
       actor: actorFrom(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,
@@ -296,7 +297,7 @@ export class WorkflowRunsController {
     @Body() body: unknown,
   ) {
     const route = workflowRunParamsSchema.parse(params);
-    const input = workflowRunCancelRequestSchema.parse(body);
+    const input = workflowRunCancelRequestSchema.parse(body ?? {});
     return this.cancelWorkflowRun.execute({
       actor: actorFrom(request, route.workspaceId),
       routeWorkspaceId: route.workspaceId,

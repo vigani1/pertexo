@@ -310,7 +310,10 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           automationCsrfHeaderParameter(),
           idempotencyParameter,
         ],
-        requestBody: jsonRequest('WorkflowRunStartRequest'),
+        requestBody: {
+          ...jsonRequest('WorkflowRunStartRequest'),
+          required: false,
+        },
         responses: {
           '503': problemResponse(
             'Automation token authentication, limiter or operation dependencies unavailable',
@@ -497,7 +500,10 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           runParameter,
           automationCsrfHeaderParameter(),
         ],
-        requestBody: jsonRequest('WorkflowRunCancelRequest'),
+        requestBody: {
+          ...jsonRequest('WorkflowRunCancelRequest'),
+          required: false,
+        },
         responses: {
           '503': problemResponse(
             'Automation token authentication, limiter or operation dependencies unavailable',
