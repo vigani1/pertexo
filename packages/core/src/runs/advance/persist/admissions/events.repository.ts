@@ -76,10 +76,7 @@ export async function persistRunEvents(
     rejectedForEachDeclarations: ReadonlySet<string>;
   }>,
 ): Promise<void> {
-  const { pendingFailures, physical, plan, runId, workspaceId } = input;
-  const pendingFailureInvocations = new Set(
-    pendingFailures.map(({ invocation_key: invocationKey }) => invocationKey),
-  );
+  const { physical, plan, runId, workspaceId } = input;
   const persistedEvents = plan.events.map((event) => {
     const ids =
       event.invocationKey === undefined
@@ -113,46 +110,67 @@ export async function persistRunEvents(
     };
   });
   await insertEvents(client, persistedEvents);
-  for (const event of plan.events) {
-    const terminalNodeStatus = terminalStatus(event.name);
-    const settlesInvocation =
-      terminalNodeStatus !== undefined &&
-      event.invocationKey !== undefined &&
-      !pendingFailureInvocations.has(event.invocationKey) &&
-      !input.rejectedForEachDeclarations.has(event.invocationKey);
-    if (settlesInvocation) {
-      const n = nodeRuns;
-      const updatedNode = await drizzle(client)
-        .update(n)
-        .set({
-          status: terminalNodeStatus,
-          completedAt: sql`clock_timestamp()`,
-          // A succeeded step's reason (callback received, timed out) is
-          // event copy, never an error code.
-          safeErrorCode:
-            terminalNodeStatus === 'succeeded'
-              ? null
-              : (event.reasonCode ?? null),
-          resumeAt: null,
-          retryDueAt: null,
-          dueWakeupAt: null,
-          controlKind: null,
-          waitKind: null,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(
-          and(
-            eq(n.workspaceId, workspaceId),
-            eq(n.workflowRunId, runId),
-            eq(n.invocationKey, event.invocationKey),
-            inArray(n.status, ['pending', 'ready', 'waiting']),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      if (updatedNode.rowCount !== 1)
-        throw new CoordinatorRunStateCorruptError();
-    }
-  }
+  await settleInvocations(client, input);
+}
+
+/**
+ * One statement for every step these events settle: a run cancelled across thousands
+ * of steps would otherwise hold its lock through a round trip for each.
+ */
+async function settleInvocations(
+  client: PoolClient,
+  input: Parameters<typeof persistRunEvents>[1],
+): Promise<void> {
+  const { pendingFailures, plan, runId, workspaceId } = input;
+  const pendingFailureInvocations = new Set(
+    pendingFailures.map(({ invocation_key: invocationKey }) => invocationKey),
+  );
+  const settled = plan.events.flatMap((event) => {
+    const status = terminalStatus(event.name);
+    return status === undefined ||
+      event.invocationKey === undefined ||
+      pendingFailureInvocations.has(event.invocationKey) ||
+      input.rejectedForEachDeclarations.has(event.invocationKey)
+      ? []
+      : [
+          {
+            key: event.invocationKey,
+            status,
+            // A succeeded step's reason (callback received, timed out) is
+            // event copy, never an error code.
+            code: status === 'succeeded' ? null : (event.reasonCode ?? null),
+          },
+        ];
+  });
+  if (settled.length === 0) return;
+  const n = nodeRuns;
+  const updated = await drizzle(client)
+    .update(n)
+    .set({
+      status: sql`settled.status`,
+      completedAt: sql`clock_timestamp()`,
+      safeErrorCode: sql`settled.code`,
+      resumeAt: null,
+      retryDueAt: null,
+      dueWakeupAt: null,
+      controlKind: null,
+      waitKind: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .from(
+      sql`unnest(${sql.param(settled.map(({ key }) => key))}::text[],${sql.param(settled.map(({ status }) => status))}::text[],${sql.param(settled.map(({ code }) => code))}::text[]) settled(key,status,code)`,
+    )
+    .where(
+      and(
+        eq(n.workspaceId, workspaceId),
+        eq(n.workflowRunId, runId),
+        sql`${n.invocationKey}=settled.key`,
+        inArray(n.status, ['pending', 'ready', 'waiting']),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (updated.rowCount !== settled.length)
+    throw new CoordinatorRunStateCorruptError();
 }
 
 async function insertEvents(

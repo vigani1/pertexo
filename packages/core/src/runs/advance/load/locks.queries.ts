@@ -1,4 +1,4 @@
-import { and, asc, eq, exists, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, exists, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
@@ -147,16 +147,14 @@ export function readDueInvocations(
   {
     workspaceId,
     runId,
-    schedulerState,
-  }: Readonly<{ workspaceId: string; runId: string; schedulerState: unknown }>,
+    waitingKeys,
+  }: Readonly<{
+    workspaceId: string;
+    runId: string;
+    waitingKeys: readonly string[];
+  }>,
 ) {
   const db = drizzle(client);
-  const waiting = db
-    .select({ key: sql<string>`invocation->>'invocationKey'` })
-    .from(
-      sql`jsonb_array_elements(${JSON.stringify(schedulerState)}::jsonb->'invocations') invocation`,
-    )
-    .where(sql`invocation->>'status'='waiting'`);
   // The due-time predicate excludes null values before the timestamp is projected.
   return db
     .select({
@@ -174,7 +172,7 @@ export function readDueInvocations(
         eq(nodeRuns.status, 'waiting'),
         sql`${nodeRuns.controlKind} is distinct from 'human_task'`,
         sql`coalesce(${nodeRuns.retryDueAt},${nodeRuns.resumeAt})<=clock_timestamp()`,
-        inArray(nodeRuns.invocationKey, waiting),
+        sql`${nodeRuns.invocationKey}=any(${sql.param([...waitingKeys])}::text[])`,
       ),
     )
     .orderBy(asc(nodeRuns.invocationKey))

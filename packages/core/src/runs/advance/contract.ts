@@ -17,6 +17,8 @@ export type CoordinatorAdvanceDelivery = Readonly<{
 export type RunAdvanceState = Readonly<{
   runId: string;
   workflowVersionId: string;
+  /** When this advance happens, by the database's clock, as every run timestamp is. */
+  occurredAt: string;
   /** Stored checkpoint JSON; the engine parses it. */
   checkpoint: unknown;
   observations: readonly unknown[];

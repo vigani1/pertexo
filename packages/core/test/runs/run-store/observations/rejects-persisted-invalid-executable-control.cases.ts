@@ -203,6 +203,7 @@ export function registerRejectsPersistedInvalidExecutableControl(): void {
       state: {
         runId,
         workflowVersionId: versionA,
+        occurredAt: expect.any(String) as unknown,
         checkpoint: checkpoint({}),
         completedOutputs: [],
         observations: [],

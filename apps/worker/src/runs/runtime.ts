@@ -221,7 +221,6 @@ export async function createCoordinatorRuntime(
           calls: callStore,
           verification: { catalog },
           maximumAdmissions: options.maximumAdmissions,
-          now: () => new Date().toISOString(),
           expressionEvaluator,
         }),
       ),

@@ -44,7 +44,7 @@ export async function saveRunTransition(
     traceparent?: string;
     workspaceId: string;
   }>,
-): Promise<RunAdvanceResult & Readonly<{ scheduleDueAt?: string }>> {
+): Promise<RunAdvanceResult> {
   const { delivery, plan, previous, row, runId, traceparent, workspaceId } =
     input;
   if (

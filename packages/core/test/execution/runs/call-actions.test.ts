@@ -59,7 +59,6 @@ describe('Call actions before ordinary advance', () => {
     await advanceRun(
       {
         maximumAdmissions: 1,
-        now: () => '2026-10-11T02:00:00.000Z',
         verification: { catalog: child.catalog },
         calls: {
           close: () => Promise.resolve(),
@@ -96,7 +95,6 @@ describe('Call actions before ordinary advance', () => {
       advanceRun(
         {
           maximumAdmissions: 1,
-          now: () => '2026-10-11T02:00:00.000Z',
           verification: { catalog: child.catalog },
           calls: {
             close: () => Promise.resolve(),
