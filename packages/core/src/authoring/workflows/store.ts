@@ -1,90 +1,53 @@
-import { ROLES } from '@pertexo/workflow-model';
 import { acquireDatabasePool } from '@pertexo/database/platform';
-import { createWorkflowTestSuiteStore } from '../../previews/suites/store.js';
-import { createWorkflowTestStore } from '../../previews/workflows/store.js';
-import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
-import type { FolderScope } from '../../shared/contract.js';
-import { readFolderScope } from '../../shared/facts.queries.js';
-import { lockBrowsableWorkspaceAuthority } from '../../shared/authority.queries.js';
-import { createWorkflowCollaborationStore } from '../collaboration/store.js';
-import { createWorkflowPromotionStore } from '../promotion/repository.js';
-import { createPublicationReviewStore } from '../reviews/repository.js';
-import { createWorkflowErrorStore } from '../settings/error-workflow/store.js';
-import { createWorkflowStepSampleStore } from '../step-samples/repository.js';
-import { WorkflowDefinitionPlacementError } from './errors.js';
-
-import {
-  workflowDefinitionPlacementIssues,
-  type WorkflowGraph,
-} from '@pertexo/workflow-model';
-import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
-import type { Pool, PoolClient } from 'pg';
-
-import { rolesForCapability } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import { createPreviewRunStore } from '../../previews/runs/store.js';
 import {
   withMultiWorkspaceTransaction,
   withTenantScopedClient,
   type WorkspaceScopeRunner,
 } from '@pertexo/database/primitives';
+import { rolesForCapability } from '@pertexo/workflow-model';
+import type { Pool, PoolClient } from 'pg';
+import { createPreviewRunStore } from '../../previews/runs/store.js';
+import { createWorkflowTestSuiteStore } from '../../previews/suites/store.js';
+import { createWorkflowTestStore } from '../../previews/workflows/store.js';
+import { createWorkflowCollaborationStore } from '../collaboration/store.js';
 import { createWorkflowPortabilityStore } from '../portability/repository.js';
-import { createWorkflowPublisher } from '../publication/publish.js';
+import { readWorkflowWithTemplateOrigin } from '../portability/template-origin.queries.js';
+import { createWorkflowPromotionStore } from '../promotion/repository.js';
+import { publishWorkflow } from '../publication/publish.js';
+import { createPublicationReviewStore } from '../reviews/repository.js';
 import { createWorkflowAutoPauseStore } from '../settings/auto-pause/store.js';
 import { createWorkflowConcurrencyStore } from '../settings/concurrency/store.js';
+import { createWorkflowErrorStore } from '../settings/error-workflow/store.js';
+import { createWorkflowStepSampleStore } from '../step-samples/repository.js';
+import { createAuthoringAccess } from './access.js';
 import { lockWorkflowAuthoringAuthority } from './authority.js';
 import { authoringCatalogs } from './catalogs.js';
-import { createWorkflowAuthoringDraftStore } from './commands/save-draft.js';
-import { createWorkflowDuplicationStore } from './commands/duplicate.js';
-import { createWorkflowAuthoringLifecycleStore } from './commands/transition-lifecycle.js';
-import { createWorkflowAuthoringRenameStore } from './commands/rename.js';
-import { createWorkflowVersionRestoreStore } from './commands/restore-version.js';
+import { createWorkflow } from './commands/create.js';
+import { duplicateWorkflow } from './commands/duplicate.js';
+import { renameWorkflow } from './commands/rename.js';
+import { restoreWorkflowVersion } from './commands/restore-version.js';
+import { saveDraft } from './commands/save-draft.js';
+import { transitionWorkflowLifecycle } from './commands/transition-lifecycle.js';
 import type { WorkflowAuthoringWriteContext } from './context.js';
-import { WorkflowNotFoundError } from './errors.js';
-import { createWorkflowAuthoringReadStore } from './reads.queries.js';
+import type {
+  CreateWorkflowInput,
+  DuplicateWorkflowInput,
+  ListWorkflowVersionsInput,
+  ListWorkflowsInput,
+  PublishWorkflowInput,
+  RenameWorkflowInput,
+  RestoreWorkflowVersionInput,
+  SaveWorkflowDraftInput,
+  TransitionWorkflowLifecycleInput,
+} from './contract.js';
+import { requirePlaceableDefinitionAdditions } from './placement.js';
+import { readDraft, validateDraft } from './reads/drafts.queries.js';
+import { listVersions, readVersion } from './reads/versions.queries.js';
+import { listWorkflows, readWorkflow } from './reads/workflows.queries.js';
 import type { WorkflowAuthoringStoreOptions } from './types.js';
 
-import type { WorkflowAuthoringStore } from './contract.js';
-
-function requirePlaceableDefinitionAdditions(
-  previous: WorkflowGraph,
-  next: WorkflowGraph,
-  placementCatalog: WorkflowDefinitionCatalog | undefined,
-): void {
-  if (placementCatalog === undefined) return;
-  const issues = workflowDefinitionPlacementIssues(
-    previous,
-    next,
-    placementCatalog,
-  );
-  if (issues.length > 0)
-    throw new WorkflowDefinitionPlacementError(Object.freeze(issues));
-}
-
-async function withAuthorTransaction<T>(
-  pool: Pool,
-  workspaceIdInput: string,
-  {
-    actorIdInput,
-    operation,
-    signal,
-  }: Readonly<{
-    actorIdInput: string;
-    operation: (client: PoolClient) => Promise<T>;
-    signal?: AbortSignal | undefined;
-  }>,
-): Promise<T> {
-  return withTenantScopedClient(
-    pool,
-    {
-      workspaceId: workspaceIdInput,
-      actorId: actorIdInput,
-    },
-    operation,
-    signal === undefined ? {} : { signal },
-  );
-}
-
+/** For portability, promotion and reviews, until their passes put them on the doors. */
 async function requireWorkspaceAuthor(
   client: PoolClient,
   workspaceId: string,
@@ -105,114 +68,152 @@ async function requireWorkspaceAuthor(
   });
 }
 
-async function requireWorkspaceReader(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-): Promise<FolderScope> {
-  try {
-    const role = await lockBrowsableWorkspaceAuthority(
-      client,
-      workspaceId,
-      actorId,
-      ROLES,
-    );
-    return await readFolderScope(client, { workspaceId, actorId }, role);
-  } catch (error) {
-    if (error instanceof WorkspaceAccessDeniedError)
-      throw new WorkflowNotFoundError('Workflow is not visible');
-    throw error;
-  }
+function legacyContext(
+  pool: Pool,
+  access: ReturnType<typeof createAuthoringAccess>,
+  catalogs: ReturnType<typeof authoringCatalogs>,
+): WorkflowAuthoringWriteContext {
+  return {
+    requireAuthor: requireWorkspaceAuthor,
+    requirePlaceable: requirePlaceableDefinitionAdditions,
+    catalogs,
+    transact: (workspaceId, actorId, operation, signal) =>
+      access.tracked(() =>
+        withTenantScopedClient(
+          pool,
+          { workspaceId, actorId },
+          operation,
+          signal === undefined ? {} : { signal },
+        ),
+      ),
+  };
 }
+
+export type WorkflowAuthoringStore = ReturnType<
+  typeof createWorkflowAuthoringStore
+>;
 
 export function createWorkflowAuthoringStore(
   config: DatabaseConfig,
   options: WorkflowAuthoringStoreOptions,
-): WorkflowAuthoringStore {
+) {
   const catalogs = authoringCatalogs(options);
   const lease = acquireDatabasePool(config, options.runtime);
   const { pool } = lease;
-  const authoringOperations = new Set<Promise<unknown>>();
-  let closed = false;
-  let closePromise: Promise<void> | undefined;
-  async function tracked<T>(start: () => Promise<T>): Promise<T> {
-    if (closed) throw new Error('Workflow authoring database is closed');
-    const pending = start();
-    authoringOperations.add(pending);
-    try {
-      return await pending;
-    } finally {
-      authoringOperations.delete(pending);
-    }
-  }
-  function transact<T>(
-    workspaceId: string,
-    actorId: string,
-    operation: (client: PoolClient) => Promise<T>,
-    signal?: AbortSignal,
-  ): Promise<T> {
-    return tracked(() =>
-      withAuthorTransaction(pool, workspaceId, {
-        actorIdInput: actorId,
-        operation,
-        signal,
-      }),
-    );
-  }
-  function transactScopes<T>(
+  const access = createAuthoringAccess(pool);
+  const context = legacyContext(pool, access, catalogs);
+  const transactScopes = <T>(
     operation: (inWorkspace: WorkspaceScopeRunner) => Promise<T>,
     signal?: AbortSignal,
-  ): Promise<T> {
-    return tracked(() =>
+  ): Promise<T> =>
+    access.tracked(() =>
       withMultiWorkspaceTransaction(
         pool,
         operation,
         signal === undefined ? {} : { signal },
       ),
     );
-  }
-  const authoringContext: WorkflowAuthoringWriteContext = {
-    requireAuthor: requireWorkspaceAuthor,
-    requirePlaceable: requirePlaceableDefinitionAdditions,
-    catalogs,
-    transact,
-  };
-  const publishWorkflow = createWorkflowPublisher({
-    requireAuthor: requireWorkspaceAuthor,
-    catalogs,
-    transact,
-  });
+  let closePromise: Promise<void> | undefined;
   return Object.freeze({
-    collaboration: createWorkflowCollaborationStore(authoringContext),
-    promotions: createWorkflowPromotionStore({
-      ...authoringContext,
-      transactScopes,
-    }),
-    publicationReviews: createPublicationReviewStore(authoringContext),
+    collaboration: createWorkflowCollaborationStore(access),
+    promotions: createWorkflowPromotionStore({ ...context, transactScopes }),
+    publicationReviews: createPublicationReviewStore(context),
     stepSamples: createWorkflowStepSampleStore(pool),
     workflowTests: createWorkflowTestStore(pool, catalogs),
     workflowTestSuites: createWorkflowTestSuiteStore(pool, catalogs),
-    autoPause: createWorkflowAutoPauseStore(transact),
-    concurrency: createWorkflowConcurrencyStore(transact),
-    errorWorkflow: createWorkflowErrorStore(transact),
+    autoPause: createWorkflowAutoPauseStore(context.transact),
+    concurrency: createWorkflowConcurrencyStore(access),
+    errorWorkflow: createWorkflowErrorStore(access),
     ...createPreviewRunStore(pool),
-    ...createWorkflowAuthoringDraftStore(authoringContext),
-    ...createWorkflowVersionRestoreStore(authoringContext),
-    ...createWorkflowDuplicationStore(authoringContext),
-    ...createWorkflowPortabilityStore(authoringContext),
-    ...createWorkflowAuthoringReadStore({
-      requireReader: requireWorkspaceReader,
-      catalogs,
-      transact,
-    }),
-    publishWorkflow,
-    ...createWorkflowAuthoringLifecycleStore(authoringContext),
-    ...createWorkflowAuthoringRenameStore(authoringContext),
+    ...createWorkflowPortabilityStore(context),
+    createWorkflow: (input: CreateWorkflowInput) =>
+      access.author(input, (client, role) =>
+        createWorkflow(client, input, catalogs, role),
+      ),
+    saveDraft: (input: SaveWorkflowDraftInput) =>
+      access.workflow(input, { capability: 'workflow:update' }, (client) =>
+        saveDraft(client, input, catalogs),
+      ),
+    restoreWorkflowVersion: (input: RestoreWorkflowVersionInput) =>
+      access.workflow(input, { capability: 'workflow:update' }, (client) =>
+        restoreWorkflowVersion(client, input, catalogs),
+      ),
+    duplicateWorkflow: (input: DuplicateWorkflowInput) =>
+      access.workflow(
+        input,
+        { capability: 'workflow:update', resource: 'workflow:read' },
+        (client, scope) => duplicateWorkflow(client, input, catalogs, scope),
+      ),
+    publishWorkflow: (input: PublishWorkflowInput) =>
+      access.workflow(input, { capability: 'workflow:update' }, (client) =>
+        publishWorkflow(client, input, catalogs),
+      ),
+    transitionWorkflowLifecycle: (input: TransitionWorkflowLifecycleInput) =>
+      access.workflow(input, { capability: 'workflow:update' }, (client) =>
+        transitionWorkflowLifecycle(client, input),
+      ),
+    renameWorkflow: (input: RenameWorkflowInput) =>
+      access.workflow(input, { capability: 'workflow:update' }, (client) =>
+        renameWorkflow(client, input),
+      ),
+    listWorkflows: (input: ListWorkflowsInput) =>
+      access.reader(input, (client, scope) =>
+        listWorkflows(client, scope, input),
+      ),
+    getWorkflow: (workspaceId: string, workflowId: string, actorId: string) =>
+      access.reader({ workspaceId, actorId }, (client, scope) =>
+        readWorkflow(client, scope, { workspaceId, workflowId }),
+      ),
+    getWorkflowWithTemplateOrigin: (
+      workspaceId: string,
+      workflowId: string,
+      actorId: string,
+    ) =>
+      access.reader({ workspaceId, actorId }, (client, scope) =>
+        readWorkflowWithTemplateOrigin(client, scope, {
+          workspaceId,
+          workflowId,
+        }),
+      ),
+    getDraft: (workspaceId: string, workflowId: string, actorId: string) =>
+      access.reader({ workspaceId, actorId }, (client, scope) =>
+        readDraft(
+          client,
+          scope,
+          { workspaceId, workflowId },
+          catalogs.definitionCatalog,
+        ),
+      ),
+    validateDraft: (
+      workspaceId: string,
+      workflowId: string,
+      actorId: string,
+      { signal }: Readonly<{ signal?: AbortSignal }> = {},
+    ) =>
+      access.reader({ workspaceId, actorId, signal }, (client, scope) =>
+        validateDraft(
+          client,
+          scope,
+          { workspaceId, workflowId },
+          catalogs,
+          signal,
+        ),
+      ),
+    getVersion: (
+      workspaceId: string,
+      workflowId: string,
+      versionId: string,
+      actorId: string,
+    ) =>
+      access.reader({ workspaceId, actorId }, (client, scope) =>
+        readVersion(client, scope, { workspaceId, workflowId }, versionId),
+      ),
+    listVersions: (input: ListWorkflowVersionsInput) =>
+      access.reader(input, (client, scope) =>
+        listVersions(client, scope, input),
+      ),
     close: () => {
-      closed = true;
-      closePromise ??= Promise.allSettled([...authoringOperations]).then(() =>
-        lease.close(),
-      );
+      closePromise ??= access.drain().then(() => lease.close());
       return closePromise;
     },
   });

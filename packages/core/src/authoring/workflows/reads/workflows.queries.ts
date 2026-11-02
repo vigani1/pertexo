@@ -15,7 +15,8 @@ import {
   workflowActions,
 } from '../../../tenant-access/resources/workflows.queries.js';
 import { workflowProjection } from '../representation/records.queries.js';
-import type { ReadStore, WorkflowAuthoringReadContext } from './contract.js';
+import type { WorkflowRef } from '../access.js';
+import type { ListWorkflowsInput } from '../contract.js';
 
 const folder = new QueryBuilder()
   .select({ id: workflowOrganizationState.folderId })
@@ -30,70 +31,55 @@ const readProjection = {
   workflow: workflowProjection,
   resource_folder_id: sql<string | null>`(${folder})`,
 };
-export function readAuthoringWorkflow(
-  context: WorkflowAuthoringReadContext,
-  workspaceId: Parameters<ReadStore['getWorkflow']>[0],
-  workflowId: Parameters<ReadStore['getWorkflow']>[1],
-  actorId: Parameters<ReadStore['getWorkflow']>[2],
-): ReturnType<ReadStore['getWorkflow']> {
-  return context.transact(workspaceId, actorId, async (client) => {
-    const access = await context.requireReader(client, workspaceId, actorId);
-    if (
-      !(await workflowAccessible(client, access, { workspaceId, workflowId }))
+export async function readWorkflow(
+  client: PoolClient,
+  access: FolderScope,
+  workflow: WorkflowRef,
+) {
+  const { workspaceId, workflowId } = workflow;
+  if (!(await workflowAccessible(client, access, workflow))) return null;
+  const [row] = await drizzle(client)
+    .select(readProjection)
+    .from(workflows)
+    .where(
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
     )
-      return null;
-    const [row] = await drizzle(client)
-      .select(readProjection)
-      .from(workflows)
-      .where(
-        and(
-          eq(workflows.workspaceId, workspaceId),
-          eq(workflows.id, workflowId),
-        ),
-      )
-      .catch(rethrowQueryFailure);
-    if (row === undefined) return null;
-    return {
+    .catch(rethrowQueryFailure);
+  if (row === undefined) return null;
+  return {
+    ...row.workflow,
+    resourceAccess: workflowActions(access, row.resource_folder_id),
+  };
+}
+export async function listWorkflows(
+  client: PoolClient,
+  access: FolderScope,
+  input: ListWorkflowsInput,
+) {
+  const parsed = listInput(input),
+    rows = await listRows(client, parsed, access);
+  const hasMore = rows.length > parsed.limit,
+    pageRows = rows.slice(0, parsed.limit);
+  const items = Object.freeze(
+    pageRows.map((row) => ({
       ...row.workflow,
       resourceAccess: workflowActions(access, row.resource_folder_id),
-    };
+    })),
+  );
+  const lastRow = pageRows.at(-1);
+  return Object.freeze({
+    items,
+    ...(hasMore && lastRow !== undefined
+      ? {
+          nextCursor: Object.freeze({
+            positionAt: lastRow.cursor_position_at,
+            id: lastRow.workflow.id,
+          }),
+        }
+      : {}),
   });
 }
-export function listAuthoringWorkflows(
-  context: WorkflowAuthoringReadContext,
-  input: Parameters<ReadStore['listWorkflows']>[0],
-): ReturnType<ReadStore['listWorkflows']> {
-  return context.transact(input.workspaceId, input.actorId, async (client) => {
-    const access = await context.requireReader(
-      client,
-      input.workspaceId,
-      input.actorId,
-    );
-    const parsed = listInput(input),
-      rows = await listRows(client, parsed, access);
-    const hasMore = rows.length > parsed.limit,
-      pageRows = rows.slice(0, parsed.limit);
-    const items = Object.freeze(
-      pageRows.map((row) => ({
-        ...row.workflow,
-        resourceAccess: workflowActions(access, row.resource_folder_id),
-      })),
-    );
-    const lastRow = pageRows.at(-1);
-    return Object.freeze({
-      items,
-      ...(hasMore && lastRow !== undefined
-        ? {
-            nextCursor: Object.freeze({
-              positionAt: lastRow.cursor_position_at,
-              id: lastRow.workflow.id,
-            }),
-          }
-        : {}),
-    });
-  });
-}
-function listInput(input: Parameters<ReadStore['listWorkflows']>[0]) {
+function listInput(input: ListWorkflowsInput) {
   return {
     workspaceId: input.workspaceId,
     limit: input.limit ?? 50,

@@ -19,9 +19,13 @@ export type WorkspaceAutoPauseSettings = Readonly<{
   revision: number;
 }>;
 
-type Scope = Readonly<{ workspaceId: string; actorId: string }>;
+export type WorkspaceAutoPauseScope = Readonly<{
+  workspaceId: string;
+  actorId: string;
+}>;
 
-type WorkflowScope = Scope & Readonly<{ workflowId: string }>;
+export type WorkflowAutoPauseScope = WorkspaceAutoPauseScope &
+  Readonly<{ workflowId: string }>;
 
 type Command = Readonly<{
   idempotencyKey: string;
@@ -34,31 +38,19 @@ export type AutoPauseCommandResult<T> = Readonly<{
   replayed: boolean;
 }>;
 
-export interface WorkflowAutoPauseStore {
-  readWorkflowSettings(
-    input: WorkflowScope,
-  ): Promise<WorkflowAutoPauseSettings>;
-  updateWorkflowSettings(
-    input: WorkflowScope &
-      Command &
-      Readonly<{
-        enabled: boolean;
-        thresholdOverride: number | null;
-        expectedSettingsRevision: number;
-      }>,
-  ): Promise<AutoPauseCommandResult<WorkflowAutoPauseSettings>>;
-  resumeWorkflow(
-    input: WorkflowScope &
-      Command &
-      Readonly<{ expectedPauseRevision: string }>,
-  ): Promise<AutoPauseCommandResult<WorkflowAutoPauseSettings>>;
-  readWorkspaceSettings(input: Scope): Promise<WorkspaceAutoPauseSettings>;
-  updateWorkspaceSettings(
-    input: Scope &
-      Command &
-      Readonly<{ threshold: number; expectedRevision: number }>,
-  ): Promise<AutoPauseCommandResult<WorkspaceAutoPauseSettings>>;
-}
+export type UpdateWorkflowAutoPauseInput = WorkflowAutoPauseScope &
+  Command &
+  Readonly<{
+    enabled: boolean;
+    thresholdOverride: number | null;
+    expectedSettingsRevision: number;
+  }>;
+export type ResumeWorkflowInput = WorkflowAutoPauseScope &
+  Command &
+  Readonly<{ expectedPauseRevision: string }>;
+export type UpdateWorkspaceAutoPauseInput = WorkspaceAutoPauseScope &
+  Command &
+  Readonly<{ threshold: number; expectedRevision: number }>;
 
 export type Transact = <T>(
   workspaceId: string,

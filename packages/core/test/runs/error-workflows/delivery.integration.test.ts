@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { withTenantScopedClient } from '@pertexo/database/primitives';
+import { createAuthoringAccess } from '../../../src/authoring/workflows/access.js';
 import { admin } from '../../lifecycle/calls/fixtures.js';
 import {
   createWorkflowErrorStore,
@@ -31,15 +31,11 @@ describe('durable error workflow admission', () => {
   registerCreatesExactlyOneSIntent();
 });
 describe('error workflow settings authority and publication', () => {
-  const settings = createWorkflowErrorStore(
-    (workspaceId, actorId, operation, signal) =>
-      withTenantScopedClient(
-        pool,
-        { workspaceId, actorId },
-        operation,
-        signal === undefined ? {} : { signal },
-      ),
-  );
+  // The pool is set in a hook, so the store can't be built at load.
+  let settings: ReturnType<typeof createWorkflowErrorStore>;
+  beforeAll(() => {
+    settings = createWorkflowErrorStore(createAuthoringAccess(pool));
+  });
   async function editable() {
     const f = await fixture();
     await admin.query(

@@ -34,6 +34,7 @@ import {
   generatePersistedId,
 } from '@pertexo/database/platform';
 import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
+import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 import { validateApprovalAudience } from './pending-tasks.queries.js';
 
 import type {
@@ -59,13 +60,15 @@ import type {
   CompiledPublication,
   PublicationCandidateInput,
   PublicationClaim,
-  WorkflowPublicationDependencies,
 } from './contract.js';
-import { executableSchema, storedPublicationSchema } from './input.js';
+import { executableSchema } from './input.js';
 import {
   finalizePublication,
   persistPublicationProjections,
 } from './projections.repository.js';
+
+/** A retry gets back the version its first attempt published. */
+type PublicationReceipt = Readonly<{ versionId: string; reused: boolean }>;
 
 async function claimPublication(
   client: PoolClient,
@@ -81,14 +84,14 @@ async function claimPublication(
     ),
     idempotencyKey: input.idempotencyKey,
   };
-  const stored = await claimCommand(client, {
+  const stored = await claimCommand<PublicationReceipt>(client, {
     ...command,
     request: input.requestHash,
     resourceId: workflowId,
   });
   if (stored === null)
     return Object.freeze({ command, replay: null, workflowId });
-  const { versionId, reused } = storedPublicationSchema.parse(stored);
+  const { versionId, reused } = stored;
   const [row] = await drizzle(client)
     .select(versionProjection)
     .from(workflowVersions)
@@ -117,9 +120,8 @@ async function lockAndCompilePublication(
   client: PoolClient,
   input: PublicationCandidateInput,
   workflowId: string,
-  dependencies: WorkflowPublicationDependencies,
+  variant: AuthoringCatalogs,
 ): Promise<CompiledPublication> {
-  const variant = dependencies.catalogs;
   const db = drizzle(client);
   const [workflow] = await db
     .select({ id: workflows.id })
@@ -285,16 +287,16 @@ async function persistVersion(
 
 /** One publication transaction core; only authoring command owners may call it. */
 export async function publishWorkflowCandidate(
-  dependencies: WorkflowPublicationDependencies,
   client: PoolClient,
   input: PublicationCandidateInput,
+  catalogs: AuthoringCatalogs,
 ): Promise<PublishWorkflowResult> {
   const workflowId = input.workflowId;
   const publication = await lockAndCompilePublication(
     client,
     input,
     workflowId,
-    dependencies,
+    catalogs,
   );
   const { reused, version } = await persistVersion(
     client,
@@ -317,9 +319,9 @@ export async function publishWorkflowCandidate(
 }
 
 export async function publishWorkflowDirectly(
-  dependencies: WorkflowPublicationDependencies,
   client: PoolClient,
   input: PublicationCandidateInput,
+  catalogs: AuthoringCatalogs,
 ): Promise<PublishWorkflowResult> {
   const [policy] = await drizzle(client)
     .select({ requirePublishApproval: workspaces.requirePublishApproval })
@@ -331,34 +333,21 @@ export async function publishWorkflowDirectly(
       'required',
       'This workspace requires publication review. Request approval for the saved draft.',
     );
-  return publishWorkflowCandidate(dependencies, client, input);
+  return publishWorkflowCandidate(client, input, catalogs);
 }
 
-export function createWorkflowPublisher(
-  dependencies: WorkflowPublicationDependencies,
-): (input: PublishWorkflowInput) => Promise<PublishWorkflowResult> {
-  return (input) =>
-    dependencies.transact(
-      input.workspaceId,
-      input.actorId,
-      async (client) => {
-        await dependencies.requireAuthor(client, input.workspaceId, {
-          actorId: input.actorId,
-          workflowId: input.workflowId,
-        });
-        const claim = await claimPublication(client, input);
-        if (claim.replay !== null) return claim.replay;
-        const result = await publishWorkflowDirectly(
-          dependencies,
-          client,
-          input,
-        );
-        await completeCommand(client, claim.command, {
-          versionId: result.version.id,
-          reused: result.reused,
-        });
-        return result;
-      },
-      input.signal,
-    );
+/** A command's own door: an exact retry replays, anything else publishes directly. */
+export async function publishWorkflow(
+  client: PoolClient,
+  input: PublishWorkflowInput,
+  catalogs: AuthoringCatalogs,
+): Promise<PublishWorkflowResult> {
+  const claim = await claimPublication(client, input);
+  if (claim.replay !== null) return claim.replay;
+  const result = await publishWorkflowDirectly(client, input, catalogs);
+  await completeCommand(client, claim.command, {
+    versionId: result.version.id,
+    reused: result.reused,
+  });
+  return result;
 }

@@ -1,32 +1,10 @@
+import type { WorkflowTemplateOriginRequest } from '@pertexo/workflow-model';
 import type {
-  WorkflowTemplateOrigin,
-  WorkflowTemplateOriginRequest,
-} from '@pertexo/workflow-model';
-import type {
-  GraphValidationResult,
   PortableConnectionBinding,
   PortableIssue,
   WorkflowGraph,
   WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
-import type {
-  AcceptedPreviewRun,
-  AcceptPreviewRunInput,
-  PreviewRunRecord,
-} from '../../previews/runs/acceptance/contract.js';
-import type {
-  PreviewReplayRecord,
-  ResolvePreviewReplayInput,
-} from '../../previews/runs/contract.js';
-import type { WorkflowTestSuiteStore } from '../../previews/suites/store.js';
-import type { WorkflowTestStore } from '../../previews/workflows/store.js';
-import type { WorkflowCollaborationStore } from '../collaboration/contract.js';
-import type { WorkflowPromotionStore } from '../promotion/contract.js';
-import type { PublicationReviewStore } from '../reviews/contract.js';
-import type { WorkflowAutoPauseStore } from '../settings/auto-pause/contract.js';
-import type { WorkflowConcurrencyStore } from '../settings/concurrency/store.js';
-import type { WorkflowErrorStore } from '../settings/error-workflow/store.js';
-import type { WorkflowStepSampleStore } from '../step-samples/contract.js';
 import type {
   WorkflowDraftRecord,
   WorkflowRecord,
@@ -201,88 +179,4 @@ export type RenameWorkflowInput = Readonly<{
 export type RenameWorkflowResult = Readonly<{
   workflow: WorkflowRecord;
   replayed: boolean;
-}>;
-
-export type WorkflowAuthoringStore = Readonly<{
-  readonly collaboration?: WorkflowCollaborationStore;
-  readonly promotions?: WorkflowPromotionStore;
-  readonly publicationReviews?: PublicationReviewStore;
-  stepSamples: WorkflowStepSampleStore;
-  workflowTests: WorkflowTestStore;
-  workflowTestSuites: WorkflowTestSuiteStore;
-  exportWorkflow(input: ExportWorkflowInput): Promise<WorkflowPortableManifest>;
-  previewWorkflowImport(
-    input: PreviewWorkflowImportInput,
-  ): Promise<PreviewWorkflowImportResult>;
-  importWorkflow(input: ImportWorkflowInput): Promise<ImportWorkflowResult>;
-  acceptPreview(
-    input: AcceptPreviewRunInput & Readonly<{ workspaceId: string }>,
-  ): Promise<AcceptedPreviewRun>;
-  readPreview(
-    input: Readonly<{
-      workspaceId: string;
-      actorUserId: string;
-      previewRunId: string;
-    }>,
-  ): Promise<PreviewRunRecord | null>;
-  resolvePreviewReplay(
-    input: ResolvePreviewReplayInput & Readonly<{ workspaceId: string }>,
-  ): Promise<PreviewReplayRecord | null>;
-  createWorkflow(input: CreateWorkflowInput): Promise<CreateWorkflowResult>;
-  duplicateWorkflow(
-    input: DuplicateWorkflowInput,
-  ): Promise<DuplicateWorkflowResult>;
-  listWorkflows(input: ListWorkflowsInput): Promise<WorkflowPage>;
-  getWorkflow(
-    workspaceId: string,
-    workflowId: string,
-    actorId: string,
-  ): Promise<WorkflowRecord | null>;
-  getWorkflowWithTemplateOrigin(
-    workspaceId: string,
-    workflowId: string,
-    actorId: string,
-  ): Promise<Readonly<{
-    workflow: WorkflowRecord;
-    templateOrigin: WorkflowTemplateOrigin | null;
-  }> | null>;
-  getDraft(
-    workspaceId: string,
-    workflowId: string,
-    actorId: string,
-  ): Promise<WorkflowDraftRecord | null>;
-  validateDraft(
-    workspaceId: string,
-    workflowId: string,
-    actorId: string,
-    options?: Readonly<{ signal?: AbortSignal }>,
-  ): Promise<Readonly<{
-    draft: WorkflowDraftRecord;
-    validation: GraphValidationResult;
-    currentPublication: Readonly<{
-      versionId: string;
-      versionNumber: number;
-      matchesDraft: boolean;
-    }> | null;
-  }> | null>;
-  getVersion(
-    workspaceId: string,
-    workflowId: string,
-    versionId: string,
-    actorId: string,
-  ): Promise<WorkflowVersionRecord | null>;
-  listVersions(input: ListWorkflowVersionsInput): Promise<WorkflowVersionPage>;
-  saveDraft(input: SaveWorkflowDraftInput): Promise<WorkflowDraftRecord>;
-  restoreWorkflowVersion(
-    input: RestoreWorkflowVersionInput,
-  ): Promise<WorkflowDraftRecord>;
-  publishWorkflow(input: PublishWorkflowInput): Promise<PublishWorkflowResult>;
-  transitionWorkflowLifecycle(
-    input: TransitionWorkflowLifecycleInput,
-  ): Promise<TransitionWorkflowLifecycleResult>;
-  renameWorkflow(input: RenameWorkflowInput): Promise<RenameWorkflowResult>;
-  close(): Promise<void>;
-  readonly autoPause?: WorkflowAutoPauseStore;
-  readonly concurrency?: WorkflowConcurrencyStore;
-  readonly errorWorkflow?: WorkflowErrorStore;
 }>;

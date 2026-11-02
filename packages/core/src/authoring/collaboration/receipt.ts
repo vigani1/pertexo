@@ -5,10 +5,10 @@ import {
   completeCommand,
   appendAuditFact,
 } from '@pertexo/database/primitives';
-import { requireCollaborationAuthority } from './authority.queries.js';
-import type { CollaborationCommand, CollaborationContext } from './contract.js';
+import type { EnterCollaboration } from './authority.queries.js';
+import type { CollaborationCommand } from './contract.js';
 export function runCommentCommand(
-  context: CollaborationContext,
+  enter: EnterCollaboration,
   input: CollaborationCommand,
   {
     action,
@@ -22,48 +22,42 @@ export function runCommentCommand(
     status?: ('open' | 'resolved') | undefined;
   }>,
 ) {
-  return context.transact(
-    input.workspaceId,
-    input.actorId,
-    async (client) => {
-      await requireCollaborationAuthority(client, input);
-      const command = {
-        workspaceId: input.workspaceId,
-        scope: input.actorId + ':' + input.workflowId,
-        operation: action,
-        idempotencyKey: input.idempotencyKey,
+  return enter(input, {}, async (client) => {
+    const command = {
+      workspaceId: input.workspaceId,
+      scope: input.actorId + ':' + input.workflowId,
+      operation: action,
+      idempotencyKey: input.idempotencyKey,
+    };
+    const stored = await claimCommand<WorkflowCommentCommandResult>(client, {
+      ...command,
+      resourceId: input.workflowId,
+      request,
+    });
+    if (stored !== null)
+      return {
+        ...stored,
+        replayed: true,
       };
-      const stored = await claimCommand<WorkflowCommentCommandResult>(client, {
-        ...command,
-        resourceId: input.workflowId,
-        request,
-      });
-      if (stored !== null)
-        return {
-          ...stored,
-          replayed: true,
-        };
-      const result = await write(client);
-      await appendAuditFact(client, {
-        workspaceId: input.workspaceId,
-        actorId: input.actorId,
-        action,
-        targetType: 'workflow',
-        targetId: input.workflowId,
-        requestId: input.requestId ?? null,
-        traceId: input.traceId ?? null,
-        metadata: {
-          threadId: result.threadId,
-          commentId: result.commentId,
-          revision: result.revision,
-          deleted: result.deleted,
-          threadDeleted: result.threadDeleted,
-          ...(status === undefined ? {} : { status }),
-        },
-      });
-      await completeCommand(client, command, result);
-      return result;
-    },
-    input.signal,
-  );
+    const result = await write(client);
+    await appendAuditFact(client, {
+      workspaceId: input.workspaceId,
+      actorId: input.actorId,
+      action,
+      targetType: 'workflow',
+      targetId: input.workflowId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: {
+        threadId: result.threadId,
+        commentId: result.commentId,
+        revision: result.revision,
+        deleted: result.deleted,
+        threadDeleted: result.threadDeleted,
+        ...(status === undefined ? {} : { status }),
+      },
+    });
+    await completeCommand(client, command, result);
+    return result;
+  });
 }

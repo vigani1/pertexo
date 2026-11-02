@@ -12,11 +12,9 @@ import { workflows, outboxEvents } from '@pertexo/database/schema';
 import { planWorkflowLifecycleCommand } from '@pertexo/workflow-model';
 
 import { reconcileWorkflowTriggersPayload } from '../../publication/trigger-reconciliation.repository.js';
-import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   TransitionWorkflowLifecycleInput,
   TransitionWorkflowLifecycleResult,
-  WorkflowAuthoringStore,
 } from '../contract.js';
 import {
   WorkflowLifecycleRevisionConflictError,
@@ -29,18 +27,8 @@ import {
 } from '../receipts.repository.js';
 import { workflowProjection } from '../representation/records.queries.js';
 
-type WorkflowLifecycleStore = Pick<
-  WorkflowAuthoringStore,
-  'transitionWorkflowLifecycle'
->;
-
-type WorkflowLifecycleContext = Pick<
-  WorkflowAuthoringWriteContext,
-  'requireAuthor' | 'transact'
->;
-
-async function transitionWorkflowLifecycle(
-  context: WorkflowLifecycleContext,
+export async function transitionWorkflowLifecycle(
+  client: PoolClient,
   input: TransitionWorkflowLifecycleInput,
 ): Promise<TransitionWorkflowLifecycleResult> {
   const command = input.command;
@@ -51,39 +39,18 @@ async function transitionWorkflowLifecycle(
   const requestId = input.requestId;
   const traceId = input.traceId;
 
-  return context.transact(workspaceId, actorId, async (client) => {
-    await context.requireAuthor(client, workspaceId, {
-      actorId,
-      workflowId,
-    });
-    const claim: WorkflowCommand = {
-      workspaceId,
-      workflowId,
-      actorId,
-      operation: `workflow.${command}`,
-      idempotencyKey: input.idempotencyKey,
-      request: { expectedLifecycleRevision },
-    };
-    const replay = await claimWorkflowCommand(client, claim);
-    if (replay !== null) {
-      const visible = await drizzle(client)
-        .select({ id: workflows.id })
-        .from(workflows)
-        .where(
-          and(
-            eq(workflows.workspaceId, workspaceId),
-            eq(workflows.id, workflowId),
-          ),
-        )
-        .for('share')
-        .catch(rethrowQueryFailure);
-      if (visible.length !== 1)
-        throw new WorkflowNotFoundError('Workflow is not visible');
-      return Object.freeze({ replayed: true, workflow: replay });
-    }
-
-    const [currentRow] = await drizzle(client)
-      .select(workflowProjection)
+  const claim: WorkflowCommand = {
+    workspaceId,
+    workflowId,
+    actorId,
+    operation: `workflow.${command}`,
+    idempotencyKey: input.idempotencyKey,
+    request: { expectedLifecycleRevision },
+  };
+  const replay = await claimWorkflowCommand(client, claim);
+  if (replay !== null) {
+    const visible = await drizzle(client)
+      .select({ id: workflows.id })
       .from(workflows)
       .where(
         and(
@@ -91,89 +58,89 @@ async function transitionWorkflowLifecycle(
           eq(workflows.id, workflowId),
         ),
       )
-      .for('update')
+      .for('share')
       .catch(rethrowQueryFailure);
-    if (currentRow === undefined)
+    if (visible.length !== 1)
       throw new WorkflowNotFoundError('Workflow is not visible');
-    const current = Object.freeze(currentRow);
-    if (current.lifecycleRevision !== expectedLifecycleRevision)
+    return Object.freeze({ replayed: true, workflow: replay });
+  }
+
+  const [currentRow] = await drizzle(client)
+    .select(workflowProjection)
+    .from(workflows)
+    .where(
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  if (currentRow === undefined)
+    throw new WorkflowNotFoundError('Workflow is not visible');
+  const current = Object.freeze(currentRow);
+  if (current.lifecycleRevision !== expectedLifecycleRevision)
+    throw new WorkflowLifecycleRevisionConflictError(current.lifecycleRevision);
+
+  const decision = planWorkflowLifecycleCommand({
+    activationStatus: current.activationStatus,
+    command,
+    hasPublishedVersion: current.publishedVersionId !== null,
+    lifecycleStatus: current.lifecycleStatus,
+  });
+  let workflow = current;
+  if (decision.changed) {
+    const [updatedRow] = await drizzle(client)
+      .update(workflows)
+      .set({
+        lifecycleStatus: decision.lifecycleStatus,
+        activationStatus: decision.activationStatus,
+        lifecycleRevision: sql`${workflows.lifecycleRevision}+1`,
+        updatedAt: sql`transaction_timestamp()`,
+      })
+      .where(
+        and(
+          eq(workflows.workspaceId, workspaceId),
+          eq(workflows.id, workflowId),
+          eq(workflows.lifecycleRevision, expectedLifecycleRevision),
+        ),
+      )
+      .returning(workflowProjection)
+      .catch(rethrowQueryFailure);
+    if (updatedRow === undefined)
       throw new WorkflowLifecycleRevisionConflictError(
         current.lifecycleRevision,
       );
+    workflow = Object.freeze(updatedRow);
 
-    const decision = planWorkflowLifecycleCommand({
-      activationStatus: current.activationStatus,
-      command,
-      hasPublishedVersion: current.publishedVersionId !== null,
-      lifecycleStatus: current.lifecycleStatus,
-    });
-    let workflow = current;
-    if (decision.changed) {
-      const [updatedRow] = await drizzle(client)
-        .update(workflows)
-        .set({
-          lifecycleStatus: decision.lifecycleStatus,
-          activationStatus: decision.activationStatus,
-          lifecycleRevision: sql`${workflows.lifecycleRevision}+1`,
-          updatedAt: sql`transaction_timestamp()`,
-        })
-        .where(
-          and(
-            eq(workflows.workspaceId, workspaceId),
-            eq(workflows.id, workflowId),
-            eq(workflows.lifecycleRevision, expectedLifecycleRevision),
-          ),
-        )
-        .returning(workflowProjection)
-        .catch(rethrowQueryFailure);
-      if (updatedRow === undefined)
-        throw new WorkflowLifecycleRevisionConflictError(
-          current.lifecycleRevision,
-        );
-      workflow = Object.freeze(updatedRow);
-
-      if (decision.reconcileTriggers) {
-        await enqueueLifecycleReconciliation(client, {
-          workspaceId,
-          workflowId,
-          publishedVersionId: current.publishedVersionId,
-          traceparent: input.traceparent,
-        });
-      }
-
-      await appendAuditFact(client, {
+    if (decision.reconcileTriggers) {
+      await enqueueLifecycleReconciliation(client, {
         workspaceId,
-        actorId: actorId,
-        action:
-          command === 'archive' ? 'workflow.archived' : 'workflow.restored',
-        targetType: 'workflow',
-        targetId: workflowId,
-        requestId: requestId ?? null,
-        traceId: traceId ?? null,
-        metadata: {
-          activationStatus: workflow.activationStatus,
-          lifecycleRevision: workflow.lifecycleRevision,
-          lifecycleStatus: workflow.lifecycleStatus,
-          previousActivationStatus: current.activationStatus,
-          previousLifecycleRevision: current.lifecycleRevision,
-          previousLifecycleStatus: current.lifecycleStatus,
-          publishedVersionId: current.publishedVersionId,
-        },
+        workflowId,
+        publishedVersionId: current.publishedVersionId,
+        traceparent: input.traceparent,
       });
     }
 
-    await completeWorkflowCommand(client, claim, workflow);
-    return Object.freeze({ replayed: false, workflow });
-  });
-}
+    await appendAuditFact(client, {
+      workspaceId,
+      actorId: actorId,
+      action: command === 'archive' ? 'workflow.archived' : 'workflow.restored',
+      targetType: 'workflow',
+      targetId: workflowId,
+      requestId: requestId ?? null,
+      traceId: traceId ?? null,
+      metadata: {
+        activationStatus: workflow.activationStatus,
+        lifecycleRevision: workflow.lifecycleRevision,
+        lifecycleStatus: workflow.lifecycleStatus,
+        previousActivationStatus: current.activationStatus,
+        previousLifecycleRevision: current.lifecycleRevision,
+        previousLifecycleStatus: current.lifecycleStatus,
+        publishedVersionId: current.publishedVersionId,
+      },
+    });
+  }
 
-export function createWorkflowAuthoringLifecycleStore(
-  context: WorkflowLifecycleContext,
-): WorkflowLifecycleStore {
-  return Object.freeze({
-    transitionWorkflowLifecycle: (input) =>
-      transitionWorkflowLifecycle(context, input),
-  });
+  await completeWorkflowCommand(client, claim, workflow);
+  return Object.freeze({ replayed: false, workflow });
 }
 
 async function enqueueLifecycleReconciliation(

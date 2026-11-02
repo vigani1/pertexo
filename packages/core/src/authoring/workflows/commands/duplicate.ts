@@ -17,7 +17,6 @@ import {
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
 import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import {
   workflowTemplateOrigins,
@@ -29,22 +28,22 @@ import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bin
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { WorkflowAuthoringWriteContext } from '../context.js';
+import type { FolderScope } from '../../../shared/contract.js';
+import { requireWorkflowInScope } from '../access.js';
+import type { AuthoringCatalogs } from '../catalogs.js';
 import type {
   DuplicateWorkflowInput,
-  WorkflowAuthoringStore,
+  DuplicateWorkflowResult,
 } from '../contract.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../errors.js';
+import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import {
   draftProjection,
   projectDraft,
 } from '../representation/records.queries.js';
-
-const uuid = z.uuid();
-const resultSchema = z.object({ workflowId: uuid }).strict();
 
 async function selectedGraph(
   client: PoolClient,
@@ -92,33 +91,12 @@ async function selectedGraph(
   return draft.graphJson;
 }
 
-export function createWorkflowDuplicationStore(
-  context: WorkflowAuthoringWriteContext,
-): Pick<WorkflowAuthoringStore, 'duplicateWorkflow'> {
-  return {
-    duplicateWorkflow: async (input) => {
-      return context.transact(
-        input.workspaceId,
-        input.actorId,
-        async (client) => {
-          return duplicateInTransaction(client, context, input);
-        },
-        input.signal,
-      );
-    },
-  };
-}
-
-async function duplicateInTransaction(
+export async function duplicateWorkflow(
   client: PoolClient,
-  context: WorkflowAuthoringWriteContext,
   input: DuplicateWorkflowInput,
+  { definitionCatalog, placementDefinitionCatalog }: AuthoringCatalogs,
+  scope: FolderScope,
 ) {
-  await context.requireAuthor(client, input.workspaceId, {
-    actorId: input.actorId,
-    workflowId: input.workflowId,
-    capability: 'workflow:read',
-  });
   // Workflow precedes draft, consistent with restore/publication/lifecycle.
   const db = drizzle(client);
   const [sourceRow] = await db
@@ -143,7 +121,7 @@ async function duplicateInTransaction(
     scope: `${input.actorId}:${input.workflowId}`,
     idempotencyKey: input.idempotencyKey,
   };
-  const stored = await claimCommand(client, {
+  const stored = await claimCommand<DuplicateWorkflowResult>(client, {
     ...command,
     request: {
       name: input.name,
@@ -154,12 +132,13 @@ async function duplicateInTransaction(
     resourceId: destinationId,
   });
   if (stored !== null) {
-    const replay = resultSchema.parse(stored);
-    await context.requireAuthor(client, input.workspaceId, {
-      actorId: input.actorId,
-      workflowId: replay.workflowId,
-      capability: 'workflow:read',
-    });
+    const replay = stored;
+    await requireWorkflowInScope(
+      client,
+      scope,
+      { workspaceId: input.workspaceId, workflowId: replay.workflowId },
+      'workflow:read',
+    );
     const destination = await db
       .select({ id: workflows.id })
       .from(workflows)
@@ -177,9 +156,8 @@ async function duplicateInTransaction(
   }
   if (sourceRow.lifecycle_status !== 'active')
     throw new WorkflowNotFoundError('Workflow source is not visible');
-  const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
   const graph = await selectedGraph(client, input, definitionCatalog);
-  context.requirePlaceable(
+  requirePlaceableDefinitionAdditions(
     EMPTY_WORKFLOW_GRAPH,
     graph,
     placementDefinitionCatalog ?? definitionCatalog,
