@@ -11,6 +11,12 @@ import {
 } from '../../model/credential-draft';
 import { oauth2RedirectUrl } from '../../model/oauth2-copy';
 import type { OAuth2Draft } from '../../model/oauth2-draft';
+import {
+  OAUTH2_SERVICES,
+  oauth2ServiceOf,
+  oauth2ServiceSetup,
+  withOAuth2Service,
+} from '../../model/oauth2-presets';
 
 const PARAMETER_HELP =
   "Don't put secrets here; people who can see this connection can read them.";
@@ -213,12 +219,23 @@ export function OAuth2Fields(form: FormProps) {
   const { draft, idPrefix, disabled, onChange } = form;
   const consent = draft.grantType === 'authorization_code';
   const redirectUrl = oauth2RedirectUrl(window.location.origin);
+  const service = oauth2ServiceOf(draft);
+  const setup = oauth2ServiceSetup(service);
   return (
     <FieldGroup>
+      <RadioChoice
+        label="Service"
+        value={service}
+        disabled={disabled}
+        options={OAUTH2_SERVICES}
+        onChange={(next) => {
+          onChange(withOAuth2Service(draft, next));
+        }}
+      />
       <LabelledField
         id={`${idPrefix}-redirect`}
         label="Redirect URL"
-        description="Register this address with the service first."
+        description={setup ?? 'Register this address with the service first.'}
         slots={{
           labelAction: (
             <CopyButton value={redirectUrl} label="Copy redirect URL" />
