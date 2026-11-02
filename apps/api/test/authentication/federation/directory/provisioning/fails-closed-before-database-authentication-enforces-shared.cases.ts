@@ -63,7 +63,13 @@ export function registerFailsClosedBeforeDatabaseAuthenticationEnforcesShared(
             headers: f.headers,
             ...(method === 'GET' || method === 'DELETE' ? {} : { payload: {} }),
           });
-          expect(reply.statusCode).toBe(mode === 'backend' ? 503 : 429);
+          if (mode === 'backend') {
+            // A Redis outage doesn't stop provisioning: the limit holds in this process.
+            expect(reply.statusCode).not.toBe(503);
+            expect(authenticated).toHaveBeenCalled();
+            continue;
+          }
+          expect(reply.statusCode).toBe(429);
           expect(reply.headers['content-type']).toContain(
             'application/scim+json',
           );
