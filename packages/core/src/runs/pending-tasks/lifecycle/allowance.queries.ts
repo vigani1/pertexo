@@ -1,10 +1,6 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
-import {
-  pendingRunTasks,
-  workspaceExecutionEntitlements,
-  workspaceExecutionEntitlementVersions,
-} from '@pertexo/database/schema';
+import { instanceCapacity, pendingRunTasks } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
@@ -15,15 +11,13 @@ export async function readPendingTaskAllowance(
   workspaceId: string,
 ): Promise<PendingTaskAllowance> {
   const db = drizzle(client),
-    current = workspaceExecutionEntitlements,
-    version = workspaceExecutionEntitlementVersions,
     task = pendingRunTasks;
   const count = db
     .select({ value: sql<number>`count(*)::int` })
     .from(task)
     .where(
       and(
-        eq(task.workspaceId, current.workspaceId),
+        eq(task.workspaceId, workspaceId),
         isNull(task.consumedAt),
         or(
           inArray(task.status, ['pending', 'prepared']),
@@ -36,16 +30,11 @@ export async function readPendingTaskAllowance(
       ),
     );
   const [row] = await db
-    .select({ limit: version.queuedRunLimit, count: sql<number>`(${count})` })
-    .from(current)
-    .innerJoin(
-      version,
-      and(
-        eq(version.workspaceId, current.workspaceId),
-        eq(version.version, current.currentVersion),
-      ),
-    )
-    .where(eq(current.workspaceId, workspaceId))
+    .select({
+      limit: instanceCapacity.pendingTaskLimit,
+      count: sql<number>`(${count})`,
+    })
+    .from(instanceCapacity)
     .catch(rethrowQueryFailure);
   if (row === undefined) throw new CoordinatorRunStateCorruptError();
   return row;

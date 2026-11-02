@@ -490,6 +490,7 @@ export {
 } from './schema/runs/capacity/admission.js';
 export {
   workspaceExecutionEntitlements,
+  instanceCapacity,
   workspaceExecutionEntitlementVersions,
 } from './schema/runs/capacity/entitlements.js';
 export { runErrorWorkflowIntents } from './schema/runs/completion/error-workflow.js';
