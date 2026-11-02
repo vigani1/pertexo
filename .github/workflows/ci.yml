@@ -122,8 +122,10 @@ jobs:
         run: pnpm format:check
       - name: Build
         run: pnpm build
-      - name: Single-server deployment checks
-        run: node --test infrastructure/single-server/test/*.test.mjs
+      - name: Deployment checks and test tools
+        run:
+          node --test infrastructure/single-server/test/*.test.mjs
+          infrastructure/testing/*.test.mjs
       - name: Lint
         run: pnpm lint
       - name: Typecheck
@@ -310,10 +312,10 @@ jobs:
         if: always()
         run: docker compose down -v --remove-orphans
 
-  # Two shards of the mocked suite and three of real-stack journeys run side by side
-  # on separate runners; one mocked job alone took 24 minutes and set how long every
-  # pull request waited. The mocked shards use all four of a runner's cores, because
-  # a job they don't need is one more that other runs queue behind.
+  # Two jobs for the mocked suite and two for real-stack journeys, each using its
+  # whole runner, because a job they don't need is one more that other runs queue
+  # behind. One mocked job alone once took 24 minutes and set how long every pull
+  # request waited.
   browser:
     name: browser (${{ matrix.suite }})
     needs: changes
@@ -324,8 +326,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Live shards keep the journeys' original order. Put a new journey on
-        # the lightest shard.
+        # Journeys are listed longest first, because the runner hands the next one to
+        # whichever stack is free. Put a new journey on the lighter job; the runner
+        # prints what each one took. `code` stays where Python is installed.
         include:
           - suite: mocked-1
             journeys: ''
@@ -335,21 +338,18 @@ jobs:
             shard: 2/2
           - suite: live-1
             journeys: >-
-              usage failure-routing error-workflows approvals variables
-              notifications artifact-inputs webhook-responses code
-              organization-saml schedule form-uploads security
+              artifact-inputs product curated-templates variables transforms
+              code approvals failure-routing callable forms run-recovery
+              governance spreadsheets portability form-uploads duplication
+              notifications federation run-values api-tokens two-factor
+              workflow-concurrency usage
           - suite: live-2
             journeys: >-
-              workflow-concurrency connection-health input-cases callable
-              webhook-controlled-http api-tokens workflow-organization receipts
-              readonly nested-conflict email-attachments task-timeouts product
-              oauth2
-          - suite: live-3
-            journeys: >-
-              duplication portability curated-templates run-recovery forms
-              transforms pinned-samples governance promotion collaboration
-              federation organization-oidc two-factor http-pagination run-values
-              expression-admission spreadsheets
+              collaboration pinned-samples workflow-organization webhook-
+              responses schedule webhook-controlled-http nested-conflict oauth2
+              promotion security expression-admission task-timeouts error-
+              workflows readonly organization-saml http-pagination organization-
+              oidc receipts email-attachments input-cases connection-health
     env:
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser
@@ -389,55 +389,13 @@ jobs:
           pnpm --filter @pertexo/api... --filter @pertexo/worker... --filter
           @pertexo/ops... --filter @pertexo/cli... --filter
           @pertexo/code-runner... --filter '@pertexo/web^...' build
-      - name: Start services
-        if: matrix.journeys != ''
-        uses: ./.github/actions/start-services
       - name: Browser journeys against the real stack
         if: matrix.journeys != ''
         env:
           JOURNEYS: ${{ matrix.journeys }}
-          WORKFLOW_CONCURRENCY_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
-          CONNECTION_HEALTH_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
         run: |
-          set -euo pipefail
-          live() {
-            pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts "$@"
-          }
-          journey() {
-            case "$1" in
-              usage) USAGE_BROWSER_INTEGRATION=true live test/browser/usage.integration.test.ts ;;
-              security) SECURITY_BROWSER_INTEGRATION=true live test/browser/security/real-web.integration.test.ts ;;
-              organization-saml)
-                EDITOR_BROWSER_INTEGRATION=true EDITOR_BROWSER_CASE=organization-saml EDITOR_BROWSER_OWNED_FIXTURE=true \
-                  live test/browser/editor/federation/saml.integration.test.ts ;;
-              workflow-concurrency)
-                WORKFLOW_CONCURRENCY_BROWSER_INTEGRATION=true live test/browser/workflow-concurrency.integration.test.ts ;;
-              connection-health)
-                CONNECTION_HEALTH_BROWSER_INTEGRATION=true live test/browser/connection-health.integration.test.ts ;;
-              oauth2)
-                OAUTH2_BROWSER_INTEGRATION=true pnpm --filter @pertexo/worker exec vitest run \
-                  --config vitest.integration.config.ts test/oauth2/browser.integration.test.ts ;;
-              workflow-organization)
-                EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true F07_ORGANIZATION_BROWSER_INTEGRATION=true \
-                  live test/browser/workflow-organization.integration.test.ts ;;
-              *)
-                EDITOR_BROWSER_INTEGRATION=true EDITOR_BROWSER_CASE="$1" EDITOR_BROWSER_OWNED_FIXTURE=true \
-                  live test/browser/editor.integration.test.ts ;;
-            esac
-          }
-          postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
-          redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
-          artifact_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q artifact-store)")
-          export EDITOR_BROWSER_OWNERSHIP_MANIFEST=$(jq -cn \
-            --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" --arg artifact "$artifact_id" \
-            --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" --argjson artifactPort "$ARTIFACT_STORE_PORT" \
-            '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort},artifactStore:{id:$artifact,port:$artifactPort}}')
-          for browser_journey in $JOURNEYS; do
-            journey "$browser_journey"
-          done
-      - name: Stop services
-        if: always() && matrix.journeys != ''
-        run: docker compose down -v --remove-orphans
+          # shellcheck disable=SC2086 # One word per journey.
+          node infrastructure/testing/run-browser-journeys.mjs 3 $JOURNEYS
       - name: Upload browser traces
         if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
