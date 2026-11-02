@@ -26,8 +26,8 @@ import {
   FolderSharingCorruptError,
   WorkflowFolderConflictError,
 } from '../errors.js';
-import type { OrganizationScope } from '../commands.repository.js';
-import { runOrganizationCommand } from '../commands.repository.js';
+import type { OrganizationScope } from '../run-command.js';
+import { runOrganizationCommand } from '../run-command.js';
 
 export async function readFolderSharing(
   client: PoolClient,

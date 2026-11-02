@@ -30,14 +30,14 @@ import {
   workflowTags,
   workflows,
 } from '@pertexo/database/schema';
-import type { FolderScope } from '../../shared/contract.js';
-import { readBrowsableFolderScope } from '../../shared/facts.queries.js';
-import { workflowScopeSql } from '../../shared/scope.queries.js';
-import { workflowActions } from '../../tenant-access/resources/workflows.queries.js';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
-import type { WorkflowRecord } from '../workflows/representation/contract.js';
-import { workflowProjection } from '../workflows/representation/records.queries.js';
+import type { FolderScope } from '../../../shared/contract.js';
+import { readBrowsableFolderScope } from '../../../shared/facts.queries.js';
+import { workflowScopeSql } from '../../../shared/scope.queries.js';
+import { workflowActions } from '../../../tenant-access/resources/workflows.queries.js';
+import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
+import { WorkflowNotFoundError } from '../../workflows/errors.js';
+import type { WorkflowRecord } from '../../workflows/representation/contract.js';
+import { workflowProjection } from '../../workflows/representation/records.queries.js';
 
 type Scope = Readonly<{
   workspaceId: string;

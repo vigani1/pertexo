@@ -1,4 +1,4 @@
-export { createWorkflowFolderDatabase } from './organization/folders/commands.repository.js';
+export { createWorkflowFolderDatabase } from './organization/folders/store.js';
 export { WorkflowFolderConflictError } from './organization/errors.js';
 export type {
   WorkflowFolderCommandResult,
@@ -8,22 +8,22 @@ export type {
   WorkflowFolderRecord,
 } from './organization/folders/contract.js';
 export type { WorkflowFolderConflictKind } from './organization/errors.js';
-export { createWorkflowOrganizationBatchDatabase } from './organization/batches.repository.js';
+export { createWorkflowOrganizationBatchDatabase } from './organization/batches/store.js';
 export type {
   WorkflowOrganizationBatchDatabase,
   WorkflowOrganizationBatchInput,
   WorkflowOrganizationBatchItem,
   WorkflowOrganizationBatchItemResult,
   WorkflowOrganizationBatchRequest,
-} from './organization/batches.repository.js';
-export { createWorkflowOrganizationReadDatabase } from './organization/workflows.queries.js';
+} from './organization/batches/store.js';
+export { createWorkflowOrganizationReadDatabase } from './organization/workflows/store.js';
 export type {
   WorkflowOrganizationFilters,
   WorkflowOrganizationMetadata,
   WorkflowOrganizationReadDatabase,
   WorkflowWithOrganization,
-} from './organization/workflows.queries.js';
-export { createWorkflowTagDatabase } from './organization/tags/commands.repository.js';
+} from './organization/workflows/store.js';
+export { createWorkflowTagDatabase } from './organization/tags/store.js';
 export { WorkflowTagConflictError } from './organization/errors.js';
 export type {
   WorkflowTagAssignment,
@@ -35,12 +35,12 @@ export type {
   WorkflowTagReplaceResult,
 } from './organization/tags/contract.js';
 export type { WorkflowTagConflictKind } from './organization/errors.js';
-export { createWorkflowFavoriteDatabase } from './organization/favorites.repository.js';
+export { createWorkflowFavoriteDatabase } from './organization/favorites/store.js';
 export type {
   WorkflowFavoriteCommand,
   WorkflowFavoriteDatabase,
   WorkflowFavoriteState,
-} from './organization/favorites.repository.js';
+} from './organization/favorites/store.js';
 export { WorkflowOrganizationValidationError } from './organization/errors.js';
 export { createWorkflowInputCaseDatabase } from './input-cases/repository.js';
 export {

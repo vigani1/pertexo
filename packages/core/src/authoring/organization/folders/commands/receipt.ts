@@ -5,7 +5,7 @@ import {
 
 import type { PoolClient } from 'pg';
 
-import { runOrganizationCommand } from '../../commands.repository.js';
+import { runOrganizationCommand } from '../../run-command.js';
 
 import type { createOrganizationSession } from '../../session.js';
 import type { Command, WorkflowFolderCommandResult } from '../contract.js';

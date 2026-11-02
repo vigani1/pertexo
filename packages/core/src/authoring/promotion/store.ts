@@ -2,7 +2,7 @@ import type { PromotionContext, WorkflowPromotionStore } from './contract.js';
 import { promotionSettings } from './settings.repository.js';
 import { promotionReads } from './reads.queries.js';
 import { preparePromotion } from './preview.js';
-import { applyPromotion } from './apply.repository.js';
+import { applyPromotion } from './apply.js';
 
 export function createWorkflowPromotionStore(
   context: PromotionContext,

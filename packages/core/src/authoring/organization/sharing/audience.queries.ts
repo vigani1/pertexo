@@ -25,7 +25,7 @@ import {
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { WorkflowFolderConflictError } from '../errors.js';
-import type { OrganizationScope } from '../commands.repository.js';
+import type { OrganizationScope } from '../run-command.js';
 import { FOLDER_LIMIT } from '../../../shared/folder-policy.js';
 
 /** Review restriction identities, rather than guessing whether two groups' future members coincide. */

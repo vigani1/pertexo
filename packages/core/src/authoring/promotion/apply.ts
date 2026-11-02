@@ -1,4 +1,4 @@
-import { writePromotedDraft } from './writes/repository.js';
+import { writePromotedDraft } from './writes/persist-candidate.js';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
 import {
   promotionReceiptSchema,

@@ -17,7 +17,7 @@ import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/workflow-model';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import type { OrganizationScope } from './commands.repository.js';
+import type { OrganizationScope } from './run-command.js';
 import {
   WorkflowFolderConflictError,
   WorkflowTagConflictError,

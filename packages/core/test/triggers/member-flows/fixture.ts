@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
-import { createWorkflowFolderDatabase } from '../../../src/authoring/organization/folders/commands.repository.js';
+import { createWorkflowFolderDatabase } from '../../../src/authoring/organization/folders/store.js';
 import { ScheduleTriggerError } from '../../../src/triggers/schedules/errors.js';
 import { WebhookTriggerNotFoundError } from '../../../src/triggers/webhooks/errors.js';
 import { createWebhookTestEventStore } from '../../../src/triggers/webhooks/test-events/store.js';

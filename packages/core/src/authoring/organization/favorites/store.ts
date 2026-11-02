@@ -8,12 +8,12 @@ import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
+import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import {
   createOrganizationSession,
   type OrganizationRequestScope,
-} from './session.js';
+} from '../session.js';
 
 export type WorkflowFavoriteCommand = OrganizationRequestScope &
   Readonly<{ workflowId: string; favorite: boolean }>;

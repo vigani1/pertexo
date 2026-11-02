@@ -10,18 +10,18 @@ import type {
   DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { runOrganizationCommand } from './commands.repository.js';
-import { WorkflowOrganizationValidationError } from './errors.js';
+import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
+import { runOrganizationCommand } from '../run-command.js';
+import { WorkflowOrganizationValidationError } from '../errors.js';
 import {
   checkOrganizationReplay,
   organizeWorkflow,
   type OrganizationChange,
-} from './placement.repository.js';
+} from '../placement.repository.js';
 import {
   createOrganizationSession,
   type OrganizationRequestScope,
-} from './session.js';
+} from '../session.js';
 
 export type WorkflowOrganizationBatchItem = Readonly<{
   workflowId: string;
