@@ -50,6 +50,7 @@ const database = {
 
 const dispatcherDatabase = {
   checkReadiness: () => Promise.resolve(),
+  watchForRows: () => Promise.resolve(),
   claimBatch: () => Promise.resolve({ events: [] }),
   close: () => Promise.resolve(),
   markPublished: () => Promise.resolve(true),
