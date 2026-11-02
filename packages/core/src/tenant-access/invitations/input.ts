@@ -1,9 +1,4 @@
-import { DELEGATED_ROLES } from '@pertexo/workflow-model';
 import { z } from 'zod';
-
-export const delegatedRole = z.enum(DELEGATED_ROLES);
-
-export const revision = z.number().int().positive();
 
 export const sealedToken = z
   .object({

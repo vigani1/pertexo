@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 import {
@@ -7,7 +7,6 @@ import {
 } from '@pertexo/database/primitives';
 import {
   workspaceInvitationDeliveryAttempts as attempts,
-  workspaceInvitationAcceptanceIntents as intents,
   workspaceInvitations as invitations,
 } from '@pertexo/database/schema';
 
@@ -20,6 +19,7 @@ import type {
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
 import { cancelOpenInvitationDeliveries } from '../delivery-cancellation.repository.js';
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
+import { supersedeOpenIntents } from '../open-intents.repository.js';
 import {
   claimInvitationCommand,
   completeInvitationCommand,
@@ -247,17 +247,6 @@ async function retireInvitationEvidence(
   workspaceId: string,
   invitationId: string,
 ): Promise<void> {
-  const db = drizzle(client);
-  await db
-    .update(intents)
-    .set({ status: 'superseded', updatedAt: sql`clock_timestamp()` })
-    .where(
-      and(
-        eq(intents.workspaceId, workspaceId),
-        eq(intents.invitationId, invitationId),
-        inArray(intents.status, ['pending', 'verified', 'wrong_account']),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  await supersedeOpenIntents(client, workspaceId, invitationId);
   await cancelOpenInvitationDeliveries(client, workspaceId, invitationId);
 }

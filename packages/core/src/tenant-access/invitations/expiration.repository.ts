@@ -9,6 +9,10 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 
 import { cancelOpenInvitationDeliveries } from './delivery-cancellation.repository.js';
+import {
+  OPEN_INTENT_STATUSES,
+  supersedeOpenIntents,
+} from './open-intents.repository.js';
 
 type ExpirationScope = Readonly<
   | { workspaceId: string; invitationId: string; normalizedEmail?: never }
@@ -72,7 +76,7 @@ export async function expireWorkspaceInvitations(
       and(
         eq(intents.workspaceId, invitations.workspaceId),
         eq(intents.invitationId, invitations.id),
-        inArray(intents.status, ['pending', 'verified', 'wrong_account']),
+        inArray(intents.status, OPEN_INTENT_STATUSES),
       ),
     );
   const outstanding = await db
@@ -96,17 +100,7 @@ export async function expireWorkspaceInvitations(
       scope.workspaceId,
       invitationId,
     );
-    await db
-      .update(intents)
-      .set({ status: 'superseded', updatedAt: sql`clock_timestamp()` })
-      .where(
-        and(
-          eq(intents.workspaceId, scope.workspaceId),
-          eq(intents.invitationId, invitationId),
-          inArray(intents.status, ['pending', 'verified', 'wrong_account']),
-        ),
-      )
-      .catch(rethrowQueryFailure);
+    await supersedeOpenIntents(client, scope.workspaceId, invitationId);
   }
   return newlyExpired.length;
 }

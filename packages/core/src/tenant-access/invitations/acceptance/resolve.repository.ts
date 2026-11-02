@@ -17,6 +17,7 @@ import type {
   InvitationAcceptanceIntentRecord,
   ResolveInvitationAcceptanceInput,
 } from '../../contract.js';
+import { OPEN_INTENT_STATUSES } from '../open-intents.repository.js';
 import {
   replacementLineageIsLive,
   selectIntent,
@@ -118,7 +119,7 @@ export async function resolveInvitationAcceptance(
             eq(intents.workspaceId, priorBinding.workspaceId),
             eq(intents.id, priorBinding.intentId),
             eq(intents.bindingDigest, priorBinding.bindingDigest),
-            inArray(intents.status, ['pending', 'verified', 'wrong_account']),
+            inArray(intents.status, OPEN_INTENT_STATUSES),
           ),
         )
         .catch(rethrowQueryFailure);
