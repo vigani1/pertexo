@@ -26,6 +26,7 @@ export function registerReadsRunInputOneStepOutput(): void {
       headers: authHeaders,
     });
     expect(input.statusCode).toBe(200);
+    expect(input.headers['cache-control']).toBe('private, no-store');
     expect(input.json()).toEqual({
       input: { kind: 'inline', value: { customerId: 'customer-42' } },
     });
@@ -41,6 +42,7 @@ export function registerReadsRunInputOneStepOutput(): void {
       headers: authHeaders,
     });
     expect(output.statusCode).toBe(200);
+    expect(output.headers['cache-control']).toBe('private, no-store');
     expect(output.json()).toEqual({ output: { kind: 'none' } });
     expect(fixture.readNodeRunOutput).toHaveBeenCalledWith({
       actorId,
@@ -59,6 +61,7 @@ export function registerReadsRunInputOneStepOutput(): void {
       headers: authHeaders,
     });
     expect(stepInput.statusCode).toBe(200);
+    expect(stepInput.headers['cache-control']).toBe('private, no-store');
     expect(stepInput.json()).toEqual({
       input: { kind: 'inline', value: { orderId: 'A-17' } },
     });

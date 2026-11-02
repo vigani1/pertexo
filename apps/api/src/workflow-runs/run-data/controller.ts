@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   Param,
   Query,
   Req,
@@ -41,7 +42,8 @@ import { runFailure } from '../../problems/context/normalize.js';
 
 /**
  * A run's input and each step's output (ADR 050), and each step across its
- * workflow's recent runs (ADR 051).
+ * workflow's recent runs (ADR 051). All of it can hold sensitive data, so no
+ * browser or proxy keeps a copy.
  */
 @UseInterceptors(domainErrors(runFailure))
 @Controller('v1/workspaces/:workspaceId')
@@ -60,6 +62,7 @@ export class WorkflowRunDataController {
   ) {}
 
   @Get('runs/:runId/variables')
+  @Header('Cache-Control', 'private, no-store')
   @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
   public async getVariables(
     @Req() request: WorkflowRunsRequest,
@@ -75,6 +78,7 @@ export class WorkflowRunDataController {
   }
 
   @Get('runs/:runId/input')
+  @Header('Cache-Control', 'private, no-store')
   @UseGuards(AutomationAuthenticationGuard, WorkflowRunDataReadGuard)
   public async getInput(
     @Req() request: WorkflowRunsRequest,
@@ -90,6 +94,7 @@ export class WorkflowRunDataController {
   }
 
   @Get('runs/:runId/node-runs/:nodeRunId/output')
+  @Header('Cache-Control', 'private, no-store')
   @UseGuards(AutomationAuthenticationGuard, WorkflowRunDataReadGuard)
   public async getOutput(
     @Req() request: WorkflowRunsRequest,
@@ -106,6 +111,7 @@ export class WorkflowRunDataController {
   }
 
   @Get('runs/:runId/node-runs/:nodeRunId/input')
+  @Header('Cache-Control', 'private, no-store')
   @UseGuards(AutomationAuthenticationGuard, WorkflowRunDataReadGuard)
   public async getNodeInput(
     @Req() request: WorkflowRunsRequest,
@@ -122,6 +128,7 @@ export class WorkflowRunDataController {
   }
 
   @Get('runs/:runId/node-runs/:nodeRunId/diagnostics')
+  @Header('Cache-Control', 'private, no-store')
   @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
   public async getDiagnostics(
     @Req() request: WorkflowRunsRequest,
@@ -138,6 +145,7 @@ export class WorkflowRunDataController {
   }
 
   @Get('workflows/:workflowId/step-health')
+  @Header('Cache-Control', 'private, no-store')
   @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
   public async getWorkflowStepHealth(
     @Req() request: WorkflowRunsRequest,
@@ -153,6 +161,7 @@ export class WorkflowRunDataController {
   }
 
   @Get('workflows/:workflowId/steps/:nodeId/runs')
+  @Header('Cache-Control', 'private, no-store')
   @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
   public async listWorkflowStepRuns(
     @Req() request: WorkflowRunsRequest,
