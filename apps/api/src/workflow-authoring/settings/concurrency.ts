@@ -3,7 +3,7 @@ import {
   workflowConcurrencySettingsRequestSchema,
   workflowConcurrencyCommandResponseSchema,
 } from '@pertexo/contracts';
-import type { WorkflowConcurrencyDatabase } from '@pertexo/core/authoring';
+import type { WorkflowConcurrencyStore } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
@@ -20,7 +20,7 @@ type CommandInput = ReadInput &
 /** Operational policy never mutates drafts, publication or trigger state. */
 export class WorkflowConcurrencyUseCase {
   public constructor(
-    private readonly persistence: WorkflowConcurrencyDatabase,
+    private readonly persistence: WorkflowConcurrencyStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
   public async read(input: ReadInput) {

@@ -8,7 +8,7 @@ import type { FormStore } from '@pertexo/core/triggers';
 import type { PendingTaskStore } from '@pertexo/core/runs';
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import type { WorkflowAuthoringDatabase } from '@pertexo/core/authoring';
+import type { WorkflowAuthoringStore } from '@pertexo/core/authoring';
 import type {
   JsonataEvaluator,
   WorkflowAuthoringValidator,
@@ -41,7 +41,7 @@ export type ApiWorkflowRuntime = Readonly<{
 }>;
 
 export interface WorkflowRuntimeAssembly {
-  readonly database: WorkflowAuthoringDatabase;
+  readonly database: WorkflowAuthoringStore;
   readonly metadataRuntime: ApiWorkflowMetadataRuntime;
   readonly pendingTasks: PendingTaskStore;
   readonly forms: FormStore;
@@ -61,7 +61,7 @@ export interface WorkflowRuntimeAssembly {
 }
 
 export interface WorkflowResources {
-  database: WorkflowAuthoringDatabase | undefined;
+  database: WorkflowAuthoringStore | undefined;
   metadataRuntime: ApiWorkflowMetadataRuntime | undefined;
   pendingTasks: PendingTaskStore | undefined;
   forms: FormStore | undefined;

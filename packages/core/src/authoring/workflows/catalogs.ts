@@ -5,7 +5,7 @@ import {
 
 import type {
   PortableCatalog,
-  WorkflowAuthoringDatabaseOptions,
+  WorkflowAuthoringStoreOptions,
   WorkflowExecutableCompiler,
   WorkflowAuthoringGraphValidator,
 } from './types.js';
@@ -17,12 +17,12 @@ export type AuthoringCatalogs = Readonly<{
   /** New nodes must come from it; without one, any node may be placed. */
   placementDefinitionCatalog: WorkflowDefinitionCatalog | undefined;
   executableCompiler: WorkflowExecutableCompiler;
-  workflowTestCompiler: WorkflowAuthoringDatabaseOptions['workflowTestCompiler'];
+  workflowTestCompiler: WorkflowAuthoringStoreOptions['workflowTestCompiler'];
   validateAuthoringGraph: WorkflowAuthoringGraphValidator | undefined;
 }>;
 
 export function authoringCatalogs(
-  options: WorkflowAuthoringDatabaseOptions,
+  options: WorkflowAuthoringStoreOptions,
 ): AuthoringCatalogs {
   return Object.freeze({
     portableCatalog: options.portableCatalog,

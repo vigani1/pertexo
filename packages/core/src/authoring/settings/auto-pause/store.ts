@@ -16,7 +16,7 @@ import {
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { command } from './command.repository.js';
 
-import type { Transact, WorkflowAutoPauseDatabase } from './contract.js';
+import type { Transact, WorkflowAutoPauseStore } from './contract.js';
 import {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkflowPauseRevisionConflictError,
@@ -38,7 +38,7 @@ const OWNERS: readonly Role[] = ['owner'];
 /** All operations share the authoring factory's pool, tracked transactions and close. */
 export function createWorkflowAutoPauseStore(
   transact: Transact,
-): WorkflowAutoPauseDatabase {
+): WorkflowAutoPauseStore {
   return Object.freeze({
     readWorkflowSettings: (input) => readWorkflowPauseSettings(transact, input),
 
@@ -52,13 +52,13 @@ export function createWorkflowAutoPauseStore(
 
     updateWorkspaceSettings: (input) =>
       updateWorkspacePauseSettings(transact, input),
-  } satisfies WorkflowAutoPauseDatabase);
+  } satisfies WorkflowAutoPauseStore);
 }
 
 async function readWorkflowPauseSettings(
   transact: Transact,
-  input: Parameters<WorkflowAutoPauseDatabase['readWorkflowSettings']>[0],
-): ReturnType<WorkflowAutoPauseDatabase['readWorkflowSettings']> {
+  input: Parameters<WorkflowAutoPauseStore['readWorkflowSettings']>[0],
+): ReturnType<WorkflowAutoPauseStore['readWorkflowSettings']> {
   const workspaceId = input.workspaceId,
     actorId = input.actorId,
     workflowId = input.workflowId;
@@ -85,8 +85,8 @@ async function readWorkflowPauseSettings(
 
 async function readWorkspacePauseSettings(
   transact: Transact,
-  input: Parameters<WorkflowAutoPauseDatabase['readWorkspaceSettings']>[0],
-): ReturnType<WorkflowAutoPauseDatabase['readWorkspaceSettings']> {
+  input: Parameters<WorkflowAutoPauseStore['readWorkspaceSettings']>[0],
+): ReturnType<WorkflowAutoPauseStore['readWorkspaceSettings']> {
   const workspaceId = input.workspaceId,
     actorId = input.actorId;
   return transact(workspaceId, actorId, async (client) => {
@@ -108,8 +108,8 @@ async function readWorkspacePauseSettings(
 
 async function resumePausedWorkflow(
   transact: Transact,
-  input: Parameters<WorkflowAutoPauseDatabase['resumeWorkflow']>[0],
-): ReturnType<WorkflowAutoPauseDatabase['resumeWorkflow']> {
+  input: Parameters<WorkflowAutoPauseStore['resumeWorkflow']>[0],
+): ReturnType<WorkflowAutoPauseStore['resumeWorkflow']> {
   const workflowId = input.workflowId;
   const request = {
     expectedPauseRevision: input.expectedPauseRevision,
@@ -204,8 +204,8 @@ async function resumePausedWorkflow(
 
 async function updateWorkflowPauseSettings(
   transact: Transact,
-  input: Parameters<WorkflowAutoPauseDatabase['updateWorkflowSettings']>[0],
-): ReturnType<WorkflowAutoPauseDatabase['updateWorkflowSettings']> {
+  input: Parameters<WorkflowAutoPauseStore['updateWorkflowSettings']>[0],
+): ReturnType<WorkflowAutoPauseStore['updateWorkflowSettings']> {
   const workflowId = input.workflowId;
   const request = {
     enabled: input.enabled,
@@ -261,8 +261,8 @@ async function updateWorkflowPauseSettings(
 
 async function updateWorkspacePauseSettings(
   transact: Transact,
-  input: Parameters<WorkflowAutoPauseDatabase['updateWorkspaceSettings']>[0],
-): ReturnType<WorkflowAutoPauseDatabase['updateWorkspaceSettings']> {
+  input: Parameters<WorkflowAutoPauseStore['updateWorkspaceSettings']>[0],
+): ReturnType<WorkflowAutoPauseStore['updateWorkspaceSettings']> {
   const workspaceId = input.workspaceId;
   const request = {
     threshold: input.threshold,

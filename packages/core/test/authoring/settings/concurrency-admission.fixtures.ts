@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Pool, type PoolClient } from 'pg';
-import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/store.js';
-import type { WorkflowConcurrencyDatabase } from '../../../src/authoring/settings/concurrency/store.js';
+import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/store.js';
+import type { WorkflowConcurrencyStore } from '../../../src/authoring/settings/concurrency/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
 import {
@@ -47,7 +47,7 @@ export async function setLimit(limit: number | null, id = workflowId) {
 
 export async function withConcurrencyControls<T>(
   operation: (
-    controls: WorkflowConcurrencyDatabase,
+    controls: WorkflowConcurrencyStore,
     scope: { workspaceId: string; workflowId: string; actorId: string },
   ) => Promise<T>,
 ) {
@@ -65,7 +65,7 @@ export async function withConcurrencyControls<T>(
       'alter table app.workspace_memberships force row level security',
     );
   });
-  const authoring = createWorkflowAuthoringDatabase(
+  const authoring = createWorkflowAuthoringStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
     { executableCompiler: testExecutableCompiler },
   );

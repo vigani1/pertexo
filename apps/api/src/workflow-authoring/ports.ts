@@ -1,11 +1,11 @@
 import type {
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
   WorkflowCollaborationStore,
   PublicationReviewStore,
   WorkflowPromotionStore,
-  WorkflowAutoPauseDatabase,
-  WorkflowConcurrencyDatabase,
-  WorkflowErrorDatabase,
+  WorkflowAutoPauseStore,
+  WorkflowConcurrencyStore,
+  WorkflowErrorStore,
   WorkflowInputCaseDatabase,
   WorkflowTagDatabase,
   WorkflowFavoriteDatabase,
@@ -23,7 +23,7 @@ import type { WorkflowTemplateOriginProjectionResponse } from '@pertexo/contract
 
 /** Narrow persistence seam; runtime owns lifecycle, and callers preserve single-snapshot CAS conflicts. */
 export type WorkflowAuthoringPersistence = Pick<
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
   | 'createWorkflow'
   | 'duplicateWorkflow'
   | 'listWorkflows'
@@ -40,10 +40,10 @@ export type WorkflowAuthoringPersistence = Pick<
   Readonly<{
     /** Additive reader capability: absence is unavailable, never origin-null. */
     getWorkflowWithTemplateOrigin?: (
-      ...input: Parameters<WorkflowAuthoringDatabase['getWorkflow']>
+      ...input: Parameters<WorkflowAuthoringStore['getWorkflow']>
     ) => Promise<Readonly<{
       workflow: NonNullable<
-        Awaited<ReturnType<WorkflowAuthoringDatabase['getWorkflow']>>
+        Awaited<ReturnType<WorkflowAuthoringStore['getWorkflow']>>
       >;
       templateOrigin: WorkflowTemplateOriginProjectionResponse['templateOrigin'];
     }> | null>;
@@ -52,12 +52,12 @@ export type WorkflowAuthoringPersistence = Pick<
 export type WorkflowAuthoringDependencies = Readonly<{
   persistence: WorkflowAuthoringPersistence;
   portabilityPersistence?: Pick<
-    WorkflowAuthoringDatabase,
+    WorkflowAuthoringStore,
     'exportWorkflow' | 'previewWorkflowImport' | 'importWorkflow'
   >;
-  autoPausePersistence?: WorkflowAutoPauseDatabase;
-  concurrencyPersistence?: WorkflowConcurrencyDatabase;
-  errorWorkflowPersistence?: WorkflowErrorDatabase;
+  autoPausePersistence?: WorkflowAutoPauseStore;
+  concurrencyPersistence?: WorkflowConcurrencyStore;
+  errorWorkflowPersistence?: WorkflowErrorStore;
   inputCasePersistence?: WorkflowInputCaseDatabase;
   collaborationPersistence?: WorkflowCollaborationStore;
   promotionPersistence?: WorkflowPromotionStore;

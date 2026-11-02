@@ -1,12 +1,12 @@
 import { expect, it } from 'vitest';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
-import { createWorkflowAuthoringDatabase as createUnwiredAuthoringDatabase } from '../../../../src/authoring/workflows/store.js';
+import { createWorkflowAuthoringStore as createUnwiredAuthoringDatabase } from '../../../../src/authoring/workflows/store.js';
 import {
   actorId,
   apiUrl,
   authoring,
   createHash,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   draftNode,
   emptyGraph,
@@ -21,7 +21,7 @@ import { testExecutableCompiler } from '../../../../src/authoring/test-executabl
 
 export function registerRejectsMalformedNewAdmissionWithout(): void {
   it('rejects malformed new admission without durable effects while replay and 412 precede unavailable parsing', async () => {
-    const catalogAuthoring = createWorkflowAuthoringDatabase(
+    const catalogAuthoring = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       { definitionCatalog: testDefinitionCatalog },
     );
@@ -193,7 +193,7 @@ export function registerRejectsMalformedNewAdmissionWithout(): void {
   });
 
   it('publishes and replays a graph larger than a stored command result', async () => {
-    const catalogAuthoring = createWorkflowAuthoringDatabase(
+    const catalogAuthoring = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       { definitionCatalog: testDefinitionCatalog },
     );

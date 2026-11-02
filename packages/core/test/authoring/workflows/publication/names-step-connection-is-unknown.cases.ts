@@ -7,7 +7,7 @@ import {
   apiUrl,
   createConnectionStore,
   createHash,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   draftNode,
   emptyGraph,
@@ -35,7 +35,7 @@ export function registerNamesStepConnectionIsUnknown(): void {
         }),
       ]),
     });
-    const usageAuthoring = createWorkflowAuthoringDatabase(
+    const usageAuthoring = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       { definitionCatalog: catalog },
     );

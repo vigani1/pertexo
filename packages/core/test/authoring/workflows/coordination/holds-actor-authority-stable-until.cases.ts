@@ -4,7 +4,7 @@ import {
   actorId,
   apiUrl,
   authoring,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   emptyGraph,
   holdAtWrite,
@@ -51,7 +51,7 @@ export function registerHoldsActorAuthorityStableUntil(): void {
       }
       const hold = await holdAtWrite(writeBarrier);
       const authorityApplication = `wa-${command}-${randomUUID()}`;
-      const controlled = createWorkflowAuthoringDatabase(
+      const controlled = createWorkflowAuthoringStore(
         parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       );
       const authorityPool = new Pool({

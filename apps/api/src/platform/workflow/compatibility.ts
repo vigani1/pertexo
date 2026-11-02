@@ -4,8 +4,8 @@ import { stepSetupIssues } from './step-setup-validation.js';
 import { switchCaseIssues } from './switch-validation.js';
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import {
-  createWorkflowAuthoringDatabase,
-  type WorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
+  type WorkflowAuthoringStore,
 } from '@pertexo/core/authoring';
 import type {
   DatabaseConfig,
@@ -145,12 +145,12 @@ export function createCoreAuthoringOptions(
 export function createCoreWorkflowAuthoringDatabase(
   databaseConfig: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkflowAuthoringDatabase {
+): WorkflowAuthoringStore {
   const compatibility = createCoreWorkflowCompatibility();
   // Lazy owner: failed synchronous database construction acquires no workers.
   let validator: WorkflowAuthoringValidator | undefined;
   let closed = false;
-  const database = createWorkflowAuthoringDatabase(databaseConfig, {
+  const database = createWorkflowAuthoringStore(databaseConfig, {
     ...createCoreAuthoringOptions(compatibility, {
       validate: (...args) => {
         if (closed) throw new AuthoringValidationUnavailableError('closed');
@@ -172,7 +172,7 @@ export function createCoreWorkflowAuthoringDatabase(
 }
 
 async function closeCoreAuthoringDatabase(
-  database: WorkflowAuthoringDatabase,
+  database: WorkflowAuthoringStore,
   validator: WorkflowAuthoringValidator | undefined,
 ): Promise<void> {
   const failures: unknown[] = [];

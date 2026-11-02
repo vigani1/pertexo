@@ -10,7 +10,7 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 
-import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from '../workflow-authoring-admission.fixture.js';
+import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../workflow-authoring-admission.fixture.js';
 
 import { purgeWorkspace } from '../workspace-purge.js';
 import { enforceRetention } from '../retention.js';
@@ -118,7 +118,7 @@ export let otherWorkflowId = '';
 
 export let otherVersionId = '';
 
-export let authoring: ReturnType<typeof createWorkflowAuthoringDatabase>;
+export let authoring: ReturnType<typeof createWorkflowAuthoringStore>;
 
 const resources: {
   close(): Promise<void>;
@@ -172,7 +172,7 @@ beforeAll(async () => {
       parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
     );
     own(() => identity.close());
-    authoring = createWorkflowAuthoringDatabase(
+    authoring = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
     );
     own(() => authoring.close());

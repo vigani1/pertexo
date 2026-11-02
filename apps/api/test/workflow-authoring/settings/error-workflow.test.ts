@@ -1,6 +1,6 @@
 import type { Role } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
-import type { WorkflowErrorDatabase } from '@pertexo/core/authoring';
+import type { WorkflowErrorStore } from '@pertexo/core/authoring';
 import { WorkflowErrorUseCase } from '../../../src/workflow-authoring/settings/error-workflow.js';
 import { createActorContext } from '../../../src/authorization/index.js';
 
@@ -20,7 +20,7 @@ function fixture(role: Role = 'owner') {
     readSettings: vi.fn().mockResolvedValue(settings),
     updateSettings: vi.fn().mockResolvedValue({ settings, replayed: false }),
     listTargets: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
-  } satisfies WorkflowErrorDatabase;
+  } satisfies WorkflowErrorStore;
   const authorization = {
     findAccess: vi.fn().mockResolvedValue({
       actorId,

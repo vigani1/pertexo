@@ -9,7 +9,7 @@ import {
 } from '@pertexo/database/testing';
 import {
   createIdentityWorkspaceStore,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
 } from '../../../../src/testing.js';
 
 import { createWorkflowTriggerPauseFoldStore } from '../../../../src/triggers/pause/fold.store.js';
@@ -52,7 +52,7 @@ export const maintenanceUrl = url(
 
 export let identity: ReturnType<typeof createIdentityWorkspaceStore>;
 
-export let authoring: ReturnType<typeof createWorkflowAuthoringDatabase>;
+export let authoring: ReturnType<typeof createWorkflowAuthoringStore>;
 
 export let fold: ReturnType<typeof createWorkflowTriggerPauseFoldStore>;
 
@@ -197,7 +197,7 @@ export async function beforeAllFixture1() {
   identity = createIdentityWorkspaceStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
   );
-  authoring = createWorkflowAuthoringDatabase(
+  authoring = createWorkflowAuthoringStore(
     parseDatabaseConfig({ connectionString: apiUrl, max: 6 }),
     { executableCompiler: testExecutableCompiler },
   );

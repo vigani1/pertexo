@@ -8,8 +8,8 @@ import {
   dropDisconnectedDatabase,
 } from '@pertexo/database/testing';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
-import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/contract.js';
-import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from '../../support/workflow-authoring-admission.fixture.js';
+import type { WorkflowAuthoringStore } from '../../../src/authoring/workflows/contract.js';
+import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../../support/workflow-authoring-admission.fixture.js';
 
 import { createWebhookTriggerStore } from '../../../src/triggers/webhooks/store.js';
 import { createWorkflowTriggerReconciliationStore } from '../../../src/triggers/reconciliation/store.js';
@@ -55,7 +55,7 @@ export let workerReadinessPool: Pool;
 
 export let workerPool: Pool;
 
-export let authoring: WorkflowAuthoringDatabase;
+export let authoring: WorkflowAuthoringStore;
 
 export async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
   statement: string,
@@ -120,7 +120,7 @@ export async function beforeAllFixture1() {
   webhook = createWebhookTriggerStore(apiConfig, undefined, {
     burstLimit: 60,
   });
-  authoring = createWorkflowAuthoringDatabase(apiConfig, {
+  authoring = createWorkflowAuthoringStore(apiConfig, {
     definitionCatalog: triggerCatalog,
     executableCompiler: (graph) => ({
       checksum: `wf:sha256:${createHash('sha256')

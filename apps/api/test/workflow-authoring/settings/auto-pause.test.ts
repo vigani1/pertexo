@@ -2,7 +2,7 @@ import type { Role } from '@pertexo/workflow-model';
 import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import { problemResult } from '../../support/problem.js';
 import { describe, expect, it, vi } from 'vitest';
-import type { WorkflowAutoPauseDatabase } from '@pertexo/core/authoring';
+import type { WorkflowAutoPauseStore } from '@pertexo/core/authoring';
 import { WorkflowAutoPauseUseCase } from '../../../src/workflow-authoring/settings/auto-pause.js';
 import {
   WorkflowAutoPauseController,
@@ -48,7 +48,7 @@ function fixture(role: Role = 'owner') {
       settings: { threshold: 12, revision: 2 },
       replayed: false,
     }),
-  } satisfies WorkflowAutoPauseDatabase;
+  } satisfies WorkflowAutoPauseStore;
   const authorization = {
     findAccess: vi.fn().mockResolvedValue({
       actorId,

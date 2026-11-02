@@ -3,7 +3,7 @@ import type { FormStore } from '@pertexo/core/triggers';
 import type { PendingTaskStore } from '@pertexo/core/runs';
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import type { WorkflowAuthoringDatabase } from '@pertexo/core/authoring';
+import type { WorkflowAuthoringStore } from '@pertexo/core/authoring';
 import type {
   JsonataEvaluator,
   WorkflowAuthoringValidator,
@@ -15,7 +15,7 @@ import type { RunEventNotificationPublisher } from '../../../workflow-runs/event
 import type { createPostgresWorkflowRunPersistence } from '../../../workflow-runs/index.js';
 
 export async function closeWorkflowResources(
-  authoring: WorkflowAuthoringDatabase,
+  authoring: WorkflowAuthoringStore,
   runs: ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined,
   {
     events,
@@ -50,7 +50,7 @@ export async function closeWorkflowResources(
 }
 
 export async function collectWorkflowCloseFailures(
-  authoring: WorkflowAuthoringDatabase | undefined,
+  authoring: WorkflowAuthoringStore | undefined,
   runs: ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined,
   {
     events,

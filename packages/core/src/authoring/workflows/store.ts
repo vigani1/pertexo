@@ -42,9 +42,9 @@ import { createWorkflowVersionRestoreStore } from './commands/restore-version.js
 import type { WorkflowAuthoringWriteContext } from './context.js';
 import { WorkflowNotFoundError } from './errors.js';
 import { createWorkflowAuthoringReadStore } from './reads.queries.js';
-import type { WorkflowAuthoringDatabaseOptions } from './types.js';
+import type { WorkflowAuthoringStoreOptions } from './types.js';
 
-import type { WorkflowAuthoringDatabase } from './contract.js';
+import type { WorkflowAuthoringStore } from './contract.js';
 
 function requirePlaceableDefinitionAdditions(
   previous: WorkflowGraph,
@@ -125,10 +125,10 @@ async function requireWorkspaceReader(
   }
 }
 
-export function createWorkflowAuthoringDatabase(
+export function createWorkflowAuthoringStore(
   config: DatabaseConfig,
-  options: WorkflowAuthoringDatabaseOptions,
-): WorkflowAuthoringDatabase {
+  options: WorkflowAuthoringStoreOptions,
+): WorkflowAuthoringStore {
   const catalogs = authoringCatalogs(options);
   const lease = acquireDatabasePool(config, options.runtime);
   const { pool } = lease;

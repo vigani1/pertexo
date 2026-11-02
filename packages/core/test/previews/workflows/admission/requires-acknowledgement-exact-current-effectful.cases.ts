@@ -9,7 +9,7 @@ import {
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 
-import { createWorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/store.js';
+import { createWorkflowAuthoringStore } from '../../../../src/authoring/workflows/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
 import {
@@ -41,7 +41,7 @@ export function registerRequiresAcknowledgementExactCurrentEffectful(): void {
           : definition,
       ),
     });
-    const effects = createWorkflowAuthoringDatabase(
+    const effects = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
         executableCompiler: (graph) => {

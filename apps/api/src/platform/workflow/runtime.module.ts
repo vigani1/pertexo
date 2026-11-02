@@ -19,7 +19,7 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 
-import { createWorkflowAuthoringDatabase } from '@pertexo/core/authoring';
+import { createWorkflowAuthoringStore } from '@pertexo/core/authoring';
 import {
   JsonataEvaluator,
   WorkflowAuthoringValidator,
@@ -79,7 +79,7 @@ export async function createApiWorkflowRuntime(
   try {
     const authoringValidator = (resources.authoringValidator =
       new WorkflowAuthoringValidator());
-    const database = (resources.database = createWorkflowAuthoringDatabase(
+    const database = (resources.database = createWorkflowAuthoringStore(
       databaseConfig,
       {
         ...createCoreAuthoringOptions(

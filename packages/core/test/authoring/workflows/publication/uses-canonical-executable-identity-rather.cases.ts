@@ -4,7 +4,7 @@ import {
   actorId,
   apiUrl,
   authoring,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   draftNode,
   emptyGraph,
@@ -18,7 +18,7 @@ import { recordBenchmarkOperation } from './fixture.js';
 
 export function registerUsesCanonicalExecutableIdentityRather(): void {
   it('uses canonical executable identity rather than JSON or presentation identity', async () => {
-    const catalogAuthoring = createWorkflowAuthoringDatabase(
+    const catalogAuthoring = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       { definitionCatalog: testDefinitionCatalog },
     );

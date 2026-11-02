@@ -10,7 +10,7 @@ import {
   actorId,
   apiUrl,
   createHash,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   emptyGraph,
   otherWorkspaceId,
@@ -21,7 +21,7 @@ import {
   workspaceId,
 } from '../../support/workflow-authoring.js';
 
-const database = createWorkflowAuthoringDatabase(
+const database = createWorkflowAuthoringStore(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
   {
     definitionCatalog: {

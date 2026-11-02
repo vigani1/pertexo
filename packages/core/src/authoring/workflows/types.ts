@@ -35,7 +35,7 @@ export type PortableCatalog = WorkflowPortabilityCatalog &
     ) => boolean;
   }>;
 
-export type WorkflowAuthoringDatabaseOptions = Readonly<{
+export type WorkflowAuthoringStoreOptions = Readonly<{
   portableCatalog?: PortableCatalog;
   definitionCatalog?: WorkflowDefinitionCatalog;
   runtime?: DatabaseRuntime;

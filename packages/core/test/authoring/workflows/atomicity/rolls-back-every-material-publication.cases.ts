@@ -6,7 +6,7 @@ import {
   apiUrl,
   authoring,
   createHash,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   createConnectionStore,
   currentRepresentationTag,
   saveCurrentDraft,
@@ -51,7 +51,7 @@ export function registerRollsBackEveryMaterialPublication(): void {
         }),
       ]),
     });
-    const rollbackAuthoring = createWorkflowAuthoringDatabase(
+    const rollbackAuthoring = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       { definitionCatalog: rollbackCatalog },
     );

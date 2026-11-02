@@ -1,4 +1,4 @@
-import type { WorkflowAuthoringDatabaseOptions } from '@pertexo/core/testing';
+import type { WorkflowAuthoringStoreOptions } from '@pertexo/core/testing';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/server';
@@ -27,7 +27,7 @@ const scheduleGraph: WorkflowGraph = {
 };
 
 function admission(fixture: ReturnType<typeof createScheduleTriggerFixture>) {
-  const options: WorkflowAuthoringDatabaseOptions =
+  const options: WorkflowAuthoringStoreOptions =
     fixture.authoringOptions.databaseOptions;
   return options.validateAuthoringGraph;
 }

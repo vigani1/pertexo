@@ -5,7 +5,7 @@ import { authoringFailure } from '../../../src/problems/context/normalize.js';
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import { GUARDS_METADATA, HEADERS_METADATA } from '@nestjs/common/constants.js';
-import type { WorkflowConcurrencyDatabase } from '@pertexo/core/authoring';
+import type { WorkflowConcurrencyStore } from '@pertexo/core/authoring';
 import {
   WorkflowConcurrencyRevisionConflictError,
   WorkflowConcurrencyLimitExceededError,
@@ -46,7 +46,7 @@ function fixture(role: Role = 'owner') {
   const persistence = {
     readSettings: vi.fn().mockResolvedValue(settings),
     updateSettings: vi.fn().mockResolvedValue({ settings, replayed: true }),
-  } satisfies WorkflowConcurrencyDatabase;
+  } satisfies WorkflowConcurrencyStore;
   const authorization = {
     findAccess: vi.fn().mockResolvedValue({
       actorId,
