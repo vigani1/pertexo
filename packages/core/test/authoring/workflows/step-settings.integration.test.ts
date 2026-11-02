@@ -10,7 +10,7 @@ import {
 } from '../../support/workflow-authoring.js';
 import { catalog, database } from './portability/fixture.js';
 
-const step = (limit: number) => ({
+const step = (limit: number, extra: object = {}) => ({
   ...emptyGraph,
   nodes: [
     {
@@ -22,6 +22,7 @@ const step = (limit: number) => ({
       inputMappings: {},
       connectionRefs: {},
       position: { x: 0, y: 0 },
+      ...extra,
     },
   ],
 });
@@ -37,7 +38,7 @@ const accepting = database({
 
 afterAll(() => accepting.close());
 
-async function draftWith(limit: number) {
+async function draftWith(limit: number, extra: object = {}) {
   const { workflowId } = await accepting.createWorkflow({
     actorId,
     workspaceId,
@@ -50,7 +51,7 @@ async function draftWith(limit: number) {
     workspaceId,
     workflowId,
     expectedRevision: 1,
-    graphJson: step(limit),
+    graphJson: step(limit, extra),
   });
   return workflowId;
 }
@@ -98,5 +99,16 @@ it('refuses to publish settings a run could only refuse, naming the step, and pu
 
 it('publishes settings a run would accept', async () => {
   const workflowId = await draftWith(120_000);
+  await expect(publish(workflowId)).resolves.toMatchObject({ reused: false });
+});
+
+it('leaves a disabled step alone, which never runs', async () => {
+  const workflowId = await draftWith(300_000, { disabled: true });
+  const validated = await accepting.validateDraft(
+    workspaceId,
+    workflowId,
+    actorId,
+  );
+  expect(validated?.validation).toMatchObject({ ok: true, issues: [] });
   await expect(publish(workflowId)).resolves.toMatchObject({ reused: false });
 });

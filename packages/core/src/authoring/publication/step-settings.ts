@@ -1,8 +1,8 @@
 import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
-  workflowNodes,
   type GraphValidationIssue,
   type WorkflowGraph,
+  type WorkflowNode,
 } from '@pertexo/workflow-model';
 import type { PortableCatalog } from '../workflows/types.js';
 
@@ -16,7 +16,7 @@ export function stepSettingsIssues(
 ): readonly GraphValidationIssue[] {
   const accepts = catalog?.acceptsStepConfig;
   if (accepts === undefined) return [];
-  return [...workflowNodes(graph)]
+  return [...stepsThatCanRun(graph)]
     .filter((node) => !accepts(node))
     .slice(0, WORKFLOW_VALIDATION_MAX_ISSUES)
     .map((node) => ({
@@ -24,4 +24,14 @@ export function stepSettingsIssues(
       path: `$.nodes.${node.id}.config`,
       message: `${node.label ?? 'This step'} has settings it can't run with. Open the step and check its values against their limits`,
     }));
+}
+
+/** A disabled step, and any loop body inside it, never runs. */
+function* stepsThatCanRun(graph: WorkflowGraph): Generator<WorkflowNode> {
+  for (const node of graph.nodes) {
+    if (node.disabled) continue;
+    yield node;
+    if (node.structured !== undefined)
+      yield* stepsThatCanRun(node.structured.body);
+  }
 }
