@@ -370,7 +370,7 @@ jobs:
         if: matrix.journeys == ''
         env:
           SHARD: ${{ matrix.shard }}
-        run: pnpm --filter @pertexo/web test:e2e --shard="$SHARD" --workers=4
+        run: pnpm --filter @pertexo/web test:e2e --shard="$SHARD" --workers=3
       - name: Use the Docker Hub mirror
         if: matrix.journeys != ''
         uses: ./.github/actions/docker-mirror
