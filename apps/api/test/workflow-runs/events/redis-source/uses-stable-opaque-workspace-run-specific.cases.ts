@@ -15,6 +15,33 @@ import {
 } from './fixture.js';
 
 export function registerUsesStableOpaqueWorkspaceRunSpecific(): void {
+  it('serves every open stream from one connection, until the last one closes', async () => {
+    const fake = new FakeRedis();
+    let clients = 0;
+    const source = new RedisRunEventSource(
+      { redisUrl: 'redis://127.0.0.1:6379' },
+      () => {
+        clients += 1;
+        return fake as never;
+      },
+    );
+    const open = (runId: string) =>
+      source.subscribe({
+        workspaceId: WORKSPACE_ID,
+        runId,
+        signal: new AbortController().signal,
+      });
+    const first = await open(RUN_ID);
+    const sameRun = await open(RUN_ID);
+    expect(clients).toBe(1);
+    expect(fake.subscribeCalls).toBe(1);
+    await first.close();
+    expect(fake.disconnected).toBe(false);
+    await sameRun.close();
+    expect(fake.disconnected).toBe(true);
+    expectNoListeners(fake);
+  });
+
   it('uses a stable opaque workspace/run-specific channel', () => {
     const channel = runEventChannel(WORKSPACE_ID, RUN_ID);
     expect(channel).toBe(runEventChannel(WORKSPACE_ID, RUN_ID));
