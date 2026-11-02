@@ -31,23 +31,27 @@ export function DeclarationDialog({
   );
   const [session, setSession] = useState<Readonly<{
     graph: WorkflowGraphContract;
+    dirty: boolean;
     discard: boolean;
   }> | null>(null);
   function close() {
-    store.getState().setInspectorScratch(false);
     setSession(null);
   }
   function requestClose() {
     if (session === null) return;
-    if (store.getState().inspectorScratch)
-      setSession({ ...session, discard: true });
+    if (session.dirty) setSession({ ...session, discard: true });
     else close();
   }
   return (
     <Dialog
       open={session !== null}
       onOpenChange={(open) => {
-        if (open) setSession({ graph: store.getState().graph, discard: false });
+        if (open)
+          setSession({
+            graph: store.getState().graph,
+            dirty: false,
+            discard: false,
+          });
         else requestClose();
       }}
     >
@@ -69,7 +73,7 @@ export function DeclarationDialog({
             graph={session.graph}
             editable={editable && !inConflict}
             onChange={() => {
-              store.getState().setInspectorScratch(true);
+              setSession((current) => current && { ...current, dirty: true });
             }}
             onClose={requestClose}
             onApply={(next) => {
