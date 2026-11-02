@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
 import type { ApiClient } from '@/lib/api/client';
 import {
-  formatClock,
+  formatMoment,
   formatDurationMs,
   formatDateTime,
 } from '@/lib/format/time';
@@ -67,7 +67,7 @@ function deadlineFact(run: WorkflowRunReadSummary, nowMs: number): ReactNode {
   if (!isActiveRunStatus(run.status))
     return (
       <>
-        deadline <b>{formatClock(run.deadlineAt)}</b>
+        deadline <b>{formatMoment(run.deadlineAt)}</b>
       </>
     );
   return remaining > 0 ? (
@@ -120,7 +120,7 @@ function RunFacts({
   return (
     <PageHeaderMeta>
       <MetaFact>
-        started <b>{formatClock(run.startedAt ?? run.createdAt)}</b>
+        started <b>{formatMoment(run.startedAt ?? run.createdAt)}</b>
       </MetaFact>
       {durationMs === undefined ? null : (
         <MetaFact>
@@ -149,7 +149,7 @@ function RunFacts({
       <MetaFact>{deadlineFact(run, nowMs)}</MetaFact>
       {run.cancelRequestedAt === null ? null : (
         <MetaFact>
-          stop requested <b>{formatClock(run.cancelRequestedAt)}</b>
+          stop requested <b>{formatMoment(run.cancelRequestedAt)}</b>
         </MetaFact>
       )}
       {run.replaySourceRunId == null ? null : (

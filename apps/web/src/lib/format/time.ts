@@ -57,6 +57,15 @@ export function formatClock(value: string | null | undefined): string {
   return date === undefined ? MISSING : clockFormatter.format(date);
 }
 
+/** Just the time today; with the date any other day, so last Tuesday's run says so. */
+export function formatMoment(value: string | null | undefined): string {
+  const date = toDate(value);
+  if (date === undefined) return MISSING;
+  return date.toDateString() === new Date().toDateString()
+    ? clockFormatter.format(date)
+    : dateTimeFormatter.format(date);
+}
+
 /**
  * Wall-clock time to the minute in the person's locale, e.g. 14:31 or
  * 2:31 PM: when something last happened, where seconds are noise.

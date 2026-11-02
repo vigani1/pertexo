@@ -95,8 +95,9 @@ export function usageTrendsQueryOptions(
         throw error;
       }
     },
-    staleTime: 15000,
-    refetchInterval: 30000,
+    // Daily totals barely move, and the read scans up to 90 days of runs.
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
     refetchIntervalInBackground: false,
   });
 }
