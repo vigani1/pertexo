@@ -6,6 +6,7 @@ import type { DatabaseRuntime } from '@pertexo/database/platform';
 import type {
   GraphValidationResult,
   WorkflowGraph,
+  WorkflowNode,
   WorkflowPortabilityCatalog,
   WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
@@ -33,6 +34,8 @@ export type PortableCatalog = WorkflowPortabilityCatalog &
       manifest: WorkflowPortableManifest,
       origin: WorkflowTemplateOriginRequest,
     ) => boolean;
+    /** Whether a step's settings would get past the check every run makes of them. */
+    acceptsStepConfig?: (node: WorkflowNode) => boolean;
   }>;
 
 export type WorkflowAuthoringStoreOptions = Readonly<{

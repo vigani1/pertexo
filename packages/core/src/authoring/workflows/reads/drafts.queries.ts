@@ -17,6 +17,7 @@ import {
   parseWorkflowGraphDraft,
   sameWorkflowNotes,
 } from '@pertexo/workflow-model';
+import { stepSettingsIssues } from '../../publication/step-settings.js';
 import { admitWorkflowAuthoring } from '../admission.queries.js';
 
 import {
@@ -32,7 +33,10 @@ import type { AuthoringCatalogs } from '../catalogs.js';
 
 type ValidationCatalogs = Pick<
   AuthoringCatalogs,
-  'definitionCatalog' | 'validateAuthoringGraph' | 'executableCompiler'
+  | 'definitionCatalog'
+  | 'validateAuthoringGraph'
+  | 'executableCompiler'
+  | 'portableCatalog'
 >;
 
 export async function validateDraft(
@@ -63,11 +67,10 @@ export async function validateDraft(
     signal === undefined ? {} : { signal },
   );
   if (validation.ok) {
-    const issues = await dataTableReferenceIssues(
-      client,
-      workspaceId,
-      draft.graphJson,
-    );
+    const issues = [
+      ...stepSettingsIssues(draft.graphJson, catalogs.portableCatalog),
+      ...(await dataTableReferenceIssues(client, workspaceId, draft.graphJson)),
+    ];
     if (issues.length > 0) validation = { ...validation, ok: false, issues };
   }
   const [live] = await drizzle(client)
