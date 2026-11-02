@@ -73,6 +73,15 @@ describe('bounded authoring worker ownership', () => {
     required(workers[0]).succeed();
     await active;
   });
+  // A busy small server takes this long: 500 ms made every check fail on one core.
+  it('waits for a thread that takes over a second to start', async () => {
+    vi.useFakeTimers();
+    const { owner, workers } = controlled();
+    const request = owner.validate(graph(), policies);
+    await vi.advanceTimersByTimeAsync(1_500);
+    required(workers[0]).succeed();
+    await expect(request).resolves.toMatchObject({ ok: true });
+  });
   it.each(['queue_timeout', 'startup_timeout', 'parse_timeout'] as const)(
     'bounds %s and clears retained queue accounting',
     async (reason) => {
