@@ -31,6 +31,7 @@ const expectedCapabilitiesByRole = {
     'workflow:create',
     'workflow:update',
     'workflow:publish',
+    'run:read-data',
     'run:start',
     'run:cancel',
     'run:replay',
@@ -51,6 +52,7 @@ const expectedCapabilitiesByRole = {
     'workflow:create',
     'workflow:update',
     'workflow:publish',
+    'run:read-data',
     'run:start',
     'connection:use',
   ],
@@ -61,6 +63,7 @@ const expectedCapabilitiesByRole = {
     'run:read',
     'connection:read',
     'artifact:upload',
+    'run:read-data',
     'run:start',
     'run:cancel',
     'run:replay',
@@ -73,6 +76,7 @@ const expectedCapabilitiesByRole = {
     'workflow:read',
     'run:read',
     'connection:read',
+    'run:read-data',
   ],
 } as const satisfies Record<Role, readonly AuthorizationCapability[]>;
 

@@ -298,6 +298,7 @@ const workspaceCapabilitySchema = z.enum([
   'workflow:update',
   'workflow:publish',
   'run:read',
+  'run:read-data',
   'run:start',
   'run:cancel',
   'run:replay',

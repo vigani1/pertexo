@@ -49,6 +49,7 @@ it('keeps authoring and identity policy limits unchanged at the transport bounda
     'workflow:create',
     'workflow:publish',
     'run:read',
+    'run:read-data',
     'run:start',
     'run:cancel',
     'connection:read',

@@ -354,7 +354,8 @@ export const workflowRunsOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/runs/{runId}/input': {
       get: {
         operationId: 'getWorkflowRunInput',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['run:read-data'],
+        security: automationSecurity,
         parameters: [workspaceParameter, runParameter],
         responses: {
           '200': jsonResponse(
@@ -372,7 +373,8 @@ export const workflowRunsOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/output': {
       get: {
         operationId: 'getWorkflowNodeRunOutput',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['run:read-data'],
+        security: automationSecurity,
         parameters: [workspaceParameter, runParameter, nodeRunParameter],
         responses: {
           '200': jsonResponse(
@@ -409,7 +411,8 @@ export const workflowRunsOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/input': {
       get: {
         operationId: 'getWorkflowNodeRunInput',
-        security: [{ cookieSession: [] }],
+        'x-pertexo-api-token-scopes': ['run:read-data'],
+        security: automationSecurity,
         parameters: [workspaceParameter, runParameter, nodeRunParameter],
         responses: {
           '200': jsonResponse(

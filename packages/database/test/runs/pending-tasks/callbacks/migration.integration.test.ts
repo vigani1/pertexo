@@ -122,6 +122,7 @@ it('upgrades populated human tasks without changing their decisions or context',
       '0074_outbox_retention_and_row_signal.sql',
       '0075_schedule_failure_rests.sql',
       '0076_pending_task_limit.sql',
+      '0077_run_data_token_scope.sql',
     ]);
     const after = (
       await owner.query<Record<string, unknown>>(

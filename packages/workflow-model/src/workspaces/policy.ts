@@ -80,6 +80,8 @@ const capabilityRoles = Object.freeze({
   'workflow:update': WORKFLOW_EDITOR_ROLES,
   'workflow:publish': WORKFLOW_EDITOR_ROLES,
   'run:read': ROLES,
+  // Run data follows the run; apart from run:read only so a token can go without it.
+  'run:read-data': ROLES,
   'run:start': executionRoles,
   'run:cancel': operationalRoles,
   'run:replay': operationalRoles,

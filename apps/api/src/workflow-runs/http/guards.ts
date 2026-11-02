@@ -21,6 +21,15 @@ export const WorkflowRunReadGuard = capabilityGuard(
   },
 );
 
+export const WorkflowRunDataReadGuard = capabilityGuard(
+  WORKFLOW_RUN_AUTHORIZATION,
+  'run:read-data',
+  {
+    disclosure: 'not_found',
+    allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+  },
+);
+
 export const WorkflowRunStartGuard = capabilityGuard(
   WORKFLOW_RUN_AUTHORIZATION,
   'run:start',
