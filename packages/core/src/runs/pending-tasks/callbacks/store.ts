@@ -18,7 +18,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { wakeWorkflowRun } from '../../calls/wakeup.repository.js';
+import { wakeWorkflowRun } from '../../wakeups/advance.queries.js';
 import { wakeTaskAncestors } from '../responses/respond.repository.js';
 import { prepareCallbacks } from './prepare.repository.js';
 import { CallbackResponseError } from './errors.js';

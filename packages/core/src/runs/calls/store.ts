@@ -21,7 +21,10 @@ import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js
 import type { WorkflowCallStore } from './contract.js';
 import { acceptPendingCall } from './accept.repository.js';
 import { applyIncomingCallCancellation } from './controls.repository.js';
-import { wakeWorkflowRun, deferWorkflowRun } from './wakeup.repository.js';
+import {
+  wakeWorkflowRun,
+  deferWorkflowRun,
+} from '../wakeups/advance.queries.js';
 
 async function performOutgoingActions(
   client: PoolClient,
