@@ -120,7 +120,7 @@ class RouteResponseInterceptor implements NestInterceptor {
 }
 
 function nestPath(path: string): string {
-  return path.replaceAll(/\{([^}]+)\}/gu, ':$1');
+  return path.replaceAll(/\{([^{}]+)\}/gu, ':$1');
 }
 
 function routeGuards({

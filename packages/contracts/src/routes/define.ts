@@ -93,7 +93,7 @@ export type RouteDeclaration<
 
 export type AnyRoute = RouteDeclaration;
 
-const PATH_PARAMETER = /\{(?<name>[^}]+)\}/gu;
+const PATH_PARAMETER = /\{(?<name>[^{}]+)\}/gu;
 
 export function routePathParameters(path: string): readonly string[] {
   return [...path.matchAll(PATH_PARAMETER)].map(
