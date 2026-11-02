@@ -52,6 +52,7 @@ import {
 import {
   workflowDraftSaveRequestSchema,
   type WorkflowAuthoringRequest,
+  type ConditionalWorkflowResponse,
   type WorkflowResponse,
 } from '../types.js';
 import { singleRequestHeader } from '../../platform/http/request-headers.js';
@@ -183,7 +184,7 @@ export class WorkflowAuthoringController {
   public async draft(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
-    @Res({ passthrough: true }) response: WorkflowResponse,
+    @Res({ passthrough: true }) response: ConditionalWorkflowResponse,
   ) {
     const route = workflowParams(params);
     const context = requestContext(request, route.workspaceId);

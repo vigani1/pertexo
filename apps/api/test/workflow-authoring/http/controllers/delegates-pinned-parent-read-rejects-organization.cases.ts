@@ -186,7 +186,7 @@ export function registerDelegatesPinnedParentReadRejectsOrganization(): void {
 
   it('parses and delegates a draft read once, then maps the representation ETag', async () => {
     const { authoring: controller, getDraft } = makeController();
-    const response = { header: vi.fn() };
+    const response = { header: vi.fn(), status: vi.fn() };
     const result = await controller.draft(
       request(),
       { workspaceId, workflowId },
