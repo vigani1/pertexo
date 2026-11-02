@@ -160,6 +160,8 @@ function instanceFrom(request: HttpRequestLike): string | undefined {
   }
 
   const withoutQuery = url.replace(/[?#].*$/u, '');
+  // A webhook's address is its credential in secret-URL mode.
+  if (withoutQuery.startsWith('/hooks/')) return undefined;
   if (withoutQuery.startsWith('/')) {
     return withoutQuery;
   }
