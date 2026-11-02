@@ -39,7 +39,7 @@ const config = parseDatabaseConfig({
 async function fingerprint(workspaceId: string) {
   const read = async (table: string) =>
     (
-      await admin.query(
+      await admin.query<{ row: unknown }>(
         `select to_jsonb(t) row from app.${table} t where workspace_id=$1 order by 1::text`,
         [workspaceId],
       )

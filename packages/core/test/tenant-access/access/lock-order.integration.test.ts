@@ -151,44 +151,43 @@ const SHARE_LOCK_FLOWS: Readonly<Record<string, Prepare>> = {
 
 const ROUNDS = 25;
 
-async function everyoneFinishes(
+/** Each set up in a workspace of its own, all ready to start at once. */
+async function inWorkspacesOfTheirOwn(
   prepare: readonly Prepare[],
   actor: string,
-): Promise<void> {
-  const workspaces = await Promise.all(
-    prepare.map(() => workspaceOwnedBy(actor)),
+) {
+  return Promise.all(
+    prepare.map(async (setUp) => setUp(await workspaceOwnedBy(actor), actor)),
   );
-  const work = await Promise.all(
-    prepare.map((setUp, index) => setUp(workspaces[index] ?? '', actor)),
-  );
-  expect(await outcomes(work)).toEqual(work.map(() => 'done'));
 }
 
 describe('one person acting in many workspaces at once', () => {
-  it.each(Object.keys(COMMANDS))(
+  it.each(Object.entries(COMMANDS))(
     'runs %s beside itself and every other command without a deadlock',
-    async (name) => {
-      const command = COMMANDS[name] as Prepare;
+    async (_name, command) => {
       const actor = await person();
-      for (let round = 0; round < ROUNDS; round += 1)
-        await everyoneFinishes(
+      for (let round = 0; round < ROUNDS; round += 1) {
+        const work = await inWorkspacesOfTheirOwn(
           [command, command, command, ...Object.values(COMMANDS)],
           actor,
         );
+        expect(await outcomes(work)).toEqual(work.map(() => 'done'));
+      }
     },
     120_000,
   );
 
-  it.each(Object.keys(SHARE_LOCK_FLOWS))(
+  it.each(Object.entries(SHARE_LOCK_FLOWS))(
     'runs %s, which takes share locks, beside every command without a deadlock',
-    async (name) => {
-      const flow = SHARE_LOCK_FLOWS[name] as Prepare;
+    async (_name, flow) => {
       const actor = await person();
-      for (let round = 0; round < ROUNDS; round += 1)
-        await everyoneFinishes(
+      for (let round = 0; round < ROUNDS; round += 1) {
+        const work = await inWorkspacesOfTheirOwn(
           [flow, flow, flow, flow, ...Object.values(COMMANDS)],
           actor,
         );
+        expect(await outcomes(work)).toEqual(work.map(() => 'done'));
+      }
     },
     120_000,
   );
