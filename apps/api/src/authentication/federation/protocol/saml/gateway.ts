@@ -8,6 +8,7 @@ import {
 } from './configuration.js';
 import { decodeResponse, invalidSaml } from './xml.js';
 import {
+  libraryRefusalReason,
   verifyResponseSemantics,
   verifiedAssertionIdentity,
 } from './semantics.js';
@@ -39,7 +40,16 @@ export function createSamlProofGateway(): SamlProofGateway {
       const assertionId = verifyResponseSemantics(xml, expected);
       const verified = await configureSaml(provider, proof)
         .validatePostResponseAsync({ SAMLResponse: response })
-        .catch(() => invalidSaml('saml_signature_invalid'));
+        .catch(() =>
+          invalidSaml(
+            libraryRefusalReason(
+              xml,
+              expected,
+              assertionId,
+              provider.configuration,
+            ),
+          ),
+        );
       if (
         verified.loggedOut ||
         verified.profile === null ||

@@ -313,6 +313,50 @@ describe('why a SAML proof was refused', () => {
     ).resolves.toBe('saml_destination');
   });
 
+  it.each<[string, ResponseOptions, string]>([
+    ['an audience', { audience: 'https://else.test/sp' }, 'saml_audience'],
+    ['an expiry', { expiresAt: '2020-01-01T00:00:00.000Z' }, 'saml_time'],
+    [
+      'a recipient',
+      { recipient: 'https://else.test/cb' },
+      'saml_subject_confirmation',
+    ],
+  ])(
+    'names %s the signature library refuses first, not the signature',
+    async (_part, options, reason) => {
+      await expect(reasonFor(options)).resolves.toBe(reason);
+    },
+  );
+
+  it('still names a signature that is the only thing wrong', async () => {
+    const fixture = samlFixture(material);
+    const altered = Buffer.from(
+      Buffer.from(fixture.response(), 'base64')
+        .toString()
+        .replace('immutable-person', 'impostor-person'),
+    ).toString('base64');
+    await expect(
+      gateway
+        .verify(fixture.provider, fixture.proof, altered)
+        .catch((error: unknown) => federationFailureReason(error)),
+    ).resolves.toBe('saml_signature_invalid');
+  });
+
+  it('names a certificate that has run out', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(Date.now() + 2 * 86400000);
+      const fixture = samlFixture(material);
+      await expect(
+        gateway
+          .verify(fixture.provider, fixture.proof, fixture.response())
+          .catch((error: unknown) => federationFailureReason(error)),
+      ).resolves.toBe('saml_certificate');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('names a response whose assertion is the only signed part', async () => {
     await expect(reasonFor({ signResponse: false })).resolves.toBe(
       'saml_signature_count',
