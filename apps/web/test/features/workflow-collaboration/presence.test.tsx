@@ -291,13 +291,14 @@ it("ends this tab's lease when the page goes, in a request that outlives it", as
   const announced = fetch.mock.calls.find(
     ([, init]) => init?.method === 'PUT',
   )?.[0];
+  if (typeof announced !== 'string') throw new Error('No heartbeat was sent');
   act(() => {
     window.dispatchEvent(new Event('pagehide'));
   });
   await waitFor(() => {
     expect(leaves).toHaveLength(1);
   });
-  expect(leaves[0]?.url).toBe(String(announced));
+  expect(leaves[0]?.url).toBe(announced);
   expect(leaves[0]?.init?.keepalive).toBe(true);
   // A route change keeps the lease: only the page going ends it.
   rendered.unmount();
