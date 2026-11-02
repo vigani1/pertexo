@@ -1,57 +1,58 @@
 import { and, asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowStepSamples } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../runs/values/stored-execution.js';
 import {
   sampleMetadataProjection,
   sampleProjection,
 } from './records.repository.js';
-import type { Pool } from 'pg';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { rolesForCapability } from '@pertexo/workflow-model';
+import {
+  BROWSABLE_WORKSPACE_STATUSES,
+  hasCapability,
+} from '@pertexo/workflow-model';
+import type { AuthoringAccess } from '../workflows/access.js';
+import { WorkflowNotFoundError } from '../workflows/errors.js';
 import {
   sampleDatabaseTime,
   sampleDraft,
   sampleMetadata,
 } from './records.repository.js';
 import { mutateStepSample } from './commands.repository.js';
-import type { SampleTransaction, WorkflowStepSampleStore } from './contract.js';
+import type {
+  PutSampleInput,
+  RemoveSampleInput,
+  SampleNodeScope,
+  SampleRead,
+  SampleScope,
+  SampleTransaction,
+} from './contract.js';
 
-export function createWorkflowStepSampleStore(
-  pool: Pool,
-): WorkflowStepSampleStore {
+const SAMPLES_LISTED = 200;
+
+export type WorkflowStepSampleStore = ReturnType<
+  typeof createWorkflowStepSampleStore
+>;
+
+export function createWorkflowStepSampleStore(access: AuthoringAccess) {
   const transact: SampleTransaction = (input, { write, work }) =>
-    withTenantScopedClient(
-      pool,
-      { workspaceId: input.workspaceId, actorId: input.actorId },
-      async (client) => {
-        await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
-          actorId: input.actorId,
-          browsing: !write,
-          roles: rolesForCapability(
-            write ? 'workflow:update' : 'workflow:read',
-          ),
-          resource: {
-            workflowId: input.workflowId,
-            capability: write ? 'workflow:update' : 'workflow:read',
+    access.workflow(
+      input,
+      write
+        ? { capability: 'workflow:update' }
+        : {
+            capability: 'workflow:read',
+            statuses: BROWSABLE_WORKSPACE_STATUSES,
           },
-        });
-        if (!write)
-          await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
-            actorId: input.actorId,
-            browsing: true,
-            roles: rolesForCapability('run:read'),
-          });
+      async (client, _scope, role) => {
+        // A sample is a run's output, so reading one takes both rights.
+        if (!write && !hasCapability(role, 'run:read'))
+          throw new WorkflowNotFoundError('Workflow is not visible');
         return work(client);
       },
-      input.signal === undefined ? {} : { signal: input.signal },
     );
   return {
-    list: (input) =>
+    list: (input: SampleScope) =>
       transact(input, {
         write: false,
         work: async (client) => {
@@ -66,7 +67,7 @@ export function createWorkflowStepSampleStore(
               ),
             )
             .orderBy(asc(workflowStepSamples.nodeId))
-            .limit(200)
+            .limit(SAMPLES_LISTED)
             .catch(rethrowQueryFailure);
           const now = await sampleDatabaseTime(client);
           return {
@@ -77,7 +78,7 @@ export function createWorkflowStepSampleStore(
           };
         },
       }),
-    get: (input) =>
+    get: (input: SampleNodeScope): Promise<SampleRead> =>
       transact(input, {
         write: false,
         work: async (client) => {
@@ -108,7 +109,9 @@ export function createWorkflowStepSampleStore(
           };
         },
       }),
-    put: (input) => mutateStepSample(transact, input, input.source),
-    remove: (input) => mutateStepSample(transact, input, 'remove'),
+    put: (input: PutSampleInput) =>
+      mutateStepSample(transact, input, input.source),
+    remove: (input: RemoveSampleInput) =>
+      mutateStepSample(transact, input, 'remove'),
   };
 }

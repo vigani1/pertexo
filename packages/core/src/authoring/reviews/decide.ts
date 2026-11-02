@@ -18,7 +18,7 @@ import {
 } from '@pertexo/database/schema';
 import { publishWorkflowCandidate } from '../publication/publish.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import type { PublicationReviewStore, ReviewDependencies } from './contract.js';
+import type { DecideReviewInput, ReviewDependencies } from './contract.js';
 import { PublicationReviewError } from './errors.js';
 import {
   projectReview,
@@ -29,7 +29,7 @@ import {
 export async function decidePublicationReview(
   client: PoolClient,
   dependencies: ReviewDependencies,
-  input: Parameters<PublicationReviewStore['decide']>[0],
+  input: DecideReviewInput,
 ) {
   const identity = {
     workspaceId: input.workspaceId,

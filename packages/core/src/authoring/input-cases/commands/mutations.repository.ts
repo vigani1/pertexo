@@ -14,15 +14,21 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';
 
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
-import type { CaseTransaction, WorkflowInputCaseStore } from '../contract.js';
+import type {
+  CaseTransaction,
+  CreateInputCaseInput,
+  DeleteInputCaseInput,
+  UpdateInputCaseInput,
+  WorkflowInputCaseResult,
+} from '../contract.js';
 import { payload } from '../input.js';
 import { lockedCase, quota } from '../metadata.queries.js';
 import { mutate } from './receipt.repository.js';
 
 export async function createInputCase(
   transact: CaseTransaction,
-  input: Parameters<WorkflowInputCaseStore['createCase']>[0],
-): ReturnType<WorkflowInputCaseStore['createCase']> {
+  input: CreateInputCaseInput,
+): Promise<WorkflowInputCaseResult> {
   const name = input.name;
 
   const json = payload(input.input);
@@ -98,8 +104,8 @@ export async function createInputCase(
 
 export async function updateInputCase(
   transact: CaseTransaction,
-  input: Parameters<WorkflowInputCaseStore['updateCase']>[0],
-): ReturnType<WorkflowInputCaseStore['updateCase']> {
+  input: UpdateInputCaseInput,
+): Promise<WorkflowInputCaseResult> {
   const name = input.name;
   const json = payload(input.input);
   return mutate(transact, input, {
@@ -170,8 +176,8 @@ export async function updateInputCase(
 
 export async function deleteInputCase(
   transact: CaseTransaction,
-  input: Parameters<WorkflowInputCaseStore['deleteCase']>[0],
-): ReturnType<WorkflowInputCaseStore['deleteCase']> {
+  input: DeleteInputCaseInput,
+): Promise<WorkflowInputCaseResult> {
   return mutate(transact, input, {
     kind: 'delete',
     caseId: input.caseId,

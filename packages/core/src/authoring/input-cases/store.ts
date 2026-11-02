@@ -1,16 +1,18 @@
-import type { PoolClient } from 'pg';
-
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-
-import { rolesForCapability } from '@pertexo/workflow-model';
-import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-
-import type { Scope, WorkflowInputCaseStore } from './contract.js';
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import { createAuthoringAccess } from '../workflows/access.js';
+import type {
+  CaseTransaction,
+  CreateInputCaseInput,
+  DeleteInputCaseInput,
+  GetInputCaseInput,
+  ListInputCasesInput,
+  UpdateInputCaseInput,
+} from './contract.js';
 
 import {
   createInputCase,
@@ -19,58 +21,40 @@ import {
 } from './commands/mutations.repository.js';
 import { getInputCase, listInputCases } from './read.queries.js';
 
+export type WorkflowInputCaseStore = ReturnType<
+  typeof createWorkflowInputCaseStore
+>;
+
 /** Durable bounded authoring commands; no caller manages locks or quota counters. */
 export function createWorkflowInputCaseStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowInputCaseStore {
+) {
   const lease = acquireDatabasePool(config, options.runtime);
-  const pending = new Set<Promise<unknown>>();
-  let closed = false;
-  let closing: Promise<void> | undefined;
-  async function transact<T>(
-    input: Scope,
-    {
-      write,
-      work,
-    }: Readonly<{ write: boolean; work: (client: PoolClient) => Promise<T> }>,
-  ): Promise<T> {
-    if (closed) throw new Error('Run-input case database is closed');
-    const operation = withTenantScopedClient(
-      lease.pool,
-      { workspaceId: input.workspaceId, actorId: input.actorId },
-      async (client) => {
-        await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
-          actorId: input.actorId,
-          browsing: !write,
-          roles: rolesForCapability(
-            write ? 'workflow:update' : 'workflow:read',
-          ),
-          resource: {
-            workflowId: input.workflowId,
-            capability: write ? 'workflow:update' : 'workflow:read',
+  const access = createAuthoringAccess(lease.pool);
+  const transact: CaseTransaction = (input, { write, work }) =>
+    access.workflow(
+      input,
+      write
+        ? { capability: 'workflow:update' }
+        : {
+            capability: 'workflow:read',
+            statuses: BROWSABLE_WORKSPACE_STATUSES,
           },
-        });
-        return work(client);
-      },
-      input.signal === undefined ? {} : { signal: input.signal },
+      (client) => work(client),
     );
-    pending.add(operation);
-    try {
-      return await operation;
-    } finally {
-      pending.delete(operation);
-    }
-  }
-  return Object.freeze<WorkflowInputCaseStore>({
-    listCases: (input) => listInputCases(transact, input),
-    getCase: (input) => getInputCase(transact, input),
-    createCase: (input) => createInputCase(transact, input),
-    updateCase: (input) => updateInputCase(transact, input),
-    deleteCase: (input) => deleteInputCase(transact, input),
+  let closing: Promise<void> | undefined;
+  return Object.freeze({
+    listCases: (input: ListInputCasesInput) => listInputCases(transact, input),
+    getCase: (input: GetInputCaseInput) => getInputCase(transact, input),
+    createCase: (input: CreateInputCaseInput) =>
+      createInputCase(transact, input),
+    updateCase: (input: UpdateInputCaseInput) =>
+      updateInputCase(transact, input),
+    deleteCase: (input: DeleteInputCaseInput) =>
+      deleteInputCase(transact, input),
     close: () => {
-      closed = true;
-      closing ??= Promise.allSettled([...pending]).then(() => lease.close());
+      closing ??= access.drain().then(() => lease.close());
       return closing;
     },
   });

@@ -15,7 +15,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { PublicationReviewError } from './errors.js';
-import type { PublicationReviewStore, ReviewDependencies } from './contract.js';
+import type { RequestReviewInput, ReviewDependencies } from './contract.js';
 import {
   readReviewDraft,
   readReviewSummary,
@@ -27,7 +27,7 @@ import { reviewSource, review, reviewStateSql } from './eligibility.queries.js';
 export async function requestPublicationReview(
   client: PoolClient,
   dependencies: ReviewDependencies,
-  input: Parameters<PublicationReviewStore['request']>[0],
+  input: RequestReviewInput,
 ) {
   const identity = {
     workspaceId: input.workspaceId,

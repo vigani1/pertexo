@@ -69,16 +69,8 @@ export type SampleResult = Readonly<{
   replayed: boolean;
 }>;
 
-export interface WorkflowStepSampleStore {
-  list(
-    input: SampleScope,
-  ): Promise<{ items: readonly SampleMetadata[]; draftRevision: number }>;
-  get(input: SampleNodeScope): Promise<SampleRead>;
-  put(input: SampleCommand & { source: SampleSource }): Promise<SampleResult>;
-  remove(
-    input: SampleCommand & { expectedSampleId: string },
-  ): Promise<SampleResult>;
-}
+export type PutSampleInput = SampleCommand & { source: SampleSource };
+export type RemoveSampleInput = SampleCommand & { expectedSampleId: string };
 
 export type SampleTransaction = <T>(
   input: SampleScope,
