@@ -65,6 +65,7 @@ describe('workspace usage capacity use case', () => {
     expect(result).toEqual(usageCapacitySnapshot());
     expect(store.usageCapacity).toHaveBeenCalledExactlyOnceWith({
       workspaceId,
+      actorId,
       signal,
     });
   });

@@ -100,7 +100,12 @@ export function registerExcludesTestsListsAllHistory(): void {
       byStatus: statistics.window.byStatus,
     });
     expect(
-      (await runs.usageCapacity({ workspaceId: busyWorkspace })).execution,
+      (
+        await runs.usageCapacity({
+          workspaceId: busyWorkspace,
+          actorId: person,
+        })
+      ).execution,
     ).toMatchObject({ activeRuns: 2, queuedRuns: 2 });
   });
 

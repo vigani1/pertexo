@@ -7,14 +7,10 @@ import {
   type TrendRanking,
 } from './trends.queries.js';
 import { RUN_STATUS_VALUES } from '../../commands/acceptance/vocabulary.js';
-import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
-
-import { readFolderScope } from '../../../shared/facts.queries.js';
-
 import type { Pool } from 'pg';
 import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
-import { withTenantScopedReadClient } from '@pertexo/database/primitives';
 import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
+import { withRetainedRunRead } from '../../access.js';
 
 export type UsageTrendsInput = Readonly<{
   workspaceId: string;
@@ -37,26 +33,16 @@ export function readUsageTrends(
   pool: Pool,
   input: UsageTrendsInput,
 ): Promise<UsageTrendsResponse> {
-  return withTenantScopedReadClient(
+  return withRetainedRunRead(
     pool,
-    { workspaceId: input.workspaceId, actorId: input.actorId },
-    async (client) => {
-      const access = await readFolderScope(
-        client,
-        input,
-        undefined,
-        UNPURGED_WORKSPACE_STATUSES,
-      );
+    input,
+    async (transaction) => {
       const length = input.period === '30d' ? 30 : 90;
-      const [bounds] = await readTrendBounds(client, {
-        workspaceId: input.workspaceId,
-        days: length,
-      });
+      const [bounds] = await readTrendBounds(transaction, length);
       if (bounds === undefined) throw new WorkspaceAccessDeniedError();
-      const query = { workspaceId: input.workspaceId, bounds, scope: access };
-      const daily = await readTrendDays(client, query);
-      const rankings = await readTrendRankings(client, {
-        ...query,
+      const daily = await readTrendDays(transaction, bounds);
+      const rankings = await readTrendRankings(transaction, {
+        bounds,
         includeWorkflowNames: input.includeWorkflowNames,
       });
       const days = daily.map((row) => ({
@@ -109,9 +95,6 @@ export function readUsageTrends(
           .map(project),
       };
     },
-    {
-      statementTimeoutMillis: 2000,
-      ...(input.signal === undefined ? {} : { signal: input.signal }),
-    },
+    2_000,
   );
 }

@@ -1,7 +1,8 @@
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { readWorkspaceUsageCapacity } from '../../../../src/runs/queries/usage/capacity.queries.js';
+import { withTenantScopedReadClient } from '@pertexo/database/primitives';
+import { readCapacitySnapshot } from '../../../../src/runs/queries/usage/capacity.queries.js';
 import { WorkspaceRunAdmissionDeniedError } from '../../../../src/runs/commands/acceptance/errors.js';
 import { apiUrl, workspaceA } from '../../../runs/acceptance/fixtures.js';
 import {
@@ -64,9 +65,11 @@ export function registerAgreesOnEntitlementEffect(): void {
         try {
           expect(
             (
-              await readWorkspaceUsageCapacity(pool, {
-                workspaceId: workspaceA,
-              })
+              await withTenantScopedReadClient(
+                pool,
+                { workspaceId: workspaceA },
+                (client) => readCapacitySnapshot(client, workspaceA),
+              )
             ).execution.policy.state,
           ).toBe(state);
         } finally {

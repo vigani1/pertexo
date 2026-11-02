@@ -39,16 +39,17 @@ export function registerForwardsCapacityReadsCancellationWithoutChanging(): void
     );
     const signal = new AbortController().signal;
     await expect(
-      adapter.persistence.usageCapacity({ workspaceId, signal }),
+      adapter.persistence.usageCapacity({ workspaceId, actorId, signal }),
     ).resolves.toEqual(usageCapacitySnapshot());
     expect(usageCapacity).toHaveBeenCalledExactlyOnceWith({
       workspaceId,
+      actorId,
       signal,
     });
     const failure = new Error('unknown persistence failure');
     usageCapacity.mockRejectedValue(failure);
     await expect(
-      adapter.persistence.usageCapacity({ workspaceId }),
+      adapter.persistence.usageCapacity({ workspaceId, actorId }),
     ).rejects.toBe(failure);
   });
 
@@ -64,7 +65,7 @@ export function registerForwardsCapacityReadsCancellationWithoutChanging(): void
     );
     await expect(
       problemResult(
-        adapter.persistence.usageCapacity({ workspaceId }),
+        adapter.persistence.usageCapacity({ workspaceId, actorId }),
         runFailure,
       ),
     ).rejects.toMatchObject({ code: 'resource.not_found' });

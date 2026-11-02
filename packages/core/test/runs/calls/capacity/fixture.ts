@@ -1,7 +1,7 @@
 import { Pool, type PoolClient } from 'pg';
 
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { readWorkspaceUsageCapacity } from '../../../../src/runs/queries/usage/capacity.queries.js';
+import { readCapacitySnapshot } from '../../../../src/runs/queries/usage/capacity.queries.js';
 
 import {
   apiUrl,
@@ -75,7 +75,11 @@ export async function setStatus(
 }
 
 export const usage = async (workspaceId: string) =>
-  (await readWorkspaceUsageCapacity(application, { workspaceId })).execution;
+  (
+    await scoped(workspaceId, (client) =>
+      readCapacitySnapshot(client, workspaceId),
+    )
+  ).execution;
 
 export async function lowerLimit(
   workspaceId: string,

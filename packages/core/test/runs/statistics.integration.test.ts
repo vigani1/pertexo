@@ -23,6 +23,7 @@ import {
   beforeAllFixture1,
   beforeEachFixture2,
   afterAllFixture3,
+  person,
 } from './statistics/fixture.js';
 import { registerScalarReadInheritsBoundedStatement } from './statistics/scalar-read-inherits-bounded-statement.cases.js';
 import { registerChargesPendingAvailableDeletingArtifacts } from './statistics/charges-pending-available-deleting-artifacts.cases.js';
@@ -188,7 +189,12 @@ describe('run statistics query-plan budget', () => {
     expect(explainWork(plan.Plan).rejectedRowInstances).toBe(0);
     expect(explainWork(plan.Plan).summedNodeRowWork).toBeLessThanOrEqual(3);
     expect(
-      (await runs.usageCapacity({ workspaceId: busyWorkspace })).execution,
+      (
+        await runs.usageCapacity({
+          workspaceId: busyWorkspace,
+          actorId: person,
+        })
+      ).execution,
     ).toMatchObject({
       queuedRuns: 1,
       reservedActiveSlots: 1,
