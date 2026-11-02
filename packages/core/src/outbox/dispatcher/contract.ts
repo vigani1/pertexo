@@ -41,6 +41,8 @@ export interface OutboxDispatcherDatabase {
   observeBacklog(
     input: ObserveOutboxBacklogInput,
   ): Promise<OutboxBacklogSnapshot>;
+  /** Calls `onRows` when rows may be ready, until `signal` ends it. Never rejects. */
+  watchForRows(onRows: () => void, signal: AbortSignal): Promise<void>;
   checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }

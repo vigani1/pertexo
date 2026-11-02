@@ -65,6 +65,9 @@ export class OutboxDispatcher {
   private closePromise: Promise<void> | undefined;
   private loopPromise: Promise<void> | undefined;
   private wakeLoop: (() => void) | undefined;
+  private rowsSignalled = false;
+  private readonly rowWatch = new AbortController();
+  private rowWatchDone: Promise<void> | undefined;
 
   private readonly drainState: WorkerDrainState;
   private readonly metrics: TransportMetrics;
@@ -96,7 +99,7 @@ export class OutboxDispatcher {
 
     this.options = Object.freeze({
       operationTimeoutMillis: 5_000,
-      pollIntervalMillis: 250,
+      pollIntervalMillis: 1_000,
       ...options,
       jobNames: Object.freeze(jobNames),
     });
@@ -118,6 +121,11 @@ export class OutboxDispatcher {
     this.lifecycle = 'running';
     this.loopPromise = this.runLoop();
     void this.loopPromise.catch(() => undefined);
+    this.rowWatchDone = this.database.watchForRows(() => {
+      // One that arrives mid-claim still counts, so the next wait is skipped.
+      this.rowsSignalled = true;
+      this.wakeLoop?.();
+    }, this.rowWatch.signal);
   }
 
   public configureRuntimeHooks(hooks: OutboxDispatcherRuntimeHooks): void {
@@ -197,6 +205,7 @@ export class OutboxDispatcher {
   private async closeOwned(): Promise<void> {
     this.lifecycle = 'closed';
     this.capacitySamples.stop();
+    this.rowWatch.abort();
     this.wakeLoop?.();
     const drain = this.drainOwnedWork();
     let drainFailures: readonly unknown[];
@@ -222,6 +231,7 @@ export class OutboxDispatcher {
   private async drainOwnedWork(): Promise<readonly unknown[]> {
     const operations = [
       ...(this.loopPromise === undefined ? [] : [this.loopPromise]),
+      ...(this.rowWatchDone === undefined ? [] : [this.rowWatchDone]),
       ...this.activeDispatches,
     ];
     const operationResults = await Promise.allSettled(operations);
@@ -329,6 +339,7 @@ export class OutboxDispatcher {
       lastActivityAt: Number.NEGATIVE_INFINITY,
     };
     while (this.isRunning() && this.drainState.canAcceptWork()) {
+      this.rowsSignalled = false;
       try {
         const result = await this.dispatchOnce();
         const now = performance.now();
@@ -350,7 +361,7 @@ export class OutboxDispatcher {
       }
       if (!this.isRunning() || !this.drainState.canAcceptWork()) break;
       await new Promise<void>((resolve) => {
-        if (!this.isRunning()) {
+        if (!this.isRunning() || this.rowsSignalled) {
           resolve();
           return;
         }
