@@ -310,9 +310,10 @@ jobs:
         if: always()
         run: docker compose down -v --remove-orphans
 
-  # Four shards of the mocked suite and three of real-stack journeys run side by
-  # side on separate runners; one mocked job alone took 24 minutes and set how long
-  # every pull request waited.
+  # Two shards of the mocked suite and three of real-stack journeys run side by side
+  # on separate runners; one mocked job alone took 24 minutes and set how long every
+  # pull request waited. The mocked shards use all four of a runner's cores, because
+  # a job they don't need is one more that other runs queue behind.
   browser:
     name: browser (${{ matrix.suite }})
     needs: changes
@@ -328,16 +329,10 @@ jobs:
         include:
           - suite: mocked-1
             journeys: ''
-            shard: 1/4
+            shard: 1/2
           - suite: mocked-2
             journeys: ''
-            shard: 2/4
-          - suite: mocked-3
-            journeys: ''
-            shard: 3/4
-          - suite: mocked-4
-            journeys: ''
-            shard: 4/4
+            shard: 2/2
           - suite: live-1
             journeys: >-
               usage failure-routing error-workflows approvals variables
@@ -374,7 +369,7 @@ jobs:
         if: matrix.journeys == ''
         env:
           SHARD: ${{ matrix.shard }}
-        run: pnpm --filter @pertexo/web test:e2e --shard="$SHARD"
+        run: pnpm --filter @pertexo/web test:e2e --shard="$SHARD" --workers=4
       - name: Use the Docker Hub mirror
         if: matrix.journeys != ''
         uses: ./.github/actions/docker-mirror
