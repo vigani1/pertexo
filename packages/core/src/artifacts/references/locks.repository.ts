@@ -189,6 +189,8 @@ async function lockExecutionReferences(
                 .where(
                   and(
                     eq(consumer.workspaceId, transaction.workspaceId),
+                    // A prior output carries over within a workflow, never out of it.
+                    eq(consumer.workflowId, producer.workflowId),
                     previewRunId === undefined
                       ? sql`false`
                       : eq(consumer.id, previewRunId),
