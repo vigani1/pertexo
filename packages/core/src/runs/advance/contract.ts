@@ -1,4 +1,3 @@
-import type { CoordinatorDelivery } from './input.js';
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type {
   WorkflowCallOutcome,
@@ -9,7 +8,10 @@ import type { WorkflowExecutionProjection } from '../queries/execution/contract.
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { RunTransitionPlan } from './plan.js';
 
-export type CoordinatorAdvanceDelivery = Readonly<CoordinatorDelivery>;
+export type CoordinatorAdvanceDelivery = Readonly<{
+  outboxEventId: string;
+  payloadChecksum: string;
+}>;
 
 /** Everything the engine needs, read under the run lock. */
 export type RunAdvanceState = Readonly<{

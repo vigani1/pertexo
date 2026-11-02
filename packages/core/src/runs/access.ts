@@ -7,8 +7,10 @@ import {
 import type { Pool } from 'pg';
 import { WorkspaceAccessDeniedError } from '../shared/errors.js';
 import { readResourceTransaction } from '../shared/facts.queries.js';
-import { withWorkspaceAccess } from '../shared/workspace-access.js';
-import type { ResourceActor } from '../shared/contract.js';
+import {
+  withWorkspaceAccess,
+  type WorkspaceActor,
+} from '../shared/workspace-access.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { WorkflowRunNotFoundError } from './errors.js';
 import type { ResourceTransaction } from '../shared/contract.js';
@@ -60,9 +62,10 @@ export async function requireWorkflowAccess(
   if (found.length === 0) throw new WorkflowRunNotFoundError();
 }
 
+/** A denial reads as not found, so a command can't tell an outsider a run exists. */
 export async function withRunCommand<T>(
   pool: Pool,
-  input: ResourceActor & { signal?: AbortSignal | undefined },
+  input: WorkspaceActor,
   capability: WorkflowResourceCapability,
   command: (transaction: ResourceTransaction) => Promise<T>,
 ): Promise<T> {
@@ -87,7 +90,7 @@ export async function withRunCommand<T>(
  */
 export function withRetainedRunRead<T>(
   pool: Pool,
-  input: ResourceActor & Readonly<{ signal?: AbortSignal | undefined }>,
+  input: WorkspaceActor,
   read: (transaction: ResourceTransaction) => Promise<T>,
   statementTimeoutMillis?: number,
 ): Promise<T> {
@@ -107,7 +110,7 @@ export function withRetainedRunRead<T>(
 /** One visible owner gates all subsequent value reads in this same snapshot. */
 function withResourceOwnerRead<T>(
   pool: Pool,
-  input: ResourceActor & Readonly<{ signal?: AbortSignal | undefined }>,
+  input: WorkspaceActor,
   owner: Readonly<{ kind: 'workflow' | 'run'; id: string }>,
   read: (transaction: ResourceTransaction) => Promise<T>,
 ): Promise<T | undefined> {
@@ -134,8 +137,7 @@ function withResourceOwnerRead<T>(
 
 export function withResourceRunRead<T>(
   pool: Pool,
-  input: ResourceActor &
-    Readonly<{ runId: string; signal?: AbortSignal | undefined }>,
+  input: WorkspaceActor & Readonly<{ runId: string }>,
   read: (transaction: ResourceTransaction) => Promise<T>,
 ): Promise<T | undefined> {
   return withResourceOwnerRead(
@@ -148,8 +150,7 @@ export function withResourceRunRead<T>(
 
 export function withResourceWorkflowRead<T>(
   pool: Pool,
-  input: ResourceActor &
-    Readonly<{ workflowId: string; signal?: AbortSignal | undefined }>,
+  input: WorkspaceActor & Readonly<{ workflowId: string }>,
   read: (transaction: ResourceTransaction) => Promise<T>,
 ): Promise<T | undefined> {
   return withResourceOwnerRead(

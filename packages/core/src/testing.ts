@@ -252,8 +252,8 @@ export type { InitialCheckpointFactory } from './runs/commands/initial-checkpoin
 export type {
   CancelWorkflowRunInput,
   StartPublishedWorkflowRunInput,
-  WorkflowRunDatabase,
 } from './runs/commands/contract.js';
+export type { WorkflowRunDatabase } from './runs/store.js';
 export type {
   GetWorkflowRunInput,
   WorkflowNodeRunRecord as ApiWorkflowNodeRunRecord,
