@@ -217,7 +217,38 @@ async function subscribeWithBounds(
   }
 }
 
+type SubscribedChannel = {
+  readonly listeners: Set<BoundedNotificationQueue>;
+  readonly ready: Promise<void>;
+};
+type SharedSubscriber = {
+  readonly redis: Redis;
+  readonly channels: Map<string, SubscribedChannel>;
+  disconnected: boolean;
+};
+
+async function raceAbort(
+  work: Promise<void>,
+  signal: AbortSignal,
+): Promise<void> {
+  let onAbort: (() => void) | undefined;
+  try {
+    await Promise.race([
+      work,
+      new Promise<never>((_resolve, reject) => {
+        onAbort = () => {
+          reject(new RedisRunEventSubscribeError('aborted'));
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+      }),
+    ]);
+  } finally {
+    if (onAbort !== undefined) signal.removeEventListener('abort', onAbort);
+  }
+}
+
 export class RedisRunEventSource implements LiveRunEventSource {
+  private subscriber: SharedSubscriber | undefined;
   private readonly bufferCapacity: number;
   private readonly redisUrl: string;
   private readonly subscribeTimeoutMs: number;
@@ -283,72 +314,12 @@ export class RedisRunEventSource implements LiveRunEventSource {
   }): Promise<LiveRunEventSubscription> {
     const channel = runEventChannel(input.workspaceId, input.runId);
     const queue = new BoundedNotificationQueue(this.bufferCapacity);
-    const redis = this.createRedis();
     let closed = false;
-    let disconnectedAfterSubscribe = false;
-    let subscribed = false;
-
-    const onMessage = (receivedChannel: string, message: string): void => {
-      if (
-        receivedChannel !== channel ||
-        Buffer.byteLength(message, 'utf8') > MAX_LIVE_MESSAGE_BYTES
-      ) {
-        return;
-      }
-      try {
-        const notification = safeParseLiveRunEventNotification(
-          JSON.parse(message),
-        );
-        if (notification !== undefined) queue.push(notification);
-      } catch {
-        // Pub/sub is untrusted transport input. A malformed hint is discarded;
-        // later valid/reconnect hints still reconstruct from PostgreSQL.
-      }
-    };
-    const onClose = (): void => {
-      if (subscribed) disconnectedAfterSubscribe = true;
-    };
-    const onReady = (): void => {
-      if (!subscribed || !disconnectedAfterSubscribe || closed) return;
-      observeOperation(this.redisTelemetry, 'resubscribe', () =>
-        redis.subscribe(channel).then(() => undefined),
-      ).then(
-        () => {
-          if (!closed) {
-            disconnectedAfterSubscribe = false;
-            queue.push({ kind: 'resync' });
-          }
-        },
-        () => {
-          disconnectedAfterSubscribe = true;
-        },
-      );
-    };
-
-    redis.on('message', onMessage);
-    redis.on('close', () => {
-      notifyConnectionEvent(this.redisTelemetry, 'close');
-      onClose();
-    });
-    redis.on('end', () => {
-      notifyConnectionEvent(this.redisTelemetry, 'end');
-      onClose();
-    });
-    redis.on('ready', () => {
-      notifyConnectionEvent(this.redisTelemetry, 'ready');
-      onReady();
-    });
-    // ioredis requires an error listener to avoid process-level error events.
-    redis.on('error', () => {
-      notifyConnectionEvent(this.redisTelemetry, 'error');
-    });
-
     const performClose = (): Promise<void> => {
       if (closed) return Promise.resolve();
       closed = true;
       input.signal.removeEventListener('abort', onAbort);
-      redis.removeAllListeners();
-      redis.disconnect(false);
+      this.removeListener(channel, queue);
       queue.close();
       return Promise.resolve();
     };
@@ -358,25 +329,135 @@ export class RedisRunEventSource implements LiveRunEventSource {
       void close();
     };
     input.signal.addEventListener('abort', onAbort, { once: true });
-
     try {
       await observeOperation(this.redisTelemetry, 'subscribe', () =>
-        subscribeWithBounds(
-          redis,
-          channel,
-          this.subscribeTimeoutMs,
-          input.signal,
-        ),
+        this.addListener(channel, queue, input.signal),
       );
-      subscribed = true;
     } catch (error: unknown) {
       await close();
       throw error;
     }
-
     return {
       close,
       [Symbol.asyncIterator]: () => queue[Symbol.asyncIterator](),
     };
+  }
+
+  /** One connection however many pages are open: a client per stream cost 100 for 100. */
+  private connect(): SharedSubscriber {
+    if (this.subscriber !== undefined) return this.subscriber;
+    const redis = this.createRedis();
+    const shared: SharedSubscriber = {
+      redis,
+      channels: new Map(),
+      disconnected: false,
+    };
+    this.subscriber = shared;
+    redis.on('message', (channel: string, message: string) => {
+      const listeners = shared.channels.get(channel)?.listeners;
+      if (
+        listeners === undefined ||
+        Buffer.byteLength(message, 'utf8') > MAX_LIVE_MESSAGE_BYTES
+      )
+        return;
+      try {
+        const notification = safeParseLiveRunEventNotification(
+          JSON.parse(message),
+        );
+        if (notification !== undefined)
+          for (const queue of listeners) queue.push(notification);
+      } catch {
+        // Pub/sub is untrusted transport input. A malformed hint is discarded
+        // later valid/reconnect hints still reconstruct from PostgreSQL.
+      }
+    });
+    const onDisconnected = (event: 'close' | 'end'): void => {
+      notifyConnectionEvent(this.redisTelemetry, event);
+      shared.disconnected = true;
+    };
+    redis.on('close', () => {
+      onDisconnected('close');
+    });
+    redis.on('end', () => {
+      onDisconnected('end');
+    });
+    redis.on('ready', () => {
+      notifyConnectionEvent(this.redisTelemetry, 'ready');
+      this.resubscribe(shared);
+    });
+    // ioredis requires an error listener to avoid process-level error events.
+    redis.on('error', () => {
+      notifyConnectionEvent(this.redisTelemetry, 'error');
+    });
+    return shared;
+  }
+
+  private async addListener(
+    channel: string,
+    queue: BoundedNotificationQueue,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const shared = this.connect();
+    if (signal.aborted) throw new RedisRunEventSubscribeError('aborted');
+    let entry = shared.channels.get(channel);
+    if (entry === undefined) {
+      const created: SubscribedChannel = {
+        listeners: new Set(),
+        // Not this caller's signal: another page may be waiting on the same channel.
+        ready: subscribeWithBounds(
+          shared.redis,
+          channel,
+          this.subscribeTimeoutMs,
+          new AbortController().signal,
+        ),
+      };
+      created.ready.catch(() => {
+        if (shared.channels.get(channel) === created)
+          shared.channels.delete(channel);
+      });
+      shared.channels.set(channel, created);
+      entry = created;
+    }
+    entry.listeners.add(queue);
+    await raceAbort(entry.ready, signal);
+  }
+
+  private removeListener(
+    channel: string,
+    queue: BoundedNotificationQueue,
+  ): void {
+    const shared = this.subscriber;
+    if (shared === undefined) return;
+    const entry = shared.channels.get(channel);
+    entry?.listeners.delete(queue);
+    if (entry !== undefined && entry.listeners.size > 0) return;
+    shared.channels.delete(channel);
+    if (shared.channels.size > 0) {
+      // Failing leaves a channel nobody reads, which its handler ignores.
+      void shared.redis.unsubscribe(channel).catch(() => undefined);
+      return;
+    }
+    this.subscriber = undefined;
+    shared.redis.removeAllListeners();
+    shared.redis.disconnect(false);
+  }
+
+  /** After a lost connection, every open stream re-reads what it missed from PostgreSQL. */
+  private resubscribe(shared: SharedSubscriber): void {
+    if (!shared.disconnected || shared.channels.size === 0) return;
+    const channels = [...shared.channels.keys()];
+    observeOperation(this.redisTelemetry, 'resubscribe', () =>
+      shared.redis.subscribe(...channels).then(() => undefined),
+    ).then(
+      () => {
+        shared.disconnected = false;
+        for (const channel of channels)
+          for (const queue of shared.channels.get(channel)?.listeners ?? [])
+            queue.push({ kind: 'resync' });
+      },
+      () => {
+        shared.disconnected = true;
+      },
+    );
   }
 }
