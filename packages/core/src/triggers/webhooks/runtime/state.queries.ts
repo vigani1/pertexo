@@ -141,7 +141,9 @@ export async function lockEligibleEndpoint(
         ),
       ),
     )
-    .for('share', { of: [endpoint, workflow, workspace] });
+    // Workflow before endpoint, the order every trigger command takes them in. The other
+    // way round, a delivery between a command's two locks deadlocks with it.
+    .for('share', { of: [workflow, endpoint, workspace] });
   const row = eligible[0];
   // A publish that lands after verification leaves this delivery on the version it
   // verified against, as if it had arrived first. Only a removed step refuses it.
