@@ -13,7 +13,7 @@ vi.mock('../../../database/dist/database.js', () => ({
 }));
 
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import { reconcileUnknownOutcomeEvidence } from '../../src/outbox/reconciliation.repository.js';
+import { reconcileUnknownOutcomeEvidence } from '../../src/outbox/reconcile-unknown-outcome.js';
 import { createOperatorRunReplayStore } from '../../src/operator/replay/store.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 

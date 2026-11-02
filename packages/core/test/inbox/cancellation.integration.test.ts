@@ -8,7 +8,7 @@ import {
   parseDatabaseConfig,
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
-import { consumeInboxMessage } from '../../src/outbox/receipts.repository.js';
+import { consumeInboxMessage } from '../../src/outbox/consume-message.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

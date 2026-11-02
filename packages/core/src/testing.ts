@@ -52,7 +52,7 @@ export {
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
   type UnknownOutcomeReconciliationResult,
-} from './outbox/reconciliation.repository.js';
+} from './outbox/reconcile-unknown-outcome.js';
 export { createNotificationDestinationStore } from './notifications/destinations/store.js';
 export { FailureNotificationDestinationError } from './notifications/destinations/errors.js';
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/contract.js';
@@ -201,7 +201,7 @@ export type {
   PublishedWorkflow,
   ReadPublishedWorkflowForExecutionInput,
 } from './runs/queries/execution/contract.js';
-export { createOutboxDispatcherDatabase } from './outbox/dispatcher/repository.js';
+export { createOutboxDispatcherDatabase } from './outbox/dispatcher/store.js';
 export type {
   ClaimOutboxBatchInput,
   ClaimOutboxBatchResult,
@@ -216,12 +216,12 @@ export {
   consumeInboxMessage,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from './outbox/receipts.repository.js';
+} from './outbox/consume-message.js';
 export type {
   InboxConsumeOptions,
   InboxConsumeResult,
   InboxMessage,
-} from './outbox/receipts.repository.js';
+} from './outbox/consume-message.js';
 export { isValidStoredExecutionOutput } from './previews/output.js';
 export { PREVIEW_RETENTION_MAX_MS } from './previews/runs/acceptance/limits.js';
 export { PREVIEW_STATUS } from './previews/state.js';

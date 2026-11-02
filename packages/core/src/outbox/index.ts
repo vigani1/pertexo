@@ -1,5 +1,5 @@
 export { DELIVERY_CONSUMER } from './delivery-consumers.js';
-export { createOutboxDispatcherDatabase } from './dispatcher/repository.js';
+export { createOutboxDispatcherDatabase } from './dispatcher/store.js';
 export type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
@@ -7,11 +7,11 @@ export type {
 export {
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from './receipts.repository.js';
+} from './consume-message.js';
 export { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
-} from './reconciliation.repository.js';
-export type { UnknownOutcomeReconciliationResult } from './reconciliation.repository.js';
+} from './reconcile-unknown-outcome.js';
+export type { UnknownOutcomeReconciliationResult } from './reconcile-unknown-outcome.js';
