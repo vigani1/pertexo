@@ -15,6 +15,7 @@ import {
   workflowStepRunsQuerySchema,
 } from '@pertexo/contracts';
 
+import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import { SessionAuthenticationGuard } from '../../workspaces/index.js';
 import { optionalAuthorizedWorkspace } from '../../workspaces/request/authenticated-context.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
@@ -22,7 +23,10 @@ import {
   actorFrom,
   type WorkflowRunsRequest,
 } from '../http/request-context.js';
-import { WorkflowRunReadGuard } from '../http/guards.js';
+import {
+  WorkflowRunDataReadGuard,
+  WorkflowRunReadGuard,
+} from '../http/guards.js';
 import {
   GetWorkflowNodeRunInputUseCase,
   GetWorkflowNodeRunDiagnosticsUseCase,
@@ -71,7 +75,7 @@ export class WorkflowRunDataController {
   }
 
   @Get('runs/:runId/input')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, WorkflowRunDataReadGuard)
   public async getInput(
     @Req() request: WorkflowRunsRequest,
     @Param() params: unknown,
@@ -86,7 +90,7 @@ export class WorkflowRunDataController {
   }
 
   @Get('runs/:runId/node-runs/:nodeRunId/output')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, WorkflowRunDataReadGuard)
   public async getOutput(
     @Req() request: WorkflowRunsRequest,
     @Param() params: unknown,
@@ -102,7 +106,7 @@ export class WorkflowRunDataController {
   }
 
   @Get('runs/:runId/node-runs/:nodeRunId/input')
-  @UseGuards(SessionAuthenticationGuard, WorkflowRunReadGuard)
+  @UseGuards(AutomationAuthenticationGuard, WorkflowRunDataReadGuard)
   public async getNodeInput(
     @Req() request: WorkflowRunsRequest,
     @Param() params: unknown,

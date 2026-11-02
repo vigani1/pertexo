@@ -29,6 +29,7 @@ export const API_TOKEN_SCOPES = [
   'workflow:create',
   'workflow:publish',
   'run:read',
+  'run:read-data',
   'run:start',
   'run:cancel',
   'connection:read',

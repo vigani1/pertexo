@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0076_pending_task_limit.sql';
+export const EXPECTED_MIGRATION_HEAD = '0077_run_data_token_scope.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

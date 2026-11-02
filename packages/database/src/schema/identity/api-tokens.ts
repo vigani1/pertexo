@@ -58,7 +58,7 @@ export const apiTokens = appSchema.table(
     ),
     check(
       'api_tokens_scopes_valid',
-      sql`jsonb_typeof(scopes) = 'array' and jsonb_array_length(scopes) between 1 and 7 and scopes <@ ${sql.raw(`'${canonicalJson(API_TOKEN_SCOPES)}'`)}::jsonb`,
+      sql`jsonb_typeof(scopes) = 'array' and jsonb_array_length(scopes) between 1 and 8 and scopes <@ ${sql.raw(`'${canonicalJson(API_TOKEN_SCOPES)}'`)}::jsonb`,
     ),
     index('api_tokens_owner_page_idx').on(
       table.workspaceId,

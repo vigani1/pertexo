@@ -39,11 +39,12 @@ export type GetWorkflowNodeRunOutputInput = GetWorkflowRunInputInput &
 async function authorizeRunData(
   input: WorkflowRunApplicationInput,
   access: WorkspaceAuthorizationSource,
+  capability: 'run:read' | 'run:read-data' = 'run:read',
 ): Promise<void> {
   await authorizeWorkspaceOperation({
     actor: input.actor,
     routeWorkspaceId: input.routeWorkspaceId,
-    capability: 'run:read',
+    capability,
     access,
     disclosure: 'not_found',
     allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
@@ -63,7 +64,7 @@ export class GetWorkflowRunInputUseCase {
   public async execute(
     input: GetWorkflowRunInputInput,
   ): Promise<WorkflowRunInputResponse> {
-    await authorizeRunData(input, this.authorization);
+    await authorizeRunData(input, this.authorization, 'run:read-data');
     const data = await this.persistence.readInput({
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
@@ -87,7 +88,7 @@ export class GetWorkflowNodeRunOutputUseCase {
   public async execute(
     input: GetWorkflowNodeRunOutputInput,
   ): Promise<WorkflowNodeRunOutputResponse> {
-    await authorizeRunData(input, this.authorization);
+    await authorizeRunData(input, this.authorization, 'run:read-data');
     const data = await this.persistence.readNodeRunOutput({
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
@@ -112,7 +113,7 @@ export class GetWorkflowNodeRunInputUseCase {
   public async execute(
     input: GetWorkflowNodeRunOutputInput,
   ): Promise<WorkflowNodeRunInputResponse> {
-    await authorizeRunData(input, this.authorization);
+    await authorizeRunData(input, this.authorization, 'run:read-data');
     const data = await this.persistence.readNodeRunInput({
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,

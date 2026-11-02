@@ -8712,7 +8712,7 @@
           },
           "scopes": {
             "minItems": 1,
-            "maxItems": 7,
+            "maxItems": 8,
             "type": "array",
             "items": {
               "type": "string",
@@ -8721,6 +8721,7 @@
                 "workflow:create",
                 "workflow:publish",
                 "run:read",
+                "run:read-data",
                 "run:start",
                 "run:cancel",
                 "connection:read"
@@ -8768,7 +8769,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 7,
+                        "maxItems": 8,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -8777,6 +8778,7 @@
                             "workflow:create",
                             "workflow:publish",
                             "run:read",
+                            "run:read-data",
                             "run:start",
                             "run:cancel",
                             "connection:read"
@@ -8848,7 +8850,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 7,
+                        "maxItems": 8,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -8857,6 +8859,7 @@
                             "workflow:create",
                             "workflow:publish",
                             "run:read",
+                            "run:read-data",
                             "run:start",
                             "run:cancel",
                             "connection:read"
@@ -8953,7 +8956,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 7,
+                        "maxItems": 8,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -8962,6 +8965,7 @@
                             "workflow:create",
                             "workflow:publish",
                             "run:read",
+                            "run:read-data",
                             "run:start",
                             "run:cancel",
                             "connection:read"
@@ -9033,7 +9037,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 7,
+                        "maxItems": 8,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -9042,6 +9046,7 @@
                             "workflow:create",
                             "workflow:publish",
                             "run:read",
+                            "run:read-data",
                             "run:start",
                             "run:cancel",
                             "connection:read"
@@ -9118,7 +9123,7 @@
             "type": "boolean"
           },
           "availableScopes": {
-            "maxItems": 7,
+            "maxItems": 8,
             "type": "array",
             "items": {
               "type": "string",
@@ -9127,6 +9132,7 @@
                 "workflow:create",
                 "workflow:publish",
                 "run:read",
+                "run:read-data",
                 "run:start",
                 "run:cancel",
                 "connection:read"
@@ -9158,7 +9164,7 @@
                     },
                     "scopes": {
                       "minItems": 1,
-                      "maxItems": 7,
+                      "maxItems": 8,
                       "type": "array",
                       "items": {
                         "type": "string",
@@ -9167,6 +9173,7 @@
                           "workflow:create",
                           "workflow:publish",
                           "run:read",
+                          "run:read-data",
                           "run:start",
                           "run:cancel",
                           "connection:read"
@@ -9238,7 +9245,7 @@
                     },
                     "scopes": {
                       "minItems": 1,
-                      "maxItems": 7,
+                      "maxItems": 8,
                       "type": "array",
                       "items": {
                         "type": "string",
@@ -9247,6 +9254,7 @@
                           "workflow:create",
                           "workflow:publish",
                           "run:read",
+                          "run:read-data",
                           "run:start",
                           "run:cancel",
                           "connection:read"
@@ -9356,7 +9364,7 @@
                   },
                   "scopes": {
                     "minItems": 1,
-                    "maxItems": 7,
+                    "maxItems": 8,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -9365,6 +9373,7 @@
                         "workflow:create",
                         "workflow:publish",
                         "run:read",
+                        "run:read-data",
                         "run:start",
                         "run:cancel",
                         "connection:read"
@@ -9436,7 +9445,7 @@
                   },
                   "scopes": {
                     "minItems": 1,
-                    "maxItems": 7,
+                    "maxItems": 8,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -9445,6 +9454,7 @@
                         "workflow:create",
                         "workflow:publish",
                         "run:read",
+                        "run:read-data",
                         "run:start",
                         "run:cancel",
                         "connection:read"
@@ -11354,7 +11364,7 @@
                   ]
                 },
                 "capabilities": {
-                  "maxItems": 22,
+                  "maxItems": 23,
                   "type": "array",
                   "items": {
                     "type": "string",
@@ -11371,6 +11381,7 @@
                       "workflow:update",
                       "workflow:publish",
                       "run:read",
+                      "run:read-data",
                       "run:start",
                       "run:cancel",
                       "run:replay",

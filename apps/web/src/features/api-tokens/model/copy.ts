@@ -26,6 +26,11 @@ export const SCOPE_COPY: Readonly<
     label: 'Read runs',
     description: 'List runs and inspect their status.',
   },
+  'run:read-data': {
+    label: 'Read run data',
+    description:
+      "Read a run's input and what each step received and returned, which can be sensitive.",
+  },
   'run:start': {
     label: 'Start runs',
     description: 'Execute a published workflow with real effects.',
