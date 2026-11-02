@@ -41,14 +41,12 @@ async function setup() {
   });
   const domain = added.organization?.domains[0];
   const organization = added.organization;
-  if (
-    domain === undefined ||
-    organization === null ||
-    organization === undefined
-  )
+  if (domain === undefined || organization === null)
     throw new Error('Domain missing');
   return { scope, domain, organization };
 }
+
+type Query = (text: string, values?: unknown[]) => Promise<unknown>;
 
 const blockedOnLock = () =>
   expect
@@ -71,7 +69,7 @@ const blockedOnLock = () =>
 async function changeDuringRead<T>(
   table: string,
   read: () => Promise<T>,
-  change: (holder: Pool['query']) => Promise<unknown>,
+  change: (query: Query) => Promise<unknown>,
 ): Promise<T> {
   const holder = await holders.connect();
   try {
@@ -79,7 +77,7 @@ async function changeDuringRead<T>(
     await holder.query(`lock table ${table} in access exclusive mode`);
     const reading = read();
     await blockedOnLock();
-    await change(holder.query.bind(holder) as Pool['query']);
+    await change((text, values) => holder.query(text, values));
     await holder.query('commit');
     return await reading;
   } catch (error: unknown) {
