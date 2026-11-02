@@ -1,6 +1,7 @@
 import { describeStep } from '@/features/catalog/presentation.public';
 import { useId } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
+import { graphSteps } from '@/features/workflow-drafts/public';
 import { diffWorkflowGraphs } from '@/features/workflows/comparison.public';
 import { LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,14 +41,17 @@ export function ReviewCandidate({
         ))}
       </ul>
       <ol className="divide-y divide-border">
-        {graph.nodes.map((node) => (
-          <li key={node.id} className="py-3">
+        {graphSteps(graph).map(({ node, inside }) => (
+          <li key={node.id} className={inside === null ? 'py-3' : 'py-3 pl-6'}>
             <p className="font-medium [overflow-wrap:anywhere]">
               {node.label ?? describeStep(node.definition.key).name}
             </p>
             <p className="text-xs text-muted-foreground">
               {node.definition.key} · v{node.definition.version}
               {(node.disabled ?? false) ? ' · disabled' : ''}
+              {inside === null
+                ? ''
+                : ` · inside ${inside.label ?? describeStep(inside.definition.key).name}`}
             </p>
             <Disclosure summary="Setup and mappings" className="mt-2">
               <pre

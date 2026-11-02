@@ -34,20 +34,57 @@ export type WorkflowGraphDiff = Readonly<{
   linksRemoved: number;
 }>;
 
+type GraphEdge = WorkflowGraphContract['edges'][number];
+type GraphLevel = Readonly<{
+  nodes: readonly WorkflowNode[];
+  edges?: readonly GraphEdge[];
+}>;
+
+/** Every step in a graph, in order, with the For each it sits inside. */
+export function graphSteps(
+  graph: Pick<GraphLevel, 'nodes'>,
+): readonly Readonly<{ node: WorkflowNode; inside: WorkflowNode | null }>[] {
+  const steps: { node: WorkflowNode; inside: WorkflowNode | null }[] = [];
+  const visit = (
+    nodes: readonly WorkflowNode[],
+    inside: WorkflowNode | null,
+  ) => {
+    for (const node of nodes) {
+      steps.push({ node, inside });
+      if (node.structured !== undefined)
+        visit(node.structured.body.nodes, node);
+    }
+  };
+  visit(graph.nodes, null);
+  return steps;
+}
+
+function graphLinks(level: GraphLevel): readonly GraphEdge[] {
+  return [
+    ...(level.edges ?? []),
+    ...level.nodes.flatMap((node) =>
+      node.structured === undefined ? [] : graphLinks(node.structured.body),
+    ),
+  ];
+}
+
 /**
- * Steps added, removed and changed between two graphs, matched by node ID.
- * `ignoreLayout` drops position-only changes, which never alter a run.
+ * Steps added, removed and changed between two graphs, matched by node ID and
+ * including steps inside a For each. `ignoreLayout` drops position-only changes,
+ * which never alter a run.
  */
 export function diffWorkflowGraphs(
   before: WorkflowGraphContract,
   after: WorkflowGraphContract,
   options: Readonly<{ ignoreLayout?: boolean }> = {},
 ): WorkflowGraphDiff {
-  const beforeById = new Map(before.nodes.map((node) => [node.id, node]));
-  const afterIds = new Set(after.nodes.map((node) => node.id));
+  const beforeNodes = graphSteps(before).map(({ node }) => node);
+  const afterNodes = graphSteps(after).map(({ node }) => node);
+  const beforeById = new Map(beforeNodes.map((node) => [node.id, node]));
+  const afterIds = new Set(afterNodes.map((node) => node.id));
   const added: WorkflowNode[] = [];
   const changed: ChangedStep[] = [];
-  for (const node of after.nodes) {
+  for (const node of afterNodes) {
     const previous = beforeById.get(node.id);
     if (previous === undefined) {
       added.push(node);
@@ -59,18 +96,25 @@ export function diffWorkflowGraphs(
     if (aspects.length > 0)
       changed.push({ before: previous, after: node, aspects });
   }
-  const edgeKey = (edge: WorkflowGraphContract['edges'][number]) =>
+  const edgeKey = (edge: GraphEdge) =>
     `${edge.source.nodeId}\u0000${edge.source.port}\u0000${edge.target.nodeId}\u0000${edge.target.port}`;
-  const beforeEdges = new Set(before.edges.map(edgeKey));
-  const afterEdges = new Set(after.edges.map(edgeKey));
+  const beforeEdges = new Set(graphLinks(before).map(edgeKey));
+  const afterEdges = new Set(graphLinks(after).map(edgeKey));
   return {
     added,
     notes: diffNotes(before, after),
-    removed: before.nodes.filter((node) => !afterIds.has(node.id)),
+    removed: beforeNodes.filter((node) => !afterIds.has(node.id)),
     changed,
     linksAdded: [...afterEdges].filter((key) => !beforeEdges.has(key)).length,
     linksRemoved: [...beforeEdges].filter((key) => !afterEdges.has(key)).length,
   };
+}
+
+/** A For each's own setup. The steps inside it are compared as steps. */
+function ownSetup(node: WorkflowNode): unknown {
+  if (node.structured === undefined) return undefined;
+  const { nodes: _nodes, edges: _edges, ...body } = node.structured.body;
+  return { ...node.structured, body };
 }
 
 function changedAspects(
@@ -87,7 +131,7 @@ function changedAspects(
   if (
     !sameJson(before.config, after.config) ||
     !sameJson(before.retry, after.retry) ||
-    !sameJson(before.structured, after.structured)
+    !sameJson(ownSetup(before), ownSetup(after))
   )
     aspects.push('setup');
   if (!sameJson(before.inputMappings, after.inputMappings))
