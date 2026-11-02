@@ -13,7 +13,8 @@ import {
 import { canInviteWorkspaceRole } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type {
-  ChangeWorkspaceInvitationInput,
+  ResendWorkspaceInvitationInput,
+  RevokeWorkspaceInvitationInput,
   WorkspaceInvitationCommandResult,
 } from '../../contract.js';
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
@@ -29,18 +30,40 @@ import {
 } from './receipts.repository.js';
 import { invitationSelection, lockAuthorizedActor } from './state.queries.js';
 
-export async function changeInvitation(
+/** What a new delivery of the invitation needs; a revocation has none. */
+type NextDelivery = Readonly<{
+  tokenDigest: string;
+  sealed: ResendWorkspaceInvitationInput['sealedToken'];
+  deliveryAttemptId: string;
+  expiresAt: Date;
+}>;
+
+export function resendInvitation(
   pool: Pool,
-  raw: ChangeWorkspaceInvitationInput,
-  operation: 'resend' | 'revoke',
+  raw: ResendWorkspaceInvitationInput,
 ): Promise<WorkspaceInvitationCommandResult> {
-  const {
-    workspaceId,
-    actorUserId,
-    invitationId,
-    expectedRevision,
-    nextDelivery,
-  } = prepareInvitationChange(raw, operation);
+  return changeInvitation(pool, raw, 'resend', {
+    tokenDigest: raw.tokenDigest,
+    sealed: raw.sealedToken,
+    deliveryAttemptId: raw.deliveryAttemptId ?? generatePersistedId(),
+    expiresAt: raw.expiresAt,
+  });
+}
+
+export function revokeInvitation(
+  pool: Pool,
+  raw: RevokeWorkspaceInvitationInput,
+): Promise<WorkspaceInvitationCommandResult> {
+  return changeInvitation(pool, raw, 'revoke', undefined);
+}
+
+async function changeInvitation(
+  pool: Pool,
+  raw: RevokeWorkspaceInvitationInput,
+  operation: 'resend' | 'revoke',
+  nextDelivery: NextDelivery | undefined,
+): Promise<WorkspaceInvitationCommandResult> {
+  const { workspaceId, actorUserId, invitationId, expectedRevision } = raw;
   const result = await withTenantScopedClient(
     pool,
     { workspaceId, actorId: actorUserId },
@@ -173,43 +196,6 @@ export async function changeInvitation(
       'The invitation has expired',
     );
   return result;
-}
-
-function prepareInvitationChange(
-  raw: ChangeWorkspaceInvitationInput,
-  operation: 'resend' | 'revoke',
-) {
-  const workspaceId = raw.workspaceId;
-  const actorUserId = raw.actorUserId;
-  const invitationId = raw.invitationId;
-  const expectedRevision = raw.expectedRevision;
-  const nextDelivery =
-    operation === 'resend'
-      ? (() => {
-          if (
-            raw.tokenDigest === undefined ||
-            raw.sealedToken === undefined ||
-            raw.expiresAt === undefined
-          )
-            throw new TypeError(
-              'A resend needs a token, sealed delivery and expiry',
-            );
-          return {
-            tokenDigest: raw.tokenDigest,
-            sealed: raw.sealedToken,
-            deliveryAttemptId: raw.deliveryAttemptId ?? generatePersistedId(),
-            expiresAt: raw.expiresAt,
-          };
-        })()
-      : undefined;
-
-  return {
-    workspaceId,
-    actorUserId,
-    invitationId,
-    expectedRevision,
-    nextDelivery,
-  };
 }
 
 async function requireSettledDelivery(

@@ -165,14 +165,17 @@ export type CreateWorkspaceInvitationInput = WorkspaceInvitationCommandInput &
     sealedToken: SealedInvitationToken;
     expiresAt: Date;
   }>;
-export type ChangeWorkspaceInvitationInput = WorkspaceInvitationCommandInput &
+export type RevokeWorkspaceInvitationInput = WorkspaceInvitationCommandInput &
   Readonly<{
     invitationId: string;
     expectedRevision: number;
-    tokenDigest?: string;
-    sealedToken?: SealedInvitationToken;
+  }>;
+export type ResendWorkspaceInvitationInput = RevokeWorkspaceInvitationInput &
+  Readonly<{
+    tokenDigest: string;
+    sealedToken: SealedInvitationToken;
+    expiresAt: Date;
     deliveryAttemptId?: string;
-    expiresAt?: Date;
   }>;
 export type WorkspaceInvitationCommandResult = Readonly<{
   invitation: WorkspaceInvitationRecord;

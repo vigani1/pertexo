@@ -1,10 +1,14 @@
 import type { Pool } from 'pg';
 import type {
-  ChangeWorkspaceInvitationInput,
   CreateWorkspaceInvitationInput,
   ListWorkspaceInvitationsInput,
+  ResendWorkspaceInvitationInput,
+  RevokeWorkspaceInvitationInput,
 } from '../contract.js';
-import { changeInvitation } from './management/commands.repository.js';
+import {
+  resendInvitation,
+  revokeInvitation,
+} from './management/commands.repository.js';
 import { listWorkspaceInvitations } from './management/list.queries.js';
 import { createWorkspaceInvitation } from './management/create.repository.js';
 
@@ -17,9 +21,9 @@ export function createIdentityWorkspaceInvitationStore(pool: Pool) {
     ) => listWorkspaceInvitations(pool, workspaceId, actorId, input),
     createWorkspaceInvitation: (raw: CreateWorkspaceInvitationInput) =>
       createWorkspaceInvitation(pool, raw),
-    resendWorkspaceInvitation: (raw: ChangeWorkspaceInvitationInput) =>
-      changeInvitation(pool, raw, 'resend'),
-    revokeWorkspaceInvitation: (raw: ChangeWorkspaceInvitationInput) =>
-      changeInvitation(pool, raw, 'revoke'),
+    resendWorkspaceInvitation: (raw: ResendWorkspaceInvitationInput) =>
+      resendInvitation(pool, raw),
+    revokeWorkspaceInvitation: (raw: RevokeWorkspaceInvitationInput) =>
+      revokeInvitation(pool, raw),
   });
 }

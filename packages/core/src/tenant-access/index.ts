@@ -26,7 +26,6 @@ export {
 export type {
   AccessibleWorkspaceRecord,
   AccessibleWorkspacesPage,
-  ChangeWorkspaceInvitationInput,
   ChangeWorkspaceMemberRoleInput,
   CompleteInvitationAcceptanceInput,
   CreateWorkspaceInvitationInput,
@@ -35,6 +34,8 @@ export type {
   LeaveWorkspaceInput,
   RemoveWorkspaceMemberInput,
   RenameWorkspaceInput,
+  ResendWorkspaceInvitationInput,
+  RevokeWorkspaceInvitationInput,
   ResolveInvitationAcceptanceInput,
   SealedInvitationToken,
   TransferWorkspaceOwnershipInput,
