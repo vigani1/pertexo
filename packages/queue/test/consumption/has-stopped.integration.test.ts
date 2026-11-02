@@ -192,7 +192,7 @@ describeIntegration('whether a real queue consumer has stopped', () => {
   it('has stopped when the fetch loop ends while it is open', async () => {
     const loopDied = Promise.withResolvers<never>();
     const prototype = Worker.prototype as unknown as {
-      mainLoop(): Promise<void>;
+      mainLoop: (this: unknown) => Promise<void>;
     };
     const mainLoop = prototype.mainLoop;
     vi.spyOn(prototype, 'mainLoop').mockImplementation(function (
