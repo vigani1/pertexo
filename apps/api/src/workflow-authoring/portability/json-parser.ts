@@ -24,6 +24,13 @@ export function registerWorkflowPortabilityJsonParser(
     false,
     { bodyLimit: instance.initialConfig.bodyLimit ?? 1_048_576 },
     (request, body, done) => {
+      // A client that always sends the header and has nothing to say: the route
+      // decides what no body means, as it does when there's no header. Fastify's
+      // own parser would refuse it before the route could.
+      if (body.length === 0) {
+        done(null, undefined);
+        return;
+      }
       if (
         request.method !== 'POST' ||
         !importPath.test(request.routeOptions.url ?? '')
