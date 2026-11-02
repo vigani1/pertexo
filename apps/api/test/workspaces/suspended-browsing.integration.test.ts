@@ -15,6 +15,7 @@ import {
   expectShown,
   type Read,
 } from './suspended/reads.js';
+import { AUTHORING_WRITES } from './suspended/authoring-writes.js';
 import { WRITES, durableWorkspaceFacts } from './suspended/writes.js';
 import {
   apiHeaders,
@@ -70,6 +71,16 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             browser,
             payload: entry.query,
           });
+    }
+
+    function sendWrite(write: (typeof WRITES)[number]) {
+      return api.send(write.method, write.path(world), {
+        browser: owner,
+        headers: apiHeaders(write.headers?.(world)),
+        ...(write.payload === undefined
+          ? {}
+          : { payload: write.payload(world) }),
+      });
     }
 
     function publicForm(method: 'GET' | 'POST') {
@@ -151,15 +162,12 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           ).rows[0];
         });
 
-        for (const write of WRITES)
+        for (const write of [
+          ...WRITES,
+          ...AUTHORING_WRITES.filter((one) => !WRITES.includes(one)),
+        ])
           it(`refuses ${write.name}`, async () => {
-            const refused = await api.send(write.method, write.path(world), {
-              browser: owner,
-              headers: apiHeaders(write.headers?.(world)),
-              ...(write.payload === undefined
-                ? {}
-                : { payload: write.payload(world) }),
-            });
+            const refused = await sendWrite(write);
             if (write.forbidden === true)
               expectProblem(refused, 403, 'auth.forbidden');
             else expectProblem(refused, 404, 'resource.not_found');
@@ -195,6 +203,30 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           const { status, code } = entry.refusal ?? HIDDEN;
           expectProblem(await read(entry), status, code);
         });
+
+      describe('and something tries to change a workflow', () => {
+        let before: unknown;
+
+        beforeAll(async () => {
+          before = (
+            await api
+              .database()
+              .query(durableWorkspaceFacts, [world.workspaceId])
+          ).rows[0];
+        });
+
+        for (const write of AUTHORING_WRITES)
+          it(`refuses ${write.name}`, async () => {
+            expectProblem(await sendWrite(write), 404, 'resource.not_found');
+          });
+
+        it('has changed nothing after all of those', async () => {
+          const after = await api
+            .database()
+            .query(durableWorkspaceFacts, [world.workspaceId]);
+          expect(after.rows[0]).toEqual(before);
+        });
+      });
     });
 
     describe('while it is being purged', () => {

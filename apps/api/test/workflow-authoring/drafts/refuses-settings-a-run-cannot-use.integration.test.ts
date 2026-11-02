@@ -254,7 +254,12 @@ describeIntegration('settings a run could only refuse', () => {
   it('a disabled step never runs, so its settings stop nothing', async () => {
     const workflow = await newWorkflow();
     const tag = await workflow.save(
-      afterManual({ ...fetchOrders(300_000), disabled: true }),
+      afterManual(
+        step('fetch', 'http.request', 200, {
+          ...fetchOrders(300_000),
+          disabled: true,
+        }),
+      ),
     );
     await expect(workflow.validate()).resolves.toMatchObject({
       valid: true,

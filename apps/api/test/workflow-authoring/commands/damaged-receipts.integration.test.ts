@@ -52,8 +52,9 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       return send();
     }
 
-    const conflict = (reply: Reply) =>
+    function expectConflict(reply: Reply) {
       expectProblem(reply, 409, 'request.idempotency_conflict');
+    }
 
     async function newWorkflow() {
       const made = await api.send('POST', `${root}/workflows`, {
@@ -97,7 +98,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
     }, 60_000);
 
     it('creating a workflow', async () => {
-      conflict(
+      expectConflict(
         await retryOverDamage('workflow.create', {
           method: 'POST',
           url: `${root}/workflows`,
@@ -108,7 +109,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it('duplicating a workflow', async () => {
       const { id, tag } = await savedWorkflow();
-      conflict(
+      expectConflict(
         await retryOverDamage('workflow.duplicate', {
           method: 'POST',
           url: `${root}/workflows/${id}/duplicate`,
@@ -120,7 +121,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it('publishing a workflow', async () => {
       const { id, tag } = await savedWorkflow();
-      conflict(
+      expectConflict(
         await retryOverDamage('workflow.publish', {
           method: 'POST',
           url: `${root}/workflows/${id}/publish`,
@@ -131,7 +132,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it('renaming a workflow', async () => {
       const { id } = await newWorkflow();
-      conflict(
+      expectConflict(
         await retryOverDamage('workflow.rename', {
           method: 'POST',
           url: `${root}/workflows/${id}/rename`,
@@ -142,7 +143,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it('archiving a workflow', async () => {
       const { id } = await newWorkflow();
-      conflict(
+      expectConflict(
         await retryOverDamage('workflow.archive', {
           method: 'POST',
           url: `${root}/workflows/${id}/archive`,
@@ -153,7 +154,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it("changing a workflow's auto-pause", async () => {
       const { id } = await newWorkflow();
-      conflict(
+      expectConflict(
         await retryOverDamage('workflow.autopause.settings', {
           method: 'PUT',
           url: `${root}/workflows/${id}/auto-pause`,
@@ -168,7 +169,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
 
     it("resuming a workflow's triggers", async () => {
       const { id } = await newWorkflow();
-      conflict(
+      expectConflict(
         await retryOverDamage('workflow.autopause.resume', {
           method: 'POST',
           url: `${root}/workflows/${id}/resume`,
@@ -182,7 +183,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         browser: owner,
       });
       const { revision } = current.json<{ revision: number }>();
-      conflict(
+      expectConflict(
         await retryOverDamage('workspace.autopause.settings', {
           method: 'PUT',
           url: `${root}/auto-pause`,
@@ -192,7 +193,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
     });
 
     it('creating a folder', async () => {
-      conflict(
+      expectConflict(
         await retryOverDamage('folder.create', {
           method: 'POST',
           url: `${root}/workflow-folders`,
@@ -202,7 +203,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
     });
 
     it('creating a tag', async () => {
-      conflict(
+      expectConflict(
         await retryOverDamage('tag.create', {
           method: 'POST',
           url: `${root}/workflow-tags`,
@@ -242,7 +243,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         },
       );
       expect(preview.statusCode, preview.payload).toBe(200);
-      conflict(
+      expectConflict(
         await retryOverDamage('workflow.import', {
           method: 'POST',
           url: `${root}/workflows/import`,
@@ -268,7 +269,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         },
       });
       expect(target.statusCode, target.payload).toBe(201);
-      conflict(
+      expectConflict(
         await retryOverDamage('workspace.promotion.target', {
           method: 'PUT',
           url: `${root}/promotions/settings`,
