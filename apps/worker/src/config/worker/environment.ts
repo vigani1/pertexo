@@ -117,7 +117,7 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
       .int()
       .min(10)
       .max(60_000)
-      .default(250),
+      .default(1_000),
     TRIGGER_SCHEDULE_BATCH_SIZE: z.coerce
       .number()
       .int()
@@ -135,7 +135,7 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
       .int()
       .min(10)
       .max(60_000)
-      .default(250),
+      .default(1_000),
     // ADR 049: how late a `skip` schedule's occurrence may start and still run.
     TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS: z.coerce
       .number()

@@ -11,6 +11,8 @@ export type PollingRuntimeDefinition = Readonly<{
   name: string;
   /** Idle wait between cycles. */
   pollMillis: number;
+  /** For a cycle that can stop at a bound with work still ready. */
+  whenBusy?: Readonly<{ pollMillis: number; hasMore(): boolean }>;
   /** Checks the runtime's store once, before the first cycle. */
   checkStore?(signal: AbortSignal): Promise<void>;
   cycle(signal: AbortSignal): Promise<void>;
@@ -52,9 +54,12 @@ export function createPollingRuntime(
   };
   const run = async (settled: PromiseWithResolvers<undefined>) => {
     while (!signal.aborted) {
+      let waitMillis = definition.pollMillis;
       try {
         await cycle();
         latestCycleFailed = false;
+        if (definition.whenBusy?.hasMore())
+          waitMillis = definition.whenBusy.pollMillis;
       } catch (error: unknown) {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The signal can change while the cycle awaits I/O.
         if (signal.aborted) break;
@@ -64,7 +69,7 @@ export function createPollingRuntime(
         });
       }
       settled.resolve(undefined);
-      await waitForSupervisorDelay(definition.pollMillis, signal);
+      await waitForSupervisorDelay(waitMillis, signal);
     }
     settled.resolve(undefined);
   };
