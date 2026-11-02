@@ -12,7 +12,7 @@ import {
 import {
   runOrganizationCommand,
   type OrganizationScope,
-} from '../../commands.repository.js';
+} from '../../run-command.js';
 import { WorkflowTagConflictError } from '../../errors.js';
 
 import { TAG_DELETE_WORKFLOW_LIMIT, TAG_LIMIT } from '../../limits.js';

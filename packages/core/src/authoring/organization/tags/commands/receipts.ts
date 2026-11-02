@@ -5,7 +5,7 @@ import {
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 
-import { runOrganizationCommand } from '../../commands.repository.js';
+import { runOrganizationCommand } from '../../run-command.js';
 
 import {
   checkOrganizationReplay,

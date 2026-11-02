@@ -1,7 +1,7 @@
 import { reviewMoveAudience } from '../../sharing/audience.queries.js';
 
 import { lockWorkflowAuthoringAuthority } from '../../../workflows/authority.js';
-import { runOrganizationCommand } from '../../commands.repository.js';
+import { runOrganizationCommand } from '../../run-command.js';
 
 import {
   checkOrganizationReplay,

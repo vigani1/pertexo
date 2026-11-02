@@ -6,7 +6,7 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import type { OrganizationScope } from './commands.repository.js';
+import type { OrganizationScope } from './run-command.js';
 
 export type OrganizationRequestScope = OrganizationScope &
   Readonly<{ signal?: AbortSignal }>;

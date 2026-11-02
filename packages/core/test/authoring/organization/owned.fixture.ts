@@ -12,13 +12,13 @@ import {
 } from '@pertexo/database/testing';
 import { createIdentityWorkspaceStore } from '../../../src/tenant-access/store.js';
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
-import { createWorkflowTagDatabase } from '../../../src/authoring/organization/tags/commands.repository.js';
+import { createWorkflowTagDatabase } from '../../../src/authoring/organization/tags/store.js';
 import {
   createWorkflowFolderDatabase,
   createWorkflowOrganizationBatchDatabase,
 } from '../../../src/authoring/index.js';
-import { createWorkflowOrganizationReadDatabase } from '../../../src/authoring/organization/workflows.queries.js';
-import { createWorkflowFavoriteDatabase } from '../../../src/authoring/organization/favorites.repository.js';
+import { createWorkflowOrganizationReadDatabase } from '../../../src/authoring/organization/workflows/store.js';
+import { createWorkflowFavoriteDatabase } from '../../../src/authoring/organization/favorites/store.js';
 
 const roles = {
   DATABASE_ADMIN_URL: 'postgres',

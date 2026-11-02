@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { createWorkflowFolderDatabase } from '../../../src/authoring/organization/folders/commands.repository.js';
+import { createWorkflowFolderDatabase } from '../../../src/authoring/organization/folders/store.js';
 import { NoticeUnavailableError } from '../../../src/inbox/preferences/contract.js';
 import { adminDatabaseUrl } from '../../support/workflow-authoring/base.js';
 import {

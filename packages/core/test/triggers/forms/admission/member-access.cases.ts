@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { createWorkflowFolderDatabase } from '../../../../src/authoring/organization/folders/commands.repository.js';
+import { createWorkflowFolderDatabase } from '../../../../src/authoring/organization/folders/store.js';
 import { FormUnavailableError } from '../../../../src/triggers/forms/errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { admin } from '../../../lifecycle/calls/fixtures.js';

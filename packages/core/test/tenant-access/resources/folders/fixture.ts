@@ -13,8 +13,8 @@ import {
   workflowId,
 } from '../../../support/workflow-authoring.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createWorkflowFolderDatabase } from '../../../../src/authoring/organization/folders/commands.repository.js';
-import { createWorkflowOrganizationReadDatabase } from '../../../../src/authoring/organization/workflows.queries.js';
+import { createWorkflowFolderDatabase } from '../../../../src/authoring/organization/folders/store.js';
+import { createWorkflowOrganizationReadDatabase } from '../../../../src/authoring/organization/workflows/store.js';
 import { createWorkflowRunDatabase } from '../../../../src/runs/runs.repository.js';
 
 export const builder = randomUUID(),
