@@ -24,7 +24,7 @@ import { loadRunForAdvance } from './load/state.queries.js';
 import {
   assertCoordinatorNotAborted,
   withCoordinatorWriteClient,
-} from './transactions.repository.js';
+} from './coordinator-transaction.js';
 
 async function advance(
   pool: Pool,

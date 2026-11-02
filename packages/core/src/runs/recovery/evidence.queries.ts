@@ -27,10 +27,7 @@ import {
   WorkflowRunNotFoundError,
 } from '../errors.js';
 import { readWorkflowRunRecord } from '../commands/records.repository.js';
-import {
-  lockReplaySource,
-  lockReplayVersion,
-} from '../commands/replay.repository.js';
+import { lockReplaySource, lockReplayVersion } from '../commands/replay-run.js';
 import type {
   WorkflowRecoveryMetadata,
   WorkflowRecoveryPreparation,

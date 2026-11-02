@@ -8,7 +8,7 @@ import { readPendingTaskFacts } from '../../../src/runs/pending-tasks/lifecycle/
 import { describe, it, expect } from 'vitest';
 import { pendingTaskDetailSchema } from '@pertexo/contracts';
 import { WorkspaceAccessDeniedError } from '../../../src/shared/errors.js';
-import { createPendingTaskStore } from '../../../src/runs/pending-tasks/responses/repository.js';
+import { createPendingTaskStore } from '../../../src/runs/pending-tasks/responses/store.js';
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,

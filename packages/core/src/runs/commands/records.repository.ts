@@ -8,7 +8,7 @@ import {
   type WorkflowRunRow,
 } from '../queries/records.queries.js';
 import type { RunValues } from '@pertexo/node-sdk';
-import { runValuesInTransaction } from '../values/records.queries.js';
+import { runValuesInTransaction } from '../values/rows.queries.js';
 import { retainedTestRunSql } from '../data-policy.js';
 import type { WorkflowRecoverySummary } from '../recovery/contract.js';
 import { workflowRuns } from '@pertexo/database/schema';
@@ -18,7 +18,7 @@ import {
 } from '../queries/admission.queries.js';
 import { and, eq } from 'drizzle-orm';
 
-import { acceptWorkflowRun } from './acceptance.repository.js';
+import { acceptWorkflowRun } from './acceptance/accept.js';
 import type { AcceptWorkflowRunInput } from './acceptance/contract.js';
 import { WorkflowRunNotFoundError } from '../errors.js';
 

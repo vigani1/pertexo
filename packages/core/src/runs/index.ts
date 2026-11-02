@@ -1,4 +1,4 @@
-export { RunRequiresFormError } from './commands/forms.queries.js';
+export { RunRequiresFormError } from './commands/acceptance/forms.queries.js';
 export { ExecutionStateConflictError } from './state-errors.js';
 export { readRunEventsAfter } from './queries/history/events.repository.js';
 export {
@@ -12,7 +12,7 @@ export type {
   PublishedWorkflow,
 } from './queries/execution/contract.js';
 export type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
-export { createWorkflowRunDatabase } from './runs.repository.js';
+export { createWorkflowRunDatabase } from './store.js';
 export {
   WorkflowPublishedVersionConflictError,
   WorkflowRunNotExecutableError,
@@ -22,7 +22,7 @@ export type { WorkflowRunDatabase } from './commands/contract.js';
 export type {
   WorkspaceUsageCapacityInput,
   WorkspaceUsageCapacityRecord,
-} from './queries/usage-capacity.queries.js';
+} from './queries/usage/capacity.queries.js';
 export type {
   WorkflowRunData,
   WorkflowRunFailedStep,
@@ -51,9 +51,9 @@ export { createDueNodeWakeupScanner } from './wakeups/due-node-scanner.repositor
 export type { DueNodeWakeupScanner } from './wakeups/contract.js';
 export { createPublishedWorkflowReader } from './queries/execution/published.queries.js';
 
-export { createRunFailureStore } from './advance/run-failure-store.js';
-export type { RunFailureStore } from './advance/run-failure-store.js';
-export { createStalledWorkStore } from './stalled/repository.js';
+export { createRunFailureStore } from './advance/failure-store.js';
+export type { RunFailureStore } from './advance/failure-store.js';
+export { createStalledWorkStore } from './stalled/store.js';
 export type {
   FailedOutboxEvent,
   StalledWorkFailure,
@@ -63,7 +63,7 @@ export type {
   StuckWork,
 } from './stalled/contract.js';
 
-export { createWorkflowCallStore } from './calls/repository.js';
+export { createWorkflowCallStore } from './calls/store.js';
 export { WorkflowCallRefusedError } from './calls/errors.js';
 export type { WorkflowCallStore } from './calls/contract.js';
 export type {
@@ -79,21 +79,21 @@ export type {
   RecoverPublishedWorkflowRunInput,
 } from './commands/contract.js';
 
-export { createErrorWorkflowStore } from './error-workflows/repository.js';
+export { createErrorWorkflowStore } from './error-workflows/store.js';
 export {
   ErrorWorkflowDeliveryMismatchError,
   ErrorWorkflowVersionUnavailableError,
 } from './error-workflows/errors.js';
 export { type ErrorWorkflowStore } from './error-workflows/contract.js';
 
-export { createPendingTaskStore } from './pending-tasks/responses/repository.js';
+export { createPendingTaskStore } from './pending-tasks/responses/store.js';
 export {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
 } from './pending-tasks/responses/errors.js';
 export { type PendingTaskStore } from './pending-tasks/responses/contract.js';
 
-export { RunVariableSnapshotUnavailableError } from './commands/variables.repository.js';
+export { RunVariableSnapshotUnavailableError } from './commands/acceptance/variables.queries.js';
 
 export { createWorkflowExecutionReader } from './queries/execution/source.queries.js';
 export type {
@@ -101,14 +101,14 @@ export type {
   WorkflowExecutionProjection,
 } from './queries/execution/contract.js';
 
-export type { UsageTrendsInput } from './queries/usage-trends.queries.js';
+export type { UsageTrendsInput } from './queries/usage/trends.js';
 
-export { createRunValuesStore } from './values/repository.js';
-export { RunValuesLimitError } from './values/records.js';
-export type { RunValuesStore } from './values/records.js';
+export { createRunValuesStore } from './values/store.js';
+export { RunValuesLimitError } from './values/contract.js';
+export type { RunValuesStore } from './values/contract.js';
 export { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
 
-export { createCallbackStore } from './pending-tasks/callbacks/repository.js';
+export { createCallbackStore } from './pending-tasks/callbacks/store.js';
 export {
   CallbackCapacityError,
   CallbackResponseError,

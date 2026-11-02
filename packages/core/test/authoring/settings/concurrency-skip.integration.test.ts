@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
-import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
 import { WorkflowAlreadyRunningError } from '../../../src/runs/commands/acceptance/errors.js';
 import {
   apiDatabase,

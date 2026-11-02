@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { createWorkflowCallStore } from '../../../../src/runs/calls/repository.js';
+import { createWorkflowCallStore } from '../../../../src/runs/calls/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { admin } from '../../../lifecycle/calls/fixtures.js';

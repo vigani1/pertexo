@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type { PublishedWorkflow } from '../../runs/queries/execution/contract.js';
-import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../runs/commands/acceptance/accept.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import type { AcceptVerifiedWebhookDeliveryInput } from './runtime/contract.js';
 import { coordinateEvent } from '../coordination/accept.repository.js';

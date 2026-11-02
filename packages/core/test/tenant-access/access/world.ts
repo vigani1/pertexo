@@ -9,7 +9,7 @@ import {
 import { Pool } from 'pg';
 import type { DatabaseError } from 'pg';
 
-import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
+import { createWorkflowRunDatabase } from '../../../src/runs/store.js';
 import { createApiTokenStore } from '../../../src/tenant-access/index.js';
 import { createIdentityWorkspaceStore } from '../../../src/tenant-access/store.js';
 

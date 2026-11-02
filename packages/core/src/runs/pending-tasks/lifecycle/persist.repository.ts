@@ -19,7 +19,7 @@ import {
   hasPendingTaskCapacity,
 } from './allowance.queries.js';
 import { bindCallbackTask } from '../callbacks/bind.repository.js';
-import { callbackScopeHash } from '../callbacks/identity.repository.js';
+import { callbackScopeHash } from '../callbacks/scope-hash.js';
 import type { PoolClient } from 'pg';
 import type { RunTransitionPlan } from '../../advance/plan.js';
 import { terminalRunStatuses } from '../../advance/plan.js';

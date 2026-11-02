@@ -18,7 +18,7 @@ import {
   type EventCoordinationReason,
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../runs/commands/acceptance/accept.js';
 import {
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,

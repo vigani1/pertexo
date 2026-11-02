@@ -2,7 +2,7 @@ import { count, eq } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance/accept.js';
 import { IdempotencyRequestConflictError } from '../../../../src/runs/commands/acceptance/errors.js';
 import {
   idempotencyRecords,

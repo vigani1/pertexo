@@ -3,7 +3,7 @@ import type { ReplayInput } from './input.js';
 import type { CancelInput } from './input.js';
 import type { RecoveryPreviewInput } from './input.js';
 import type { RecoveryInput } from './input.js';
-import type { UsageTrendsInput } from '../queries/usage-trends.queries.js';
+import type { UsageTrendsInput } from '../queries/usage/trends.js';
 import type { UsageTrendsResponse } from '@pertexo/contracts';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
@@ -22,7 +22,7 @@ import type {
 import type {
   GetWorkflowRunInput,
   WorkflowRunReadModel,
-} from '../queries/read.queries.js';
+} from '../queries/run.queries.js';
 import type {
   ReadWorkflowNodeRunOutputInput,
   ReadWorkflowRunInputInput,
@@ -35,7 +35,7 @@ import type {
 import type {
   WorkspaceUsageCapacityInput,
   WorkspaceUsageCapacityRecord,
-} from '../queries/usage-capacity.queries.js';
+} from '../queries/usage/capacity.queries.js';
 
 export type WorkflowRecoveryPreviewInput = Readonly<RecoveryPreviewInput>;
 

@@ -16,7 +16,7 @@ import {
   lockCapabilityExecution,
   assertCapabilityExecution,
 } from '../../attempts/dispatch/fence.queries.js';
-import { RunValuesLimitError, type RunValuesStore } from './records.js';
+import { RunValuesLimitError, type RunValuesStore } from './contract.js';
 
 export function createRunValuesStore(
   config: DatabaseConfig,

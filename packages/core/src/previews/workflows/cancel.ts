@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { databaseSchema } from '@pertexo/database/schema';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
 import type { Role } from '@pertexo/workflow-model';
-import { cancelInTransaction } from '../../runs/commands/cancel-active.repository.js';
+import { cancelInTransaction } from '../../runs/commands/cancel-run.js';
 import { requireTestStopAuthority } from './access.js';
 import type { WorkflowTestRunInput } from './contract.js';
 import { readTestDetail } from './records.queries.js';

@@ -14,7 +14,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 
-import { acceptWorkflowRun } from '../../../runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../runs/commands/acceptance/accept.js';
 import { WorkspaceRunQuotaExceededError } from '../../../runs/commands/acceptance/errors.js';
 import { scheduleOccurrenceDisposition } from '../misfire.js';
 import {

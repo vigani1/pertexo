@@ -6,7 +6,7 @@ import {
   pendingRunTasks,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { callbackScopeHash } from './identity.repository.js';
+import { callbackScopeHash } from './scope-hash.js';
 import {
   readPendingTaskAllowance,
   hasPendingTaskCapacity,

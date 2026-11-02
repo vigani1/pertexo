@@ -19,7 +19,7 @@ import { z } from 'zod';
 
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 import { consumeInboxMessage } from '../../outbox/receipts.repository.js';
-import { acceptWorkflowRun } from '../../runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../runs/commands/acceptance/accept.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { findPublishedWorkflow } from '../../runs/queries/execution/published.queries.js';
 import {

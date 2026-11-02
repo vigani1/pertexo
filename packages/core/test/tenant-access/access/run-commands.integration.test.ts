@@ -4,7 +4,7 @@ import { Client, Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { WorkflowRunNotFoundError } from '../../../src/runs/errors.js';
-import { withRunCommand } from '../../../src/runs/queries/access.queries.js';
+import { withRunCommand } from '../../../src/runs/access.js';
 import { waitForApplicationLock } from '../../support/postgres/lock-coordination.js';
 import {
   admin,

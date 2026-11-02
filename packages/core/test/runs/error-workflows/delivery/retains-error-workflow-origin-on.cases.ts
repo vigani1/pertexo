@@ -1,4 +1,4 @@
-import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../../src/runs/commands/acceptance/accept.js';
 import { withWorkspaceTransaction } from '@pertexo/database/primitives';
 
 import { expect, it } from 'vitest';

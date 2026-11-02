@@ -3,8 +3,8 @@ import { workflowRunValues } from '@pertexo/database/schema';
 import { expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { ExecutionCapabilityExpiredError } from '../../../src/attempts/errors.js';
-import { RunValuesLimitError } from '../../../src/runs/values/records.js';
-import { copyRecoveryRunValues } from '../../../src/runs/values/records.queries.js';
+import { RunValuesLimitError } from '../../../src/runs/values/contract.js';
+import { copyRecoveryRunValues } from '../../../src/runs/values/rows.queries.js';
 import { readWorkflowRunListPage } from '../../../src/runs/queries/history/list.queries.js';
 import {
   withWorkspaceTransaction,

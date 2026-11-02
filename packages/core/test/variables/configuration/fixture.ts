@@ -7,7 +7,7 @@ import { createWorkspaceVariablesStore } from '../../../src/variables/index.js';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { withWorkspaceTransaction } from '@pertexo/database/primitives';
-import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
 
 import { admin, createFamily } from '../../lifecycle/calls/fixtures.js';
 import { apiUrl, userId } from '../../lifecycle/retention.support.js';

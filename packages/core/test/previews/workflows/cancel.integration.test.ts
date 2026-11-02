@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
 import { WorkflowRunNotFoundError } from '../../../src/runs/errors.js';
-import { createWorkflowRunDatabase } from '../../../src/runs/runs.repository.js';
+import { createWorkflowRunDatabase } from '../../../src/runs/store.js';
 import {
   actorId,
   apiUrl,

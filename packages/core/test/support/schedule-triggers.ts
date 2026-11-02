@@ -7,7 +7,7 @@ import {
   parseDatabaseConfig,
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
-import { acceptWorkflowRun } from '../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../src/runs/commands/acceptance/accept.js';
 import { createIdentityWorkspaceStore } from '../../src/tenant-access/store.js';
 import {
   migrateDatabase,

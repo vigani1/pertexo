@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { count, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
-import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
+import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
 import {
   IDEMPOTENCY_STATUS_VALUES,
   RUN_STATUS_VALUES,

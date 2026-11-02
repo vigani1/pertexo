@@ -1,5 +1,5 @@
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
-import { entitlementPolicyState } from './entitlement-effect.js';
+import { entitlementPolicyState } from '../entitlement-effect.js';
 import {
   DEFAULT_ARTIFACT_BYTE_LIMIT,
   workspaceArtifactCapacity,
@@ -12,7 +12,7 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { withWorkspaceReadTransaction } from '@pertexo/database/primitives';
-import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
 
 interface Input {
   workspaceId: string;

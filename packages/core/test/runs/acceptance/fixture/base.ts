@@ -12,7 +12,7 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 
-import { lockRunAcceptanceCommand } from '../../../../src/runs/commands/lock-acceptance.repository.js';
+import { lockRunAcceptanceCommand } from '../../../../src/runs/commands/acceptance/lock.queries.js';
 import {
   idempotencyRecords,
   outboxEvents,

@@ -15,7 +15,7 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
-} from '../../runs/commands/acceptance.repository.js';
+} from '../../runs/commands/acceptance/accept.js';
 import { WorkflowTestError } from './errors.js';
 import { ACTIVE_TEST_RUN_STATUSES } from './rules.js';
 import { testRunSql } from '../../runs/data-policy.js';

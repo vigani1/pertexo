@@ -1,20 +1,20 @@
-import { emptyRunCounts } from './counts.js';
+import { emptyRunCounts } from '../counts.js';
 import {
   readTrendBounds,
   readTrendDays,
   readTrendRankings,
   type TrendDay,
   type TrendRanking,
-} from './trends/records.queries.js';
-import { RUN_STATUS_VALUES } from '../commands/acceptance/vocabulary.js';
+} from './trends.queries.js';
+import { RUN_STATUS_VALUES } from '../../commands/acceptance/vocabulary.js';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 
-import { readFolderScope } from '../../shared/facts.queries.js';
+import { readFolderScope } from '../../../shared/facts.queries.js';
 
 import type { Pool } from 'pg';
 import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
 import { withTenantScopedReadClient } from '@pertexo/database/primitives';
-import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
 
 export type UsageTrendsInput = Readonly<{
   workspaceId: string;

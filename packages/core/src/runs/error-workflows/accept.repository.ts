@@ -23,7 +23,7 @@ import {
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
-} from '../commands/acceptance.repository.js';
+} from '../commands/acceptance/accept.js';
 import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,

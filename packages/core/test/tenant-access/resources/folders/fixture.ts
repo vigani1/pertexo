@@ -15,7 +15,7 @@ import {
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createWorkflowFolderStore } from '../../../../src/authoring/organization/folders/store.js';
 import { createWorkflowOrganizationReadStore } from '../../../../src/authoring/organization/workflows/store.js';
-import { createWorkflowRunDatabase } from '../../../../src/runs/runs.repository.js';
+import { createWorkflowRunDatabase } from '../../../../src/runs/store.js';
 
 export const builder = randomUUID(),
   viewer = randomUUID();

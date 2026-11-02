@@ -1,14 +1,14 @@
 import { lockActorArtifactReferences } from '../artifacts/references/locks.repository.js';
-import { withResourceRunRead } from './queries/access.queries.js';
+import { withResourceRunRead } from './access.js';
 import {
   withRunCommand,
   requireRunAccess,
   requireWorkflowAccess,
-} from './queries/access.queries.js';
+} from './access.js';
 import {
   readUsageTrends,
   type UsageTrendsInput,
-} from './queries/usage-trends.queries.js';
+} from './queries/usage/trends.js';
 import { acquireDatabasePool } from '@pertexo/database/platform';
 import type {
   DatabaseRuntime,
@@ -18,12 +18,12 @@ import {
   recoverWorkflowRunInTransaction,
   allocateRecoveryIdentity,
 } from './recovery/accept.repository.js';
-import { readRecoveryEvidence } from './recovery/records.queries.js';
+import { readRecoveryEvidence } from './recovery/evidence.queries.js';
 import {
   WorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,
 } from './errors.js';
-import { replayWorkflowRunInTransaction } from './commands/replay.repository.js';
+import { replayWorkflowRunInTransaction } from './commands/replay-run.js';
 import {
   readWorkflowRunListPage,
   type ListWorkflowRunsDatabaseInput,
@@ -37,7 +37,7 @@ import {
 import {
   readWorkflowRun,
   type GetWorkflowRunInput,
-} from './queries/read.queries.js';
+} from './queries/run.queries.js';
 import {
   readWorkflowNodeRunInput,
   readWorkflowNodeRunDiagnostics,
@@ -54,7 +54,7 @@ import {
 import {
   readWorkspaceUsageCapacity,
   type WorkspaceUsageCapacityInput,
-} from './queries/usage-capacity.queries.js';
+} from './queries/usage/capacity.queries.js';
 import type {
   WorkflowRecoveryPreviewInput,
   RecoverPublishedWorkflowRunInput,
@@ -63,8 +63,8 @@ import type {
   CancelWorkflowRunInput,
   WorkflowRunDatabase,
 } from './commands/contract.js';
-import { startInTransaction } from './commands/start.repository.js';
-import { cancelInTransaction } from './commands/cancel-active.repository.js';
+import { startInTransaction } from './commands/start-run.js';
+import { cancelInTransaction } from './commands/cancel-run.js';
 export function createWorkflowRunDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

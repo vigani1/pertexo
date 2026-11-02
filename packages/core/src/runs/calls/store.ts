@@ -16,7 +16,7 @@ import {
   DeliveryMismatch,
   validateAuthoritativeAdvanceDelivery,
 } from '../advance/receipts.repository.js';
-import { withCoordinatorWriteClient } from '../advance/transactions.repository.js';
+import { withCoordinatorWriteClient } from '../advance/coordinator-transaction.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import type { WorkflowCallStore } from './contract.js';
 import { acceptPendingCall } from './accept.repository.js';

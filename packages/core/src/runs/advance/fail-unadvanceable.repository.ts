@@ -13,7 +13,7 @@ import {
   claimCoordinatorReceipt,
   completeCoordinatorReceipt,
 } from './receipts.repository.js';
-import { withCoordinatorWriteClient } from './transactions.repository.js';
+import { withCoordinatorWriteClient } from './coordinator-transaction.js';
 
 const OPEN_STATUSES = ['pending', 'ready', 'running', 'waiting'] as const;
 
