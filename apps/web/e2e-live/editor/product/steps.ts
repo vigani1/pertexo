@@ -78,8 +78,15 @@ export async function setLiteralInput(
     .toEqual({ kind: 'literal', value });
 }
 
-/** Publishes the next version through the dialog and returns the dialog's text. */
-export async function publishNext(page: Page, version: number) {
+/**
+ * Publishes the next version through the dialog and returns the dialog's text. A
+ * webhook with no address yet isn't live: nothing can start it, and the notice says so.
+ */
+export async function publishNext(
+  page: Page,
+  version: number,
+  outcome: 'live' | 'needs-webhook-address' = 'live',
+) {
   const name = `Publish v${String(version)}`;
   await page.getByRole('button', { name, exact: true }).click();
   const dialog = page.getByRole('dialog', { name, exact: true });
@@ -88,7 +95,10 @@ export async function publishNext(page: Page, version: number) {
   const shown = await dialog.innerText();
   await dialog.getByRole('button', { name, exact: true }).click();
   // A saturated validator refuses and offers a retry; a person presses it.
-  const live = page.getByText(`v${String(version)} is live`, { exact: true });
+  const published = outcome === 'live' ? 'live' : 'published';
+  const live = page.getByText(`v${String(version)} is ${published}`, {
+    exact: true,
+  });
   const again = dialog.getByRole('button', { name: 'Try again', exact: true });
   for (let tries = 0; tries < 5; tries += 1) {
     await expect(live.or(again).first()).toBeVisible();
@@ -96,6 +106,12 @@ export async function publishNext(page: Page, version: number) {
     await again.click();
   }
   await expect(live).toBeVisible();
+  if (outcome === 'needs-webhook-address')
+    await expect(
+      page.getByText('One step left: create the webhook address.', {
+        exact: true,
+      }),
+    ).toBeVisible();
   return shown;
 }
 
