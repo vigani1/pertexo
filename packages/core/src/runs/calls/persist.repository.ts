@@ -6,7 +6,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../state-errors.js';
 import type { RunTransitionPlan } from '../advance/plan.js';
-import { wakeWorkflowRun } from './wakeup.repository.js';
+import { wakeWorkflowRun } from '../wakeups/advance.queries.js';
 
 /** Child facts never take the existing parent's run or checkpoint lock. */
 export async function persistCallCompletion(

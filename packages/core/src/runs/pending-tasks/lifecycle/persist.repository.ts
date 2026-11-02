@@ -26,7 +26,7 @@ import type { PoolClient } from 'pg';
 import type { RunTransitionPlan } from '../../advance/plan.js';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { wakeWorkflowRun } from '../../calls/wakeup.repository.js';
+import { wakeWorkflowRun } from '../../wakeups/advance.queries.js';
 
 /** The validated declaration, logical wait and checkpoint share this transaction. */
 export async function persistTaskIntents(

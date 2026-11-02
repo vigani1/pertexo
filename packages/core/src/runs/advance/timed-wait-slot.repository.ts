@@ -7,7 +7,7 @@ import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowCalls, workflowRuns } from '@pertexo/database/schema';
 import { activeCapacityAvailable } from '../admission-locks.queries.js';
-import { deferWorkflowRun } from '../calls/wakeup.repository.js';
+import { deferWorkflowRun } from '../wakeups/advance.queries.js';
 import { readHumanWaitFacts } from '../pending-tasks/lifecycle/human-wait.queries.js';
 
 type RunScope = Readonly<{ workspaceId: string; runId: string }>;
