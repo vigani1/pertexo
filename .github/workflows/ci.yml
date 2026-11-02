@@ -13,6 +13,10 @@ permissions:
 
 # A new push replaces a pull request's older run. Runs on main all finish, each in
 # its own group: every merged commit publishes its images.
+# Time limits here are a budget, not a safety net: they're set just above what each
+# job takes, so slow growth fails a PR instead of quietly adding to everyone's wait.
+# A job that reaches its limit gets split or sped up. Raise one only with a reason in
+# the commit, and lower it whenever a job gets faster.
 concurrency:
   group:
     ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' &&
@@ -104,7 +108,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -134,7 +138,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 16
     strategy:
       fail-fast: false
       matrix:
@@ -170,7 +174,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 18
     strategy:
       fail-fast: false
       matrix:
@@ -307,7 +311,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     # Keep browser OS dependencies stable across ubuntu-latest image rollouts.
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -455,7 +459,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -627,7 +631,7 @@ jobs:
       ${{ !cancelled() && (github.event_name != 'pull_request' ||
       needs.self-host-changes.outputs.touched == 'true') }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
