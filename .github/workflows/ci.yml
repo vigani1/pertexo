@@ -184,15 +184,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The worker suite runs its files one at a time against shared
-        # services, so it is split across its own runners.
         include:
           - group: database
           - group: services
-          - group: worker-1
-            shard: 1/2
-          - group: worker-2
-            shard: 2/2
+          - group: worker
     env:
       # Tests that own their fixtures expect the project suffix `-integration`.
       COMPOSE_PROJECT_NAME:
@@ -209,10 +204,13 @@ jobs:
         # These tests never load the web bundle.
         run: pnpm build:packages
       - name: Start services
+        if: matrix.group != 'worker'
         uses: ./.github/actions/start-services
       - name: Migrate
+        if: matrix.group != 'worker'
         run: pnpm db:migrate
       - name: Record owned-fixture manifest
+        if: matrix.group != 'worker'
         run: |
           set -euo pipefail
           postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
@@ -259,13 +257,10 @@ jobs:
           API_SSE_RESILIENCE_INTEGRATION=true \
             pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts
       - name: Worker integration tests
-        if: startsWith(matrix.group, 'worker-')
-        env:
-          CONNECTION_HEALTH_COMPOSE_PROJECT: ${{ env.COMPOSE_PROJECT_NAME }}
-          SHARD: ${{ matrix.shard }}
-        run:
-          pnpm --filter @pertexo/worker exec vitest run --config
-          vitest.integration.config.ts --shard="$SHARD"
+        if: matrix.group == 'worker'
+        # Its files share Redis databases by number, so three shards run side by side,
+        # each with a whole stack of its own.
+        run: node infrastructure/testing/run-worker-suite.mjs 3
       - name: Qualify pinned beta storage
         if: matrix.group == 'services'
         run: node infrastructure/single-server/storage/qualify.mjs

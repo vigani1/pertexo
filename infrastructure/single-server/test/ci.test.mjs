@@ -48,17 +48,23 @@ test('main tests one commit at a time and never cancels the run under way', () =
 
 // A leg dropped from a matrix takes its tests with it while every other leg stays green.
 test('the gate requires a split suite, and every one of its shards exists', () => {
-  for (const name of ['integration', 'browser']) {
-    const shards = ci.jobs[name].strategy.matrix.include.flatMap(
-      ({ shard }) => shard ?? [],
-    );
-    assert.ok(shards.length > 1, name);
-    assert.deepEqual(
-      shards,
-      shards.map((_, index) => `${index + 1}/${shards.length}`),
-    );
+  const shards = ci.jobs.browser.strategy.matrix.include.flatMap(
+    ({ shard }) => shard ?? [],
+  );
+  assert.ok(shards.length > 1);
+  assert.deepEqual(
+    shards,
+    shards.map((_, index) => `${index + 1}/${shards.length}`),
+  );
+  for (const name of ['integration', 'browser'])
     assert.ok(neededBy('ci-passed').has(name), name);
-  }
+  // The worker suite's shards run inside one job: see run-worker-suite.mjs.
+  assert.ok(
+    ci.jobs.integration.strategy.matrix.include.some(
+      ({ group }) => group === 'worker',
+    ),
+  );
+  assert.match(jobText(ci.jobs.integration), /run-worker-suite\.mjs/u);
 });
 
 // ops-09: 7 of 75 main pushes failed, one on a docs commit that can't have caused it.
