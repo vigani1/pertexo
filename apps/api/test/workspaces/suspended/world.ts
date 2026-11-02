@@ -32,6 +32,8 @@ export type World = Readonly<{
   formVersionId: string;
   formPublicId: string;
   formCapability: string;
+  inputCaseId: string;
+  reviewId: string;
   ownerEmail: string;
   viewerEmail: string;
 }>;
@@ -199,6 +201,41 @@ export async function seedWorld(api: Api): Promise<World> {
   expect(access.statusCode, access.payload).toBe(200);
   const formPublicId = access.json<{ publicId: string }>().publicId;
 
+  const inputCase = await created<Readonly<{ caseId: string }>>(
+    api.send('POST', `${root}/workflows/${workflow.workflowId}/input-cases`, {
+      browser: owner,
+      headers: apiHeaders(),
+      payload: {
+        workflowVersionId: workflow.versionId,
+        name: 'Browsed case',
+        input: { note: 'browsed' },
+      },
+    }),
+  );
+  const pinned = await api.send(
+    'PUT',
+    `${root}/workflows/${workflow.workflowId}/draft/nodes/manual/sample`,
+    {
+      browser: owner,
+      headers: apiHeaders(),
+      payload: {
+        expectedDraftRevision: 2,
+        expectedSampleId: null,
+        source: { kind: 'json', value: { note: 'browsed' } },
+      },
+    },
+  );
+  expect(pinned.statusCode, pinned.payload).toBe(200);
+  // An engine-made row: asking for a review needs a second manager, and a world
+  // with another member would change what the member pages show.
+  const reviewId = randomUUID();
+  await api.database().query(
+    `insert into app.workflow_publication_requests(workspace_id,id,workflow_id,requested_by,draft_revision,representation_tag,note,expires_at)
+     select $1,$2,$3,created_by,2,$4,'Browsed review',clock_timestamp()+interval '7 days'
+     from app.workspaces where id=$1`,
+    [workspaceId, reviewId, workflow.workflowId, workflow.draftTag],
+  );
+
   const world = { workspaceId, runId, versionId: workflow.versionId };
   return {
     workspaceId,
@@ -217,6 +254,8 @@ export async function seedWorld(api: Api): Promise<World> {
     formVersionId: form.versionId,
     formPublicId,
     formCapability,
+    inputCaseId: inputCase.caseId,
+    reviewId,
     ownerEmail,
     viewerEmail,
   };

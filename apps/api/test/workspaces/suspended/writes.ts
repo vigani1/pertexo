@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import { emptyWorkflowGraph } from '../real-api/graphs.js';
+import { root, workflow } from './paths.js';
 import type { World } from './world.js';
 
-type Write = Readonly<{
+export type Write = Readonly<{
   name: string;
   method: 'POST' | 'PUT' | 'DELETE';
   path: (world: World) => string;
@@ -12,10 +13,6 @@ type Write = Readonly<{
   /** The guards that answer 403 rather than hide the workspace. */
   forbidden?: true;
 }>;
-
-const root = ({ workspaceId }: World) => `/v1/workspaces/${workspaceId}`;
-const workflow = (world: World) =>
-  `${root(world)}/workflows/${world.workflowId}`;
 
 /**
  * What must stay refused, each against a real resource and with a body the
@@ -309,6 +306,10 @@ export const durableWorkspaceFacts = `select
   (select count(*)::int from app.workflow_tags where workspace_id=$1) tags,
   (select count(*)::int from app.workflow_folders where workspace_id=$1) folders,
   (select count(*)::int from app.workflow_favorites where workspace_id=$1) favorites,
+  (select count(*)::int from app.workflow_input_cases where workspace_id=$1) input_cases,
+  (select count(*)::int from app.workflow_publication_requests where workspace_id=$1 and status='pending') pending_reviews,
+  (select count(*)::int from app.workflow_versions where workspace_id=$1 and workflow_id in (select id from app.workflows where workspace_id=$1 and name='Refused')) refused_versions,
+  (select string_agg(name,',' order by id) from app.workflows where workspace_id=$1) workflow_names,
   (select count(*)::int from app.workflow_comment_threads where workspace_id=$1) comment_threads,
   (select count(*)::int from app.connections where workspace_id=$1) connections,
   (select count(*)::int from app.workspace_data_tables where workspace_id=$1) data_tables,

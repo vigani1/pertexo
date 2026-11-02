@@ -1,6 +1,8 @@
 import { expect } from 'vitest';
 
 import type { Reply } from '../../support/better-auth/real-api.support.js';
+import { AUTHORING_READS } from './authoring-reads.js';
+import { lists, root, workflow } from './paths.js';
 import type { World } from './world.js';
 
 type Refusal = Readonly<{ status: number; code: string }>;
@@ -19,18 +21,9 @@ export type Read = Readonly<{
 export const HIDDEN: Refusal = { status: 404, code: 'resource.not_found' };
 const FORBIDDEN: Refusal = { status: 403, code: 'auth.forbidden' };
 
-type Items = Readonly<{ items: readonly Readonly<{ id: string }>[] }>;
-
-const lists =
-  (select: (world: World) => string) => (body: Items, world: World) => {
-    expect(body.items.map(({ id }) => id)).toContain(select(world));
-  };
 const answers = (body: unknown) => {
   expect(body).toBeTypeOf('object');
 };
-const root = ({ workspaceId }: World) => `/v1/workspaces/${workspaceId}`;
-const workflow = (world: World) =>
-  `${root(world)}/workflows/${world.workflowId}`;
 
 /** Open on purpose until the purge starts: `UNPURGED_WORKSPACE_STATUSES`. */
 export const READS_OPEN_UNTIL_PURGE: readonly Read[] = [
@@ -121,6 +114,7 @@ export const READS_OPEN_TODAY: readonly Read[] = [
 
 /** The reads a suspended workspace refuses today, which ADR 013/027 opens. */
 export const READS_CLOSED_TODAY: readonly Read[] = [
+  ...AUTHORING_READS,
   {
     name: 'the workflow list',
     as: 'viewer',
@@ -146,12 +140,6 @@ export const READS_CLOSED_TODAY: readonly Read[] = [
     shows: (body: { workflow: { id: string } }, world) => {
       expect(body.workflow.id).toBe(world.workflowId);
     },
-  },
-  {
-    name: "a workflow's draft",
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/draft`,
-    shows: answers,
   },
   {
     name: "a workflow's versions",
@@ -228,77 +216,9 @@ export const READS_CLOSED_TODAY: readonly Read[] = [
     },
   },
   {
-    name: "a workflow's comments",
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/comments`,
-    shows: answers,
-  },
-  {
-    name: 'a comment thread',
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/comments/${world.threadId}`,
-    shows: answers,
-  },
-  {
-    name: 'who a comment can mention',
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/comments/people`,
-    shows: answers,
-  },
-  {
-    name: 'who else is on a workflow',
-    as: 'viewer',
-    path: (world) =>
-      `${workflow(world)}/presence?tabId=00000000-0000-4000-8000-000000000001`,
-    shows: answers,
-  },
-  {
-    name: "a workflow's input cases",
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/input-cases`,
-    shows: answers,
-  },
-  {
-    name: "a draft's pinned samples",
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/draft/samples`,
-    shows: answers,
-  },
-  {
-    name: "a workflow's concurrency",
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/concurrency`,
-    shows: answers,
-  },
-  {
-    name: "a workflow's error workflow",
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/error-workflow`,
-    shows: answers,
-  },
-  {
-    name: "a workflow's auto-pause",
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/auto-pause`,
-    shows: answers,
-  },
-  {
     name: "a workflow's alert policy",
     as: 'owner',
     path: (world) => `${workflow(world)}/failure-notification-policy`,
-    shows: answers,
-  },
-  {
-    name: "a workflow's publication review",
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/publication-review`,
-    shows: answers,
-  },
-  {
-    name: 'a draft check',
-    as: 'viewer',
-    path: (world) => `${workflow(world)}/validate`,
-    query: {},
     shows: answers,
   },
   {
@@ -344,12 +264,6 @@ export const READS_CLOSED_TODAY: readonly Read[] = [
     name: "a connection's usage",
     as: 'viewer',
     path: (world) => `${root(world)}/connections/${world.connectionId}/usage`,
-    shows: answers,
-  },
-  {
-    name: 'the workspace auto-pause',
-    as: 'viewer',
-    path: (world) => `${root(world)}/auto-pause`,
     shows: answers,
   },
   {
