@@ -809,7 +809,8 @@ export default tseslint.config(
       // Test helpers behind @pertexo/database/testing, used by two packages' tests.
       'packages/database/src/testing/**/*.ts',
     ],
-    rules: { 'max-lines-per-function': 'off' },
+    // Forcing tests under a limit split them into files that can't run alone.
+    rules: { 'max-lines-per-function': 'off', 'max-lines': 'off' },
   },
   {
     files: ['apps/*/test/**/*.{ts,tsx}', 'packages/*/test/**/*.{ts,tsx}'],

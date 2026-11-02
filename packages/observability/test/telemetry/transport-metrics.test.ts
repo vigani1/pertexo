@@ -1,9 +1,359 @@
-import { describe } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import {
+  createTransportMetrics,
+  TRANSPORT_METRIC_NAME,
+} from '../../src/telemetry/transport-metrics.js';
+import {
+  metricHarness,
+  values,
+  recordedMeasurements,
+} from './transport-metrics/fixture.js';
 
-import { registerRecordsBoundedOutboxClaimBacklogLease } from './transport-metrics/records-bounded-outbox-claim-backlog-lease.cases.js';
-import { registerRecordsStallsDispatchLatencyLifecycleArtifact } from './transport-metrics/records-stalls-dispatch-latency-lifecycle-artifact.cases.js';
 describe('createTransportMetrics', () => {
-  registerRecordsBoundedOutboxClaimBacklogLease();
+  it('records bounded outbox claim, backlog, and lease measurements', () => {
+    const harness = metricHarness();
+    const metrics = createTransportMetrics({ meter: harness.meter });
 
-  registerRecordsStallsDispatchLatencyLifecycleArtifact();
+    metrics.recordOutboxClaim({ batchSize: 4 });
+    metrics.observeOutbox({ backlog: 23, oldestAgeSeconds: 7.5 });
+    metrics.recordOutboxLeaseEvent('expired');
+    metrics.recordOutboxLeaseEvent('reclaimed');
+    metrics.recordOutboxLeaseEvent('publication_failed', 2);
+
+    expect(
+      values(harness.counters, TRANSPORT_METRIC_NAME.outboxClaimed),
+    ).toEqual([{ attributes: undefined, value: 4 }]);
+    expect(
+      values(harness.histograms, TRANSPORT_METRIC_NAME.outboxClaimBatchSize),
+    ).toEqual([{ attributes: undefined, value: 4 }]);
+    expect(values(harness.gauges, TRANSPORT_METRIC_NAME.outboxBacklog)).toEqual(
+      [{ attributes: undefined, value: 23 }],
+    );
+    expect(
+      values(harness.gauges, TRANSPORT_METRIC_NAME.outboxOldestAge),
+    ).toEqual([{ attributes: undefined, value: 7.5 }]);
+    expect(
+      values(harness.counters, TRANSPORT_METRIC_NAME.outboxLeaseEvents),
+    ).toEqual([
+      { attributes: { event: 'expired' }, value: 1 },
+      { attributes: { event: 'reclaimed' }, value: 1 },
+      { attributes: { event: 'publication_failed' }, value: 2 },
+    ]);
+  });
+
+  it('does not report a false zero age when backlog age is unknown', () => {
+    const harness = metricHarness();
+    const metrics = createTransportMetrics({ meter: harness.meter });
+
+    metrics.observeOutbox({ backlog: 23 });
+
+    expect(
+      values(harness.gauges, TRANSPORT_METRIC_NAME.outboxOldestAge),
+    ).toEqual([]);
+  });
+
+  it('records publish results with only fixed transport dimensions', () => {
+    const harness = metricHarness();
+    const metrics = createTransportMetrics({ meter: harness.meter });
+
+    metrics.recordOutboxPublish({
+      jobName: 'execute-node-attempt',
+      outcome: 'published',
+      queueName: 'node-attempts',
+    });
+    metrics.recordOutboxPublish({
+      errorClass: 'redis',
+      jobName: 'execute-node-attempt',
+      outcome: 'failed',
+      queueName: 'node-attempts',
+    });
+
+    expect(
+      values(harness.counters, TRANSPORT_METRIC_NAME.outboxPublish),
+    ).toEqual([
+      {
+        attributes: {
+          job_name: 'execute-node-attempt',
+          outcome: 'published',
+          queue_name: 'node-attempts',
+        },
+        value: 1,
+      },
+      {
+        attributes: {
+          error_class: 'redis',
+          job_name: 'execute-node-attempt',
+          outcome: 'failed',
+          queue_name: 'node-attempts',
+        },
+        value: 1,
+      },
+    ]);
+  });
+
+  it('records handler outcome, latency, concurrency, and queue observations', () => {
+    const harness = metricHarness();
+    const metrics = createTransportMetrics({ meter: harness.meter });
+    const transport = {
+      jobName: 'advance-workflow-run' as const,
+      queueName: 'workflow-coordinator' as const,
+    };
+
+    metrics.addActiveConcurrency({ ...transport, delta: 1 });
+    metrics.recordHandlerFinished({
+      ...transport,
+      durationSeconds: 0.125,
+      outcome: 'completed',
+    });
+    metrics.recordHandlerFinished({
+      ...transport,
+      durationSeconds: 2,
+      errorClass: 'timeout',
+      outcome: 'failed',
+    });
+    metrics.observeQueue({
+      depth: 11,
+      oldestJobAgeSeconds: 3.25,
+      queueName: transport.queueName,
+    });
+    metrics.addActiveConcurrency({ ...transport, delta: -1 });
+
+    expect(
+      values(harness.upDownCounters, TRANSPORT_METRIC_NAME.activeConcurrency),
+    ).toEqual([
+      {
+        attributes: {
+          job_name: transport.jobName,
+          queue_name: transport.queueName,
+        },
+        value: 1,
+      },
+      {
+        attributes: {
+          job_name: transport.jobName,
+          queue_name: transport.queueName,
+        },
+        value: -1,
+      },
+    ]);
+    expect(
+      values(harness.counters, TRANSPORT_METRIC_NAME.handlerExecutions),
+    ).toHaveLength(2);
+    expect(
+      values(harness.histograms, TRANSPORT_METRIC_NAME.handlerDuration),
+    ).toEqual([
+      {
+        attributes: {
+          job_name: transport.jobName,
+          outcome: 'completed',
+          queue_name: transport.queueName,
+        },
+        value: 0.125,
+      },
+      {
+        attributes: {
+          error_class: 'timeout',
+          job_name: transport.jobName,
+          outcome: 'failed',
+          queue_name: transport.queueName,
+        },
+        value: 2,
+      },
+    ]);
+    expect(values(harness.gauges, TRANSPORT_METRIC_NAME.queueDepth)).toEqual([
+      {
+        attributes: { queue_name: transport.queueName },
+        value: 11,
+      },
+    ]);
+    expect(
+      values(harness.gauges, TRANSPORT_METRIC_NAME.queueOldestJobAge),
+    ).toEqual([
+      {
+        attributes: { queue_name: transport.queueName },
+        value: 3.25,
+      },
+    ]);
+  });
+
+  it('records stalls, dispatch latency, lifecycle, and artifact capacity with bounded labels', () => {
+    const harness = metricHarness();
+    const metrics = createTransportMetrics({ meter: harness.meter });
+
+    metrics.recordQueueStall('node-attempts');
+    metrics.recordConsumerLifecycle({
+      event: 'drain_graceful',
+      queueName: 'node-attempts',
+    });
+    metrics.recordOutboxDispatchLatency({
+      durationSeconds: 1.25,
+      jobName: 'execute-node-attempt',
+      outcome: 'published',
+      queueName: 'node-attempts',
+    });
+    metrics.observeArtifacts({ bytes: 4096, count: 3, status: 'available' });
+    metrics.observeExecutionStorage({
+      bytes: 8192,
+      count: 12,
+      surface: 'event',
+    });
+
+    expect(values(harness.counters, TRANSPORT_METRIC_NAME.queueStalls)).toEqual(
+      [{ attributes: { queue_name: 'node-attempts' }, value: 1 }],
+    );
+    expect(
+      values(harness.counters, TRANSPORT_METRIC_NAME.consumerLifecycle),
+    ).toEqual([
+      {
+        attributes: {
+          event: 'drain_graceful',
+          queue_name: 'node-attempts',
+        },
+        value: 1,
+      },
+    ]);
+    expect(
+      values(harness.histograms, TRANSPORT_METRIC_NAME.outboxDispatchLatency),
+    ).toEqual([
+      {
+        attributes: {
+          job_name: 'execute-node-attempt',
+          outcome: 'published',
+          queue_name: 'node-attempts',
+        },
+        value: 1.25,
+      },
+    ]);
+    expect(values(harness.gauges, TRANSPORT_METRIC_NAME.artifactCount)).toEqual(
+      [{ attributes: { status: 'available' }, value: 3 }],
+    );
+    expect(values(harness.gauges, TRANSPORT_METRIC_NAME.artifactBytes)).toEqual(
+      [{ attributes: { status: 'available' }, value: 4096 }],
+    );
+    expect(
+      values(harness.histograms, TRANSPORT_METRIC_NAME.executionStorageCount),
+    ).toEqual([{ attributes: { surface: 'event' }, value: 12 }]);
+    expect(
+      values(harness.histograms, TRANSPORT_METRIC_NAME.executionStorageBytes),
+    ).toEqual([{ attributes: { surface: 'event' }, value: 8192 }]);
+    const serialized = JSON.stringify([
+      ...harness.counters.values(),
+      ...harness.gauges.values(),
+      ...harness.histograms.values(),
+    ]);
+    expect(serialized).not.toContain('workspace_id');
+    expect(serialized).not.toContain('artifact_id');
+    expect(serialized).not.toContain('outbox_event_id');
+  });
+
+  it('records this writer process start time without dynamic labels', () => {
+    const harness = metricHarness();
+    const metrics = createTransportMetrics({
+      meter: harness.meter,
+      now: () => 1_750_000_000_000,
+    });
+
+    metrics.recordWorkerProcessStart();
+    metrics.recordWorkerProcessStart();
+
+    expect(
+      values(harness.gauges, TRANSPORT_METRIC_NAME.workerProcessStartTime),
+    ).toEqual([
+      { attributes: undefined, value: 1_750_000_000 },
+      { attributes: undefined, value: 1_750_000_000 },
+    ]);
+  });
+
+  it.each([
+    {
+      name: 'negative claim size',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.recordOutboxClaim({ batchSize: -1 });
+      },
+    },
+    {
+      name: 'negative backlog',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeOutbox({ backlog: -1 });
+      },
+    },
+    {
+      name: 'valid backlog followed by an invalid age',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeOutbox({ backlog: 4, oldestAgeSeconds: -1 });
+      },
+    },
+    {
+      name: 'valid artifact count followed by invalid bytes',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeArtifacts({ bytes: -1, count: 2, status: 'available' });
+      },
+    },
+    {
+      name: 'valid execution count followed by invalid bytes',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeExecutionStorage({
+          bytes: -1,
+          count: 2,
+          surface: 'event',
+        });
+      },
+    },
+    {
+      name: 'non-positive lease count',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.recordOutboxLeaseEvent('expired', 0);
+      },
+    },
+    {
+      name: 'non-finite handler duration',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.recordHandlerFinished({
+          durationSeconds: Number.NaN,
+          jobName: 'replay-workflow-run',
+          outcome: 'completed',
+          queueName: 'maintenance',
+        });
+      },
+    },
+    {
+      name: 'fractional queue depth',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeQueue({
+          depth: 1.5,
+          oldestJobAgeSeconds: 0,
+          queueName: 'maintenance',
+        });
+      },
+    },
+    {
+      name: 'valid queue depth followed by an invalid age',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.observeQueue({
+          depth: 1,
+          oldestJobAgeSeconds: -1,
+          queueName: 'maintenance',
+        });
+      },
+    },
+    {
+      name: 'invalid active-concurrency delta',
+      act: (metrics: ReturnType<typeof createTransportMetrics>) => {
+        metrics.addActiveConcurrency({
+          // @ts-expect-error exercises the runtime boundary for untyped callers.
+          delta: 0,
+          jobName: 'replay-workflow-run',
+          queueName: 'maintenance',
+        });
+      },
+    },
+  ])('rejects $name before any instrument write', ({ act }) => {
+    const harness = metricHarness();
+    const metrics = createTransportMetrics({ meter: harness.meter });
+
+    expect(() => {
+      act(metrics);
+    }).toThrow(RangeError);
+    expect(recordedMeasurements(harness)).toEqual([]);
+  });
 });
