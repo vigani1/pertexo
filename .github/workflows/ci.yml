@@ -224,7 +224,11 @@ jobs:
           pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/secrets exec vitest run --config vitest.integration.config.ts
           pnpm --filter @pertexo/core exec vitest run --config vitest.integration.config.ts \
-            --exclude 'test/authoring/organization/**'
+            --exclude 'test/authoring/organization/**' \
+            --exclude 'test/runs/statistics.integration.test.ts'
+          # Alone: it waits on VACUUM and reads query plans, which other files disturb.
+          pnpm --filter @pertexo/core exec vitest run --config vitest.integration.config.ts \
+            test/runs/statistics.integration.test.ts
           EDITOR_BROWSER_OWNED_FIXTURE=true F07_ORGANIZATION_OWNED_FIXTURE=true \
             pnpm --filter @pertexo/core exec vitest run --config vitest.integration.config.ts \
             test/authoring/organization/
