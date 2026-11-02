@@ -26,6 +26,17 @@ export const before = (at: Date) => new Date(at.getTime() - HOUR);
 const SAMPLE_BINDING = '{}';
 const SAMPLE_OUTPUT = '{"kind":"inline","value":1}';
 
+const outboxRow = (clock: Row): Row => ({
+  id: randomUUID(),
+  workspace_id: workspaceId,
+  job_name: 'retention-windows',
+  aggregate_type: 'retention-windows',
+  aggregate_id: randomUUID(),
+  payload: '{}',
+  payload_checksum: hex(),
+  ...clock,
+});
+
 /**
  * One row per retention clock. Parents that a rule never reads aren't seeded;
  * the fixture writes with foreign keys off, as a rule's window doesn't depend
@@ -272,6 +283,31 @@ export const WINDOWED_RULES: readonly WindowedRule[] = [
       auth_tag: 'tag',
       expires_at: at,
       created_at: before(at),
+    }),
+  },
+  {
+    rule: 'outbox_published',
+    table: 'outbox_events',
+    windowDays: 30,
+    row: (at) => outboxRow({ published_at: at }),
+  },
+  {
+    rule: 'outbox_failed',
+    table: 'outbox_events',
+    windowDays: 90,
+    row: (at) => outboxRow({ failed_at: at, last_error_code: 'test.failed' }),
+  },
+  {
+    rule: 'inbox_receipts',
+    table: 'inbox_receipts',
+    windowDays: 30,
+    key: 'message_id',
+    row: (at) => ({
+      consumer_name: 'worker.retention-windows',
+      message_id: randomUUID(),
+      workspace_id: workspaceId,
+      payload_checksum: hex(),
+      received_at: at,
     }),
   },
   {
