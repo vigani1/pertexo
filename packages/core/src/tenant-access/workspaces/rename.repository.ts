@@ -17,7 +17,10 @@ import type {
 } from '../contract.js';
 import { WorkspaceRenameCommandConflictError } from '../errors.js';
 import { readLockedMembers } from '../members/commands.repository.js';
-import { renameReceipt, requireReadableReceipt } from '../receipts.js';
+import {
+  renameReceipt,
+  requireReadableReceipt,
+} from '../../shared/receipts.js';
 import { isActiveMemberManager } from '../members/manager.js';
 import { workspaceRecord, workspaceSelection } from './projection.js';
 

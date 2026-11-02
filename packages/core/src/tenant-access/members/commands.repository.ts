@@ -22,7 +22,7 @@ import {
 
 import { lockWorkspaceRow } from '../../shared/authority.queries.js';
 import { DirectoryManagedMembershipError } from '../errors.js';
-import { requireReadableReceipt } from '../receipts.js';
+import { requireReadableReceipt } from '../../shared/receipts.js';
 
 /*
  * The shared half of the existing-member commands (ADR 037 role change,
