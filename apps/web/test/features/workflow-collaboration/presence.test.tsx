@@ -336,3 +336,42 @@ it('shows who is here without announcing anything while paused', async () => {
   await screen.findByText('Page');
   expect(methods).not.toContain('PUT');
 });
+
+it('keeps its tab identity out of anything a duplicated tab would copy', async () => {
+  const leases: string[] = [];
+  const fetch = vi
+    .fn<typeof globalThis.fetch>()
+    .mockImplementation((input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (init?.method === 'PUT') {
+        leases.push(url.split('/').at(-1) ?? '');
+        return Promise.resolve(Response.json({ accepted: true }));
+      }
+      return Promise.resolve(Response.json({ people: [] }));
+    });
+  renderInRouter(
+    <WorkflowPresenceProvider
+      scope={{
+        apiClient: createApiClient({
+          fetch,
+          readCsrfToken: () =>
+            'csrf-token-for-component-tests-12345678901234567890',
+        }),
+        userId,
+        workspaceId,
+        workflowId,
+      }}
+    >
+      <WorkflowPresenceSummary />
+    </WorkflowPresenceProvider>,
+  );
+  await waitFor(() => {
+    expect(leases.length).toBeGreaterThan(0);
+  });
+  const stored = [sessionStorage, localStorage].flatMap((storage) =>
+    Array.from({ length: storage.length }, (_, index) =>
+      storage.getItem(storage.key(index) ?? ''),
+    ),
+  );
+  expect(stored).not.toContain(leases[0]);
+});
