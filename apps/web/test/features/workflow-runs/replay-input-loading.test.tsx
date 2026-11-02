@@ -31,33 +31,43 @@ const RUN_INPUT = { order: 'A-17' };
 const RUN_INPUT_TEXT = JSON.stringify(RUN_INPUT, null, 2);
 const LABEL = 'Replay input (JSON)';
 
+type Held = Readonly<{ promise: Promise<void>; release: () => void }>;
+
+function held(): Held {
+  let release = (): void => undefined;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release };
+}
+
 /**
  * The run's input is read when the dialog opens, so a person can get there first.
  * Each response here is held until the test lets it go, so what happens while it's
  * away isn't down to timing.
  */
 describe('Replay while the run’s input is still loading', () => {
-  let inputAnswer: PromiseWithResolvers<undefined>;
-  let replayAnswer: PromiseWithResolvers<undefined>;
-  let inputAsked: PromiseWithResolvers<undefined>;
+  let inputAnswer: Held;
+  let replayAnswer: Held;
+  let inputAsked: Held;
   let bodies: unknown[];
 
   const answerInput = () => {
-    inputAnswer.resolve(undefined);
+    inputAnswer.release();
   };
 
   beforeEach(() => {
-    inputAnswer = Promise.withResolvers();
-    inputAsked = Promise.withResolvers();
-    replayAnswer = Promise.withResolvers();
+    inputAnswer = held();
+    inputAsked = held();
+    replayAnswer = held();
     // Only the tests about a replay in flight hold this one.
-    replayAnswer.resolve(undefined);
+    replayAnswer.release();
     bodies = [];
     mockServer.use(
       ...identityHandlers(operator),
       statisticsHandler(),
       http.get(`${apiBase}/runs/:runId/input`, async () => {
-        inputAsked.resolve(undefined);
+        inputAsked.release();
         await inputAnswer.promise;
         return HttpResponse.json({
           input: { kind: 'inline', value: RUN_INPUT },
@@ -168,7 +178,7 @@ describe('Replay while the run’s input is still loading', () => {
 
   // The request is on its way: an input turning up can't change it or stop it.
   it('finishes a replay already sent when the input arrives under it', async () => {
-    replayAnswer = Promise.withResolvers();
+    replayAnswer = held();
     const { event, dialog, router, queryClient } = await openWhileLoading();
     fireEvent.change(dialog.getByLabelText(LABEL), {
       target: { value: '{"order":"B-2"}' },
@@ -183,7 +193,7 @@ describe('Replay while the run’s input is still loading', () => {
       expect(queryClient.isFetching()).toBe(0);
     });
     expect(dialog.getByLabelText(LABEL)).toHaveValue('{"order":"B-2"}');
-    replayAnswer.resolve(undefined);
+    replayAnswer.release();
 
     await opened(router);
     expect(bodies).toEqual([sent({ order: 'B-2' })]);
