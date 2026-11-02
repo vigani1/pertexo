@@ -1,7 +1,4 @@
-import {
-  readBrowsableFolderScope,
-  readFolderScope,
-} from '../../shared/facts.queries.js';
+import { readFolderScope } from '../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -12,125 +9,135 @@ import {
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { rolesForCapability } from '@pertexo/workflow-model';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
+import type {
+  PublicationReview,
+  PublicationReviewDetail,
+  PublicationReviewOverview,
+} from '@pertexo/contracts';
+import {
+  ACTIVE_WORKSPACE_STATUSES,
+  BROWSABLE_WORKSPACE_STATUSES,
+  type Role,
+} from '@pertexo/workflow-model';
+import type { AuthoringAccess } from '../workflows/access.js';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import type {
-  PublicationReviewStore,
+  DecideReviewInput,
+  ReadReviewInput,
+  RequestReviewInput,
   ReviewDependencies,
+  ReviewOverviewInput,
   ReviewScope,
 } from './contract.js';
 import { readReviewDetail, readReviewSummary } from './read.queries.js';
 import { requestPublicationReview } from './request.js';
 import { decidePublicationReview } from './decide.js';
 
+export type PublicationReviewStore = ReturnType<
+  typeof createPublicationReviewStore
+>;
+
+/**
+ * Reading took the share locks by hand, so it stays `change`. Requesting a review
+ * runs one at a time per workspace: `exclusive`, the order it took by hand. It
+ * touches one workspace and locks no user for update, which is what makes that safe.
+ */
 export function createPublicationReviewStore(
+  access: AuthoringAccess,
   dependencies: ReviewDependencies,
-): PublicationReviewStore {
-  const transact = <T>(
+) {
+  const browse = <T>(
     input: ReviewScope,
-    capability: 'workflow:read' | 'workflow:publish' | 'governance:manage',
-    {
-      exclusive,
-      work,
-    }: Readonly<{
-      exclusive: boolean;
-      work: (client: PoolClient) => Promise<T>;
-    }>,
+    work: (client: PoolClient, role: Role) => Promise<T>,
   ) =>
-    dependencies.transact(
-      input.workspaceId,
-      input.actorId,
-      async (client) => {
-        if (exclusive)
-          await drizzle(client)
-            .select({ id: workspaces.id })
-            .from(workspaces)
-            .where(eq(workspaces.id, input.workspaceId))
-            .for('update')
-            .catch(rethrowQueryFailure);
-        await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
-          actorId: input.actorId,
-          browsing: capability === 'workflow:read',
-          roles: rolesForCapability(capability),
-        });
-        return work(client);
+    access.member(
+      input,
+      {
+        mode: 'change',
+        capability: 'workflow:read',
+        statuses: BROWSABLE_WORKSPACE_STATUSES,
       },
-      input.signal,
+      work,
     );
-  return {
-    overview: (input) =>
-      transact(input, 'workflow:read', {
-        exclusive: false,
-        work: async (client) => {
-          await lockWorkflow(client, input, input, { write: false });
-          const db = drizzle(client);
-          const [policy] = await db
-            .select({
-              requirePublishApproval: workspaces.requirePublishApproval,
-            })
-            .from(workspaces)
-            .where(eq(workspaces.id, input.workspaceId))
-            .catch(rethrowQueryFailure);
-          const [latest] = await db
-            .select({ id: workflowPublicationRequests.id })
-            .from(workflowPublicationRequests)
-            .where(
-              and(
-                eq(workflowPublicationRequests.workspaceId, input.workspaceId),
-                eq(workflowPublicationRequests.workflowId, input.workflowId),
-              ),
-            )
-            .orderBy(
-              desc(workflowPublicationRequests.createdAt),
-              desc(workflowPublicationRequests.id),
-            )
-            .limit(1)
-            .catch(rethrowQueryFailure);
-          return {
-            required: policy?.requirePublishApproval ?? false,
-            request:
-              latest === undefined
-                ? null
-                : await readReviewSummary(client, dependencies, {
-                    ...input,
-                    reviewId: latest.id,
-                  }),
-          };
-        },
+  return Object.freeze({
+    overview: (
+      input: ReviewOverviewInput,
+    ): Promise<PublicationReviewOverview> =>
+      browse(input, async (client, role) => {
+        await lockWorkflow(client, input, input, { write: false, role });
+        const db = drizzle(client);
+        const [policy] = await db
+          .select({
+            requirePublishApproval: workspaces.requirePublishApproval,
+          })
+          .from(workspaces)
+          .where(eq(workspaces.id, input.workspaceId))
+          .catch(rethrowQueryFailure);
+        const [latest] = await db
+          .select({ id: workflowPublicationRequests.id })
+          .from(workflowPublicationRequests)
+          .where(
+            and(
+              eq(workflowPublicationRequests.workspaceId, input.workspaceId),
+              eq(workflowPublicationRequests.workflowId, input.workflowId),
+            ),
+          )
+          .orderBy(
+            desc(workflowPublicationRequests.createdAt),
+            desc(workflowPublicationRequests.id),
+          )
+          .limit(1)
+          .catch(rethrowQueryFailure);
+        return {
+          required: policy?.requirePublishApproval ?? false,
+          request:
+            latest === undefined
+              ? null
+              : await readReviewSummary(client, dependencies, {
+                  ...input,
+                  reviewId: latest.id,
+                }),
+        };
       }),
-    read: (input) =>
-      transact(input, 'workflow:read', {
-        exclusive: false,
-        work: async (client) => {
-          await lockWorkflow(client, input, input, { write: false });
-          return readReviewDetail(client, dependencies, input);
-        },
+    read: (input: ReadReviewInput): Promise<PublicationReviewDetail> =>
+      browse(input, async (client, role) => {
+        await lockWorkflow(client, input, input, { write: false, role });
+        return readReviewDetail(client, dependencies, input);
       }),
-    request: (input) =>
-      transact(input, 'workflow:publish', {
-        exclusive: true,
-        work: async (client) => {
-          await lockWorkflow(client, input, input, { write: true });
+    request: (input: RequestReviewInput): Promise<PublicationReview> =>
+      access.member(
+        input,
+        {
+          mode: 'exclusive',
+          capability: 'workflow:publish',
+          statuses: ACTIVE_WORKSPACE_STATUSES,
+        },
+        async (client, role) => {
+          await lockWorkflow(client, input, input, { write: true, role });
           return requestPublicationReview(client, dependencies, input);
         },
-      }),
-    decide: (input) =>
-      transact(input, 'governance:manage', {
-        exclusive: false,
-        work: async (client) => {
-          await lockWorkflow(client, input, input, { write: true });
+      ),
+    decide: (input: DecideReviewInput): Promise<PublicationReview> =>
+      access.member(
+        input,
+        {
+          mode: 'change',
+          capability: 'governance:manage',
+          statuses: ACTIVE_WORKSPACE_STATUSES,
+        },
+        async (client, role) => {
+          await lockWorkflow(client, input, input, { write: true, role });
           return decidePublicationReview(client, dependencies, input);
         },
-      }),
-  };
+      ),
+  });
 }
 
 async function lockWorkflow(
   client: PoolClient,
   input: ReviewScope,
   identity: { workflowId: string } | { reviewId: string },
-  { write }: Readonly<{ write: boolean }>,
+  { write, role }: Readonly<{ write: boolean; role: Role }>,
 ): Promise<void> {
   const db = drizzle(client);
   const reviewed = db
@@ -149,9 +156,7 @@ async function lockWorkflow(
     'workflowId' in identity
       ? eq(workflows.id, identity.workflowId)
       : eq(workflows.id, sql`(${reviewed})`);
-  const scope = await (write
-    ? readFolderScope(client, input)
-    : readBrowsableFolderScope(client, input));
+  const scope = await readFolderScope(client, input, role);
   const found = await db
     .select({ id: workflows.id })
     .from(workflows)

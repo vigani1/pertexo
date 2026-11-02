@@ -33,41 +33,38 @@ export type Scope = Readonly<{
 export type Command = Scope &
   Readonly<{ idempotencyKey: string; requestId?: string; traceId?: string }>;
 
-export interface WorkflowInputCaseStore {
-  listCases(
-    input: Scope & { limit: number; cursor?: { createdAt: Date; id: string } },
-  ): Promise<{
-    items: readonly WorkflowInputCaseMetadata[];
-    nextCursor?: { createdAt: Date; id: string };
-  }>;
-  getCase(input: Scope & { caseId: string }): Promise<{
-    case: WorkflowInputCaseMetadata & {
-      input: unknown;
-      expectations?: WorkflowTestExpectations;
-    };
-  }>;
-  createCase(
-    input: Command & {
-      workflowVersionId: string;
-      name: string;
-      input: unknown;
-      expectations?: WorkflowTestExpectations;
-    },
-  ): Promise<WorkflowInputCaseResult>;
-  updateCase(
-    input: Command & {
-      caseId: string;
-      expectedRevision: number;
-      name: string;
-      input: unknown;
-      expectations?: WorkflowTestExpectations;
-    },
-  ): Promise<WorkflowInputCaseResult>;
-  deleteCase(
-    input: Command & { caseId: string; expectedRevision: number },
-  ): Promise<WorkflowInputCaseResult>;
-  close(): Promise<void>;
+export type ListInputCasesInput = Scope & {
+  limit: number;
+  cursor?: { createdAt: Date; id: string };
+};
+export interface InputCasePage {
+  items: readonly WorkflowInputCaseMetadata[];
+  nextCursor?: { createdAt: Date; id: string };
 }
+export type GetInputCaseInput = Scope & { caseId: string };
+export interface InputCaseDetail {
+  case: WorkflowInputCaseMetadata & {
+    input: unknown;
+    expectations?: WorkflowTestExpectations;
+  };
+}
+export type CreateInputCaseInput = Command & {
+  workflowVersionId: string;
+  name: string;
+  input: unknown;
+  expectations?: WorkflowTestExpectations;
+};
+export type UpdateInputCaseInput = Command & {
+  caseId: string;
+  expectedRevision: number;
+  name: string;
+  input: unknown;
+  expectations?: WorkflowTestExpectations;
+};
+export type DeleteInputCaseInput = Command & {
+  caseId: string;
+  expectedRevision: number;
+};
 
 export type CaseTransaction = <T>(
   input: Scope,

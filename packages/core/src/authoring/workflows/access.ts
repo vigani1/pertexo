@@ -54,7 +54,7 @@ export function createAuthoringAccess(pool: Pool) {
   const pending = new Set<Promise<unknown>>();
   let closed = false;
   async function tracked<T>(start: () => Promise<T>): Promise<T> {
-    if (closed) throw new Error('Workflow authoring store is closed');
+    if (closed) throw new Error('This authoring store is closed');
     const operation = start();
     pending.add(operation);
     try {

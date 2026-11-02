@@ -46,13 +46,16 @@ export type {
   WorkflowFavoriteState,
 } from './organization/favorites/store.js';
 export { WorkflowOrganizationValidationError } from './organization/errors.js';
-export { createWorkflowInputCaseStore } from './input-cases/store.js';
+export {
+  createWorkflowInputCaseStore,
+  type WorkflowInputCaseStore,
+} from './input-cases/store.js';
+export type { WorkflowStepSampleStore } from './step-samples/store.js';
 export {
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
 } from './input-cases/errors.js';
 export type {
-  WorkflowInputCaseStore,
   WorkflowInputCaseMetadata,
   WorkflowInputCaseResult,
 } from './input-cases/contract.js';
@@ -119,14 +122,13 @@ export {
 
 export { WorkflowStepSampleError } from './step-samples/errors.js';
 export type {
-  WorkflowStepSampleStore,
   SampleMetadata,
   SampleRead,
   SampleResult,
 } from './step-samples/contract.js';
 
 export { PublicationReviewError } from './reviews/errors.js';
-export { type PublicationReviewStore } from './reviews/contract.js';
+export { type PublicationReviewStore } from './reviews/store.js';
 
 export { WorkflowPromotionError } from './promotion/errors.js';
 export type { WorkflowPromotionStore } from './promotion/store.js';

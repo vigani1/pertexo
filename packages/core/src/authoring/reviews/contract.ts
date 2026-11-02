@@ -1,10 +1,5 @@
-import type {
-  PublicationReview,
-  PublicationReviewOverview,
-  PublicationReviewDetail,
-  PublicationReviewDecision,
-} from '@pertexo/contracts';
-import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
+import type { PublicationReviewDecision } from '@pertexo/contracts';
+import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
 export type ReviewScope = Readonly<{
   workspaceId: string;
@@ -20,26 +15,14 @@ export type ReviewCommand = ReviewScope &
     traceparent?: string;
   }>;
 
-export interface PublicationReviewStore {
-  overview(
-    input: ReviewScope & { workflowId: string },
-  ): Promise<PublicationReviewOverview>;
-  read(
-    input: ReviewScope & { reviewId: string },
-  ): Promise<PublicationReviewDetail>;
-  request(
-    input: ReviewCommand & {
-      workflowId: string;
-      representationTag: string;
-      note: string;
-    },
-  ): Promise<PublicationReview>;
-  decide(
-    input: ReviewCommand & PublicationReviewDecision & { reviewId: string },
-  ): Promise<PublicationReview>;
-}
+export type ReviewOverviewInput = ReviewScope & { workflowId: string };
+export type ReadReviewInput = ReviewScope & { reviewId: string };
+export type RequestReviewInput = ReviewCommand & {
+  workflowId: string;
+  representationTag: string;
+  note: string;
+};
+export type DecideReviewInput = ReviewCommand &
+  PublicationReviewDecision & { reviewId: string };
 
-export type ReviewDependencies = Pick<
-  WorkflowAuthoringWriteContext,
-  'requireAuthor' | 'catalogs' | 'transact'
->;
+export type ReviewDependencies = Readonly<{ catalogs: AuthoringCatalogs }>;

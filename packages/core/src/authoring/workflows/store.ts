@@ -5,8 +5,6 @@ import {
   withTenantScopedClient,
   type WorkspaceScopeRunner,
 } from '@pertexo/database/primitives';
-import { rolesForCapability } from '@pertexo/workflow-model';
-import type { Pool, PoolClient } from 'pg';
 import { createPreviewRunStore } from '../../previews/runs/store.js';
 import { createWorkflowTestSuiteStore } from '../../previews/suites/store.js';
 import { createWorkflowTestStore } from '../../previews/workflows/store.js';
@@ -21,7 +19,6 @@ import { createWorkflowConcurrencyStore } from '../settings/concurrency/store.js
 import { createWorkflowErrorStore } from '../settings/error-workflow/store.js';
 import { createWorkflowStepSampleStore } from '../step-samples/store.js';
 import { createAuthoringAccess } from './access.js';
-import { lockWorkflowAuthoringAuthority } from './authority.js';
 import { authoringCatalogs } from './catalogs.js';
 import { createWorkflow } from './commands/create.js';
 import { duplicateWorkflow } from './commands/duplicate.js';
@@ -29,7 +26,6 @@ import { renameWorkflow } from './commands/rename.js';
 import { restoreWorkflowVersion } from './commands/restore-version.js';
 import { saveDraft } from './commands/save-draft.js';
 import { transitionWorkflowLifecycle } from './commands/transition-lifecycle.js';
-import type { WorkflowAuthoringWriteContext } from './context.js';
 import type {
   CreateWorkflowInput,
   DuplicateWorkflowInput,
@@ -41,53 +37,10 @@ import type {
   SaveWorkflowDraftInput,
   TransitionWorkflowLifecycleInput,
 } from './contract.js';
-import { requirePlaceableDefinitionAdditions } from './placement.js';
 import { readDraft, validateDraft } from './reads/drafts.queries.js';
 import { listVersions, readVersion } from './reads/versions.queries.js';
 import { listWorkflows, readWorkflow } from './reads/workflows.queries.js';
 import type { WorkflowAuthoringStoreOptions } from './types.js';
-
-/** For reviews, and what promotion calls of them, until reviews' pass. */
-async function requireWorkspaceAuthor(
-  client: PoolClient,
-  workspaceId: string,
-  {
-    actorId,
-    workflowId,
-    capability = 'workflow:update',
-  }: Readonly<{
-    actorId: string;
-    workflowId?: string | undefined;
-    capability?: ('workflow:read' | 'workflow:update') | undefined;
-  }>,
-): Promise<void> {
-  await lockWorkflowAuthoringAuthority(client, workspaceId, {
-    actorId,
-    roles: rolesForCapability('workflow:update'),
-    resource: workflowId === undefined ? undefined : { workflowId, capability },
-  });
-}
-
-function legacyContext(
-  pool: Pool,
-  access: ReturnType<typeof createAuthoringAccess>,
-  catalogs: ReturnType<typeof authoringCatalogs>,
-): WorkflowAuthoringWriteContext {
-  return {
-    requireAuthor: requireWorkspaceAuthor,
-    requirePlaceable: requirePlaceableDefinitionAdditions,
-    catalogs,
-    transact: (workspaceId, actorId, operation, signal) =>
-      access.tracked(() =>
-        withTenantScopedClient(
-          pool,
-          { workspaceId, actorId },
-          operation,
-          signal === undefined ? {} : { signal },
-        ),
-      ),
-  };
-}
 
 export type WorkflowAuthoringStore = ReturnType<
   typeof createWorkflowAuthoringStore
@@ -101,7 +54,6 @@ export function createWorkflowAuthoringStore(
   const lease = acquireDatabasePool(config, options.runtime);
   const { pool } = lease;
   const access = createAuthoringAccess(pool);
-  const context = legacyContext(pool, access, catalogs);
   const transactScopes = <T>(
     operation: (inWorkspace: WorkspaceScopeRunner) => Promise<T>,
     signal?: AbortSignal,
@@ -117,15 +69,19 @@ export function createWorkflowAuthoringStore(
   return Object.freeze({
     collaboration: createWorkflowCollaborationStore(access),
     promotions: createWorkflowPromotionStore({
-      ...context,
       access,
+      catalogs,
       transactScopes,
     }),
-    publicationReviews: createPublicationReviewStore(context),
-    stepSamples: createWorkflowStepSampleStore(pool),
+    publicationReviews: createPublicationReviewStore(access, { catalogs }),
+    stepSamples: createWorkflowStepSampleStore(access),
     workflowTests: createWorkflowTestStore(pool, catalogs),
     workflowTestSuites: createWorkflowTestSuiteStore(pool, catalogs),
-    autoPause: createWorkflowAutoPauseStore(context.transact),
+    autoPause: createWorkflowAutoPauseStore((workspaceId, actorId, operation) =>
+      access.tracked(() =>
+        withTenantScopedClient(pool, { workspaceId, actorId }, operation),
+      ),
+    ),
     concurrency: createWorkflowConcurrencyStore(access),
     errorWorkflow: createWorkflowErrorStore(access),
     ...createPreviewRunStore(pool),

@@ -16,7 +16,6 @@ import { readBrowsableFolderScope } from '../../shared/facts.queries.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import type { PoolClient } from 'pg';
 import type { PublicationReview } from '@pertexo/contracts';
-import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import {
   projectDraft,
   projectVersion,
@@ -27,6 +26,7 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../workflows/errors.js';
+import { draftRepresentationTag } from '../workflows/representation/tag.js';
 import type { ReviewDependencies, ReviewScope } from './contract.js';
 import { review, reviewDetails } from './eligibility.queries.js';
 type ReviewRow = Awaited<ReturnType<typeof reviewDetails>>[number]['record'];
@@ -118,12 +118,7 @@ export async function readReviewDraft(
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow draft is not visible');
   const draft = projectDraft(row, dependencies.catalogs.definitionCatalog);
-  const tag = workflowDraftRepresentationTag({
-    workflowId: input.workflowId,
-    revision: draft.revision,
-    graph: draft.graphJson,
-    compatibilityFingerprint: draft.compatibility.fingerprint,
-  });
+  const tag = draftRepresentationTag(input.workflowId, draft);
   if (expectedTag !== undefined && tag !== expectedTag)
     throw new WorkflowRevisionConflictError(draft.revision, tag);
   return { draft, tag };
