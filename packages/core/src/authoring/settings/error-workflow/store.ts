@@ -4,7 +4,7 @@ import {
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
-import { readPolicy } from './error-policy.queries.js';
+import { readPolicy } from './policy.queries.js';
 import { and, asc, eq, gt, inArray, ne, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -15,9 +15,9 @@ import {
 import {
   readBrowsableFolderScope,
   readFolderScope,
-} from '../../shared/facts.queries.js';
-import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
-import { workflowScopeSql } from '../../shared/scope.queries.js';
+} from '../../../shared/facts.queries.js';
+import { workflowAccessible } from '../../../tenant-access/resources/workflows.queries.js';
+import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import type { PoolClient } from 'pg';
 import { isWorkflowErrorTarget } from '@pertexo/workflow-model';
 import type {
@@ -25,8 +25,8 @@ import type {
   WorkflowErrorSettingsRequest,
   WorkflowErrorTargetsPage,
 } from '@pertexo/contracts';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
+import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
 
 type Scope = Readonly<{

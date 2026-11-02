@@ -9,7 +9,7 @@ import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
 import { and, asc, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { entitlementPolicyState } from '../../runs/queries/entitlement-effect.js';
+import { entitlementPolicyState } from '../../../runs/queries/entitlement-effect.js';
 import {
   workflowConcurrencyPolicies,
   workflows,
@@ -20,9 +20,9 @@ import {
 } from '@pertexo/database/schema';
 
 import { ROLES, type Role } from '@pertexo/workflow-model';
-import { RUN_SUMMARY_RETENTION_SQL } from '../../runs/data-policy.js';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-import { WorkflowNotFoundError } from '../workflows/errors.js';
+import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/data-policy.js';
+import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
+import { WorkflowNotFoundError } from '../../workflows/errors.js';
 
 export type WorkflowConcurrencySettings = ConcurrencySettings;
 type Scope = Readonly<{

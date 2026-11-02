@@ -6,7 +6,7 @@ import {
   createWorkflowErrorStore,
   WorkflowErrorSettingsConflictError,
   WorkflowErrorTargetUnavailableError,
-} from '../../../src/authoring/settings/error-workflow.repository.js';
+} from '../../../src/authoring/settings/error-workflow/store.js';
 import { WorkflowNotFoundError } from '../../../src/authoring/workflows/errors.js';
 import { userId } from '../../lifecycle/retention.support.js';
 

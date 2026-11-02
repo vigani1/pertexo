@@ -56,11 +56,11 @@ export {
   WorkflowConcurrencyLimitExceededError,
   WorkflowConcurrencyLimitUnavailableError,
   WorkflowConcurrencyRevisionConflictError,
-} from './settings/concurrency.repository.js';
+} from './settings/concurrency/store.js';
 export type {
   WorkflowConcurrencyDatabase,
   WorkflowConcurrencySettings,
-} from './settings/concurrency.repository.js';
+} from './settings/concurrency/store.js';
 export {
   WorkflowAutoPauseSettingsRevisionConflictError,
   WorkflowPauseRevisionConflictError,
@@ -72,7 +72,7 @@ export type {
   WorkflowAutoPauseSettings,
   WorkspaceAutoPauseSettings,
 } from './settings/auto-pause/contract.js';
-export { createWorkflowAuthoringDatabase } from './workflows/repository.js';
+export { createWorkflowAuthoringDatabase } from './workflows/store.js';
 export { WorkflowDefinitionPlacementError } from './workflows/errors.js';
 export {
   WorkflowLifecycleRevisionConflictError,
@@ -109,7 +109,7 @@ export {
   WorkflowErrorSettingsConflictError,
   WorkflowErrorTargetUnavailableError,
   type WorkflowErrorDatabase,
-} from './settings/error-workflow.repository.js';
+} from './settings/error-workflow/store.js';
 
 export { WorkflowStepSampleError } from './step-samples/errors.js';
 export type {

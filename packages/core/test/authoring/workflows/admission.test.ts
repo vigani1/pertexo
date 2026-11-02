@@ -8,13 +8,13 @@ import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 
 import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.queries.js';
-import { createWorkflowPublisher } from '../../../src/authoring/publication/publisher.repository.js';
+import { createWorkflowPublisher } from '../../../src/authoring/publication/publish.js';
 import { WorkflowRevisionConflictError } from '../../../src/authoring/workflows/errors.js';
 import {
   IdempotencyConflictError,
   createDatabaseRuntime,
 } from '@pertexo/database/platform';
-import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/repository.js';
+import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/store.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 import {
   workspaceId,

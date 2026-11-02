@@ -7,7 +7,7 @@ import {
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 
-import { createWorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/repository.js';
+import { createWorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/store.js';
 
 import {
   workspaceId,
