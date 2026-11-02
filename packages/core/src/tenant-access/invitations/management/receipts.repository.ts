@@ -22,6 +22,7 @@ import type {
   WorkspaceInvitationRecord,
 } from '../../contract.js';
 
+import { invitationReceipt, requireReadableReceipt } from '../../receipts.js';
 import type { sealedToken } from '../input.js';
 import {
   mapDurableInvitation,
@@ -61,6 +62,7 @@ export async function claimInvitationCommand(
     resourceId: invitationId,
   });
   if (stored === null) return null;
+  requireReadableReceipt(invitationReceipt, stored);
   return Object.freeze({
     invitation: mapDurableInvitation(stored.invitation),
     replayed: true,
