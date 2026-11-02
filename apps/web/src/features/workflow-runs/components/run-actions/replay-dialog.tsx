@@ -189,6 +189,14 @@ function useReplayInput({
   return runInput;
 }
 
+/**
+ * Until the read answers, an untouched field's {} isn't the run's input, and steps
+ * that call other services would run again on it. Typing goes ahead.
+ */
+function stillAwaitingInput(reading: boolean, input: string) {
+  return reading && input === '{}';
+}
+
 /** Copy follows whether the original input is still available, not query timing. */
 function replayDescription(
   data: WorkflowRunData | undefined,
@@ -285,12 +293,10 @@ export function ReplayRunDialog({
     }
   }
 
-  const needsCapturedInput = formReplay && originalText === undefined;
-  // Until the read answers, an untouched field's {} isn't the run's input, and the
-  // steps that call other services would run again on it. Typing goes ahead.
-  const awaitingInput = original.isPending && runInput.input === '{}';
-  const cannotStart =
-    replay.expired || version.pending || needsCapturedInput || awaitingInput;
+  const inputMissing =
+    (formReplay && originalText === undefined) ||
+    stillAwaitingInput(original.isPending, runInput.input);
+  const cannotStart = replay.expired || version.pending || inputMissing;
   return (
     <ConfirmDialog
       state={{ open: open, onOpenChange: changeOpen, locked: replay.pending }}
