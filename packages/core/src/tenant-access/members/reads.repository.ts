@@ -7,6 +7,10 @@ import {
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import {
+  BROWSABLE_WORKSPACE_STATUSES,
+  UNPURGED_WORKSPACE_STATUSES,
+} from '@pertexo/workflow-model';
+import {
   users,
   workspaceMemberships,
   workspaces,
@@ -15,7 +19,6 @@ import {
   authOrganizations,
 } from '@pertexo/database/schema';
 
-import { rolesForCapability } from '@pertexo/workflow-model';
 import type {
   AccessibleWorkspacesPage,
   IdentityWorkspaceStore,
@@ -23,13 +26,14 @@ import type {
   WorkspaceMembersPage,
   WorkspaceStatus,
 } from '../contract.js';
-import { lockBrowsableWorkspaceAuthority } from '../../shared/authority.queries.js';
+import { withWorkspaceAccess } from '../../shared/workspace-access.js';
 
 type MemberStore = Pick<
   IdentityWorkspaceStore,
   'findWorkspaceAccess' | 'listAccessibleWorkspaces' | 'listWorkspaceMembers'
 >;
 
+/** Spans the actor's workspaces, so no one workspace's authority can decide it. */
 async function listAccessibleWorkspaces(
   pool: Pool,
   actorId: string,
@@ -68,11 +72,7 @@ async function listAccessibleWorkspaces(
         and(
           eq(workspaceMemberships.userId, actorId),
           eq(workspaceMemberships.status, 'active'),
-          inArray(workspaces.status, [
-            'active',
-            'suspended',
-            'pending_deletion',
-          ]),
+          inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
           sql`(${after ?? null}::uuid is null or ${workspaces.id}>${after ?? null}::uuid)`,
         ),
       )
@@ -90,6 +90,10 @@ async function listAccessibleWorkspaces(
   });
 }
 
+/**
+ * The fact the API's guards judge: any membership, in any status, with no
+ * capability to check. It reports authority, so it can't be behind the helper.
+ */
 async function findWorkspaceAccess(
   pool: Pool,
   actorId: string,
@@ -148,16 +152,16 @@ async function listWorkspaceMembers(
     input.after === undefined ? undefined : input.after.userId;
   const afterCreatedAt =
     input.after === undefined ? undefined : input.after.createdAt;
-  return withTenantScopedClient(
+  // Locks as a change does, so the list can't be read past a removal that's committing.
+  return withWorkspaceAccess(
     pool,
     { workspaceId, actorId },
+    {
+      mode: 'change',
+      capability: 'member:read',
+      statuses: BROWSABLE_WORKSPACE_STATUSES,
+    },
     async (client): Promise<WorkspaceMembersPage> => {
-      await lockBrowsableWorkspaceAuthority(
-        client,
-        workspaceId,
-        actorId,
-        rolesForCapability('member:read'),
-      );
       const db = drizzle(client);
       const directory = db
         .select({

@@ -168,6 +168,11 @@ export type MemberCommandScope = Readonly<{
 type MemberCommandResult = Readonly<Record<string, unknown>>;
 
 /**
+ * Off withWorkspaceAccess: it locks both users for update, in id order. The
+ * helper's share lock on the actor's user would come first, and two commands
+ * touching that user in two workspaces would each hold it and wait for the other's
+ * update, dying with 40P01. 'exclusive' only runs one at a time per workspace.
+ *
  * Runs one existing-member command in a tenant transaction: lock the
  * participants, let the command admit its actor before its key is read,
  * replay an exact retry without rechecking the old state, and otherwise

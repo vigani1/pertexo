@@ -86,6 +86,11 @@ export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
         scope: actorUserId,
         idempotencyKey: raw.idempotencyKey,
       };
+      // Off withWorkspaceAccess: it locks the actor's user for update. The helper's
+      // share lock on that user would come first, and two commands by one person
+      // in two workspaces would each hold it and wait for the other's update, dying
+      // with 40P01. 'exclusive' only runs one at a time per workspace. It also
+      // answers with its own reasons, not a denial.
       return withTenantScopedClient(
         pool,
         { workspaceId, actorId: actorUserId },

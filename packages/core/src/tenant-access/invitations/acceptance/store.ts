@@ -15,6 +15,10 @@ import {
   abandonInvitationAcceptance,
 } from './proof.repository.js';
 
+/**
+ * Off withWorkspaceAccess: no member is behind these. An invitation's token is,
+ * and whoever holds it isn't a member until acceptance commits.
+ */
 export function createIdentityWorkspaceInvitationAcceptanceStore(
   pool: Pool,
 ): AcceptanceStore {
