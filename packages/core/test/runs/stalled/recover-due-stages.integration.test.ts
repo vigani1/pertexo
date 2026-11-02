@@ -51,14 +51,17 @@ const interceptQueries = (
   pool: Pool,
   answer: (text: string, forward: () => unknown) => unknown,
 ): void => {
-  const query = pool.query.bind(pool) as (...values: unknown[]) => unknown;
-  vi.spyOn(pool, 'query').mockImplementation(((...values: unknown[]) =>
-    answer(
-      typeof values[0] === 'string'
-        ? values[0]
-        : (values[0] as { text: string }).text,
-      () => query(...values),
-    )) as typeof pool.query);
+  type Query = (...values: unknown[]) => unknown;
+  const query = pool.query.bind(pool) as Query;
+  vi.spyOn(pool as unknown as { query: Query }, 'query').mockImplementation(
+    (...values) =>
+      answer(
+        typeof values[0] === 'string'
+          ? values[0]
+          : (values[0] as { text: string }).text,
+        () => query(...values),
+      ),
+  );
 };
 
 const failStatement = (pool: Pool, statement: RegExp, error: Error): void => {
@@ -310,7 +313,7 @@ describe('a stage of the stalled-work scan that fails', () => {
   it('gives up on an aborted scan instead of recording it as a failed stage', async () => {
     const shutdown = new AbortController();
     interceptQueries(pool, (text, forward) => {
-      if (!STAGE_STATEMENT.expired_leases.test(text)) return forward();
+      if (!text.includes('from "app"."node_attempts"')) return forward();
       shutdown.abort(new Error('shutting down'));
       return Promise.reject(new Error('connection terminated'));
     });
