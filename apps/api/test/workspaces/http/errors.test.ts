@@ -3,6 +3,7 @@ import { workspaceFailure } from '../../../src/problems/context/normalize.js';
 import { IdempotencyConflictError } from '@pertexo/database/platform';
 import {
   IdentityConflictError,
+  IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
   WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
@@ -160,6 +161,8 @@ describe('identity/workspace conflict mapping', () => {
   it.each([
     new IdempotencyRequestConflictError(),
     new IdempotencyConflictError(),
+    // A run start's receipt that no longer reads: the caller needs a new key, not a 500.
+    new IdempotencyRecordCorruptError(),
   ])(
     'maps a reused idempotency key with changed input to the stable conflict',
     (failure) => {
