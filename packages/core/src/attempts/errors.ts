@@ -14,8 +14,10 @@ export class NodeAttemptReconciliationRequiredError extends Error {
 
 export class NodeAttemptDispatchBindingMismatchError extends Error {
   public override readonly name = 'NodeAttemptDispatchBindingMismatchError';
-  public constructor() {
-    super('Node attempt provider dispatch binding does not match');
+  public constructor(
+    message = 'Node attempt provider dispatch binding does not match',
+  ) {
+    super(message);
   }
 }
 

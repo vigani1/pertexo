@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 
 import {
   createNodeAttemptRunStore,
+  NodeAttemptDispatchBindingMismatchError,
   NodeAttemptStateCorruptError,
 } from '../../../../src/testing.js';
 import {
@@ -27,6 +28,14 @@ import {
 } from '../run.fixture.js';
 
 export function registerRejectsLegacyPrimarySlotInstead(): void {
+  it('names a send through a connection its version never published, so the worker reports it as a mismatch', async () => {
+    const connection = await createHealthConnection('primary');
+    const lease = await claimHealthAttempt(connection);
+    await expect(
+      markHealthDispatched(lease, connection),
+    ).rejects.toBeInstanceOf(NodeAttemptDispatchBindingMismatchError);
+  });
+
   it('rejects a legacy primary slot instead of the published Slack bot-token contract', async () => {
     const connection = await createHealthConnection('primary');
     const lease = await claimHealthAttempt(connection);
