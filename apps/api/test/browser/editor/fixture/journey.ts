@@ -58,8 +58,10 @@ export function registerEditorBrowserJourney(
 }
 
 function journeyTimeoutMillis() {
-  // The product journey is several specs, each with its own sign-up.
-  return scenario === 'product' ? 720_000 : 180_000;
+  // These journeys are several specs, each with its own sign-up. Collaboration
+  // also waits out a presence lease.
+  if (scenario === 'product') return 720_000;
+  return scenario === 'collaboration' ? 360_000 : 180_000;
 }
 
 async function prepareEditorPrerequisites(api: EditorBrowserApi) {
