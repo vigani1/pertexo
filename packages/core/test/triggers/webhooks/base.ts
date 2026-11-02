@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { Pool, type QueryResultRow } from 'pg';
 
-import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/repository.js';
+import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/store.js';
 import {
   migrateDatabase,
   dropDisconnectedDatabase,

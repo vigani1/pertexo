@@ -1,5 +1,5 @@
 export type { Role } from '@pertexo/workflow-model';
-export { createIdentityWorkspaceDatabase } from './repository.js';
+export { createIdentityWorkspaceDatabase } from './store.js';
 export {
   IdentityConflictError,
   IdentityNotFoundError,

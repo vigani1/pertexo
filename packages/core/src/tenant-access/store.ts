@@ -23,19 +23,19 @@ import type {
   WorkspaceRecord,
   WorkspaceWithOwnerInput,
 } from './contract.js';
-import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance.repository.js';
-import { createIdentityWorkspaceInvitationStore } from './invitations/repository.js';
+import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance/store.js';
+import { createIdentityWorkspaceInvitationStore } from './invitations/store.js';
 import { createIdentityWorkspaceMembershipLifecycleStore } from './members/lifecycle.repository.js';
 import { createMemberships } from './members/records.repository.js';
 import { createIdentityWorkspaceMemberRemovalStore } from './members/removal.repository.js';
-import { createIdentityWorkspaceMemberStore } from './members/repository.js';
+import { createIdentityWorkspaceMemberStore } from './members/reads.repository.js';
 import { createIdentityWorkspaceRoleCommandStore } from './members/roles.repository.js';
 import {
   throwIdentityDatabaseConflict,
   throwWorkspaceLifecycleError,
 } from './support.js';
 import { createIdentityWorkspaceProfileStore } from './users/profile.repository.js';
-import { createUserStore } from './users/repository.js';
+import { createUserStore } from './users/store.js';
 import {
   claimWorkspaceCreationCommand,
   commandKeyHash,

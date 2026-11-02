@@ -7,11 +7,11 @@ import {
   inboxReceipts,
   outboxEvents,
 } from '@pertexo/database/schema';
-import { lockDeliveryScope } from './delivery/authority.queries.js';
-import type { WorkspaceInvitationDeliveryStore } from './delivery/contract.js';
-import { assertInvitationDeliveryIdentity } from './delivery/identity.queries.js';
-import { sealedToken } from './input.js';
-import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
+import { lockDeliveryScope } from './authority.queries.js';
+import type { WorkspaceInvitationDeliveryStore } from './contract.js';
+import { assertInvitationDeliveryIdentity } from './identity.queries.js';
+import { sealedToken } from '../input.js';
+import { DELIVERY_CONSUMER } from '../../../outbox/delivery-consumers.js';
 
 import {
   rethrowQueryFailure,

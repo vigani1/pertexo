@@ -8,7 +8,7 @@ import {
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
 import { acceptWorkflowRun } from '../../src/runs/commands/acceptance.repository.js';
-import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/repository.js';
+import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/store.js';
 import {
   migrateDatabase,
   dropDisconnectedDatabase,

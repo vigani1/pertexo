@@ -5,7 +5,7 @@ import type { DatabaseError } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/repository.js';
+import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/store.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,
