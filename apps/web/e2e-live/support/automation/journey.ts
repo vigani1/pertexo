@@ -257,7 +257,7 @@ export async function qualifyAutomationCli(page: Page, workspaceId: string) {
         '--run',
         started.run.id,
       ]);
-      expect(terminalCancel.code).toBe(1);
+      expect(terminalCancel.code).toBe(5);
       expect(terminalCancel.body).toMatchObject({ code: 'run.not_cancelable' });
       phase = 'token-revoke';
       await page
@@ -279,7 +279,7 @@ export async function qualifyAutomationCli(page: Page, workspaceId: string) {
         '--workspace',
         workspaceId,
       ]);
-      expect(denied.code).toBe(1);
+      expect(denied.code).toBe(3);
       expect(denied.body).toMatchObject({ code: 'auth.unauthenticated' });
       return {
         tokenId,
