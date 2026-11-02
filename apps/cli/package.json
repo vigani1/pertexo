@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@pertexo/contracts": "workspace:*",
-    "@pertexo/workflow-model": "workspace:*",
     "zod": "4.6.7"
   },
   "description": "Workflow and run automation over the Pertexo HTTP API",
