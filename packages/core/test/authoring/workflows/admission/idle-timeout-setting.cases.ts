@@ -8,12 +8,12 @@ import { graph, valid, budget } from './fixture.js';
 export function registerIdleTimeoutSettings(): void {
   it.each([
     ['35000', 'ms', true],
-    ['2251', 'ms', true],
-    ['2250', 'ms', false],
-    ['2', 's', false],
-    ['3', 's', true],
+    ['6251', 'ms', true],
+    ['6250', 'ms', false],
+    ['6', 's', false],
+    ['7', 's', true],
     ['1', 'min', true],
-    ['2250001', 'us', true],
+    ['6250001', 'us', true],
     ['0', 'ms', false],
     ['-1', 'ms', false],
     ['NaN', 'ms', false],
@@ -36,7 +36,7 @@ export function registerIdleTimeoutSettings(): void {
     for (const rows of [
       [],
       [{ setting: '0', unit: 'ms' }],
-      [{ setting: '2250', unit: 'ms' }],
+      [{ setting: '6250', unit: 'ms' }],
     ]) {
       query.mockResolvedValue({ rows });
       await expect(

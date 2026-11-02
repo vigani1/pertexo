@@ -14,8 +14,10 @@ export const AUTHORING_VALIDATION_BUDGET = Object.freeze({
   maxQueued: 4,
   maxQueuedBytes: 4 * 1_048_576,
   envelopeBytes: 2 * 1_048_576,
-  queueMs: 500,
-  startupMs: 500,
+  // A thread takes about 190 ms to start on one idle core, so 500 ms made every check
+  // fail once a few other processes competed for that core.
+  queueMs: 2_000,
+  startupMs: 3_000,
   parseMs: 1_000,
   terminationMs: 250,
   reportBytes: 262_144,

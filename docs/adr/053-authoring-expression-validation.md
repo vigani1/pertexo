@@ -223,7 +223,7 @@ protocol failure. Neither condition automatically replays a write.
 The database owns budget qualification on the actual transaction connection.
 `idle_in_transaction_session_timeout` applies while PostgreSQL waits idle in a
 transaction during off-thread admission; it must be a known finite duration
-greater than the 2,250 ms scheduling-qualified parser-phase bound. Unknown,
+greater than the 6,250 ms scheduling-qualified parser-phase bound. Unknown,
 unlimited or insufficient effective settings fail closed for new admission.
 PostgreSQL timeout values require explicit unit parsing. Pool idle retirement
 does not apply to a checked-out transaction; `query_timeout` bounds individual
@@ -252,8 +252,8 @@ Approved reversible **operational defaults**, not new syntax/graph limits:
 | Active authoring parser batches per API process | `min(2, availableParallelism())` | Keep CPU admission small; one worker processes a whole batch, not one worker per mapping |
 | Queued batches / queued serialized bytes | 4 / 4 MiB | Both limits checked before retention; reject immediately when either would be exceeded |
 | Serialized batch envelope | 2 MiB | Existing 1 MiB graph plus bounded selected policy projection; oversized operational payload is unavailable, not an invalid graph |
-| Queue residence | 500ms | Deadline from submission; no infinite wait while a transaction is open |
-| Worker startup | 500ms | Deadline begins when the worker is created; covers readiness, not just successful startup |
+| Queue residence | 2,000ms | Deadline from submission; no infinite wait while a transaction is open |
+| Worker startup | 3,000ms | Deadline begins when the worker is created; covers readiness, not just successful startup. Was 500ms: on one core a thread takes about 190ms to start when idle, and every check failed with four other busy processes. At 3,000ms all 10 passed, at about 1.4s each |
 | Parsing and report construction | 1,000ms | Starts **before** posting the batch, not upon a potentially absent `started` message; about five times the measured cold valid 202ms batch, not a universal guarantee |
 | Termination observation after result/abort/failure | 250ms | Bound caller wait; retain occupied capacity/unconfirmed ownership if termination is not observed |
 | Worker memory | 64 MiB old generation / 8 MiB young generation / 4 MiB stack | Old-generation ceiling matches the measurement setup; stack follows ADR009's existing worker pattern rather than turning the experiment's smaller stack into a syntax rule |
@@ -331,11 +331,11 @@ deadline is explicit; no reliance on those database timeouts to supervise worker
   need an available parser slot or validate a newer draft.
 
 Maximum **added parser-phase application wait** before requesting rollback is
-500ms queue + 500ms startup + 1,000ms parse + 250ms termination observation =
-2,250ms, subject to host scheduling. Admission failures never wait indefinitely
+2,000ms queue + 3,000ms startup + 1,000ms parse + 250ms termination observation =
+6,250ms, subject to host scheduling. Admission failures never wait indefinitely
 for worker termination: an unconfirmed pure worker owns no database client, so
 rollback is safe while its capacity remains quarantined. This is not a claim
-that the entire transaction or network rollback finishes within 2,250ms; existing
+that the entire transaction or network rollback finishes within 6,250ms; existing
 SQL/acquisition/rollback deadlines still apply. Custom smaller database idle /
 query budgets must be checked against these operational defaults before enablement,
 not disabled or silently raised. Verify injected stuck startup/parse/termination
@@ -363,7 +363,7 @@ basis; they are not proof that the implementation already exists.
 currently does not forward `options.signal`**. Explicit threading through HTTP,
 use case, persistence and that wrapper is required in the later integration;
 do not describe current cancellation as end-to-end. Failed exit retains its
-occupied parser slot even after caller failure. The 2,250ms application budget
+occupied parser slot even after caller failure. The 6,250ms application budget
 is scheduling-qualified, not an entire database deadline. Custom smaller idle
 budgets must fail closed; do not raise existing database configurations silently.
 
