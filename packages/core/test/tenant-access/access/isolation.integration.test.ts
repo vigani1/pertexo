@@ -46,9 +46,10 @@ async function fingerprint(workspaceId: string) {
     ).rows;
   return {
     workspace: (
-      await admin.query('select name,revision,status from app.workspaces where id=$1', [
-        workspaceId,
-      ])
+      await admin.query(
+        'select name,revision,status from app.workspaces where id=$1',
+        [workspaceId],
+      )
     ).rows,
     members: await read('workspace_memberships'),
     invitations: await read('workspace_invitations'),
@@ -226,12 +227,15 @@ describe('an owner of one workspace, reaching into another by its id', () => {
     ],
   ];
 
-  it.each(COMMANDS)('is refused %s, and nothing changes', async (_flow, reach, reason) => {
-    const world = await twoWorkspaces();
-    const before = await fingerprint(world.theirs.workspaceId);
-    await expect(reach(world)).rejects.toMatchObject({ reason });
-    expect(await fingerprint(world.theirs.workspaceId)).toEqual(before);
-  });
+  it.each(COMMANDS)(
+    'is refused %s, and nothing changes',
+    async (_flow, reach, reason) => {
+      const world = await twoWorkspaces();
+      const before = await fingerprint(world.theirs.workspaceId);
+      await expect(reach(world)).rejects.toMatchObject({ reason });
+      expect(await fingerprint(world.theirs.workspaceId)).toEqual(before);
+    },
+  );
 
   it('reads no rows of it, even with the helper open on its own workspace', async () => {
     const { mine, theirs, run } = await twoWorkspaces();
@@ -244,8 +248,11 @@ describe('an owner of one workspace, reaching into another by its id', () => {
         statuses: UNPURGED_WORKSPACE_STATUSES,
       },
       async (client) => ({
-        runs: (await client.query('select id from app.workflow_runs where id=$1', [run.runId]))
-          .rowCount,
+        runs: (
+          await client.query('select id from app.workflow_runs where id=$1', [
+            run.runId,
+          ])
+        ).rowCount,
         members: (
           await client.query(
             'select 1 from app.workspace_memberships where workspace_id=$1',
@@ -326,13 +333,20 @@ describe('aiming at another workspace’s things through your own', () => {
 
   it('does not list their members or invitations among your own', async () => {
     const { mine, theirs, pending } = await twoWorkspaces();
-    const members = await identities.listWorkspaceMembers(mine.workspaceId, mine.owner);
-    expect(members.items.map(({ userId }) => userId)).not.toContain(theirs.owner);
+    const members = await identities.listWorkspaceMembers(
+      mine.workspaceId,
+      mine.owner,
+    );
+    expect(members.items.map(({ userId }) => userId)).not.toContain(
+      theirs.owner,
+    );
     const invitations = await identities.listWorkspaceInvitations(
       mine.workspaceId,
       mine.owner,
     );
-    expect(invitations.items.map(({ id }) => id)).not.toContain(pending.invitation.id);
+    expect(invitations.items.map(({ id }) => id)).not.toContain(
+      pending.invitation.id,
+    );
   });
 });
 
