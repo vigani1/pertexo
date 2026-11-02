@@ -1,5 +1,5 @@
 import { requestWorkflowRunCancellation } from '../../../../src/runs/commands/request-cancellation.js';
-import { expect, it } from 'vitest';
+import { expect, it, onTestFinished } from 'vitest';
 import {
   callbacks,
   config,
@@ -176,13 +176,38 @@ it('accepts one concurrent response and refuses cancellation without consuming a
     }),
   ).rejects.toMatchObject({ reason: 'closed' });
 });
-it('counts prepared and early responses in the existing allowance and fences a stale attempt', async () => {
-  const { scope, callback } = await prepared();
+it('does not tie the task cap to the queued-run limit', async () => {
+  const { scope } = await prepared();
   await queryAsOwner(
-    'update app.workspace_execution_entitlement_versions set queued_run_limit=1 where workspace_id=$1 and version=1',
+    'update app.workspace_execution_entitlement_versions set queued_run_limit=1 where workspace_id=$1',
     [workspaceId],
     workspaceId,
   );
+  try {
+    await expect(
+      callbacks.prepare({
+        ...scope,
+        targets: [{ nodeId: 'beside-the-first', config }],
+        keyVersion: '1',
+        tokenHash: ({ id }) => hash(id),
+      }),
+    ).resolves.toHaveLength(1);
+  } finally {
+    await queryAsOwner(
+      'update app.workspace_execution_entitlement_versions set queued_run_limit=100 where workspace_id=$1',
+      [workspaceId],
+      workspaceId,
+    );
+  }
+});
+it('counts prepared and early responses in the existing allowance and fences a stale attempt', async () => {
+  const { scope, callback } = await prepared();
+  await queryAsOwner('update app.instance_capacity set pending_task_limit=1');
+  onTestFinished(async () => {
+    await queryAsOwner(
+      'update app.instance_capacity set pending_task_limit=10000',
+    );
+  });
   await callbacks.respond({
     callback,
     output: response,

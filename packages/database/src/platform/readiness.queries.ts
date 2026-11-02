@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0075_schedule_failure_rests.sql';
+export const EXPECTED_MIGRATION_HEAD = '0076_pending_task_limit.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

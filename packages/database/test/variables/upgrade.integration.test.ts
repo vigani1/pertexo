@@ -176,6 +176,7 @@ it('backfills current and retained historical sets, fixed empty sets and purged 
         '0073_attempt_foreign_key_indexes.sql',
         '0074_outbox_retention_and_row_signal.sql',
         '0075_schedule_failure_rests.sql',
+        '0076_pending_task_limit.sql',
       ]);
       expect(
         (

@@ -22,12 +22,17 @@ export const instanceCapacity = appSchema.table(
     activeRunLimit: integer('active_run_limit').notNull(),
     queuedRunLimit: integer('queued_run_limit').notNull(),
     artifactCountLimit: integer('artifact_count_limit').notNull(),
+    pendingTaskLimit: integer('pending_task_limit').default(10_000).notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
     check('instance_capacity_singleton', sql`${table.singleton}`),
+    check(
+      'instance_capacity_pending_task_limit_valid',
+      sql`pending_task_limit BETWEEN 1 AND 1000000`,
+    ),
     check(
       'instance_capacity_limits_valid',
       sql`active_run_limit BETWEEN 1 AND 10000 AND queued_run_limit BETWEEN 1 AND 100000 AND artifact_count_limit >= 0`,
