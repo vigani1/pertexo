@@ -10,7 +10,7 @@ import {
   rethrowQueryFailure,
   canonicalOutboxPayloadChecksum,
 } from '@pertexo/database/primitives';
-import type { FolderScope } from '../../../tenant-access/resources/contract.js';
+import type { FolderScope } from '../../../shared/contract.js';
 import type {
   AudienceReview,
   WorkflowMoveReviewRequest,
@@ -21,12 +21,12 @@ import { readFolderScope } from '../../../shared/facts.queries.js';
 import {
   RESOURCE_ADMINISTRATORS,
   removesFolderRestriction,
-} from '../../../tenant-access/resources/policy.js';
+} from '../../../shared/folder-policy.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { WorkflowFolderConflictError } from '../errors.js';
 import type { OrganizationScope } from '../commands.repository.js';
-import { FOLDER_LIMIT } from '../limits.js';
+import { FOLDER_LIMIT } from '../../../shared/folder-policy.js';
 
 /** Review restriction identities, rather than guessing whether two groups' future members coincide. */
 export async function reviewMoveAudience(

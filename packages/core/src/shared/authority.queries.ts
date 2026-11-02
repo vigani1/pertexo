@@ -11,7 +11,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
   type Role,
 } from '@pertexo/workflow-model';
-import { WorkspaceAccessDeniedError } from '../tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from './errors.js';
 
 /** Ordered current authority fence shared by workspace commands. Call only inside the same tenant transaction as the protected work. */
 async function workspaceAuthority(

@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { WorkspaceAccessDeniedError } from '../errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import {
   BROWSABLE_WORKSPACE_STATUSES,
   rolesForCapability,
@@ -10,7 +10,10 @@ import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from '../../shared/authority.queries.js';
-import type { ResourceActor, WorkflowResourceCapability } from './contract.js';
+import type {
+  ResourceActor,
+  WorkflowResourceCapability,
+} from '../../shared/contract.js';
 import { readFolderScope } from '../../shared/facts.queries.js';
 import { workflowAccessible } from './workflows.queries.js';
 

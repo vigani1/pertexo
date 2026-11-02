@@ -1,6 +1,6 @@
 import type { RunStatus } from '@pertexo/workflow-engine';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
-import type { ResourceTransaction } from '../../../tenant-access/resources/contract.js';
+import type { ResourceTransaction } from '../../../shared/contract.js';
 import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.repository.js';
 import { ordinaryRunSql, expiredRunSql } from '../../data-policy.js';
 import {

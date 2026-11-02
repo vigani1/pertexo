@@ -44,10 +44,7 @@ import type {
   PreviewStatus,
 } from '../../src/previews/contract.js';
 import type { AcceptanceInput } from '../../src/runs/commands/acceptance/input.js';
-import type {
-  FolderAccess,
-  FolderFact,
-} from '../../src/tenant-access/resources/contract.js';
+import type { FolderAccess, FolderFact } from '../../src/shared/contract.js';
 import type { WorkflowTriggerHealth } from '../../src/triggers/reconciliation/contract.js';
 import type { RecordedScheduleOccurrence } from '../../src/triggers/schedules/contract.js';
 import type { ScheduleTriggerRecord } from '../../src/triggers/schedules/management/contract.js';

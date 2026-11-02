@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
-import type { ResourceTransaction } from '../../../tenant-access/resources/contract.js';
+import type { ResourceTransaction } from '../../../shared/contract.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import { workflowRuns, workflows, usageEvents } from '@pertexo/database/schema';
 import { ordinaryRunSql } from '../../data-policy.js';

@@ -10,6 +10,9 @@ import type {
 
 export const RESOURCE_ADMINISTRATORS: readonly Role[] = ADMINISTRATIVE_ROLES;
 
+/** A workspace's folders; the scope read refuses more, so a policy never decides on a partial tree. */
+export const FOLDER_LIMIT = 256;
+
 const isEditing = (capability: string) =>
   ['workflow:create', 'workflow:update', 'workflow:publish'].includes(
     capability,

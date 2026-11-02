@@ -30,7 +30,7 @@ import {
   workflowTags,
   workflows,
 } from '@pertexo/database/schema';
-import type { FolderScope } from '../../tenant-access/resources/contract.js';
+import type { FolderScope } from '../../shared/contract.js';
 import { readBrowsableFolderScope } from '../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
 import { workflowActions } from '../../tenant-access/resources/workflows.queries.js';

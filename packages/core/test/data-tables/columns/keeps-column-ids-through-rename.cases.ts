@@ -8,7 +8,7 @@ import {
 } from '../../support/workflow-authoring.js';
 
 import { store, scope, create, current, edit, rows } from './fixture.js';
-import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/errors.js';
 
 export function registerKeepsColumnIDsThroughRename(): void {
   it('keeps column IDs through rename, rewrites every row and charges exact bytes', async () => {

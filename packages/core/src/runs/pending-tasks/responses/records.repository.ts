@@ -4,7 +4,7 @@ import { nodeRuns, workflows, users } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../values/stored-execution.js';
 import { and, eq, desc, inArray, lt, or, sql } from 'drizzle-orm';
-import type { FolderScope } from '../../../tenant-access/resources/contract.js';
+import type { FolderScope } from '../../../shared/contract.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import type { PoolClient } from 'pg';
 import type {

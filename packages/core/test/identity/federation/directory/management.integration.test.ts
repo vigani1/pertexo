@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { WorkspaceAccessDeniedError } from '../../../../src/tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../../src/shared/errors.js';
 import { useIdentityCommandDatabase } from '../../command.support.js';
 import {
   createDirectoryCredential,

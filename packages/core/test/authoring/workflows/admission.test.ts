@@ -1,5 +1,5 @@
 import { draftWireRow } from '../../support/workflow-authoring/drafts.js';
-import { folderScope } from '../../../src/tenant-access/resources/policy.js';
+import { folderScope } from '../../../src/shared/folder-policy.js';
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import type { PoolClient } from 'pg';

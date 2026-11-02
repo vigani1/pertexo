@@ -12,7 +12,7 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 import { withWorkspaceReadTransaction } from '@pertexo/database/primitives';
-import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 
 interface Input {
   workspaceId: string;

@@ -8,7 +8,7 @@ import {
   workflowOrganizationState,
   workflows,
 } from '@pertexo/database/schema';
-import type { FolderScope } from '../../../tenant-access/resources/contract.js';
+import type { FolderScope } from '../../../shared/contract.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import {
   workflowAccessible,

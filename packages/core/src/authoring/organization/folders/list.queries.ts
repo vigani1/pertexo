@@ -4,7 +4,8 @@ import { workflowFolders } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { folderProjection, type FolderRow } from './hierarchy.queries.js';
 import { readBrowsableFolderScope } from '../../../shared/facts.queries.js';
-import { FOLDER_LIMIT, FOLDER_DEPTH_LIMIT } from '../limits.js';
+import { FOLDER_DEPTH_LIMIT } from '../limits.js';
+import { FOLDER_LIMIT } from '../../../shared/folder-policy.js';
 
 import { ROLES } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';

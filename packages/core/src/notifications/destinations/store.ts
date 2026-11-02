@@ -15,7 +15,7 @@ import {
   withWorkspaceAccess,
   type WorkspaceActor,
 } from '../../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import {
   clearWorkflowPolicy,
   readWorkflowPolicy,

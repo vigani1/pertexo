@@ -3,7 +3,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { and, eq, exists, or, sql } from 'drizzle-orm';
 import { WorkflowRunReadCapacityError } from '../../errors.js';
-import type { ResourceTransaction } from '../../../tenant-access/resources/contract.js';
+import type { ResourceTransaction } from '../../../shared/contract.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 
 // Read projection combines stored columns with computed or joined fields.

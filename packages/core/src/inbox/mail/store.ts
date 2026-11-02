@@ -11,7 +11,7 @@ import { noticeMailBatches } from '@pertexo/database/schema';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
-import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import { authorizeBatch } from './authorize.repository.js';
 import { createPersonBackoff } from './backoff.js';
 import { readMailCandidates } from './candidates.queries.js';

@@ -19,7 +19,7 @@ import type {
   FolderSharingRequest,
   FolderPrincipal,
 } from '@pertexo/contracts';
-import { RESOURCE_ADMINISTRATORS } from '../../../tenant-access/resources/policy.js';
+import { RESOURCE_ADMINISTRATORS } from '../../../shared/folder-policy.js';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import {

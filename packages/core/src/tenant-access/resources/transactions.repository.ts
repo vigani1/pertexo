@@ -1,4 +1,4 @@
-import type { ResourceTransaction } from './contract.js';
+import type { ResourceTransaction } from '../../shared/contract.js';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
@@ -17,7 +17,10 @@ import {
 } from '@pertexo/database/primitives';
 import { lockWorkspaceAuthority } from '../../shared/authority.queries.js';
 import { rolesForCapability } from '@pertexo/workflow-model';
-import type { ResourceActor, WorkflowResourceCapability } from './contract.js';
+import type {
+  ResourceActor,
+  WorkflowResourceCapability,
+} from '../../shared/contract.js';
 import { readFolderScope } from '../../shared/facts.queries.js';
 
 export function withRetainedResourceRead<T>(

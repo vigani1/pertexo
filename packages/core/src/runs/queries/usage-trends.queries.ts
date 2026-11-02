@@ -14,7 +14,7 @@ import { readFolderScope } from '../../shared/facts.queries.js';
 import type { Pool } from 'pg';
 import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
 import { withTenantScopedReadClient } from '@pertexo/database/primitives';
-import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 
 export type UsageTrendsInput = Readonly<{
   workspaceId: string;

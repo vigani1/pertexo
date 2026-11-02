@@ -2,7 +2,7 @@ import { withTenantScopedReadClient } from '@pertexo/database/primitives';
 import { randomUUID } from 'node:crypto';
 import { it, expect } from 'vitest';
 
-import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/errors.js';
 import {
   apiPool,
   actorId,
