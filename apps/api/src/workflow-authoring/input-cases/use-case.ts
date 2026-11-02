@@ -9,7 +9,7 @@ import {
   workflowInputCaseQuerySchema,
 } from '@pertexo/contracts';
 import type {
-  WorkflowInputCaseDatabase,
+  WorkflowInputCaseStore,
   WorkflowInputCaseMetadata,
 } from '@pertexo/core/authoring';
 import {
@@ -36,7 +36,7 @@ type CaseCommandInput = CaseInput &
 /** Durable case commands remain independent of manual run admission and loaded JSON. */
 export class WorkflowInputCasesUseCase {
   public constructor(
-    private readonly persistence: WorkflowInputCaseDatabase,
+    private readonly persistence: WorkflowInputCaseStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
   public async list(input: ReadInput & Readonly<{ query: unknown }>) {

@@ -33,7 +33,7 @@ export type Scope = Readonly<{
 export type Command = Scope &
   Readonly<{ idempotencyKey: string; requestId?: string; traceId?: string }>;
 
-export interface WorkflowInputCaseDatabase {
+export interface WorkflowInputCaseStore {
   listCases(
     input: Scope & { limit: number; cursor?: { createdAt: Date; id: string } },
   ): Promise<{

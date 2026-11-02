@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import type { WorkflowInputCaseDatabase } from '@pertexo/core/authoring';
+import type { WorkflowInputCaseStore } from '@pertexo/core/authoring';
 import { createApiWorkflowMetadataRuntime } from '../../../src/platform/workflow/metadata-runtime.js';
 
 // Construction/ownership tests use lazy real stores and never send a query.
@@ -12,7 +12,7 @@ const config = parseDatabaseConfig({
 const createInputCases = vi.hoisted(() => vi.fn());
 vi.mock('@pertexo/core/authoring', async (original) => ({
   ...(await original<object>()),
-  createWorkflowInputCaseDatabase: createInputCases,
+  createWorkflowInputCaseStore: createInputCases,
 }));
 function inputCases() {
   return {
@@ -22,7 +22,7 @@ function inputCases() {
     createCase: vi.fn(),
     updateCase: vi.fn(),
     deleteCase: vi.fn(),
-  } satisfies WorkflowInputCaseDatabase;
+  } satisfies WorkflowInputCaseStore;
 }
 describe('organization metadata runtime ownership', () => {
   beforeEach(() => {
