@@ -18,6 +18,7 @@ import { registerReadsResumedRunRunningThroughAuthenticated } from './direct-web
 import { registerRefusesWebhooksOutsideActiveWorkspace } from './direct-webhook/refuses-webhooks-outside-active-workspace.cases.js';
 import { registerReturnsNoEndpointCredentialOnCompleted } from './direct-webhook/returns-no-endpoint-credential-on-completed.cases.js';
 import { registerNoSilentDedupe } from './direct-webhook/no-silent-dedupe.cases.js';
+import { registerTellsClientWhenToRetrySetup } from './direct-webhook/tells-client-when-to-retry-setup.cases.js';
 import {
   registerStoresKeysAsHashes,
   registerSurvivesPublish,
@@ -56,4 +57,6 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   registerStoresKeysAsHashes();
 
   registerNoSilentDedupe();
+
+  registerTellsClientWhenToRetrySetup();
 });
