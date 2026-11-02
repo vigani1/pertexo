@@ -39,10 +39,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm build && pnpm preview --port ${String(webPort)} --strictPort`,
+    // No typecheck here: `pnpm check` owns it, and it took nearly all of this start.
+    command: `pnpm exec vite build && pnpm preview --port ${String(webPort)} --strictPort`,
     url: webOrigin,
     reuseExistingServer: false,
-    // Starting includes a full typecheck and a production build.
-    timeout: 180_000,
+    timeout: 60_000,
   },
 });
