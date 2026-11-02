@@ -1,4 +1,3 @@
-import { types as nodeTypes } from 'node:util';
 import {
   type JsonValue,
   utf8ByteLength,
@@ -8,40 +7,13 @@ import {
 import { normalizeBoundedEngineJson } from '../compilation/validation.js';
 import { operationError } from '../operation-values.js';
 
+/** Facts come from our own PostgreSQL rows: JSON, so only its shape needs checking. */
 function admitObservationArray(value: unknown): readonly unknown[] {
-  const { admittedArray, admittedLength } =
-    admittedObservationArrayLength(value);
-  if (admittedArray === undefined || admittedLength === undefined)
+  if (!Array.isArray(value))
     operationError('observation_invalid', 'observations must be an array');
-  if (admittedLength > WORKFLOW_OBSERVATION_WINDOW_LIMITS.facts)
+  if (value.length > WORKFLOW_OBSERVATION_WINDOW_LIMITS.facts)
     operationError('observation_invalid', 'observation window is too large');
-
-  try {
-    const names = Object.getOwnPropertyNames(admittedArray);
-    const hasExactNames =
-      Object.getOwnPropertySymbols(admittedArray).length === 0 &&
-      names.length === admittedLength + 1 &&
-      names.includes('length');
-    if (hasExactNames) {
-      const admitted: unknown[] = [];
-      for (let index = 0; index < admittedLength; index += 1) {
-        const descriptor = Object.getOwnPropertyDescriptor(
-          admittedArray,
-          String(index),
-        );
-        const invalidArrayItem =
-          descriptor === undefined ||
-          !descriptor.enumerable ||
-          !('value' in descriptor);
-        if (invalidArrayItem) break;
-        admitted.push(descriptor.value);
-      }
-      if (admitted.length === admittedLength) return admitted;
-    }
-  } catch {
-    // The stable operation error below owns all hostile reflection failures.
-  }
-  return operationError('observation_invalid', 'observations are invalid');
+  return value as readonly unknown[];
 }
 
 function normalizeObservationFact(item: unknown): Readonly<{
@@ -76,27 +48,4 @@ export function normalizePersistedObservationWindow(
     normalizedEntries.push(normalized.value);
   }
   return normalizedEntries;
-}
-
-function admittedObservationArrayLength(value: unknown) {
-  let admittedArray: unknown[] | undefined;
-  let admittedLength: number | undefined;
-  try {
-    if (!nodeTypes.isProxy(value) && Array.isArray(value)) {
-      const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
-      const plainArrayLength =
-        Object.getPrototypeOf(value) === Array.prototype &&
-        lengthDescriptor !== undefined &&
-        'value' in lengthDescriptor &&
-        Number.isSafeInteger(lengthDescriptor.value) &&
-        lengthDescriptor.value >= 0;
-      if (plainArrayLength) {
-        admittedArray = value;
-        admittedLength = lengthDescriptor.value as number;
-      }
-    }
-  } catch {
-    // The stable operation error below owns all hostile reflection failures.
-  }
-  return { admittedArray, admittedLength };
 }

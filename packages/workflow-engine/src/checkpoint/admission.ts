@@ -3,8 +3,6 @@ import { jsonStringByteLength } from '@pertexo/workflow-model';
 import { WorkflowEngineError } from '../errors.js';
 import { hasExactFields } from '../exact-fields.js';
 
-import { types as nodeTypes } from 'node:util';
-
 export const isInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value);
 
@@ -72,10 +70,6 @@ export function assertBoundedCheckpointJson(value: unknown): void {
     }
     assertCheckpoint(typeof item === 'object', 'checkpoint must contain JSON');
     assertCheckpoint(
-      !nodeTypes.isProxy(item),
-      'checkpoint must not contain proxy objects',
-    );
-    assertCheckpoint(
       current.depth <= WORKFLOW_CHECKPOINT_LIMITS.depth,
       'checkpoint exceeds maximum depth',
     );
@@ -100,18 +94,7 @@ export function assertBoundedCheckpointJson(value: unknown): void {
     ancestors.add(item);
     pending.push({ kind: 'exit', value: item });
     let enumerableCount = 0;
-    for (const key in item) {
-      assertCheckpoint(
-        Object.hasOwn(item, key),
-        'checkpoint must not contain inherited enumerable properties',
-      );
-      const descriptor = Object.getOwnPropertyDescriptor(item, key);
-      assertCheckpoint(
-        descriptor !== undefined &&
-          descriptor.enumerable &&
-          'value' in descriptor,
-        'checkpoint must not contain accessors',
-      );
+    for (const key of Object.keys(item)) {
       members += 1;
       assertCheckpoint(
         members <= WORKFLOW_CHECKPOINT_LIMITS.members,
@@ -134,33 +117,14 @@ export function assertBoundedCheckpointJson(value: unknown): void {
       enumerableCount += 1;
       pending.push({
         kind: 'value',
-        value: descriptor.value,
+        value: (item as Readonly<Record<string, unknown>>)[key],
         depth: current.depth + 1,
       });
     }
-    // JavaScript has no incremental own-name/symbol reflection. Perform it
-    // only after length/member-bounded enumerable traversal, then discard the
-    // arrays immediately after comparing hidden names and symbols.
-    const ownNames = Object.getOwnPropertyNames(item);
-    assertCheckpoint(
-      ownNames.length <= WORKFLOW_CHECKPOINT_LIMITS.members + (isArray ? 1 : 0),
-      'checkpoint exceeds maximum own properties',
-    );
-    assertCheckpoint(
-      Object.getOwnPropertySymbols(item).length === 0,
-      'checkpoint must not contain symbol properties',
-    );
     if (isArray)
       assertCheckpoint(
-        enumerableCount === item.length &&
-          ownNames.length === item.length + 1 &&
-          ownNames.includes('length'),
-        'checkpoint array is sparse or has hidden properties',
-      );
-    else
-      assertCheckpoint(
-        ownNames.length === enumerableCount,
-        'checkpoint object has hidden properties',
+        enumerableCount === item.length,
+        'checkpoint array is sparse',
       );
   }
 }

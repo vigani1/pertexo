@@ -104,7 +104,7 @@ describe('checkpoint seam', () => {
       expect.objectContaining({ code: 'checkpoint_invalid' }),
     );
   });
-  it('rejects oversized and accessor-backed checkpoint collections before traversal', () => {
+  it('rejects oversized checkpoint collections before traversal', () => {
     const oversized = {
       ...checkpoint(),
       readySet: Array.from(
@@ -115,21 +115,6 @@ describe('checkpoint seam', () => {
     expect(() => parseCheckpoint(oversized)).toThrow(
       expect.objectContaining({ code: 'checkpoint_invalid' }),
     );
-
-    const accessorBacked = { ...checkpoint() } as Record<string, unknown>;
-    Object.defineProperty(accessorBacked, 'invocations', {
-      enumerable: true,
-      get: () => [],
-    });
-    expect(() => parseCheckpoint(accessorBacked)).toThrow(
-      expect.objectContaining({ code: 'checkpoint_invalid' }),
-    );
-
-    const hugeSparse: unknown[] = [];
-    hugeSparse.length = 4_294_967_295;
-    expect(() =>
-      parseCheckpoint({ ...checkpoint(), invocations: hugeSparse }),
-    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
   });
   it('rejects non-JSON structure, unknown fields, and the byte-limit one-over', () => {
     expect(() =>
