@@ -20,6 +20,8 @@ const options = {
   etag: { type: 'string' },
   limit: { type: 'string' },
   after: { type: 'string' },
+  status: { type: 'string' },
+  timeout: { type: 'string' },
   help: { type: 'boolean' },
 } as const;
 const id = workflowIdentifierSchema.transform((value) => value.toLowerCase());
@@ -27,6 +29,7 @@ const workspace = { workspaceId: id };
 const target = { ...workspace, workflowId: id };
 const body = { bodyFile: z.string().min(1).max(4_096) };
 const commandSchema = z.discriminatedUnion('operation', [
+  z.object({ operation: z.literal('whoami'), ...workspace }).strict(),
   z
     .object({
       operation: z.literal('workflows list'),
@@ -98,6 +101,14 @@ const commandSchema = z.discriminatedUnion('operation', [
     .strict(),
   z
     .object({
+      operation: z.literal('runs wait'),
+      ...workspace,
+      runId: id,
+      timeoutSeconds: z.coerce.number().int().min(1).max(86_400).default(300),
+    })
+    .strict(),
+  z
+    .object({
       operation: z.literal('runs cancel'),
       ...workspace,
       runId: id,
@@ -110,6 +121,20 @@ const fieldNames: Readonly<Record<string, string>> = {
   workflow: 'workflowId',
   run: 'runId',
   body: 'bodyFile',
+  timeout: 'timeoutSeconds',
+};
+const flagNames: Readonly<Record<string, string>> = {
+  workspaceId: '--workspace',
+  workflowId: '--workflow',
+  runId: '--run',
+  bodyFile: '--body',
+  timeoutSeconds: '--timeout',
+  versionId: '--version',
+  key: '--key',
+  etag: '--etag',
+  limit: '--limit',
+  after: '--after',
+  status: '--status',
 };
 function parseFlags(args: string[]) {
   try {
@@ -122,25 +147,30 @@ function parseFlags(args: string[]) {
     });
   } catch {
     return invalidArgument(
-      'Use a supported command and named options. Run automation --help. Tokens are accepted only through PERTEXO_API_TOKEN.',
+      'Use a supported command and named options. Run pertexo --help. Tokens are accepted only through PERTEXO_API_TOKEN.',
     );
   }
 }
+/** The token names its workspace, so `--workspace` defaults to it; run.ts refuses a mismatch. */
 export function parseAutomationArguments(
   args: string[],
-): AutomationArguments | 'help' {
+  tokenWorkspaceId?: string,
+): AutomationArguments | 'help' | 'version' {
+  // Alone it asks the CLI's version; workflows versions takes a --version UUID.
+  if (args.length === 1 && args[0] === '--version') return 'version';
   const flags = parseFlags(args);
   assertUniqueOptions(flags);
   if ((flags.values.help ?? false) || args.length === 0) return 'help';
-  if (flags.positionals.length !== 2)
+  const whoami = flags.positionals.join(' ') === 'whoami';
+  if (!whoami && flags.positionals.length !== 2)
     return invalidArgument(
-      'Use one command group and action. Run automation --help.',
+      'Use one command group and action. Run pertexo --help.',
     );
   const operation = flags.positionals.join(' ');
   const values = flags.values;
   const input: Record<string, unknown> = {
     operation,
-    workspaceId: values.workspace,
+    workspaceId: values.workspace ?? tokenWorkspaceId,
   };
   const queryCommand =
     operation === 'workflows list' ||
@@ -155,11 +185,22 @@ export function parseAutomationArguments(
   }
   if (queryCommand) input.query = query;
   const parsed = commandSchema.safeParse(input);
-  if (!parsed.success)
-    return invalidArgument(
-      'The command needs valid workspace/target UUIDs and only its documented options. Writes require their stable --key, reviewed --etag and/or --body file. Run automation --help.',
-    );
+  if (!parsed.success) return invalidArgument(describeIssue(parsed.error));
   return parsed.data;
+}
+
+function describeIssue(error: z.ZodError): string {
+  const [issue] = error.issues;
+  if (issue?.code === 'unrecognized_keys') {
+    const names = issue.keys.map((key) => flagNames[key] ?? `--${key}`);
+    return `${names.join(', ')} isn't an option for this command. Run pertexo --help.`;
+  }
+  const field = issue?.path.at(-1);
+  if (field === 'operation') return "That isn't a command. Run pertexo --help.";
+  const flag = typeof field === 'string' ? flagNames[field] : undefined;
+  return flag === undefined
+    ? 'The options are invalid. Run pertexo --help.'
+    : `${flag} is missing or invalid. Run pertexo --help.`;
 }
 
 function assertUniqueOptions(flags: ReturnType<typeof parseFlags>): void {
@@ -184,6 +225,7 @@ function automationQueryField(input: {
     case 'workflows versions':
       return name === 'version' ? 'versionId' : undefined;
     case 'runs list':
+      if (name === 'status') return name;
       return name === 'workflow' ? 'workflowId' : undefined;
     default:
       return undefined;

@@ -1,24 +1,13 @@
 import {
-  workflowListResponseSchema,
-  workflowSummaryResponseSchema,
-  workflowDraftResponseSchema,
-  workflowVersionsResponseSchema,
-  workflowPublishResponseSchema,
   strongEtagSchema,
   workflowExportRequestSchema,
   workflowImportPreviewRequestSchema,
-  workflowImportPreviewResponseSchema,
   workflowImportRequestSchema,
-  workflowImportResponseSchema,
-  workflowRunStartRequestSchema,
-  workflowRunStartResponseSchema,
-  workflowRunListResponseSchema,
-  workflowRunResponseSchema,
   workflowRunCancelRequestSchema,
-  workflowRunCancelResponseSchema,
+  workflowRunStartRequestSchema,
 } from '@pertexo/contracts';
-import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
-import type { z } from 'zod';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { z } from 'zod';
 import type { AutomationArguments } from './arguments.js';
 import type { AutomationHttpClient, AutomationHttpResponse } from './http.js';
 import { readCommandJson } from './files.js';
@@ -32,20 +21,21 @@ function requestValue<Value>(schema: z.ZodType<Value>, input: unknown): Value {
         'The options or JSON body do not match this command’s API contract.',
       );
 }
-function responseValue<Value>(
-  schema: z.ZodType<Value>,
-  input: unknown,
+/**
+ * The CLI prints what the server sent. A newer server may add fields and statuses,
+ * and an older CLI mustn't call that invalid, so it only checks the shape it prints.
+ */
+function responseValue(
+  input: AutomationHttpResponse,
   { uncertain = false }: Readonly<{ uncertain?: boolean | undefined }> = {},
-): Value {
-  const parsed = schema.safeParse(input);
-  if (!parsed.success)
-    throw new AutomationCommandError(
-      'cli.invalid_response',
-      'The server response does not match its API contract.',
-      undefined,
-      { uncertain: uncertain },
-    );
-  return parsed.data;
+): object {
+  if (typeof input.body === 'object' && input.body !== null) return input.body;
+  throw new AutomationCommandError(
+    'cli.invalid_response',
+    'The server response is not a JSON object.',
+    undefined,
+    { uncertain },
+  );
 }
 function query(
   values: Readonly<Record<string, string | number | undefined>>,
@@ -85,103 +75,141 @@ export async function executeAutomationCommand(
       signal,
       ...(value === undefined ? {} : { body: value }),
     });
-  let response: AutomationHttpResponse;
   switch (command.operation) {
+    case 'whoami':
+      return responseValue(await get('/v1/token'));
     case 'workflows list':
-      response = await get(`${base}/workflows?${query(command.query)}`);
-      return responseValue(workflowListResponseSchema, response.body);
+      return responseValue(
+        await get(`${base}/workflows?${query(command.query)}`),
+      );
     case 'workflows get':
-      return responseValue(
-        workflowSummaryResponseSchema,
-        (await get(workflow(command.workflowId))).body,
-      );
-    case 'workflows draft': {
-      response = await get(`${workflow(command.workflowId)}/draft`);
-      return {
-        ...responseValue(workflowDraftResponseSchema, response.body),
-        etag: responseValue(strongEtagSchema, response.etag),
-      };
-    }
+      return responseValue(await get(workflow(command.workflowId)));
+    case 'workflows draft':
+      return draftWithEtag(await get(`${workflow(command.workflowId)}/draft`));
     case 'workflows versions':
-      response = await get(
-        `${workflow(command.workflowId)}/versions?${query(command.query)}`,
-      );
-      return responseValue(workflowVersionsResponseSchema, response.body);
-    case 'workflows export': {
-      const request = requestValue(workflowExportRequestSchema, body);
-      if (request.source.kind === 'draft' && command.etag === undefined)
-        return invalidArgument('Draft export requires its reviewed --etag.');
-      if (request.source.kind === 'version' && command.etag !== undefined)
-        return invalidArgument(
-          'Version export does not accept a draft --etag.',
-        );
       return responseValue(
-        workflowPortableManifestSchema,
-        (await post(`${workflow(command.workflowId)}/export`, 'read', request))
-          .body,
+        await get(
+          `${workflow(command.workflowId)}/versions?${query(command.query)}`,
+        ),
       );
-    }
+    case 'workflows export':
+      return responseValue(
+        await post(
+          `${workflow(command.workflowId)}/export`,
+          'read',
+          exportRequest(body, command.etag),
+        ),
+      );
     case 'workflows import-preview':
       return responseValue(
-        workflowImportPreviewResponseSchema,
-        (
-          await post(
-            `${base}/workflows/import/preview`,
-            'read',
-            requestValue(workflowImportPreviewRequestSchema, body),
-          )
-        ).body,
+        await post(
+          `${base}/workflows/import/preview`,
+          'read',
+          requestValue(workflowImportPreviewRequestSchema, body),
+        ),
       );
     case 'workflows import':
       return responseValue(
-        workflowImportResponseSchema,
-        (
-          await post(
-            `${base}/workflows/import`,
-            'write',
-            requestValue(workflowImportRequestSchema, body),
-          )
-        ).body,
+        await post(
+          `${base}/workflows/import`,
+          'write',
+          requestValue(workflowImportRequestSchema, body),
+        ),
         { uncertain: true },
       );
     case 'workflows publish':
       return responseValue(
-        workflowPublishResponseSchema,
-        (await post(`${workflow(command.workflowId)}/publish`, 'write')).body,
+        await post(`${workflow(command.workflowId)}/publish`, 'write'),
         { uncertain: true },
       );
     case 'runs start':
       return responseValue(
-        workflowRunStartResponseSchema,
-        (
-          await post(
-            `${workflow(command.workflowId)}/runs`,
-            'write',
-            requestValue(workflowRunStartRequestSchema, body),
-          )
-        ).body,
+        await post(
+          `${workflow(command.workflowId)}/runs`,
+          'write',
+          requestValue(workflowRunStartRequestSchema, body),
+        ),
         { uncertain: true },
       );
     case 'runs list':
-      response = await get(`${base}/runs?${query(command.query)}`);
-      return responseValue(workflowRunListResponseSchema, response.body);
+      return responseValue(await get(`${base}/runs?${query(command.query)}`));
     case 'runs get':
-      return responseValue(
-        workflowRunResponseSchema,
-        (await get(run(command.runId))).body,
+      return responseValue(await get(run(command.runId)));
+    case 'runs wait':
+      return waitForRun(
+        () => get(run(command.runId)),
+        command.timeoutSeconds,
+        signal,
       );
     case 'runs cancel':
       return responseValue(
-        workflowRunCancelResponseSchema,
-        (
-          await post(
-            `${run(command.runId)}/cancel`,
-            'write',
-            requestValue(workflowRunCancelRequestSchema, body),
-          )
-        ).body,
+        await post(
+          `${run(command.runId)}/cancel`,
+          'write',
+          requestValue(workflowRunCancelRequestSchema, body),
+        ),
         { uncertain: true },
       );
+  }
+}
+
+function draftWithEtag(response: AutomationHttpResponse): object {
+  const etag = strongEtagSchema.safeParse(response.etag);
+  if (!etag.success)
+    throw new AutomationCommandError(
+      'cli.invalid_response',
+      'The server did not return the draft’s ETag.',
+    );
+  return { ...responseValue(response), etag: etag.data };
+}
+
+function exportRequest(body: unknown, etag: string | undefined) {
+  const request = requestValue(workflowExportRequestSchema, body);
+  if (request.source.kind === 'draft' && etag === undefined)
+    return invalidArgument('Draft export requires its reviewed --etag.');
+  if (request.source.kind === 'version' && etag !== undefined)
+    return invalidArgument('Version export does not accept a draft --etag.');
+  return request;
+}
+
+const runStatus = z.object({ run: z.object({ status: z.string() }) });
+const SETTLED_STATUSES = new Set([
+  'succeeded',
+  'failed',
+  'canceled',
+  'timed_out',
+  'outcome_unknown',
+]);
+const FIRST_POLL_MS = 1_000;
+const LONGEST_POLL_MS = 15_000;
+
+/** A failed run is still an answer; the script reads `run.status` from the output. */
+async function waitForRun(
+  read: () => Promise<AutomationHttpResponse>,
+  timeoutSeconds: number,
+  signal: AbortSignal,
+): Promise<object> {
+  const deadline = Date.now() + timeoutSeconds * 1_000;
+  for (
+    let pause = FIRST_POLL_MS;
+    ;
+    pause = Math.min(pause * 2, LONGEST_POLL_MS)
+  ) {
+    const response = await read();
+    const status = runStatus.safeParse(response.body).data?.run.status;
+    if (status === undefined)
+      throw new AutomationCommandError(
+        'cli.invalid_response',
+        'The server response has no run status.',
+      );
+    if (SETTLED_STATUSES.has(status)) return responseValue(response);
+    const remaining = deadline - Date.now();
+    if (remaining <= 0)
+      throw new AutomationCommandError(
+        'cli.wait_timed_out',
+        `The run was still ${status} after ${String(timeoutSeconds)} seconds. It keeps going; wait again or read it with runs get.`,
+      );
+    await sleep(Math.min(pause, remaining), undefined, { signal });
   }
 }
 

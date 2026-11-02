@@ -14,7 +14,7 @@ describe('compiled automation process', () => {
       env: {},
       timeout: 5000,
     });
-    expect(result.stdout).toContain('HTTP; no operator/database configuration');
+    expect(result.stdout).toContain('Pertexo CLI, over the HTTP API');
     expect(result.stderr).toBe('');
   });
   it('runs with only URL and personal-token environment, and returns safe JSON on authentication failure', async () => {
@@ -65,7 +65,7 @@ describe('compiled automation process', () => {
       await expect(
         execute(process.execPath, args, { env, timeout: 5000 }),
       ).rejects.toMatchObject({
-        code: 1,
+        code: 3,
         stdout: '',
         stderr:
           '{"code":"auth.unauthenticated","detail":"Unauthorized","requestId":"safe-request"}\n',
@@ -76,9 +76,9 @@ describe('compiled automation process', () => {
           timeout: 5000,
         }),
       ).rejects.toMatchObject({
-        code: 1,
+        code: 2,
         stdout: '',
-        stderr: `${JSON.stringify({ code: 'cli.invalid_argument', detail: 'Use a supported command and named options. Run automation --help. Tokens are accepted only through PERTEXO_API_TOKEN.' })}\n`,
+        stderr: `${JSON.stringify({ code: 'cli.invalid_argument', detail: 'Use a supported command and named options. Run pertexo --help. Tokens are accepted only through PERTEXO_API_TOKEN.' })}\n`,
       });
     } finally {
       server.closeAllConnections();
@@ -127,7 +127,7 @@ describe('compiled automation process', () => {
       await once(server, 'request');
       const exit = once(child, 'exit');
       child.kill('SIGTERM');
-      expect(await exit).toEqual([1, null]);
+      expect(await exit).toEqual([7, null]);
       expect(JSON.parse(output)).toMatchObject({
         code: 'cli.transport_failure',
         detail: 'Command interrupted.',
