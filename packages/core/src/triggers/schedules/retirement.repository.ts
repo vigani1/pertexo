@@ -41,28 +41,16 @@ export async function retireScheduleClaim(
 }
 
 /**
- * Retire the current claim according to its outcome and release every later
- * validated claim. Cleanup is bounded and diagnostic only: it cannot replace
- * the failure that interrupted the batch.
+ * Gives claims back when a scan can't go on. Cleanup is bounded and diagnostic
+ * only: it cannot replace the failure that interrupted the batch.
  */
-export async function retireInterruptedBatch(
+export async function releaseClaims(
   pool: Pool,
   claims: readonly RetirableClaim[],
-  first: ClaimRetirement,
-): Promise<readonly unknown[]> {
+): Promise<void> {
   const signal = AbortSignal.timeout(claimCleanupTimeoutMillis);
-  const failures: unknown[] = [];
-  for (const [index, claim] of claims.entries()) {
-    try {
-      await retireScheduleClaim(
-        pool,
-        claim,
-        index === 0 ? first : { kind: 'release' },
-        signal,
-      );
-    } catch (error: unknown) {
-      failures.push(error);
-    }
-  }
-  return Object.freeze(failures);
+  for (const claim of claims)
+    await retireScheduleClaim(pool, claim, { kind: 'release' }, signal).catch(
+      () => undefined,
+    );
 }

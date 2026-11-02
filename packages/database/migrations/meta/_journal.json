@@ -526,6 +526,13 @@
       "when": 1793625464482,
       "tag": "0074_outbox_retention_and_row_signal",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1793639541813,
+      "tag": "0075_schedule_failure_rests",
+      "breakpoints": true
     }
   ]
 }
