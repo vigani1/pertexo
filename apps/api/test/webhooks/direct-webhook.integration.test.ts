@@ -23,6 +23,7 @@ import { registerSignatures } from './direct-webhook/doors/signatures.cases.js';
 import { registerBurstQueue } from './direct-webhook/doors/burst.cases.js';
 import { registerRefusedBodies } from './direct-webhook/doors/bodies.cases.js';
 import { registerKeepsSenderWordsOutOfLogs } from './direct-webhook/sender-words-in-logs.cases.js';
+import { registerTellsClientWhenToRetrySetup } from './direct-webhook/tells-client-when-to-retry-setup.cases.js';
 import {
   registerStoresKeysAsHashes,
   registerSurvivesPublish,
@@ -71,4 +72,5 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   registerRefusedBodies();
 
   registerKeepsSenderWordsOutOfLogs();
+  registerTellsClientWhenToRetrySetup();
 });
