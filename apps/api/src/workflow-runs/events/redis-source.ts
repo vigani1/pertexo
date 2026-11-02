@@ -17,10 +17,15 @@ import { z } from 'zod';
 
 import {
   safeParseLiveRunEventNotification,
-  type LiveRunEventNotification,
   type LiveRunEventSource,
   type LiveRunEventSubscription,
 } from './stream.js';
+import { BoundedNotificationQueue } from './notification-queue.js';
+import {
+  raceAbort,
+  RedisRunEventSubscribeError,
+  subscribeWithBounds,
+} from './redis-subscribe.js';
 
 const DEFAULT_BUFFER_CAPACITY = 1_024;
 const DEFAULT_SUBSCRIBE_TIMEOUT_MS = 5_000;
@@ -104,17 +109,6 @@ export class RedisRunEventSourceConfigurationError extends Error {
   public override readonly name = 'RedisRunEventSourceConfigurationError';
 }
 
-class RedisRunEventSubscribeError extends Error {
-  public override readonly name = 'RedisRunEventSubscribeError';
-  public constructor(public readonly reason: 'aborted' | 'timeout') {
-    super(
-      reason === 'aborted'
-        ? 'Run event subscription was aborted'
-        : 'Redis run event operation timed out',
-    );
-  }
-}
-
 function parseRedisUrl(value: string): string {
   return normalizeRedisEndpoint(
     value,
@@ -127,124 +121,14 @@ function parseRedisUrl(value: string): string {
   );
 }
 
-class BoundedNotificationQueue implements AsyncIterable<LiveRunEventNotification> {
-  private closed = false;
-  private readonly items: LiveRunEventNotification[] = [];
-  private readonly waiters: ((
-    result: IteratorResult<LiveRunEventNotification>,
-  ) => void)[] = [];
-
-  public constructor(private readonly capacity: number) {}
-
-  public close(): void {
-    if (this.closed) return;
-    this.closed = true;
-    for (const waiter of this.waiters.splice(0)) {
-      waiter({ done: true, value: undefined });
-    }
-    this.items.length = 0;
-  }
-
-  public push(notification: LiveRunEventNotification): void {
-    if (this.closed) return;
-    const waiter = this.waiters.shift();
-    if (waiter !== undefined) {
-      waiter({ done: false, value: notification });
-      return;
-    }
-
-    if (this.items.length >= this.capacity) {
-      // Coalesce overflow into one PostgreSQL resync. Dropping Redis hints is
-      // safe because the durable event log remains authoritative.
-      this.items.length = 0;
-      this.items.push({ kind: 'resync' });
-      return;
-    }
-    if (
-      notification.kind === 'resync' &&
-      this.items.some((item) => item.kind === 'resync')
-    ) {
-      return;
-    }
-    this.items.push(notification);
-  }
-
-  public [Symbol.asyncIterator](): AsyncIterator<LiveRunEventNotification> {
-    return {
-      next: () => {
-        const item = this.items.shift();
-        if (item !== undefined) {
-          return Promise.resolve({ done: false, value: item });
-        }
-        if (this.closed) {
-          return Promise.resolve({ done: true, value: undefined });
-        }
-        return new Promise((resolve) => {
-          this.waiters.push(resolve);
-        });
-      },
-    };
-  }
-}
-
-async function subscribeWithBounds(
-  redis: Redis,
-  channel: string,
-  timeoutMs: number,
-  signal: AbortSignal,
-): Promise<void> {
-  if (signal.aborted) {
-    throw new RedisRunEventSubscribeError('aborted');
-  }
-  let timer: NodeJS.Timeout | undefined;
-  let onAbort: (() => void) | undefined;
-  try {
-    await Promise.race([
-      redis.subscribe(channel).then(() => undefined),
-      new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          reject(new RedisRunEventSubscribeError('timeout'));
-        }, timeoutMs);
-        onAbort = () => {
-          reject(new RedisRunEventSubscribeError('aborted'));
-        };
-        signal.addEventListener('abort', onAbort, { once: true });
-      }),
-    ]);
-  } finally {
-    if (timer !== undefined) clearTimeout(timer);
-    if (onAbort !== undefined) signal.removeEventListener('abort', onAbort);
-  }
-}
-
-type SubscribedChannel = {
+interface SubscribedChannel {
   readonly listeners: Set<BoundedNotificationQueue>;
   readonly ready: Promise<void>;
-};
-type SharedSubscriber = {
+}
+interface SharedSubscriber {
   readonly redis: Redis;
   readonly channels: Map<string, SubscribedChannel>;
   disconnected: boolean;
-};
-
-async function raceAbort(
-  work: Promise<void>,
-  signal: AbortSignal,
-): Promise<void> {
-  let onAbort: (() => void) | undefined;
-  try {
-    await Promise.race([
-      work,
-      new Promise<never>((_resolve, reject) => {
-        onAbort = () => {
-          reject(new RedisRunEventSubscribeError('aborted'));
-        };
-        signal.addEventListener('abort', onAbort, { once: true });
-      }),
-    ]);
-  } finally {
-    if (onAbort !== undefined) signal.removeEventListener('abort', onAbort);
-  }
 }
 
 export class RedisRunEventSource implements LiveRunEventSource {
