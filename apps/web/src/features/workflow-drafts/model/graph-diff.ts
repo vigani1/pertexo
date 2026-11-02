@@ -17,6 +17,7 @@ export type StepChangeAspect =
   | 'connections'
   | 'enabled'
   | 'position'
+  | 'placement'
   | 'type';
 
 export type ChangedStep = Readonly<{
@@ -78,23 +79,27 @@ export function diffWorkflowGraphs(
   after: WorkflowGraphContract,
   options: Readonly<{ ignoreLayout?: boolean }> = {},
 ): WorkflowGraphDiff {
-  const beforeNodes = graphSteps(before).map(({ node }) => node);
-  const afterNodes = graphSteps(after).map(({ node }) => node);
-  const beforeById = new Map(beforeNodes.map((node) => [node.id, node]));
-  const afterIds = new Set(afterNodes.map((node) => node.id));
+  const beforeSteps = graphSteps(before);
+  const afterSteps = graphSteps(after);
+  const beforeById = new Map(beforeSteps.map((step) => [step.node.id, step]));
+  const afterIds = new Set(afterSteps.map(({ node }) => node.id));
   const added: WorkflowNode[] = [];
   const changed: ChangedStep[] = [];
-  for (const node of afterNodes) {
+  for (const { node, inside } of afterSteps) {
     const previous = beforeById.get(node.id);
     if (previous === undefined) {
       added.push(node);
       continue;
     }
-    const aspects = changedAspects(previous, node).filter(
-      (aspect) => !(options.ignoreLayout ?? false) || aspect !== 'position',
-    );
+    const aspects: StepChangeAspect[] = [
+      ...changedAspects(previous.node, node).filter(
+        (aspect) => !(options.ignoreLayout ?? false) || aspect !== 'position',
+      ),
+      // Unlike moving on the canvas, this changes how often the step runs.
+      ...(previous.inside?.id === inside?.id ? [] : (['placement'] as const)),
+    ];
     if (aspects.length > 0)
-      changed.push({ before: previous, after: node, aspects });
+      changed.push({ before: previous.node, after: node, aspects });
   }
   const edgeKey = (edge: GraphEdge) =>
     `${edge.source.nodeId}\u0000${edge.source.port}\u0000${edge.target.nodeId}\u0000${edge.target.port}`;
@@ -103,7 +108,9 @@ export function diffWorkflowGraphs(
   return {
     added,
     notes: diffNotes(before, after),
-    removed: beforeNodes.filter((node) => !afterIds.has(node.id)),
+    removed: beforeSteps
+      .map(({ node }) => node)
+      .filter((node) => !afterIds.has(node.id)),
     changed,
     linksAdded: [...afterEdges].filter((key) => !beforeEdges.has(key)).length,
     linksRemoved: [...beforeEdges].filter((key) => !afterEdges.has(key)).length,
@@ -159,6 +166,7 @@ const ASPECT_WORDS: Readonly<Record<StepChangeAspect, string>> = {
   connections: 'connection',
   enabled: 'turned on or off',
   position: 'moved',
+  placement: 'moved in or out of a For each',
   type: 'step type',
 };
 
