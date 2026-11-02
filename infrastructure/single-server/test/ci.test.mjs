@@ -51,7 +51,9 @@ test('turns off Postgres durability only where nothing tests it', () => {
   assert.equal(ci.env.POSTGRES_DURABILITY, 'off');
   assert.equal(ci.jobs.faults.env.POSTGRES_DURABILITY, 'on');
   const compose = parse(readFileSync('compose.yaml', 'utf8'));
-  for (const setting of ['fsync', 'synchronous_commit', 'full_page_writes'])
+  // Not synchronous_commit: until a commit is flushed, VACUUM can't mark its pages
+  // all-visible, which the query-plan tests read. With fsync off it saves almost nothing.
+  for (const setting of ['fsync', 'full_page_writes'])
     assert.ok(
       compose.services.postgres.command.includes(
         `${setting}=\${POSTGRES_DURABILITY:-on}`,

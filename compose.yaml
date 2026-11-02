@@ -33,8 +33,6 @@ services:
       - -c
       - fsync=${POSTGRES_DURABILITY:-on}
       - -c
-      - synchronous_commit=${POSTGRES_DURABILITY:-on}
-      - -c
       - full_page_writes=${POSTGRES_DURABILITY:-on}
     ports:
       - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
