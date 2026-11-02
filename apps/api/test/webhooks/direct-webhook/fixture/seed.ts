@@ -128,6 +128,7 @@ export async function seedWebhook(
   const endpointKey = requireString(provisioned.endpointKey);
   const originalSecret = requireString(provisioned.signingSecret);
   return {
+    provisionLabel: label,
     workspaceId,
     actorId,
     endpointKey,
