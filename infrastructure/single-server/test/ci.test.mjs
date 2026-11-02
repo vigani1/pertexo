@@ -37,6 +37,15 @@ test('qualifies what it publishes before anyone can pull it', () => {
     assert.ok(text.includes(check), check);
 });
 
+// A full run per merge used 27 jobs of the 20 GitHub allows, and pull requests queued.
+test('main tests one commit at a time and never cancels the run under way', () => {
+  assert.doesNotMatch(ci.concurrency.group, /github\.sha/u);
+  assert.equal(
+    ci.concurrency['cancel-in-progress'],
+    "${{ github.event_name == 'pull_request' }}",
+  );
+});
+
 // A leg dropped from a matrix takes its tests with it while every other leg stays green.
 test('the gate requires a split suite, and every one of its shards exists', () => {
   for (const name of ['integration', 'browser']) {

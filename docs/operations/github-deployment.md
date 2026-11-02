@@ -10,8 +10,9 @@ Supply a full lowercase 40-character main commit SHA. It verifies ancestry and
 queries the latest push runs of `ci.yml` and `publish.yml` for that exact SHA; the
 entire CI run and the `publish-images` job must have succeeded. A PR check,
 scheduled run, pending publisher or previous successful run followed by a failed
-retry is insufficient.
-No deployment follows a push automatically.
+retry is insufficient. `main` tests one commit at a time, so a merge that a newer
+merge replaced while it waited has images but no green run: deploy the newest commit
+that has one. No deployment follows a push automatically.
 
 First update the server's clean control checkout with `git pull --ff-only origin
 main`. Keep these installed scripts trusted and current when applying
