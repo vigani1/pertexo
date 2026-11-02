@@ -47,7 +47,7 @@ import { listVersions, readVersion } from './reads/versions.queries.js';
 import { listWorkflows, readWorkflow } from './reads/workflows.queries.js';
 import type { WorkflowAuthoringStoreOptions } from './types.js';
 
-/** For portability, promotion and reviews, until their passes put them on the doors. */
+/** For reviews, and what promotion calls of them, until reviews' pass. */
 async function requireWorkspaceAuthor(
   client: PoolClient,
   workspaceId: string,
@@ -116,7 +116,11 @@ export function createWorkflowAuthoringStore(
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
     collaboration: createWorkflowCollaborationStore(access),
-    promotions: createWorkflowPromotionStore({ ...context, transactScopes }),
+    promotions: createWorkflowPromotionStore({
+      ...context,
+      access,
+      transactScopes,
+    }),
     publicationReviews: createPublicationReviewStore(context),
     stepSamples: createWorkflowStepSampleStore(pool),
     workflowTests: createWorkflowTestStore(pool, catalogs),
@@ -125,7 +129,7 @@ export function createWorkflowAuthoringStore(
     concurrency: createWorkflowConcurrencyStore(access),
     errorWorkflow: createWorkflowErrorStore(access),
     ...createPreviewRunStore(pool),
-    ...createWorkflowPortabilityStore(context),
+    ...createWorkflowPortabilityStore({ access, catalogs }),
     createWorkflow: (input: CreateWorkflowInput) =>
       access.author(input, (client, role) =>
         createWorkflow(client, input, catalogs, role),

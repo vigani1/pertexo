@@ -1,3 +1,4 @@
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { writePromotedDraft } from './writes/persist-candidate.js';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
 import {
@@ -20,12 +21,12 @@ import {
   lockPromotionWorkspaces,
 } from './authority.queries.js';
 import { WorkflowPromotionError } from './errors.js';
-import type { PromotionContext, WorkflowPromotionStore } from './contract.js';
+import type { ApplyPromotionInput, PromotionContext } from './contract.js';
 import { preparePromotion } from './preview.js';
 
 export async function applyPromotion(
   context: PromotionContext,
-  input: Parameters<WorkflowPromotionStore['apply']>[0],
+  input: ApplyPromotionInput,
 ): Promise<WorkflowPromotionResult> {
   const command = {
     workspaceId: input.workspaceId,
@@ -41,14 +42,14 @@ export async function applyPromotion(
     note: input.note ?? null,
   };
   // A completed command does not need its old source versions or a new review.
-  const completed = await context.transact(
-    input.workspaceId,
-    input.actorId,
-    async (client) => {
-      await requirePromotionAuthority(client, input);
-      return findCommandResult(client, { ...command, request });
+  const completed = await context.access.member(
+    input,
+    {
+      mode: 'change',
+      capability: 'workflow:update',
+      statuses: ACTIVE_WORKSPACE_STATUSES,
     },
-    input.signal,
+    (client) => findCommandResult(client, { ...command, request }),
   );
   if (completed !== null) {
     const stored = promotionReceiptSchema.parse(completed);
@@ -176,7 +177,7 @@ async function writeReviewedPromotion(
     promotionId,
     targetScope,
   }: Readonly<{
-    input: Parameters<WorkflowPromotionStore['apply']>[0];
+    input: ApplyPromotionInput;
     review: WorkflowPromotionPreview;
     promotionId: string;
     targetScope: Readonly<{ workspaceId: string; actorId: string }>;

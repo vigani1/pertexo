@@ -50,7 +50,11 @@ export function requirePromotionAuthority(
     roles: rolesForCapability(capability),
   });
 }
-/** Both directions acquire workspace locks in the same order before membership or workflow locks. */
+/**
+ * Both directions acquire workspace locks in the same order before membership or
+ * workflow locks. That's why promotion's commands stay off `withWorkspaceAccess`: one
+ * transaction covers two workspaces, and the helper opens a transaction per workspace.
+ */
 export async function lockPromotionWorkspaces(
   inWorkspace: WorkspaceScopeRunner,
   input: PromotionScope,

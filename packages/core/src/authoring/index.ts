@@ -125,7 +125,7 @@ export { PublicationReviewError } from './reviews/errors.js';
 export { type PublicationReviewStore } from './reviews/contract.js';
 
 export { WorkflowPromotionError } from './promotion/errors.js';
-export type { WorkflowPromotionStore } from './promotion/contract.js';
+export type { WorkflowPromotionStore } from './promotion/store.js';
 
 export { WorkflowCollaborationError } from './collaboration/errors.js';
 export type { WorkflowCollaborationStore } from './collaboration/store.js';
