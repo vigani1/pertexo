@@ -108,6 +108,34 @@ it('retains an early response and binds it through the existing app-role task ow
     output_ref: { kind: 'inline', value: response },
   });
 });
+it('closes a callback while its workspace is suspended, and does not resume the run', async () => {
+  const { scope, callback } = await prepared();
+  await queryAsOwner(
+    `update app.workspaces set status='suspended' where id=$1`,
+    [workspaceId],
+  );
+  try {
+    await expect(
+      callbacks.respond({
+        callback,
+        output: response,
+        redactOutput: unchanged,
+        signal: scope.signal,
+      }),
+    ).rejects.toMatchObject({ reason: 'closed' });
+    await expect(
+      executionQuery<{ status: string }>(
+        'select status from app.pending_run_tasks where id=$1',
+        [callback.id],
+      ),
+    ).resolves.toEqual([{ status: 'prepared' }]);
+  } finally {
+    await queryAsOwner(
+      `update app.workspaces set status='active' where id=$1`,
+      [workspaceId],
+    );
+  }
+});
 it('accepts one concurrent response and refuses cancellation without consuming another', async () => {
   const { scope, callback } = await prepared();
   const decisions = await Promise.allSettled(

@@ -5,133 +5,106 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
+import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
+import type {
+  ApprovalAudienceInspectionRequest,
+  ApprovalAudienceQuery,
+  PendingTaskListQuery,
+} from '@pertexo/contracts';
 import {
-  withTenantScopedClient,
-  withTenantScopedReadClient,
-} from '@pertexo/database/primitives';
-import {
-  lockWorkspaceAuthority,
-  readWorkspaceAuthority,
-} from '../../../shared/authority.queries.js';
-import {
-  rolesForCapability,
+  ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
 } from '@pertexo/workflow-model';
 import { respondToTask } from './respond.repository.js';
 import { inspectAudience } from './inspect-audience.queries.js';
 import { listTasks, projectTask, readTaskRow } from './records.repository.js';
-import type { PendingTaskStore } from './contract.js';
+import type {
+  PendingTaskDecision,
+  PendingTaskRead,
+  PendingTaskScope,
+  PendingTaskSubmission,
+} from './contract.js';
+
+export type PendingTaskStore = ReturnType<typeof createPendingTaskStore>;
+
+const READ_TASKS = {
+  mode: 'read',
+  capability: 'run:read',
+  statuses: BROWSABLE_WORKSPACE_STATUSES,
+} as const;
+const RESPOND_TO_TASK = {
+  mode: 'change',
+  capability: 'run:read',
+  statuses: ACTIVE_WORKSPACE_STATUSES,
+} as const;
+
 export function createPendingTaskStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): PendingTaskStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   return Object.freeze({
     close: () => lease.close(),
-    list: (input) =>
-      withTenantScopedReadClient(
-        lease.pool,
-        { workspaceId: input.workspaceId, actorId: input.actorId },
-        async (client) => {
-          const role = await readWorkspaceAuthority(client, input.workspaceId, {
-            actorId: input.actorId,
-            roles: rolesForCapability('run:read'),
-            allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
-          });
-          return listTasks(
-            client,
-            input,
+    list: (input: PendingTaskScope & PendingTaskListQuery) =>
+      withWorkspaceAccess(pool, input, READ_TASKS, async (client, role) =>
+        listTasks(
+          client,
+          input,
+          role,
+          await readFolderScope(client, input, role),
+        ),
+      ),
+    read: (input: PendingTaskRead) =>
+      withWorkspaceAccess(pool, input, READ_TASKS, async (client, role) =>
+        projectTask(
+          await readTaskRow(client, input, {
             role,
-            await readFolderScope(client, input, role),
-          );
-        },
-        input.signal === undefined ? {} : { signal: input.signal },
+            resources: await readFolderScope(client, input, role),
+          }),
+        ),
       ),
-    read: (input) =>
-      withTenantScopedReadClient(
-        lease.pool,
-        { workspaceId: input.workspaceId, actorId: input.actorId },
-        async (client) => {
-          const role = await readWorkspaceAuthority(client, input.workspaceId, {
-            actorId: input.actorId,
-            roles: rolesForCapability('run:read'),
-            allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
-          });
-          return projectTask(
-            await readTaskRow(client, input, {
-              role,
-              resources: await readFolderScope(client, input, role),
-            }),
-          );
-        },
-        input.signal === undefined ? {} : { signal: input.signal },
+    decide: (input: PendingTaskDecision) =>
+      withWorkspaceAccess(pool, input, RESPOND_TO_TASK, async (client, role) =>
+        respondToTask(
+          client,
+          { ...input, kind: 'approval' },
+          role,
+          await readFolderScope(client, input, role),
+        ),
       ),
-    decide: (input) =>
-      withTenantScopedClient(
-        lease.pool,
-        { workspaceId: input.workspaceId, actorId: input.actorId },
-        async (client) => {
-          const role = await lockWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('run:read'),
-          );
-          return respondToTask(
-            client,
-            { ...input, kind: 'approval' },
-            role,
-            await readFolderScope(client, input, role),
-          );
-        },
-        input.signal === undefined ? {} : { signal: input.signal },
+    submit: (input: PendingTaskSubmission) =>
+      withWorkspaceAccess(pool, input, RESPOND_TO_TASK, async (client, role) =>
+        respondToTask(
+          client,
+          { ...input, kind: 'input_request' },
+          role,
+          await readFolderScope(client, input, role),
+        ),
       ),
-    submit: (input) =>
-      withTenantScopedClient(
-        lease.pool,
-        { workspaceId: input.workspaceId, actorId: input.actorId },
-        async (client) => {
-          const role = await lockWorkspaceAuthority(
-            client,
-            input.workspaceId,
-            input.actorId,
-            rolesForCapability('run:read'),
-          );
-          return respondToTask(
-            client,
-            { ...input, kind: 'input_request' },
-            role,
-            await readFolderScope(client, input, role),
-          );
+    inspectAudience: (
+      input: PendingTaskScope & ApprovalAudienceInspectionRequest,
+    ) =>
+      withWorkspaceAccess(
+        pool,
+        input,
+        {
+          mode: 'read',
+          capability: 'workflow:update',
+          statuses: ACTIVE_WORKSPACE_STATUSES,
         },
-        input.signal === undefined ? {} : { signal: input.signal },
+        (client) => inspectAudience(client, input),
       ),
-    inspectAudience: (input) =>
-      withTenantScopedReadClient(
-        lease.pool,
-        { workspaceId: input.workspaceId, actorId: input.actorId },
-        async (client) => {
-          await readWorkspaceAuthority(client, input.workspaceId, {
-            actorId: input.actorId,
-            roles: rolesForCapability('workflow:update'),
-          });
-          return inspectAudience(client, input);
+    audience: (input: PendingTaskScope & ApprovalAudienceQuery) =>
+      withWorkspaceAccess(
+        pool,
+        input,
+        {
+          mode: 'read',
+          capability: 'workflow:update',
+          statuses: BROWSABLE_WORKSPACE_STATUSES,
         },
-        input.signal === undefined ? {} : { signal: input.signal },
+        (client) => readWorkspacePeople(client, input),
       ),
-    audience: (input) =>
-      withTenantScopedReadClient(
-        lease.pool,
-        { workspaceId: input.workspaceId, actorId: input.actorId },
-        async (client) => {
-          await readWorkspaceAuthority(client, input.workspaceId, {
-            actorId: input.actorId,
-            roles: rolesForCapability('workflow:update'),
-            allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
-          });
-          return readWorkspacePeople(client, input);
-        },
-        input.signal === undefined ? {} : { signal: input.signal },
-      ),
-  } satisfies PendingTaskStore);
+  });
 }
