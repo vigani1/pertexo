@@ -35,25 +35,6 @@ export type StalledWorkStageFailure = Readonly<{
   error: unknown;
 }>;
 
-export interface StalledWorkStore {
-  /**
-   * Settles a bounded batch of overdue work. One bad row never stops the rest, and
-   * neither does a stage that fails: a delivery scan that keeps throwing still lets
-   * expired leases be recovered.
-   */
-  recoverDue(
-    limit: number,
-    signal: AbortSignal,
-  ): Promise<
-    Readonly<{
-      recovered: readonly StalledWorkRecovery[];
-      failed: readonly StalledWorkFailure[];
-      stagesFailed: readonly StalledWorkStageFailure[];
-    }>
-  >;
-  close(): Promise<void>;
-}
-
 export type StuckRun = Readonly<{
   workspaceId: string;
   runId: string;

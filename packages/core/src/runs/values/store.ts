@@ -16,16 +16,19 @@ import {
   lockCapabilityExecution,
   assertCapabilityExecution,
 } from '../../attempts/dispatch/fence.queries.js';
-import { RunValuesLimitError, type RunValuesStore } from './contract.js';
+import { RunValuesLimitError, type RunValuesSaveInput } from './contract.js';
 
+export type RunValuesStore = ReturnType<typeof createRunValuesStore>;
+
+/** A step saving values: its execution capability is the authority, so it's off the helper. */
 export function createRunValuesStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): RunValuesStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   return {
     close: () => lease.close(),
-    save: (input) =>
+    save: (input: RunValuesSaveInput) =>
       withTenantScopedClient(
         lease.pool,
         { workspaceId: input.workspaceId },

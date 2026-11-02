@@ -59,14 +59,14 @@ export type {
   FailedOutboxEvent,
   StalledWorkFailure,
   StalledWorkRecovery,
-  StalledWorkStore,
   StuckRun,
   StuckWork,
 } from './stalled/contract.js';
+export type { StalledWorkStore } from './stalled/store.js';
 
 export { createWorkflowCallStore } from './calls/store.js';
 export { WorkflowCallRefusedError } from './calls/errors.js';
-export type { WorkflowCallStore } from './calls/contract.js';
+export type { WorkflowCallStore } from './calls/store.js';
 export type {
   WorkflowRecoveryPreview,
   WorkflowRecoveryMetadata,
@@ -85,7 +85,7 @@ export {
   ErrorWorkflowDeliveryMismatchError,
   ErrorWorkflowVersionUnavailableError,
 } from './error-workflows/errors.js';
-export { type ErrorWorkflowStore } from './error-workflows/contract.js';
+export type { ErrorWorkflowStore } from './error-workflows/store.js';
 
 export { createPendingTaskStore } from './pending-tasks/responses/store.js';
 export {
@@ -106,7 +106,7 @@ export type { UsageTrendsInput } from './queries/usage/trends.js';
 
 export { createRunValuesStore } from './values/store.js';
 export { RunValuesLimitError } from './values/contract.js';
-export type { RunValuesStore } from './values/contract.js';
+export type { RunValuesStore } from './values/store.js';
 export { ExecutionCapabilityExpiredError } from '../attempts/errors.js';
 
 export { createCallbackStore } from './pending-tasks/callbacks/store.js';
@@ -114,11 +114,11 @@ export {
   CallbackCapacityError,
   CallbackResponseError,
 } from './pending-tasks/callbacks/errors.js';
-export {
-  type CallbackStore,
-  type PreparedCallback,
-  type CallbackIdentity,
+export type {
+  PreparedCallback,
+  CallbackIdentity,
 } from './pending-tasks/callbacks/contract.js';
+export type { CallbackStore } from './pending-tasks/callbacks/store.js';
 export { DEFAULT_INSTANCE_LIMITS } from './instance-limits.js';
 export {
   parseStoredExecutionValue,
