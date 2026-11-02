@@ -16,6 +16,15 @@ describe('what a finished run means for the failure streak', () => {
     },
   );
 
+  it('does not charge a timeout the workflow never got to run into', () => {
+    expect(
+      streakOutcome({ ...finished('timed_out'), waitedForCapacity: true }),
+    ).toBe('not_counted');
+    expect(
+      streakOutcome({ ...finished('failed'), waitedForCapacity: true }),
+    ).toBe('failure');
+  });
+
   it('resets on success', () => {
     expect(streakOutcome(finished('succeeded'))).toBe('success');
   });

@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -126,6 +125,7 @@ async function end(
     trigger?: Trigger;
     cancellationRequested?: boolean;
     contextWorkspaceId?: string;
+    hadWaitingStep?: boolean;
   }> = {},
 ) {
   const runId = randomUUID();
@@ -157,6 +157,7 @@ async function end(
       runId,
       triggerType: trigger,
       cancellationRequested: options.cancellationRequested ?? false,
+      hadWaitingStep: options.hadWaitingStep ?? false,
       plan: {
         checkpoint: { runStatus: status },
         events: [
@@ -303,6 +304,12 @@ describe('workflow trigger pause (ADR 056)', () => {
     expect(await pauseAudits(workspaceId)).toHaveLength(1);
   });
 
+  it('does not charge the workflow for a run that timed out with nothing running', async () => {
+    const { workspaceId, workflowId } = await seed();
+    await end(workspaceId, workflowId, 'timed_out');
+    await end(workspaceId, workflowId, 'timed_out', { hadWaitingStep: true });
+    expect(await pending(workspaceId)).toBe(1);
+  });
   it('resets the streak on a success and counts unknown outcomes', async () => {
     const { workspaceId, workflowId } = await seed();
     await endMany(workspaceId, workflowId, 'failed', 8);

@@ -1,5 +1,10 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflowTriggerOutcomes } from '@pertexo/database/schema';
+import { and, eq, sql } from 'drizzle-orm';
+import {
+  nodeAttempts,
+  nodeRuns,
+  workflowTriggerOutcomes,
+} from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 
@@ -21,6 +26,8 @@ export async function persistWorkflowTriggerOutcome(
     runId: string;
     triggerType: string;
     cancellationRequested: boolean;
+    /** A step was on a timer or a person when time ran out: the workflow's own wait. */
+    hadWaitingStep: boolean;
     plan: RunTransitionPlan;
   }>,
 ): Promise<void> {
@@ -29,6 +36,10 @@ export async function persistWorkflowTriggerOutcome(
     triggerType: input.triggerType,
     cancellationRequested: input.cancellationRequested,
     status,
+    waitedForCapacity:
+      status === 'timed_out' &&
+      !input.hadWaitingStep &&
+      !(await hasAttemptInFlight(client, input)),
   });
   if (outcome === 'not_counted') return;
   const terminalEvent = input.plan.events.find(
@@ -47,4 +58,31 @@ export async function persistWorkflowTriggerOutcome(
     })
     .onConflictDoNothing()
     .catch(rethrowQueryFailure);
+}
+
+/** No worker had a step when time ran out, so nothing the workflow did took that time. */
+async function hasAttemptInFlight(
+  client: PoolClient,
+  { workspaceId, runId }: Readonly<{ workspaceId: string; runId: string }>,
+): Promise<boolean> {
+  const inFlight = await drizzle(client)
+    .select({ one: sql`1` })
+    .from(nodeAttempts)
+    .innerJoin(
+      nodeRuns,
+      and(
+        eq(nodeRuns.workspaceId, nodeAttempts.workspaceId),
+        eq(nodeRuns.id, nodeAttempts.nodeRunId),
+      ),
+    )
+    .where(
+      and(
+        eq(nodeRuns.workspaceId, workspaceId),
+        eq(nodeRuns.workflowRunId, runId),
+        eq(nodeAttempts.status, 'running'),
+      ),
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
+  return inFlight.length > 0;
 }

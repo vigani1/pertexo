@@ -81,6 +81,7 @@ export function failUnadvanceableRun(
       };
       await persistCoordinatorRunTransition(client, {
         authoritativeCancellation: run.cancel_requested_at !== null,
+        hadWaitingStep: false,
         plan,
         row: run,
         runId,
