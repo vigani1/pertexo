@@ -15,6 +15,7 @@ import { hasCapability } from './policy.js';
 export type AuthorizationErrorCode =
   | 'auth.unauthenticated'
   | 'auth.forbidden'
+  | 'auth.token_scope_required'
   | 'resource.not_found'
   | 'request.invalid';
 
@@ -132,11 +133,16 @@ export async function authorizeWorkspace(
   if (!allowedWorkspaceStatuses.includes(record.workspaceStatus)) {
     throw denied(disclosure, 'workspace lifecycle does not allow this action');
   }
-  if (
-    !hasCapability(record.role, input.capability) ||
-    !credentialAllowsCapability(actor, input.capability)
-  ) {
+  if (!hasCapability(record.role, input.capability)) {
     throw denied(disclosure, 'actor lacks the requested workspace capability');
+  }
+  // The token names this workspace and its owner is a member, so a 404 here
+  // would hide nothing and only leave a script guessing what to fix.
+  if (!credentialAllowsCapability(actor, input.capability)) {
+    throw new AuthorizationError(
+      'auth.token_scope_required',
+      `This token needs the ${input.capability} scope.`,
+    );
   }
 
   const context: AuthorizedWorkspaceContext = Object.freeze({

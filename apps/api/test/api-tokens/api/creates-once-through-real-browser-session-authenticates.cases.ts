@@ -89,14 +89,17 @@ export function registerCreatesOnceThroughRealBrowserSessionAuthenticates(
       },
     );
     expect(repeatedHeaderStatus).toBe(401);
-    expect(
-      (await api.send('GET', `${path}/api-tokens`, { headers: bearer }))
-        .statusCode,
-    ).toBe(401);
+    const cookieOnly = await api.send('GET', `${path}/api-tokens`, {
+      headers: bearer,
+    });
+    expect(cookieOnly.statusCode).toBe(403);
+    expect(cookieOnly.json<{ code: string }>().code).toBe(
+      'auth.token_not_supported',
+    );
     expect(
       (await api.send('GET', `${path}/members`, { headers: bearer }))
         .statusCode,
-    ).toBe(401);
+    ).toBe(403);
     expect(
       (
         await api.send('GET', `${path}/workflows`, {
@@ -112,7 +115,7 @@ export function registerCreatesOnceThroughRealBrowserSessionAuthenticates(
           payload: {},
         })
       ).statusCode,
-    ).toBe(404);
+    ).toBe(403);
     const malformed = await api.send('GET', `${path}/workflows`, {
       browser,
       headers: { authorization: 'Bearer invalid' },

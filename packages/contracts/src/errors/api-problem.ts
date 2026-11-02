@@ -29,6 +29,8 @@ export const API_PROBLEM_CODES = [
   'api_token.limit',
   'auth.unauthenticated',
   'auth.forbidden',
+  'auth.token_scope_required',
+  'auth.token_not_supported',
   'auth.email_not_verified',
   'auth.sso_required',
   'auth.two_factor_locked',
@@ -206,6 +208,18 @@ const apiProblemDetails = {
   'auth.forbidden': {
     status: 403,
     title: 'Forbidden',
+    severity: 'info',
+    exposeDetail: true,
+  },
+  'auth.token_scope_required': {
+    status: 403,
+    title: 'Token scope required',
+    severity: 'info',
+    exposeDetail: true,
+  },
+  'auth.token_not_supported': {
+    status: 403,
+    title: 'API tokens are not accepted here',
     severity: 'info',
     exposeDetail: true,
   },

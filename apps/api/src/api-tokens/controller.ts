@@ -12,7 +12,9 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { apiTokenInfoResponseSchema } from '@pertexo/contracts';
 import { z } from 'zod';
+import { AutomationAuthenticationGuard } from '../authentication/automation/guard.js';
 import { SESSION_AUTHORITY } from '../workspaces/tokens.js';
 import type { IdentitySessionAuthority } from '../workspaces/ports.js';
 import type {
@@ -28,7 +30,11 @@ import {
   WorkspaceMembershipGuard,
 } from '../workspaces/http/guards.js';
 import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
-import { requestIdempotencyKey } from '../platform/http/index.js';
+import {
+  applicationError,
+  requestIdempotencyKey,
+  throwApplicationError,
+} from '../platform/http/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { ApiTokenManagement } from './use-cases.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
@@ -103,6 +109,31 @@ export class ApiTokenController {
       ...command(request, route.workspaceId),
       tokenId: route.tokenId,
       request: body,
+    });
+  }
+}
+
+/** Outside a workspace path: the credential itself says which workspace it's for. */
+@UseInterceptors(domainErrors(workspaceFailure))
+@Controller('v1/token')
+export class CurrentApiTokenController {
+  @Get()
+  @RateLimit('authenticated_read')
+  @UseGuards(AutomationAuthenticationGuard)
+  public read(
+    @Req() request: IdentityWorkspaceRequest,
+    @Res({ passthrough: true }) response: CookieResponse,
+  ) {
+    response.header('Cache-Control', 'private, no-store');
+    const token = request.verifiedApiToken;
+    if (token === undefined)
+      return throwApplicationError(applicationError('auth.unauthenticated'));
+    return apiTokenInfoResponseSchema.parse({
+      id: token.tokenId,
+      workspaceId: token.workspaceId,
+      name: token.name,
+      scopes: token.scopes,
+      expiresAt: token.expiresAt.toISOString(),
     });
   }
 }
