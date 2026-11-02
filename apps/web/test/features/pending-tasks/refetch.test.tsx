@@ -25,6 +25,7 @@ function summary() {
     workflowName: 'Payment review',
     runId: '33333333-3333-4333-8333-333333333333',
     nodeId: 'review',
+    stepName: null,
     nodeRunId: '44444444-4444-4444-8444-444444444444',
     iterationPath: [],
     kind: 'approval',
@@ -173,4 +174,25 @@ it('keeps a pending list decision and its exact retry across a failed background
     expect(writes).toHaveLength(2);
   });
   expect(writes[1]).toEqual(writes[0]);
+});
+
+it.each([
+  ['Manager sign-off', 'at step Manager sign-off'],
+  [null, 'Reviewer flow'],
+])('names the step, never its id: %s', async (stepName, shown) => {
+  const task = {
+    ...detail('approval'),
+    workflowName: 'Reviewer flow',
+    stepName,
+  };
+  mockServer.use(
+    ...identityHandlers(ownerWorkspace),
+    http.get(base, () =>
+      HttpResponse.json({ items: [], nextCursor: null, pendingCount: 0 }),
+    ),
+    http.get(`${base}/${taskId}`, () => HttpResponse.json({ task })),
+  );
+  renderApp(`/w/${workspaceId}/requests/${taskId}`);
+  const line = await screen.findByText(new RegExp(shown));
+  expect(line.closest('p')?.textContent).not.toContain(task.nodeId);
 });

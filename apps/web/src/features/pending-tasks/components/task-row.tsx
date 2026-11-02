@@ -75,7 +75,8 @@ export function TaskRow({
         </div>
         <p className="min-w-0 break-words text-sm text-muted-foreground">
           {task.kind === 'approval' ? 'Approval' : 'Input'} ·{' '}
-          {task.workflowName} · {task.nodeId}
+          {task.workflowName}
+          {task.stepName === null ? '' : ` · ${task.stepName}`}
           {task.iterationPath
             .map((item) => ` · item ${String(item.ordinal + 1)}`)
             .join('')}

@@ -79,8 +79,9 @@ export function RecoveryConfirmation({
       description={
         <span className="break-words">
           Start a new run of v{String(preview.versionNumber)} at{' '}
-          {preview.nodeLabel ?? preview.nodeId}. Earlier steps use their saved
-          results. This step and later steps run again with current connections.
+          {preview.nodeLabel ?? 'the step that failed'}. Earlier steps use their
+          saved results. This step and later steps run again with current
+          connections.
         </span>
       }
       onSubmit={confirm}

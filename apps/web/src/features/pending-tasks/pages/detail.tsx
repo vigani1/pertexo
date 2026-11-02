@@ -50,8 +50,9 @@ export function TaskDetailPage({
                   >
                     {task.workflowName}
                   </Link>{' '}
-                  at step{' '}
-                  <span className="font-mono text-xs">{task.nodeId}</span>
+                  {task.stepName === null ? null : (
+                    <> at step {task.stepName}</>
+                  )}
                 </p>
                 <PageHeaderTitle className="min-w-0 break-words [overflow-wrap:anywhere]">
                   {task.title}
