@@ -38,7 +38,7 @@ async function historyAs(reader: Reader, runId: string, workflowId: string) {
     runs.get({ ...reader, runId }),
     runs.canRead({ ...reader, runId }),
     runs.readInput({ ...reader, runId }),
-    runs.stepHealth({ ...reader, workflowId, window: '24h' }),
+    runs.stepHealth({ ...reader, workflowId }),
   ]);
   return { page, statistics, run, readable, input, health };
 }
