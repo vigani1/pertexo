@@ -6,10 +6,10 @@ import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import type { FolderScope } from '../../shared/contract.js';
 import { readFolderScope } from '../../shared/facts.queries.js';
 import { lockBrowsableWorkspaceAuthority } from '../../shared/authority.queries.js';
-import { createWorkflowCollaborationStore } from '../collaboration/repository.js';
+import { createWorkflowCollaborationStore } from '../collaboration/store.js';
 import { createWorkflowPromotionStore } from '../promotion/repository.js';
 import { createPublicationReviewStore } from '../reviews/repository.js';
-import { createWorkflowErrorStore } from '../settings/error-workflow.repository.js';
+import { createWorkflowErrorStore } from '../settings/error-workflow/store.js';
 import { createWorkflowStepSampleStore } from '../step-samples/repository.js';
 import { WorkflowDefinitionPlacementError } from './errors.js';
 
@@ -29,16 +29,16 @@ import {
   type WorkspaceScopeRunner,
 } from '@pertexo/database/primitives';
 import { createWorkflowPortabilityStore } from '../portability/repository.js';
-import { createWorkflowPublisher } from '../publication/publisher.repository.js';
-import { createWorkflowAutoPauseStore } from '../settings/auto-pause/repository.js';
-import { createWorkflowConcurrencyStore } from '../settings/concurrency.repository.js';
+import { createWorkflowPublisher } from '../publication/publish.js';
+import { createWorkflowAutoPauseStore } from '../settings/auto-pause/store.js';
+import { createWorkflowConcurrencyStore } from '../settings/concurrency/store.js';
 import { lockWorkflowAuthoringAuthority } from './authority.js';
 import { authoringCatalogs } from './catalogs.js';
-import { createWorkflowAuthoringDraftStore } from './commands/drafts.repository.js';
-import { createWorkflowDuplicationStore } from './commands/duplication.repository.js';
-import { createWorkflowAuthoringLifecycleStore } from './commands/lifecycle.repository.js';
-import { createWorkflowAuthoringRenameStore } from './commands/rename.repository.js';
-import { createWorkflowVersionRestoreStore } from './commands/version-restore.repository.js';
+import { createWorkflowAuthoringDraftStore } from './commands/save-draft.js';
+import { createWorkflowDuplicationStore } from './commands/duplicate.js';
+import { createWorkflowAuthoringLifecycleStore } from './commands/transition-lifecycle.js';
+import { createWorkflowAuthoringRenameStore } from './commands/rename.js';
+import { createWorkflowVersionRestoreStore } from './commands/restore-version.js';
 import type { WorkflowAuthoringWriteContext } from './context.js';
 import { WorkflowNotFoundError } from './errors.js';
 import { createWorkflowAuthoringReadStore } from './reads.queries.js';

@@ -14,7 +14,7 @@ import {
 } from '@pertexo/workflow-model/server';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
-import { publishWorkflowDirectly } from '../../publication/publisher.repository.js';
+import { publishWorkflowDirectly } from '../../publication/publish.js';
 import { requestPublicationReview } from '../../reviews/request.repository.js';
 import type { PromotionContext, WorkflowPromotionStore } from '../contract.js';
 import { promotionDigest } from '../preparation/graph.js';

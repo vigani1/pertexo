@@ -11,7 +11,7 @@ import {
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
-import { createWorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/repository.js';
+import { createWorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/store.js';
 import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.queries.js';
 import { createPublishedWorkflowReader } from '../../../../src/runs/queries/execution/published.queries.js';
 
