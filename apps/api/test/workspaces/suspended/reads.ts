@@ -72,11 +72,6 @@ export const READS_OPEN_UNTIL_PURGE: readonly Read[] = [
       ]);
     },
   },
-];
-
-/** The reads a suspended workspace already answers. */
-export const READS_OPEN_TODAY: readonly Read[] = [
-  ...READS_OPEN_UNTIL_PURGE,
   {
     name: 'the run list',
     as: 'viewer',
@@ -97,6 +92,11 @@ export const READS_OPEN_TODAY: readonly Read[] = [
     path: (world) => `${root(world)}/run-statistics`,
     shows: answers,
   },
+];
+
+/** The reads a suspended workspace already answers. */
+export const READS_OPEN_TODAY: readonly Read[] = [
+  ...READS_OPEN_UNTIL_PURGE,
   {
     name: 'the usage trends',
     as: 'viewer',
