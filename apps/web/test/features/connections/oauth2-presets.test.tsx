@@ -350,6 +350,28 @@ describe('choosing a service for an OAuth2 connection', () => {
     });
   });
 
+  // A message stays honest as a value changes, and choosing a service changes them.
+  it('takes down what it has just answered, and leaves what it hasn’t', async () => {
+    const event = await openForm();
+    await event.click(lens().getByRole('button', { name: 'Continue' }));
+    const addressHint = /Enter a full web address/u;
+    expect(lens().getAllByText(addressHint)).toHaveLength(2);
+    expect(
+      lens().getByText('Enter the client ID the service gave you.'),
+    ).toBeVisible();
+
+    await choose(event, 'Google');
+
+    expect(lens().queryByText(addressHint)).toBeNull();
+    expect(
+      lens().getByText('Enter the client ID the service gave you.'),
+    ).toBeVisible();
+
+    await choose(event, 'Other service');
+
+    expect(lens().getAllByText(addressHint)).toHaveLength(2);
+  });
+
   it('shows the redirect URL to register, whichever service is chosen', async () => {
     const event = await openForm();
     for (const service of ['Google', 'Microsoft', 'Other service']) {
