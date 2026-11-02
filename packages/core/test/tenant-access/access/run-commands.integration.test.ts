@@ -75,7 +75,10 @@ describe('a run command someone may not make', () => {
         return operator;
       },
     ],
-    ['a viewer, whose role has no such capability', (world) => Promise.resolve(world.viewer)],
+    [
+      'a viewer, whose role has no such capability',
+      (world) => Promise.resolve(world.viewer),
+    ],
   ];
 
   it.each(refused)(
@@ -150,15 +153,18 @@ describe('a run command as a workspace leaves service', () => {
     'pending_deletion',
     'purging',
     'deleted',
-  ])('reads as a run that is not there on %s, even for its owner', async (status) => {
-    const { workspaceId, owner } = await team();
-    const { runId } = await seedRun(workspaceId, owner, 'queued');
-    await setStatus(workspaceId, status);
-    await expect(
-      runs.cancel({ workspaceId, actorId: owner, runId, reason: 'No' }),
-    ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
-    expect(await cancelRequested(runId)).toBeNull();
-  });
+  ])(
+    'reads as a run that is not there on %s, even for its owner',
+    async (status) => {
+      const { workspaceId, owner } = await team();
+      const { runId } = await seedRun(workspaceId, owner, 'queued');
+      await setStatus(workspaceId, status);
+      await expect(
+        runs.cancel({ workspaceId, actorId: owner, runId, reason: 'No' }),
+      ).rejects.toBeInstanceOf(WorkflowRunNotFoundError);
+      expect(await cancelRequested(runId)).toBeNull();
+    },
+  );
 });
 
 describe('the locks a run command holds', () => {

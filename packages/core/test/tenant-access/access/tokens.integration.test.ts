@@ -85,15 +85,17 @@ describe('signing in with a token', () => {
     expect(await tokens.authenticate(credential)).toBeUndefined();
   });
 
-  it.each<WorkspaceStatus>(['suspended', 'pending_deletion', 'purging', 'deleted'])(
-    'refuses any on a workspace %s',
-    async (status) => {
-      const { workspaceId, owner } = await team();
-      const { credential } = await issued(workspaceId, owner);
-      await setStatus(workspaceId, status);
-      expect(await tokens.authenticate(credential)).toBeUndefined();
-    },
-  );
+  it.each<WorkspaceStatus>([
+    'suspended',
+    'pending_deletion',
+    'purging',
+    'deleted',
+  ])('refuses any on a workspace %s', async (status) => {
+    const { workspaceId, owner } = await team();
+    const { credential } = await issued(workspaceId, owner);
+    await setStatus(workspaceId, status);
+    expect(await tokens.authenticate(credential)).toBeUndefined();
+  });
 
   it('refuses a removed member’s and a suspended user’s', async () => {
     const { workspaceId, admin: manager, builder } = await team();
