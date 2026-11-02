@@ -1,25 +1,8 @@
-import { z } from 'zod';
 import type { WorkspaceInvitationRecord } from '../../contract.js';
-import { delegatedRole, revision } from '../input.js';
 
-export const durableInvitation = z
-  .object({
-    id: z.uuid(),
-    workspaceId: z.uuid(),
-    email: z.email().max(320),
-    role: delegatedRole,
-    status: z.enum(['pending', 'accepted', 'revoked', 'expired']),
-    revision,
-    deliveryStatus: z.enum(['queued', 'submitted', 'failed', 'canceled']),
-    expiresAt: z.iso.datetime(),
-    createdAt: z.iso.datetime(),
-    updatedAt: z.iso.datetime(),
-  })
-  .strict();
-
-export const durableResult = z
-  .object({ invitation: durableInvitation })
-  .strict();
+export type DurableInvitationResult = Readonly<{
+  invitation: ReturnType<typeof serializeInvitation>;
+}>;
 
 export function serializeInvitation(invitation: WorkspaceInvitationRecord) {
   return {
@@ -31,7 +14,7 @@ export function serializeInvitation(invitation: WorkspaceInvitationRecord) {
 }
 
 export function mapDurableInvitation(
-  invitation: z.output<typeof durableInvitation>,
+  invitation: DurableInvitationResult['invitation'],
 ): WorkspaceInvitationRecord {
   return Object.freeze({
     ...invitation,

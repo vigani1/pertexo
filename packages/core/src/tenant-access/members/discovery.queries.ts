@@ -4,6 +4,8 @@ import { users, workspaceMemberships } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 
+const PAGE_SIZE = 50;
+
 /** Names-only directory; the caller owns its workspace and capability fence. */
 export async function readWorkspacePeople(
   client: PoolClient,
@@ -37,11 +39,11 @@ export async function readWorkspacePeople(
       ),
     )
     .orderBy(asc(workspaceMemberships.userId))
-    .limit(51)
+    .limit(PAGE_SIZE + 1)
     .catch(rethrowQueryFailure);
-  const page = rows.slice(0, 50);
+  const page = rows.slice(0, PAGE_SIZE);
   return {
     items: page,
-    nextCursor: rows.length > 50 ? (page.at(-1)?.userId ?? null) : null,
+    nextCursor: rows.length > PAGE_SIZE ? (page.at(-1)?.userId ?? null) : null,
   };
 }

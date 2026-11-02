@@ -10,6 +10,7 @@ import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
 import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
+import { DEFAULT_PAGE_LIMIT } from '../../state.js';
 import type {
   ListWorkspaceInvitationsInput,
   WorkspaceInvitationsPage,
@@ -22,7 +23,7 @@ export async function listWorkspaceInvitations(
   actorUserId: string,
   input: ListWorkspaceInvitationsInput = {},
 ): Promise<WorkspaceInvitationsPage> {
-  const limit = input.limit ?? 50;
+  const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
   // Share locks, not a snapshot: it writes the expiries it finds, and listing
   // invitations while the members list loads must not deadlock.
   return withWorkspaceAccess(

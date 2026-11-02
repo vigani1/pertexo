@@ -24,9 +24,9 @@ import type {
 
 import type { sealedToken } from '../input.js';
 import {
-  durableResult,
   mapDurableInvitation,
   serializeInvitation,
+  type DurableInvitationResult,
 } from './receipt.js';
 
 function sha256(value: string): string {
@@ -55,14 +55,14 @@ export async function claimInvitationCommand(
   request: Record<string, unknown>,
   invitationId: string,
 ): Promise<WorkspaceInvitationCommandResult | null> {
-  const stored = await claimCommand(client, {
+  const stored = await claimCommand<DurableInvitationResult>(client, {
     ...key,
     request,
     resourceId: invitationId,
   });
   if (stored === null) return null;
   return Object.freeze({
-    invitation: mapDurableInvitation(durableResult.parse(stored).invitation),
+    invitation: mapDurableInvitation(stored.invitation),
     replayed: true,
   });
 }

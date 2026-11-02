@@ -11,9 +11,13 @@ import type { CreateUserInput, UserRecord } from '../contract.js';
 import { throwIdentityDatabaseConflict } from '../support.js';
 import { userRecord, userSelection } from './projection.js';
 
+const EMAIL_MIN_LENGTH = 3;
+const EMAIL_MAX_LENGTH = 320;
+const STORED_DISPLAY_NAME_MAX_LENGTH = 256;
+
 const userIdentityFieldsSchema = z.object({
-  email: z.string().trim().min(3).max(320),
-  displayName: z.string().trim().min(1).max(256),
+  email: z.string().trim().min(EMAIL_MIN_LENGTH).max(EMAIL_MAX_LENGTH),
+  displayName: z.string().trim().min(1).max(STORED_DISPLAY_NAME_MAX_LENGTH),
 });
 
 function parseUserIdentityFields(

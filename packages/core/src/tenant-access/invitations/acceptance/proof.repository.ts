@@ -19,6 +19,7 @@ import type {
   InvitationAcceptanceIntentRecord,
   RecordInvitationAcceptanceProofInput,
 } from '../../contract.js';
+import { OPEN_INTENT_STATUSES } from '../open-intents.repository.js';
 import { selectIntent } from './state.queries.js';
 
 export async function readInvitationAcceptance(
@@ -94,7 +95,7 @@ export async function recordInvitationAcceptanceProof(
         return current.accepted_user_id === userId
           ? selectIntent(client, eq(intents.id, intentId))
           : null;
-      if (!['pending', 'verified', 'wrong_account'].includes(current.status))
+      if (!(OPEN_INTENT_STATUSES as readonly string[]).includes(current.status))
         return null;
       const matches =
         canonicalEmail(current.recipient_email) === normalizedEmail;
@@ -140,7 +141,7 @@ export async function abandonInvitationAcceptance(
           eq(intents.workspaceId, workspaceId),
           eq(intents.id, intentId),
           eq(intents.bindingDigest, bindingDigest),
-          inArray(intents.status, ['pending', 'verified', 'wrong_account']),
+          inArray(intents.status, OPEN_INTENT_STATUSES),
         ),
       )
       .returning({ id: intents.id })
