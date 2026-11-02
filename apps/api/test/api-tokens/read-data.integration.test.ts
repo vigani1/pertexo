@@ -123,7 +123,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
     });
 
     // Outputs can hold sensitive data, so a token that can see runs exist can't read
-    // them. It reads as missing, as a route does to anyone its capability doesn't cover.
+    // them. Saying which scope is missing gives nothing away: this token can already
+    // open the run, and the check runs before any run is looked up.
     it('stays shut to a token with only run:read, which still sees the run', async () => {
       const headers = await tokenWith(world.browser, ['run:read']);
 
@@ -132,7 +133,11 @@ describe.runIf(betterAuthIntegrationEnabled)(
       );
       for (const path of dataPaths()) {
         const reply = await api.send('GET', path, { headers });
-        expect(reply.statusCode, path).toBe(404);
+        expect(reply.statusCode, path).toBe(403);
+        expect(reply.json<{ code: string }>().code).toBe(
+          'auth.token_scope_required',
+        );
+        expect(reply.payload).toContain('run:read-data');
         expect(reply.payload).not.toContain('what the script sent');
         expect(reply.payload).not.toContain('invoice');
       }
@@ -141,9 +146,75 @@ describe.runIf(betterAuthIntegrationEnabled)(
     it('doesn’t open the rest of the run to a token with only run:read-data', async () => {
       const headers = await tokenWith(world.browser, ['run:read-data']);
 
-      expect((await api.send('GET', runRoot, { headers })).statusCode).toBe(
-        404,
+      const reply = await api.send('GET', runRoot, { headers });
+      expect(reply.statusCode).toBe(403);
+      expect(reply.json<{ code: string }>().code).toBe(
+        'auth.token_scope_required',
       );
+      expect(reply.payload).not.toContain('what the script sent');
+      expect(reply.payload).not.toContain('invoice');
+    });
+
+    it('answers a missing scope the same for a run that exists and one that doesn’t', async () => {
+      const headers = await tokenWith(world.browser, ['run:read-data']);
+
+      const real = await api.send('GET', runRoot, { headers });
+      const invented = await api.send(
+        'GET',
+        `${world.base}/runs/${randomUUID()}`,
+        { headers },
+      );
+      const fields = (reply: typeof real) => {
+        const {
+          instance: _instance,
+          requestId: _requestId,
+          ...rest
+        } = reply.json<Record<string, unknown>>();
+        return { status: reply.statusCode, ...rest };
+      };
+      expect(fields(invented)).toEqual(fields(real));
+    });
+
+    // The token names its own workspace, so whatever its scopes, another one reads as
+    // missing: a 403 here would confirm that workspace, or what's in it.
+    it('reads as missing in another workspace, whatever scopes the token has', async () => {
+      const other = await api.send('POST', '/v1/workspaces', {
+        browser: world.browser,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: {
+          name: 'Another workspace',
+          slug: `other-${randomUUID().slice(0, 8)}`,
+        },
+      });
+      expect(other.statusCode, other.payload).toBe(201);
+      const elsewhere = `/v1/workspaces/${other.json<{ id: string }>().id}`;
+      const invented = `/v1/workspaces/${randomUUID()}`;
+
+      for (const scopes of [
+        ['run:read'],
+        ['run:read-data'],
+        ['run:read', 'run:read-data', 'workflow:read', 'run:start'],
+      ]) {
+        const headers = await tokenWith(world.browser, scopes);
+        for (const workspace of [elsewhere, invented])
+          for (const path of [
+            `${workspace}/runs/${runId}`,
+            `${workspace}/runs/${runId}/input`,
+            `${workspace}/workflows`,
+          ]) {
+            const reply = await api.send('GET', path, { headers });
+            expect(reply.statusCode, `${scopes.join()} ${path}`).toBe(404);
+            expect(reply.json<{ code: string }>().code).toBe(
+              'resource.not_found',
+            );
+          }
+        const writing = await api.send(
+          'POST',
+          `${elsewhere}/workflows/${world.workflowId}/runs`,
+          { headers: { ...headers, 'idempotency-key': randomUUID() } },
+        );
+        expect(writing.statusCode, scopes.join()).toBe(404);
+      }
     });
 
     it('asks for credentials with none, or with a revoked or made-up token', async () => {
