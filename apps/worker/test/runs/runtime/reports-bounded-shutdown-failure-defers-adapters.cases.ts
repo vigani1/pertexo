@@ -31,6 +31,7 @@ export function registerReportsBoundedShutdownFailureDefersAdapters(): void {
       close: vi
         .fn<NonNullable<QueueConsumer['close']>>()
         .mockResolvedValue({ abortedJobs: 0, forced: false }),
+      hasStopped: () => false,
       isReady: vi
         .fn<NonNullable<QueueConsumer['isReady']>>()
         .mockReturnValue(true),
@@ -65,6 +66,7 @@ export function registerReportsBoundedShutdownFailureDefersAdapters(): void {
       close: vi
         .fn<NonNullable<QueueConsumer['close']>>()
         .mockResolvedValue({ abortedJobs: 0, forced: false }),
+      hasStopped: () => false,
       isReady: vi
         .fn<NonNullable<QueueConsumer['isReady']>>()
         .mockReturnValue(true),

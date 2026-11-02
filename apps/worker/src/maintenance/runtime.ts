@@ -97,6 +97,7 @@ const FAILURE_NOTIFICATION_DELIVERY = Object.freeze({
   maxAttempts: 3,
   retryDelaySeconds: 30,
 });
+const FAILURE_NOTIFICATION_RECOVERY_BATCH = 25;
 
 export async function createMaintenanceRuntime(
   options: MaintenanceOptions,
@@ -209,7 +210,11 @@ export async function createMaintenanceRuntime(
     pollIntervalMillis: 1_000,
     shutdownTimeoutMillis,
     scan: async (signal) => {
-      await recoveryStore?.recoverDue(25, 3, signal);
+      await recoveryStore?.recoverDue(
+        FAILURE_NOTIFICATION_RECOVERY_BATCH,
+        FAILURE_NOTIFICATION_DELIVERY.maxAttempts,
+        signal,
+      );
     },
     checkReadiness: async () => {
       await healthStore.checkReadiness?.();

@@ -29,8 +29,18 @@ export type StalledWorkFailure = Readonly<{
   error: unknown;
 }>;
 
+/** A whole stage of the scan that couldn't run, such as reading expired leases. */
+export type StalledWorkStageFailure = Readonly<{
+  stage: 'expired_leases' | 'overdue_deliveries' | 'failed_run_jobs';
+  error: unknown;
+}>;
+
 export interface StalledWorkStore {
-  /** Settles a bounded batch of overdue work; one bad row never stops the rest. */
+  /**
+   * Settles a bounded batch of overdue work. One bad row never stops the rest, and
+   * neither does a stage that fails: a delivery scan that keeps throwing still lets
+   * expired leases be recovered.
+   */
   recoverDue(
     limit: number,
     signal: AbortSignal,
@@ -38,6 +48,7 @@ export interface StalledWorkStore {
     Readonly<{
       recovered: readonly StalledWorkRecovery[];
       failed: readonly StalledWorkFailure[];
+      stagesFailed: readonly StalledWorkStageFailure[];
     }>
   >;
   close(): Promise<void>;

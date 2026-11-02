@@ -158,6 +158,7 @@ export function registerComposesProductionPreviewAttemptsThroughOne(): void {
               abortedJobs: 0,
               forced: false,
             }),
+            hasStopped: () => false,
             isReady: vi.fn().mockReturnValue(true),
             waitUntilReady: vi.fn().mockResolvedValue(undefined),
           }),

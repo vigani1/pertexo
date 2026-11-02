@@ -14,7 +14,7 @@ export type PollingRuntimeDefinition = Readonly<{
   /** Checks the runtime's store once, before the first cycle. */
   checkStore?(signal: AbortSignal): Promise<void>;
   cycle(signal: AbortSignal): Promise<void>;
-  cycleFailed(): void;
+  cycleFailed(error: unknown): void;
   /** Releases the runtime's resources once the loop has stopped. */
   release(): Promise<void>;
 }>;
@@ -55,11 +55,13 @@ export function createPollingRuntime(
       try {
         await cycle();
         latestCycleFailed = false;
-      } catch {
+      } catch (error: unknown) {
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The signal can change while the cycle awaits I/O.
         if (signal.aborted) break;
         latestCycleFailed = true;
-        reportDiagnostic(definition.cycleFailed);
+        reportDiagnostic(() => {
+          definition.cycleFailed(error);
+        });
       }
       settled.resolve(undefined);
       await waitForSupervisorDelay(definition.pollMillis, signal);
