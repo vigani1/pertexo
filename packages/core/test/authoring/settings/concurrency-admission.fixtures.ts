@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Pool, type PoolClient } from 'pg';
-import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/repository.js';
-import type { WorkflowConcurrencyDatabase } from '../../../src/authoring/settings/concurrency.repository.js';
+import { createWorkflowAuthoringDatabase } from '../../../src/authoring/workflows/store.js';
+import type { WorkflowConcurrencyDatabase } from '../../../src/authoring/settings/concurrency/store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance.repository.js';
 import {

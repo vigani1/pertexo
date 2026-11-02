@@ -24,8 +24,8 @@ import type { WorkflowCollaborationStore } from '../collaboration/contract.js';
 import type { WorkflowPromotionStore } from '../promotion/contract.js';
 import type { PublicationReviewStore } from '../reviews/contract.js';
 import type { WorkflowAutoPauseDatabase } from '../settings/auto-pause/contract.js';
-import type { WorkflowConcurrencyDatabase } from '../settings/concurrency.repository.js';
-import type { WorkflowErrorDatabase } from '../settings/error-workflow.repository.js';
+import type { WorkflowConcurrencyDatabase } from '../settings/concurrency/store.js';
+import type { WorkflowErrorDatabase } from '../settings/error-workflow/store.js';
 import type { WorkflowStepSampleStore } from '../step-samples/contract.js';
 import type {
   WorkflowDraftRecord,

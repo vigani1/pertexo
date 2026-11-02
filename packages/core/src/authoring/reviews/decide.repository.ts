@@ -16,7 +16,7 @@ import {
   workflowPublicationRequests,
   workflowDrafts,
 } from '@pertexo/database/schema';
-import { publishWorkflowCandidate } from '../publication/publisher.repository.js';
+import { publishWorkflowCandidate } from '../publication/publish.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import type { PublicationReviewStore, ReviewDependencies } from './contract.js';
 import { PublicationReviewError } from './errors.js';
