@@ -69,6 +69,44 @@ test('filters and paginates workspace history, then opens the exact run', async 
   );
 });
 
+// CI saw a replay's POST never answer at phone width, in a live journey. In a real
+// browser, at that width and with the input's read still out, the click sends it.
+test('sends a typed replay at phone width while the run’s input is still loading', async ({
+  context,
+  page,
+}) => {
+  await context.addCookies([
+    { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
+  ]);
+  await installRoutes(page);
+  await page.setViewportSize({ width: 375, height: 768 });
+  let answerInput = (): void => undefined;
+  const inputHeld = new Promise<void>((resolve) => {
+    answerInput = resolve;
+  });
+  await page.route(`**/runs/${firstRunId}/input`, async (route) => {
+    await inputHeld;
+    await route.fallback();
+  });
+  await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+
+  await page.getByRole('button', { name: 'Replay' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Replay this run' });
+  const typed = '{"incident":"INC-42"}';
+  await dialog.getByLabel('Replay input (JSON)').fill(typed);
+  const replay = page.waitForRequest(
+    (request) =>
+      request.method() === 'POST' &&
+      request.url().endsWith(`/runs/${firstRunId}/replay`),
+  );
+  await dialog.getByRole('button', { name: 'Replay run' }).click();
+
+  const sent = (await replay).postDataJSON() as { input: unknown };
+  expect(sent.input).toEqual({ incident: 'INC-42' });
+  answerInput();
+  await expect(page).toHaveURL(`/w/${workspaceId}/runs/${replayRunId}`);
+});
+
 test('replays the exact displayed version from its own input', async ({
   context,
   page,
