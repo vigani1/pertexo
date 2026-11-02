@@ -87,7 +87,7 @@ export function registerAppliesSafeDefaultsOptionalEnvironmentValues(): void {
         leaseDurationMillis: 30_000,
         leaseOwner: 'outbox:worker-local',
         operationTimeoutMillis: 5_000,
-        pollIntervalMillis: 250,
+        pollIntervalMillis: 1_000,
         retryDelayMillis: 1_000,
       },
       triggerRuntime: {

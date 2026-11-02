@@ -74,6 +74,7 @@ export function boundaries(events: readonly LeasedOutboxEvent[] = [event()]) {
       checkReadiness: vi
         .fn<NonNullable<BoundariesMockPorts['database']['checkReadiness']>>()
         .mockResolvedValue(undefined),
+      watchForRows: () => Promise.resolve(),
       claimBatch: vi
         .fn<NonNullable<BoundariesMockPorts['database']['claimBatch']>>()
         .mockResolvedValue({ events }),
