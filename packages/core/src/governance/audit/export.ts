@@ -24,7 +24,7 @@ type Read = <T>(work: (client: PoolClient) => Promise<T>) => Promise<T>;
 type AuditExport = Readonly<{
   workspaceId: string;
   query: AuditFilter;
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
 }>;
 
 export async function streamAuditExport(read: Read, input: AuditExport) {

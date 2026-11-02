@@ -5,12 +5,17 @@ import {
   users,
   workspaceMemberships,
 } from '@pertexo/database/schema';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import {
+  rethrowQueryFailure,
+  type WorkspaceTransaction,
+} from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import {
+  ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
   type Role,
 } from '@pertexo/workflow-model';
+import type { ResourceActor } from './contract.js';
 import { WorkspaceAccessDeniedError } from './errors.js';
 
 /** Ordered current authority fence shared by workspace commands. Call only inside the same tenant transaction as the protected work. */
@@ -21,7 +26,7 @@ async function workspaceAuthority(
     actorId,
     roles,
     locking,
-    allowedStatuses = ['active'],
+    allowedStatuses = ACTIVE_WORKSPACE_STATUSES,
   }: Readonly<{
     actorId: string;
     roles: readonly Role[];
@@ -143,7 +148,7 @@ export function readWorkspaceAuthority(
   {
     actorId,
     roles,
-    allowedStatuses = ['active'],
+    allowedStatuses = ACTIVE_WORKSPACE_STATUSES,
   }: Readonly<{
     actorId: string;
     roles: readonly Role[];
@@ -156,4 +161,31 @@ export function readWorkspaceAuthority(
     locking: false,
     allowedStatuses,
   });
+}
+
+/**
+ * The actor's role, or null if the actor has none here. For a read that answers
+ * someone without access with nothing rather than a denial, so it refuses no one.
+ */
+export async function readWorkspaceRole(
+  db: WorkspaceTransaction['db'],
+  actor: ResourceActor,
+  workspaceStatuses: readonly string[],
+): Promise<Role | null> {
+  const rows = await db
+    .select({ role: workspaceMemberships.role })
+    .from(workspaceMemberships)
+    .innerJoin(users, eq(users.id, workspaceMemberships.userId))
+    .innerJoin(workspaces, eq(workspaces.id, workspaceMemberships.workspaceId))
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, actor.workspaceId),
+        eq(workspaceMemberships.userId, actor.actorId),
+        eq(workspaceMemberships.status, 'active'),
+        eq(users.status, 'active'),
+        sql`${workspaces.status}=any(${sql.param(workspaceStatuses)}::text[])`,
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return rows[0]?.role ?? null;
 }
