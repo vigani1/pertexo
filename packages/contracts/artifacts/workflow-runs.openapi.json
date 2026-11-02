@@ -9449,6 +9449,7 @@
               "request.idempotency_conflict",
               "request.rate_limited",
               "request.rate_limit_unavailable",
+              "request.method_not_allowed",
               "request.too_large",
               "request.unsupported_media_type",
               "workspace.quota_exceeded",

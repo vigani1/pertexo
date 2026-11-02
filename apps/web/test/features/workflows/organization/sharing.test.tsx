@@ -82,7 +82,7 @@ function setup() {
             ? { ...item, userId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' }
             : item,
         ),
-        next: null,
+        nextCursor: null,
       }),
     ),
   );

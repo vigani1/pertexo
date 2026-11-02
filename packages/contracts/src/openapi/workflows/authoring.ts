@@ -407,7 +407,15 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
         operationId: 'getWorkflowDraft',
         'x-pertexo-api-token-scopes': ['workflow:read'],
         security: automationSecurity,
-        parameters: workflowParameters,
+        parameters: [
+          ...workflowParameters,
+          {
+            name: 'If-None-Match',
+            in: 'header',
+            required: false,
+            schema: jsonSchema(strongEtagSchema, 'input'),
+          },
+        ],
         responses: {
           '503': problemResponse(
             'Automation token authentication, limiter or operation dependencies unavailable',
@@ -417,6 +425,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
             'WorkflowDraftResponse',
             etagResponseHeader,
           ),
+          '304': { description: 'The draft still has this ETag' },
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),

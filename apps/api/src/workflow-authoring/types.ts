@@ -61,4 +61,5 @@ export type WorkflowAuthoringRequest = AbortableRequest &
 
 export interface WorkflowResponse {
   header(name: string, value: string): unknown;
+  status(code: number): unknown;
 }

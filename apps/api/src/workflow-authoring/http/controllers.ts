@@ -54,6 +54,7 @@ import {
   type WorkflowAuthoringRequest,
   type WorkflowResponse,
 } from '../types.js';
+import { singleRequestHeader } from '../../platform/http/request-headers.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize.js';
 import {
@@ -192,6 +193,13 @@ export class WorkflowAuthoringController {
       workflowId: route.workflowId,
     });
     response.header('ETag', result.representationTag);
+    if (
+      singleRequestHeader(request.headers, 'if-none-match') ===
+      result.representationTag
+    ) {
+      response.status(304);
+      return undefined;
+    }
     return result.body;
   }
   @Put(':workflowId/draft')

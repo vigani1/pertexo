@@ -82,6 +82,8 @@ export interface HttpRequestLike {
   /** Validated server request ID for downstream guards/controllers. */
   requestId?: RequestId;
   url?: string;
+  /** Set by Fastify when the request matched no route. */
+  is404?: boolean;
 }
 
 export interface HttpResponseLike {

@@ -1044,6 +1044,16 @@
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
+            }
           }
         ],
         "responses": {
@@ -1067,6 +1077,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "The draft still has this ETag"
           },
           "401": {
             "$ref": "#/components/responses/Unauthenticated"
@@ -7312,6 +7325,7 @@
               "request.idempotency_conflict",
               "request.rate_limited",
               "request.rate_limit_unavailable",
+              "request.method_not_allowed",
               "request.too_large",
               "request.unsupported_media_type",
               "workspace.quota_exceeded",
@@ -15555,7 +15569,7 @@
               ]
             }
           },
-          "next": {
+          "nextCursor": {
             "anyOf": [
               {
                 "type": "string",
@@ -15570,7 +15584,7 @@
         },
         "required": [
           "items",
-          "next"
+          "nextCursor"
         ],
         "additionalProperties": false
       },

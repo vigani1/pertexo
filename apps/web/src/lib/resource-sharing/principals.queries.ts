@@ -38,7 +38,7 @@ export function sharingPrincipalsQueryOptions({
         },
         signal,
       ),
-    getNextPageParam: (page) => page.next ?? undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
 }
