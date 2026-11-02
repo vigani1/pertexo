@@ -340,11 +340,12 @@ jobs:
               workflow-concurrency usage
           - suite: live-2
             journeys: >-
-              collaboration pinned-samples workflow-organization webhook-
-              responses schedule webhook-controlled-http nested-conflict oauth2
-              promotion security expression-admission task-timeouts error-
-              workflows readonly organization-saml http-pagination organization-
-              oidc receipts email-attachments input-cases connection-health
+              collaboration pinned-samples workflow-organization
+              webhook-responses schedule webhook-controlled-http nested-conflict
+              oauth2 promotion security expression-admission task-timeouts
+              error-workflows readonly organization-saml http-pagination
+              organization-oidc receipts email-attachments input-cases
+              connection-health
     env:
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser
