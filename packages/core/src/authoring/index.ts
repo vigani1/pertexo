@@ -46,7 +46,7 @@ export type {
   WorkflowFavoriteState,
 } from './organization/favorites/store.js';
 export { WorkflowOrganizationValidationError } from './organization/errors.js';
-export { createWorkflowInputCaseDatabase } from './input-cases/repository.js';
+export { createWorkflowInputCaseDatabase } from './input-cases/store.js';
 export {
   WorkflowInputCaseLimitError,
   WorkflowInputCaseRevisionConflictError,
