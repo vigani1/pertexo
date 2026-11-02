@@ -46,15 +46,25 @@ const STAGE_STATEMENT: Readonly<Record<Stage, RegExp>> = {
 
 const STAGES = Object.keys(STAGE_STATEMENT) as readonly Stage[];
 
-const failStatement = (pool: Pool, statement: RegExp, error: Error): void => {
+/** Answers one statement itself: PostgreSQL stays real for every other. */
+const interceptQueries = (
+  pool: Pool,
+  answer: (text: string, forward: () => unknown) => unknown,
+): void => {
   const query = pool.query.bind(pool) as (...values: unknown[]) => unknown;
-  vi.spyOn(pool, 'query').mockImplementation(((...values: unknown[]) => {
-    const text =
+  vi.spyOn(pool, 'query').mockImplementation(((...values: unknown[]) =>
+    answer(
       typeof values[0] === 'string'
         ? values[0]
-        : (values[0] as { text: string }).text;
-    return statement.test(text) ? Promise.reject(error) : query(...values);
-  }) as never);
+        : (values[0] as { text: string }).text,
+      () => query(...values),
+    )) as typeof pool.query);
+};
+
+const failStatement = (pool: Pool, statement: RegExp, error: Error): void => {
+  interceptQueries(pool, (text, forward) =>
+    statement.test(text) ? Promise.reject(error) : forward(),
+  );
 };
 
 async function insertEvent(input: {
@@ -299,16 +309,11 @@ describe('a stage of the stalled-work scan that fails', () => {
   // Shutdown isn't a broken stage: it would log an outage nobody had.
   it('gives up on an aborted scan instead of recording it as a failed stage', async () => {
     const shutdown = new AbortController();
-    const query = pool.query.bind(pool) as (...values: unknown[]) => unknown;
-    vi.spyOn(pool, 'query').mockImplementation(((...values: unknown[]) => {
-      const text =
-        typeof values[0] === 'string'
-          ? values[0]
-          : (values[0] as { text: string }).text;
-      if (!STAGE_STATEMENT.expired_leases.test(text)) return query(...values);
+    interceptQueries(pool, (text, forward) => {
+      if (!STAGE_STATEMENT.expired_leases.test(text)) return forward();
       shutdown.abort(new Error('shutting down'));
       return Promise.reject(new Error('connection terminated'));
-    }) as never);
+    });
 
     await expect(store.recoverDue(100, shutdown.signal)).rejects.toThrow(
       'shutting down',
