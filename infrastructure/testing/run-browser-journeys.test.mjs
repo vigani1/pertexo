@@ -3,11 +3,8 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { parse } from 'yaml';
 
-import {
-  journeyCommand,
-  runSideBySide,
-  slotEnvironment,
-} from './run-browser-journeys.mjs';
+import { journeyCommand } from './run-browser-journeys.mjs';
+import { runSideBySide, slotEnvironment } from './side-by-side.mjs';
 
 const base = {
   COMPOSE_PROJECT_NAME: 'pertexo-ci-1-1-browser',
