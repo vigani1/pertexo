@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect } from 'vitest';
 
-import { createWorkflowFolderDatabase } from '../../../src/authoring/organization/folders/store.js';
+import { createWorkflowFolderStore } from '../../../src/authoring/organization/folders/store.js';
 import { ScheduleTriggerError } from '../../../src/triggers/schedules/errors.js';
 import { WebhookTriggerNotFoundError } from '../../../src/triggers/webhooks/errors.js';
 import { createWebhookTestEventStore } from '../../../src/triggers/webhooks/test-events/store.js';
@@ -37,7 +37,7 @@ export const NOT_EDITORS: readonly Role[] = ['operator', 'viewer'];
 
 const members = new Map<Role, string>();
 export let listeners: ReturnType<typeof createWebhookTestEventStore>;
-export let folders: ReturnType<typeof createWorkflowFolderDatabase>;
+export let folders: ReturnType<typeof createWorkflowFolderStore>;
 /** Secret rows and receipts have no plain reader but the superuser. */
 export let inspector: Pool;
 
@@ -60,7 +60,7 @@ export function useMemberFlows() {
     await beforeAllFixture1();
     inspector = new Pool({ connectionString: url(adminUrl), max: 1 });
     listeners = createWebhookTestEventStore(apiConfig);
-    folders = createWorkflowFolderDatabase(apiConfig);
+    folders = createWorkflowFolderStore(apiConfig);
     members.set('owner', actorId);
     for (const role of ROLES.slice(1)) members.set(role, await addMember(role));
   }, 60_000);

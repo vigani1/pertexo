@@ -42,7 +42,7 @@ export type WorkflowFolderPlacementResult = Readonly<{
   replayed: boolean;
 }>;
 
-export interface WorkflowFolderDatabase {
+export interface WorkflowFolderStore {
   sharingPrincipals(
     input: OrganizationRequestScope & { query: SharingPrincipalsQuery },
   ): Promise<SharingPrincipals>;

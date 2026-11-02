@@ -62,7 +62,7 @@ export type WorkflowWithOrganization = Readonly<{
   workflow: WorkflowRecord;
   organization: WorkflowOrganizationMetadata;
 }>;
-export interface WorkflowOrganizationReadDatabase {
+export interface WorkflowOrganizationReadStore {
   getWorkflow(
     input: Scope & Readonly<{ workflowId: string }>,
   ): Promise<WorkflowWithOrganization | null>;
@@ -83,13 +83,13 @@ export interface WorkflowOrganizationReadDatabase {
   close(): Promise<void>;
 }
 /** Applies resource and organization filters before one bounded keyset page. */
-export function createWorkflowOrganizationReadDatabase(
+export function createWorkflowOrganizationReadStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowOrganizationReadDatabase {
+): WorkflowOrganizationReadStore {
   const lease = acquireDatabasePool(config, options.runtime);
 
-  const store: WorkflowOrganizationReadDatabase = {
+  const store: WorkflowOrganizationReadStore = {
     getWorkflow: (input) => readOrganizedWorkflow(lease.pool, input),
     listWorkflows: (input) => listOrganizedWorkflows(lease.pool, input),
     close: lease.close,
@@ -314,8 +314,8 @@ function organizedPredicates({
 
 function readOrganizedWorkflow(
   pool: Pool,
-  input: Parameters<WorkflowOrganizationReadDatabase['getWorkflow']>[0],
-): ReturnType<WorkflowOrganizationReadDatabase['getWorkflow']> {
+  input: Parameters<WorkflowOrganizationReadStore['getWorkflow']>[0],
+): ReturnType<WorkflowOrganizationReadStore['getWorkflow']> {
   return transact(
     pool,
     input,
@@ -332,8 +332,8 @@ function readOrganizedWorkflow(
 
 function listOrganizedWorkflows(
   pool: Pool,
-  input: Parameters<WorkflowOrganizationReadDatabase['listWorkflows']>[0],
-): ReturnType<WorkflowOrganizationReadDatabase['listWorkflows']> {
+  input: Parameters<WorkflowOrganizationReadStore['listWorkflows']>[0],
+): ReturnType<WorkflowOrganizationReadStore['listWorkflows']> {
   const limit = input.limit ?? 50;
   const order = input.order ?? 'created_asc';
   return transact(pool, input, (client, scope) =>

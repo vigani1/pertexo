@@ -17,7 +17,7 @@ import { WorkflowTagConflictError } from '../../errors.js';
 
 import { TAG_DELETE_WORKFLOW_LIMIT, TAG_LIMIT } from '../../limits.js';
 import type { createOrganizationSession } from '../../session.js';
-import type { WorkflowTagDatabase } from '../contract.js';
+import type { WorkflowTagStore } from '../contract.js';
 import { assignment, deleteResult, replaceResult } from '../input.js';
 import {
   readTag,
@@ -102,8 +102,8 @@ async function deleteTag(
 
 export async function createTag(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowTagDatabase['createTag']>[0],
-): ReturnType<WorkflowTagDatabase['createTag']> {
+  input: Parameters<WorkflowTagStore['createTag']>[0],
+): ReturnType<WorkflowTagStore['createTag']> {
   const request = { key: input.key };
   return tagCommand(session, input, {
     operation: 'tag.create',
@@ -132,8 +132,8 @@ export async function createTag(
 
 export async function renameTag(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowTagDatabase['renameTag']>[0],
-): ReturnType<WorkflowTagDatabase['renameTag']> {
+  input: Parameters<WorkflowTagStore['renameTag']>[0],
+): ReturnType<WorkflowTagStore['renameTag']> {
   const tagId = input.tagId;
   const request = {
     key: input.key,
@@ -165,8 +165,8 @@ export async function renameTag(
 
 export async function deleteTagCommand(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowTagDatabase['deleteTag']>[0],
-): ReturnType<WorkflowTagDatabase['deleteTag']> {
+  input: Parameters<WorkflowTagStore['deleteTag']>[0],
+): ReturnType<WorkflowTagStore['deleteTag']> {
   const tagId = input.tagId;
   const request = {
     expectedTagRevision: input.expectedTagRevision,
@@ -198,8 +198,8 @@ export async function deleteTagCommand(
 
 export async function replaceWorkflowTags(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowTagDatabase['replaceTags']>[0],
-): ReturnType<WorkflowTagDatabase['replaceTags']> {
+  input: Parameters<WorkflowTagStore['replaceTags']>[0],
+): ReturnType<WorkflowTagStore['replaceTags']> {
   return assignmentCommand(session, input, {
     operation: 'tags.replace',
     change: { kind: 'replace_tags', tagIds: input.tagIds },
@@ -209,8 +209,8 @@ export async function replaceWorkflowTags(
 
 export async function detachTag(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowTagDatabase['detachTag']>[0],
-): ReturnType<WorkflowTagDatabase['detachTag']> {
+  input: Parameters<WorkflowTagStore['detachTag']>[0],
+): ReturnType<WorkflowTagStore['detachTag']> {
   return assignmentCommand(session, input, {
     operation: 'tag.detach',
     change: { kind: 'detach_tag', tagId: input.tagId },

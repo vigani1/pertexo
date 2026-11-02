@@ -12,7 +12,7 @@ import {
   WorkflowFolderConflictError,
   WorkflowNotFoundError,
   WorkflowTagConflictError,
-  type WorkflowOrganizationBatchDatabase,
+  type WorkflowOrganizationBatchStore,
   type WorkflowOrganizationBatchRequest,
 } from '@pertexo/core/authoring';
 import {
@@ -33,7 +33,7 @@ type Input = WorkflowOrganizationInput &
  * Retrying always resubmits the full original parent, never just failed items. */
 export class WorkflowOrganizationBatchesUseCase {
   public constructor(
-    private readonly batches: WorkflowOrganizationBatchDatabase,
+    private readonly batches: WorkflowOrganizationBatchStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 

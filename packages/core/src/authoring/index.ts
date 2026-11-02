@@ -1,44 +1,44 @@
-export { createWorkflowFolderDatabase } from './organization/folders/store.js';
+export { createWorkflowFolderStore } from './organization/folders/store.js';
 export { WorkflowFolderConflictError } from './organization/errors.js';
 export type {
   WorkflowFolderCommandResult,
-  WorkflowFolderDatabase,
+  WorkflowFolderStore,
   WorkflowFolderDeleteResult,
   WorkflowFolderPlacementResult,
   WorkflowFolderRecord,
 } from './organization/folders/contract.js';
 export type { WorkflowFolderConflictKind } from './organization/errors.js';
-export { createWorkflowOrganizationBatchDatabase } from './organization/batches/store.js';
+export { createWorkflowOrganizationBatchStore } from './organization/batches/store.js';
 export type {
-  WorkflowOrganizationBatchDatabase,
+  WorkflowOrganizationBatchStore,
   WorkflowOrganizationBatchInput,
   WorkflowOrganizationBatchItem,
   WorkflowOrganizationBatchItemResult,
   WorkflowOrganizationBatchRequest,
 } from './organization/batches/store.js';
-export { createWorkflowOrganizationReadDatabase } from './organization/workflows/store.js';
+export { createWorkflowOrganizationReadStore } from './organization/workflows/store.js';
 export type {
   WorkflowOrganizationFilters,
   WorkflowOrganizationMetadata,
-  WorkflowOrganizationReadDatabase,
+  WorkflowOrganizationReadStore,
   WorkflowWithOrganization,
 } from './organization/workflows/store.js';
-export { createWorkflowTagDatabase } from './organization/tags/store.js';
+export { createWorkflowTagStore } from './organization/tags/store.js';
 export { WorkflowTagConflictError } from './organization/errors.js';
 export type {
   WorkflowTagAssignment,
   WorkflowTagAssignmentResult,
   WorkflowTagCommandResult,
-  WorkflowTagDatabase,
+  WorkflowTagStore,
   WorkflowTagDeleteResult,
   WorkflowTagRecord,
   WorkflowTagReplaceResult,
 } from './organization/tags/contract.js';
 export type { WorkflowTagConflictKind } from './organization/errors.js';
-export { createWorkflowFavoriteDatabase } from './organization/favorites/store.js';
+export { createWorkflowFavoriteStore } from './organization/favorites/store.js';
 export type {
   WorkflowFavoriteCommand,
-  WorkflowFavoriteDatabase,
+  WorkflowFavoriteStore,
   WorkflowFavoriteState,
 } from './organization/favorites/store.js';
 export { WorkflowOrganizationValidationError } from './organization/errors.js';

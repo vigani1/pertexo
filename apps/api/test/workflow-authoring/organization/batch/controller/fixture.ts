@@ -10,8 +10,8 @@ import {
 import { Test } from '@nestjs/testing';
 import { vi } from 'vitest';
 import type {
-  WorkflowFolderDatabase,
-  WorkflowOrganizationBatchDatabase,
+  WorkflowFolderStore,
+  WorkflowOrganizationBatchStore,
 } from '@pertexo/core/authoring';
 import { WorkflowFoldersController } from '../../../../../src/workflow-authoring/organization/folders/controller.js';
 import { WorkflowOrganizationBatchesController } from '../../../../../src/workflow-authoring/organization/batch/controller.js';
@@ -168,7 +168,7 @@ export async function setup() {
       .mockResolvedValue({ folderId, deleted: true, replayed: false }),
     placeWorkflow: vi.fn().mockResolvedValue(placement),
     close: vi.fn(),
-  } satisfies WorkflowFolderDatabase;
+  } satisfies WorkflowFolderStore;
   const batches = {
     admitBatch: vi.fn().mockResolvedValue({ admitted: true }),
     executeBatchItem: vi
@@ -183,7 +183,7 @@ export async function setup() {
           }),
       ),
     close: vi.fn(),
-  } satisfies WorkflowOrganizationBatchDatabase;
+  } satisfies WorkflowOrganizationBatchStore;
   const authorization = {
     findAccess: vi.fn().mockResolvedValue({
       actorId,

@@ -45,7 +45,7 @@ export type WorkflowTagReplaceResult = WorkflowTagAssignmentResult &
 
 /** Tags, their workflows and tag commands. Page positions are tag and
  * workflow UUIDs; signed wire continuations belong to the API. */
-export interface WorkflowTagDatabase {
+export interface WorkflowTagStore {
   listTags(input: PageInput): Promise<Page<WorkflowTagRecord>>;
   listTagAssignments(
     input: PageInput & Readonly<{ tagId: string }>,

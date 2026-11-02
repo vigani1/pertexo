@@ -11,8 +11,8 @@ import {
 import { Test } from '@nestjs/testing';
 import { vi } from 'vitest';
 import type {
-  WorkflowTagDatabase,
-  WorkflowFavoriteDatabase,
+  WorkflowTagStore,
+  WorkflowFavoriteStore,
 } from '@pertexo/core/authoring';
 import { WorkflowOrganizationController } from '../../../../src/workflow-authoring/organization/controller.js';
 import { WorkflowOrganizationCommandsUseCase } from '../../../../src/workflow-authoring/organization/commands.js';
@@ -146,11 +146,11 @@ export function fixture(role: Role = 'owner') {
     }),
     detachTag: vi.fn(),
     close: vi.fn(),
-  } satisfies WorkflowTagDatabase;
+  } satisfies WorkflowTagStore;
   const favorites = {
     setFavorite: vi.fn().mockResolvedValue({ isFavorite: false }),
     close: vi.fn(),
-  } satisfies WorkflowFavoriteDatabase;
+  } satisfies WorkflowFavoriteStore;
   const authorization = {
     findAccess: vi.fn().mockResolvedValue({
       actorId,

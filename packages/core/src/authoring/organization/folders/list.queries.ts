@@ -11,12 +11,12 @@ import { ROLES } from '@pertexo/workflow-model';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 
 import type { createOrganizationSession } from '../session.js';
-import type { WorkflowFolderDatabase } from './contract.js';
+import type { WorkflowFolderStore } from './contract.js';
 
 export function listFolders(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderDatabase['listFolders']>[0],
-): ReturnType<WorkflowFolderDatabase['listFolders']> {
+  input: Parameters<WorkflowFolderStore['listFolders']>[0],
+): ReturnType<WorkflowFolderStore['listFolders']> {
   return session.transact(input, async (client, scope) => {
     await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
       actorId: scope.actorId,

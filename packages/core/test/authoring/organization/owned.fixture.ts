@@ -12,13 +12,13 @@ import {
 } from '@pertexo/database/testing';
 import { createIdentityWorkspaceStore } from '../../../src/tenant-access/store.js';
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
-import { createWorkflowTagDatabase } from '../../../src/authoring/organization/tags/store.js';
+import { createWorkflowTagStore } from '../../../src/authoring/organization/tags/store.js';
 import {
-  createWorkflowFolderDatabase,
-  createWorkflowOrganizationBatchDatabase,
+  createWorkflowFolderStore,
+  createWorkflowOrganizationBatchStore,
 } from '../../../src/authoring/index.js';
-import { createWorkflowOrganizationReadDatabase } from '../../../src/authoring/organization/workflows/store.js';
-import { createWorkflowFavoriteDatabase } from '../../../src/authoring/organization/favorites/store.js';
+import { createWorkflowOrganizationReadStore } from '../../../src/authoring/organization/workflows/store.js';
+import { createWorkflowFavoriteStore } from '../../../src/authoring/organization/favorites/store.js';
 
 const roles = {
   DATABASE_ADMIN_URL: 'postgres',
@@ -138,18 +138,18 @@ export async function createOrganizationOwnedFixture() {
     });
     const identity = createIdentityWorkspaceStore(config);
     const authoring = createWorkflowAuthoringFixtureDatabase(config);
-    const tags = createWorkflowTagDatabase(config);
-    const favorites = createWorkflowFavoriteDatabase(config);
+    const tags = createWorkflowTagStore(config);
+    const favorites = createWorkflowFavoriteStore(config);
     resources.push(identity, authoring, tags, favorites);
     function folderStores() {
-      const folders = createWorkflowFolderDatabase(config);
-      const batches = createWorkflowOrganizationBatchDatabase(config);
+      const folders = createWorkflowFolderStore(config);
+      const batches = createWorkflowOrganizationBatchStore(config);
       resources.push(folders, batches);
       return { folders, batches };
     }
     function organizationStores() {
-      const reader = createWorkflowOrganizationReadDatabase(config);
-      const favorites = createWorkflowFavoriteDatabase(config);
+      const reader = createWorkflowOrganizationReadStore(config);
+      const favorites = createWorkflowFavoriteStore(config);
       resources.push(reader, favorites);
       return { reader, favorites };
     }

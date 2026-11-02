@@ -3,10 +3,10 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createIdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import {
-  createWorkflowFavoriteDatabase,
-  createWorkflowOrganizationReadDatabase,
-  type WorkflowFavoriteDatabase,
-  type WorkflowOrganizationReadDatabase,
+  createWorkflowFavoriteStore,
+  createWorkflowOrganizationReadStore,
+  type WorkflowFavoriteStore,
+  type WorkflowOrganizationReadStore,
 } from '@pertexo/core/authoring';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { WorkflowNotFoundError } from '@pertexo/core/testing';
@@ -16,8 +16,8 @@ const fixture = createWorkflowOrganizationOwnedDatabase();
 const resources: { close(): Promise<void> }[] = [];
 let owner: Pool;
 let identity: ReturnType<typeof createIdentityWorkspaceStore>;
-let favorites: WorkflowFavoriteDatabase;
-let organization: WorkflowOrganizationReadDatabase;
+let favorites: WorkflowFavoriteStore;
+let organization: WorkflowOrganizationReadStore;
 async function ownerQuery(
   workspaceId: string,
   actorId: string,
@@ -122,8 +122,8 @@ describe.skipIf(process.env.F07_ORGANIZATION_OWNED_FIXTURE !== 'true')(
         max: 4,
       });
       identity = createIdentityWorkspaceStore(config);
-      favorites = createWorkflowFavoriteDatabase(config);
-      organization = createWorkflowOrganizationReadDatabase(config);
+      favorites = createWorkflowFavoriteStore(config);
+      organization = createWorkflowOrganizationReadStore(config);
       resources.push(identity, favorites, organization);
     }, 120_000);
     afterAll(async () => {

@@ -46,7 +46,7 @@ export type WorkflowOrganizationBatchItemResult = Readonly<{
   replayed: boolean;
   folderId?: string | null;
 }>;
-export interface WorkflowOrganizationBatchDatabase {
+export interface WorkflowOrganizationBatchStore {
   /** Claims the batch's key for its whole request, before any item runs. */
   admitBatch(
     input: WorkflowOrganizationBatchInput,
@@ -89,10 +89,10 @@ function changeOf(body: BatchRequest): OrganizationChange {
 
 /** A batch moves, retags or untags up to 50 workflows. Each workflow is its
  * own short transaction, so one conflict does not undo the others. */
-export function createWorkflowOrganizationBatchDatabase(
+export function createWorkflowOrganizationBatchStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowOrganizationBatchDatabase {
+): WorkflowOrganizationBatchStore {
   const session = createOrganizationSession(config, options.runtime);
   return Object.freeze({
     admitBatch: async (input: WorkflowOrganizationBatchInput) => {

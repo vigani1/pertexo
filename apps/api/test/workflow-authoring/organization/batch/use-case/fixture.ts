@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 import type {
-  WorkflowOrganizationBatchDatabase,
+  WorkflowOrganizationBatchStore,
   WorkflowOrganizationBatchInput,
   WorkflowOrganizationBatchItemResult,
 } from '@pertexo/core/authoring';
@@ -84,13 +84,13 @@ export function result(
 export function fixture(role: WorkspaceAccess['role'] = 'owner') {
   const batches = {
     admitBatch: vi
-      .fn<WorkflowOrganizationBatchDatabase['admitBatch']>()
+      .fn<WorkflowOrganizationBatchStore['admitBatch']>()
       .mockResolvedValue({ admitted: true }),
     executeBatchItem: vi
-      .fn<WorkflowOrganizationBatchDatabase['executeBatchItem']>()
+      .fn<WorkflowOrganizationBatchStore['executeBatchItem']>()
       .mockImplementation((input) => Promise.resolve(result(input))),
-    close: vi.fn<WorkflowOrganizationBatchDatabase['close']>(),
-  } satisfies WorkflowOrganizationBatchDatabase;
+    close: vi.fn<WorkflowOrganizationBatchStore['close']>(),
+  } satisfies WorkflowOrganizationBatchStore;
   const authorization = {
     findAccess: vi
       .fn<WorkspaceAuthorizationPort['findAccess']>()

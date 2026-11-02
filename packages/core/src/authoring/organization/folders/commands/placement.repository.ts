@@ -8,15 +8,15 @@ import {
   organizeWorkflow,
 } from '../../placement.repository.js';
 import type { createOrganizationSession } from '../../session.js';
-import type { WorkflowFolderDatabase } from '../contract.js';
+import type { WorkflowFolderStore } from '../contract.js';
 import { placementResult } from '../input.js';
 
 import { EDITORS } from './receipt.js';
 
 export function reviewFolderMove(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderDatabase['reviewMove']>[0],
-): ReturnType<WorkflowFolderDatabase['reviewMove']> {
+  input: Parameters<WorkflowFolderStore['reviewMove']>[0],
+): ReturnType<WorkflowFolderStore['reviewMove']> {
   return session.transact(input, async (client, scope) => {
     await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
       actorId: scope.actorId,
@@ -28,8 +28,8 @@ export function reviewFolderMove(
 
 export async function placeWorkflow(
   session: ReturnType<typeof createOrganizationSession>,
-  input: Parameters<WorkflowFolderDatabase['placeWorkflow']>[0],
-): ReturnType<WorkflowFolderDatabase['placeWorkflow']> {
+  input: Parameters<WorkflowFolderStore['placeWorkflow']>[0],
+): ReturnType<WorkflowFolderStore['placeWorkflow']> {
   const workflowId = input.workflowId;
   const request = {
     folderId: input.folderId,

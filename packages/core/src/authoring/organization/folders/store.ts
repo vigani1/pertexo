@@ -13,7 +13,7 @@ import {
   createOrganizationSession,
   type OrganizationRequestScope,
 } from '../session.js';
-import type { WorkflowFolderDatabase } from './contract.js';
+import type { WorkflowFolderStore } from './contract.js';
 
 import {
   createFolder,
@@ -27,13 +27,13 @@ import {
 } from './commands/placement.repository.js';
 import { listFolders } from './list.queries.js';
 
-export function createWorkflowFolderDatabase(
+export function createWorkflowFolderStore(
   config: DatabaseConfig,
   options: Readonly<{ runtime?: DatabaseRuntime }> = {},
-): WorkflowFolderDatabase {
+): WorkflowFolderStore {
   const session = createOrganizationSession(config, options.runtime);
 
-  const store: WorkflowFolderDatabase = {
+  const store: WorkflowFolderStore = {
     sharingPrincipals: (input) => {
       return session.transact(input, (client, scope) =>
         readSharingPrincipals(client, scope, input.query),

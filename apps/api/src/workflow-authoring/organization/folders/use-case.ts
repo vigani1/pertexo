@@ -18,7 +18,7 @@ import {
   workflowFolderPlacementRequestSchema,
   workflowFolderPlacementResponseSchema,
 } from '@pertexo/contracts';
-import type { WorkflowFolderDatabase } from '@pertexo/core/authoring';
+import type { WorkflowFolderStore } from '@pertexo/core/authoring';
 import type { WorkspaceAuthorizationSource } from '../../../authorization/index.js';
 import {
   authorizeWorkflowOrganization,
@@ -34,7 +34,7 @@ type FolderCommand = Command & Readonly<{ folderId: string }>;
 /** Folder metadata does not grant authority or change workflow lifecycle. */
 export class WorkflowFoldersUseCase {
   public constructor(
-    private readonly folders: WorkflowFolderDatabase,
+    private readonly folders: WorkflowFolderStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
