@@ -10,15 +10,12 @@ import { and, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { apiTokens } from '@pertexo/database/schema';
 import { API_TOKEN_ACTIVE_LIMIT } from '@pertexo/workflow-model';
-import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import { z } from 'zod';
 
 import type {
   ApiTokenCreateResponse,
   ApiTokenRevokeResponse,
 } from '@pertexo/contracts';
-import { canonicalJson } from '@pertexo/workflow-model';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   acquireDatabasePool,
@@ -29,10 +26,8 @@ import type { CommandIdentity } from '@pertexo/database/primitives';
 import { hasCapability } from '@pertexo/workflow-model';
 import { issueApiTokenCredential } from './credential.js';
 import { apiTokenMetadata, type ApiTokenRow } from './metadata.js';
-import {
-  availableApiTokenScopes,
-  tokenOwnerAuthority,
-} from './authority.queries.js';
+import { tokenOwnerAuthority } from './authority.queries.js';
+import { availableApiTokenScopes } from './policy.js';
 import { authenticateApiToken } from './authenticate.repository.js';
 import { ApiTokenPolicyError } from './errors.js';
 import type {
@@ -44,7 +39,8 @@ import type {
 } from './contract.js';
 import type { ParsedApiTokenCredential } from './credential.js';
 
-const receipt = z.object({ tokenId: z.uuid() }).strict();
+const MILLISECONDS_PER_DAY = 86_400_000;
+type TokenReceipt = Readonly<{ tokenId: string }>;
 const commandIdentity = (
   input: ApiTokenCommand,
 ): Omit<CommandIdentity, 'operation'> => ({
@@ -52,8 +48,6 @@ const commandIdentity = (
   scope: input.ownerUserId,
   idempotencyKey: input.idempotencyKey,
 });
-const sha256 = (input: unknown): string =>
-  createHash('sha256').update(canonicalJson(input)).digest('hex');
 
 function singleRow<Row>(rows: readonly Row[]): Row {
   const [row] = rows;
@@ -177,20 +171,20 @@ function createApiToken(
         ...commandIdentity(input),
         operation: 'api.token.create',
       };
-      const replay = await claimCommand(client, {
+      const replay = await claimCommand<TokenReceipt>(client, {
         ...identity,
-        requestHash: sha256({
+        request: {
           name: input.name,
           scopes: input.scopes,
           expiresInDays: input.expiresInDays,
-        }),
+        },
         resourceId: tokenId,
       });
       const now = await databaseNow(client);
       if (replay !== null)
         return {
           token: apiTokenMetadata(
-            await tokenRow(client, input, receipt.parse(replay).tokenId),
+            await tokenRow(client, input, replay.tokenId),
             authority.revision,
             now,
           ),
@@ -223,7 +217,9 @@ function createApiToken(
           scopes: sql`${serializeStoredExecutionJsonValue(input.scopes)}::jsonb`,
           membershipRevision: authority.revision,
           createdAt: now,
-          expiresAt: new Date(now.getTime() + input.expiresInDays * 86_400_000),
+          expiresAt: new Date(
+            now.getTime() + input.expiresInDays * MILLISECONDS_PER_DAY,
+          ),
         })
         .returning()
         .catch(rethrowQueryFailure);

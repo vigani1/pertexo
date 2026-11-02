@@ -6,17 +6,12 @@ import {
   workspaceMemberships,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import {
-  ACTIVE_WORKSPACE_STATUSES,
-  API_TOKEN_SCOPES,
-  UNPURGED_WORKSPACE_STATUSES,
-} from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 
-import type { ApiTokenScope } from '@pertexo/contracts';
-import { hasCapability, type Role } from '@pertexo/workflow-model';
+import type { Role } from '@pertexo/workflow-model';
 import { ApiTokenPolicyError } from './errors.js';
 import type { ApiTokenOwner } from './contract.js';
+import { tokenOwnerMayAct } from './policy.js';
 
 export type TokenOwnerAuthority = Readonly<{ revision: number; role: Role }>;
 /**
@@ -62,16 +57,14 @@ export async function tokenOwnerAuthority(
     mode === 'read' ? memberQuery : memberQuery.for('update')
   ).catch(rethrowQueryFailure);
   const membership = member[0];
-  const allowedWorkspaceStatuses: readonly string[] =
-    mode === 'create' ? ACTIVE_WORKSPACE_STATUSES : UNPURGED_WORKSPACE_STATUSES;
-  const actorUnavailable =
-    workspace[0] === undefined ||
-    !allowedWorkspaceStatuses.includes(workspace[0].status) ||
-    user[0]?.status !== 'active' ||
-    membership?.status !== 'active';
-  if (actorUnavailable) throw new ApiTokenPolicyError('authority_inactive');
+  if (
+    !tokenOwnerMayAct(mode, {
+      workspaceStatus: workspace[0]?.status,
+      userStatus: user[0]?.status,
+      membershipStatus: membership?.status,
+    }) ||
+    membership === undefined
+  )
+    throw new ApiTokenPolicyError('authority_inactive');
   return { revision: membership.roleRevision, role: membership.role };
-}
-export function availableApiTokenScopes(role: Role): ApiTokenScope[] {
-  return API_TOKEN_SCOPES.filter((scope) => hasCapability(role, scope));
 }
