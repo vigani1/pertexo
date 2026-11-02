@@ -17,7 +17,7 @@ import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/workflow-model';
 
 import { WorkflowNotFoundError } from '../workflows/errors.js';
-import type { OrganizationScope } from './run-command.js';
+import type { OrganizationActor } from './session.js';
 import {
   WorkflowFolderConflictError,
   WorkflowTagConflictError,
@@ -55,7 +55,7 @@ function checkLifecycle(
  */
 export async function organizeWorkflow(
   client: PoolClient,
-  scope: OrganizationScope,
+  scope: OrganizationActor,
   input: Readonly<{
     workflowId: string;
     change: OrganizationChange;
@@ -63,7 +63,7 @@ export async function organizeWorkflow(
   }>,
 ): Promise<number> {
   const { change, workflowId } = input;
-  const access = await readFolderScope(client, scope);
+  const access = await readFolderScope(client, scope, scope.role);
   if (
     !(await workflowAccessible(client, access, {
       workspaceId: scope.workspaceId,
@@ -163,7 +163,7 @@ export async function organizeWorkflow(
  */
 export async function checkOrganizationReplay(
   client: PoolClient,
-  scope: OrganizationScope,
+  scope: OrganizationActor,
   {
     workflowId,
     kind,
@@ -174,7 +174,7 @@ export async function checkOrganizationReplay(
     destinationFolderId?: (string | null) | undefined;
   }>,
 ): Promise<void> {
-  const access = await readFolderScope(client, scope);
+  const access = await readFolderScope(client, scope, scope.role);
   if (
     !(await workflowAccessible(client, access, {
       workspaceId: scope.workspaceId,
@@ -207,7 +207,7 @@ export async function checkOrganizationReplay(
 
 async function persistPlacement(
   client: PoolClient,
-  scope: OrganizationScope,
+  scope: OrganizationActor,
   {
     workflowId,
     change,

@@ -5,19 +5,12 @@ import {
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaces } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { Role } from '@pertexo/workflow-model';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
-
-export type OrganizationScope = Readonly<{
-  workspaceId: string;
-  actorId: string;
-}>;
+import type { OrganizationActor } from './session.js';
 
 /** The record a command changed, for the audit log. */
 export type OrganizationAudit = Readonly<{
@@ -32,7 +25,6 @@ export type OrganizationCommand<T> = Readonly<{
   target: string | null;
   idempotencyKey: string;
   request: unknown;
-  roles: readonly Role[];
   /** Applies the change; runs under the workspace's organization lock. */
   apply: () => Promise<Readonly<{ result: T; audit: OrganizationAudit }>>;
   /** Checks that the actor may still see an earlier result of this command. */
@@ -55,25 +47,14 @@ async function lockOrganization(
 }
 
 /**
- * Runs one organization command in the caller's tenant transaction: checks the
- * actor's role, answers an exact retry with its first result, and otherwise
- * applies the change and records it.
+ * Runs one organization command inside `session.command`: answers an exact retry
+ * with its first result, and otherwise applies the change and records it.
  */
 export async function runOrganizationCommand<T>(
   client: PoolClient,
-  scope: OrganizationScope,
+  scope: OrganizationActor,
   command: OrganizationCommand<T>,
 ): Promise<Readonly<{ result: T; replayed: boolean }>> {
-  await drizzle(client)
-    .select({ id: workspaces.id })
-    .from(workspaces)
-    .where(eq(workspaces.id, scope.workspaceId))
-    .for('update')
-    .catch(rethrowQueryFailure);
-  await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
-    actorId: scope.actorId,
-    roles: command.roles,
-  });
   const identity = {
     workspaceId: scope.workspaceId,
     operation: command.operation,

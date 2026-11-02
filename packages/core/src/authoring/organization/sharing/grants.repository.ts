@@ -19,27 +19,19 @@ import type {
   FolderSharingRequest,
   FolderPrincipal,
 } from '@pertexo/contracts';
-import { RESOURCE_ADMINISTRATORS } from '../../../shared/folder-policy.js';
-import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import {
   FolderSharingCorruptError,
   WorkflowFolderConflictError,
 } from '../errors.js';
-import type { OrganizationScope } from '../run-command.js';
+import type { OrganizationActor } from '../session.js';
 import { runOrganizationCommand } from '../run-command.js';
 
 export async function readFolderSharing(
   client: PoolClient,
-  scope: OrganizationScope,
+  scope: OrganizationActor,
   folderId: string,
-  { browsing = false }: Readonly<{ browsing?: boolean }> = {},
 ): Promise<FolderSharing> {
-  await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
-    actorId: scope.actorId,
-    browsing,
-    roles: RESOURCE_ADMINISTRATORS,
-  });
   const db = drizzle(client);
   const [folder] = await db
     .select({
@@ -104,7 +96,7 @@ export async function readFolderSharing(
 
 export async function replaceFolderSharing(
   client: PoolClient,
-  scope: OrganizationScope,
+  scope: OrganizationActor,
   input: {
     folderId: string;
     request: FolderSharingRequest;
@@ -115,7 +107,6 @@ export async function replaceFolderSharing(
   const outcome = await runOrganizationCommand(client, scope, {
     operation: 'folder.sharing',
     target: input.folderId,
-    roles: RESOURCE_ADMINISTRATORS,
     idempotencyKey: input.idempotencyKey,
     request,
     replay: async () => {

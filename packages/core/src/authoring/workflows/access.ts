@@ -27,7 +27,7 @@ export type WorkflowRef = Readonly<{
 export type WorkflowActor = WorkspaceActor & Readonly<{ workflowId: string }>;
 
 /** Someone without access learns nothing: a denial reads as a missing workflow. */
-function readAsNotVisible(error: unknown): never {
+export function readAsNotVisible(error: unknown): never {
   if (error instanceof WorkspaceAccessDeniedError)
     throw new WorkflowNotFoundError('Workflow is not visible');
   throw error;
@@ -136,6 +136,7 @@ export function createAuthoringAccess(pool: Pool) {
   }
   return Object.freeze({
     tracked,
+    member,
     reader,
     author,
     workflow,

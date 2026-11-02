@@ -1,14 +1,15 @@
+import { requireWorkflowInScope } from '../../workflows/access.js';
+import { readFolderScope } from '../../../shared/facts.queries.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowFavorites, workflows } from '@pertexo/database/schema';
 
-import { ROLES } from '@pertexo/workflow-model';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import {
   createOrganizationSession,
@@ -35,49 +36,55 @@ export function createWorkflowFavoriteStore(
   return Object.freeze({
     setFavorite: async (input: WorkflowFavoriteCommand) => {
       const workflowId = input.workflowId;
-      return session.transact(input, async (client, scope) => {
-        await lockWorkflowAuthoringAuthority(client, scope.workspaceId, {
-          actorId: scope.actorId,
-          roles: ROLES,
-          resource: { workflowId, capability: 'workflow:read' },
-        });
-        const db = drizzle(client);
-        const workflow = await db
-          .select({ id: workflows.id })
-          .from(workflows)
-          .where(
-            and(
-              eq(workflows.workspaceId, scope.workspaceId),
-              eq(workflows.id, workflowId),
-            ),
-          )
-          .for('share')
-          .catch(rethrowQueryFailure);
-        if (workflow.length !== 1)
-          throw new WorkflowNotFoundError('Workflow is not visible');
-        if (input.favorite)
-          await db
-            .insert(workflowFavorites)
-            .values({
-              workspaceId: scope.workspaceId,
-              actorId: scope.actorId,
-              workflowId,
-            })
-            .onConflictDoNothing()
-            .catch(rethrowQueryFailure);
-        else
-          await db
-            .delete(workflowFavorites)
+      return session.read(
+        input,
+        'workflow:read',
+        ACTIVE_WORKSPACE_STATUSES,
+        async (client, scope) => {
+          await requireWorkflowInScope(
+            client,
+            await readFolderScope(client, scope, scope.role),
+            { workspaceId: scope.workspaceId, workflowId },
+            'workflow:read',
+          );
+          const db = drizzle(client);
+          const workflow = await db
+            .select({ id: workflows.id })
+            .from(workflows)
             .where(
               and(
-                eq(workflowFavorites.workspaceId, scope.workspaceId),
-                eq(workflowFavorites.actorId, scope.actorId),
-                eq(workflowFavorites.workflowId, workflowId),
+                eq(workflows.workspaceId, scope.workspaceId),
+                eq(workflows.id, workflowId),
               ),
             )
+            .for('share')
             .catch(rethrowQueryFailure);
-        return Object.freeze({ isFavorite: input.favorite });
-      });
+          if (workflow.length !== 1)
+            throw new WorkflowNotFoundError('Workflow is not visible');
+          if (input.favorite)
+            await db
+              .insert(workflowFavorites)
+              .values({
+                workspaceId: scope.workspaceId,
+                actorId: scope.actorId,
+                workflowId,
+              })
+              .onConflictDoNothing()
+              .catch(rethrowQueryFailure);
+          else
+            await db
+              .delete(workflowFavorites)
+              .where(
+                and(
+                  eq(workflowFavorites.workspaceId, scope.workspaceId),
+                  eq(workflowFavorites.actorId, scope.actorId),
+                  eq(workflowFavorites.workflowId, workflowId),
+                ),
+              )
+              .catch(rethrowQueryFailure);
+          return Object.freeze({ isFavorite: input.favorite });
+        },
+      );
     },
     close: session.close,
   });

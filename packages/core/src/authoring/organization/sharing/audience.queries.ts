@@ -25,16 +25,16 @@ import {
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 import { WorkflowFolderConflictError } from '../errors.js';
-import type { OrganizationScope } from '../run-command.js';
+import type { OrganizationActor } from '../session.js';
 import { FOLDER_LIMIT } from '../../../shared/folder-policy.js';
 
 /** Review restriction identities, rather than guessing whether two groups' future members coincide. */
 export async function reviewMoveAudience(
   client: PoolClient,
-  actor: OrganizationScope,
+  actor: OrganizationActor,
   request: WorkflowMoveReviewRequest,
 ): Promise<WorkflowMoveReview> {
-  const scope = await readFolderScope(client, actor);
+  const scope = await readFolderScope(client, actor, actor.role);
   const folders = await readMoveFolders(client, actor.workspaceId);
   if (folders.length > FOLDER_LIMIT)
     throw new Error('Folder hierarchy exceeds its bound');
@@ -93,7 +93,7 @@ async function readMoveSources(
     scope,
     folders,
   }: Readonly<{
-    actor: OrganizationScope;
+    actor: OrganizationActor;
     request: WorkflowMoveReviewRequest;
     scope: FolderScope;
     folders: Awaited<ReturnType<typeof readMoveFolders>>;
@@ -139,13 +139,13 @@ async function readMoveSources(
 
 export async function requireMoveAudienceReview(
   client: PoolClient,
-  actor: OrganizationScope,
+  actor: OrganizationActor,
   request: WorkflowMoveReviewRequest,
   review: AudienceReview | undefined,
 ): Promise<void> {
   const current = (await reviewMoveAudience(client, actor, request)).items[0];
   if (!current?.requiresReview) return;
-  const scope = await readFolderScope(client, actor);
+  const scope = await readFolderScope(client, actor, actor.role);
   const audienceReviewRefused =
     scope.role === null ||
     !RESOURCE_ADMINISTRATORS.includes(scope.role) ||
