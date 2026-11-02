@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   createDisposableDatabaseFixture,
@@ -30,6 +31,7 @@ const database = createDisposableDatabaseFixture({
 });
 
 export const appDatabaseUrl = database.databaseUrl(appUrl);
+export const adminDatabaseUrl = database.databaseUrl(adminUrl);
 
 /** Enough connections that nothing here ever queues for one rather than a lock. */
 const config = parseDatabaseConfig({
@@ -38,10 +40,7 @@ const config = parseDatabaseConfig({
 });
 
 /** Writes the facts a test starts from, past row security. */
-export const admin = new Pool({
-  connectionString: database.databaseUrl(adminUrl),
-  max: 2,
-});
+export const admin = new Pool({ connectionString: adminDatabaseUrl, max: 2 });
 export const pool = new Pool({ connectionString: appDatabaseUrl, max: 24 });
 
 export let identities: ReturnType<typeof createIdentityWorkspaceStore>;
@@ -235,4 +234,56 @@ export function gate() {
     open = resolve;
   });
   return { open, opened };
+}
+
+const EMPTY_GRAPH = JSON.stringify({ nodes: [], edges: [] });
+
+/** A workflow in the workspace, with one retained run. */
+export async function seedRun(
+  workspaceId: string,
+  createdBy: string,
+  status: 'queued' | 'succeeded' = 'succeeded',
+): Promise<Readonly<{ workflowId: string; runId: string }>> {
+  const workflowId = randomUUID();
+  const versionId = randomUUID();
+  const runId = randomUUID();
+  await admin.query(
+    'insert into app.workflows(id,workspace_id,name,created_by) values($1,$2,$3,$4)',
+    [workflowId, workspaceId, `Workflow ${workflowId}`, createdBy],
+  );
+  await admin.query(
+    `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,graph_json,executable_json,checksum,published_by)
+     values($1,$2,$3,1,$4::json,'{}','wf:sha256:'||repeat('a',64),$5)`,
+    [versionId, workspaceId, workflowId, EMPTY_GRAPH, createdBy],
+  );
+  // Run admission is checked against the workspace scope, past any role's rights.
+  await withTenantScopedClient(pool, { workspaceId }, (client) =>
+    client.query(
+      status === 'queued'
+        ? `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,input_ref,input_ref_expires_at)
+           values($1,$2,$3,$4,'manual','queued','{"kind":"inline","value":{"secret":true}}',clock_timestamp()+interval '29 days')`
+        : `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,created_at,started_at,completed_at,input_ref,input_ref_expires_at)
+           values($1,$2,$3,$4,'manual','succeeded',clock_timestamp()-interval '10 seconds',clock_timestamp()-interval '9 seconds',clock_timestamp()-interval '1 second','{"kind":"inline","value":{"secret":true}}',clock_timestamp()+interval '29 days')`,
+      [runId, workspaceId, workflowId, versionId],
+    ),
+  );
+  return { workflowId, runId };
+}
+
+/** Puts the workflow in a folder only named people may see. */
+export async function restrict(
+  workspaceId: string,
+  workflowId: string,
+): Promise<string> {
+  const folderId = randomUUID();
+  await admin.query(
+    `insert into app.workflow_folders(workspace_id,id,name,name_key,access_mode) values($1,$2,$3,$3,'restricted')`,
+    [workspaceId, folderId, `folder ${folderId}`],
+  );
+  await admin.query(
+    `insert into app.workflow_organization_state(workspace_id,workflow_id,folder_id) values($1,$2,$3)
+     on conflict (workspace_id,workflow_id) do update set folder_id=excluded.folder_id`,
+    [workspaceId, workflowId, folderId],
+  );
+  return folderId;
 }
