@@ -53,12 +53,6 @@ export function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
       selectedIdentityRuntime.dependencies.sessions.authenticate,
     ).toHaveBeenCalled();
   });
-    expect(response.payload).not.toContain('redis endpoint unavailable');
-    expect(
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      selectedIdentityRuntime.dependencies.sessions.authenticate,
-    ).not.toHaveBeenCalled();
-  });
 
   it.each([false, true])(
     'registers all discovery routes with authentication=%s',
