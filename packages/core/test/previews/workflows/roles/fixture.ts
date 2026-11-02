@@ -57,10 +57,15 @@ export const setRole = (userId: string, role: Role) =>
   );
 
 export const setWorkspaceStatus = (status: WorkspaceStatus) =>
-  query('update app.workspaces set status=$2 where id=$1', [
-    workspaceId,
-    status,
-  ]);
+  query(
+    `update app.workspaces set status=$2::text,
+       deletion_requested_at=case when $3 then clock_timestamp() end,
+       deletion_requested_by=case when $3 then created_by end,
+       deletion_reason=case when $3 then 'state proof' end,
+       purge_after=case when $3 then clock_timestamp()+interval '7 days' end
+     where id=$1`,
+    [workspaceId, status, status === 'pending_deletion'],
+  );
 
 /** A draft with input cases, ready to test or suite, as `actorId` left it. */
 export async function draft(cases = 2) {
