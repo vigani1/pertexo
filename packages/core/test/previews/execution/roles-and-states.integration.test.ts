@@ -158,7 +158,8 @@ describe('who can test a step', () => {
               [workspaceA, actorId],
             ).then(() => actorId)
           : await member(role);
-      for (const [, run] of flows(previewRunId)) await run(id);
+      for (const [flow, run] of flows(previewRunId))
+        await expect(run(id), `${role}: ${flow}`).resolves.toBeDefined();
     }
   });
 

@@ -47,7 +47,7 @@ export function registerPreviewUsage(): void {
     let passes = 0;
     for (; passes < 50; passes += 1) {
       const pass = await retention.enforce();
-      removed += pass.removed.preview_usage ?? 0;
+      removed += pass.removed.preview_usage;
       if (!pass.more) break;
     }
 
@@ -60,7 +60,7 @@ export function registerPreviewUsage(): void {
   it('leaves a skipped trigger to its own rule', async () => {
     const skip = await usage('trigger.skipped', WINDOW_DAYS + 1);
     const first = await retention.enforce();
-    expect(first.removed.preview_usage ?? 0).toBe(0);
+    expect(first.removed.preview_usage).toBe(0);
     await enforceUntilIdle();
     expect(await remaining([skip])).toEqual([]);
   });
