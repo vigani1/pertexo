@@ -170,7 +170,12 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
     }, 120_000);
 
     it('applies the configured burst limit to a webhook endpoint', async () => {
-      const running = await stack.boot(OPERATOR_SETTINGS);
+      // Deliveries count as queued until the worker takes them, so a small queue limit
+      // can refuse one first whenever the worker is a moment behind.
+      const running = await stack.boot({
+        ...OPERATOR_SETTINGS,
+        WORKSPACE_QUEUED_RUN_LIMIT: '1000',
+      });
       try {
         const owner = await newWorkspace(running.origin);
         const { path } = await publishGraph(owner, 'Burst', {
@@ -181,17 +186,29 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           owner,
           path,
         );
-        const statuses: number[] = [];
+        const outcomes: (number | string)[] = [];
         for (let sent = 0; sent < 7; sent += 1) {
           const response = await signedDelivery(
             running.origin,
             endpointKey,
             signingSecret,
           );
-          statuses.push(response.status);
-          await response.arrayBuffer();
+          const body = (await response.json()) as { code?: string };
+          outcomes.push(
+            response.status === 202
+              ? response.status
+              : (body.code ?? response.status),
+          );
         }
-        expect(statuses).toEqual([202, 202, 202, 202, 202, 429, 429]);
+        expect(outcomes).toEqual([
+          202,
+          202,
+          202,
+          202,
+          202,
+          'webhook.rate_limited',
+          'webhook.rate_limited',
+        ]);
       } finally {
         await running.stop();
       }
