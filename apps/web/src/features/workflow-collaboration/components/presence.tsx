@@ -15,17 +15,16 @@ import { cn } from '@/lib/utils';
 import { Status } from '@/components/ui/status';
 import {
   heartbeatPresence,
+  leavePresence,
   type CollaborationScope,
 } from '../data/collaboration.api';
 import { presenceQuery } from '../data/collaboration.queries';
 import { PresenceContext, useWorkflowPresence } from '../model/context';
-import {
-  browserTabId,
-  VIEWING_PRESENCE,
-  type EditingPresence,
-} from '../model/presence';
-// Route remounts and reloads retain the server lease.
-const tabId = browserTabId(window.sessionStorage);
+import { VIEWING_PRESENCE, type EditingPresence } from '../model/presence';
+// One identity per page load, never carried over: sessionStorage would hand it to a
+// duplicated tab, hiding that real other tab's unsaved work, and the lease's sequence
+// restarts with the page. Route remounts retain the lease; pagehide ends it.
+const tabId = crypto.randomUUID();
 let sequence = 0;
 
 export function WorkflowPresenceProvider({
@@ -83,14 +82,21 @@ export function WorkflowPresenceProvider({
       heartbeat,
       COLLABORATION_LIMITS.heartbeatMs,
     );
+    const leave = () => {
+      void leavePresence(stableScope, tabId).catch(() => {
+        /* The lease expires by itself; this only ends it sooner. */
+      });
+    };
     document.addEventListener('visibilitychange', heartbeat);
     window.addEventListener('online', heartbeat);
+    window.addEventListener('pagehide', leave);
     return () => {
       renew.current = undefined;
       controller.abort();
       clearInterval(timer);
       document.removeEventListener('visibilitychange', heartbeat);
       window.removeEventListener('online', heartbeat);
+      window.removeEventListener('pagehide', leave);
     };
   }, [stableScope, cache, paused]);
   const value = useMemo(
