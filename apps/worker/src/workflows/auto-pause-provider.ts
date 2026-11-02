@@ -26,8 +26,8 @@ export function configuredWorkflowAutoPauseRuntime(
       foldPollMillis: config.foldPollMillis,
     },
     {
-      cycleFailed: () => {
-        logger.error('workflow_auto_pause.cycle_failed');
+      cycleFailed: (error) => {
+        logger.error('workflow_auto_pause.cycle_failed', {}, error);
       },
       decided: (decision) => {
         logger.warn('workflow_auto_pause.paused', {

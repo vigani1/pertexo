@@ -160,15 +160,17 @@ services:
       redis: { condition: service_healthy }
     healthcheck:
       # Docker never restarts a container for being unhealthy, so a worker whose scan
-      # has stopped for 5 minutes is ended here and `restart` brings it back. Past any
-      # busy host's stall: a slow worker only warns. See `stalled-work.ts`.
+      # or a queue consumer has stopped for 5 minutes is ended here and `restart` brings
+      # it back, whether or not it reports ready. Past any busy host's stall: a slow
+      # worker only warns. See `stalled-work.ts`.
       test:
         [
           CMD-SHELL,
-          'test -f /tmp/pertexo-worker-ready && test ! -f
-          /tmp/pertexo-worker-not-ready && kill -0 1 && { test -n "$$(find
+          'kill -0 1 && if test -f /tmp/pertexo-worker-ready || test -f
+          /tmp/pertexo-worker-not-ready; then test -n "$$(find
           /tmp/pertexo-worker-progress -mmin -5)" || { kill -9 "$$(cat
-          /tmp/pertexo-worker-progress)"; exit 1; }; }',
+          /tmp/pertexo-worker-progress)"; exit 1; }; fi && test -f
+          /tmp/pertexo-worker-ready && test ! -f /tmp/pertexo-worker-not-ready',
         ]
       interval: 5s
       timeout: 3s

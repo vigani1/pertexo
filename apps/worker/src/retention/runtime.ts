@@ -152,8 +152,8 @@ export function createRetentionRuntime(
       for (const [operation, step] of operations)
         await run(operation, step, signal);
     },
-    cycleFailed: () => {
-      logger.error('retention.cycle_failed', {});
+    cycleFailed: (error) => {
+      logger.error('retention.cycle_failed', {}, error);
     },
     release: async () => {
       const closed = await Promise.allSettled([

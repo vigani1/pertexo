@@ -101,6 +101,7 @@ describe('independent durable health command worker', () => {
     const checkReadiness = vi.fn().mockResolvedValue(undefined);
     const close = vi.fn().mockResolvedValue(undefined);
     const consumer = {
+      hasStopped: () => false,
       isReady: () => true,
       waitUntilReady: () => Promise.resolve(),
       close: vi.fn().mockResolvedValue({ kind: 'closed' }),

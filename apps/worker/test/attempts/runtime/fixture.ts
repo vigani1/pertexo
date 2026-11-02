@@ -141,6 +141,7 @@ export async function capturedHandler(
         handler = options.handler;
         return {
           close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+          hasStopped: () => false,
           isReady: vi.fn().mockReturnValue(true),
           waitUntilReady: vi.fn().mockResolvedValue(undefined),
         };

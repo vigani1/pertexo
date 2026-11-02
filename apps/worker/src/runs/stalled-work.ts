@@ -6,6 +6,7 @@ import {
   type StalledWorkStore,
 } from '@pertexo/core/runs';
 import type { StructuredLogger } from '@pertexo/observability';
+import type { QueueConsumer } from '@pertexo/queue';
 
 import type { WorkerConfig } from '../config/worker.js';
 import {
@@ -16,6 +17,11 @@ import {
 
 export type StalledWorkRuntime = PollingRuntime;
 
+/** The worker's queue consumers, by the name a log should give them. */
+export type WorkerQueueConsumers = Readonly<
+  Record<string, Pick<QueueConsumer, 'hasStopped'>>
+>;
+
 export const STALLED_WORK_RUNTIME = Symbol('STALLED_WORK_RUNTIME');
 
 /** Short beside the 30 s lease, and cheap: indexed reads when nothing is due. */
@@ -25,7 +31,9 @@ const SCAN_BATCH_SIZE = 50;
 /**
  * The container's health check reads this file's age, and its contents to end a
  * worker that has stopped. A settled cycle counts even when it failed: a database
- * outage is no reason to restart anything, and only a stopped loop leaves it stale.
+ * outage is no reason to restart anything. It stands still when this loop has
+ * stopped or a queue consumer's has, since jobs would otherwise redeliver to nobody
+ * behind a scan that looks healthy.
  */
 const PROGRESS_MARKER = '/tmp/pertexo-worker-progress';
 
@@ -37,13 +45,35 @@ const PROGRESS_MARKER = '/tmp/pertexo-worker-progress';
 function createStalledWorkRuntime(
   store: StalledWorkStore,
   logger: StructuredLogger,
+  consumers: WorkerQueueConsumers,
 ): StalledWorkRuntime {
+  let reportedStopped = false;
+  const markProgress = async (): Promise<void> => {
+    const stopped = Object.entries(consumers)
+      .filter(([, consumer]) => consumer.hasStopped())
+      .map(([name]) => name);
+    if (stopped.length > 0) {
+      if (!reportedStopped)
+        reportDiagnostic(() => {
+          logger.error('worker.queue_consumer_stopped', { stopped });
+        });
+      reportedStopped = true;
+      return;
+    }
+    await writeFile(PROGRESS_MARKER, String(process.pid)).catch(
+      (error: unknown) => {
+        reportDiagnostic(() => {
+          logger.warn('worker.progress_marker_failed', {}, error);
+        });
+      },
+    );
+  };
   return createPollingRuntime({
     name: 'Stalled work',
     pollMillis: SCAN_INTERVAL_MILLIS,
     cycle: async (signal) => {
       try {
-        const { recovered, failed } = await store.recoverDue(
+        const { recovered, failed, stagesFailed } = await store.recoverDue(
           SCAN_BATCH_SIZE,
           signal,
         );
@@ -54,19 +84,18 @@ function createStalledWorkRuntime(
             else logger.info(recoveryEvent(recovery), recovery);
           for (const { error, ...failure } of failed)
             logger.warn('run_recovery.failed', failure, error);
+          for (const { stage, error } of stagesFailed)
+            logger.error('run_recovery.stage_failed', { stage }, error);
         });
+        // The cycle reads as failed, so readiness reports it, once the rest is done.
+        const firstFailure = stagesFailed[0];
+        if (firstFailure !== undefined) throw firstFailure.error;
       } finally {
-        await writeFile(PROGRESS_MARKER, String(process.pid)).catch(
-          (error: unknown) => {
-            reportDiagnostic(() => {
-              logger.warn('worker.progress_marker_failed', {}, error);
-            });
-          },
-        );
+        await markProgress();
       }
     },
-    cycleFailed: () => {
-      logger.error('run_recovery.scan_failed');
+    cycleFailed: (error) => {
+      logger.error('run_recovery.scan_failed', {}, error);
     },
     release: () => store.close(),
   });
@@ -90,9 +119,11 @@ function recoveryEvent(recovery: StalledWorkRecovery): string {
 export function configuredStalledWorkRuntime(
   config: WorkerConfig,
   logger: StructuredLogger,
+  consumers: WorkerQueueConsumers,
 ): StalledWorkRuntime {
   return createStalledWorkRuntime(
     createStalledWorkStore(config.retention.maintenanceDatabase),
     logger,
+    consumers,
   );
 }

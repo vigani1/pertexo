@@ -109,6 +109,11 @@ export interface QueueConsumerCloseResult {
 export interface QueueConsumer {
   close(): Promise<QueueConsumerCloseResult>;
   isReady(): boolean;
+  /**
+   * The loop fetching jobs has ended with nobody asking it to. Unlike a lost Redis
+   * connection this doesn't heal itself: jobs wait until the process restarts.
+   */
+  hasStopped(): boolean;
   waitUntilReady(timeoutMs?: number): Promise<void>;
 }
 

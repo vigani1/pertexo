@@ -34,6 +34,7 @@ import {
 import type {
   StalledWorkFailure,
   StalledWorkRecovery,
+  StalledWorkStageFailure,
   StalledWorkStore,
 } from './contract.js';
 
@@ -90,9 +91,31 @@ async function dateAllUndatedDeliveries(
 }
 
 async function recoverDue(pool: Pool, limit: number, signal: AbortSignal) {
-  const attempts = await readExpiredLeases(pool, limit);
-  const recovered: StalledWorkRecovery[] = await settleDeliveries(pool, signal);
-  const failedRunJobs = await readFailedRunJobs(pool, limit);
+  const stagesFailed: StalledWorkStageFailure[] = [];
+  const stage = async <T>(
+    name: StalledWorkStageFailure['stage'],
+    nothing: T,
+    work: () => Promise<T>,
+  ): Promise<T> => {
+    try {
+      return await work();
+    } catch (error: unknown) {
+      signal.throwIfAborted();
+      stagesFailed.push({ stage: name, error });
+      return nothing;
+    }
+  };
+  const attempts = await stage('expired_leases', [], () =>
+    readExpiredLeases(pool, limit),
+  );
+  const recovered: StalledWorkRecovery[] = await stage(
+    'overdue_deliveries',
+    [],
+    () => settleDeliveries(pool, signal),
+  );
+  const failedRunJobs = await stage('failed_run_jobs', [], () =>
+    readFailedRunJobs(pool, limit),
+  );
   const failed: StalledWorkFailure[] = [];
   const settle = async (
     workspaceId: string,
@@ -126,6 +149,7 @@ async function recoverDue(pool: Pool, limit: number, signal: AbortSignal) {
   return Object.freeze({
     recovered: Object.freeze(recovered),
     failed: Object.freeze(failed),
+    stagesFailed: Object.freeze(stagesFailed),
   });
 }
 

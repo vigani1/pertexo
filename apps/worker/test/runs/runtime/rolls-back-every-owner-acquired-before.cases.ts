@@ -95,6 +95,7 @@ export function registerRollsBackEveryOwnerAcquiredBefore(): void {
         consumer: vi.fn(() =>
           acquire('consumer', {
             close: vi.fn(),
+            hasStopped: () => false,
             isReady: vi.fn(),
             waitUntilReady: vi.fn(),
           }),
@@ -137,6 +138,7 @@ export function registerRollsBackEveryOwnerAcquiredBefore(): void {
       close: vi
         .fn<NonNullable<QueueConsumer['close']>>()
         .mockResolvedValue({ abortedJobs: 0, forced: false }),
+      hasStopped: () => false,
       isReady: vi
         .fn<NonNullable<QueueConsumer['isReady']>>()
         .mockReturnValue(true),
@@ -179,6 +181,7 @@ export function registerRollsBackEveryOwnerAcquiredBefore(): void {
       close: vi
         .fn<NonNullable<QueueConsumer['close']>>()
         .mockResolvedValue({ abortedJobs: 0, forced: false }),
+      hasStopped: () => false,
       isReady: vi
         .fn<NonNullable<QueueConsumer['isReady']>>()
         .mockReturnValue(true),

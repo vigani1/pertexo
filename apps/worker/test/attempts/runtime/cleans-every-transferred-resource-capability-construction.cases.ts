@@ -104,6 +104,7 @@ export function registerCleansEveryTransferredResourceCapabilityConstruction(): 
       {
         consumerFactory: () => ({
           close: consumerClose,
+          hasStopped: () => false,
           isReady: vi.fn().mockReturnValue(true),
           waitUntilReady: vi.fn().mockResolvedValue(undefined),
         }),
@@ -178,6 +179,7 @@ export function registerCleansEveryTransferredResourceCapabilityConstruction(): 
         }),
         consumerFactory: () => ({
           close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+          hasStopped: () => false,
           isReady: vi.fn().mockReturnValue(true),
           waitUntilReady: vi.fn().mockResolvedValue(undefined),
         }),
