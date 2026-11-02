@@ -206,7 +206,6 @@ describe('workflow rename command persistence (ADR 041)', () => {
     });
   });
 
-
   it('preserves Unicode code points through no-op receipts and later renames', async () => {
     const decomposed = 'レポート e\u0301 🚀';
     const composed = 'レポート é 🚀';
