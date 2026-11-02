@@ -16,15 +16,13 @@ import { requireWorkflowCallTargets } from '../../../tenant-access/resources/bin
 import { requireConnectionBindings } from '../../../tenant-access/resources/connections/bindings.queries.js';
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
 
-import type { WorkflowAuthoringWriteContext } from '../context.js';
-import type {
-  RestoreWorkflowVersionInput,
-  WorkflowAuthoringStore,
-} from '../contract.js';
+import type { AuthoringCatalogs } from '../catalogs.js';
+import type { RestoreWorkflowVersionInput } from '../contract.js';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../errors.js';
+import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import type { WorkflowDraftRecord } from '../representation/contract.js';
 import {
   draftProjection,
@@ -33,14 +31,10 @@ import {
   versionProjection,
 } from '../representation/records.queries.js';
 
-type VersionRestoreStore = Pick<
-  WorkflowAuthoringStore,
-  'restoreWorkflowVersion'
->;
-
-async function restoreWorkflowVersion(
-  context: WorkflowAuthoringWriteContext,
+export async function restoreWorkflowVersion(
+  client: PoolClient,
   input: RestoreWorkflowVersionInput,
+  { definitionCatalog, placementDefinitionCatalog }: AuthoringCatalogs,
 ): Promise<WorkflowDraftRecord> {
   const workspaceId = input.workspaceId;
   const workflowId = input.workflowId;
@@ -48,146 +42,124 @@ async function restoreWorkflowVersion(
   const actorId = input.actorId;
   const representationTag = input.representationTag;
 
-  return context.transact(workspaceId, actorId, async (client) => {
-    await context.requireAuthor(client, workspaceId, {
-      actorId,
-      workflowId,
-    });
-    const { definitionCatalog, placementDefinitionCatalog } = context.catalogs;
-
-    const db = drizzle(client);
-    const [workflow] = await db
-      .select({ id: workflows.id })
-      .from(workflows)
-      .where(
-        and(
-          eq(workflows.workspaceId, workspaceId),
-          eq(workflows.id, workflowId),
-          eq(workflows.lifecycleStatus, 'active'),
-        ),
-      )
-      .for('update')
-      .catch(rethrowQueryFailure);
-    if (workflow === undefined)
-      throw new WorkflowNotFoundError('Workflow is not visible');
-    const [draftRow] = await db
-      .select(draftProjection)
-      .from(workflowDrafts)
-      .where(
-        and(
-          eq(workflowDrafts.workspaceId, workspaceId),
-          eq(workflowDrafts.workflowId, workflowId),
-        ),
-      )
-      .for('update')
-      .catch(rethrowQueryFailure);
-    if (draftRow === undefined)
-      throw new WorkflowNotFoundError('Workflow is not visible');
-    const currentDraft = projectDraft(draftRow, definitionCatalog);
-    const currentTag = workflowDraftRepresentationTag({
-      workflowId,
-      revision: currentDraft.revision,
-      graph: currentDraft.graphJson,
-      compatibilityFingerprint: currentDraft.compatibility.fingerprint,
-    });
-    if (currentTag !== representationTag)
-      throw new WorkflowRevisionConflictError(
-        currentDraft.revision,
-        currentTag,
-      );
-
-    const sourceVersion = await readRestorationSource(client, {
-      workspaceId,
-      workflowId,
-      versionId,
-    });
-    context.requirePlaceable(
-      currentDraft.graphJson,
-      sourceVersion.graphJson,
-      placementDefinitionCatalog,
-    );
-
-    await requireWorkflowCallTargets(
-      client,
-      { workspaceId, actorId },
-      sourceVersion.graphJson,
-    );
-    await requireConnectionBindings(
-      client,
-      { workspaceId, actorId },
-      sourceVersion.graphJson,
-    );
-    await lockArtifactReferences(
-      client,
-      workspaceId,
-      sourceVersion.graphJson,
-      actorId,
-    );
-    const visible = db
-      .select({ id: workflows.id })
-      .from(workflows)
-      .where(
-        and(
-          eq(workflows.workspaceId, workspaceId),
-          eq(workflows.id, workflowId),
-          eq(workflows.lifecycleStatus, 'active'),
-        ),
-      );
-    const [updatedRow] = await db
-      .update(workflowDrafts)
-      .set({
-        graphJson: sql`${JSON.stringify(sourceVersion.graphJson)}::json`,
-        revision: sql`${workflowDrafts.revision}+1`,
-        updatedBy: actorId,
-        updatedAt: sql`transaction_timestamp()`,
-      })
-      .where(
-        and(
-          eq(workflowDrafts.workspaceId, workspaceId),
-          eq(workflowDrafts.workflowId, workflowId),
-          eq(workflowDrafts.revision, currentDraft.revision),
-          exists(visible),
-        ),
-      )
-      .returning(draftProjection)
-      .catch(rethrowQueryFailure);
-    if (updatedRow === undefined)
-      throw new WorkflowRevisionConflictError(
-        currentDraft.revision,
-        currentTag,
-      );
-    const restoredDraft = projectDraft(updatedRow, definitionCatalog);
-    await pruneStepSamples(
-      client,
-      workspaceId,
-      workflowId,
-      sourceVersion.graphJson,
-    );
-
-    await appendAuditFact(client, {
-      workspaceId,
-      actorId: actorId,
-      action: 'workflow.version_restored',
-      targetType: 'workflow',
-      targetId: workflowId,
-      requestId: input.requestId ?? null,
-      traceId: input.traceId ?? null,
-      metadata: {
-        previousRevision: currentDraft.revision,
-        revision: restoredDraft.revision,
-        sourceVersionId: sourceVersion.id,
-      },
-    });
-    return restoredDraft;
+  const db = drizzle(client);
+  const [workflow] = await db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, workspaceId),
+        eq(workflows.id, workflowId),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  if (workflow === undefined)
+    throw new WorkflowNotFoundError('Workflow is not visible');
+  const [draftRow] = await db
+    .select(draftProjection)
+    .from(workflowDrafts)
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, workspaceId),
+        eq(workflowDrafts.workflowId, workflowId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  if (draftRow === undefined)
+    throw new WorkflowNotFoundError('Workflow is not visible');
+  const currentDraft = projectDraft(draftRow, definitionCatalog);
+  const currentTag = workflowDraftRepresentationTag({
+    workflowId,
+    revision: currentDraft.revision,
+    graph: currentDraft.graphJson,
+    compatibilityFingerprint: currentDraft.compatibility.fingerprint,
   });
-}
+  if (currentTag !== representationTag)
+    throw new WorkflowRevisionConflictError(currentDraft.revision, currentTag);
 
-export function createWorkflowVersionRestoreStore(
-  context: WorkflowAuthoringWriteContext,
-): VersionRestoreStore {
-  return Object.freeze({
-    restoreWorkflowVersion: (input) => restoreWorkflowVersion(context, input),
+  const sourceVersion = await readRestorationSource(client, {
+    workspaceId,
+    workflowId,
+    versionId,
   });
+  requirePlaceableDefinitionAdditions(
+    currentDraft.graphJson,
+    sourceVersion.graphJson,
+    placementDefinitionCatalog,
+  );
+
+  await requireWorkflowCallTargets(
+    client,
+    { workspaceId, actorId },
+    sourceVersion.graphJson,
+  );
+  await requireConnectionBindings(
+    client,
+    { workspaceId, actorId },
+    sourceVersion.graphJson,
+  );
+  await lockArtifactReferences(
+    client,
+    workspaceId,
+    sourceVersion.graphJson,
+    actorId,
+  );
+  const visible = db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, workspaceId),
+        eq(workflows.id, workflowId),
+        eq(workflows.lifecycleStatus, 'active'),
+      ),
+    );
+  const [updatedRow] = await db
+    .update(workflowDrafts)
+    .set({
+      graphJson: sql`${JSON.stringify(sourceVersion.graphJson)}::json`,
+      revision: sql`${workflowDrafts.revision}+1`,
+      updatedBy: actorId,
+      updatedAt: sql`transaction_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, workspaceId),
+        eq(workflowDrafts.workflowId, workflowId),
+        eq(workflowDrafts.revision, currentDraft.revision),
+        exists(visible),
+      ),
+    )
+    .returning(draftProjection)
+    .catch(rethrowQueryFailure);
+  if (updatedRow === undefined)
+    throw new WorkflowRevisionConflictError(currentDraft.revision, currentTag);
+  const restoredDraft = projectDraft(updatedRow, definitionCatalog);
+  await pruneStepSamples(
+    client,
+    workspaceId,
+    workflowId,
+    sourceVersion.graphJson,
+  );
+
+  await appendAuditFact(client, {
+    workspaceId,
+    actorId: actorId,
+    action: 'workflow.version_restored',
+    targetType: 'workflow',
+    targetId: workflowId,
+    requestId: input.requestId ?? null,
+    traceId: input.traceId ?? null,
+    metadata: {
+      previousRevision: currentDraft.revision,
+      revision: restoredDraft.revision,
+      sourceVersionId: sourceVersion.id,
+    },
+  });
+  return restoredDraft;
 }
 
 async function readRestorationSource(

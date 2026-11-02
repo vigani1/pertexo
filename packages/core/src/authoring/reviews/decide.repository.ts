@@ -94,11 +94,15 @@ export async function decidePublicationReview(
     });
   const published =
     input.decision === 'approve'
-      ? await publishWorkflowCandidate(dependencies, client, {
-          ...input,
-          workflowId: row.workflowId,
-          representationTag: row.representationTag,
-        })
+      ? await publishWorkflowCandidate(
+          client,
+          {
+            ...input,
+            workflowId: row.workflowId,
+            representationTag: row.representationTag,
+          },
+          dependencies.catalogs,
+        )
       : null;
   await db
     .update(workflowPublicationRequests)

@@ -8,12 +8,7 @@ import { workflows } from '@pertexo/database/schema';
 
 import type { PoolClient } from 'pg';
 
-import type { WorkflowAuthoringWriteContext } from '../context.js';
-import type {
-  RenameWorkflowInput,
-  RenameWorkflowResult,
-  WorkflowAuthoringStore,
-} from '../contract.js';
+import type { RenameWorkflowInput, RenameWorkflowResult } from '../contract.js';
 import {
   WorkflowNameRevisionConflictError,
   WorkflowNotFoundError,
@@ -25,12 +20,6 @@ import {
 } from '../receipts.repository.js';
 import type { WorkflowRecord } from '../representation/contract.js';
 import { workflowProjection } from '../representation/records.queries.js';
-
-type WorkflowRenameStore = Pick<WorkflowAuthoringStore, 'renameWorkflow'>;
-type WorkflowRenameContext = Pick<
-  WorkflowAuthoringWriteContext,
-  'requireAuthor' | 'transact'
->;
 
 type RenameCommand = Readonly<{
   workspaceId: string;
@@ -81,7 +70,6 @@ async function lockActiveWorkflow(
 
 async function applyRename(
   client: PoolClient,
-  context: WorkflowRenameContext,
   command: RenameCommand,
   current: WorkflowRecord,
 ): Promise<WorkflowRecord> {
@@ -127,49 +115,31 @@ async function applyRename(
  * ADR 041: renames at the expected name revision. An exact retry replays the
  * original summary; the same name at the current revision changes nothing.
  */
-async function renameWorkflow(
-  context: WorkflowRenameContext,
+export async function renameWorkflow(
+  client: PoolClient,
   input: RenameWorkflowInput,
 ): Promise<RenameWorkflowResult> {
   const command = parseRenameCommand(input);
-  return context.transact(
-    command.workspaceId,
-    command.actorId,
-    async (client) => {
-      await context.requireAuthor(client, command.workspaceId, {
-        actorId: command.actorId,
-        workflowId: command.workflowId,
-      });
-      const claim: WorkflowCommand = {
-        workspaceId: command.workspaceId,
-        workflowId: command.workflowId,
-        actorId: command.actorId,
-        operation: 'workflow.rename',
-        idempotencyKey: input.idempotencyKey,
-        request: {
-          name: command.name,
-          expectedNameRevision: command.expectedNameRevision,
-        },
-      };
-      const replay = await claimWorkflowCommand(client, claim);
-      if (replay !== null)
-        return Object.freeze({ replayed: true, workflow: replay });
-
-      const current = await lockActiveWorkflow(client, command);
-      const workflow =
-        current.name === command.name
-          ? current
-          : await applyRename(client, context, command, current);
-      await completeWorkflowCommand(client, claim, workflow);
-      return Object.freeze({ replayed: false, workflow });
+  const claim: WorkflowCommand = {
+    workspaceId: command.workspaceId,
+    workflowId: command.workflowId,
+    actorId: command.actorId,
+    operation: 'workflow.rename',
+    idempotencyKey: input.idempotencyKey,
+    request: {
+      name: command.name,
+      expectedNameRevision: command.expectedNameRevision,
     },
-  );
-}
+  };
+  const replay = await claimWorkflowCommand(client, claim);
+  if (replay !== null)
+    return Object.freeze({ replayed: true, workflow: replay });
 
-export function createWorkflowAuthoringRenameStore(
-  context: WorkflowRenameContext,
-): WorkflowRenameStore {
-  return Object.freeze({
-    renameWorkflow: (input) => renameWorkflow(context, input),
-  });
+  const current = await lockActiveWorkflow(client, command);
+  const workflow =
+    current.name === command.name
+      ? current
+      : await applyRename(client, command, current);
+  await completeWorkflowCommand(client, claim, workflow);
+  return Object.freeze({ replayed: false, workflow });
 }

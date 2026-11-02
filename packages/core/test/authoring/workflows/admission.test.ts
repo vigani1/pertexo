@@ -1,14 +1,11 @@
 import { draftWireRow } from '../../support/workflow-authoring/drafts.js';
-import { folderScope } from '../../../src/shared/folder-policy.js';
 import { createHash } from 'node:crypto';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PoolClient } from 'pg';
 import { Pool } from 'pg';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 
-import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.queries.js';
-import { createWorkflowPublisher } from '../../../src/authoring/publication/publish.js';
 import { WorkflowRevisionConflictError } from '../../../src/authoring/workflows/errors.js';
 import {
   IdempotencyConflictError,
@@ -28,10 +25,16 @@ import {
   budget,
 } from './admission/fixture.js';
 import { registerIdleTimeoutSettings } from './admission/idle-timeout-setting.cases.js';
+import { authorizedCheckout, CONNECTION } from './admission/checkout.js';
 describe('effective authoring idle budget', () => {
   registerIdleTimeoutSettings();
 });
 describe('snapshot validation and publication ordering', () => {
+  const cleanups: (() => Promise<unknown> | void)[] = [];
+  afterEach(async () => {
+    for (const cleanup of cleanups.splice(0)) await cleanup();
+  });
+
   it('forwards pre-checkout cancellation through the real authoring wrapper', async () => {
     const config = {
       connectionString: 'postgresql://invalid.invalid/pertexo',
@@ -181,36 +184,29 @@ describe('snapshot validation and publication ordering', () => {
     }
   });
   it('validates and returns one selected-release snapshot in one transaction, with its signal', async () => {
-    const query = vi
-      .fn()
-      .mockResolvedValueOnce({ rows: [{ id: workflowId }], rowCount: 1 })
-      .mockResolvedValueOnce({ rows: [draftWireRow(row)] })
-      .mockResolvedValueOnce(budget)
-      .mockResolvedValueOnce({ rows: [] });
-    const client = { query } as unknown as PoolClient;
     const validator = vi.fn().mockResolvedValue(invalid);
-    const transactions = vi.fn();
-    async function transact<T>(
-      workspaceId: string,
-      actorId: string,
-      operation: (client: PoolClient) => Promise<T>,
-      signal?: AbortSignal,
-    ): Promise<T> {
-      transactions(workspaceId, actorId, operation, signal);
-      signal?.throwIfAborted();
-      return operation(client);
-    }
-    const store = createWorkflowAuthoringReadStore({
-      requireReader: vi
-        .fn()
-        .mockResolvedValue(folderScope(workspaceId, 'owner', [], [])),
-      catalogs: {
-        definitionCatalog: catalog,
-        executableCompiler: testExecutableCompiler,
-        validateAuthoringGraph: validator,
+    const checkout = authorizedCheckout(
+      (statement) => {
+        const sql = (
+          typeof statement === 'string' ? statement : statement.text
+        ).replaceAll('"', '');
+        if (sql.includes('from app.workflow_drafts'))
+          return Promise.resolve({ rows: [draftWireRow(row)] });
+        if (sql.includes('pg_settings')) return Promise.resolve(budget);
+        // The accessible workflow answers; no version is published.
+        if (sql.includes('app.workflow_versions'))
+          return Promise.resolve({ rows: [] });
+        return Promise.resolve({ rows: [[workflowId]], rowCount: 1 });
       },
-      transact,
+      { workspaceId, actorId },
+    );
+    const store = createWorkflowAuthoringStore(CONNECTION, {
+      definitionCatalog: catalog,
+      executableCompiler: testExecutableCompiler,
+      validateAuthoringGraph: validator,
+      runtime: checkout.runtime,
     });
+    cleanups.push(() => store.close(), checkout.restore);
     const controller = new AbortController();
     const result = await store.validateDraft(workspaceId, workflowId, actorId, {
       signal: controller.signal,
@@ -219,12 +215,9 @@ describe('snapshot validation and publication ordering', () => {
       draft: { revision: 7, graphJson: graph },
       validation: invalid,
     });
-    expect(transactions).toHaveBeenCalledWith(
-      workspaceId,
-      actorId,
-      expect.any(Function),
-      controller.signal,
-    );
+    expect(
+      checkout.query.mock.calls.filter(([statement]) => statement === 'begin'),
+    ).toHaveLength(1);
     expect(validator).toHaveBeenCalledWith(graph, {
       signal: controller.signal,
     });
@@ -276,7 +269,6 @@ describe('snapshot validation and publication ordering', () => {
         return Promise.resolve({ rows: [] });
       },
     );
-    const client = { query } as unknown as PoolClient;
     const validator = vi.fn().mockResolvedValue(invalid);
     const executableCompiler = vi.fn();
     const replay = {
@@ -292,35 +284,20 @@ describe('snapshot validation and publication ordering', () => {
         publishedAt: row.updated_at,
       },
     };
-    const requireAuthor = vi.fn().mockResolvedValue(undefined);
-    const transact = vi.fn();
-    const publish = createWorkflowPublisher({
-      requireAuthor,
-      catalogs: {
-        definitionCatalog: catalog,
-        executableCompiler,
-        placementDefinitionCatalog: undefined,
-        workflowTestCompiler: undefined,
-        portableCatalog: undefined,
-        validateAuthoringGraph: validator,
-      },
-      transact: <T>(
-        workspaceId: string,
-        actorId: string,
-        operation: (client: PoolClient) => Promise<T>,
-        signal?: AbortSignal,
-      ): Promise<T> => {
-        transact(workspaceId, actorId, operation, signal);
-        return operation(client);
-      },
+    const checkout = authorizedCheckout(query, { workspaceId, actorId });
+    const store = createWorkflowAuthoringStore(CONNECTION, {
+      definitionCatalog: catalog,
+      executableCompiler,
+      validateAuthoringGraph: validator,
+      runtime: checkout.runtime,
     });
+    cleanups.push(() => store.close(), checkout.restore);
     return {
-      publish,
-      query,
+      publish: store.publishWorkflow,
+      query: checkout.query,
+      connect: checkout.connect,
       validator,
       executableCompiler,
-      requireAuthor,
-      transact,
       replay,
     };
   }
@@ -334,7 +311,13 @@ describe('snapshot validation and publication ordering', () => {
       ...fixture.replay,
       replayed: true,
     });
-    expect(fixture.requireAuthor).toHaveBeenCalledOnce();
+    expect(
+      fixture.query.mock.calls.filter(([sql]) =>
+        (typeof sql === 'string' ? sql : sql.text).includes(
+          'from "app"."workspace_memberships"',
+        ),
+      ),
+    ).toHaveLength(1);
     expect(fixture.validator).not.toHaveBeenCalled();
     expect(
       fixture.query.mock.calls.some(([sql]) =>
@@ -386,12 +369,12 @@ describe('snapshot validation and publication ordering', () => {
       signal,
       workspaceVariableNames: [],
     });
-    expect(fixture.transact).toHaveBeenCalledWith(
-      workspaceId,
-      actorId,
-      expect.any(Function),
-      signal,
-    );
     expect(fixture.executableCompiler).not.toHaveBeenCalled();
+    // The signal reaches the transaction: once aborted, nothing checks out.
+    fixture.connect.mockClear();
+    await expect(
+      fixture.publish({ ...command, signal: AbortSignal.abort() }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fixture.connect).not.toHaveBeenCalled();
   });
 });

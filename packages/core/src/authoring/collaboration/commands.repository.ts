@@ -14,10 +14,15 @@ import {
 import { generatePersistedId } from '@pertexo/database/platform';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import { WorkflowCollaborationError } from './errors.js';
+import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
+import type { EnterCollaboration } from './authority.queries.js';
 import type {
   CollaborationCommand,
-  CollaborationContext,
-  WorkflowCollaborationStore,
+  CreateCommentInput,
+  EditCommentInput,
+  RemoveCommentInput,
+  ReplyInput,
+  SetThreadStatusInput,
 } from './contract.js';
 import { lockCommentThread } from './records.queries.js';
 import { syncCommentMentions } from './mentions.repository.js';
@@ -114,26 +119,22 @@ function stepSnapshotLabel(value: string): string {
   }
   return label + '…';
 }
-export function collaborationCommands(
-  context: CollaborationContext,
-): Pick<
-  WorkflowCollaborationStore,
-  'create' | 'reply' | 'edit' | 'remove' | 'setStatus'
-> {
+export function collaborationCommands(enter: EnterCollaboration) {
   return {
-    create: (input) => createCommentThread(context, input),
-    reply: (input) => replyToCommentThread(context, input),
-    edit: (input) => editComment(context, input),
-    remove: (input) => removeComment(context, input),
-    setStatus: (input) => setCommentThreadStatus(context, input),
+    create: (input: CreateCommentInput) => createCommentThread(enter, input),
+    reply: (input: ReplyInput) => replyToCommentThread(enter, input),
+    edit: (input: EditCommentInput) => editComment(enter, input),
+    remove: (input: RemoveCommentInput) => removeComment(enter, input),
+    setStatus: (input: SetThreadStatusInput) =>
+      setCommentThreadStatus(enter, input),
   };
 }
 
 function createCommentThread(
-  context: CollaborationContext,
-  input: Parameters<WorkflowCollaborationStore['create']>[0],
-): ReturnType<WorkflowCollaborationStore['create']> {
-  return runCommentCommand(context, input, {
+  enter: EnterCollaboration,
+  input: CreateCommentInput,
+): Promise<WorkflowCommentCommandResult> {
+  return runCommentCommand(enter, input, {
     action: 'workflow.comment.created',
     request: {
       body: input.body,
@@ -190,10 +191,10 @@ function createCommentThread(
 }
 
 function replyToCommentThread(
-  context: CollaborationContext,
-  input: Parameters<WorkflowCollaborationStore['reply']>[0],
-): ReturnType<WorkflowCollaborationStore['reply']> {
-  return runCommentCommand(context, input, {
+  enter: EnterCollaboration,
+  input: ReplyInput,
+): Promise<WorkflowCommentCommandResult> {
+  return runCommentCommand(enter, input, {
     action: 'workflow.comment.replied',
     request: {
       threadId: input.threadId,
@@ -228,10 +229,10 @@ function replyToCommentThread(
 }
 
 function editComment(
-  context: CollaborationContext,
-  input: Parameters<WorkflowCollaborationStore['edit']>[0],
-): ReturnType<WorkflowCollaborationStore['edit']> {
-  return runCommentCommand(context, input, {
+  enter: EnterCollaboration,
+  input: EditCommentInput,
+): Promise<WorkflowCommentCommandResult> {
+  return runCommentCommand(enter, input, {
     action: 'workflow.comment.edited',
     request: {
       threadId: input.threadId,
@@ -286,10 +287,10 @@ function editComment(
 }
 
 function removeComment(
-  context: CollaborationContext,
-  input: Parameters<WorkflowCollaborationStore['remove']>[0],
-): ReturnType<WorkflowCollaborationStore['remove']> {
-  return runCommentCommand(context, input, {
+  enter: EnterCollaboration,
+  input: RemoveCommentInput,
+): Promise<WorkflowCommentCommandResult> {
+  return runCommentCommand(enter, input, {
     action: 'workflow.comment.deleted',
     request: {
       threadId: input.threadId,
@@ -346,10 +347,10 @@ function removeComment(
 }
 
 function setCommentThreadStatus(
-  context: CollaborationContext,
-  input: Parameters<WorkflowCollaborationStore['setStatus']>[0],
-): ReturnType<WorkflowCollaborationStore['setStatus']> {
-  return runCommentCommand(context, input, {
+  enter: EnterCollaboration,
+  input: SetThreadStatusInput,
+): Promise<WorkflowCommentCommandResult> {
+  return runCommentCommand(enter, input, {
     action: 'workflow.comment.thread.changed',
     request: {
       threadId: input.threadId,
