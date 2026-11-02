@@ -11,6 +11,8 @@ export const API_METRIC_NAME = Object.freeze({
 const problemCodes = new Set<string>(API_PROBLEM_CODES);
 const excludedClientProblems = new Set<string>([
   'auth.forbidden',
+  'auth.token_not_supported',
+  'auth.token_scope_required',
   'auth.unauthenticated',
   'request.aborted',
   'request.invalid',

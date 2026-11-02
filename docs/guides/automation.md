@@ -271,10 +271,16 @@ credentials does not safely retry the old command. Read the resulting workflow,
 versions or runs before deciding to submit new work.
 
 A 412 draft conflict or 409 reviewed-version/compatibility conflict needs a fresh
-review and a deliberately new intent. An authentication error needs a valid token;
-scope denials follow the server's existing 403/404 disclosure policy and may look
-like an absent resource. Invalid or revoked credentials return generic 401; they
-never reveal whether a token exists. Rate limits remain tied to the owner and
+review and a deliberately new intent. Authentication errors say what to fix:
+
+| Response | Meaning |
+|---|---|
+| 401 `auth.unauthenticated` with `WWW-Authenticate` | The token is invalid, revoked or expired. It never reveals whether a token exists |
+| 403 `auth.token_scope_required` | The token is fine and this needs another scope, which `detail` names |
+| 403 `auth.token_not_supported` | This route needs a browser session and doesn't take tokens |
+| 404 | Another workspace, or something your role can't see |
+
+`GET /v1/token` returns the calling token's workspace, scopes and expiry. Rate limits remain tied to the owner and
 workspace as well as the token. Cancellation retries reuse state, not a new run.
 
 Keep the command keys and reviewed files in your deployment records, protect any

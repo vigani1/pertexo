@@ -4290,6 +4290,8 @@
               "api_token.limit",
               "auth.unauthenticated",
               "auth.forbidden",
+              "auth.token_scope_required",
+              "auth.token_not_supported",
               "auth.email_not_verified",
               "auth.sso_required",
               "auth.two_factor_locked",

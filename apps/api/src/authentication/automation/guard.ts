@@ -52,6 +52,7 @@ export class AutomationAuthenticationGuard implements CanActivate {
       ...(traceId === undefined ? {} : { traceId }),
     });
     request.apiTokenActor = actor;
+    request.verifiedApiToken = verified;
     this.contexts.setActor({
       actorId: actor.actorId,
       kind: actor.kind,
