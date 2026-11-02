@@ -11,7 +11,7 @@ import {
   pendingRunTasks,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { runAbortReason } from '../queries/control.js';
+import { runAbortReason } from '../control.js';
 
 type Input = Parameters<NodeAttemptRunStore['loadInputs']>[0];
 

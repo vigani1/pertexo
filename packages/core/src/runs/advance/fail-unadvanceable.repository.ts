@@ -2,7 +2,7 @@ import { createCheckpoint } from '@pertexo/workflow-engine';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import { appendAttemptEvent } from '../../attempts/events.repository.js';
+import { appendAttemptEvent } from '../../attempts/events.queries.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { nodeAttempts, nodeRuns } from '@pertexo/database/schema';
 import type { CoordinatorAdvanceDelivery } from './contract.js';

@@ -5,20 +5,20 @@ import {
 import {
   parseStoredExecutionValue,
   storedExecutionValuesEqual,
-} from '../../runs/values/stored-execution.js';
+} from '../runs/values/stored-execution.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts } from '@pertexo/database/schema';
 import type { Pool } from 'pg';
 
-import { NodeAttemptStateCorruptError } from '../errors.js';
+import { NodeAttemptStateCorruptError } from './errors.js';
 import type {
   NodeAttemptLoopDeclaration,
   NodeAttemptStoredOutput,
   NodeRunOutcome,
   NodeRunStoredOutput,
   NodeAttemptRunStore,
-} from '../contract.js';
+} from './contract.js';
 
 export async function readNodeAttemptLoopDeclaration(
   pool: Pool,

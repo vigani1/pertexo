@@ -2,7 +2,7 @@ import {
   withTenantScopedClient,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
-import { attemptControl, runAbortReason } from '../queries/control.js';
+import { attemptControl, runAbortReason } from '../control.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';

@@ -9,7 +9,7 @@ import {
   lockCompletionReceipt,
   lockCompletionRun,
   lockCompletionAttempt,
-} from './records.repository.js';
+} from './records.queries.js';
 import type { Pool } from 'pg';
 import {
   DeliveryMismatch,
@@ -20,8 +20,8 @@ import type {
   CompleteNodeAttemptResult,
   NodeAttemptRunStore,
 } from '../contract.js';
-import { auditMismatch, validateDelivery } from './receipts.repository.js';
-import { applyNodeAttemptCompletion } from './outcomes.repository.js';
+import { auditMismatch, validateDelivery } from './receipts.queries.js';
+import { applyNodeAttemptCompletion } from './outcomes.js';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 
 export async function completeNodeAttempt(

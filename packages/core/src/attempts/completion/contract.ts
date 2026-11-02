@@ -1,6 +1,6 @@
 import type { NodeAttemptRunStore } from '../contract.js';
 import type { inboxReceipts } from '@pertexo/database/schema';
-import type { lockCompletionAttempt } from './records.repository.js';
+import type { lockCompletionAttempt } from './records.queries.js';
 
 export type CompletionInput = Parameters<NodeAttemptRunStore['complete']>[0];
 

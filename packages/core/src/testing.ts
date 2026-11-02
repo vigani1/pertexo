@@ -225,7 +225,7 @@ export type {
 export { isValidStoredExecutionOutput } from './previews/output.js';
 export { PREVIEW_RETENTION_MAX_MS } from './previews/runs/acceptance/limits.js';
 export { PREVIEW_STATUS } from './previews/state.js';
-export { createNodeAttemptRunStore } from './attempts/repository.js';
+export { createNodeAttemptRunStore } from './attempts/store.js';
 export {
   NodeAttemptConnectionFenceError,
   NodeAttemptDeliveryMismatchError,

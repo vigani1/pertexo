@@ -19,7 +19,7 @@ import type {
   NodeAttemptRunStore,
   NodeAttemptStoredInputs,
 } from '../contract.js';
-import { attemptControl } from '../queries/control.js';
+import { attemptControl } from '../control.js';
 type UpstreamOutputRow = Awaited<
   ReturnType<typeof readUpstreamOutputs>
 >[number];
