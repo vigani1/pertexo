@@ -120,6 +120,10 @@ api --request POST --header 'Content-Type: application/json' \
   --data-binary '{}' "$BASE/runs/$RUN_ID/cancel"
 ```
 
+A run's input, and what each step received and returned, are at
+`GET /runs/$RUN_ID/input` and `GET /runs/$RUN_ID/node-runs/$NODE_RUN_ID/{input,output}`.
+These take `run:read-data`, apart from `run:read` because they can hold sensitive data.
+
 A canceled response is a cancellation request/state acknowledgment, not proof
 that a running step stopped. Inspect `runs get` until a terminal status. Cancel
 is state-idempotent and needs no command key. Start and cancel accept an omitted body as
