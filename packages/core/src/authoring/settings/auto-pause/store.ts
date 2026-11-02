@@ -32,7 +32,6 @@ import {
   WorkflowPauseRevisionConflictError,
   WorkspaceAutoPauseSettingsRevisionConflictError,
 } from './errors.js';
-import { workflowSettings, workspaceSettings } from './input.js';
 import {
   lockWorkflow,
   lockWorkspace,
@@ -136,7 +135,6 @@ async function resumePausedWorkflow(
     workflowId,
     roles: EDITORS,
     request,
-    schema: workflowSettings,
     exclusive: false,
     apply: async (client, workspace) => {
       const current = await lockWorkflow(client, input.workspaceId, workflowId);
@@ -234,7 +232,6 @@ async function updateWorkflowPauseSettings(
     workflowId,
     roles: EDITORS,
     request,
-    schema: workflowSettings,
     exclusive: false,
     apply: async (client, workspace) => {
       const current = await lockWorkflow(client, input.workspaceId, workflowId);
@@ -289,7 +286,6 @@ async function updateWorkspacePauseSettings(
     resourceId: workspaceId,
     roles: OWNERS,
     request,
-    schema: workspaceSettings,
     exclusive: true,
     apply: async (client, workspace) => {
       const current = workspace;

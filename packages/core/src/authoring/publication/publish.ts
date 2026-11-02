@@ -6,12 +6,7 @@ import {
   claimCommand,
   completeCommand,
 } from '@pertexo/database/primitives';
-import {
-  workflowDrafts,
-  workflows,
-  workflowVersions,
-  workspaces,
-} from '@pertexo/database/schema';
+import { workflowVersions, workspaces } from '@pertexo/database/schema';
 import { requireWorkflowCallTargets } from '../../tenant-access/resources/bindings.queries.js';
 import { lockWorkspaceVariableNames } from '../../variables/head.queries.js';
 import { recordPromotedPublication } from '../promotion/provenance.repository.js';
@@ -34,6 +29,10 @@ import {
   generatePersistedId,
 } from '@pertexo/database/platform';
 import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
+import {
+  lockActiveWorkflow,
+  lockDraft,
+} from '../workflows/commands/locks.queries.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 import { validateApprovalAudience } from './pending-tasks.queries.js';
 
@@ -47,7 +46,6 @@ import {
 } from '../workflows/errors.js';
 import type { WorkflowVersionRecord } from '../workflows/representation/contract.js';
 import {
-  draftProjection,
   projectDraft,
   projectVersion,
   versionProjection,
@@ -123,32 +121,8 @@ async function lockAndCompilePublication(
   workflowId: string,
   variant: AuthoringCatalogs,
 ): Promise<CompiledPublication> {
-  const db = drizzle(client);
-  const [workflow] = await db
-    .select({ id: workflows.id })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, workflowId),
-        eq(workflows.lifecycleStatus, 'active'),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
-  if (workflow === undefined)
-    throw new WorkflowNotFoundError('Workflow is not visible');
-  const [draftRow] = await db
-    .select(draftProjection)
-    .from(workflowDrafts)
-    .where(
-      and(
-        eq(workflowDrafts.workspaceId, input.workspaceId),
-        eq(workflowDrafts.workflowId, workflowId),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
+  await lockActiveWorkflow(client, { ...input, workflowId });
+  const draftRow = await lockDraft(client, { ...input, workflowId });
   if (draftRow === undefined)
     throw new Error('Workflow is missing its required draft');
   const draft = projectDraft(draftRow, variant.definitionCatalog);

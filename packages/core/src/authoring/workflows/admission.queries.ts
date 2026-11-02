@@ -3,42 +3,11 @@ import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import {
-  AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,
   type WorkflowAuthoringValidationOptions,
 } from '@pertexo/workflow-model/server';
+import { authoringIdleBudgetIsSafe } from './idle-budget.js';
 import type { WorkflowAuthoringGraphValidator } from './types.js';
-
-const parserWaitMs =
-  AUTHORING_VALIDATION_BUDGET.queueMs +
-  AUTHORING_VALIDATION_BUDGET.startupMs +
-  AUTHORING_VALIDATION_BUDGET.parseMs +
-  AUTHORING_VALIDATION_BUDGET.terminationMs;
-
-/** pg_settings exposes the effective connection setting in its declared unit. */
-export function authoringIdleBudgetIsSafe(
-  setting: unknown,
-  unit: unknown,
-): boolean {
-  if (typeof setting !== 'string' || !/^[0-9]+$/u.test(setting)) return false;
-  const multipliers: Readonly<Record<string, number>> = {
-    us: 0.001,
-    ms: 1,
-    s: 1000,
-    min: 60000,
-    h: 3600000,
-  };
-  if (typeof unit !== 'string') return false;
-  const multiplier = multipliers[unit];
-  if (multiplier === undefined) return false;
-  const duration = Number(setting) * multiplier;
-  // Zero means unlimited, not evidence of a bounded effective deadline.
-  return (
-    Number.isSafeInteger(Number(setting)) &&
-    Number.isFinite(duration) &&
-    duration > parserWaitMs
-  );
-}
 
 /** Only idle-in-transaction applies to the off-thread wait; query_timeout does not. */
 export async function admitWorkflowAuthoring(

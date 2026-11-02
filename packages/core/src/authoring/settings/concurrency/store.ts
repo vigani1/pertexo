@@ -23,6 +23,8 @@ import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/data-policy.js';
 import type { AuthoringAccess, WorkflowActor } from '../../workflows/access.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 
+const RECENT_SKIPS_SHOWN = 20;
+
 export type WorkflowConcurrencySettings = ConcurrencySettings;
 export type WorkflowConcurrencyScope = WorkflowActor;
 export type UpdateWorkflowConcurrencyInput = WorkflowConcurrencyScope &
@@ -210,7 +212,7 @@ async function readConcurrencySettings(
       sql`${usageEvents.occurredAt} desc nulls last`,
       asc(usageEvents.id),
     )
-    .limit(20)
+    .limit(RECENT_SKIPS_SHOWN)
     .catch(rethrowQueryFailure);
   return { ...policy, recentSkips };
 }
