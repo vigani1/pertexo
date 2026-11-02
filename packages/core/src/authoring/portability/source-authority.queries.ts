@@ -6,7 +6,6 @@ import {
   connectionFitsSlot,
   type Role,
 } from '@pertexo/workflow-model';
-import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -34,6 +33,7 @@ import {
   draftProjection,
   projectDraft,
 } from '../workflows/representation/records.queries.js';
+import { draftRepresentationTag } from '../workflows/representation/tag.js';
 
 /** Lock workflow before its selected source; select catalog only after source. */
 export async function lockPortableSource(
@@ -105,12 +105,7 @@ export function reviewedSourceGraph(
   if (source.kind === 'version')
     return parseWorkflowGraphDraft(source.row.graphJson);
   const draft = projectDraft(source.row, selection.definitionCatalog);
-  const tag = workflowDraftRepresentationTag({
-    workflowId: input.workflowId,
-    revision: draft.revision,
-    graph: draft.graphJson,
-    compatibilityFingerprint: draft.compatibility.fingerprint,
-  });
+  const tag = draftRepresentationTag(input.workflowId, draft);
   if (tag !== input.representationTag)
     throw new WorkflowRevisionConflictError(draft.revision, tag);
   return draft.graphJson;
