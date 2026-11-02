@@ -21,8 +21,8 @@ import type {
   ReviewScope,
 } from './contract.js';
 import { readReviewDetail, readReviewSummary } from './read.queries.js';
-import { requestPublicationReview } from './request.repository.js';
-import { decidePublicationReview } from './decide.repository.js';
+import { requestPublicationReview } from './request.js';
+import { decidePublicationReview } from './decide.js';
 
 export function createPublicationReviewStore(
   dependencies: ReviewDependencies,

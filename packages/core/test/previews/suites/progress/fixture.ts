@@ -8,7 +8,7 @@ import {
 } from '@pertexo/workflow-engine';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { createWorkflowAuthoringStore } from '../../../../src/authoring/workflows/store.js';
-import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input-cases/repository.js';
+import { createWorkflowInputCaseDatabase } from '../../../../src/authoring/input-cases/store.js';
 import { createWorkflowTestSuiteScanner } from '../../../../src/previews/suites/scanner.js';
 import { createWorkflowExecutionReader } from '../../../../src/runs/queries/execution/source.queries.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
