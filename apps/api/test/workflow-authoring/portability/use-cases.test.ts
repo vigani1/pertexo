@@ -381,7 +381,11 @@ describe('workflow portability application authority and exact commands', () => 
         actor,
         request: { manifest: boundManifest, bindings },
       }),
-    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    ).rejects.toMatchObject({
+      code: 'auth.token_scope_required',
+      message: 'This token needs the connection:read scope.',
+    });
+    // Decided before any connection is read, so it can't tell which ones exist.
     expect(f.persistence.previewWorkflowImport).not.toHaveBeenCalled();
     await expect(
       f.preview.execute({
