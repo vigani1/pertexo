@@ -572,6 +572,11 @@ export const nodeRuns = appSchema.table(
       columns: [table.workspaceId, table.workflowRunId],
       foreignColumns: [workflowRuns.workspaceId, workflowRuns.id],
     }).onDelete('cascade'),
+    // Backs the deferred foreign key above: without it, every deleted attempt
+    // scans the workspace's steps when the transaction commits (dm-04).
+    index('node_runs_current_attempt_idx')
+      .on(table.workspaceId, table.currentAttemptId)
+      .where(sql`(current_attempt_id IS NOT NULL)`),
     index('node_runs_run_node_idx').on(
       table.workspaceId,
       table.workflowRunId,
