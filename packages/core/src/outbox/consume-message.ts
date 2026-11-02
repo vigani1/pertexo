@@ -1,3 +1,4 @@
+import { lockWorkspaceRunAdmission } from '../runs/admission-locks.queries.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { and, eq, sql } from 'drizzle-orm';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
@@ -54,8 +55,9 @@ export async function consumeInboxMessage<T>(
     workspaceId,
     async (transaction) => {
       if (options.lockWorkspace ?? false)
-        await transaction.db.execute(
-          sql`select app.lock_workspace_run_admission(${transaction.workspaceId})`,
+        await lockWorkspaceRunAdmission(
+          transaction.db,
+          transaction.workspaceId,
         );
       const inserted = await transaction.db
         .insert(inboxReceipts)
