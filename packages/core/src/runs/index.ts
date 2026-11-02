@@ -147,3 +147,19 @@ export type {
   NodeAttemptInputs,
 } from './load-attempt-inputs.js';
 export { recoveryPreparation } from './recovery/prepare.js';
+
+// Other areas import these files directly (ADR 091); the door gains nothing.
+export type {} from './admission-locks.queries.js';
+export type {} from './advance/plan.js';
+export type {} from './commands/acceptance/accept.js';
+export type {} from './commands/acceptance/replay.repository.js';
+export type {} from './commands/acceptance/vocabulary.js';
+export type {} from './commands/cancel-run.js';
+export type {} from './commands/request-cancellation.js';
+export type {} from './data-policy.js';
+export type {} from './pending-tasks/callbacks/retention.js';
+export type {} from './pending-tasks/responses/eligibility.queries.js';
+export type {} from './pending-tasks/responses/records.repository.js';
+export type {} from './queries/entitlement-effect.js';
+export type {} from './stalled/overdue.queries.js';
+export type {} from './values/retention.js';

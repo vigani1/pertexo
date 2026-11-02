@@ -5,7 +5,6 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  AREAS_NOT_YET_PASSED,
   inspectModuleImports,
   validateModuleImports,
 } from './validate-module-imports.mjs';
@@ -304,15 +303,7 @@ test('naming a file with an empty type export adds no runtime edge', () => {
   );
 });
 
-test("an area not yet passed can be reached past its index, and one that has can't", () => {
-  for (const area of AREAS_NOT_YET_PASSED)
-    assert.deepEqual(
-      validateModuleImports({
-        'packages/core/src/variables/start.ts': `import { a } from '../${area}/deep/file.js';`,
-      }),
-      [],
-      area,
-    );
+test("an area can't be reached past its index", () => {
   for (const passed of ['variables', 'shared'])
     assert.match(
       validateModuleImports({
@@ -344,19 +335,6 @@ test('shared imports no other area, named by its index or not, passed or not', (
         `${form} ${target}`,
       );
   assert.deepEqual(shared("import { a } from './own.js';"), []);
-});
-
-test('the list of areas not yet passed can only shrink', () => {
-  // A pass removes its area from both lists. Adding to this one, or to the check's,
-  // is a decision to take in review: the rule exists so areas get off the list.
-  const AT_THE_MOVE = ['execution', 'runs'];
-  for (const area of AREAS_NOT_YET_PASSED)
-    assert.ok(
-      AT_THE_MOVE.includes(area),
-      `${area} joined the list of areas not yet passed; it may only shrink`,
-    );
-  assert.ok(!AREAS_NOT_YET_PASSED.has('variables'));
-  assert.ok(!AREAS_NOT_YET_PASSED.has('shared'));
 });
 
 test('an application reaches the database only through its platform door, and /testing from tests', () => {
@@ -391,27 +369,6 @@ test('an application reaches the database only through its platform door, and /t
     imports('packages/core/src/a/b.ts', '@pertexo/database/platform'),
     '',
   );
-});
-
-test('a listed area with no folder in core is reported, so the list stays true', async () => {
-  const directory = await mkdtemp(path.join(tmpdir(), 'module-imports-'));
-  try {
-    for (const area of AREAS_NOT_YET_PASSED)
-      await mkdir(path.join(directory, 'packages/core/src', area), {
-        recursive: true,
-      });
-    await mkdir(path.join(directory, 'apps'), { recursive: true });
-    assert.deepEqual(await inspectModuleImports(directory), []);
-    await rm(path.join(directory, 'packages/core/src/runs'), {
-      recursive: true,
-    });
-    assert.match(
-      (await inspectModuleImports(directory)).join('\n'),
-      /runs is on AREAS_NOT_YET_PASSED/u,
-    );
-  } finally {
-    await rm(directory, { recursive: true });
-  }
 });
 
 test('a test door never reaches code that ships', () => {
