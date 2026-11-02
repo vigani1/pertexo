@@ -1,5 +1,6 @@
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+
+import pg from 'pg';
 
 /**
  * A database of its own for each Vitest worker, copied from the migrated one, so an
@@ -8,10 +9,6 @@ import { fileURLToPath } from 'node:url';
  * suites used to run one file at a time. Copying is cheap: four take about 300 ms.
  */
 const WORKERS = 4;
-
-// `pg` belongs to the package whose suite is running.
-const require = createRequire(`${process.cwd()}/package.json`);
-const { Client } = require('pg');
 
 /** The suite's Vitest settings. A suite with its own needs overrides what it must. */
 export const parallelIntegrationSuite = Object.freeze({
@@ -35,7 +32,7 @@ const databaseName = (url) => new URL(url).pathname.slice(1);
 /** Vitest's global setup: runs once, after migrations and before any worker. */
 export default async function copyDatabases() {
   const template = databaseName(process.env.DATABASE_URL);
-  const admin = new Client({
+  const admin = new pg.Client({
     connectionString: process.env.DATABASE_ADMIN_URL,
   });
   await admin.connect();
