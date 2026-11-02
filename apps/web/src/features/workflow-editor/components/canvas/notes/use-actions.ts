@@ -28,7 +28,8 @@ export function useNoteActions() {
         });
         return false;
       }
-      state.selectNodes([]);
+      // Selecting away would unmount an unfinished inspector edit and lose it.
+      if (!state.inspectorScratch) state.selectNodes([]);
       state.transact(graph);
       return true;
     },
