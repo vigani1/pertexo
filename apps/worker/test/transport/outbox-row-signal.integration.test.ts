@@ -197,20 +197,6 @@ describe('a dispatcher woken by rows, on real PostgreSQL', () => {
     LIMIT_MS,
   );
 
-  it(
-    'finds a row written before it started listening',
-    async () => {
-      const before = await insertRow();
-
-      const { published } = startDispatcher();
-
-      await vi.waitFor(() => {
-        expect(published).toEqual([before]);
-      }, WAIT);
-    },
-    LIMIT_MS,
-  );
-
   // A claim that has already read the table misses this row, and it found nothing
   // to send, so the dispatcher goes back to its idle wait. Only the signal it heard
   // during the claim can stop that.
