@@ -1,13 +1,6 @@
-import {
-  workspaceVariablesResponseSchema,
-  workspaceVariablesCommandResponseSchema,
-  workspaceVariableUsageResponseSchema,
-  workspaceVariableUsageCursorSchema,
-} from '@pertexo/contracts';
+import { workspaceVariableUsageCursorSchema } from '@pertexo/contracts';
 import type {
-  ReplaceWorkspaceVariablesInput,
   VariableUsageInput,
-  WorkspaceActor,
   WorkspaceVariablesStore,
 } from '@pertexo/core/variables';
 
@@ -20,17 +13,12 @@ import {
   encodeOpaqueCursor,
 } from '../platform/http/opaque-cursor.js';
 
-/** HTTP's view of the store: response checks and the opaque usage cursor. */
+/** HTTP's view of the store: the opaque usage cursor. */
 export class WorkspaceVariablesService {
   constructor(private readonly store: WorkspaceVariablesStore) {}
-  async read(input: WorkspaceActor) {
-    return workspaceVariablesResponseSchema.parse(await this.store.read(input));
-  }
-  async replace(input: ReplaceWorkspaceVariablesInput) {
-    return workspaceVariablesCommandResponseSchema.parse(
-      await this.store.replace(input),
-    );
-  }
+  read: WorkspaceVariablesStore['read'] = (input) => this.store.read(input);
+  replace: WorkspaceVariablesStore['replace'] = (input) =>
+    this.store.replace(input);
   async usage({
     after,
     ...scope
@@ -39,7 +27,7 @@ export class WorkspaceVariablesService {
       ...scope,
       ...(after === undefined ? {} : { after: decodeContinuation(after) }),
     });
-    return workspaceVariableUsageResponseSchema.parse({
+    return {
       items: result.items,
       incomplete: result.incomplete,
       checkedWorkflows: result.checkedWorkflows,
@@ -48,7 +36,7 @@ export class WorkspaceVariablesService {
         result.next === null
           ? null
           : encodeOpaqueCursor(workspaceVariableUsageCursorSchema, result.next),
-    });
+    };
   }
 }
 
