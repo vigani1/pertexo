@@ -312,10 +312,10 @@ jobs:
         if: always()
         run: docker compose down -v --remove-orphans
 
-  # Two jobs for the mocked suite and two for real-stack journeys, each using its
-  # whole runner, because a job they don't need is one more that other runs queue
-  # behind. One mocked job alone once took 24 minutes and set how long every pull
-  # request waited.
+  # Two jobs for the mocked suite and three for real-stack journeys. Each journey job
+  # runs two stacks side by side; three on these four-core runners made journeys twice
+  # as slow and they failed their own time limits. One mocked job alone once took 24
+  # minutes and set how long every pull request waited.
   browser:
     name: browser (${{ matrix.suite }})
     needs: changes
@@ -338,19 +338,20 @@ jobs:
             shard: 2/2
           - suite: live-1
             journeys: >-
-              artifact-inputs product curated-templates variables transforms
-              code approvals failure-routing callable forms run-recovery
-              governance spreadsheets portability form-uploads duplication
-              notifications federation run-values api-tokens two-factor
-              workflow-concurrency usage
+              pinned-samples curated-templates schedule code approvals
+              failure-routing promotion run-recovery task-timeouts portability
+              organization-saml http-pagination run-values api-tokens two-factor
           - suite: live-2
             journeys: >-
-              collaboration pinned-samples workflow-organization
-              webhook-responses schedule webhook-controlled-http nested-conflict
-              oauth2 promotion security expression-admission task-timeouts
-              error-workflows readonly organization-saml http-pagination
-              organization-oidc receipts email-attachments input-cases
-              connection-health
+              collaboration workflow-organization variables transforms oauth2
+              forms expression-admission spreadsheets readonly duplication
+              federation receipts input-cases connection-health
+          - suite: live-3
+            journeys: >-
+              artifact-inputs product webhook-responses webhook-controlled-http
+              nested-conflict callable security governance error-workflows
+              form-uploads notifications organization-oidc email-attachments
+              workflow-concurrency usage
     env:
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser
@@ -396,7 +397,7 @@ jobs:
           JOURNEYS: ${{ matrix.journeys }}
         run: |
           # shellcheck disable=SC2086 # One word per journey.
-          node infrastructure/testing/run-browser-journeys.mjs 3 $JOURNEYS
+          node infrastructure/testing/run-browser-journeys.mjs 2 $JOURNEYS
       - name: Upload browser traces
         if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
