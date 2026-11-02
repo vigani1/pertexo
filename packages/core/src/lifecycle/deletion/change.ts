@@ -2,10 +2,8 @@ import { ALL_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import type { Pool } from 'pg';
 
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
-import {
-  WorkspaceAccessDeniedError,
-  WorkspaceLifecycleConflictError,
-} from '../../tenant-access/errors.js';
+import { WorkspaceLifecycleConflictError } from '../../tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import { applyWorkspaceLifecycleChange } from './apply.repository.js';
 import type {
   WorkspaceLifecycleChange,

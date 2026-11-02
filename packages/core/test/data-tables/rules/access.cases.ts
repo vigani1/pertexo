@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { Role } from '@pertexo/workflow-model';
 import { expect, it } from 'vitest';
 
-import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/errors.js';
 import { store } from '../records/fixture.js';
 import {
   addMember,

@@ -1,10 +1,7 @@
 import { and, eq, notExists, sql, type SQL } from 'drizzle-orm';
 import { workflowOrganizationState } from '@pertexo/database/schema';
 import { QueryBuilder, alias } from 'drizzle-orm/pg-core';
-import type {
-  FolderScope,
-  WorkflowResourceCapability,
-} from '../tenant-access/resources/contract.js';
+import type { FolderScope, WorkflowResourceCapability } from './contract.js';
 
 /** The policy supplies folder IDs; SQL only filters those already-decided facts. */
 export function workflowScopeSql(

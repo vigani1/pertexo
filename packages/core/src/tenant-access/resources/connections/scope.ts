@@ -15,10 +15,10 @@ import {
   rolesForCapability,
   type Role,
 } from '@pertexo/workflow-model';
-import { WorkspaceAccessDeniedError } from '../../errors.js';
+import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
 import { readWorkspaceAuthority } from '../../../shared/authority.queries.js';
-import type { ResourceActor } from '../contract.js';
-import { RESOURCE_ADMINISTRATORS } from '../policy.js';
+import type { ResourceActor } from '../../../shared/contract.js';
+import { RESOURCE_ADMINISTRATORS } from '../../../shared/folder-policy.js';
 
 export type ConnectionCapability = 'connection:read' | 'connection:use';
 export type ConnectionScope = Readonly<{

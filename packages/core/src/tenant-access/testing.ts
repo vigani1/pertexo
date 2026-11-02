@@ -1,9 +1,9 @@
 export type { Role } from '@pertexo/workflow-model';
 export { createIdentityWorkspaceStore } from './store.js';
+export { WorkspaceAccessDeniedError } from '../shared/errors.js';
 export {
   IdentityConflictError,
   IdentityNotFoundError,
-  WorkspaceAccessDeniedError,
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRoleCommandConflictError,
   WorkspaceMemberRemovalCommandConflictError,

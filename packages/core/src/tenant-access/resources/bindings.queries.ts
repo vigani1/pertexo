@@ -10,7 +10,7 @@ import { workflows } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { readFolderScope } from '../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
-import type { ResourceActor } from './contract.js';
+import type { ResourceActor } from '../../shared/contract.js';
 
 /** Only direct bindings are admitted; immutable child versions delegate their own closure. */
 export async function requireWorkflowCallTargets(

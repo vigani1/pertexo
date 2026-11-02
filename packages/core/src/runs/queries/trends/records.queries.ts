@@ -15,7 +15,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { workspaces, workflows, workflowRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { FolderScope } from '../../../tenant-access/resources/contract.js';
+import type { FolderScope } from '../../../shared/contract.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { ordinaryRunSql } from '../../data-policy.js';

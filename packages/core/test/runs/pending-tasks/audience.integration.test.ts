@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/errors.js';
 import { admin, store, taskFixture, userId } from './fixtures.js';
 
 it('inspects the entire current audience independent of member pagination and search', async () => {

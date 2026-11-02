@@ -8,7 +8,8 @@ import {
 } from '@pertexo/database/schema';
 import { requireMoveAudienceReview } from '../../sharing/audience.queries.js';
 
-import { FOLDER_DEPTH_LIMIT, FOLDER_LIMIT } from '../../limits.js';
+import { FOLDER_DEPTH_LIMIT } from '../../limits.js';
+import { FOLDER_LIMIT } from '../../../../shared/folder-policy.js';
 
 import { runOrganizationCommand } from '../../commands.repository.js';
 import { WorkflowFolderConflictError } from '../../errors.js';

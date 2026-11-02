@@ -2,7 +2,7 @@ import { NOTICE_WINDOW_SQL, windowedNoticeSql } from '../lifetime.js';
 import { and, eq, exists, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import type { FolderScope } from '../../tenant-access/resources/contract.js';
+import type { FolderScope } from '../../shared/contract.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
 import {
   rolesForCapability,

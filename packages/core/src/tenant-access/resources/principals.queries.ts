@@ -13,8 +13,8 @@ import {
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { lockBrowsableWorkspaceAuthority } from '../../shared/authority.queries.js';
-import { RESOURCE_ADMINISTRATORS } from './policy.js';
-import type { ResourceActor } from './contract.js';
+import { RESOURCE_ADMINISTRATORS } from '../../shared/folder-policy.js';
+import type { ResourceActor } from '../../shared/contract.js';
 
 /** Principal discovery is bounded and anchored to this workspace's current identities. */
 export async function readSharingPrincipals(

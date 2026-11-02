@@ -11,8 +11,8 @@ import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/author
 import { WorkflowNotFoundError } from '../../authoring/workflows/errors.js';
 import { readFolderScope } from '../../shared/facts.queries.js';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
-import type { WorkflowResourceCapability } from '../../tenant-access/resources/contract.js';
+import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
+import type { WorkflowResourceCapability } from '../../shared/contract.js';
 import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 
 const capabilities = ['workflow:update', 'run:read', 'run:start'] as const;

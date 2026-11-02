@@ -8,11 +8,11 @@ export {
 } from '@pertexo/workflow-model';
 export type { AuthorizationCapability } from '@pertexo/workflow-model';
 export { createIdentityWorkspaceStore } from './store.js';
+export { WorkspaceAccessDeniedError } from '../shared/errors.js';
 export {
   IdentityConflictError,
   InvitationAcceptanceConflictError,
   UserProfileCommandConflictError,
-  WorkspaceAccessDeniedError,
   WorkspaceInvitationCommandConflictError,
   WorkspaceLifecycleConflictError,
   WorkspaceMemberRemovalCommandConflictError,

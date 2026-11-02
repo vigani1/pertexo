@@ -1,5 +1,5 @@
 import type { ConnectionSharingRequest } from '@pertexo/contracts';
-import type { ResourceActor } from '../../tenant-access/resources/contract.js';
+import type { ResourceActor } from '../../shared/contract.js';
 
 export type ReadConnectionSharingInput = ResourceActor &
   Readonly<{ connectionId: string }>;

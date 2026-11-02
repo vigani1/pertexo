@@ -14,7 +14,7 @@ import {
   users,
 } from '@pertexo/database/schema';
 import { and, eq, sql } from 'drizzle-orm';
-import type { FolderScope } from '../../../tenant-access/resources/contract.js';
+import type { FolderScope } from '../../../shared/contract.js';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import type { PoolClient } from 'pg';
 import {

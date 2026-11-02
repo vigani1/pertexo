@@ -10,7 +10,7 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type { ResourceActor } from '../contract.js';
+import type { ResourceActor } from '../../../shared/contract.js';
 import {
   connectionScopeSql,
   readConnectionScope,

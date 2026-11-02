@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
 import type { WorkspaceActor } from '../../shared/workspace-access.js';
-import type { FolderScope } from '../../tenant-access/resources/contract.js';
+import type { FolderScope } from '../../shared/contract.js';
 import type {
   ListThreadsInput,
   WorkspaceInboxSummary,

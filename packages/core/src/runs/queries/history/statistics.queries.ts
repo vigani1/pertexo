@@ -1,4 +1,4 @@
-import type { ResourceTransaction } from '../../../tenant-access/resources/contract.js';
+import type { ResourceTransaction } from '../../../shared/contract.js';
 import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.repository.js';
 import type { Pool } from 'pg';
 import type { RunStatus } from '@pertexo/workflow-engine';

@@ -17,7 +17,7 @@ import {
   readConnectionScope,
   connectionScopeSql,
 } from '../../tenant-access/resources/connections/scope.js';
-import type { ResourceActor } from '../../tenant-access/resources/contract.js';
+import type { ResourceActor } from '../../shared/contract.js';
 
 /** Permission applies to every binding; only enabled steps require a non-revoked secret. */
 export async function connectionReferenceIssues(

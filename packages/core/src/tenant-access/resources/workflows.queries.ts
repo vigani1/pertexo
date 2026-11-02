@@ -3,7 +3,10 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import type { FolderScope, WorkflowResourceCapability } from './contract.js';
+import type {
+  FolderScope,
+  WorkflowResourceCapability,
+} from '../../shared/contract.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
 
 /** Reuse the caller's scope for a direct read or command, including idempotent replay. */

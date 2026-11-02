@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 
 import { checkDatabaseReadiness } from '@pertexo/database/primitives';
 import { EXPECTED_MIGRATION_HEAD } from '@pertexo/database/testing';
-import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/errors.js';
 
 import {
   ownerPool,

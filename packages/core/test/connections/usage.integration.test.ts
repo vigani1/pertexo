@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { folderScope } from '../../src/tenant-access/resources/policy.js';
+import { folderScope } from '../../src/shared/folder-policy.js';
 import { describe, expect, it } from 'vitest';
 import { connectionUsagePage } from '../../src/connections/discovery/usage.queries.js';
 import {

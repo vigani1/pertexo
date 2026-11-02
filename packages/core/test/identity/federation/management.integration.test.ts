@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { WorkspaceAccessDeniedError } from '../../../src/tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/errors.js';
 import { useIdentityCommandDatabase } from '../command.support.js';
 const db = useIdentityCommandDatabase('oidc_manage');
 const key = () => randomUUID();

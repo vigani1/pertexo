@@ -15,7 +15,7 @@ import {
   connectionOAuth2Tokens as tokens,
   workspaces,
 } from '@pertexo/database/schema';
-import { WorkspaceAccessDeniedError } from '../../tenant-access/errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/errors.js';
 import { lockWorkspaceAuthority } from '../../shared/authority.queries.js';
 import {
   CONNECTION_AUTH_TYPE,

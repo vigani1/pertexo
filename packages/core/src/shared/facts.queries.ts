@@ -1,6 +1,6 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { FOLDER_LIMIT } from '../authoring/organization/limits.js';
+import { FOLDER_LIMIT } from './folder-policy.js';
 import {
   users,
   workspaceMemberships,
@@ -18,11 +18,8 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
   type Role,
 } from '@pertexo/workflow-model';
-import type { ResourceActor } from '../tenant-access/resources/contract.js';
-import {
-  folderScope,
-  RESOURCE_ADMINISTRATORS,
-} from '../tenant-access/resources/policy.js';
+import type { ResourceActor } from './contract.js';
+import { folderScope, RESOURCE_ADMINISTRATORS } from './folder-policy.js';
 
 async function currentRole(
   db: WorkspaceTransaction['db'],
