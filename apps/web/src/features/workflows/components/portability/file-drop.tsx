@@ -1,4 +1,4 @@
-import { connectionSlotKey } from '../../model/portability';
+import { connectionSlotKey, portableSteps } from '../../model/portability';
 import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
 import type { Ref } from 'react';
 import { FileDrop } from '@/components/ui/file-drop';
@@ -28,7 +28,7 @@ export function WorkflowFileDrop({
   optionalSlots: ReadonlySet<string>;
   onChoose: (file: File | undefined) => void;
 }>) {
-  const steps = manifest?.graph.nodes.length ?? 0;
+  const steps = manifest === undefined ? 0 : portableSteps(manifest).length;
   // Steps that run without a connection don't count as needing one.
   const slots =
     manifest?.connectionSlots.filter(

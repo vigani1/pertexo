@@ -1,5 +1,6 @@
 import { connectionFitsSlot } from '@pertexo/workflow-model';
-import { connectionSlotKey } from '../../model/portability';
+import { connectionSlotKey, portableSteps } from '../../model/portability';
+import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
@@ -42,10 +43,10 @@ function stepName(node: PortableNode | undefined, fallback: string): string {
  * The file's steps in words, each marked where it reaches outside Pertexo,
  * with every value of the file one fold away and never shortened.
  */
-function ImportContents({
+export function WorkflowImportContents({
   manifest,
 }: Readonly<{ manifest: WorkflowPortableManifest }>) {
-  const nodes = manifest.graph.nodes;
+  const steps = portableSteps(manifest);
   return (
     <section
       aria-label="What the file contains"
@@ -53,12 +54,15 @@ function ImportContents({
     >
       <h3 className="text-sm font-semibold text-foreground">What’s inside</h3>
       <ol className="flex flex-col rounded-lg border border-border">
-        {nodes.map((node) => {
+        {steps.map(({ node, inside }) => {
           const step = describeStep(node.definition.key);
           return (
             <li
               key={node.id}
-              className="flex items-center gap-3 border-t border-border px-3 py-2 first:border-t-0"
+              className={cn(
+                'flex items-center gap-3 border-t border-border py-2 pr-3 first:border-t-0',
+                inside === null ? 'pl-3' : 'pl-8',
+              )}
             >
               <StepTile step={step} size="sm" />
               <span className="min-w-0 flex-1">
@@ -68,6 +72,9 @@ function ImportContents({
                 <span className="block text-xs text-subtle-foreground">
                   {familyWord(step.family)}
                   {node.label === undefined ? '' : ` · ${step.name}`}
+                  {inside === null
+                    ? ''
+                    : ` · inside ${stepName(inside, 'For each')}`}
                 </span>
               </span>
               {step.sideEffect === undefined ? null : (
@@ -307,11 +314,11 @@ export function WorkflowImportReview({
     <>
       {manifest === undefined ? null : (
         <>
-          <ImportContents manifest={manifest} />
+          <WorkflowImportContents manifest={manifest} />
           {manifest.connectionSlots.length === 0 ? null : (
             <WorkflowImportConnections
               slots={manifest.connectionSlots}
-              nodes={manifest.graph.nodes}
+              nodes={portableSteps(manifest).map(({ node }) => node)}
               bindings={bindings}
               optionalSlots={optionalSlots}
               disabled={disabled}
