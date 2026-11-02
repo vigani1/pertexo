@@ -76,6 +76,37 @@ test('runs each kind of journey under its own switch', () => {
   assert.ok(journeyCommand('oauth2').args.includes('@pertexo/worker'));
 });
 
+// Named once each and spelled whole: a list wrapped at a hyphen once ran `webhook-`.
+test('CI runs every journey exactly once, under its whole name', () => {
+  const ci = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
+  const named = ci.jobs.browser.strategy.matrix.include.flatMap(
+    ({ journeys }) => journeys.split(/\s+/u).filter(Boolean),
+  );
+  assert.equal(new Set(named).size, named.length);
+  const cases = readFileSync(
+    'apps/api/test/browser/editor/fixture/environment.ts',
+    'utf8',
+  );
+  const known = new Set([
+    ...[...cases.matchAll(/^ {4}'([a-z0-9-]+)',$/gmu)].map(([, name]) => name),
+    'usage',
+    'security',
+    'organization-saml',
+    'workflow-concurrency',
+    'connection-health',
+    'oauth2',
+    'workflow-organization',
+  ]);
+  assert.deepEqual(
+    named.filter((journey) => !known.has(journey)),
+    [],
+  );
+  assert.deepEqual(
+    [...known].filter((journey) => !named.includes(journey)),
+    [],
+  );
+});
+
 test('CI runs the journeys Code steps need where their Python is installed', () => {
   const ci = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
   const browser = ci.jobs.browser;
