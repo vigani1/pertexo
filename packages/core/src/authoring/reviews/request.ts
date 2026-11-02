@@ -24,6 +24,9 @@ import {
 } from './read.queries.js';
 import { reviewSource, review, reviewStateSql } from './eligibility.queries.js';
 
+/** How long a request waits for a decision. */
+const REVIEW_LIFETIME = sql`interval '7 days'`;
+
 export async function requestPublicationReview(
   client: PoolClient,
   dependencies: ReviewDependencies,
@@ -129,7 +132,7 @@ export async function requestPublicationReview(
       draftRevision: draft.revision,
       representationTag: input.representationTag,
       note: input.note,
-      expiresAt: sql`clock_timestamp()+interval '7 days'`,
+      expiresAt: sql`clock_timestamp()+${REVIEW_LIFETIME}`,
     })
     .catch(rethrowQueryFailure);
   await appendAuditFact(client, {
