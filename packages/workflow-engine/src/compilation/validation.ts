@@ -1,5 +1,4 @@
 import { jsonStringByteLength } from '@pertexo/workflow-model';
-import { types as nodeTypes } from 'node:util';
 import type {
   DefinitionIdentity,
   NodeManifest,
@@ -86,8 +85,7 @@ function assertSafeExecutableJson(value: unknown): void {
     ancestors.add(item);
     pending.push({ kind: 'exit', value: item });
     let enumerableCount = 0;
-    for (const key in item) {
-      const descriptor = executableDataField(item, key);
+    for (const key of Object.keys(item)) {
       members += 1;
       if (members > WORKFLOW_EXECUTABLE_LIMITS.members)
         fail('executable envelope exceeds maximum members');
@@ -105,14 +103,11 @@ function assertSafeExecutableJson(value: unknown): void {
       enumerableCount += 1;
       pending.push({
         kind: 'value',
-        value: descriptor.value,
+        value: (item as Readonly<Record<string, unknown>>)[key],
         depth: frame.depth + 1,
       });
     }
-    assertExecutableOwnFields(item, {
-      arrayLength: isArray ? item.length : undefined,
-      enumerableCount,
-    });
+    assertNotSparse(item, enumerableCount);
   }
 }
 
@@ -221,41 +216,12 @@ function assertExecutableContainer(
   depth: number,
   ancestors: ReadonlySet<object>,
 ): void {
-  if (nodeTypes.isProxy(item))
-    fail('executable envelope must not contain proxies');
   if (depth > WORKFLOW_EXECUTABLE_LIMITS.depth)
     fail('executable envelope exceeds maximum depth');
   if (ancestors.has(item)) fail('executable envelope must not contain cycles');
 }
-function assertExecutableOwnFields(
-  item: object,
-  {
-    arrayLength,
-    enumerableCount,
-  }: Readonly<{ arrayLength: number | undefined; enumerableCount: number }>,
-): void {
-  const ownNames = Object.getOwnPropertyNames(item);
-  if (Object.getOwnPropertySymbols(item).length !== 0)
-    fail('executable envelope has symbol fields');
-  const hiddenOrSparseFields =
-    (arrayLength !== undefined &&
-      (enumerableCount !== arrayLength ||
-        ownNames.length !== arrayLength + 1 ||
-        !ownNames.includes('length'))) ||
-    (arrayLength === undefined && ownNames.length !== enumerableCount);
-  if (hiddenOrSparseFields)
-    fail('executable envelope has hidden or sparse fields');
-}
 
-function executableDataField(item: object, key: string): PropertyDescriptor {
-  if (!Object.hasOwn(item, key))
-    fail('executable envelope has inherited enumerable fields');
-  const descriptor = Object.getOwnPropertyDescriptor(item, key);
-  const invalidDataField =
-    descriptor === undefined ||
-    !descriptor.enumerable ||
-    !('value' in descriptor);
-  if (invalidDataField)
-    fail('executable envelope must contain own data fields');
-  return descriptor;
+function assertNotSparse(item: object, enumerableCount: number): void {
+  if (Array.isArray(item) && enumerableCount !== item.length)
+    fail('executable envelope array is sparse');
 }

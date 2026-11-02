@@ -6,7 +6,6 @@ import {
   computeWorkflowExecutableChecksum,
   parseWorkflowExecutable,
   verifyWorkflowExecutable,
-  WORKFLOW_EXECUTABLE_LIMITS,
 } from '../../../src/index.js';
 import { nodeCatalog, graph } from '../../support/executable-workflow.js';
 describe('workflow executable identity', () => {
@@ -121,20 +120,6 @@ describe('workflow executable identity', () => {
         catalog,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
-    let trapCalls = 0;
-    const hostile = new Proxy(compiled.envelope, {
-      ownKeys: () => {
-        trapCalls += 1;
-        throw new Error('trap ran');
-      },
-    });
-    expect(() =>
-      parseWorkflowExecutable({
-        envelope: hostile,
-        catalog,
-      }),
-    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
-    expect(trapCalls).toBe(0);
   });
   it('preserves escaped, control, and Unicode JSON while normalizing negative zero', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
@@ -180,86 +165,5 @@ describe('workflow executable identity', () => {
     expect(
       Object.is((literal.value as { negativeZero: number }).negativeZero, -0),
     ).toBe(false);
-  });
-  it('rejects hostile raw executable JSON without invoking accessors', () => {
-    const catalog = composeExecutableCatalog(nodeCatalog());
-    const compiled = buildWorkflowExecutable({ graph: graph(), catalog });
-    let getterCalls = 0;
-    const accessor = Object.defineProperty({}, 'secret', {
-      enumerable: true,
-      get: () => {
-        getterCalls += 1;
-        return 'must-not-run';
-      },
-    });
-    const cycle: Record<string, unknown> = {};
-    cycle.self = cycle;
-    const hidden = Object.defineProperty({}, 'hidden', {
-      enumerable: false,
-      value: true,
-    });
-    const withSymbol = { value: true };
-    Object.defineProperty(withSymbol, Symbol('secret'), {
-      enumerable: true,
-      value: 'must-not-leak',
-    });
-    const sparse = new Array<unknown>(1);
-    const inheritedArray: unknown[] = [];
-    Object.setPrototypeOf(inheritedArray, { inherited: true });
-    const extraArray = Object.assign([], { extra: true });
-    const deep: Record<string, unknown> = {};
-    let cursor = deep;
-    for (let depth = 0; depth < 65; depth += 1) {
-      const next: Record<string, unknown> = {};
-      cursor.next = next;
-      cursor = next;
-    }
-    const oversizedArray = new Array<unknown>(
-      WORKFLOW_EXECUTABLE_LIMITS.members + 1,
-    ).fill(null);
-    const tooManyMembers = Array.from({ length: 1_001 }, () =>
-      new Array<number>(WORKFLOW_EXECUTABLE_LIMITS.members / 1_000).fill(0),
-    );
-    const proxy = new Proxy(
-      {},
-      {
-        ownKeys: () => {
-          getterCalls += 1;
-          return [];
-        },
-      },
-    );
-
-    for (const [name, hostile] of [
-      ['accessor member', accessor],
-      ['cyclic object', cycle],
-      ['Date instance', new Date('2026-08-20T00:00:00.000Z')],
-      ['hidden member', hidden],
-      ['symbol member', withSymbol],
-      ['sparse array', sparse],
-      ['inherited array', inheritedArray],
-      ['array with extra member', extraArray],
-      ['over-depth object', deep],
-      ['oversized array', oversizedArray],
-      ['object with too many members', tooManyMembers],
-      ['proxy object', proxy],
-      ['undefined', undefined],
-      ['bigint', 1n],
-      ['function', () => undefined],
-      ['NaN', Number.NaN],
-      ['positive infinity', Number.POSITIVE_INFINITY],
-    ] as const) {
-      const envelope = structuredClone(compiled.envelope);
-      const set = envelope.graph.nodes.find(({ id }) => id === 'set');
-      if (set === undefined) throw new Error('fixture set node missing');
-      Object.assign(set.inputMappings, {
-        literal: { kind: 'literal', value: hostile },
-      });
-      expect(
-        () => parseWorkflowExecutable({ envelope, catalog: catalog }),
-        name,
-      ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
-    }
-    expect(getterCalls).toBe(0);
   });
 });

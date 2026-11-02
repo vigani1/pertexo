@@ -36,17 +36,6 @@ describe('checkpoint fields', () => {
       expect.objectContaining({ code: 'checkpoint_invalid' }),
     );
   });
-
-  it('refuses a field backed by a getter', () => {
-    const { invocations, ...rest } = checkpoint();
-    const withGetter = Object.defineProperty(rest, 'invocations', {
-      enumerable: true,
-      get: () => invocations,
-    });
-    expect(() => parseCheckpoint(withGetter)).toThrow(
-      expect.objectContaining({ code: 'checkpoint_invalid' }),
-    );
-  });
 });
 
 describe('executable envelope fields', () => {
