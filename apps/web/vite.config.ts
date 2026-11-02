@@ -86,6 +86,8 @@ export default defineConfig({
     },
   },
   build: {
+    // Live browser journeys run side by side, and each stack serves its own build.
+    outDir: process.env.PERTEXO_WEB_OUT_DIR ?? 'dist',
     target: 'es2022',
     rolldownOptions: {
       output: {
