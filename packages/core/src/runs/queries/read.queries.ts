@@ -1,7 +1,7 @@
 import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
 import { RUN_DETAILS_RETENTION_SQL } from '../data-policy.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { withResourceRunRead } from '../../tenant-access/resources/transactions.repository.js';
+import { withResourceRunRead } from './access.queries.js';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
 import { readErrorWorkflow } from '../error-workflows/read.queries.js';

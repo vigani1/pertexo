@@ -2,7 +2,9 @@ import {
   lockWorkspaceAuthorityInStatuses,
   lockWorkspaceRow,
   readWorkspaceAuthority,
+  readWorkspaceRole,
 } from './authority.queries.js';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   withTenantScopedClient,
   withTenantScopedReadClient,
@@ -19,7 +21,7 @@ import type { Pool, PoolClient } from 'pg';
 export type WorkspaceActor = Readonly<{
   workspaceId: string;
   actorId: string;
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
 }>;
 
 export type WorkspaceAccess = Readonly<{
@@ -35,7 +37,19 @@ export type WorkspaceAccess = Readonly<{
   capability: AuthorizationCapability;
   statuses: WorkspaceStatusList;
   /** For a request-path flow that must give up rather than hold a connection. */
-  statementTimeoutMillis?: number;
+  statementTimeoutMillis?: number | undefined;
+}>;
+
+/**
+ * A snapshot read that refuses no one: its rows are filtered by the role, so
+ * someone without access, or a workspace outside the list, gets an empty answer
+ * rather than a denial, and can't tell a workspace exists. The operation gets
+ * null for the role, and it decides nothing from a capability.
+ */
+export type WorkspaceVisibility = Readonly<{
+  mode: 'visible';
+  statuses: WorkspaceStatusList;
+  statementTimeoutMillis?: number | undefined;
 }>;
 
 /**
@@ -48,17 +62,43 @@ export type WorkspaceAccess = Readonly<{
  */
 export function withWorkspaceAccess<T>(
   pool: Pool,
-  { workspaceId, actorId, signal }: WorkspaceActor,
-  { mode, capability, statuses, statementTimeoutMillis }: WorkspaceAccess,
+  actor: WorkspaceActor,
+  access: WorkspaceVisibility,
+  operation: (client: PoolClient, role: Role | null) => Promise<T>,
+): Promise<T>;
+export function withWorkspaceAccess<T>(
+  pool: Pool,
+  actor: WorkspaceActor,
+  access: WorkspaceAccess,
   operation: (client: PoolClient, role: Role) => Promise<T>,
+): Promise<T>;
+export function withWorkspaceAccess<T>(
+  pool: Pool,
+  { workspaceId, actorId, signal }: WorkspaceActor,
+  access: WorkspaceAccess | WorkspaceVisibility,
+  operation: (client: PoolClient, role: never) => Promise<T>,
 ): Promise<T> {
   const scope = { workspaceId, actorId };
+  const { statuses, statementTimeoutMillis } = access;
   const options = {
     ...(signal === undefined ? {} : { signal }),
     ...(statementTimeoutMillis === undefined ? {} : { statementTimeoutMillis }),
   };
-  const roles = rolesForCapability(capability);
-  if (mode === 'read')
+  // The overloads pair each mode with the role it gives the operation.
+  const run = operation as (
+    client: PoolClient,
+    role: Role | null,
+  ) => Promise<T>;
+  if (access.mode === 'visible')
+    return withTenantScopedReadClient(
+      pool,
+      scope,
+      async (client) =>
+        run(client, await readWorkspaceRole(drizzle(client), scope, statuses)),
+      options,
+    );
+  const roles = rolesForCapability(access.capability);
+  if (access.mode === 'read')
     return withTenantScopedReadClient(
       pool,
       scope,
@@ -68,7 +108,7 @@ export function withWorkspaceAccess<T>(
           roles,
           allowedStatuses: statuses,
         });
-        return operation(client, role);
+        return run(client, role);
       },
       options,
     );
@@ -76,13 +116,14 @@ export function withWorkspaceAccess<T>(
     pool,
     scope,
     async (client) => {
-      if (mode === 'exclusive') await lockWorkspaceRow(client, workspaceId);
+      if (access.mode === 'exclusive')
+        await lockWorkspaceRow(client, workspaceId);
       const role = await lockWorkspaceAuthorityInStatuses(client, workspaceId, {
         actorId,
         roles,
         allowedStatuses: statuses,
       });
-      return operation(client, role);
+      return run(client, role);
     },
     options,
   );

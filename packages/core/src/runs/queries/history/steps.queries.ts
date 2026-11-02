@@ -1,6 +1,6 @@
 import type { RunStatus, RecoveryNode } from '@pertexo/workflow-engine';
 import { nodeRuns, workflowRuns, workflows } from '@pertexo/database/schema';
-import { withResourceWorkflowRead } from '../../../tenant-access/resources/transactions.repository.js';
+import { withResourceWorkflowRead } from '../access.queries.js';
 import { ordinaryRunSql } from '../../data-policy.js';
 import { and, eq, sql, desc, isNull } from 'drizzle-orm';
 import type { Pool } from 'pg';

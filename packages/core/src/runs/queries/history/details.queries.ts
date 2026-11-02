@@ -4,7 +4,7 @@ import {
   nodeAttempts,
   workflowRuns,
 } from '@pertexo/database/schema';
-import { withResourceRunRead } from '../../../tenant-access/resources/transactions.repository.js';
+import { withResourceRunRead } from '../access.queries.js';
 import {
   retainedTestRunSql,
   runRetentionIntervalSql,

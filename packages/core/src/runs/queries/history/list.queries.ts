@@ -1,7 +1,7 @@
 import type { RunStatus } from '@pertexo/workflow-engine';
 import { workflowScopeSql } from '../../../shared/scope.queries.js';
 import type { ResourceTransaction } from '../../../shared/contract.js';
-import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.repository.js';
+import { withRetainedRunRead } from '../access.queries.js';
 import { ordinaryRunSql, expiredRunSql } from '../../data-policy.js';
 import {
   workflowRunValues,
@@ -65,7 +65,7 @@ export async function readWorkflowRunListPage(
   pool: Pool,
   input: ListWorkflowRunsDatabaseInput,
 ): Promise<WorkflowRunListPage> {
-  return withRetainedResourceRead(pool, input, async (transaction) =>
+  return withRetainedRunRead(pool, input, async (transaction) =>
     listWorkflowRunsInTransaction(transaction, {
       limit: input.limit,
       ...(input.runValueKey === undefined

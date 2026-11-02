@@ -1,5 +1,5 @@
 import type { ResourceTransaction } from '../../../shared/contract.js';
-import { withRetainedResourceRead } from '../../../tenant-access/resources/transactions.repository.js';
+import { withRetainedRunRead } from '../access.queries.js';
 import type { Pool } from 'pg';
 import type { RunStatus } from '@pertexo/workflow-engine';
 import { emptyRunCounts } from '../counts.js';
@@ -65,7 +65,7 @@ export async function readWorkflowRunStatistics(
   pool: Pool,
   input: WorkflowRunStatisticsDatabaseInput,
 ): Promise<WorkflowRunStatisticsRecord> {
-  return withRetainedResourceRead(
+  return withRetainedRunRead(
     pool,
     input,
     (transaction) => readInTransaction(transaction, input),

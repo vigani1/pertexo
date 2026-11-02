@@ -1,5 +1,5 @@
 import { lockActorArtifactReferences } from '../artifacts/references/locks.repository.js';
-import { withResourceRunRead } from '../tenant-access/resources/transactions.repository.js';
+import { withResourceRunRead } from './queries/access.queries.js';
 import {
   withRunCommand,
   requireRunAccess,

@@ -1,48 +1,28 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { FOLDER_LIMIT } from './folder-policy.js';
 import {
-  users,
-  workspaceMemberships,
-  workspaces,
+  databaseSchema,
   workflowFolders,
   workflowFolderGrants,
   authOrganizationWorkspaces,
   authDirectoryUsers,
   authDirectoryGroupMembers,
 } from '@pertexo/database/schema';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import {
+  rethrowQueryFailure,
+  type WorkspaceId,
+} from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
+  ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
   type Role,
 } from '@pertexo/workflow-model';
-import type { ResourceActor } from './contract.js';
+import { readWorkspaceRole } from './authority.queries.js';
+import type { ResourceActor, ResourceTransaction } from './contract.js';
 import { folderScope, RESOURCE_ADMINISTRATORS } from './folder-policy.js';
-
-async function currentRole(
-  db: WorkspaceTransaction['db'],
-  actor: ResourceActor,
-  workspaceStatuses: readonly string[],
-) {
-  const rows = await db
-    .select({ role: workspaceMemberships.role })
-    .from(workspaceMemberships)
-    .innerJoin(users, eq(users.id, workspaceMemberships.userId))
-    .innerJoin(workspaces, eq(workspaces.id, workspaceMemberships.workspaceId))
-    .where(
-      and(
-        eq(workspaceMemberships.workspaceId, actor.workspaceId),
-        eq(workspaceMemberships.userId, actor.actorId),
-        eq(workspaceMemberships.status, 'active'),
-        eq(users.status, 'active'),
-        sql`${workspaces.status}=any(${sql.param(workspaceStatuses)}::text[])`,
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  return rows[0]?.role ?? null;
-}
 
 function matchingGrants(db: WorkspaceTransaction['db'], actor: ResourceActor) {
   const selection = {
@@ -98,15 +78,21 @@ function matchingGrants(db: WorkspaceTransaction['db'], actor: ResourceActor) {
   return direct.unionAll(groups).catch(rethrowQueryFailure);
 }
 
-/** Bounded hierarchy plus only this actor's matching grants; no other members' audiences. */
+/**
+ * Bounded hierarchy plus only this actor's matching grants; no other members'
+ * audiences. A role of null is someone with no access, whose scope permits nothing.
+ */
 export async function readTransactionFolderScope(
   transaction: Pick<WorkspaceTransaction, 'db'>,
   actor: ResourceActor,
-  fencedRole?: Role,
-  workspaceStatuses: readonly string[] = ['active'],
+  fencedRole?: Role | null,
+  workspaceStatuses: readonly string[] = ACTIVE_WORKSPACE_STATUSES,
 ) {
   const { db } = transaction;
-  const role = fencedRole ?? (await currentRole(db, actor, workspaceStatuses));
+  const role =
+    fencedRole === undefined
+      ? await readWorkspaceRole(db, actor, workspaceStatuses)
+      : fencedRole;
   if (role === null) return folderScope(actor.workspaceId, null, [], []);
   const folders = await db
     .select({
@@ -143,8 +129,8 @@ export function readBrowsableFolderScope(
 export function readFolderScope(
   client: PoolClient,
   actor: ResourceActor,
-  fencedRole?: Role,
-  workspaceStatuses: readonly string[] = ['active'],
+  fencedRole?: Role | null,
+  workspaceStatuses: readonly string[] = ACTIVE_WORKSPACE_STATUSES,
 ) {
   return readTransactionFolderScope(
     { db: drizzle(client) },
@@ -152,4 +138,17 @@ export function readFolderScope(
     fencedRole,
     workspaceStatuses,
   );
+}
+
+/** What a flow over workflows and runs works with, for the role the helper found. */
+export async function readResourceTransaction(
+  client: PoolClient,
+  actor: ResourceActor,
+  role: Role | null,
+): Promise<ResourceTransaction> {
+  return {
+    db: drizzle(client, { schema: databaseSchema }),
+    workspaceId: actor.workspaceId as WorkspaceId,
+    resources: await readFolderScope(client, actor, role),
+  };
 }
