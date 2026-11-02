@@ -21,6 +21,15 @@ import {
 const PARAMETER_HELP =
   "Don't put secrets here; people who can see this connection can read them.";
 
+const FIELDS_A_SERVICE_FILLS = [
+  'authorizationUrl',
+  'tokenUrl',
+  'scope',
+  'authorizationParameters',
+  'tokenParameters',
+  'hosts',
+] as const;
+
 type FormProps = Readonly<{
   draft: OAuth2Draft;
   idPrefix: string;
@@ -229,7 +238,11 @@ export function OAuth2Fields(form: FormProps) {
         disabled={disabled}
         options={OAUTH2_SERVICES}
         onChange={(next) => {
-          onChange(withOAuth2Service(draft, next));
+          const changed = withOAuth2Service(draft, next);
+          onChange(changed);
+          const errors = credentialErrors(changed);
+          for (const field of FIELDS_A_SERVICE_FILLS)
+            form.validation.change(field, errors[field]);
         }}
       />
       <LabelledField
