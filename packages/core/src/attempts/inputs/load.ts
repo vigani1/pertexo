@@ -15,19 +15,14 @@ import { readVariableSetValues } from '../../variables/values.queries.js';
 import { workflowNodeFailureValueSchema } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
 import { NodeAttemptStateCorruptError } from '../errors.js';
-import type {
-  NodeAttemptRunStore,
-  NodeAttemptStoredInputs,
-} from '../contract.js';
+import type { NodeAttemptStoredInputs, LoadInputsInput } from '../contract.js';
 import { attemptControl } from '../control.js';
 type UpstreamOutputRow = Awaited<
   ReturnType<typeof readUpstreamOutputs>
 >[number];
 
 function reconcileCompletedNodeOutputs(
-  expectedOutputs: Parameters<
-    NodeAttemptRunStore['loadInputs']
-  >[0]['upstreamNodeOutputs'],
+  expectedOutputs: LoadInputsInput['upstreamNodeOutputs'],
   rows: readonly UpstreamOutputRow[],
 ): readonly Readonly<{
   invocationKey: string;
@@ -79,7 +74,7 @@ function reconcileCompletedNodeOutputs(
 
 export async function loadNodeAttemptInputs(
   pool: Pool,
-  input: Parameters<NodeAttemptRunStore['loadInputs']>[0],
+  input: LoadInputsInput,
 ): Promise<NodeAttemptStoredInputs> {
   return withTenantScopedReadClient(
     pool,
@@ -143,7 +138,7 @@ export async function loadNodeAttemptInputs(
 
 async function readSourceFailure(
   client: PoolClient,
-  input: Parameters<NodeAttemptRunStore['loadInputs']>[0],
+  input: LoadInputsInput,
 ): Promise<NodeAttemptStoredInputs['sourceFailure']> {
   let sourceFailure: NodeAttemptStoredInputs['sourceFailure'];
   if (input.sourceFailure !== undefined) {

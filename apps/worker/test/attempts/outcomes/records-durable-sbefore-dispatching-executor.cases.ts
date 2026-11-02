@@ -28,6 +28,7 @@ export function registerRecordsDurableSBeforeDispatchingExecutor(): void {
         .fn<NodeAttemptRunStore['complete']>()
         .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
       const store = {
+        recordInput: vi.fn(),
         claimDelivery: vi
           .fn()
           .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
@@ -101,6 +102,7 @@ export function registerRecordsDurableSBeforeDispatchingExecutor(): void {
         });
       const markDispatched = vi.fn<NodeAttemptRunStore['markDispatched']>();
       const store = executionStore({
+        recordInput: vi.fn(),
         claimDelivery: vi
           .fn()
           .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
@@ -150,6 +152,7 @@ export function registerRecordsDurableSBeforeDispatchingExecutor(): void {
         .fn<NodeAttemptRunStore['complete']>()
         .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
       const store = {
+        recordInput: vi.fn(),
         claimDelivery: vi
           .fn()
           .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),

@@ -349,7 +349,7 @@ test('shared imports no other area, named by its index or not, passed or not', (
 test('the list of areas not yet passed can only shrink', () => {
   // A pass removes its area from both lists. Adding to this one, or to the check's,
   // is a decision to take in review: the rule exists so areas get off the list.
-  const AT_THE_MOVE = ['attempts', 'execution', 'outbox', 'runs'];
+  const AT_THE_MOVE = ['execution', 'outbox', 'runs'];
   for (const area of AREAS_NOT_YET_PASSED)
     assert.ok(
       AT_THE_MOVE.includes(area),

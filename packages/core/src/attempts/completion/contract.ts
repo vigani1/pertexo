@@ -1,16 +1,14 @@
-import type { NodeAttemptRunStore } from '../contract.js';
+import type { CompleteAttemptInput } from '../contract.js';
 import type { inboxReceipts } from '@pertexo/database/schema';
 import type { lockCompletionAttempt } from './records.queries.js';
 
-export type CompletionInput = Parameters<NodeAttemptRunStore['complete']>[0];
-
 type ExecutorOutcome = Extract<
-  CompletionInput['outcome'],
+  CompleteAttemptInput['outcome'],
   { status: 'executor_failure' }
 >;
 
 export type SuspendedOutcome = Extract<
-  CompletionInput['outcome'],
+  CompleteAttemptInput['outcome'],
   { status: 'suspended' }
 >;
 
@@ -24,7 +22,7 @@ export type LockedAttemptRow = Awaited<
 
 export interface CompletionFields {
   readonly durableStatus: Exclude<
-    CompletionInput['outcome']['status'],
+    CompleteAttemptInput['outcome']['status'],
     'suspended' | 'executor_failure'
   >;
   readonly errorSummary: string | null;

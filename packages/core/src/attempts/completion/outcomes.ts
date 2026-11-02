@@ -15,11 +15,13 @@ import {
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,
 } from '../errors.js';
-import type { CompleteNodeAttemptResult } from '../contract.js';
+import type {
+  CompleteAttemptInput,
+  CompleteNodeAttemptResult,
+} from '../contract.js';
 import { completeReceipt } from './receipts.queries.js';
 import { persistConnectionHealthObservation } from './connection-health.queries.js';
 import type {
-  CompletionInput,
   SuspendedOutcome,
   CompletionReceiptRow,
   LockedAttemptRow,
@@ -27,7 +29,7 @@ import type {
 } from './contract.js';
 import { duplicateCompletion } from './replay.js';
 
-function completionFields(input: CompletionInput): CompletionFields {
+function completionFields(input: CompleteAttemptInput): CompletionFields {
   const outcome = input.outcome;
   switch (outcome.status) {
     case 'succeeded':
@@ -69,7 +71,7 @@ function completionFields(input: CompletionInput): CompletionFields {
 }
 
 function assertActiveLease(
-  input: CompletionInput,
+  input: CompleteAttemptInput,
   row: LockedAttemptRow,
   receipt: CompletionReceiptRow,
 ): void {
@@ -89,7 +91,7 @@ function assertActiveLease(
 
 async function updateAttempt(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
   serializedOutput: string | null,
   fields: CompletionFields,
 ): Promise<void> {
@@ -127,7 +129,7 @@ async function updateAttempt(
 
 async function enqueueAdvance(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
 ): Promise<string> {
   const outboxEventId = generatePersistedId();
   const payload = {
@@ -155,7 +157,7 @@ async function enqueueAdvance(
 
 async function commitAndReceipt(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
 ): Promise<CompleteNodeAttemptResult> {
   const outboxEventId = await enqueueAdvance(client, input);
   await completeReceipt(client, input.lease.workspaceId, input.lease.delivery);
@@ -164,7 +166,7 @@ async function commitAndReceipt(
 
 async function commitSuspension(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
   outcome: SuspendedOutcome,
   serializedOutput: string | null,
 ): Promise<CompleteNodeAttemptResult> {
@@ -214,7 +216,7 @@ async function commitSuspension(
 
 async function commitTerminal(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
   serializedOutput: string | null,
   fields: CompletionFields,
 ): Promise<CompleteNodeAttemptResult> {
@@ -257,7 +259,7 @@ async function commitTerminal(
 
 export async function applyNodeAttemptCompletion(
   client: PoolClient,
-  input: CompletionInput,
+  input: CompleteAttemptInput,
   {
     row,
     receipt,

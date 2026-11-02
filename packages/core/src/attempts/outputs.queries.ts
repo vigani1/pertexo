@@ -17,12 +17,15 @@ import type {
   NodeAttemptStoredOutput,
   NodeRunOutcome,
   NodeRunStoredOutput,
-  NodeAttemptRunStore,
+  ReadLoopDeclarationInput,
+  ReadAttemptOutputsInput,
+  ListNodeOutcomesInput,
+  ReadNodeOutputsInput,
 } from './contract.js';
 
 export async function readNodeAttemptLoopDeclaration(
   pool: Pool,
-  input: Parameters<NodeAttemptRunStore['readLoopDeclaration']>[0],
+  input: ReadLoopDeclarationInput,
 ): Promise<NodeAttemptLoopDeclaration | undefined> {
   return withTenantScopedReadClient(
     pool,
@@ -73,7 +76,7 @@ export async function readNodeAttemptLoopDeclaration(
 /** The stored outputs of succeeded attempts in the leased run, by attempt ID. */
 export async function readNodeAttemptOutputs(
   pool: Pool,
-  input: Parameters<NodeAttemptRunStore['readAttemptOutputs']>[0],
+  input: ReadAttemptOutputsInput,
 ): Promise<readonly NodeAttemptStoredOutput[]> {
   if (input.attemptIds.length === 0) return Object.freeze([]);
   return withTenantScopedReadClient(
@@ -119,7 +122,7 @@ export async function readNodeAttemptOutputs(
 
 export async function listNodeRunOutcomes(
   pool: Pool,
-  input: Parameters<NodeAttemptRunStore['listNodeOutcomes']>[0],
+  input: ListNodeOutcomesInput,
 ): Promise<readonly NodeRunOutcome[]> {
   return withTenantScopedReadClient(
     pool,
@@ -158,7 +161,7 @@ export async function listNodeRunOutcomes(
 /** The stored outputs of succeeded step runs in the leased run, by key. */
 export async function readNodeRunOutputs(
   pool: Pool,
-  input: Parameters<NodeAttemptRunStore['readNodeOutputs']>[0],
+  input: ReadNodeOutputsInput,
 ): Promise<readonly NodeRunStoredOutput[]> {
   const keys = [...new Set(input.invocationKeys)];
   if (keys.length === 0) return Object.freeze([]);

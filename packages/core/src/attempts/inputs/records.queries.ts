@@ -1,4 +1,4 @@
-import type { NodeAttemptRunStore } from '../contract.js';
+import type { LoadInputsInput } from '../contract.js';
 import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -13,7 +13,7 @@ import {
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { runAbortReason } from '../control.js';
 
-type Input = Parameters<NodeAttemptRunStore['loadInputs']>[0];
+type Input = LoadInputsInput;
 
 export async function readLeasedInputs(client: PoolClient, { lease }: Input) {
   return drizzle(client)

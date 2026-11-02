@@ -11,10 +11,11 @@ import type { Pool } from 'pg';
 import type { z } from 'zod';
 import { DeliveryMismatch, NodeAttemptStateCorruptError } from '../errors.js';
 import { branchContextSchema } from '../validation/shared.js';
-import type {
-  NodeAttemptClaimResult,
-  NodeAttemptLease,
-  NodeAttemptRunStore,
+import {
+  SETTLED_ATTEMPT_STATUSES,
+  type ClaimDeliveryInput,
+  type NodeAttemptClaimResult,
+  type NodeAttemptLease,
 } from '../contract.js';
 import {
   auditMismatch,
@@ -25,7 +26,7 @@ import {
 
 export async function claimNodeAttemptDelivery(
   pool: Pool,
-  input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
+  input: ClaimDeliveryInput,
 ): Promise<NodeAttemptClaimResult> {
   try {
     return await withTenantScopedClient(
@@ -42,15 +43,7 @@ export async function claimNodeAttemptDelivery(
           return Object.freeze({ kind: 'duplicate' as const });
 
         const { row, runRow } = await lockClaimCandidate(client, input);
-        if (
-          [
-            'succeeded',
-            'failed',
-            'canceled',
-            'timed_out',
-            'outcome_unknown',
-          ].includes(row.attemptStatus)
-        ) {
+        if (SETTLED_ATTEMPT_STATUSES.includes(row.attemptStatus)) {
           await completeReceipt(client, input.workspaceId, input.delivery);
           return Object.freeze({ kind: 'duplicate' as const });
         }
@@ -145,7 +138,7 @@ export async function claimNodeAttemptDelivery(
 }
 
 function claimedAttemptLease(
-  input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
+  input: ClaimDeliveryInput,
   {
     row,
     runRow,

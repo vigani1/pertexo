@@ -84,6 +84,7 @@ export function registerCommitsPreparedSuspensionExactDuration(): void {
       .fn<NodeAttemptRunStore['complete']>()
       .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
     const store = {
+      recordInput: vi.fn(),
       claimDelivery: vi
         .fn()
         .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),

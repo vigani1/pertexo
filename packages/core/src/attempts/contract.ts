@@ -6,6 +6,8 @@ import type {
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type { WorkflowNodeFailureValue } from '@pertexo/workflow-model';
 
+import type { createNodeAttemptRunStore } from './store.js';
+
 export type NodeAttemptDelivery = Readonly<{
   outboxEventId: string;
   payloadChecksum: string;
@@ -40,12 +42,12 @@ export type NodeAttemptClaimResult =
   | Readonly<{ kind: 'duplicate' }>
   | Readonly<{ kind: 'claimed'; lease: NodeAttemptLease }>;
 
-/** What the database holds for an attempt; execution projects the rest. */
 /** Whether the run wants this attempt to stop, and why. */
 export type NodeAttemptControl =
   | Readonly<{ kind: 'none' }>
   | Readonly<{ kind: 'abort'; reason: 'canceled' | 'timed_out' }>;
 
+/** What the database holds for an attempt; execution projects the rest. */
 export type NodeAttemptStoredInputs = Readonly<{
   runInput: unknown;
   variables?: WorkspaceVariableValues;
@@ -110,113 +112,111 @@ export type CompleteNodeAttemptResult =
   | Readonly<{ kind: 'committed'; outboxEventId: string }>
   | Readonly<{ kind: 'duplicate'; outboxEventId: null }>;
 
-export interface NodeAttemptRunStore {
-  claimDelivery(
-    input: Readonly<{
-      workspaceId: string;
-      runId: string;
-      nodeRunId: string;
-      attemptId: string;
-      delivery: NodeAttemptDelivery;
-      leaseDurationSeconds: number;
-      workerId: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<NodeAttemptClaimResult>;
-  loadInputs(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      sourceFailure?: Readonly<{ nodeId: string; invocationKey: string }>;
-      upstreamNodeOutputs: readonly Readonly<{
-        nodeId: string;
-        invocationKey: string;
-      }>[];
-      signal: AbortSignal;
-    }>,
-  ): Promise<NodeAttemptStoredInputs>;
-  readLoopDeclaration(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      controlInvocationKey: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<NodeAttemptLoopDeclaration | undefined>;
-  readAttemptOutputs(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      attemptIds: readonly string[];
-      signal: AbortSignal;
-    }>,
-  ): Promise<readonly NodeAttemptStoredOutput[]>;
-  /** Every settled run of one step in the leased run, without outputs. */
-  listNodeOutcomes(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      nodeId: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<readonly NodeRunOutcome[]>;
-  readNodeOutputs(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      invocationKeys: readonly string[];
-      signal: AbortSignal;
-    }>,
-  ): Promise<readonly NodeRunStoredOutput[]>;
-  markDispatched(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      connectionFence?: Readonly<{
-        connectionId: string;
-        expectedProviderKey: string;
-        expectedAuthType: string;
-        secretVersionId: string;
+/** An attempt in one of these has settled, and a repeat of its work is a duplicate. */
+export const SETTLED_ATTEMPT_STATUSES: readonly string[] = [
+  'succeeded',
+  'failed',
+  'canceled',
+  'timed_out',
+  'outcome_unknown',
+];
+
+export type ClaimDeliveryInput = Readonly<{
+  workspaceId: string;
+  runId: string;
+  nodeRunId: string;
+  attemptId: string;
+  delivery: NodeAttemptDelivery;
+  leaseDurationSeconds: number;
+  workerId: string;
+  signal: AbortSignal;
+}>;
+
+/** Which attempt a delivery claims to be for. */
+export type NodeAttemptDeliveryIdentity = Pick<
+  ClaimDeliveryInput,
+  'workspaceId' | 'runId' | 'nodeRunId' | 'attemptId' | 'delivery'
+>;
+
+export type LoadInputsInput = Readonly<{
+  lease: NodeAttemptLease;
+  sourceFailure?: Readonly<{ nodeId: string; invocationKey: string }>;
+  upstreamNodeOutputs: readonly Readonly<{
+    nodeId: string;
+    invocationKey: string;
+  }>[];
+  signal: AbortSignal;
+}>;
+
+export type ReadLoopDeclarationInput = Readonly<{
+  lease: NodeAttemptLease;
+  controlInvocationKey: string;
+  signal: AbortSignal;
+}>;
+
+export type ReadAttemptOutputsInput = Readonly<{
+  lease: NodeAttemptLease;
+  attemptIds: readonly string[];
+  signal: AbortSignal;
+}>;
+
+/** Every settled run of one step in the leased run, without outputs. */
+export type ListNodeOutcomesInput = Readonly<{
+  lease: NodeAttemptLease;
+  nodeId: string;
+  signal: AbortSignal;
+}>;
+
+export type ReadNodeOutputsInput = Readonly<{
+  lease: NodeAttemptLease;
+  invocationKeys: readonly string[];
+  signal: AbortSignal;
+}>;
+
+export type MarkDispatchedInput = Readonly<{
+  lease: NodeAttemptLease;
+  connectionFence?: Readonly<{
+    connectionId: string;
+    expectedProviderKey: string;
+    expectedAuthType: string;
+    secretVersionId: string;
+  }>;
+  providerDispatchBinding?: string;
+  signal: AbortSignal;
+}>;
+
+export type HeartbeatInput = Readonly<{
+  lease: NodeAttemptLease;
+  leaseDurationSeconds: number;
+  signal: AbortSignal;
+}>;
+
+export type NodeAttemptHeartbeat = Readonly<{
+  leaseExpiresAt: Date;
+  control: NodeAttemptControl;
+}>;
+
+export type RecordInputInput = Readonly<{
+  lease: NodeAttemptLease;
+  input: unknown;
+  signal: AbortSignal;
+}>;
+
+export type CompleteAttemptInput = Readonly<{
+  lease: NodeAttemptLease;
+  outcome: NodeAttemptCompletion;
+  codeDiagnostics?: CodeDiagnostics;
+  connectionHealthObservation?:
+    | Readonly<{ kind: 'healthy' }>
+    | Readonly<{
+        kind: 'reauthorization_required';
+        reasonCode:
+          | 'connection.slack_account_inactive'
+          | 'connection.slack_token_expired'
+          | 'connection.slack_token_revoked';
       }>;
-      providerDispatchBinding?: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<Readonly<{ dispatchedAt: Date }>>;
-  heartbeat(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      leaseDurationSeconds: number;
-      signal: AbortSignal;
-    }>,
-  ): Promise<
-    Readonly<{
-      leaseExpiresAt: Date;
-      control: NodeAttemptControl;
-    }>
-  >;
-  /**
-   * Records the input the attempt's executor is about to receive (ADR 052).
-   * Diagnostic: it records nothing, and never throws, when the lease is gone
-   * or the input is over the inline bound. A store may leave it out.
-   */
-  recordInput?(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      input: unknown;
-      signal: AbortSignal;
-    }>,
-  ): Promise<Readonly<{ recorded: boolean }>>;
-  complete(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      outcome: NodeAttemptCompletion;
-      codeDiagnostics?: CodeDiagnostics;
-      connectionHealthObservation?:
-        | Readonly<{ kind: 'healthy' }>
-        | Readonly<{
-            kind: 'reauthorization_required';
-            reasonCode:
-              | 'connection.slack_account_inactive'
-              | 'connection.slack_token_expired'
-              | 'connection.slack_token_revoked';
-          }>;
-      traceparent?: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<CompleteNodeAttemptResult>;
-  close(): Promise<void>;
-}
+  traceparent?: string;
+  signal: AbortSignal;
+}>;
+
+export type NodeAttemptRunStore = ReturnType<typeof createNodeAttemptRunStore>;

@@ -42,6 +42,7 @@ export function registerCommitsResumedWaitOutputOptionalTrace(): void {
         },
         registry: { execute: vi.fn() },
         runStore: {
+          recordInput: vi.fn(),
           claimDelivery: vi.fn().mockResolvedValue({
             kind: 'claimed',
             lease: { ...lease(), admissionKind: 'wait_resume' },
@@ -95,6 +96,7 @@ export function registerCommitsResumedWaitOutputOptionalTrace(): void {
   it('treats an exact completed delivery as a no-op before loading workflow state', async () => {
     const claimDelivery = vi.fn().mockResolvedValue({ kind: 'duplicate' });
     const store = {
+      recordInput: vi.fn(),
       claimDelivery,
       close: vi.fn().mockResolvedValue(undefined),
       complete: vi.fn(),
@@ -139,6 +141,7 @@ export function registerCommitsResumedWaitOutputOptionalTrace(): void {
       .fn<NodeAttemptRunStore['complete']>()
       .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
     const store = {
+      recordInput: vi.fn(),
       claimDelivery: vi
         .fn()
         .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),

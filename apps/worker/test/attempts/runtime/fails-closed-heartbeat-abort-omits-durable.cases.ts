@@ -30,6 +30,7 @@ import { testNodeAttemptRuntime } from '../../support/runtime-factories.js';
 export function registerFailsClosedHeartbeatAbortOmitsDurable(): void {
   it('rejects executor-controlled success without durable dispatch evidence', async () => {
     const runStore = {
+      recordInput: vi.fn(),
       claimDelivery: vi
         .fn()
         .mockResolvedValue({ kind: 'claimed', lease: lease() }),
@@ -122,6 +123,7 @@ export function registerFailsClosedHeartbeatAbortOmitsDurable(): void {
         .mockResolvedValue(undefined),
     } satisfies QueueConsumer;
     const runStore = {
+      recordInput: vi.fn(),
       claimDelivery: vi
         .fn<NonNullable<NodeAttemptRunStore['claimDelivery']>>()
         .mockResolvedValue({ kind: 'duplicate' }),

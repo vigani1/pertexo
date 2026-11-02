@@ -141,6 +141,7 @@ export function registerComposesProductionPreviewAttemptsThroughOne(): void {
           },
           registry: { execute: vi.fn() },
           runStore: {
+            recordInput: vi.fn(),
             claimDelivery: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
             complete: vi.fn(),
