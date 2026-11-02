@@ -6,7 +6,7 @@ import {
   apiUrl,
   enforceTestRetention,
   authoring,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   createConnectionStore,
   createHash,
   draftNode,
@@ -25,7 +25,7 @@ export function registerRetainsSameWorkspaceConnectionReferences(): void {
     const connections = createConnectionStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
     );
-    const database = createWorkflowAuthoringDatabase(
+    const database = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
         definitionCatalog: {

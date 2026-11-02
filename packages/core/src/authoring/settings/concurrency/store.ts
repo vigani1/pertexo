@@ -31,7 +31,7 @@ type Scope = Readonly<{
   actorId: string;
   signal?: AbortSignal;
 }>;
-export interface WorkflowConcurrencyDatabase {
+export interface WorkflowConcurrencyStore {
   readSettings(input: Scope): Promise<WorkflowConcurrencySettings>;
   updateSettings(
     input: Scope &
@@ -170,18 +170,18 @@ function settingsOf(
 /** Workflow active-run limits, sharing the authoring factory's transactions. */
 export function createWorkflowConcurrencyStore(
   transact: Transact,
-): WorkflowConcurrencyDatabase {
+): WorkflowConcurrencyStore {
   return Object.freeze({
     readSettings: (input) => readConcurrencySettings(transact, input),
 
     updateSettings: (input) => updateConcurrencySettings(transact, input),
-  } satisfies WorkflowConcurrencyDatabase);
+  } satisfies WorkflowConcurrencyStore);
 }
 
 async function readConcurrencySettings(
   transact: Transact,
-  input: Parameters<WorkflowConcurrencyDatabase['readSettings']>[0],
-): ReturnType<WorkflowConcurrencyDatabase['readSettings']> {
+  input: Parameters<WorkflowConcurrencyStore['readSettings']>[0],
+): ReturnType<WorkflowConcurrencyStore['readSettings']> {
   const workspaceId = input.workspaceId,
     actorId = input.actorId,
     workflowId = input.workflowId;
@@ -242,8 +242,8 @@ async function readConcurrencySettings(
 
 async function updateConcurrencySettings(
   transact: Transact,
-  input: Parameters<WorkflowConcurrencyDatabase['updateSettings']>[0],
-): ReturnType<WorkflowConcurrencyDatabase['updateSettings']> {
+  input: Parameters<WorkflowConcurrencyStore['updateSettings']>[0],
+): ReturnType<WorkflowConcurrencyStore['updateSettings']> {
   const workspaceId = input.workspaceId,
     actorId = input.actorId,
     workflowId = input.workflowId;

@@ -28,7 +28,7 @@ import type {
   CreateWorkflowInput,
   CreateWorkflowResult,
   SaveWorkflowDraftInput,
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
 } from '../contract.js';
 import {
   WorkflowNotFoundError,
@@ -41,10 +41,7 @@ import {
   workflowProjection,
 } from '../representation/records.queries.js';
 
-type DraftStore = Pick<
-  WorkflowAuthoringDatabase,
-  'createWorkflow' | 'saveDraft'
->;
+type DraftStore = Pick<WorkflowAuthoringStore, 'createWorkflow' | 'saveDraft'>;
 
 const uuidSchema = z.uuid();
 const createdResultSchema = z.object({ workflowId: uuidSchema }).strict();

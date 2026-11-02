@@ -16,7 +16,7 @@ import type { WorkflowAuthoringWriteContext } from '../context.js';
 import type {
   TransitionWorkflowLifecycleInput,
   TransitionWorkflowLifecycleResult,
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
 } from '../contract.js';
 import {
   WorkflowLifecycleRevisionConflictError,
@@ -30,7 +30,7 @@ import {
 import { workflowProjection } from '../representation/records.queries.js';
 
 type WorkflowLifecycleStore = Pick<
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
   'transitionWorkflowLifecycle'
 >;
 

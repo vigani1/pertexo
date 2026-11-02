@@ -18,7 +18,7 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '../../src/authoring/workflows/errors.js';
-import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringDatabase } from './workflow-authoring-admission.fixture.js';
+import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from './workflow-authoring-admission.fixture.js';
 import { createWorkflowIntegrationUsageStore } from '../../src/connections/discovery/integration-usage.queries.js';
 
 export {
@@ -31,7 +31,7 @@ export {
   checkDatabaseReadiness,
   createConnectionStore,
   createHash,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   createWorkflowIntegrationUsageStore,
   parseDatabaseConfig,
   randomUUID,

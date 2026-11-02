@@ -1,7 +1,7 @@
 // Flows that exist only for tests go here, never beside an area's public door:
 // production can't load this file (a check enforces it).
 export { testExecutableCompiler } from './authoring/test-executable-compiler.js';
-export { createWorkflowAuthoringDatabase } from './authoring/workflows/store.js';
+export { createWorkflowAuthoringStore } from './authoring/workflows/store.js';
 export { WorkflowDefinitionPlacementError } from './authoring/workflows/errors.js';
 export { reconcileWorkflowTriggersPayload } from './authoring/publication/trigger-reconciliation.repository.js';
 export {
@@ -19,11 +19,11 @@ export type {
   PublishWorkflowResult,
   RestoreWorkflowVersionInput,
   SaveWorkflowDraftInput,
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
   WorkflowPage,
   WorkflowVersionPage,
 } from './authoring/workflows/contract.js';
-export type { WorkflowAuthoringDatabaseOptions } from './authoring/workflows/types.js';
+export type { WorkflowAuthoringStoreOptions } from './authoring/workflows/types.js';
 export type {
   WorkflowDraftRecord,
   WorkflowRecord,
@@ -34,7 +34,7 @@ export type {
   WorkflowAutoPauseSettings,
   WorkspaceAutoPauseSettings,
   AutoPauseCommandResult,
-  WorkflowAutoPauseDatabase,
+  WorkflowAutoPauseStore,
 } from './authoring/settings/auto-pause/contract.js';
 export {
   WorkflowPauseRevisionConflictError,

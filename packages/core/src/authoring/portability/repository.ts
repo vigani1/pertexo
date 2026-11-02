@@ -36,7 +36,7 @@ import type {
   ExportWorkflowInput,
   ImportWorkflowInput,
   PreviewWorkflowImportInput,
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
 } from '../workflows/contract.js';
 
 import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
@@ -265,7 +265,7 @@ function importPortableWorkflow(
 export function createWorkflowPortabilityStore(
   context: WorkflowAuthoringWriteContext,
 ): Pick<
-  WorkflowAuthoringDatabase,
+  WorkflowAuthoringStore,
   'exportWorkflow' | 'previewWorkflowImport' | 'importWorkflow'
 > {
   return {

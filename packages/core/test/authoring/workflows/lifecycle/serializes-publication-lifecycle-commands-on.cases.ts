@@ -4,7 +4,7 @@ import {
   apiUrl,
   archiveWrite,
   authoring,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   emptyGraph,
   holdAtWrite,
@@ -31,14 +31,14 @@ export function registerSerializesPublicationLifecycleCommandsOn(): void {
       archiveWrite('workflow', archiveFirst.workflowId),
     );
     const archiveApplication = `laf-${randomUUID()}`;
-    const archiveFirstCommand = createWorkflowAuthoringDatabase(
+    const archiveFirstCommand = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(apiUrl, archiveApplication),
         max: 1,
       }),
     );
     const archiveFirstPublisherApplication = `lafp-${randomUUID()}`;
-    const archiveFirstPublisher = createWorkflowAuthoringDatabase(
+    const archiveFirstPublisher = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(
           apiUrl,
@@ -115,7 +115,7 @@ export function registerSerializesPublicationLifecycleCommandsOn(): void {
       publicationWrite('version', publicationFirst.workflowId),
     );
     const publicationFirstApplication = `lpf-${randomUUID()}`;
-    const publicationFirstPublisher = createWorkflowAuthoringDatabase(
+    const publicationFirstPublisher = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(
           apiUrl,
@@ -125,7 +125,7 @@ export function registerSerializesPublicationLifecycleCommandsOn(): void {
       }),
     );
     const publicationFirstArchiveApplication = `lpfa-${randomUUID()}`;
-    const publicationFirstArchive = createWorkflowAuthoringDatabase(
+    const publicationFirstArchive = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(
           apiUrl,

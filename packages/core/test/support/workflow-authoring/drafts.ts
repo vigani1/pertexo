@@ -5,7 +5,7 @@ import {
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/server';
 
-import type { WorkflowAuthoringDatabase } from '../../../src/authoring/workflows/contract.js';
+import type { WorkflowAuthoringStore } from '../../../src/authoring/workflows/contract.js';
 
 export const emptyGraph = {
   edges: [],
@@ -37,7 +37,7 @@ export const baselineEmptyDefinitionCatalog = Object.freeze({
 });
 
 export async function currentRepresentationTag(
-  database: WorkflowAuthoringDatabase,
+  database: WorkflowAuthoringStore,
   scopedWorkspaceId: string,
   {
     scopedWorkflowId,
@@ -68,9 +68,9 @@ export async function currentRepresentationTag(
 }
 
 export async function saveCurrentDraft(
-  database: WorkflowAuthoringDatabase,
+  database: WorkflowAuthoringStore,
   input: Omit<
-    Parameters<WorkflowAuthoringDatabase['saveDraft']>[0],
+    Parameters<WorkflowAuthoringStore['saveDraft']>[0],
     'representationTag' | 'graphJson'
   > & { graphJson: unknown },
 ) {

@@ -5,7 +5,7 @@ import {
   actorId,
   apiUrl,
   authoring,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   duplicateWrite,
   emptyGraph,
   failAtWrite,
@@ -73,11 +73,11 @@ export function registerRollsBackEntireCommandAfter(): void {
     const original = await source();
     const input = await command(original.workflowId);
     const hold = await holdAtWrite(duplicateWrite('workflow', input.name));
-    const copying = createWorkflowAuthoringDatabase(
+    const copying = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
     );
     const application = `duplicate-save-${randomUUID()}`;
-    const saving = createWorkflowAuthoringDatabase(
+    const saving = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(apiUrl, application),
         max: 1,
@@ -123,7 +123,7 @@ export function registerRollsBackEntireCommandAfter(): void {
   it('holds authority, source and catalog locks while concurrent archive, membership suspension and release changes wait', async () => {
     for (const race of ['archive', 'membership'] as const) {
       const original = await source();
-      const copying = createWorkflowAuthoringDatabase(
+      const copying = createWorkflowAuthoringStore(
         parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       );
       const input = await command(original.workflowId, copying);

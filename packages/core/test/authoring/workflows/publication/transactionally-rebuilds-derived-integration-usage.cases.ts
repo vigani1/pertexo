@@ -7,7 +7,7 @@ import {
   apiUrl,
   createConnectionStore,
   createHash,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   createWorkflowIntegrationUsageStore,
   currentRepresentationTag,
   draftNode,
@@ -43,7 +43,7 @@ export function registerTransactionallyRebuildsDerivedIntegrationUsage(): void {
         }),
       ]),
     });
-    const usageAuthoring = createWorkflowAuthoringDatabase(
+    const usageAuthoring = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       { definitionCatalog: usageCatalog },
     );

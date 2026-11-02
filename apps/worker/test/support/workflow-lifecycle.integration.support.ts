@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto';
 
 import {
   createIdentityWorkspaceStore,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   testExecutableCompiler,
   type IdentityWorkspaceStore,
-  type WorkflowAuthoringDatabase,
+  type WorkflowAuthoringStore,
 } from '@pertexo/core/testing';
 import {
   migrateDatabase,
@@ -109,7 +109,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
   let apiPool: Pool | undefined;
   let worker: Pool | undefined;
   let identity: IdentityWorkspaceStore | undefined;
-  let authoring: WorkflowAuthoringDatabase | undefined;
+  let authoring: WorkflowAuthoringStore | undefined;
   let queue: Queue | undefined;
   let databaseCreated = false;
   let initialized = false;
@@ -136,7 +136,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
     return worker;
   };
 
-  const requireAuthoring = (): WorkflowAuthoringDatabase => {
+  const requireAuthoring = (): WorkflowAuthoringStore => {
     if (authoring === undefined)
       throw new Error('Workflow lifecycle fixture is not initialized');
     return authoring;
@@ -249,7 +249,7 @@ export function createWorkflowLifecycleWorkerEnvironment(): WorkflowLifecycleWor
       );
       authoring = registerCloseable(
         'authoring database',
-        createWorkflowAuthoringDatabase(apiConfig, {
+        createWorkflowAuthoringStore(apiConfig, {
           executableCompiler: testExecutableCompiler,
         }),
       );

@@ -3,7 +3,7 @@ import {
   actorId,
   apiUrl,
   authoring,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   emptyGraph,
   finishControlledScenario,
@@ -38,10 +38,10 @@ export function registerSerializesBothSaveFirstPublish(): void {
       workspaceId,
       { scopedWorkflowId: saveFirstDraft.workflowId, scopedActorId: actorId },
     );
-    const saveFirstDatabase = createWorkflowAuthoringDatabase(
+    const saveFirstDatabase = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     );
-    const saveFirstPublisher = createWorkflowAuthoringDatabase(
+    const saveFirstPublisher = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(
           apiUrl,
@@ -113,11 +113,11 @@ export function registerSerializesBothSaveFirstPublish(): void {
         scopedActorId: actorId,
       },
     );
-    const publishFirstDatabase = createWorkflowAuthoringDatabase(
+    const publishFirstDatabase = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
     );
     const publishFirstSaverApplication = `workflow-publish-first-${workflowId}`;
-    const publishFirstSaver = createWorkflowAuthoringDatabase(
+    const publishFirstSaver = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(
           apiUrl,

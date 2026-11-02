@@ -4,7 +4,7 @@ import {
 } from '../support/federation.js';
 import { nodeTestingSamples } from '../node-testing/fixture.js';
 
-import type { WorkflowAuthoringDatabase } from '@pertexo/core/testing';
+import type { WorkflowAuthoringStore } from '@pertexo/core/testing';
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type { TelemetryLifecycle } from '@pertexo/observability';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
@@ -158,7 +158,7 @@ export function betterAuthIdentityRuntime() {
 
 export function workflowAuthoringDatabase(
   close = vi.fn().mockResolvedValue(undefined),
-): WorkflowAuthoringDatabase {
+): WorkflowAuthoringStore {
   return {
     workflowTestSuites: {
       prepare: vi.fn(),
@@ -203,7 +203,7 @@ export function workflowAuthoringDatabase(
 /** The stub runtime with the real node-testing routes behind `persistence`. */
 export function nodeTestingWorkflowRuntime(
   authorization: IdentityWorkspaceDependencies['authorization'],
-  persistence: WorkflowAuthoringDatabase,
+  persistence: WorkflowAuthoringStore,
 ): ApiWorkflowRuntime {
   const expressionEvaluator = new JsonataEvaluator();
   return {

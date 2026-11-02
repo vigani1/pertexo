@@ -14,7 +14,7 @@ import {
   workflowAccessible,
   workflowActions,
 } from '../../tenant-access/resources/workflows.queries.js';
-import type { WorkflowAuthoringDatabase } from '../workflows/contract.js';
+import type { WorkflowAuthoringStore } from '../workflows/contract.js';
 import { WorkflowTemplateOriginUnavailableError } from '../workflows/errors.js';
 import type { WorkflowAuthoringReadContext } from '../workflows/reads/contract.js';
 import { workflowProjection } from '../workflows/representation/records.queries.js';
@@ -22,7 +22,7 @@ import { workflowProjection } from '../workflows/representation/records.queries.
 /** One scoped statement keeps summary and immutable origin in the same snapshot. */
 export function createWorkflowTemplateOriginReader(
   context: WorkflowAuthoringReadContext,
-): WorkflowAuthoringDatabase['getWorkflowWithTemplateOrigin'] {
+): WorkflowAuthoringStore['getWorkflowWithTemplateOrigin'] {
   return (workspaceId: string, workflowId: string, actorId: string) =>
     context.transact(workspaceId, actorId, async (client) => {
       const access = await context.requireReader(client, workspaceId, actorId);

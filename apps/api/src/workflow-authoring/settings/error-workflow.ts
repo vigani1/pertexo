@@ -5,7 +5,7 @@ import {
   workflowErrorSettingsRequestSchema,
   workflowErrorSettingsResponseSchema,
 } from '@pertexo/contracts';
-import type { WorkflowErrorDatabase } from '@pertexo/core/authoring';
+import type { WorkflowErrorStore } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
   type WorkspaceAuthorizationSource,
@@ -22,7 +22,7 @@ type CommandInput = ReadInput &
 /** Operational policy never mutates drafts, publication or trigger state. */
 export class WorkflowErrorUseCase {
   public constructor(
-    private readonly persistence: WorkflowErrorDatabase,
+    private readonly persistence: WorkflowErrorStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
   public async targets(input: ReadInput & Readonly<{ request: unknown }>) {

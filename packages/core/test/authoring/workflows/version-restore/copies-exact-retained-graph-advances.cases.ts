@@ -5,7 +5,7 @@ import {
   actorId,
   apiUrl,
   authoring,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   emptyGraph,
   otherActorId,
@@ -114,7 +114,7 @@ export function registerCopiesExactRetainedGraphAdvances(): void {
       ),
     ).rejects.toMatchObject({ currentRevision: draft.revision });
     const before = await restoreFacts(fixture.workflowId);
-    const changedCatalog = createWorkflowAuthoringDatabase(
+    const changedCatalog = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       { definitionCatalog: testDefinitionCatalog },
     );

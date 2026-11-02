@@ -4,7 +4,7 @@ import {
   actorId,
   apiUrl,
   authoring,
-  createWorkflowAuthoringDatabase,
+  createWorkflowAuthoringStore,
   currentRepresentationTag,
   draftNode,
   draftWrite,
@@ -30,13 +30,13 @@ import {
 
 export function registerAppliesExistingPlaceabilityRuleRetained(): void {
   it('applies the existing placeability rule to retained graphs', async () => {
-    const sourceAuthoring = createWorkflowAuthoringDatabase(
+    const sourceAuthoring = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
         definitionCatalog: blockedDefinitionCatalog,
       },
     );
-    const rejectingAuthoring = createWorkflowAuthoringDatabase(
+    const rejectingAuthoring = createWorkflowAuthoringStore(
       parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
       {
         definitionCatalog: currentDefinitionCatalog,
@@ -148,13 +148,13 @@ export function registerAppliesExistingPlaceabilityRuleRetained(): void {
     );
     const restoreApplication = `restore-first-${randomUUID()}`;
     const saveApplication = `save-after-restore-${randomUUID()}`;
-    const restoreFirst = createWorkflowAuthoringDatabase(
+    const restoreFirst = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(apiUrl, restoreApplication),
         max: 1,
       }),
     );
-    const saveAfterRestore = createWorkflowAuthoringDatabase(
+    const saveAfterRestore = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(apiUrl, saveApplication),
         max: 1,
@@ -200,13 +200,13 @@ export function registerAppliesExistingPlaceabilityRuleRetained(): void {
     const saveHold = await holdAtWrite(draftWrite(saveFirstFixture.workflowId));
     const saveFirstApplication = `save-first-${randomUUID()}`;
     const restoreAfterSaveApplication = `restore-after-save-${randomUUID()}`;
-    const saveFirst = createWorkflowAuthoringDatabase(
+    const saveFirst = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(apiUrl, saveFirstApplication),
         max: 1,
       }),
     );
-    const restoreAfterSave = createWorkflowAuthoringDatabase(
+    const restoreAfterSave = createWorkflowAuthoringStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(
           apiUrl,

@@ -34,7 +34,7 @@ export type AutoPauseCommandResult<T> = Readonly<{
   replayed: boolean;
 }>;
 
-export interface WorkflowAutoPauseDatabase {
+export interface WorkflowAutoPauseStore {
   readWorkflowSettings(
     input: WorkflowScope,
   ): Promise<WorkflowAutoPauseSettings>;

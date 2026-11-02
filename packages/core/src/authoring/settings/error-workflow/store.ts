@@ -43,7 +43,7 @@ type Transact = <T>(
   operation: (client: PoolClient) => Promise<T>,
   signal?: AbortSignal,
 ) => Promise<T>;
-export interface WorkflowErrorDatabase {
+export interface WorkflowErrorStore {
   listTargets(
     input: Scope & Readonly<{ after?: string }>,
   ): Promise<WorkflowErrorTargetsPage>;
@@ -71,18 +71,18 @@ export class WorkflowErrorTargetUnavailableError extends Error {
 /** Operational Settings share the authoring transaction and current authority fence. */
 export function createWorkflowErrorStore(
   transact: Transact,
-): WorkflowErrorDatabase {
+): WorkflowErrorStore {
   return Object.freeze({
     listTargets: (input) => listErrorWorkflowTargets(transact, input),
     readSettings: (input) => readErrorWorkflowSettings(transact, input),
     updateSettings: (input) => updateErrorWorkflowSettings(transact, input),
-  } satisfies WorkflowErrorDatabase);
+  } satisfies WorkflowErrorStore);
 }
 
 function listErrorWorkflowTargets(
   transact: Transact,
-  input: Parameters<WorkflowErrorDatabase['listTargets']>[0],
-): ReturnType<WorkflowErrorDatabase['listTargets']> {
+  input: Parameters<WorkflowErrorStore['listTargets']>[0],
+): ReturnType<WorkflowErrorStore['listTargets']> {
   return transact(
     input.workspaceId,
     input.actorId,
@@ -156,8 +156,8 @@ function listErrorWorkflowTargets(
 
 function readErrorWorkflowSettings(
   transact: Transact,
-  input: Parameters<WorkflowErrorDatabase['readSettings']>[0],
-): ReturnType<WorkflowErrorDatabase['readSettings']> {
+  input: Parameters<WorkflowErrorStore['readSettings']>[0],
+): ReturnType<WorkflowErrorStore['readSettings']> {
   return transact(
     input.workspaceId,
     input.actorId,
@@ -197,8 +197,8 @@ function readErrorWorkflowSettings(
 
 function updateErrorWorkflowSettings(
   transact: Transact,
-  input: Parameters<WorkflowErrorDatabase['updateSettings']>[0],
-): ReturnType<WorkflowErrorDatabase['updateSettings']> {
+  input: Parameters<WorkflowErrorStore['updateSettings']>[0],
+): ReturnType<WorkflowErrorStore['updateSettings']> {
   return transact(
     input.workspaceId,
     input.actorId,

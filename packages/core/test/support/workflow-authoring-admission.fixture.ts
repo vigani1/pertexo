@@ -10,10 +10,10 @@ import {
   type WorkflowDefinitionCatalog,
 } from '@pertexo/workflow-model/server';
 import type { DatabaseConfig } from '@pertexo/database/platform';
-import { createWorkflowAuthoringDatabase } from '../../src/authoring/workflows/store.js';
+import { createWorkflowAuthoringStore } from '../../src/authoring/workflows/store.js';
 import { testExecutableCompiler } from '../../src/authoring/test-executable-compiler.js';
 import type {
-  WorkflowAuthoringDatabaseOptions,
+  WorkflowAuthoringStoreOptions,
   WorkflowAuthoringGraphValidator,
 } from '../../src/authoring/workflows/types.js';
 
@@ -23,7 +23,7 @@ import type {
  */
 export function createWorkflowAuthoringFixtureDatabase(
   config: DatabaseConfig,
-  options: Partial<WorkflowAuthoringDatabaseOptions> = {},
+  options: Partial<WorkflowAuthoringStoreOptions> = {},
 ) {
   let validator: WorkflowAuthoringValidator | undefined;
   let closed = false;
@@ -42,7 +42,7 @@ export function createWorkflowAuthoringFixtureDatabase(
       return validator.validate(graph, projection, command);
     };
   }
-  const database = createWorkflowAuthoringDatabase(config, {
+  const database = createWorkflowAuthoringStore(config, {
     ...options,
     executableCompiler: options.executableCompiler ?? testExecutableCompiler,
     validateAuthoringGraph:

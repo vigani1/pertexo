@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import type { WorkflowAuthoringDatabase } from '../../../../src/authoring/workflows/contract.js';
+import type { WorkflowAuthoringStore } from '../../../../src/authoring/workflows/contract.js';
 
 export function registerUnicodeRenameCase({
   createNamed,
@@ -10,9 +10,9 @@ export function registerUnicodeRenameCase({
   rename(
     workflowId: string,
     overrides?: Partial<
-      Parameters<WorkflowAuthoringDatabase['renameWorkflow']>[0]
+      Parameters<WorkflowAuthoringStore['renameWorkflow']>[0]
     >,
-  ): ReturnType<WorkflowAuthoringDatabase['renameWorkflow']>;
+  ): ReturnType<WorkflowAuthoringStore['renameWorkflow']>;
   nameFacts(workflowId: string): Promise<
     Readonly<{
       name: string;
