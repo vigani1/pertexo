@@ -5,7 +5,7 @@ import {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
-} from '../../../src/outbox/reconciliation.repository.js';
+} from '../../../src/outbox/reconcile-unknown-outcome.js';
 import { mocks, evidencePayload, reconciliationWith } from './fixture.js';
 
 export function registerProcessesExactEvidenceDeliveryIdentity(): void {

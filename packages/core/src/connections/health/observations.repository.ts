@@ -21,7 +21,7 @@ import {
 import {
   consumeInboxMessage,
   InboxReceiptUnavailableError,
-} from '../../outbox/receipts.repository.js';
+} from '../../outbox/consume-message.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 import { isStaleRunObservation } from './rules.js';
 

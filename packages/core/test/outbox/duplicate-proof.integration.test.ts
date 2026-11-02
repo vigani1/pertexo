@@ -8,7 +8,7 @@ import {
   consumeInboxMessage,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from '../../src/outbox/receipts.repository.js';
+} from '../../src/outbox/consume-message.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

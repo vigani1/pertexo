@@ -20,7 +20,7 @@ import {
   inboxReceipts,
   outboxEvents,
 } from '@pertexo/database/schema';
-import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/repository.js';
+import { RUN_DELIVERY_JOB_NAMES } from '../../outbox/dispatcher/store.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { coordinatorConsumerName } from '../advance/receipts.repository.js';
 import type { StuckWork } from './contract.js';
