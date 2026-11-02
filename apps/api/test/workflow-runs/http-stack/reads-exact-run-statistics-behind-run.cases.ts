@@ -159,6 +159,47 @@ export function registerReadsExactRunStatisticsBehindRun(): void {
     expect(canceled.statusCode).not.toBe(400);
   });
 
+  // What a script's client usually sends: the header it always sets, and nothing else.
+  it('takes a start or cancel with a JSON content type and no body', async () => {
+    const { application, fixture } = await start();
+    fixture.start.mockRejectedValueOnce(new WorkflowRunNotExecutableError());
+    fixture.cancel.mockRejectedValueOnce(
+      new ExecutionStateConflictError('execution.run_terminal'),
+    );
+    const headers = {
+      ...mutationHeaders,
+      'content-type': 'application/json',
+    };
+    const started = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/workflows/${workflowId}/runs`,
+      headers,
+    });
+    expect(started.statusCode, started.payload).not.toBe(400);
+    expect(fixture.start).toHaveBeenCalledOnce();
+    const canceled = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/cancel`,
+      headers,
+    });
+    expect(canceled.statusCode, canceled.payload).not.toBe(400);
+    expect(fixture.cancel).toHaveBeenCalledOnce();
+  });
+
+  it('still refuses a body that isn’t JSON, or isn’t the right shape', async () => {
+    const { application, fixture } = await start();
+    for (const payload of ['{', '[]', '"text"', '{"unknown":true}']) {
+      const response = await application.inject({
+        method: 'POST',
+        url: `/v1/workspaces/${workspaceId}/workflows/${workflowId}/runs`,
+        headers: { ...mutationHeaders, 'content-type': 'application/json' },
+        payload,
+      });
+      expect(response.statusCode, payload).toBe(400);
+    }
+    expect(fixture.start).not.toHaveBeenCalled();
+  });
+
   it('maps workflow domain failures to exact public status and problem bodies', async () => {
     const { application, fixture } = await start();
     fixture.start.mockRejectedValueOnce(new IdempotencyRequestConflictError());
