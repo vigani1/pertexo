@@ -210,10 +210,6 @@ describe('a token create receipt written before the move to request:', () => {
 });
 
 describe('a malformed stored receipt on replay', () => {
-  /** A date the API's toISOString would throw on, or nothing at all. */
-  const refusedAsUnreplayable = (work: () => Promise<unknown>) =>
-    expect(work()).rejects.toBeInstanceOf(IdempotencyConflictError);
-
   it('of a rename is refused, never an invalid date or a crash', async () => {
     const { workspaceId, owner } = await team();
     const command = {
@@ -242,7 +238,9 @@ describe('a malformed stored receipt on replay', () => {
       {},
     ]) {
       await damage(receipt.id, malformed);
-      await refusedAsUnreplayable(() => identities.renameWorkspace(command));
+      await expect(identities.renameWorkspace(command)).rejects.toBeInstanceOf(
+        IdempotencyConflictError,
+      );
     }
     const { rows } = await admin.query<{ name: string; revision: number }>(
       'select name,revision from app.workspaces where id=$1',
@@ -266,9 +264,9 @@ describe('a malformed stored receipt on replay', () => {
       {},
     ]) {
       await damage(receipt.id, malformed);
-      await refusedAsUnreplayable(() =>
+      await expect(
         identities.createWorkspaceInvitation(create),
-      );
+      ).rejects.toBeInstanceOf(IdempotencyConflictError);
     }
   });
 
@@ -342,7 +340,7 @@ describe('a malformed stored receipt on replay', () => {
         idempotencyKey,
       );
       await damage(receipt.id, {});
-      await refusedAsUnreplayable(command);
+      await expect(command()).rejects.toBeInstanceOf(IdempotencyConflictError);
     }
   });
 
@@ -364,9 +362,9 @@ describe('a malformed stored receipt on replay', () => {
       command.idempotencyKey,
     );
     await damage(receipt.id, {});
-    await refusedAsUnreplayable(() =>
+    await expect(
       identities.transferWorkspaceOwnership(command),
-    );
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 
   it('of a token create is refused, and a token since gone reads as not found', async () => {
@@ -387,7 +385,9 @@ describe('a malformed stored receipt on replay', () => {
     );
     for (const malformed of [{ tokenId: 'not-a-uuid' }, {}]) {
       await damage(receipt.id, malformed);
-      await refusedAsUnreplayable(() => tokens.create(command));
+      await expect(tokens.create(command)).rejects.toBeInstanceOf(
+        IdempotencyConflictError,
+      );
     }
     await damage(receipt.id, { tokenId: randomUUID() });
     await expect(tokens.create(command)).rejects.toMatchObject({
