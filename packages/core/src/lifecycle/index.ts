@@ -25,3 +25,5 @@ export type { WorkspacePurgeProcessResult } from './purge/contract.js';
 // Workspace commands reach these directly (ADR 091).
 export type {} from './deletion/change.js';
 export type {} from './deletion/contract.js';
+// Each area writes its own retention rule with this.
+export type {} from './retention/deletion-rule.js';

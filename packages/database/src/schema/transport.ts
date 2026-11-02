@@ -243,6 +243,15 @@ export const outboxEvents = appSchema.table(
         sql`((lease_expires_at IS NOT NULL) AND (published_at IS NULL) AND (failed_at IS NULL))`,
       ),
     index('outbox_events_workspace_idx').on(table.workspaceId, table.id),
+    // Retention's pages. Rows still watched for a receipt aren't in them.
+    index('outbox_events_published_retention_idx')
+      .on(table.publishedAt, table.id)
+      .where(
+        sql`((published_at IS NOT NULL) AND (failed_at IS NULL) AND (delivery_due_at IS NULL))`,
+      ),
+    index('outbox_events_failed_retention_idx')
+      .on(table.failedAt, table.id)
+      .where(sql`((failed_at IS NOT NULL) AND (delivery_due_at IS NULL))`),
   ],
 );
 export const inboxReceipts = appSchema.table(
@@ -277,6 +286,7 @@ export const inboxReceipts = appSchema.table(
       name: 'inbox_receipts_pkey',
       columns: [table.consumerName, table.messageId],
     }),
+    index('inbox_receipts_retention_idx').on(table.receivedAt, table.messageId),
     index('inbox_receipts_workspace_idx').on(
       table.workspaceId,
       table.receivedAt.desc().nullsFirst(),
