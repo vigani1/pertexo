@@ -9,14 +9,17 @@ reconnecting fixes it without touching the workflows that use it.
 
 Owners and admins can do this. Open **Connections → HTTP** and choose **OAuth2**.
 
-1. Copy the **Redirect URL** and register it with the service.
-2. Choose how it signs in. **Sign in with consent** opens the service's sign-in page in a
+1. Under **Service**, choose **Google** or **Microsoft** to have the addresses, scope and
+   allowed hosts filled in, or **Other service** to enter them yourself. Nothing is locked:
+   you can change any of them, and a saved connection works like any other.
+2. Copy the **Redirect URL** and register it with the service.
+3. Choose how it signs in. **Sign in with consent** opens the service's sign-in page in a
    new window. **Server to server** needs no person: Pertexo gets a token with the client
    alone.
-3. Fill in the **Authorization URL**, **Token URL**, **Client ID**, **Client secret** and
+4. Fill in the **Authorization URL**, **Token URL**, **Client ID**, **Client secret** and
    **Scope**. The scope is sent exactly as you type it, because services disagree on
    separators.
-4. Name it, then **Connect**. The step names the hosts you're about to trust, so check
+5. Name it, then **Connect**. The step names the hosts you're about to trust, so check
    them. Finish signing in in the window that opens; your page stays as it was, so an
    unsaved workflow behind it is safe.
 
@@ -24,8 +27,11 @@ Owners and admins can do this. Open **Connections → HTTP** and choose **OAuth2
 refuses Basic), PKCE, extra parameters such as Auth0's `audience`, and **Allowed API
 hosts**. Parameters aren't secret storage: anyone who can see the connection can read them.
 
-For Google, add both `access_type=offline` and `prompt=consent` as authorization parameters.
-Without `prompt=consent`, Google gives a refresh token only the first time someone consents.
+The **Google** choice sets `access_type=offline` and `prompt=consent` as authorization
+parameters. Without `prompt=consent`, Google gives a refresh token only the first time someone
+consents. The **Microsoft** choice asks for `offline_access`, which it needs for the same reason, and
+uses the `common` tenant: for an app in one organization, replace `common` with your tenant ID in both
+addresses.
 If the service gives none when you reconnect, Pertexo keeps the one it already has, unless
 the settings changed. So reconnecting as a different account on such a service keeps renewing
 as the first account until you change the settings or revoke.
