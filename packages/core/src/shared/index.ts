@@ -11,4 +11,5 @@ export type {} from './contract.js';
 export type {} from './errors.js';
 export type {} from './facts.queries.js';
 export type {} from './folder-policy.js';
+export type {} from './receipts.js';
 export type {} from './scope.queries.js';

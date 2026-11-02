@@ -7,7 +7,7 @@ import type {
   WorkspaceMemberRoleChangeResult,
 } from '../contract.js';
 import { WorkspaceMemberRoleCommandConflictError } from '../errors.js';
-import { roleReceipt } from '../receipts.js';
+import { roleReceipt } from '../../shared/receipts.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';
 import {
   executeMemberCommand,
