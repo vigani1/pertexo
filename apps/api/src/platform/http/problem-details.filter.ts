@@ -23,6 +23,7 @@ import {
 } from './request-context.js';
 
 import { firstRequestHeader } from './request-headers.js';
+import type { RouteTable } from './route-table.js';
 
 import { projectAutoPauseConflict } from './problems/auto-pause-conflict.js';
 import type {
@@ -97,6 +98,15 @@ function normalize(
     status: entry.status,
     title: entry.title,
     cause: exception,
+  };
+}
+
+function methodNotAllowed(): NormalizedProblem {
+  const entry = APPLICATION_ERROR_CATALOG['request.method_not_allowed'];
+  return {
+    code: 'request.method_not_allowed',
+    status: entry.status,
+    title: entry.title,
   };
 }
 
@@ -248,17 +258,21 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     private readonly contexts: RequestContextStore,
     private readonly logger?: HttpErrorLogger,
     private readonly applicationErrorMappers: readonly HttpApplicationErrorMapper[] = [],
+    private readonly routes?: RouteTable,
   ) {}
 
   public catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
     const request = http.getRequest<HttpRequestLike>();
     const response = http.getResponse<ProblemResponse>();
-    const normalized = normalizeFailClosed(
-      exception,
-      request,
-      this.applicationErrorMappers,
-    );
+    const allowed =
+      request.is404 === true && request.url !== undefined
+        ? (this.routes?.allowedMethods(request.url) ?? [])
+        : [];
+    const normalized =
+      allowed.length > 0
+        ? methodNotAllowed()
+        : normalizeFailClosed(exception, request, this.applicationErrorMappers);
     const context = contextFor(this.contexts, request);
     const requestId = context.requestId;
     const instance = instanceFrom(request);
@@ -274,6 +288,8 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     };
     const problem = problemDetails(normalized, baseProblem);
 
+    if (allowed.length > 0)
+      setResponseHeader(response, 'allow', allowed.join(', '));
     if (normalized.revisionConflict !== undefined) {
       setResponseHeader(
         response,

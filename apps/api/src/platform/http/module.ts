@@ -18,6 +18,7 @@ import {
   RequestContextMiddleware,
   RequestContextStore,
 } from './request-context.js';
+import { RouteTable } from './route-table.js';
 
 const REQUEST_CONTEXT_STORE = Symbol('REQUEST_CONTEXT_STORE');
 
@@ -32,12 +33,14 @@ const problemFilterProvider: Provider = {
     contexts: RequestContextStore,
     logger: HttpErrorLogger,
     applicationErrorMappers: readonly HttpApplicationErrorMapper[],
+    routes: RouteTable,
   ): ProblemDetailsFilter =>
-    new ProblemDetailsFilter(contexts, logger, applicationErrorMappers),
+    new ProblemDetailsFilter(contexts, logger, applicationErrorMappers, routes),
   inject: [
     REQUEST_CONTEXT_STORE,
     HTTP_ERROR_LOGGER,
     HTTP_APPLICATION_ERROR_MAPPERS,
+    RouteTable,
   ],
 };
 
@@ -47,11 +50,13 @@ const problemFilterProvider: Provider = {
     RequestContextStore,
     contextStoreProvider,
     RequestContextMiddleware,
+    RouteTable,
   ],
   exports: [
     RequestContextStore,
     REQUEST_CONTEXT_STORE,
     RequestContextMiddleware,
+    RouteTable,
   ],
 })
 export class HttpPlatformModule implements NestModule {

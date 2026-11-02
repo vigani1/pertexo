@@ -34,7 +34,7 @@ it.each(['people', 'input cases'] as const)(
       ...discoveryHandlers(['workflow:update']),
       http.get(`${api}/resource-sharing-principals`, ({ request }) => {
         requests(new URL(request.url).searchParams.get('after'));
-        return HttpResponse.json({ items: [], next: metadata.id });
+        return HttpResponse.json({ items: [], nextCursor: metadata.id });
       }),
       http.get(path, ({ request }) => {
         requests(new URL(request.url).searchParams.get('after'));

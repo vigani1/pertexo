@@ -46,6 +46,7 @@ export const API_PROBLEM_CODES = [
   'request.idempotency_conflict',
   'request.rate_limited',
   'request.rate_limit_unavailable',
+  'request.method_not_allowed',
   'request.too_large',
   'request.unsupported_media_type',
   'workspace.quota_exceeded',
@@ -308,6 +309,12 @@ const apiProblemDetails = {
     status: 503,
     title: 'Request rate limiter unavailable',
     severity: 'error',
+    exposeDetail: false,
+  },
+  'request.method_not_allowed': {
+    status: 405,
+    title: 'Method not allowed',
+    severity: 'info',
     exposeDetail: false,
   },
   'request.too_large': {
