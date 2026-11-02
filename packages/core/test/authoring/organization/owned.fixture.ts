@@ -10,7 +10,7 @@ import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
-import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/repository.js';
+import { createIdentityWorkspaceDatabase } from '../../../src/tenant-access/store.js';
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 import { createWorkflowTagDatabase } from '../../../src/authoring/organization/tags/commands.repository.js';
 import {

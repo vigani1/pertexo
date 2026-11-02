@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
 
-import { createUserStore } from '../../src/tenant-access/users/repository.js';
+import { createUserStore } from '../../src/tenant-access/users/store.js';
 
 describe('identity input admission', () => {
   it.each([
