@@ -17,7 +17,7 @@ import { useOrganizationEdit } from './use-edit';
 import { OrganizationFields } from './fields';
 
 const RECOVERY =
-  'Exact recovery is available for 24 hours, not an indefinite duplicate-prevention guarantee. Refreshing current state preserves an unresolved request; only a known outcome permits a fresh change. Reloading this page loses its in-memory recovery.';
+  'If we can’t confirm a change, you can retry it here for 24 hours. Reloading this page gives up that retry.';
 
 export function WorkflowOrganizationDialog(props: Props) {
   const editor = useOrganizationEdit(props);
@@ -55,8 +55,7 @@ export function WorkflowOrganizationDialog(props: Props) {
           )}
           {!selectionValid ? (
             <Notice tone="destructive">
-              Select 1–50 distinct workflows. No implicit selection of unloaded
-              workflows is supported.
+              Select 1–50 different workflows from the list.
             </Notice>
           ) : null}
           {feedback === undefined ? null : (
@@ -164,11 +163,7 @@ function OrganizationEditResult({
         workflows={command.denied ? [] : selected}
       />
     );
-  return (
-    <Notice tone="success">
-      Organization command accepted. Current metadata is refreshed separately.
-    </Notice>
-  );
+  return <Notice tone="success">Saved. The list updates in a moment.</Notice>;
 }
 
 function OrganizationRecoveryActions({

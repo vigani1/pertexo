@@ -250,8 +250,8 @@ function vocabularyFailure({
   showing,
 }: Readonly<{ denied: boolean; showing: boolean }>): string {
   if (denied)
-    return 'Access changed. Cached folders and tags were forgotten. Retry to read current authorized metadata.';
+    return 'Your access changed, so folders and tags were cleared. Retry to load the ones you can see.';
   return showing
-    ? 'Folders or tags couldn’t be refreshed. Showing the last authorized vocabulary; it may be stale.'
+    ? 'Folders or tags couldn’t be refreshed. These may be out of date.'
     : 'Folders or tags couldn’t be read.';
 }

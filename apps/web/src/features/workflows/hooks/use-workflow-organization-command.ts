@@ -232,12 +232,12 @@ function definitiveMessage(error: unknown) {
     'workflow.organization_revision_conflict':
       'Workflow organization changed. Refresh it before trying again.',
     'request.idempotency_conflict':
-      'This command key was already used for different input. Discard it and refresh before starting a new command.',
+      'This retry doesn’t match the change it started from. Discard it and refresh before making a new change.',
   };
   const code = isApiError(error) ? error.problem?.code : undefined;
   return code !== undefined && Object.hasOwn(messages, code)
-    ? (messages[code] ?? 'The command was not accepted.')
-    : 'The command was not accepted. Refresh current metadata before starting a new command.';
+    ? (messages[code] ?? 'That change wasn’t saved.')
+    : 'That change wasn’t saved. Refresh the list before trying again.';
 }
 
 type OrganizationCommandContext = Readonly<{
@@ -344,7 +344,7 @@ async function sendOrganizationCommand(
       retryAvailable,
       denied: false,
       error: retryAvailable
-        ? 'The outcome could not be confirmed. Retry this exact command; refreshing current state preserves its recovery identity.'
+        ? 'We couldn’t confirm that change. Retry it; refreshing the list won’t lose your place.'
         : definitiveMessage(error),
     });
   } finally {

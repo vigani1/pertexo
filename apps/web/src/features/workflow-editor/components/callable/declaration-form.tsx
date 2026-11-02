@@ -109,8 +109,9 @@ export function DeclarationForm({
           {form.enabled ? (
             <>
               <p className="text-sm text-muted-foreground">
-                Use one enabled Manual or Webhook entry. Inputs and results stay
-                inline; no extra properties, coercion or inserted defaults.
+                Use one enabled Manual or Webhook entry. Inputs and results must
+                match exactly: no extra fields, and nothing is converted or
+                filled in.
               </p>
               <div className="grid min-w-0 gap-6 sm:grid-cols-2">
                 <fieldset className="min-w-0">
