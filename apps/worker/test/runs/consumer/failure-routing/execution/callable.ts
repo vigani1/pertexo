@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 

@@ -6,10 +6,7 @@ import type {
   NodeAttemptRunStore,
 } from '@pertexo/core/attempts';
 
-import {
-  loadAttemptInputs,
-  type NodeAttemptInputs,
-} from '@pertexo/core/execution';
+import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/core/runs';
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import type { QueueHandlerContext } from '@pertexo/queue';
 import type { NodeAttemptOutcome } from '@pertexo/workflow-engine';

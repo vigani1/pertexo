@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistry } from '@pertexo/node-catalog/server';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';

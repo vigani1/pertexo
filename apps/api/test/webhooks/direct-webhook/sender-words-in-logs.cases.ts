@@ -2,7 +2,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { Writable } from 'node:stream';
 
 import { createStructuredLogger } from '@pertexo/observability';
-import { createInitialCheckpoint } from '@pertexo/core/execution';
+import { createInitialCheckpoint } from '@pertexo/core/runs';
 import Fastify from 'fastify';
 import { expect, it } from 'vitest';
 

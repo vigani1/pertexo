@@ -1,7 +1,5 @@
-import type {
-  InitialCheckpointFactory,
-  PublishedWorkflow,
-} from '../../runs/index.js';
+import type { InitialCheckpointFactory } from './initial-checkpoint.js';
+import type { PublishedWorkflow } from '../queries/execution/contract.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import {
   createCheckpoint,
@@ -17,7 +15,7 @@ import {
 import {
   verifyPersistedWorkflowProjection,
   type PersistedWorkflowProjectionVerificationOptions,
-} from '../workflows/verify-projection.js';
+} from '../queries/execution/verify-projection.js';
 
 /**
  * The first checkpoint of a new run of a published workflow, for every way a

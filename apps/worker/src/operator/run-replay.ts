@@ -23,7 +23,7 @@ import {
   composeExecutableCatalog,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 
 export const operatorRunReplayFactories = Object.freeze({
   handler: createOperatorRunReplayHandler,

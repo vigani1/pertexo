@@ -4,12 +4,12 @@ import {
   NodeAttemptStateCorruptError,
   type NodeAttemptLease,
   type NodeAttemptStoredInputs,
-} from '../../../src/attempts/index.js';
+} from '../../../../src/attempts/index.js';
 import { createCheckpoint, invocationKey } from '@pertexo/workflow-engine';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { describe, expect, it, vi } from 'vitest';
 
-import { loadAttemptInputs } from '../../../src/execution/attempts/load-inputs.js';
+import { loadAttemptInputs } from '../../../../src/runs/load-attempt-inputs.js';
 
 const VERSION_ID = '33333333-3333-4333-8333-333333333333';
 const DECLARING_ATTEMPT = '44444444-4444-4444-8444-444444444444';

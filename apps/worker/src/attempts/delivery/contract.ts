@@ -6,10 +6,7 @@ import type {
   WorkflowExecutionReader,
   WorkflowExecutionProjection,
 } from '@pertexo/core/runs';
-import type {
-  ForEachUpstream,
-  NodeAttemptInputs,
-} from '@pertexo/core/execution';
+import type { ForEachUpstream, NodeAttemptInputs } from '@pertexo/core/runs';
 
 import type {
   QueueDelivery,

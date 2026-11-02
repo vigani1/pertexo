@@ -10,7 +10,7 @@ import {
 } from '@pertexo/core/runs';
 import { createWorkspaceVariablesStore } from '@pertexo/core/variables';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import {

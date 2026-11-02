@@ -4,7 +4,7 @@ import {
   composeExecutableCatalog,
 } from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
-import { advanceRun } from '../../../src/execution/runs/advance.js';
+import { advanceRun } from '../../../../src/runs/advance/advance-run.js';
 import {
   RUN_ID,
   VERSION_ID,

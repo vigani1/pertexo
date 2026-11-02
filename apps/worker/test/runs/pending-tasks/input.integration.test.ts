@@ -11,7 +11,7 @@ import {
 } from '@pertexo/core/runs';
 import { createFormStore } from '@pertexo/core/triggers';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { createInitialCheckpoint } from '@pertexo/core/execution';
+import { createInitialCheckpoint } from '@pertexo/core/runs';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import {

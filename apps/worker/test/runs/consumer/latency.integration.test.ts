@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import { arch, cpus, platform } from 'node:os';
 import { performance } from 'node:perf_hooks';
 
-import { initialCheckpointFactory } from '@pertexo/core/execution';
+import { initialCheckpointFactory } from '@pertexo/core/runs';
 import { createWorkflowRunDatabase } from '@pertexo/core/runs';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { parseDatabaseConfig } from '@pertexo/database/testing';

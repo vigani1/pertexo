@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   initialCheckpointFactory,
   recoveryPreparation,
-} from '@pertexo/core/execution';
+} from '@pertexo/core/runs';
 import {
   createWorkflowRunDatabase,
   WorkflowRecoveryUnavailableError,

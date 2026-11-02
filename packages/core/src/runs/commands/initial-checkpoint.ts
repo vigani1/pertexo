@@ -9,7 +9,7 @@ export type RunInputValidator = (
 
 /**
  * Builds a new run's first checkpoint for a published version. Every way a run
- * starts takes one; `@pertexo/core/execution` provides it.
+ * starts takes one; `createInitialCheckpoint` provides it.
  */
 export type InitialCheckpointFactory = (
   projection: PublishedWorkflow,

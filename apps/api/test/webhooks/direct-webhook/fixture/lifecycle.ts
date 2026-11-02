@@ -23,7 +23,7 @@ import { composeExecutableCatalog } from '@pertexo/workflow-engine';
 import { Pool } from 'pg';
 import { vi } from 'vitest';
 import { createTestApiApplication } from '../../../support/api-application.js';
-import { createInitialCheckpoint } from '@pertexo/core/execution';
+import { createInitialCheckpoint } from '@pertexo/core/runs';
 import type { ApiConfig } from '../../../../src/platform/config/api.js';
 import {
   createApiIdentityRuntime,
