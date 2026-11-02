@@ -65,9 +65,14 @@ export async function addSingleStep(
 
 export async function publishSingleStep(page: Page, workflowPath: string) {
   await page.getByRole('button', { name: 'Publish v1', exact: true }).click();
-  const confirm = page
-    .getByRole('dialog', { name: 'Publish v1', exact: true })
-    .getByRole('button', { name: 'Publish v1', exact: true });
+  const publishDialog = page.getByRole('dialog', {
+    name: 'Publish v1',
+    exact: true,
+  });
+  // After a failed try the same button asks to retry the original publish.
+  const confirm = publishDialog.getByRole('button', {
+    name: /^(?:Publish v1|Retry original publish)$/u,
+  });
   const published = async () => {
     const response = await page.request.get(`${workflowPath}/versions`);
     expect(response.status()).toBe(200);
@@ -78,8 +83,7 @@ export async function publishSingleStep(page: Page, workflowPath: string) {
     if (await confirm.isEnabled({ timeout: 1_000 }).catch(() => false))
       await confirm.click();
     // If it never lands, the failure says what the dialog told the person.
-    const dialog = await page
-      .getByRole('dialog', { name: 'Publish v1', exact: true })
+    const dialog = await publishDialog
       .innerText({ timeout: 1_000 })
       .catch(() => 'dialog closed');
     expect(await published(), dialog).toHaveLength(1);
