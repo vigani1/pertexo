@@ -24,15 +24,19 @@ export async function recoverOwnedHttp(
         body: { encoding: 'utf8', value: JSON.stringify({ marker }) },
       }),
     );
+    // This wait has hung a few times. Separate limits, under the test's own, show which
+    // side hung: a stuck click says what blocked it, and a timeout on the response means
+    // the request went out and the server never answered.
     const acceptance = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
         new URL(response.url()).pathname ===
           `/v1/workspaces/${workspaceId}/runs/${sourceRunId}/replay`,
+      { timeout: 45_000 },
     );
     await dialog
       .getByRole('button', { name: 'Replay run', exact: true })
-      .click();
+      .click({ timeout: 30_000 });
     const response = await acceptance;
     expect(response.status()).toBe(202);
     const id = workflowRunStartResponseSchema.parse(await response.json()).run
