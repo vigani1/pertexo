@@ -142,7 +142,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const headers = await tokenWith(world.browser, ['run:read-data']);
 
       expect((await api.send('GET', runRoot, { headers })).statusCode).toBe(
-        403,
+        404,
       );
     });
 
