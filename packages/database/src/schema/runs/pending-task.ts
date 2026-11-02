@@ -130,6 +130,8 @@ export const pendingRunTasks = appSchema.table(
       .where(
         sql`kind='callback' and consumed_at is null and status in ('prepared','pending','submitted')`,
       ),
+    // Backs the foreign key above: deleting a step otherwise scans this table.
+    index('pending_run_tasks_node_idx').on(table.workspaceId, table.nodeRunId),
     index('pending_run_tasks_unconsumed_run_idx')
       .on(table.workspaceId, table.runId)
       .where(sql`consumed_at IS NULL`),

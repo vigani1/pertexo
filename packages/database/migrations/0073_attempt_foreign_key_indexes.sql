@@ -1,0 +1,2 @@
+CREATE INDEX "node_runs_current_attempt_idx" ON "app"."node_runs" USING btree ("workspace_id","current_attempt_id") WHERE (current_attempt_id IS NOT NULL);--> statement-breakpoint
+CREATE INDEX "pending_run_tasks_node_idx" ON "app"."pending_run_tasks" USING btree ("workspace_id","node_run_id");
