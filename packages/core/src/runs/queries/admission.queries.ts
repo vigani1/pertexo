@@ -7,7 +7,17 @@ import {
   workspaceExecutionEntitlementVersions,
 } from '@pertexo/database/schema';
 import { workflowRunSelection } from './records.queries.js';
-import { and, eq, exists, isNull, lt, notExists, or, sql } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  exists,
+  isNull,
+  lt,
+  notExists,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
@@ -23,10 +33,24 @@ export function workflowRunReadQuery(
     workflowRunActiveAdmissions,
     'admission_earlier_reservation',
   );
-  const workspaceActive = sql<number>`(select active_runs from app.workflow_run_slot_counts(${workspaceId}::uuid))`;
-  const workspaceReserved = sql<number>`(select reserved_active_slots from app.workflow_run_slot_counts(${workspaceId}::uuid))`;
-  const workflowActive = sql<number>`(select active_runs from app.workflow_run_slot_counts(${workspaceId}::uuid,${workflowRuns.workflowId}))`;
-  const workflowReserved = sql<number>`(select reserved_active_slots from app.workflow_run_slot_counts(${workspaceId}::uuid,${workflowRuns.workflowId}))`;
+  const eligible = sql`${workflowRuns.status}='queued' and ${workflowRuns.cancelRequestedAt} is null and (${workflowRuns.deadlineAt} is null or ${workflowRuns.deadlineAt}>statement_timestamp())`;
+  // Only a run that may be blocked needs these counts, and a page rarely has any: a
+  // finished run shouldn't pay three count queries to explain nothing. The workspace's
+  // are uncorrelated, so a statement runs them at most once.
+  const whenEligible = (count: SQL) =>
+    sql<number>`case when ${eligible} then ${count} end`.mapWith(Number);
+  const workspaceActive = whenEligible(
+    sql`(select active_runs from app.workflow_run_slot_counts(${workspaceId}::uuid))`,
+  );
+  const workspaceReserved = whenEligible(
+    sql`(select reserved_active_slots from app.workflow_run_slot_counts(${workspaceId}::uuid))`,
+  );
+  const workflowActive = whenEligible(
+    sql`(select active_runs from app.workflow_run_slot_counts(${workspaceId}::uuid,${workflowRuns.workflowId}))`,
+  );
+  const workflowReserved = whenEligible(
+    sql`(select reserved_active_slots from app.workflow_run_slot_counts(${workspaceId}::uuid,${workflowRuns.workflowId}))`,
+  );
   const earlierExempt = db
     .select({ id: earlierReservation.workflowRunId })
     .from(earlierReservation)
@@ -85,15 +109,15 @@ export function workflowRunReadQuery(
         : sql<string | null>`null`,
       cursor: sql<string>`to_char(${workflowRuns.createdAt} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
       asOf: sql<string>`to_char(statement_timestamp() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
-      eligible: sql<boolean>`${workflowRuns.status} = 'queued' and ${workflowRuns.cancelRequestedAt} is null and (${workflowRuns.deadlineAt} is null or ${workflowRuns.deadlineAt} > statement_timestamp())`,
+      eligible: sql<boolean>`${eligible}`,
       reserved: sql<boolean>`${workflowRunActiveAdmissions.workflowRunId} is not null`,
       orderExempt: workflowRunActiveAdmissions.workflowConcurrencyOrderExempt,
       workspaceLimit: workspaceExecutionEntitlementVersions.activeRunLimit,
       workflowLimit: workflowConcurrencyPolicies.activeRunLimit,
-      workspaceActive: workspaceActive.mapWith(Number),
-      workspaceReserved: workspaceReserved.mapWith(Number),
-      workflowActive: workflowActive.mapWith(Number),
-      workflowReserved: workflowReserved.mapWith(Number),
+      workspaceActive,
+      workspaceReserved,
+      workflowActive,
+      workflowReserved,
       earlierQueued: exists(earlierQueued),
     })
     .from(workflowRuns)
