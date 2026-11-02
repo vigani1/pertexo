@@ -408,6 +408,8 @@
               "request.idempotency_conflict",
               "request.rate_limited",
               "request.rate_limit_unavailable",
+              "request.too_large",
+              "request.unsupported_media_type",
               "workspace.quota_exceeded",
               "artifact.too_large",
               "artifact.conflict",

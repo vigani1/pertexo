@@ -82,6 +82,8 @@ export function nestCode(status: number): ApplicationErrorCode {
   if (status === 401) return 'auth.unauthenticated';
   if (status === 403) return 'auth.forbidden';
   if (status === 404) return 'resource.not_found';
+  if (status === 413) return 'request.too_large';
+  if (status === 415) return 'request.unsupported_media_type';
   return 'internal.unexpected';
 }
 
