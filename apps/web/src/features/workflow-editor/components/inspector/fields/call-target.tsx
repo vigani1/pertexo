@@ -325,8 +325,8 @@ function typeLabel(type: CallableType): string {
       return `Array of ${type.items.type}, up to ${String(type.maxItems)} items`;
     case 'object':
       return type.properties.length === 0
-        ? 'Closed object with no properties'
-        : `Closed object: ${type.properties
+        ? 'Takes no fields'
+        : `Fields: ${type.properties
             .slice(0, 5)
             .map(
               (property) =>

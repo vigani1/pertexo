@@ -44,13 +44,13 @@ export function duplicateFailureState(
       error:
         phase === 'accepted'
           ? 'The copy was created, but access couldn’t be reverified. Retry to verify access and open that existing copy.'
-          : 'We couldn’t confirm whether the copy was created. Retry the exact command to recover it. Recovery is limited by receipt retention; check existing workflows before making a new copy.',
+          : 'We couldn’t confirm whether the copy was created. Retry to find it. That stops working after a while, so check your workflows before making a new copy.',
     };
   return {
     ...current,
     kind: stale ? 'stale' : 'ready',
     error: stale
-      ? 'The saved source changed. This retry did not create a copy; an older copy may still exist if its receipt expired. Check existing workflows, read the current saved draft, then confirm a new copy explicitly.'
+      ? 'The saved source changed, so this retry didn’t make a copy. An older copy may still exist. Check your workflows, read the current draft, then confirm a new copy.'
       : describeCommandError(error, 'duplicating this workflow'),
   };
 }

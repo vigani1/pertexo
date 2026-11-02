@@ -309,7 +309,7 @@ describe('organization reads without a command dialog', () => {
         });
       });
       await ready();
-      await screen.findByText(/Showing the last authorized vocabulary/);
+      await screen.findByText(/These may be out of date/);
       expect(
         client.getQueryData(
           workflowOrganizationKeys.folders(userId, workspaceId),

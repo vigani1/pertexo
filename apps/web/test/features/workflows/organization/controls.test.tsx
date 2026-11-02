@@ -135,7 +135,7 @@ describe('organization editing controls', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Replace selected tags' }),
     );
-    await screen.findByText(/different input/);
+    await screen.findByText(/doesn’t match the change it started from/);
     expect(screen.getByRole('checkbox', { name: tag.key })).not.toBeChecked();
     expect(
       screen.getByRole('button', { name: 'Replace selected tags' }),
@@ -209,7 +209,7 @@ describe('organization editing controls', () => {
       ).getByText('First workflow'),
     ).toBeVisible();
     await userEvent.click(submit);
-    await screen.findByText(/Organization command accepted/);
+    await screen.findByText(/Saved\. The list updates in a moment\./);
     expect(bodies).toEqual([
       { folderId: null, expectedOrganizationRevision: 9 },
     ]);
@@ -308,9 +308,7 @@ describe('organization editing controls', () => {
         { workflowId, expectedOrganizationRevision: 9 },
       ],
     });
-    expect(
-      screen.getByText(/Exact recovery is available for 24 hours/),
-    ).toBeVisible();
+    expect(screen.getByText(/retry it here for 24 hours/)).toBeVisible();
   });
   it.each(['builder'] as const)(
     'blocks archived placement for %s',

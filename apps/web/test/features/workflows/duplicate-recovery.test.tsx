@@ -115,7 +115,7 @@ describe('Duplicate command lifecycle recovery', () => {
     // for this retry, unlike an authority read outage or a retained accepted result.
     await event.click(screen.getByRole('button', { name: 'Retry exact copy' }));
     await screen.findByText(
-      /an older copy may still exist if its receipt expired/u,
+      /An older copy may still exist/u,
     );
     expect(requests).toHaveLength(2);
     expect(requests[1]).toEqual(requests[0]);

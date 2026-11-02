@@ -99,7 +99,7 @@ function RunInputDialogContent(props: RunInputDialogContentProps) {
       title="Run with input"
       description={
         model.retryAvailable
-          ? 'Retry sends the original input, deadline and version precondition (if any) within 24 hours of the first attempt. A replacement run is blocked until this outcome is resolved.'
+          ? 'Retry sends the same input and deadline within 24 hours of the first attempt, and still requires the same version if you chose one. A new run is blocked until this one is settled.'
           : 'This starts a real run of the published version. It can send messages and call other services.'
       }
       onSubmit={model.submit}
