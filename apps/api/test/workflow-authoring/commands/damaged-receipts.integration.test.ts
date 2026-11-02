@@ -43,13 +43,11 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         });
       const first = await send();
       expect(first.statusCode, first.payload).toBeLessThan(300);
-      const { rowCount } = await api
-        .database()
-        .query(
-          `update app.idempotency_records set result_ref='{"damaged":true}'::jsonb
+      const { rowCount } = await api.database().query(
+        `update app.idempotency_records set result_ref='{"damaged":true}'::jsonb
            where workspace_id=$1 and operation=$2 and status='completed'`,
-          [workspaceId, operation],
-        );
+        [workspaceId, operation],
+      );
       expect(rowCount).toBeGreaterThan(0);
       return send();
     }
