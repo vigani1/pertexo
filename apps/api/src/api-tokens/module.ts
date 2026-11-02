@@ -5,7 +5,7 @@ import type { ApiTokenStore } from '@pertexo/core/tenant-access';
 import type { IdentityClock } from '../identity/index.js';
 import { AutomationAuthenticationGuard } from '../authentication/automation/guard.js';
 import { HttpRateLimitAdmission } from '../platform/rate-limit/admission.js';
-import { ApiTokenController } from './controller.js';
+import { ApiTokenController, CurrentApiTokenController } from './controller.js';
 import { ApiTokenManagement } from './use-cases.js';
 
 export type ApiTokenDependencies = Readonly<{
@@ -25,7 +25,7 @@ export class ApiTokenModule {
     return {
       module: ApiTokenModule,
       imports: [identity, admission],
-      controllers: [ApiTokenController],
+      controllers: [ApiTokenController, CurrentApiTokenController],
       providers: [
         {
           provide: ApiTokenManagement,

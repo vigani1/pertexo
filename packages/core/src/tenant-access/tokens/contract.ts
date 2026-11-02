@@ -15,7 +15,9 @@ export type VerifiedApiToken = Readonly<{
   workspaceId: string;
   ownerUserId: string;
   tokenId: string;
+  name: string;
   scopes: readonly ApiTokenScope[];
+  expiresAt: Date;
 }>;
 export type ListApiTokensInput = ApiTokenOwner &
   Readonly<{ limit: number; after?: string }>;

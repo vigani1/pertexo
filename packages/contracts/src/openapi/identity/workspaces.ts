@@ -378,10 +378,13 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
     ...workspaceInvitationContractPaths,
   },
   components: {
-    ...authenticatedComponents(openApiSchemas, problemResponses),
+    ...authenticatedComponents(openApiSchemas, problemResponses, {
+      automation: true,
+    }),
     securitySchemes: {
-      ...authenticatedComponents(openApiSchemas, problemResponses)
-        .securitySchemes,
+      ...authenticatedComponents(openApiSchemas, problemResponses, {
+        automation: true,
+      }).securitySchemes,
       invitationBinding: {
         type: 'apiKey',
         in: 'cookie',

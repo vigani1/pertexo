@@ -49,7 +49,11 @@ export class SessionAuthenticationGuard implements CanActivate {
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = requestFrom(context);
     if (hasAuthorizationHeader(request.headers, request.raw?.rawHeaders))
-      return throwApplicationError(applicationError('auth.unauthenticated'));
+      return throwApplicationError(
+        applicationError('auth.token_not_supported', {
+          safeDetail: 'This route needs a browser session.',
+        }),
+      );
     const rawToken = readCookie(request, SESSION_COOKIE_NAME);
     if (rawToken === undefined) {
       return throwApplicationError(applicationError('auth.unauthenticated'));

@@ -62,7 +62,7 @@ describe('shared token authorization', () => {
         capability: 'run:start',
         access,
       }),
-    ).rejects.toMatchObject({ code: 'auth.forbidden' });
+    ).rejects.toMatchObject({ code: 'auth.token_scope_required' });
     await expect(
       authorizeWorkspace({
         actor: token(),
