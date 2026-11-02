@@ -176,7 +176,9 @@ async function persistSlackDispatch(
         input.connectionFence.connectionId,
       )
     )
-      throw new Error('Connection dispatch published binding mismatch');
+      throw new NodeAttemptDispatchBindingMismatchError(
+        'Connection dispatch published binding mismatch',
+      );
     await db
       .insert(nodeAttemptConnectionDispatches)
       .select(
