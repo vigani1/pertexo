@@ -109,6 +109,9 @@ export async function saveRunTransition(
   const runTransition = await persistCoordinatorRunTransition(client, {
     authoritativeCancellation:
       previous.cancelRequested || row.cancel_requested_at !== null,
+    hadWaitingStep: previous.invocations.some(
+      ({ status }) => status === 'waiting',
+    ),
     plan,
     row,
     runId,

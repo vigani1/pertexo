@@ -80,6 +80,7 @@ export async function persistCoordinatorRunTransition(
   client: PoolClient,
   input: Readonly<{
     authoritativeCancellation: boolean;
+    hadWaitingStep: boolean;
     plan: RunTransitionPlan;
     row: CoordinatorCommitRow;
     runId: string;
@@ -184,6 +185,7 @@ async function persistRunNotices(
 ): Promise<void> {
   const {
     authoritativeCancellation,
+    hadWaitingStep,
     plan,
     row,
     runId,
@@ -230,6 +232,7 @@ async function persistRunNotices(
       runId,
       triggerType: row.trigger_type,
       cancellationRequested: authoritativeCancellation,
+      hadWaitingStep,
       plan,
     });
   }
