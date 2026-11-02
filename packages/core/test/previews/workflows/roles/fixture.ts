@@ -15,10 +15,12 @@ import {
 
 export { query };
 
+type Uuid = ReturnType<typeof randomUUID>;
+
 export type WorkspaceStatus = 'active' | 'suspended' | 'pending_deletion';
 
 /** A person who reaches the workspace with this role, in the seeded workspace. */
-export async function member(role: Role): Promise<string> {
+export async function member(role: Role): Promise<Uuid> {
   const id = randomUUID();
   await queryAsOwner(
     "insert into app.users(id,email,display_name,status) values($1,$2,'Member','active')",
@@ -93,7 +95,7 @@ export async function startTest(f: Draft, actorId: string) {
   return { scope, runId };
 }
 
-export async function startSuite(f: Draft, actorId: string) {
+export async function startSuite(f: Draft, actorId: Uuid) {
   const scope = { ...f.scope, actorId };
   const intent = await suiteCommand({ ...f, scope });
   const { suiteId } = await database.workflowTestSuites.start(intent);

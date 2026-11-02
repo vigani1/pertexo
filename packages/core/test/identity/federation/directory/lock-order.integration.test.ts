@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createFederationManagementStore } from '../../../../src/identity/index.js';
+import type { DirectoryUserValues } from '../../../../src/identity/federation/provisioning/contract.js';
 import { createDirectoryCredential } from '../../../../src/identity/federation/provisioning/management/credentials.repository.js';
 import { authenticateDirectory } from '../../../../src/identity/federation/provisioning/authority.repository.js';
 import { replaceDirectoryMappings } from '../../../../src/identity/federation/provisioning/management/mappings.repository.js';
@@ -182,7 +183,7 @@ describe('directory reads against writers that lock the organization', () => {
       f.organizationId,
       createHash('sha256').update(issued.secret).digest('hex'),
     );
-    const person = () => {
+    const person = (): DirectoryUserValues => {
       const email = `${randomUUID()}@example.test`;
       return {
         userName: email,
