@@ -137,6 +137,28 @@ export function registerReadsExactRunStatisticsBehindRun(): void {
     },
   );
 
+  it('takes a start or cancel with no body at all, which is what most callers try first', async () => {
+    const { application, fixture } = await start();
+    fixture.start.mockRejectedValueOnce(new WorkflowRunNotExecutableError());
+    fixture.cancel.mockRejectedValueOnce(
+      new ExecutionStateConflictError('execution.run_terminal'),
+    );
+    const started = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/workflows/${workflowId}/runs`,
+      headers: mutationHeaders,
+    });
+    expect(fixture.start).toHaveBeenCalledOnce();
+    expect(started.statusCode).not.toBe(400);
+    const canceled = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/cancel`,
+      headers: mutationHeaders,
+    });
+    expect(fixture.cancel).toHaveBeenCalledOnce();
+    expect(canceled.statusCode).not.toBe(400);
+  });
+
   it('maps workflow domain failures to exact public status and problem bodies', async () => {
     const { application, fixture } = await start();
     fixture.start.mockRejectedValueOnce(new IdempotencyRequestConflictError());

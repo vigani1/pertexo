@@ -122,7 +122,7 @@ api --request POST --header 'Content-Type: application/json' \
 
 A canceled response is a cancellation request/state acknowledgment, not proof
 that a running step stopped. Inspect `runs get` until a terminal status. Cancel
-is state-idempotent and needs no command key. Start accepts an omitted body as
+is state-idempotent and needs no command key. Start and cancel accept an omitted body as
 `{}` (current published version, ordinary default input); use the explicit
 reviewed version below when changes must not silently change the intended run.
 
