@@ -53,12 +53,6 @@ function isRuntimeImport(statement) {
 }
 
 const coreSource = 'packages/core/src/';
-/**
- * Areas that have moved into core and haven't had their pass (ADR 091). Reaching
- * into one isn't checked; its pass takes it off this list. It can only shrink: the
- * test beside this check pins it.
- */
-export const AREAS_NOT_YET_PASSED = new Set(['execution', 'runs']);
 // Tests answer only to the direction rules, but they do answer to them.
 const SCANNED_FOLDERS = ['src', 'test', 'e2e', 'e2e-live'];
 
@@ -82,7 +76,6 @@ function coreAreaViolation(file, specifier, namedFiles) {
   // Every area builds on shared, so one import back up would make a cycle of them.
   if (area === 'shared')
     return `shared imports no other area; ${specifier} reaches ${targetArea}`;
-  if (AREAS_NOT_YET_PASSED.has(targetArea)) return;
   const reached = rest.join('/');
   if (reached === 'index.js')
     return `core areas import the files ${targetArea}/index.ts names, never the index`;
@@ -394,27 +387,7 @@ export async function inspectModuleImports(directory = root) {
       }
     }
   }
-  return [
-    ...(await inspectListedAreas(directory)),
-    ...validateModuleImports(sources),
-  ];
-}
-
-/** A listed area with no folder is a pass that forgot to shorten the list. */
-async function inspectListedAreas(directory) {
-  let entries;
-  try {
-    entries = await readdir(path.join(directory, coreSource));
-  } catch (error) {
-    if (error?.code === 'ENOENT') return [];
-    throw error;
-  }
-  return [...AREAS_NOT_YET_PASSED]
-    .filter((area) => !entries.includes(area))
-    .map(
-      (area) =>
-        `${area} is on AREAS_NOT_YET_PASSED, but core has no such area: take it off the list`,
-    );
+  return validateModuleImports(sources);
 }
 
 if (

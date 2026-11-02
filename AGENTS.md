@@ -61,7 +61,7 @@
   values.
 - From the one-shot move on, a core area imports the files another area's
   `index.ts` names, directly, never through that `index.ts`, so no barrel edges
-  appear. Areas not yet passed sit on the check's list, which can only shrink. Until
+  appear. Until
   the areas' strongly connected group is broken up, an area's entry point doesn't
   narrow what a process loads.
 - Packages use at most two entry points: `@pertexo/<name>` (safe anywhere,
