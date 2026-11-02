@@ -26,6 +26,9 @@ services:
       - compute_query_id=on
       - -c
       - pg_stat_statements.max=20000
+      # Test suites run four files at once, each with its own pools.
+      - -c
+      - max_connections=300
     ports:
       - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     volumes:
