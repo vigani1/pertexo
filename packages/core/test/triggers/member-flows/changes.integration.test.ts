@@ -78,6 +78,10 @@ describe('who changes a trigger', () => {
       const { webhookId } = await workflowTriggerIds(
         published.created.workflowId,
       );
+      const { rows: before } = await apiQuery<{ count: number }>(
+        'select count(*)::int count from app.webhook_trigger_endpoints where workflow_id=$1',
+        [published.created.workflowId],
+      );
       const attempt = webhook.provision({
         workspaceId,
         actorId: member(role),
@@ -88,10 +92,6 @@ describe('who changes a trigger', () => {
         secret: secret(),
         ...receipt(),
       });
-      const { rows: before } = await apiQuery<{ count: number }>(
-        'select count(*)::int count from app.webhook_trigger_endpoints where workflow_id=$1',
-        [published.created.workflowId],
-      );
       if (EDITORS.includes(role)) {
         await expect(attempt).resolves.toMatchObject({
           trigger: { status: 'active', endpointReady: true },

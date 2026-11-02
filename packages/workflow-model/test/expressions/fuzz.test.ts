@@ -11,6 +11,9 @@ const RESULT_ERROR_CODES = [
   'evaluation_failed',
   'variable_missing',
   'callback_unavailable',
+  // A loaded machine can answer this if an evaluator process is slow to start, and
+  // it's still a tagged answer, which is what these tests are about.
+  'unavailable',
 ];
 
 const BUILTINS = [

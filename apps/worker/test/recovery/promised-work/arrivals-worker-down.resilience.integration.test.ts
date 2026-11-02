@@ -133,11 +133,17 @@ describeFaults('events and occurrences that arrive with no worker', () => {
     const deadline = Date.now() + RECOVERY_LIMIT_MS;
     for (;;) {
       const [catchUpOccurrence] = await occurrencesOf(catchingUp);
+      const [skippedOccurrence] = await occurrencesOf(skipping);
       const [debouncedRun] = await stack.sql<{ id: string }>(
         `select id from app.workflow_runs where workflow_id=$1`,
         [debounced],
       );
-      if (catchUpOccurrence !== undefined && debouncedRun !== undefined) {
+      // Each schedule is settled by its own scan, a second or so apart at most.
+      if (
+        catchUpOccurrence !== undefined &&
+        skippedOccurrence !== undefined &&
+        debouncedRun !== undefined
+      ) {
         const [row] = await stack.sql<{ workflow_run_id: string | null }>(
           `select o.workflow_run_id from app.trigger_schedule_occurrences o
              join app.workflow_triggers t on t.id=o.trigger_id
