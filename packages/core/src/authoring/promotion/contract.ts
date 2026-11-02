@@ -1,17 +1,12 @@
 import type {
   WorkflowPromotionApply,
-  WorkflowPromotionCandidates,
   WorkflowPromotionCandidatesQuery,
-  WorkflowPromotionHistory,
   WorkflowPromotionPageQuery,
-  WorkflowPromotionPreview,
   WorkflowPromotionPreviewRequest,
-  WorkflowPromotionResult,
-  WorkflowPromotionSettings,
   WorkflowPromotionTarget,
-  WorkflowPromotionTargetResult,
 } from '@pertexo/contracts';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
+import type { AuthoringAccess } from '../workflows/access.js';
 import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
 
 export type PromotionScope = Readonly<{
@@ -28,27 +23,18 @@ export type PromotionCommand = PromotionScope &
     traceparent?: string;
   }>;
 
-export interface WorkflowPromotionStore {
-  settings(input: PromotionScope): Promise<WorkflowPromotionSettings>;
-  setTarget(
-    input: PromotionCommand & WorkflowPromotionTarget,
-  ): Promise<WorkflowPromotionTargetResult>;
-  candidates(
-    input: PromotionScope & WorkflowPromotionCandidatesQuery,
-  ): Promise<WorkflowPromotionCandidates>;
-  preview(
-    input: PromotionScope & WorkflowPromotionPreviewRequest,
-  ): Promise<WorkflowPromotionPreview>;
-  apply(
-    input: PromotionCommand & WorkflowPromotionApply,
-  ): Promise<WorkflowPromotionResult>;
-  history(
-    input: PromotionScope & WorkflowPromotionPageQuery,
-  ): Promise<WorkflowPromotionHistory>;
-}
+export type SetPromotionTargetInput = PromotionCommand &
+  WorkflowPromotionTarget;
+export type PromotionCandidatesInput = PromotionScope &
+  WorkflowPromotionCandidatesQuery;
+export type PreviewPromotionInput = PromotionScope &
+  WorkflowPromotionPreviewRequest;
+export type ApplyPromotionInput = PromotionCommand & WorkflowPromotionApply;
+export type PromotionHistoryInput = PromotionScope & WorkflowPromotionPageQuery;
 
 export type PromotionContext = WorkflowAuthoringWriteContext &
   Readonly<{
+    access: AuthoringAccess;
     transactScopes<T>(
       operation: (inWorkspace: WorkspaceScopeRunner) => Promise<T>,
       signal?: AbortSignal,

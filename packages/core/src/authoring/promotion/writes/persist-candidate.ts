@@ -16,7 +16,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { pruneStepSamples } from '../../step-samples/records.repository.js';
 import { publishWorkflowDirectly } from '../../publication/publish.js';
 import { requestPublicationReview } from '../../reviews/request.repository.js';
-import type { PromotionContext, WorkflowPromotionStore } from '../contract.js';
+import type { ApplyPromotionInput, PromotionContext } from '../contract.js';
 import { promotionDigest } from '../preparation/graph.js';
 export async function writePromotedDraft(
   client: PoolClient,
@@ -27,7 +27,7 @@ export async function writePromotedDraft(
     workflow,
     promotionId,
   }: Readonly<{
-    input: Parameters<WorkflowPromotionStore['apply']>[0];
+    input: ApplyPromotionInput;
     review: WorkflowPromotionPreview;
     workflow: WorkflowPromotionPreview['workflows'][number];
     promotionId: string;

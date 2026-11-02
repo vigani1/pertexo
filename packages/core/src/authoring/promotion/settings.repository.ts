@@ -16,26 +16,29 @@ import { hasCapability } from '@pertexo/workflow-model';
 import type { WorkflowPromotionSettings } from '@pertexo/contracts';
 import { WorkflowNotFoundError } from '../workflows/errors.js';
 import { WorkflowPromotionError } from './errors.js';
-import type { PromotionContext, WorkflowPromotionStore } from './contract.js';
+import type {
+  PromotionContext,
+  PromotionScope,
+  SetPromotionTargetInput,
+} from './contract.js';
 import {
   lockPromotionWorkspaces,
   readPromotionLink,
   requirePromotionAuthority,
 } from './authority.queries.js';
 
-export function promotionSettings(
-  context: PromotionContext,
-): Pick<WorkflowPromotionStore, 'settings' | 'setTarget'> {
+export function promotionSettings(context: PromotionContext) {
   return {
-    settings: (input) => readPromotionSettings(context, input),
-    setTarget: (input) => setPromotionTarget(context, input),
+    settings: (input: PromotionScope) => readPromotionSettings(context, input),
+    setTarget: (input: SetPromotionTargetInput) =>
+      setPromotionTarget(context, input),
   };
 }
 
 function readPromotionSettings(
   context: PromotionContext,
-  input: Parameters<WorkflowPromotionStore['settings']>[0],
-): ReturnType<WorkflowPromotionStore['settings']> {
+  input: PromotionScope,
+): Promise<WorkflowPromotionSettings> {
   return context.transactScopes(async (inWorkspace) => {
     const sourceScope = {
       workspaceId: input.workspaceId,
@@ -137,8 +140,8 @@ function readPromotionSettings(
 
 function setPromotionTarget(
   context: PromotionContext,
-  input: Parameters<WorkflowPromotionStore['setTarget']>[0],
-): ReturnType<WorkflowPromotionStore['setTarget']> {
+  input: SetPromotionTargetInput,
+): Promise<WorkflowPromotionTargetResult> {
   return context.transactScopes(async (inWorkspace) => {
     if (input.targetWorkspaceId === input.workspaceId)
       throw new WorkflowPromotionError(

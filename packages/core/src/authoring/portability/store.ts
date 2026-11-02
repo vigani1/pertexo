@@ -23,7 +23,7 @@ import {
   portableGraphDigest,
   portableManifestDigest,
   projectWorkflowPortableManifest,
-  rolesForCapability,
+  ACTIVE_WORKSPACE_STATUSES,
   WORKFLOW_PORTABILITY_LIMITS,
 } from '@pertexo/workflow-model';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
@@ -31,7 +31,8 @@ import {
   credentialCommandScope,
   generatePersistedId,
 } from '@pertexo/database/platform';
-import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
+import type { AuthoringAccess } from '../workflows/access.js';
+import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 import type {
   ExportWorkflowInput,
   ImportWorkflowInput,
@@ -39,7 +40,6 @@ import type {
 } from '../workflows/contract.js';
 
 import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
-import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import {
   WorkflowNotFoundError,
   WorkflowPortabilityCompatibilityConflictError,
@@ -54,16 +54,21 @@ import {
 import { inspectImport, portableFailure, selectedPolicy } from './admission.js';
 import { importResultSchema } from './input.js';
 
-async function requirePortabilityAuthority(
-  client: Parameters<typeof lockWorkflowAuthoringAuthority>[0],
-  input: Readonly<{ workspaceId: string; actorId: string }>,
-  { write }: Readonly<{ write: boolean }>,
-): Promise<void> {
-  await lockWorkflowAuthoringAuthority(client, input.workspaceId, {
-    actorId: input.actorId,
-    roles: rolesForCapability(write ? 'workflow:create' : 'workflow:read'),
-  });
-}
+export type PortabilityContext = Readonly<{
+  access: AuthoringAccess;
+  catalogs: AuthoringCatalogs;
+}>;
+
+const READ_SOURCE = {
+  mode: 'change',
+  capability: 'workflow:read',
+  statuses: ACTIVE_WORKSPACE_STATUSES,
+} as const;
+const CREATE_FROM_FILE = {
+  mode: 'change',
+  capability: 'workflow:create',
+  statuses: ACTIVE_WORKSPACE_STATUSES,
+} as const;
 
 /** The import command's digest, which a template origin records. */
 export function workflowImportCommandDigest(
@@ -82,188 +87,165 @@ export function workflowImportCommandDigest(
 }
 
 function exportPortableWorkflow(
-  context: WorkflowAuthoringWriteContext,
-  rawInput: ExportWorkflowInput,
+  context: PortabilityContext,
+  input: ExportWorkflowInput,
 ) {
-  const input: ExportWorkflowInput = rawInput;
-  return context.transact(
-    input.workspaceId,
-    input.actorId,
-    async (client) => {
-      await requirePortabilityAuthority(client, input, { write: false });
-      const row = await lockPortableSource(client, input);
-      const selection = context.catalogs;
-      const graph = reviewedSourceGraph(input, row, selection);
-      if ((await portableGraphDigest(graph)) !== input.reviewedGraphDigest)
-        throw new WorkflowPortabilityReviewConflictError(
-          'Reviewed workflow source changed',
-        );
-      try {
-        const manifest = projectWorkflowPortableManifest(
-          graph,
-          selectedPolicy(selection),
-        );
-        const admission = await admitWorkflowAuthoring(
-          client,
-          selection.validateAuthoringGraph,
-          graph,
-          input.signal === undefined ? {} : { signal: input.signal },
-        );
-        if (
-          admission.issues.some(({ code }) =>
-            [
-              'invalid_expression',
-              'invalid_mapping',
-              'dangling_edge',
-              'duplicate_node_id',
-              'duplicate_edge_id',
-              'invalid_graph',
-              'invalid_structured_body',
-              'graph_limit',
-            ].includes(code),
-          )
+  return context.access.member(input, READ_SOURCE, async (client, role) => {
+    const row = await lockPortableSource(client, input, role);
+    const selection = context.catalogs;
+    const graph = reviewedSourceGraph(input, row, selection);
+    if ((await portableGraphDigest(graph)) !== input.reviewedGraphDigest)
+      throw new WorkflowPortabilityReviewConflictError(
+        'Reviewed workflow source changed',
+      );
+    try {
+      const manifest = projectWorkflowPortableManifest(
+        graph,
+        selectedPolicy(selection),
+      );
+      const admission = await admitWorkflowAuthoring(
+        client,
+        selection.validateAuthoringGraph,
+        graph,
+        input.signal === undefined ? {} : { signal: input.signal },
+      );
+      if (
+        admission.issues.some(({ code }) =>
+          [
+            'invalid_expression',
+            'invalid_mapping',
+            'dangling_edge',
+            'duplicate_node_id',
+            'duplicate_edge_id',
+            'invalid_graph',
+            'invalid_structured_body',
+            'graph_limit',
+          ].includes(code),
         )
-          throw new WorkflowPortabilityValidationError(
-            admission.issues
-              .slice(0, WORKFLOW_PORTABILITY_LIMITS.issues)
-              .map(({ code, path }) => ({
-                code,
-                path: path.slice(0, 2048),
-                message:
-                  'The graph is not valid under the serving authoring policy.',
-              })),
-            {
-              truncated:
-                admission.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
-            },
-          );
-        return manifest;
-      } catch (error) {
-        portableFailure(error);
-      }
-    },
-    input.signal,
-  );
+      )
+        throw new WorkflowPortabilityValidationError(
+          admission.issues
+            .slice(0, WORKFLOW_PORTABILITY_LIMITS.issues)
+            .map(({ code, path }) => ({
+              code,
+              path: path.slice(0, 2048),
+              message:
+                'The graph is not valid under the serving authoring policy.',
+            })),
+          {
+            truncated:
+              admission.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
+          },
+        );
+      return manifest;
+    } catch (error) {
+      portableFailure(error);
+    }
+  });
 }
 
 function previewPortableWorkflow(
-  context: WorkflowAuthoringWriteContext,
+  context: PortabilityContext,
   input: PreviewWorkflowImportInput,
 ) {
-  return context.transact(
-    input.workspaceId,
-    input.actorId,
-    async (client) => {
-      await requirePortabilityAuthority(client, input, { write: true });
-      const selection = context.catalogs;
-      try {
-        const report = await inspectImport(client, context, input, selection);
-        return {
-          manifestDigest: await portableManifestDigest(input.manifest),
-          compatibilityFingerprint: workflowDefinitionCatalogFingerprint(
-            selection.definitionCatalog,
-          ),
-          compatible: report.hard.length === 0,
-          issues: report.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
-          truncated: report.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
-          connectionSlots: input.manifest.connectionSlots,
-        };
-      } catch (error) {
-        portableFailure(error);
-      }
-    },
-    input.signal,
-  );
+  return context.access.member(input, CREATE_FROM_FILE, async (client) => {
+    const selection = context.catalogs;
+    try {
+      const report = await inspectImport(client, input, selection);
+      return {
+        manifestDigest: await portableManifestDigest(input.manifest),
+        compatibilityFingerprint: workflowDefinitionCatalogFingerprint(
+          selection.definitionCatalog,
+        ),
+        compatible: report.hard.length === 0,
+        issues: report.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
+        truncated: report.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
+        connectionSlots: input.manifest.connectionSlots,
+      };
+    } catch (error) {
+      portableFailure(error);
+    }
+  });
 }
 
 function importPortableWorkflow(
-  context: WorkflowAuthoringWriteContext,
+  context: PortabilityContext,
   input: ImportWorkflowInput,
 ) {
-  return context.transact(
-    input.workspaceId,
-    input.actorId,
-    async (client) => {
-      await requirePortabilityAuthority(client, input, { write: true });
-      const destinationId = generatePersistedId();
-      const commandDigest = workflowImportCommandDigest(input);
-      const command = {
-        workspaceId: input.workspaceId,
-        operation: 'workflow.import',
-        scope: credentialCommandScope(input.actorId, input.commandCredentialId),
-        idempotencyKey: input.idempotencyKey,
-      };
-      const stored = await claimCommand(client, {
-        ...command,
-        request: commandDigest,
-        resourceId: destinationId,
-      });
-      if (stored !== null) {
-        const replay = importResultSchema.parse(stored);
-        const destination = await drizzle(client)
-          .select({ id: workflows.id })
-          .from(workflows)
-          .where(
-            and(
-              eq(workflows.workspaceId, input.workspaceId),
-              eq(workflows.id, replay.workflowId),
-            ),
-          )
-          .for('share')
-          .catch(rethrowQueryFailure);
-        if (destination.length !== 1)
-          throw new WorkflowNotFoundError(
-            'Workflow destination is not visible',
-          );
-        return Object.freeze(replay);
-      }
-      const selection = context.catalogs;
-      if (
-        workflowDefinitionCatalogFingerprint(selection.definitionCatalog) !==
-        input.expectedCompatibilityFingerprint
-      )
-        throw new WorkflowPortabilityCompatibilityConflictError(
-          'Workflow import catalog changed; preview again',
-        );
-      let graph;
-      try {
-        const report = await inspectImport(client, context, input, selection);
-        if (report.hard.length !== 0)
-          throw new WorkflowPortabilityValidationError(
-            report.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
-            {
-              truncated:
-                report.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
-            },
-          );
-        graph = report.graph;
-      } catch (error) {
-        portableFailure(error);
-      }
-      await requireWorkflowCallTargets(client, input, graph);
-      await requireConnectionBindings(client, input, graph);
-      await lockArtifactReferences(
-        client,
-        input.workspaceId,
-        graph,
-        input.actorId,
+  return context.access.member(input, CREATE_FROM_FILE, async (client) => {
+    const destinationId = generatePersistedId();
+    const commandDigest = workflowImportCommandDigest(input);
+    const command = {
+      workspaceId: input.workspaceId,
+      operation: 'workflow.import',
+      scope: credentialCommandScope(input.actorId, input.commandCredentialId),
+      idempotencyKey: input.idempotencyKey,
+    };
+    const stored = await claimCommand(client, {
+      ...command,
+      request: commandDigest,
+      resourceId: destinationId,
+    });
+    if (stored !== null) {
+      const replay = importResultSchema.parse(stored);
+      const destination = await drizzle(client)
+        .select({ id: workflows.id })
+        .from(workflows)
+        .where(
+          and(
+            eq(workflows.workspaceId, input.workspaceId),
+            eq(workflows.id, replay.workflowId),
+          ),
+        )
+        .for('share')
+        .catch(rethrowQueryFailure);
+      if (destination.length !== 1)
+        throw new WorkflowNotFoundError('Workflow destination is not visible');
+      return Object.freeze(replay);
+    }
+    const selection = context.catalogs;
+    if (
+      workflowDefinitionCatalogFingerprint(selection.definitionCatalog) !==
+      input.expectedCompatibilityFingerprint
+    )
+      throw new WorkflowPortabilityCompatibilityConflictError(
+        'Workflow import catalog changed; preview again',
       );
-      await persistImportedWorkflow(client, input, {
-        destinationId,
-        graph,
-        commandDigest,
-      });
-      const result = Object.freeze({ workflowId: destinationId });
-      await completeCommand(client, command, result);
-      return result;
-    },
-    input.signal,
-  );
+    let graph;
+    try {
+      const report = await inspectImport(client, input, selection);
+      if (report.hard.length !== 0)
+        throw new WorkflowPortabilityValidationError(
+          report.issues.slice(0, WORKFLOW_PORTABILITY_LIMITS.issues),
+          {
+            truncated:
+              report.issues.length > WORKFLOW_PORTABILITY_LIMITS.issues,
+          },
+        );
+      graph = report.graph;
+    } catch (error) {
+      portableFailure(error);
+    }
+    await requireWorkflowCallTargets(client, input, graph);
+    await requireConnectionBindings(client, input, graph);
+    await lockArtifactReferences(
+      client,
+      input.workspaceId,
+      graph,
+      input.actorId,
+    );
+    await persistImportedWorkflow(client, input, {
+      destinationId,
+      graph,
+      commandDigest,
+    });
+    const result = Object.freeze({ workflowId: destinationId });
+    await completeCommand(client, command, result);
+    return result;
+  });
 }
 
-export function createWorkflowPortabilityStore(
-  context: WorkflowAuthoringWriteContext,
-) {
+export function createWorkflowPortabilityStore(context: PortabilityContext) {
   return {
     exportWorkflow: (input: ExportWorkflowInput) =>
       exportPortableWorkflow(context, input),

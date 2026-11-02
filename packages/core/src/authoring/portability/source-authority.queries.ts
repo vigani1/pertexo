@@ -4,6 +4,7 @@ import {
   type WorkflowGraph,
   type WorkflowPortableManifest,
   connectionFitsSlot,
+  type Role,
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { and, asc, eq, inArray } from 'drizzle-orm';
@@ -17,7 +18,8 @@ import {
   workflowVersions,
   connections,
 } from '@pertexo/database/schema';
-import { authorizeWorkflowResource } from '../../tenant-access/resources/authority.js';
+import { readFolderScope } from '../../shared/facts.queries.js';
+import { workflowAccessible } from '../../tenant-access/resources/workflows.queries.js';
 import {
   connectionScopeSql,
   readConnectionScope,
@@ -37,12 +39,14 @@ import {
 export async function lockPortableSource(
   client: PoolClient,
   input: ExportWorkflowInput,
+  role: Role,
 ) {
   if (
-    !(await authorizeWorkflowResource(client, input, {
-      capability: 'workflow:read',
-      locking: true,
-    }))
+    !(await workflowAccessible(
+      client,
+      await readFolderScope(client, input, role),
+      { workspaceId: input.workspaceId, workflowId: input.workflowId },
+    ))
   )
     throw new WorkflowNotFoundError('Workflow source is not visible');
   const db = drizzle(client);

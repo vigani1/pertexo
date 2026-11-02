@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import {
   EMPTY_WORKFLOW_GRAPH,
   inspectWorkflowPortableManifest,
@@ -7,14 +8,13 @@ import {
 } from '@pertexo/workflow-model';
 
 import type { PreviewWorkflowImportInput } from '../workflows/contract.js';
-import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
+import { requirePlaceableDefinitionAdditions } from '../workflows/placement.js';
 import type { PortableCatalog } from '../workflows/types.js';
 import {
   WorkflowPortabilityUnavailableError,
   WorkflowPortabilityValidationError,
 } from '../workflows/errors.js';
 import { admitWorkflowAuthoring } from '../workflows/admission.queries.js';
-import type { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import { inspectPortableConnections } from './source-authority.queries.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 
@@ -51,8 +51,7 @@ function inspectTemplateOrigin(
 }
 
 export async function inspectImport(
-  client: Parameters<typeof lockWorkflowAuthoringAuthority>[0],
-  context: WorkflowAuthoringWriteContext,
+  client: PoolClient,
   input: PreviewWorkflowImportInput,
   selection: AuthoringCatalogs,
 ) {
@@ -62,7 +61,7 @@ export async function inspectImport(
     input.bindings,
     catalog,
   );
-  context.requirePlaceable(
+  requirePlaceableDefinitionAdditions(
     EMPTY_WORKFLOW_GRAPH,
     inspected.graph,
     selection.placementDefinitionCatalog ?? selection.definitionCatalog,

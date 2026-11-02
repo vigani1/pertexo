@@ -1,4 +1,8 @@
-import type { WorkflowPromotionHistory } from '@pertexo/contracts';
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
+import type {
+  WorkflowPromotionCandidates,
+  WorkflowPromotionHistory,
+} from '@pertexo/contracts';
 import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -8,32 +12,39 @@ import {
   users,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { readBrowsableFolderScope } from '../../shared/facts.queries.js';
+import { readFolderScope } from '../../shared/facts.queries.js';
 import { workflowScopeSql } from '../../shared/scope.queries.js';
 
-import { requirePromotionAuthority } from './authority.queries.js';
-import type { PromotionContext, WorkflowPromotionStore } from './contract.js';
+import type {
+  PromotionCandidatesInput,
+  PromotionContext,
+  PromotionHistoryInput,
+} from './contract.js';
 
-export function promotionReads(
-  context: PromotionContext,
-): Pick<WorkflowPromotionStore, 'candidates' | 'history'> {
+// These took the locks by hand, so they stay `change`.
+const BROWSE_AS_EDITOR = {
+  mode: 'change',
+  capability: 'workflow:update',
+  statuses: BROWSABLE_WORKSPACE_STATUSES,
+} as const;
+
+export function promotionReads(context: PromotionContext) {
   return {
-    candidates: (input) => readPromotionCandidates(context, input),
-    history: (input) => readPromotionHistory(context, input),
+    candidates: (input: PromotionCandidatesInput) =>
+      readPromotionCandidates(context, input),
+    history: (input: PromotionHistoryInput) =>
+      readPromotionHistory(context, input),
   };
 }
 function readPromotionCandidates(
   context: PromotionContext,
-  input: Parameters<WorkflowPromotionStore['candidates']>[0],
-): ReturnType<WorkflowPromotionStore['candidates']> {
-  return context.transact(
-    input.workspaceId,
-    input.actorId,
-    async (client) => {
-      await requirePromotionAuthority(client, input, 'workflow:update', {
-        browsing: true,
-      });
-      const resources = await readBrowsableFolderScope(client, input);
+  input: PromotionCandidatesInput,
+): Promise<WorkflowPromotionCandidates> {
+  return context.access.member(
+    input,
+    BROWSE_AS_EDITOR,
+    async (client, role) => {
+      const resources = await readFolderScope(client, input, role);
       if (input.workflowId !== undefined) {
         const result = await drizzle(client)
           .select({
@@ -117,21 +128,17 @@ function readPromotionCandidates(
             : null,
       };
     },
-    input.signal,
   );
 }
 function readPromotionHistory(
   context: PromotionContext,
-  input: Parameters<WorkflowPromotionStore['history']>[0],
-): ReturnType<WorkflowPromotionStore['history']> {
-  return context.transact(
-    input.workspaceId,
-    input.actorId,
-    async (client) => {
-      await requirePromotionAuthority(client, input, 'workflow:update', {
-        browsing: true,
-      });
-      const resources = await readBrowsableFolderScope(client, input);
+  input: PromotionHistoryInput,
+): Promise<WorkflowPromotionHistory> {
+  return context.access.member(
+    input,
+    BROWSE_AS_EDITOR,
+    async (client, role) => {
+      const resources = await readFolderScope(client, input, role);
       const result = await drizzle(client)
         .select({
           id: auditEvents.id,
@@ -188,6 +195,5 @@ function readPromotionHistory(
           result.length > input.limit ? (items.at(-1)?.id ?? null) : null,
       };
     },
-    input.signal,
   );
 }

@@ -1,21 +1,26 @@
-import type { PromotionContext, WorkflowPromotionStore } from './contract.js';
-import { promotionSettings } from './settings.repository.js';
-import { promotionReads } from './reads.queries.js';
-import { preparePromotion } from './preview.js';
 import { applyPromotion } from './apply.js';
+import type {
+  ApplyPromotionInput,
+  PreviewPromotionInput,
+  PromotionContext,
+} from './contract.js';
+import { preparePromotion } from './preview.js';
+import { promotionReads } from './reads.queries.js';
+import { promotionSettings } from './settings.repository.js';
 
-export function createWorkflowPromotionStore(
-  context: PromotionContext,
-): WorkflowPromotionStore {
-  const store: WorkflowPromotionStore = {
+export type WorkflowPromotionStore = ReturnType<
+  typeof createWorkflowPromotionStore
+>;
+
+export function createWorkflowPromotionStore(context: PromotionContext) {
+  return Object.freeze({
     ...promotionSettings(context),
     ...promotionReads(context),
-    preview: (input) =>
+    preview: (input: PreviewPromotionInput) =>
       context.transactScopes(
         (inWorkspace) => preparePromotion(context, inWorkspace, input),
         input.signal,
       ),
-    apply: (input) => applyPromotion(context, input),
-  };
-  return Object.freeze(store);
+    apply: (input: ApplyPromotionInput) => applyPromotion(context, input),
+  });
 }

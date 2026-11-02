@@ -11,6 +11,7 @@ import { collectArtifactReferences } from '../../../../artifacts/references/lock
 
 import { admitWorkflowAuthoring } from '../../../workflows/admission.queries.js';
 import { lockWorkspaceVariableNames } from '../../../../variables/head.queries.js';
+import { requirePlaceableDefinitionAdditions } from '../../../workflows/placement.js';
 import type { PromotionContext } from '../../contract.js';
 import { mapPromotionNodes } from '../graph.js';
 import type { PromotionSource } from '../source.queries.js';
@@ -77,7 +78,7 @@ export async function prepareTargetGraph(
       graph,
       report,
     });
-    context.requirePlaceable(
+    requirePlaceableDefinitionAdditions(
       targetGraph ?? EMPTY_WORKFLOW_GRAPH,
       graph,
       context.catalogs.placementDefinitionCatalog,
