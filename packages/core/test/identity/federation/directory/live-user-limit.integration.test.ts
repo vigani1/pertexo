@@ -9,7 +9,10 @@ import type { DirectoryUserValues } from '../../../../src/identity/federation/pr
 import { DirectoryError } from '../../../../src/identity/federation/provisioning/errors.js';
 import { unlinkDirectoryWorkspace } from '../../../../src/identity/federation/provisioning/management/unlink.repository.js';
 import { projectDirectoryMemberships } from '../../../../src/identity/federation/provisioning/projection.repository.js';
-import { createDirectoryUser } from '../../../../src/identity/federation/provisioning/resources/users.repository.js';
+import {
+  createDirectoryUser,
+  deleteDirectoryUser,
+} from '../../../../src/identity/federation/provisioning/resources/users.repository.js';
 import { useIdentityCommandDatabase } from '../../command.support.js';
 
 const db = useIdentityCommandDatabase('scim_live_limit');
@@ -94,6 +97,37 @@ describe('the SCIM user limit', () => {
 
     expect(refused).toBeInstanceOf(DirectoryError);
     expect((refused as DirectoryError).reason).toBe('limit');
+  }, 60_000);
+
+  it('frees a place when the directory deletes someone, through the same store calls a provider makes', async () => {
+    const { organizationId, pool, principal } = await setup();
+    await fill(organizationId, DIRECTORY_LIMITS.users - 2, {
+      deleted: false,
+      bound: false,
+    });
+    const refusedReason = () =>
+      createDirectoryUser(pool, principal, person()).then(
+        () => 'created',
+        (error: unknown) => (error as DirectoryError).reason,
+      );
+
+    const first = await createDirectoryUser(pool, principal, person());
+    const second = await createDirectoryUser(pool, principal, person());
+    await expect(refusedReason()).resolves.toBe('limit');
+
+    await deleteDirectoryUser(pool, principal, first.id, first.revision);
+    await expect(refusedReason()).resolves.toBe('created');
+    await expect(refusedReason()).resolves.toBe('limit');
+
+    await deleteDirectoryUser(pool, principal, second.id, second.revision);
+    const recreated = await createDirectoryUser(pool, principal, {
+      ...person(),
+      userName: second.user_name,
+      profile: second.profile,
+    });
+    expect(recreated.id).not.toBe(second.id);
+    expect(recreated.deleted_at).toBeNull();
+    await expect(refusedReason()).resolves.toBe('limit');
   }, 60_000);
 
   it('unlinks a workspace that has outlived more people than the limit', async () => {
