@@ -3,6 +3,7 @@ export {
   type DistributedRateLimitResult,
   type RateLimitScriptExecutor,
 } from './distributed-rate-limiter.js';
+export { LocalRateLimiter } from './local-rate-limiter.js';
 export {
   AbuseRateLimitPolicy,
   RATE_LIMIT_ENDPOINT_CLASSES,

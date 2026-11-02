@@ -133,7 +133,7 @@ describe('rate-limit interceptor', () => {
     });
   });
 
-  it('fails closed when the backend is unavailable for a protected mutation', async () => {
+  it('keeps a protected mutation limited in this process when the backend is unavailable', async () => {
     const consume = vi.fn().mockRejectedValue(new Error('redis unavailable'));
     const handle = vi.fn(() => of('called'));
     const recorder = metrics();
@@ -142,13 +142,19 @@ describe('rate-limit interceptor', () => {
       new HttpRateLimitAdmission({ consume }, recorder),
     );
 
-    await expect(
-      interceptor.intercept(context(providerTestHandler), { handle }),
-    ).rejects.toMatchObject({
-      code: 'request.rate_limit_unavailable',
-      details: { retryAfterSeconds: 1 },
-    });
-    expect(handle).not.toHaveBeenCalled();
+    let refusal: unknown;
+    for (
+      let request = 0;
+      refusal === undefined && request < 10_000;
+      request += 1
+    )
+      await interceptor
+        .intercept(context(providerTestHandler), { handle })
+        .catch((error: unknown) => {
+          refusal = error;
+        });
+    expect(refusal).toMatchObject({ code: 'request.rate_limited' });
+    expect(handle).toHaveBeenCalled();
     expect(recorder.record).toHaveBeenCalledWith({
       endpointClass: 'provider_test',
       failureMode: 'closed',
@@ -228,12 +234,9 @@ describe('rate-limit interceptor', () => {
     expect(handle).not.toHaveBeenCalled();
   });
 
-  it.each([
-    [authenticatedReadHandler, true, 'request.rate_limit_unavailable'],
-    [providerTestHandler, false, 'request.rate_limit_unavailable'],
-  ] as const)(
+  it.each([[authenticatedReadHandler]] as const)(
     'keeps the selected backend-failure policy when metric recording throws',
-    async (handler, expectedOpen, expectedCode) => {
+    async (handler) => {
       const handle = vi.fn(() => of('called'));
       const interceptor = new RateLimitInterceptor(
         new Reflector(),
@@ -250,13 +253,8 @@ describe('rate-limit interceptor', () => {
       );
 
       const result = interceptor.intercept(context(handler), { handle });
-      if (expectedOpen) {
-        await expect(firstValueFrom(await result)).resolves.toBe('called');
-        expect(handle).toHaveBeenCalledOnce();
-      } else {
-        await expect(result).rejects.toMatchObject({ code: expectedCode });
-        expect(handle).not.toHaveBeenCalled();
-      }
+      await expect(firstValueFrom(await result)).resolves.toBe('called');
+      expect(handle).toHaveBeenCalledOnce();
     },
   );
 

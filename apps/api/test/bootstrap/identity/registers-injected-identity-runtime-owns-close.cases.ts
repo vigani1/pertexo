@@ -30,7 +30,7 @@ export function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
     expect(close).toHaveBeenCalledOnce();
   });
 
-  it('fails a composed protected route closed before application work when the limiter is unavailable', async () => {
+  it('keeps a composed protected route up when the limiter is unavailable', async () => {
     const selectedIdentityRuntime = identityRuntime(undefined, true);
     applicationFixture.application = await createTestApiApplication(config, {
       ...dependencies(),
@@ -46,15 +46,13 @@ export function registerRegistersInjectedIdentityRuntimeOwnsClose(): void {
       headers: { cookie: 'pertexo_session=session' },
     });
 
-    expect(response.statusCode).toBe(503);
-    expect(response.headers['content-type']).toContain(
-      'application/problem+json',
-    );
-    expect(response.headers['retry-after']).toBe('1');
-    expect(response.json()).toMatchObject({
-      code: 'request.rate_limit_unavailable',
-      status: 503,
-    });
+    expect(response.statusCode).not.toBe(503);
+    expect(response.payload).not.toContain('redis endpoint unavailable');
+    expect(
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      selectedIdentityRuntime.dependencies.sessions.authenticate,
+    ).toHaveBeenCalled();
+  });
     expect(response.payload).not.toContain('redis endpoint unavailable');
     expect(
       // eslint-disable-next-line @typescript-eslint/unbound-method

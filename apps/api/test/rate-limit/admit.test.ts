@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { AbuseRateLimitPolicy } from '@pertexo/rate-limit';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -61,21 +63,36 @@ describe('admitRateLimit', () => {
     });
   });
 
-  it('refuses when a fail-closed backend is down and keeps the cause', async () => {
+  it('holds a fail-closed limit in this process while the backend is down', async () => {
     const failure = new Error('redis endpoint unavailable');
     const metrics = recorder();
-    await expect(
+    const decision = {
+      ...closed,
+      dimensions: [
+        {
+          kind: 'client_address' as const,
+          identifier: randomUUID(),
+          limit: 2,
+        },
+      ],
+    };
+    const admit = () =>
       admitRateLimit(
         { consume: () => Promise.reject(failure) },
         metrics,
-        closed,
-      ),
-    ).resolves.toEqual({ kind: 'unavailable', cause: failure });
-    expect(metrics.record).toHaveBeenCalledExactlyOnceWith({
+        decision,
+      );
+    expect(await admit()).toEqual({ kind: 'admitted' });
+    expect(await admit()).toEqual({ kind: 'admitted' });
+    expect(await admit()).toMatchObject({ kind: 'limited' });
+    expect(metrics.record).toHaveBeenCalledWith({
       endpointClass: 'callback_ingress',
       failureMode: 'closed',
       outcome: 'backend_error',
     });
+    expect(metrics.record).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'limited' }),
+    );
   });
 
   it('admits when a fail-open backend is down, and still records the error', async () => {

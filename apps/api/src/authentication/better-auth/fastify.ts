@@ -179,16 +179,6 @@ async function dispatchBetterAuthRequest(
       ...namedAccount(request.body),
     }),
   );
-  if (admitted.kind === 'unavailable') {
-    reply.header('retry-after', '1');
-    sendProblem(reply, {
-      requestId,
-      status: 503,
-      code: 'request.rate_limit_unavailable',
-      title: 'Authentication temporarily unavailable',
-    });
-    return;
-  }
   if (admitted.kind === 'limited') {
     reply.header(
       'retry-after',

@@ -1,4 +1,4 @@
-import { AbuseRateLimitPolicy } from '@pertexo/rate-limit';
+import { AbuseRateLimitPolicy, LocalRateLimiter } from '@pertexo/rate-limit';
 import type {
   DistributedRateLimitResult,
   RateLimitEndpointClass,
@@ -37,14 +37,18 @@ function recordMetric(
   }
 }
 
+/** One per process, so what's counted during an outage is shared by every route. */
+const duringRedisOutage = new LocalRateLimiter();
+
 export type RateLimitOutcome =
   | Readonly<{ kind: 'admitted' }>
-  | Readonly<{ kind: 'limited'; retryAfterSeconds: number }>
-  | Readonly<{ kind: 'unavailable'; cause: unknown }>;
+  | Readonly<{ kind: 'limited'; retryAfterSeconds: number }>;
 
 /**
  * The one admission decision: records the metric and honours the policy's
- * failure mode. Each transport turns the outcome into its own problem shape.
+ * failure mode. A closed policy keeps its limit in this process while Redis is out,
+ * so an outage neither stops sign-in and run starts nor lifts the limit. Each
+ * transport turns the outcome into its own problem shape.
  */
 export async function admitRateLimit(
   consumer: RateLimitConsumer,
@@ -55,15 +59,14 @@ export async function admitRateLimit(
   let result: DistributedRateLimitResult;
   try {
     result = await consumer.consume(decision);
-  } catch (cause: unknown) {
+  } catch {
     recordMetric(metrics, {
       endpointClass,
       failureMode,
       outcome: 'backend_error',
     });
-    return failureMode === 'open'
-      ? { kind: 'admitted' }
-      : { kind: 'unavailable', cause };
+    if (failureMode === 'open') return { kind: 'admitted' };
+    result = duringRedisOutage.consume(decision);
   }
   if (!result.allowed) {
     recordMetric(metrics, {
@@ -93,13 +96,6 @@ export class HttpRateLimitAdmission {
       this.metrics,
       this.policy.evaluate(endpointClass, subject),
     );
-    if (outcome.kind === 'unavailable')
-      throwApplicationError(
-        applicationError('request.rate_limit_unavailable', {
-          cause: outcome.cause,
-          details: { retryAfterSeconds: 1 },
-        }),
-      );
     if (outcome.kind === 'limited')
       throwApplicationError(
         applicationError('request.rate_limited', {

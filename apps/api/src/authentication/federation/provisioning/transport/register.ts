@@ -71,23 +71,14 @@ export function registerDirectoryTransport(
         policy.evaluate(endpoint, subject),
       );
       if (admitted.kind === 'admitted') return true;
-      if (admitted.kind === 'limited') {
-        reply.header(
-          'retry-after',
-          String(Math.max(1, admitted.retryAfterSeconds)),
-        );
-        sendDirectoryError(
-          reply,
-          429,
-          'Too many provisioning requests. Retry after the indicated delay.',
-        );
-        return false;
-      }
-      reply.header('retry-after', '1');
+      reply.header(
+        'retry-after',
+        String(Math.max(1, admitted.retryAfterSeconds)),
+      );
       sendDirectoryError(
         reply,
-        503,
-        'Provisioning admission is temporarily unavailable.',
+        429,
+        'Too many provisioning requests. Retry after the indicated delay.',
       );
       return false;
     }
