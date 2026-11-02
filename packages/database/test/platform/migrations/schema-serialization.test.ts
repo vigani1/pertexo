@@ -17,7 +17,7 @@ it('generates the token scope constraint when the migration tool extends Array.p
     expect(constraint).toBeDefined();
     if (constraint === undefined) throw new Error('Scope constraint missing');
     expect(new PgDialect().sqlToQuery(constraint.value).sql).toContain(
-      `'["workflow:read","workflow:create","workflow:publish","run:read","run:start","run:cancel","connection:read"]'::jsonb`,
+      `'["workflow:read","workflow:create","workflow:publish","run:read","run:read-data","run:start","run:cancel","connection:read"]'::jsonb`,
     );
   } finally {
     if (prior === undefined) Reflect.deleteProperty(Array.prototype, 'random');
