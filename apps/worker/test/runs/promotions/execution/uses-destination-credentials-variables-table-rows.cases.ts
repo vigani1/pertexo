@@ -229,8 +229,6 @@ export function registerUsesDestinationCredentialsVariablesTableRows(): void {
         };
         const parentVersion = await publish(parent, 'Parent');
         const promotions = authoring.promotions;
-        if (promotions === undefined)
-          throw new Error('Promotion owner missing');
         await promotions.setTarget({
           ...scope(sourceId),
           expectedRevision: 0,
