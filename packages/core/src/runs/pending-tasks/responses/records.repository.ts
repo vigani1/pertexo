@@ -1,6 +1,12 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
-import { nodeRuns, workflows, users } from '@pertexo/database/schema';
+import {
+  nodeRuns,
+  workflows,
+  workflowVersions,
+  users,
+} from '@pertexo/database/schema';
+import { workflowGraphStepSql } from '../../queries/execution/graph-step.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../values/stored-execution.js';
 import { and, eq, desc, inArray, lt, or, sql } from 'drizzle-orm';
@@ -59,6 +65,7 @@ export function projectTask(row: TaskRow): PendingTaskDetail {
     workflowVersionId: row.workflow_version_id,
     runId: row.run_id,
     nodeId: row.node_id,
+    stepName: row.step_name,
     nodeRunId: row.node_run_id,
     kind: row.kind,
     iterationPath: row.branch_context.iterationPath ?? [],
@@ -214,6 +221,10 @@ function taskQuery(
       node_run_id: sql<string>`${task.nodeRunId}`,
       invocation_key: task.invocationKey,
       node_id: node.nodeId,
+      // A person answering shouldn't read a step's id. A test run's version isn't published, so it has no name here.
+      step_name: sql<
+        string | null
+      >`(select left(nullif(btrim(graph_node.value->>'label'),''),200) from ${workflowVersions} version cross join lateral (${workflowGraphStepSql(sql`version.graph_json`, sql`${node.nodeId}`)}) graph_node where version.workspace_id=${task.workspaceId} and version.id=${task.workflowVersionId})`,
       branch_context: sql<
         Readonly<{ iterationPath?: PendingTaskDetail['iterationPath'] }>
       >`${node.branchContext}`,

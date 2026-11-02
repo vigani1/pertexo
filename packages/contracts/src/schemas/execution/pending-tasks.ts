@@ -45,6 +45,8 @@ export const pendingTaskSummarySchema = z
     workflowName: z.string().max(128),
     runId: z.uuid(),
     nodeId: z.string().max(128),
+    /** The step's label in its version; null when it has none. */
+    stepName: z.string().max(200).nullable(),
     nodeRunId: z.uuid(),
     iterationPath: z
       .array(
