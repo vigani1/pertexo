@@ -1,6 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { Client, type Pool } from 'pg';
+import { createDedicatedClient } from '@pertexo/database/primitives';
+import type { Pool } from 'pg';
 
 /** A trigger on `outbox_events` signals this after every statement that adds rows. */
 const OUTBOX_ROWS_CHANNEL = 'outbox_rows';
@@ -31,7 +32,7 @@ async function listenUntilLost(
   onRows: () => void,
   signal: AbortSignal,
 ): Promise<void> {
-  const client = new Client(pool.options);
+  const client = createDedicatedClient(pool);
   const lost = Promise.withResolvers<undefined>();
   const onLost = (): void => {
     lost.resolve(undefined);
