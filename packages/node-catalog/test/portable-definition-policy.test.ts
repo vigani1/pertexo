@@ -2,6 +2,37 @@ import { describe, expect, it } from 'vitest';
 import { platformPortableDefinitionPolicy } from '../src/server.js';
 
 describe('registered portable definition policy', () => {
+  it('accepts at publish exactly the step settings a run accepts', () => {
+    const { acceptsStepConfig } = platformPortableDefinitionPolicy();
+    const node = (config: Record<string, unknown>) =>
+      ({
+        id: 'n1',
+        definition: { key: 'http.request', version: 1 },
+        configVersion: 1,
+        config,
+      }) as unknown as Parameters<typeof acceptsStepConfig>[0];
+    const config = {
+      method: 'GET',
+      url: 'https://provider.example.test/resource',
+      headers: {},
+      timeoutMillis: 1000,
+      maxRedirects: 1,
+      maxResponseBytes: 1024,
+      inlineResponseBytes: 512,
+    };
+    expect(acceptsStepConfig(node(config))).toBe(true);
+    expect(acceptsStepConfig(node({ ...config, timeoutMillis: 300_000 }))).toBe(
+      false,
+    );
+    // A step the catalog no longer has gets its own refusal.
+    expect(
+      acceptsStepConfig({
+        ...node(config),
+        definition: { key: 'gone.step', version: 1 },
+      }),
+    ).toBe(true);
+  });
+
   it('derives exact registered slots/config schemas without executor/credential access', () => {
     const policy = platformPortableDefinitionPolicy();
     const http = policy.definitions.find(({ key }) => key === 'http.request');

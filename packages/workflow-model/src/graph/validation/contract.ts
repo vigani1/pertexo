@@ -34,6 +34,7 @@ export const GRAPH_ISSUE_CODES = [
   'expansion_limit',
   'graph_limit',
   'unknown_definition',
+  'invalid_step_settings',
   'invalid_graph',
 ] as const;
 
