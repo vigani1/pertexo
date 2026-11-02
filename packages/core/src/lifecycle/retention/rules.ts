@@ -1,5 +1,10 @@
 import { INBOX_RETENTION_RULE } from '../../inbox/retention.repository.js';
 import {
+  failedOutboxEvents,
+  inboxReceiptsPastEvents,
+  publishedOutboxEvents,
+} from '../../outbox/retention.js';
+import {
   runInputs,
   runDetails,
   runSummaries,
@@ -104,6 +109,9 @@ export const RETENTION_RULES = Object.freeze([
   auditHistory,
   connectionHistory,
   transportFacts,
+  publishedOutboxEvents,
+  failedOutboxEvents,
+  inboxReceiptsPastEvents,
   commandReceipts,
   creationReceipts,
   startRejections,
