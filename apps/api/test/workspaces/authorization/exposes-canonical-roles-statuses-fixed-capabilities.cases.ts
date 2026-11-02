@@ -35,6 +35,7 @@ export function registerExposesCanonicalRolesStatusesFixedCapabilities(): void {
       'workflow:update',
       'workflow:publish',
       'run:read',
+      'run:read-data',
       'run:start',
       'run:cancel',
       'run:replay',
@@ -86,6 +87,7 @@ export function registerExposesCanonicalRolesStatusesFixedCapabilities(): void {
       'workflow:create',
       'workflow:update',
       'workflow:publish',
+      'run:read-data',
       'run:start',
       'run:cancel',
       'run:replay',
@@ -106,6 +108,7 @@ export function registerExposesCanonicalRolesStatusesFixedCapabilities(): void {
       'workflow:create',
       'workflow:update',
       'workflow:publish',
+      'run:read-data',
       'run:start',
       'connection:use',
     ]);
@@ -116,6 +119,7 @@ export function registerExposesCanonicalRolesStatusesFixedCapabilities(): void {
       'run:read',
       'connection:read',
       'artifact:upload',
+      'run:read-data',
       'run:start',
       'run:cancel',
       'run:replay',
@@ -128,6 +132,7 @@ export function registerExposesCanonicalRolesStatusesFixedCapabilities(): void {
       'workflow:read',
       'run:read',
       'connection:read',
+      'run:read-data',
     ]);
   });
 
