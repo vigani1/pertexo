@@ -60,7 +60,6 @@ const coreSource = 'packages/core/src/';
  */
 export const AREAS_NOT_YET_PASSED = new Set([
   'attempts',
-  'authoring',
   'execution',
   'outbox',
   'runs',
