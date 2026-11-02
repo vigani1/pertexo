@@ -83,7 +83,7 @@ describe('choosing a service for an OAuth2 connection', () => {
     event.click(lens().getByRole('radio', { name: service }));
 
   const value = (label: string) =>
-    (lens().getByLabelText(label) as HTMLInputElement).value;
+    lens().getByLabelText<HTMLInputElement>(label).value;
 
   const replace = async (event: Event, label: string, text: string) => {
     const field = lens().getByLabelText(label);
@@ -108,14 +108,15 @@ describe('choosing a service for an OAuth2 connection', () => {
     return createBody.credential;
   };
 
-  const serviceChosen = (service: string) =>
+  const serviceChosen = (service: string) => {
     expect(lens().getByRole('radio', { name: service })).toBeChecked();
+  };
 
   it('fills in Google, with what a refresh token needs', async () => {
     const event = await openForm();
 
     await choose(event, 'Google');
-    await serviceChosen('Google');
+    serviceChosen('Google');
 
     expect(value('Authorization URL')).toBe(GOOGLE.authorizationUrl);
     expect(value('Token URL')).toBe(GOOGLE.tokenUrl);
@@ -137,7 +138,7 @@ describe('choosing a service for an OAuth2 connection', () => {
     const event = await openForm();
 
     await choose(event, 'Microsoft');
-    await serviceChosen('Microsoft');
+    serviceChosen('Microsoft');
 
     expect(value('Authorization URL')).toBe(MICROSOFT.authorizationUrl);
     expect(value('Token URL')).toBe(MICROSOFT.tokenUrl);
@@ -207,7 +208,7 @@ describe('choosing a service for an OAuth2 connection', () => {
       await typeClient(event);
 
       await replace(event, 'Scope', 'https://www.googleapis.com/auth/calendar');
-      await serviceChosen('Google');
+      serviceChosen('Google');
 
       const { settings } = await save(event);
       expect(settings.scope).toBe('https://www.googleapis.com/auth/calendar');
@@ -229,7 +230,7 @@ describe('choosing a service for an OAuth2 connection', () => {
         'Token URL',
         `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,
       );
-      await serviceChosen('Microsoft');
+      serviceChosen('Microsoft');
 
       const { settings } = await save(event);
       expect(settings.authorizationUrl).toContain(tenant);
@@ -265,7 +266,7 @@ describe('choosing a service for an OAuth2 connection', () => {
         lens().getByRole('radio', { name: 'Server to server' }),
       );
       expect(lens().queryByLabelText('Authorization URL')).toBeNull();
-      await serviceChosen('Microsoft');
+      serviceChosen('Microsoft');
 
       const { settings } = await save(event);
       expect(settings.grantType).toBe('client_credentials');
@@ -299,7 +300,7 @@ describe('choosing a service for an OAuth2 connection', () => {
       await typeClient(event);
 
       await choose(event, 'Other service');
-      await serviceChosen('Other service');
+      serviceChosen('Other service');
 
       expect(value('Authorization URL')).toBe('');
       expect(value('Token URL')).toBe('');
