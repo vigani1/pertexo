@@ -10,16 +10,12 @@ import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import { rolesForCapability } from '@pertexo/workflow-model';
 import type { WorkflowPresence } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
-import { requireCollaborationAuthority } from './authority.queries.js';
+import type { EnterCollaboration } from './authority.queries.js';
 import { WorkflowCollaborationError } from './errors.js';
-import type {
-  CollaborationContext,
-  CollaborationScope,
-  WorkflowCollaborationStore,
-} from './contract.js';
+import type { HeartbeatInput, PresenceInput } from './contract.js';
 async function readPresence(
   client: PoolClient,
-  input: CollaborationScope & { tabId: string },
+  input: PresenceInput,
 ): Promise<WorkflowPresence> {
   const lease = workflowPresenceLeases,
     member = workspaceMemberships;
@@ -68,61 +64,38 @@ async function readPresence(
   return { people };
 }
 
-export function collaborationPresence(
-  context: CollaborationContext,
-): Pick<WorkflowCollaborationStore, 'presence' | 'heartbeat' | 'leave'> {
+export function collaborationPresence(enter: EnterCollaboration) {
   return {
-    presence: (input) =>
-      context.transact(
-        input.workspaceId,
-        input.actorId,
+    presence: (input: PresenceInput): Promise<WorkflowPresence> =>
+      enter(input, { browsing: true }, async (client) => {
+        return readPresence(client, input);
+      }),
+    heartbeat: (input: HeartbeatInput): Promise<{ accepted: boolean }> =>
+      enter(
+        input,
+        { lock: 'update', editing: input.editing },
         async (client) => {
-          await requireCollaborationAuthority(client, input, 'share', {
-            browsing: true,
-          });
-          return readPresence(client, input);
-        },
-        input.signal,
-      ),
-    heartbeat: (input) =>
-      context.transact(
-        input.workspaceId,
-        input.actorId,
-        async (client) => {
-          await requireCollaborationAuthority(client, input, 'update', {
-            editing: input.editing,
-          });
           return heartbeatPresence(client, input);
         },
-        input.signal,
       ),
-    leave: (input) =>
-      context.transact(
-        input.workspaceId,
-        input.actorId,
-        async (client) => {
-          await requireCollaborationAuthority(client, input);
-          await drizzle(client)
-            .delete(workflowPresenceLeases)
-            .where(
-              and(
-                eq(workflowPresenceLeases.workspaceId, input.workspaceId),
-                eq(workflowPresenceLeases.workflowId, input.workflowId),
-                eq(workflowPresenceLeases.userId, input.actorId),
-                eq(workflowPresenceLeases.tabId, input.tabId),
-              ),
-            )
-            .catch(rethrowQueryFailure);
-        },
-        input.signal,
-      ),
+    leave: (input: PresenceInput): Promise<void> =>
+      enter(input, {}, async (client) => {
+        await drizzle(client)
+          .delete(workflowPresenceLeases)
+          .where(
+            and(
+              eq(workflowPresenceLeases.workspaceId, input.workspaceId),
+              eq(workflowPresenceLeases.workflowId, input.workflowId),
+              eq(workflowPresenceLeases.userId, input.actorId),
+              eq(workflowPresenceLeases.tabId, input.tabId),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+      }),
   };
 }
 
-async function heartbeatPresence(
-  client: PoolClient,
-  input: Parameters<WorkflowCollaborationStore['heartbeat']>[0],
-) {
+async function heartbeatPresence(client: PoolClient, input: HeartbeatInput) {
   const db = drizzle(client),
     lease = workflowPresenceLeases;
   const scope = and(

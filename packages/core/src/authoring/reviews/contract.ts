@@ -4,7 +4,7 @@ import type {
   PublicationReviewDetail,
   PublicationReviewDecision,
 } from '@pertexo/contracts';
-import type { WorkflowPublicationDependencies } from '../publication/contract.js';
+import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
 
 export type ReviewScope = Readonly<{
   workspaceId: string;
@@ -39,4 +39,7 @@ export interface PublicationReviewStore {
   ): Promise<PublicationReview>;
 }
 
-export type ReviewDependencies = WorkflowPublicationDependencies;
+export type ReviewDependencies = Pick<
+  WorkflowAuthoringWriteContext,
+  'requireAuthor' | 'catalogs' | 'transact'
+>;

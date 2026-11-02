@@ -1,6 +1,4 @@
 import { draftWireRow } from '../../support/workflow-authoring/drafts.js';
-import { folderScope } from '../../../src/shared/folder-policy.js';
-import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 import {
   EMPTY_WORKFLOW_GRAPH,
@@ -8,7 +6,8 @@ import {
 } from '@pertexo/workflow-model';
 import { EMPTY_DEFINITION_CATALOG } from '@pertexo/workflow-model/server';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
-import { createWorkflowAuthoringReadStore } from '../../../src/authoring/workflows/reads.queries.js';
+import { createWorkflowAuthoringStore } from '../../../src/authoring/workflows/store.js';
+import { authorizedCheckout, CONNECTION } from './admission/checkout.js';
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -39,27 +38,25 @@ async function compare(
     compile?: (() => never) | undefined;
   }> = {},
 ) {
-  const client = {
-    query: vi
-      .fn()
-      .mockResolvedValueOnce({ rows: [{ id: workflowId }], rowCount: 1 })
-      .mockResolvedValueOnce({
-        rows: [
-          draftWireRow({
-            workspace_id: workspaceId,
-            workflow_id: workflowId,
-            revision: 1,
-            graph_json: draftGraph,
-            updated_by: actorId,
-            updated_at: new Date(),
-          }),
-        ],
-      })
-      .mockResolvedValueOnce({ rows: [{ setting: '30000', unit: 'ms' }] })
-      .mockResolvedValueOnce({
-        rows: published ? [[versionId, 3, checksum, liveGraph]] : [],
-      }),
-  } as unknown as PoolClient;
+  const query = vi
+    .fn()
+    .mockResolvedValueOnce({ rows: [{ id: workflowId }], rowCount: 1 })
+    .mockResolvedValueOnce({
+      rows: [
+        draftWireRow({
+          workspace_id: workspaceId,
+          workflow_id: workflowId,
+          revision: 1,
+          graph_json: draftGraph,
+          updated_by: actorId,
+          updated_at: new Date(),
+        }),
+      ],
+    })
+    .mockResolvedValueOnce({ rows: [{ setting: '30000', unit: 'ms' }] })
+    .mockResolvedValueOnce({
+      rows: published ? [[versionId, 3, checksum, liveGraph]] : [],
+    });
   const compiler = vi.fn(
     compile ??
       (() => ({
@@ -67,20 +64,22 @@ async function compare(
         executableJson: { graph },
       })),
   );
-  const store = createWorkflowAuthoringReadStore({
-    requireReader: () =>
-      Promise.resolve(folderScope(workspaceId, 'owner', [], [])),
-    catalogs: {
-      definitionCatalog: EMPTY_DEFINITION_CATALOG,
-      validateAuthoringGraph: () => Promise.resolve(validation),
-      executableCompiler: compiler,
-    },
-    transact: async (_workspace, _actor, operation) => operation(client),
+  const checkout = authorizedCheckout(query, { workspaceId, actorId });
+  const store = createWorkflowAuthoringStore(CONNECTION, {
+    definitionCatalog: EMPTY_DEFINITION_CATALOG,
+    validateAuthoringGraph: () => Promise.resolve(validation),
+    executableCompiler: compiler,
+    runtime: checkout.runtime,
   });
-  return {
-    result: await store.validateDraft(workspaceId, workflowId, actorId),
-    compiler,
-  };
+  try {
+    return {
+      result: await store.validateDraft(workspaceId, workflowId, actorId),
+      compiler,
+    };
+  } finally {
+    await store.close();
+    await checkout.restore();
+  }
 }
 
 describe('current publication comparison', () => {

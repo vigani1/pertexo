@@ -1,4 +1,3 @@
-import type { WorkflowAuthoringWriteContext } from '../workflows/context.js';
 import type { CommandIdentity } from '@pertexo/database/primitives';
 
 import type {
@@ -12,11 +11,6 @@ import type {
   PublishWorkflowResult,
 } from '../workflows/contract.js';
 import type { executableSchema } from './input.js';
-
-export type WorkflowPublicationDependencies = Pick<
-  WorkflowAuthoringWriteContext,
-  'requireAuthor' | 'catalogs' | 'transact'
->;
 
 export type PublicationCandidateInput = Omit<
   PublishWorkflowInput,

@@ -5,7 +5,7 @@ import {
   completeCommand,
 } from '@pertexo/database/primitives';
 import type { WorkflowConcurrencySettings as ConcurrencySettings } from '@pertexo/contracts';
-import { WORKFLOW_EDITOR_ROLES } from '@pertexo/workflow-model';
+import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { and, asc, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -19,34 +19,21 @@ import {
   workspaceExecutionEntitlementVersions,
 } from '@pertexo/database/schema';
 
-import { ROLES, type Role } from '@pertexo/workflow-model';
 import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/data-policy.js';
-import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
+import type { AuthoringAccess, WorkflowActor } from '../../workflows/access.js';
 import { WorkflowNotFoundError } from '../../workflows/errors.js';
 
 export type WorkflowConcurrencySettings = ConcurrencySettings;
-type Scope = Readonly<{
-  workspaceId: string;
-  workflowId: string;
-  actorId: string;
-  signal?: AbortSignal;
-}>;
-export interface WorkflowConcurrencyStore {
-  readSettings(input: Scope): Promise<WorkflowConcurrencySettings>;
-  updateSettings(
-    input: Scope &
-      Readonly<{
-        limit: number | null;
-        overflow?: 'queue' | 'skip';
-        expectedRevision: number;
-        idempotencyKey: string;
-        requestId?: string;
-        traceId?: string;
-      }>,
-  ): Promise<
-    Readonly<{ settings: WorkflowConcurrencySettings; replayed: boolean }>
-  >;
-}
+export type WorkflowConcurrencyScope = WorkflowActor;
+export type UpdateWorkflowConcurrencyInput = WorkflowConcurrencyScope &
+  Readonly<{
+    limit: number | null;
+    overflow?: 'queue' | 'skip';
+    expectedRevision: number;
+    idempotencyKey: string;
+    requestId?: string;
+    traceId?: string;
+  }>;
 export class WorkflowConcurrencyRevisionConflictError extends Error {
   public override readonly name = 'WorkflowConcurrencyRevisionConflictError';
   public constructor(public readonly currentRevision: number) {
@@ -65,15 +52,6 @@ export class WorkflowConcurrencyLimitExceededError extends Error {
     super('Workflow concurrency limit exceeds workspace capacity');
   }
 }
-type Transact = <T>(
-  workspaceId: string,
-  actorId: string,
-  operation: (client: PoolClient) => Promise<T>,
-  signal?: AbortSignal,
-) => Promise<T>;
-
-const EDITORS: readonly Role[] = WORKFLOW_EDITOR_ROLES;
-
 /** The workspace's current execution entitlement, as the settings show it. */
 async function readEntitlement(client: PoolClient, workspaceId: string) {
   const current = workspaceExecutionEntitlements,
@@ -167,180 +145,165 @@ function settingsOf(
   };
 }
 
-/** Workflow active-run limits, sharing the authoring factory's transactions. */
-export function createWorkflowConcurrencyStore(
-  transact: Transact,
-): WorkflowConcurrencyStore {
-  return Object.freeze({
-    readSettings: (input) => readConcurrencySettings(transact, input),
+export type WorkflowConcurrencyStore = ReturnType<
+  typeof createWorkflowConcurrencyStore
+>;
 
-    updateSettings: (input) => updateConcurrencySettings(transact, input),
-  } satisfies WorkflowConcurrencyStore);
+/** Workflow active-run limits, sharing the authoring factory's transactions. */
+export function createWorkflowConcurrencyStore(access: AuthoringAccess) {
+  return Object.freeze({
+    readSettings: (input: WorkflowConcurrencyScope) =>
+      access.workflow(
+        input,
+        {
+          capability: 'workflow:read',
+          statuses: BROWSABLE_WORKSPACE_STATUSES,
+        },
+        (client) => readConcurrencySettings(client, input),
+      ),
+    updateSettings: (input: UpdateWorkflowConcurrencyInput) =>
+      access.workflow(input, { capability: 'workflow:update' }, (client) =>
+        updateConcurrencySettings(client, input),
+      ),
+  });
 }
 
 async function readConcurrencySettings(
-  transact: Transact,
-  input: Parameters<WorkflowConcurrencyStore['readSettings']>[0],
-): ReturnType<WorkflowConcurrencyStore['readSettings']> {
-  const workspaceId = input.workspaceId,
-    actorId = input.actorId,
-    workflowId = input.workflowId;
-  return transact(
-    workspaceId,
-    actorId,
-    async (client) => {
-      await lockWorkflowAuthoringAuthority(client, workspaceId, {
-        actorId,
-        browsing: true,
-        roles: ROLES,
-        resource: { workflowId, capability: 'workflow:read' },
-      });
-      await requireWorkflow(client, workspaceId, workflowId);
-      const policy = settingsOf(
-        await readPolicy(client, workspaceId, workflowId),
-        await readEntitlement(client, workspaceId),
-      );
-      const recentSkips = await drizzle(client)
-        .select({
-          id: usageEvents.id,
-          at: sql<string>`to_char(${usageEvents.occurredAt} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
-          triggerType: sql<
-            NonNullable<
-              WorkflowConcurrencySettings['recentSkips']
-            >[number]['triggerType']
-          >`${usageEvents.metadata}->>'triggerType'`,
-          reason: sql<
-            NonNullable<
-              WorkflowConcurrencySettings['recentSkips']
-            >[number]['reason']
-          >`${usageEvents.metadata}->>'reason'`,
-        })
-        .from(usageEvents)
-        .where(
-          and(
-            eq(usageEvents.workspaceId, workspaceId),
-            eq(usageEvents.resourceType, 'workflow'),
-            eq(usageEvents.resourceId, workflowId),
-            eq(usageEvents.category, 'trigger.skipped'),
-            gt(
-              usageEvents.occurredAt,
-              sql`statement_timestamp()-${RUN_SUMMARY_RETENTION_SQL}`,
-            ),
-          ),
-        )
-        .orderBy(
-          sql`${usageEvents.occurredAt} desc nulls last`,
-          asc(usageEvents.id),
-        )
-        .limit(20)
-        .catch(rethrowQueryFailure);
-      return { ...policy, recentSkips };
-    },
-    input.signal,
+  client: PoolClient,
+  input: WorkflowConcurrencyScope,
+): Promise<WorkflowConcurrencySettings> {
+  const { workspaceId, workflowId } = input;
+  await requireWorkflow(client, workspaceId, workflowId);
+  const policy = settingsOf(
+    await readPolicy(client, workspaceId, workflowId),
+    await readEntitlement(client, workspaceId),
   );
+  const recentSkips = await drizzle(client)
+    .select({
+      id: usageEvents.id,
+      at: sql<string>`to_char(${usageEvents.occurredAt} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+      triggerType: sql<
+        NonNullable<
+          WorkflowConcurrencySettings['recentSkips']
+        >[number]['triggerType']
+      >`${usageEvents.metadata}->>'triggerType'`,
+      reason: sql<
+        NonNullable<
+          WorkflowConcurrencySettings['recentSkips']
+        >[number]['reason']
+      >`${usageEvents.metadata}->>'reason'`,
+    })
+    .from(usageEvents)
+    .where(
+      and(
+        eq(usageEvents.workspaceId, workspaceId),
+        eq(usageEvents.resourceType, 'workflow'),
+        eq(usageEvents.resourceId, workflowId),
+        eq(usageEvents.category, 'trigger.skipped'),
+        gt(
+          usageEvents.occurredAt,
+          sql`statement_timestamp()-${RUN_SUMMARY_RETENTION_SQL}`,
+        ),
+      ),
+    )
+    .orderBy(
+      sql`${usageEvents.occurredAt} desc nulls last`,
+      asc(usageEvents.id),
+    )
+    .limit(20)
+    .catch(rethrowQueryFailure);
+  return { ...policy, recentSkips };
 }
 
 async function updateConcurrencySettings(
-  transact: Transact,
-  input: Parameters<WorkflowConcurrencyStore['updateSettings']>[0],
-): ReturnType<WorkflowConcurrencyStore['updateSettings']> {
-  const workspaceId = input.workspaceId,
-    actorId = input.actorId,
-    workflowId = input.workflowId;
+  client: PoolClient,
+  input: UpdateWorkflowConcurrencyInput,
+): Promise<
+  Readonly<{ settings: WorkflowConcurrencySettings; replayed: boolean }>
+> {
+  const { workspaceId, actorId, workflowId } = input;
   const request = {
     limit: input.limit,
     expectedRevision: input.expectedRevision,
     ...(input.overflow === undefined ? {} : { overflow: input.overflow }),
   };
-  return transact(
+  await requireWorkflow(client, workspaceId, workflowId);
+  const identity = {
     workspaceId,
-    actorId,
-    async (client) => {
-      await lockWorkflowAuthoringAuthority(client, workspaceId, {
-        actorId,
-        roles: EDITORS,
-        resource: { workflowId, capability: 'workflow:update' },
-      });
-      await requireWorkflow(client, workspaceId, workflowId);
-      const identity = {
+    operation: 'workflow.concurrency',
+    scope: `${actorId}:${workflowId}`,
+    idempotencyKey: input.idempotencyKey,
+  };
+  const stored = await claimCommand<WorkflowConcurrencySettings>(client, {
+    ...identity,
+    request,
+    resourceId: workflowId,
+  });
+  if (stored !== null)
+    return Object.freeze({
+      settings: stored,
+      replayed: true,
+    });
+  // Run grants read the limit under the workspace's admission counter.
+  await drizzle(client)
+    .execute(sql`select app.lock_workspace_admission(${workspaceId})`)
+    .catch(rethrowQueryFailure);
+  const entitlement = await readEntitlement(client, workspaceId);
+  const policy = await readPolicy(client, workspaceId, workflowId);
+  if (policy.revision !== request.expectedRevision)
+    throw new WorkflowConcurrencyRevisionConflictError(policy.revision);
+  if (request.limit !== null) {
+    if (entitlement.maximum === null)
+      throw new WorkflowConcurrencyLimitUnavailableError();
+    if (request.limit > entitlement.maximum)
+      throw new WorkflowConcurrencyLimitExceededError(entitlement.maximum);
+  }
+  let current = policy;
+  const overflow = request.overflow ?? policy.overflow;
+  if (policy.limit !== request.limit || policy.overflow !== overflow) {
+    current = {
+      limit: request.limit,
+      revision: policy.revision + 1,
+      overflow,
+    };
+    const db = drizzle(client);
+    await db
+      .insert(workflowConcurrencyPolicies)
+      .values({
         workspaceId,
-        operation: 'workflow.concurrency',
-        scope: `${actorId}:${workflowId}`,
-        idempotencyKey: input.idempotencyKey,
-      };
-      const stored = await claimCommand<WorkflowConcurrencySettings>(client, {
-        ...identity,
-        request,
-        resourceId: workflowId,
-      });
-      if (stored !== null)
-        return Object.freeze({
-          settings: stored,
-          replayed: true,
-        });
-      // Run grants read the limit under the workspace's admission counter.
-      await drizzle(client)
-        .execute(sql`select app.lock_workspace_admission(${workspaceId})`)
-        .catch(rethrowQueryFailure);
-      const entitlement = await readEntitlement(client, workspaceId);
-      const policy = await readPolicy(client, workspaceId, workflowId);
-      if (policy.revision !== request.expectedRevision)
-        throw new WorkflowConcurrencyRevisionConflictError(policy.revision);
-      if (request.limit !== null) {
-        if (entitlement.maximum === null)
-          throw new WorkflowConcurrencyLimitUnavailableError();
-        if (request.limit > entitlement.maximum)
-          throw new WorkflowConcurrencyLimitExceededError(entitlement.maximum);
-      }
-      let current = policy;
-      const overflow = request.overflow ?? policy.overflow;
-      if (policy.limit !== request.limit || policy.overflow !== overflow) {
-        current = {
-          limit: request.limit,
-          revision: policy.revision + 1,
-          overflow,
-        };
-        const db = drizzle(client);
-        await db
-          .insert(workflowConcurrencyPolicies)
-          .values({
-            workspaceId,
-            workflowId,
-            activeRunLimit: current.limit,
-            revision: current.revision,
-            overflow: current.overflow,
-          })
-          .onConflictDoUpdate({
-            target: [
-              workflowConcurrencyPolicies.workspaceId,
-              workflowConcurrencyPolicies.workflowId,
-            ],
-            set: {
-              activeRunLimit: sql`excluded.active_run_limit`,
-              revision: sql`excluded.revision`,
-              overflow: sql`excluded.overflow`,
-            },
-          })
-          .catch(rethrowQueryFailure);
-        await appendAuditFact(client, {
-          workspaceId,
-          actorId: actorId,
-          action: 'workflow.concurrency_settings_changed',
-          targetType: 'workflow',
-          targetId: workflowId,
-          requestId: input.requestId ?? null,
-          traceId: input.traceId ?? null,
-          metadata: {
-            limit: current.limit,
-            revision: current.revision,
-            overflow: current.overflow,
-          },
-        });
-      }
-      const result = settingsOf(current, entitlement);
-      await completeCommand(client, identity, result);
-      return Object.freeze({ settings: result, replayed: false });
-    },
-    input.signal,
-  );
+        workflowId,
+        activeRunLimit: current.limit,
+        revision: current.revision,
+        overflow: current.overflow,
+      })
+      .onConflictDoUpdate({
+        target: [
+          workflowConcurrencyPolicies.workspaceId,
+          workflowConcurrencyPolicies.workflowId,
+        ],
+        set: {
+          activeRunLimit: sql`excluded.active_run_limit`,
+          revision: sql`excluded.revision`,
+          overflow: sql`excluded.overflow`,
+        },
+      })
+      .catch(rethrowQueryFailure);
+    await appendAuditFact(client, {
+      workspaceId,
+      actorId: actorId,
+      action: 'workflow.concurrency_settings_changed',
+      targetType: 'workflow',
+      targetId: workflowId,
+      requestId: input.requestId ?? null,
+      traceId: input.traceId ?? null,
+      metadata: {
+        limit: current.limit,
+        revision: current.revision,
+        overflow: current.overflow,
+      },
+    });
+  }
+  const result = settingsOf(current, entitlement);
+  await completeCommand(client, identity, result);
+  return Object.freeze({ settings: result, replayed: false });
 }

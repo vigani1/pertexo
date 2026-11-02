@@ -68,11 +68,14 @@ export {
 } from './settings/auto-pause/errors.js';
 export type {
   AutoPauseCommandResult,
-  WorkflowAutoPauseStore,
   WorkflowAutoPauseSettings,
   WorkspaceAutoPauseSettings,
 } from './settings/auto-pause/contract.js';
-export { createWorkflowAuthoringStore } from './workflows/store.js';
+export {
+  createWorkflowAuthoringStore,
+  type WorkflowAuthoringStore,
+} from './workflows/store.js';
+export type { WorkflowAutoPauseStore } from './settings/auto-pause/store.js';
 export { WorkflowDefinitionPlacementError } from './workflows/errors.js';
 export {
   WorkflowLifecycleRevisionConflictError,
@@ -96,7 +99,6 @@ export type {
   RestoreWorkflowVersionInput,
   TransitionWorkflowLifecycleInput,
   TransitionWorkflowLifecycleResult,
-  WorkflowAuthoringStore,
   WorkflowLifecycleCommand,
 } from './workflows/contract.js';
 export type {
@@ -126,4 +128,4 @@ export { WorkflowPromotionError } from './promotion/errors.js';
 export type { WorkflowPromotionStore } from './promotion/contract.js';
 
 export { WorkflowCollaborationError } from './collaboration/errors.js';
-export type { WorkflowCollaborationStore } from './collaboration/contract.js';
+export type { WorkflowCollaborationStore } from './collaboration/store.js';

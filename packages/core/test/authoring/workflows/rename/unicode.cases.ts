@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import type { WorkflowAuthoringStore } from '../../../../src/authoring/workflows/contract.js';
+import type { WorkflowAuthoringStore } from '../../../../src/authoring/workflows/store.js';
 
 export function registerUnicodeRenameCase({
   createNamed,

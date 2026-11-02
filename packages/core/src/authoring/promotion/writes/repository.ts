@@ -51,7 +51,11 @@ export async function writePromotedDraft(
   let versionNumber: number | null = null;
   let publicationRequestId: string | null = null;
   if (input.mode === 'publish') {
-    const published = await publishWorkflowDirectly(context, client, command);
+    const published = await publishWorkflowDirectly(
+      client,
+      command,
+      context.catalogs,
+    );
     publishedVersionId = published.version.id;
     versionNumber = published.version.versionNumber;
   } else if (input.mode === 'request_approval') {

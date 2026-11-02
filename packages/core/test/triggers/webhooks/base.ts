@@ -8,7 +8,7 @@ import {
   dropDisconnectedDatabase,
 } from '@pertexo/database/testing';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
-import type { WorkflowAuthoringStore } from '../../../src/authoring/workflows/contract.js';
+import type { WorkflowAuthoringStore } from '../../../src/authoring/workflows/store.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../../support/workflow-authoring-admission.fixture.js';
 
 import { createWebhookTriggerStore } from '../../../src/triggers/webhooks/store.js';
