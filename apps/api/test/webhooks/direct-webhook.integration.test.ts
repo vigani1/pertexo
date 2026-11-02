@@ -18,6 +18,8 @@ import { registerReadsResumedRunRunningThroughAuthenticated } from './direct-web
 import { registerRefusesWebhooksOutsideActiveWorkspace } from './direct-webhook/refuses-webhooks-outside-active-workspace.cases.js';
 import { registerReturnsNoEndpointCredentialOnCompleted } from './direct-webhook/returns-no-endpoint-credential-on-completed.cases.js';
 import { registerNoSilentDedupe } from './direct-webhook/no-silent-dedupe.cases.js';
+import { registerClosedDoors } from './direct-webhook/closed-doors.cases.js';
+import { registerKeepsSenderWordsOutOfLogs } from './direct-webhook/sender-words-in-logs.cases.js';
 import {
   registerStoresKeysAsHashes,
   registerSurvivesPublish,
@@ -56,4 +58,8 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
   registerStoresKeysAsHashes();
 
   registerNoSilentDedupe();
+
+  registerClosedDoors();
+
+  registerKeepsSenderWordsOutOfLogs();
 });
