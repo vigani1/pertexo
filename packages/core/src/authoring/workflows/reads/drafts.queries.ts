@@ -42,9 +42,11 @@ type ValidationCatalogs = Pick<
 export async function validateDraft(
   client: PoolClient,
   scope: FolderScope,
-  workflow: WorkflowRef,
+  {
+    signal,
+    ...workflow
+  }: WorkflowRef & Readonly<{ signal?: AbortSignal | undefined }>,
   catalogs: ValidationCatalogs,
-  signal?: AbortSignal,
 ) {
   const { workspaceId, workflowId } = workflow;
   if (!(await workflowAccessible(client, scope, workflow))) return null;

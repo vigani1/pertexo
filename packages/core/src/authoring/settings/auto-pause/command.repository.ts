@@ -5,7 +5,6 @@ import {
 } from '@pertexo/database/primitives';
 import type { Role } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
-import type { z } from 'zod';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import type {
   AutoPauseCommandResult,
@@ -28,7 +27,6 @@ export function command<T>(
     workflowId?: string;
     roles: readonly Role[];
     request: unknown;
-    schema: z.ZodType<T>;
     apply: (
       client: PoolClient,
       workspace: WorkspaceRow,
@@ -60,14 +58,14 @@ export function command<T>(
       scope: `${actorId}:${options.resourceId}`,
       idempotencyKey: input.idempotencyKey,
     };
-    const stored = await claimCommand(client, {
+    const stored = await claimCommand<T>(client, {
       ...identity,
       request: options.request,
       resourceId: options.resourceId,
     });
     if (stored !== null)
       return Object.freeze({
-        settings: options.schema.parse(stored),
+        settings: stored,
         replayed: true,
       });
     const { settings, audit } = await options.apply(client, workspace);

@@ -1,9 +1,7 @@
 import { expect, it, vi } from 'vitest';
 
-import {
-  admitWorkflowAuthoring,
-  authoringIdleBudgetIsSafe,
-} from '../../../../src/authoring/workflows/admission.queries.js';
+import { admitWorkflowAuthoring } from '../../../../src/authoring/workflows/admission.queries.js';
+import { authoringIdleBudgetIsSafe } from '../../../../src/authoring/workflows/idle-budget.js';
 
 import { graph, valid, budget } from './fixture.js';
 

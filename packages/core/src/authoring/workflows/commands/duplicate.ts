@@ -10,10 +10,7 @@ import {
   parseWorkflowGraphDraft,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import {
-  type WorkflowDefinitionCatalog,
-  workflowDraftRepresentationTag,
-} from '@pertexo/workflow-model/server';
+import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -40,10 +37,9 @@ import {
   WorkflowRevisionConflictError,
 } from '../errors.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
-import {
-  draftProjection,
-  projectDraft,
-} from '../representation/records.queries.js';
+import { projectDraft } from '../representation/records.queries.js';
+import { draftRepresentationTag } from '../representation/tag.js';
+import { lockDraft } from './locks.queries.js';
 
 async function selectedGraph(
   client: PoolClient,
@@ -66,26 +62,11 @@ async function selectedGraph(
       throw new WorkflowNotFoundError('Workflow source is not visible');
     return parseWorkflowGraphDraft(row.graph_json);
   }
-  const [row] = await drizzle(client)
-    .select(draftProjection)
-    .from(workflowDrafts)
-    .where(
-      and(
-        eq(workflowDrafts.workspaceId, input.workspaceId),
-        eq(workflowDrafts.workflowId, input.workflowId),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
+  const row = await lockDraft(client, input);
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow source is not visible');
   const draft = projectDraft(row, catalog);
-  const tag = workflowDraftRepresentationTag({
-    workflowId: input.workflowId,
-    revision: draft.revision,
-    graph: draft.graphJson,
-    compatibilityFingerprint: draft.compatibility.fingerprint,
-  });
+  const tag = draftRepresentationTag(input.workflowId, draft);
   if (tag !== input.representationTag)
     throw new WorkflowRevisionConflictError(draft.revision, tag);
   return draft.graphJson;
