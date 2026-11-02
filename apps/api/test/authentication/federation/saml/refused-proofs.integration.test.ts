@@ -1,7 +1,15 @@
 import { Logger } from '@nestjs/common';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockInstance,
+} from 'vitest';
 
-import { federationFailureReasonSchema } from '@pertexo/contracts';
+import type { federationFailureReasonSchema } from '@pertexo/contracts';
 import { betterAuthIntegrationEnabled } from '../../../support/better-auth/real-api.support.js';
 import { useSamlApi } from './api.fixture.js';
 import type { ResponseOptions } from './fixture.js';
@@ -43,7 +51,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
   () => {
     const api = useSamlApi('saml_refused_proofs');
     let fixture: Awaited<ReturnType<typeof api.setup>>;
-    let warnings: ReturnType<typeof vi.spyOn>;
+    let warnings: MockInstance<Logger['warn']>;
 
     beforeAll(async () => {
       fixture = await api.setup();
