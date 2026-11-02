@@ -150,6 +150,14 @@ function ReplayVersionChoice({
 }
 
 /** The original input as the text the field shows, while it's still kept. */
+/** Read only once the dialog opens: run input can be sensitive, and most never open it. */
+function useOriginalInput(
+  query: ReturnType<typeof workflowRunInputQueryOptions>,
+  open: boolean,
+) {
+  return useQuery({ ...query, enabled: open });
+}
+
 function originalInputText(data: WorkflowRunData | undefined) {
   return data?.kind === 'inline'
     ? JSON.stringify(data.value, null, 2)
@@ -236,9 +244,6 @@ export function ReplayRunDialog({
     open,
   });
   const { formReplay } = version;
-  const original = useQuery(
-    workflowRunInputQueryOptions(apiClient, userId, workspaceId, sourceRunId),
-  );
   const replay = useRunReplay({
     apiClient,
     userId,
@@ -253,6 +258,10 @@ export function ReplayRunDialog({
       onRunAccepted(runId);
     },
   });
+  const original = useOriginalInput(
+    workflowRunInputQueryOptions(apiClient, userId, workspaceId, sourceRunId),
+    open,
+  );
   const originalText = originalInputText(original.data);
   const runInput = useReplayInput({
     originalText,
