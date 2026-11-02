@@ -44,6 +44,9 @@ test('signed acceptance replay produces two immutable runs and one actual contro
   page,
   request,
 }) => {
+  // One long journey: 47-54 s on CI runners when it passes, against the usual 60 s,
+  // so a slightly slow runner failed it wherever the time ran out.
+  test.setTimeout(120_000);
   const { controlOrigin, workspaceId, connection } =
     await createOwnedHttpConnection(page, request);
   const workflowPath = await createEditorWorkflow(
