@@ -79,6 +79,7 @@ export function createIdentityWorkspaceStore(
   return Object.freeze(database);
 }
 
+/** Off the helper: the workspace and its first member don't exist yet. */
 async function createWorkspaceWithOwner(
   pool: Pool,
   input: WorkspaceWithOwnerInput,

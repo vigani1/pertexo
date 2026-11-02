@@ -26,6 +26,7 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 
+/** Off withWorkspaceAccess: the worker delivers it, with no member behind it. */
 export function createWorkspaceInvitationDeliveryStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,

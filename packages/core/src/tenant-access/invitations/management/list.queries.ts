@@ -2,16 +2,16 @@ import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/workflow-model';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
-import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workspaceInvitations as invitations } from '@pertexo/database/schema';
 
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
 
+import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
+import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
+import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
 import type { InvitationStore } from './contract.js';
-import { invitationSelection, lockAuthorizedActor } from './state.queries.js';
+import { invitationSelection } from './state.queries.js';
 
 export async function listWorkspaceInvitations(
   pool: Pool,
@@ -20,14 +20,17 @@ export async function listWorkspaceInvitations(
   input: Parameters<InvitationStore['listWorkspaceInvitations']>[2] = {},
 ): ReturnType<InvitationStore['listWorkspaceInvitations']> {
   const limit = input.limit ?? 50;
-  return withTenantScopedClient(
+  // Share locks, not a snapshot: it writes the expiries it finds, and listing
+  // invitations while the members list loads must not deadlock.
+  return withWorkspaceAccess(
     pool,
     { workspaceId, actorId: actorUserId },
+    {
+      mode: 'change',
+      capability: 'member:read',
+      statuses: BROWSABLE_WORKSPACE_STATUSES,
+    },
     async (client) => {
-      await lockAuthorizedActor(client, workspaceId, actorUserId, {
-        strength: 'share',
-        workspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,
-      });
       await expireWorkspaceInvitations(client, { workspaceId });
       const afterId =
         input.after === undefined ? undefined : input.after.invitationId;
@@ -66,5 +69,13 @@ export async function listWorkspaceInvitations(
           : {}),
       });
     },
-  );
+  ).catch((error: unknown) => {
+    if (error instanceof WorkspaceAccessDeniedError)
+      throw new WorkspaceInvitationCommandConflictError(
+        'actor_inactive',
+        'The actor is no longer allowed to manage invitations',
+        { cause: error },
+      );
+    throw error;
+  });
 }

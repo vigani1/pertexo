@@ -14,30 +14,26 @@ import type { PoolClient } from 'pg';
 
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
 
-export // Locks always go workspace first, then the actor's user and membership,
-// as the member store does, so no two transactions can wait on each other in
-// a cycle. Reads take share locks: listing invitations while the members list
-// loads must not deadlock; commands take update locks and still serialize.
-async function lockAuthorizedActor(
+/**
+ * A command takes the workspace, then the actor's user and membership, for
+ * update, as the member commands do, so no two wait on each other in a cycle. It
+ * stays off withWorkspaceAccess: that helper's share lock on the user would come
+ * first, and two commands by one person in two workspaces would each hold it and
+ * wait for the other's update, dying with 40P01.
+ */
+export async function lockAuthorizedActor(
   client: PoolClient,
   workspaceId: string,
   actorUserId: string,
-  {
-    strength = 'update',
-    workspaceStatuses = ['active'],
-  }: Readonly<{
-    strength?: 'update' | 'share';
-    workspaceStatuses?: readonly string[];
-  }> = {},
 ): Promise<Role> {
   const db = drizzle(client);
   const workspace = await db
     .select({ status: workspaces.status })
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId))
-    .for(strength)
+    .for('update')
     .catch(rethrowQueryFailure);
-  if (!workspaceStatuses.includes(workspace[0]?.status ?? ''))
+  if (workspace[0]?.status !== 'active')
     throw new WorkspaceInvitationCommandConflictError(
       'actor_inactive',
       'The workspace is not active',
@@ -55,7 +51,7 @@ async function lockAuthorizedActor(
     .where(
       and(eq(person.id, actorUserId), eq(membership.workspaceId, workspaceId)),
     )
-    .for(strength, { of: [person, membership] })
+    .for('update', { of: [person, membership] })
     .catch(rethrowQueryFailure);
   const row = actor[0];
   const managerUnavailable =

@@ -18,6 +18,7 @@ import {
 import { apiTokenStatus } from './metadata.js';
 import type { VerifiedApiToken } from './contract.js';
 
+/** Off the helper: no member is behind this yet. The token is what names one. */
 export function authenticateApiToken(
   pool: Pool,
   input: ParsedApiTokenCredential,

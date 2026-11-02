@@ -6,7 +6,11 @@ import {
   workspaceMemberships,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { API_TOKEN_SCOPES } from '@pertexo/workflow-model';
+import {
+  ACTIVE_WORKSPACE_STATUSES,
+  API_TOKEN_SCOPES,
+  UNPURGED_WORKSPACE_STATUSES,
+} from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 
 import type { ApiTokenScope } from '@pertexo/contracts';
@@ -15,6 +19,12 @@ import { ApiTokenPolicyError } from './errors.js';
 import type { ApiTokenOwner } from './contract.js';
 
 export type TokenOwnerAuthority = Readonly<{ revision: number; role: Role }>;
+/**
+ * Off withWorkspaceAccess. A token is bound to the membership's revision, which
+ * the helper doesn't return. Creating and revoking also lock the user for update,
+ * so the helper's share lock would come first, and two commands by one person in
+ * two workspaces could deadlock, each holding it and waiting for the other's update.
+ */
 export async function tokenOwnerAuthority(
   client: PoolClient,
   input: ApiTokenOwner,
@@ -52,10 +62,8 @@ export async function tokenOwnerAuthority(
     mode === 'read' ? memberQuery : memberQuery.for('update')
   ).catch(rethrowQueryFailure);
   const membership = member[0];
-  const allowedWorkspaceStatuses =
-    mode === 'create'
-      ? ['active']
-      : ['active', 'suspended', 'pending_deletion'];
+  const allowedWorkspaceStatuses: readonly string[] =
+    mode === 'create' ? ACTIVE_WORKSPACE_STATUSES : UNPURGED_WORKSPACE_STATUSES;
   const actorUnavailable =
     workspace[0] === undefined ||
     !allowedWorkspaceStatuses.includes(workspace[0].status) ||
