@@ -64,7 +64,7 @@ export async function runSideBySide(journeys, slots, run) {
   return results;
 }
 
-export async function compose(env, ...args) {
+async function compose(env, ...args) {
   await execute(
     '.github/scripts/retry-once.sh',
     ['docker', 'compose', ...args],
