@@ -6,8 +6,3 @@ export type ErrorWorkflowDeliveryInput = Readonly<{
   signal: AbortSignal;
   traceparent?: string | undefined;
 }>;
-
-export interface ErrorWorkflowStore {
-  dispatch(input: ErrorWorkflowDeliveryInput): Promise<void>;
-  close(): Promise<void>;
-}

@@ -35,7 +35,6 @@ import type {
   StalledWorkFailure,
   StalledWorkRecovery,
   StalledWorkStageFailure,
-  StalledWorkStore,
 } from './contract.js';
 
 /** A busy run holds its lock only briefly; the next scan tries again. */
@@ -57,15 +56,23 @@ const MAXIMUM_DELIVERY_BATCHES_PER_CYCLE = 20;
  */
 export const STALLED_WORK_POOL_ROLE = 'worker';
 
+export type StalledWorkStore = ReturnType<typeof createStalledWorkStore>;
+
+/** Sweeps every workspace: no member behind it, so it stays off withWorkspaceAccess. */
 export function createStalledWorkStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): StalledWorkStore {
+) {
   const lease = acquireDatabasePool(config, runtime, {
     role: STALLED_WORK_POOL_ROLE,
   });
   let undatedDeliveriesChecked = false;
   return Object.freeze({
+    /**
+     * Settles a bounded batch of overdue work. One bad row never stops the rest, and
+     * neither does a stage that fails: a delivery scan that keeps throwing still lets
+     * expired leases be recovered.
+     */
     recoverDue: async (limit: number, signal: AbortSignal) => {
       const result = await recoverDue(lease.pool, limit, signal);
       // After the work above, so a slow first look at the table delays nothing.

@@ -22,7 +22,11 @@ import { wakeWorkflowRun } from '../../wakeups/advance.queries.js';
 import { wakeTaskAncestors } from '../responses/respond.repository.js';
 import { prepareCallbacks } from './prepare.repository.js';
 import { CallbackResponseError } from './errors.js';
-import type { CallbackStore, PreparedCallback } from './contract.js';
+import type {
+  CallbackPreparation,
+  CallbackResponse,
+  PreparedCallback,
+} from './contract.js';
 
 type Row = Awaited<ReturnType<typeof resolveCallback>>[number];
 function project(row: Row): PreparedCallback {
@@ -37,21 +41,27 @@ function project(row: Row): PreparedCallback {
     config: callbackWaitConfigSchema.parse(row.config),
   };
 }
+export type CallbackStore = ReturnType<typeof createCallbackStore>;
+
+/**
+ * A callback's authority is its token, or the execution capability that prepares it:
+ * no member behind either, so these stay off withWorkspaceAccess.
+ */
 export function createCallbackStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): CallbackStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   return {
     close: () => lease.close(),
-    prepare: (input) =>
+    prepare: (input: CallbackPreparation) =>
       withTenantScopedClient(
         lease.pool,
         { workspaceId: input.workspaceId },
         (client) => prepareCallbacks(client, input),
         { signal: input.signal },
       ),
-    resolve: async (tokenHash, signal) => {
+    resolve: async (tokenHash: string, signal: AbortSignal) => {
       signal.throwIfAborted();
       const result = await resolveCallback(lease.pool, tokenHash);
       signal.throwIfAborted();
@@ -62,7 +72,7 @@ export function createCallbackStore(
             databaseTime: result[0].database_time,
           };
     },
-    keysInUse: async function* (signal) {
+    keysInUse: async function* (signal: AbortSignal) {
       let after: string | null = null;
       do {
         signal.throwIfAborted();
@@ -73,7 +83,7 @@ export function createCallbackStore(
         after = page.at(-1)?.keyVersion ?? null;
       } while (after !== null);
     },
-    respond: (input) =>
+    respond: (input: CallbackResponse) =>
       withTenantScopedClient(
         lease.pool,
         { workspaceId: input.callback.workspaceId },
@@ -83,10 +93,7 @@ export function createCallbackStore(
   };
 }
 
-async function respondCallback(
-  client: PoolClient,
-  input: Parameters<CallbackStore['respond']>[0],
-) {
+async function respondCallback(client: PoolClient, input: CallbackResponse) {
   const identity = input.callback;
   const db = drizzle(client),
     w = workspaces,

@@ -13,35 +13,19 @@ export type PreparedCallback = CallbackIdentity &
     tokenHash: string;
     config: CallbackWaitConfig;
   }>;
-export interface CallbackStore {
-  prepare(
-    input: ExecutionCapabilityScope &
-      Readonly<{
-        targets: readonly Readonly<{
-          nodeId: string;
-          config: CallbackWaitConfig;
-        }>[];
-        keyVersion: string;
-        tokenHash: (identity: CallbackIdentity) => string;
-        signal: AbortSignal;
-      }>,
-  ): Promise<readonly PreparedCallback[]>;
-  resolve(
-    tokenHash: string,
-    signal: AbortSignal,
-  ): Promise<(PreparedCallback & Readonly<{ databaseTime: Date }>) | null>;
-  respond(
-    input: Readonly<{
-      callback: PreparedCallback;
-      output: unknown;
-      redactOutput(canonical: string): string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<void>;
-  keysInUse(
-    signal: AbortSignal,
-  ): AsyncIterable<
-    Readonly<{ id: string; keyVersion: string; tokenHash: string }>
-  >;
-  close(): Promise<void>;
-}
+export type CallbackPreparation = ExecutionCapabilityScope &
+  Readonly<{
+    targets: readonly Readonly<{
+      nodeId: string;
+      config: CallbackWaitConfig;
+    }>[];
+    keyVersion: string;
+    tokenHash: (identity: CallbackIdentity) => string;
+    signal: AbortSignal;
+  }>;
+export type CallbackResponse = Readonly<{
+  callback: PreparedCallback;
+  output: unknown;
+  redactOutput(canonical: string): string;
+  signal: AbortSignal;
+}>;

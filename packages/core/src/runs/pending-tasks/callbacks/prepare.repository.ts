@@ -20,10 +20,10 @@ import {
 } from '../../../attempts/dispatch/fence.queries.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { CallbackCapacityError } from './errors.js';
-import type { CallbackStore, PreparedCallback } from './contract.js';
+import type { CallbackPreparation, PreparedCallback } from './contract.js';
 export async function prepareCallbacks(
   client: PoolClient,
-  input: Parameters<CallbackStore['prepare']>[0],
+  input: CallbackPreparation,
 ): Promise<readonly PreparedCallback[]> {
   await lockCapabilityExecution(client, input);
   await assertCapabilityExecution(client, input);
@@ -124,8 +124,8 @@ export async function prepareCallbacks(
 function persistPreparedCallback(
   client: PoolClient,
   options: Readonly<{
-    input: Parameters<CallbackStore['prepare']>[0];
-    target: Parameters<CallbackStore['prepare']>[0]['targets'][number];
+    input: CallbackPreparation;
+    target: CallbackPreparation['targets'][number];
     iteration: unknown;
     scopeHash: string;
     id: string;

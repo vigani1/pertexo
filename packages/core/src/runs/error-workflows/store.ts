@@ -14,22 +14,27 @@ import {
 } from '@pertexo/database/platform';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
 import { ErrorWorkflowDeliveryMismatchError } from './errors.js';
-import type { ErrorWorkflowStore } from './contract.js';
+import type { ErrorWorkflowDeliveryInput } from './contract.js';
 import { acceptErrorWorkflow } from './accept.repository.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 
 const consumerName = DELIVERY_CONSUMER['start-error-workflow'];
 
-/** Admission, intent resolution and transport receipt share one commit. */
+export type ErrorWorkflowStore = ReturnType<typeof createErrorWorkflowStore>;
+
+/**
+ * Admission, intent resolution and transport receipt share one commit. A delivery has
+ * no member behind it, so it stays off withWorkspaceAccess.
+ */
 export function createErrorWorkflowStore(
   config: DatabaseConfig,
   prepare: InitialCheckpointFactory,
   runtime?: DatabaseRuntime,
-): ErrorWorkflowStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   return Object.freeze({
     close: () => lease.close(),
-    dispatch: async (input) => {
+    dispatch: async (input: ErrorWorkflowDeliveryInput) => {
       await withTenantScopedClient(
         lease.pool,
         { workspaceId: input.workspaceId },
@@ -116,5 +121,5 @@ export function createErrorWorkflowStore(
         { signal: input.signal },
       );
     },
-  } satisfies ErrorWorkflowStore);
+  });
 }

@@ -18,7 +18,6 @@ import {
 } from '../advance/receipts.repository.js';
 import { withCoordinatorWriteClient } from '../advance/coordinator-transaction.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
-import type { WorkflowCallStore } from './contract.js';
 import { acceptPendingCall } from './accept.repository.js';
 import { applyIncomingCallCancellation } from './controls.repository.js';
 import {
@@ -165,13 +164,19 @@ async function performActions(
   }
 }
 
-/** Config is the existing maintenance authority; actions never use the app pool. */
+export type WorkflowCallStore = ReturnType<typeof createWorkflowCallStore>;
+
+/**
+ * Config is the existing maintenance authority; actions never use the app pool. A
+ * delivery has no member behind it, so it stays off withWorkspaceAccess.
+ */
 export function createWorkflowCallStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkflowCallStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
   return Object.freeze({
+    /** Executes durable run actions before the normal parent advance transaction. */
     performActions: (
       input: RunAdvanceInput,
       prepareChild: InitialCheckpointFactory,
