@@ -242,6 +242,60 @@ describe('a stage of the stalled-work scan that fails', () => {
     expect(recovered).toEqual([]);
   });
 
+  // A worker's first scan also dates rows from before due times existed. It comes
+  // after the rest, and a failure there mustn't lose what the rest did and found.
+  it('keeps what a first scan did when dating old rows fails, and tries that again', async () => {
+    const config = parseDatabaseConfig({
+      connectionString: databaseUrl(maintenanceUrl),
+      max: 4,
+      ownerRole: 'pertexo_owner',
+    });
+    const firstScan = createStalledWorkStore(config, runtime);
+    const seeded = await seedOneForEachStage();
+    const undatedId = await insertEvent({
+      jobName: 'deliver-workspace-invitation',
+      aggregateType: 'workspace-invitation',
+      aggregateId: randomUUID(),
+      failed: false,
+    });
+    await asAdmin((client) =>
+      client.query(
+        'update app.outbox_events set delivery_due_at = null where id = $1',
+        [undatedId],
+      ),
+    );
+    const failure = new Error('dating is broken');
+    failStatement(pool, /with undated as materialized/u, failure);
+
+    const result = await firstScan.recoverDue(100, signal);
+
+    expect(result.stagesFailed).toEqual([
+      { stage: 'undated_deliveries', error: failure },
+    ]);
+    expect(result.recovered.map(({ kind }) => kind).sort()).toEqual([
+      'attempt_reclaimed',
+      'delivery_redelivered',
+      'delivery_replaced',
+    ]);
+    await expect(whatEachStageLeft(seeded)).resolves.toEqual({
+      expired_leases: true,
+      overdue_deliveries: true,
+      failed_run_jobs: true,
+    });
+
+    vi.restoreAllMocks();
+    const after = await firstScan.recoverDue(100, signal);
+    expect(after.stagesFailed).toEqual([]);
+    const dated = await asAdmin((client) =>
+      client.query<{ dated: boolean }>(
+        'select delivery_due_at is not null as dated from app.outbox_events where id = $1',
+        [undatedId],
+      ),
+    );
+    expect(dated.rows[0]?.dated).toBe(true);
+    await firstScan.close();
+  });
+
   // Shutdown isn't a broken stage: it would log an outage nobody had.
   it('gives up on an aborted scan instead of recording it as a failed stage', async () => {
     const shutdown = new AbortController();

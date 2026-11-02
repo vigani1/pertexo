@@ -68,12 +68,23 @@ export function createStalledWorkStore(
   return Object.freeze({
     recoverDue: async (limit: number, signal: AbortSignal) => {
       const result = await recoverDue(lease.pool, limit, signal);
-      // After the work above, so a slow first look at the table delays nothing.
-      if (!undatedDeliveriesChecked) {
+      if (undatedDeliveriesChecked) return result;
+      // After the work above, so a slow first look at the table delays nothing, and
+      // a stage of its own, so failing here doesn't lose what that work did and found.
+      try {
         await dateAllUndatedDeliveries(lease.pool, signal);
         undatedDeliveriesChecked = true;
+        return result;
+      } catch (error: unknown) {
+        signal.throwIfAborted();
+        return Object.freeze({
+          ...result,
+          stagesFailed: Object.freeze([
+            ...result.stagesFailed,
+            { stage: 'undated_deliveries' as const, error },
+          ]),
+        });
       }
-      return result;
     },
     close: () => lease.close(),
   });
