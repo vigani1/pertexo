@@ -191,7 +191,7 @@ export function registerServesConfiguredCapabilitiesBootstrapsApplicationCSRF():
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('fails closed when distributed authentication admission is unavailable', async () => {
+  it('keeps authentication up, limited in this process, when distributed admission is unavailable', async () => {
     const application = Fastify();
     applications.push(application);
     const handler = vi.fn(() => Promise.resolve(Response.json({ ok: true })));
@@ -210,10 +210,7 @@ export function registerServesConfiguredCapabilitiesBootstrapsApplicationCSRF():
       headers: { origin: 'https://pertexo.test' },
       payload: { email: 'ada@example.test' },
     });
-    expect(response.statusCode).toBe(503);
-    expect(response.json()).toMatchObject({
-      code: 'request.rate_limit_unavailable',
-    });
-    expect(handler).not.toHaveBeenCalled();
+    expect(response.statusCode).toBe(200);
+    expect(handler).toHaveBeenCalledOnce();
   });
 }
