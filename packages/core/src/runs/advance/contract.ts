@@ -77,15 +77,3 @@ export type RunAdvanceResult =
   | Readonly<{
       kind: 'not_found' | 'capacity_exceeded';
     }>;
-
-export interface RunAdvanceStore {
-  /**
-   * Locks the run, reads its state, lets `decide` compute the transition and
-   * saves it, all in one transaction.
-   */
-  advance(
-    input: RunAdvanceInput,
-    decide: (state: RunAdvanceState) => Promise<RunAdvanceDecision>,
-  ): Promise<RunAdvanceResult>;
-  close(): Promise<void>;
-}

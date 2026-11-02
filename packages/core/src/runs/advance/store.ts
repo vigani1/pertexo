@@ -10,7 +10,6 @@ import type {
   RunAdvanceInput,
   RunAdvanceResult,
   RunAdvanceState,
-  RunAdvanceStore,
 } from './contract.js';
 import {
   auditCoordinatorDeliveryMismatch,
@@ -25,6 +24,11 @@ import {
   withCoordinatorWriteClient,
 } from './coordinator-transaction.js';
 
+/**
+ * Locks the run, reads its state, lets `decide` compute the transition and saves it,
+ * all in one transaction. A delivery has no member behind it: its authority is the
+ * delivery's own durable identity, so this stays off withWorkspaceAccess.
+ */
 async function advance(
   pool: Pool,
   input: RunAdvanceInput,
@@ -90,14 +94,18 @@ async function advance(
   }
 }
 
+export type RunAdvanceStore = ReturnType<typeof createRunAdvanceStore>;
+
 export function createRunAdvanceStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): RunAdvanceStore {
+) {
   const lease = acquireDatabasePool(config, runtime);
-  const store: RunAdvanceStore = {
-    advance: (input, decide) => advance(lease.pool, input, decide),
+  return Object.freeze({
+    advance: (
+      input: RunAdvanceInput,
+      decide: (state: RunAdvanceState) => Promise<RunAdvanceDecision>,
+    ) => advance(lease.pool, input, decide),
     close: () => lease.close(),
-  };
-  return Object.freeze(store);
+  });
 }

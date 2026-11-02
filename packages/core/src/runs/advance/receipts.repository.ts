@@ -5,15 +5,13 @@ import {
   outboxEvents,
   transportSecurityAuditFacts,
 } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  canonicalOutboxPayloadChecksum,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { serializeStoredExecutionJsonValue } from '../values/stored-execution.js';
 import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 import { activeCapacityAvailable } from '../admission-locks.queries.js';
+import { deferWorkflowRun } from '../wakeups/advance.queries.js';
 
 import type { Pool, PoolClient } from 'pg';
 
@@ -164,28 +162,12 @@ export async function deferCoordinatorForActiveCapacity(
   )
     return undefined;
 
-  const outboxEventId = generatePersistedId();
-  const payload = {
-    workspaceId: input.workspaceId,
-    outboxEventId,
-    runId: input.runId,
-    ...(input.traceparent === undefined
-      ? {}
-      : { traceparent: input.traceparent }),
-  } as const;
-  await drizzle(client)
-    .insert(outboxEvents)
-    .values({
-      id: outboxEventId,
-      workspaceId: input.workspaceId,
-      jobName: 'advance-workflow-run',
-      aggregateType: 'workflow-run',
-      aggregateId: input.runId,
-      payload: sql`${serializeStoredExecutionJsonValue(payload)}::jsonb`,
-      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-      availableAt: sql`clock_timestamp()+interval '5 seconds'`,
-    })
-    .catch(rethrowQueryFailure);
+  const outboxEventId = await deferWorkflowRun(
+    client,
+    input.workspaceId,
+    input.runId,
+    input.traceparent,
+  );
   // Preserve the committed slot across FIFO deferral. Completing the old
   // receipt may release only its old binding, never the replacement delivery.
   await drizzle(client)

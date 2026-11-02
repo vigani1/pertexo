@@ -2,15 +2,8 @@ import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
 import { releaseSlotDuringTimedWait } from '../timed-wait-slot.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
-import {
-  workflowRuns,
-  runCheckpoints,
-  outboxEvents,
-} from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  canonicalOutboxPayloadChecksum,
-} from '@pertexo/database/primitives';
+import { workflowRuns, runCheckpoints } from '@pertexo/database/schema';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionJsonValue,
@@ -29,7 +22,7 @@ import { persistFailureNotificationIntent } from './failure-notification.reposit
 import { persistWorkspaceInboxEvent } from '../../../inbox/folding/events.repository.js';
 import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcomes.repository.js';
 import { persistCallCompletion } from '../../calls/persist.repository.js';
-import { generatePersistedId } from '@pertexo/database/platform';
+import { wakeWorkflowRun } from '../../wakeups/advance.queries.js';
 
 async function persistDerivedContinuation(
   client: PoolClient,
@@ -47,27 +40,12 @@ async function persistDerivedContinuation(
     TERMINAL_RUN_STATUSES.has(input.plan.checkpoint.runStatus) ||
     input.plan.attempts.length > 0;
   if (cannotContinueImmediately) return;
-  const outboxEventId = generatePersistedId();
-  const payload = {
-    workspaceId: input.workspaceId,
-    runId: input.runId,
-    outboxEventId,
-    ...(input.traceparent === undefined
-      ? {}
-      : { traceparent: input.traceparent }),
-  };
-  await drizzle(client)
-    .insert(outboxEvents)
-    .values({
-      id: outboxEventId,
-      workspaceId: input.workspaceId,
-      jobName: 'advance-workflow-run',
-      aggregateType: 'workflow-run',
-      aggregateId: input.runId,
-      payload: sql`${serializeStoredExecutionJsonValue(payload)}::jsonb`,
-      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-    })
-    .catch(rethrowQueryFailure);
+  await wakeWorkflowRun(
+    client,
+    input.workspaceId,
+    input.runId,
+    input.traceparent,
+  );
 }
 
 function scheduledOccurrence(

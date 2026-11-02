@@ -6,12 +6,9 @@ import { variableRevisionForAcceptance } from './variables.queries.js';
 import { requireFormAdmission } from './forms.queries.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { lockExecutionArtifactReferences } from '../../../artifacts/references/locks.repository.js';
-import {
-  canonicalOutboxPayloadChecksum,
-  insertOutboxEvent,
-} from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { prepareStoredExecutionValue } from '../../values/stored-execution.js';
+import { enqueueAdvance } from '../../wakeups/advance.queries.js';
 import {
   idempotencyRecords,
   runCheckpoints,
@@ -326,20 +323,10 @@ async function persistRunStart(
     schedulerState: sql`${initialCheckpointJson}::jsonb`,
   });
 
-  const payload = {
+  await enqueueAdvance(transaction.db, {
     workspaceId: transaction.workspaceId,
-    outboxEventId,
     runId,
-    ...(parsed.traceparent === undefined
-      ? {}
-      : { traceparent: parsed.traceparent }),
-  } as const;
-  await insertOutboxEvent(transaction, {
-    id: outboxEventId,
-    jobName: 'advance-workflow-run',
-    aggregateType: 'workflow-run',
-    aggregateId: runId,
-    payload,
-    payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+    outboxEventId,
+    traceparent: parsed.traceparent,
   });
 }

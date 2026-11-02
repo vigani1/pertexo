@@ -42,13 +42,14 @@ export type {
   RunAdvanceInput,
   RunAdvanceResult,
   RunAdvanceState,
-  RunAdvanceStore,
 } from './advance/contract.js';
 export { createRunAdvanceStore } from './advance/store.js';
-export { createDeadlineWakeupScanner } from './wakeups/deadline-scanner.repository.js';
-export type { DeadlineWakeupScanner } from './wakeups/contract.js';
-export { createDueNodeWakeupScanner } from './wakeups/due-node-scanner.repository.js';
-export type { DueNodeWakeupScanner } from './wakeups/contract.js';
+export type { RunAdvanceStore } from './advance/store.js';
+export {
+  createDeadlineWakeupScanner,
+  createDueNodeWakeupScanner,
+} from './wakeups/scanners.js';
+export type { WakeupScanner } from './wakeups/scanners.js';
 export { createPublishedWorkflowReader } from './queries/execution/published.queries.js';
 
 export { createRunFailureStore } from './advance/failure-store.js';
