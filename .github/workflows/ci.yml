@@ -11,12 +11,13 @@ on:
 permissions:
   contents: read
 
-# A new push replaces a pull request's older run. Runs on main all finish, each in
-# its own group: every merged commit publishes its images.
 # Time limits here are a budget, not a safety net: they're set just above what each
 # job takes, so slow growth fails a PR instead of quietly adding to everyone's wait.
 # A job that reaches its limit gets split or sped up. Raise one only with a reason in
 # the commit, and lower it whenever a job gets faster.
+#
+# A new push replaces a pull request's older run. Runs on main all finish, each in
+# its own group: every merged commit publishes its images.
 concurrency:
   group:
     ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' &&
