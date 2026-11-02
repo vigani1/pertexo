@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { SAML_LIMITS, type SamlConfiguration } from '@pertexo/contracts';
+import {
+  SAML_LIMITS,
+  type FederationFailureReason,
+  type SamlConfiguration,
+} from '@pertexo/contracts';
+import { federationFailureReason } from '../failure.js';
 import { organizationIdentity } from '../identity.js';
 import {
   SAML,
@@ -107,7 +112,45 @@ export function verifiedAssertionIdentity(
   assertionId: string,
   configuration: SamlConfiguration,
 ) {
-  const assertion = root(parseXml(xml), A, 'Assertion');
+  return assertionIdentity(
+    root(parseXml(xml), A, 'Assertion'),
+    expected,
+    assertionId,
+    configuration,
+  );
+}
+
+/**
+ * The library refuses a bad time, audience or recipient before these checks
+ * run, and only says so in a message that can quote the proof. It stays refused:
+ * this names what an owner should look at, by running the same checks over the
+ * assertion as it was sent. Only a code comes out.
+ */
+export function libraryRefusalReason(
+  xml: string,
+  expected: SamlExpected,
+  assertionId: string,
+  configuration: SamlConfiguration,
+): FederationFailureReason {
+  const assertion = onlyChild(
+    root(parseXml(xml), P, 'Response'),
+    A,
+    'Assertion',
+  );
+  try {
+    assertionIdentity(assertion, expected, assertionId, configuration);
+    return 'saml_signature_invalid';
+  } catch (error: unknown) {
+    return federationFailureReason(error);
+  }
+}
+
+function assertionIdentity(
+  assertion: Element,
+  expected: SamlExpected,
+  assertionId: string,
+  configuration: SamlConfiguration,
+) {
   if (
     requiredAttribute(assertion, 'ID') !== assertionId ||
     requiredAttribute(assertion, 'Version') !== '2.0'
