@@ -20,6 +20,9 @@ export const REVIVED_RULES: readonly RevivedRule[] = [
     rule: 'trigger_skips',
     revive: 'occurred_at=clock_timestamp()',
   },
+  // An operator's redispatch, which puts the row back to be sent.
+  { rule: 'outbox_published', revive: 'published_at=null' },
+  { rule: 'outbox_failed', revive: 'failed_at=null,last_error_code=null' },
   {
     rule: 'event_windows',
     revive: `expires_at=clock_timestamp()+interval '1 day'`,
