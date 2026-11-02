@@ -13,12 +13,12 @@ export type {
 } from './queries/execution/contract.js';
 export type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
 export { createWorkflowRunDatabase } from './store.js';
+export type { WorkflowRunDatabase } from './store.js';
 export {
   WorkflowPublishedVersionConflictError,
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
 } from './errors.js';
-export type { WorkflowRunDatabase } from './commands/contract.js';
 export type {
   WorkspaceUsageCapacityInput,
   WorkspaceUsageCapacityRecord,

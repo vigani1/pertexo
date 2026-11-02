@@ -19,11 +19,11 @@ import {
   readWorkflowRunRecord,
 } from './records.repository.js';
 import type { WorkflowRunRecord } from './records.repository.js';
-import type { StartInput } from './input.js';
+import type { StartPublishedWorkflowRunInput } from './contract.js';
 
 export async function startInTransaction(
   transaction: WorkspaceTransaction,
-  input: StartInput,
+  input: StartPublishedWorkflowRunInput,
 ): Promise<
   Readonly<{ run: WorkflowRunRecord; replayed: boolean }> | ManualStartRejection
 > {

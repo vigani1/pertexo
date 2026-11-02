@@ -1,5 +1,4 @@
-import { sql } from 'drizzle-orm';
-
+import { lockWorkspaceRunAdmission } from '../../admission-locks.queries.js';
 import { postgresFailure } from '@pertexo/database/primitives';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
@@ -19,11 +18,9 @@ export function throwWorkflowRunAdmissionError(error: unknown): never {
 export async function assertWorkspaceAcceptsNewRuns(
   transaction: WorkspaceTransaction,
 ): Promise<void> {
-  const result = await transaction.db.execute<{ status: string }>(sql`
-    select app.lock_workspace_run_admission(${transaction.workspaceId}) status
-  `);
-
-  if (result.rows[0]?.status !== 'active') {
-    throw new WorkspaceRunAdmissionDeniedError();
-  }
+  const status = await lockWorkspaceRunAdmission(
+    transaction.db,
+    transaction.workspaceId,
+  );
+  if (status !== 'active') throw new WorkspaceRunAdmissionDeniedError();
 }

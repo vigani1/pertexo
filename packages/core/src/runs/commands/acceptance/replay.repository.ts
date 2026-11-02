@@ -2,7 +2,6 @@ import type { WorkflowRunAcceptanceReplayInput } from './contract.js';
 import { and, eq } from 'drizzle-orm';
 import { idempotencyRecords, workflowRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import type { AcceptanceInput } from './input.js';
 import { resultRefSchema } from './receipt.js';
 import { IDEMPOTENCY_STATUS } from './vocabulary.js';
 import type { AcceptedWorkflowRun } from './contract.js';
@@ -17,10 +16,7 @@ type ReplayValidation =
 
 export async function readExistingAcceptance(
   transaction: WorkspaceTransaction,
-  input: Pick<
-    AcceptanceInput,
-    'keyHash' | 'operation' | 'requestHash' | 'scope'
-  >,
+  input: WorkflowRunAcceptanceReplayInput,
   replayValidation: ReplayValidation,
 ): Promise<AcceptedWorkflowRun | null> {
   const rows = await transaction.db

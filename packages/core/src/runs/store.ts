@@ -1,9 +1,9 @@
 import { lockActorArtifactReferences } from '../artifacts/references/locks.repository.js';
-import { withResourceRunRead } from './access.js';
 import {
-  withRunCommand,
   requireRunAccess,
   requireWorkflowAccess,
+  withResourceRunRead,
+  withRunCommand,
 } from './access.js';
 import {
   readUsageTrends,
@@ -61,18 +61,20 @@ import type {
   StartPublishedWorkflowRunInput,
   ReplayPublishedWorkflowRunInput,
   CancelWorkflowRunInput,
-  WorkflowRunDatabase,
 } from './commands/contract.js';
 import { startInTransaction } from './commands/start-run.js';
 import { cancelInTransaction } from './commands/cancel-run.js';
+
+export type WorkflowRunDatabase = ReturnType<typeof createWorkflowRunDatabase>;
+
 export function createWorkflowRunDatabase(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
-): WorkflowRunDatabase {
+) {
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
-    canRead: async (input: Parameters<WorkflowRunDatabase['canRead']>[0]) =>
+    canRead: async (input: GetWorkflowRunInput) =>
       (await withResourceRunRead(pool, input, () => Promise.resolve(true))) ??
       false,
     recovery: async (input: WorkflowRecoveryPreviewInput) => {
