@@ -1,5 +1,8 @@
 export type { Role } from '@pertexo/workflow-model';
-export { createIdentityWorkspaceStore } from './store.js';
+export {
+  createIdentityWorkspaceStore,
+  type IdentityWorkspaceStore,
+} from './store.js';
 export { WorkspaceAccessDeniedError } from '../shared/errors.js';
 export {
   IdentityConflictError,
@@ -14,7 +17,6 @@ export {
 export { USER_STATUS, WORKSPACE_STATUS } from './state.js';
 export type {
   CreateUserInput,
-  IdentityWorkspaceStore,
   RequestWorkspaceLifecycleOperationInput,
   UserStatus,
   UserRecord,

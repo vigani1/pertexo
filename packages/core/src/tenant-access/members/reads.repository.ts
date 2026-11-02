@@ -21,23 +21,20 @@ import {
 
 import type {
   AccessibleWorkspacesPage,
-  IdentityWorkspaceStore,
+  FindWorkspaceAccessOptions,
+  ListAccessibleWorkspacesInput,
+  ListWorkspaceMembersInput,
   WorkspaceAccessRecord,
   WorkspaceMembersPage,
   WorkspaceStatus,
 } from '../contract.js';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
 
-type MemberStore = Pick<
-  IdentityWorkspaceStore,
-  'findWorkspaceAccess' | 'listAccessibleWorkspaces' | 'listWorkspaceMembers'
->;
-
 /** Spans the actor's workspaces, so no one workspace's authority can decide it. */
 async function listAccessibleWorkspaces(
   pool: Pool,
   actorId: string,
-  input: Readonly<{ limit?: number; after?: string }> = {},
+  input: ListAccessibleWorkspacesInput = {},
 ): Promise<AccessibleWorkspacesPage> {
   const after = input.after;
   const limit = input.limit ?? 50;
@@ -98,7 +95,7 @@ async function findWorkspaceAccess(
   pool: Pool,
   actorId: string,
   workspaceId: string,
-  options: Readonly<{ signal?: AbortSignal }> = {},
+  options: FindWorkspaceAccessOptions = {},
 ): Promise<WorkspaceAccessRecord | null> {
   return withTenantScopedClient(
     pool,
@@ -142,10 +139,7 @@ async function listWorkspaceMembers(
   pool: Pool,
   workspaceId: string,
   actorId: string,
-  input: Readonly<{
-    limit?: number;
-    after?: Readonly<{ createdAt: string; userId: string }>;
-  }> = {},
+  input: ListWorkspaceMembersInput = {},
 ): Promise<WorkspaceMembersPage> {
   const limit = input.limit ?? 50;
   const afterUserId =
@@ -253,13 +247,21 @@ async function listWorkspaceMembers(
   );
 }
 
-export function createIdentityWorkspaceMemberStore(pool: Pool): MemberStore {
+export function createIdentityWorkspaceMemberStore(pool: Pool) {
   return Object.freeze({
-    listAccessibleWorkspaces: (actorId, input) =>
-      listAccessibleWorkspaces(pool, actorId, input),
-    findWorkspaceAccess: (actorId, workspaceId, options) =>
-      findWorkspaceAccess(pool, actorId, workspaceId, options),
-    listWorkspaceMembers: (workspaceId, actorId, input) =>
-      listWorkspaceMembers(pool, workspaceId, actorId, input),
+    listAccessibleWorkspaces: (
+      actorId: string,
+      input?: ListAccessibleWorkspacesInput,
+    ) => listAccessibleWorkspaces(pool, actorId, input),
+    findWorkspaceAccess: (
+      actorId: string,
+      workspaceId: string,
+      options?: FindWorkspaceAccessOptions,
+    ) => findWorkspaceAccess(pool, actorId, workspaceId, options),
+    listWorkspaceMembers: (
+      workspaceId: string,
+      actorId: string,
+      input?: ListWorkspaceMembersInput,
+    ) => listWorkspaceMembers(pool, workspaceId, actorId, input),
   });
 }

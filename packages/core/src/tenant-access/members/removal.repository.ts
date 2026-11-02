@@ -5,8 +5,8 @@ import { updateMembership } from './records.repository.js';
 import { canRemoveWorkspaceMember } from '@pertexo/workflow-model';
 import { commandRevisionSchema } from '../command-keys.js';
 import type {
-  IdentityWorkspaceStore,
   RemoveWorkspaceMemberInput,
+  WorkspaceMemberRemovalResult,
 } from '../contract.js';
 import { WorkspaceMemberRemovalCommandConflictError } from '../errors.js';
 import { revokeUserSessions } from '../users/sessions.repository.js';
@@ -15,8 +15,6 @@ import {
   isActiveMemberManager,
   recordMemberCommandAudit,
 } from './commands.repository.js';
-
-type RemovalStore = Pick<IdentityWorkspaceStore, 'removeWorkspaceMember'>;
 
 const durableResult = z
   .object({ userId: z.uuid(), roleRevision: commandRevisionSchema })
@@ -36,11 +34,11 @@ function conflict(
  * revision advances, the removed user's sessions end, and one safe audit
  * fact and the command receipt commit in the same transaction.
  */
-export function createIdentityWorkspaceMemberRemovalStore(
-  pool: Pool,
-): RemovalStore {
+export function createIdentityWorkspaceMemberRemovalStore(pool: Pool) {
   return Object.freeze({
-    removeWorkspaceMember: (raw: RemoveWorkspaceMemberInput) => {
+    removeWorkspaceMember: (
+      raw: RemoveWorkspaceMemberInput,
+    ): Promise<WorkspaceMemberRemovalResult> => {
       const expectedRoleRevision = raw.expectedRoleRevision;
       return executeMemberCommand(pool, {
         operation: 'workspace.member.removal',

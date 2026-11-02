@@ -13,7 +13,10 @@ import {
 } from '@pertexo/database/schema';
 
 import { expireWorkspaceInvitations } from '../expiration.repository.js';
-import type { AcceptanceStore } from './contract.js';
+import type {
+  InvitationAcceptanceIntentRecord,
+  ResolveInvitationAcceptanceInput,
+} from '../../contract.js';
 import {
   replacementLineageIsLive,
   selectIntent,
@@ -24,8 +27,8 @@ import {
 
 export async function resolveInvitationAcceptance(
   pool: Pool,
-  raw: Parameters<AcceptanceStore['resolveInvitationAcceptance']>[0],
-): ReturnType<AcceptanceStore['resolveInvitationAcceptance']> {
+  raw: ResolveInvitationAcceptanceInput,
+): Promise<InvitationAcceptanceIntentRecord | null> {
   const workspaceId = raw.workspaceId;
   const invitationId = raw.invitationId;
   const intentId = raw.intentId;
@@ -133,7 +136,7 @@ type InvitationBindingIdentity = Readonly<{
   csrfDigest: string;
 }>;
 type PriorBinding = NonNullable<
-  Parameters<AcceptanceStore['resolveInvitationAcceptance']>[0]['priorBinding']
+  ResolveInvitationAcceptanceInput['priorBinding']
 >;
 type ReplacementResolution =
   | Readonly<{ kind: 'insert' }>

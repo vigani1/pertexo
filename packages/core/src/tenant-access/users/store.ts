@@ -7,11 +7,7 @@ import { users } from '@pertexo/database/schema';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import type {
-  CreateUserInput,
-  IdentityWorkspaceStore,
-  UserRecord,
-} from '../contract.js';
+import type { CreateUserInput, UserRecord } from '../contract.js';
 import { throwIdentityDatabaseConflict } from '../support.js';
 import { userRecord, userSelection } from './projection.js';
 
@@ -25,8 +21,6 @@ function parseUserIdentityFields(
 ): z.output<typeof userIdentityFieldsSchema> {
   return userIdentityFieldsSchema.parse(input);
 }
-
-type UserStore = Pick<IdentityWorkspaceStore, 'createUser' | 'findUserById'>;
 
 async function createUser(
   pool: Pool,
@@ -71,7 +65,7 @@ async function findUserById(
 }
 
 /** Pertexo's user records; Better Auth owns credentials and sessions. */
-export function createUserStore(pool: Pool): UserStore {
+export function createUserStore(pool: Pool) {
   return Object.freeze({
     createUser: (input: CreateUserInput) => createUser(pool, input),
     findUserById: (userId: string) => findUserById(pool, userId),

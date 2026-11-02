@@ -1,11 +1,8 @@
 import type {
   ApiTokenCreateRequest,
-  ApiTokenCreateResponse,
   ApiTokenMetadata,
-  ApiTokenRevokeResponse,
   ApiTokenScope,
 } from '@pertexo/contracts';
-import type { ParsedApiTokenCredential } from './credential.js';
 
 export type ApiTokenOwner = Readonly<{
   workspaceId: string;
@@ -20,21 +17,13 @@ export type VerifiedApiToken = Readonly<{
   tokenId: string;
   scopes: readonly ApiTokenScope[];
 }>;
-export interface ApiTokenStore {
-  create(
-    input: ApiTokenCommand & ApiTokenCreateRequest,
-  ): Promise<ApiTokenCreateResponse>;
-  list(input: ApiTokenOwner & { limit: number; after?: string }): Promise<{
-    items: ApiTokenMetadata[];
-    nextCursor: string | null;
-    availableScopes: ApiTokenScope[];
-  }>;
-  revoke(
-    input: ApiTokenCommand & { tokenId: string },
-  ): Promise<ApiTokenRevokeResponse>;
-  authenticate(
-    input: ParsedApiTokenCredential,
-    signal?: AbortSignal,
-  ): Promise<VerifiedApiToken | undefined>;
-  close(): Promise<void>;
-}
+export type ListApiTokensInput = ApiTokenOwner &
+  Readonly<{ limit: number; after?: string }>;
+export type ApiTokensPage = Readonly<{
+  items: ApiTokenMetadata[];
+  nextCursor: string | null;
+  availableScopes: ApiTokenScope[];
+}>;
+export type CreateApiTokenInput = ApiTokenCommand & ApiTokenCreateRequest;
+export type RevokeApiTokenInput = ApiTokenCommand &
+  Readonly<{ tokenId: string }>;

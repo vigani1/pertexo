@@ -19,14 +19,12 @@ import {
 import type { CommandIdentity } from '@pertexo/database/primitives';
 import { commandRevisionSchema } from '../command-keys.js';
 import type {
-  IdentityWorkspaceStore,
   RenameWorkspaceInput,
   WorkspaceRenameResult,
 } from '../contract.js';
 import { WorkspaceRenameCommandConflictError } from '../errors.js';
 import { workspaceRecord, workspaceSelection } from './projection.js';
 
-type RenameStore = Pick<IdentityWorkspaceStore, 'renameWorkspace'>;
 const durableResultSchema = z
   .object({
     workspace: z
@@ -73,7 +71,7 @@ function replayedResult(value: unknown): WorkspaceRenameResult {
   });
 }
 
-export function createIdentityWorkspaceRenameStore(pool: Pool): RenameStore {
+export function createIdentityWorkspaceRenameStore(pool: Pool) {
   return Object.freeze({
     renameWorkspace: async (raw: RenameWorkspaceInput) => {
       const workspaceId = raw.workspaceId;

@@ -10,15 +10,18 @@ import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import { WorkspaceAccessDeniedError } from '../../../shared/errors.js';
 import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
 import { WorkspaceInvitationCommandConflictError } from '../../errors.js';
-import type { InvitationStore } from './contract.js';
+import type {
+  ListWorkspaceInvitationsInput,
+  WorkspaceInvitationsPage,
+} from '../../contract.js';
 import { invitationSelection } from './state.queries.js';
 
 export async function listWorkspaceInvitations(
   pool: Pool,
-  workspaceId: Parameters<InvitationStore['listWorkspaceInvitations']>[0],
-  actorUserId: Parameters<InvitationStore['listWorkspaceInvitations']>[1],
-  input: Parameters<InvitationStore['listWorkspaceInvitations']>[2] = {},
-): ReturnType<InvitationStore['listWorkspaceInvitations']> {
+  workspaceId: string,
+  actorUserId: string,
+  input: ListWorkspaceInvitationsInput = {},
+): Promise<WorkspaceInvitationsPage> {
   const limit = input.limit ?? 50;
   // Share locks, not a snapshot: it writes the expiries it finds, and listing
   // invitations while the members list loads must not deadlock.
