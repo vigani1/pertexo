@@ -145,6 +145,7 @@ it('preserves mail identities through the rename and old messages through subseq
       '0070_notice_window_from_core.sql',
       '0071_failure_alert_notice.sql',
       '0072_webhook_lookup_reports_standing.sql',
+      '0073_attempt_foreign_key_indexes.sql',
     ]);
     const after = await catalog('app.system_mail_deliveries');
     expect(after.relation).toEqual(before.relation);

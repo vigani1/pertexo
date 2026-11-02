@@ -512,6 +512,13 @@
       "when": 1793562073181,
       "tag": "0072_webhook_lookup_reports_standing",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1793620406472,
+      "tag": "0073_attempt_foreign_key_indexes",
+      "breakpoints": true
     }
   ]
 }
