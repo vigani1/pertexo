@@ -58,7 +58,7 @@ const coreSource = 'packages/core/src/';
  * into one isn't checked; its pass takes it off this list. It can only shrink: the
  * test beside this check pins it.
  */
-export const AREAS_NOT_YET_PASSED = new Set(['execution', 'outbox', 'runs']);
+export const AREAS_NOT_YET_PASSED = new Set(['execution', 'runs']);
 // Tests answer only to the direction rules, but they do answer to them.
 const SCANNED_FOLDERS = ['src', 'test', 'e2e', 'e2e-live'];
 
